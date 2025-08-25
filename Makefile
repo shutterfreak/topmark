@@ -14,12 +14,13 @@
 # - `target` is the user-facing version with confirmation prompt
 # Only the interactive targets are listed in the help menu.
 
-.PHONY: build check-venv clean compile compile-dev dev \
+.PHONY: build check-venv check-rtd-venv clean compile compile-dev dev \
 		docs-build docs-deploy docs-serve docs-verify \
 		format format-check git-archive help install lint lint-fixall \
 		pre-commit-autoupdate pre-commit-clean pre-commit-install \
 		pre-commit-refresh pre-commit-run pre-commit-uninstall \
-		setup source-snapshot sync-dev sync-dev-confirm sync-prod sync-prod-confirm \
+		rtd-venv setup source-snapshot \
+		sync-dev sync-dev-confirm sync-prod sync-prod-confirm \
 		test uninstall uninstall-confirm update-instructions-json upgrade-dev upgrade-pro venv verify
 
 .DEFAULT_GOAL := help
@@ -204,8 +205,8 @@ format: check-venv
 lint: check-venv
 	@echo "Running linters..."
 	$(VENV_BIN)/ruff check .
-	$(VENV_BIN)/pyright src tests tools
-	$(VENV_BIN)/mypy .
+	$(VENV_BIN)/pyright src tests
+	$(VENV_BIN)/mypy
 
 .lint-fixall: check-venv
 	@echo "Running linters and automatically fixing fixable linting errors..."
