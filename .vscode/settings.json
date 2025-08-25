@@ -1,3 +1,13 @@
+// topmark:header:start
+//
+//   file         : settings.json
+//   file_relpath : .vscode/settings.json
+//   project      : TopMark
+//   license      : MIT
+//   copyright    : (c) 2025 Olivier Biot
+//
+// topmark:header:end
+
 {
     "makefile.configureOnOpen": false,
 

@@ -1,3 +1,13 @@
+// topmark:header:start
+//
+//   file         : extensions.json
+//   file_relpath : .vscode/extensions.json
+//   project      : TopMark
+//   license      : MIT
+//   copyright    : (c) 2025 Olivier Biot
+//
+// topmark:header:end
+
 {
     "recommendations": [
         "ms-python.vscode-pylance",
