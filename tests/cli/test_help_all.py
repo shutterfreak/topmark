@@ -26,13 +26,13 @@ from topmark.cli.main import cli as _cli
 COMMANDS = ["check", "apply", "dump-config", "filetypes", "init-config", "show-defaults", "version"]
 
 
-def test_group_help():
+def test_group_help() -> None:
     """It should exit successfully (0) when running `topmark --help`."""
     res = CliRunner().invoke(cast(click.Command, _cli), ["--help"])
     assert res.exit_code == 0
 
 
-def test_each_command_has_help():
+def test_each_command_has_help() -> None:
     """It should provide a `--help` page for each known subcommand."""
     r = CliRunner()
     for name in COMMANDS:

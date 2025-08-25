@@ -20,13 +20,13 @@ Ensures that running `topmark dump-config`:
 from typing import cast
 
 import click
-import tomlkit  # type: ignore[import]
+import tomlkit
 from click.testing import CliRunner
 
 from topmark.cli.main import cli as _cli
 
 
-def test_dump_config_outputs_valid_toml():
+def test_dump_config_outputs_valid_toml() -> None:
     """It should emit valid TOML wrapped in BEGIN/END markers and parse successfully."""
     res = CliRunner().invoke(cast(click.Command, _cli), ["dump-config"])
     assert res.exit_code == 0

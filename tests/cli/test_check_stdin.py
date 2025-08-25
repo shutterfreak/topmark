@@ -19,7 +19,7 @@ from click.testing import CliRunner
 from topmark.cli.main import cli as _cli
 
 
-def test_stdin_file_list_dry_run(tmp_path: pathlib.Path):
+def test_stdin_file_list_dry_run(tmp_path: pathlib.Path) -> None:
     """It should accept file paths from stdin and exit successfully.
 
     Args:

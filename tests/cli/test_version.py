@@ -25,7 +25,7 @@ from click.testing import CliRunner
 from topmark.cli.main import cli as _cli
 
 
-def test_version_text_contains_project_and_semver():
+def test_version_text_contains_project_and_semver() -> None:
     """It should output the project name and a semver-like version string."""
     res = CliRunner().invoke(cast(click.Command, _cli), ["version"])
     assert res.exit_code == 0

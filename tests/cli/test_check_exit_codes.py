@@ -24,7 +24,7 @@ from click.testing import CliRunner
 from topmark.cli.main import cli as _cli
 
 
-def test_check_exit_code_with_missing_header(tmp_path: pathlib.Path):
+def test_check_exit_code_with_missing_header(tmp_path: pathlib.Path) -> None:
     """It should exit with code 0 (ok) or 2 (headers need applying).
 
     Args:

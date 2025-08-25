@@ -17,7 +17,7 @@ raise errors or register duplicate commands.
 from topmark.cli.main import ensure_commands_registered
 
 
-def test_registration_is_idempotent():
+def test_registration_is_idempotent() -> None:
     """It should allow multiple invocations of command registration without errors."""
     # should not raise / duplicate subcommands
     ensure_commands_registered()

@@ -21,6 +21,7 @@ Click or the CLI. They focus strictly on the resolver's behavior and typing cont
 
 from io import StringIO
 from pathlib import Path
+from typing import Iterator
 
 from topmark.config import Config
 from topmark.file_resolver import resolve_file_list
@@ -88,7 +89,7 @@ def test_bad_stdin_is_treated_as_no_input(tmp_path: Path) -> None:
     class ExplodingIO(StringIO):
         """StringIO subclass that raises during iteration to simulate a broken stdin."""
 
-        def __iter__(self):  # type: ignore[override]
+        def __iter__(self) -> Iterator[str]:  # type: ignore
             """Iterate over the stream and raise to emulate a stdin failure."""
             raise RuntimeError("boom")
 

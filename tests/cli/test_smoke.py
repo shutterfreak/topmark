@@ -22,7 +22,7 @@ from click.testing import CliRunner
 from topmark.cli.main import cli as _cli
 
 
-def test_cli_entry():
+def test_cli_entry() -> None:
     """It should show usage information and exit code 0 when `--help` is passed."""
     runner = CliRunner()
     result = runner.invoke(cast(click.Command, _cli), ["--help"])
@@ -30,7 +30,7 @@ def test_cli_entry():
     assert "Usage" in result.output
 
 
-def test_version():
+def test_version() -> None:
     """It should show version information containing 'topmark' and exit code 0."""
     runner = CliRunner()
     result = runner.invoke(cast(click.Command, _cli), ["version"])

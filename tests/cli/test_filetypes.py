@@ -22,7 +22,7 @@ from click.testing import CliRunner
 from topmark.cli.main import cli as _cli
 
 
-def test_filetypes_lists_known_types():
+def test_filetypes_lists_known_types() -> None:
     """It should list supported file types and exit with code 0."""
     res = CliRunner().invoke(cast(click.Command, _cli), ["filetypes"])
     assert res.exit_code == 0

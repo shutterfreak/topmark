@@ -22,7 +22,7 @@ from click.testing import CliRunner
 from topmark.cli.main import cli as _cli
 
 
-def test_verbose_and_quiet_flags_parse():
+def test_verbose_and_quiet_flags_parse() -> None:
     """It should accept verbosity and quietness flags and exit with code 0."""
     r = CliRunner()
     for args in (["-v", "version"], ["-vvv", "version"], ["-q", "version"], ["-qq", "version"]):
