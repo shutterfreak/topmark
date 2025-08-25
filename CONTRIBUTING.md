@@ -27,7 +27,7 @@ ______________________________________________________________________
    cd topmark
    ```
 
-1. **Create a virtual environment and install dependencies:**
+2. **Create a virtual environment and install dependencies:**
 
    ```bash
    make setup
@@ -41,7 +41,7 @@ ______________________________________________________________________
    >
    > ⚠️ Ensure you're using `pip-tools >=7.4` to avoid deprecation warnings.
 
-1. **Install pre-commit hooks:**
+3. **Install pre-commit hooks:**
 
    ```bash
    make pre-commit-install

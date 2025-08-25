@@ -215,9 +215,9 @@ You can specify one or more `--config` files, or rely on local fallback resoluti
 TopMark reads configuration from one or more TOML files. Configuration is merged from:
 
 1. Built-in defaults
-1. Local project config (if not disabled via `--no-config`)
-1. Additional files via `--config`
-1. CLI overrides
+2. Local project config (if not disabled via `--no-config`)
+3. Additional files via `--config`
+4. CLI overrides
 
 Example configuration snippet (`topmark.toml`):
 
