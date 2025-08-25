@@ -1,0 +1,58 @@
+# topmark:header:start
+#
+#   file         : mkdocs.yml
+#   file_relpath : mkdocs.yml
+#   project      : TopMark
+#   license      : MIT
+#   copyright    : (c) 2025 Olivier Biot
+#
+# topmark:header:end
+
+site_name: TopMark
+site_description: Inspect, validate, and manage per-file headers across file types.
+site_url: https://shutterfreak.github.io/topmark
+repo_url: https://github.com/shutterfreak/topmark
+repo_name: shutterfreak/topmark
+theme:
+  name: material
+  logo: assets/topmark-logo.png
+  favicon: assets/favicon.ico
+  features:
+    - navigation.instant
+    - navigation.sections
+    - content.code.copy
+    - search.suggest
+    - search.highlight
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - pymdownx.snippets
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: ["src"]
+          options:
+            docstring_style: google        # or "numpy"/"sphinx"
+            show_signature: true
+            separate_signature: true
+            show_source: true
+            show_root_heading: true
+            members_order: source
+            inherited_members: false
+            show_if_no_docstring: false
+            merge_init_into_class: true
+            filters:
+              - "!^_"                      # hide “private” members
+              - "!^__"                     # hide dunder members like __init__
+nav:
+  - Overview: index.md
+  - Installation: install.md
+  - Contributing: contributing.md
+  - API:
+    - "Reference": api/index.md

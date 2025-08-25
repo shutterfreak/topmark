@@ -1,0 +1,35 @@
+# topmark:header:start
+#
+#   file         : constraints.txt
+#   file_relpath : constraints.txt
+#   project      : TopMark
+#   license      : MIT
+#   copyright    : (c) 2025 Olivier Biot
+#
+# topmark:header:end
+
+# constraints.txt — upper bounds / pins for transient tooling conflicts
+#
+# Purpose:
+#   This file constrains indirect dependencies that occasionally break our docs
+#   or formatting toolchain. It is applied during *lock generation* (pip-compile)
+#   so the resulting requirements*.txt remain compatible and reproducible.
+#
+# How it’s used:
+#   The Makefile passes `-c constraints.txt` to pip-compile in the `compile`,
+#   `compile-dev`, and `upgrade-dev` targets. No need to pass constraints to
+#   pip-sync; the compiled locks already encode these limits.
+#
+# Review cadence:
+#   Revisit monthly or when upstreams release fixes. To test lifting a pin:
+#     pip-compile -U -c constraints.txt requirements-dev.in --dry-run
+#   (remove or relax the relevant line locally, re-run compile, and verify)
+#
+# --- Tooling-specific constraints ---
+# mkdocs-material 9.6.x requires 'backrefs ~= 5.7.post1'. backrefs 6.x breaks
+# the current release chain (observed Aug 2025). Keep until upstream supports 6.x.
+backrefs==5.7.post1
+
+# mdformat 0.7.x requires 'markdown-it-py < 4.0.0'. Version 4.0.0 introduces
+# breaking changes that cause mdformat to fail. Keep until mdformat supports 4.x.
+markdown-it-py<4.0.0

@@ -1,0 +1,67 @@
+# topmark:header:start
+#
+#   file         : .gitignore
+#   file_relpath : .gitignore
+#   project      : TopMark
+#   license      : MIT
+#   copyright    : (c) 2025 Olivier Biot
+#
+# topmark:header:end
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Archives
+archives/
+
+# Documentation
+site/
+
+# Virtual environments
+.venv/
+.rtd/
+
+# pip-tools
+requirements.txt
+requirements-dev.txt
+
+# mypy
+.mypy_cache/
+.dmypy.json
+
+# pytest
+.cache/
+.pytest_cache/
+
+# pre-commit
+.pre-commit-config.yaml~
+
+# Logs
+*.log
+
+# Editor configs
+*.swp
+*.swo
+*.bak
+*~
+.idea/
+*.DS_Store
+
+# Build artifacts
+dist/
+*.tar.gz
+*.whl
+
+# Coverage
+.coverage
+.coverage.*
+
+# PyPI config
+.pypirc

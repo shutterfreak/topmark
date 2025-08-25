@@ -1,0 +1,54 @@
+# topmark:header:start
+#
+#   file         : .pre-commit-config.yaml
+#   file_relpath : .pre-commit-config.yaml
+#   project      : TopMark
+#   license      : MIT
+#   copyright    : (c) 2025 Olivier Biot
+#
+# topmark:header:end
+
+repos:
+  # Keep the repository versions aligned with the ones used in requirements-dev.in
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.10
+    hooks:
+      - id: ruff-format
+      - id: ruff-check
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.17.1
+    hooks:
+      - id: mypy
+        args: [--config=pyproject.toml]
+        # Optional: Specify the Python version if needed (e.g., if you're using Python 3.10+ features)
+        additional_dependencies:
+          - click>=8.1
+          - pytest>=7
+          - yachalk>=0.1
+          - types-toml
+        language_version: python3.12
+  - repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.404
+    hooks:
+      - id: pyright
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-yaml
+  - repo: https://github.com/ComPWA/mirrors-taplo
+    rev: v0.9.3
+    hooks:
+      - id: taplo-format
+      - id: taplo-lint
+  - repo: https://github.com/executablebooks/mdformat
+    rev: 0.7.22
+    hooks:
+      - id: mdformat
+        name: mdformat
+        language_version: python3
+        additional_dependencies:
+          - mdformat-pyproject
+          - mdformat-tables
+        exclude: ^docs/api/index\.md$

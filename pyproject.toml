@@ -1,0 +1,252 @@
+# topmark:header:start
+#
+#   file         : pyproject.toml
+#   file_relpath : pyproject.toml
+#   project      : TopMark
+#   license      : MIT
+#   copyright    : (c) 2025 Olivier Biot
+#
+# topmark:header:end
+
+[project]
+name = "topmark"
+version = "0.1.0"
+description = "A tool to inspect, validate, and manage file headers in diverse codebases"
+authors = [{ name = "Olivier Biot", email = "olivier.biot@gmail.com" }]
+license = "MIT"
+readme = "README.md"
+dependencies = [
+  # Git-style pattern matching used for file inclusion/exclusion
+  "pathspec",
+  # Manipulate TOML configuration files:
+  "tomlkit",
+  # Read/write TOML (used by CLI for dumps):
+  "toml",
+  # ANSI colored terminal output:
+  "yachalk",
+  # CLI framework
+  "click",
+]
+requires-python = ">=3.10,<3.14"
+classifiers = [
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Operating System :: OS Independent",
+]
+
+[project.scripts]
+topmark = "topmark.cli.main:cli"
+
+[project.urls]
+Homepage = "https://github.com/shutterfreak/topmark"
+Documentation = "https://topmark.readthedocs.io/en/latest/"
+Source = "https://github.com/shutterfreak/topmark"
+Changelog = "https://github.com/shutterfreak/topmark/releases"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
+[project.optional-dependencies]
+dev = [
+  # Python linter & formatter in one tool (we use it for both):
+  "ruff",
+  # Traditional Python linter with rich checks:
+  "pylint",
+  # Static type checker (complementary to Pyright):
+  "mypy",
+  # Static type checker with fast, strict CLI (our primary type checker):
+  "pyright",
+  # Markdown formatter:
+  "mdformat",
+  # Markdown table formatting plugin for mdformat:
+  "mdformat-tables",
+  # TOML formatter (consistent with Taplo VS Code extension):
+  "taplo",
+  # Dependency management / compile requirements (pip-compile, pip-sync):
+  "pip-tools>=7.4", # Installed with `make venv`
+  # Pre-commit hook manager:
+  "pre-commit",
+  # Run tests across multiple Python versions/environments:
+  "tox>=4.0",
+  # Build wheel/sdist artifacts:
+  "build",
+  # Upload distributions to PyPI:
+  "twine",
+]
+docs = [
+  # Static site generator core:
+  "mkdocs>=1.6",
+  # MkDocs theme with rich features:
+  "mkdocs-material>=9.5",
+  # Auto API reference from docstrings/type hints:
+  "mkdocstrings[python]>=0.25",
+  # Extra Markdown extensions (admonitions, superfences, etc.):
+  "pymdown-extensions>=10.8",
+]
+test = [
+  # Unit testing framework:
+  "pytest",
+  # Parallel test execution:
+  "pytest-xdist",
+]
+typing = [
+  # Static type checker (config in pyproject):
+  "mypy",
+  # Type stubs for the toml module:
+  "types-toml",
+]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.package-data]
+"topmark" = ["py.typed"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# Markdown formatting configuration
+# Aligns with Prettier in VS Code and the mdformat pre-commit hook
+[tool.mdformat]
+number = true
+wrap = 100
+extensions = ["tables"]
+
+
+# TOML formatting
+[tool.taplo.format]
+indent_tables = true
+align_entries = true
+reorder_keys = true
+
+# Prevent Taplo from failing on slow or unreachable remote schema catalog fetches
+# This ensures formatting and linting works reliably in VS Code, CI, and pre-commit
+[tool.taplo.schemas]
+enabled = false # Disable catalog validation but keep syntax linting and formatting active
+
+
+[tool.mypy]
+mypy_path = ["src", "tests"]
+
+[tool.pylint]
+
+# Disable rules handled by other tools like ruff and black
+disable = [
+  # General checks handled by Ruff and/or Black
+  "C0103", # Invalid name
+  "C0114", # Missing module docstring
+  "C0115", # Missing class docstring
+  "C0116", # Missing function docstring
+  "C0301", # Line too long, handled by ruff
+  "W0105", # Unnecessary pass statement
+
+  # The following are from your new Pylint output
+  # Disable duplicate code checks (R0801) if you expect some code duplication
+  # e.g., for file type definitions.
+  "R0801", # Duplicate code
+
+  # The `no-else-return` rule (R1705) is a good practice but can be disabled
+  # if it conflicts with your preferred coding style.
+  "R1705", # Unnecessary "elif" after "return"
+
+  # The `too-many-locals` rule (R0914) can be helpful, but if your functions
+  # require many variables, you can disable it or increase the limit.
+  "R0914", # Too many local variables
+
+  # The `too-many-positional-arguments` rule (R0917) is an excellent hint for
+  # refactoring, but it can be disabled for specific cases like CLI functions.
+  "R0917", # Too many positional arguments
+]
+
+# Enable the optional typing checker in docstrings
+load-plugins = "pylint.extensions.typing"
+
+[tool.ruff]
+# The `line-length` rule applies to both the linter and the formatter.
+line-length = 100
+
+[tool.ruff.lint]
+exclude = [".git", ".venv", "venv", "build", "dist", "migrations"]
+select = [
+  "E", # pycodestyle errors
+  "F", # pyflakes
+  "B", # bugbear
+  "I", # isort-compatible import sorting
+  "D", # pydocstyle
+]
+ignore = [
+  # E501 handled by the formatter, so it is not needed here
+  "D212", # Conflicts with D213
+  # If you prefer to allow first line not ending with a period (though usually good practice)
+  # "D400",
+  # If you don't want strict capitalization checks for the first word
+  # "D403",
+  # If your sections sometimes lack blank lines (though Google style prefers them)
+  # "D406", "D407", "D408", "D409",
+  # If you don't want to enforce a blank line after the last section in the docstring
+  # "D413",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+# Pre-commit configuration
+# Coordinates with VS Code settings to ensure consistent formatting and linting across environments
+[tool.pre-commit]
+default_stages = ["commit"]
+# This section coordinates with VS Code settings to ensure consistent formatting and linting
+# behavior across local development environments and CI pipelines.
+
+# Pyright configuration
+[tool.pyright]
+typeCheckingMode = "strict"
+pythonVersion = "3.10"
+include = ["src", "tests"]
+exclude = [".venv", "venv", "build", "dist", "**/__pycache__"]
+# Pyright needs to find your virtual environment to resolve imports.
+# Assuming your virtual environment is in the project root:
+venvPath = "."
+venv = ".venv"
+reportMissingImports = true
+reportMissingTypeStubs = false # Set to true if you want to be strict about missing type stubs
+reportImportCycles = false     # Prevent erroring on type-only circular cependencies
+
+[tool.pytest.ini_options]
+markers = [
+  "integration: environment-dependent integration checks (e.g., shell completion)",
+  "pipeline: tests that exercise the processing pipeline",
+  "cli: tests that exercise the CLI",
+]
+testpaths = ["tests"]
+norecursedirs = [
+  ".git",
+  ".tox",
+  ".venv",
+  "venv",
+  "build",
+  "dist",
+  "site",
+  "archives",
+  "docs",
+  "tools",
+  "sample_files",
+]
+python_files = ["test_*.py", "*_test.py"]
+
+# TopMark related configuration for the project repository
+[tool.topmark.fields]
+project = "TopMark"
+license = "MIT"
+copyright = "(c) 2025 Olivier Biot"
+[tool.topmark.header]
+fields = ["project", "file", "file_relpath", "license", "copyright"]
+[tool.topmark.formatting]
+align_fields = true # Align colons of fields
+[tool.topmark.files]
+file_types = []
+exclude_from = [".gitignore"]
+relative_to = "."

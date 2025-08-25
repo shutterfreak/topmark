@@ -1,0 +1,12 @@
+{
+    "recommendations": [
+        "ms-python.vscode-pylance",
+        "ms-python.python",
+        "ms-python.vscode-python-envs",
+        "charliermarsh.ruff",
+        "ms-pyright.pyright",
+        "esbenp.prettier-vscode",
+        "redhat.vscode-yaml",
+        "tamasfe.even-better-toml"
+    ]
+}

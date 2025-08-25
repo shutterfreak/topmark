@@ -1,0 +1,22 @@
+# topmark:header:start
+#
+#   file         : .gitattributes
+#   file_relpath : .gitattributes
+#   project      : TopMark
+#   license      : MIT
+#   copyright    : (c) 2025 Olivier Biot
+#
+# topmark:header:end
+
+# .gitattributes
+# Normalize line endings for all text files
+* text=auto
+
+# Treat shell scripts as text
+*.sh text
+
+# Prevent Git from diffing binary files
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary

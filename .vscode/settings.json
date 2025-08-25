@@ -1,0 +1,58 @@
+{
+    "makefile.configureOnOpen": false,
+
+    // Enable default formatting on save for all languages where a formatter is configured.
+    "editor.formatOnSave": true,
+
+    // Configure code actions to run on save for all languages.
+    // This is where linters' auto-fixes and import organization are triggered.
+    "editor.codeActionsOnSave": {
+        // Runs general auto-fixes provided by *any* supporting linter extension.
+        "source.fixAll": "explicit",
+        // Specifically for Ruff's auto-fixable issues.
+        "source.fixAll.ruff": "explicit",
+        // For organizing imports, which Ruff also handles.
+        "source.organizeImports": "explicit"
+    },
+
+    // --- MarkDown Settings ---
+    "[markdown]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+    },
+
+    // --- Python Settings ---
+    "[python]": {
+        // Set Ruff as the default formatter for Python files.
+        "editor.defaultFormatter": "charliermarsh.ruff",
+
+        // Reiterate or ensure Ruff's auto-fix and import organization run for Python files.
+        // This ensures these actions are prioritized for Python specifically.
+        "editor.codeActionsOnSave": {
+            "source.fixAll.ruff": "explicit",
+            "source.organizeImports": "explicit"
+        }
+    },
+
+    // --- TOML Settings ---
+    "[toml]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "tamasfe.even-better-toml"
+    },
+
+    // --- Specific Tool Extensions Settings ---
+
+    // Ruff Extension Settings (ms-python.ruff)
+    // Ruff's linting and formatting rules are primarily configured in pyproject.toml.
+    "ruff.lint.enable": true,
+    // Ensure the ruff formatter is enabled.
+    "ruff.format.enable": true,
+
+    // Pyright Extension Settings (ms-pyright.pyright)
+    // Pyright configuration (like venv path) is primarily in pyrightconfig.json or pyproject.toml.
+    // This setting ensures the extension itself is active.
+    "python.testing.pytestEnabled": true,
+
+    // Use the Python interpreter from the virtual environment:
+    "python.defaultInterpreterPath": ".venv/bin/python"
+}

@@ -1,0 +1,24 @@
+# topmark:header:start
+#
+#   file         : .pypirc.example
+#   file_relpath : .pypirc.example
+#   project      : TopMark
+#   license      : MIT
+#   copyright    : (c) 2025 Olivier Biot
+#
+# topmark:header:end
+
+[distutils]
+index-servers =
+    pypi
+    testpypi
+
+[pypi]
+repository: https://upload.pypi.org/legacy/
+username: __token__
+password: pypi-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+[testpypi]
+repository: https://test.pypi.org/legacy/
+username: __token__
+password: pypi-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx

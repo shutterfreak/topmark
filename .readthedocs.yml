@@ -1,0 +1,26 @@
+# topmark:header:start
+#
+#   file         : .readthedocs.yml
+#   file_relpath : .readthedocs.yml
+#   project      : TopMark
+#   license      : MIT
+#   copyright    : (c) 2025 Olivier Biot
+#
+# topmark:header:end
+
+# Read the Docs configuration file
+# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
+
+# Required
+version: 2
+
+# Set the OS, Python version, and other tools you might need
+build:
+  os: ubuntu-24.04
+  tools:
+    python: "3.13"
+  commands:
+    # Use pip to install your project and its dependencies, applying the constraints file
+    - pip install -c constraints.txt -e .[docs]
+    # Tell Mkdocs to output the built site to the correct Read the Docs directory
+    - mkdocs build --site-dir $READTHEDOCS_OUTPUT/html

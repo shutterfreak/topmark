@@ -1,0 +1,13 @@
+# topmark:header:start
+#
+#   file         : requirements.in
+#   file_relpath : requirements.in
+#   project      : TopMark
+#   license      : MIT
+#   copyright    : (c) 2025 Olivier Biot
+#
+# topmark:header:end
+
+# Runtime dependencies - managed in pyproject.toml
+
+-e .
