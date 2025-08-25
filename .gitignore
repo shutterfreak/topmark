@@ -36,6 +36,9 @@ requirements-dev.txt
 .mypy_cache/
 .dmypy.json
 
+# pyenv - Python versions
+.python-version
+
 # pytest
 .cache/
 .pytest_cache/
