@@ -56,3 +56,5 @@ nav:
   - Contributing: contributing.md
   - API:
     - "Reference": api/index.md
+extra_javascript:
+  - assets/version-warning.js
