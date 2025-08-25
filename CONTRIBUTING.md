@@ -109,14 +109,32 @@ make test
 
 ### Testing across multiple Python versions
 
-TopMark supports Python 3.10–3.13. To ensure compatibility, use [tox](https://tox.wiki/) to run
-tests and type checks across all supported versions:
+TopMark supports Python 3.10–3.13.
+
+To ensure compatibility, use [tox](https://tox.wiki/) to run tests and type checks across all
+supported versions.
+
+You must install the required Python versions prior to testing with `tox`. With `pyenv`:
+
+```sh
+# Install the Python versions with pyenv
+pyenv install 3.10.14
+pyenv install 3.11.9
+pyenv install 3.12.5
+pyenv install 3.13.0
+
+# make them visible in this repo (so tox finds all versions):
+pyenv local 3.10.14 3.11.9 3.12.5 3.13.0
+
+# or for the current shell:
+pyenv shell 3.10.14 3.11.9 3.12.5 3.13.0
+```
 
 ```bash
 # Run all environments sequentially
 tox
 
-# Run in parallel
+# or run in parallel
 tox run-parallel
 
 # Run a specific Python version
@@ -127,26 +145,6 @@ tox -e py312-typecheck
 ```
 
 This will validate both the test suite and type checking under each interpreter.
-
-______________________________________________________________________
-
-## 🤖 GPT Integration Support
-
-The `INSTRUCTIONS.md` file defines the structured project instructions used by GPT-based tools like
-ChatGPT. These instructions help guide AI-assisted development by describing the project's goals,
-configuration formats, CLI behavior, and header logic.
-
-To convert `INSTRUCTIONS.md` into a machine-readable JSON format for ChatGPT project setup, run:
-
-```bash
-make update-instructions-json
-```
-
-This will regenerate `project_instructions_topmark.json` with a structured summary of the latest
-instructions.
-
-> ✅ Tip: You can use this JSON file when configuring project instructions inside ChatGPT to ensure
-> consistent, context-aware assistance during development.
 
 ______________________________________________________________________
 
@@ -192,6 +190,8 @@ An example PyPI configuration template is available in `.pypirc.example`.
 
 ### 2. **Upload to PyPI or TestPyPI:**
 
+#### From command line and `twine`
+
 ```bash
 # Validate distribution
 .venv/bin/twine check dist/*
@@ -202,6 +202,10 @@ An example PyPI configuration template is available in `.pypirc.example`.
 # Or upload to TestPyPI
 .venv/bin/twine upload --repository testpypi dist/*
 ```
+
+#### From the GitHub Workflow
+
+An example GitHub workflow integration script is availeble in `.gitgub/workflows/release.yml`.
 
 ______________________________________________________________________
 
@@ -218,6 +222,6 @@ ______________________________________________________________________
 
 ## 💬 Need Help?
 
-Open an issue or contact the maintainer at `your-email@example.com`.
+Open an [issue](https://github.com/shutterfreak/topmark/issues) on GitHub.
 
 Happy coding! 🎉

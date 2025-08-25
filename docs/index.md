@@ -89,10 +89,40 @@ topmark:header:end
 
 ## 🧩 Supported file types
 
-| Processor            | File types (examples)                                                      |
-| -------------------- | -------------------------------------------------------------------------- |
-| PoundHeaderProcessor | python, shell, ruby, r, julia, perl, makefile, dockerfile, yaml, toml, env |
-| XmlHeaderProcessor   | xml, xhtml, html, svg, xsl/xslt, vue, svelte, markdown                     |
+| Processor            | File types (examples)                                                                                          |
+| -------------------- | -------------------------------------------------------------------------------------------------------------- |
+| PoundHeaderProcessor | dockerfile, env, git-meta, ini, julia, makefile, perl, python, python-requirements, r, ruby, shell, toml, yaml |
+| SlashHeaderProcessor | c, cpp, cs, go, java, javascript, kotlin, rust, swift, typescript, vscode-jsonc                                |
+| XmlHeaderProcessor   | html, markdown, svelte, svg, vue, xhtml, xml, xsl, xslt, yaml                                                  |
+
+For a complete list, please run:
+
+```sh
+topmark filetypes
+```
+
+### How TopMark resolves file types (specificity & safety)
+
+TopMark may have multiple `FileType` definitions that **match** a given path. The resolver now:
+
+- evaluates **all** matching file types and scores them by **specificity**,
+- prefers **explicit filenames / tail subpaths** (e.g., `.vscode/settings.json`) over patterns, and
+  **patterns** over simple **extensions**,
+- breaks ties in favor of **headerable** types (those without `skip_processing=True`).
+
+**Tail subpath matching.** `FileType.filenames` entries that contain a path separator (e.g.,
+`".vscode/settings.json"`) are matched as **path suffixes** against `path.as_posix()`; plain names
+still match the **basename** only.
+
+**JSON vs JSONC.** Generic `json` is recognized but marked `skip_processing=True` (no comments in
+strict JSON), while `vscode-jsonc` is a safe, **narrow** opt‑in that uses `//` headers. If you need
+more JSON-with-comments files, add them via a dedicated `FileType` or an explicit allow‑list in
+config.
+
+**Shebang‑aware insertion.** The default insertion logic is policy‑driven and shebang‑aware (insert
+after `#!` and optional encoding line). For formats like XML that need character‑precise placement,
+processors provide a text‑offset path; `XmlHeaderProcessor` uses this and signals **no line
+anchor**.
 
 ## Configuration
 
