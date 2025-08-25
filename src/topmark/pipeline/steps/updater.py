@@ -20,6 +20,7 @@ Note:
 
 from topmark.config.logging import get_logger
 from topmark.pipeline.context import ProcessingContext, WriteStatus
+from topmark.pipeline.processors.base import NO_LINE_ANCHOR
 
 logger = get_logger(__name__)
 
@@ -70,16 +71,61 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
             original_lines[:start] + rendered_expected_header_lines + original_lines[end + 1 :]
         )
         ctx.status.write = WriteStatus.REPLACED
+        ctx.updated_file_lines = new_lines
+        logger.trace("Updated file (replace):\n%s", "".join(ctx.updated_file_lines or []))
+        return ctx
     else:
-        # Insert new header at index determined by header processor based on file type and content
-        insert_index = ctx.header_processor.get_header_insertion_index(original_lines)
-        if insert_index is None:
-            logger.error("No header insertion index found for file: %s", ctx.path)
-            ctx.status.write = WriteStatus.FAILED
-            ctx.diagnostics.append(f"No header insertion index found for file: {ctx.path}")
-            return ctx
+        # # Insert new header at index determined by header processor based on file type and content
+        # insert_index = ctx.header_processor.get_header_insertion_index(original_lines)
+        # if insert_index is None:
+        #     logger.error("No header insertion index found for file: %s", ctx.path)
+        #     ctx.status.write = WriteStatus.FAILED
+        #     ctx.diagnostics.append(f"No header insertion index found for file: {ctx.path}")
+        #     return ctx
 
-        # Optional text-based insertion path for processors that provide a char offset
+        # # Optional text-based insertion path for processors that provide a char offset
+        # try:
+        #     original_text = "".join(original_lines)
+        #     char_offset = None
+        #     if hasattr(ctx.header_processor, "get_header_insertion_char_offset"):
+        #         char_offset = ctx.header_processor.get_header_insertion_char_offset(original_text)
+        #     if char_offset is not None:
+        #         header_text = "".join(rendered_expected_header_lines)
+        #         if hasattr(ctx.header_processor, "prepare_header_for_insertion_text"):
+        #             header_text = ctx.header_processor.prepare_header_for_insertion_text(
+        #                 original_text,
+        #                 char_offset,
+        #                 header_text,
+        #             )
+        #         new_text = original_text[:char_offset] + header_text + original_text[char_offset:]
+        #         new_lines = new_text.splitlines(keepends=True)
+        #         ctx.updated_file_lines = new_lines
+        #         ctx.status.write = WriteStatus.INSERTED
+        #         logger.trace(
+        #             "Updated file (text-based):\n%s", "".join(ctx.updated_file_lines or [])
+        #         )
+        #         return ctx
+        # except Exception as e:
+        #     logger.warning("text-based insertion failed for %s: %s", ctx.path, e)
+
+        # # Let the header processor adjust whitespace/padding around the header
+        # try:
+        #     rendered_expected_header_lines = ctx.header_processor.prepare_header_for_insertion(
+        #         original_lines,
+        #         insert_index,
+        #         rendered_expected_header_lines,
+        #     )
+        # except Exception as e:
+        #     logger.warning("prepare_header_for_insertion failed for %s: %s", ctx.path, e)
+
+        # new_lines = (
+        #     original_lines[:insert_index]
+        #     + rendered_expected_header_lines
+        #     + original_lines[insert_index:]
+        # )
+        # ctx.status.write = WriteStatus.INSERTED
+
+        # 1) text-based first
         try:
             original_text = "".join(original_lines)
             char_offset = None
@@ -88,28 +134,39 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
             if char_offset is not None:
                 header_text = "".join(rendered_expected_header_lines)
                 if hasattr(ctx.header_processor, "prepare_header_for_insertion_text"):
-                    header_text = ctx.header_processor.prepare_header_for_insertion_text(
-                        original_text,
-                        char_offset,
-                        header_text,
-                    )
+                    try:
+                        header_text = ctx.header_processor.prepare_header_for_insertion_text(
+                            original_text, char_offset, header_text
+                        )
+                    except Exception as e:
+                        logger.warning(
+                            "prepare_header_for_insertion_text failed for %s: %s", ctx.path, e
+                        )
+
                 new_text = original_text[:char_offset] + header_text + original_text[char_offset:]
-                new_lines = new_text.splitlines(keepends=True)
-                ctx.updated_file_lines = new_lines
+                ctx.updated_file_lines = new_text.splitlines(keepends=True)
                 ctx.status.write = WriteStatus.INSERTED
-                logger.trace(
-                    "Updated file (text-based):\n%s", "".join(ctx.updated_file_lines or [])
-                )
                 return ctx
         except Exception as e:
             logger.warning("text-based insertion failed for %s: %s", ctx.path, e)
 
-        # Let the header processor adjust whitespace/padding around the header
+        # 2) fallback: line-based
+        insert_index = ctx.header_processor.get_header_insertion_index(original_lines)
+        if insert_index == NO_LINE_ANCHOR:
+            ctx.status.write = WriteStatus.FAILED
+            ctx.diagnostics.append(f"No line-based insertion anchor for file: {ctx.path}")
+            return ctx
+
+        # defensive clamp
+        if insert_index < 0:
+            insert_index = 0
+        elif insert_index > len(original_lines):
+            insert_index = len(original_lines)
+
+        # optional whitespace adjustments
         try:
             rendered_expected_header_lines = ctx.header_processor.prepare_header_for_insertion(
-                original_lines,
-                insert_index,
-                rendered_expected_header_lines,
+                original_lines, insert_index, rendered_expected_header_lines
             )
         except Exception as e:
             logger.warning("prepare_header_for_insertion failed for %s: %s", ctx.path, e)
@@ -119,10 +176,8 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
             + rendered_expected_header_lines
             + original_lines[insert_index:]
         )
+
+        ctx.updated_file_lines = new_lines
         ctx.status.write = WriteStatus.INSERTED
-
-    ctx.updated_file_lines = new_lines
-
-    logger.trace("Updated file:\n%s", "".join(ctx.updated_file_lines or []))
-
-    return ctx
+        logger.trace("Updated file (line-based):\n%s", "".join(ctx.updated_file_lines or []))
+        return ctx

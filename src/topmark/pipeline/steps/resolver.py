@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 
 from topmark.config.logging import get_logger
 from topmark.constants import VALUE_NOT_SET
+from topmark.filetypes.base import FileType
 from topmark.filetypes.instances import get_file_type_registry
 from topmark.filetypes.registry import get_header_processor_registry
 from topmark.pipeline.context import FileStatus, ProcessingContext
@@ -51,50 +52,88 @@ def resolve(ctx: ProcessingContext) -> ProcessingContext:
         (ctx.header_processor.__class__.__name__ if ctx.header_processor else VALUE_NOT_SET),
     )
 
-    # Attempt to match the path against each registered FileType
-    for file_type in get_file_type_registry().values():
-        if file_type.matches(ctx.path):
-            ctx.file_type = file_type
-            logger.debug("File '%s' resolved to type: %s", ctx.path, file_type.name)
+    # Attempt to match the path against each registered FileType,
+    # then pick the most specific match.
+    candidates: list[tuple[int, str, FileType]] = []
 
-            if file_type.skip_processing:
-                ctx.status.file = FileStatus.SKIPPED_KNOWN_NO_HEADERS
-                ctx.diagnostics.append(
-                    f"File type '{file_type.name}' recognized; "
-                    "headers are not supported for this format. Skipping."
-                )
-                logger.info(
-                    "Skipping header processing for '%s' "
-                    "(file type '%s' marked skip_processing=True)",
-                    ctx.path,
-                    file_type.name,
-                )
-                return ctx
+    path_str = str(ctx.path.as_posix())
+    base_name = ctx.path.name
 
-            # Matched a FileType, but no header processor is registered for it
-            processor = get_header_processor_registry().get(file_type.name)
-            if processor is None:
-                ctx.status.file = FileStatus.SKIPPED_NO_HEADER_PROCESSOR
-                ctx.diagnostics.append(
-                    f"No header processor registered for file type '{file_type.name}'."
-                )
-                logger.info(
-                    "No header processor registered for file type '%s' (file '%s')",
-                    file_type.name,
-                    ctx.path,
-                )
-                return ctx
+    def _score(ft: FileType) -> int:
+        """Higher score = more specific match."""
+        s = 0
+        # 1) Explicit filename / tail subpath matches (e.g., ".vscode/settings.json")
+        for fname in getattr(ft, "filenames", []) or []:
+            # exact filename or ending subpath match
+            if base_name == fname or path_str.endswith(fname):
+                # prefer longer names (more specific)
+                s = max(s, 100 + min(len(fname), 100))
+        # 2) Extension matches (lower precedence than explicit filename)
+        for ext in getattr(ft, "extensions", []) or []:
+            if base_name.endswith(ext):
+                s = max(s, 50 + min(len(ext), 10))
+        # 3) Regex patterns: we can’t introspect without duplicating ft.matches(),
+        # but when ft.matches() succeeds (see below), give a medium baseline bump
+        # if the type actually declares patterns.
+        if getattr(ft, "patterns", []):
+            s = max(s, 70)
+        # 4) Prefer headerable types on ties
+        if not getattr(ft, "skip_processing", False):
+            s += 1
+        return s
 
-            # Success: attach the processor and mark the file as resolved
-            ctx.header_processor = processor
-            ctx.status.file = FileStatus.RESOLVED
-            logger.debug(
-                "Resolve success: file='%s' type='%s' processor=%s",
+    # Collect all file types that match
+    for ft in get_file_type_registry().values():
+        if ft.matches(ctx.path):
+            candidates.append((_score(ft), ft.name, ft))
+
+    if candidates:
+        # Best by (score DESC, name ASC) for deterministic choice
+        candidates.sort(key=lambda x: (-x[0], x[1]))
+        _, _, file_type = candidates[0]
+
+        ctx.file_type = file_type
+        logger.debug("File '%s' resolved to type: %s", ctx.path, file_type.name)
+
+        if file_type.skip_processing:
+            ctx.status.file = FileStatus.SKIPPED_KNOWN_NO_HEADERS
+            ctx.diagnostics.append(
+                f"File type '{file_type.name}' recognized; "
+                "headers are not supported for this format. Skipping."
+            )
+            logger.info(
+                "Skipping header processing for '%s' (file type '%s' marked skip_processing=True)",
                 ctx.path,
                 file_type.name,
-                processor.__class__.__name__,
             )
             return ctx
+
+        # Matched a FileType, but no header processor is registered for it
+        processor = get_header_processor_registry().get(file_type.name)
+        if processor is None:
+            ctx.status.file = (
+                FileStatus.SKIPPED_NO_HEADER_PROCESSOR
+            )  # or SKIPPED_NO_HEADER_MANAGER if that's your enum
+            ctx.diagnostics.append(
+                f"No header processor registered for file type '{file_type.name}'."
+            )
+            logger.info(
+                "No header processor registered for file type '%s' (file '%s')",
+                file_type.name,
+                ctx.path,
+            )
+            return ctx
+
+        # Success: attach the processor and mark the file as resolved
+        ctx.header_processor = processor
+        ctx.status.file = FileStatus.RESOLVED
+        logger.debug(
+            "Resolve success: file='%s' type='%s' processor=%s",
+            ctx.path,
+            file_type.name,
+            processor.__class__.__name__,
+        )
+        return ctx
 
     # No FileType matched: mark as unsupported and record a diagnostic
     ctx.status.file = FileStatus.SKIPPED_UNSUPPORTED

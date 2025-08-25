@@ -15,8 +15,6 @@ This processor supports files using `#`-style comments, such as Python, shell sc
 and Makefiles. It delegates header processing to the core pipeline dispatcher.
 """
 
-import re
-
 from topmark.config.logging import get_logger
 from topmark.filetypes.registry import register_filetype
 from topmark.pipeline.processors.base import (
@@ -53,47 +51,6 @@ class PoundHeaderProcessor(HeaderProcessor):
         super().__init__(
             line_prefix="#",
         )
-
-    def get_header_insertion_index(self, file_lines: list[str]) -> int:
-        """Determine where to insert the header based on file type and syntax.
-
-        Two pathways:
-        - Top-of-file (no shebang): return 0.
-        - After shebang (+ optional encoding): return the first non-blank line
-          after that block, consuming at most one existing blank line so the
-          blank (if present) sits between shebang/encoding and the header.
-
-        Args:
-            file_lines: List of lines from the file being processed.
-
-        Returns:
-            Index at which to insert the TopMark header.
-        """
-        logger.info(f"{self.__class__.__name__}.file_type = {self.file_type}")
-
-        assert self.file_type is not None, (
-            f"{self.__class__.__name__} is not linked to a FileType via @register_filetype"
-        )
-        policy = getattr(self.file_type, "header_policy", None)
-
-        index = 0
-        shebang_present = False
-
-        # Shebang handling based on policy
-        if policy and policy.supports_shebang and file_lines and file_lines[0].startswith("#!"):
-            shebang_present = True
-            index = 1
-
-            # Optional encoding line immediately after shebang (e.g., Python)
-            if policy.encoding_line_regex and len(file_lines) > index:
-                if re.search(policy.encoding_line_regex, file_lines[index]):
-                    index += 1
-
-        # If a shebang block exists and the next line is already blank, consume exactly one
-        if shebang_present and index < len(file_lines) and file_lines[index].strip() == "":
-            index += 1
-
-        return index
 
     def prepare_header_for_insertion(
         self,

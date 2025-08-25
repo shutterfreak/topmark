@@ -49,39 +49,13 @@ class XmlHeaderProcessor(HeaderProcessor):
         )
 
     def get_header_insertion_index(self, file_lines: list[str]) -> int:
-        """Return the index to insert the header for HTML/XML-like files.
+        """Not used: return NO_LINE_ANCHOR.
 
-        Heuristics:
-        - If the first non-BOM, non-whitespace token is an XML declaration (<?xml ...?>),
-          skip it.
-        - If the next line is a DOCTYPE (<!DOCTYPE ...>), skip it too.
-        - If a single blank line follows the prolog, consume it so the blank sits between
-          the prolog and the header block.
-        - Otherwise, insert at the current index (top-of-file for plain HTML/Markdown).
+        Rely solely on get_header_insertion_char_offset().
         """
-        idx = 0
-        if not file_lines:
-            return 0
+        from .base import NO_LINE_ANCHOR
 
-        def logical(i: int) -> str:
-            return file_lines[i].rstrip("\r\n") if 0 <= i < len(file_lines) else ""
-
-        # Skip BOM/leading whitespace for the first-line check
-        first = logical(0).lstrip("\ufeff\t \x00")
-        if first.startswith("<?xml"):
-            idx = 1
-            # Possible DOCTYPE on next line
-            nxt = logical(idx).lstrip()
-            if nxt.upper().startswith("<!DOCTYPE"):
-                idx += 1
-        else:
-            idx = 0
-
-        # Consume exactly one blank line after the prolog if present
-        if idx < len(file_lines) and logical(idx).strip() == "":
-            idx += 1
-
-        return idx
+        return NO_LINE_ANCHOR
 
     def get_header_insertion_char_offset(self, original_text: str) -> int | None:
         """Return a char offset to insert the header for XML/HTML-like documents.

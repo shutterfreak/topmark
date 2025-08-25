@@ -66,10 +66,26 @@ class FileType:
         Returns:
             True if the file matches this file type, False otherwise.
         """
+        # Extension match (simple suffix)
         if path.suffix in self.extensions:
             return True
-        if path.name in self.filenames:
-            return True
+
+        # Filenames: support exact basename or tail subpath matches
+        # Examples:
+        #   - "settings.json" matches only if basename == "settings.json"
+        #   - ".vscode/settings.json" matches if path.as_posix().endswith(".vscode/settings.json")
+        if self.filenames:
+            basename = path.name
+            posix = path.as_posix()
+            for fname in self.filenames:
+                if "/" in fname or "\\" in fname:
+                    if posix.endswith(fname):
+                        return True
+                else:
+                    if basename == fname:
+                        return True
+
+        # Regex patterns against basename
         for pattern in self.patterns:
             if re.fullmatch(pattern, path.name):
                 return True

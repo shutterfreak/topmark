@@ -25,8 +25,47 @@ logger = get_logger(__name__)
 # Note: some FileTypes may set skip_processing=True to recognize-but-skip
 # (e.g., JSON, LICENSE, py.typed).
 
-# List of all supported file types (singleton instances).
+# Alphabetical list of all supported file types (singleton instances).
 file_types: list[FileType] = [
+    FileType(
+        name="c",
+        extensions=[".c", ".h"],
+        filenames=[],
+        patterns=[],
+        description="C sources and headers (*.c, *.h)",
+        header_policy=FileTypeHeaderPolicy(
+            supports_shebang=False,
+            encoding_line_regex=None,
+            pre_header_blank_after_block=1,
+            ensure_blank_after_header=True,
+        ),
+    ),
+    FileType(
+        name="cpp",
+        extensions=[".cc", ".cxx", ".cpp", ".hh", ".hpp", ".hxx"],
+        filenames=[],
+        patterns=[],
+        description="C++ sources and headers (*.cc, *.cxx, *.cpp, *.hh, *.hpp, *.hxx)",
+        header_policy=FileTypeHeaderPolicy(
+            supports_shebang=False,
+            encoding_line_regex=None,
+            pre_header_blank_after_block=1,
+            ensure_blank_after_header=True,
+        ),
+    ),
+    FileType(
+        name="cs",
+        extensions=[".cs"],
+        filenames=[],
+        patterns=[],
+        description="C# sources (*.cs)",
+        header_policy=FileTypeHeaderPolicy(
+            supports_shebang=False,
+            encoding_line_regex=None,
+            pre_header_blank_after_block=1,
+            ensure_blank_after_header=True,
+        ),
+    ),
     FileType(
         name="dockerfile",
         extensions=[],
@@ -67,6 +106,19 @@ file_types: list[FileType] = [
         ),
     ),
     FileType(
+        name="go",
+        extensions=[".go"],
+        filenames=[],
+        patterns=[],
+        description="Go sources (*.go)",
+        header_policy=FileTypeHeaderPolicy(
+            supports_shebang=False,
+            encoding_line_regex=None,
+            pre_header_blank_after_block=1,
+            ensure_blank_after_header=True,
+        ),
+    ),
+    FileType(
         name="html",
         extensions=[".html"],
         filenames=[],
@@ -79,6 +131,45 @@ file_types: list[FileType] = [
         filenames=[".pypirc", ".pypirc.example", "pip.conf"],
         patterns=[],
         description="INI-style configuration files (*.ini, *.cfg, .pypirc, pip.conf)",
+        header_policy=FileTypeHeaderPolicy(
+            supports_shebang=False,
+            encoding_line_regex=None,
+            pre_header_blank_after_block=1,
+            ensure_blank_after_header=True,
+        ),
+    ),
+    FileType(
+        name="java",
+        extensions=[".java"],
+        filenames=[],
+        patterns=[],
+        description="Java sources (*.java)",
+        header_policy=FileTypeHeaderPolicy(
+            supports_shebang=False,
+            encoding_line_regex=None,
+            pre_header_blank_after_block=1,
+            ensure_blank_after_header=True,
+        ),
+    ),
+    FileType(
+        name="javascript",
+        extensions=[".js", ".mjs", ".cjs", ".jsx"],
+        filenames=[],
+        patterns=[],
+        description="JavaScript sources (*.js, *.mjs, *.cjs, *.jsx)",
+        header_policy=FileTypeHeaderPolicy(
+            supports_shebang=True,
+            encoding_line_regex=None,
+            pre_header_blank_after_block=1,
+            ensure_blank_after_header=True,
+        ),
+    ),
+    FileType(
+        name="kotlin",
+        extensions=[".kt", ".kts"],
+        filenames=[],
+        patterns=[],
+        description="Kotlin sources (*.kt, *.kts)",
         header_policy=FileTypeHeaderPolicy(
             supports_shebang=False,
             encoding_line_regex=None,
@@ -207,6 +298,19 @@ file_types: list[FileType] = [
         ),
     ),
     FileType(
+        name="rust",
+        extensions=[".rs"],
+        filenames=[],
+        patterns=[],
+        description="Rust sources (*.rs)",
+        header_policy=FileTypeHeaderPolicy(
+            supports_shebang=False,
+            encoding_line_regex=None,
+            pre_header_blank_after_block=1,
+            ensure_blank_after_header=True,
+        ),
+    ),
+    FileType(
         name="shell",
         extensions=[".sh", ".bash", ".zsh"],
         filenames=[],
@@ -234,11 +338,50 @@ file_types: list[FileType] = [
         description="Scalable Vector Graphics (SVG)",
     ),
     FileType(
+        name="swift",
+        extensions=[".swift"],
+        filenames=[],
+        patterns=[],
+        description="Swift sources (*.swift)",
+        header_policy=FileTypeHeaderPolicy(
+            supports_shebang=False,
+            encoding_line_regex=None,
+            pre_header_blank_after_block=1,
+            ensure_blank_after_header=True,
+        ),
+    ),
+    FileType(
         name="toml",
         extensions=[".toml"],
         filenames=[],
         patterns=[],
         description="Tom's Obvious Minimal Language (*.toml)",
+    ),
+    FileType(
+        name="typescript",
+        extensions=[".ts", ".tsx", ".mts", ".cts"],
+        filenames=[],
+        patterns=[],
+        description="TypeScript sources (*.ts, *.tsx, *.mts, *.cts)",
+        header_policy=FileTypeHeaderPolicy(
+            supports_shebang=True,
+            encoding_line_regex=None,
+            pre_header_blank_after_block=1,
+            ensure_blank_after_header=True,
+        ),
+    ),
+    FileType(
+        name="vscode-jsonc",
+        extensions=[],
+        filenames=[".vscode/settings.json", ".vscode/extensions.json"],
+        patterns=[],
+        description="VS Code JSON with comments (JSONC)",
+        header_policy=FileTypeHeaderPolicy(
+            supports_shebang=False,
+            encoding_line_regex=None,
+            pre_header_blank_after_block=1,
+            ensure_blank_after_header=True,
+        ),
     ),
     FileType(
         name="vue",

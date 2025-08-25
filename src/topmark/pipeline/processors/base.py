@@ -19,6 +19,8 @@ The module also supports associating processors with file types to enable flexib
 extensible header processing in the TopMark pipeline.
 """
 
+import re
+
 from topmark.config import Config
 from topmark.config.logging import get_logger
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
@@ -27,6 +29,10 @@ from topmark.pipeline.context import ProcessingContext
 from topmark.rendering.formats import HeaderOutputFormat
 
 logger = get_logger(__name__)
+
+
+# Sentinel value when get_header_insertion_index() cannot find an insertion index:
+NO_LINE_ANCHOR: int = -1
 
 
 class HeaderProcessor:
@@ -448,18 +454,48 @@ class HeaderProcessor:
 
         return lines
 
-    def get_header_insertion_index(self, file_lines: list[str]) -> int | None:
-        """Return the line index at which to insert the header.
+    def get_header_insertion_index(self, file_lines: list[str]) -> int:
+        """Determine where to insert the header based on file type policy.
 
-        This default implementation returns 0, i.e., the top of the file.
+        Default behavior is *shebang-aware*:
+        - If the file type policy declares ``supports_shebang=True`` and the first line
+          starts with ``#!``, insert the header *after* the shebang (and optional encoding
+          line when ``encoding_line_regex`` is provided).
+        - Otherwise, insert at the top of file (index 0).
+
+        In either case, if we insert after a preamble and the next line is already blank,
+        we consume exactly one existing blank line so that a single blank separates
+        the preamble from the header.
+
+        Subclasses may override this when a format imposes different placement rules.
 
         Args:
-            file_lines: All lines of the file being processed.
+            file_lines: List of lines from the file being processed.
 
         Returns:
-            Integer index into `file_lines` where the header should be inserted.
+            Index at which to insert the TopMark header, or ``NO_LINE_ANCHOR`
+                if no insertion index can be found.
+
         """
-        return 0
+        index = 0
+        shebang_present = False
+
+        # Shebang handling based on per-file-type policy
+        policy = getattr(self.file_type, "header_policy", None)
+        if policy and policy.supports_shebang and file_lines and file_lines[0].startswith("#!"):
+            shebang_present = True
+            index = 1
+
+            # Optional encoding line immediately after shebang (e.g., Python)
+            if policy.encoding_line_regex and len(file_lines) > index:
+                if re.search(policy.encoding_line_regex, file_lines[index]):
+                    index += 1
+
+        # If a shebang block exists and the next line is already blank, consume exactly one
+        if shebang_present and index < len(file_lines) and file_lines[index].strip() == "":
+            index += 1
+
+        return index
 
     def line_has_directive(self, line: str, directive: str) -> bool:
         """
