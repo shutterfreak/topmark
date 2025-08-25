@@ -25,6 +25,7 @@ repos:
           - click>=8.1
           - pytest>=7
           - yachalk>=0.1
+          - tomlkit
           - types-toml
         language_version: python3.12
   - repo: https://github.com/RobertCraigie/pyright-python
