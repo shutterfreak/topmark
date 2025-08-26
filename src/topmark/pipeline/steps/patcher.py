@@ -45,6 +45,11 @@ def patch(ctx: ProcessingContext) -> ProcessingContext:
     ]:
         return ctx
 
+    # If nothing changed, ensure no diff is attached
+    if ctx.status.comparison is ComparisonStatus.UNCHANGED:
+        ctx.header_diff = None
+        return ctx
+
     logger.debug(
         "File '%s' : header status %s, header comparison status: %s",
         ctx.path,
@@ -62,6 +67,16 @@ def patch(ctx: ProcessingContext) -> ProcessingContext:
         ctx.updated_file_lines,
     )
 
+    # We only generate a diff when we have an updated image; otherwise skip.
+    if ctx.updated_file_lines is None:
+        logger.debug(
+            "Patch skipped for %s: comparison=%s but no updated_file_lines present",
+            ctx.path,
+            ctx.status.comparison.value,
+        )
+        ctx.header_diff = None
+        return ctx
+
     patch_lines = list(
         difflib.unified_diff(
             ctx.file_lines or [],
@@ -75,6 +90,7 @@ def patch(ctx: ProcessingContext) -> ProcessingContext:
 
     if len(patch_lines) == 0:
         ctx.status.comparison = ComparisonStatus.UNCHANGED
+        ctx.header_diff = None
         logger.debug("File header unchanged: %s", ctx.path)
         return ctx
 

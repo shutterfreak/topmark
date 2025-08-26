@@ -48,11 +48,20 @@ def compare(ctx: ProcessingContext) -> ProcessingContext:
             ComparisonStatus.CHANGED if before != after else ComparisonStatus.UNCHANGED
         )
         logger.debug(
-            "File '%s' : full-file comparison (precomputed). Result: %s",
+            "comparer: precomputed full-file comparison for %s -> %s",
             ctx.path,
             ctx.status.comparison.value,
         )
         return ctx
+
+    # In pipelines where we never render/generate (e.g., 'strip') and no precomputed
+    # output exists, there is nothing to change; treat as UNCHANGED.
+    if ctx.status.generation is GenerationStatus.PENDING:
+        ctx.status.comparison = ComparisonStatus.UNCHANGED
+        logger.debug(
+            "comparer: no generation and no precomputed output for %s -> UNCHANGED",
+            ctx.path,
+        )
 
     # Safeguard: Only compare when generation completed or no fields were requested
     logger.trace(
@@ -74,10 +83,17 @@ def compare(ctx: ProcessingContext) -> ProcessingContext:
     logger.trace("Existing header dict: %s", existing)
     logger.trace("Expected header dict: %s", expected)
     # Update comparison status based on content equality
-    if existing == expected:
-        ctx.status.comparison = ComparisonStatus.UNCHANGED
-    else:
-        ctx.status.comparison = ComparisonStatus.CHANGED
+    # if existing == expected:
+    #     ctx.status.comparison = ComparisonStatus.UNCHANGED
+    # else:
+    #     ctx.status.comparison = ComparisonStatus.CHANGED
+
+    # Normal comparison logic for pipelines that generate a header
+    before = ctx.file_lines or []
+    after = ctx.updated_file_lines or []
+    ctx.status.comparison = (
+        ComparisonStatus.CHANGED if before != after else ComparisonStatus.UNCHANGED
+    )
 
     logger.debug(
         "File '%s' : header status %s, header content-wise comparison: %s",

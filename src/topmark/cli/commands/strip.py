@@ -318,12 +318,10 @@ def strip_command(
         if failed:
             raise SystemExit(1)
 
-    # Exit code policy: in check mode, non-zero if changes would be needed
+    # Exit code policy for `strip`: non-zero only if a removal would occur.
+    # A missing header is *not* an error condition for `strip`.
     if not apply_changes:
-        would_change = any(
-            (r.status.header.name == "MISSING") or (r.status.comparison.name == "CHANGED")
-            for r in results
-        )
+        would_change = any((r.status.comparison == ComparisonStatus.CHANGED) for r in results)
         if would_change:
             raise SystemExit(2)
 
