@@ -9,9 +9,9 @@
 # topmark:header:end
 
 - id: topmark-check
-  name: TopMark — check headers (non-destructive)
+  name: topmark-check
   description: Validate file headers using TopMark; fails if headers need changes.
-  entry: topmark --quiet --skip-compliant --skip-unsupported  # Only show non-compliant entries
+  entry: topmark --quiet --skip-compliant --skip-unsupported  # Only show non-compliant, supported entries
   language: python
   pass_filenames: true
   stages: [pre-commit, pre-push, manual]
@@ -20,7 +20,7 @@
   additional_dependencies: []  # e.g., ["topmark==0.2.0"] if you want a PyPI install instead of building from source
 
 - id: topmark-apply
-  name: TopMark — apply headers (destructive; requires --apply)
+  name: topmark-apply
   description: Apply/insert headers. Intended for manual runs (not automatic on commit).
   entry: topmark --quiet --skip-compliant --skip-unsupported --apply
   language: python

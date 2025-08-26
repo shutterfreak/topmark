@@ -12,102 +12,59 @@ topmark:header:end
 
 # Contributing to TopMark
 
-Thank you for your interest in contributing to **TopMark**! This document provides guidance for
-developers on setting up the project, maintaining code quality, running tests, building
-distributions, and publishing packages.
+Thanks for your interest in **TopMark**! This guide explains how to set up your environment, run
+quality checks, work with documentation, and use the pre-commit hooks. It mirrors the automation
+available in the **Makefile** and the repo’s **pre-commit** config.
 
 ______________________________________________________________________
 
-## 🚀 Development Setup
+## 🧰 Prerequisites
 
-1. **Clone the repository:**
+- Python **3.10–3.13** (use `pyenv` if you plan to run `tox` across versions)
+- `virtualenv` (or an equivalent tool)
+- `make`
 
-   ```bash
-   git clone https://github.com/your-org/topmark.git
-   cd topmark
-   ```
+Optional:
 
-2. **Create a virtual environment and install dependencies:**
-
-   ```bash
-   make setup
-   ```
-
-   > ℹ️ The `make compile` and `make compile-dev` targets use `pip-compile` with the
-   > `--strip-extras` option to generate requirements files without optional extras.
-   >
-   > 💡 To upgrade development dependencies interactively, use `make upgrade-dev`, which leverages
-   > `pip-review`.
-   >
-   > ⚠️ Ensure you're using `pip-tools >=7.4` to avoid deprecation warnings.
-
-3. **Install pre-commit hooks:**
-
-   ```bash
-   make pre-commit-install
-   ```
-
-   To keep hooks up to date:
-
-   ```bash
-   make pre-commit-autoupdate
-   ```
-
-   For more information, see the [pre-commit documentation](https://pre-commit.com).
+- `pre-commit` (global install not required; the Makefile uses the venv)
+- `pyenv` (for managing multiple Python versions)
 
 ______________________________________________________________________
 
-## 🎨 Code Style and Tooling
+## 🚀 Quick start
 
-- **Formatting:**
+```bash
+# 1) Clone and enter the repo
+git clone https://github.com/shutterfreak/topmark.git
+cd topmark
 
-  ```bash
-  make format
-  ```
+# 2) Create a dev environment and install tooling
+make setup                   # venv + compile lock files + sync dev deps
 
-  This command formats Python, Markdown, and TOML files to maintain consistent style.
+# 3) Install Git hooks and (optionally) refresh hook versions
+make pre-commit-install      # install the pre-commit hooks
+make pre-commit-autoupdate   # update the pre-commit hook repo versions
 
-- **Linting:**
+# 4) Verify everything (format check, lint, types, docs build)
+make verify
+```
 
-  ```bash
-  make lint
-  ```
-
-- **Full check (lint + format check):**
-
-  ```bash
-  make check
-  ```
-
-- **Taplo Linter Note:**
-
-  The Taplo linter is configured to skip fetching remote schema catalogs to avoid timeouts in CI and
-  isolated environments. See the `[tool.taplo.schemas]` section in `pyproject.toml` for details.
-
-- **VS Code Integration:**
-
-  The project is configured to work seamlessly with VS Code and pre-commit hooks to ensure code
-  quality and style consistency.
-
-- **Typing and Documentation Style:**
-
-  The project enforces strict static typing via Pyright. All code must use precise type annotations,
-  preferably with PEP 604 syntax (e.g., `str | None`), and be compatible with Python 3.11+.
-
-  Docstrings must follow the Google style. Focus on clear, concise parameter and return
-  descriptions. Avoid repeating type hints that are already present in function signatures.
+> ℹ️ `make compile` / `make compile-dev` use `pip-compile --strip-extras` to keep lock files
+> reproducible.
+>
+> ⚠️ Use `pip-tools >= 7.4` to avoid deprecation warnings.
 
 ______________________________________________________________________
 
-## 🧪 Running Tests
+## 🧪 Tests
 
-Use the following command to run all tests:
+Run the test suite:
 
 ```bash
 make test
 ```
 
-### Testing across multiple Python versions
+### Python version compatibility
 
 TopMark supports Python 3.10–3.13.
 
@@ -116,39 +73,143 @@ supported versions.
 
 You must install the required Python versions prior to testing with `tox`. With `pyenv`:
 
-```sh
-# Install the Python versions with pyenv
-pyenv install 3.10.14
-pyenv install 3.11.9
-pyenv install 3.12.5
-pyenv install 3.13.0
+```bash
+# Install interpreters (examples)
+pyenv install 3.10.14 3.11.9 3.12.5 3.13.0
 
-# make them visible in this repo (so tox finds all versions):
+# Make them visible in this repo (so tox finds all versions):
 pyenv local 3.10.14 3.11.9 3.12.5 3.13.0
 
 # or for the current shell:
 pyenv shell 3.10.14 3.11.9 3.12.5 3.13.0
+
+# Run
+tox                # all envs (tests + type checks)
+tox -e py311       # a single env
+tox run-parallel   # parallel run
 ```
-
-```bash
-# Run all environments sequentially
-tox
-
-# or run in parallel
-tox run-parallel
-
-# Run a specific Python version
-tox -e py311
-
-# Run type checking for a specific Python version
-tox -e py312-typecheck
-```
-
-This will validate both the test suite and type checking under each interpreter.
 
 ______________________________________________________________________
 
-## 📦 Building Distributions
+## 🎨 Formatting & linting
+
+We keep the codebase tidy with:
+
+- **Ruff** (format + lint)
+- **Pyright** and **mypy** (static typing)
+- **mdformat** (+tables) for Markdown
+- **Taplo** for TOML
+
+Common tasks:
+
+```bash
+make format         # apply formatting (code, Markdown, TOML)
+make format-check   # check formatting without changing files
+make lint           # ruff + pyright + mypy
+make lint-fixall    # auto-fix fixable lint issues (ruff)
+```
+
+Taplo schema catalog lookups are disabled to avoid CI timeouts; see `[tool.taplo.schemas]` in
+`pyproject.toml`.
+
+______________________________________________________________________
+
+## 📚 Documentation
+
+Docs are built with **MkDocs (Material)** and **mkdocstrings** using a dedicated env `.rtd`.
+
+```bash
+make rtd-venv       # create .rtd and install docs extras
+make docs-serve     # live-reload dev server
+make docs-build     # strict build into ./site
+make docs-deploy    # deploy to GitHub Pages (gh-pages)
+```
+
+- Navigation: `mkdocs.yml`
+- Pre-commit guide: `docs/usage/pre-commit.md` (full guide)
+
+______________________________________________________________________
+
+## 🪝 Pre-commit hooks
+
+Install and run:
+
+```bash
+make pre-commit-install
+pre-commit run --all-files
+```
+
+Clean caches / update hook repos:
+
+```bash
+make pre-commit-clean
+make pre-commit-autoupdate
+```
+
+**Hooks in this repo** (see `.pre-commit-config.yaml`):
+
+- **`topmark-check`** — validates headers (non-destructive). Runs on `pre-commit` / `pre-push`.
+- Ruff (format & lint), mypy, Pyright, Taplo, mdformat, plus standard hygiene hooks.
+
+**Why are there repeated banners during hooks?** Pre-commit batches filenames to respect OS argument
+limits, so hooks may run multiple times per invocation. We keep the output quiet in hooks using
+`--quiet`.
+
+**Run TopMark’s manual fixer via pre-commit** (if enabled locally):
+
+```bash
+pre-commit run topmark-apply --all-files --hook-stage manual
+```
+
+______________________________________________________________________
+
+## 🧾 Commit & PR guidelines
+
+- Keep commits focused; use clear, imperative messages.
+- Include tests and docs when changing behavior.
+- Ensure `make verify` passes before opening a PR.
+- Call out breaking changes clearly.
+
+### Conventional Commits
+
+Please format commit messages according to the Conventional Commits spec:
+
+```text
+<type>[optional scope]: <short summary>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+- **Common types:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`,
+  `chore`, `revert`
+- **Examples**
+  - `feat(cli): add --skip-unsupported flag`
+  - `fix(renderer): avoid duplicating header when shebang present`
+  - `docs(pre-commit): document manual topmark-apply invocation`
+  - `ci(release): publish wheels for py3.13`
+
+> Tip: keep subject lines ≤ 72 chars; use the body for motivation and tradeoffs.
+
+### Pull Request checklist
+
+Use this checklist before requesting review:
+
+- [ ] **PR title follows Conventional Commits** (e.g., `feat: add pre-commit hook`)
+- [ ] **Linked issue referenced** (e.g., `Closes #123`)
+- [ ] **`make verify` passes locally** (format, lint, types, docs build)
+- [ ] **Tests added/updated and `make test` passes**
+- [ ] **Ran `pre-commit run --all-files`** (or `make pre-commit-run`)
+- [ ] **Docs updated as needed**
+  - [ ] README
+  - [ ] `docs/usage/*`
+  - [ ] examples
+- [ ] **User-facing changes called out** in the PR description (new flags/behavior)
+- [ ] **Version updated** in `pyproject.toml` if preparing a release
+- [ ] **Commits are focused**; squashed/rebased where appropriate
+
+## 📦 Build
 
 TopMark follows [PEP 517/518](https://peps.python.org/pep-0517/) standards.
 
@@ -162,56 +223,27 @@ This creates a `dist/` folder containing `.tar.gz` and `.whl` files.
 
 ______________________________________________________________________
 
-## 🚀 Publishing to PyPI
+## 🚀 Publish to PyPI
 
-### 1. **Set up your `.pypirc` file** (in `~/.pypirc`)
+Releases are handled by **GitHub Actions** (see `.github/workflows/release.yml`). Releases are
+triggered by pushing a tag:
 
-```ini
-[distutils]
-index-servers =
-    pypi
-    testpypi
+- `vX.Y.Z-rcN` → publish release candidate to **TestPyPI**
+- `vX.Y.Z` → publish to **PyPI** and create a GitHub Release
 
-[pypi]
-repository: https://upload.pypi.org/legacy/
-username: __token__
-password: pypi-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-[testpypi]
-repository: https://test.pypi.org/legacy/
-username: __token__
-password: pypi-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-```
-
-An example PyPI configuration template is available in `.pypirc.example`.
-
-> 💡 Use [API tokens](https://pypi.org/manage/account/token) instead of passwords. Do **not** commit
-> this file!
-
-### 2. **Upload to PyPI or TestPyPI:**
-
-#### From command line and `twine`
+Manual uploads (less common):
 
 ```bash
-# Validate distribution
 .venv/bin/twine check dist/*
-
-# Upload to PyPI
 .venv/bin/twine upload dist/*
-
-# Or upload to TestPyPI
-.venv/bin/twine upload --repository testpypi dist/*
+# or: .venv/bin/twine upload --repository testpypi dist/*
 ```
-
-#### From the GitHub Workflow
-
-An example GitHub workflow integration script is availeble in `.gitgub/workflows/release.yml`.
 
 ______________________________________________________________________
 
 ## 📄 Versioning
 
-Update the version in `pyproject.toml` before releasing a new build:
+Update the version in `pyproject.toml` before tagging:
 
 ```toml
 [project]
@@ -220,8 +252,68 @@ version = "0.2.0"
 
 ______________________________________________________________________
 
-## 💬 Need Help?
+## 🧩 TopMark configuration (this repo)
 
-Open an [issue](https://github.com/shutterfreak/topmark/issues) on GitHub.
+TopMark reads configuration from `[tool.topmark]` in `pyproject.toml` (or a `topmark.toml`). Useful
+CLI flags:
+
+- `--skip-compliant` — only show files requiring changes
+- `--skip-unsupported` — hide recognized‑but‑unsupported formats (e.g., strict JSON)
+- `--apply` — perform changes (otherwise dry-run)
+
+CI-friendly check:
+
+```bash
+topmark check --skip-compliant --skip-unsupported --quiet
+```
+
+______________________________________________________________________
+
+## 🛠 Make targets cheat-sheet
+
+```sh
+# Setup
+make venv              # create .venv + pip-tools
+make setup             # venv + compile locks + sync dev
+
+# Dev deps
+make compile-dev       # compile requirements-dev.txt
+make dev               # sync .venv with dev requirements
+make upgrade-dev       # upgrade and sync dev env
+
+# Quality
+make format            # format code/markdown/toml
+make format-check      # check formatting only
+make lint              # ruff + pyright + mypy
+make lint-fixall       # autofix lint issues (ruff)
+make test              # run tests
+make verify            # non-destructive checks + docs build
+
+# Docs
+make rtd-venv          # create .rtd docs env
+make docs-serve        # serve with live reload
+make docs-build        # strict build
+make docs-deploy       # gh-pages deploy
+
+# Hooks
+make pre-commit-install
+make pre-commit-run
+make pre-commit-autoupdate
+make pre-commit-refresh
+make pre-commit-clean
+make pre-commit-uninstall
+
+# Packaging
+make build             # wheel + sdist
+make git-archive       # time-stamped git archive
+make source-snapshot   # snapshot current working tree
+```
+
+______________________________________________________________________
+
+## ❓ Troubleshooting
+
+If you’re stuck, open an issue with your OS, Python version, and the command you ran:
+<https://github.com/shutterfreak/topmark/issues>.
 
 Happy coding! 🎉
