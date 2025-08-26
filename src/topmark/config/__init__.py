@@ -21,16 +21,16 @@ from topmark.toml or pyproject.toml.
 import functools
 from dataclasses import dataclass, field
 from datetime import datetime
+from importlib.resources import files
 from pathlib import Path
 from typing import Any, TypeGuard
 
 import toml
 
 from topmark.cli.cli_types import ArgsNamespace
-from topmark.constants import DEFAULT_TOML_CONFIG_PATH, VALUE_NOT_SET
+from topmark.config.logging import get_logger
+from topmark.constants import DEFAULT_TOML_CONFIG_RESOURCE, VALUE_NOT_SET
 from topmark.rendering.formats import HeaderOutputFormat
-
-from .logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -103,8 +103,9 @@ class Config:
         Returns:
             str: The contents of the default TOML configuration file.
         """
-        logger.debug("Loading defaults from %s", DEFAULT_TOML_CONFIG_PATH)
-        return DEFAULT_TOML_CONFIG_PATH.read_text(encoding="utf-8")
+        logger.debug("Loading defaults from package resource: %s", DEFAULT_TOML_CONFIG_RESOURCE)
+        resource = files("topmark.config") / DEFAULT_TOML_CONFIG_RESOURCE
+        return resource.read_text(encoding="utf-8")
 
     @classmethod
     def to_cleaned_toml(cls, toml_doc: str) -> str:
@@ -122,7 +123,7 @@ class Config:
         return toml.dumps(parsed)
 
     @classmethod
-    @functools.cache  # Cache to avoid re-parsing defaults multiple times
+    @functools.cache
     def from_defaults(cls) -> "Config":
         """
         Load the default configuration from the bundled topmark-default.toml file.
@@ -130,12 +131,16 @@ class Config:
         Returns:
             Config: A Config instance populated with default values.
         """
-        default_toml_data = toml.load(DEFAULT_TOML_CONFIG_PATH)
+        resource = files("topmark.config") / DEFAULT_TOML_CONFIG_RESOURCE
+        default_toml_text = resource.read_text(encoding="utf-8")
+        default_toml_data = toml.loads(default_toml_text)
         logger.debug("Default Config: %s", default_toml_data)
-        # When loading defaults, explicitly include defaults flag to allow special handling
+
+        # Note: `config_file` is set to None because this is a package resource,
+        # not a user-specified filesystem path.
         return cls.from_toml_dict(
             default_toml_data,
-            config_file=DEFAULT_TOML_CONFIG_PATH,
+            config_file=None,
             use_defaults=True,  # We ONLY include defaults when loading from defaults!
         )
 

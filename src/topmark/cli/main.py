@@ -185,6 +185,13 @@ CONTEXT_SETTINGS = dict(
 )
 @underscored_trap_option("--skip_compliant")
 @typed_option(
+    "--skip-unsupported",
+    "skip_unsupported",
+    is_flag=True,
+    help="Hide unsupported file types.",
+)
+@underscored_trap_option("--skip_unsupported")
+@typed_option(
     "--format",
     "output_format",
     type=EnumParam(OutputFormat),
@@ -227,6 +234,7 @@ def cli(
     diff: bool,
     summary_mode: bool,
     skip_compliant: bool,
+    skip_unsupported: bool,
     output_format: OutputFormat | None,
 ) -> None:
     """
@@ -257,6 +265,7 @@ def cli(
         diff: If True, show unified diffs of header changes (human output only).
         summary_mode: If True, print outcome counts instead of per-file details.
         skip_compliant: If True, suppress files whose comparison status is UNCHANGED.
+        skip_unsupported: If True, suppress unsupported file types.
         output_format: Output format to use (default, json, or ndjson).
 
     Notes:
@@ -331,6 +340,7 @@ def cli(
         diff=diff,
         summary_mode=summary_mode,
         skip_compliant=skip_compliant,
+        skip_unsupported=skip_unsupported,
         output_format=output_format,
     )
     return
@@ -395,6 +405,7 @@ def ensure_commands_registered() -> None:
             diff=p.get("diff", False),
             summary_mode=p.get("summary_mode", False),
             skip_compliant=p.get("skip_compliant", False),
+            skip_unsupported=p.get("skip_unsupported", False),
             output_format=p.get("output_format"),
         )
 

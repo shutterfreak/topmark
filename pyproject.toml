@@ -10,7 +10,7 @@
 
 [project]
 name = "topmark"
-version = "0.1.1.dev0"
+version = "0.2.0"
 description = "A Python CLI to inspect, validate, and manage license and copyright headers."
 authors = [{ name = "Olivier Biot", email = "olivier.biot@gmail.com" }]
 license = "MIT"
@@ -102,9 +102,11 @@ typing = [
 
 [tool.setuptools]
 package-dir = { "" = "src" }
+include-package-data = true
 
 [tool.setuptools.package-data]
 "topmark" = ["py.typed"]
+"topmark.config" = ["topmark-default.toml"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

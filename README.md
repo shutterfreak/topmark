@@ -78,6 +78,15 @@ Logging verbosity is controlled globally:
 All other options, such as `--stdin`, `--file-type`, and path filters, are specific to individual
 subcommands like `check` or `apply`.
 
+### Skipping and filtering helpers
+
+These switches help keep CI output meaningful and fast:
+
+- `--skip-compliant` — hide files that are already compliant; only show items that need attention.
+- `--skip-unsupported` — hide unsupported file types and files matched by known types that
+  intentionally **do not** support headers (e.g., strict JSON). They remain **recognized** but are
+  not listed in results.
+
 ### Examples
 
 ```bash
@@ -110,6 +119,12 @@ topmark version
 
 # Apply changes to files in-place
 topmark --apply src/
+
+# CI-friendly summary: only show issues; ignore unsupported types
+topmark --skip-compliant --skip-unsupported src/
+
+# Apply fixes for only the changed files passed by pre-commit
+topmark --apply --apply --skip-unsupported --quiet
 ```
 
 ## 📐 Header placement rules
@@ -206,6 +221,9 @@ The following options can be used with most commands.
 | SlashHeaderProcessor | c, cpp, cs, go, java, javascript, kotlin, rust, swift, typescript, vscode-jsonc                                |
 | XmlHeaderProcessor   | html, markdown, svelte, svg, vue, xhtml, xml, xsl, xslt, yaml                                                  |
 
+Some formats (e.g., strict JSON) are **recognized but intentionally skipped** because they lack a
+safe comment syntax. Use `--skip-unsupported` to hide them from the report while keeping safety.
+
 For a complete list, please run:
 
 ```sh
@@ -234,6 +252,42 @@ config.
 after `#!` and optional encoding line). For formats like XML that need character‑precise placement,
 processors provide a text‑offset path; `XmlHeaderProcessor` uses this and signals **no line
 anchor**.
+
+## 🪝 Pre-commit integration
+
+TopMark provides first-class pre-commit hooks. A minimal consumer configuration:
+
+```yaml
+# .pre-commit-config.yaml (in a consuming repository)
+repos:
+  - repo: https://github.com/shutterfreak/topmark
+    rev: v0.2.0   # pin to a released tag
+    hooks:
+      - id: topmark-check
+        # Optional: limit scope to supported text types
+        # files: '\\.(py|md|toml|ya?ml|sh|Makefile)$'
+```
+
+Hooks shipped by this repo:
+
+- **`topmark-check`** — non-destructive validation. Recommended on `pre-commit` / `pre-push`.
+- **`topmark-apply`** — destructive, requires `--apply`. Marked `manual` so it only runs when you
+  call it explicitly.
+
+**Run the manual hook locally:**
+
+```bash
+# On the whole repo
+pre-commit run topmark-apply --all-files --hook-stage manual
+
+# On specific files
+pre-commit run topmark-apply --files path/to/file1 path/to/file2 --hook-stage manual
+```
+
+**Why does the hook seem to run multiple times?** Pre-commit batches filenames to avoid OS
+argument-length limits. You may see repeated banners (e.g., “Processing N file(s)”) as the hook runs
+once per batch. To run **once** per repo, set `pass_filenames: false` in the hook manifest and let
+TopMark discover files itself.
 
 ## 🛠 Configuration
 

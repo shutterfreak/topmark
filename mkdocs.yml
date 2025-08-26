@@ -11,8 +11,10 @@
 site_name: TopMark
 site_description: Inspect, validate, and manage per-file headers across file types.
 site_url: https://shutterfreak.github.io/topmark
+copyright: "© 2025 Olivier Biot"
 repo_url: https://github.com/shutterfreak/topmark
 repo_name: shutterfreak/topmark
+edit_uri: edit/main/docs/
 theme:
   name: material
   logo: assets/topmark-logo.png
@@ -23,6 +25,8 @@ theme:
     - content.code.copy
     - search.suggest
     - search.highlight
+    - navigation.top
+    - navigation.tracking
 markdown_extensions:
   - admonition
   - toc:
@@ -53,6 +57,10 @@ plugins:
 nav:
   - Overview: index.md
   - Installation: install.md
+  - Usage:
+      - "Pre-commit": usage/pre-commit.md
+  - CI/CD:
+      - Release workflow: ci/release-workflow.md
   - Contributing: contributing.md
   - API:
     - "Reference": api/index.md

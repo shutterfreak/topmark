@@ -16,7 +16,10 @@ from pathlib import Path
 TOPMARK_VERSION = get_version("topmark")
 
 PYPROJECT_TOML_PATH = Path(__file__).parent.parent / "pyproject.toml"
-DEFAULT_TOML_CONFIG_PATH: Path = Path(__file__).parent / "config" / "topmark-default.toml"
+
+# Name of the bundled default config inside the package `topmark.config`.
+# This is used with importlib.resources in config/__init__.py
+DEFAULT_TOML_CONFIG_RESOURCE: str = "topmark-default.toml"
 
 TOPMARK_START_MARKER: str = "topmark:header:start"
 TOPMARK_END_MARKER: str = "topmark:header:end"

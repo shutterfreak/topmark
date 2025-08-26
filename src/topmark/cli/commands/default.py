@@ -29,6 +29,8 @@ Examples:
     topmark --apply --diff .
 """
 
+import logging
+
 import click
 from yachalk import chalk
 
@@ -48,7 +50,7 @@ from topmark.cli.utils import (
 from topmark.config.logging import get_logger
 from topmark.file_resolver import resolve_file_list
 from topmark.pipeline import runner
-from topmark.pipeline.context import ComparisonStatus, ProcessingContext
+from topmark.pipeline.context import ComparisonStatus, FileStatus, HeaderStatus, ProcessingContext
 from topmark.pipeline.pipelines import get_pipeline
 from topmark.rendering.formats import HeaderOutputFormat
 
@@ -76,6 +78,13 @@ logger = get_logger(__name__)
 )
 @underscored_trap_option("--skip_compliant")
 @typed_option(
+    "--skip-unsupported",
+    "skip_unsupported",
+    is_flag=True,
+    help="Hide unsupported file types.",
+)
+@underscored_trap_option("--skip_unsupported")
+@typed_option(
     "--format",
     "output_format",
     type=EnumParam(OutputFormat),
@@ -98,6 +107,7 @@ def default_command(
     diff: bool,
     summary_mode: bool,
     skip_compliant: bool,
+    skip_unsupported: bool,
     output_format: OutputFormat | None,
 ) -> None:
     """Run the unified default command (check/apply).
@@ -121,6 +131,7 @@ def default_command(
       diff: If True, show unified diffs of header changes (human output only).
       summary_mode: If True, print outcome counts instead of per-file details.
       skip_compliant: If True, suppress files whose comparison status is UNCHANGED.
+      skip_unsupported: If True, suppress unsupported file types.
       output_format: Output format to use (default, json, or ndjson).
 
     Raises:
@@ -182,11 +193,12 @@ def default_command(
     stdin_stream = click.get_text_stream("stdin") if stdin else None
     file_list = resolve_file_list(config, stdin_stream=stdin_stream)
     if not file_list:
-        click.echo(chalk.blue("\nNo files.\n"))
+        click.echo(chalk.blue("\nℹ️  No files to process.\n"))
         raise SystemExit(0)
 
-    click.echo(chalk.blue(f"\nProcessing {len(file_list)} file(s):\n"))
-    click.echo(chalk.bold.underline("TopMark Results:"))
+    if logger.isEnabledFor(logging.INFO):
+        click.echo(chalk.blue(f"\n🔍 Processing {len(file_list)} file(s):\n"))
+        click.echo(chalk.bold.underline("📋 TopMark Results:"))
 
     # Use summary pipeline when --summary is set, else full (compare+update+patch)
     pipeline_name = "summary" if summary_mode else "apply"
@@ -200,16 +212,16 @@ def default_command(
             results.append(ctx_obj)
         except (FileNotFoundError, PermissionError, IsADirectoryError) as e:
             logger.error("Filesystem error while processing %s: %s", path, e)
-            click.echo(chalk.red(f"Filesystem error processing {path}: {e}"))
+            click.echo(chalk.red(f"❌ Filesystem error processing {path}: {e}"))
             continue
         except UnicodeDecodeError as e:
             logger.error("Encoding error while reading %s: %s", path, e)
-            click.echo(chalk.red(f"Encoding error in {path}: {e}"))
+            click.echo(chalk.red(f"🧵 Encoding error in {path}: {e}"))
             continue
         except Exception as e:  # pragma: no cover - unexpected path
             logger.exception("Unexpected error processing %s", path)
             click.echo(
-                chalk.red(f"Unexpected error processing {path}: {e} (use -vv for traceback)")
+                chalk.red(f"⚠️  Unexpected error processing {path}: {e} (use -vv for traceback)")
             )
             continue
 
@@ -218,6 +230,17 @@ def default_command(
         view_results = [r for r in results if r.status.comparison is not ComparisonStatus.UNCHANGED]
     else:
         view_results = results
+
+    if skip_unsupported:
+        view_results = [
+            r
+            for r in view_results
+            if r.status.file
+            not in [
+                FileStatus.SKIPPED_UNSUPPORTED,
+                FileStatus.SKIPPED_KNOWN_NO_HEADERS,
+            ]
+        ]
 
     fmt: OutputFormat = output_format or OutputFormat.DEFAULT
     # Machine formats first
@@ -256,6 +279,18 @@ def default_command(
         else:
             for r in view_results:
                 click.echo(r.summary)
+                if r.status.comparison == ComparisonStatus.CHANGED:
+                    if apply_changes:
+                        if r.status.header == HeaderStatus.MISSING:
+                            click.echo(chalk.yellow(f"   ➕ Adding header for '{r.path}'"))
+                        else:
+                            click.echo(chalk.yellow(f"   ✏️  Updating header for '{r.path}'"))
+                    else:
+                        click.echo(
+                            chalk.yellow(
+                                f"   🛠️  Run `topmark --apply {r.path}` to update this file."
+                            )
+                        )
             if diff:
                 for r in view_results:
                     if r.header_diff:
@@ -277,7 +312,11 @@ def default_command(
                 logger.error("Failed to write %s: %s", r.path, e)
         if fmt is OutputFormat.DEFAULT:
             click.echo(
-                f"\nApplied changes to {written} file(s)." if written else "\nNo changes to apply."
+                (
+                    f"\n✅ Applied changes to {written} file(s)."
+                    if written
+                    else "\n✅ No changes to apply."
+                )
             )
         if failed:
             raise SystemExit(1)
@@ -291,5 +330,7 @@ def default_command(
         if would_change:
             raise SystemExit(2)
 
-    click.echo("All done!")
+    if logger.isEnabledFor(logging.INFO):
+        click.echo("✅ All done!")
+
     return

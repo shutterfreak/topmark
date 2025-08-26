@@ -1,7 +1,17 @@
+# topmark:header:start
+#
+#   file         : .pre-commit-hooks.yaml
+#   file_relpath : .pre-commit-hooks.yaml
+#   project      : TopMark
+#   license      : MIT
+#   copyright    : (c) 2025 Olivier Biot
+#
+# topmark:header:end
+
 - id: topmark-check
   name: TopMark — check headers (non-destructive)
   description: Validate file headers using TopMark; fails if headers need changes.
-  entry: topmark --skip-compliant  # Only show non-compliant entries
+  entry: topmark --quiet --skip-compliant --skip-unsupported  # Only show non-compliant entries
   language: python
   pass_filenames: true
   stages: [pre-commit, pre-push, manual]
@@ -12,7 +22,7 @@
 - id: topmark-apply
   name: TopMark — apply headers (destructive; requires --apply)
   description: Apply/insert headers. Intended for manual runs (not automatic on commit).
-  entry: topmark --apply
+  entry: topmark --quiet --skip-compliant --skip-unsupported --apply
   language: python
   pass_filenames: true
   stages: [manual]

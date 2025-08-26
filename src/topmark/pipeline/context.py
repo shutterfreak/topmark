@@ -186,9 +186,9 @@ class ComparisonStatus(BaseStatus):
             Callable[[str], str],
             {
                 ComparisonStatus.PENDING: chalk.gray,
-                ComparisonStatus.CHANGED: chalk.yellow_bright,
+                ComparisonStatus.CHANGED: chalk.red,
                 ComparisonStatus.UNCHANGED: chalk.green,
-                ComparisonStatus.CANNOT_COMPARE: chalk.red,
+                ComparisonStatus.CANNOT_COMPARE: chalk.yellow_bright,
             }[self],
         )
 
