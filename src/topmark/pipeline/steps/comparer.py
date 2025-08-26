@@ -38,6 +38,22 @@ def compare(ctx: ProcessingContext) -> ProcessingContext:
         ProcessingContext: The same context, with `status.comparison` updated to
         ``CHANGED`` or ``UNCHANGED`` when applicable.
     """
+    # Fast path: some pipelines (e.g., 'strip') precompute the new file image
+    # in `updated_file_lines` without running builder/renderer. In that case,
+    # we compare the full file content directly and set `ComparisonStatus`.
+    if ctx.updated_file_lines is not None:
+        before = ctx.file_lines or []
+        after = ctx.updated_file_lines
+        ctx.status.comparison = (
+            ComparisonStatus.CHANGED if before != after else ComparisonStatus.UNCHANGED
+        )
+        logger.debug(
+            "File '%s' : full-file comparison (precomputed). Result: %s",
+            ctx.path,
+            ctx.status.comparison.value,
+        )
+        return ctx
+
     # Safeguard: Only compare when generation completed or no fields were requested
     logger.trace(
         "Status: file: %s, header: %s, generation: %s",

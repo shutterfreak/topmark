@@ -12,7 +12,11 @@
 
 This module wires the TopMark command-line interface (CLI) using Click 8.2.
 The **base command** performs a check/dry‑run by default and **applies** changes
-when ``--apply`` is specified. Auxiliary subcommands provide configuration and
+when ``--apply`` is specified.
+
+HEaders can be stripped from files with the ``strip`` subcommand.
+
+Auxiliary subcommands provide configuration and
 metadata functionality (e.g., ``dump-config``, ``filetypes``, ``show-defaults``,
 ``init-config``, ``version``).
 
@@ -32,6 +36,10 @@ Examples:
   Show a JSON summary (CI‑friendly)::
 
     topmark --summary --format=json src
+
+  Remove headers (dry-run)::
+
+    topmark strip src
 
   List supported file types::
 
@@ -54,6 +62,7 @@ from topmark.cli.commands.dump_config import dump_config_command
 from topmark.cli.commands.filetypes import filetypes_command
 from topmark.cli.commands.init_config import init_config_command
 from topmark.cli.commands.show_defaults import show_defaults_command
+from topmark.cli.commands.strip import strip_command
 from topmark.cli.commands.version import version_command
 from topmark.cli.options import (
     common_config_options,
@@ -413,6 +422,24 @@ def ensure_commands_registered() -> None:
 
     # Register other visible subcommands
 
+    typed_command_of(
+        cli,
+        "strip",
+        help="Remove the entire TopMark header from files.",
+        context_settings=CONTEXT_SETTINGS,
+        epilog="""
+Removes the full TopMark header block (between 'topmark:header:start' and 'topmark:header:end')
+from each targeted file. By default this is a dry run; use --apply to write changes.
+
+Examples:
+
+  # Preview which files would change (dry-run)
+  topmark strip src
+
+  # Apply: remove headers in-place
+  topmark strip --apply .
+""",
+    )(strip_command)
     typed_command_of(
         cli,
         "version",

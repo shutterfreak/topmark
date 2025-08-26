@@ -37,7 +37,7 @@ header formats, customizable fields, inclusion/exclusion rules, and dry-run safe
 - CI-friendly design for safe automated use
 - Strict static typing with mypy and Pyright, using PEP 604 union syntax
 - Google-style docstrings without redundant type declarations
-- Selective removal
+- Full header removal (`topmark strip`)
 - Preserves original newline style (LF/CRLF/CR) and BOM
 - Idempotent updates (re-running does not change already-correct files)
 
@@ -69,6 +69,8 @@ topmark [OPTIONS] [PATHS]...
 
 TopMark uses Click 8.2 and supports shell completions. The base command performs a dry‑run *check*
 by default and applies changes when `--apply` is provided.
+
+The `strip` subcommand is provided to remove entire headers.
 
 Logging verbosity is controlled globally:
 
@@ -119,6 +121,12 @@ topmark version
 
 # Apply changes to files in-place
 topmark --apply src/
+
+# Remove headers from files (dry-run)
+topmark strip src/
+
+# Remove headers from files and apply changes
+topmark strip --apply src/
 
 # CI-friendly summary: only show issues; ignore unsupported types
 topmark --skip-compliant --skip-unsupported src/
@@ -209,6 +217,7 @@ The following options can be used with most commands.
 | --------------- | -------------------------------------------------- |
 | `dump-config`   | Show the resolved configuration in TOML format     |
 | `filetypes`     | List supported file types and their comment styles |
+| `strip`         | Remove TopMark headers from files (destructive)    |
 | `version`       | Print TopMark version                              |
 | `show-defaults` | Show default config (without merging)              |
 | `init-config`   | Output a starter configuration file                |

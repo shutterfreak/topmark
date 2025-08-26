@@ -20,6 +20,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Final, Mapping, Tuple
 
+from topmark.pipeline.steps import stripper
+
 from .contracts import Step
 from .steps import (
     builder,
@@ -68,12 +70,23 @@ RENDER_PIPELINE: Final[Tuple[Step, ...]] = (
 # When a dedicated writer step is introduced, extend this pipeline accordingly.
 APPLY_PIPELINE: Final[Tuple[Step, ...]] = DEFAULT_PIPELINE
 
+STRIP_PIPELINE: Final[Tuple[Step, ...]] = (
+    resolver.resolve,
+    reader.read,
+    scanner.scan,
+    stripper.strip,
+    comparer.compare,
+    updater.update,
+    patcher.patch,  # Only needed with --diff
+)
+
 PIPELINES: Final[Mapping[str, Tuple[Step, ...]]] = {
     "default": DEFAULT_PIPELINE,
     "check": DEFAULT_PIPELINE,  # alias for ergonomics
     "summary": SUMMARY_PIPELINE,
     "render": RENDER_PIPELINE,
     "apply": APPLY_PIPELINE,
+    "strip": STRIP_PIPELINE,
 }
 
 

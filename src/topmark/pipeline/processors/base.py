@@ -608,6 +608,50 @@ class HeaderProcessor:
         # No valid header near the expected anchor → treat as absent
         return None, None
 
+    def strip_header_block(
+        self, *, lines: list[str], span: tuple[int, int] | None = None
+    ) -> tuple[list[str], tuple[int, int] | None]:
+        """Remove the TopMark header block and return (new_lines, removed_span).
+
+        Default implementation:
+          - If ``span`` is provided, it is trusted and used directly (preferred path).
+          - Otherwise, locate the header span using ``get_header_bounds(lines)``.
+          - If found, return the file with that inclusive span removed.
+          - If the header started at the very first line (index 0), and the new
+            first line is blank, remove **exactly one** leading blank line to avoid
+            leaving an extra gap at the top.
+
+        Args:
+            lines: Full list of file lines.
+            span: Optional inclusive (start, end) line-index tuple, typically provided
+              by the scanner as ``ctx.existing_header_range``. When provided, no
+              additional scanning is performed.
+
+        Returns:
+            A tuple ``(new_lines, removed_span)`` where:
+              - ``new_lines`` are the potentially modified lines after removal.
+              - ``removed_span`` is the inclusive (start, end) line-index tuple
+                that was removed, or ``None`` if no header was found.
+        """
+        if span is None:
+            start, end = self.get_header_bounds(lines)
+            span = (start, end) if start is not None and end is not None else None
+        start_end = span
+        if start_end is None or start_end[1] < start_end[0]:
+            return lines, None
+
+        # Bind the validated span tuple
+        start, end = start_end
+
+        # Remove the inclusive header span
+        new_lines = lines[:start] + lines[end + 1 :]
+
+        # If the header was at the very top, trim a single leftover blank line
+        if start == 0 and new_lines and new_lines[0].strip() == "":
+            new_lines = new_lines[1:]
+
+        return new_lines, (start, end)
+
     def _collect_bounds_line_comments(self, lines: list[str]) -> list[tuple[int, int]]:
         """Collect all (start,end) pairs for pound-style headers in the file."""
         results: list[tuple[int, int]] = []

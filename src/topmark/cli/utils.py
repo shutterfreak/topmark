@@ -10,22 +10,8 @@
 
 """CLI utility helpers for TopMark.
 
-This module contains small utilities that are shared across CLI commands:
-
-- `default_header_overrides()`: Builds a dict of default header fields using TopMark’s
-  own pyproject metadata (license, copyright).
-- Color handling utilities:
-  - `ColorMode`: Enum describing user intent for colorized output.
-  - `resolve_color_mode()`: Decides whether color should be enabled, based on a
-    combination of CLI flags, environment variables, output format, and TTY detection.
-
-Color decision precedence:
-1) Machine formats (`json`, `ndjson`) are always **colorless**.
-2) Explicit CLI color (`--color=always|never|auto`) if provided.
-3) Environment variables:
-   - `FORCE_COLOR` (any non-empty value except `"0"`) forces color.
-   - `NO_COLOR` (set to any value) disables color.
-4) Fallback to `auto` (enable color only when stdout is a TTY).
+This module provides utility functions shared across CLI commands, including
+header defaults extraction, color handling, and summary rendering.
 """
 
 from __future__ import annotations
@@ -38,31 +24,31 @@ from enum import Enum
 from yachalk import chalk
 
 from topmark.config import Config
+from topmark.config.logging import get_logger
 from topmark.constants import PYPROJECT_TOML_PATH, TOPMARK_VERSION
 from topmark.pipeline.context import ProcessingContext
+
+logger = get_logger(__name__)
 
 
 def default_header_overrides(*, info: str, file_label: str = "topmark.toml") -> dict[str, str]:
     """Build default header field overrides from TopMark’s own metadata.
 
-    Looks up TopMark’s `pyproject.toml` for the `license` and `copyright`
-    fields and combines them with the supplied `info` and `file_label`.
+    Looks up TopMark’s ``pyproject.toml`` for the ``license`` and ``copyright``
+    fields and combines them with the supplied ``info`` and ``file_label``.
 
     Args:
-      info: Short informational string to include in the generated header
-        (e.g., “Built-in defaults” or a provenance note).
-      file_label: Value to use for the `file` field in the generated header
-        (defaults to “topmark.toml”).
+      info (str): Short informational string to include in the generated header
+        (for example, ``"Built-in defaults"``).
+      file_label (str, optional): Value to use for the ``file`` field in the
+        generated header. Defaults to ``"topmark.toml"``.
 
     Returns:
-      A dictionary of header fields (e.g.,
-        `{"file": ..., "version": ..., "info": ..., "license": ..., "copyright": ...}`).
-      Only present keys are included; when a field is missing in `pyproject.toml`,
-      it is omitted from the result.
+      dict[str, str]: Mapping of header fields suitable for rendering.
 
     Notes:
-      - `version` is populated from the running TopMark’s version.
-      - Missing metadata in `pyproject.toml` does not raise; it is simply omitted.
+      - ``version`` is populated from the running TopMark version.
+      - Missing metadata in ``pyproject.toml`` does not raise; it is omitted.
     """
     overrides: dict[str, str] = {
         "file": file_label,
@@ -130,7 +116,7 @@ def resolve_color_mode(
     output_format: str | None,  # "default" | "json" | "ndjson" | None
     stdout_isatty: bool | None = None,
 ) -> bool:
-    """Decide whether color output should be enabled.
+    """Determine whether color output should be enabled.
 
     Decision precedence:
       1. **Machine formats**: If `output_format` is `"json"` or `"ndjson"`, return False.
@@ -184,16 +170,16 @@ def resolve_color_mode(
 
 
 # --- CLI presentation helpers -------------------------------------------------
-def classify_outcome(r: "ProcessingContext") -> tuple[str, str, Callable[[str], str]]:
-    """Classify a :class:`ProcessingContext` for summary rendering.
+def classify_outcome(r: ProcessingContext) -> tuple[str, str, Callable[[str], str]]:
+    """Classify a processing result for summary rendering.
 
     Args:
-      r: Processing context for a single file.
+      r (ProcessingContext): Processing context for a single file.
 
     Returns:
-      A tuple ``(key, label, color_fn)`` where ``key`` is a stable identifier,
-      ``label`` is a short human-readable description, and ``color_fn`` is a
-      callable (from ``yachalk``) used to colorize the label in human output.
+      tuple[str, str, Callable[[str], str]]: A tuple ``(key, label, color_fn)`` where
+      ``key`` is a stable identifier, ``label`` is a human-readable description, and
+      ``color_fn`` is a function from ``yachalk`` used to colorize the label.
     """
     # Import locally to avoid any import cycles at module import time.
     from topmark.pipeline.context import (
@@ -201,17 +187,41 @@ def classify_outcome(r: "ProcessingContext") -> tuple[str, str, Callable[[str], 
         FileStatus,
         GenerationStatus,
         HeaderStatus,
+        StripStatus,
     )
+
+    logger.info("status: %s", r.status)
 
     if r.status.file is not FileStatus.RESOLVED:
         return (f"file:{r.status.file.name}", f"file {r.status.file.value}", r.status.file.color)
+
+    # If the stripper step participated, prefer strip-centric labels.
+    if r.status.strip is StripStatus.READY:
+        # We computed updated_file_lines that remove the header.
+        return ("strip:ready", "would strip header", chalk.yellow)
+
+    if r.status.strip is StripStatus.NOT_NEEDED:
+        # Nothing to strip — refine message based on what scanner/comparer saw.
+        if r.status.header is HeaderStatus.MISSING:
+            # No header present in the original file.
+            return ("strip:none", "no header", chalk.green)
+        if r.status.comparison is ComparisonStatus.UNCHANGED:
+            # Header present but no change needed (e.g., non-strip pipelines).
+            return ("ok", "up-to-date", chalk.green)
+        # Fallback for strip pipeline where nothing changed.
+        return ("strip:none", "no changes to strip", chalk.green)
+
+    # Non-strip pipelines (or stripper didn't run): use standard classification.
     if r.status.header is HeaderStatus.MISSING:
+        if r.status.generation is GenerationStatus.PENDING:
+            return ("strip:none", "no header", chalk.green)
         return ("insert", "would insert header", chalk.green)
     if r.status.header is HeaderStatus.DETECTED:
         if r.status.comparison is ComparisonStatus.UNCHANGED:
             return ("ok", "up-to-date", chalk.green)
+
         if r.status.comparison is ComparisonStatus.CHANGED:
-            return ("replace", "would replace header", chalk.yellow_bright)
+            return ("update", "would update header", chalk.yellow_bright)
         return ("compare_error", "cannot compare", chalk.red)
     if r.status.header in {HeaderStatus.EMPTY, HeaderStatus.MALFORMED}:
         return (
@@ -225,17 +235,18 @@ def classify_outcome(r: "ProcessingContext") -> tuple[str, str, Callable[[str], 
 
 
 def count_by_outcome(
-    results: list["ProcessingContext"],
+    results: list[ProcessingContext],
 ) -> dict[str, tuple[int, str, Callable[[str], str]]]:
-    """Count results per classification key.
+    """Count results by classification key.
 
     Keeps the first-seen label and color for each key.
 
     Args:
-      results: A list of processing contexts.
+      results (list[ProcessingContext]): Processing contexts to classify and count.
 
     Returns:
-      A mapping from outcome key to a tuple ``(count, label, color_fn)``.
+      dict[str, tuple[int, str, Callable[[str], str]]]: Mapping from classification
+      key to ``(count, label, color_fn)``.
     """
     counts: dict[str, tuple[int, str, Callable[[str], str]]] = {}
     for r in results:

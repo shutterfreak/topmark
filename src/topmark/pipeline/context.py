@@ -193,6 +193,38 @@ class ComparisonStatus(BaseStatus):
         )
 
 
+class StripStatus(BaseStatus):
+    """Represents the status of header stripping in the pipeline.
+
+    This axis is orthogonal to scanner detection and write outcomes:
+      - Scanner (HeaderStatus) tells us whether a header exists in the original file.
+      - StripStatus tells us whether we prepared/performed a removal.
+      - WriteStatus records the final write outcome (e.g., REMOVED on apply).
+    """
+
+    PENDING = "pending"
+    NOT_NEEDED = "not needed"  # no header present to remove
+    READY = "ready"  # removal prepared (updated_file_lines computed)
+    FAILED = "failed"
+
+    @property
+    def color(self) -> Callable[[str], str]:
+        """Get the chalk color renderer associated with this strip status.
+
+        Returns:
+            Function to colorize a string for this status.
+        """
+        return cast(
+            Callable[[str], str],
+            {
+                StripStatus.PENDING: chalk.gray,
+                StripStatus.NOT_NEEDED: chalk.blue,
+                StripStatus.READY: chalk.green,
+                StripStatus.FAILED: chalk.red_bright,
+            }[self],
+        )
+
+
 class WriteStatus(BaseStatus):
     """Represents the status of the header write operation in the pipeline.
 
@@ -206,6 +238,7 @@ class WriteStatus(BaseStatus):
     FAILED = "failed"
     REPLACED = "replaced"
     INSERTED = "inserted"
+    REMOVED = "removed"
 
     @property
     def color(self) -> Callable[[str], str]:
@@ -220,10 +253,11 @@ class WriteStatus(BaseStatus):
                 WriteStatus.PENDING: chalk.gray,
                 WriteStatus.PREVIEWED: chalk.blue,
                 WriteStatus.WRITTEN: chalk.green,
-                WriteStatus.SKIPPED: chalk.yellow_bright,
+                WriteStatus.SKIPPED: chalk.yellow,
                 WriteStatus.FAILED: chalk.red_bright,
                 WriteStatus.REPLACED: chalk.green,
                 WriteStatus.INSERTED: chalk.green_bright,
+                WriteStatus.REMOVED: chalk.yellow_bright,
             }[self],
         )
 
@@ -240,6 +274,7 @@ class HeaderProcessingStatus:
     generation: GenerationStatus = GenerationStatus.PENDING  # Status of header generation/rendering
     comparison: ComparisonStatus = ComparisonStatus.PENDING  # Status of header comparison
     write: WriteStatus = WriteStatus.PENDING  # Status of writing the header
+    strip: StripStatus = StripStatus.PENDING  # Status of header stripping lifecycle
 
 
 @dataclass
@@ -322,6 +357,7 @@ class ProcessingContext:
                 "generation": self.status.generation.name,
                 "comparison": self.status.comparison.name,
                 "write": self.status.write.name,
+                "strip": self.status.strip.name,
             },
             "existing_header_range": self.existing_header_range,
             "has_diff": bool(self.header_diff),
@@ -334,7 +370,10 @@ class ProcessingContext:
         }
 
     def format_summary(self) -> str:
-        """Return the current human-readable per-file summary string."""
+        """Return the current human-readable per-file summary string.
+
+        TODO: refine the rendering.
+        """
         result: str = f"{self.path}: "
         if not self.file_type or self.status.file != FileStatus.RESOLVED:
             result += (
@@ -350,6 +389,7 @@ class ProcessingContext:
         result += f", {self.status.header.color('current header: ' + self.status.header.value)}"
         result += f", {self.status.generation.color('new header: ' + self.status.generation.value)}"
         result += f", {self.status.comparison.color('result: ' + self.status.comparison.value)}"
+        result += f", {self.status.strip.color('strip: ' + self.status.strip.value)}"
         return result
 
     @property

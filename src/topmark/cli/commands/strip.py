@@ -1,30 +1,26 @@
 # topmark:header:start
 #
-#   file         : default.py
-#   file_relpath : src/topmark/cli/commands/default.py
+#   file         : strip.py
+#   file_relpath : src/topmark/cli/commands/strip.py
 #   project      : TopMark
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""Default TopMark operation (check/apply).
+"""TopMark ``strip`` command.
 
-Invoked when no explicit subcommand is provided. Performs a dry‑run check by
-default and applies changes when ``--apply`` is given.
+Removes the entire TopMark header from targeted files. By default this command
+performs a dry run (no writes); pass ``--apply`` to write changes.
 
 Examples:
-  Check files and print a human summary:
+  Preview changes (dry run):
 
-    $ topmark --summary src
+    $ topmark strip src
 
-  Emit per‑file objects in NDJSON (one per line):
+  Apply changes (write in place):
 
-    $ topmark --format=ndjson src pkg
-
-  Write changes and show diffs (human output only):
-
-    $ topmark --apply --diff .
+    $ topmark strip --apply .
 """
 
 import logging
@@ -90,7 +86,8 @@ logger = get_logger(__name__)
     default=None,
     help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
 )
-def default_command(
+def strip_command(
+    *,
     stdin: bool,
     include_patterns: list[str],
     include_from: list[str],
@@ -109,10 +106,12 @@ def default_command(
     skip_unsupported: bool,
     output_format: OutputFormat | None,
 ) -> None:
-    """Run the unified default command (check/apply).
+    """Remove the TopMark header block from targeted files.
 
-    The command receives options parsed at the group level and reads positional
-    paths from ``click.get_current_context().args`` (Black‑style).
+    This command reads positional paths from ``click.get_current_context().args``
+    (Black‑style) and reuses the standard config resolver and file selection logic
+    so options like ``--include``, ``--exclude``, ``--file-type`` and ``--stdin``
+    behave the same as the default command.
 
     Args:
       stdin (bool): Read file paths from standard input (one per line).
@@ -129,14 +128,15 @@ def default_command(
       file_types (list[str]): Restrict processing to the given TopMark file type identifiers.
       relative_to (str | None): Base directory used to compute relative paths in outputs.
       align_fields (bool): Align header fields by the colon for readability.
-      header_format (HeaderOutputFormat | None): Optional override for the header output format.
+      header_format (HeaderOutputFormat | None): Optional override for rendering format
+        (not used by ``strip`` logic, but accepted for parity with the default command).
       apply_changes (bool): Write changes to files; otherwise perform a dry run.
-      diff (bool): Show unified diffs of header changes (human output only).
+      diff (bool): Show unified diffs of header removals (human output only).
       summary_mode (bool): Show outcome counts instead of per‑file details.
       skip_compliant (bool): Suppress files whose comparison status is UNCHANGED.
       skip_unsupported (bool): Suppress unsupported file types.
-      output_format (OutputFormat | None): Output format to use
-        (``default``, ``json``, or ``ndjson``).
+      output_format (OutputFormat | None): Output format to use (``default``, ``json``,
+        or ``ndjson``).
 
     Raises:
       click.UsageError: If no input is provided.
@@ -144,6 +144,11 @@ def default_command(
 
     Returns:
       None: This function terminates the process with the appropriate exit code.
+
+    Exit Status:
+      0: Nothing to strip, or writes succeeded with ``--apply``.
+      2: Dry run detected files that would change.
+      1: Errors occurred while writing files with ``--apply``.
     """
     ctx = click.get_current_context()
     files = list(ctx.args)
@@ -190,9 +195,8 @@ def default_command(
         click.echo(chalk.blue(f"\n🔍 Processing {len(file_list)} file(s):\n"))
         click.echo(chalk.bold.underline("📋 TopMark Results:"))
 
-    # Always run the 'apply' pipeline when --apply is set so updated_file_lines are computed.
-    # The --summary flag only affects how we render output, not which steps run.
-    pipeline_name = "apply" if apply_changes else ("summary" if summary_mode else "apply")
+    # Use summary pipeline when --summary is set, else full (compare+update+patch)
+    pipeline_name = "strip"
     steps = get_pipeline(pipeline_name)
 
     results: list[ProcessingContext] = []
@@ -272,19 +276,20 @@ def default_command(
                 click.echo(r.summary)
                 if r.status.comparison == ComparisonStatus.CHANGED:
                     if apply_changes:
-                        if r.status.header == HeaderStatus.MISSING:
-                            click.echo(chalk.yellow(f"   ➕ Adding header for '{r.path}'"))
-                        else:
-                            click.echo(chalk.yellow(f"   ✏️  Updating header for '{r.path}'"))
+                        if r.status.header in [HeaderStatus.DETECTED, HeaderStatus.EMPTY]:
+                            click.echo(chalk.yellow(f"   🧹 Stripping header in '{r.path}'"))
                     else:
                         click.echo(
                             chalk.yellow(
-                                f"   🛠️  Run `topmark --apply {r.path}` to update this file."
+                                f"   🛠️  Run `topmark strip --apply {r.path}` to update this file."
                             )
                         )
 
             # Diff output
+            import pprint
+
             for r in view_results:
+                logger.debug("strip(): diff: %s, result: %s", diff, pprint.pformat(r, 2))
                 if diff and r.header_diff:
                     click.echo(render_patch(r.header_diff))
 
