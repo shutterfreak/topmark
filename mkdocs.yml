@@ -9,14 +9,15 @@
 # topmark:header:end
 
 site_name: TopMark
-site_description: Inspect, validate, and manage per-file headers across file types.
-site_url: https://shutterfreak.github.io/topmark
-copyright: "© 2025 Olivier Biot"
-repo_url: https://github.com/shutterfreak/topmark
+site_description: A tool to inspect, validate, and manage file headers in codebases.
+site_author: Olivier Biot
+copyright: 'Copyright &copy; 2025 Olivier Biot. Licensed under the MIT license.'
+site_url: https://topmark.readthedocs.io/
 repo_name: shutterfreak/topmark
-edit_uri: edit/main/docs/
+repo_url: https://github.com/shutterfreak/topmark
 theme:
   name: material
+  language: en
   logo: assets/topmark-logo.png
   favicon: assets/favicon.ico
   features:
@@ -55,14 +56,20 @@ plugins:
               - "!^_"                      # hide “private” members
               - "!^__"                     # hide dunder members like __init__
 nav:
-  - Overview: index.md
+  - Home: index.md
   - Installation: install.md
   - Usage:
-      - "Pre-commit": usage/pre-commit.md
+      - Commands:
+          - "topmark": usage/commands/topmark.md
+          - "topmark strip": usage/commands/strip.md
+      - Guides:
+          - "Pre-commit": usage/pre-commit.md
+          - "Header placement": usage/header-placement.md
+          - "Supported file types": usage/filetypes.md
   - CI/CD:
       - Release workflow: ci/release-workflow.md
   - Contributing: contributing.md
   - API:
-    - "Reference": api/index.md
+      - "Reference": api/index.md
 extra_javascript:
   - assets/version-warning.js

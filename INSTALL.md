@@ -10,45 +10,65 @@ topmark:header:start
 topmark:header:end
 -->
 
-# Installation Instructions
+# Installation
 
-These steps will set up the development environment for the `topmark` project.
+This guide covers **development setup** for working on TopMark, plus quick tips for installing the
+CLI and verifying it runs correctly.
 
 ## Requirements
 
-- Python 3.10 or newer
+- Python **3.10 – 3.13**
 - Git (for cloning and pre-commit hooks)
+- macOS, Linux, or Windows
 
-## Step-by-step Setup
+## Quick install (users)
 
-### 1. Clone the repository
+### Install from PyPI
 
 ```bash
-git clone https://github.com/your-org/topmark.git
+pip install topmark
+```
+
+Verify:
+
+```bash
+topmark version
+```
+
+> For usage and command details, see `topmark --help` and the guides under `docs/`.
+
+______________________________________________________________________
+
+## Development setup (contributors)
+
+### 1) Clone the repository
+
+```bash
+git clone https://github.com/shutterfreak/topmark.git
 cd topmark
 ```
 
-### 2. Create and activate a virtual environment
+### 2) Create and activate a virtual environment
 
 ```bash
 make venv
 ```
 
-Then activate it:
+Activate it:
 
-- On macOS/Linux:
+- **macOS/Linux**
 
   ```bash
   source .venv/bin/activate
   ```
 
-- On Windows:
+- **Windows (PowerShell)**
 
-  ```bash
-  .venv\Scripts\activate
+  ```powershell
+  .venv\Scripts\Activate.ps1
   ```
 
-### 3. Set up the development environment
+### 3) Install tools and dependencies
 
 ```bash
 make setup
@@ -57,44 +77,83 @@ make setup
 This will:
 
 - Install `pip-tools`
-- Compile both runtime and development dependencies
-- Install them into the virtualenv
+- Compile runtime & dev requirements
+- Install dependencies into the virtualenv
 
-### 4. Install pre-commit hooks
+> Note: `make setup` does **not** install TopMark itself. If you want to run `topmark` from your
+> checkout, install it in editable mode.
+
+### 3b) Install TopMark in editable mode (optional)
+
+Run the following command from the root directory (where the Makefile is located):
+
+```bash
+make dev-install
+```
+
+### 4) Install pre-commit hooks
 
 ```bash
 make pre-commit-install
 ```
 
-To ensure hooks stay up to date:
+Keep hooks current:
 
 ```bash
 make pre-commit-autoupdate
 ```
 
-This sets up automatic linting and formatting checks before each commit.
-
-## Optional: Run all pre-commit hooks manually
+### 5) Run checks locally (optional)
 
 ```bash
-make pre-commit-run
+# Lint & static analysis
+make lint
+
+# Type-check with mypy & pyright
+make typecheck
+
+# Run tests (with tox across Python versions if available)
+make test
+make tox
 ```
 
-## Installing the tool in edit mode
-
-Run the following command from the root directory (where the `pyproject.toml` file is located):
+### 6) Build the docs locally (optional)
 
 ```bash
-source .venv/bin/activate
-pip install -e .
+make docs-serve   # live-reload at http://127.0.0.1:8000
+# or
+make docs-build   # build site/ for CI
 ```
 
-## Running the tool
+______________________________________________________________________
 
-Use the CLI:
+## Running the CLI
+
+From the repo (editable install) or after `pip install topmark`:
 
 ```bash
-topmark [path(s)] [--options]
+topmark [SUBCOMMAND] [OPTIONS] [PATHS]...
 ```
 
-See `topmark --help` for available arguments.
+Examples:
+
+```bash
+# Dry-run: check files
+topmark src/
+
+# Apply changes in-place
+topmark --apply src/
+```
+
+See `topmark --help` for all commands and options.
+
+______________________________________________________________________
+
+## Troubleshooting
+
+- **mkdocs plugin not found / strict build failures**: ensure `make setup` completed; try
+  `make docs-serve` to see missing pages.
+- **Multiple Python versions**: Use `pyenv` to install 3.10–3.13; `tox` will run environments that
+  exist locally.
+- **Permissions on Windows**: If activation fails, allow script execution in PowerShell:
+  `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.

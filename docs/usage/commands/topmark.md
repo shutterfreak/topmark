@@ -1,0 +1,195 @@
+<!--
+topmark:header:start
+
+  file         : topmark.md
+  file_relpath : docs/usage/commands/topmark.md
+  project      : TopMark
+  license      : MIT
+  copyright    : (c) 2025 Olivier Biot
+
+topmark:header:end
+-->
+
+# TopMark `topmark` Command Guide
+
+The `topmark` **default command** inserts or updates the TopMark header block in targeted files. It
+is **dry‑run by default** and becomes destructive only with `--apply`.
+
+______________________________________________________________________
+
+## Quick start
+
+```bash
+# Dry‑run: show which files would get a TopMark header or be updated
+topmark src/
+
+# Apply in place
+topmark --apply src/
+
+# Show unified diffs (human output)
+topmark --diff src/
+
+# Summary‑only view (CI‑friendly)
+topmark --summary src/
+
+# Read targets from stdin (one path per line) and generate unified duff output
+git ls-files | topmark --stdin --diff
+```
+
+______________________________________________________________________
+
+## Key properties
+
+- Dry‑run by default; return code **2** when changes *would* occur.
+- Preserves the file’s original **newline style** (LF/CRLF/CR).
+- Preserves a leading **UTF‑8 BOM** if present.
+- Places headers according to file‑type policy (shebang and PEP 263 in Python; XML
+  declaration/DOCTYPE in XML/HTML; no insertion inside Markdown fenced code).
+- Uses the same file discovery and filtering as other commands (`--include*`, `--exclude*`,
+  `--stdin`).
+- Idempotent: re‑running on already‑correct files results in **no changes**.
+
+______________________________________________________________________
+
+## Options (subset)
+
+| Option               | Description                                                       |
+| -------------------- | ----------------------------------------------------------------- |
+| `--apply`            | Write changes to files (off by default).                          |
+| `--diff`             | Show unified diffs (human output only).                           |
+| `--summary`          | Show outcome counts instead of per‑file details.                  |
+| `--stdin`            | Read file paths from standard input (one per line).               |
+| `--include`          | Add paths by glob (can be used multiple times).                   |
+| `--include-from`     | File of patterns to include (one per line, `#` comments allowed). |
+| `--exclude`          | Exclude paths by glob (can be used multiple times).               |
+| `--exclude-from`     | File of patterns to exclude.                                      |
+| `--file-type`        | Restrict to specific TopMark file type identifiers.               |
+| `--skip-compliant`   | Don't report compliant files.                                     |
+| `--skip-unsupported` | Don't report unsupported files.                                   |
+
+> Run `topmark -h` for the full list of options and help text.
+
+______________________________________________________________________
+
+## Exit codes
+
+| Code | Meaning                                      |
+| ---- | -------------------------------------------- |
+| 0    | Nothing to change **or** writes succeeded    |
+| 1    | Errors occurred while writing with `--apply` |
+| 2    | Dry‑run detected that changes would occur    |
+
+______________________________________________________________________
+
+## File discovery & patterns
+
+- Positional arguments are resolved **relative to the current working directory** (CWD),
+  Black‑style.
+- Patterns in `--include`, `--exclude`, and the files passed to `--include-from` / `--exclude-from`
+  are also resolved **relative to CWD**. Absolute patterns are not supported.
+- Use `--stdin` to pipe a list of files (one per line).
+- Use `--skip-compliant` and `--skip-unsupported` to tailor output and speed in CI.
+
+### Example
+
+```bash
+# Use include/exclude files with relative patterns
+printf "*.py\n" > inc.txt
+printf "tests/*\n# ignored\n" > exc.txt
+
+topmark --include-from inc.txt --exclude-from exc.txt --diff
+```
+
+______________________________________________________________________
+
+## Behavior details
+
+- **Placement rules** (processor‑aware):
+  - **Pound** (e.g., Python/Shell/Ruby/Makefile): after shebang (and optional encoding line), else
+    at top; keep exactly one blank around the block as per policy.
+  - **Slash** (C/CPP/TS/etc.): at top with consistent spacing.
+  - **XML/HTML**: after XML declaration and DOCTYPE; maintain a single intentional blank; never
+    break the declaration.
+  - **Markdown**: uses HTML comments for the header; fenced code blocks are ignored for detection.
+- **Newline/BOM**: preserved across all paths (insert/replace). Reader normalizes in‑memory; updater
+  re‑attaches BOM and keeps line endings.
+- **Idempotency**: running `topmark` again on a file that already has a correct header produces no
+  diff and exit code 0 (unless other files would change).
+
+______________________________________________________________________
+
+## Typical workflows
+
+### 1) Add headers to a project
+
+```bash
+# Start with a dry‑run to see impact
+topmark src/
+# Then apply
+topmark --apply src/
+```
+
+### 2) Review a change set
+
+```bash
+git ls-files -m -o --exclude-standard | topmark --stdin --diff
+```
+
+### 3) CI: summarize and fail when changes are needed
+
+```bash
+# Print summary only. Exit 2 signals “would change” to fail the job.
+topmark --summary
+```
+
+## Pre‑commit integration
+
+TopMark provides two hooks:
+
+- **`topmark-check`** – validates headers and fails if fixes are needed (runs automatically on
+  commit).
+- **`topmark-apply`** – inserts/updates headers (manual only by default; may modify files).
+
+**Consumer configuration** (in a project using TopMark):
+
+```yaml
+# .pre-commit-config.yaml (consumer repo)
+repos:
+  - repo: https://github.com/shutterfreak/topmark
+    rev: v0.2.1  # Or latest version
+    hooks:
+      - id: topmark-check
+      - id: topmark-apply    # manual; invoke explicitly when desired
+```
+
+The `topmark-check` hook runs automatically at `pre-commit`. You can also invoke it manually:
+
+```bash
+# Validate TopMark headers for all files in the repo
+pre-commit run topmark-check --all-files
+
+# Validate specific files
+pre-commit run topmark-check -- <path/to/file1> <path/to/file2>
+```
+
+The `topmark-apply` hook is **manual** by default (to avoid unintended edits). Run it explicitly
+when you want to apply changes:
+
+```bash
+# Add or update TopMark headers for all files in the repo
+pre-commit run topmark-apply --all-files
+
+# Apply to specific files
+pre-commit run topmark-apply -- <path/to/file1> <path/to/file2>
+```
+
+______________________________________________________________________
+
+## Troubleshooting
+
+- **No files to process**: Ensure you passed positional paths or `--stdin`. Use `-vv` for debug
+  logs.
+- **Patterns don’t match**: Remember that include/exclude patterns are **relative to CWD**. `cd`
+  into the project root before running.
+- **Unexpected placement**: For pound/slash formats, check for leading banners or shebang/encoding
+  lines. For XML/HTML, verify declaration/doctype positions.

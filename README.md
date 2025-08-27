@@ -21,6 +21,13 @@ topmark:header:end
 codebases. It helps maintain consistent header metadata across projects by supporting per-file-type
 header formats, customizable fields, inclusion/exclusion rules, and dry-run safety.
 
+## 📚 Documentation
+
+Full documentation is available on Read the Docs: <https://topmark.readthedocs.io>
+
+This README is the canonical, complete introduction for GitHub/PyPI. The docs site provides a
+concise landing page and deep links into topics (install, usage, CI, API, etc.).
+
 ## ✨ Features
 
 - File header detection, insertion, and replacement
@@ -64,7 +71,7 @@ pip install topmark
 ## ⚙️ Usage
 
 ```bash
-topmark [OPTIONS] [PATHS]...
+topmark [SUBCOMMAND] [OPTIONS] [PATHS]...
 ```
 
 TopMark uses Click 8.2 and supports shell completions. The base command performs a dry‑run *check*
@@ -78,16 +85,22 @@ Logging verbosity is controlled globally:
 - `-q`, `--quiet`: Suppress most output (overrides verbosity)
 
 All other options, such as `--stdin`, `--file-type`, and path filters, are specific to individual
-subcommands like `check` or `apply`.
+subcommands.
 
-### Skipping and filtering helpers
+______________________________________________________________________
 
-These switches help keep CI output meaningful and fast:
+### Subcommands
 
-- `--skip-compliant` — hide files that are already compliant; only show items that need attention.
-- `--skip-unsupported` — hide unsupported file types and files matched by known types that
-  intentionally **do not** support headers (e.g., strict JSON). They remain **recognized** but are
-  not listed in results.
+| Command         | Description                                        |
+| --------------- | -------------------------------------------------- |
+| `dump-config`   | Show the resolved configuration in TOML format     |
+| `filetypes`     | List supported file types and their comment styles |
+| `strip`         | Remove TopMark headers from files (destructive)    |
+| `version`       | Print TopMark version                              |
+| `show-defaults` | Show default config (without merging)              |
+| `init-config`   | Output a starter configuration file                |
+
+______________________________________________________________________
 
 ### Examples
 
@@ -131,172 +144,73 @@ topmark strip --apply src/
 # CI-friendly summary: only show issues; ignore unsupported types
 topmark --skip-compliant --skip-unsupported src/
 
-# Apply fixes for only the changed files passed by pre-commit
-topmark --apply --apply --skip-unsupported --quiet
+# Apply fixes, don't report unsupported files, muted output (useful for pre-commit)
+topmark --apply --skip-unsupported --quiet
 ```
+
+### Adding & updating headers
+
+Use the default `topmark` command to insert or update headers. It’s **dry‑run by default**; add
+`--apply` to write changes. Placement follows file‑type policy (shebang/encoding for Python, XML
+declaration for XML/HTML, etc.). Newline style and BOM are preserved; runs are idempotent.
+
+#### Quick examples
+
+```bash
+# Preview (exit code 2 when changes are pending)
+topmark src/
+
+# Apply in place
+topmark --apply src/
+```
+
+> For full details, options, examples, and exit codes, see the dedicated guide:
+> **[Adding & updating headers with `topmark`](docs/usage/commands/topmark.md)**
+
+### Removing headers with `strip`
+
+Use `topmark strip` to remove the entire TopMark header block. The command is **dry-run by
+default**; add `--apply` to write changes. It preserves newline style and BOM, and keeps XML
+declarations and Markdown code fences intact.
+
+#### Quick examples
+
+```bash
+# Preview (exit code 2 when removals are pending)
+topmark strip src/
+
+# Apply in place
+topmark strip --apply src/
+```
+
+> For full details, options, examples, and exit codes, see the dedicated guide:
+> **[Removing headers with `topmark strip`](docs/usage/commands/strip.md)**
 
 ## 📐 Header placement rules
 
 TopMark is comment-aware and places the header block according to the file type and its policy.
 
-### Pound-style files (e.g., Python, Shell, Ruby, Makefile, YAML, TOML, Dockerfile)
+The complete header placement rules are documented in the usage guide:
 
-Rules:
-
-- If a **shebang** is present (e.g., `#!/usr/bin/env python3`), place the header **after** the
-  shebang and ensure **exactly one** blank line in-between.
-- If a **coding/encoding line** follows the shebang (PEP 263 style), place the header **after**
-  shebang **and** encoding line.
-- Otherwise, place the header **at the top of the file**.
-- Ensure **one trailing blank line** after the header block when the next line is not already blank.
-
-Example (Python):
-
-```py
-#!/usr/bin/env python3
-
-# topmark:header:start
-#
-#   file         :
-#   file_relpath :
-#
-# topmark:header:end
-
-print("hello")
-```
-
-### XML-style files (XML, HTML/XHTML, SVG, Vue/Svelte/Markdown via HTML comments)
-
-Rules:
-
-- If present, place the header **after the XML declaration** and **DOCTYPE**, with **one blank
-  line** before the header block.
-- Otherwise, place the header **at the top of the file**.
-- The header uses the file’s native comment syntax; for XML/HTML it’s a comment block wrapper:
-
-```html
-<!--
-topmark:header:start
-
-  file         :
-  file_relpath :
-
-topmark:header:end
--->
-
-<html>...</html>
-```
-
-### General guarantees
-
-- **Newline preservation:** The inserted header uses the same newline style as the file
-  (LF/CRLF/CR).
-- **BOM preservation:** If a UTF‑8 BOM is present, it is preserved.
-- **Idempotency:** Re-running TopMark on a file with a correct header makes **no changes**.
-
-### Common Options
-
-The following options can be used with most commands.
-
-| Option           | Description                              |
-| ---------------- | ---------------------------------------- |
-| `--file-type`    | Specify file type (python, markdown, …)  |
-| `--relative-to`  | Set base path for relative header fields |
-| `--include`      | Include paths or glob patterns           |
-| `--include-from` | Read inclusion patterns from file        |
-| `--exclude`      | Exclude paths or glob patterns           |
-| `--exclude-from` | Read exclusion patterns from file        |
-| `--stdin`        | Read file paths from stdin               |
-| `--apply`        | Actually modify files instead of dry-run |
-| `-v, --verbose`  | Increase verbosity (can be repeated)     |
-| `-q, --quiet`    | Suppress most output                     |
-
-### Subcommands
-
-| Command         | Description                                        |
-| --------------- | -------------------------------------------------- |
-| `dump-config`   | Show the resolved configuration in TOML format     |
-| `filetypes`     | List supported file types and their comment styles |
-| `strip`         | Remove TopMark headers from files (destructive)    |
-| `version`       | Print TopMark version                              |
-| `show-defaults` | Show default config (without merging)              |
-| `init-config`   | Output a starter configuration file                |
+- [Header placement rules](docs/usage/header-placement.md)
 
 ## 🧩 Supported file types
 
-| Processor            | File types (examples)                                                                                          |
-| -------------------- | -------------------------------------------------------------------------------------------------------------- |
-| PoundHeaderProcessor | dockerfile, env, git-meta, ini, julia, makefile, perl, python, python-requirements, r, ruby, shell, toml, yaml |
-| SlashHeaderProcessor | c, cpp, cs, go, java, javascript, kotlin, rust, swift, typescript, vscode-jsonc                                |
-| XmlHeaderProcessor   | html, markdown, svelte, svg, vue, xhtml, xml, xsl, xslt, yaml                                                  |
+See the full list and resolver behavior in the dedicated guide:
 
-Some formats (e.g., strict JSON) are **recognized but intentionally skipped** because they lack a
-safe comment syntax. Use `--skip-unsupported` to hide them from the report while keeping safety.
-
-For a complete list, please run:
-
-```sh
-topmark filetypes
-```
-
-### How TopMark resolves file types (specificity & safety)
-
-TopMark may have multiple `FileType` definitions that **match** a given path. The resolver now:
-
-- evaluates **all** matching file types and scores them by **specificity**,
-- prefers **explicit filenames / tail subpaths** (e.g., `.vscode/settings.json`) over patterns, and
-  **patterns** over simple **extensions**,
-- breaks ties in favor of **headerable** types (those without `skip_processing=True`).
-
-**Tail subpath matching.** `FileType.filenames` entries that contain a path separator (e.g.,
-`".vscode/settings.json"`) are matched as **path suffixes** against `path.as_posix()`; plain names
-still match the **basename** only.
-
-**JSON vs JSONC.** Generic `json` is recognized but marked `skip_processing=True` (no comments in
-strict JSON), while `vscode-jsonc` is a safe, **narrow** opt‑in that uses `//` headers. If you need
-more JSON-with-comments files, add them via a dedicated `FileType` or an explicit allow‑list in
-config.
-
-**Shebang‑aware insertion.** The default insertion logic is policy‑driven and shebang‑aware (insert
-after `#!` and optional encoding line). For formats like XML that need character‑precise placement,
-processors provide a text‑offset path; `XmlHeaderProcessor` uses this and signals **no line
-anchor**.
+- [Supported file types](docs/usage/filetypes.md)
 
 ## 🪝 Pre-commit integration
 
-TopMark provides first-class pre-commit hooks. A minimal consumer configuration:
+TopMark ships with pre-commit hooks to validate or update file headers.
 
-```yaml
-# .pre-commit-config.yaml (in a consuming repository)
-repos:
-  - repo: https://github.com/shutterfreak/topmark
-    rev: v0.2.0   # pin to a released tag
-    hooks:
-      - id: topmark-check
-        # Optional: limit scope to supported text types
-        # files: '\\.(py|md|toml|ya?ml|sh|Makefile)$'
-```
+- **`topmark-check`** — runs automatically at `pre-commit` / `pre-push`, fails if headers need
+  changes.
+- **`topmark-apply`** — manual only; applies fixes and may modify files.
 
-Hooks shipped by this repo:
+For configuration examples, hook policies, and troubleshooting, see the dedicated guide:
 
-- **`topmark-check`** — non-destructive validation. Recommended on `pre-commit` / `pre-push`.
-- **`topmark-apply`** — destructive, requires `--apply`. Marked `manual` so it only runs when you
-  call it explicitly.
-
-**Run the manual hook locally:**
-
-```bash
-# On the whole repo
-pre-commit run topmark-apply --all-files --hook-stage manual
-
-# On specific files
-pre-commit run topmark-apply --files path/to/file1 path/to/file2 --hook-stage manual
-```
-
-**Why does the hook seem to run multiple times?** Pre-commit batches filenames to avoid OS
-argument-length limits. You may see repeated banners (e.g., “Processing N file(s)”) as the hook runs
-once per batch. To run **once** per repo, set `pass_filenames: false` in the hook manifest and let
-TopMark discover files itself.
+- [Using TopMark with pre-commit](docs/usage/pre-commit.md)
 
 ## 🛠 Configuration
 
@@ -356,5 +270,4 @@ type checks in each environment.
 
 MIT License © 2025 Olivier Biot
 
-Markdown formatting is handled by `mdformat` with the `mdformat-tables` plugin, and configuration is
-read from `pyproject.toml`.
+> **[LICENSE (MIT)](LICENSE)**

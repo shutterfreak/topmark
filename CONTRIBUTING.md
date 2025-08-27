@@ -16,6 +16,20 @@ Thanks for your interest in **TopMark**! This guide explains how to set up your 
 quality checks, work with documentation, and use the pre-commit hooks. It mirrors the automation
 available in the **Makefile** and the repo’s **pre-commit** config.
 
+## 📂 Where things live
+
+- **README.md** — overview, features, usage, examples
+- **INSTALL.md** — installation & development setup
+- **CONTRIBUTING.md** — contributor guide (this file)
+- **docs/** — MkDocs documentation site
+  - **docs/index.md** — docs landing page
+  - **docs/usage/** — detailed usage guides (pre-commit, header placement, file types, …)
+  - **docs/ci/** — CI/CD workflows
+  - **docs/api/** — API reference
+- **Makefile** — development automation (setup, lint, test, docs, packaging)
+- **.pre-commit-config.yaml** — enabled hooks for this repo
+- **.pre-commit-hooks.yaml** — hook definitions exported to consumer repos
+
 ______________________________________________________________________
 
 ## 🧰 Prerequisites
@@ -40,6 +54,8 @@ cd topmark
 
 # 2) Create a dev environment and install tooling
 make setup                   # venv + compile lock files + sync dev deps
+# 2b) (Optional) install TopMark in editable mode to run the CLI from your checkout
+make dev-install
 
 # 3) Install Git hooks and (optionally) refresh hook versions
 make pre-commit-install      # install the pre-commit hooks
@@ -53,6 +69,20 @@ make verify
 > reproducible.
 >
 > ⚠️ Use `pip-tools >= 7.4` to avoid deprecation warnings.
+
+### ▶ Run the CLI from your checkout (optional)
+
+If you want to execute `topmark` from this working tree, install it in editable mode:
+
+```bash
+make dev-install
+```
+
+Verify:
+
+```bash
+topmark version
+```
 
 ______________________________________________________________________
 
@@ -109,6 +139,9 @@ make lint           # ruff + pyright + mypy
 make lint-fixall    # auto-fix fixable lint issues (ruff)
 ```
 
+Markdown formatting is handled by `mdformat` with the `mdformat-tables` plugin, and configuration is
+read from `pyproject.toml`.
+
 Taplo schema catalog lookups are disabled to avoid CI timeouts; see `[tool.taplo.schemas]` in
 `pyproject.toml`.
 
@@ -149,6 +182,7 @@ make pre-commit-autoupdate
 **Hooks in this repo** (see `.pre-commit-config.yaml`):
 
 - **`topmark-check`** — validates headers (non-destructive). Runs on `pre-commit` / `pre-push`.
+- **`topmark-apply`** — inserts/updates headers. **Manual** only by default; may modify files.
 - Ruff (format & lint), mypy, Pyright, Taplo, mdformat, plus standard hygiene hooks.
 
 **Why are there repeated banners during hooks?** Pre-commit batches filenames to respect OS argument
@@ -159,6 +193,8 @@ limits, so hooks may run multiple times per invocation. We keep the output quiet
 
 ```bash
 pre-commit run topmark-apply --all-files --hook-stage manual
+# Or target specific files:
+pre-commit run topmark-apply -- path/to/file1 path/to/file2
 ```
 
 ______________________________________________________________________
@@ -275,6 +311,7 @@ ______________________________________________________________________
 # Setup
 make venv              # create .venv + pip-tools
 make setup             # venv + compile locks + sync dev
+make dev-install       # install TopMark in editable mode into .venv
 
 # Dev deps
 make compile-dev       # compile requirements-dev.txt

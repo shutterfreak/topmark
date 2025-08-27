@@ -10,34 +10,57 @@ topmark:header:start
 topmark:header:end
 -->
 
-# GitHub Actions Workflow: Release to PyPI
+# Release workflow (GitHub Actions → PyPI/TestPyPI)
 
-This workflow, defined in `.github/workflows/release.yml`, handles publishing TopMark to both
-**PyPI** and **TestPyPI** using **Trusted Publishing**.
+TopMark uses GitHub Actions with **Trusted Publishing** to release packages to PyPI.\
+This workflow runs automatically when version tags are pushed to the repository.
 
-______________________________________________________________________
+## How to cut a release (maintainers)
 
-## Triggers
+1. Update the version in `pyproject.toml`.
 
-- Runs when tags matching `v*.*.*` are pushed (final releases)
-- Runs when tags matching `v*.*.*-rc*` are pushed (release candidates → TestPyPI)
+2. Commit and push your changes.
 
-______________________________________________________________________
+3. Tag the release:
 
-## Permissions
+   ```bash
+   git tag vX.Y.Z
+   git push origin vX.Y.Z
+   ```
+
+   For a release candidate (RC):
+
+   ```bash
+   git tag vX.Y.Z-rc1
+   git push origin vX.Y.Z-rc1
+   ```
+
+- Tags like `vX.Y.Z-rcN` → publish to **TestPyPI**
+- Tags like `vX.Y.Z` → publish to **PyPI** and create a GitHub Release
+
+## Workflow overview
+
+Defined in `.github/workflows/release.yml`.
+
+### Triggers
+
+- Final release: tags matching `v*.*.*`
+- Release candidate: tags matching `v*.*.*-rc*`
+
+### Permissions
 
 ```yaml
 permissions:
   contents: read
-  id-token: write   # REQUIRED for PyPI/TestPyPI Trusted Publishing (OIDC)
+  id-token: write   # REQUIRED for OIDC with PyPI/TestPyPI
 ```
 
 - `contents: read` — required for checkout
-- `id-token: write` — required for OIDC authentication with PyPI/TestPyPI
+- `id-token: write` — required for authentication with PyPI/TestPyPI
 
-______________________________________________________________________
+### Concurrency
 
-## Concurrency
+Ensures concurrent release jobs for the same ref don’t overlap:
 
 ```yaml
 concurrency:
@@ -45,59 +68,29 @@ concurrency:
   cancel-in-progress: false
 ```
 
-Ensures that concurrent release jobs for the same ref don’t overlap.
+### Jobs
 
-______________________________________________________________________
+1. **publish-pypi** (final releases only)
 
-## Jobs
+   - Runs on `ubuntu-latest`
+   - Builds sdist & wheel
+   - Publishes to PyPI via `pypa/gh-action-pypi-publish@release/v1`
 
-### 1. publish-pypi
+2. **publish-testpypi** (release candidates only)
 
-- **Condition:** Only runs for final releases (`!contains(github.ref, '-rc')`)
-- **Runs-on:** `ubuntu-latest`
-- **Environment:** `pypi`
-- **Steps:**
-  1. Check out repository
-  2. Set up Python 3.12
-  3. Build source distribution (sdist) and wheel
-  4. Publish to PyPI via `pypa/gh-action-pypi-publish@release/v1`
+   - Runs on `ubuntu-latest`
+   - Builds sdist & wheel
+   - Publishes to TestPyPI using Trusted Publishing
+     (`repository-url: https://test.pypi.org/legacy/`)
 
-### 2. publish-testpypi
+3. **github-release** (final releases only, after publish-pypi)
 
-- **Condition:** Only runs for RC tags (`contains(github.ref, '-rc')`)
-- **Runs-on:** `ubuntu-latest`
-- **Environment:** `testpypi`
-- **Steps:**
-  1. Check out repository
-  2. Set up Python 3.12
-  3. Build sdist and wheel
-  4. Publish to TestPyPI using Trusted Publishing (`repository-url: https://test.pypi.org/legacy/`)
-
-### 3. github-release
-
-- **Condition:** Runs only for final releases
-- **Needs:** `publish-pypi` (must succeed first)
-- **Steps:**
-  1. Check out repository
-  2. Create a GitHub Release using `softprops/action-gh-release@v2`
-     - `tag_name` and `name` from the pushed tag
-     - Auto-generate release notes
-
-______________________________________________________________________
+   - Runs on `ubuntu-latest`
+   - Creates a GitHub Release using `softprops/action-gh-release@v2`
+   - Uses `tag_name` and `name` from the pushed tag
+   - Auto-generates release notes
 
 ## Summary
 
 - Push **`vX.Y.Z-rcN`** → Publishes to **TestPyPI**
 - Push **`vX.Y.Z`** → Publishes to **PyPI** and creates a GitHub Release
-
-______________________________________________________________________
-
-## Recommended placement
-
-Save this file at:
-
-```
-docs/ci/release-workflow.md
-```
-
-and link it from your MkDocs navigation (e.g., under a new **CI/CD** or **Workflows** section).

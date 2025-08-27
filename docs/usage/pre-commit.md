@@ -42,12 +42,26 @@ ______________________________________________________________________
 
 ## Hooks provided by TopMark
 
+TopMark provides two pre-commit hooks to help manage file headers:
+
 - **`topmark-check`** — non-destructive validation. Fails if headers need changes.
-  - Recommended on `pre-commit` and `pre-push`.
   - Entry: `topmark check --skip-compliant --quiet`
 - **`topmark-apply`** — destructive fix; requires `--apply`. Marked `manual` so it only runs when
   explicitly invoked.
   - Entry: `topmark apply --apply --quiet`
+
+### Hook policy
+
+By default:
+
+- **`topmark-check`** runs automatically at `pre-commit` and `pre-push`.\
+  It validates headers and fails if changes are needed.
+- **`topmark-apply`** is restricted to the **manual** stage.\
+  It may modify files and should only be invoked explicitly by developers.
+
+This policy ensures safety in CI and everyday workflows.\
+Teams that want formatter-like behavior (similar to Black or Prettier) may choose to enable
+`topmark-apply` at `pre-commit` once the repository is clean.
 
 Invoke the manual hook locally:
 

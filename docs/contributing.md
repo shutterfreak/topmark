@@ -12,8 +12,22 @@ topmark:header:end
 
 # Contributing
 
-This page is part of the MkDocs site and exists to make the internal link from the docs home page
-work in **strict** mode. The canonical contributor guide lives at the repository root.
+This page exists to keep MkDocs **strict** mode happy and avoid broken links. The canonical
+contributor guide lives at the repository root.
+
+## 📂 Where things live
+
+- **README.md** — overview, features, usage, examples
+- **INSTALL.md** — installation & development setup
+- **CONTRIBUTING.md** — contributor guide (this file)
+- **docs/** — MkDocs documentation site
+  - **docs/index.md** — docs landing page
+  - **docs/usage/** — detailed usage guides (pre-commit, header placement, file types, …)
+  - **docs/ci/** — CI/CD workflows
+  - **docs/api/** — API reference
+- **Makefile** — development automation (setup, lint, test, docs, packaging)
+- **.pre-commit-config.yaml** — enabled hooks for this repo
+- **.pre-commit-hooks.yaml** — hook definitions exported to consumer repos
 
 👉 **Read the full contributor guide on GitHub:**
 
