@@ -14,7 +14,7 @@
 # - `target` is the user-facing version with confirmation prompt
 # Only the interactive targets are listed in the help menu.
 
-.PHONY: build check-venv check-rtd-venv clean compile compile-dev dev \
+.PHONY: build check-venv check-rtd-venv clean compile compile-dev dev dev-install \
 		docs-build docs-deploy docs-serve docs-verify \
 		format format-check git-archive help install lint lint-fixall \
 		pre-commit-autoupdate pre-commit-clean pre-commit-install \
@@ -58,6 +58,7 @@ help:
 	@echo "  venv                     Create virtual environment (.venv) and install pip-tools"
 	@echo "  rtd-venv                 Create RTD docs virtual environment (.rtd) and install docs deps"
 	@echo "  setup                    Run full dev setup (venv, compile locks, sync dev)"
+	@echo "  dev-install              Install TopMark in editable mode into the active venv"
 	@echo ""
 	@echo "Production / Install:"
 	@echo "  compile                  Compile production dependencies"
@@ -131,6 +132,9 @@ setup: venv compile compile-dev sync-dev
 	@echo "NOTES:"
 	@echo " * Activate the virtual environment ($(VENV))  with: source $(VENV_BIN)/activate"
 
+dev-install: check-venv
+	. $(VENV_BIN)/activate && \
+	$(VENV_BIN)/pip install -e .
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Production / Install
