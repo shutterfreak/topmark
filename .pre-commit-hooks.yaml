@@ -8,9 +8,11 @@
 #
 # topmark:header:end
 
+# This file defines the pre-commit hooks for TopMark
+
 - id: topmark-check
   name: topmark-check
-  description: Validate file headers using TopMark; fails if headers need changes.
+  description: "Validate file headers with TopMark; non-compliant or unsupported files are reported, exit non-zero if fixes are needed."
   entry: topmark --quiet --skip-compliant --skip-unsupported  # Only show non-compliant, supported entries
   language: python
   pass_filenames: true
@@ -21,7 +23,7 @@
 
 - id: topmark-apply
   name: topmark-apply
-  description: Apply/insert headers. Intended for manual runs (not automatic on commit).
+  description:  "Insert or update headers with TopMark; intended for manual runs (may modify files)."
   entry: topmark --quiet --skip-compliant --skip-unsupported --apply
   language: python
   pass_filenames: true
