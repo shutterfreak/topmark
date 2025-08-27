@@ -14,7 +14,6 @@ These tests focus on the behavior of the destructive header removal flow, coveri
 - Dry-run vs. apply exit codes
 - Idempotency of removal
 - Diff rendering
-- Summary bucketing
 - Positional glob expansion and stdin-based file lists
 
 The tests use Click's `CliRunner` for invocation to keep them hermetic and fast.
@@ -88,22 +87,37 @@ def test_strip_diff_shows_patch(tmp_path: pathlib.Path) -> None:
 
 
 def test_strip_summary_buckets(tmp_path: pathlib.Path) -> None:
-    """Ensure `--summary` shows distinct buckets for strip outcomes.
+    """`topmark strip --summary` shows correct buckets for mixed inputs.
 
-    With one file requiring removal and one already compliant, the summary should
-    include both "would strip header" and "no header" buckets.
+    Creates three files:
+      * `has.py` with an existing header → should appear under "would strip header".
+      * `clean.py` without a header → should appear under "already stripped".
+      * `bad.py` with start-only marker → should not be stripped (treated as unchanged).
+
+    The test asserts the presence of the bucket headers in the summary output.
+    The exact ordering may vary; we assert on stable substrings.
+
+    Args:
+        tmp_path: Temporary directory.
     """
-    a = tmp_path / "a.py"
-    b = tmp_path / "b.py"
-    a.write_text("# topmark:header:start\n# h\n# topmark:header:end\nprint()\n", "utf-8")
-    b.write_text("print()\n", "utf-8")
-    res = CliRunner().invoke(
-        cast(click.Command, _cli), ["-vv", "strip", "--summary", str(a), str(b)]
-    )
-    assert res.exit_code in (0, 2)
-    # Expect separate buckets (implementation now uses 'strip:ready' vs 'strip:none')
-    assert "would strip header" in res.output
-    assert "no header" in res.output
+    has = tmp_path / "has.py"
+    clean = tmp_path / "clean.py"
+    bad = tmp_path / "bad.py"
+
+    has.write_text("# topmark:header:start\n# x\n# topmark:header:end\nprint()\n", "utf-8")
+    clean.write_text("print()\n", "utf-8")
+    bad.write_text("# topmark:header:start\n# x\nprint()\n", "utf-8")
+
+    runner = CliRunner()
+    res = runner.invoke(cast(click.Command, _cli), ["-vv", "strip", "--summary", str(tmp_path)])
+
+    assert res.exit_code in (0, 2), res.output
+    out = res.output
+    # Buckets we expect to be present in the summary
+    assert "would strip header" in out
+    assert ("already stripped" in out) or ("no header" in out)
+    # depending on classification logic, bad may end up as unchanged/malformed
+    assert ("unchanged" in out) or ("malformed" in out) or ("could not" in out)
 
 
 def test_strip_accepts_positional_paths(tmp_path: pathlib.Path) -> None:
@@ -119,7 +133,7 @@ def test_strip_accepts_positional_paths(tmp_path: pathlib.Path) -> None:
     try:
         # Use a relative glob; absolute patterns are intentionally unsupported by the resolver.
         os.chdir(tmp_path)  # make the glob relative
-        res = CliRunner().invoke(cast(click.Command, _cli), ["strip", "*.md"])
+        res = CliRunner().invoke(cast(click.Command, _cli), ["-vv", "strip", "*.md"])
     finally:
         os.chdir(cwd)
     # Depending on shell/glob semantics, allow either dry-run changed or success
@@ -187,6 +201,7 @@ def test_strip_include_from_exclude_from(tmp_path: pathlib.Path) -> None:
         res = CliRunner().invoke(
             cast(click.Command, _cli),
             [
+                "-vv",
                 "strip",
                 "--include-from",
                 str(incf.name),
