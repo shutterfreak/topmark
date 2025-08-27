@@ -176,3 +176,23 @@ def test_slash_strip_header_block_with_and_without_span(tmp_path: Path) -> None:
 
     new2, span2 = proc.strip_header_block(lines=lines)
     assert new2 == new1 and span2 == (0, 2)
+
+
+@mark_pipeline
+def test_slash_replace_preserves_crlf(tmp_path: Path) -> None:
+    """Ensure replace path preserves CRLF newlines for C++ sources.
+
+    Given a C++ file with an existing TopMark header written using CRLF endings,
+    the replacement header should maintain CRLF endings across all lines.
+
+    Args:
+        tmp_path: Pytest fixture temporary directory.
+    """
+    f = tmp_path / "r.cpp"
+    with f.open("w", newline="\r\n") as fp:
+        # Note: every "\n" will be replaced with the `newline` value specified: "\r\n"
+        fp.write("// topmark:header:start\n// x\n// topmark:header:end\nint main(){}\n")
+    ctx = run_insert(f, Config.from_defaults())
+    for i, ln in enumerate(ctx.updated_file_lines or []):
+        if i < len(ctx.updated_file_lines or []) - 1:
+            assert ln.endswith("\r\n"), f"line {i} lost CRLF"

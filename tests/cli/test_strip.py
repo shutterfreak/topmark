@@ -139,3 +139,65 @@ def test_strip_accepts_stdin_list(tmp_path: pathlib.Path) -> None:
         cast(click.Command, _cli), ["-vv", "strip", "--stdin"], input=p.read_text("utf-8")
     )
     assert res.exit_code == 2
+
+
+def test_strip_ignores_missing_end_marker(tmp_path: pathlib.Path) -> None:
+    """Do not strip when the end marker is missing.
+
+    Creates a file with a start marker but no matching end marker. The
+    `strip` subcommand should treat this as *not a removable header* and
+    therefore perform no changes when `--apply` is used.
+
+    Args:
+        tmp_path: Temporary path fixture provided by pytest.
+    """
+    f = tmp_path / "bad.py"
+    f.write_text("# topmark:header:start\n# x\nprint()\n", "utf-8")
+    res = CliRunner().invoke(cast(click.Command, _cli), ["-vv", "strip", "--apply", str(f)])
+    assert res.exit_code == 0
+    # Nothing stripped; header markers still there
+    assert "topmark:header:start" in f.read_text("utf-8")
+
+
+def test_strip_include_from_exclude_from(tmp_path: pathlib.Path) -> None:
+    """Honor include-from/exclude-from with relative patterns.
+
+    The resolver expands patterns relative to the current working directory
+    (Black-style). This test writes relative patterns to the include/exclude
+    files and temporarily `chdir`s into `tmp_path` so the glob and file
+    references are valid.
+
+    Args:
+        tmp_path: Temporary directory provided by pytest.
+    """
+    a = tmp_path / "a.py"
+    b = tmp_path / "b.py"
+    a.write_text("# topmark:header:start\n# h\n# topmark:header:end\n", "utf-8")
+    b.write_text("# topmark:header:start\n# h\n# topmark:header:end\n", "utf-8")
+
+    # Use **relative** patterns: resolver disallows absolute patterns.
+    incf = tmp_path / "inc.txt"
+    incf.write_text("*.py\n# comment\n", "utf-8")
+    exf = tmp_path / "exc.txt"
+    exf.write_text("b.py\n", "utf-8")
+
+    cwd = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        res = CliRunner().invoke(
+            cast(click.Command, _cli),
+            [
+                "strip",
+                "--include-from",
+                str(incf.name),
+                "--exclude-from",
+                str(exf.name),
+                "--apply",
+            ],
+        )
+    finally:
+        os.chdir(cwd)
+
+    assert res.exit_code == 0, res.output
+    assert "topmark:header:start" not in a.read_text("utf-8")
+    assert "topmark:header:start" in b.read_text("utf-8")

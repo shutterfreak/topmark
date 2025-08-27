@@ -505,3 +505,20 @@ def test_xml_doctype_with_internal_subset(tmp_path: Path) -> None:
     sig = expected_block_lines_for(f)
     start_idx = find_line(lines, sig["start_line"])
     assert start_idx == 5  # decl(0) doctype(1..3) blank(4) start(5)
+
+
+@mark_pipeline
+def test_xml_bom_preserved_text_insert(tmp_path: Path) -> None:
+    """Ensure XML processor preserves BOM on text-insert path.
+
+    Writes an XML file that begins with a UTF-8 BOM and verifies that, after the
+    header is inserted via the XML processor's text-based insertion path, the BOM
+    remains at the start of the first output line.
+
+    Args:
+        tmp_path: Temporary directory provided by pytest.
+    """
+    f = tmp_path / "bom.xml"
+    f.write_bytes(b"\xef\xbb\xbf<?xml version='1.0'?>\n<root/>\n")
+    ctx = run_insert(f, Config.from_defaults())
+    assert (ctx.updated_file_lines or [])[0].startswith("\ufeff")
