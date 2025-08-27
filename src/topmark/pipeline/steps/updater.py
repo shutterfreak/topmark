@@ -14,8 +14,8 @@ This module defines a function that updates the ProcessingContext by inserting o
 the TopMark header in the file's contents. It updates the context's `updated_file_lines`
 and `status.write` accordingly to reflect the changes made.
 
-Note:
-    This is an early, untested implementation and may require further validation and testing.
+This step is covered by unit tests across processors (pound, slash, xml) and supports both
+line-based and text-based insertion as well as replacement and the strip fast-path.
 """
 
 from topmark.config.logging import get_logger
@@ -23,6 +23,25 @@ from topmark.pipeline.context import ProcessingContext, StripStatus, WriteStatus
 from topmark.pipeline.processors.base import NO_LINE_ANCHOR
 
 logger = get_logger(__name__)
+
+
+def _prepend_bom_to_lines_if_needed(lines: list[str], leading_bom: bool) -> list[str]:
+    """Prepend a UTF-8 BOM to the first line when requested.
+
+    Args:
+        lines: Updated file content lines.
+        leading_bom: Whether the original file started with a BOM.
+
+    Returns:
+        The (possibly) modified list of lines. Never ``None``.
+    """
+    if not lines or not leading_bom:
+        return lines
+    first = lines[0]
+    if not first.startswith("\ufeff"):
+        lines = lines[:]  # shallow copy to avoid mutating caller’s list
+        lines[0] = "\ufeff" + first
+    return lines
 
 
 def update(ctx: ProcessingContext) -> ProcessingContext:
@@ -40,7 +59,7 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
         ProcessingContext: The updated processing context with modified file lines
             and write status.
 
-    Behavior:
+    Notes:
         - If no rendered header lines are available, the step is skipped and a diagnostic
           message is appended.
         - If no header processor is assigned, the step is skipped and a diagnostic
@@ -50,9 +69,15 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
           determined by the header processor.
         - If the insertion index cannot be determined, the step fails and a diagnostic
           message is appended.
+        - Re-attaches a UTF-8 BOM to the first line of the output when the reader detected one
+          (ctx.leading_bom == True), for replace and insert operations, and for strip-ready output.
     """
     if ctx.status.strip == StripStatus.READY:
-        # previous step computed updated_file_lines for a removal
+        # Previous step computed updated_file_lines for a removal.
+        # Ensure BOM policy is respected on the final output.
+        ctx.updated_file_lines = _prepend_bom_to_lines_if_needed(
+            ctx.updated_file_lines or [], getattr(ctx, "leading_bom", False)
+        )
         ctx.status.write = WriteStatus.REMOVED  # actual apply path will only finalize the write
         return ctx
 
@@ -76,6 +101,8 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
         new_lines = (
             original_lines[:start] + rendered_expected_header_lines + original_lines[end + 1 :]
         )
+        # Prepend BOM if needed
+        new_lines = _prepend_bom_to_lines_if_needed(new_lines, getattr(ctx, "leading_bom", False))
         ctx.status.write = WriteStatus.REPLACED
         ctx.updated_file_lines = new_lines
         logger.trace("Updated file (replace):\n%s", "".join(ctx.updated_file_lines or []))
@@ -100,6 +127,9 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
                         )
 
                 new_text = original_text[:char_offset] + header_text + original_text[char_offset:]
+                # Prepend BOM if needed
+                if getattr(ctx, "leading_bom", False) and not new_text.startswith("\ufeff"):
+                    new_text = "\ufeff" + new_text
                 ctx.updated_file_lines = new_text.splitlines(keepends=True)
                 ctx.status.write = WriteStatus.INSERTED
                 return ctx
@@ -132,7 +162,8 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
             + rendered_expected_header_lines
             + original_lines[insert_index:]
         )
-
+        # Prepend BOM if needed
+        new_lines = _prepend_bom_to_lines_if_needed(new_lines, getattr(ctx, "leading_bom", False))
         ctx.updated_file_lines = new_lines
         ctx.status.write = WriteStatus.INSERTED
         logger.trace("Updated file (line-based):\n%s", "".join(ctx.updated_file_lines or []))

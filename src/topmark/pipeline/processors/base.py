@@ -9,7 +9,7 @@
 # topmark:header:end
 
 """
-Header processor base module for TopMark's pipeline v2.
+Header processor base module for TopMark's header processing pipeline.
 
 This module defines the HeaderProcessor base class, which provides a framework for
 processing file headers in different file types. It includes logic for scanning,
@@ -97,18 +97,18 @@ class HeaderProcessor:
         and the next END marker, then parses only the payload lines between them.
 
         Args:
-            context: Processing context with ``existing_header_lines`` set to the outer
-                header slice (markers included).
+          context (ProcessingContext): Pipeline context with ``existing_header_lines``
+            set to the outer header slice (markers included).
 
         Returns:
-            Dict of parsed header fields (key -> value). Returns {} if no payload or
-            when markers cannot be found in order.
+          dict[str, str]: Mapping of parsed header fields (key → value). Returns an
+          empty dict if no payload is found or markers are missing.
 
         Notes:
-            - Comment affixes (``line_prefix`` / ``line_suffix``) are stripped per line.
-            - Malformed field lines add diagnostics but do not set MALFORMED; reserve
-              MALFORMED for marker issues (normally handled by the scanner).
-            - Subclasses may override to support multi-line fields or alternate syntax.
+          - Comment affixes (``line_prefix`` / ``line_suffix``) are stripped per line.
+          - Malformed field lines add diagnostics but do not set MALFORMED; reserve
+            MALFORMED for marker issues (normally handled by the scanner).
+          - Subclasses may override to support multi-line fields or alternate syntax.
         """
         lines: list[str] | None = context.existing_header_lines
         # TODO: improve
@@ -224,19 +224,19 @@ class HeaderProcessor:
         line_prefix: str | None = None,
         line_suffix: str | None = None,
     ) -> str:
-        r"""Wrap a single content line using line prefix/suffix, then append a newline.
+        """Wrap a single content line using line prefix/suffix, then append a newline.
 
         Args:
-            content: Inner text for the line (without prefixes/suffixes or newline).
-            newline_style: Newline characters to append (e.g., "\n", "\r\n").
-            line_prefix: Optional override for the line prefix; defaults to the
-                instance's ``line_prefix`` when ``None``.
-            line_suffix: Optional override for the line suffix; defaults to the
-                instance's ``line_suffix`` when ``None``.
+          content (str): Inner text for the line (without prefixes/suffixes or newline).
+          newline_style (str): Newline characters to append (``LF``, ``CR``, ``CRLF``).
+          line_prefix (str | None): Optional override for the line prefix; defaults to
+            the instance's ``line_prefix`` when ``None``.
+          line_suffix (str | None): Optional override for the line suffix; defaults to
+            the instance's ``line_suffix`` when ``None``.
 
         Returns:
-            The fully wrapped line (prefix + content + suffix) including the trailing
-            newline characters.
+          str: The fully wrapped line (prefix + content + suffix) including the trailing
+          newline characters.
         """
         lp = self.line_prefix if line_prefix is None else line_prefix
         ls = self.line_suffix if line_suffix is None else line_suffix
@@ -270,17 +270,17 @@ class HeaderProcessor:
           3) an intentional blank line following the start marker.
 
         Args:
-            newline_style: Newline characters to append to each rendered line.
-            block_prefix: Optional override for the block prefix; defaults to the
-                instance's ``block_prefix`` when ``None``.
-            line_prefix: Optional override for the line prefix; defaults to the
-                instance's ``line_prefix`` when ``None``.
-            line_suffix: Optional override for the line suffix; defaults to the
-                instance's ``line_suffix`` when ``None``.
+          newline_style (str): Newline characters to append to each rendered line.
+          block_prefix (str | None): Optional override for the block prefix; defaults to
+            the instance's ``block_prefix`` when ``None``.
+          line_prefix (str | None): Optional override for the line prefix; defaults to
+            the instance's ``line_prefix`` when ``None``.
+          line_suffix (str | None): Optional override for the line suffix; defaults to
+            the instance's ``line_suffix`` when ``None``.
 
         Returns:
-            A list of preamble lines (each ending with ``newline_style``) that precedes
-            the header fields.
+          list[str]: Preamble lines (each ending with ``newline_style``) that precede
+          the header fields.
         """
         bp = self.block_prefix if block_prefix is None else block_prefix
         lines: list[str] = []
@@ -316,17 +316,17 @@ class HeaderProcessor:
           3) the block comment closer (when configured).
 
         Args:
-            newline_style: Newline characters to append to each rendered line.
-            block_suffix: Optional override for the block suffix; defaults to the
-                instance's ``block_suffix`` when ``None``.
-            line_prefix: Optional override for the line prefix; defaults to the
-                instance's ``line_prefix`` when ``None``.
-            line_suffix: Optional override for the line suffix; defaults to the
-                instance's ``line_suffix`` when ``None``.
+          newline_style (str): Newline characters to append to each rendered line.
+          block_suffix (str | None): Optional override for the block suffix; defaults to
+            the instance's ``block_suffix`` when ``None``.
+          line_prefix (str | None): Optional override for the line prefix; defaults to
+            the instance's ``line_prefix`` when ``None``.
+          line_suffix (str | None): Optional override for the line suffix; defaults to
+            the instance's ``line_suffix`` when ``None``.
 
         Returns:
-            A list of postamble lines (each ending with ``newline_style``) that follows
-            the header fields.
+          list[str]: Postamble lines (each ending with ``newline_style``) that follow
+          the header fields.
         """
         bs = self.block_suffix if block_suffix is None else block_suffix
         lines: list[str] = []
@@ -354,31 +354,28 @@ class HeaderProcessor:
         line_suffix_override: str | None = None,
         line_indent_override: str | None = None,
     ) -> list[str]:
-        """
-        Render a header block based on the current configuration, template and optional overrides.
+        """Render a header block from configuration, template, and overrides.
 
         This method generates a header string using the configuration's header fields and
         values, optionally overridden by provided header_list and custom_headers. It respects
         alignment and raw_header settings from the configuration to format the output.
 
         Args:
-            header_values: Dict of header fields to be rendered.
-            config: The TopMark Config instance (defines the header fields to be rendered)
-            newline_style: The newline style (CRLF, CR, LF)
-            block_prefix_override: Optional string to prepend before the header block.
-            block_suffix_override: Optional string to append after the header block.
-            line_prefix_override: Optional string to prepend to each line in the header block.
-            line_suffix_override: Optional string to append to each line in the header block.
-            line_indent_override: Optional indentation before each header field
+          header_values (dict[str, str]): Mapping of header fields to render.
+          config (Config): TopMark configuration (defines header fields and options).
+          newline_style (str): Newline style (``LF``, ``CR``, ``CRLF``).
+          block_prefix_override (str | None): Optional block prefix override.
+          block_suffix_override (str | None): Optional block suffix override.
+          line_prefix_override (str | None): Optional line prefix override.
+          line_suffix_override (str | None): Optional line suffix override.
+          line_indent_override (str | None): Optional indentation override for field lines.
 
         Returns:
-            A formatted string representing the complete header block.
+          list[str]: Rendered header lines ending with ``newline_style``.
 
         Notes:
-            If raw_header is True, we don't use the config's block_prefix/suffix or
-            line_prefix/suffix, but rather the provided overrides or defaults.
-            TODO: consider expanding this to a --format CLI flag (raw, json, ...)
-
+          If ``config.header_format`` is ``HeaderOutputFormat.PLAIN``, the method emits
+          a raw/plain header (no prefixes/suffixes/indentation) unless overrides are given.
         """
         assert config, "Config is undefined"
 
@@ -463,19 +460,17 @@ class HeaderProcessor:
           line when ``encoding_line_regex`` is provided).
         - Otherwise, insert at the top of file (index 0).
 
-        In either case, if we insert after a preamble and the next line is already blank,
-        we consume exactly one existing blank line so that a single blank separates
-        the preamble from the header.
+        If inserting after a preamble and the next line is already blank, consume exactly
+        one existing blank line so that a single blank separates the preamble from the header.
 
         Subclasses may override this when a format imposes different placement rules.
 
         Args:
-            file_lines: List of lines from the file being processed.
+          file_lines (list[str]): Lines from the file being processed.
 
         Returns:
-            Index at which to insert the TopMark header, or ``NO_LINE_ANCHOR`
-                if no insertion index can be found.
-
+          int: Index at which to insert the TopMark header, or ``NO_LINE_ANCHOR`` if
+          no insertion index can be found.
         """
         index = 0
         shebang_present = False
@@ -498,19 +493,18 @@ class HeaderProcessor:
         return index
 
     def line_has_directive(self, line: str, directive: str) -> bool:
-        """
-        Check if a line contains the specified directive, considering line prefix / suffix.
+        """Check whether a line contains the directive with the expected affixes.
 
-        This method is used by `get_header_bounds()` to locate header start/end markers.
+        This method is used by ``get_header_bounds()`` to locate header start/end markers.
         Subclasses may override this method for more flexible or format-specific matching.
 
         Args:
-            line: The line of text to check.
-            directive: The directive string to look for.
+          line (str): The line of text to check (whitespace is trimmed internally).
+          directive (str): The directive string to look for.
 
         Returns:
-            True if the line contains the directive with the correct prefix/suffix,
-            False otherwise.
+          bool: ``True`` if the line contains the directive with the configured
+          prefix/suffix, otherwise ``False``.
         """
         line = line.strip()
 
@@ -544,28 +538,24 @@ class HeaderProcessor:
     ) -> bool:
         """Validate that a detected header is at an acceptable location.
 
-        The default policy accepts a candidate header only when its *start* line
-        is exactly at the computed anchor or within a small proximity window
-        around it. Subclasses may override this method to enforce additional
-        format-specific constraints (e.g., fenced-code detection in Markdown).
+        The default policy accepts a candidate header only when its *start* line is
+        exactly at the computed anchor or within a small proximity window around it.
+        Subclasses may override this to enforce format-specific constraints.
 
         Args:
-            lines: Full file content split into lines. (Not used by the default
-                implementation, but available to overrides.)
-            header_start_idx: 0-based index of the candidate header's first line.
-            header_end_idx: 0-based index of the candidate header's last line
-                (inclusive). Provided for completeness/overrides.
-            anchor_idx: 0-based index of the line where the header is expected
-                to be inserted according to the file type's placement rules.
+          lines (list[str]): Full file content split into lines.
+          header_start_idx (int): 0-based index of the candidate header's first line.
+          header_end_idx (int): 0-based index of the candidate header's last line (inclusive).
+          anchor_idx (int): 0-based index where a header would be inserted per policy.
 
         Returns:
-            True if the candidate header lies within the configured proximity
-            window relative to the anchor; False otherwise.
+          bool: ``True`` if the candidate lies within the configured proximity window,
+          otherwise ``False``.
 
         Notes:
             The proximity window can be tuned per file type by defining
-            `scan_window_before` and `scan_window_after` on the associated
-            `FileType`. Defaults are 0 and 2, respectively.
+            ``scan_window_before`` and ``scan_window_after`` on the associated
+            ``FileType``. Defaults are 0 and 2, respectively.
         """
         # Per-file-type tunables (fallback to conservative defaults)
         before = 0
@@ -577,17 +567,18 @@ class HeaderProcessor:
         return (anchor_idx - before) <= header_start_idx <= (anchor_idx + after)
 
     def get_header_bounds(self, lines: list[str]) -> tuple[int | None, int | None]:
-        """
-        Identify the (start, end) line indices of the TopMark header.
+        """Identify the inclusive (start, end) line indices of the TopMark header.
 
-        Supports both line-comment and block-comment styles depending on the
-        processor's configuration.
+        Supports both line-comment and block-comment styles depending on the processor's
+        configuration. Uses :meth:`validate_header_location` to filter candidates near
+        the computed insertion anchor.
 
         Args:
-            lines: Full list of lines from the file.
+          lines (list[str]): Full list of lines from the file.
 
         Returns:
-            A tuple (start_index, end_index), or (None, None) if no header block is found.
+          tuple[int | None, int | None]: ``(start_index, end_index)`` (inclusive) when
+          a valid header is found, or ``(None, None)`` otherwise.
         """
         anchor_idx = self.get_header_insertion_index(lines) or 0
 
@@ -611,42 +602,84 @@ class HeaderProcessor:
     def strip_header_block(
         self, *, lines: list[str], span: tuple[int, int] | None = None
     ) -> tuple[list[str], tuple[int, int] | None]:
-        """Remove the TopMark header block and return (new_lines, removed_span).
+        """Remove the TopMark header block and return the updated file image.
 
-        Default implementation:
-          - If ``span`` is provided, it is trusted and used directly (preferred path).
-          - Otherwise, locate the header span using ``get_header_bounds(lines)``.
-          - If found, return the file with that inclusive span removed.
-          - If the header started at the very first line (index 0), and the new
-            first line is blank, remove **exactly one** leading blank line to avoid
-            leaving an extra gap at the top.
+        This method supports two detection modes:
+
+        1) **Policy-aware detection** (preferred):
+           If ``span`` is not provided, the processor calls ``get_header_bounds(lines)``
+           to locate a valid header near the computed insertion anchor. This respects
+           file-type placement rules (shebang handling, XML prolog, Markdown fences, etc.).
+
+        2) **Permissive fallback** (best-effort):
+           If policy-aware detection fails, the method performs a lightweight scan for
+           the first ``START``..``END`` marker pair *anywhere* in the file. The scan
+           accepts either exact directive matches (prefix/suffix aware) **or** marker
+           substrings appearing inside single-line comment wrappers (e.g.,
+           ``<!-- topmark:header:start -->`` for XML/HTML/Markdown). This covers older
+           files or content transformed by formatters.
+
+        When a header is removed at the very top of the file (``start == 0``), the
+        method trims **exactly one** leading blank line that may be left behind by the
+        removal to avoid introducing an extra gap.
 
         Args:
-            lines: Full list of file lines.
-            span: Optional inclusive (start, end) line-index tuple, typically provided
-              by the scanner as ``ctx.existing_header_range``. When provided, no
-              additional scanning is performed.
+            lines: Full file content split into lines (each typically ending with a newline).
+            span: Optional inclusive ``(start, end)`` line index tuple, normally provided by
+                the scanner via ``ctx.existing_header_range``. When set, no scanning is performed.
 
         Returns:
-            A tuple ``(new_lines, removed_span)`` where:
-              - ``new_lines`` are the potentially modified lines after removal.
-              - ``removed_span`` is the inclusive (start, end) line-index tuple
-                that was removed, or ``None`` if no header was found.
+            tuple[list[str], tuple[int, int] | None]:
+                ``(new_lines, removed_span)`` where ``removed_span`` is the inclusive
+                span actually removed, or ``None`` if no header was found.
         """
+        # 1) Resolve bounds: prefer explicit span, else policy-aware detection.
         if span is None:
+            # First try the standard, policy-aware bounds detection.
             start, end = self.get_header_bounds(lines)
             span = (start, end) if start is not None and end is not None else None
-        start_end = span
-        if start_end is None or start_end[1] < start_end[0]:
+
+            if span is None:
+                # Permissive scan: accept directive substrings inside single-line
+                # comment wrappers (e.g., XML/HTML `<!-- ... -->`).
+                # Useful when stripping headers that were inserted by older versions
+                # or were moved by formatting tools.
+                n = len(lines)
+                i = 0
+                while i < n:
+                    # Accept either exact directive match (prefix/suffix-aware)
+                    # or the directive appearing inside a single-line comment wrapper.
+                    start_match = self.line_has_directive(lines[i], TOPMARK_START_MARKER) or (
+                        TOPMARK_START_MARKER in lines[i]
+                    )
+                    if start_match:
+                        j = i + 1
+                        while j < n:
+                            end_match = self.line_has_directive(lines[j], TOPMARK_END_MARKER) or (
+                                TOPMARK_END_MARKER in lines[j]
+                            )
+                            if end_match:
+                                span = (i, j)
+                                break
+                            j += 1
+                        if span is not None:
+                            break
+                    i += 1
+
+        # 2) No header? Return original content unchanged.
+        if span is None:
             return lines, None
 
-        # Bind the validated span tuple
-        start, end = start_end
+        start, end = span
+        # Defensive validation of bounds
+        if start < 0 or end < start or end >= len(lines):
+            # Defensive: invalid span -> no-op
+            return lines, None
 
-        # Remove the inclusive header span
+        # Remove the block (inclusive header span)
         new_lines = lines[:start] + lines[end + 1 :]
 
-        # If the header was at the very top, trim a single leftover blank line
+        # Top-of-file cleanup: trim exactly one blank line left by removal.
         if start == 0 and new_lines and new_lines[0].strip() == "":
             new_lines = new_lines[1:]
 
@@ -722,6 +755,19 @@ class HeaderProcessor:
         return results
 
     def _get_bounds_line_comments(self, lines: list[str]) -> tuple[int | None, int | None]:
+        """Identify bounds of a line-comment TopMark header.
+
+        Scans for the first occurrence of ``topmark:header:start`` and the next
+        ``topmark:header:end`` using the processor's configured line affixes. This
+        helper does no placement validation; callers should apply policy checks.
+
+        Args:
+          lines: Full file content split into lines.
+
+        Returns:
+          A tuple ``(start_index, end_index)`` where both are 0-based line indices of
+          the directive lines (inclusive), or ``(None, None)`` when no pair is found.
+        """
         start_index: int | None = None
         end_index: int | None = None
 
@@ -784,11 +830,19 @@ class HeaderProcessor:
         insert_index: int,
         rendered_header_lines: list[str],
     ) -> list[str]:
-        """Allow processors to adjust whitespace around the rendered header.
+        """Adjust whitespace around the header for line-based insertion.
 
         Default implementation returns ``rendered_header_lines`` unchanged. Subclasses
         can override to add/remove leading or trailing blank lines depending on
         surrounding context.
+
+        Args:
+          original_lines (list[str]): The original file lines.
+          insert_index (int): Line index at which the header will be inserted.
+          rendered_header_lines (list[str]): The header lines to insert.
+
+        Returns:
+          list[str]: Possibly modified header lines to insert at ``insert_index``.
         """
         return rendered_header_lines
 
@@ -801,11 +855,11 @@ class HeaderProcessor:
         back to the standard line-based insertion path.
 
         Args:
-            original_text: The full file content as a single string.
+          original_text (str): Full file content as a single string.
 
         Returns:
-            The 0-based character offset at which the header should be inserted, or
-            ``None`` to use the line-based insertion strategy.
+          int | None: 0-based character offset at which to insert, or ``None`` to
+          use the line-based insertion strategy.
         """
         return None
 
@@ -815,20 +869,18 @@ class HeaderProcessor:
         insert_offset: int,
         rendered_header_text: str,
     ) -> str:
-        """Adjust the rendered header *text* before insertion.
+        """Adjust the rendered header *text* before text-based insertion.
 
         Subclasses may override this to add or trim surrounding newlines so the header
         block sits on its own lines when performing text-based insertion.
 
         Args:
-            original_text: The full file content as a single string.
-            insert_offset: The 0-based character offset where the header will be
-                inserted.
-            rendered_header_text: The header block as a single string (may already
-                include newlines).
+          original_text (str): Full file content as a single string.
+          insert_offset (int): 0-based character offset where the header will be inserted.
+          rendered_header_text (str): The header block as a single string.
 
         Returns:
-            The (possibly modified) header text to splice into ``original_text`` at
-            ``insert_offset``.
+          str: The (possibly modified) header text to splice into ``original_text`` at
+          ``insert_offset``.
         """
         return rendered_header_text

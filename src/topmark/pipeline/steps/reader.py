@@ -34,19 +34,22 @@ logger = get_logger(__name__)
 
 
 def read(ctx: ProcessingContext) -> ProcessingContext:
-    r"""Load file lines and detect newline style.
+    """Loads file lines and detects newline style.
 
-    Preserves native newline conventions and records them in ``ctx.newline_style``.
-    Uses an incremental UTF-8 decoder for robust text sniffing across chunk
-    boundaries, detects CRLF even when split across reads, and defaults to LF
-    ("\n") when no newline is observed (e.g., single-line files). Also sets
-    ``ctx.ends_with_newline`` and populates ``ctx.file_lines``.
+    This function preserves native newline conventions and records them in ``ctx.newline_style``.
+    It uses an incremental UTF-8 decoder for robust text sniffing, detects CRLF even when split
+    across reads, and defaults to LF when no newline is observed (e.g., single-line files).
 
     Args:
-        ctx: The processing context for the current file.
+        ctx (ProcessingContext): The processing context for the current file.
 
     Returns:
         ProcessingContext: The same context, updated in place.
+
+    Notes:
+        - Sets ``ctx.ends_with_newline`` and populates ``ctx.file_lines``.
+        - Sets ``ctx.leading_bom`` when a UTF-8 BOM is present and strips it from the
+          in-memory lines.
     """
     # Safeguard: only proceed if the resolver step succeeded
     if ctx.status.file is not FileStatus.RESOLVED:
@@ -124,8 +127,8 @@ def read(ctx: ProcessingContext) -> ProcessingContext:
         # No newline detected across sniffed chunks; assume LF and proceed.
         # This allows single-line files without terminators to be processed safely.
         ctx.newline_style = "\n"
+        logger.debug("No line end detected for %s; defaulting to LF (\\n)", ctx.path)
 
-    logger.debug("No line end detected for %s; defaulting to LF (\\n)", ctx.path)
     # Read the full content as text using the detected newline convention
     try:
         with ctx.path.open(
@@ -135,6 +138,13 @@ def read(ctx: ProcessingContext) -> ProcessingContext:
             newline="",
         ) as f:
             lines = list(f)
+
+        # Normalize a leading UTF-8 BOM so downstream steps work on BOM-free text.
+        # We remember its presence to re-attach it at write time in the updater.
+        if lines and lines[0].startswith("\ufeff"):
+            ctx.leading_bom = True
+            lines = lines[:]  # copy to avoid mutating any shared list
+            lines[0] = lines[0].lstrip("\ufeff")
 
         # Record whether the file ends with a newline (used when generating patches)
         if len(lines) == 0:

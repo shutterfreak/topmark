@@ -290,9 +290,14 @@ class ProcessingContext:
         path (Path): The file path to process.
         config (Config): The configuration for processing.
         file_type (FileType | None): The resolved file type, if applicable.
+        status (HeaderProcessingStatus): Processing status for each pipeline phase.
         header_processor (HeaderProcessor | None): The header processor instance for this file.
         file_lines (list[str] | None): The full original file content as list of lines.
-        status (HeaderProcessingStatus): Processing status for each pipeline phase.
+        leading_bom (bool): True when the original file began with a UTF-8 BOM
+            ("\ufeff"). The reader sets this and strips the BOM from memory; the
+            updater re-attaches it to the final output.
+        newline_style: str: The newline stile in the file (``LF``, ``CR``, ``CRLF``).
+        ends_with_newline: bool | None: True if the file ends with a newline.
         existing_header_range (tuple[int, int] | None): The (start, end) line numbers
             of the existing header.
         existing_header_block (str | None): The text block of the existing header.
@@ -303,6 +308,8 @@ class ProcessingContext:
         expected_header_block (str | None): The fully formatted expected header text.
         expected_header_lines (list[str] | None): Raw lines of the expected header.
         expected_header_dict (dict[str, str] | None): Final rendered fields before formatting.
+        updated_file_lines: list[str] | None: Updated file content as a list of lines
+        header_diff: str | None: Unified diff (patch) for patching (updating) the header
         diagnostics (list[str]): Any warnings or errors encountered during processing.
     """
 
@@ -310,17 +317,14 @@ class ProcessingContext:
     path: Path  # The file path to process (absolute or relative to working directory)
     config: "Config"  # Active config at time of processing
     file_type: "FileType | None" = None  # Resolved file type (e.g., PythonFileType)
+    status: HeaderProcessingStatus = field(default_factory=HeaderProcessingStatus)
     header_processor: "HeaderProcessor | None" = (
         None  # HeaderProcessor instance for this file type, if applicable
     )
     file_lines: list[str] | None = None  # Original file content as a list of lines
+    leading_bom: bool = False  # True if original file began with a UTF-8 BOM
     newline_style: str = "\n"  # Newline style (default = "\n")
     ends_with_newline: bool | None = None  # True if file ends with a newline sequence
-
-    # NOTE: this might be a memory hog:
-    updated_file_lines: list[str] | None = None  # Updated file content as a list of lines
-
-    status: HeaderProcessingStatus = field(default_factory=HeaderProcessingStatus)
 
     # 🔍 2. Existing header (detected from original file)
     existing_header_range: tuple[int, int] | None = (
@@ -338,6 +342,8 @@ class ProcessingContext:
     expected_header_lines: list[str] | None = None  # Raw lines of the expected header
     expected_header_dict: dict[str, str] | None = None  # Final rendered fields before formatting
 
+    # 4. Updated file and resulting diff
+    updated_file_lines: list[str] | None = None  # Updated file content as a list of lines
     header_diff: str | None = None  # Unified diff (patch) for patching (updating) the header
 
     # Processing diagnostics: warnings/errors collected during processing

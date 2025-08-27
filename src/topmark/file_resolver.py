@@ -8,7 +8,14 @@
 #
 # topmark:header:end
 
-"""Module for resolving the list of input files based on configuration and path filters."""
+"""
+Resolve input files for TopMark based on config, paths, and filters.
+
+This module expands positional arguments and stdin‑provided paths, applies
+include/exclude patterns (including patterns loaded from files), and filters
+by registered file types. Globs are expanded relative to the current working
+directory. The result is a deterministic, sorted list of files to process.
+"""
 
 import sys
 from collections.abc import Callable
@@ -27,44 +34,50 @@ logger = get_logger(__name__)
 
 
 def load_patterns_from_file(file_path: str | Path) -> list[str]:
-    """Load non-empty, non-comment patterns from a file.
+    """Load non‑empty, non‑comment patterns from a text file.
 
-    Reads a file line-by-line and returns a list of patterns, ignoring empty lines
-    and lines starting with '#'.
+    Lines that are empty or start with ``#`` are ignored. Whitespace is trimmed
+    from each non‑ignored line. If the file cannot be read, an empty list is returned.
 
     Args:
-        file_path: The path to the pattern file.
+      file_path (str | Path): Path to the file containing one pattern per line.
 
     Returns:
         A list of patterns as strings.
     """
     try:
+        # Skip empty lines and commented-out lines
         return [
             line.strip()
             for line in Path(file_path).read_text(encoding="utf-8").splitlines()
-            if line.strip()
-            and not line.strip().startswith("#")  # Skip empty lines and commented-out lines
+            if line.strip() and not line.strip().startswith("#")
         ]
-    except FileNotFoundError:
+    except FileNotFoundError as e:
+        logger.error("Cannot read patterns from '%s': %s", file_path, e)
         return []
 
 
 def resolve_file_list(config: Config, *, stdin_stream: TextIO | None = None) -> list[Path]:
-    """Resolve the list of files to process based on the given configuration.
+    """Return the list of input files derived from configuration and filters.
 
-    This function uses configuration options to determine the input files by expanding
-    paths, applying include and exclude patterns (including from files), and filtering
-    by file type.
+    The resolver:
+      1. Collects base paths from positional arguments, stdin (when enabled), or
+         ``config_files`` as a last resort.
+      2. Expands base paths: files are added directly; directories are traversed
+         recursively; globs are expanded relative to the current working directory.
+      3. Applies include patterns (and patterns loaded from ``include_from`` files),
+         merging their matches into the candidate set.
+      4. Applies exclude patterns (and patterns from ``exclude_from`` files) using
+         Git‑wildmatch semantics via :mod:`pathspec`.
+      5. Optionally filters by configured file types.
 
     Args:
-        config: Configuration object containing file resolution parameters.
-        stdin_stream: Optional text stream to read file paths from when ``config.stdin``
-            is ``True``. Defaults to :data:`sys.stdin`. Lines are stripped; empty lines
-            are ignored. If an exception occurs while iterating the stream, it is
-            treated as no input (an empty list of paths).
+      config (Config): Configuration values influencing path collection and filters.
+      stdin_stream (TextIO | None): Optional stream to read file paths from when
+        ``config.stdin`` is ``True``. Defaults to :data:`sys.stdin`.
 
     Returns:
-        A sorted list of resolved file paths.
+      list[Path]: Sorted list of files selected for processing.
     """
     logger.debug("resolve_file_list(): config: %s", config)
 
@@ -101,7 +114,7 @@ def resolve_file_list(config: Config, *, stdin_stream: TextIO | None = None) -> 
     )
 
     def expand_path(p: Path) -> list[Path]:
-        # If the path contains a glob pattern, use rglob to expand it relative to current dir
+        # Glob patterns are expanded relative to CWD (Black‑style args).
         if "*" in str(p):
             return list(Path(".").rglob(str(p)))
         # If the path is a directory, recursively include all files and subdirectories
@@ -170,7 +183,8 @@ def resolve_file_list(config: Config, *, stdin_stream: TextIO | None = None) -> 
 
     is_excluded = is_excluded_factory(combined_exclude_patterns)
 
-    filtered_files = {f for f in all_files if f.is_file() and not is_excluded(f)}  # only keep files
+    # Keep only files (drop directories) and apply exclusions.
+    filtered_files = {f for f in all_files if f.is_file() and not is_excluded(f)}
 
     # Step 6: Log and skip files with unknown types (commented out - consider cleanup or refactor)
     # skipped = []
@@ -207,16 +221,17 @@ def resolve_file_list(config: Config, *, stdin_stream: TextIO | None = None) -> 
 
 
 def resolve_file_types(path: Path) -> list[FileType]:
-    """Resolve the file types matching the given path.
+    """Resolve registered file types that match a path.
 
     Attempts to match the path against all registered file type matchers and returns
     a list of matching FileType instances. Logs a warning if multiple matches are found.
 
     Args:
-        path: The file path to check.
+      path (Path): Path to test.
 
     Returns:
-        A list of matching FileType instances, or empty list if no matches.
+      list[FileType]: Matching file types (may be empty). Logs a warning when
+      multiple types match the same path.
     """
     matches: list[FileType] = [ft for ft in get_file_type_registry().values() if ft.matches(path)]
     if len(matches) > 1:
@@ -226,3 +241,26 @@ def resolve_file_types(path: Path) -> list[FileType]:
             ", ".join([type(ft).__name__ for ft in matches]),
         )
     return matches
+
+
+def detect_newline(lines: list[str]) -> str:
+    """Detect the newline style used by a sequence of lines.
+
+    Scans the provided lines in order and returns the first encountered newline
+    sequence: ``CRLF`` ``LF``, or ``CR``. Falls back to
+    ``LF`` when no newline can be inferred (e.g., single line without terminator).
+
+    Args:
+      lines (list[str]): Lines from a file, each potentially ending with a newline.
+
+    Returns:
+      str: The detected newline sequence (``LF``, ``CR``, or ``CRLF``).
+    """
+    for ln in lines:
+        if ln.endswith("\r\n"):
+            return "\r\n"
+        if ln.endswith("\n"):
+            return "\n"
+        if ln.endswith("\r"):
+            return "\r"
+    return "\n"

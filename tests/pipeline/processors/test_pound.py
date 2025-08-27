@@ -8,7 +8,13 @@
 #
 # topmark:header:end
 
-"""Tests for the PoundHeaderProcessor."""
+"""
+Tests for the PoundHeaderProcessor (``#`` line comments).
+
+Covers shebang/encoding handling, placement before banners, CRLF preservation,
+idempotent re-application, and `strip_header_block` behavior. Docstrings follow
+Google style and end with punctuation.
+"""
 
 from pathlib import Path
 
@@ -25,7 +31,11 @@ logger = get_logger(__name__)
 
 @mark_pipeline
 def test_pound_processor_basics(tmp_path: Path) -> None:
-    """Test the basic functionality of the PoundHeaderProcessor."""
+    """Basic detection and scan.
+
+    Creates a Python file without a TopMark block; the scanner should report no
+    existing header and resolve the file type to Python.
+    """
     # Create a sample file with pound-prefixed comments
     file = tmp_path / "sample.py"
     file.write_text("#!/usr/bin/env python3\n\nprint('hello')\n")
@@ -735,3 +745,79 @@ def test_pound_idempotent_reapply_no_diff(tmp_path: Path) -> None:
     lines2 = ctx2.updated_file_lines or []
 
     assert lines2 == lines1, "Second run must be a no-op (idempotent)"
+
+
+# --- strip_header_block: test both with and without span, preserving shebang ---
+@mark_pipeline
+def test_strip_header_block_with_and_without_span_preserves_shebang(tmp_path: Path) -> None:
+    """`strip_header_block` removes the header and preserves the shebang.
+
+    This test exercises both code paths in the processor:
+      * With an explicit span (as provided by the scanner), and
+      * Without a span (processor computes bounds itself).
+
+    Expectations:
+      * The shebang line remains at index 0.
+      * The entire TopMark header block is removed.
+      * The returned span matches the actual header location.
+    """
+    from topmark.pipeline.processors import get_processor_for_file
+
+    f = tmp_path / "strip_shebang.py"
+    f.write_text(
+        "#!/usr/bin/env python3\n"
+        "# topmark:header:start\n"
+        "# field\n"
+        "# topmark:header:end\n"
+        "print('ok')\n",
+        encoding="utf-8",
+    )
+
+    proc = get_processor_for_file(f)
+    assert proc is not None
+
+    lines = f.read_text(encoding="utf-8").splitlines(keepends=True)
+
+    # 1) With explicit span
+    new1, span1 = proc.strip_header_block(lines=lines, span=(1, 3))
+    assert new1[0].startswith("#!"), "shebang must be preserved"
+    joined1 = "".join(new1)
+    assert "topmark:header:start" not in joined1
+    assert span1 == (1, 3)
+
+    # 2) Without span (processor must detect bounds)
+    new2, span2 = proc.strip_header_block(lines=lines, span=None)
+    assert new2 == new1
+    assert span2 == (1, 3)
+
+
+@mark_pipeline
+def test_pound_encoding_only_at_top(tmp_path: Path) -> None:
+    """Encoding line without shebang (PEP 263 at top).
+
+    Ensures the header still starts at the very top (index 0) when only an
+    encoding line is present without a shebang line.
+    """
+    f = tmp_path / "enc_only.py"
+    f.write_text("# -*- coding: utf-8 -*-\nprint('x')\n")
+    cfg = Config.from_defaults()
+    ctx = run_insert(f, cfg)
+    sig = expected_block_lines_for(f)
+    # header should still start at top, not after encoding-only line
+    assert find_line(ctx.updated_file_lines or [], sig["start_line"]) == 0
+
+
+@mark_pipeline
+def test_pound_bom_preserved(tmp_path: Path) -> None:
+    """Preserve a leading UTF-8 BOM at the start of the output.
+
+    When a file begins with a BOM, the reader strips it in-memory and the updater
+    re-attaches it before the first header line. The resulting first output line
+    must begin with ``\ufeff``.
+    """
+    f = tmp_path / "bom.py"
+    f.write_bytes(b"\xef\xbb\xbfprint('x')\n")  # UTF-8 BOM
+    cfg = Config.from_defaults()
+    ctx = run_insert(f, cfg)
+    # BOM should still be present at the beginning of the first line
+    assert (ctx.updated_file_lines or [])[0].startswith("\ufeff")

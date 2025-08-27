@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import logging
 
+from topmark.file_resolver import detect_newline
 from topmark.filetypes.registry import register_filetype
 from topmark.pipeline.processors.base import HeaderProcessor
 
@@ -59,18 +60,16 @@ class SlashHeaderProcessor(HeaderProcessor):
 
         We never add a leading blank at the top-of-file. We add exactly one
         trailing blank line if the next line isn't already blank or EOF.
+
+        Args:
+          original_lines (list[str]): Original file lines.
+          insert_index (int): Line index where the header will be inserted.
+          rendered_header_lines (list[str]): Header lines to insert.
+
+        Returns:
+          list[str]: Possibly modified header lines including any added padding.
         """
-
-        def detect_newline(lines: list[str]) -> str:
-            for ln in lines:
-                if ln.endswith("\r\n"):
-                    return "\r\n"
-                if ln.endswith("\n"):
-                    return "\n"
-                if ln.endswith("\r"):
-                    return "\r"
-            return "\n"
-
+        # Detect newline style; default to "\n"
         nl = detect_newline(original_lines)
         out = list(rendered_header_lines)
 

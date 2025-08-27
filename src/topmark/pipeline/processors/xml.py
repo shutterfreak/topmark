@@ -17,6 +17,7 @@ It delegates header processing to the core pipeline dispatcher.
 
 import re
 
+from topmark.file_resolver import detect_newline
 from topmark.filetypes.registry import register_filetype
 from topmark.pipeline.processors.base import (
     HeaderProcessor,
@@ -52,6 +53,12 @@ class XmlHeaderProcessor(HeaderProcessor):
         """Not used: return NO_LINE_ANCHOR.
 
         Rely solely on get_header_insertion_char_offset().
+
+        Args:
+          file_lines: File content split into lines (unused).
+
+        Returns:
+          int: ``NO_LINE_ANCHOR`` to signal char-offset insertion.
         """
         from .base import NO_LINE_ANCHOR
 
@@ -61,8 +68,15 @@ class XmlHeaderProcessor(HeaderProcessor):
         """Return a char offset to insert the header for XML/HTML-like documents.
 
         Handles optional BOM, XML declaration, optional DOCTYPE (including simple
-        internal subsets), and consumes whitespace after the prolog if present.
-        Works even when the root element follows on the same line.
+        internal subsets), and consumes whitespace after the prolog if present. Works
+        even when the root element follows on the same line.
+
+        Args:
+          original_text (str): Full file content as a single string.
+
+        Returns:
+          int | None: Character offset suitable for insertion, or ``None`` to use the
+          line-based strategy.
         """
         text = original_text
         if not text:
@@ -106,12 +120,20 @@ class XmlHeaderProcessor(HeaderProcessor):
         insert_offset: int,
         rendered_header_text: str,
     ) -> str:
-        r"""Adjust whitespace so the header block sits on its own lines.
+        """Adjust whitespace so the header block sits on its own lines.
 
         Approach:
             - If inserting at char>0: ensure exactly one blank line before the block.
             - Always ensure at least one blank line after the block.
-            - Preserve the document's dominant newline style ("\n" or "\r\n").
+            - Preserve the document's dominant newline style (``LF``, ``CR``, ``CRLF``).
+
+        Args:
+          original_text (str): Full file content as a single string.
+          insert_offset (int): 0-based character offset where the header will be inserted.
+          rendered_header_text (str): Header block text (may already include newlines).
+
+        Returns:
+          str: Possibly modified header text to splice at ``insert_offset``.
         """
         # Detect newline style
         nl = "\n"
@@ -165,18 +187,15 @@ class XmlHeaderProcessor(HeaderProcessor):
           unless the next line is already blank/EOF.
         - If inserting after a prolog (index > 0): ensure exactly one leading blank
           (by checking the previous line), and ensure at least one trailing blank.
+
+        Args:
+          original_lines (list[str]): Original file lines.
+          insert_index (int): Line index where the header will be inserted.
+          rendered_header_lines (list[str]): Header lines to insert.
+
+        Returns:
+          list[str]: Possibly modified header lines including any added padding.
         """
-
-        def detect_newline(lines: list[str]) -> str:
-            for ln in lines:
-                if ln.endswith("\r\n"):
-                    return "\r\n"
-                if ln.endswith("\n"):
-                    return "\n"
-                if ln.endswith("\r"):
-                    return "\r"
-            return "\n"
-
         nl = detect_newline(original_lines)
         out = list(rendered_header_lines)
 
@@ -208,22 +227,17 @@ class XmlHeaderProcessor(HeaderProcessor):
     ) -> bool:
         """Validate the location of a detected header for XML/HTML-like files.
 
-        This override enforces the base proximity rule relative to the computed
-        anchor and adds a Markdown-specific safeguard. If the current file type
-        is Markdown, candidate headers that appear *inside* fenced code blocks
-        (lines starting with ```
-        or ``~~~``) are rejected so that example
-        snippets in README files are not treated as real headers.
+        Applies base proximity rules and a Markdown-specific safeguard to reject
+        headers that appear inside fenced code blocks.
 
         Args:
-            lines: Full file content split into lines.
-            header_start_idx: 0-based index of the candidate header's first line.
-            header_end_idx: 0-based index of the candidate header's last line (inclusive).
-            anchor_idx: 0-based index of the line where the header is expected to be inserted.
+          lines (list[str]): Full file content split into lines.
+          header_start_idx (int): 0-based index of the candidate header's first line.
+          header_end_idx (int): 0-based index of the candidate header's last line (inclusive).
+          anchor_idx (int): 0-based expected insertion line index.
 
         Returns:
-            True if the candidate is close enough to the anchor and, for Markdown,
-            not inside a fenced code block; False otherwise.
+          bool: ``True`` if the candidate is acceptable; ``False`` otherwise.
         """
         # First apply the base proximity rule
         if not super().validate_header_location(
@@ -242,6 +256,19 @@ class XmlHeaderProcessor(HeaderProcessor):
         return True
 
     def _inside_code_fence(self, lines: list[str], idx: int) -> bool:
+        """Return True if ``idx`` lies inside a Markdown fenced code block.
+
+        Counts opening fence markers (`````
+        or ``~~~``) up to and including ``idx``
+        and considers the index inside a fence when the count is odd.
+
+        Args:
+          lines: Full file content split into lines.
+          idx: Zero-based line index to test.
+
+        Returns:
+          bool: ``True`` if inside a code fence; ``False`` otherwise.
+        """
         import re as _re
 
         fence = _re.compile(r"^\s*(```|~~~)")

@@ -16,6 +16,7 @@ and Makefiles. It delegates header processing to the core pipeline dispatcher.
 """
 
 from topmark.config.logging import get_logger
+from topmark.file_resolver import detect_newline
 from topmark.filetypes.registry import register_filetype
 from topmark.pipeline.processors.base import (
     HeaderProcessor,
@@ -65,19 +66,16 @@ class PoundHeaderProcessor(HeaderProcessor):
         - If inserting after a preamble (index > 0): ensure exactly one blank before
           the header (by checking the previous line); ensure at least one trailing blank
           unless the next line is already blank/EOF.
+
+        Args:
+          original_lines (list[str]): Original file lines.
+          insert_index (int): Line index where the header will be inserted.
+          rendered_header_lines (list[str]): Header lines to insert.
+
+        Returns:
+          list[str]: Possibly modified header lines including any added padding.
         """
-
         # Detect newline style; default to "\n"
-        def detect_newline(lines: list[str]) -> str:
-            for ln in lines:
-                if ln.endswith("\r\n"):
-                    return "\r\n"
-                if ln.endswith("\n"):
-                    return "\n"
-                if ln.endswith("\r"):
-                    return "\r"
-            return "\n"
-
         nl = detect_newline(original_lines)
         out = list(rendered_header_lines)
 
