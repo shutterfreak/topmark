@@ -22,13 +22,15 @@ from typing import cast
 import click
 from click.testing import CliRunner
 
+from topmark.cli.exit_codes import ExitCode
 from topmark.cli.main import cli as _cli
 
 
 def test_version_text_contains_project_and_semver() -> None:
     """It should output the project name and a semver-like version string."""
     res = CliRunner().invoke(cast(click.Command, _cli), ["version"])
-    assert res.exit_code == 0
+
+    assert res.exit_code == ExitCode.SUCCESS, res.output
     out = res.output.lower()
     assert "topmark" in out
     # loose semver-ish check

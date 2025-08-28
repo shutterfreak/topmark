@@ -19,6 +19,7 @@ from typing import cast
 import click
 from click.testing import CliRunner
 
+from topmark.cli.exit_codes import ExitCode
 from topmark.cli.main import cli as _cli
 
 
@@ -27,4 +28,4 @@ def test_verbose_and_quiet_flags_parse() -> None:
     r = CliRunner()
     for args in (["-v", "version"], ["-vvv", "version"], ["-q", "version"], ["-qq", "version"]):
         res = r.invoke(cast(click.Command, _cli), args)
-        assert res.exit_code == 0
+        assert res.exit_code == ExitCode.SUCCESS, res.output

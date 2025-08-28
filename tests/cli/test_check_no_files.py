@@ -20,6 +20,7 @@ from typing import cast
 import click
 from click.testing import CliRunner
 
+from topmark.cli.exit_codes import ExitCode
 from topmark.cli.main import cli as _cli
 
 
@@ -27,4 +28,4 @@ def test_check_with_no_files_succeeds() -> None:
     """It should exit successfully (code 0) when no files are provided."""
     res = CliRunner().invoke(cast(click.Command, _cli), ["check"])
     # Depending on your current behavior, assert exit code and message
-    assert res.exit_code == 0
+    assert res.exit_code == ExitCode.SUCCESS, res.output

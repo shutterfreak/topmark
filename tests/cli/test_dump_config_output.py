@@ -23,13 +23,14 @@ import click
 import tomlkit
 from click.testing import CliRunner
 
+from topmark.cli.exit_codes import ExitCode
 from topmark.cli.main import cli as _cli
 
 
 def test_dump_config_outputs_valid_toml() -> None:
     """It should emit valid TOML wrapped in BEGIN/END markers and parse successfully."""
     res = CliRunner().invoke(cast(click.Command, _cli), ["dump-config"])
-    assert res.exit_code == 0
+    assert res.exit_code == ExitCode.SUCCESS, res.output
     assert "# === BEGIN ===" in res.output
     # Extract the TOML slice
     start = res.output.find("# === BEGIN ===")

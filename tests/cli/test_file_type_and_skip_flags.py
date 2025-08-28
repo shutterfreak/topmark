@@ -28,6 +28,7 @@ from typing import cast
 import click
 from click.testing import CliRunner
 
+from topmark.cli.exit_codes import ExitCode
 from topmark.cli.main import cli as _cli
 
 
@@ -43,7 +44,7 @@ def test_file_type_filter_limits_processing_default(tmp_path: pathlib.Path) -> N
         cast(click.Command, _cli),
         ["-vv", "--file-type", "python", "--apply", str(tmp_path)],
     )
-    assert res.exit_code == 0, res.output
+    assert res.exit_code == ExitCode.SUCCESS, res.output
 
     # Python file should now have a header; TS file should remain unchanged.
     out_py = py.read_text("utf-8")
@@ -64,7 +65,7 @@ def test_file_type_filter_limits_processing_strip(tmp_path: pathlib.Path) -> Non
         cast(click.Command, _cli),
         ["-vv", "strip", "--file-type", "python", "--apply", str(tmp_path)],
     )
-    assert res.exit_code == 0, res.output
+    assert res.exit_code == ExitCode.SUCCESS, res.output
     assert "topmark:header:start" not in py.read_text("utf-8")
     assert "topmark:header:start" in ts.read_text("utf-8")
 
@@ -82,7 +83,7 @@ def test_skip_compliant_hides_clean_files(tmp_path: pathlib.Path) -> None:
         # NOTE: do not set verbosity level so we can inspect the summary bucket list
         ["strip", "--summary", "--skip-compliant", str(tmp_path)],
     )
-    assert res.exit_code in (0, 2), res.output
+    assert res.exit_code in (ExitCode.SUCCESS, ExitCode.WOULD_CHANGE), res.output
     out = res.output.lower()
     # NOTE: Labels come from classify_outcome(); compliant buckets ("no header"
     # or "up-to-date") may still be shown depending on current summary settings.

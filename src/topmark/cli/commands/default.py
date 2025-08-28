@@ -34,6 +34,7 @@ from yachalk import chalk
 
 from topmark.cli.cli_types import EnumParam
 from topmark.cli.config_resolver import resolve_config_from_click
+from topmark.cli.exit_codes import ExitCode
 from topmark.cli.options import (
     common_config_options,
     common_file_and_filtering_options,
@@ -184,7 +185,7 @@ def default_command(
     file_list = resolve_file_list(config, stdin_stream=stdin_stream)
     if not file_list:
         click.echo(chalk.blue("\nℹ️  No files to process.\n"))
-        raise SystemExit(0)
+        raise SystemExit(ExitCode.SUCCESS)
 
     if logger.isEnabledFor(logging.INFO):
         click.echo(chalk.blue(f"\n🔍 Processing {len(file_list)} file(s):\n"))
@@ -311,7 +312,7 @@ def default_command(
                 )
             )
         if failed:
-            raise SystemExit(1)
+            raise SystemExit(ExitCode.FAILURE)
 
     # Exit code policy: in check mode, non-zero if changes would be needed
     if not apply_changes:
@@ -320,7 +321,7 @@ def default_command(
             for r in results
         )
         if would_change:
-            raise SystemExit(2)
+            raise SystemExit(ExitCode.WOULD_CHANGE)
 
     if logger.isEnabledFor(logging.INFO):
         click.echo("✅ All done!")

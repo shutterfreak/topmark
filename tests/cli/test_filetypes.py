@@ -19,11 +19,12 @@ from typing import cast
 import click
 from click.testing import CliRunner
 
+from topmark.cli.exit_codes import ExitCode
 from topmark.cli.main import cli as _cli
 
 
 def test_filetypes_lists_known_types() -> None:
     """It should list supported file types and exit with code 0."""
     res = CliRunner().invoke(cast(click.Command, _cli), ["filetypes"])
-    assert res.exit_code == 0
+    assert res.exit_code == ExitCode.SUCCESS, res.output
     assert "Supported file types" in res.output or res.output.strip() != ""

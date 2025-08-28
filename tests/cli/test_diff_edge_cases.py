@@ -23,6 +23,7 @@ from typing import cast
 import click
 from click.testing import CliRunner
 
+from topmark.cli.exit_codes import ExitCode
 from topmark.cli.main import cli as _cli
 
 
@@ -34,7 +35,7 @@ def test_diff_on_no_final_newline_default(tmp_path: pathlib.Path) -> None:
 
     res = CliRunner().invoke(cast(click.Command, _cli), ["-vv", "--diff", str(f)])
     # Would insert → exit 2, and a non-empty patch must be shown.
-    assert res.exit_code == 2, res.output
+    assert res.exit_code == ExitCode.WOULD_CHANGE, res.output
     out = res.output
     assert "--- " in out and "+++ " in out and "+# topmark:header:start" in out
 
@@ -46,7 +47,7 @@ def test_diff_preserves_crlf_strip(tmp_path: pathlib.Path) -> None:
         fp.write("// topmark:header:start\n// h\n// topmark:header:end\nconsole.log(1)\n")
 
     res = CliRunner().invoke(cast(click.Command, _cli), ["-vv", "strip", "--diff", str(f)])
-    assert res.exit_code == 2, res.output
+    assert res.exit_code == ExitCode.WOULD_CHANGE, res.output
     # Basic sanity check: headers present and no raw solitary "\r" occurrences.
     out = res.output
     assert "--- " in out and "+++ " in out and "-// topmark:header:start" in out

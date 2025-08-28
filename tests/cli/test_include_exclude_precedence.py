@@ -24,6 +24,7 @@ from typing import cast
 import click
 from click.testing import CliRunner
 
+from topmark.cli.exit_codes import ExitCode
 from topmark.cli.main import cli as _cli
 
 
@@ -58,7 +59,7 @@ def test_exclude_wins_over_include(tmp_path: pathlib.Path) -> None:
     finally:
         os.chdir(cwd)
 
-    assert res.exit_code == 0, res.output
+    assert res.exit_code == ExitCode.SUCCESS, res.output
     # `keep.py` should have a header; `skip.py` should remain header-less.
     assert "topmark:header:start" in target.read_text("utf-8")
     assert "topmark:header:start" not in other.read_text("utf-8")

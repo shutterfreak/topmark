@@ -21,6 +21,7 @@ from typing import cast
 import click
 from click.testing import CliRunner
 
+from topmark.cli.exit_codes import ExitCode
 from topmark.cli.main import cli as _cli
 
 COMMANDS = ["check", "apply", "dump-config", "filetypes", "init-config", "show-defaults", "version"]
@@ -29,7 +30,7 @@ COMMANDS = ["check", "apply", "dump-config", "filetypes", "init-config", "show-d
 def test_group_help() -> None:
     """It should exit successfully (0) when running `topmark --help`."""
     res = CliRunner().invoke(cast(click.Command, _cli), ["--help"])
-    assert res.exit_code == 0
+    assert res.exit_code == ExitCode.SUCCESS, res.output
 
 
 def test_each_command_has_help() -> None:
@@ -37,4 +38,4 @@ def test_each_command_has_help() -> None:
     r = CliRunner()
     for name in COMMANDS:
         res = r.invoke(cast(click.Command, _cli), [name, "--help"])
-        assert res.exit_code == 0, f"{name} --help failed"
+        assert res.exit_code == ExitCode.SUCCESS, f"{name} --help failed"

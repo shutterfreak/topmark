@@ -23,6 +23,7 @@ from typing import cast
 import click
 from click.testing import CliRunner
 
+from topmark.cli.exit_codes import ExitCode
 from topmark.cli.main import cli as _cli
 
 
@@ -36,7 +37,8 @@ def test_check_mode_exits_2_when_changes_needed(tmp_path: pathlib.Path) -> None:
     f.write_text("print('x')\n", encoding="utf-8")
 
     res = CliRunner().invoke(cast(click.Command, _cli), ["-vv", str(f)])
-    assert res.exit_code == 2, res.output
+
+    assert res.exit_code == ExitCode.WOULD_CHANGE, res.output
     # Ensure the file was not modified in check mode
     assert f.read_text(encoding="utf-8") == "print('x')\n"
 
@@ -48,7 +50,8 @@ def test_apply_writes_and_exits_0(tmp_path: pathlib.Path) -> None:
     f.write_text(before, encoding="utf-8")
 
     res = CliRunner().invoke(cast(click.Command, _cli), ["-vv", "--apply", str(f)])
-    assert res.exit_code == 0, res.output
+
+    assert res.exit_code == ExitCode.SUCCESS, res.output
     after = f.read_text(encoding="utf-8")
     # File should be changed (header inserted). We only assert that content differs.
-    assert after != before
+    assert after != before, "file should have been modified"
