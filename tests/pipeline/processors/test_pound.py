@@ -19,7 +19,7 @@ Google style and end with punctuation.
 from pathlib import Path
 
 from tests.conftest import mark_pipeline
-from tests.pipeline.processors.conftest import expected_block_lines_for, find_line, run_insert
+from tests.pipeline.conftest import expected_block_lines_for, find_line, run_insert
 from topmark.config import Config
 from topmark.config.logging import get_logger
 from topmark.pipeline import runner

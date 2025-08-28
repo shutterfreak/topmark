@@ -115,7 +115,9 @@ def test_strip_summary_buckets(tmp_path: pathlib.Path) -> None:
     out = res.output
     # Buckets we expect to be present in the summary
     assert "would strip header" in out
-    assert ("already stripped" in out) or ("no header" in out)
+    # Accept historical labels ("already stripped"/"no header") or the current
+    # unified bucket ("up-to-date") depending on `classify_outcome` precedence.
+    assert ("already stripped" in out) or ("no header" in out) or ("up-to-date" in out)
     # depending on classification logic, bad may end up as unchanged/malformed
     assert ("unchanged" in out) or ("malformed" in out) or ("could not" in out)
 

@@ -16,10 +16,19 @@ and `status.write` accordingly to reflect the changes made.
 
 This step is covered by unit tests across processors (pound, slash, xml) and supports both
 line-based and text-based insertion as well as replacement and the strip fast-path.
+
+The updater respects comparer outcomes and file fidelity:
+  • If `status.strip == READY`, it emits the strip image (`updated_file_lines`) and
+    sets `write=REMOVED` (BOM reattached when present).
+  • If `status.comparison == UNCHANGED`, it **short‑circuits** and sets `write=SKIPPED`,
+    preserving the original image and producing no diff.
+  • For replace/insert operations, it reattaches a leading UTF‑8 BOM when the reader
+    detected one, and it avoids touch‑writes by checking if the resulting image equals
+    the original.
 """
 
 from topmark.config.logging import get_logger
-from topmark.pipeline.context import ProcessingContext, StripStatus, WriteStatus
+from topmark.pipeline.context import ComparisonStatus, ProcessingContext, StripStatus, WriteStatus
 from topmark.pipeline.processors.base import NO_LINE_ANCHOR
 
 logger = get_logger(__name__)
@@ -45,32 +54,27 @@ def _prepend_bom_to_lines_if_needed(lines: list[str], leading_bom: bool) -> list
 
 
 def update(ctx: ProcessingContext) -> ProcessingContext:
-    """Insert or replace the TopMark header in the file represented by the context.
+    """
+    Insert or replace the TopMark header for the current file.
 
-    This pipeline step updates `context.updated_file_lines` and `context.status.write`
-    by either replacing an existing header or inserting a new header based on the
-    provided `expected_header_lines` and the header processor logic.
+    Behavior by case:
+      • **Strip fast‑path**: When `status.strip == READY`, keep the precomputed
+        `updated_file_lines`, reattach a BOM if the reader saw one, and mark
+        `write=REMOVED`.
+      • **Already up‑to‑date**: When `status.comparison == UNCHANGED`, do nothing,
+        set `write=SKIPPED`, and keep the original image. No diff is produced.
+      • **Replace**: If an `existing_header_range` is known, splice
+        `expected_header_lines` over that range; reattach BOM if needed; if the
+        result equals the original, set `write=SKIPPED`; otherwise `write=REPLACED`.
+      • **Insert (text‑based)**: If the processor provides a character offset, insert
+        the rendered header text there (after optional `prepare_header_for_insertion_text`),
+        reattach BOM if needed; if identical to original, `SKIPPED`; else `INSERTED`.
+      • **Insert (line‑based fallback)**: Use `get_header_insertion_index`, optionally
+        adjust whitespace via `prepare_header_for_insertion`, reattach BOM if needed;
+        set `INSERTED` unless the result is identical, in which case `SKIPPED`.
 
-    Args:
-        ctx (ProcessingContext): The processing context containing file data,
-            expected header lines, header processor, and status information.
-
-    Returns:
-        ProcessingContext: The updated processing context with modified file lines
-            and write status.
-
-    Notes:
-        - If no rendered header lines are available, the step is skipped and a diagnostic
-          message is appended.
-        - If no header processor is assigned, the step is skipped and a diagnostic
-          message is appended.
-        - If an existing header is found, it is replaced by the new expected header.
-        - If no existing header is found, the new header is inserted at the position
-          determined by the header processor.
-        - If the insertion index cannot be determined, the step fails and a diagnostic
-          message is appended.
-        - Re-attaches a UTF-8 BOM to the first line of the output when the reader detected one
-          (ctx.leading_bom == True), for replace and insert operations, and for strip-ready output.
+    The updater never mutates the file on disk; it only prepares `updated_file_lines` and
+    `status.write` for later patch/apply steps.
     """
     if ctx.status.strip == StripStatus.READY:
         # Previous step computed updated_file_lines for a removal.
@@ -79,6 +83,14 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
             ctx.updated_file_lines or [], getattr(ctx, "leading_bom", False)
         )
         ctx.status.write = WriteStatus.REMOVED  # actual apply path will only finalize the write
+        return ctx
+
+    # If the comparer determined the file is already compliant, do nothing.
+    if ctx.status.comparison is ComparisonStatus.UNCHANGED:
+        ctx.status.write = WriteStatus.SKIPPED
+        # Preserve the original image as the "updated" content for downstream steps.
+        ctx.updated_file_lines = ctx.file_lines or []
+        logger.trace("Updater: no-op (comparison=UNCHANGED) for %s", ctx.path)
         return ctx
 
     # Non-strip processing
@@ -103,6 +115,12 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
         )
         # Prepend BOM if needed
         new_lines = _prepend_bom_to_lines_if_needed(new_lines, getattr(ctx, "leading_bom", False))
+        # If replacement is identical to the original, treat as a no-op.
+        if new_lines == original_lines:
+            ctx.status.write = WriteStatus.SKIPPED
+            ctx.updated_file_lines = original_lines
+            logger.trace("Updater: replacement yields no changes for %s", ctx.path)
+            return ctx
         ctx.status.write = WriteStatus.REPLACED
         ctx.updated_file_lines = new_lines
         logger.trace("Updated file (replace):\n%s", "".join(ctx.updated_file_lines or []))
@@ -130,6 +148,11 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
                 # Prepend BOM if needed
                 if getattr(ctx, "leading_bom", False) and not new_text.startswith("\ufeff"):
                     new_text = "\ufeff" + new_text
+                if new_text == original_text:
+                    ctx.updated_file_lines = original_lines
+                    ctx.status.write = WriteStatus.SKIPPED
+                    logger.trace("Updater: text-based insertion yields no changes for %s", ctx.path)
+                    return ctx
                 ctx.updated_file_lines = new_text.splitlines(keepends=True)
                 ctx.status.write = WriteStatus.INSERTED
                 return ctx
@@ -164,6 +187,11 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
         )
         # Prepend BOM if needed
         new_lines = _prepend_bom_to_lines_if_needed(new_lines, getattr(ctx, "leading_bom", False))
+        if new_lines == original_lines:
+            ctx.updated_file_lines = original_lines
+            ctx.status.write = WriteStatus.SKIPPED
+            logger.trace("Updater: line-based insertion yields no changes for %s", ctx.path)
+            return ctx
         ctx.updated_file_lines = new_lines
         ctx.status.write = WriteStatus.INSERTED
         logger.trace("Updated file (line-based):\n%s", "".join(ctx.updated_file_lines or []))

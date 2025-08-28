@@ -171,7 +171,43 @@ def resolve_color_mode(
 
 # --- CLI presentation helpers -------------------------------------------------
 def classify_outcome(r: ProcessingContext) -> tuple[str, str, Callable[[str], str]]:
-    """Classify a processing result for summary rendering.
+    """
+    Classify a single file’s processing result into a summary bucket.
+
+    This function converts a file’s `HeaderProcessingStatus` (available on
+    `ProcessingContext.status`) into a stable, human‑facing bucket used by the
+    CLI summary. It returns `(key, label, color_fn)` where:
+
+    - `key` is a **stable identifier** suitable for aggregation (see below),
+    - `label` is the **user‑visible** description printed in the summary, and
+    - `color_fn` is a `yachalk` styling function to colorize the label in text mode.
+
+    ### Buckets (stable contract)
+
+    The following identifiers and labels are considered part of the CLI contract and
+    are used by tests:
+
+    **Strip pipeline** (`topmark strip`):
+    - `strip:ready` → "would strip header"
+    - `strip:none`  → "no header" (or "no changes to strip" in rare cases)
+
+    **Default pipeline** (`topmark`):
+    - `insert`      → "would insert header"
+    - `update`      → "would update header"
+    - `ok`          → "up-to-date"
+    - `no_fields`   → "no fields to render"
+    - `header:empty` / `header:malformed` → "header (empty|malformed)"
+    - `compare_error` → "cannot compare"
+
+    > Notes:
+    > - Tests should match labels **loosely** (e.g., substrings) to allow minor
+    >   wording adjustments without breaking the public contract.
+    > - JSON/NDJSON output does not include ANSI color; only the human format uses
+    >   `color_fn`.
+
+    Precedence:
+      - If the comparison result is UNCHANGED, this always takes precedence and the file
+        is classified as compliant ("ok", "up-to-date"), regardless of other header or strip status.
 
     Args:
       r (ProcessingContext): Processing context for a single file.
@@ -190,10 +226,14 @@ def classify_outcome(r: ProcessingContext) -> tuple[str, str, Callable[[str], st
         StripStatus,
     )
 
-    logger.info("status: %s", r.status)
+    logger.debug("status: %s", r.status)
 
     if r.status.file is not FileStatus.RESOLVED:
         return (f"file:{r.status.file.name}", f"file {r.status.file.value}", r.status.file.color)
+
+    # Highest precedence: if comparison says UNCHANGED, treat as compliant
+    if r.status.comparison is ComparisonStatus.UNCHANGED:
+        return ("ok", "up-to-date", chalk.green)
 
     # If the stripper step participated, prefer strip-centric labels.
     if r.status.strip is StripStatus.READY:
@@ -205,11 +245,12 @@ def classify_outcome(r: ProcessingContext) -> tuple[str, str, Callable[[str], st
         if r.status.header is HeaderStatus.MISSING:
             # No header present in the original file.
             return ("strip:none", "no header", chalk.green)
-        if r.status.comparison is ComparisonStatus.UNCHANGED:
-            # Header present but no change needed (e.g., non-strip pipelines).
-            return ("ok", "up-to-date", chalk.green)
         # Fallback for strip pipeline where nothing changed.
         return ("strip:none", "no changes to strip", chalk.green)
+
+    # If generation produced no fields, prefer a dedicated bucket over insert/missing
+    if r.status.generation is GenerationStatus.NO_FIELDS:
+        return ("no_fields", "no fields to render", chalk.yellow)
 
     # Non-strip pipelines (or stripper didn't run): use standard classification.
     if r.status.header is HeaderStatus.MISSING:
@@ -217,9 +258,6 @@ def classify_outcome(r: ProcessingContext) -> tuple[str, str, Callable[[str], st
             return ("strip:none", "no header", chalk.green)
         return ("insert", "would insert header", chalk.green)
     if r.status.header is HeaderStatus.DETECTED:
-        if r.status.comparison is ComparisonStatus.UNCHANGED:
-            return ("ok", "up-to-date", chalk.green)
-
         if r.status.comparison is ComparisonStatus.CHANGED:
             return ("update", "would update header", chalk.yellow_bright)
         return ("compare_error", "cannot compare", chalk.red)
@@ -229,8 +267,6 @@ def classify_outcome(r: ProcessingContext) -> tuple[str, str, Callable[[str], st
             f"header {r.status.header.value}",
             r.status.header.color,
         )
-    if r.status.generation is GenerationStatus.NO_FIELDS:
-        return ("no_fields", "no fields to render", chalk.yellow)
     return ("other", "other", chalk.gray)
 
 

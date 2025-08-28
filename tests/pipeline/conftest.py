@@ -1,7 +1,7 @@
 # topmark:header:start
 #
 #   file         : conftest.py
-#   file_relpath : tests/pipeline/processors/conftest.py
+#   file_relpath : tests/pipeline/conftest.py
 #   project      : TopMark
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot

@@ -15,6 +15,8 @@ and produces a unified diff (header patch). It also formats a colorized preview
 for logging and CLI display.
 """
 
+import difflib
+
 from yachalk import chalk
 
 from topmark.config.logging import get_logger
@@ -58,8 +60,6 @@ def patch(ctx: ProcessingContext) -> ProcessingContext:
     )
 
     # Generate unified diff using the actual lines from the file for the existing header
-    import difflib
-
     logger.trace("Current file lines: %d: %r", len(ctx.file_lines or []), ctx.file_lines)
     logger.trace(
         "Updated file lines: %d: %r",

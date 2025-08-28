@@ -31,7 +31,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.pipeline.processors.conftest import run_insert
+from tests.pipeline.conftest import run_insert
 from topmark.config import Config
 
 mark_pipeline = pytest.mark.pipeline

@@ -277,3 +277,92 @@ class XmlHeaderProcessor(HeaderProcessor):
             if fence.match(lines[i]):
                 open_count += 1
         return (open_count % 2) == 1
+
+    def strip_header_block(
+        self, *, lines: list[str], span: tuple[int, int] | None = None
+    ) -> tuple[list[str], tuple[int, int] | None]:
+        """Remove the TopMark header block and return the updated file image.
+
+        This XML/HTML-specific override performs extra cleanup:
+          1) Delegates to base removal.
+          2) Removes all surrounding blank lines (not just one).
+          3) Removes a tightly-wrapping <!-- ... --> block if present.
+          4) Collapses the XML declaration and the next element back onto one line.
+        """
+        # 1) Perform the generic removal first.
+        new_lines, removed = super().strip_header_block(lines=lines, span=span)
+        if removed is None:
+            return new_lines, None
+
+        start, _ = removed
+
+        # --- Blank line cleanup around the removed header ---
+        # After base removal, `start` points at the first line that originally
+        # followed the header. Our insertion logic may have introduced *one or more*
+        # blank lines both before and after the header. We normalize these by
+        # deleting all contiguous blank lines after `start`, and then all contiguous
+        # blank lines immediately before `start`.
+
+        # 2a) Remove all trailing blanks at `start`, not just one.
+        while 0 <= start < len(new_lines) and new_lines[start].strip() == "":
+            del new_lines[start]
+            # `start` still points to the first content line after the header.
+
+        # 2b) Remove all preceding blanks right before `start`.
+        while 0 < start <= len(new_lines) and new_lines[start - 1].strip() == "":
+            del new_lines[start - 1]
+            start -= 1  # shift left because we deleted just before `start`
+
+        # --- Remove a tightly wrapping block comment (`<!--` ... `-->`) if present ---
+        # After deletion of the inner START..END marker lines, we can be left with the
+        # outer wrapper lines. If the nearest non-blank line before `start` is exactly
+        # the block prefix and the nearest non-blank line at/after `start` is exactly
+        # the block suffix, drop both.
+        prev_idx = start - 1
+        # walk back to previous non-blank
+        while 0 <= prev_idx < len(new_lines) and new_lines[prev_idx].strip() == "":
+            prev_idx -= 1
+        next_idx = start
+        # walk forward to next non-blank
+        while 0 <= next_idx < len(new_lines) and new_lines[next_idx].strip() == "":
+            next_idx += 1
+
+        if (
+            0 <= prev_idx < len(new_lines)
+            and 0 <= next_idx < len(new_lines)
+            and new_lines[prev_idx].strip() == (self.block_prefix or "")
+            and new_lines[next_idx].strip() == (self.block_suffix or "")
+            and prev_idx < next_idx
+        ):
+            # Delete suffix first, then prefix to preserve indices
+            del new_lines[next_idx]
+            del new_lines[prev_idx]
+            # After removing the prefix at prev_idx, `start` shifts left if it was
+            # beyond prev_idx. Recompute `start` as the first non-blank that follows
+            # the (now removed) wrapper region.
+            start = prev_idx
+            while 0 <= start < len(new_lines) and new_lines[start].strip() == "":
+                del new_lines[start]
+            # remove any residual blanks immediately before
+            while 0 < start <= len(new_lines) and new_lines[start - 1].strip() == "":
+                del new_lines[start - 1]
+                start -= 1
+
+        # --- Collapse declaration + following element back onto one line ---
+        prev_idx = start - 1
+        next_idx = start
+        if 0 <= prev_idx < len(new_lines) and 0 <= next_idx < len(new_lines):
+            prev = new_lines[prev_idx]
+            next_line = new_lines[next_idx]
+
+            # Allow for a UTF‑8 BOM and incidental leading whitespace on the decl line.
+            prev_no_bom = prev.lstrip("\ufeff")
+
+            # Recognize an XML declaration regardless of whether it currently ends with
+            # a newline. Collapse boundary whitespace so there is *no* newline between
+            # the declaration and the next node, restoring single‑line layout.
+            if prev_no_bom.lstrip().startswith("<?xml"):
+                merged = prev.rstrip("\r\n") + next_line.lstrip()
+                new_lines[prev_idx : next_idx + 1] = [merged]
+
+        return new_lines, removed
