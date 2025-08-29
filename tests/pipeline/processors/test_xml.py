@@ -22,6 +22,7 @@ from tests.conftest import mark_pipeline
 from tests.pipeline.conftest import expected_block_lines_for, find_line, run_insert
 from topmark.config import Config
 from topmark.config.logging import get_logger
+from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline import runner
 from topmark.pipeline.context import ProcessingContext
 from topmark.pipeline.pipelines import get_pipeline
@@ -440,9 +441,9 @@ def test_xml_strip_header_block_respects_declaration(tmp_path: Path) -> None:
     f = tmp_path / "strip_doc.xml"
     f.write_text(
         '<?xml version="1.0"?>\n'
-        "<!-- topmark:header:start -->\n"
+        f"<!-- {TOPMARK_START_MARKER} -->\n"
         "<!-- h -->\n"
-        "<!-- topmark:header:end -->\n"
+        f"<!-- {TOPMARK_END_MARKER} -->\n"
         "<root/>\n",
         encoding="utf-8",
     )
@@ -455,7 +456,7 @@ def test_xml_strip_header_block_respects_declaration(tmp_path: Path) -> None:
     # 1) With explicit span for the HTML-style comment block
     new1, span1 = proc.strip_header_block(lines=lines, span=(1, 3))
     assert new1[0].lstrip("\ufeff").startswith("<?xml"), "XML declaration must remain"
-    assert "topmark:header:start" not in "".join(new1)
+    assert TOPMARK_START_MARKER not in "".join(new1)
     assert span1 == (1, 3)
 
     # 2) Let the processor detect bounds itself
@@ -474,7 +475,7 @@ def test_markdown_fenced_code_no_insertion_inside(tmp_path: Path) -> None:
     code block must remain intact.
     """
     f = tmp_path / "FENCE.md"
-    f.write_text("```html\n<!-- topmark:header:start -->\n```\nReal content\n")
+    f.write_text(f"```html\n<!-- {TOPMARK_START_MARKER} -->\n```\nReal content\n")
     cfg = Config.from_defaults()
     ctx = run_insert(f, cfg)
 
@@ -484,7 +485,7 @@ def test_markdown_fenced_code_no_insertion_inside(tmp_path: Path) -> None:
     if "block_open" in sig:
         assert find_line(lines, sig["block_open"]) == 0
     assert find_line(lines, sig["start_line"]) == 1
-    assert "<!-- topmark:header:start -->" in "".join(lines), (
+    assert f"<!-- {TOPMARK_START_MARKER} -->" in "".join(lines), (
         "Original fence content must remain untouched"
     )
 
@@ -534,9 +535,9 @@ def test_xml_processor_respects_prolog_and_removes_block():
     xp = XmlHeaderProcessor()
     lines = [
         '<?xml version="1.0"?>\n',
-        "<!-- topmark:header:start -->\n",
+        f"<!-- {TOPMARK_START_MARKER} -->\n",
         "<!-- h -->\n",
-        "<!-- topmark:header:end -->\n",
+        f"<!-- {TOPMARK_END_MARKER} -->\n",
         "<root/>\n",
     ]
 
@@ -546,5 +547,5 @@ def test_xml_processor_respects_prolog_and_removes_block():
 
     assert body.startswith("<?xml")
     assert "<root/>" in body
-    assert "<!-- topmark:header:start -->" not in body
+    assert f"<!-- {TOPMARK_START_MARKER} -->" not in body
     assert span == (1, 3)

@@ -20,6 +20,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from topmark.config import Config
+from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.context import ProcessingContext
 from topmark.pipeline.steps import (
     builder,
@@ -53,7 +54,7 @@ def test_patcher_diff_preserves_crlf_and_render_markers(tmp_path: Path) -> None:
     f = tmp_path / "a.ts"
     # Ensure file content is CRLF-seeded.
     with f.open("w", encoding="utf-8", newline="\r\n") as fp:
-        fp.write("// topmark:header:start\n// h\n// topmark:header:end\nconsole.log(1)\n")
+        fp.write(f"// {TOPMARK_START_MARKER}\n// h\n// {TOPMARK_END_MARKER}\nconsole.log(1)\n")
 
     cfg = Config.from_defaults()
     ctx = _run_to_patcher(f, cfg)

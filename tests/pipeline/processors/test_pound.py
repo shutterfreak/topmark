@@ -22,6 +22,7 @@ from tests.conftest import mark_pipeline
 from tests.pipeline.conftest import expected_block_lines_for, find_line, run_insert
 from topmark.config import Config
 from topmark.config.logging import get_logger
+from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline import runner
 from topmark.pipeline.context import HeaderStatus, ProcessingContext
 from topmark.pipeline.pipelines import get_pipeline
@@ -66,12 +67,12 @@ def test_pound_processor_detects_existing_header(tmp_path: Path) -> None:
     """
     file = tmp_path / "example.py"
     file.write_text(
-        "# topmark:header:start\n"
+        f"# {TOPMARK_START_MARKER}\n"
         "#\n"
         "#   file: example.py\n"
         "#   license: MIT\n"
         "#\n"
-        "# topmark:header:end\n"
+        f"# {TOPMARK_END_MARKER}\n"
         "\n"
         "print('hello')\n"
     )
@@ -125,9 +126,9 @@ def test_pound_processor_malformed_header(tmp_path: Path) -> None:
     """
     file = tmp_path / "malformed.py"
     file.write_text(
-        "# topmark:header:start\n"
+        f"# {TOPMARK_START_MARKER}\n"
         "#   file example.py\n"  # Missing colon
-        "# topmark:header:end\n"
+        f"# {TOPMARK_END_MARKER}\n"
         "\n"
         "print('oops')\n"
     )
@@ -767,9 +768,9 @@ def test_strip_header_block_with_and_without_span_preserves_shebang(tmp_path: Pa
     f = tmp_path / "strip_shebang.py"
     f.write_text(
         "#!/usr/bin/env python3\n"
-        "# topmark:header:start\n"
+        f"# {TOPMARK_START_MARKER}\n"
         "# field\n"
-        "# topmark:header:end\n"
+        f"# {TOPMARK_END_MARKER}\n"
         "print('ok')\n",
         encoding="utf-8",
     )
@@ -783,7 +784,7 @@ def test_strip_header_block_with_and_without_span_preserves_shebang(tmp_path: Pa
     new1, span1 = proc.strip_header_block(lines=lines, span=(1, 3))
     assert new1[0].startswith("#!"), "shebang must be preserved"
     joined1 = "".join(new1)
-    assert "topmark:header:start" not in joined1
+    assert TOPMARK_START_MARKER not in joined1
     assert span1 == (1, 3)
 
     # 2) Without span (processor must detect bounds)
@@ -828,13 +829,13 @@ def test_pound_processor_only_removes_first_header_block():
     """Only the first header occurrence should be removed during strip."""
     p = PoundHeaderProcessor()
     lines = [
-        "# topmark:header:start\n",
+        f"# {TOPMARK_START_MARKER}\n",
         "# A\n",
-        "# topmark:header:end\n",
+        f"# {TOPMARK_END_MARKER}\n",
         "code\n",
-        "# topmark:header:start\n",  # Example block later in the file
+        f"# {TOPMARK_START_MARKER}\n",  # Example block later in the file
         "# B\n",
-        "# topmark:header:end\n",
+        f"# {TOPMARK_END_MARKER}\n",
         "more\n",
     ]
 
@@ -845,6 +846,6 @@ def test_pound_processor_only_removes_first_header_block():
 
     assert "code\n" in s and "more\n" in s
 
-    assert "# topmark:header:start" in s  # second block still present
+    assert f"# {TOPMARK_START_MARKER}" in s  # second block still present
 
     assert span == (0, 2)

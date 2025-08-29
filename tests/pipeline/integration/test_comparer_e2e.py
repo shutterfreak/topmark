@@ -22,6 +22,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from topmark.config import Config
+from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.context import ComparisonStatus, GenerationStatus, ProcessingContext
 from topmark.pipeline.steps import builder, comparer, reader, renderer, resolver, scanner
 
@@ -34,10 +35,10 @@ def test_e2e_content_change_detected(tmp_path: Path) -> None:
     """
     f = tmp_path / "content_change.py"
     f.write_text(
-        "# topmark:header:start\n"
+        f"# {TOPMARK_START_MARKER}\n"
         "# license: MIT\n"
         "# project: TopMark\n"
-        "# topmark:header:end\n"
+        f"# {TOPMARK_END_MARKER}\n"
         "print('x')\n",
         encoding="utf-8",
     )
@@ -77,10 +78,10 @@ def test_e2e_formatting_only_change_detected(tmp_path: Path) -> None:
     """
     f = tmp_path / "formatting_only_e2e.py"
     f.write_text(
-        "# topmark:header:start\n"
+        f"# {TOPMARK_START_MARKER}\n"
         "# project: TopMark\n"  # non-canonical order (project before license)
         "# license: MIT\n"
-        "# topmark:header:end\n"
+        f"# {TOPMARK_END_MARKER}\n"
         "print('ok')\n",
         encoding="utf-8",
     )

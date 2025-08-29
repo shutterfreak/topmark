@@ -24,6 +24,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from topmark.config import Config
+from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.context import (
     ComparisonStatus,
     FileStatus,
@@ -79,10 +80,10 @@ def test_formatting_only_changes_are_detected(tmp_path: Path) -> None:
     f = tmp_path / "formatting_only.py"
     # Intentionally put fields in a non-canonical order (license before project)
     f.write_text(
-        "# topmark:header:start\n"
+        f"# {TOPMARK_START_MARKER}\n"
         "# license: MIT\n"
         "# project: TopMark\n"
-        "# topmark:header:end\n"
+        f"# {TOPMARK_END_MARKER}\n"
         "print('ok')\n",
         encoding="utf-8",
     )

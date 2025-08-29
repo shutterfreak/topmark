@@ -24,20 +24,21 @@ from pathlib import Path
 
 from tests.pipeline.conftest import run_insert
 from topmark.config import Config
+from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.processors import get_processor_for_file
 
 
 def _count_markers(text: str) -> int:
-    return text.count("topmark:header:start")
+    return text.count(TOPMARK_START_MARKER)
 
 
 def test_multiple_headers_insert_replaces_first_only_pound(tmp_path: Path) -> None:
     """Two headers: default command replaces only the first (Pound processor)."""
     f = tmp_path / "dup.py"
     f.write_text(
-        "# topmark:header:start\n# x\n# topmark:header:end\n"
+        f"# {TOPMARK_START_MARKER}\n# x\n# {TOPMARK_END_MARKER}\n"
         "print('body')\n"
-        "# topmark:header:start\n# y\n# topmark:header:end\n",
+        f"# {TOPMARK_START_MARKER}\n# y\n# {TOPMARK_END_MARKER}\n",
         encoding="utf-8",
     )
 
@@ -54,9 +55,9 @@ def test_multiple_headers_strip_removes_first_only_xml(tmp_path: Path) -> None:
     """Two XML/HTML-comment headers: strip removes only the first."""
     f = tmp_path / "dup.html"
     f.write_text(
-        "<!-- topmark:header:start -->\n<!-- x -->\n<!-- topmark:header:end -->\n"
+        f"<!-- {TOPMARK_START_MARKER} -->\n<!-- x -->\n<!-- {TOPMARK_END_MARKER} -->\n"
         "<p>body</p>\n"
-        "<!-- topmark:header:start -->\n<!-- y -->\n<!-- topmark:header:end -->\n",
+        f"<!-- {TOPMARK_START_MARKER} -->\n<!-- y -->\n<!-- {TOPMARK_END_MARKER} -->\n",
         encoding="utf-8",
     )
 

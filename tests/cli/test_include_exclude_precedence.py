@@ -26,6 +26,7 @@ from click.testing import CliRunner
 
 from topmark.cli.exit_codes import ExitCode
 from topmark.cli.main import cli as _cli
+from topmark.constants import TOPMARK_START_MARKER
 
 # Type hint for the CLI command object
 cli = cast(click.Command, _cli)
@@ -64,7 +65,7 @@ def test_exclude_wins_over_include(tmp_path: Path) -> None:
     assert result.exit_code == ExitCode.SUCCESS, result.output
 
     # `keep.py` should have a header
-    assert "topmark:header:start" in target.read_text("utf-8")
+    assert TOPMARK_START_MARKER in target.read_text("utf-8")
 
     # `skip.py` should remain header-less
-    assert "topmark:header:start" not in other.read_text("utf-8")
+    assert TOPMARK_START_MARKER not in other.read_text("utf-8")

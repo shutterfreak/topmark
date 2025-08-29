@@ -24,6 +24,7 @@ from pathlib import Path
 
 from tests.pipeline.conftest import run_insert
 from topmark.config import Config
+from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.processors import get_processor_for_file
 
 
@@ -62,16 +63,16 @@ def test_strip_preserves_final_newline_xml(tmp_path: Path) -> None:
 
     with_nl = (
         '<?xml version="1.0"?>\n'
-        "<!-- topmark:header:start -->\n"
+        f"<!-- {TOPMARK_START_MARKER} -->\n"
         "<!-- h -->\n"
-        "<!-- topmark:header:end -->\n"
+        f"<!-- {TOPMARK_END_MARKER} -->\n"
         "<root/>\n"  # final newline
     )
     no_nl = (
         '<?xml version="1.0"?>\n'
-        "<!-- topmark:header:start -->\n"
+        f"<!-- {TOPMARK_START_MARKER} -->\n"
         "<!-- h -->\n"
-        "<!-- topmark:header:end -->\n"
+        f"<!-- {TOPMARK_END_MARKER} -->\n"
         "<root/>"  # no final newline
     )
 

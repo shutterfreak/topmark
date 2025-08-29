@@ -80,6 +80,7 @@ from topmark.cli.utils import (
     resolve_color_mode,
 )
 from topmark.config.logging import TRACE_LEVEL, get_logger, setup_logging
+from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.processors import register_all_processors
 from topmark.rendering.formats import HeaderOutputFormat
 
@@ -427,8 +428,8 @@ def ensure_commands_registered() -> None:
         "strip",
         help="Remove the entire TopMark header from files.",
         context_settings=CONTEXT_SETTINGS,
-        epilog="""
-Removes the full TopMark header block (between 'topmark:header:start' and 'topmark:header:end')
+        epilog=f"""
+Removes the full TopMark header block (between '{TOPMARK_START_MARKER}" and '{TOPMARK_END_MARKER}')
 from each targeted file. By default this is a dry run; use --apply to write changes.
 
 Examples:

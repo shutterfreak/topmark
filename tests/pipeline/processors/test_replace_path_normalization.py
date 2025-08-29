@@ -24,6 +24,7 @@ from pathlib import Path
 
 from tests.pipeline.conftest import run_insert
 from topmark.config import Config
+from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 
 
 def _is_crlf_lines(lines: list[str]) -> bool:
@@ -47,7 +48,9 @@ def test_replace_preserves_crlf(tmp_path: Path) -> None:
 
     # Write with platform newline enforcement: open(newline="\r\n") ensures CRLF.
     with f.open("w", encoding="utf-8", newline="\r\n") as fp:
-        fp.write("// topmark:header:start\n// x\n// topmark:header:end\nint main(){return 0;}\n")
+        fp.write(
+            f"// {TOPMARK_START_MARKER}\n// x\n// {TOPMARK_END_MARKER}\nint main(){{return 0;}}\n"
+        )
 
     cfg = Config.from_defaults()
     ctx = run_insert(f, cfg)  # should replace header
@@ -59,7 +62,7 @@ def test_replace_preserves_no_final_newline_lf(tmp_path: Path) -> None:
     """Replace on LF-seeded header without final newline preserves that policy."""
     f = tmp_path / "a.py"
     f.write_text(
-        "# topmark:header:start\n# x\n# topmark:header:end\nprint('x')",  # no final newline
+        f"# {TOPMARK_START_MARKER}\n# x\n# {TOPMARK_END_MARKER}\nprint('x')",  # no final newline
         encoding="utf-8",
     )
 

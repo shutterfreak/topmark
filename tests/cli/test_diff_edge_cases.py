@@ -25,6 +25,7 @@ from click.testing import CliRunner
 
 from topmark.cli.exit_codes import ExitCode
 from topmark.cli.main import cli as _cli
+from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 
 # Type hint for the CLI command object
 cli = cast(click.Command, _cli)
@@ -42,14 +43,14 @@ def test_diff_on_no_final_newline_default(tmp_path: Path) -> None:
     assert result.exit_code == ExitCode.WOULD_CHANGE, result.output
 
     out = result.output
-    assert "--- " in out and "+++ " in out and "+# topmark:header:start" in out
+    assert "--- " in out and "+++ " in out and f"+# {TOPMARK_START_MARKER}" in out
 
 
 def test_diff_preserves_crlf_strip(tmp_path: Path) -> None:
     r"""Strip diff on CRLF file shows consistent lines (no stray bare `\\r`)."""
     f = tmp_path / "a.ts"
     with f.open("w", encoding="utf-8", newline="\r\n") as fp:
-        fp.write("// topmark:header:start\n// h\n// topmark:header:end\nconsole.log(1)\n")
+        fp.write(f"// {TOPMARK_START_MARKER}\n// h\n// {TOPMARK_END_MARKER}\nconsole.log(1)\n")
 
     result = CliRunner().invoke(cli, ["-vv", "strip", "--diff", str(f)])
 
@@ -57,7 +58,7 @@ def test_diff_preserves_crlf_strip(tmp_path: Path) -> None:
 
     # Basic sanity check: headers present and no raw solitary "\r" occurrences.
     out = result.output
-    assert "--- " in out and "+++ " in out and "-// topmark:header:start" in out
+    assert "--- " in out and "+++ " in out and f"-// {TOPMARK_START_MARKER}" in out
 
     # Focus assertions on the INFO-rendered patch block which preserves EOL markers
     start = out.find("Patch (rendered):")

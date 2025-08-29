@@ -30,6 +30,7 @@ from click.testing import CliRunner
 
 from topmark.cli.exit_codes import ExitCode
 from topmark.cli.main import cli as _cli
+from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 
 # Type hint for the CLI command object
 cli = cast(click.Command, _cli)
@@ -42,7 +43,7 @@ def test_strip_dry_run_exits_2(tmp_path: Path) -> None:
     without `--apply` should signal "would change" with exit code 2.
     """
     f = tmp_path / "x.py"
-    f.write_text("# topmark:header:start\n# ...\n# topmark:header:end\nprint('ok')\n", "utf-8")
+    f.write_text(f"# {TOPMARK_START_MARKER}\n# ...\n# {TOPMARK_END_MARKER}\nprint('ok')\n", "utf-8")
 
     result = CliRunner().invoke(cli, ["strip", str(f)])
 
@@ -71,7 +72,7 @@ def test_strip_apply_removes_and_is_idempotent(tmp_path: Path) -> None:
     unchanged and still succeed.
     """
     f = tmp_path / "x.py"
-    before = "# topmark:header:start\n# a\n# topmark:header:end\nprint('x')\n"
+    before = f"# {TOPMARK_START_MARKER}\n# a\n# {TOPMARK_END_MARKER}\nprint('x')\n"
     f.write_text(before, "utf-8")
 
     # First application removes the header.
@@ -80,7 +81,7 @@ def test_strip_apply_removes_and_is_idempotent(tmp_path: Path) -> None:
     assert result_strip_1.exit_code == ExitCode.SUCCESS, result_strip_1.output
 
     after_strip_1 = f.read_text("utf-8")
-    assert "topmark:header:start" not in after_strip_1 and "print('x')" in after_strip_1
+    assert TOPMARK_START_MARKER not in after_strip_1 and "print('x')" in after_strip_1
 
     # Second application should be a no-op and still succeed.
     result_strip_2 = CliRunner().invoke(cli, ["strip", "--apply", str(f)])
@@ -96,7 +97,7 @@ def test_strip_diff_shows_patch(tmp_path: Path) -> None:
     Verifies presence of unified diff markers and a removed header line.
     """
     f = tmp_path / "x.py"
-    f.write_text("# topmark:header:start\n# h\n# topmark:header:end\nprint()\n", "utf-8")
+    f.write_text(f"# {TOPMARK_START_MARKER}\n# h\n# {TOPMARK_END_MARKER}\nprint()\n", "utf-8")
 
     result = CliRunner().invoke(cli, ["strip", "--diff", str(f)])
 
@@ -107,7 +108,7 @@ def test_strip_diff_shows_patch(tmp_path: Path) -> None:
     assert (
         "--- " in result.output
         and "+++ " in result.output
-        and "-# topmark:header:start" in result.output
+        and f"-# {TOPMARK_START_MARKER}" in result.output
     )
 
 
@@ -119,9 +120,9 @@ def test_strip_summary_buckets(tmp_path: Path) -> None:
     has = tmp_path / "has.py"
     clean = tmp_path / "clean.py"
     bad = tmp_path / "bad.py"
-    has.write_text("# topmark:header:start\n# h\n# topmark:header:end\nprint()\n", "utf-8")
+    has.write_text(f"# {TOPMARK_START_MARKER}\n# h\n# {TOPMARK_END_MARKER}\nprint()\n", "utf-8")
     clean.write_text("print()\n", "utf-8")
-    bad.write_text("# topmark:header:start\n# x\nprint()\n", "utf-8")
+    bad.write_text(f"# {TOPMARK_START_MARKER}\n# x\nprint()\n", "utf-8")
 
     result = CliRunner().invoke(
         cli,
@@ -148,7 +149,7 @@ def test_strip_accepts_positional_paths(tmp_path: Path) -> None:
     Uses a simple Markdown example to validate path ingress.
     """
     p = tmp_path / "a.md"
-    p.write_text("<!-- topmark:header:start -->\n<!-- topmark:header:end -->\n", "utf-8")
+    p.write_text(f"<!-- {TOPMARK_START_MARKER} -->\n<!-- {TOPMARK_END_MARKER} -->\n", "utf-8")
 
     result = CliRunner().invoke(cli, ["strip", str(p)])
 
@@ -178,7 +179,7 @@ def test_strip_accepts_stdin_list(tmp_path: Path) -> None:
     p = tmp_path / "list.txt"
     f = tmp_path / "x.py"
 
-    f.write_text("# topmark:header:start\n# h\n# topmark:header:end\n", "utf-8")
+    f.write_text(f"# {TOPMARK_START_MARKER}\n# h\n# {TOPMARK_END_MARKER}\n", "utf-8")
     p.write_text(str(f) + "\n", "utf-8")
 
     result = CliRunner().invoke(cli, ["strip", "--stdin"], input=p.read_text("utf-8"))
@@ -198,14 +199,14 @@ def test_strip_ignores_missing_end_marker(tmp_path: Path) -> None:
         tmp_path: Temporary path fixture provided by pytest.
     """
     f = tmp_path / "bad.py"
-    f.write_text("# topmark:header:start\n# x\nprint()\n", "utf-8")
+    f.write_text(f"# {TOPMARK_START_MARKER}\n# x\nprint()\n", "utf-8")
 
     result = CliRunner().invoke(cli, ["-vv", "strip", "--apply", str(f)])
 
     assert result.exit_code == ExitCode.SUCCESS, result.output
 
     # Nothing stripped; header markers still there
-    assert "topmark:header:start" in f.read_text("utf-8")
+    assert TOPMARK_START_MARKER in f.read_text("utf-8")
 
 
 def test_strip_include_from_exclude_from(tmp_path: Path) -> None:
@@ -221,8 +222,8 @@ def test_strip_include_from_exclude_from(tmp_path: Path) -> None:
     """
     a = tmp_path / "a.py"
     b = tmp_path / "b.py"
-    a.write_text("# topmark:header:start\n# h\n# topmark:header:end\n", "utf-8")
-    b.write_text("# topmark:header:start\n# h\n# topmark:header:end\n", "utf-8")
+    a.write_text(f"# {TOPMARK_START_MARKER}\n# h\n# {TOPMARK_END_MARKER}\n", "utf-8")
+    b.write_text(f"# {TOPMARK_START_MARKER}\n# h\n# {TOPMARK_END_MARKER}\n", "utf-8")
 
     # Use **relative** patterns: resolver disallows absolute patterns.
     incf = tmp_path / "inc.txt"
@@ -252,6 +253,6 @@ def test_strip_include_from_exclude_from(tmp_path: Path) -> None:
 
     assert result.exit_code == ExitCode.SUCCESS, result.output
 
-    assert "topmark:header:start" not in a.read_text("utf-8")
+    assert TOPMARK_START_MARKER not in a.read_text("utf-8")
 
-    assert "topmark:header:start" in b.read_text("utf-8")
+    assert TOPMARK_START_MARKER in b.read_text("utf-8")

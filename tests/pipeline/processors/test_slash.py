@@ -22,6 +22,7 @@ from tests.conftest import mark_pipeline
 from tests.pipeline.conftest import expected_block_lines_for, find_line, run_insert
 from topmark.config import Config
 from topmark.config.logging import get_logger
+from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline import runner
 from topmark.pipeline.context import ProcessingContext
 from topmark.pipeline.pipelines import get_pipeline
@@ -73,12 +74,12 @@ def test_slash_detect_existing_header(tmp_path: Path) -> None:
     """
     f = tmp_path / "lib.h"
     f.write_text(
-        "// topmark:header:start\n"
+        f"// {TOPMARK_START_MARKER}\n"
         "//\n"
         "//   file: lib.h\n"
         "//   license: MIT\n"
         "//\n"
-        "// topmark:header:end\n"
+        f"// {TOPMARK_END_MARKER}\n"
         "\n"
         "#pragma once\n"
     )
@@ -100,9 +101,9 @@ def test_slash_malformed_header(tmp_path: Path) -> None:
     """
     f = tmp_path / "bad.ts"
     f.write_text(
-        "// topmark:header:start\n"
+        f"// {TOPMARK_START_MARKER}\n"
         "//   file bad.ts\n"  # missing ':'
-        "// topmark:header:end\n"
+        f"// {TOPMARK_END_MARKER}\n"
         "export {}\n"
     )
     cfg = Config.from_defaults()
@@ -163,7 +164,7 @@ def test_slash_strip_header_block_with_and_without_span(tmp_path: Path) -> None:
 
     f = tmp_path / "strip_me.js"
     f.write_text(
-        "// topmark:header:start\n// f\n// topmark:header:end\nconsole.log(1)\n",
+        f"// {TOPMARK_START_MARKER}\n// f\n// {TOPMARK_END_MARKER}\nconsole.log(1)\n",
         encoding="utf-8",
     )
     proc = get_processor_for_file(f)
@@ -171,7 +172,7 @@ def test_slash_strip_header_block_with_and_without_span(tmp_path: Path) -> None:
     lines = f.read_text(encoding="utf-8").splitlines(keepends=True)
 
     new1, span1 = proc.strip_header_block(lines=lines, span=(0, 2))
-    assert "topmark:header:start" not in "".join(new1)
+    assert TOPMARK_START_MARKER not in "".join(new1)
     assert span1 == (0, 2)
 
     new2, span2 = proc.strip_header_block(lines=lines)
@@ -191,7 +192,7 @@ def test_slash_replace_preserves_crlf(tmp_path: Path) -> None:
     f = tmp_path / "r.cpp"
     with f.open("w", newline="\r\n") as fp:
         # Note: every "\n" will be replaced with the `newline` value specified: "\r\n"
-        fp.write("// topmark:header:start\n// x\n// topmark:header:end\nint main(){}\n")
+        fp.write(f"// {TOPMARK_START_MARKER}\n// x\n// {TOPMARK_END_MARKER}\nint main(){{}}\n")
     ctx = run_insert(f, Config.from_defaults())
     for i, ln in enumerate(ctx.updated_file_lines or []):
         if i < len(ctx.updated_file_lines or []) - 1:

@@ -266,7 +266,7 @@ class HeaderProcessor:
 
         The preamble consists of:
           1) the block comment opener (when configured),
-          2) the ``topmark:header:start`` directive line, and
+          2) the ``TOPMARK_START_MARKER`` directive line, and
           3) an intentional blank line following the start marker.
 
         Args:
@@ -312,7 +312,7 @@ class HeaderProcessor:
 
         The postamble consists of:
           1) an intentional blank line before the end marker,
-          2) the ``topmark:header:end`` directive line, and
+          2) the ``TOPMARK_END_MARKER`` directive line, and
           3) the block comment closer (when configured).
 
         Args:
@@ -616,7 +616,7 @@ class HeaderProcessor:
            the first ``START``..``END`` marker pair *anywhere* in the file. The scan
            accepts either exact directive matches (prefix/suffix aware) **or** marker
            substrings appearing inside single-line comment wrappers (e.g.,
-           ``<!-- topmark:header:start -->`` for XML/HTML/Markdown). This covers older
+           ``<!-- TOPMARK_START_MARKER -->`` for XML/HTML/Markdown). This covers older
            files or content transformed by formatters.
 
         When a header is removed at the very top of the file (``start == 0``), the
@@ -757,8 +757,8 @@ class HeaderProcessor:
     def _get_bounds_line_comments(self, lines: list[str]) -> tuple[int | None, int | None]:
         """Identify bounds of a line-comment TopMark header.
 
-        Scans for the first occurrence of ``topmark:header:start`` and the next
-        ``topmark:header:end`` using the processor's configured line affixes. This
+        Scans for the first occurrence of ``TOPMARK_START_MARKER`` and the next
+        ``TOPMARK_END_MARKER`` using the processor's configured line affixes. This
         helper does no placement validation; callers should apply policy checks.
 
         Args:

@@ -33,6 +33,7 @@ import pytest
 
 from tests.pipeline.conftest import run_insert
 from topmark.config import Config
+from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 
 mark_pipeline = pytest.mark.pipeline
 
@@ -77,8 +78,20 @@ def test_insert_preserves_newline_style(
 @pytest.mark.parametrize(
     "ext, header_open, header_line, header_close, body",
     [
-        (".py", "# topmark:header:start\n", "# f\n", "# topmark:header:end\n", "print('x')\n"),
-        (".ts", "// topmark:header:start\n", "// f\n", "// topmark:header:end\n", "export {}\n"),
+        (
+            ".py",
+            f"# {TOPMARK_START_MARKER}\n",
+            "# f\n",
+            f"# {TOPMARK_END_MARKER}\n",
+            "print('x')\n",
+        ),
+        (
+            ".ts",
+            f"// {TOPMARK_START_MARKER}\n",
+            "// f\n",
+            f"// {TOPMARK_END_MARKER}\n",
+            "export {}\n",
+        ),
     ],
 )
 @pytest.mark.parametrize("newline", ["\n", "\r\n"])  # LF and CRLF

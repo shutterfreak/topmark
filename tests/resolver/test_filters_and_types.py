@@ -28,7 +28,7 @@ from click.testing import CliRunner
 
 from topmark.cli.exit_codes import ExitCode
 from topmark.cli.main import cli as _cli
-from topmark.constants import TOPMARK_START_MARKER
+from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 
 # Type hint for the CLI command object
 cli = cast(click.Command, _cli)
@@ -41,8 +41,8 @@ def test_strip_honors_include_exclude(tmp_path: Path) -> None:
     """
     a = tmp_path / "a.py"
     b = tmp_path / "b.py"
-    a.write_text("# topmark:header:start\n# h\n# topmark:header:end\n", "utf-8")
-    b.write_text("# topmark:header:start\n# h\n# topmark:header:end\n", "utf-8")
+    a.write_text(f"# {TOPMARK_START_MARKER}\n# h\n# {TOPMARK_END_MARKER}\n", "utf-8")
+    b.write_text(f"# {TOPMARK_START_MARKER}\n# h\n# {TOPMARK_END_MARKER}\n", "utf-8")
 
     # Non-relative glob patterns are unsupported
     cwd = os.getcwd()

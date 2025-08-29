@@ -30,6 +30,7 @@ from pathlib import Path
 
 import pytest
 
+from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.processors import get_processor_for_file
 
 mark_pipeline = pytest.mark.pipeline
@@ -38,13 +39,25 @@ mark_pipeline = pytest.mark.pipeline
 @pytest.mark.parametrize(
     "ext, header_open, header_line, header_close, body",
     [
-        (".py", "# topmark:header:start\n", "# f\n", "# topmark:header:end\n", "print('x')\n"),
-        (".ts", "// topmark:header:start\n", "// f\n", "// topmark:header:end\n", "export {}\n"),
+        (
+            ".py",
+            f"# {TOPMARK_START_MARKER}\n",
+            "# f\n",
+            f"# {TOPMARK_END_MARKER}\n",
+            "print('x')\n",
+        ),
+        (
+            ".ts",
+            f"// {TOPMARK_START_MARKER}\n",
+            "// f\n",
+            f"// {TOPMARK_END_MARKER}\n",
+            "export {}\n",
+        ),
         (
             ".html",
-            "<!-- topmark:header:start -->\n",
+            f"<!-- {TOPMARK_START_MARKER} -->\n",
             "<!-- f -->\n",
-            "<!-- topmark:header:end -->\n",
+            f"<!-- {TOPMARK_END_MARKER} -->\n",
             "<div/>\n",
         ),
     ],

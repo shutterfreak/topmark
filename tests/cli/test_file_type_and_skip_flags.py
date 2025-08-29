@@ -30,6 +30,7 @@ from click.testing import CliRunner
 
 from topmark.cli.exit_codes import ExitCode
 from topmark.cli.main import cli as _cli
+from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 
 # Type hint for the CLI command object
 cli = cast(click.Command, _cli)
@@ -52,18 +53,20 @@ def test_file_type_filter_limits_processing_default(tmp_path: Path) -> None:
 
     # Python file should now have a header; TS file should remain unchanged.
     out_py = py.read_text("utf-8")
-    assert "topmark:header:start" in out_py
+    assert TOPMARK_START_MARKER in out_py
 
     out_ts = ts.read_text("utf-8")
-    assert "topmark:header:start" not in out_ts
+    assert TOPMARK_START_MARKER not in out_ts
 
 
 def test_file_type_filter_limits_processing_strip(tmp_path: Path) -> None:
     """`--file-type` also constrains `strip` to the selected types."""
     py = tmp_path / "b.py"
     ts = tmp_path / "b.ts"
-    py.write_text("# topmark:header:start\n# h\n# topmark:header:end\nprint()\n", "utf-8")
-    ts.write_text("// topmark:header:start\n// h\n// topmark:header:end\nconsole.log(1)\n", "utf-8")
+    py.write_text(f"# {TOPMARK_START_MARKER}\n# h\n# {TOPMARK_END_MARKER}\nprint()\n", "utf-8")
+    ts.write_text(
+        f"// {TOPMARK_START_MARKER}\n// h\n// {TOPMARK_END_MARKER}\nconsole.log(1)\n", "utf-8"
+    )
 
     # Strip only for python → TS header remains
     result = CliRunner().invoke(
@@ -73,16 +76,16 @@ def test_file_type_filter_limits_processing_strip(tmp_path: Path) -> None:
 
     assert result.exit_code == ExitCode.SUCCESS, result.output
 
-    assert "topmark:header:start" not in py.read_text("utf-8")
+    assert TOPMARK_START_MARKER not in py.read_text("utf-8")
 
-    assert "topmark:header:start" in ts.read_text("utf-8")
+    assert TOPMARK_START_MARKER in ts.read_text("utf-8")
 
 
 def test_skip_compliant_hides_clean_files(tmp_path: Path) -> None:
     """`--skip-compliant` removes compliant files from per-file and summary output."""
     f1 = tmp_path / "has.py"
     f2 = tmp_path / "clean.py"
-    f1.write_text("# topmark:header:start\n# h\n# topmark:header:end\nprint()\n", "utf-8")
+    f1.write_text(f"# {TOPMARK_START_MARKER}\n# h\n# {TOPMARK_END_MARKER}\nprint()\n", "utf-8")
     f2.write_text("print()\n", "utf-8")
 
     # In summary mode, ensure the compliant bucket isn't shown when skip-compliant is set.

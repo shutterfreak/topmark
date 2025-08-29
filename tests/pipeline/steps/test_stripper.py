@@ -20,6 +20,7 @@ minimal `ProcessingContext` without running the full pipeline.
 from pathlib import Path
 
 from topmark.config import Config
+from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.context import HeaderStatus, ProcessingContext
 from topmark.pipeline.processors.base import HeaderProcessor
 from topmark.pipeline.steps.stripper import strip
@@ -28,9 +29,9 @@ from topmark.pipeline.steps.stripper import strip
 def test_stripper_uses_span_and_trims_leading_blank(tmp_path: Path) -> None:
     """When span is provided, stripper should remove exactly that region and trim."""
     lines = [
-        "# topmark:header:start\n",
+        f"# {TOPMARK_START_MARKER}\n",
         "# h\n",
-        "# topmark:header:end\n",
+        f"# {TOPMARK_END_MARKER}\n",
         "\n",
         "code\n",
     ]
