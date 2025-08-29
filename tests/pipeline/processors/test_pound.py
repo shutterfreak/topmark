@@ -25,6 +25,7 @@ from topmark.config.logging import get_logger
 from topmark.pipeline import runner
 from topmark.pipeline.context import HeaderStatus, ProcessingContext
 from topmark.pipeline.pipelines import get_pipeline
+from topmark.pipeline.processors.pound import PoundHeaderProcessor
 
 logger = get_logger(__name__)
 
@@ -821,3 +822,29 @@ def test_pound_bom_preserved(tmp_path: Path) -> None:
     ctx = run_insert(f, cfg)
     # BOM should still be present at the beginning of the first line
     assert (ctx.updated_file_lines or [])[0].startswith("\ufeff")
+
+
+def test_pound_processor_only_removes_first_header_block():
+    """Only the first header occurrence should be removed during strip."""
+    p = PoundHeaderProcessor()
+    lines = [
+        "# topmark:header:start\n",
+        "# A\n",
+        "# topmark:header:end\n",
+        "code\n",
+        "# topmark:header:start\n",  # Example block later in the file
+        "# B\n",
+        "# topmark:header:end\n",
+        "more\n",
+    ]
+
+    new, span = p.strip_header_block(lines=lines, span=(0, 2))
+
+    # First header removed; later example block must remain.
+    s = "".join(new)
+
+    assert "code\n" in s and "more\n" in s
+
+    assert "# topmark:header:start" in s  # second block still present
+
+    assert span == (0, 2)

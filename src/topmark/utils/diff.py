@@ -16,6 +16,7 @@ for logging and CLI display.
 """
 
 import os
+from typing import Sequence
 
 from yachalk import chalk
 
@@ -24,7 +25,7 @@ from topmark.config.logging import get_logger
 logger = get_logger(__name__)
 
 
-def render_patch(patch: list[str] | str, show_line_numbers: bool = False) -> str:
+def render_patch(patch: Sequence[str] | str, show_line_numbers: bool = False) -> str:
     """Render a colorized preview of a unified diff.
 
     Args:

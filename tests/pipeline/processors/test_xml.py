@@ -25,6 +25,7 @@ from topmark.config.logging import get_logger
 from topmark.pipeline import runner
 from topmark.pipeline.context import ProcessingContext
 from topmark.pipeline.pipelines import get_pipeline
+from topmark.pipeline.processors.xml import XmlHeaderProcessor
 
 logger = get_logger(__name__)
 
@@ -500,10 +501,13 @@ def test_xml_doctype_with_internal_subset(tmp_path: Path) -> None:
     cfg = Config.from_defaults()
     ctx = run_insert(f, cfg)
     lines = ctx.updated_file_lines or []
+
     assert lines[0].lstrip("\ufeff").startswith("<?xml")
+
     # header begins after declaration + doctype + one blank
     sig = expected_block_lines_for(f)
     start_idx = find_line(lines, sig["start_line"])
+
     assert start_idx == 5  # decl(0) doctype(1..3) blank(4) start(5)
 
 
@@ -521,4 +525,26 @@ def test_xml_bom_preserved_text_insert(tmp_path: Path) -> None:
     f = tmp_path / "bom.xml"
     f.write_bytes(b"\xef\xbb\xbf<?xml version='1.0'?>\n<root/>\n")
     ctx = run_insert(f, Config.from_defaults())
+
     assert (ctx.updated_file_lines or [])[0].startswith("\ufeff")
+
+
+def test_xml_processor_respects_prolog_and_removes_block():
+    """Header block removal while preserving `<?xml ...?>` prolog line."""
+    xp = XmlHeaderProcessor()
+    lines = [
+        '<?xml version="1.0"?>\n',
+        "<!-- topmark:header:start -->\n",
+        "<!-- h -->\n",
+        "<!-- topmark:header:end -->\n",
+        "<root/>\n",
+    ]
+
+    new, span = xp.strip_header_block(lines=lines, span=(1, 3))
+
+    body = "".join(new)
+
+    assert body.startswith("<?xml")
+    assert "<root/>" in body
+    assert "<!-- topmark:header:start -->" not in body
+    assert span == (1, 3)

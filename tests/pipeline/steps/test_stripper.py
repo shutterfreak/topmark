@@ -22,27 +22,18 @@ from pathlib import Path
 from topmark.config import Config
 from topmark.pipeline.context import HeaderStatus, ProcessingContext
 from topmark.pipeline.processors.base import HeaderProcessor
+from topmark.pipeline.steps.stripper import strip
 
 
 def test_stripper_uses_span_and_trims_leading_blank(tmp_path: Path) -> None:
-    """
-    Remove a header using a known span and trim a single leading blank.
-
-    Setup:
-      * Provide file lines with a TopMark header at indexes 0..2 followed by a
-        blank line and then code.
-      * Seed `existing_header_range` with (0, 2) as if set by the scanner.
-      * Set `HeaderStatus.DETECTED` to simulate scanner output.
-
-    Expectations:
-      * `stripper.strip()` populates `updated_file_lines` with only the code.
-      * Exactly one leading blank (introduced by removal at top) is trimmed.
-      * `StripStatus` becomes READY and `HeaderStatus` reflects presence.
-
-    Args:
-      tmp_path: Pytest-provided temporary directory for constructing test files.
-    """
-    lines = ["# topmark:header:start\n", "# h\n", "# topmark:header:end\n", "\n", "code\n"]
+    """When span is provided, stripper should remove exactly that region and trim."""
+    lines = [
+        "# topmark:header:start\n",
+        "# h\n",
+        "# topmark:header:end\n",
+        "\n",
+        "code\n",
+    ]
     cfg = Config.from_defaults()
     ctx = ProcessingContext.bootstrap(path=(tmp_path / "x.py"), config=cfg)
     ctx.file_lines = lines
@@ -53,10 +44,8 @@ def test_stripper_uses_span_and_trims_leading_blank(tmp_path: Path) -> None:
     # ✅ Simulate scanner result so stripper proceeds
     ctx.status.header = HeaderStatus.DETECTED
 
-    from topmark.pipeline.steps.stripper import strip
-
     ctx = strip(ctx)
     # After stripping, only the code line should remain; statuses updated accordingly.
     assert ctx.updated_file_lines == ["code\n"]
     assert ctx.status.strip.name == "READY"
-    assert ctx.status.header in (HeaderStatus.DETECTED, HeaderStatus.EMPTY)
+    assert ctx.status.header is HeaderStatus.DETECTED
