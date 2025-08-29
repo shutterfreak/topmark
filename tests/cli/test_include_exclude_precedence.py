@@ -18,7 +18,7 @@ Covers:
 from __future__ import annotations
 
 import os
-import pathlib
+from pathlib import Path
 from typing import cast
 
 import click
@@ -27,8 +27,11 @@ from click.testing import CliRunner
 from topmark.cli.exit_codes import ExitCode
 from topmark.cli.main import cli as _cli
 
+# Type hint for the CLI command object
+cli = cast(click.Command, _cli)
 
-def test_exclude_wins_over_include(tmp_path: pathlib.Path) -> None:
+
+def test_exclude_wins_over_include(tmp_path: Path) -> None:
     """When a file is matched by both include and exclude, exclude removes it."""
     target = tmp_path / "keep.py"
     other = tmp_path / "skip.py"
@@ -44,10 +47,9 @@ def test_exclude_wins_over_include(tmp_path: pathlib.Path) -> None:
     cwd = os.getcwd()
     try:
         os.chdir(tmp_path)
-        res = CliRunner().invoke(
-            cast(click.Command, _cli),
+        result = CliRunner().invoke(
+            cli,
             [
-                "-vv",
                 "--include-from",
                 str(incf.name),
                 "--exclude-from",
@@ -59,7 +61,10 @@ def test_exclude_wins_over_include(tmp_path: pathlib.Path) -> None:
     finally:
         os.chdir(cwd)
 
-    assert res.exit_code == ExitCode.SUCCESS, res.output
-    # `keep.py` should have a header; `skip.py` should remain header-less.
+    assert result.exit_code == ExitCode.SUCCESS, result.output
+
+    # `keep.py` should have a header
     assert "topmark:header:start" in target.read_text("utf-8")
+
+    # `skip.py` should remain header-less
     assert "topmark:header:start" not in other.read_text("utf-8")

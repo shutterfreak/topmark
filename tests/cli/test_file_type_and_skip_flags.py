@@ -22,7 +22,7 @@ rather than exact phrases to tolerate minor wording tweaks.
 
 from __future__ import annotations
 
-import pathlib
+from pathlib import Path
 from typing import cast
 
 import click
@@ -31,8 +31,11 @@ from click.testing import CliRunner
 from topmark.cli.exit_codes import ExitCode
 from topmark.cli.main import cli as _cli
 
+# Type hint for the CLI command object
+cli = cast(click.Command, _cli)
 
-def test_file_type_filter_limits_processing_default(tmp_path: pathlib.Path) -> None:
+
+def test_file_type_filter_limits_processing_default(tmp_path: Path) -> None:
     """`--file-type` limits header insertion/updates to selected types."""
     py = tmp_path / "a.py"
     ts = tmp_path / "a.ts"
@@ -40,20 +43,22 @@ def test_file_type_filter_limits_processing_default(tmp_path: pathlib.Path) -> N
     ts.write_text("console.log(1);\n", "utf-8")
 
     # Only act on python files
-    res = CliRunner().invoke(
-        cast(click.Command, _cli),
-        ["-vv", "--file-type", "python", "--apply", str(tmp_path)],
+    result = CliRunner().invoke(
+        cli,
+        ["--file-type", "python", "--apply", str(tmp_path)],
     )
-    assert res.exit_code == ExitCode.SUCCESS, res.output
+
+    assert result.exit_code == ExitCode.SUCCESS, result.output
 
     # Python file should now have a header; TS file should remain unchanged.
     out_py = py.read_text("utf-8")
-    out_ts = ts.read_text("utf-8")
     assert "topmark:header:start" in out_py
+
+    out_ts = ts.read_text("utf-8")
     assert "topmark:header:start" not in out_ts
 
 
-def test_file_type_filter_limits_processing_strip(tmp_path: pathlib.Path) -> None:
+def test_file_type_filter_limits_processing_strip(tmp_path: Path) -> None:
     """`--file-type` also constrains `strip` to the selected types."""
     py = tmp_path / "b.py"
     ts = tmp_path / "b.ts"
@@ -61,16 +66,19 @@ def test_file_type_filter_limits_processing_strip(tmp_path: pathlib.Path) -> Non
     ts.write_text("// topmark:header:start\n// h\n// topmark:header:end\nconsole.log(1)\n", "utf-8")
 
     # Strip only for python → TS header remains
-    res = CliRunner().invoke(
-        cast(click.Command, _cli),
-        ["-vv", "strip", "--file-type", "python", "--apply", str(tmp_path)],
+    result = CliRunner().invoke(
+        cli,
+        ["strip", "--file-type", "python", "--apply", str(tmp_path)],
     )
-    assert res.exit_code == ExitCode.SUCCESS, res.output
+
+    assert result.exit_code == ExitCode.SUCCESS, result.output
+
     assert "topmark:header:start" not in py.read_text("utf-8")
+
     assert "topmark:header:start" in ts.read_text("utf-8")
 
 
-def test_skip_compliant_hides_clean_files(tmp_path: pathlib.Path) -> None:
+def test_skip_compliant_hides_clean_files(tmp_path: Path) -> None:
     """`--skip-compliant` removes compliant files from per-file and summary output."""
     f1 = tmp_path / "has.py"
     f2 = tmp_path / "clean.py"
@@ -78,38 +86,44 @@ def test_skip_compliant_hides_clean_files(tmp_path: pathlib.Path) -> None:
     f2.write_text("print()\n", "utf-8")
 
     # In summary mode, ensure the compliant bucket isn't shown when skip-compliant is set.
-    res = CliRunner().invoke(
-        cast(click.Command, _cli),
+    result = CliRunner().invoke(
+        cli,
         # NOTE: do not set verbosity level so we can inspect the summary bucket list
         ["strip", "--summary", "--skip-compliant", str(tmp_path)],
     )
-    assert res.exit_code in (ExitCode.SUCCESS, ExitCode.WOULD_CHANGE), res.output
-    out = res.output.lower()
+
+    assert result.exit_code in (ExitCode.SUCCESS, ExitCode.WOULD_CHANGE), result.output
+
+    out = result.output.lower()
     # NOTE: Labels come from classify_outcome(); compliant buckets ("no header"
     # or "up-to-date") may still be shown depending on current summary settings.
     # We only require that the would-change bucket is present.
     assert "would strip header" in out
 
 
-def test_skip_unsupported_hides_unknown(tmp_path: pathlib.Path) -> None:
+def test_skip_unsupported_hides_unknown(tmp_path: Path) -> None:
     """`--skip-unsupported` hides unknown types from normal and summary outputs."""
     # Create a clearly unsupported file (extension not registered).
     unk = tmp_path / "data.unknown"
     unk.write_text("payload\n", "utf-8")
 
     # Normal mode
-    res1 = CliRunner().invoke(
-        cast(click.Command, _cli),
+    result_summary = CliRunner().invoke(
+        cli,
         ["--skip-unsupported", str(unk)],
     )
-    assert res1.exit_code == 0, res1.output  # nothing to do, and unknown is skipped from output
+
+    # nothing to do, and unknown is skipped from output
+    assert result_summary.exit_code == ExitCode.SUCCESS, result_summary.output
 
     # Summary mode: the "unsupported" bucket should not be present now.
-    res2 = CliRunner().invoke(
-        cast(click.Command, _cli),
+    result_normal = CliRunner().invoke(
+        cli,
         # NOTE: do not set verbosity level so we can inspect the summary bucket list
         ["--summary", "--skip-unsupported", str(unk)],
     )
-    assert res2.exit_code == 0, res2.output
-    out = res2.output.lower()
+
+    assert result_normal.exit_code == ExitCode.SUCCESS, result_normal.output
+
+    out = result_normal.output.lower()
     assert "unsupported" not in out

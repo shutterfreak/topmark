@@ -24,18 +24,24 @@ from click.testing import CliRunner
 from topmark.cli.exit_codes import ExitCode
 from topmark.cli.main import cli as _cli
 
+# Type hint for the CLI command object
+cli = cast(click.Command, _cli)
+
 COMMANDS = ["check", "apply", "dump-config", "filetypes", "init-config", "show-defaults", "version"]
 
 
 def test_group_help() -> None:
     """It should exit successfully (0) when running `topmark --help`."""
-    res = CliRunner().invoke(cast(click.Command, _cli), ["--help"])
-    assert res.exit_code == ExitCode.SUCCESS, res.output
+    result = CliRunner().invoke(cli, ["--help"])
+
+    assert result.exit_code == ExitCode.SUCCESS, result.output
 
 
 def test_each_command_has_help() -> None:
     """It should provide a `--help` page for each known subcommand."""
-    r = CliRunner()
+    runner = CliRunner()
+
     for name in COMMANDS:
-        res = r.invoke(cast(click.Command, _cli), [name, "--help"])
-        assert res.exit_code == ExitCode.SUCCESS, f"{name} --help failed"
+        result = runner.invoke(cli, [name, "--help"])
+
+        assert result.exit_code == ExitCode.SUCCESS, f"{name} --help failed"

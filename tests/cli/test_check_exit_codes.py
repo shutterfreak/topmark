@@ -15,7 +15,7 @@ with either 0 (SUCCESS) or 2 (WOULD_CHANGE). The behavior may be tightened
 later as the CLI spec is finalized.
 """
 
-import pathlib
+from pathlib import Path
 from typing import cast
 
 import click
@@ -24,8 +24,11 @@ from click.testing import CliRunner
 from topmark.cli.exit_codes import ExitCode
 from topmark.cli.main import cli as _cli
 
+# Type hint for the CLI command object
+cli = cast(click.Command, _cli)
 
-def test_check_exit_code_with_missing_header(tmp_path: pathlib.Path) -> None:
+
+def test_check_exit_code_with_missing_header(tmp_path: Path) -> None:
     """It should exit with code 0 (SUCCESS) or 2 (WOULD_CHANGE).
 
     Args:
@@ -33,8 +36,10 @@ def test_check_exit_code_with_missing_header(tmp_path: pathlib.Path) -> None:
     """
     f = tmp_path / "foo.py"
     f.write_text("print('hi')\n")
-    res = CliRunner().invoke(cast(click.Command, _cli), ["check", str(f), "--check"])
-    assert res.exit_code in (
+
+    result = CliRunner().invoke(cli, ["check", str(f), "--check"])
+
+    assert result.exit_code in (
         ExitCode.SUCCESS,
         ExitCode.WOULD_CHANGE,
     )  # tighten once behavior is finalized

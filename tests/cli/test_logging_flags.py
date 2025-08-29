@@ -22,10 +22,15 @@ from click.testing import CliRunner
 from topmark.cli.exit_codes import ExitCode
 from topmark.cli.main import cli as _cli
 
+# Type hint for the CLI command object
+cli = cast(click.Command, _cli)
+
 
 def test_verbose_and_quiet_flags_parse() -> None:
     """It should accept verbosity and quietness flags and exit with code 0."""
-    r = CliRunner()
+    runner = CliRunner()
+
     for args in (["-v", "version"], ["-vvv", "version"], ["-q", "version"], ["-qq", "version"]):
-        res = r.invoke(cast(click.Command, _cli), args)
-        assert res.exit_code == ExitCode.SUCCESS, res.output
+        result = runner.invoke(cli, args)
+
+        assert result.exit_code == ExitCode.SUCCESS, result.output

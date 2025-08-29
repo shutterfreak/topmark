@@ -11,7 +11,6 @@
 """Auto-import all processor modules in the current package."""
 
 import importlib
-import pathlib
 import pkgutil
 from pathlib import Path
 
@@ -89,7 +88,7 @@ def get_processor_for_file(path: Path) -> HeaderProcessor | None:
 # Dynamically import all modules in the processors/ directory
 def register_all_processors() -> None:
     """Import all processor modules in the current package."""
-    package_dir = pathlib.Path(__file__).parent
+    package_dir = Path(__file__).parent
     for module_info in pkgutil.iter_modules([str(package_dir)]):
         if not module_info.ispkg:
             # Import the module to ensure it registers its processor

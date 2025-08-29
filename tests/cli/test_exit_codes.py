@@ -37,10 +37,10 @@ def test_check_exits_would_change_when_changes_needed(tmp_path: Path) -> None:
     f = tmp_path / "x.py"
     f.write_text("print('z')\n", "utf-8")
 
-    res = CliRunner().invoke(cli, ["check", str(f)])
+    result = CliRunner().invoke(cli, ["check", str(f)])
 
     # Non-zero signals that changes are required.
-    assert res.exit_code == ExitCode.WOULD_CHANGE, res.output
+    assert result.exit_code == ExitCode.WOULD_CHANGE, result.output
 
 
 def test_check_exits_success_when_clean(tmp_path: Path) -> None:
@@ -49,11 +49,13 @@ def test_check_exits_success_when_clean(tmp_path: Path) -> None:
     f.write_text("print('z')\n", "utf-8")
 
     # Bring file to compliant state.
-    res_apply = CliRunner().invoke(cli, ["--apply", str(f)])
-    assert res_apply.exit_code == ExitCode.SUCCESS, res_apply.output
+    result_apply = CliRunner().invoke(cli, ["--apply", str(f)])
 
-    res_check = CliRunner().invoke(cli, ["check", str(f)])
-    assert res_check.exit_code == ExitCode.SUCCESS, res_check.output
+    assert result_apply.exit_code == ExitCode.SUCCESS, result_apply.output
+
+    result_check = CliRunner().invoke(cli, ["check", str(f)])
+
+    assert result_check.exit_code == ExitCode.SUCCESS, result_check.output
 
 
 def test_default_summary_apply_runs_apply_pipeline(tmp_path: Path) -> None:
@@ -61,10 +63,10 @@ def test_default_summary_apply_runs_apply_pipeline(tmp_path: Path) -> None:
     f = tmp_path / "x.py"
     f.write_text("print('z')\n", "utf-8")
 
-    res = CliRunner().invoke(cli, ["--summary", "--apply", str(f)])
+    result = CliRunner().invoke(cli, ["--summary", "--apply", str(f)])
 
     # File should now contain a header.
-    assert res.exit_code == ExitCode.SUCCESS, res.output
+    assert result.exit_code == ExitCode.SUCCESS, result.output
     assert "topmark:header:start" in f.read_text("utf-8")
 
 
@@ -73,14 +75,16 @@ def test_default_diff_with_apply_emits_patch(tmp_path: Path) -> None:
     f = tmp_path / "x.py"
     f.write_text("print('z')\n", "utf-8")
 
-    res = CliRunner().invoke(cli, ["--diff", "--apply", str(f)])
+    result = CliRunner().invoke(cli, ["--diff", "--apply", str(f)])
 
     # Apply succeeded; unified diff printed.
-    assert res.exit_code == ExitCode.SUCCESS, res.output
-    assert "--- " in res.output and "+++ " in res.output
+    assert result.exit_code == ExitCode.SUCCESS, result.output
+
+    assert "--- " in result.output and "+++ " in result.output
 
 
 def test_stdin_with_empty_input_is_noop():
     """`--stdin` with empty input should be a no-op and exit 0."""
-    res = CliRunner().invoke(cli, ["--stdin"], input="")
-    assert res.exit_code == ExitCode.SUCCESS, res.output
+    result = CliRunner().invoke(cli, ["--stdin"], input="")
+
+    assert result.exit_code == ExitCode.SUCCESS, result.output

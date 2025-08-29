@@ -26,16 +26,23 @@ from click.testing import CliRunner
 from topmark.cli.exit_codes import ExitCode
 from topmark.cli.main import cli as _cli
 
+# Type hint for the CLI command object
+cli = cast(click.Command, _cli)
+
 
 def test_dump_config_outputs_valid_toml() -> None:
     """It should emit valid TOML wrapped in BEGIN/END markers and parse successfully."""
-    res = CliRunner().invoke(cast(click.Command, _cli), ["dump-config"])
-    assert res.exit_code == ExitCode.SUCCESS, res.output
-    assert "# === BEGIN ===" in res.output
+    result = CliRunner().invoke(cli, ["dump-config"])
+
+    assert result.exit_code == ExitCode.SUCCESS, result.output
+
+    assert "# === BEGIN ===" in result.output
+
     # Extract the TOML slice
-    start = res.output.find("# === BEGIN ===")
-    end = res.output.find("# === END ===")
-    toml_text = res.output[start:end].splitlines()[1:]  # drop marker line
+    start = result.output.find("# === BEGIN ===")
+    end = result.output.find("# === END ===")
+    toml_text = result.output[start:end].splitlines()[1:]  # drop marker line
     parsed = tomlkit.parse("\n".join(toml_text))
     assert "fields" in parsed
+
     assert "header" in parsed

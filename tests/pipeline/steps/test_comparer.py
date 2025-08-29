@@ -21,7 +21,7 @@ without requiring any header generation/rendering.
 
 from __future__ import annotations
 
-import pathlib
+from pathlib import Path
 
 from topmark.config import Config
 from topmark.pipeline.context import (
@@ -33,7 +33,7 @@ from topmark.pipeline.context import (
 from topmark.pipeline.steps import comparer, reader, resolver, scanner
 
 
-def test_comparer_precomputed_lines_set_changed(tmp_path: pathlib.Path) -> None:
+def test_comparer_precomputed_lines_set_changed(tmp_path: Path) -> None:
     """Mark CHANGED when `updated_file_lines` differs from `file_lines`."""
     cfg = Config.from_defaults()
     ctx = ProcessingContext.bootstrap(path=(tmp_path / "x.py"), config=cfg)
@@ -45,7 +45,7 @@ def test_comparer_precomputed_lines_set_changed(tmp_path: pathlib.Path) -> None:
     assert ctx.status.comparison is ComparisonStatus.CHANGED
 
 
-def test_comparer_precomputed_lines_set_unchanged(tmp_path: pathlib.Path) -> None:
+def test_comparer_precomputed_lines_set_unchanged(tmp_path: Path) -> None:
     """Mark UNCHANGED when `updated_file_lines` is identical to `file_lines`."""
     cfg = Config.from_defaults()
     ctx = ProcessingContext.bootstrap(path=(tmp_path / "y.py"), config=cfg)
@@ -57,7 +57,7 @@ def test_comparer_precomputed_lines_set_unchanged(tmp_path: pathlib.Path) -> Non
     assert ctx.status.comparison is ComparisonStatus.UNCHANGED
 
 
-def test_formatting_only_changes_are_detected(tmp_path: pathlib.Path) -> None:
+def test_formatting_only_changes_are_detected(tmp_path: Path) -> None:
     """Comparer flags formatting-only drift as CHANGED.
 
     We author a Python file with a TopMark header whose fields match the

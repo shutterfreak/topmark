@@ -19,20 +19,26 @@ from typing import cast
 import click
 from click.testing import CliRunner
 
+from topmark.cli.exit_codes import ExitCode
 from topmark.cli.main import cli as _cli
+
+# Type hint for the CLI command object
+cli = cast(click.Command, _cli)
 
 
 def test_cli_entry() -> None:
     """It should show usage information and exit code 0 when `--help` is passed."""
-    runner = CliRunner()
-    result = runner.invoke(cast(click.Command, _cli), ["--help"])
-    assert result.exit_code == 0
+    result = CliRunner().invoke(cli, ["--help"])
+
+    assert result.exit_code == ExitCode.SUCCESS, result.output
+
     assert "Usage" in result.output
 
 
 def test_version() -> None:
     """It should show version information containing 'topmark' and exit code 0."""
-    runner = CliRunner()
-    result = runner.invoke(cast(click.Command, _cli), ["version"])
-    assert result.exit_code == 0
+    result = CliRunner().invoke(cli, ["version"])
+
+    assert result.exit_code == ExitCode.SUCCESS, result.output
+
     assert "topmark" in result.output.lower()

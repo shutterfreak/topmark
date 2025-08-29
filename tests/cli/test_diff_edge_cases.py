@@ -17,7 +17,7 @@ Covers:
 
 from __future__ import annotations
 
-import pathlib
+from pathlib import Path
 from typing import cast
 
 import click
@@ -26,31 +26,39 @@ from click.testing import CliRunner
 from topmark.cli.exit_codes import ExitCode
 from topmark.cli.main import cli as _cli
 
+# Type hint for the CLI command object
+cli = cast(click.Command, _cli)
 
-def test_diff_on_no_final_newline_default(tmp_path: pathlib.Path) -> None:
+
+def test_diff_on_no_final_newline_default(tmp_path: Path) -> None:
     """Unified diff is produced for LF file without final newline (default command)."""
     f = tmp_path / "a.py"
     # No final newline on purpose.
     f.write_text("print('x')", "utf-8")
 
-    res = CliRunner().invoke(cast(click.Command, _cli), ["-vv", "--diff", str(f)])
+    result = CliRunner().invoke(cli, ["-vv", "--diff", str(f)])
+
     # Would insert → exit 2, and a non-empty patch must be shown.
-    assert res.exit_code == ExitCode.WOULD_CHANGE, res.output
-    out = res.output
+    assert result.exit_code == ExitCode.WOULD_CHANGE, result.output
+
+    out = result.output
     assert "--- " in out and "+++ " in out and "+# topmark:header:start" in out
 
 
-def test_diff_preserves_crlf_strip(tmp_path: pathlib.Path) -> None:
+def test_diff_preserves_crlf_strip(tmp_path: Path) -> None:
     r"""Strip diff on CRLF file shows consistent lines (no stray bare `\\r`)."""
     f = tmp_path / "a.ts"
     with f.open("w", encoding="utf-8", newline="\r\n") as fp:
         fp.write("// topmark:header:start\n// h\n// topmark:header:end\nconsole.log(1)\n")
 
-    res = CliRunner().invoke(cast(click.Command, _cli), ["-vv", "strip", "--diff", str(f)])
-    assert res.exit_code == ExitCode.WOULD_CHANGE, res.output
+    result = CliRunner().invoke(cli, ["-vv", "strip", "--diff", str(f)])
+
+    assert result.exit_code == ExitCode.WOULD_CHANGE, result.output
+
     # Basic sanity check: headers present and no raw solitary "\r" occurrences.
-    out = res.output
+    out = result.output
     assert "--- " in out and "+++ " in out and "-// topmark:header:start" in out
+
     # Focus assertions on the INFO-rendered patch block which preserves EOL markers
     start = out.find("Patch (rendered):")
     rendered = out[start:] if start != -1 else out
@@ -58,5 +66,6 @@ def test_diff_preserves_crlf_strip(tmp_path: pathlib.Path) -> None:
     # `res.output`, but the rendered block should retain explicit markers.
     # Accept either literal "\\r\\n" or common glyphs used by renderers (e.g., ␍␊).
     assert ("\\r\\n" in rendered) or ("␍␊" in rendered) or ("CRLF" in rendered.upper())
+
     # Still ensure no flipped sequence appears anywhere in output.
     assert "\n\r" not in out

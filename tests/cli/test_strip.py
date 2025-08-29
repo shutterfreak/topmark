@@ -44,10 +44,10 @@ def test_strip_dry_run_exits_2(tmp_path: Path) -> None:
     f = tmp_path / "x.py"
     f.write_text("# topmark:header:start\n# ...\n# topmark:header:end\nprint('ok')\n", "utf-8")
 
-    res = CliRunner().invoke(cli, ["strip", str(f)])
+    result = CliRunner().invoke(cli, ["strip", str(f)])
 
     # Exit 2 means "changes would be made" (pre-commit friendly).
-    assert res.exit_code == ExitCode.WOULD_CHANGE, res.output
+    assert result.exit_code == ExitCode.WOULD_CHANGE, result.output
 
 
 def test_strip_dry_run_exit_0_when_no_header(tmp_path: Path) -> None:
@@ -58,10 +58,10 @@ def test_strip_dry_run_exit_0_when_no_header(tmp_path: Path) -> None:
     f = tmp_path / "x.py"
     f.write_text("print('ok')\n", "utf-8")
 
-    res = CliRunner().invoke(cli, ["strip", str(f)])
+    result = CliRunner().invoke(cli, ["strip", str(f)])
 
     # No header → nothing to do → exit 0
-    assert res.exit_code == ExitCode.SUCCESS, res.output
+    assert result.exit_code == ExitCode.SUCCESS, result.output
 
 
 def test_strip_apply_removes_and_is_idempotent(tmp_path: Path) -> None:
@@ -75,15 +75,19 @@ def test_strip_apply_removes_and_is_idempotent(tmp_path: Path) -> None:
     f.write_text(before, "utf-8")
 
     # First application removes the header.
-    res1 = CliRunner().invoke(cli, ["strip", "--apply", str(f)])
-    assert res1.exit_code == 0
-    after1 = f.read_text("utf-8")
-    assert "topmark:header:start" not in after1 and "print('x')" in after1
+    result_strip_1 = CliRunner().invoke(cli, ["strip", "--apply", str(f)])
+
+    assert result_strip_1.exit_code == ExitCode.SUCCESS, result_strip_1.output
+
+    after_strip_1 = f.read_text("utf-8")
+    assert "topmark:header:start" not in after_strip_1 and "print('x')" in after_strip_1
 
     # Second application should be a no-op and still succeed.
-    res2 = CliRunner().invoke(cli, ["strip", "--apply", str(f)])
-    assert res2.exit_code == 0
-    assert f.read_text("utf-8") == after1
+    result_strip_2 = CliRunner().invoke(cli, ["strip", "--apply", str(f)])
+
+    assert result_strip_2.exit_code == ExitCode.SUCCESS, result_strip_2.output
+
+    assert f.read_text("utf-8") == after_strip_1
 
 
 def test_strip_diff_shows_patch(tmp_path: Path) -> None:
@@ -94,12 +98,17 @@ def test_strip_diff_shows_patch(tmp_path: Path) -> None:
     f = tmp_path / "x.py"
     f.write_text("# topmark:header:start\n# h\n# topmark:header:end\nprint()\n", "utf-8")
 
-    res = CliRunner().invoke(cli, ["strip", "--diff", str(f)])
+    result = CliRunner().invoke(cli, ["strip", "--diff", str(f)])
 
     # With a removable header, diff-only should exit 2 (would change).
-    assert res.exit_code == ExitCode.WOULD_CHANGE, res.output
+    assert result.exit_code == ExitCode.WOULD_CHANGE, result.output
+
     # Check classic unified diff headers and a removed header line.
-    assert "--- " in res.output and "+++ " in res.output and "-# topmark:header:start" in res.output
+    assert (
+        "--- " in result.output
+        and "+++ " in result.output
+        and "-# topmark:header:start" in result.output
+    )
 
 
 def test_strip_summary_buckets(tmp_path: Path) -> None:
@@ -114,7 +123,7 @@ def test_strip_summary_buckets(tmp_path: Path) -> None:
     clean.write_text("print()\n", "utf-8")
     bad.write_text("# topmark:header:start\n# x\nprint()\n", "utf-8")
 
-    res = CliRunner().invoke(
+    result = CliRunner().invoke(
         cli,
         [
             "strip",
@@ -126,10 +135,11 @@ def test_strip_summary_buckets(tmp_path: Path) -> None:
     )
 
     # Depending on aggregation, exit may be 2 (would change) or 0 (no changes).
-    assert res.exit_code in (ExitCode.SUCCESS, ExitCode.WOULD_CHANGE), res.output
+    assert result.exit_code in (ExitCode.SUCCESS, ExitCode.WOULD_CHANGE), result.output
+
     # Expect human-facing wording present for both categories.
-    assert re.search(r"would strip header[ ]*: 1", res.output), "missing 'would strip header: 1'"
-    assert re.search(r"up-to-date[ ]*: 2", res.output), "missing 'up-to-date: 2'"
+    assert re.search(r"would strip header[ ]*: 1", result.output), "missing 'would strip header: 1'"
+    assert re.search(r"up-to-date[ ]*: 2", result.output), "missing 'up-to-date: 2'"
 
 
 def test_strip_accepts_positional_paths(tmp_path: Path) -> None:
@@ -140,20 +150,22 @@ def test_strip_accepts_positional_paths(tmp_path: Path) -> None:
     p = tmp_path / "a.md"
     p.write_text("<!-- topmark:header:start -->\n<!-- topmark:header:end -->\n", "utf-8")
 
-    res = CliRunner().invoke(cli, ["strip", str(p)])
+    result = CliRunner().invoke(cli, ["strip", str(p)])
 
     # Header present → dry-run 'would change' = 2; tolerate 0 in edge runners.
-    assert res.exit_code in (ExitCode.SUCCESS, ExitCode.WOULD_CHANGE), res.output
+    assert result.exit_code in (ExitCode.SUCCESS, ExitCode.WOULD_CHANGE), result.output
 
     cwd = os.getcwd()
     try:
         # Use a relative glob; absolute patterns are intentionally unsupported by the resolver.
         os.chdir(tmp_path)  # make the glob relative
-        res = CliRunner().invoke(cli, ["strip", "*.md"])
+
+        result = CliRunner().invoke(cli, ["strip", "*.md"])
     finally:
         os.chdir(cwd)
+
     # Depending on shell/glob semantics, allow either dry-run changed or success
-    assert res.exit_code in (ExitCode.SUCCESS, ExitCode.WOULD_CHANGE), res.output
+    assert result.exit_code in (ExitCode.SUCCESS, ExitCode.WOULD_CHANGE), result.output
 
 
 def test_strip_accepts_stdin_list(tmp_path: Path) -> None:
@@ -169,10 +181,10 @@ def test_strip_accepts_stdin_list(tmp_path: Path) -> None:
     f.write_text("# topmark:header:start\n# h\n# topmark:header:end\n", "utf-8")
     p.write_text(str(f) + "\n", "utf-8")
 
-    res = CliRunner().invoke(cli, ["strip", "--stdin"], input=p.read_text("utf-8"))
+    result = CliRunner().invoke(cli, ["strip", "--stdin"], input=p.read_text("utf-8"))
 
     # Header present → would-change exit 2.
-    assert res.exit_code == ExitCode.WOULD_CHANGE, res.output
+    assert result.exit_code == ExitCode.WOULD_CHANGE, result.output
 
 
 def test_strip_ignores_missing_end_marker(tmp_path: Path) -> None:
@@ -188,9 +200,10 @@ def test_strip_ignores_missing_end_marker(tmp_path: Path) -> None:
     f = tmp_path / "bad.py"
     f.write_text("# topmark:header:start\n# x\nprint()\n", "utf-8")
 
-    res = CliRunner().invoke(cli, ["-vv", "strip", "--apply", str(f)])
+    result = CliRunner().invoke(cli, ["-vv", "strip", "--apply", str(f)])
 
-    assert res.exit_code == ExitCode.SUCCESS, res.output
+    assert result.exit_code == ExitCode.SUCCESS, result.output
+
     # Nothing stripped; header markers still there
     assert "topmark:header:start" in f.read_text("utf-8")
 
@@ -217,12 +230,13 @@ def test_strip_include_from_exclude_from(tmp_path: Path) -> None:
     exf = tmp_path / "exc.txt"
     exf.write_text("b.py\n", "utf-8")
 
+    # Non-relative glob patterns are unsupported
     cwd = os.getcwd()
     try:
         os.chdir(tmp_path)
 
-        res = CliRunner().invoke(
-            cast(click.Command, _cli),
+        result = CliRunner().invoke(
+            cli,
             [
                 "-vv",
                 "strip",
@@ -236,6 +250,8 @@ def test_strip_include_from_exclude_from(tmp_path: Path) -> None:
     finally:
         os.chdir(cwd)
 
-    assert res.exit_code == ExitCode.SUCCESS, res.output
+    assert result.exit_code == ExitCode.SUCCESS, result.output
+
     assert "topmark:header:start" not in a.read_text("utf-8")
+
     assert "topmark:header:start" in b.read_text("utf-8")

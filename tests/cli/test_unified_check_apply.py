@@ -17,7 +17,7 @@ exits with code 0 on success.
 
 from __future__ import annotations
 
-import pathlib
+from pathlib import Path
 from typing import cast
 
 import click
@@ -26,8 +26,11 @@ from click.testing import CliRunner
 from topmark.cli.exit_codes import ExitCode
 from topmark.cli.main import cli as _cli
 
+# Type hint for the CLI command object
+cli = cast(click.Command, _cli)
 
-def test_check_mode_exits_2_when_changes_needed(tmp_path: pathlib.Path) -> None:
+
+def test_check_mode_exits_2_when_changes_needed(tmp_path: Path) -> None:
     """Dry‑run (default) should exit with code 2 if changes are needed.
 
     We create a file without a header so TopMark would add one; in check mode
@@ -36,22 +39,25 @@ def test_check_mode_exits_2_when_changes_needed(tmp_path: pathlib.Path) -> None:
     f = tmp_path / "a.py"
     f.write_text("print('x')\n", encoding="utf-8")
 
-    res = CliRunner().invoke(cast(click.Command, _cli), ["-vv", str(f)])
+    result = CliRunner().invoke(cli, [str(f)])
 
-    assert res.exit_code == ExitCode.WOULD_CHANGE, res.output
+    assert result.exit_code == ExitCode.WOULD_CHANGE, result.output
+
     # Ensure the file was not modified in check mode
     assert f.read_text(encoding="utf-8") == "print('x')\n"
 
 
-def test_apply_writes_and_exits_0(tmp_path: pathlib.Path) -> None:
+def test_apply_writes_and_exits_0(tmp_path: Path) -> None:
     """With ``--apply``, changes are written and exit code is 0."""
     f = tmp_path / "b.py"
     before = "print('y')\n"
     f.write_text(before, encoding="utf-8")
 
-    res = CliRunner().invoke(cast(click.Command, _cli), ["-vv", "--apply", str(f)])
+    result = CliRunner().invoke(cli, ["--apply", str(f)])
 
-    assert res.exit_code == ExitCode.SUCCESS, res.output
+    assert result.exit_code == ExitCode.SUCCESS, result.output
+
     after = f.read_text(encoding="utf-8")
+
     # File should be changed (header inserted). We only assert that content differs.
     assert after != before, "file should have been modified"

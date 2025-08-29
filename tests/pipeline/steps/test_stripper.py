@@ -17,12 +17,14 @@ line when the header starts at the top of the file. The tests bootstrap a
 minimal `ProcessingContext` without running the full pipeline.
 """
 
-import pathlib
+from pathlib import Path
 
 from topmark.config import Config
+from topmark.pipeline.context import HeaderStatus, ProcessingContext
+from topmark.pipeline.processors.base import HeaderProcessor
 
 
-def test_stripper_uses_span_and_trims_leading_blank(tmp_path: pathlib.Path) -> None:
+def test_stripper_uses_span_and_trims_leading_blank(tmp_path: Path) -> None:
     """
     Remove a header using a known span and trim a single leading blank.
 
@@ -40,9 +42,6 @@ def test_stripper_uses_span_and_trims_leading_blank(tmp_path: pathlib.Path) -> N
     Args:
       tmp_path: Pytest-provided temporary directory for constructing test files.
     """
-    from topmark.pipeline.context import HeaderStatus, ProcessingContext
-    from topmark.pipeline.processors.base import HeaderProcessor
-
     lines = ["# topmark:header:start\n", "# h\n", "# topmark:header:end\n", "\n", "code\n"]
     cfg = Config.from_defaults()
     ctx = ProcessingContext.bootstrap(path=(tmp_path / "x.py"), config=cfg)
