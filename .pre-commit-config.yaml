@@ -17,7 +17,7 @@ repos:
         # Optional: limit scope to supported text types
         # files: '\.(py|md|toml|ya?ml|sh|Makefile)$'
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.10
+    rev: v0.12.11
     hooks:
       - id: ruff-format
       - id: ruff-check
