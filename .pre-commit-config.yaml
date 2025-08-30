@@ -21,19 +21,6 @@ repos:
     hooks:
       - id: ruff-format
       - id: ruff-check
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.17.1
-    hooks:
-      - id: mypy
-        args: [--config=pyproject.toml]
-        # Optional: Specify the Python version if needed (e.g., if you're using Python 3.10+ features)
-        additional_dependencies:
-          - click>=8.1
-          - pytest>=7
-          - yachalk>=0.1
-          - tomlkit
-          - types-toml
-        language_version: python3.12
   - repo: https://github.com/RobertCraigie/pyright-python
     rev: v1.1.404
     hooks:

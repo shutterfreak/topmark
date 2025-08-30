@@ -56,8 +56,6 @@ dev = [
   "ruff",
   # Traditional Python linter with rich checks:
   "pylint",
-  # Static type checker (complementary to Pyright):
-  "mypy",
   # Static type checker with fast, strict CLI (our primary type checker):
   "pyright",
   # Markdown formatter:
@@ -94,8 +92,6 @@ test = [
   "pytest-xdist",
 ]
 typing = [
-  # Static type checker (config in pyproject):
-  "mypy",
   # Type stubs for the toml module:
   "types-toml",
 ]

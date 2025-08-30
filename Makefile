@@ -76,7 +76,7 @@ help:
 	@echo "  verify                   Run all non-destructive checks (formatting, linting, type-checking)"
 	@echo "  format-check             Check code formatting without modifying files"
 	@echo "  format                   Format code (ruff, mdformat, taplo)"
-	@echo "  lint                     Run linters (mypy, ruff, pyright)"
+	@echo "  lint                     Run linters (ruff, pyright)"
 	@echo "  lint-fixall              Run linters and automatically fix fixable linting errors"
 	@echo ""
 	@echo "  test                     Run tests"
@@ -210,7 +210,6 @@ lint: check-venv
 	@echo "Running linters..."
 	$(VENV_BIN)/ruff check .
 	$(VENV_BIN)/pyright src tests
-	$(VENV_BIN)/mypy
 
 .lint-fixall: check-venv
 	@echo "Running linters and automatically fixing fixable linting errors..."
