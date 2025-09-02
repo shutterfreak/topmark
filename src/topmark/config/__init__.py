@@ -59,10 +59,10 @@ class Config:
         include_from (list[str]): Files containing include patterns.
         exclude_patterns (list[str]): Glob patterns to exclude.
         exclude_from (list[str]): Files containing exclude patterns.
+        files_from (list[str]): Paths to files that list newline-delimited candidate file paths
+            to add before filtering.
         file_types (list[str]): File extensions or types to process.
     """
-
-    dry_run = True  # Default to dry run mode
 
     # Initialization timestamp for the config instance
     timestamp: str = datetime.now().isoformat()
@@ -90,6 +90,7 @@ class Config:
     include_from: list[str] = field(default_factory=lambda: [])
     exclude_patterns: list[str] = field(default_factory=lambda: [])
     exclude_from: list[str] = field(default_factory=lambda: [])
+    files_from: list[str] = field(default_factory=lambda: [])
 
     # File types (linked to file extensions) to process (filter)
     file_types: set[str] = field(default_factory=lambda: set[str]())
@@ -123,7 +124,6 @@ class Config:
         return toml.dumps(parsed)
 
     @classmethod
-    @functools.cache
     def from_defaults(cls) -> "Config":
         """
         Load the default configuration from the bundled topmark-default.toml file.
@@ -219,6 +219,12 @@ class Config:
         file_cfg = get_table_value(tool_cfg, "files")
         logger.trace("TOML [files]: %s", file_cfg)
 
+        include_patterns = get_list_value(file_cfg, "include_patterns")
+        include_from = get_list_value(file_cfg, "include_from")
+        exclude_patterns = get_list_value(file_cfg, "exclude_patterns")
+        exclude_from = get_list_value(file_cfg, "exclude_from")
+        files_from = get_list_value(file_cfg, "files_from")
+
         # Coerce field values to strings, ignoring unsupported types with a warning
         field_values: dict[str, str] = {}
         for k, v in field_cfg.items():
@@ -271,11 +277,12 @@ class Config:
             relative_to_raw=relative_to_raw,
             relative_to=relative_to,
             stdin=False,  # Default to False unless explicitly set later -- TODO: False or None?
-            include_patterns=[],
-            include_from=[],
-            exclude_patterns=[],
-            exclude_from=[],
-            file_types=set(file_types),
+            include_patterns=include_patterns or [],
+            include_from=include_from or [],
+            exclude_patterns=exclude_patterns or [],
+            exclude_from=exclude_from or [],
+            files_from=files_from or [],
+            file_types=file_type_set,
         )
 
     def apply_cli_args(self, args: ArgsNamespace) -> "Config":
@@ -310,6 +317,9 @@ class Config:
         # Override files to process if specified
         if "files" in args:
             self.files = args["files"]
+            # If explicit files are given, force stdin to False (files take precedence)
+            if self.files:
+                self.stdin = False
 
         # Override include/exclude patterns and files if specified
         if "include_patterns" in args and args["include_patterns"]:
@@ -320,6 +330,8 @@ class Config:
             self.exclude_patterns = args["exclude_patterns"]
         if "exclude_from" in args and args["exclude_from"]:
             self.exclude_from = args["exclude_from"]
+        if "files_from" in args and args["files_from"]:
+            self.files_from = args["files_from"]
 
         # Override relative_to path if specified, resolving to absolute path
         if "relative_to" in args and args["relative_to"]:
@@ -330,9 +342,9 @@ class Config:
         if "file_types" in args and args["file_types"]:
             self.file_types = set(args["file_types"])
 
-        # Apply CLI flags that require explicit True to activate
-        if "stdin" in args and args["stdin"] is True:
-            self.stdin = args["stdin"]
+        # Apply CLI flags that require explicit True to activate or to explicitly disable
+        if "stdin" in args:
+            self.stdin = bool(args["stdin"])  # honor False explicitly
 
         if "header_format" in args and args["header_format"] is not None:
             self.header_format = args["header_format"]
@@ -349,6 +361,7 @@ class Config:
 
         logger.debug("Patched Config: %s", self)
         logger.info("Applied CLI overrides to Config")
+        logger.debug("apply_cli_args(): finalized stdin=%s files=%s", self.stdin, self.files)
 
         return self
 
@@ -485,6 +498,7 @@ class Config:
             include_from=other.include_from or self.include_from,
             exclude_patterns=other.exclude_patterns or self.exclude_patterns,
             exclude_from=other.exclude_from or self.exclude_from,
+            files_from=other.files_from or self.files_from,
             # Use other's relative_to if set, else self's
             relative_to_raw=(
                 other.relative_to_raw if other.relative_to_raw is not None else self.relative_to_raw
@@ -504,7 +518,9 @@ class Config:
         # Compose the config as a nested dictionary structure matching TOML layout
         return {
             "fields": dict(self.field_values),
-            "header": {"fields": list(self.header_fields)},
+            "header": {
+                "fields": list(self.header_fields),
+            },
             "formatting": {
                 "align_fields": self.align_fields,
                 "header_format": self.header_format,
@@ -515,6 +531,7 @@ class Config:
                 "include_from": list(self.include_from),
                 "exclude_patterns": list(self.exclude_patterns),
                 "exclude_from": list(self.exclude_from),
+                "files_from": list(self.files_from),
                 "relative_to": self.relative_to_raw,
             },
             # The following fields are intentionally omitted from TOML output:

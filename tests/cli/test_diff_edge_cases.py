@@ -18,29 +18,22 @@ Covers:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import cast
 
-import click
-from click.testing import CliRunner
-
-from topmark.cli.exit_codes import ExitCode
-from topmark.cli.main import cli as _cli
+from tests.cli.conftest import assert_WOULD_CHANGE, run_cli_in
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
-
-# Type hint for the CLI command object
-cli = cast(click.Command, _cli)
 
 
 def test_diff_on_no_final_newline_default(tmp_path: Path) -> None:
     """Unified diff is produced for LF file without final newline (default command)."""
-    f = tmp_path / "a.py"
+    file_name = "a.py"
+    f = tmp_path / file_name
     # No final newline on purpose.
     f.write_text("print('x')", "utf-8")
 
-    result = CliRunner().invoke(cli, ["-vv", "--diff", str(f)])
+    result = run_cli_in(tmp_path, ["check", "--diff", str(f)])
 
     # Would insert → exit 2, and a non-empty patch must be shown.
-    assert result.exit_code == ExitCode.WOULD_CHANGE, result.output
+    assert_WOULD_CHANGE(result)
 
     out = result.output
     assert "--- " in out and "+++ " in out and f"+# {TOPMARK_START_MARKER}" in out
@@ -48,13 +41,14 @@ def test_diff_on_no_final_newline_default(tmp_path: Path) -> None:
 
 def test_diff_preserves_crlf_strip(tmp_path: Path) -> None:
     r"""Strip diff on CRLF file shows consistent lines (no stray bare `\\r`)."""
-    f = tmp_path / "a.ts"
+    file_name = "a.ts"
+    f = tmp_path / file_name
     with f.open("w", encoding="utf-8", newline="\r\n") as fp:
         fp.write(f"// {TOPMARK_START_MARKER}\n// h\n// {TOPMARK_END_MARKER}\nconsole.log(1)\n")
 
-    result = CliRunner().invoke(cli, ["-vv", "strip", "--diff", str(f)])
+    result = run_cli_in(tmp_path, ["strip", "--diff", str(f)])
 
-    assert result.exit_code == ExitCode.WOULD_CHANGE, result.output
+    assert_WOULD_CHANGE(result)
 
     # Basic sanity check: headers present and no raw solitary "\r" occurrences.
     out = result.output

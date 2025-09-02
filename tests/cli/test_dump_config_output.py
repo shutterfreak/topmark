@@ -17,24 +17,16 @@ Ensures that running `topmark dump-config`:
 - Produces a valid TOML snippet between markers that can be parsed by `tomllib`.
 """
 
-from typing import cast
-
-import click
 import tomlkit
-from click.testing import CliRunner
 
-from topmark.cli.exit_codes import ExitCode
-from topmark.cli.main import cli as _cli
-
-# Type hint for the CLI command object
-cli = cast(click.Command, _cli)
+from tests.cli.conftest import assert_SUCCESS, run_cli
 
 
 def test_dump_config_outputs_valid_toml() -> None:
     """It should emit valid TOML wrapped in BEGIN/END markers and parse successfully."""
-    result = CliRunner().invoke(cli, ["dump-config"])
+    result = run_cli(["dump-config"])
 
-    assert result.exit_code == ExitCode.SUCCESS, result.output
+    assert_SUCCESS(result)
 
     assert "# === BEGIN ===" in result.output
 

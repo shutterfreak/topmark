@@ -19,7 +19,7 @@ from __future__ import annotations
 from topmark.utils.diff import render_patch
 
 
-def test_render_patch_accepts_str_and_list():
+def test_render_patch_accepts_str_and_list() -> None:
     """`render_patch` should accept both a diff string and an iterable of lines."""
     diff_text = "--- a\n+++ b\n-foo\n+bar\n"
     s1 = render_patch(diff_text)
@@ -29,7 +29,7 @@ def test_render_patch_accepts_str_and_list():
     assert isinstance(s1, str) and isinstance(s2, str) and s1 and s2
 
 
-def test_render_patch_empty_input_is_safe():
+def test_render_patch_empty_input_is_safe() -> None:
     """Empty diff input should not raise and should return a string."""
     s = render_patch("")
     assert isinstance(s, str)

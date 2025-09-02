@@ -530,7 +530,7 @@ def test_xml_bom_preserved_text_insert(tmp_path: Path) -> None:
     assert (ctx.updated_file_lines or [])[0].startswith("\ufeff")
 
 
-def test_xml_processor_respects_prolog_and_removes_block():
+def test_xml_processor_respects_prolog_and_removes_block() -> None:
     """Header block removal while preserving `<?xml ...?>` prolog line."""
     xp = XmlHeaderProcessor()
     lines = [

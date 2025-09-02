@@ -39,7 +39,7 @@ from topmark.pipeline.steps import reader, resolver, scanner, updater
 
 
 @fixture(scope="module", autouse=True)
-def _register_processors_for_this_package() -> None:  # pyright: ignore[reportUnusedFunction]
+def register_processors_for_this_package() -> None:
     """Ensure all header processors are registered for processor tests.
 
     Using an autouse, module-scoped fixture here avoids repeating the same

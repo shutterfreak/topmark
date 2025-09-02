@@ -14,22 +14,13 @@ Ensures that invoking `topmark filetypes` exits successfully and produces
 non-empty output, typically including the phrase "Supported file types".
 """
 
-from typing import cast
-
-import click
-from click.testing import CliRunner
-
-from topmark.cli.exit_codes import ExitCode
-from topmark.cli.main import cli as _cli
-
-# Type hint for the CLI command object
-cli = cast(click.Command, _cli)
+from tests.cli.conftest import assert_SUCCESS, run_cli
 
 
 def test_filetypes_lists_known_types() -> None:
     """It should list supported file types and exit with code 0."""
-    result = CliRunner().invoke(cli, ["filetypes"])
+    result = run_cli(["filetypes"])
 
-    assert result.exit_code == ExitCode.SUCCESS, result.output
+    assert_SUCCESS(result)
 
     assert "Supported file types" in result.output or result.output.strip() != ""

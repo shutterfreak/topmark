@@ -14,31 +14,22 @@ Provides minimal coverage that the CLI entry point is callable and that
 `--help` and `version` commands succeed.
 """
 
-from typing import cast
-
-import click
-from click.testing import CliRunner
-
-from topmark.cli.exit_codes import ExitCode
-from topmark.cli.main import cli as _cli
-
-# Type hint for the CLI command object
-cli = cast(click.Command, _cli)
+from tests.cli.conftest import assert_SUCCESS, run_cli
 
 
 def test_cli_entry() -> None:
-    """It should show usage information and exit code 0 when `--help` is passed."""
-    result = CliRunner().invoke(cli, ["--help"])
+    """It should show usage information and exit code SUCCESS when `--help` is passed."""
+    result = run_cli(["--help"])
 
-    assert result.exit_code == ExitCode.SUCCESS, result.output
+    assert_SUCCESS(result)
 
     assert "Usage" in result.output
 
 
 def test_version() -> None:
-    """It should show version information containing 'topmark' and exit code 0."""
-    result = CliRunner().invoke(cli, ["version"])
+    """It should show version information containing 'topmark' and exit code SUCCESS."""
+    result = run_cli(["version"])
 
-    assert result.exit_code == ExitCode.SUCCESS, result.output
+    assert_SUCCESS(result)
 
     assert "topmark" in result.output.lower()

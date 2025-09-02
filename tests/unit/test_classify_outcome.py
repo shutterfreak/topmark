@@ -22,7 +22,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from topmark.cli.utils import classify_outcome
+from topmark.cli_shared.utils import classify_outcome
 from topmark.config import Config
 from topmark.pipeline.context import (
     ComparisonStatus,

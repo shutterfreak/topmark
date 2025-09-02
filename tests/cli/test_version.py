@@ -17,23 +17,14 @@ Ensures that invoking `topmark version`:
 - Contains a semver-like string with digits and at least one dot.
 """
 
-from typing import cast
-
-import click
-from click.testing import CliRunner
-
-from topmark.cli.exit_codes import ExitCode
-from topmark.cli.main import cli as _cli
-
-# Type hint for the CLI command object
-cli = cast(click.Command, _cli)
+from tests.cli.conftest import assert_SUCCESS, run_cli
 
 
 def test_version_text_contains_project_and_semver() -> None:
     """It should output the project name and a semver-like version string."""
-    result = CliRunner().invoke(cli, ["version"])
+    result = run_cli(["version"])
 
-    assert result.exit_code == ExitCode.SUCCESS, result.output
+    assert_SUCCESS(result)
 
     out = result.output.lower()
     assert "topmark" in out

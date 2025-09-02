@@ -20,6 +20,10 @@ import click
 from topmark.constants import TOPMARK_VERSION
 
 
+@click.command(
+    name="version",
+    help="Show the current version of TopMark.",
+)
 def version_command() -> None:
     """Show the current version of TopMark.
 
@@ -30,3 +34,6 @@ def version_command() -> None:
     """
     topmark_version = TOPMARK_VERSION
     click.echo(f"TopMark version: {topmark_version}")
+
+    # Exit gracefully
+    return

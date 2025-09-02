@@ -18,12 +18,16 @@ Intended as a reference for users customizing their own configuration files.
 import click
 from yachalk import chalk
 
-from topmark.cli.utils import default_header_overrides
+from topmark.cli_shared.utils import default_header_overrides
 from topmark.config import Config
 from topmark.constants import PYPROJECT_TOML_PATH
 from topmark.rendering.api import render_header_for_path
 
 
+@click.command(
+    name="show-defaults",
+    help="Display the built-in default TopMark configuration file.",
+)
 def show_defaults_command() -> None:
     """Display the built-in default configuration.
 
@@ -52,3 +56,6 @@ def show_defaults_command() -> None:
 ## === END of TopMark Configuration ==="""
         )
     )
+
+    # Exit gracefully
+    return

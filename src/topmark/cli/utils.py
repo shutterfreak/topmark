@@ -16,277 +16,128 @@ header defaults extraction, color handling, and summary rendering.
 
 from __future__ import annotations
 
-import os
-import sys
+import logging
 from collections.abc import Callable
-from enum import Enum
 
-from yachalk import chalk
+import click
 
-from topmark.config import Config
+from topmark.cli_shared.utils import OutputFormat, count_by_outcome
 from topmark.config.logging import get_logger
-from topmark.constants import PYPROJECT_TOML_PATH, TOPMARK_VERSION
 from topmark.pipeline.context import ProcessingContext
+from topmark.utils.diff import render_patch
 
 logger = get_logger(__name__)
 
 
-def default_header_overrides(*, info: str, file_label: str = "topmark.toml") -> dict[str, str]:
-    """Build default header field overrides from TopMark’s own metadata.
+def render_summary_counts(view_results: list[ProcessingContext], *, total: int) -> None:
+    """Print the human summary (aligned counts by outcome)."""
+    click.echo()
+    click.secho("Summary by outcome:", bold=True, underline=True)
 
-    Looks up TopMark’s ``pyproject.toml`` for the ``license`` and ``copyright``
-    fields and combines them with the supplied ``info`` and ``file_label``.
-
-    Args:
-      info (str): Short informational string to include in the generated header
-        (for example, ``"Built-in defaults"``).
-      file_label (str, optional): Value to use for the ``file`` field in the
-        generated header. Defaults to ``"topmark.toml"``.
-
-    Returns:
-      dict[str, str]: Mapping of header fields suitable for rendering.
-
-    Notes:
-      - ``version`` is populated from the running TopMark version.
-      - Missing metadata in ``pyproject.toml`` does not raise; it is omitted.
-    """
-    overrides: dict[str, str] = {
-        "file": file_label,
-        "version": TOPMARK_VERSION,
-        "info": info,
-    }
-    cfg = Config.from_toml_file(PYPROJECT_TOML_PATH)
-    if cfg:
-        lic = cfg.field_values.get("license")
-        cpr = cfg.field_values.get("copyright")
-        if lic:
-            overrides["license"] = lic
-        if cpr:
-            overrides["copyright"] = cpr
-    return overrides
+    counts = count_by_outcome(view_results)
+    label_width = max((len(v[1]) for v in counts.values()), default=0) + 1
+    num_width = len(str(total))
+    for _key, (n, label, color) in counts.items():
+        click.echo(color(f"  {label:<{label_width}}: {n:>{num_width}}"))
 
 
-class OutputFormat(Enum):
-    """Output format for CLI rendering.
-
-    Members:
-      DEFAULT: Human-friendly text output; may include ANSI color if enabled.
-      JSON: A single JSON array of per-file objects (machine-readable).
-      NDJSON: One JSON object per line (newline-delimited JSON; machine-readable).
-
-    Notes:
-      - Machine formats (``JSON`` and ``NDJSON``) must not include ANSI color or diffs.
-      - Use with :class:`EnumParam` to parse ``--format`` from Click.
-    """
-
-    DEFAULT = "default"
-    JSON = "json"
-    NDJSON = "ndjson"
-
-
-class ColorMode(Enum):
-    """User intent for colorized terminal output.
-
-    Members:
-      AUTO: Enable color only when appropriate (typically when stdout is a TTY).
-      ALWAYS: Force-enable color regardless of TTY status.
-      NEVER: Disable color entirely.
-
-    Typical usage:
-      - Parse `--color=auto|always|never` as `ColorMode`.
-      - Pass the parsed value to `resolve_color_mode()` along with the current
-        output format (e.g., `"json"` or `"ndjson"`) to obtain a final `bool`
-        indicating whether to emit ANSI styles.
-
-    Example:
-      >>> resolve_color_mode(cli_mode=ColorMode.AUTO, output_format=None)
-      True  # on an interactive terminal
-      >>> resolve_color_mode(cli_mode=ColorMode.AUTO, output_format="json")
-      False  # machine formats are always colorless
-    """
-
-    AUTO = "auto"
-    ALWAYS = "always"
-    NEVER = "never"
-
-
-def resolve_color_mode(
+def render_per_file_guidance(
+    view_results: list[ProcessingContext],
     *,
-    cli_mode: ColorMode | None,
-    output_format: str | None,  # "default" | "json" | "ndjson" | None
-    stdout_isatty: bool | None = None,
-) -> bool:
-    """Determine whether color output should be enabled.
-
-    Decision precedence:
-      1. **Machine formats**: If `output_format` is `"json"` or `"ndjson"`, return False.
-      2. **CLI override**: If `cli_mode` is `ALWAYS` → True; if `NEVER` → False.
-      3. **Environment**:
-         - `FORCE_COLOR` (set and not equal to `"0"`) → True
-         - `NO_COLOR` (set to any value) → False
-      4. **Auto**: If none of the above decide, return `stdout.isatty()`.
-
-    Args:
-      cli_mode: Parsed `ColorMode` value from `--color`; `None` means “not provided”.
-      output_format: Structured output mode; `"json"` or `"ndjson"` suppress color.
-      stdout_isatty: Optional override for TTY detection. When `None`, the function
-        calls `sys.stdout.isatty()` and falls back to `False` on error.
-
-    Returns:
-      True if ANSI color should be enabled; False otherwise.
-
-    Examples:
-      >>> resolve_color_mode(cli_mode=ColorMode.NEVER, output_format=None)
-      False
-      >>> resolve_color_mode(cli_mode=None, output_format="ndjson")
-      False
-      >>> resolve_color_mode(cli_mode=None, output_format=None, stdout_isatty=True)
-      True
-    """
-    # 1) Machine formats never use color
-    if output_format and output_format.lower() in {"json", "ndjson"}:
-        return False
-
-    # 2) CLI overrides
-    if cli_mode == ColorMode.ALWAYS:
-        return True
-    if cli_mode == ColorMode.NEVER:
-        return False
-
-    # 3) Env overrides
-    force_color = os.getenv("FORCE_COLOR")
-    if force_color and force_color != "0":
-        return True
-    if os.getenv("NO_COLOR") is not None:
-        return False
-
-    # 4) Auto: TTY?
-    if stdout_isatty is None:
-        try:
-            stdout_isatty = sys.stdout.isatty()
-        except Exception:
-            stdout_isatty = False
-    return bool(stdout_isatty)
+    make_message: Callable[[ProcessingContext, bool], str | None],
+    apply_changes: bool,
+) -> None:
+    """Echo one human guidance line per result (when not in --summary)."""
+    for r in view_results:
+        click.echo(r.summary)
+        msg = make_message(r, apply_changes)
+        if msg:
+            click.secho(f"   {msg}", fg="yellow")
 
 
-# --- CLI presentation helpers -------------------------------------------------
-def classify_outcome(r: ProcessingContext) -> tuple[str, str, Callable[[str], str]]:
-    """
-    Classify a single file’s processing result into a summary bucket.
-
-    This function converts a file’s `HeaderProcessingStatus` (available on
-    `ProcessingContext.status`) into a stable, human‑facing bucket used by the
-    CLI summary. It returns `(key, label, color_fn)` where:
-
-    - `key` is a **stable identifier** suitable for aggregation (see below),
-    - `label` is the **user‑visible** description printed in the summary, and
-    - `color_fn` is a `yachalk` styling function to colorize the label in text mode.
-
-    ### Buckets (stable contract)
-
-    The following identifiers and labels are considered part of the CLI contract and
-    are used by tests:
-
-    **Strip pipeline** (`topmark strip`):
-    - `strip:ready` → "would strip header"
-    - `strip:none`  → "no header" (or "no changes to strip" in rare cases)
-
-    **Default pipeline** (`topmark`):
-    - `insert`      → "would insert header"
-    - `update`      → "would update header"
-    - `ok`          → "up-to-date"
-    - `no_fields`   → "no fields to render"
-    - `header:empty` / `header:malformed` → "header (empty|malformed)"
-    - `compare_error` → "cannot compare"
-
-    > Notes:
-    > - Tests should match labels **loosely** (e.g., substrings) to allow minor
-    >   wording adjustments without breaking the public contract.
-    > - JSON/NDJSON output does not include ANSI color; only the human format uses
-    >   `color_fn`.
-
-    Precedence:
-      - If the comparison result is UNCHANGED, this always takes precedence and the file
-        is classified as compliant ("ok", "up-to-date"), regardless of other header or strip status.
+def emit_diffs(results: list[ProcessingContext], *, diff: bool, command: click.Command) -> None:
+    """Print unified diffs for changed files in human output mode.
 
     Args:
-      r (ProcessingContext): Processing context for a single file.
+      results: List of processing contexts to inspect.
+      diff: If True, print unified diffs; if False, do nothing.
+      command: The Click command object (used for structured logging).
 
-    Returns:
-      tuple[str, str, Callable[[str], str]]: A tuple ``(key, label, color_fn)`` where
-      ``key`` is a stable identifier, ``label`` is a human-readable description, and
-      ``color_fn`` is a function from ``yachalk`` used to colorize the label.
+    Notes:
+      - Diffs are only printed in human (DEFAULT) output mode.
+      - Files with no changes do not emit a diff.
     """
-    # Import locally to avoid any import cycles at module import time.
-    from topmark.pipeline.context import (
-        ComparisonStatus,
-        FileStatus,
-        GenerationStatus,
-        HeaderStatus,
-        StripStatus,
-    )
+    import pprint
 
-    logger.debug("status: %s", r.status)
-
-    if r.status.file is not FileStatus.RESOLVED:
-        return (f"file:{r.status.file.name}", f"file {r.status.file.value}", r.status.file.color)
-
-    # Highest precedence: if comparison says UNCHANGED, treat as compliant
-    if r.status.comparison is ComparisonStatus.UNCHANGED:
-        return ("ok", "up-to-date", chalk.green)
-
-    # If the stripper step participated, prefer strip-centric labels.
-    if r.status.strip is StripStatus.READY:
-        # We computed updated_file_lines that remove the header.
-        return ("strip:ready", "would strip header", chalk.yellow)
-
-    if r.status.strip is StripStatus.NOT_NEEDED:
-        # Nothing to strip — refine message based on what scanner/comparer saw.
-        if r.status.header is HeaderStatus.MISSING:
-            # No header present in the original file.
-            return ("strip:none", "no header", chalk.green)
-        # Fallback for strip pipeline where nothing changed.
-        return ("strip:none", "no changes to strip", chalk.green)
-
-    # If generation produced no fields, prefer a dedicated bucket over insert/missing
-    if r.status.generation is GenerationStatus.NO_FIELDS:
-        return ("no_fields", "no fields to render", chalk.yellow)
-
-    # Non-strip pipelines (or stripper didn't run): use standard classification.
-    if r.status.header is HeaderStatus.MISSING:
-        if r.status.generation is GenerationStatus.PENDING:
-            return ("strip:none", "no header", chalk.green)
-        return ("insert", "would insert header", chalk.green)
-    if r.status.header is HeaderStatus.DETECTED:
-        if r.status.comparison is ComparisonStatus.CHANGED:
-            return ("update", "would update header", chalk.yellow_bright)
-        return ("compare_error", "cannot compare", chalk.red)
-    if r.status.header in {HeaderStatus.EMPTY, HeaderStatus.MALFORMED}:
-        return (
-            f"header:{r.status.header.name.lower()}",
-            f"header {r.status.header.value}",
-            r.status.header.color,
-        )
-    return ("other", "other", chalk.gray)
-
-
-def count_by_outcome(
-    results: list[ProcessingContext],
-) -> dict[str, tuple[int, str, Callable[[str], str]]]:
-    """Count results by classification key.
-
-    Keeps the first-seen label and color for each key.
-
-    Args:
-      results (list[ProcessingContext]): Processing contexts to classify and count.
-
-    Returns:
-      dict[str, tuple[int, str, Callable[[str], str]]]: Mapping from classification
-      key to ``(count, label, color_fn)``.
-    """
-    counts: dict[str, tuple[int, str, Callable[[str], str]]] = {}
+    logger.debug("topmark %s: diff: %s, entries: %d", command.name, diff, len(results))
     for r in results:
-        key, label, color = classify_outcome(r)
-        n, _, _ = counts.get(key, (0, label, color))
-        counts[key] = (n + 1, label, color)
-    return counts
+        logger.trace("topmark %s: diff: %s, result: %s", command.name, diff, pprint.pformat(r, 2))
+        if diff and r.header_diff:
+            click.echo(render_patch(r.header_diff))
+
+
+def emit_machine_output(
+    view_results: list[ProcessingContext], fmt: OutputFormat, summary_mode: bool
+) -> None:
+    """Emit JSON/NDJSON for machine consumption.
+
+    Args:
+      view_results: Ordered list of per-file processing results.
+      fmt: Output format (`OutputFormat.JSON` or `OutputFormat.NDJSON`).
+      summary_mode: If True, emit aggregated counts instead of per-file entries.
+
+    Notes:
+      - This function never prints ANSI color or diffs.
+      - For NDJSON summary, one object per line is emitted.
+    """
+    import json as _json
+
+    if fmt is OutputFormat.NDJSON:
+        if summary_mode:
+            counts = count_by_outcome(view_results)
+            for key, (n, label, _color) in counts.items():
+                click.echo(_json.dumps({"key": key, "count": n, "label": label}))
+        else:
+            for r in view_results:
+                click.echo(_json.dumps(r.to_dict()))
+    elif fmt is OutputFormat.JSON:
+        if summary_mode:
+            counts = count_by_outcome(view_results)
+            data = {k: {"count": n, "label": label} for k, (n, label, _color) in counts.items()}
+            click.echo(_json.dumps(data, indent=2))
+        else:
+            payload = [r.to_dict() for r in view_results]
+            click.echo(_json.dumps(payload, indent=2))
+
+
+def emit_updated_content_to_stdout(results: list[ProcessingContext]) -> None:
+    """Write updated content to stdout when applying to a single STDIN file."""
+    for r in results:
+        if r.updated_file_lines is not None:
+            click.echo("".join(r.updated_file_lines), nl=False)
+
+
+def render_banner(ctx: click.Context, *, n_files: int) -> None:
+    """Render the initial banner for a command.
+
+    Args:
+      ctx: Click context (used to get the command name).
+      n_files: Number of files to be processed.
+    """
+    if logger.isEnabledFor(logging.INFO):
+        click.secho(f"\n🔍 Processing {n_files} file(s):\n", fg="blue")
+        click.secho(f"📋 TopMark {ctx.command.name} Results:", bold=True, underline=True)
+
+
+def render_footer() -> None:
+    """Render the final footer for a command.
+
+    Emits a friendly success marker in human mode when INFO logging is enabled.
+    """
+    if logger.isEnabledFor(logging.INFO):
+        if logger.isEnabledFor(logging.INFO):
+            click.secho(
+                "✅ All done!",
+                fg="green",
+                bold=True,
+            )

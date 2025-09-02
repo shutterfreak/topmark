@@ -29,12 +29,11 @@ from __future__ import annotations
 import os
 from typing import Any, cast
 
-import click
 import pytest
 from click.shell_completion import BashComplete, CompletionItem
 
+from tests.cli.conftest import cli
 from tests.conftest import mark_integration, parametrize
-from topmark.cli.main import cli
 from topmark.rendering.formats import HeaderOutputFormat
 
 
@@ -87,7 +86,7 @@ def _bash_complete(args: list[str], incomplete: str) -> set[str]:
         set[str]: A set of suggested completion strings.
     """
     bc = BashComplete(
-        cli=cast(click.Command, cli),
+        cli=cli,
         ctx_args={},
         prog_name="topmark",
         complete_var="_TOPMARK_COMPLETE",

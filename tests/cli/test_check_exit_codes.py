@@ -16,30 +16,21 @@ later as the CLI spec is finalized.
 """
 
 from pathlib import Path
-from typing import cast
 
-import click
-from click.testing import CliRunner
-
-from topmark.cli.exit_codes import ExitCode
-from topmark.cli.main import cli as _cli
-
-# Type hint for the CLI command object
-cli = cast(click.Command, _cli)
+from tests.cli.conftest import assert_WOULD_CHANGE, run_cli_in
 
 
 def test_check_exit_code_with_missing_header(tmp_path: Path) -> None:
-    """It should exit with code 0 (SUCCESS) or 2 (WOULD_CHANGE).
-
-    Args:
-        tmp_path: pytest-provided temporary directory for creating a sample file.
-    """
-    f = tmp_path / "foo.py"
+    """It should exit with code `WOULD_CHANGE` (2)."""
+    file_name = "foo.py"
+    f = tmp_path / file_name
     f.write_text("print('hi')\n")
 
-    result = CliRunner().invoke(cli, ["check", str(f), "--check"])
+    result = run_cli_in(tmp_path, ["check", file_name])
 
-    assert result.exit_code in (
-        ExitCode.SUCCESS,
-        ExitCode.WOULD_CHANGE,
-    )  # tighten once behavior is finalized
+    # When a header is missing, the default command should report WOULD_CHANGE (2).
+    assert_WOULD_CHANGE(result)
+
+    # Sanity check: the summary should mention the file and that the result is changed.
+    assert file_name in result.output
+    assert "result: changed" in result.output

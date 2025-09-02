@@ -17,18 +17,15 @@ by registered file types. Globs are expanded relative to the current working
 directory. The result is a deterministic, sorted list of files to process.
 """
 
-import sys
-from collections.abc import Callable
 from pathlib import Path
-from typing import TextIO
 
 from pathspec import PathSpec
 from pathspec.patterns.gitwildmatch import GitWildMatchPattern
 
-from .config import Config
-from .config.logging import get_logger
-from .filetypes.base import FileType
-from .filetypes.instances import get_file_type_registry
+from topmark.config import Config
+from topmark.config.logging import get_logger
+from topmark.filetypes.base import FileType
+from topmark.filetypes.instances import get_file_type_registry
 
 logger = get_logger(__name__)
 
@@ -57,24 +54,28 @@ def load_patterns_from_file(file_path: str | Path) -> list[str]:
         return []
 
 
-def resolve_file_list(config: Config, *, stdin_stream: TextIO | None = None) -> list[Path]:
-    """Return the list of input files derived from configuration and filters.
+def resolve_file_list(config: Config) -> list[Path]:
+    """Return the list of input files to process, applying candidate expansion and filters.
 
-    The resolver:
-      1. Collects base paths from positional arguments, stdin (when enabled), or
-         ``config_files`` as a last resort.
-      2. Expands base paths: files are added directly; directories are traversed
-         recursively; globs are expanded relative to the current working directory.
-      3. Applies include patterns (and patterns loaded from ``include_from`` files),
-         merging their matches into the candidate set.
-      4. Applies exclude patterns (and patterns from ``exclude_from`` files) using
-         Git‑wildmatch semantics via :mod:`pathspec`.
-      5. Optionally filters by configured file types.
+    The resolver implements these semantics:
+      1. **Candidate set**: Expand positional paths (files, directories recursively, and globs).
+         If no positional paths are provided, fall back to `config_files`.
+         Also, extend with any literal paths read from `--files-from` files
+         (added before filtering).
+      2. **File-only**: Only files (not directories) are kept for filtering.
+      3. **Include intersection**: If any include patterns
+         (from `include_patterns` or `include_from` files)
+         are given, filter the candidate set to only those files matching *any* include pattern
+         (intersection filter).
+      4. **Exclude subtraction**: If any exclude patterns
+         (from `exclude_patterns` or `exclude_from` files)
+         are given, remove any files matching the exclusion patterns from the set.
+      5. **File type filter**: If `file_types` is specified, further restrict to files
+         matching those types.
+      6. Returns a **sorted** list of Path objects for deterministic output.
 
     Args:
       config (Config): Configuration values influencing path collection and filters.
-      stdin_stream (TextIO | None): Optional stream to read file paths from when
-        ``config.stdin`` is ``True``. Defaults to :data:`sys.stdin`.
 
     Returns:
       list[Path]: Sorted list of files selected for processing.
@@ -82,38 +83,49 @@ def resolve_file_list(config: Config, *, stdin_stream: TextIO | None = None) -> 
     logger.debug("resolve_file_list(): config: %s", config)
 
     positional_paths = config.files if hasattr(config, "files") else []
-    stdin = config.stdin if hasattr(config, "stdin") else False
     include_patterns = config.include_patterns if hasattr(config, "include_patterns") else []
     include_file = config.include_from if hasattr(config, "include_from") else None
     exclude_patterns = config.exclude_patterns if hasattr(config, "exclude_patterns") else []
     exclude_file = config.exclude_from if hasattr(config, "exclude_from") else None
     config_files = config.config_files if hasattr(config, "config_files") else []
     file_types: set[str] = config.file_types if hasattr(config, "file_types") else set()
+    files_from = config.files_from if hasattr(config, "files_from") else []
 
     logger.trace(
         """\
     positional_paths: %s
-    stdin: %s
     include_patterns: %s
     include_file: %s
     exclude_patterns: %s
     exclude_file: %s
     config_files: %s
     file_type_list: %s
+    files_from: %s
     config: %s
 """,
         positional_paths,
-        stdin,
         include_patterns,
         include_file,
         exclude_patterns,
         exclude_file,
         config_files,
         file_types,
+        files_from,
         config,
     )
 
     def expand_path(p: Path) -> list[Path]:
+        """Expand a base path into a list of files and directories.
+
+        Handles globs, directories (recursively), and files.
+        Globs are expanded relative to the current working directory.
+
+        Args:
+            p (Path): Base path to expand.
+
+        Returns:
+            list[Path]: List of expanded paths (files and directories).
+        """
         # Glob patterns are expanded relative to CWD (Black‑style args).
         if "*" in str(p):
             return list(Path(".").rglob(str(p)))
@@ -126,22 +138,8 @@ def resolve_file_list(config: Config, *, stdin_stream: TextIO | None = None) -> 
         # Otherwise, return empty list (path does not exist or is unsupported)
         return []
 
-    # Step 1: Determine base input paths
-    if stdin:
-        # Read paths from stdin if configured (favor a provided Click stream)
-        stream = stdin_stream if stdin_stream is not None else sys.stdin
-        try:
-            raw = stream.read()
-            lines = [] if raw is None else raw.splitlines()
-            input_paths = [Path(line.strip()) for line in lines if line.strip()]
-        except Exception as e:
-            logger.debug(
-                "stdin read failed, treating as no input: %s: %r",
-                type(e).__name__,
-                e,
-            )
-            input_paths = []
-    elif positional_paths:
+    # Step 1: Build candidate set from positional paths or config_files
+    if positional_paths:
         # Use positional paths if provided
         input_paths = [Path(p) for p in positional_paths]
     elif config_files:
@@ -150,58 +148,83 @@ def resolve_file_list(config: Config, *, stdin_stream: TextIO | None = None) -> 
     else:
         input_paths = []
 
-    # Step 2: Expand base paths into a set of files (and directories initially)
-    all_files: set[Path] = set()
-    for path in input_paths:
-        all_files.update(expand_path(path))
+    # Add paths from files-from (literal, not patterns)
+    def _read_paths_from_file(fp: Path) -> list[Path]:
+        try:
+            text = fp.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            logger.error("Cannot read file list from '%s' (not found).", fp)
+            return []
+        except OSError as e:
+            logger.error("Cannot read file list from '%s': %s", fp, e)
+            return []
+        paths: list[Path] = []
+        for line in text.splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            paths.append(Path(line))
+        return paths
 
-    # Step 3: Expand includes by adding files matching include patterns and files from include files
+    # Merge paths from files-from into the candidate inputs
+    for fp in files_from or []:
+        input_paths.extend(_read_paths_from_file(Path(fp)))
+
+    # Step 2: Expand base paths into a set of files (and directories initially)
+    candidate_set: set[Path] = set()
+    unmatched_patterns: list[str] = []
+    missing_literals: list[Path] = []
+
+    for raw in input_paths:
+        p = Path(raw)
+        # Expand
+        expanded = expand_path(p)
+        candidate_set.update(expanded)
+
+        # Report problems *after* expansion
+        if "*" in str(p):
+            if not expanded:
+                unmatched_patterns.append(str(p))  # glob that matched nothing
+        else:
+            if not p.exists():
+                missing_literals.append(p)  # literal path that doesn't exist
+
+    # Emit warnings once (keeps logs tidy)
+    if unmatched_patterns:
+        for up in unmatched_patterns:
+            logger.warning("No matches for glob pattern: %s", up)
+    if missing_literals:
+        for ml in missing_literals:
+            logger.warning("No such file or directory: %s", ml)
+
+    # Only keep files (drop directories) before filtering
+    candidate_set = {p for p in candidate_set if p.is_file()}
+
+    # Step 3: Apply include intersection filter (if any include patterns)
+    # Merge include_patterns + include_from patterns
     combined_include_patterns = list(include_patterns or [])
     if include_file:
         for f in include_file:
             # Load patterns from include files and add them to the include list
             combined_include_patterns += load_patterns_from_file(f)
+    if combined_include_patterns:
+        # Only keep files matching any include pattern (intersection)
+        include_spec = PathSpec.from_lines(GitWildMatchPattern, combined_include_patterns)
+        candidate_set = {p for p in candidate_set if include_spec.match_file(p.as_posix())}
 
-            # TODO check here if files exist?
-
-    for pattern in combined_include_patterns:
-        # Add files matching include patterns relative to current directory
-        all_files.update(Path(".").rglob(pattern))
-
-    # Step 4: Apply exclusions by building a PathSpec matcher from exclude patterns and files
+    # Step 4: Apply exclude subtraction filter (if any exclude patterns)
     combined_exclude_patterns = list(exclude_patterns or [])
     if exclude_file:
         for f in exclude_file:
             # Load patterns from exclude files and add them to the exclude list
             combined_exclude_patterns += load_patterns_from_file(f)
+    if combined_exclude_patterns:
+        exclude_spec = PathSpec.from_lines(GitWildMatchPattern, combined_exclude_patterns)
+        candidate_set = {p for p in candidate_set if not exclude_spec.match_file(p.as_posix())}
 
-            # TODO check here if files exist?
+    filtered_files = candidate_set
 
-    def is_excluded_factory(patterns: list[str]) -> Callable[[Path], bool]:
-        spec = PathSpec.from_lines(GitWildMatchPattern, patterns)
-        return lambda path: spec.match_file(path.as_posix())
-
-    is_excluded = is_excluded_factory(combined_exclude_patterns)
-
-    # Keep only files (drop directories) and apply exclusions.
-    filtered_files = {f for f in all_files if f.is_file() and not is_excluded(f)}
-
-    # Step 6: Log and skip files with unknown types (commented out - consider cleanup or refactor)
-    # skipped = []
-    # kept = []
-    # for f in filtered_files:
-    #     ft = resolve_file_types(f)
-    #     if ft is None:
-    #         skipped.append(f)
-    #     else:
-    #         kept.append(f)
-
-    # for s in skipped:
-    #     logger.warning(f"Skipped (unknown type): {s}")
-
-    # filtered_files = kept
-
-    # Step 7: Filter files by configured file types if specified
+    # Step 5: Filter files by configured file types if specified
     if file_types:
         registry = get_file_type_registry()
         # Warn about unknown file type names in config

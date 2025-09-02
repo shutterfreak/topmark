@@ -91,6 +91,7 @@ class ArgsNamespace(TypedDict, total=False):
 
     # Command arguments
     files: list[str]
+    files_from: list[str]
 
     # Command options: common_file_and_filtering_options
     stdin: bool | None
@@ -113,6 +114,7 @@ def build_args_namespace(
     no_config: bool | None = None,
     config_files: list[str] | None = None,
     files: list[str] | None = None,
+    files_from: list[str] | None = None,
     stdin: bool | None = None,
     include_patterns: list[str] | None = None,
     include_from: list[str] | None = None,
@@ -130,6 +132,7 @@ def build_args_namespace(
         no_config: Whether to ignore local config files.
         config_files: List of extra config file paths.
         files: List of file paths to process.
+        files_from: List of files containing newline-delimited paths.
         stdin: Whether to read file paths from stdin.
         include_patterns: Glob patterns of files to include.
         include_from: Files containing include patterns.
@@ -149,6 +152,7 @@ def build_args_namespace(
         "no_config": no_config,
         "config_files": config_files,
         "files": files if files is not None else [],
+        "files_from": files_from if files_from is not None else [],
         "stdin": stdin,
         "include_patterns": include_patterns,
         "include_from": include_from,
@@ -161,9 +165,7 @@ def build_args_namespace(
     }
 
 
-# --- Example custom Click parameter types and validators for TopMark CLI ---
-
-# HeaderFormatParam: Click callback for validating header format option
+# --- Custom Click parameter types and validators for TopMark CLI ---
 
 
 class EnumParam(ParamTypeBase, Generic[E]):

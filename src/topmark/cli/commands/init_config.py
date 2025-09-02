@@ -18,12 +18,16 @@ starting point for customizing a project's configuration.
 import click
 from yachalk import chalk
 
-from topmark.cli.utils import default_header_overrides
+from topmark.cli_shared.utils import default_header_overrides
 from topmark.config import Config
 from topmark.constants import PYPROJECT_TOML_PATH
 from topmark.rendering.api import render_header_for_path
 
 
+@click.command(
+    name="init-config",
+    help="Display an initial TopMark configuration file.",
+)
 def init_config_command() -> None:
     """Print a starter config file to stdout.
 
@@ -33,7 +37,6 @@ def init_config_command() -> None:
     Returns:
         None. Prints output to stdout.
     """
-    # TODO: use topmark to generate this header
     click.echo(chalk.bold.underline("Initial TopMark Configuration:"))
 
     header_overrides = default_header_overrides(
@@ -58,3 +61,6 @@ def init_config_command() -> None:
 """
         )
     )
+
+    # Exit gracefully
+    return

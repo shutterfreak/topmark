@@ -31,6 +31,7 @@ def resolve_config_from_click(
     *,
     ctx: click.Context,
     files: list[str],
+    files_from: list[str],
     stdin: bool,
     include_patterns: list[str],
     include_from: list[str],
@@ -48,6 +49,7 @@ def resolve_config_from_click(
     Args:
         ctx: Click context that provides the resolved log level.
         files: File paths passed on the command line.
+        files_from: Paths to files that contain lists of file paths.
         stdin: Whether to read file paths from standard input.
         include_patterns: Glob patterns of files to include.
         include_from: Paths to files that contain include patterns.
@@ -66,6 +68,7 @@ def resolve_config_from_click(
     args: ArgsNamespace = build_args_namespace(
         log_level=ctx.obj.get("log_level"),
         files=list(files),
+        files_from=list(files_from),
         stdin=stdin,
         include_patterns=list(include_patterns),
         include_from=list(include_from),

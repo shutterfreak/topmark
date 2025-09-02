@@ -27,14 +27,13 @@ programmatically via `click.shell_completion.ShellComplete`.
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import cast
 
 import click
 from click.shell_completion import CompletionItem
 
+from tests.cli.conftest import cli
 from tests.conftest import mark_cli, parametrize
 from topmark.cli.cli_types import EnumParam
-from topmark.cli.main import cli
 from topmark.rendering.formats import HeaderOutputFormat
 
 
@@ -55,7 +54,7 @@ def _complete(incomplete: str = "") -> list[CompletionItem]:
     enum_type = EnumParam(HeaderOutputFormat)
     # Minimal Click option and context
     opt = click.Option(("--header-format",), type=enum_type)
-    ctx = click.Context(cast(click.Command, cli))
+    ctx = click.Context(cli)
     items = enum_type.shell_complete(ctx, opt, incomplete)
     if items:
         return items

@@ -18,16 +18,8 @@ exits with code 0 on success.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import cast
 
-import click
-from click.testing import CliRunner
-
-from topmark.cli.exit_codes import ExitCode
-from topmark.cli.main import cli as _cli
-
-# Type hint for the CLI command object
-cli = cast(click.Command, _cli)
+from tests.cli.conftest import assert_SUCCESS, assert_WOULD_CHANGE, run_cli
 
 
 def test_check_mode_exits_2_when_changes_needed(tmp_path: Path) -> None:
@@ -39,9 +31,9 @@ def test_check_mode_exits_2_when_changes_needed(tmp_path: Path) -> None:
     f = tmp_path / "a.py"
     f.write_text("print('x')\n", encoding="utf-8")
 
-    result = CliRunner().invoke(cli, [str(f)])
+    result = run_cli(["check", str(f)])
 
-    assert result.exit_code == ExitCode.WOULD_CHANGE, result.output
+    assert_WOULD_CHANGE(result)
 
     # Ensure the file was not modified in check mode
     assert f.read_text(encoding="utf-8") == "print('x')\n"
@@ -53,9 +45,9 @@ def test_apply_writes_and_exits_0(tmp_path: Path) -> None:
     before = "print('y')\n"
     f.write_text(before, encoding="utf-8")
 
-    result = CliRunner().invoke(cli, ["--apply", str(f)])
+    result = run_cli(["check", "--apply", str(f)])
 
-    assert result.exit_code == ExitCode.SUCCESS, result.output
+    assert_SUCCESS(result)
 
     after = f.read_text(encoding="utf-8")
 

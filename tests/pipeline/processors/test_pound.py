@@ -825,7 +825,7 @@ def test_pound_bom_preserved(tmp_path: Path) -> None:
     assert (ctx.updated_file_lines or [])[0].startswith("\ufeff")
 
 
-def test_pound_processor_only_removes_first_header_block():
+def test_pound_processor_only_removes_first_header_block() -> None:
     """Only the first header occurrence should be removed during strip."""
     p = PoundHeaderProcessor()
     lines = [

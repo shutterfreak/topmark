@@ -1,40 +1,44 @@
 # topmark:header:start
 #
-#   file         : strip.py
-#   file_relpath : src/topmark/cli/commands/strip.py
+#   file         : check.py
+#   file_relpath : src/topmark/cli/commands/check.py
 #   project      : TopMark
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""TopMark ``strip`` command.
+"""Default TopMark operation (check/apply).
 
-Removes the entire TopMark header from targeted files.
+Checks whether the TopMark header is present, needs updating or complies.
 Performs a dry‑run check by default and applies changes when ``--apply`` is given.
 
 Input modes supported:
-  • **Paths mode (default)**: one or more PATHS and/or ``--files-from FILE``.
-  • **Content on STDIN**: a single ``-`` as the sole PATH **plus** ``--stdin-filename NAME``.
-  • **Lists on STDIN for ...-from**: allow ``--files-from -``, ``--include-from -``,
-  or ``--exclude-from -`` (exactly one may consume STDIN).
+  * **Paths mode (default)**: one or more PATHS and/or ``--files-from FILE``.
+  * **Content on STDIN**: a single ``-`` as the sole PATH **plus** ``--stdin-filename NAME``.
+  * **Lists on STDIN for ...-from**: allow ``--files-from -``, ``--include-from -``,
+    or ``--exclude-from -`` (exactly one may consume STDIN).
 
 Examples:
-  Preview changes (dry run):
+  Check files and print a human summary:
 
-    $ topmark strip src
+    $ topmark check --summary src
 
-  Apply changes (write in place):
+  Emit per‑file objects in NDJSON (one per line):
 
-    $ topmark strip --apply .
+    $ topmark check --format=ndjson src pkg
+
+  Write changes and show diffs (human output only):
+
+    $ topmark check --apply --diff .
 
   Read a *single file's content* from STDIN:
 
-    $ cat with_header.py | topmark strip - --stdin-filename with_header.py
+    $ cat foo.py | topmark check - --stdin-filename foo.py
 
   Read a *list of paths* from STDIN:
 
-    $ git ls-files | topmark strip --files-from -
+    $ git ls-files | topmark check --files-from -
 """
 
 import click
@@ -85,19 +89,18 @@ logger = get_logger(__name__)
 
 
 @click.command(
-    name="strip",
-    help="Remove the entire TopMark header from files.",
+    name="check",
+    help="Validate headers (dry-run). Use --apply to add or update.",
     context_settings=CONTEXT_SETTINGS,
     epilog="""\
-Removes TopMark header blocks in files (in-place with --apply).
-
+Adds or updates TopMark header blocks in files (in-place with --apply).
 Examples:
 
   # Preview which files would change (dry-run)
-  topmark strip src
+  topmark check src
 
   # Apply: remove headers in-place
-  topmark strip --apply .
+  topmark check --apply .
 """,
 )
 @common_config_options
@@ -105,6 +108,15 @@ Examples:
 @common_header_formatting_options
 @click.option(
     "--apply", "apply_changes", is_flag=True, help="Write changes to files (off by default)."
+)
+@click.option(
+    "--add-only", "add_only", is_flag=True, help="Only add headers where missing (no updates)."
+)
+@click.option(
+    "--update-only",
+    "update_only",
+    is_flag=True,
+    help="Only update existing non-compliant headers (no additions).",
 )
 @click.option("--diff", is_flag=True, help="Show unified diffs (human output only).")
 @click.option(
@@ -134,7 +146,7 @@ Examples:
     default=None,
     help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
 )
-def strip_command(
+def check_command(
     *,
     files_from: list[str],
     include_patterns: list[str],
@@ -148,6 +160,8 @@ def strip_command(
     align_fields: bool,
     header_format: HeaderOutputFormat | None,
     apply_changes: bool,
+    add_only: bool,
+    update_only: bool,
     diff: bool,
     summary_mode: bool,
     skip_compliant: bool,
@@ -155,13 +169,13 @@ def strip_command(
     stdin_filename: str | None,
     output_format: OutputFormat | None,
 ) -> None:
-    """Remove the TopMark header block from targeted files.
+    """Run the unified default command (check/apply).
 
     Returns: None.
 
-    This command reads positional paths from ``click.get_current_context().args``
-    (Black‑style) and reuses the standard config resolver and file selection logic.
-    It supports three input styles:
+    The command receives options parsed at the group level and reads positional
+    paths from ``click.get_current_context().args`` (Black‑style). It supports
+    three input styles:
 
     1) Paths mode (default): PATHS and/or ``--files-from FILE``.
     2) Content-on-STDIN: use ``-`` as the sole PATH **and** provide ``--stdin-filename``.
@@ -177,14 +191,16 @@ def strip_command(
                                  Use ``-`` to read patterns from STDIN.
       files_from (list[str]): Files that contain newline‑delimited *paths* to add to the
                               candidate set before filtering. Use ``-`` to read from STDIN.
-      no_config (bool): Ignore user/project configuration files and use defaults only.
+      no_config (bool): Ignore project configuration files and use defaults only.
       config_paths (list[str]): Additional configuration file paths to load and merge.
       file_types (list[str]): Restrict processing to the given TopMark file type identifiers.
       relative_to (str | None): Base directory used to compute relative paths in outputs.
       align_fields (bool): Align header fields by the colon for readability.
-      header_format (HeaderOutputFormat | None): Optional override for rendering format.
+      header_format (HeaderOutputFormat | None): Optional override for the header output format.
       apply_changes (bool): Write changes to files; otherwise perform a dry run.
-      diff (bool): Show unified diffs of header removals (human output only).
+      add_only (bool): Only add headers where missing (no updates).
+      update_only (bool): Only update existing non‑compliant headers (no additions).
+      diff (bool): Show unified diffs of header changes (human output only).
       summary_mode (bool): Show outcome counts instead of per‑file details.
       skip_compliant (bool): Suppress files whose comparison status is UNCHANGED.
       skip_unsupported (bool): Suppress unsupported file types.
@@ -217,6 +233,11 @@ def strip_command(
             raise TopmarkUsageError(
                 f"{ctx.command.name}: --diff is not supported with machine-readable output formats."
             )
+
+    if add_only and update_only:
+        raise TopmarkUsageError(
+            f"{ctx.command.name}: Options --add-only and --update-only are mutually exclusive."
+        )
 
     # === Build Config and file list ===
     plan = plan_cli_inputs(
@@ -254,7 +275,9 @@ def strip_command(
     # Banner
     render_banner(ctx, n_files=len(file_list))
 
-    pipeline_name = "strip"
+    # Always run the 'apply' pipeline when --apply is set so updated_file_lines are computed.
+    # The --summary flag only affects how we render output, not which steps run.
+    pipeline_name = "apply" if apply_changes else ("summary" if summary_mode else "apply")
     results: list[ProcessingContext] = []
     encountered_error_code: ExitCode | None = None
 
@@ -277,18 +300,22 @@ def strip_command(
 
         else:
 
-            def _strip_msg(r: ProcessingContext, apply_changes: bool) -> str | None:
-                """Generate a per-file message for 'strip' results."""
+            def _check_msg(r: ProcessingContext, apply_changes: bool) -> str | None:
+                """Generate a per-file message for 'check' results."""
                 if r.status.comparison != ComparisonStatus.CHANGED:
                     return None
-                if apply_changes and r.status.header in (HeaderStatus.DETECTED, HeaderStatus.EMPTY):
-                    return f"🧹 Stripping header in '{r.path}'"
-                return f"🛠️  Run `topmark strip --apply {r.path}` to update this file."
+                if apply_changes:
+                    return (
+                        "➕ Adding header for '{p}'".format(p=r.path)
+                        if r.status.header is HeaderStatus.MISSING
+                        else "✏️  Updating header for '{p}'".format(p=r.path)
+                    )
+                return f"🛠️  Run `topmark check --apply {r.path}` to update this file."
 
             # Per-file guidance (only in non-summary human mode)
             if fmt is OutputFormat.DEFAULT and not summary_mode:
                 render_per_file_guidance(
-                    view_results, make_message=_strip_msg, apply_changes=apply_changes
+                    view_results, make_message=_check_msg, apply_changes=apply_changes
                 )
 
         # Diff output
@@ -307,15 +334,22 @@ def strip_command(
         failed = 0
 
         def _should_write_check(r: ProcessingContext) -> bool:
-            """Determine whether to write this file in strip mode."""
-            return r.status.file is FileStatus.RESOLVED and r.status.write is WriteStatus.REMOVED
+            """Determine whether to write this file in check mode."""
+            if add_only and r.status.write is not WriteStatus.INSERTED:
+                return False
+            if update_only and r.status.write is not WriteStatus.REPLACED:
+                return False
+            return r.status.file is FileStatus.RESOLVED and r.status.write in (
+                WriteStatus.INSERTED,
+                WriteStatus.REPLACED,
+            )
 
         # Perform writes and count successes/failures
         written, failed = write_updates(results, should_write=_should_write_check)
 
         if fmt is OutputFormat.DEFAULT:
             click.secho(
-                f"\n✅ Removed headers in {written} file(s)."
+                f"\n✅ Applied changes to {written} file(s)."
                 if written
                 else "\n✅ No changes to apply.",
                 fg="green",
@@ -324,14 +358,32 @@ def strip_command(
         if failed:
             raise TopmarkIOError(f"Failed to write {failed} file(s). See log for details.")
 
-    # Exit code policy for `strip`: non-zero only if a removal would occur.
-    # A missing header is *not* an error condition for `strip`.
+    # Exit code policy: in check mode, non-zero if changes would be needed
 
-    def _would_change_strip(results: list[ProcessingContext]) -> bool:
-        """Return True if any file would be changed by `strip`."""
-        return any(r.status.comparison is ComparisonStatus.CHANGED for r in results)
+    def _would_change_check(
+        results: list[ProcessingContext],
+        *,
+        add_only: bool,
+        update_only: bool,
+    ) -> bool:
+        """Return True if any file would be changed by `check`."""
+        if add_only:
+            return any(r.status.header is HeaderStatus.MISSING for r in results)
+        if update_only:
+            return any(
+                (r.status.header is HeaderStatus.DETECTED)
+                and (r.status.comparison is ComparisonStatus.CHANGED)
+                for r in results
+            )
+        return any(
+            (r.status.header is HeaderStatus.MISSING)
+            or (r.status.comparison is ComparisonStatus.CHANGED)
+            for r in results
+        )
 
-    if not apply_changes and _would_change_strip(results):
+    if not apply_changes and _would_change_check(
+        results, add_only=add_only, update_only=update_only
+    ):
         ctx.exit(ExitCode.WOULD_CHANGE)
 
     # Exit on any error encountered during processing
@@ -344,4 +396,4 @@ def strip_command(
     if temp_path and temp_path.exists():
         safe_unlink(temp_path)
 
-    return
+    # No explicit return needed for Click commands.

@@ -20,17 +20,9 @@ This module ensures CI/pre-commit semantics:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import cast
 
-import click
-from click.testing import CliRunner
-
-from topmark.cli.exit_codes import ExitCode
-from topmark.cli.main import cli as _cli
+from tests.cli.conftest import assert_SUCCESS, assert_WOULD_CHANGE, run_cli
 from topmark.constants import TOPMARK_START_MARKER
-
-# Type hint for the CLI command object
-cli = cast(click.Command, _cli)
 
 
 def test_check_exits_would_change_when_changes_needed(tmp_path: Path) -> None:
@@ -38,10 +30,10 @@ def test_check_exits_would_change_when_changes_needed(tmp_path: Path) -> None:
     f = tmp_path / "x.py"
     f.write_text("print('z')\n", "utf-8")
 
-    result = CliRunner().invoke(cli, ["check", str(f)])
+    result = run_cli(["check", str(f)])
 
     # Non-zero signals that changes are required.
-    assert result.exit_code == ExitCode.WOULD_CHANGE, result.output
+    assert_WOULD_CHANGE(result)
 
 
 def test_check_exits_success_when_clean(tmp_path: Path) -> None:
@@ -50,13 +42,13 @@ def test_check_exits_success_when_clean(tmp_path: Path) -> None:
     f.write_text("print('z')\n", "utf-8")
 
     # Bring file to compliant state.
-    result_apply = CliRunner().invoke(cli, ["--apply", str(f)])
+    result_apply = run_cli(["check", "--apply", str(f)])
 
-    assert result_apply.exit_code == ExitCode.SUCCESS, result_apply.output
+    assert_SUCCESS(result_apply)
 
-    result_check = CliRunner().invoke(cli, ["check", str(f)])
+    result_check = run_cli(["check", str(f)])
 
-    assert result_check.exit_code == ExitCode.SUCCESS, result_check.output
+    assert_SUCCESS(result_check)
 
 
 def test_default_summary_apply_runs_apply_pipeline(tmp_path: Path) -> None:
@@ -64,10 +56,11 @@ def test_default_summary_apply_runs_apply_pipeline(tmp_path: Path) -> None:
     f = tmp_path / "x.py"
     f.write_text("print('z')\n", "utf-8")
 
-    result = CliRunner().invoke(cli, ["--summary", "--apply", str(f)])
+    result = run_cli(["check", "--summary", "--apply", str(f)])
+
+    assert_SUCCESS(result)
 
     # File should now contain a header.
-    assert result.exit_code == ExitCode.SUCCESS, result.output
     assert TOPMARK_START_MARKER in f.read_text("utf-8")
 
 
@@ -76,16 +69,16 @@ def test_default_diff_with_apply_emits_patch(tmp_path: Path) -> None:
     f = tmp_path / "x.py"
     f.write_text("print('z')\n", "utf-8")
 
-    result = CliRunner().invoke(cli, ["--diff", "--apply", str(f)])
+    result = run_cli(["check", "--diff", "--apply", str(f)])
 
     # Apply succeeded; unified diff printed.
-    assert result.exit_code == ExitCode.SUCCESS, result.output
+    assert_SUCCESS(result)
 
     assert "--- " in result.output and "+++ " in result.output
 
 
-def test_stdin_with_empty_input_is_noop():
+def test_stdin_with_empty_input_is_noop() -> None:
     """`--stdin` with empty input should be a no-op and exit 0."""
-    result = CliRunner().invoke(cli, ["--stdin"], input="")
+    result = run_cli(["check", "--stdin"], input_text="")
 
-    assert result.exit_code == ExitCode.SUCCESS, result.output
+    assert_SUCCESS(result)

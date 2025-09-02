@@ -16,32 +16,21 @@ Ensures that:
 - Each registered subcommand provides a working `--help` page.
 """
 
-from typing import cast
+from tests.cli.conftest import assert_SUCCESS, run_cli
 
-import click
-from click.testing import CliRunner
-
-from topmark.cli.exit_codes import ExitCode
-from topmark.cli.main import cli as _cli
-
-# Type hint for the CLI command object
-cli = cast(click.Command, _cli)
-
-COMMANDS = ["check", "apply", "dump-config", "filetypes", "init-config", "show-defaults", "version"]
+COMMANDS = ["check", "strip", "dump-config", "filetypes", "init-config", "show-defaults", "version"]
 
 
 def test_group_help() -> None:
     """It should exit successfully (0) when running `topmark --help`."""
-    result = CliRunner().invoke(cli, ["--help"])
+    result = run_cli(["--help"])
 
-    assert result.exit_code == ExitCode.SUCCESS, result.output
+    assert_SUCCESS(result)
 
 
 def test_each_command_has_help() -> None:
     """It should provide a `--help` page for each known subcommand."""
-    runner = CliRunner()
-
     for name in COMMANDS:
-        result = runner.invoke(cli, [name, "--help"])
+        result = run_cli([name, "--help"])
 
-        assert result.exit_code == ExitCode.SUCCESS, f"{name} --help failed"
+        assert_SUCCESS(result)

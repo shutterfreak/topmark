@@ -17,19 +17,10 @@ Covers:
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
-from typing import cast
 
-import click
-from click.testing import CliRunner
-
-from topmark.cli.exit_codes import ExitCode
-from topmark.cli.main import cli as _cli
+from tests.cli.conftest import assert_SUCCESS, run_cli_in
 from topmark.constants import TOPMARK_START_MARKER
-
-# Type hint for the CLI command object
-cli = cast(click.Command, _cli)
 
 
 def test_exclude_wins_over_include(tmp_path: Path) -> None:
@@ -45,24 +36,20 @@ def test_exclude_wins_over_include(tmp_path: Path) -> None:
     incf.write_text("*.py\n# comment\n\n", "utf-8")
     excf.write_text("# exclude explicit below\nskip.py\n", "utf-8")
 
-    cwd = os.getcwd()
-    try:
-        os.chdir(tmp_path)
-        result = CliRunner().invoke(
-            cli,
-            [
-                "--include-from",
-                str(incf.name),
-                "--exclude-from",
-                str(excf.name),
-                "--apply",
-                ".",
-            ],
-        )
-    finally:
-        os.chdir(cwd)
+    result = run_cli_in(
+        tmp_path,
+        [
+            "check",
+            "--include-from",
+            str(incf.name),
+            "--exclude-from",
+            str(excf.name),
+            "--apply",
+            ".",
+        ],
+    )
 
-    assert result.exit_code == ExitCode.SUCCESS, result.output
+    assert_SUCCESS(result)
 
     # `keep.py` should have a header
     assert TOPMARK_START_MARKER in target.read_text("utf-8")

@@ -14,30 +14,57 @@ Emits the effective TopMark configuration as TOML after applying defaults,
 project/user config files, and any CLI overrides. The output is wrapped
 between `# === BEGIN ===` and `# === END ===` markers for easy parsing in
 tests or tooling.
+
+Input modes:
+  * This command is file-agnostic: positional PATHS and --files-from are ignored
+    (with a warning if present).
+  * --include-from - and --exclude-from - are honored for config resolution.
+  * '-' as a PATH (content-on-STDIN) is ignored in dump-config.
 """
 
 import click
 from yachalk import chalk
 
-from topmark.cli.config_resolver import resolve_config_from_click
+from topmark.cli.cmd_common import build_config_common
+from topmark.cli.io import plan_cli_inputs
 from topmark.cli.options import (
+    CONTEXT_SETTINGS,
     common_config_options,
     common_file_and_filtering_options,
     common_header_formatting_options,
-    typed_argument,
 )
+from topmark.cli_shared.utils import safe_unlink
+from topmark.config.logging import get_logger
 from topmark.rendering.formats import HeaderOutputFormat
 
+logger = get_logger(__name__)
 
-@typed_argument("files", nargs=-1)
+
+@click.command(
+    name="dump-config",
+    help=(
+        "Dump the final merged TopMark configuration as TOML. "
+        "This command is file‑agnostic: positional PATHS and --files-from are ignored. "
+        "Filter flags are honored (e.g., --include/--exclude and --include-from/--exclude-from). "
+        "Use --include-from - / --exclude-from - to read patterns from STDIN; "
+        "'-' as a PATH (content on STDIN) is ignored for dump-config."
+    ),
+    epilog=(
+        "Notes:\n"
+        "  • File lists are inputs, not configuration; they are ignored by dump-config.\n"
+        "  • Pattern sources are part of configuration and are included in the dump.\n"
+        "  • Output is wrapped between '# === BEGIN ===' and '# === END ===' markers."
+    ),
+    context_settings=CONTEXT_SETTINGS,
+)
 @common_config_options
 @common_file_and_filtering_options
 @common_header_formatting_options
 def dump_config_command(
     # Command arguments
-    files: list[str],
+    *,
+    files_from: list[str] | None = None,
     # Command options: common_file_filtering_options
-    stdin: bool,
     include_patterns: list[str],
     include_from: list[str],
     exclude_patterns: list[str],
@@ -50,6 +77,7 @@ def dump_config_command(
     # Command options: formatting
     align_fields: bool,
     header_format: HeaderOutputFormat | None,
+    stdin_filename: str | None,
 ) -> None:
     """Dump the final merged configuration as TOML.
 
@@ -59,10 +87,8 @@ def dump_config_command(
     that need to consume the resolved configuration.
 
     Args:
-        files: Positional file or directory paths used to influence config
-            discovery or resolution (may be empty).
-        stdin: If True, read newline‑separated paths from standard input
-            when resolving files (may affect config discovery).
+        files_from: Candidate file paths added from newline-delimited files
+            before filtering.
         include_patterns: Additional include glob patterns to consider.
         include_from: Paths to files containing include patterns (one per line).
         exclude_patterns: Glob patterns to exclude from consideration.
@@ -73,6 +99,7 @@ def dump_config_command(
         config_paths: Additional TOML config files to merge into the effective config.
         align_fields: Whether to align header fields when rendering (captured in config).
         header_format: Optional output format override for header rendering (captured in config).
+        stdin_filename: Optional assumed filename when reading content from STDIN.
 
     Returns:
         None. Prints the merged configuration as TOML to stdout.
@@ -80,22 +107,53 @@ def dump_config_command(
     ctx = click.get_current_context()
     ctx.ensure_object(dict)
 
-    config = resolve_config_from_click(
+    # dump-config is file-agnostic: ignore positional PATHS and --files-from
+    original_args = list(ctx.args)
+    if original_args:
+        if "-" in original_args:
+            click.secho(
+                "Note: dump-config is file-agnostic; '-' (content from STDIN) is ignored.",
+                fg="yellow",
+            )
+        click.secho(
+            "Note: dump-config is file-agnostic; positional paths are ignored.", fg="yellow"
+        )
+        ctx.args = []
+    if files_from:
+        click.secho(
+            "Note: dump-config ignores --files-from "
+            "(file lists are not part of the configuration).",
+            fg="yellow",
+        )
+        files_from = []
+
+    plan = plan_cli_inputs(
         ctx=ctx,
-        files=list(files),
-        stdin=stdin,
-        include_patterns=list(include_patterns),
-        include_from=list(include_from),
-        exclude_patterns=list(exclude_patterns),
-        exclude_from=list(exclude_from),
-        file_types=list(file_types),
-        relative_to=relative_to,
+        files_from=files_from or [],
+        include_from=include_from,
+        exclude_from=exclude_from,
+        include_patterns=include_patterns,
+        exclude_patterns=exclude_patterns,
+        stdin_filename=stdin_filename,
+        allow_empty_paths=True,
+    )
+
+    config = build_config_common(
+        ctx=ctx,
+        plan=plan,
         no_config=no_config,
-        config_paths=list(config_paths),
+        config_paths=config_paths,
+        file_types=file_types,
+        relative_to=relative_to,
         align_fields=align_fields,
         header_format=header_format,
     )
 
+    temp_path = plan.temp_path  # for cleanup/STDIN-apply branch
+
+    logger.trace("Config after merging CLI and discovered config: %s", config)
+
+    # We don't actually care about the file list here; just dump the config
     import toml
 
     merged_config = toml.dumps(config.to_toml_dict())
@@ -105,4 +163,6 @@ def dump_config_command(
             f"# Merged TopMark config (TOML):\n\n# === BEGIN ===\n{merged_config}# === END ==="
         )
     )
-    return
+    # Cleanup any temp file created by content-on-STDIN mode (defensive)
+    if temp_path and temp_path.exists():
+        safe_unlink(temp_path)
