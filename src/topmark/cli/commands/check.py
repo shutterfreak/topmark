@@ -313,7 +313,7 @@ def check_command(
                 return f"🛠️  Run `topmark check --apply {r.path}` to update this file."
 
             # Per-file guidance (only in non-summary human mode)
-            if fmt is OutputFormat.DEFAULT and not summary_mode:
+            if fmt == OutputFormat.DEFAULT and not summary_mode:
                 render_per_file_guidance(
                     view_results, make_message=_check_msg, apply_changes=apply_changes
                 )
@@ -347,7 +347,7 @@ def check_command(
         # Perform writes and count successes/failures
         written, failed = write_updates(results, should_write=_should_write_check)
 
-        if fmt is OutputFormat.DEFAULT:
+        if fmt == OutputFormat.DEFAULT:
             click.secho(
                 f"\n✅ Applied changes to {written} file(s)."
                 if written

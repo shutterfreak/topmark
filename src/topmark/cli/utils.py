@@ -92,7 +92,7 @@ def emit_machine_output(
     """
     import json as _json
 
-    if fmt is OutputFormat.NDJSON:
+    if fmt == OutputFormat.NDJSON:
         if summary_mode:
             counts = count_by_outcome(view_results)
             for key, (n, label, _color) in counts.items():
@@ -100,7 +100,7 @@ def emit_machine_output(
         else:
             for r in view_results:
                 click.echo(_json.dumps(r.to_dict()))
-    elif fmt is OutputFormat.JSON:
+    elif fmt == OutputFormat.JSON:
         if summary_mode:
             counts = count_by_outcome(view_results)
             data = {k: {"count": n, "label": label} for k, (n, label, _color) in counts.items()}
