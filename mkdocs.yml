@@ -66,6 +66,7 @@ nav:
           - "init-config": usage/commands/init_config.md
           - "show-defaults": usage/commands/show_defaults.md
           - "filetypes": usage/commands/filetypes.md
+          - "processors": usage/commands/processors.md
       - Guides:
           - "Pre-commit": usage/pre-commit.md
           - "Header placement": usage/header-placement.md

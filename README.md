@@ -94,6 +94,7 @@ ______________________________________________________________________
 | --------------- | -------------------------------------------------- |
 | `dump-config`   | Show the resolved configuration in TOML format     |
 | `filetypes`     | List supported file types and their comment styles |
+| `processors`    | List registered header processors and file types   |
 | `strip`         | Remove TopMark headers from files (destructive)    |
 | `version`       | Print TopMark version                              |
 | `show-defaults` | Show default config (without merging)              |
@@ -154,6 +155,12 @@ topmark check --apply --skip-unsupported --quiet
 
 # Show supported file types in MarkDown format, providing detailed output:
 topmark filetypes --format markdown --long
+
+# Show registered header processors (brief)
+topmark processors
+
+# Detailed Markdown listing of processors and their file types
+topmark processors --format markdown --long
 ```
 
 ### Adding & updating headers
