@@ -23,6 +23,7 @@ from topmark.cli.commands.check import check_command
 from topmark.cli.commands.dump_config import dump_config_command
 from topmark.cli.commands.filetypes import filetypes_command
 from topmark.cli.commands.init_config import init_config_command
+from topmark.cli.commands.processors import processors_command
 from topmark.cli.commands.show_defaults import show_defaults_command
 from topmark.cli.commands.strip import strip_command
 from topmark.cli.commands.version import version_command
@@ -113,6 +114,8 @@ cli.add_command(check_command)
 cli.add_command(strip_command)
 
 cli.add_command(filetypes_command)
+
+cli.add_command(processors_command)
 
 if __name__ == "__main__":
     cli()

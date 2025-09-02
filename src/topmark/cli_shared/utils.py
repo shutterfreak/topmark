@@ -21,6 +21,7 @@ import sys
 from collections.abc import Callable
 from enum import Enum
 from pathlib import Path
+from typing import Mapping, Sequence
 
 from yachalk import chalk
 
@@ -67,7 +68,7 @@ def default_header_overrides(*, info: str, file_label: str = "topmark.toml") -> 
     return overrides
 
 
-class OutputFormat(Enum):
+class OutputFormat(str, Enum):
     """Output format for CLI rendering.
 
     Members:
@@ -339,3 +340,75 @@ def safe_unlink(path: Path | None) -> None:
             path.unlink()
         except Exception as e:
             logger.error("Failed to delete %s: %s", path, e)
+
+
+# --- Markdown rendering helpers ---------------------------------------------
+
+
+def markdown_table(
+    headers: Sequence[str],
+    rows: Sequence[Sequence[str]],
+    *,
+    align: Mapping[int, str] | None = None,
+) -> str:
+    """Render a GitHub‑flavoured Markdown table with padded columns.
+
+    Args:
+      headers: Column headers.
+      rows: A sequence of row sequences (each row same length as ``headers``).
+      align: Optional mapping of column index to alignment: ``"left"`` (default),
+        ``"right"``, or ``"center"``.
+
+    Returns:
+      The Markdown table as a single string (ending with a newline).
+
+    Notes:
+      - Widths are computed from the visible string lengths of headers and cells.
+      - Alignment uses Markdown syntax: ``:---`` (left), ``:---:`` (center), ``---:`` (right).
+      - This function is Click‑free and suitable for reuse in any frontend.
+    """
+    if not headers:
+        return ""
+    ncols = len(headers)
+    for r in rows:
+        if len(r) != ncols:
+            raise ValueError("All rows must have the same number of columns as headers")
+
+    # Compute column widths
+    widths = [len(str(h)) for h in headers]
+    for r in rows:
+        for i, cell in enumerate(r):
+            widths[i] = max(widths[i], len(str(cell)))
+
+    def _pad(text: str, w: int) -> str:
+        return f"{text:<{w}}"
+
+    # Header line
+    header_line = " | ".join(_pad(str(headers[i]), widths[i]) for i in range(ncols))
+
+    # Separator line with alignment markers
+    def _sep_for(i: int) -> str:
+        style = (align or {}).get(i, "left").lower()
+        w = max(1, widths[i])
+        if style == "right":
+            return "-" * (w - 1) + ":" if w > 1 else ":"
+        if style == "center":
+            return ":" + ("-" * (w - 2) if w > 2 else "-") + ":"
+        # left/default
+        return "-" * w
+
+    sep_line = " | ".join(_sep_for(i) for i in range(ncols))
+
+    # Data lines
+    data_lines = [" | ".join(_pad(str(r[i]), widths[i]) for i in range(ncols)) for r in rows]
+
+    return (
+        "| "
+        + header_line
+        + " |\n"
+        + "| "
+        + sep_line
+        + " |\n"
+        + "\n".join("| " + line + " |" for line in data_lines)
+        + "\n"
+    )

@@ -22,7 +22,7 @@ import click
 from yachalk import chalk
 
 from topmark.cli.cli_types import EnumParam
-from topmark.cli_shared.utils import OutputFormat
+from topmark.cli_shared.utils import OutputFormat, markdown_table
 from topmark.constants import TOPMARK_VERSION
 from topmark.filetypes.base import FileType
 from topmark.filetypes.instances import get_file_type_registry
@@ -37,20 +37,22 @@ Use this command to see which file types can be processed and referenced in conf
 """,
 )
 @click.option(
-    "--long",
-    "show_details",
-    is_flag=True,
-    help="Show extended information (extensions, filenames, patterns, skip policy, header policy).",
-)
-@click.option(
     "--format",
     "output_format",
     type=EnumParam(OutputFormat),
     default=None,
     help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
 )
+@click.option(
+    "--long",
+    "show_details",
+    is_flag=True,
+    help="Show extended information (extensions, filenames, patterns, skip policy, header policy).",
+)
 def filetypes_command(
-    *, show_details: bool = False, output_format: OutputFormat | None = None
+    *,
+    show_details: bool = False,
+    output_format: OutputFormat | None = None,
 ) -> None:
     """List supported file types.
 
@@ -90,7 +92,7 @@ def filetypes_command(
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         import json
 
-        if fmt is OutputFormat.JSON:
+        if fmt == OutputFormat.JSON:
             payload = (
                 [_serialize_details(v) for _k, v in sorted(file_types.items())]
                 if show_details
@@ -109,20 +111,21 @@ def filetypes_command(
                 click.echo(json.dumps(obj))
         return
 
-    if fmt is OutputFormat.MARKDOWN:
-        click.echo()
-        click.echo("# Supported File Types")
-        click.echo()
-        click.echo(f"TopMark version **{TOPMARK_VERSION}** supports the following file types:")
-        click.echo()
+    if fmt == OutputFormat.MARKDOWN:
+        click.echo(f"""
+# Supported File Types
+                   
+TopMark version **{TOPMARK_VERSION}** supports the following file types:
 
+""")
         if show_details:
             headers = [
                 "Identifier",
                 "Extensions",
                 "Filenames",
                 "Patterns",
-                "Skip",
+                "Skip Processing",
+                "Content Matcher",
                 "Header Policy",
                 "Description",
             ]
@@ -140,7 +143,8 @@ def filetypes_command(
                 exts = ", ".join(v.extensions) if v.extensions else ""
                 names = ", ".join(v.filenames) if v.filenames else ""
                 pats = ", ".join(v.patterns) if v.patterns else ""
-                skip = "yes" if v.skip_processing else "no"
+                skip = "**yes**" if v.skip_processing else "no"
+                has_matcher = "**yes**" if (v.content_matcher is not None) else "no"
                 policy = getattr(v.header_policy, "name", None) or (
                     v.header_policy.__class__.__name__ if v.header_policy else ""
                 )
@@ -149,38 +153,16 @@ def filetypes_command(
                     f"`{k}`",
                     exts,
                     names,
-                    f"`{pats}`",
+                    f"`{pats}`" if pats else "",
                     skip,
+                    has_matcher,
                     policy,
                     v.description,
                 ]
                 rows.append(row)
 
-                for i, col_data in enumerate(row):
-                    max_widths[i] = max(max_widths[i], len(str(col_data)))
-
-            # Print the header row with dynamic widths
-            header_str = " | ".join(f"{headers[i]:<{max_widths[i]}}" for i in range(len(headers)))
-            click.echo(f"| {header_str} |")
-
-            # Print the separator line with dynamic widths and alignment
-            separator_parts: list[str] = []
-            for i, header in enumerate(headers):
-                # Correct the width for columns with alignment modifiers
-                if header in ("Extensions", "Filenames", "Patterns"):
-                    # Subtract 1 from the width to account for the trailing colon
-                    separator_parts.append(f"{'-' * (max_widths[i] - 1)}:")
-                else:
-                    separator_parts.append(f"{'-' * max_widths[i]}")
-
-            separator_str = " | ".join(separator_parts)
-            # Add spaces around the separator string for correct alignment
-            click.echo(f"| {separator_str} |")
-
-            # Print the data rows with dynamic widths
-            for row in rows:
-                row_str = " | ".join(f"{row[i]:<{max_widths[i]}}" for i in range(len(row)))
-                click.echo(f"| {row_str} |")
+            table = markdown_table(headers, rows, align={1: "right", 2: "right", 3: "right"})
+            click.echo(table)
 
             click.echo()
         else:
@@ -219,7 +201,8 @@ def filetypes_command(
             exts = ", ".join(v.extensions) if v.extensions else ""
             names = ", ".join(v.filenames) if v.filenames else ""
             pats = ", ".join(v.patterns) if v.patterns else ""
-            skip = "yes" if v.skip_processing else "no"
+            skip = v.skip_processing
+            matcher = v.content_matcher is not None
             policy = getattr(v.header_policy, "name", None) or (
                 v.header_policy.__class__.__name__ if v.header_policy else ""
             )
@@ -230,8 +213,11 @@ def filetypes_command(
                 click.echo(f"      filenames      : {names}")
             if pats:
                 click.echo(f"      patterns       : {pats}")
-            if skip or policy:
-                click.echo(f"      skip_processing: {skip}")
+            if skip:
+                click.echo("      skip processing: yes")
+            if matcher:
+                assert v.content_matcher is not None
+                click.echo(f"      content matcher: {v.content_matcher.__name__}")
             if policy:
                 click.echo(f"      header_policy  : {policy}")
         else:
