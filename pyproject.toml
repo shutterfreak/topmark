@@ -110,7 +110,6 @@ where = ["src"]
 # Markdown formatting configuration
 # Aligns with Prettier in VS Code and the mdformat pre-commit hook
 [tool.mdformat]
-number = true
 wrap = 100
 extensions = ["tables"]
 

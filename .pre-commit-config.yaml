@@ -41,9 +41,7 @@ repos:
     rev: 0.7.22
     hooks:
       - id: mdformat
-        name: mdformat
-        language_version: python3
+        files: "\\.md$"
         additional_dependencies:
-          - mdformat-pyproject
           - mdformat-tables
         exclude: ^docs/api/index\.md$
