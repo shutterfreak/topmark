@@ -10,7 +10,7 @@ topmark:header:start
 topmark:header:end
 -->
 
-# TopMark
+# TopMark Documentation
 
 TopMark inspects and manages per-file headers (project/license/copyright) across codebases. It is
 comment‑aware, file‑type‑aware, and **dry‑run by default** for safe CI usage.
@@ -20,9 +20,9 @@ comment‑aware, file‑type‑aware, and **dry‑run by default** for safe CI u
 ```bash
 pip install topmark
 # Check (dry-run)
-topmark --summary --config topmark.toml src/
+topmark check --summary --config topmark.toml src/
 # Apply changes
-topmark --apply src/
+topmark check --apply src/
 ```
 
 ## What it does
@@ -39,6 +39,10 @@ topmark --apply src/
 
 Core subcommands: `check` *(default)*, `strip`, `dump-config`, `show-defaults`, `init-config`,
 `filetypes`, `version`.
+
+Read lists from STDIN with `--files-from -` (or `--include-from -` / `--exclude-from -`). To process
+a *single* file’s **content** from STDIN, pass `-` as the sole PATH and provide
+`--stdin-filename NAME`.
 
 ## Header placement (short version)
 

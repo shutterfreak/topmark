@@ -84,8 +84,7 @@ Logging verbosity is controlled globally:
 - `-v`, `--verbose`: Increase verbosity (can be repeated)
 - `-q`, `--quiet`: Suppress most output (overrides verbosity)
 
-All other options, such as `--stdin`, `--file-type`, and path filters, are specific to individual
-subcommands.
+All other options are specific to individual subcommands.
 
 ______________________________________________________________________
 
@@ -106,19 +105,25 @@ ______________________________________________________________________
 
 ```bash
 # Check Python files in the src/ directory
-topmark --file-type python src/
+topmark check --file-type python src/
 
 # Use exclusion patterns, and compute relative paths from src
-topmark --file-type python --exclude .venv --relative-to src src/
+topmark check --file-type python --exclude .venv --relative-to src src/
 
 # Add one verbosity level to topmark, use exclusion patterns from .gitignore
-topmark -v --file-type python --exclude-from .gitignore src/
+topmark -v check --file-type python --exclude-from .gitignore src/
 
-# Read files from stdin, generate summary
-find . -name "*.py" | topmark --file-type python --summary --stdin
+# Read a list of files from STDIN, generate summary
+find . -name "*.py" | topmark check --file-type python --files-from -  --summary
 
-# Process all files in a Git repo
-git ls-files -c -o --exclude-standard | sort -u | topmark --stdin --apply
+# Process all files that are either staged, or untracked but not ignored in a Git repo (needs dedulication with `sort -u`)
+git ls-files -c -o --exclude-standard | sort -u | topmark check --files-from - --apply
+
+# Read a single file's *content* from STDIN and render the resultng unified diff
+cat README.md | topmark - --stdin-filename README.md --diff
+
+# Read a single file's *content* from STDIN and print the updated content to stdout
+cat README.md | topmark - --stdin-filename README.md --apply
 
 # Dump the merged configuration (after loading all applicable config layers)
 topmark dump-config --file-type python --exclude .venv --exclude-from .gitignore
@@ -129,11 +134,11 @@ topmark show-defaults
 # Output a starter configuration to stdout
 topmark init-config
 
-# Show TopMark version
-topmark version
+# Show TopMark version in JSON format
+topmark version --format json
 
 # Apply changes to files in-place
-topmark --apply src/
+topmark check --apply src/
 
 # Remove headers from files (dry-run)
 topmark strip src/
@@ -142,15 +147,18 @@ topmark strip src/
 topmark strip --apply src/
 
 # CI-friendly summary: only show issues; ignore unsupported types
-topmark --skip-compliant --skip-unsupported src/
+topmark check --skip-compliant --skip-unsupported src/
 
 # Apply fixes, don't report unsupported files, muted output (useful for pre-commit)
-topmark --apply --skip-unsupported --quiet
+topmark check --apply --skip-unsupported --quiet
+
+# Show supported file types in MarkDown format, providing detailed output:
+topmark filetypes --format markdown --long
 ```
 
 ### Adding & updating headers
 
-Use the default `topmark` command to insert or update headers. It’s **dry‑run by default**; add
+Use the `topmark check` command to insert or update headers. It’s **dry‑run by default**; add
 `--apply` to write changes. Placement follows file‑type policy (shebang/encoding for Python, XML
 declaration for XML/HTML, etc.). Newline style and BOM are preserved; runs are idempotent.
 
@@ -161,7 +169,7 @@ declaration for XML/HTML, etc.). Newline style and BOM are preserved; runs are i
 topmark src/
 
 # Apply in place
-topmark --apply src/
+topmark check --apply src/
 ```
 
 > For full details, options, examples, and exit codes, see the dedicated guide:
@@ -185,6 +193,44 @@ topmark strip --apply src/
 
 > For full details, options, examples, and exit codes, see the dedicated guide:
 > **[Removing headers with `topmark strip`](docs/usage/commands/strip.md)**
+
+### Dumping the merged configuration
+
+Use `topmark dump-config` to print the **effective** configuration (defaults → discovered config →
+`--config` files → CLI flags) as TOML. This command is **file‑agnostic**: positional paths and
+`--files-from` are ignored; filter flags (`--include/--exclude`, `--include-from/--exclude-from`)
+are honored.
+
+```bash
+# Dump merged configuration
+topmark dump-config
+
+# Include/exclude filters still apply
+topmark dump-config --exclude .venv --exclude-from .gitignore
+
+# Read patterns from STDIN
+printf "*.py\n" | topmark dump-config --include-from -
+```
+
+> For details and notes, see:
+> **[Dumping the merged configuration with `dump-config`](docs/usage/commands/dump_config.md)**
+
+### Listing supported file types
+
+Use `topmark filetypes` to see the identifiers you can pass to `--file-type` and the associated
+comment styles TopMark will use when rendering headers.
+
+```bash
+# Show available file type identifiers
+topmark filetypes
+
+# Then restrict processing to one or more types
+topmark check --file-type python src/
+topmark check --file-type markdown --file-type env docs/ config/
+```
+
+> For details, see:
+> **[Listing supported file types with `filetypes`](docs/usage/commands/filetypes.md)**
 
 ## 📐 Header placement rules
 
@@ -222,9 +268,9 @@ You can specify one or more `--config` files, or rely on local fallback resoluti
 TopMark reads configuration from one or more TOML files. Configuration is merged from:
 
 1. Built-in defaults
-2. Local project config (if not disabled via `--no-config`)
-3. Additional files via `--config`
-4. CLI overrides
+1. Local project config (if not disabled via `--no-config`)
+1. Additional files via `--config`
+1. CLI overrides
 
 Example configuration snippet (`topmark.toml`):
 

@@ -60,8 +60,12 @@ nav:
   - Installation: install.md
   - Usage:
       - Commands:
-          - "topmark": usage/commands/topmark.md
-          - "topmark strip": usage/commands/strip.md
+          - "check": usage/commands/check.md
+          - "strip": usage/commands/strip.md
+          - "dump-config": usage/commands/dump_config.md
+          - "init-config": usage/commands/init_config.md
+          - "show-defaults": usage/commands/show_defaults.md
+          - "filetypes": usage/commands/filetypes.md
       - Guides:
           - "Pre-commit": usage/pre-commit.md
           - "Header placement": usage/header-placement.md

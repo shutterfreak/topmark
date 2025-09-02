@@ -132,17 +132,17 @@ ______________________________________________________________________
 From the repo (editable install) or after `pip install topmark`:
 
 ```bash
-topmark [SUBCOMMAND] [OPTIONS] [PATHS]...
+topmark [GLOBAL_OPTIONS] SUBCOMMAND [OPTIONS] [PATHS]...
 ```
 
 Examples:
 
 ```bash
 # Dry-run: check files
-topmark src/
+topmark check src/
 
 # Apply changes in-place
-topmark --apply src/
+topmark check --apply src/
 ```
 
 See `topmark --help` for all commands and options.

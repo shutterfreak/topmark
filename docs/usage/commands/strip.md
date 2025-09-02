@@ -32,8 +32,8 @@ topmark strip --diff src/
 # Summary‑only view (CI‑friendly)
 topmark strip --summary src/
 
-# Read targets from stdin (one path per line) and generate unified duff output
-git ls-files | topmark strip --stdin --diff
+# Read targets from stdin (one path per line) and generate unified diff output
+git ls-files | topmark strip --files-from - --diff
 ```
 
 ______________________________________________________________________
@@ -44,12 +44,28 @@ ______________________________________________________________________
 - Preserves the file’s original **newline style** (LF/CRLF/CR).
 - Preserves a leading **UTF‑8 BOM** if present.
 - Honors XML/HTML placement rules and preserves the XML declaration (`<?xml …?>`).
-- Respects Markdown fenced code blocks: header‑like snippets inside fences are ignored.
-- Uses the same file discovery and filtering as other commands (`--include*`, `--exclude*`,
-  `--stdin`).
+- Respects Markdown fenced code blocks: header‑like snippets inside fences are ignored. Uses the
+  same file discovery and filtering as other commands:
+- Read lists from STDIN with `--files-from -` (or `--include-from -` / `--exclude-from -`).
+- To process a *single* file’s **content** from STDIN, pass `-` as the sole PATH and provide
+  `--stdin-filename NAME`.
+- Do **not** mix `-` (content mode) with `--files-from -` / `--include-from -` / `--exclude-from -`
+  (list mode).
 - Idempotent: re‑running after headers are removed results in **no changes**.
 
 ______________________________________________________________________
+
+## Machine-readable output
+
+Use `--format json` or `--format ndjson` to emit output suitable for tooling:
+
+- **JSON**: pretty-printed array (or summary object when `--summary`).
+- **NDJSON**: one JSON object per line (or one summary line per outcome with `--summary`).
+
+Notes:
+
+- Diffs (`--diff`) are **human-only** and are not included in JSON/NDJSON.
+- Summary mode aggregates outcomes and suppresses per-file guidance lines.
 
 ## Options (subset)
 
@@ -58,7 +74,8 @@ ______________________________________________________________________
 | `--apply`            | Write changes to files (off by default).                          |
 | `--diff`             | Show unified diffs (human output only).                           |
 | `--summary`          | Show outcome counts instead of per‑file details.                  |
-| `--stdin`            | Read file paths from standard input (one per line).               |
+| `--files-from`       | Read newline‑delimited paths from file (use '-' for STDIN).       |
+| `--stdin-filename`   | Assumed filename when PATH is '-' (content from STDIN).           |
 | `--include`          | Add paths by glob (can be used multiple times).                   |
 | `--include-from`     | File of patterns to include (one per line, `#` comments allowed). |
 | `--exclude`          | Exclude paths by glob (can be used multiple times).               |
@@ -85,10 +102,17 @@ ______________________________________________________________________
 
 - Positional arguments are resolved **relative to the current working directory** (CWD),
   Black‑style.
+
 - Patterns in `--include`, `--exclude`, and the files passed to `--include-from` / `--exclude-from`
   are also resolved **relative to CWD**. Absolute patterns are not supported.
-- Use `--stdin` to pipe a list of files (one per line).
+
+- Use `--files-from -` (or `--include-from -` / `--exclude-from -`) to read lists from STDIN.
+
+- Use `-` (with `--stdin-filename`) to read a single file’s content from STDIN.
+
 - Use `--skip-compliant` and `--skip-unsupported` to tailor output and speed in CI.
+
+- Diffs (`--diff`) are only shown in human mode; machine formats never include diffs.
 
 ### Example
 
@@ -129,7 +153,7 @@ topmark strip --apply src/
 ### 2) Review a change set
 
 ```bash
-git ls-files -m -o --exclude-standard | topmark strip --stdin --diff
+git ls-files -m -o --exclude-standard | topmark strip --files-from - --diff
 ```
 
 ### 3) CI: summarize and fail when removals are needed
@@ -152,8 +176,8 @@ ______________________________________________________________________
 
 ## Troubleshooting
 
-- **No files to process**: Ensure you passed positional paths or `--stdin`. Use `-vv` for debug
-  logs.
+- **No files to process**: Ensure you passed positional paths or `--files-from -`. Use `-vv` for
+  debug logs.
 - **Patterns don’t match**: Remember that include/exclude patterns are **relative to CWD**. `cd`
   into the project root before running.
 - **“Header not detected”**: Header‑like text inside code fences or strings is intentionally

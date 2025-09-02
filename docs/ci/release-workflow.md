@@ -19,9 +19,9 @@ This workflow runs automatically when version tags are pushed to the repository.
 
 1. Update the version in `pyproject.toml`.
 
-2. Commit and push your changes.
+1. Commit and push your changes.
 
-3. Tag the release:
+1. Tag the release:
 
    ```bash
    git tag vX.Y.Z
@@ -76,14 +76,14 @@ concurrency:
    - Builds sdist & wheel
    - Publishes to PyPI via `pypa/gh-action-pypi-publish@release/v1`
 
-2. **publish-testpypi** (release candidates only)
+1. **publish-testpypi** (release candidates only)
 
    - Runs on `ubuntu-latest`
    - Builds sdist & wheel
    - Publishes to TestPyPI using Trusted Publishing
      (`repository-url: https://test.pypi.org/legacy/`)
 
-3. **github-release** (final releases only, after publish-pypi)
+1. **github-release** (final releases only, after publish-pypi)
 
    - Runs on `ubuntu-latest`
    - Creates a GitHub Release using `softprops/action-gh-release@v2`

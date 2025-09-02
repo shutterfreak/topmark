@@ -133,7 +133,7 @@ file is included as package data. In `pyproject.toml`:
 
 ```bash
 # Uses the committed manifest from the current repo
-topmark --version
+topmark version
 pre-commit clean
 pre-commit try-repo . topmark-check --all-files --verbose
 ```

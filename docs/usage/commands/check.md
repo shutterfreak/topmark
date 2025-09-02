@@ -1,8 +1,8 @@
 <!--
 topmark:header:start
 
-  file         : topmark.md
-  file_relpath : docs/usage/commands/topmark.md
+  file         : check.md
+  file_relpath : docs/usage/commands/check.md
   project      : TopMark
   license      : MIT
   copyright    : (c) 2025 Olivier Biot
@@ -10,10 +10,10 @@ topmark:header:start
 topmark:header:end
 -->
 
-# TopMark `topmark` Command Guide
+# TopMark `check` Command Guide
 
-The `topmark` **default command** inserts or updates the TopMark header block in targeted files. It
-is **dry‑run by default** and becomes destructive only with `--apply`.
+The `check` command verifies the presence and correctness of TopMark headers in targeted files. It
+does not modify files but reports which files would need updates.
 
 ______________________________________________________________________
 
@@ -21,19 +21,19 @@ ______________________________________________________________________
 
 ```bash
 # Dry‑run: show which files would get a TopMark header or be updated
-topmark src/
+topmark check src/
 
 # Apply in place
-topmark --apply src/
+topmark check --apply src/
 
 # Show unified diffs (human output)
-topmark --diff src/
+topmark check --diff src/
 
 # Summary‑only view (CI‑friendly)
-topmark --summary src/
+topmark check --summary src/
 
-# Read targets from stdin (one path per line) and generate unified duff output
-git ls-files | topmark --stdin --diff
+# Read targets from stdin (one path per line) and generate unified diff output
+git ls-files | topmark check --files-from - --diff
 ```
 
 ______________________________________________________________________
@@ -44,12 +44,28 @@ ______________________________________________________________________
 - Preserves the file’s original **newline style** (LF/CRLF/CR).
 - Preserves a leading **UTF‑8 BOM** if present.
 - Places headers according to file‑type policy (shebang and PEP 263 in Python; XML
-  declaration/DOCTYPE in XML/HTML; no insertion inside Markdown fenced code).
-- Uses the same file discovery and filtering as other commands (`--include*`, `--exclude*`,
-  `--stdin`).
+  declaration/DOCTYPE in XML/HTML; no insertion inside Markdown fenced code). Uses the same file
+  discovery and filtering as other commands:
+- Read lists from STDIN with `--files-from -` (or `--include-from -` / `--exclude-from -`).
+- To process a *single* file’s **content** from STDIN, pass `-` as the sole PATH and provide
+  `--stdin-filename NAME`.
+- Do **not** mix `-` (content mode) with `--files-from -` / `--include-from -` / `--exclude-from -`
+  (list mode).
 - Idempotent: re‑running on already‑correct files results in **no changes**.
 
 ______________________________________________________________________
+
+## Machine-readable output
+
+Use `--format json` or `--format ndjson` to emit output suitable for tooling:
+
+- **JSON**: pretty-printed array (or summary object when `--summary`).
+- **NDJSON**: one JSON object per line (or one summary line per outcome with `--summary`).
+
+Notes:
+
+- Diffs (`--diff`) are **human-only** and are not included in JSON/NDJSON.
+- Summary mode aggregates outcomes and suppresses per-file guidance lines.
 
 ## Options (subset)
 
@@ -58,7 +74,7 @@ ______________________________________________________________________
 | `--apply`            | Write changes to files (off by default).                          |
 | `--diff`             | Show unified diffs (human output only).                           |
 | `--summary`          | Show outcome counts instead of per‑file details.                  |
-| `--stdin`            | Read file paths from standard input (one per line).               |
+| `--files-from`       | Read newline‑delimited paths from file (use '-' for STDIN).       |
 | `--include`          | Add paths by glob (can be used multiple times).                   |
 | `--include-from`     | File of patterns to include (one per line, `#` comments allowed). |
 | `--exclude`          | Exclude paths by glob (can be used multiple times).               |
@@ -66,8 +82,9 @@ ______________________________________________________________________
 | `--file-type`        | Restrict to specific TopMark file type identifiers.               |
 | `--skip-compliant`   | Don't report compliant files.                                     |
 | `--skip-unsupported` | Don't report unsupported files.                                   |
+| `--stdin-filename`   | Assumed filename when PATH is '-' (content from STDIN).           |
 
-> Run `topmark -h` for the full list of options and help text.
+> Run `topmark check -h` for the full list of options and help text.
 
 ______________________________________________________________________
 
@@ -85,10 +102,17 @@ ______________________________________________________________________
 
 - Positional arguments are resolved **relative to the current working directory** (CWD),
   Black‑style.
+
 - Patterns in `--include`, `--exclude`, and the files passed to `--include-from` / `--exclude-from`
   are also resolved **relative to CWD**. Absolute patterns are not supported.
-- Use `--stdin` to pipe a list of files (one per line).
+
+- Use `--files-from -` (or `--include-from -` / `--exclude-from -`) to read lists from STDIN.
+
+- Use `-` (with `--stdin-filename`) to read a single file’s content from STDIN.
+
 - Use `--skip-compliant` and `--skip-unsupported` to tailor output and speed in CI.
+
+- Diffs (`--diff`) are only shown in human mode; machine formats never include diffs.
 
 ### Example
 
@@ -97,7 +121,7 @@ ______________________________________________________________________
 printf "*.py\n" > inc.txt
 printf "tests/*\n# ignored\n" > exc.txt
 
-topmark --include-from inc.txt --exclude-from exc.txt --diff
+topmark check --include-from inc.txt --exclude-from exc.txt --diff
 ```
 
 ______________________________________________________________________
@@ -113,8 +137,8 @@ ______________________________________________________________________
   - **Markdown**: uses HTML comments for the header; fenced code blocks are ignored for detection.
 - **Newline/BOM**: preserved across all paths (insert/replace). Reader normalizes in‑memory; updater
   re‑attaches BOM and keeps line endings.
-- **Idempotency**: running `topmark` again on a file that already has a correct header produces no
-  diff and exit code 0 (unless other files would change).
+- **Idempotency**: running `topmark check` again on a file that already has a correct header
+  produces no diff and exit code 0 (unless other files would change).
 
 ______________________________________________________________________
 
@@ -124,22 +148,22 @@ ______________________________________________________________________
 
 ```bash
 # Start with a dry‑run to see impact
-topmark src/
+topmark check src/
 # Then apply
-topmark --apply src/
+topmark apply src/
 ```
 
 ### 2) Review a change set
 
 ```bash
-git ls-files -m -o --exclude-standard | topmark --stdin --diff
+git ls-files -m -o --exclude-standard | topmark check --files-from - --diff
 ```
 
 ### 3) CI: summarize and fail when changes are needed
 
 ```bash
 # Print summary only. Exit 2 signals “would change” to fail the job.
-topmark --summary
+topmark check --summary
 ```
 
 ## Pre‑commit integration
@@ -187,8 +211,8 @@ ______________________________________________________________________
 
 ## Troubleshooting
 
-- **No files to process**: Ensure you passed positional paths or `--stdin`. Use `-vv` for debug
-  logs.
+- **No files to process**: Ensure you passed positional paths (unless using stdin). Use `-vv` for
+  debug logs.
 - **Patterns don’t match**: Remember that include/exclude patterns are **relative to CWD**. `cd`
   into the project root before running.
 - **Unexpected placement**: For pound/slash formats, check for leading banners or shebang/encoding
