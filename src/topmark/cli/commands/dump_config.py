@@ -23,7 +23,6 @@ Input modes:
 """
 
 import click
-from yachalk import chalk
 
 from topmark.cli.cmd_common import build_config_common
 from topmark.cli.io import plan_cli_inputs
@@ -157,12 +156,20 @@ def dump_config_command(
     import toml
 
     merged_config = toml.dumps(config.to_toml_dict())
-    click.echo(chalk.bold.underline("TopMark Config Dump:"))
-    click.echo(
-        chalk.dim(
-            f"# Merged TopMark config (TOML):\n\n# === BEGIN ===\n{merged_config}# === END ==="
-        )
+    click.secho("TopMark Config Dump:", bold=True, underline=True)
+    click.secho(
+        f"""\
+# Merged TopMark config (TOML):
+
+# === BEGIN ===
+{merged_config}
+## === END of TopMark Configuration ===
+""",
+        fg="cyan",
     )
+
     # Cleanup any temp file created by content-on-STDIN mode (defensive)
     if temp_path and temp_path.exists():
         safe_unlink(temp_path)
+
+    # No explicit return needed for Click commands.

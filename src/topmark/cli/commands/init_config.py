@@ -16,7 +16,6 @@ starting point for customizing a project's configuration.
 """
 
 import click
-from yachalk import chalk
 
 from topmark.cli_shared.utils import default_header_overrides
 from topmark.config import Config
@@ -37,7 +36,7 @@ def init_config_command() -> None:
     Returns:
         None. Prints output to stdout.
     """
-    click.echo(chalk.bold.underline("Initial TopMark Configuration:"))
+    click.secho("Initial TopMark Configuration:", bold=True, underline=True)
 
     header_overrides = default_header_overrides(
         info="Initial TopMark configuration -- adjust according to your needs",
@@ -47,20 +46,18 @@ def init_config_command() -> None:
     topmark_header = render_header_for_path(
         config=Config.from_defaults(),
         path=PYPROJECT_TOML_PATH,
-        header_fields_overrides=["file", "version", "info", "license", "copyright"],
+        header_fields_overrides=["fle", "file_relpath", "version", "info", "license", "copyright"],
         header_overrides=header_overrides,
     )
 
-    click.echo(
-        chalk.gray(
-            f"""\
+    click.secho(
+        f"""\
 {topmark_header}
 
 {Config.get_default_config_toml()}
 ## === END of TopMark Configuration ===
-"""
-        )
+""",
+        fg="cyan",
     )
 
-    # Exit gracefully
-    return
+    # No explicit return needed for Click commands.

@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import click
 
+from topmark.cli.cli_types import EnumParam
+from topmark.cli_shared.utils import OutputFormat
 from topmark.constants import TOPMARK_VERSION
 
 
@@ -24,16 +26,38 @@ from topmark.constants import TOPMARK_VERSION
     name="version",
     help="Show the current version of TopMark.",
 )
-def version_command() -> None:
+@click.option(
+    "--format",
+    "output_format",
+    type=EnumParam(OutputFormat),
+    default=None,
+    help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
+)
+def version_command(
+    *,
+    output_format: OutputFormat | None = None,
+) -> None:
     """Show the current version of TopMark.
 
     Prints the TopMark version as installed in the current Python environment.
+
+    Args:
+        output_format: Optional output format (plain text or markdown).
 
     Returns:
         None. Prints output to stdout.
     """
     topmark_version = TOPMARK_VERSION
-    click.echo(f"TopMark version: {topmark_version}")
+    fmt: OutputFormat = output_format or OutputFormat.DEFAULT
 
-    # Exit gracefully
-    return
+    if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
+        import json
+
+        click.echo(json.dumps({"topmark_version": topmark_version}))
+    elif fmt == OutputFormat.MARKDOWN:
+        click.echo("# TopMark Version\n")
+        click.echo(f"**TopMark version {topmark_version}**")
+    else:  # Plain text (default)
+        click.secho(f"TopMark version: {click.style(topmark_version, bold=True)}")
+
+    # No explicit return needed for Click commands.

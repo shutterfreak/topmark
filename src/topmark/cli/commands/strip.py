@@ -344,4 +344,4 @@ def strip_command(
     if temp_path and temp_path.exists():
         safe_unlink(temp_path)
 
-    return
+    # No explicit return needed for Click commands.

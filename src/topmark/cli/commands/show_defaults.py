@@ -16,7 +16,6 @@ Intended as a reference for users customizing their own configuration files.
 """
 
 import click
-from yachalk import chalk
 
 from topmark.cli_shared.utils import default_header_overrides
 from topmark.config import Config
@@ -47,15 +46,13 @@ def show_defaults_command() -> None:
         header_overrides=header_overrides,
     )
 
-    click.echo(chalk.bold.underline("Default TopMark Configuration:"))
-    click.echo(
-        chalk.gray(
-            f"""\
+    click.secho("Default TopMark Configuration:", bold=True, underline=True)
+    click.secho(
+        f"""\
 {topmark_header}
 {Config.to_cleaned_toml(Config.get_default_config_toml())}
-## === END of TopMark Configuration ==="""
-        )
+## === END of TopMark Configuration ===""",
+        fg="cyan",
     )
 
-    # Exit gracefully
-    return
+    # No explicit return needed for Click commands.

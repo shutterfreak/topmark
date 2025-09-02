@@ -23,6 +23,7 @@ from yachalk import chalk
 
 from topmark.cli.cli_types import EnumParam
 from topmark.cli_shared.utils import OutputFormat
+from topmark.constants import TOPMARK_VERSION
 from topmark.filetypes.base import FileType
 from topmark.filetypes.instances import get_file_type_registry
 
@@ -110,7 +111,9 @@ def filetypes_command(
 
     if fmt is OutputFormat.MARKDOWN:
         click.echo()
-        click.echo("## Supported File Types")
+        click.echo("# Supported File Types")
+        click.echo()
+        click.echo(f"TopMark version **{TOPMARK_VERSION}** supports the following file types:")
         click.echo()
 
         if show_details:
@@ -233,3 +236,5 @@ def filetypes_command(
                 click.echo(f"      header_policy  : {policy}")
         else:
             click.echo(f"  - {k:<12} {chalk.dim(v.description)}")
+
+    # No explicit return needed for Click commands.
