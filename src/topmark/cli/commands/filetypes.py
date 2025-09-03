@@ -21,7 +21,7 @@ from typing import Any
 import click
 from yachalk import chalk
 
-from topmark.cli.cli_types import EnumParam
+from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli_shared.utils import OutputFormat, render_markdown_table
 from topmark.constants import TOPMARK_VERSION
 from topmark.filetypes.base import FileType
@@ -56,7 +56,7 @@ Use this command to see which file types can be processed and referenced in conf
 @click.option(
     "--format",
     "output_format",
-    type=EnumParam(OutputFormat),
+    type=EnumChoiceParam(OutputFormat),
     default=None,
     help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
 )

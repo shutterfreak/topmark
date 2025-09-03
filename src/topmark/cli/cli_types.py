@@ -167,7 +167,7 @@ def build_args_namespace(
 # --- Custom Click parameter types and validators for TopMark CLI ---
 
 
-class EnumParam(ParamTypeBase, Generic[E]):
+class EnumChoiceParam(ParamTypeBase, Generic[E]):
     """A Click parameter type that converts a string to a member of a given Enum."""
 
     # Add instance variable annotations for maximum clarity

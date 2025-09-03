@@ -20,7 +20,7 @@ from typing import Any
 
 import click
 
-from topmark.cli.cli_types import EnumParam
+from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli_shared.utils import OutputFormat, render_markdown_table
 from topmark.constants import TOPMARK_VERSION
 from topmark.filetypes.instances import get_file_type_registry
@@ -37,7 +37,7 @@ Use this command to see which processors are available and which file types they
 @click.option(
     "--format",
     "output_format",
-    type=EnumParam(OutputFormat),
+    type=EnumChoiceParam(OutputFormat),
     default=None,
     help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
 )

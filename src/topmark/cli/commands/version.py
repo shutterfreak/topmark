@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import click
 
-from topmark.cli.cli_types import EnumParam
+from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli_shared.utils import OutputFormat
 from topmark.constants import TOPMARK_VERSION
 
@@ -29,7 +29,7 @@ from topmark.constants import TOPMARK_VERSION
 @click.option(
     "--format",
     "output_format",
-    type=EnumParam(OutputFormat),
+    type=EnumChoiceParam(OutputFormat),
     default=None,
     help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
 )

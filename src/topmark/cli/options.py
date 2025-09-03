@@ -24,7 +24,7 @@ from typing import Callable, Iterable, ParamSpec, TypeVar
 import click
 from click.core import ParameterSource
 
-from topmark.cli.cli_types import EnumParam
+from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.errors import TopmarkUsageError
 from topmark.config.logging import get_logger
 from topmark.rendering.formats import HeaderOutputFormat
@@ -534,7 +534,7 @@ def common_header_formatting_options(f: Callable[P, R]) -> Callable[P, R]:
     f = click.option(
         "--header-format",
         "header_format",
-        type=EnumParam(HeaderOutputFormat),
+        type=EnumChoiceParam(HeaderOutputFormat),
         help=f"Select the header format ({', '.join(e.value for e in HeaderOutputFormat)}).",
     )(f)
     f = underscored_trap_option("--header_format")(f)

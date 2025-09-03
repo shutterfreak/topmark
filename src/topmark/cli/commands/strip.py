@@ -39,7 +39,7 @@ Examples:
 
 import click
 
-from topmark.cli.cli_types import EnumParam
+from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cmd_common import (
     build_config_and_file_list,
     exit_if_no_files,
@@ -130,7 +130,7 @@ Examples:
 @click.option(
     "--format",
     "output_format",
-    type=EnumParam(OutputFormat),
+    type=EnumChoiceParam(OutputFormat),
     default=None,
     help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
 )

@@ -32,7 +32,7 @@ import click
 from click.shell_completion import CompletionItem
 
 from tests.conftest import mark_cli, parametrize
-from topmark.cli.cli_types import EnumParam
+from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.main import cli
 from topmark.rendering.formats import HeaderOutputFormat
 
@@ -54,7 +54,7 @@ def _complete(incomplete: str = "") -> list[CompletionItem]:
     This isolates the test from Click's shell adapters and focuses on our
     custom parameter type's completion behavior.
     """
-    enum_type = EnumParam(HeaderOutputFormat)
+    enum_type = EnumChoiceParam(HeaderOutputFormat)
     # Minimal Click option and context
     opt = click.Option(("--header-format",), type=enum_type)
     ctx = click.Context(cli)
