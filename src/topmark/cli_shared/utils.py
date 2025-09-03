@@ -349,7 +349,7 @@ def safe_unlink(path: Path | None) -> None:
 # --- Markdown rendering helpers ---------------------------------------------
 
 
-def markdown_table(
+def render_markdown_table(
     headers: Sequence[str],
     rows: Sequence[Sequence[str]],
     *,

@@ -22,10 +22,27 @@ import click
 from yachalk import chalk
 
 from topmark.cli.cli_types import EnumParam
-from topmark.cli_shared.utils import OutputFormat, markdown_table
+from topmark.cli_shared.utils import OutputFormat, render_markdown_table
 from topmark.constants import TOPMARK_VERSION
 from topmark.filetypes.base import FileType
 from topmark.filetypes.instances import get_file_type_registry
+
+
+def _policy_name(obj: object | None) -> str:
+    """Get the name of a policy object.
+
+    Args:
+        obj (object | None): The policy object.
+
+    Returns:
+        str: The name of the policy, or the class name if no name attribute exists.
+    """
+    if obj is None:
+        return ""
+    name = getattr(obj, "name", None)
+    if name:
+        return str(name)
+    return obj.__class__.__name__
 
 
 @click.command(
@@ -74,10 +91,7 @@ def filetypes_command(
 
     def _serialize_details(ft: FileType) -> dict[str, Any]:
         """Serialize detailed information about a file type."""
-        policy = ft.header_policy
-        policy_name = getattr(policy, "name", None) or (
-            policy.__class__.__name__ if policy else None
-        )
+        policy_name = _policy_name(ft.header_policy)
         return {
             "name": ft.name,
             "description": ft.description,
@@ -143,25 +157,23 @@ TopMark version **{TOPMARK_VERSION}** supports the following file types:
                 exts = ", ".join(v.extensions) if v.extensions else ""
                 names = ", ".join(v.filenames) if v.filenames else ""
                 pats = ", ".join(v.patterns) if v.patterns else ""
-                skip = "**yes**" if v.skip_processing else "no"
+                skip_processing = "**yes**" if v.skip_processing else "no"
                 has_matcher = "**yes**" if (v.content_matcher is not None) else "no"
-                policy = getattr(v.header_policy, "name", None) or (
-                    v.header_policy.__class__.__name__ if v.header_policy else ""
-                )
+                policy = _policy_name(v.header_policy)
 
                 row = [
                     f"`{k}`",
                     exts,
                     names,
                     f"`{pats}`" if pats else "",
-                    skip,
+                    skip_processing,
                     has_matcher,
                     policy,
                     v.description,
                 ]
                 rows.append(row)
 
-            table = markdown_table(headers, rows, align={1: "right", 2: "right", 3: "right"})
+            table = render_markdown_table(headers, rows, align={1: "right", 2: "right", 3: "right"})
             click.echo(table)
 
             click.echo()
@@ -203,9 +215,7 @@ TopMark version **{TOPMARK_VERSION}** supports the following file types:
             pats = ", ".join(v.patterns) if v.patterns else ""
             skip = v.skip_processing
             matcher = v.content_matcher is not None
-            policy = getattr(v.header_policy, "name", None) or (
-                v.header_policy.__class__.__name__ if v.header_policy else ""
-            )
+            policy = _policy_name(v.header_policy)
             click.echo(f"  - {k} {chalk.dim('— ' + v.description)}")
             if exts:
                 click.echo(f"      extensions     : {exts}")

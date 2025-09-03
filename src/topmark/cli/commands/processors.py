@@ -21,7 +21,7 @@ from typing import Any
 import click
 
 from topmark.cli.cli_types import EnumParam
-from topmark.cli_shared.utils import OutputFormat, markdown_table
+from topmark.cli_shared.utils import OutputFormat, render_markdown_table
 from topmark.constants import TOPMARK_VERSION
 from topmark.filetypes.instances import get_file_type_registry
 from topmark.filetypes.registry import get_header_processor_registry
@@ -126,23 +126,23 @@ def processors_command(
 TopMark version **{TOPMARK_VERSION}** supports the following header processors:
 
 """)
+        rows: list[list[str]]
         if show_details:
             for proc in payload_data["processors"]:
                 headers = ["File Types", "Description"]
-                rows: list[list[str]] = []
-
+                rows = []
                 click.echo(f"\n## **{proc['class']}** _({proc['module']})_\n")
                 # click.echo("| File Types | Description |")
                 # click.echo("|---|---|")
                 for ft in proc["filetypes"]:
                     rows.append([f"`{ft['name']}`", ft["description"]])
                     # click.echo(f"| `{ft['name']}` | {ft['description']} |")
-                table = markdown_table(headers, rows)
+                table = render_markdown_table(headers, rows)
                 click.echo(table)
 
         else:
             headers = ["Processor", "Module", "File Types"]
-            rows: list[list[str]] = []
+            rows = []
 
             for proc in payload_data["processors"]:
                 rows.append(
@@ -152,13 +152,13 @@ TopMark version **{TOPMARK_VERSION}** supports the following header processors:
                         ", ".join(f"`{n}`" for n in proc["filetypes"]),
                     ]
                 )
-            table = markdown_table(headers, rows)
+            table = render_markdown_table(headers, rows)
             click.echo(table)
 
         if payload_data["unbound_filetypes"]:
             click.echo("\n## File types without a registered processor\n")
             headers = ["File Types", "Description"]
-            rows: list[list[str]] = []
+            rows = []
             for unbound_ft in payload_data["unbound_filetypes"]:
                 if show_details:
                     rows.append([f"`{unbound_ft['name']}`", f"`{unbound_ft['description']}`"])
