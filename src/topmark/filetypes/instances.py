@@ -128,9 +128,11 @@ file_types: list[FileType] = [
     FileType(
         name="ini",
         extensions=[".ini", ".cfg"],
-        filenames=[".pypirc", ".pypirc.example", "pip.conf"],
+        filenames=[".editorconfig", ".pypirc", ".pypirc.example", "pip.conf"],
         patterns=[],
-        description="INI-style configuration files (*.ini, *.cfg, .pypirc, pip.conf)",
+        description=(
+            "INI-style configuration files (*.ini, *.cfg, .editorconfig, .pypirc, pip.conf)"
+        ),
         header_policy=FileTypeHeaderPolicy(
             supports_shebang=False,
             encoding_line_regex=None,
