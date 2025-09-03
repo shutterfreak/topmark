@@ -32,8 +32,8 @@ from typing import Any, cast
 import pytest
 from click.shell_completion import BashComplete, CompletionItem
 
-from tests.cli.conftest import cli
 from tests.conftest import mark_integration, parametrize
+from topmark.cli.main import cli
 from topmark.rendering.formats import HeaderOutputFormat
 
 

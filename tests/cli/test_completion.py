@@ -31,9 +31,9 @@ from typing import TYPE_CHECKING
 import click
 from click.shell_completion import CompletionItem
 
-from tests.cli.conftest import cli
 from tests.conftest import mark_cli, parametrize
 from topmark.cli.cli_types import EnumParam
+from topmark.cli.main import cli
 from topmark.rendering.formats import HeaderOutputFormat
 
 if TYPE_CHECKING:
