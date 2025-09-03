@@ -63,7 +63,6 @@ def register_filetype(
         logger.debug("Registering processor %s for file type: %s", cls.__name__, file_type.name)
         if file_type.name in _registry:
             raise ValueError(f"File type '{file_type.name}' already has a registered processor.")
-        logger.debug("Registering processor %s for file type: %s", cls.__name__, file_type.name)
         instance = cls()
         instance.file_type = file_type
         _registry[file_type.name] = instance
