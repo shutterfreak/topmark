@@ -1,5 +1,3 @@
-# tests/unit/test_classify_outcome.py
-
 # topmark:header:start
 #
 #   file         : test_classify_outcome.py

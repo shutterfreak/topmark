@@ -8,7 +8,6 @@
 #
 # topmark:header:end
 
-# tests/pipeline/steps/test_comparer.py
 """
 Unit tests for the `comparer` pipeline step (fast-path behavior).
 
