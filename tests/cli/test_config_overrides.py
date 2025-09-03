@@ -18,10 +18,13 @@ Ensures:
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tests.cli.conftest import assert_SUCCESS, run_cli_in
 from topmark.cli_shared.exit_codes import ExitCode
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_local_topmark_toml_overrides_defaults(tmp_path: Path) -> None:

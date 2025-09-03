@@ -26,12 +26,15 @@ pipeline-level processor behavior.
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.processors import get_processor_for_file
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 mark_pipeline = pytest.mark.pipeline
 

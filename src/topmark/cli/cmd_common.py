@@ -18,19 +18,22 @@ encapsulate plumbing such as running pipelines, filtering, and error exits.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import click
 
 from topmark.cli.config_resolver import resolve_config_from_click
-from topmark.cli.io import InputPlan
 from topmark.cli_shared.exit_codes import ExitCode
-from topmark.config import Config
 from topmark.config.logging import get_logger
 from topmark.file_resolver import resolve_file_list
 from topmark.pipeline import runner
 from topmark.pipeline.context import ComparisonStatus, FileStatus, ProcessingContext
 from topmark.pipeline.pipelines import get_pipeline
-from topmark.rendering.formats import HeaderOutputFormat
+
+if TYPE_CHECKING:
+    from topmark.cli.io import InputPlan
+    from topmark.config import Config
+    from topmark.rendering.formats import HeaderOutputFormat
 
 logger = get_logger(__name__)
 

@@ -19,11 +19,14 @@ Covers the tricky single-line XML case:
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tests.pipeline.conftest import run_insert
 from topmark.config import Config
 from topmark.pipeline.processors import get_processor_for_file
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_xml_single_line_insert_then_strip_preserves_layout(tmp_path: Path) -> None:

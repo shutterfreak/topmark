@@ -64,7 +64,7 @@ def _normalize_completion_output(
 
     if result:
         if isinstance(result[0], CompletionItem):
-            return {cast(CompletionItem, x).value for x in result}
+            return {cast("CompletionItem", x).value for x in result}
         # assume list[str]
         flat: list[str] = []
         for x in result:

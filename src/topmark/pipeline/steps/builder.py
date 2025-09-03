@@ -16,11 +16,14 @@ in the context, updates built-in fields, and sets the generation status accordin
 """
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from topmark.config import Config
 from topmark.config.logging import get_logger
 from topmark.pipeline.context import FileStatus, GenerationStatus, ProcessingContext
 from topmark.utils.file import compute_relpath
+
+if TYPE_CHECKING:
+    from topmark.config import Config
 
 logger = get_logger(__name__)
 

@@ -18,9 +18,12 @@ with `ExitCode.USAGE_ERROR (64)` and emit a helpful error message.
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tests.cli.conftest import assert_USAGE_ERROR, run_cli_in
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_default_rejects_stdin_with_file(tmp_path: Path) -> None:

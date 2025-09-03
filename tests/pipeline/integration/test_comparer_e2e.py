@@ -19,12 +19,15 @@ focus on the comparer while still calling builder+renderer.
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from topmark.config import Config
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.context import ComparisonStatus, GenerationStatus, ProcessingContext
 from topmark.pipeline.steps import builder, comparer, reader, renderer, resolver, scanner
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_e2e_content_change_detected(tmp_path: Path) -> None:

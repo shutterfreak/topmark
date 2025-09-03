@@ -14,18 +14,17 @@ from __future__ import (
     annotations,  # Enables forward references (optional in 3.12+ but good practice)
 )
 
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import cached_property
-from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 from yachalk import chalk
 
 if TYPE_CHECKING:
-    # Only import processors if type checking to avoid circular imports
-    # This is a common pattern to avoid circular dependencies in Python.
+    from collections.abc import Callable
+    from pathlib import Path
+
     from topmark.config import Config
     from topmark.filetypes.base import FileType
     from topmark.pipeline.processors.base import HeaderProcessor
@@ -84,7 +83,7 @@ class FileStatus(BaseStatus):
             Function to colorize a string for this status.
         """
         return cast(
-            Callable[[str], str],
+            "Callable[[str], str]",
             {
                 FileStatus.PENDING: chalk.gray,
                 FileStatus.RESOLVED: chalk.green,
@@ -122,7 +121,7 @@ class HeaderStatus(BaseStatus):
             Function to colorize a string for this status.
         """
         return cast(
-            Callable[[str], str],
+            "Callable[[str], str]",
             {
                 HeaderStatus.PENDING: chalk.gray,
                 HeaderStatus.MISSING: chalk.blue,
@@ -154,7 +153,7 @@ class GenerationStatus(BaseStatus):
             Function to colorize a string for this status.
         """
         return cast(
-            Callable[[str], str],
+            "Callable[[str], str]",
             {
                 GenerationStatus.PENDING: chalk.gray,
                 GenerationStatus.GENERATED: chalk.green,
@@ -183,7 +182,7 @@ class ComparisonStatus(BaseStatus):
             Function to colorize a string for this status.
         """
         return cast(
-            Callable[[str], str],
+            "Callable[[str], str]",
             {
                 ComparisonStatus.PENDING: chalk.gray,
                 ComparisonStatus.CHANGED: chalk.red,
@@ -215,7 +214,7 @@ class StripStatus(BaseStatus):
             Function to colorize a string for this status.
         """
         return cast(
-            Callable[[str], str],
+            "Callable[[str], str]",
             {
                 StripStatus.PENDING: chalk.gray,
                 StripStatus.NOT_NEEDED: chalk.blue,
@@ -248,7 +247,7 @@ class WriteStatus(BaseStatus):
             Function to colorize a string for this status.
         """
         return cast(
-            Callable[[str], str],
+            "Callable[[str], str]",
             {
                 WriteStatus.PENDING: chalk.gray,
                 WriteStatus.PREVIEWED: chalk.blue,

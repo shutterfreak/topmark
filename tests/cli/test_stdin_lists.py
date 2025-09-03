@@ -12,11 +12,14 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from tests.cli.conftest import assert_SUCCESS, assert_WOULD_CHANGE, run_cli_in
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.mark.parametrize(

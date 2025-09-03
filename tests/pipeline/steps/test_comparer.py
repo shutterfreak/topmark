@@ -21,7 +21,7 @@ without requiring any header generation/rendering.
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from topmark.config import Config
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
@@ -32,6 +32,9 @@ from topmark.pipeline.context import (
     ProcessingContext,
 )
 from topmark.pipeline.steps import comparer, reader, resolver, scanner
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_comparer_precomputed_lines_set_changed(tmp_path: Path) -> None:

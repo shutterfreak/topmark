@@ -19,10 +19,13 @@ This module ensures CI/pre-commit semantics:
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tests.cli.conftest import assert_SUCCESS, assert_WOULD_CHANGE, run_cli
 from topmark.constants import TOPMARK_START_MARKER
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_check_exits_would_change_when_changes_needed(tmp_path: Path) -> None:

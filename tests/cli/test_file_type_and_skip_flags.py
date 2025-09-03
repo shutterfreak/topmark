@@ -22,10 +22,13 @@ rather than exact phrases to tolerate minor wording tweaks.
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tests.cli.conftest import assert_SUCCESS, assert_SUCCESS_or_WOULD_CHANGE, run_cli
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_file_type_filter_limits_processing_default(tmp_path: Path) -> None:

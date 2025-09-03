@@ -39,7 +39,6 @@ import click
 from topmark.rendering.formats import HeaderOutputFormat
 
 if TYPE_CHECKING:
-    # Type-only import so we can reference the symbol in annotations
     from click.shell_completion import CompletionItem as ClickCompletionItem
 
     class ParamTypeBase(Protocol):
@@ -181,7 +180,7 @@ class EnumParam(ParamTypeBase, Generic[E]):
         self.enum_cls = enum_cls
         self.name = self.enum_cls.__name__.lower()
         # Assume the enum exposes string-valued members (e.g., HeaderOutputFormat)
-        self.choices = [cast(str, getattr(e, "value", str(e))) for e in self.enum_cls]
+        self.choices = [cast("str", getattr(e, "value", str(e))) for e in self.enum_cls]
 
     def _fail_noreturn(
         self,
@@ -204,8 +203,8 @@ class EnumParam(ParamTypeBase, Generic[E]):
 
         # Case-insensitive lookup by the enum's string value
         lookup: dict[str, E] = {
-            cast(str, getattr(choice, "value", str(choice))).lower(): choice
-            for choice in cast(Iterable[E], self.enum_cls)
+            cast("str", getattr(choice, "value", str(choice))).lower(): choice
+            for choice in cast("Iterable[E]", self.enum_cls)
         }
 
         key = value.lower()
@@ -237,7 +236,7 @@ class EnumParam(ParamTypeBase, Generic[E]):
 
         prefix = (incomplete or "").lower()
         items: list["ClickCompletionItem"] = []
-        for e in cast(Iterable[E], self.enum_cls):
+        for e in cast("Iterable[E]", self.enum_cls):
             val = str(getattr(e, "value", e))
             if val.lower().startswith(prefix):
                 items.append(RuntimeCompletionItem(val))

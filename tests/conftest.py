@@ -16,12 +16,14 @@ ensuring consistent and verbose logging output during testing.
 
 from __future__ import annotations
 
-from typing import Any, Callable, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
 
 import pytest
 
-from topmark.config import Config
 from topmark.config.logging import TRACE_LEVEL, setup_logging
+
+if TYPE_CHECKING:
+    from topmark.config import Config
 
 F = TypeVar("F", bound=Callable[..., object])
 
@@ -30,7 +32,7 @@ def as_typed_mark(mark: Any) -> Callable[[F], F]:
     """Wrap a pytest mark so mypy knows it preserves function type."""
 
     def _decorator(func: F) -> F:
-        return cast(F, mark(func))
+        return cast("F", mark(func))
 
     return _decorator
 

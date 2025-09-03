@@ -26,16 +26,20 @@ Key utilities:
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from typing_extensions import NotRequired, Required, TypedDict
 
 from tests.conftest import fixture
-from topmark.config import Config
 from topmark.pipeline.context import ProcessingContext
 from topmark.pipeline.processors import get_processor_for_file, register_all_processors
-from topmark.pipeline.processors.base import HeaderProcessor
 from topmark.pipeline.steps import reader, resolver, scanner, updater
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from topmark.config import Config
+    from topmark.pipeline.processors.base import HeaderProcessor
 
 
 @fixture(scope="module", autouse=True)

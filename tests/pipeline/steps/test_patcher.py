@@ -17,7 +17,7 @@ assert CRLF semantics (or explicit `\\r\\n` markers) deterministically.
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from topmark.config import Config
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
@@ -33,6 +33,9 @@ from topmark.pipeline.steps import (
     updater,
 )
 from topmark.utils.diff import render_patch
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _run_to_patcher(path: Path, cfg: Config) -> ProcessingContext:

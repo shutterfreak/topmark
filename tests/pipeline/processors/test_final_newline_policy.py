@@ -20,12 +20,15 @@ These tests assert the *end-of-file* newline policy using a minimal content body
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tests.pipeline.conftest import run_insert
 from topmark.config import Config
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.processors import get_processor_for_file
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _ends_with_newline(text: str) -> bool:

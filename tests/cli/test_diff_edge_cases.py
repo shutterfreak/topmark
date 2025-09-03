@@ -17,10 +17,13 @@ Covers:
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tests.cli.conftest import assert_WOULD_CHANGE, run_cli_in
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_diff_on_no_final_newline_default(tmp_path: Path) -> None:

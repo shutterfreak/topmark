@@ -19,15 +19,13 @@ Validates that the CLI honors:
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tests.cli.conftest import assert_SUCCESS, assert_WOULD_CHANGE, run_cli_in
-
-# from topmark.cli.main import cli as _cli
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 
-# Type hint for the CLI command object
-# cli = cast(click.Command, _cli)
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_strip_honors_include_exclude(tmp_path: Path) -> None:

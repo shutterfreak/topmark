@@ -27,13 +27,16 @@ extensions and newline styles for broad coverage.
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from tests.pipeline.conftest import run_insert
 from topmark.config import Config
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 mark_pipeline = pytest.mark.pipeline
 

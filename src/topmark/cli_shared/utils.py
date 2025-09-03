@@ -18,17 +18,21 @@ from __future__ import annotations
 
 import os
 import sys
-from collections.abc import Callable
 from enum import Enum
 from pathlib import Path
-from typing import Mapping, Sequence
+from typing import TYPE_CHECKING, Mapping, Sequence
 
 from yachalk import chalk
 
 from topmark.config import Config
 from topmark.config.logging import get_logger
 from topmark.constants import PYPROJECT_TOML_PATH, TOPMARK_VERSION
-from topmark.pipeline.context import ProcessingContext
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from topmark.pipeline.context import ProcessingContext
+
 
 logger = get_logger(__name__)
 

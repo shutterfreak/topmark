@@ -145,4 +145,4 @@ def get_logger(name: str) -> TopmarkLogger:
         A TopmarkLogger instance.
     """
     logger = logging.getLogger(name)
-    return cast(TopmarkLogger, logger)
+    return cast("TopmarkLogger", logger)

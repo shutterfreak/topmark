@@ -17,14 +17,19 @@ header defaults extraction, color handling, and summary rendering.
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import click
 
 from topmark.cli_shared.utils import OutputFormat, count_by_outcome
 from topmark.config.logging import get_logger
-from topmark.pipeline.context import ProcessingContext
 from topmark.utils.diff import render_patch
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from topmark.pipeline.context import ProcessingContext
+
 
 logger = get_logger(__name__)
 

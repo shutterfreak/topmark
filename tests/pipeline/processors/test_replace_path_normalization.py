@@ -20,11 +20,14 @@ existing header differs from the expected header produced by the default config.
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tests.pipeline.conftest import run_insert
 from topmark.config import Config
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _is_crlf_lines(lines: list[str]) -> bool:

@@ -83,7 +83,7 @@ def make_config(
         Config: A namespace with the required attributes.
     """
     return cast(
-        Config,
+        "Config",
         SimpleNamespace(
             files=list(files or []),
             include_patterns=list(include_patterns or []),

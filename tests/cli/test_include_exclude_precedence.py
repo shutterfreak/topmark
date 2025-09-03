@@ -17,10 +17,13 @@ Covers:
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tests.cli.conftest import assert_SUCCESS, run_cli_in
 from topmark.constants import TOPMARK_START_MARKER
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_exclude_wins_over_include(tmp_path: Path) -> None:

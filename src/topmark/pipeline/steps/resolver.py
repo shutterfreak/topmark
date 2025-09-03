@@ -16,17 +16,12 @@ corresponding `HeaderProcessor` instance from the registry. It updates
 missing processors. It performs no I/O.
 """
 
-from typing import TYPE_CHECKING
-
 from topmark.config.logging import get_logger
 from topmark.constants import VALUE_NOT_SET
 from topmark.filetypes.base import FileType
 from topmark.filetypes.instances import get_file_type_registry
 from topmark.filetypes.registry import get_header_processor_registry
 from topmark.pipeline.context import FileStatus, ProcessingContext
-
-if TYPE_CHECKING:
-    pass
 
 logger = get_logger(__name__)
 

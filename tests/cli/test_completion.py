@@ -26,7 +26,7 @@ programmatically via `click.shell_completion.ShellComplete`.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from typing import TYPE_CHECKING
 
 import click
 from click.shell_completion import CompletionItem
@@ -35,6 +35,9 @@ from tests.cli.conftest import cli
 from tests.conftest import mark_cli, parametrize
 from topmark.cli.cli_types import EnumParam
 from topmark.rendering.formats import HeaderOutputFormat
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 
 def _enum_values(enum_cls: type[HeaderOutputFormat]) -> set[str]:

@@ -17,12 +17,10 @@ are safe to add here (e.g., 'summary', 'apply').
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import Final, Mapping, Tuple
+from typing import TYPE_CHECKING, Final, Mapping, Tuple
 
 from topmark.pipeline.steps import stripper
 
-from .contracts import Step
 from .steps import (
     builder,
     comparer,
@@ -33,6 +31,11 @@ from .steps import (
     scanner,
     updater,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from topmark.pipeline.contracts import Step
 
 # Default pipeline used by the "check" command:
 # resolve → read → scan → build → render → compare → update → patch

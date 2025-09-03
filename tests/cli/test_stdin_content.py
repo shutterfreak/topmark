@@ -18,7 +18,7 @@ to STDOUT (not written to the filesystem).
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tests.cli.conftest import (
     assert_SUCCESS,
@@ -26,6 +26,9 @@ from tests.cli.conftest import (
     run_cli,
 )
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_check_content_stdin_dry_run() -> None:

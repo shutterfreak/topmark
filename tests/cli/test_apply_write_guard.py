@@ -23,10 +23,13 @@ Coverage targets:
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tests.cli.conftest import assert_SUCCESS, run_cli_in
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_apply_does_not_write_skipped_known_no_headers(tmp_path: Path) -> None:

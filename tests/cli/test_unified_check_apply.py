@@ -17,9 +17,12 @@ exits with code 0 on success.
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tests.cli.conftest import assert_SUCCESS, assert_WOULD_CHANGE, run_cli
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_check_mode_exits_2_when_changes_needed(tmp_path: Path) -> None:

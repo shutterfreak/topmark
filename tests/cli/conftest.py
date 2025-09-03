@@ -19,16 +19,12 @@ matching TopMark's resolver contract that disallows absolute patterns.
 
 import os
 from pathlib import Path
-from typing import IO, Any, Sequence, cast
+from typing import IO, Any, Sequence
 
-import click
 from click.testing import CliRunner, Result
 
-from topmark.cli.main import cli as _cli
+from topmark.cli.main import cli
 from topmark.cli_shared.exit_codes import ExitCode
-
-# Type hint for the CLI command object
-cli = cast(click.Command, _cli)
 
 
 def run_cli_in(
