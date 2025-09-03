@@ -8,8 +8,7 @@
 #
 # topmark:header:end
 
-"""
-Tests for the PoundHeaderProcessor (``#`` line comments).
+"""Tests for the PoundHeaderProcessor (``#`` line comments).
 
 Covers shebang/encoding handling, placement before banners, CRLF preservation,
 idempotent re-application, and `strip_header_block` behavior. Docstrings follow

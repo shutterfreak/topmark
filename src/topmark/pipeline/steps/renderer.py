@@ -8,8 +8,7 @@
 #
 # topmark:header:end
 
-"""
-Header renderer step for the TopMark pipeline.
+"""Header renderer step for the TopMark pipeline.
 
 This step turns the expected header *field dictionary* into a list of text lines
 using the active file type’s header formatting rules. It preserves the file’s
@@ -37,8 +36,7 @@ logger = get_logger(__name__)
 
 
 def render(ctx: ProcessingContext) -> ProcessingContext:
-    """
-    Render the expected header to text lines for the current file.
+    """Render the expected header to text lines for the current file.
 
     Args:
       ctx (ProcessingContext): Mutable context with at least:

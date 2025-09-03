@@ -8,8 +8,7 @@
 #
 # topmark:header:end
 
-"""
-Unit tests for the `comparer` pipeline step (fast-path behavior).
+"""Unit tests for the `comparer` pipeline step (fast-path behavior).
 
 These tests validate that when a prior step (e.g., `stripper`) precomputes a full
 updated file image in `ctx.updated_file_lines`, the comparer:

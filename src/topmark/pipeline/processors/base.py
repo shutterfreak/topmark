@@ -8,8 +8,7 @@
 #
 # topmark:header:end
 
-"""
-Header processor base module for TopMark's header processing pipeline.
+"""Header processor base module for TopMark's header processing pipeline.
 
 This module defines the HeaderProcessor base class, which provides a framework for
 processing file headers in different file types. It includes logic for scanning,
@@ -36,8 +35,7 @@ NO_LINE_ANCHOR: int = -1
 
 
 class HeaderProcessor:
-    """
-    Base class for header processors that handle specific file types.
+    """Base class for header processors that handle specific file types.
 
     This class defines the interface and common logic for processing headers in files.
     Subclasses should specify the associated file_type and can override methods for
@@ -69,8 +67,7 @@ class HeaderProcessor:
         line_suffix: str = "",
         line_indent: str = "  ",
     ) -> None:
-        """
-        Initialize a HeaderProcessor instance.
+        """Initialize a HeaderProcessor instance.
 
         Args:
             block_prefix: The prefix string for block-style header start.
@@ -787,8 +784,7 @@ class HeaderProcessor:
         return start_index, end_index
 
     def _get_bounds_block_comments(self, lines: list[str]) -> tuple[int | None, int | None]:
-        """
-        Identify the bounds of a block-comment-wrapped header (e.g. HTML, XML, Markdown).
+        """Identify the bounds of a block-comment-wrapped header (e.g. HTML, XML, Markdown).
 
         Returns:
             A tuple (start_index, end_index) representing the lines to include (inclusive),

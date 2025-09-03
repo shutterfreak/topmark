@@ -8,8 +8,7 @@
 #
 # topmark:header:end
 
-"""
-Header processor for pound-prefixed comment formats.
+"""Header processor for pound-prefixed comment formats.
 
 This processor supports files using `#`-style comments, such as Python, shell scripts,
 and Makefiles. It delegates header processing to the core pipeline dispatcher.
@@ -40,8 +39,7 @@ logger = get_logger(__name__)
 @register_filetype("toml")
 @register_filetype("yaml")
 class PoundHeaderProcessor(HeaderProcessor):
-    """
-    Processor for files with pound-prefixed comments.
+    """Processor for files with pound-prefixed comments.
 
     This processor handles files that use `#` for comments, such as Python scripts,
     shell scripts, and Makefiles. It processes the header using the pipeline dispatcher.

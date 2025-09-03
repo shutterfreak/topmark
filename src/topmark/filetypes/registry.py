@@ -32,8 +32,7 @@ _registry: dict[str, HeaderProcessor] = {}
 def register_filetype(
     name: str,
 ) -> Callable[[type[HeaderProcessor]], type[HeaderProcessor]]:
-    """
-    Class decorator to register a HeaderProcessor for a specific file type.
+    """Class decorator to register a HeaderProcessor for a specific file type.
 
     Args:
         name (str): Name of the file type as defined in file_type_registry.
@@ -51,8 +50,7 @@ def register_filetype(
     file_type = file_type_registry[name]
 
     def decorator(cls: type[HeaderProcessor]) -> type[HeaderProcessor]:
-        """
-        Decorator function that registers the processor class with the given extension.
+        """Decorator function that registers the processor class with the given extension.
 
         Each HeaderProcessor is instantiated and bound to a specific FileType at registration time.
         This instance-level registration ensures that processor.file_type is set correctly,

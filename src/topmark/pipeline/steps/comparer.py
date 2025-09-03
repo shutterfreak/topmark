@@ -8,8 +8,7 @@
 #
 # topmark:header:end
 
-"""
-Header comparer step for the TopMark pipeline.
+"""Header comparer step for the TopMark pipeline.
 
 This step assigns a `ComparisonStatus` by comparing the *existing* header with the
 *expected* header produced by the render step. The comparer prefers a

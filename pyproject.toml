@@ -177,8 +177,8 @@ select = [
   "TC", # type-checking (TCH001/2/3: move type-only imports under TYPE_CHECKING)
 ]
 ignore = [
-  # E501 handled by the formatter, so it is not needed here
-  "D212", # Conflicts with D213
+  # Note: D212 and D213 cannot be enabled simultaneously
+  "D213", # Keep D213 ignored for Google style
   # If you prefer to allow first line not ending with a period (though usually good practice)
   # "D400",
   # If you don't want strict capitalization checks for the first word

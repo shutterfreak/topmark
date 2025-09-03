@@ -8,8 +8,7 @@
 #
 # topmark:header:end
 
-"""
-Run the TopMark V2 header processing pipeline for a single file.
+"""Run the TopMark V2 header processing pipeline for a single file.
 
 This module defines the HeaderProcessor protocol interface, a registry system for
 associating file extensions with processor implementations, and helper functions

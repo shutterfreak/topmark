@@ -8,8 +8,7 @@
 #
 # topmark:header:end
 
-"""
-Unit tests for the `stripper` pipeline step.
+"""Unit tests for the `stripper` pipeline step.
 
 These tests validate that the step removes the TopMark header using the
 scanner-provided header span and that it trims exactly one leading blank

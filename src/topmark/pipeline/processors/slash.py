@@ -8,8 +8,7 @@
 #
 # topmark:header:end
 
-"""
-Header processor for C-style comment formats.
+"""Header processor for C-style comment formats.
 
 This processor supports files using `//` line comments (and ecosystems that also
 allow `/* ... */` block comments). It is intended for JSON-with-comments (JSONC)
@@ -40,8 +39,7 @@ logger = logging.getLogger(__name__)
 @register_filetype("typescript")
 @register_filetype("vscode-jsonc")
 class SlashHeaderProcessor(HeaderProcessor):
-    """
-    Processor for files that accept C-style comments.
+    """Processor for files that accept C-style comments.
 
     We render the header as `//`-prefixed lines. Shebang handling is disabled.
     """

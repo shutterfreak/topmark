@@ -8,8 +8,7 @@
 #
 # topmark:header:end
 
-"""
-Processor for files with HTML/XML-style block comments (<!-- ... -->).
+"""Processor for files with HTML/XML-style block comments (<!-- ... -->).
 
 This processor supports files using `<!-- ... -->`-style comments, such as MarkDown.
 It delegates header processing to the core pipeline dispatcher.
@@ -34,8 +33,7 @@ from topmark.pipeline.processors.base import (
 @register_filetype("xsl")
 @register_filetype("xslt")
 class XmlHeaderProcessor(HeaderProcessor):
-    """
-    Processor for files with HTML/XML-style block comments (<!-- ... -->).
+    """Processor for files with HTML/XML-style block comments (<!-- ... -->).
 
     Supported families include HTML, Markdown (HTML comments), XML and common
     XML-derived formats, as well as component templates that accept HTML comments

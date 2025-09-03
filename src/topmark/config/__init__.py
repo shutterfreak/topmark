@@ -8,8 +8,7 @@
 #
 # topmark:header:end
 
-"""
-Configuration handling for the TopMark tool.
+"""Configuration handling for the TopMark tool.
 
 This module defines the Config dataclass, logic to parse and load TOML-based configuration files,
 and utilities to safely extract and coerce typed values from tomlkit Tables.
@@ -37,8 +36,7 @@ logger = get_logger(__name__)
 
 @dataclass
 class Config:
-    """
-    Represents the full configuration for the TopMark tool.
+    """Represents the full configuration for the TopMark tool.
 
     This dataclass encapsulates all configuration options that can be loaded from TOML files,
     overridden by CLI arguments, or set programmatically. It supports merging multiple configuration
@@ -98,8 +96,7 @@ class Config:
     @classmethod
     @functools.cache  # Cache result to avoid repeated file reads per run
     def get_default_config_toml(cls) -> str:
-        """
-        Retrieve the default configuration as a raw TOML string.
+        """Retrieve the default configuration as a raw TOML string.
 
         Returns:
             str: The contents of the default TOML configuration file.
@@ -110,8 +107,7 @@ class Config:
 
     @classmethod
     def to_cleaned_toml(cls, toml_doc: str) -> str:
-        """
-        Return a cleaned TOML string with comments and extraneous whitespace removed.
+        """Return a cleaned TOML string with comments and extraneous whitespace removed.
 
         Args:
             toml_doc (str): The raw TOML document string.
@@ -125,8 +121,7 @@ class Config:
 
     @classmethod
     def from_defaults(cls) -> "Config":
-        """
-        Load the default configuration from the bundled topmark-default.toml file.
+        """Load the default configuration from the bundled topmark-default.toml file.
 
         Returns:
             Config: A Config instance populated with default values.
@@ -151,8 +146,7 @@ class Config:
         config_file: Path | None = None,
         use_defaults: bool = False,
     ) -> "Config":
-        """
-        Parse a dictionary representation of TOML data into a Config instance.
+        """Parse a dictionary representation of TOML data into a Config instance.
 
         Args:
             data (dict): The parsed TOML data as a dictionary.
@@ -286,8 +280,7 @@ class Config:
         )
 
     def apply_cli_args(self, args: ArgsNamespace) -> "Config":
-        """
-        Update Config fields based on CLI arguments.
+        """Update Config fields based on CLI arguments.
 
         This method applies overrides from the CLI arguments namespace to the
         current Config instance. It does not handle CLI flags that influence
@@ -367,8 +360,7 @@ class Config:
 
     @classmethod
     def from_toml_file(cls, path: Path) -> "Config | None":
-        """
-        Load configuration from a single TOML file.
+        """Load configuration from a single TOML file.
 
         This method reads the TOML file, extracts the relevant configuration section,
         and returns a Config instance. Supports both topmark.toml and pyproject.toml files,
@@ -401,8 +393,7 @@ class Config:
 
     @classmethod
     def load_merged(cls, args: ArgsNamespace) -> "Config":
-        """
-        Load and merge configuration layers into a single Config instance.
+        """Load and merge configuration layers into a single Config instance.
 
         The merging order is:
         1. Defaults (bundled topmark-default.toml)
@@ -454,8 +445,7 @@ class Config:
         return config
 
     def merge_with(self, other: "Config") -> "Config":
-        """
-        Merge another Config instance into this one, returning a new merged Config.
+        """Merge another Config instance into this one, returning a new merged Config.
 
         Values from `other` override those from `self` if explicitly set.
         For lists, non-empty lists from `other` replace those in `self`.
@@ -509,8 +499,7 @@ class Config:
         )
 
     def to_toml_dict(self) -> dict[str, Any]:
-        """
-        Convert the Config instance into a dictionary suitable for TOML serialization.
+        """Convert the Config instance into a dictionary suitable for TOML serialization.
 
         Returns:
             dict: Dictionary representing the config, structured for TOML output.

@@ -178,8 +178,7 @@ def resolve_color_mode(
 
 # --- CLI presentation helpers -------------------------------------------------
 def classify_outcome(r: ProcessingContext) -> tuple[str, str, Callable[[str], str]]:
-    """
-    Classify a single file’s processing result into a summary bucket.
+    """Classify a single file’s processing result into a summary bucket.
 
     This function converts a file’s `HeaderProcessingStatus` (available on
     `ProcessingContext.status`) into a stable, human‑facing bucket used by the

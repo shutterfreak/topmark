@@ -54,8 +54,7 @@ def _prepend_bom_to_lines_if_needed(lines: list[str], leading_bom: bool) -> list
 
 
 def update(ctx: ProcessingContext) -> ProcessingContext:
-    """
-    Insert or replace the TopMark header for the current file.
+    """Insert or replace the TopMark header for the current file.
 
     Behavior by case:
       • **Strip fast‑path**: When `status.strip == READY`, keep the precomputed

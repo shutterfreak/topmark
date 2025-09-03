@@ -8,8 +8,7 @@
 #
 # topmark:header:end
 
-"""
-Resolve input files for TopMark based on config, paths, and filters.
+"""Resolve input files for TopMark based on config, paths, and filters.
 
 This module expands positional arguments and stdin‑provided paths, applies
 include/exclude patterns (including patterns loaded from files), and filters
