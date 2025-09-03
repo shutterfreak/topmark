@@ -11,6 +11,8 @@
 {
     "makefile.configureOnOpen": false,
 
+    // Turn off auto-detection of indentation that can override language-specific tab sizes
+    "editor.detectIndentation": false,
     // Enable default formatting on save for all languages where a formatter is configured.
     "editor.formatOnSave": true,
 
@@ -52,16 +54,25 @@
 
     // --- Specific Tool Extensions Settings ---
 
-    // Ruff Extension Settings (ms-python.ruff)
-    // Ruff's linting and formatting rules are primarily configured in pyproject.toml.
+    // Ruff Extension Settings (charliermarsh.ruff)
+    // With the native Ruff extension, configuration comes from `pyproject.toml` ([tool.ruff] / [tool.ruff.lint]).
     "ruff.lint.enable": true,
-    // Ensure the ruff formatter is enabled.
-    "ruff.format.enable": true,
 
-    // Pyright Extension Settings (ms-pyright.pyright)
-    // Pyright configuration (like venv path) is primarily in pyrightconfig.json or pyproject.toml.
-    // This setting ensures the extension itself is active.
-    "python.testing.pytestEnabled": true,
+    // Optional: useful when debugging config reloads
+    // "ruff.logLevel": "information",
+
+    // --- Python / Pylance ---
+    // Ensure Pylance is your language server (Pyright extension should be disabled).
+    "python.languageServer": "Pylance",
+
+    // Show diagnostics for the entire workspace (not just open files).
+    "python.analysis.diagnosticMode": "workspace",
+
+    // Keep the helpful type hints you already enabled:
+
+    // Note: Type checking mode is configured in `pyproject.toml` under [tool.pyright].
+    "python.analysis.inlayHints.variableTypes": true,
+    "python.analysis.inlayHints.functionReturnTypes": true,
 
     // Use the Python interpreter from the virtual environment:
     "python.defaultInterpreterPath": ".venv/bin/python"

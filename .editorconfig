@@ -1,0 +1,23 @@
+# topmark:header:start
+#
+#   file         : .editorconfig
+#   file_relpath : .editorconfig
+#   project      : TopMark
+#   license      : MIT
+#   copyright    : (c) 2025 Olivier Biot
+#
+# topmark:header:end
+
+# root = true indicates that this is the top-level file
+root = true
+
+[*]
+# This section applies to all files.
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.py]
+# This section applies to Python files.
+indent_style = space
+indent_size = 4

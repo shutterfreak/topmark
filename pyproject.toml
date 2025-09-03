@@ -169,11 +169,12 @@ line-length = 100
 [tool.ruff.lint]
 exclude = [".git", ".venv", "venv", "build", "dist", "migrations"]
 select = [
-  "E", # pycodestyle errors
-  "F", # pyflakes
-  "B", # bugbear
-  "I", # isort-compatible import sorting
-  "D", # pydocstyle
+  "E",  # pycodestyle errors
+  "F",  # pyflakes
+  "B",  # bugbear
+  "I",  # isort-compatible import sorting
+  "D",  # pydocstyle
+  "TC", # type-checking (TCH001/2/3: move type-only imports under TYPE_CHECKING)
 ]
 ignore = [
   # E501 handled by the formatter, so it is not needed here
