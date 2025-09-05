@@ -1,14 +1,14 @@
-{
-  // topmark:header:start
-  //
-  //   file         : tasks.json
-  //   file_relpath : .vscode/tasks.json
-  //   project      : TopMark
-  //   license      : MIT
-  //   copyright    : (c) 2025 Olivier Biot
-  //
-  // topmark:header:end
+// topmark:header:start
+//
+//   file         : tasks.json
+//   file_relpath : .vscode/tasks.json
+//   project      : TopMark
+//   license      : MIT
+//   copyright    : (c) 2025 Olivier Biot
+//
+// topmark:header:end
 
+{
   // VS Code Tasks for quick linting & type checking from the Command Palette
   "version": "2.0.0",
   "options": {

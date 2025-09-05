@@ -91,7 +91,23 @@ def run_insert(path: Path, cfg: Config) -> ProcessingContext:
     # Render header with the detected newline style so header lines match file endings.
     header_values = {field: "" for field in cfg.header_fields}
     newline = ctx.newline_style or "\n"
-    ctx.expected_header_lines = processor.render_header_lines(header_values, cfg, newline)
+
+    # Preserve pre-prefix indentation (spaces/tabs before the prefix) when
+    # replacing an existing header block, so nested JSONC headers stay aligned.
+    header_indent_override: str | None = None
+    if ctx.existing_header_range is not None and ctx.file_lines:
+        start_idx, _ = ctx.existing_header_range
+        first_line = ctx.file_lines[start_idx]
+        leading_ws = first_line[: len(first_line) - len(first_line.lstrip())]
+        if leading_ws and first_line.lstrip().startswith(processor.line_prefix):
+            header_indent_override = leading_ws
+
+    ctx.expected_header_lines = processor.render_header_lines(
+        header_values,
+        cfg,
+        newline,
+        header_indent_override=header_indent_override,
+    )
 
     # If scanner did not find a header, attempt a lightweight signature-based
     # detection to support tests that directly call the updater with crafted content.
@@ -172,8 +188,8 @@ def expected_block_lines_for(path: Path, newline: str = "\n") -> BlockSignatures
         proc = get_processor_for_file(path)
     assert proc is not None, f"No header processor found for {path}"
 
-    pre = proc.render_preamble_lines(newline)
-    post = proc.render_postamble_lines(newline)
+    pre = proc.render_preamble_lines(newline_style=newline)
+    post = proc.render_postamble_lines(newline_style=newline)
 
     def strip_nl(s: str) -> str:
         return s.rstrip("\r\n")

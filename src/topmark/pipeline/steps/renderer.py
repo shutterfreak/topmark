@@ -76,6 +76,17 @@ def render(ctx: ProcessingContext) -> ProcessingContext:
         "expected_header_dict must be set when generation=GENERATED"
     )
 
+    # Preserve pre-prefix indentation when replacing an existing header
+    # (spaces/tabs before the prefix, e.g., "    //"). This keeps nested/indented
+    # headers (like JSONC inside an object) visually stable after replacement.
+    header_indent_override: str | None = None
+    if ctx.existing_header_range is not None and ctx.file_lines:
+        start_idx, _ = ctx.existing_header_range
+        first_line = ctx.file_lines[start_idx]
+        leading_ws = first_line[: len(first_line) - len(first_line.lstrip())]
+        if leading_ws and first_line.lstrip().startswith(ctx.header_processor.line_prefix):
+            header_indent_override = leading_ws
+
     # Extremely defensive: if a GENERATED state comes with an empty dict,
     # render an empty block and return gracefully rather than crashing.
     if not ctx.expected_header_dict:
@@ -88,6 +99,9 @@ def render(ctx: ProcessingContext) -> ProcessingContext:
         header_values=ctx.expected_header_dict,
         config=ctx.config,
         newline_style=ctx.newline_style,
+        # keep any other overrides you already pass (block_prefix/suffix, line_prefix/suffix, etc.)
+        header_indent_override=header_indent_override,  # <— NEW: preserve pre-prefix indent
+        # line_indent_override stays as default so fields still use processor’s after-prefix spacing
     )
 
     # Generate the expected (updated) header block, preserving the file newline style

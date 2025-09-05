@@ -63,6 +63,12 @@ class HeaderProcessor:
           :attr:`FileType.content_matcher`. The processor assumes it is already
           associated with the correct file type.
 
+    Indentation semantics:
+        - `header_indent`: indentation *before* the line prefix (used to preserve
+          existing indentation when replacing nested/indented headers).
+        - `line_indent`: indentation *after* the line prefix (applied to the
+          header field lines).
+
     Extension points:
         Subclasses typically set comment delimiters (``line_prefix``,
         ``line_suffix``, ``block_prefix``, ``block_suffix``) and may override any of
@@ -77,7 +83,12 @@ class HeaderProcessor:
     line_prefix: str = ""  # Prefix for each line in the header block
     line_suffix: str = ""  # Suffix for each line in the header block
 
+    # Indentation **after** the comment prefix (applies to the header field lines).
     line_indent: str = "  "
+
+    # Indentation **before** the line prefix (used to preserve existing indentation
+    # when replacing an indented header inside a document, e.g. JSONC nested blocks).
+    header_indent: str = ""
 
     """
     The file type associated with this processor, used for matching files.
@@ -86,11 +97,13 @@ class HeaderProcessor:
 
     def __init__(
         self,
+        *,
         block_prefix: str = "",
         block_suffix: str = "",
         line_prefix: str = "",
         line_suffix: str = "",
         line_indent: str = "  ",
+        header_indent: str = "",
     ) -> None:
         """Initialize a HeaderProcessor instance.
 
@@ -99,7 +112,11 @@ class HeaderProcessor:
             block_suffix: The suffix string for block-style header end.
             line_prefix: The prefix string for each line within the header block.
             line_suffix: The suffix string for each line within the header block.
-            line_indent: The indentation of each header field line
+            line_indent: The indentation applied to *header field lines* **after**
+                the comment prefix (e.g., spaces after `//`).
+            header_indent: The indentation applied *before* the comment prefix; used
+                to preserve existing leading indentation when replacing an indented
+                header block inside a document (e.g., nested JSONC).
         """
         self.file_type = None
 
@@ -109,6 +126,7 @@ class HeaderProcessor:
         self.line_suffix = line_suffix
 
         self.line_indent = line_indent
+        self.header_indent = header_indent
 
     def parse_fields(self, context: ProcessingContext) -> dict[str, str]:
         """Parse key-value pairs from the detected header block (outer slice).
@@ -119,18 +137,18 @@ class HeaderProcessor:
         and the next END marker, then parses only the payload lines between them.
 
         Args:
-          context (ProcessingContext): Pipeline context with ``existing_header_lines``
-            set to the outer header slice (markers included).
+            context (ProcessingContext): Pipeline context with ``existing_header_lines``
+                set to the outer header slice (markers included).
 
         Returns:
-          dict[str, str]: Mapping of parsed header fields (key → value). Returns an
-          empty dict if no payload is found or markers are missing.
+            dict[str, str]: Mapping of parsed header fields (key → value). Returns an
+                empty dict if no payload is found or markers are missing.
 
         Notes:
-          - Comment affixes (``line_prefix`` / ``line_suffix``) are stripped per line.
-          - Malformed field lines add diagnostics but do not set MALFORMED; reserve
-            MALFORMED for marker issues (normally handled by the scanner).
-          - Subclasses may override to support multi-line fields or alternate syntax.
+            - Comment affixes (``line_prefix`` / ``line_suffix``) are stripped per line.
+            - Malformed field lines add diagnostics but do not set MALFORMED; reserve
+              MALFORMED for marker issues (normally handled by the scanner).
+            - Subclasses may override to support multi-line fields or alternate syntax.
         """
         lines: list[str] | None = context.existing_header_lines
         # TODO: improve
@@ -218,8 +236,8 @@ class HeaderProcessor:
         """Remove configured line prefix/suffix from a single line, if present.
 
         This mirrors the matching semantics of `line_has_directive()`:
-        - If a prefix is configured and present at start, remove it.
-        - If a suffix is configured and present at end, remove it.
+            - If a prefix is configured and present at start, remove it.
+            - If a suffix is configured and present at end, remove it.
         Then strip surrounding whitespace.
         """
         cleaned = line.rstrip("\r\n")
@@ -241,48 +259,61 @@ class HeaderProcessor:
     def _wrap_line(
         self,
         content: str,
-        newline_style: str,
         *,
+        newline_style: str,
         line_prefix: str | None = None,
         line_suffix: str | None = None,
+        header_indent: str = "",
+        after_prefix_indent: str | None = None,
     ) -> str:
         """Wrap a single content line using line prefix/suffix, then append a newline.
 
         Args:
-          content (str): Inner text for the line (without prefixes/suffixes or newline).
-          newline_style (str): Newline characters to append (``LF``, ``CR``, ``CRLF``).
-          line_prefix (str | None): Optional override for the line prefix; defaults to
-            the instance's ``line_prefix`` when ``None``.
-          line_suffix (str | None): Optional override for the line suffix; defaults to
-            the instance's ``line_suffix`` when ``None``.
+            content (str): Inner text for the line (without prefixes/suffixes or newline).
+            newline_style (str): Newline characters to append (``LF``, ``CR``, ``CRLF``).
+            line_prefix (str | None): Optional override for the line prefix; defaults to
+                the instance's ``line_prefix`` when ``None``.
+            line_suffix (str | None): Optional override for the line suffix; defaults to
+                the instance's ``line_suffix`` when ``None``.
+            header_indent: The indentation applied *before* the comment prefix; used
+                to preserve existing leading indentation when replacing an indented
+                header block inside a document (e.g., nested JSONC).
+            after_prefix_indent (str | None): Indentation to apply after the line prefix
+                (overrides the instance's ``line_indent`` for this line).
 
         Returns:
-          str: The fully wrapped line (prefix + content + suffix) including the trailing
-          newline characters.
+            str: The fully wrapped line (prefix + content + suffix) including the trailing
+                newline characters.
         """
         lp = self.line_prefix if line_prefix is None else line_prefix
         ls = self.line_suffix if line_suffix is None else line_suffix
-        # Handle indentation preservation for line_prefix
-        prefix_indent = lp[: len(lp) - len(lp.lstrip())] if lp else ""
-        prefix_core = lp.lstrip() if lp else ""
+        # Pre-prefix indentation is applied to the whole line before the prefix
+        lead = header_indent or ""
+        # Indentation after prefix defaults to instance setting unless overridden
+        api = self.line_indent if after_prefix_indent is None else after_prefix_indent
+
         parts: list[str] = []
         if lp:
-            parts.append(f"{prefix_indent}{prefix_core}")
+            parts.append(f"{lp}")
         if content:
-            parts.append(content.rstrip())
+            # Only add after-prefix indentation when there is content to show
+            if api:
+                parts.append(api + content.rstrip())
+            else:
+                parts.append(content.rstrip())
         if ls:
             parts.append(ls)
 
-        # Combine parts and add proper newline style
-        return " ".join(parts) + newline_style
+        return lead + " ".join(parts) + newline_style
 
     def render_preamble_lines(
         self,
-        newline_style: str,
         *,
+        newline_style: str,
         block_prefix: str | None = None,
         line_prefix: str | None = None,
         line_suffix: str | None = None,
+        header_indent: str = "",
     ) -> list[str]:
         """Render the TopMark preamble lines for the current processor.
 
@@ -292,13 +323,16 @@ class HeaderProcessor:
           3) an intentional blank line following the start marker.
 
         Args:
-          newline_style (str): Newline characters to append to each rendered line.
-          block_prefix (str | None): Optional override for the block prefix; defaults to
-            the instance's ``block_prefix`` when ``None``.
-          line_prefix (str | None): Optional override for the line prefix; defaults to
-            the instance's ``line_prefix`` when ``None``.
-          line_suffix (str | None): Optional override for the line suffix; defaults to
-            the instance's ``line_suffix`` when ``None``.
+            newline_style (str): Newline characters to append to each rendered line.
+            block_prefix (str | None): Optional override for the block prefix; defaults to
+                the instance's ``block_prefix`` when ``None``.
+            line_prefix (str | None): Optional override for the line prefix; defaults to
+                the instance's ``line_prefix`` when ``None``.
+            line_suffix (str | None): Optional override for the line suffix; defaults to
+                the instance's ``line_suffix`` when ``None``.
+            header_indent: The indentation applied *before* the comment prefix; used
+                to preserve existing leading indentation when replacing an indented
+                header block inside a document (e.g., nested JSONC).
 
         Returns:
           list[str]: Preamble lines (each ending with ``newline_style``) that precede
@@ -307,28 +341,38 @@ class HeaderProcessor:
         bp = self.block_prefix if block_prefix is None else block_prefix
         lines: list[str] = []
         if bp:
-            lines.append(bp + newline_style)
+            lines.append(header_indent + bp + newline_style)
         lines.append(
             self._wrap_line(
                 TOPMARK_START_MARKER,
-                newline_style,
+                newline_style=newline_style,
                 line_prefix=line_prefix,
                 line_suffix=line_suffix,
+                header_indent=header_indent,
+                after_prefix_indent="",
             )
         )
         # Empty line after start marker
         lines.append(
-            self._wrap_line("", newline_style, line_prefix=line_prefix, line_suffix=line_suffix)
+            self._wrap_line(
+                "",
+                newline_style=newline_style,
+                line_prefix=line_prefix,
+                line_suffix=line_suffix,
+                header_indent=header_indent,
+                after_prefix_indent="",
+            )
         )
         return lines
 
     def render_postamble_lines(
         self,
-        newline_style: str,
         *,
+        newline_style: str,
         block_suffix: str | None = None,
         line_prefix: str | None = None,
         line_suffix: str | None = None,
+        header_indent: str = "",
     ) -> list[str]:
         """Render the TopMark postamble lines for the current processor.
 
@@ -338,13 +382,16 @@ class HeaderProcessor:
           3) the block comment closer (when configured).
 
         Args:
-          newline_style (str): Newline characters to append to each rendered line.
-          block_suffix (str | None): Optional override for the block suffix; defaults to
-            the instance's ``block_suffix`` when ``None``.
-          line_prefix (str | None): Optional override for the line prefix; defaults to
-            the instance's ``line_prefix`` when ``None``.
-          line_suffix (str | None): Optional override for the line suffix; defaults to
-            the instance's ``line_suffix`` when ``None``.
+            newline_style (str): Newline characters to append to each rendered line.
+            block_suffix (str | None): Optional override for the block suffix; defaults to
+                the instance's ``block_suffix`` when ``None``.
+            line_prefix (str | None): Optional override for the line prefix; defaults to
+                the instance's ``line_prefix`` when ``None``.
+            line_suffix (str | None): Optional override for the line suffix; defaults to
+                the instance's ``line_suffix`` when ``None``.
+            header_indent: The indentation applied *before* the comment prefix; used
+                to preserve existing leading indentation when replacing an indented
+                header block inside a document (e.g., nested JSONC).
 
         Returns:
           list[str]: Postamble lines (each ending with ``newline_style``) that follow
@@ -354,11 +401,23 @@ class HeaderProcessor:
         lines: list[str] = []
         # Empty line before end marker
         lines.append(
-            self._wrap_line("", newline_style, line_prefix=line_prefix, line_suffix=line_suffix)
+            self._wrap_line(
+                "",
+                newline_style=newline_style,
+                line_prefix=line_prefix,
+                line_suffix=line_suffix,
+                header_indent=header_indent,
+                after_prefix_indent="",
+            )
         )
         lines.append(
             self._wrap_line(
-                TOPMARK_END_MARKER, newline_style, line_prefix=line_prefix, line_suffix=line_suffix
+                TOPMARK_END_MARKER,
+                newline_style=newline_style,
+                line_prefix=line_prefix,
+                line_suffix=line_suffix,
+                header_indent=header_indent,
+                after_prefix_indent="",
             )
         )
         if bs:
@@ -375,6 +434,7 @@ class HeaderProcessor:
         line_prefix_override: str | None = None,
         line_suffix_override: str | None = None,
         line_indent_override: str | None = None,
+        header_indent_override: str | None = None,
     ) -> list[str]:
         """Render a header block from configuration, template, and overrides.
 
@@ -383,14 +443,19 @@ class HeaderProcessor:
         alignment and raw_header settings from the configuration to format the output.
 
         Args:
-          header_values (dict[str, str]): Mapping of header fields to render.
-          config (Config): TopMark configuration (defines header fields and options).
-          newline_style (str): Newline style (``LF``, ``CR``, ``CRLF``).
-          block_prefix_override (str | None): Optional block prefix override.
-          block_suffix_override (str | None): Optional block suffix override.
-          line_prefix_override (str | None): Optional line prefix override.
-          line_suffix_override (str | None): Optional line suffix override.
-          line_indent_override (str | None): Optional indentation override for field lines.
+            header_values (dict[str, str]): Mapping of header fields to render.
+            config (Config): TopMark configuration (defines header fields and options).
+            newline_style (str): Newline style (``LF``, ``CR``, ``CRLF``).
+            block_prefix_override (str | None): Optional block prefix override.
+            block_suffix_override (str | None): Optional block suffix override.
+            line_prefix_override (str | None): Optional line prefix override.
+            line_suffix_override (str | None): Optional line suffix override.
+            header_indent_override (str | None): Optional indentation override *before*
+                the comment prefix, applied to complete header lines (used to preserve
+                existing leading indentation on replace).
+            line_indent_override (str | None): Optional indentation override *after*
+                the comment prefix, applied to header field lines (defaults to the
+                processor's `line_indent`).
 
         Returns:
           list[str]: Rendered header lines ending with ``newline_style``.
@@ -410,7 +475,9 @@ class HeaderProcessor:
         if config.header_format is HeaderOutputFormat.PLAIN:
             # Don't use the config's block_prefix/suffix or
             # line_prefix/suffix, but rather the provided overrides or defaults.
-            block_prefix = block_suffix = line_prefix = line_suffix = line_indent = ""
+            block_prefix = block_suffix = line_prefix = line_suffix = effective_line_indent = (
+                header_indent
+            ) = ""
         else:
             # Use provided overrides or defaults from the instance
             block_prefix = (
@@ -425,8 +492,11 @@ class HeaderProcessor:
             line_suffix = (
                 line_suffix_override if line_suffix_override is not None else self.line_suffix
             )
-            line_indent = (
+            effective_line_indent = (
                 line_indent_override if line_indent_override is not None else self.line_indent
+            )
+            header_indent = (
+                header_indent_override if header_indent_override is not None else self.header_indent
             )
 
         # Compute header field name width:
@@ -438,34 +508,37 @@ class HeaderProcessor:
         # Compose preamble
         lines.extend(
             self.render_preamble_lines(
-                newline_style,
+                newline_style=newline_style,
                 block_prefix=block_prefix,
                 line_prefix=line_prefix,
                 line_suffix=line_suffix,
+                header_indent=header_indent,
             )
         )
 
         # Field lines (no blanks in-between)
         for field in config.header_fields:
             value = header_values.get(field, "")
-            line = (
-                f"{line_indent}{field:<{width}}: {value}"
-                if width
-                else f"{line_indent}{field}: {value}"
-            )
+            inner = f"{field:<{width}}: {value}" if width else f"{field}: {value}"
             lines.append(
                 self._wrap_line(
-                    line, newline_style, line_prefix=line_prefix, line_suffix=line_suffix
+                    inner,
+                    newline_style=newline_style,
+                    line_prefix=line_prefix,
+                    line_suffix=line_suffix,
+                    header_indent=header_indent,
+                    after_prefix_indent=effective_line_indent,
                 )
             )
 
         # Compose postamble
         lines.extend(
             self.render_postamble_lines(
-                newline_style,
+                newline_style=newline_style,
                 block_suffix=block_suffix,
                 line_prefix=line_prefix,
                 line_suffix=line_suffix,
+                header_indent=header_indent,
             )
         )
 
@@ -477,10 +550,10 @@ class HeaderProcessor:
         """Determine where to insert the header based on file type policy.
 
         Default behavior is *shebang-aware*:
-        - If the file type policy declares ``supports_shebang=True`` and the first line
-          starts with ``#!``, insert the header *after* the shebang (and optional encoding
-          line when ``encoding_line_regex`` is provided).
-        - Otherwise, insert at the top of file (index 0).
+          - If the file type policy declares ``supports_shebang=True`` and the first line
+            starts with ``#!``, insert the header *after* the shebang (and optional encoding
+            line when ``encoding_line_regex`` is provided).
+          - Otherwise, insert at the top of file (index 0).
 
         If inserting after a preamble and the next line is already blank, consume exactly
         one existing blank line so that a single blank separates the preamble from the header.
@@ -565,14 +638,14 @@ class HeaderProcessor:
         Subclasses may override this to enforce format-specific constraints.
 
         Args:
-          lines (list[str]): Full file content split into lines.
-          header_start_idx (int): 0-based index of the candidate header's first line.
-          header_end_idx (int): 0-based index of the candidate header's last line (inclusive).
-          anchor_idx (int): 0-based index where a header would be inserted per policy.
+            lines (list[str]): Full file content split into lines.
+            header_start_idx (int): 0-based index of the candidate header's first line.
+            header_end_idx (int): 0-based index of the candidate header's last line (inclusive).
+            anchor_idx (int): 0-based index where a header would be inserted per policy.
 
         Returns:
-          bool: ``True`` if the candidate lies within the configured proximity window,
-          otherwise ``False``.
+            bool: ``True`` if the candidate lies within the configured proximity window,
+                otherwise ``False``.
 
         Notes:
             The proximity window can be tuned per file type by defining
@@ -596,11 +669,11 @@ class HeaderProcessor:
         the computed insertion anchor.
 
         Args:
-          lines (list[str]): Full list of lines from the file.
+            lines (list[str]): Full list of lines from the file.
 
         Returns:
-          tuple[int | None, int | None]: ``(start_index, end_index)`` (inclusive) when
-          a valid header is found, or ``(None, None)`` otherwise.
+            tuple[int | None, int | None]: ``(start_index, end_index)`` (inclusive) when
+                a valid header is found, or ``(None, None)`` otherwise.
         """
         anchor_idx = self.get_header_insertion_index(lines) or 0
 
@@ -784,11 +857,11 @@ class HeaderProcessor:
         helper does no placement validation; callers should apply policy checks.
 
         Args:
-          lines: Full file content split into lines.
+            lines: Full file content split into lines.
 
         Returns:
-          A tuple ``(start_index, end_index)`` where both are 0-based line indices of
-          the directive lines (inclusive), or ``(None, None)`` when no pair is found.
+            A tuple ``(start_index, end_index)`` where both are 0-based line indices of
+            the directive lines (inclusive), or ``(None, None)`` when no pair is found.
         """
         start_index: int | None = None
         end_index: int | None = None
@@ -858,12 +931,12 @@ class HeaderProcessor:
         surrounding context.
 
         Args:
-          original_lines (list[str]): The original file lines.
-          insert_index (int): Line index at which the header will be inserted.
-          rendered_header_lines (list[str]): The header lines to insert.
+            original_lines (list[str]): The original file lines.
+            insert_index (int): Line index at which the header will be inserted.
+            rendered_header_lines (list[str]): The header lines to insert.
 
         Returns:
-          list[str]: Possibly modified header lines to insert at ``insert_index``.
+            list[str]: Possibly modified header lines to insert at ``insert_index``.
         """
         return rendered_header_lines
 
@@ -876,11 +949,11 @@ class HeaderProcessor:
         back to the standard line-based insertion path.
 
         Args:
-          original_text (str): Full file content as a single string.
+            original_text (str): Full file content as a single string.
 
         Returns:
-          int | None: 0-based character offset at which to insert, or ``None`` to
-          use the line-based insertion strategy.
+            int | None: 0-based character offset at which to insert, or ``None`` to
+                use the line-based insertion strategy.
         """
         return None
 
@@ -896,12 +969,12 @@ class HeaderProcessor:
         block sits on its own lines when performing text-based insertion.
 
         Args:
-          original_text (str): Full file content as a single string.
-          insert_offset (int): 0-based character offset where the header will be inserted.
-          rendered_header_text (str): The header block as a single string.
+            original_text (str): Full file content as a single string.
+            insert_offset (int): 0-based character offset where the header will be inserted.
+            rendered_header_text (str): The header block as a single string.
 
         Returns:
-          str: The (possibly modified) header text to splice into ``original_text`` at
-          ``insert_offset``.
+            str: The (possibly modified) header text to splice into ``original_text`` at
+                ``insert_offset``.
         """
         return rendered_header_text
