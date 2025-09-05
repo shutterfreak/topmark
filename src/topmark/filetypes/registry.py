@@ -18,10 +18,9 @@ Each HeaderProcessor is associated with a FileType by name.
 
 from collections.abc import Callable
 
+from topmark.config.logging import get_logger
 from topmark.filetypes.instances import get_file_type_registry
 from topmark.pipeline.processors.base import HeaderProcessor
-
-from ..config.logging import get_logger
 
 logger = get_logger(__name__)
 

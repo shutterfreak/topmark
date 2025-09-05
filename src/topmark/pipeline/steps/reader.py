@@ -56,6 +56,10 @@ def read(ctx: ProcessingContext) -> ProcessingContext:
         # Stop processing if the file cannot be resolved
         return ctx
 
+    # Safeguard: header_processor and file_type have been set in resolver.resolve()
+    assert ctx.header_processor, "context.header_processor not defined"
+    assert ctx.file_type, "context.file_type not defined"
+
     if ctx.path.stat().st_size == 0:
         logger.warning("Found empty file: %s", ctx.path)
         ctx.status.file = FileStatus.EMPTY_FILE
@@ -139,12 +143,35 @@ def read(ctx: ProcessingContext) -> ProcessingContext:
         ) as f:
             lines = list(f)
 
-        # Normalize a leading UTF-8 BOM so downstream steps work on BOM-free text.
-        # We remember its presence to re-attach it at write time in the updater.
+        # Normalize a leading UTF‑8 BOM so downstream steps work on BOM‑free text.
+        # We remember its presence to re‑attach it at write time in the updater.
         if lines and lines[0].startswith("\ufeff"):
             ctx.leading_bom = True
             lines = lines[:]  # copy to avoid mutating any shared list
             lines[0] = lines[0].lstrip("\ufeff")
+
+        # Record whether the (BOM‑normalized) first line starts with a shebang.
+        # This reflects the actual file content, independent of policy.
+        if lines and lines[0].startswith("#!"):
+            ctx.has_shebang = True
+
+        # Policy: on POSIX the shebang must be the very first two bytes. If this
+        # file type supports shebang handling and a BOM was present *before* the
+        # shebang, skip processing by default and surface a clear diagnostic.
+        policy = getattr(ctx.header_processor.file_type, "header_policy", None)
+        if ctx.leading_bom and ctx.has_shebang and policy and policy.supports_shebang:
+            ctx.diagnostics.append(
+                "UTF-8 BOM appears before the shebang; POSIX requires '#!' at byte 0. "
+                "TopMark will not modify this file by default. Consider removing the BOM "
+                "or using a future '--fix-bom' option to resolve this conflict."
+            )
+            logger.warning(
+                "BOM precedes shebang; skipping per policy (file type: %s): %s",
+                ctx.file_type.name if ctx.file_type else "<unknown>",
+                ctx.path,
+            )
+            ctx.status.file = FileStatus.SKIPPED_POLICY_BOM_BEFORE_SHEBANG
+            return ctx
 
         # Record whether the file ends with a newline (used when generating patches)
         if len(lines) == 0:

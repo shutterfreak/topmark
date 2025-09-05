@@ -15,15 +15,110 @@ TopMark for file recognition and header processing. It also builds a registry
 mapping file type names to their definitions.
 """
 
+from pathlib import Path
+
 from topmark.config.logging import get_logger
 from topmark.filetypes.policy import FileTypeHeaderPolicy
 
-from .base import FileType
+from .base import ContentGate, FileType
 
 logger = get_logger(__name__)
 
 # Note: some FileTypes may set skip_processing=True to recognize-but-skip
 # (e.g., JSON, LICENSE, py.typed).
+
+
+# Heuristic content matchers
+
+
+def _looks_like_jsonc(path: Path) -> bool:
+    r"""Heuristic content matcher for JSON-with-comments (JSONC/CJSON).
+
+    The detector avoids false positives from URLs or tokens embedded inside
+    JSON strings by using a tiny state machine over a limited prefix.
+
+    Strategy (fast, best-effort):
+    - Read up to ~128 KiB, UTF-8 with surrogate escapes ignored.
+    - Track states: in_string (JSON double-quoted), in_line_comment, in_block_comment.
+    - Properly handle string escapes (e.g. `\"`), including backslash runs.
+    - Report True upon encountering `//` or `/* */` while **not** in a string
+      and **not** in an existing block comment.
+    """
+    try:
+        text = path.read_text(encoding="utf-8", errors="ignore")[:131072]
+    except OSError:
+        return False
+
+    # Quick structural sanity: likely JSON if it contains braces/brackets.
+    if not any(c in text for c in ("{", "[")):
+        return False
+
+    in_string = False
+    in_line_comment = False
+    in_block_comment = False
+    i = 0
+    n = len(text)
+
+    while i < n:
+        ch = text[i]
+
+        # Handle end of line comments
+        if in_line_comment:
+            if ch == "\n" or ch == "\r":
+                in_line_comment = False
+            i += 1
+            continue
+
+        # Handle block comments
+        if in_block_comment:
+            if ch == "*" and i + 1 < n and text[i + 1] == "/":
+                in_block_comment = False
+                i += 2
+            else:
+                i += 1
+            continue
+
+        # Not currently in any comment
+        if in_string:
+            # Inside a JSON string (double quotes only).
+            if ch == "\\":
+                # Skip a backslash-escaped code point (handles sequences like \\\" correctly)
+                i += 2
+                continue
+            if ch == '"':
+                # Count preceding backslashes to determine if escaped.
+                bs = 0
+                j = i - 1
+                while j >= 0 and text[j] == "\\":
+                    bs += 1
+                    j -= 1
+                if (bs % 2) == 0:
+                    in_string = False
+            i += 1
+            continue
+
+        # Not in string/any comment: check for comment starts first.
+        if ch == "/" and i + 1 < n:
+            nxt = text[i + 1]
+            if nxt == "/":
+                # Found a line comment outside strings ⇒ JSONC
+                return True
+            if nxt == "*":
+                # Enter block comment outside strings ⇒ JSONC
+                in_block_comment = True
+                i += 2
+                continue
+
+        # Enter string?
+        if ch == '"':
+            in_string = True
+            i += 1
+            continue
+
+        i += 1
+
+    return False
+
 
 # Alphabetical list of all supported file types (singleton instances).
 file_types: list[FileType] = [
@@ -167,6 +262,43 @@ file_types: list[FileType] = [
         ),
     ),
     FileType(
+        name="json",
+        extensions=[".json"],
+        filenames=[],
+        patterns=[],
+        description="JSON (no comments; unheaderable)",
+        skip_processing=True,
+    ),
+    FileType(
+        name="jsonc",
+        extensions=[".json"],
+        filenames=[],
+        patterns=[],
+        description="JSON with comments (JSONC/CJSON)",
+        skip_processing=False,
+        content_matcher=_looks_like_jsonc,
+        content_gate=ContentGate.IF_EXTENSION,
+        header_policy=FileTypeHeaderPolicy(
+            supports_shebang=False,
+            encoding_line_regex=None,
+            pre_header_blank_after_block=1,
+            ensure_blank_after_header=True,
+        ),
+    ),
+    FileType(
+        name="julia",
+        extensions=[".jl"],
+        filenames=[],
+        patterns=[],
+        description="Julia source files (*.jl)",
+        header_policy=FileTypeHeaderPolicy(
+            supports_shebang=True,
+            encoding_line_regex=None,
+            pre_header_blank_after_block=1,
+            ensure_blank_after_header=True,
+        ),
+    ),
+    FileType(
         name="kotlin",
         extensions=[".kt", ".kts"],
         filenames=[],
@@ -195,27 +327,6 @@ file_types: list[FileType] = [
         description="Make build scripts (Makefile)",
         header_policy=FileTypeHeaderPolicy(
             supports_shebang=False,
-            ensure_blank_after_header=True,
-        ),
-    ),
-    FileType(
-        name="json",
-        extensions=[".json"],
-        filenames=[],
-        patterns=[],
-        description="JSON (no comments; unheaderable)",
-        skip_processing=True,
-    ),
-    FileType(
-        name="julia",
-        extensions=[".jl"],
-        filenames=[],
-        patterns=[],
-        description="Julia source files (*.jl)",
-        header_policy=FileTypeHeaderPolicy(
-            supports_shebang=True,
-            encoding_line_regex=None,
-            pre_header_blank_after_block=1,
             ensure_blank_after_header=True,
         ),
     ),

@@ -37,12 +37,37 @@ NO_LINE_ANCHOR: int = -1
 class HeaderProcessor:
     """Base class for header processors that handle specific file types.
 
-    This class defines the interface and common logic for processing headers in files.
-    Subclasses should specify the associated file_type and can override methods for
-    scanning, parsing, rendering, and other header operations.
+    A *header processor* knows how to **find**, **render**, and **modify** TopMark
+    headers for one concrete :class:`~topmark.filetypes.base.FileType`. The registry
+    binds a processor instance to a file type at runtime (``proc.file_type = ft``),
+    and TopMark uses that pairing during scanning and updates.
 
-    Processors are matched to files by their file_type to enable flexible processing
-    pipelines based on file extensions and comment styles.
+    Responsibilities:
+        - **Scanning:** Locate existing headers via start/end markers and comment
+          affixes (see :meth:`get_header_bounds`, :meth:`line_has_directive`).
+        - **Parsing:** Extract key→value pairs from the header payload (see
+          :meth:`parse_fields`).
+        - **Rendering:** Emit preamble/fields/postamble with proper comment syntax
+          (see :meth:`render_preamble_lines`, :meth:`render_header_lines`,
+          :meth:`render_postamble_lines`).
+        - **Placement policy:** Determine insertion points; default is
+          *shebang‑aware* for languages like Python (see
+          :meth:`get_header_insertion_index`).
+        - **Update/strip helpers:** Prepare insertions and removals in a way that
+          preserves surrounding whitespace (see
+          :meth:`prepare_header_for_insertion`, :meth:`strip_header_block`).
+
+    What this class does **not** do:
+        - **Content‑based recognition.** Deciding *which* file type a path belongs
+          to is the role of :class:`~topmark.filetypes.base.FileType` via
+          :attr:`FileType.content_matcher`. The processor assumes it is already
+          associated with the correct file type.
+
+    Extension points:
+        Subclasses typically set comment delimiters (``line_prefix``,
+        ``line_suffix``, ``block_prefix``, ``block_suffix``) and may override any of
+        the hooks documented below to support format‑specific behavior (e.g., XML
+        prolog placement or Markdown fences).
     """
 
     file_type: FileType | None = None

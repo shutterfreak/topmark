@@ -34,18 +34,44 @@ from topmark.pipeline.processors.base import NO_LINE_ANCHOR
 logger = get_logger(__name__)
 
 
-def _prepend_bom_to_lines_if_needed(lines: list[str], leading_bom: bool) -> list[str]:
-    """Prepend a UTF-8 BOM to the first line when requested.
+def _prepend_bom_to_lines_if_needed(lines: list[str], ctx: ProcessingContext) -> list[str]:
+    """Re-prepend a UTF-8 BOM to the first line when appropriate.
+
+    The reader strips a leading BOM ("\ufeff") from the in-memory image and records
+    that fact in ``ctx.leading_bom``. Before returning an updated image, the updater
+    re-attaches the BOM **unless** doing so would break a POSIX shebang.
+
+    Behavior:
+        * If ``ctx.leading_bom`` is False, return ``lines`` unchanged.
+        * If a shebang is present (``ctx.has_shebang`` is True), do **not** prepend a BOM;
+          append a diagnostic explaining why and return ``lines`` unchanged.
+        * Otherwise, prepend a BOM to the first line if it is not already present.
 
     Args:
-        lines: Updated file content lines.
-        leading_bom: Whether the original file started with a BOM.
+        lines: The updated file content as a list of lines (each with its own newline).
+        ctx: The pipeline processing context (provides ``leading_bom`` and ``has_shebang``).
 
     Returns:
-        The (possibly) modified list of lines. Never ``None``.
+        list[str]: The (possibly) modified list of lines. Never ``None``.
     """
-    if not lines or not leading_bom:
+    if not lines:
         return lines
+    if not ctx.leading_bom:
+        # Return unmodified lines (no BOM to insert)
+        return lines
+
+    # leading_bom is True
+    if ctx.has_shebang:
+        # Do not re-add the BOM which was stripped in reader.read(); a valid shebang
+        # must start at byte 0 on POSIX systems.
+        ctx.diagnostics.append(
+            "UTF-8 BOM appears before the shebang; POSIX requires '#!' at byte 0. "
+            "TopMark will not modify this file by default. Consider removing the BOM "
+            "or using a future '--fix-bom' option to resolve this conflict."
+        )
+        return lines
+
+    # Re-attach the stripped BOM
     first = lines[0]
     if not first.startswith("\ufeff"):
         lines = lines[:]  # shallow copy to avoid mutating caller’s list
@@ -78,9 +104,7 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
     if ctx.status.strip == StripStatus.READY:
         # Previous step computed updated_file_lines for a removal.
         # Ensure BOM policy is respected on the final output.
-        ctx.updated_file_lines = _prepend_bom_to_lines_if_needed(
-            ctx.updated_file_lines or [], getattr(ctx, "leading_bom", False)
-        )
+        ctx.updated_file_lines = _prepend_bom_to_lines_if_needed(ctx.updated_file_lines or [], ctx)
         ctx.status.write = WriteStatus.REMOVED  # actual apply path will only finalize the write
         return ctx
 
@@ -113,7 +137,7 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
             original_lines[:start] + rendered_expected_header_lines + original_lines[end + 1 :]
         )
         # Prepend BOM if needed
-        new_lines = _prepend_bom_to_lines_if_needed(new_lines, getattr(ctx, "leading_bom", False))
+        new_lines = _prepend_bom_to_lines_if_needed(new_lines, ctx)
         # If replacement is identical to the original, treat as a no-op.
         if new_lines == original_lines:
             ctx.status.write = WriteStatus.SKIPPED
@@ -185,7 +209,7 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
             + original_lines[insert_index:]
         )
         # Prepend BOM if needed
-        new_lines = _prepend_bom_to_lines_if_needed(new_lines, getattr(ctx, "leading_bom", False))
+        new_lines = _prepend_bom_to_lines_if_needed(new_lines, ctx)
         if new_lines == original_lines:
             ctx.updated_file_lines = original_lines
             ctx.status.write = WriteStatus.SKIPPED

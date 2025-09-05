@@ -70,6 +70,7 @@ class FileStatus(BaseStatus):
     SKIPPED_FILE_ERROR = "skipped (error reading file)"
     SKIPPED_NOT_TEXT_FILE = "skipped (not a text file)"
     SKIPPED_NO_LINE_END = "skipped (no line end)"
+    SKIPPED_POLICY_BOM_BEFORE_SHEBANG = "skipped (policy: BOM before shebang)"
     UNREADABLE = "unreadable"
     SKIPPED_UNSUPPORTED = "skipped (unsupported file type)"
     SKIPPED_NO_HEADER_PROCESSOR = "skipped (no header processor)"
@@ -92,6 +93,7 @@ class FileStatus(BaseStatus):
                 FileStatus.SKIPPED_FILE_ERROR: chalk.red_bright,
                 FileStatus.SKIPPED_NOT_TEXT_FILE: chalk.red,
                 FileStatus.SKIPPED_NO_LINE_END: chalk.red,
+                FileStatus.SKIPPED_POLICY_BOM_BEFORE_SHEBANG: chalk.red,
                 FileStatus.UNREADABLE: chalk.red_bright,
                 FileStatus.SKIPPED_UNSUPPORTED: chalk.yellow,
                 FileStatus.SKIPPED_NO_HEADER_PROCESSOR: chalk.red,
@@ -322,6 +324,7 @@ class ProcessingContext:
     )
     file_lines: list[str] | None = None  # Original file content as a list of lines
     leading_bom: bool = False  # True if original file began with a UTF-8 BOM
+    has_shebang: bool = False  # True if the first line starts with '#!' (post-BOM normalization)
     newline_style: str = "\n"  # Newline style (default = "\n")
     ends_with_newline: bool | None = None  # True if file ends with a newline sequence
 
