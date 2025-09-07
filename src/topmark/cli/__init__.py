@@ -19,5 +19,9 @@ Typical usage:
         [project.scripts]
         topmark = "topmark.cli.main:cli"
 
-All subcommands live in :mod:`topmark.cli.commands`.
+All subcommands live in [`topmark.cli.commands`][].
 """
+
+from .main import cli
+
+__all__ = ["cli"]
