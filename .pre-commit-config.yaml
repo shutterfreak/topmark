@@ -44,4 +44,4 @@ repos:
         files: "\\.md$"
         additional_dependencies:
           - mdformat-tables
-        exclude: ^docs/api/index\.md$
+        exclude: ^docs/api/public\.md$

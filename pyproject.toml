@@ -120,7 +120,7 @@ wrap = 100
 extensions = ["tables"]
 # Exclude auto-generated API page from formatting (Python 3.13)
 # NOTE: Please use `make format-check` and `make format`
-exclude = ["docs/api/index.md"]
+exclude = ["docs/api/public.md"]
 
 
 # TOML formatting

@@ -26,8 +26,18 @@ Use this section if you need details on functions, classes, or constants availab
 
 ## Public API (stable)
 
-::: topmark.api options: heading_level: 2 show_root_heading: false members_order: source filters: -
-"!^\_"
+::: topmark.api
+    options:
+      heading_level: 2
+      show_root_heading: false
+      members_order: source
+      filters:
+        - "!^_"
 
-::: topmark.registry options: heading_level: 2 show_root_heading: false members_order: source
-filters: - "!^\_"
+::: topmark.registry
+    options:
+      heading_level: 2
+      show_root_heading: false
+      members_order: source
+      filters:
+        - "!^_"
