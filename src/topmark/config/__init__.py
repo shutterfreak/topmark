@@ -22,14 +22,20 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from importlib.resources import files
 from pathlib import Path
-from typing import Any, TypeGuard
+from typing import Any, Mapping, TypeGuard
 
 import toml
 
-from topmark.cli.cli_types import ArgsNamespace
 from topmark.config.logging import get_logger
 from topmark.constants import DEFAULT_TOML_CONFIG_RESOURCE, VALUE_NOT_SET
 from topmark.rendering.formats import HeaderOutputFormat
+
+# ArgsLike: generic mapping accepted by config loaders (works for CLI namespaces and API dicts).
+ArgsLike = Mapping[str, Any]
+# We use ArgsLike (Mapping[str, Any]) instead of a CLI-specific namespace to
+# keep the config layer decoupled from the CLI. The implementation uses .get()
+# and key lookups, so Mapping is the right structural type. This allows the
+# CLI to pass its namespace and the API/tests to pass plain dicts.
 
 logger = get_logger(__name__)
 
@@ -42,6 +48,7 @@ class Config:
     overridden by CLI arguments, or set programmatically. It supports merging multiple configuration
     layers, including defaults, project-specific config files, explicit config file overrides,
     and CLI argument overrides.
+    Configuration entry points accept an ArgsLike mapping rather than a CLI-specific namespace.
 
     Attributes:
         timestamp (str): ISO-formatted timestamp when the Config instance was created.
@@ -279,15 +286,15 @@ class Config:
             file_types=file_type_set,
         )
 
-    def apply_cli_args(self, args: ArgsNamespace) -> "Config":
-        """Update Config fields based on CLI arguments.
+    def apply_cli_args(self, args: ArgsLike) -> "Config":
+        """Update Config fields based on an arguments mapping (CLI or API).
 
-        This method applies overrides from the CLI arguments namespace to the
-        current Config instance. It does not handle CLI flags that influence
-        config file loading(e.g., --no-config or --config).
+        This method applies overrides from a parsed arguments mapping to the current
+        Config instance. It does not handle flags that influence config file discovery
+        (e.g., --no-config, --config).
 
         Args:
-            args (ArgsNamespace): Parsed CLI arguments.
+            args (ArgsLike): Parsed arguments mapping (from CLI or API).
 
         Returns:
             Config: The updated Config instance with CLI overrides applied.
@@ -392,7 +399,7 @@ class Config:
         return config
 
     @classmethod
-    def load_merged(cls, args: ArgsNamespace) -> "Config":
+    def load_merged(cls, args: ArgsLike) -> "Config":
         """Load and merge configuration layers into a single Config instance.
 
         The merging order is:
@@ -402,7 +409,7 @@ class Config:
         4. CLI overrides applied last
 
         Args:
-            args (ArgsNamespace): Parsed CLI arguments.
+            args (ArgsLike): Parsed arguments mapping (from CLI or API).
 
         Returns:
             Config: The final merged Config instance.
@@ -422,21 +429,29 @@ class Config:
                     # Stop after first found local config file
                     break
 
-        # Load each explicitly passed --config file (in order)
-        for config_entry in args.get("config_files") or []:
-            if isinstance(config_entry, Path):
-                if config_entry.exists():
-                    logger.info("Loading config override from: %s", config_entry)
-                    extra_config = cls.from_toml_file(config_entry)
-                    if extra_config:
-                        config = config.merge_with(extra_config)
+        # Process additional config files passed via CLI/API
+        # Accept both strings and Path objects from CLI or API callers.
+        entries: list[str | Path] = args.get("config_files", [])
+        for entry in entries:
+            p: Path | None = None
+            if isinstance(entry, Path):
+                p = entry
+            else:  # isinstance(entry, str):
+                p = Path(entry)
+
+            logger.debug(
+                "Adding config file '%s' (type=%s)",
+                entry,
+                type(entry).__name__,
+            )
+
+            if p.exists():
+                logger.info("Loading config override from: %s", p)
+                extra_config = cls.from_toml_file(p)
+                if extra_config:
+                    config = config.merge_with(extra_config)
             else:
-                # Log and skip invalid config file entries that are not Path instances
-                logger.debug(
-                    "Skipping non-Path config_files entry '%s' (%s)",
-                    config_entry,
-                    type(config_entry),
-                )
+                logger.debug("Config file does not exist: %s", p)
 
         # Apply CLI argument overrides last to ensure precedence
         config = config.apply_cli_args(args)

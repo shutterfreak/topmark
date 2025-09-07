@@ -74,6 +74,12 @@ class HeaderProcessor:
         ``line_suffix``, ``block_prefix``, ``block_suffix``) and may override any of
         the hooks documented below to support format‑specific behavior (e.g., XML
         prolog placement or Markdown fences).
+
+    Public API note:
+        In the stable public surface, consider typing against a minimal protocol
+        rather than this concrete base if you are authoring plugins. The registry
+        binds processors to file types and exposes read‑only metadata for common
+        integrations.
     """
 
     file_type: FileType | None = None

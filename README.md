@@ -163,6 +163,57 @@ topmark processors
 topmark processors --format markdown --long
 ```
 
+______________________________________________________________________
+
+## 🔌 Public API (stable)
+
+TopMark exposes a small, stable Python API for integrations. Import from `topmark.api` for core
+operations, and use the registry facade for read-only discovery.
+
+### Quickstart
+
+```python
+from pathlib import Path
+from topmark import api
+
+# Check (dry-run by default)
+result = api.check([Path("src")])
+print(result.summary)           # {"unchanged": N, "error": M, ...}
+print(result.had_errors)        # True/False
+
+# Apply changes explicitly
+applied = api.check([Path("src")], apply=True)
+
+# Remove headers
+stripped = api.strip([Path("src")], apply=False)
+```
+
+### Registry facade (read-only)
+
+```python
+from topmark.registry import Registry
+
+fts = Registry.filetypes()      # Mapping[str, FileType]
+procs = Registry.processors()   # Mapping[str, HeaderProcessor]
+for b in Registry.bindings():   # (filetype, optional processor)
+    print(b.filetype.name, bool(b.processor))
+```
+
+> **Note:** `Registry` is **not** re-exported from `topmark.api`; import it from `topmark.registry`.
+
+### Version helper
+
+```python
+from topmark import api
+print(api.version())  # e.g. "0.3.0"
+```
+
+### Stability
+
+- `topmark.api` and the `Registry` facade are covered by semantic versioning.
+- Low-level registries (`FileTypeRegistry`, `HeaderProcessorRegistry`) remain available for
+  plugins/tests but are **advanced** and may change between minor versions.
+
 ### Adding & updating headers
 
 Use the `topmark check` command to insert or update headers. It’s **dry‑run by default**; add
