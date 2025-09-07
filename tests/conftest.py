@@ -23,6 +23,8 @@ import pytest
 from topmark.config.logging import TRACE_LEVEL, setup_logging
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from topmark.config import Config
 
 F = TypeVar("F", bound=Callable[..., object])
@@ -66,3 +68,43 @@ def pytest_configure(config: Config) -> None:  # pylint: disable=unused-argument
     ensuring detailed output is captured during test execution.
     """
     setup_logging(level=TRACE_LEVEL)
+
+
+@pytest.fixture
+def isolation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Run each CLI test in an isolated temporary directory.
+
+    This keeps Click's working directory-dependent logic predictable and avoids
+    scanning the repository when the test invokes commands with paths like ".".
+    """
+    cwd = tmp_path / "proj"
+    cwd.mkdir()
+    (cwd / "src").mkdir()
+    # create a tiny source file to satisfy any basic discovery, not processed further
+    (cwd / "src" / "dummy.py").write_text("print('hello')\n", encoding="utf-8")
+
+    monkeypatch.chdir(cwd)
+    # Avoid noisy logging during tests
+    monkeypatch.setenv("TOPMARK_SUPPRESS_BANNER", "1")
+    return cwd
+
+
+def cfg(**overrides: Any) -> dict[str, Any]:
+    """Build a minimal config mapping for API calls.
+
+    The shape mirrors the TOML structure (e.g., `[files]` table). Callers can
+    override nested keys by passing dictionaries that will be merged shallowly.
+    """
+    base: dict[str, Any] = {
+        "files": {
+            # When provided, file discovery should consider only these types
+            "file_types": ["python"],
+        },
+        # Other top-level keys are added as needed by tests via overrides
+    }
+    for k, v in overrides.items():
+        if isinstance(v, dict) and isinstance(base.get(k), dict):
+            base[k].update(v)  # shallow merge for convenience in tests
+        else:
+            base[k] = v
+    return base
