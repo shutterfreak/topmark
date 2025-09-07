@@ -56,7 +56,6 @@ help:
 	@echo ""
 	@echo "Setup:"
 	@echo "  venv                     Create virtual environment (.venv) and install pip-tools"
-	@echo "  rtd-venv                 Create RTD docs virtual environment (.rtd) and install docs deps"
 	@echo "  setup                    Run full dev setup (venv, compile locks, sync dev)"
 	@echo "  dev-install              Install TopMark in editable mode into the active venv"
 	@echo ""
@@ -82,10 +81,14 @@ help:
 	@echo "  test                     Run tests"
 	@echo ""
 	@echo "Documentation:"
+	@echo "  rtd-venv                 Create RTD docs virtual environment (.rtd) and install docs deps"
+	@echo "  upgrade-rtd              Upgrade lock file with pip-compile -U and sync docs env"
+	@echo ""
 	@echo "  docs-serve               Serve docs locally (uses .rtd) with live reload"
 	@echo "  docs-build               Build docs strictly (uses .rtd)"
 	@echo "  docs-verify              Alias for docs-build (CI-friendly)"
 	@echo "  docs-deploy              Deploy docs to GitHub Pages (gh-deploy) from .rtd"
+
 	@echo ""
 	@echo "Packaging:"
 	@echo "  build                    Build the project"
@@ -194,7 +197,7 @@ format-check: check-venv
 	@echo "Checking code formatting..."
 	$(VENV_BIN)/ruff format --check .
 	@echo "Checking MarkDown formatting..."
-	$(VENV_BIN)/mdformat --check *md docs src tests
+	git ls-files -- '**/*.md' ':(exclude)docs/api/index.md' | xargs -r $(VENV_BIN)/mdformat --check
 	@echo "Checking TOML formatting..."
 	$(VENV_BIN)/taplo format --check .
 
@@ -202,7 +205,7 @@ format: check-venv
 	@echo "Formatting code..."
 	$(VENV_BIN)/ruff format .
 	@echo "Formatting MarkDown..."
-	$(VENV_BIN)/mdformat *md docs src tests 
+	git ls-files -- '**/*.md' ':(exclude)docs/api/index.md' | xargs -r $(VENV_BIN)/mdformat
 	@echo "Formatting TOML..."
 	$(VENV_BIN)/taplo format .
 
@@ -241,6 +244,9 @@ rtd-venv:
 		$(RTD_VENV_BIN)/pip install pip-tools \
 	)
 	@echo "Activate the ReadTheDocs virtual environment ($(RTD_VENV))  with: source $(RTD_VENV_BIN)/activate"
+
+upgrade-rtd: check-rtd-venv
+	$(RTD_VENV_BIN)/pip-compile --upgrade -c constraints.txt --strip-extras requirements-docs.in
 
 docs-verify: check-rtd-venv
 	$(MKDOCS_RTD) build --strict

@@ -12,8 +12,8 @@ topmark:header:end
 
 # TopMark `processors` Command Guide
 
-The `processors` subcommand lists registered **header processors** and the **file types** they handle.
-Use it to verify how file types are mapped to their processing logic.
+The `processors` subcommand lists registered **header processors** and the **file types** they
+handle. Use it to verify how file types are mapped to their processing logic.
 
 ______________________________________________________________________
 
@@ -82,4 +82,5 @@ ______________________________________________________________________
 ## Notes
 
 - The mapping between file types and processors is established at registration time.
-- Unbound file types may be intentional (e.g., skip processing) or indicate a missing implementation.
+- Unbound file types may be intentional (e.g., skip processing) or indicate a missing
+  implementation.

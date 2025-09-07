@@ -1,0 +1,17 @@
+# topmark:header:start
+#
+#   file         : .mdformat.toml
+#   file_relpath : .mdformat.toml
+#   project      : TopMark
+#   license      : MIT
+#   copyright    : (c) 2025 Olivier Biot
+#
+# topmark:header:end
+
+# Auuthoritative mdformat config (replicated in pyproject.toml for consistency)
+wrap = 100
+extensions = ["tables"]
+
+# Note: Exclusions are handled in pre-commit (hook-level `exclude:`) and
+# via dev commands/tasks (see CONTRIBUTING.md). `.mdformat.toml`'s `exclude`
+# requires Python 3.13+ and is not used here to keep 3.10+ compatibility.

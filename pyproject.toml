@@ -82,8 +82,14 @@ docs = [
   "mkdocs-material>=9.5",
   # Auto API reference from docstrings/type hints:
   "mkdocstrings[python]>=0.25",
+  # Enable symbol cross-refs in Markdown
+  "mkdocs-autorefs>=0.5",
   # Extra Markdown extensions (admonitions, superfences, etc.):
   "pymdown-extensions>=10.8",
+  # Programmatically generate documentation pages during the build
+  "mkdocs-gen-files>=0.5,<0.6",
+  # Python linter & formatter in one tool (docs uses formatter only):
+  "ruff",
 ]
 test = [
   # Unit testing framework:
@@ -107,11 +113,14 @@ include-package-data = true
 [tool.setuptools.packages.find]
 where = ["src"]
 
-# Markdown formatting configuration
+# Markdown formatting configuration (normative reference: .mdformat.toml)
 # Aligns with Prettier in VS Code and the mdformat pre-commit hook
 [tool.mdformat]
 wrap = 100
 extensions = ["tables"]
+# Exclude auto-generated API page from formatting (Python 3.13)
+# NOTE: Please use `make format-check` and `make format`
+exclude = ["docs/api/index.md"]
 
 
 # TOML formatting
@@ -127,7 +136,7 @@ enabled = false # Disable catalog validation but keep syntax linting and formatt
 
 
 [tool.mypy]
-mypy_path = ["src", "tests"]
+mypy_path = ["src", "tests", "typings"]
 
 [tool.pylint]
 
@@ -202,6 +211,7 @@ default_stages = ["commit"]
 # Pyright configuration
 [tool.pyright]
 typeCheckingMode = "strict"
+stubPath = "typings"
 pythonVersion = "3.10"
 include = ["src", "tests"]
 exclude = [".venv", "venv", "build", "dist", "**/__pycache__"]

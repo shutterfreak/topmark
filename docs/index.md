@@ -25,6 +25,20 @@ topmark check --summary --config topmark.toml src/
 topmark check --apply src/
 ```
 
+### Public API quickstart
+
+```python
+from topmark import api
+res = api.check(["src"])          # dry-run
+res2 = api.check(["src"], apply=True)
+```
+
+```python
+from topmark.registry import Registry
+for b in Registry.bindings():
+    print(b.filetype.name, bool(b.processor))
+```
+
 ## What it does
 
 - Detects, inserts, and updates per‑file headers
@@ -77,7 +91,8 @@ relative_to = "."
 - **Install:** [Installation guide](install.md)
 - **Usage:** Pre‑commit integration ([usage/pre-commit.md](usage/pre-commit.md))
 - **CI/CD:** Release workflow ([ci/release-workflow.md](ci/release-workflow.md))
-- **API:** Reference ([api/index.md](api/index.md))
+- **Public API:** Reference ([api/public.md](api/public.md))
+- **Internals:** Reference ([api/internals.md](api/internals.md))
 - **Contributing:** [Guidelines](contributing.md)
 
 ______________________________________________________________________

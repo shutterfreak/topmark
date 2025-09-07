@@ -12,9 +12,9 @@ topmark:header:end
 
 # TopMark `filetypes` Command Guide
 
-The `filetypes` subcommand lists TopMark’s supported **file type identifiers** and their **header policies**.
-Use it to discover which identifiers you can pass to `--file-type` and to understand how headers will
-be rendered per type.
+The `filetypes` subcommand lists TopMark’s supported **file type identifiers** and their **header
+policies**. Use it to discover which identifiers you can pass to `--file-type` and to understand how
+headers will be rendered per type.
 
 ______________________________________________________________________
 

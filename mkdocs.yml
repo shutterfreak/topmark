@@ -38,12 +38,13 @@ markdown_extensions:
   - pymdownx.snippets
 plugins:
   - search
+  - autorefs
   - mkdocstrings:
       handlers:
         python:
           paths: ["src"]
           options:
-            docstring_style: google        # or "numpy"/"sphinx"
+            docstring_style: google
             show_signature: true
             separate_signature: true
             show_source: true
@@ -55,6 +56,9 @@ plugins:
             filters:
               - "!^_"                      # hide “private” members
               - "!^__"                     # hide dunder members like __init__
+  - gen-files:
+      scripts:
+        - docs/gen_api_pages.py
 nav:
   - Home: index.md
   - Installation: install.md
@@ -75,6 +79,7 @@ nav:
       - Release workflow: ci/release-workflow.md
   - Contributing: contributing.md
   - API:
-      - "Reference": api/index.md
+      - "Public API": api/public.md
+      - "Internals": api/internals.md
 extra_javascript:
   - assets/version-warning.js

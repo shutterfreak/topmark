@@ -235,7 +235,7 @@ Use this checklist before requesting review:
 - [ ] **PR title follows Conventional Commits** (e.g., `feat: add pre-commit hook`)
 - [ ] **Linked issue referenced** (e.g., `Closes #123`)
 - [ ] **`make verify` passes locally** (format, lint, types, docs build)
-- [ ] **Tests added/updated and `make test` passes**
+- [ ] **Tests added/updated** for code changes **and `make test` passes**
 - [ ] **Ran `pre-commit run --all-files`** (or `make pre-commit-run`)
 - [ ] **Docs updated as needed**
   - [ ] README
@@ -243,6 +243,8 @@ Use this checklist before requesting review:
   - [ ] examples
 - [ ] **User-facing changes called out** in the PR description (new flags/behavior)
 - [ ] **Version updated** in `pyproject.toml` if preparing a release
+- [ ] **Public API snapshot updated** if stable API surface changed (see
+  tests/api/test_public_api_snapshot.py)
 - [ ] **Commits are focused**; squashed/rebased where appropriate
 
 ## 📦 Build
@@ -286,22 +288,50 @@ Update the version in `pyproject.toml` before tagging:
 version = "0.2.0"
 ```
 
-______________________________________________________________________
+### 🔒 Stability policy
 
-## 🧩 TopMark configuration (this repo)
+TopMark follows **semantic versioning** for its public Python surfaces:
 
-TopMark reads configuration from `[tool.topmark]` in `pyproject.toml` (or a `topmark.toml`). Useful
-CLI flags:
+- **Stable**: `topmark.api` (functions, return types) and the facade `topmark.registry.Registry`.
+- **Advanced** (subject to change between minor versions): low-level registries `FileTypeRegistry`
+  and `HeaderProcessorRegistry`, and internal modules under `topmark.pipeline` and
+  `topmark.filetypes`.
 
-- `--skip-compliant` — only show files requiring changes
-- `--skip-unsupported` — hide recognized‑but‑unsupported formats (e.g., strict JSON)
-- `--apply` — perform changes (otherwise dry-run)
+Mutation helpers exposed on the facade (e.g., `Registry.register_filetype`) are part of the public
+API but mutate **global process state**. Prefer using them in tests and controlled plugin
+initialization paths.
 
-CI-friendly check:
+**Breaking changes** to stable surfaces require a **major** version bump.
 
-```bash
-topmark check --skip-compliant --skip-unsupported --quiet
-```
+### 🧪 SemVer guardrails during development
+
+We enforce API stability with tests and CI checks:
+
+1. **Public import smoke tests** — ensure `from topmark import api` and
+   `from topmark.registry import Registry` remain valid.
+1. **Facade shape tests** — check that `Registry.filetypes()`, `Registry.processors()` and
+   `Registry.bindings()` expose read-only mappings/tuples as expected.
+1. **Public API snapshot (optional gate)** — `tests/api/test_public_api_snapshot.py` compares
+   current public function signatures (and facade methods) with a committed JSON baseline
+   (`tests/api/public_api_snapshot.json`).
+   - Day-to-day development: the test **skips** if the baseline is absent.
+   - Before release: generate the baseline (instructions are in the test docstring), commit it, and
+     ensure the test passes.
+1. **CI version bump check (recommended)** — in CI, if the snapshot file changes in a PR, require
+   that `project.version` in `pyproject.toml` is bumped accordingly.
+
+#### Conventional Commits → SemVer mapping
+
+- `fix:` → patch
+- `feat:` → minor (unless it breaks the stable API)
+- `feat!:` or `BREAKING CHANGE:` → major
+- `refactor:`, `perf:`, `docs:`, `test:`, `build:`, `ci:`, `chore:` → no version bump by themselves,
+  unless they impact the stable API surface.
+
+#### Release checklist additions
+
+- Generate/refresh `tests/api/public_api_snapshot.json` and commit it.
+- Confirm `pyproject.toml` version is bumped to reflect the change type.
 
 ______________________________________________________________________
 
