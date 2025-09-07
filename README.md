@@ -205,7 +205,7 @@ for b in Registry.bindings():   # (filetype, optional processor)
 
 ```python
 from topmark import api
-print(api.version())  # e.g. "0.3.0"
+print(api.version())  # e.g. "0.3.1"
 ```
 
 ### Stability

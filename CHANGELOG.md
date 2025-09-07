@@ -16,6 +16,16 @@ All notable changes to this project will be documented in this file. This projec
 [Semantic Versioning](https://semver.org/) and follows a Keep‑a‑Changelog–style structure with the
 sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
+## [0.3.1] - 2025-09-07
+
+### Fixed
+
+- **Snapshot tests**: stabilize public API snapshot across Python 3.10–3.13 by normalizing
+  constructor signatures in tests (`<enum>` for Enum subclasses, `<class>` for other classes) while
+  retaining real signatures for callables. Updated baseline `tests/api/public_api_snapshot.json`
+  accordingly and refreshed the REPL snippet in the test docstring to generate a
+  cross‑version‑stable snapshot.
+
 ## [0.3.0] - 2025-09-07
 
 ### Added

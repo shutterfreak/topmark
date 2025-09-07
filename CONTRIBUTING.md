@@ -285,7 +285,7 @@ Update the version in `pyproject.toml` before tagging:
 
 ```toml
 [project]
-version = "0.3.0"
+version = "0.3.1"
 ```
 
 ### 🔒 Stability policy
