@@ -17,12 +17,12 @@ repos:
         # Optional: limit scope to supported text types
         # files: '\.(py|md|toml|ya?ml|sh|Makefile)$'
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.11
+    rev: v0.12.12
     hooks:
       - id: ruff-format
       - id: ruff-check
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.404
+    rev: v1.1.405
     hooks:
       - id: pyright
   - repo: https://github.com/pre-commit/pre-commit-hooks

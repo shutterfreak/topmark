@@ -16,50 +16,60 @@ All notable changes to this project will be documented in this file. This projec
 [Semantic Versioning](https://semver.org/) and follows a Keep‑a‑Changelog–style structure with the
 sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
-## [0.3.0] - 2025-09-03
+## [0.3.0] - 2025-09-07
 
 ### Added
 
-- New `processors` command to list registered header processors and their file types.
-  - Supports `--long` for detailed output including file type descriptions.
-  - Supports `--format default|json|ndjson|markdown` for consistent machine‑ and doc‑friendly
-    output.\
-    (Commits: `8742a46`, `ab346ed`)
-- Shared `markdown_table` helper (Click‑free) for beautified Markdown tables with dynamic widths and
-  per‑column alignment.\
-  (Commit: `8742a46`)
+- **Stable public API surface** under `topmark.api` and `topmark.registry`.
+  - Functions: `check()`, `strip()`, `version()`, `get_filetype_info()`, `get_processor_info()`.
+  - Result/metadata types: `Outcome`, `FileResult`, `RunResult`, `FileTypeInfo`, `ProcessorInfo`,
+    `WritePolicy`.
+  - Structural protocols for plugins: `PublicFileType`, `PublicHeaderProcessor`.
+  - `Registry` facade for read‑only discovery of file types, processors, and bindings.
+  - Public API tests and snapshot (`tests/api/public_api_snapshot.json`) to guard semver stability.
+    (Commits: `9ddd18e`, `ca5e3d7`)
+- **Docs overhaul** for API & internals:
+  - New `docs/api/public.md` (stable public API) and `docs/api/internals.md` (internals landing).
+  - New `docs/gen_api_pages.py` generator for per‑module internals with **breadcrumbs** and
+    **first‑line summaries**; mkdocs wiring via `mkdocs-gen-files` & `autorefs`.
+  - Local typing stub `typings/mkdocs_gen_files/__init__.pyi` so dev envs don’t need the plugin.
+  - Stability policy & semver guardrails added to CONTRIBUTING. (Commits: `bf67c9e`, `41e2543`)
+- **CLI improvement**: re‑export `cli` at `topmark.cli` for `from topmark.cli import cli`. (Commit:
+  `cb7437f`)
+- **New `processors` command** to list registered header processors and their file types (with
+  `--long` and `--format default|json|ndjson|markdown`). Shared Click‑free `markdown_table` helper
+  for Markdown output. (Commits: `8742a46`, `ab346ed`)
 
 ### Changed
 
 - **CLI refactor** to explicit subcommands and unified input planning; migrate away from custom
-  `typed_*` helpers to native Click decorators.\
-  Includes: `check`, `strip`, `dump-config`, `filetypes`, `init-config`, `show-defaults`, `version`;
-  common plumbing; standardized exit policy and summaries.\
-  (Commit: `58476b9`)
-- Output formatting polish: use Click’s built‑in styling across commands.\
-  (Commit: `cf5b789`)
-- `filetypes` detailed (`--long`) Markdown view now mirrors fields from default/JSON/NDJSON.\
-  (Commit: `8742a46`)
-- Documentation overhaul for CLI commands and guides; added new `processors` page; updated
-  navigation and README examples.\
-  (Commits: `2e26f35`, `ab346ed`)
+  `typed_*` helpers to native Click decorators. Includes: `check`, `strip`, `dump-config`,
+  `filetypes`, `init-config`, `show-defaults`, `version`; shared plumbing; standardized exit policy
+  & summaries. (Commit: `58476b9`)
+- **Config layer** now accepts `ArgsLike` mapping (CLI‑free) and no longer requires a Click
+  namespace in public API entry points. (Commit: `9ddd18e`)
+- **Docs**: split monolithic API page, add generator‑based internals, and fix breadcrumb/link
+  regressions; align pre‑commit and mdformat settings with new docs layout. (Commits: `bf67c9e`,
+  `41e2543`)
+- **Output formatting**: use Click’s built‑in styling; unify Markdown views for `filetypes` &
+  `processors`. (Commits: `cf5b789`, `8742a46`)
+- **Tooling**: bump pre-commit hooks (ruff v0.12.12, pyright v1.1.405); set project version to
+  `0.3.0` in `pyproject.toml` and `CONTRIBUTING.md`.
 
-### Removed
+#### ⚠️ Breaking
 
-- Implicit default command (`topmark --…`). Use `topmark check --…` instead.\
-  (Commit: `58476b9`)
-- Legacy `typed_*` Click helpers (`typed_command_of`, `typed_group`, `typed_option`,
-  `typed_argument`).\
-  (Commit: `58476b9`)
+- The public API surface is explicitly defined from this release forward and will follow semver.
+  Low‑level registries and internals remain **unstable**.
+- Implicit default CLI command removed (`topmark --…` → use `topmark check --…`). (Commit:
+  `58476b9`)
+- Legacy `typed_*` Click helpers removed. (Commit: `58476b9`)
 
 ### Fixed
 
-- Correct enum comparisons for `OutputFormat` in `check`, `strip`, and utils.\
-  (Commit: `c815f72`)
-- Markdown rendering branches in `filetypes` and `processors` trigger consistently; format handling
-  unified.\
-  (Commit: `8742a46`)
-- Typo fix in warning messages: “registered”.
+- Correct enum comparisons for `OutputFormat` across commands. (Commit: `c815f72`)
+- Markdown rendering branches trigger consistently; format handling unified. (Commit: `8742a46`)
+- Docs warnings around internal links/breadcrumbs resolved; configs aligned with `api/public.md`.
+  (Commits: `bf67c9e`, `41e2543`)
 
 ______________________________________________________________________
 
