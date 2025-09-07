@@ -81,5 +81,7 @@ nav:
   - API:
       - "Public API": api/public.md
       - "Internals": api/internals.md
+  - Development:
+      - "API Stability": dev/api-stability.md
 extra_javascript:
   - assets/version-warning.js

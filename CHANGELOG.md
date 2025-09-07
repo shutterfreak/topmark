@@ -16,6 +16,23 @@ All notable changes to this project will be documented in this file. This projec
 [Semantic Versioning](https://semver.org/) and follows a Keep‑a‑Changelog–style structure with the
 sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
+## [0.3.2] - 2025-09-07
+
+### Fixed
+
+- **Pre-commit hooks**: update TopMark hooks to use the explicit `check` subcommand
+  (`topmark check …`) instead of the removed implicit default command. This restores correct
+  behavior for `topmark-check` and `topmark-apply` hooks.
+
+### Docs
+
+- Add **API Stability** page and wire it into the MkDocs navigation (`Development → API Stability`).
+- Add a stability note/link to `docs/api/public.md` referencing the snapshot policy.
+
+### Tooling
+
+- Bump project version to `0.3.2` in `pyproject.toml`.
+
 ## [0.3.1] - 2025-09-07
 
 ### Fixed

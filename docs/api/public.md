@@ -41,3 +41,8 @@ Use this section if you need details on functions, classes, or constants availab
       members_order: source
       filters:
         - "!^_"
+
+---
+
+**Stability note:** See [API Stability](../dev/api-stability.md) for how we guard the
+public surface with a JSON snapshot across Python 3.10–3.13.
