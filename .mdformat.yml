@@ -1,0 +1,18 @@
+# topmark:header:start
+#
+#   file         : .mdformat.yml
+#   file_relpath : .mdformat.yml
+#   project      : TopMark
+#   license      : MIT
+#   copyright    : (c) 2025 Olivier Biot
+#
+# topmark:header:end
+
+# Authoritative mdformat config (replicated in pyproject.toml for consistency)
+wrap: 100
+extensions:
+  - tables
+
+# Exclude files using the native mdformat configuration
+exclude:
+  - docs/api/index.md

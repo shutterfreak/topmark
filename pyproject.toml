@@ -113,15 +113,6 @@ include-package-data = true
 [tool.setuptools.packages.find]
 where = ["src"]
 
-# Markdown formatting configuration (normative reference: .mdformat.toml)
-# Aligns with Prettier in VS Code and the mdformat pre-commit hook
-[tool.mdformat]
-wrap = 100
-extensions = ["tables"]
-# Exclude auto-generated API page from formatting (Python 3.13)
-# NOTE: Please use `make format-check` and `make format`
-exclude = ["docs/api/public.md"]
-
 
 # TOML formatting
 [tool.taplo.format]

@@ -197,7 +197,8 @@ format-check: check-venv
 	@echo "Checking code formatting..."
 	$(VENV_BIN)/ruff format --check .
 	@echo "Checking MarkDown formatting..."
-	git ls-files -- '**/*.md' ':(exclude)docs/api/index.md' | xargs -r $(VENV_BIN)/mdformat --check
+	# mdformat automatically uses the .mdformat.yml exclude file
+	git ls-files -- '*.md' | xargs -r $(VENV_BIN)/mdformat --check
 	@echo "Checking TOML formatting..."
 	$(VENV_BIN)/taplo format --check .
 
@@ -205,7 +206,8 @@ format: check-venv
 	@echo "Formatting code..."
 	$(VENV_BIN)/ruff format .
 	@echo "Formatting MarkDown..."
-	git ls-files -- '**/*.md' ':(exclude)docs/api/index.md' | xargs -r $(VENV_BIN)/mdformat
+	# mdformat automatically uses the .mdformat.yml exclude file
+	git ls-files -- '*.md' | xargs -r $(VENV_BIN)/mdformat
 	@echo "Formatting TOML..."
 	$(VENV_BIN)/taplo format .
 
