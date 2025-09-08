@@ -21,8 +21,27 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Mapping, Sequence, TypedDict
 
+
+class DiagnosticTotals(TypedDict):
+    """Aggregate diagnostic counts across the returned *view*.
+
+    Keys:
+        info: Number of info diagnostics.
+        warning: Number of warning diagnostics.
+        error: Number of error diagnostics.
+        total: Sum of all diagnostics.
+    """
+
+    info: int
+    warning: int
+    error: int
+    total: int
+
+
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from .public_types import PublicDiagnostic
 
 
 class Outcome(str, Enum):
@@ -72,8 +91,11 @@ class RunResult:
         skipped: Number of items removed by view filters (e.g., `skip_compliant`).
         written: Number of files successfully written (only in apply mode; otherwise 0).
         failed: Number of files that failed to write (only in apply mode; otherwise 0).
-        diagnostics: Optional mapping from file path (string) to a list of pipeline
-            diagnostic messages; present only if any were produced.
+        diagnostics: Optional mapping from file path to a list of public diagnostics.
+        diagnostic_totals: Optional aggregate counts across the **returned view**
+            (not the entire run).
+        diagnostic_totals_all: Optional aggregate counts across the **entire run**
+            (pre view filtering).
     """
 
     files: Sequence[FileResult]
@@ -82,7 +104,9 @@ class RunResult:
     skipped: int = 0
     written: int = 0
     failed: int = 0
-    diagnostics: dict[str, list[str]] | None = None
+    diagnostics: dict[str, list[PublicDiagnostic]] | None = None
+    diagnostic_totals: DiagnosticTotals | None = None
+    diagnostic_totals_all: DiagnosticTotals | None = None
 
 
 # Tiny intent object used by check()/strip() to gate writes

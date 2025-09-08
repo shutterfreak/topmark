@@ -263,6 +263,47 @@ class WriteStatus(BaseStatus):
         )
 
 
+# --- Diagnostics support ------------------------------------------------------
+class DiagnosticLevel(Enum):
+    """Severity levels for diagnostics collected during processing.
+
+    Levels map to terminal colors and are ordered by importance: ERROR > WARNING > INFO.
+    This enum is **internal**; the public API exposes string literals.
+    """
+
+    INFO = "info"
+    WARNING = "warning"
+    ERROR = "error"
+
+    @property
+    def color(self) -> Callable[[str], str]:
+        """Return the `yachalk` color function associated with this severity level.
+
+        Intended for human-readable output only; machine formats should not use colors.
+        """
+        return cast(
+            "Callable[[str], str]",
+            {
+                DiagnosticLevel.INFO: chalk.blue,
+                DiagnosticLevel.WARNING: chalk.yellow,
+                DiagnosticLevel.ERROR: chalk.red_bright,
+            }[self],
+        )
+
+
+@dataclass(frozen=True)
+class Diagnostic:
+    """Internal structured diagnostic with a severity level and message.
+
+    Note:
+        This type is **not** part of the public API surface. Conversions to
+        `PublicDiagnostic` happen at the API boundary.
+    """
+
+    level: DiagnosticLevel
+    message: str
+
+
 @dataclass
 class HeaderProcessingStatus:
     """Tracks the status of each processing phase for a single file.
@@ -349,7 +390,7 @@ class ProcessingContext:
     header_diff: str | None = None  # Unified diff (patch) for patching (updating) the header
 
     # Processing diagnostics: warnings/errors collected during processing
-    diagnostics: list[str] = field(default_factory=lambda: [])
+    diagnostics: list[Diagnostic] = field(default_factory=list[Diagnostic])
 
     def to_dict(self) -> dict[str, object]:
         """Return a machine-readable representation of this processing result.
@@ -369,7 +410,14 @@ class ProcessingContext:
             },
             "existing_header_range": self.existing_header_range,
             "has_diff": bool(self.header_diff),
-            "diagnostics": list(self.diagnostics),
+            "diagnostics": [
+                {"level": d.level.value, "message": d.message} for d in self.diagnostics
+            ],
+            "diagnostic_counts": {
+                "info": sum(1 for d in self.diagnostics if d.level is DiagnosticLevel.INFO),
+                "warning": sum(1 for d in self.diagnostics if d.level is DiagnosticLevel.WARNING),
+                "error": sum(1 for d in self.diagnostics if d.level is DiagnosticLevel.ERROR),
+            },
             # Heuristic: treat MISSING or CHANGED as a would-change indicator
             "would_change": (
                 self.status.header is HeaderStatus.MISSING
@@ -377,8 +425,8 @@ class ProcessingContext:
             ),
         }
 
-    def format_summary(self) -> str:
-        """Return the current human-readable per-file summary string.
+    def format_summary_v0_3_2(self) -> str:
+        """OLD - Return the current human-readable per-file summary string.
 
         TODO: refine the rendering.
         """
@@ -394,10 +442,117 @@ class ProcessingContext:
             f"{chalk.dim(self.file_type.name)} - "
             f"{self.status.file.color('file ' + self.status.file.value)}"
         )
-        result += f", {self.status.header.color('current header: ' + self.status.header.value)}"
+        result += f", {self.status.header.color('header: ' + self.status.header.value)}"
         result += f", {self.status.generation.color('new header: ' + self.status.generation.value)}"
         result += f", {self.status.comparison.color('result: ' + self.status.comparison.value)}"
         result += f", {self.status.strip.color('strip: ' + self.status.strip.value)}"
+        return result
+
+    def format_summary_v0_3_3_dev0(self) -> str:
+        """Return the current human-readable per-file summary string.
+
+        TODO: refine the rendering.
+        """
+        result: str = f"{self.path}: "
+        if not self.file_type or self.status.file != FileStatus.RESOLVED:
+            result += (
+                f"{chalk.dim(self.file_type.name if self.file_type else '<unknown>')} - "
+                f"{self.status.file.color('file ' + self.status.file.value)}"
+            )
+            return result
+
+        result += f"{chalk.dim(self.file_type.name)}"
+        result += f" - {self.status.header.color('header ' + self.status.header.value)}"
+        result += f" - {self.status.comparison.color(self.status.comparison.value)}"
+        if self.status.write != WriteStatus.PENDING:
+            result += f" - {self.status.write.color(self.status.write.value)}"
+        elif self.status.generation != GenerationStatus.PENDING:
+            result += f" - {self.status.generation.color(self.status.generation.value)}"
+        else:
+            f"{self.status.file.color('file ' + self.status.file.value)}"
+
+        return result
+
+    def format_summary(self) -> str:
+        """Return a concise, human‑readable one‑liner for this file.
+
+        The summary is aligned with TopMark's pipeline phases and mirrors what
+        comparable tools (e.g., *ruff*, *black*, *prettier*) surface: a clear
+        primary outcome plus a few terse hints.
+
+        Rendering rules:
+          1) Primary bucket comes from :func:`topmark.cli_shared.utils.classify_outcome`.
+             This ensures stable wording across commands/pipelines.
+          2) If a write outcome is known (e.g., PREVIEWED/WRITTEN/INSERTED/REMOVED),
+             append it as a trailing hint.
+          3) If there is a diff but no write outcome (e.g., check/summary with
+             `--diff`), append a "diff" hint.
+          4) If diagnostics exist, append the diagnostic count as a hint.
+
+        Verbose per‑line diagnostics are emitted only when Config.verbosity_level >= 1
+        (treats None as 0).
+
+        Examples (colors omitted here):
+            path/to/file.py: python – would insert header - previewed
+            path/to/file.py: python – up-to-date
+            path/to/file.py: python – would strip header - diff - 2 issues
+        """
+        # Local import to avoid import cycles at module import time
+        from topmark.cli_shared.utils import classify_outcome
+
+        parts: list[str] = [f"{self.path}:"]
+
+        # File type (dim), or <unknown> if resolution failed
+        if self.file_type is not None:
+            parts.append(chalk.dim(self.file_type.name))
+        else:
+            parts.append(chalk.dim("<unknown>"))
+
+        # Primary bucket/label with color
+        key, label, color_fn = classify_outcome(self)
+        parts.append("\u2013")  # en dash separator
+        parts.append(color_fn(label))
+
+        if key != "ok":
+            # Secondary hints: write status > diff marker > diagnostics
+
+            if self.status.write is not WriteStatus.PENDING:
+                parts.append("-")
+                parts.append(self.status.write.color(self.status.write.value))
+            elif self.header_diff:
+                parts.append("-")
+                parts.append(chalk.yellow("diff"))
+
+        if self.diagnostics:
+            n_info = sum(1 for d in self.diagnostics if d.level is DiagnosticLevel.INFO)
+            n_warn = sum(1 for d in self.diagnostics if d.level is DiagnosticLevel.WARNING)
+            n_err = sum(1 for d in self.diagnostics if d.level is DiagnosticLevel.ERROR)
+            parts.append("-")
+            # Compose a compact triage summary like "1 error, 2 warnings"
+            triage: list[str] = []
+            if n_err:
+                triage.append(chalk.red_bright(f"{n_err} error" + ("s" if n_err != 1 else "")))
+            if n_warn:
+                triage.append(chalk.yellow(f"{n_warn} warning" + ("s" if n_warn != 1 else "")))
+            if n_info and not (n_err or n_warn):
+                # Only show infos when there are no higher severities
+                triage.append(chalk.blue(f"{n_info} info" + ("s" if n_info != 1 else "")))
+            parts.append(", ".join(triage) if triage else chalk.blue("info"))
+
+        result: str = " ".join(parts)
+
+        # Optional verbose listing (kept simple; could be gated by verbosity later)
+        if self.diagnostics and (self.config.verbosity_level or 0) >= 1:
+            details: list[str] = []
+            for d in self.diagnostics:
+                prefix = {
+                    DiagnosticLevel.ERROR: chalk.red_bright("error"),
+                    DiagnosticLevel.WARNING: chalk.yellow("warning"),
+                    DiagnosticLevel.INFO: chalk.blue("info"),
+                }[d.level]
+                details.append(f" - [{prefix}] {d.message}")
+            result += "\n" + "\n".join(details)
+
         return result
 
     @property
@@ -409,3 +564,28 @@ class ProcessingContext:
     def bootstrap(cls, *, path: Path, config: Config) -> ProcessingContext:
         """Create a fresh context with no derived state."""
         return cls(path=path, config=config)
+
+    # --- Convenience helpers -------------------------------------------------
+    def add_info(self, message: str) -> None:
+        """Add an `info` diagnostic to the processing context.
+
+        Args:
+            message (str): The diagnostic message.
+        """
+        self.diagnostics.append(Diagnostic(DiagnosticLevel.INFO, message))
+
+    def add_warning(self, message: str) -> None:
+        """Add an `warning` diagnostic to the processing context.
+
+        Args:
+            message (str): The diagnostic message.
+        """
+        self.diagnostics.append(Diagnostic(DiagnosticLevel.WARNING, message))
+
+    def add_error(self, message: str) -> None:
+        """Add an `error` diagnostic to the processing context.
+
+        Args:
+            message (str): The diagnostic message.
+        """
+        self.diagnostics.append(Diagnostic(DiagnosticLevel.ERROR, message))

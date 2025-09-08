@@ -34,6 +34,7 @@ Notes:
 - A FileType instance is **recognized** if it is in the FileTypeRegistry.
 - A FileType instance is **supported** if it is recognized and is registered to
   a HeaderProcessor instance in the HeaderProcessorRegistry.
+- The API returns per-file diagnostics and aggregate counts; levels are "info", "warning", "error".
 """
 
 from __future__ import annotations
@@ -52,10 +53,16 @@ from topmark.cli_shared.utils import write_updates
 from topmark.config import Config
 from topmark.config.logging import get_logger, setup_logging
 from topmark.constants import TOPMARK_VERSION
-from topmark.pipeline.context import ComparisonStatus, FileStatus, ProcessingContext, WriteStatus
+from topmark.pipeline.context import (
+    ComparisonStatus,
+    FileStatus,
+    ProcessingContext,
+    WriteStatus,
+)
 from topmark.registry import Registry
 
-from .types import FileResult, FileTypeInfo, Outcome, ProcessorInfo, RunResult
+from .public_types import PublicDiagnostic
+from .types import DiagnosticTotals, FileResult, FileTypeInfo, Outcome, ProcessorInfo, RunResult
 
 if "TOPMARK_DEBUG" in os.environ:
     setup_logging(level=logging.DEBUG)
@@ -75,6 +82,7 @@ __all__ = [
     "get_filetype_info",
     "get_processor_info",
     "Registry",
+    "PublicDiagnostic",
 ]
 
 
@@ -200,22 +208,43 @@ def _apply_view_filter(
     return view_results, skipped
 
 
-def _collect_diagnostics(results: list[ProcessingContext]) -> dict[str, list[str]]:
-    """Collect per-file diagnostics as a mapping `{path: [messages...]}`.
+def _collect_diagnostics(
+    results: list[ProcessingContext],
+) -> dict[str, list[PublicDiagnostic]]:
+    """Collect per-file diagnostics as a mapping `{path: [diagnostics...]}`.
 
-    Only files that produced diagnostics are included in the result.
-
-    Args:
-        results: List of ProcessingContext results.
-
-    Returns:
-        A mapping from file path (string) to a list of diagnostic messages.
+    Diagnostics are returned in the *public* JSON-friendly shape and do not
+    expose internal classes or enums.
     """
-    diags: dict[str, list[str]] = {}
+    diags: dict[str, list[PublicDiagnostic]] = {}
     for r in results:
         if r.diagnostics:
-            diags[str(r.path)] = r.diagnostics
+            diags[str(r.path)] = [
+                {"level": d.level.value, "message": d.message} for d in r.diagnostics
+            ]
     return diags
+
+
+def _collect_diagnostic_totals(results: list[ProcessingContext]) -> DiagnosticTotals:
+    """Return aggregate counts of diagnostics across the given results.
+
+    Counts reflect only the supplied `results` (typically the **view** after
+    filtering), matching what is returned to the caller.
+    """
+    total_info = total_warn = total_error = 0
+    for r in results:
+        if not r.diagnostics:
+            continue
+        for d in r.diagnostics:
+            lv = d.level.value
+            if lv == "info":
+                total_info += 1
+            elif lv == "warning":
+                total_warn += 1
+            elif lv == "error":
+                total_error += 1
+    total = total_info + total_warn + total_error
+    return {"info": total_info, "warning": total_warn, "error": total_error, "total": total}
 
 
 # ---------- public API ----------
@@ -354,6 +383,8 @@ def check(
         encountered_error_code is not None
     )
     diagnostics = _collect_diagnostics(view_results)
+    diagnostic_totals = _collect_diagnostic_totals(view_results)
+    diagnostic_totals_all = _collect_diagnostic_totals(results)
 
     written = failed = 0
     if apply:
@@ -380,6 +411,8 @@ def check(
         written=written,
         failed=failed,
         diagnostics=diagnostics,
+        diagnostic_totals=diagnostic_totals,
+        diagnostic_totals_all=diagnostic_totals_all,
     )
 
 
@@ -432,6 +465,8 @@ def strip(
         encountered_error_code is not None
     )
     diagnostics = _collect_diagnostics(view_results)
+    diagnostic_totals = _collect_diagnostic_totals(view_results)
+    diagnostic_totals_all = _collect_diagnostic_totals(results)
 
     written = failed = 0
     if apply:
@@ -452,6 +487,8 @@ def strip(
         written=written,
         failed=failed,
         diagnostics=diagnostics,
+        diagnostic_totals=diagnostic_totals,
+        diagnostic_totals_all=diagnostic_totals_all,
     )
 
 

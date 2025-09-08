@@ -44,9 +44,6 @@ def strip(ctx: ProcessingContext) -> ProcessingContext:
     if ctx.status.header not in [HeaderStatus.EMPTY, HeaderStatus.DETECTED]:
         # No header to be stripped
         ctx.status.strip = StripStatus.FAILED
-        ctx.diagnostics.append(
-            f"stripper: skipping {ctx.path}, header status is {ctx.status.header.value}"
-        )
         return ctx
 
     if ctx.header_processor is None:
@@ -70,7 +67,5 @@ def strip(ctx: ProcessingContext) -> ProcessingContext:
     ctx.updated_file_lines = new_lines
     # A header was present and removed
     ctx.status.strip = StripStatus.READY
-    ctx.diagnostics.append(
-        f"stripper: removed header lines at span {removed[0]}..{removed[1]} in {ctx.path}"
-    )
+    logger.debug(f"stripper: removed header lines at span {removed[0]}..{removed[1]}.")
     return ctx

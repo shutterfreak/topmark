@@ -36,6 +36,7 @@ from topmark.cli.options import (
     resolve_color_mode,
     resolve_verbosity,
 )
+from topmark.cli_shared.console import Console
 from topmark.config.logging import get_logger, setup_logging
 from topmark.pipeline.processors import register_all_processors
 
@@ -58,6 +59,10 @@ def init_common_state(
     """
     ctx.obj = ctx.obj or {}
 
+    # Program-output verbosity: map -v/-q to a non-negative level (0..2)
+    vlevel = max(0, min(2, verbose - quiet))
+    ctx.obj["verbosity_level"] = vlevel
+
     # Set the log level
     level = resolve_verbosity(verbose, quiet)
     ctx.obj["log_level"] = level
@@ -67,6 +72,9 @@ def init_common_state(
     enable_color = resolve_color_mode(cli_mode=effective_color_mode, output_format=None)
     ctx.obj["color_enabled"] = enable_color
     ctx.color = enable_color
+
+    console = Console(enable_color=not no_color)
+    ctx.obj["console"] = console
 
 
 @click.group(

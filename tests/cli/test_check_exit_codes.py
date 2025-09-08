@@ -33,4 +33,4 @@ def test_check_exit_code_with_missing_header(tmp_path: Path) -> None:
 
     # Sanity check: the summary should mention the file and that the result is changed.
     assert file_name in result.output
-    assert "result: changed" in result.output
+    assert "would insert header - inserted" in result.output

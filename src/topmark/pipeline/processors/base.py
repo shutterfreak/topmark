@@ -168,9 +168,7 @@ class HeaderProcessor:
         if start_rel is None or end_rel is None or end_rel <= start_rel:
             # Keep scanner as the single authority for header MALFORMED status.
             # Here we just surface a diagnostic to aid debugging.
-            context.diagnostics.append(
-                f"parse_fields(): could not locate a valid START/END marker pair in {context.path}"
-            )
+            context.add_error("parse_fields(): could not locate a valid START/END marker pair.")
             return {}
 
         # 2) Extract payload (strictly between markers).
@@ -193,13 +191,13 @@ class HeaderProcessor:
                 continue
 
             if ":" not in cleaned:
-                context.diagnostics.append(
-                    f"Unrecognized header line at {context.path}:{abs_line_no}: '{raw.rstrip()}'"
+                context.add_error(
+                    f"Unrecognized header field name at line {abs_line_no}: '{raw.rstrip()}'"
                 )
                 continue
 
             key, value = cleaned.split(":", 1)
-            k = key.strip().lstrip("#")  # tolerate accidental leading '#'
+            k = key.strip()
             v = value.strip()
             if not k:
                 logger.warning(
@@ -207,8 +205,8 @@ class HeaderProcessor:
                     abs_line_no,
                     raw,
                 )
-                context.diagnostics.append(
-                    f"Empty header key at {context.path}:{abs_line_no}: '{raw.rstrip()}'"
+                context.add_error(
+                    f"Empty header field name at line {abs_line_no}: '{raw.rstrip()}'"
                 )
                 continue
             result[k] = v

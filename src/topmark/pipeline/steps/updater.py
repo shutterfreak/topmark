@@ -64,7 +64,7 @@ def _prepend_bom_to_lines_if_needed(lines: list[str], ctx: ProcessingContext) ->
     if ctx.has_shebang:
         # Do not re-add the BOM which was stripped in reader.read(); a valid shebang
         # must start at byte 0 on POSIX systems.
-        ctx.diagnostics.append(
+        ctx.add_error(
             "UTF-8 BOM appears before the shebang; POSIX requires '#!' at byte 0. "
             "TopMark will not modify this file by default. Consider removing the BOM "
             "or using a future '--fix-bom' option to resolve this conflict."
@@ -118,12 +118,12 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
 
     # Non-strip processing
     if ctx.expected_header_lines is None:
-        ctx.diagnostics.append("Cannot update header: no rendered header available")
+        ctx.add_error("Cannot update header: no rendered header available")
         ctx.status.write = WriteStatus.SKIPPED
         return ctx
 
     if ctx.header_processor is None:
-        ctx.diagnostics.append("Cannot update header: no header processor assigned")
+        ctx.add_error("Cannot update header: no header processor assigned")
         ctx.status.write = WriteStatus.SKIPPED
         return ctx
 
@@ -186,7 +186,7 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
         insert_index = ctx.header_processor.get_header_insertion_index(original_lines)
         if insert_index == NO_LINE_ANCHOR:
             ctx.status.write = WriteStatus.FAILED
-            ctx.diagnostics.append(f"No line-based insertion anchor for file: {ctx.path}")
+            ctx.add_error(f"No line-based insertion anchor for file: {ctx.path}")
             return ctx
 
         # defensive clamp

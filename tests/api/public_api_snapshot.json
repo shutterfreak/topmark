@@ -3,6 +3,7 @@
   "FileTypeInfo": "<class>",
   "Outcome": "<enum>",
   "ProcessorInfo": "<class>",
+  "PublicDiagnostic": "<class>",
   "Registry": "<class>",
   "Registry.bindings": "() -> 'tuple[Binding, ...]'",
   "Registry.filetypes": "() -> 'Mapping[str, object]'",

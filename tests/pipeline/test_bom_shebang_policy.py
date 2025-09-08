@@ -58,7 +58,7 @@ def test_reader_skips_when_bom_precedes_shebang_python(tmp_path: Path) -> None:
     assert ctx.has_shebang is True
     assert ctx.status.file == FileStatus.SKIPPED_POLICY_BOM_BEFORE_SHEBANG
     assert any(
-        "BOM appears before the shebang" in d or "BOM precedes shebang" in d
+        "BOM appears before the shebang" in d.message or "BOM precedes shebang" in d.message
         for d in ctx.diagnostics
     ), ctx.diagnostics
 
@@ -100,4 +100,6 @@ def test_updater_suppresses_bom_reprepend_in_strip_fastpath() -> None:
     assert ctx.updated_file_lines
     assert not ctx.updated_file_lines[0].startswith("\ufeff"), ctx.updated_file_lines[0]
     # Diagnostic should be present to explain why BOM was not re-appended
-    assert any("BOM appears before the shebang" in d for d in ctx.diagnostics), ctx.diagnostics
+    assert any("BOM appears before the shebang" in d.message for d in ctx.diagnostics), (
+        ctx.diagnostics
+    )

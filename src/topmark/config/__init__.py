@@ -67,6 +67,7 @@ class Config:
         files_from (list[str]): Paths to files that list newline-delimited candidate file paths
             to add before filtering.
         file_types (list[str]): File extensions or types to process.
+        verbosity_level (int | None): None = inherit, 0 = terse, 1 = verbose diagnostics.
     """
 
     # Initialization timestamp for the config instance
@@ -74,6 +75,10 @@ class Config:
 
     # Paths or identifiers of configuration files or sources used to build this Config
     config_files: list[Path | str] = field(default_factory=lambda: [])
+
+    # Verbosity level
+    # verbosity_level (int | None): None = inherit, 0 = terse, 1 = verbose diagnostics
+    verbosity_level: int | None = None
 
     # Header configuration fields and their values
     header_fields: list[str] = field(default_factory=lambda: [])  # From [header].fields
@@ -359,6 +364,19 @@ class Config:
         ):  # Only override if align_fields was passed via CLI
             self.align_fields = args["align_fields"]
 
+        if "verbosity_level" in args and args["verbosity_level"] is not None:
+            try:
+                self.verbosity_level = int(args["verbosity_level"])
+            except (TypeError, ValueError):
+                logger.warning(
+                    "Invalid verbosity_level=%r (expected int); keeping %r",
+                    args["verbosity_level"],
+                    self.verbosity_level,
+                )
+        elif "verbosity_level" in args and args["verbosity_level"] is None:
+            # Explicit None means inherit, do not override
+            pass
+
         logger.debug("Patched Config: %s", self)
         logger.info("Applied CLI overrides to Config")
         logger.debug("apply_cli_args(): finalized stdin=%s files=%s", self.stdin, self.files)
@@ -511,6 +529,9 @@ class Config:
             relative_to=(other.relative_to if other.relative_to is not None else self.relative_to),
             # Use other's file_types if set, else self's
             file_types=other.file_types or self.file_types,
+            verbosity_level=(
+                other.verbosity_level if other.verbosity_level is not None else self.verbosity_level
+            ),
         )
 
     def to_toml_dict(self) -> dict[str, Any]:

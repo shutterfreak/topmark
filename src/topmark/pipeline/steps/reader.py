@@ -62,6 +62,7 @@ def read(ctx: ProcessingContext) -> ProcessingContext:
 
     if ctx.path.stat().st_size == 0:
         logger.warning("Found empty file: %s", ctx.path)
+        ctx.add_warning("File is empty.")
         ctx.status.file = FileStatus.EMPTY_FILE
         return ctx
 
@@ -122,7 +123,7 @@ def read(ctx: ProcessingContext) -> ProcessingContext:
     except Exception as e:  # Log and attach diagnostic; continue without raising
         ctx.status.file = FileStatus.UNREADABLE
         logger.error("Error reading file %s: %s", ctx.path, e)
-        ctx.diagnostics.append(f"Error reading file: {e}")
+        ctx.add_error(f"Error reading file: {e}")
 
     if nl:
         # Store the line end style
@@ -160,7 +161,7 @@ def read(ctx: ProcessingContext) -> ProcessingContext:
         # shebang, skip processing by default and surface a clear diagnostic.
         policy = getattr(ctx.header_processor.file_type, "header_policy", None)
         if ctx.leading_bom and ctx.has_shebang and policy and policy.supports_shebang:
-            ctx.diagnostics.append(
+            ctx.add_error(
                 "UTF-8 BOM appears before the shebang; POSIX requires '#!' at byte 0. "
                 "TopMark will not modify this file by default. Consider removing the BOM "
                 "or using a future '--fix-bom' option to resolve this conflict."
@@ -176,6 +177,7 @@ def read(ctx: ProcessingContext) -> ProcessingContext:
         # Record whether the file ends with a newline (used when generating patches)
         if len(lines) == 0:
             logger.warning("File has no lines (empty): %s", ctx.path)
+            ctx.add_warning("File is empty.")
             ctx.status.file = FileStatus.EMPTY_FILE
             return ctx
 
@@ -204,7 +206,7 @@ def read(ctx: ProcessingContext) -> ProcessingContext:
     except Exception as e:  # Log and attach diagnostic; continue without raising
         ctx.status.file = FileStatus.UNREADABLE
         logger.error("Error reading file %s: %s", ctx.path, e)
-        ctx.diagnostics.append(f"Error reading file: {e}")
+        ctx.add_error(f"Error reading file: {e}")
 
     logger.warning("%s: File cannot be processed: %s", ctx.status.file.value, ctx.path)
     return ctx

@@ -64,6 +64,7 @@ class ArgsNamespace(TypedDict, total=False):
 
     Attributes:
         log_level: Verbosity level for logging.
+        verbosity_level: Program-output verbosity (0=terse, 1=verbose).
         no_config: Whether to ignore local config files.
         config_files: List of extra config file paths.
         files: List of file paths to process.
@@ -80,6 +81,7 @@ class ArgsNamespace(TypedDict, total=False):
 
     # Global options: retrieve from ctx.obj
     log_level: int
+    verbosity_level: int | None
 
     # TopMark Command
     # command: TopMarkCommand
@@ -109,6 +111,7 @@ class ArgsNamespace(TypedDict, total=False):
 def build_args_namespace(
     *,
     log_level: int = logging.WARNING,
+    verbosity_level: int | None = None,
     # command: TopMarkCommand = TopMarkCommand.NONE,
     no_config: bool | None = None,
     config_files: list[str] | None = None,
@@ -128,6 +131,7 @@ def build_args_namespace(
 
     Args:
         log_level: Verbosity level for logging.
+        verbosity_level: Program-output verbosity (0=terse, 1=verbose).
         no_config: Whether to ignore local config files.
         config_files: List of extra config file paths.
         files: List of file paths to process.
@@ -147,6 +151,7 @@ def build_args_namespace(
     """
     return {
         "log_level": log_level,
+        "verbosity_level": verbosity_level,
         # "command": command,
         "no_config": no_config,
         "config_files": config_files,

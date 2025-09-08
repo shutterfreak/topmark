@@ -223,9 +223,6 @@ def check_command(
       UNEXPECTED_ERROR (255): An unhandled error occurred.
     """
     ctx = click.get_current_context()
-    level = ctx.obj["log_level"]
-    logger.debug(f"{ctx.command.name}: Log level is {level}")
-    logger.setLevel(level)
 
     fmt: OutputFormat = output_format or OutputFormat.DEFAULT
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):

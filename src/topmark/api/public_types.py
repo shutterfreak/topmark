@@ -21,11 +21,17 @@ Notes:
     * Attribute names and types here are part of the public API and follow
       semver. Adding optional attributes is allowed in minor versions; removing
       or changing types is a breaking change.
+
+Diagnostics
+-----------
+The public API uses JSON-friendly diagnostics with string literal severities.
+See :class:`PublicDiagnostic` for the shape and :data:`DiagnosticLevelLiteral`
+for the allowed values.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol, Sequence
+from typing import TYPE_CHECKING, Literal, Protocol, Sequence, TypedDict
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -96,3 +102,20 @@ class PublicHeaderProcessor(Protocol):
     block_suffix: str
     # registry binds at runtime
     file_type: PublicFileType
+
+
+"""Allowed diagnostic severity levels in the public API."""
+DiagnosticLevelLiteral = Literal["info", "warning", "error"]
+
+
+class PublicDiagnostic(TypedDict):
+    """Stable, JSON-friendly diagnostic for API consumers.
+
+    Notes:
+        * Uses string literal levels for semver stability and easy serialization.
+        * Mirrors internal pipeline diagnostics but does not expose internals.
+        * This shape is stable for semver and safe to serialize to JSON/NDJSON.
+    """
+
+    level: DiagnosticLevelLiteral
+    message: str

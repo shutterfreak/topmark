@@ -250,7 +250,7 @@ def resolve(ctx: ProcessingContext) -> ProcessingContext:
 
         if file_type.skip_processing:
             ctx.status.file = FileStatus.SKIPPED_KNOWN_NO_HEADERS
-            ctx.diagnostics.append(
+            ctx.add_warning(
                 f"File type '{file_type.name}' recognized; "
                 "headers are not supported for this format. Skipping."
             )
@@ -267,9 +267,7 @@ def resolve(ctx: ProcessingContext) -> ProcessingContext:
             ctx.status.file = (
                 FileStatus.SKIPPED_NO_HEADER_PROCESSOR
             )  # or SKIPPED_NO_HEADER_MANAGER if that's your enum
-            ctx.diagnostics.append(
-                f"No header processor registered for file type '{file_type.name}'."
-            )
+            ctx.add_warning(f"No header processor registered for file type '{file_type.name}'.")
             logger.info(
                 "No header processor registered for file type '%s' (file '%s')",
                 file_type.name,
@@ -290,6 +288,6 @@ def resolve(ctx: ProcessingContext) -> ProcessingContext:
 
     # No FileType matched: mark as unsupported and record a diagnostic
     ctx.status.file = FileStatus.SKIPPED_UNSUPPORTED
-    ctx.diagnostics.append("No file type associated with this file.")
+    ctx.add_warning("No file type associated with this file.")
     logger.info("Unsupported file type for '%s' (no matcher)", ctx.path)
     return ctx

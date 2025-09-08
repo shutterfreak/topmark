@@ -235,7 +235,7 @@ def classify_outcome(r: ProcessingContext) -> tuple[str, str, Callable[[str], st
     logger.debug("status: %s", r.status)
 
     if r.status.file is not FileStatus.RESOLVED:
-        return (f"file:{r.status.file.name}", f"file {r.status.file.value}", r.status.file.color)
+        return (f"file:{r.status.file.name}", f"{r.status.file.value}", r.status.file.color)
 
     # Highest precedence: if comparison says UNCHANGED, treat as compliant
     if r.status.comparison is ComparisonStatus.UNCHANGED:

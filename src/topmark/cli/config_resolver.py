@@ -43,6 +43,7 @@ def resolve_config_from_click(
     config_paths: list[str],
     align_fields: bool,
     header_format: HeaderOutputFormat | None,
+    verbosity_level: int | None,
 ) -> Config:
     """Build a :class:`Config` from Click parameters.
 
@@ -61,12 +62,15 @@ def resolve_config_from_click(
         config_paths: Extra config TOML file paths to merge.
         align_fields: Whether to align header fields with colons.
         header_format: Selected header output format.
+        verbosity_level: Program-output verbosity (0=terse, 1=verbose);
+            None = inherit from parent context.
 
     Returns:
         Config: The merged configuration.
     """
     args: ArgsNamespace = build_args_namespace(
         log_level=ctx.obj.get("log_level"),
+        verbosity_level=verbosity_level,
         files=list(files),
         files_from=list(files_from),
         stdin=stdin,

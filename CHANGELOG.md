@@ -16,6 +16,51 @@ All notable changes to this project will be documented in this file. This projec
 [Semantic Versioning](https://semver.org/) and follows a Keep‑a‑Changelog–style structure with the
 sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
+## [0.4.0] - 2025-09-08
+
+### Added
+
+- **Structured diagnostics with severities** across the pipeline (`info`, `warning`, `error`).
+  - New internal `DiagnosticLevel` enum and `Diagnostic` dataclass.
+  - New public JSON-friendly shape `PublicDiagnostic` with `level` and `message` fields.
+  - Aggregate counts exposed from the public API:
+    - `RunResult.diagnostic_totals` (for the returned **view**) and
+    - `RunResult.diagnostic_totals_all` (for the **entire run**, pre filter).
+- **Program-output verbosity**:
+  - `Config.verbosity_level` is now **tri-state**: `None` (inherit), `0` (terse), `1` (verbose).
+  - Per-file verbose diagnostic lines in summaries are shown when `verbosity_level >= 1`.
+- **Console abstraction** to cleanly separate CLI user output from internal logging.
+  - Console is initialized in the CLI and available via `ctx.obj["console"]`.
+
+### Changed
+
+- **Public API**: `diagnostics` in `RunResult` now returns a mapping
+  `dict[str, list[PublicDiagnostic]]` instead of `dict[str, list[str]]`.
+- **Summaries**: `ProcessingContext.format_summary()` now aligns with pipeline outcomes and
+  appends compact triage (e.g., `1 error, 2 warnings`) plus hints (`previewed`, `diff`).
+- **Verbosity handling**: CLI `-v/--verbose` and `-q/--quiet` feed a program-output verbosity
+  level separately from the logger level; per-command logger overrides were removed.
+- **Config.merge_with()**: `verbosity_level` now honors **override semantics** (other wins),
+  and supports tri-state inheritance.
+- **API surface**: `PublicDiagnostic` re-exported from `topmark.api` and included in `__all__`.
+
+### Fixed
+
+- Reader now surfaces an explicit diagnostic for empty files.
+- Minor wording/formatting improvements in `classify_outcome()` and summary output.
+- Import order cleanup in `pipelines.py`.
+
+### Docs
+
+- Expanded inline docstrings for diagnostics, public types, and verbosity semantics.
+
+#### ⚠️ Breaking (pre‑1.0)
+
+- `RunResult.diagnostics` type changed to a structured public form. Integrations consuming
+  plain strings should switch to `d["message"]` and may use `d["level"]` for triage.
+- New aggregate fields (`diagnostic_totals`, `diagnostic_totals_all`) are added alongside
+  `diagnostics`.
+
 ## [0.3.2] - 2025-09-07
 
 ### Fixed

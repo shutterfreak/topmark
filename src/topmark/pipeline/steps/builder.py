@@ -97,9 +97,7 @@ def build(ctx: ProcessingContext) -> ProcessingContext:
                 "Config.field_values contains keys that overlap with builtin fields: %s",
                 builtin_overlap_repr,
             )
-            ctx.diagnostics = (ctx.diagnostics or []) + [
-                f"Redefined built-in fields: {builtin_overlap_repr}"
-            ]
+            ctx.add_warning(f"Redefined built-in fields: {builtin_overlap_repr}")
 
     # Merge built-in and configuration-defined fields
     # Allow user-defined fields to override built-ins when both are in config.field_values
@@ -113,7 +111,7 @@ def build(ctx: ProcessingContext) -> ProcessingContext:
         value = all_fields.get(key)
         if value is None:
             logger.warning("Unknown header field: %s", key)
-            ctx.diagnostics.append(f"Unknown header field: {key}")
+            ctx.add_error(f"Unknown header field: {key}")
         else:
             result[key] = value
 

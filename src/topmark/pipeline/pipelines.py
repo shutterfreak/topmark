@@ -19,8 +19,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Final, Mapping, Tuple
 
-from topmark.pipeline.steps import stripper
-
 from .steps import (
     builder,
     comparer,
@@ -29,6 +27,7 @@ from .steps import (
     renderer,
     resolver,
     scanner,
+    stripper,
     updater,
 )
 
