@@ -11,7 +11,7 @@
 repos:
   # Keep the repository versions aligned with the ones used in requirements-dev.in (pyproject.toml)
   - repo: https://github.com/shutterfreak/topmark
-    rev: v0.3.2
+    rev: v0.4.0
     hooks:
       - id: topmark-check
         # Optional: limit scope to supported text types

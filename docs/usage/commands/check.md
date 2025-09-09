@@ -67,6 +67,19 @@ Notes:
 - Diffs (`--diff`) are **human-only** and are not included in JSON/NDJSON.
 - Summary mode aggregates outcomes and suppresses per-file guidance lines.
 
+## Verbosity & logging
+
+Program-output verbosity is separate from internal logging:
+
+- `-v`, `--verbose` increases **program output** detail (adds per‑line diagnostics in summaries) and also increases the logger level.
+- `-q`, `--quiet` suppresses most **program output** and lowers logger noise.
+
+Notes:
+
+- **Summary mode** aggregates outcomes and suppresses per-file guidance lines.
+- **Per‑line diagnostics** are shown when the effective program verbosity ≥ 1.
+- **Diffs** (`--diff`) are always human‑only and never included in JSON/NDJSON.
+
 ## Options (subset)
 
 | Option               | Description                                                       |

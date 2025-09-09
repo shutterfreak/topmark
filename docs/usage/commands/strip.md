@@ -67,6 +67,19 @@ Notes:
 - Diffs (`--diff`) are **human-only** and are not included in JSON/NDJSON.
 - Summary mode aggregates outcomes and suppresses per-file guidance lines.
 
+## Verbosity & logging
+
+Program-output verbosity is separate from internal logging:
+
+- `-v`, `--verbose` increases **program output** detail (adds per‑line diagnostics in summaries) and also increases the logger level.
+- `-q`, `--quiet` suppresses most **program output** and lowers logger noise.
+
+Notes:
+
+- **Summary mode** aggregates outcomes and suppresses per-file guidance lines.
+- **Per‑line diagnostics** are shown when the effective program verbosity ≥ 1.
+- **Diffs** (`--diff`) are always human‑only and never included in JSON/NDJSON.
+
 ## Options (subset)
 
 | Option               | Description                                                       |
@@ -75,7 +88,6 @@ Notes:
 | `--diff`             | Show unified diffs (human output only).                           |
 | `--summary`          | Show outcome counts instead of per‑file details.                  |
 | `--files-from`       | Read newline‑delimited paths from file (use '-' for STDIN).       |
-| `--stdin-filename`   | Assumed filename when PATH is '-' (content from STDIN).           |
 | `--include`          | Add paths by glob (can be used multiple times).                   |
 | `--include-from`     | File of patterns to include (one per line, `#` comments allowed). |
 | `--exclude`          | Exclude paths by glob (can be used multiple times).               |
@@ -83,6 +95,7 @@ Notes:
 | `--file-type`        | Restrict to specific TopMark file type identifiers.               |
 | `--skip-compliant`   | Don't report compliant files.                                     |
 | `--skip-unsupported` | Don't report unsupported files.                                   |
+| `--stdin-filename`   | Assumed filename when PATH is '-' (content from STDIN).           |
 
 > Run `topmark strip -h` for the full list of options and help text.
 

@@ -47,6 +47,7 @@ concise landing page and deep links into topics (install, usage, CI, API, etc.).
 - Full header removal (`topmark strip`)
 - Preserves original newline style (LF/CRLF/CR) and BOM
 - Idempotent updates (re-running does not change already-correct files)
+- Structured diagnostics with severity levels (`info`, `warning`, `error`) and aggregate counts
 
 ## 🚀 Installation
 
@@ -77,12 +78,15 @@ topmark [SUBCOMMAND] [OPTIONS] [PATHS]...
 TopMark uses Click 8.2 and supports shell completions. The base command performs a dry‑run *check*
 by default and applies changes when `--apply` is provided.
 
-The `strip` subcommand is provided to remove entire headers.
-
 Logging verbosity is controlled globally:
 
-- `-v`, `--verbose`: Increase verbosity (can be repeated)
-- `-q`, `--quiet`: Suppress most output (overrides verbosity)
+CLI verbosity has two layers:
+
+- **Program output** (user-facing):
+  - `-v`, `--verbose`: Show more detail, including per-line diagnostics in summaries.
+  - `-q`, `--quiet`: Suppress most output (overrides `-v`).
+- **Internal logging** (developer/machine):
+  - Also mapped by `-v`/`-q`, controls log level (`DEBUG` / `INFO` / `WARNING` / `ERROR`).
 
 All other options are specific to individual subcommands.
 
@@ -92,6 +96,7 @@ ______________________________________________________________________
 
 | Command         | Description                                        |
 | --------------- | -------------------------------------------------- |
+| `check`         | Add / Update TopMark headers in files              |
 | `dump-config`   | Show the resolved configuration in TOML format     |
 | `filetypes`     | List supported file types and their comment styles |
 | `processors`    | List registered header processors and file types   |

@@ -88,6 +88,14 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
+## Verbosity
+
+`dump-config` prints configuration; it does not render program output with per‑file diagnostics.
+The `verbosity_level` setting is a runtime/CLI concern and is **not** serialized to TOML in the
+output. Logger verbosity still follows the global `-v`/`-q` flags.
+
+______________________________________________________________________
+
 ## Notes
 
 - The output reflects the configuration **TopMark would use** if you ran the processing commands
