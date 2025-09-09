@@ -16,6 +16,46 @@ All notable changes to this project will be documented in this file. This projec
 [Semantic Versioning](https://semver.org/) and follows a Keep‑a‑Changelog–style structure with the
 sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
+## [0.5.0] - 2025-09-09
+
+### Added
+
+- **Honest write statuses** across the pipeline:
+  - Dry‑run ⇒ `WriteStatus.PREVIEWED`
+  - Apply (`--apply`) ⇒ terminal statuses (`INSERTED`, `REPLACED`, `REMOVED`)
+- **Apply intent plumbing** end‑to‑end:
+  - `Config.apply_changes` (tri‑state) consumed via `apply_cli_args()` and respected in updater
+  - CLI and public API forward **apply** to the pipeline
+
+### Changed
+
+- **CLI & console output**
+  - Decoupled program‑output verbosity from internal logging; all user output routed through `ConsoleLike`
+  - Banners/extra guidance are gated by verbosity (quiet by default; add `-v` for more detail)
+  - `filetypes` and `processors` now render numbered lists with right‑aligned indices
+  - `dump-config` / `init-config`: emit **plain TOML** by default; BEGIN/END markers appear at higher verbosity
+- **Public API (behavioral)**
+  - Apply vs preview now consistently reflected in per‑file results (`PREVIEWED` vs terminal write statuses)
+
+### Fixed
+
+- **Pre‑commit hooks**: remove redundant `--quiet` (default output is already terse) and fix its placement.
+
+### Docs
+
+- Refresh CLI docs:
+  - Explicit subcommands in examples; stdin examples use `topmark check - …`
+  - Clarify dry‑run vs apply summary text (`- previewed` vs `- inserted`/`- replaced`/`- removed`)
+  - Add “Numbered output & verbosity” notes to `filetypes` / `processors`
+  - Add `version` command page; tidy headings and separators
+
+#### ⚠️ Breaking (pre‑1.0)
+
+- Dry‑run summaries now end with **`- previewed`** instead of terminal verbs.\
+  Update any scripts/tests parsing human summaries that previously matched
+  `- inserted` / `- removed` / `- replaced` during dry‑run.
+- Human‑readable CLI output may differ (verbosity‑gated banners and numbered lists).
+
 ## [0.4.0] - 2025-09-08
 
 ### Added
