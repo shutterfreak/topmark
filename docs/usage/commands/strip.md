@@ -13,7 +13,7 @@ topmark:header:end
 # TopMark `strip` Command Guide
 
 The `topmark strip` subcommand removes the entire TopMark header block from targeted files. It is
-**dry‑run by default** and becomes destructive only with `--apply`.
+**dry‑run by default** (summaries end with `- previewed`) and becomes destructive only with `--apply` (summaries end with `- removed`) when run with `--apply`.
 
 ______________________________________________________________________
 

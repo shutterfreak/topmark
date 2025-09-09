@@ -12,8 +12,7 @@ topmark:header:end
 
 # TopMark `check` Command Guide
 
-The `check` command verifies the presence and correctness of TopMark headers in targeted files. It
-does not modify files but reports which files would need updates.
+The `check` command verifies the presence and correctness of TopMark headers in targeted files. It does not modify files (dry‑run) but reports which files would need updates. In this mode summaries end with `- previewed`. When run with `--apply`, files are actually modified and summaries end with `- inserted`, `- replaced` or other terminal statuses.dates.
 
 ______________________________________________________________________
 

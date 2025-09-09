@@ -71,6 +71,8 @@ pip install topmark
 
 ## ⚙️ Usage
 
+> **Note**: In dry-run mode, TopMark shows summaries ending with `- previewed`. When run with `--apply`, summaries end with terminal statuses such as `- inserted`, `- replaced`, or `- removed`.
+
 ```bash
 topmark [SUBCOMMAND] [OPTIONS] [PATHS]...
 ```
