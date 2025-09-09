@@ -51,7 +51,7 @@ for b in Registry.bindings():
 
 `topmark [SUBCOMMAND] [OPTIONS] [PATHS]...`
 
-Core subcommands: `check` *(default)*, `strip`, `dump-config`, `show-defaults`, `init-config`,
+Core subcommands: `check`, `strip`, `dump-config`, `show-defaults`, `init-config`,
 `filetypes`, `version`.
 
 Read lists from STDIN with `--files-from -` (or `--include-from -` / `--exclude-from -`). To process

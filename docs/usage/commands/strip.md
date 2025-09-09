@@ -10,7 +10,7 @@ topmark:header:start
 topmark:header:end
 -->
 
-# TopMark `topmark strip` Command Guide
+# TopMark `strip` Command Guide
 
 The `topmark strip` subcommand removes the entire TopMark header block from targeted files. It is
 **dry‑run by default** and becomes destructive only with `--apply`.

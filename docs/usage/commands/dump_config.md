@@ -49,13 +49,14 @@ ______________________________________________________________________
   - `--include-from` / `--exclude-from` are honored.
   - `--include-from -` / `--exclude-from -` read patterns from STDIN.
 
-- Output is wrapped between markers for easy parsing:
+- Output is **plain TOML**. When run with higher verbosity (e.g., `-v`), the TOML is wrapped
+  between BEGIN/END markers for easy parsing:
 
-  ```
   # === BEGIN ===
+
   ...TOML...
+
   # === END ===
-  ```
 
 ______________________________________________________________________
 
@@ -92,7 +93,9 @@ ______________________________________________________________________
 
 `dump-config` prints configuration; it does not render program output with per‑file diagnostics.
 The `verbosity_level` setting is a runtime/CLI concern and is **not** serialized to TOML in the
-output. Logger verbosity still follows the global `-v`/`-q` flags.
+output.
+
+When verbosity ≥ 1, BEGIN/END markers are included around the TOML output.
 
 ______________________________________________________________________
 

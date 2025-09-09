@@ -71,8 +71,8 @@ Notes:
 
 Program-output verbosity is separate from internal logging:
 
-- `-v`, `--verbose` increases **program output** detail (adds per‑line diagnostics in summaries) and also increases the logger level.
-- `-q`, `--quiet` suppresses most **program output** and lowers logger noise.
+- `-v`, `--verbose` increases **program output** detail (e.g., renders per‑line diagnostics).
+- `-q`, `--quiet` suppresses most **program output**.
 
 Notes:
 
@@ -163,7 +163,7 @@ ______________________________________________________________________
 # Start with a dry‑run to see impact
 topmark check src/
 # Then apply
-topmark apply src/
+topmark check --apply src/
 ```
 
 ### 2) Review a change set

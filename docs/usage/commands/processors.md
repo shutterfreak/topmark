@@ -61,6 +61,14 @@ You’ll also see a separate section for **file types without a registered proce
 
 ______________________________________________________________________
 
+## Numbered output & verbosity
+
+In human-readable formats, TopMark renders a **numbered list** of processors with
+right-aligned indices. With `--long` or higher verbosity, additional details (and per-file-type
+descriptions) are shown.
+
+______________________________________________________________________
+
 ## Examples
 
 ```bash

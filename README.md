@@ -75,8 +75,8 @@ pip install topmark
 topmark [SUBCOMMAND] [OPTIONS] [PATHS]...
 ```
 
-TopMark uses Click 8.2 and supports shell completions. The base command performs a dry‑run *check*
-by default and applies changes when `--apply` is provided.
+The `check` and `strip` commands performs a dry‑run by default
+and will only apply changes when `--apply` is provided.
 
 Logging verbosity is controlled globally:
 
@@ -126,10 +126,10 @@ find . -name "*.py" | topmark check --file-type python --files-from -  --summary
 git ls-files -c -o --exclude-standard | sort -u | topmark check --files-from - --apply
 
 # Read a single file's *content* from STDIN and render the resultng unified diff
-cat README.md | topmark - --stdin-filename README.md --diff
+cat README.md | topmark check - --stdin-filename README.md --diff
 
 # Read a single file's *content* from STDIN and print the updated content to stdout
-cat README.md | topmark - --stdin-filename README.md --apply
+cat README.md | topmark check - --stdin-filename README.md --apply
 
 # Dump the merged configuration (after loading all applicable config layers)
 topmark dump-config --file-type python --exclude .venv --exclude-from .gitignore
@@ -155,8 +155,8 @@ topmark strip --apply src/
 # CI-friendly summary: only show issues; ignore unsupported types
 topmark check --skip-compliant --skip-unsupported src/
 
-# Apply fixes, don't report unsupported files, muted output (useful for pre-commit)
-topmark check --apply --skip-unsupported --quiet
+# Apply fixes, don't report unsupported files; default output is terse (pre-commit friendly)
+topmark check --apply --skip-unsupported
 
 # Show supported file types in MarkDown format, providing detailed output:
 topmark filetypes --format markdown --long
@@ -229,7 +229,7 @@ declaration for XML/HTML, etc.). Newline style and BOM are preserved; runs are i
 
 ```bash
 # Preview (exit code 2 when changes are pending)
-topmark src/
+topmark check src/
 
 # Apply in place
 topmark check --apply src/
