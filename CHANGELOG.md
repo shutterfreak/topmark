@@ -16,6 +16,21 @@ All notable changes to this project will be documented in this file. This projec
 [Semantic Versioning](https://semver.org/) and follows a Keep‑a‑Changelog–style structure with the
 sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
+## [0.5.1] - 2025-09-09
+
+### Fixed
+
+- **Python 3.10/3.11 compatibility**: replace multiline f‑strings in CLI output code paths
+  (not supported before Python 3.12) with concatenation/temporary variables.
+  Affected commands:
+  - `filetypes`: numbered list rendering and detail lines (description/content matcher)
+  - `processors`: processor header lines and per‑filetype detail lines
+
+### Tooling
+
+- Bump project version to `0.5.1` in `pyproject.toml`.
+- Update local pre‑commit hook to use TopMark **v0.5.0**.
+
 ## [0.5.0] - 2025-09-09
 
 ### Added

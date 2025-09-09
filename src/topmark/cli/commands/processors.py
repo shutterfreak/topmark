@@ -195,26 +195,24 @@ TopMark version **{TOPMARK_VERSION}** supports the following header processors:
         for proc in payload_data["processors"]:
             proc_idx += 1
 
+            module = console.styled("(" + proc["module"] + ")", dim=True)
             if show_details:
                 console.print(
-                    f"{proc_idx:>{num_proc_width}}. {console.styled(proc['class'], bold=True)} {
-                        console.styled('(' + proc['module'] + ')', dim=True)
-                    }"
+                    f"{proc_idx:>{num_proc_width}}. {console.styled(proc['class'], bold=True)} "
+                    + module
                 )
                 ft_idx = 0
                 for file_types in proc["filetypes"]:
                     ft_idx += 1
-                    console.print(
-                        f"    {ft_idx:>{num_ft_width}}. {file_types['name']} - {
-                            console.styled(file_types['description'], dim=True)
-                        }"
-                    )
+                    descr = console.styled(file_types["description"], dim=True)
+
+                    console.print(f"    {ft_idx:>{num_ft_width}}. {file_types['name']} - {descr}")
             else:
                 proc_ft_count = len(proc["filetypes"])
                 console.print(
-                    f"{proc_idx:>{num_proc_width}}. {console.styled(proc['class'], bold=True)} {
-                        console.styled('(' + proc['module'] + ')', dim=True)
-                    } (total: {proc_ft_count})"
+                    f"{proc_idx:>{num_proc_width}}. {console.styled(proc['class'], bold=True)} "
+                    + module
+                    + f" (total: {proc_ft_count})"
                 )
                 console.print(f"    - {', '.join(proc['filetypes'])}")
 
@@ -222,10 +220,12 @@ TopMark version **{TOPMARK_VERSION}** supports the following header processors:
                 console.print()
 
         if payload_data["unbound_filetypes"]:
+            hdr_no_processor = console.styled(
+                "File types without a registered processor:",
+                bold=True,
+            )
             if show_details:
-                console.print(
-                    console.styled("File types without a registered processor:", bold=True)
-                )
+                console.print(hdr_no_processor)
                 ft_idx = 0
                 for unbound_ft in payload_data["unbound_filetypes"]:
                     ft_idx += 1
@@ -235,11 +235,7 @@ TopMark version **{TOPMARK_VERSION}** supports the following header processors:
                     )
             else:
                 unreg_ft_count = len(payload_data["unbound_filetypes"])
-                console.print(
-                    f"{
-                        console.styled('File types without a registered processor:', bold=True)
-                    } (total: {unreg_ft_count})"
-                )
+                console.print(f"{hdr_no_processor} (total: {unreg_ft_count})")
                 console.print(f"    - {', '.join(payload_data['unbound_filetypes'])}")
 
     # No explicit return needed for Click commands.

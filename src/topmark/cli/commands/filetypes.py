@@ -247,27 +247,17 @@ TopMark version **{TOPMARK_VERSION}** supports the following file types:
                     console.print("      skip processing: yes")
                 if matcher:
                     assert v.content_matcher is not None
-                    console.print(
-                        f"      content matcher: yes {
-                            console.styled(
-                                '('
-                                + v.content_matcher.__module__
-                                + '.'
-                                + v.content_matcher.__name__
-                                + ')',
-                                dim=True,
-                            )
-                        }"
+                    content_matcher_name: str = console.styled(
+                        "(" + v.content_matcher.__module__ + "." + v.content_matcher.__name__ + ")",
+                        dim=True,
                     )
+                    console.print(f"      content matcher: yes {content_matcher_name}")
                 if policy:
                     console.print(f"      header_policy  : {policy}")
             else:
                 if vlevel > 0:
-                    console.print(
-                        f"{idx:>{num_width}}. {k:<{k_len}} {
-                            console.styled(v.description, dim=True)
-                        }"
-                    )
+                    descr = console.styled(v.description, dim=True)
+                    console.print(f"{idx:>{num_width}}. {k:<{k_len}} {descr}")
                 else:
                     console.print(f"{idx:>{num_width}}. {k:<{k_len}}")
 
