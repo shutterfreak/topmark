@@ -79,6 +79,10 @@ class Config:
     # Verbosity level
     verbosity_level: int | None = None
 
+    # Runtime intent: whether to actually write changes (apply) or preview only
+    # None = inherit/unspecified, False = dry-run/preview, True = apply
+    apply_changes: bool | None = None
+
     # Header configuration fields and their values
     header_fields: list[str] = field(default_factory=lambda: [])  # From [header].fields
     field_values: dict[str, str] = field(default_factory=lambda: {})  # From [fields]
@@ -375,6 +379,9 @@ class Config:
         elif "verbosity_level" in args and args["verbosity_level"] is None:
             # Explicit None means inherit, do not override
             pass
+
+        if "apply_changes" in args and args["apply_changes"] is not None:
+            self.apply_changes = bool(args["apply_changes"])
 
         logger.debug("Patched Config: %s", self)
         logger.info("Applied CLI overrides to Config")

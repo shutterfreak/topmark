@@ -95,7 +95,7 @@ def test_updater_suppresses_bom_reprepend_in_strip_fastpath() -> None:
 
     ctx = update(ctx)
 
-    assert ctx.status.write == WriteStatus.REMOVED
+    assert ctx.status.write == WriteStatus.PREVIEWED  # Dry-run mode
     # Should *not* have a BOM re-attached
     assert ctx.updated_file_lines
     assert not ctx.updated_file_lines[0].startswith("\ufeff"), ctx.updated_file_lines[0]

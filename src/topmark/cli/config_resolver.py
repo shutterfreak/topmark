@@ -31,6 +31,7 @@ def resolve_config_from_click(
     *,
     ctx: click.Context,
     verbosity_level: int | None,
+    apply_changes: bool | None,
     files: list[str],
     files_from: list[str],
     stdin: bool,
@@ -51,6 +52,7 @@ def resolve_config_from_click(
         ctx: Click context that provides the resolved log level.
         verbosity_level: Program-output verbosity (0=terse, 1=verbose);
             None = inherit from parent context.
+        apply_changes: Whether to apply the changed (dry-run if not set ot False).
         files: File paths passed on the command line.
         files_from: Paths to files that contain lists of file paths.
         stdin: Whether to read file paths from standard input.
@@ -70,6 +72,7 @@ def resolve_config_from_click(
     """
     args: ArgsNamespace = build_args_namespace(
         verbosity_level=verbosity_level,
+        apply_changes=apply_changes,
         files=list(files),
         files_from=list(files_from),
         stdin=stdin,

@@ -244,6 +244,9 @@ def strip_command(
         header_format=header_format,
     )
 
+    # Propagate runtime intent for updater (terminal vs preview write status)
+    config.apply_changes = bool(apply_changes)
+
     temp_path = plan.temp_path  # for cleanup/STDIN-apply branch
     stdin_mode = plan.stdin_mode
 
@@ -316,12 +319,12 @@ def strip_command(
         written = 0
         failed = 0
 
-        def _should_write_check(r: ProcessingContext) -> bool:
+        def _should_write_strip(r: ProcessingContext) -> bool:
             """Determine whether to write this file in strip mode."""
             return r.status.file is FileStatus.RESOLVED and r.status.write is WriteStatus.REMOVED
 
         # Perform writes and count successes/failures
-        written, failed = write_updates(results, should_write=_should_write_check)
+        written, failed = write_updates(results, should_write=_should_write_strip)
 
         if fmt == OutputFormat.DEFAULT:
             msg = (

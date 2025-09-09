@@ -101,11 +101,14 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
     The updater never mutates the file on disk; it only prepares `updated_file_lines` and
     `status.write` for later patch/apply steps.
     """
+    logger.debug("ctx.config.apply_changes = %s", ctx.config.apply_changes)
+    apply: bool = False if ctx.config.apply_changes is None else ctx.config.apply_changes
+
     if ctx.status.strip == StripStatus.READY:
         # Previous step computed updated_file_lines for a removal.
         # Ensure BOM policy is respected on the final output.
         ctx.updated_file_lines = _prepend_bom_to_lines_if_needed(ctx.updated_file_lines or [], ctx)
-        ctx.status.write = WriteStatus.REMOVED  # actual apply path will only finalize the write
+        ctx.status.write = WriteStatus.REMOVED if apply else WriteStatus.PREVIEWED
         return ctx
 
     # If the comparer determined the file is already compliant, do nothing.
@@ -144,7 +147,7 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
             ctx.updated_file_lines = original_lines
             logger.trace("Updater: replacement yields no changes for %s", ctx.path)
             return ctx
-        ctx.status.write = WriteStatus.REPLACED
+        ctx.status.write = WriteStatus.REPLACED if apply else WriteStatus.PREVIEWED
         ctx.updated_file_lines = new_lines
         logger.trace("Updated file (replace):\n%s", "".join(ctx.updated_file_lines or []))
         return ctx
@@ -177,7 +180,7 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
                     logger.trace("Updater: text-based insertion yields no changes for %s", ctx.path)
                     return ctx
                 ctx.updated_file_lines = new_text.splitlines(keepends=True)
-                ctx.status.write = WriteStatus.INSERTED
+                ctx.status.write = WriteStatus.INSERTED if apply else WriteStatus.PREVIEWED
                 return ctx
         except Exception as e:
             logger.warning("text-based insertion failed for %s: %s", ctx.path, e)
@@ -216,6 +219,6 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
             logger.trace("Updater: line-based insertion yields no changes for %s", ctx.path)
             return ctx
         ctx.updated_file_lines = new_lines
-        ctx.status.write = WriteStatus.INSERTED
+        ctx.status.write = WriteStatus.INSERTED if apply else WriteStatus.PREVIEWED
         logger.trace("Updated file (line-based):\n%s", "".join(ctx.updated_file_lines or []))
         return ctx

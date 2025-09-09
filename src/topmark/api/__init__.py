@@ -156,6 +156,7 @@ def _run_pipeline(
     paths: Iterable[Path | str],
     base_config: Mapping[str, Any] | Config | None,
     file_types: Sequence[str] | None,
+    apply_changes: bool,
 ) -> tuple[Config, list[Path], list[ProcessingContext], object | None]:
     """Resolve config + files, register processors, and run the pipeline.
 
@@ -171,6 +172,10 @@ def _run_pipeline(
     cfg, file_list = _build_cfg_and_files_via_cli_helpers(
         paths, base_config=base_config, file_types=file_types
     )
+
+    # Set the 'apply' mode in the Config instance
+    cfg.apply_changes = apply_changes
+
     if not file_list:
         return cfg, file_list, [], None
 
@@ -364,6 +369,7 @@ def check(
         paths=paths,
         base_config=config,
         file_types=file_types,
+        apply_changes=apply,
     )
     if not file_list:
         return RunResult(files=(), summary={}, had_errors=False)
@@ -446,6 +452,7 @@ def strip(
         paths=paths,
         base_config=config,
         file_types=file_types,
+        apply_changes=apply,
     )
     if not file_list:
         return RunResult(files=(), summary={}, had_errors=False)

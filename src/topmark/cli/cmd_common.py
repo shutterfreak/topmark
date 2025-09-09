@@ -177,6 +177,8 @@ def build_config_common(
     """Materialize Config from an input plan (no file list resolution)."""
     return resolve_config_from_click(
         ctx=ctx,
+        verbosity_level=ctx.obj.get("verbosity_level"),
+        apply_changes=ctx.obj.get("apply_changes"),
         files=plan.paths,
         files_from=plan.files_from,
         stdin=plan.stdin_mode,
@@ -190,7 +192,6 @@ def build_config_common(
         config_paths=config_paths,
         align_fields=align_fields,
         header_format=header_format,
-        verbosity_level=ctx.obj.get("verbosity_level"),
     )
 
 
@@ -209,6 +210,8 @@ def build_config_and_file_list(
     if plan.stdin_mode:
         config = resolve_config_from_click(
             ctx=ctx,
+            verbosity_level=ctx.obj.get("verbosity_level"),
+            apply_changes=ctx.obj.get("apply_changes"),
             files=plan.paths,
             files_from=plan.files_from,
             stdin=True,
@@ -222,12 +225,13 @@ def build_config_and_file_list(
             config_paths=config_paths,
             align_fields=align_fields,
             header_format=header_format,
-            verbosity_level=ctx.obj.get("verbosity_level"),
         )
         return config, [Path(plan.paths[0])]
     else:
         config = resolve_config_from_click(
             ctx=ctx,
+            verbosity_level=ctx.obj.get("verbosity_level"),
+            apply_changes=ctx.obj.get("apply_changes"),
             files=plan.paths,
             files_from=plan.files_from,
             stdin=False,
@@ -241,6 +245,5 @@ def build_config_and_file_list(
             config_paths=config_paths,
             align_fields=align_fields,
             header_format=header_format,
-            verbosity_level=ctx.obj.get("verbosity_level"),
         )
         return config, resolve_file_list(config)

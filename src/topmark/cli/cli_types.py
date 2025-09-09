@@ -63,6 +63,7 @@ class ArgsNamespace(TypedDict, total=False):
 
     Attributes:
         verbosity_level: Program-output verbosity (0=terse, 1=verbose).
+        apply_changes: Whether to apply the changed (dry-run if not set ot False).
         no_config: Whether to ignore local config files.
         config_files: List of extra config file paths.
         files: List of file paths to process.
@@ -79,6 +80,10 @@ class ArgsNamespace(TypedDict, total=False):
 
     # Global options: retrieve from ctx.obj
     verbosity_level: int | None
+
+    # Runtime intent: whether to actually write changes (apply) or preview only
+    # None = inherit/unspecified, False = dry-run/preview, True = apply
+    apply_changes: bool | None
 
     # Command options: config
     no_config: bool | None
@@ -105,6 +110,7 @@ class ArgsNamespace(TypedDict, total=False):
 def build_args_namespace(
     *,
     verbosity_level: int | None = None,
+    apply_changes: bool | None = None,
     no_config: bool | None = None,
     config_files: list[str] | None = None,
     files: list[str] | None = None,
@@ -123,6 +129,7 @@ def build_args_namespace(
 
     Args:
         verbosity_level: Program-output verbosity (0=terse, 1=verbose).
+        apply_changes: Whether to apply the changed (dry-run if not set ot False).
         no_config: Whether to ignore local config files.
         config_files: List of extra config file paths.
         files: List of file paths to process.
@@ -142,7 +149,7 @@ def build_args_namespace(
     """
     return {
         "verbosity_level": verbosity_level,
-        # "command": command,
+        "apply_changes": apply_changes,
         "no_config": no_config,
         "config_files": config_files,
         "files": files if files is not None else [],

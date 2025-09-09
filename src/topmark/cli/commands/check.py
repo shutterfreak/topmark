@@ -264,6 +264,9 @@ def check_command(
         header_format=header_format,
     )
 
+    # Propagate runtime intent for updater (terminal vs preview write status)
+    config.apply_changes = bool(apply_changes)
+
     temp_path = plan.temp_path  # for cleanup/STDIN-apply branch
     stdin_mode = plan.stdin_mode
 

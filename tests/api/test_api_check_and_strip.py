@@ -31,7 +31,8 @@ def test_check_dry_run_reports_one_change_and_one_unchanged(
     a = repo_py_with_and_without_header / "src" / "without_header.py"
     b = repo_py_with_and_without_header / "src" / "with_header.py"
 
-    assert by_path.get(a) in {"would_change", "changed"}
+    # assert by_path.get(a) in {"would_change", "changed"}
+    assert by_path.get(a) == "would_change"
     assert by_path.get(b) == "unchanged"
     assert r.written == 0 and r.failed == 0
 
