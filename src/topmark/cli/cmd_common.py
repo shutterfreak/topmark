@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING
 import click
 
 from topmark.cli.config_resolver import resolve_config_from_click
+from topmark.cli.console_helpers import get_console_safely
 from topmark.cli_shared.exit_codes import ExitCode
 from topmark.config.logging import get_logger
 from topmark.file_resolver import resolve_file_list
@@ -36,6 +37,20 @@ if TYPE_CHECKING:
     from topmark.rendering.formats import HeaderOutputFormat
 
 logger = get_logger(__name__)
+
+
+def get_effective_verbosity(ctx: click.Context, config: "Config | None" = None) -> int:
+    """Return the effective program-output verbosity for this command.
+
+    Resolution order (tri-state aware):
+        1. Config.verbosity_level if set (not None)
+        2. ctx.obj["verbosity_level"] if present
+        3. 0 (terse)
+    """
+    cfg_level = getattr(config, "verbosity_level", None) if config else None
+    if cfg_level is not None:
+        return int(cfg_level)
+    return int(ctx.obj.get("verbosity_level", 0))
 
 
 def build_file_list(config: Config, *, stdin_mode: bool, temp_path: Path | None) -> list[Path]:
@@ -67,6 +82,7 @@ def run_steps_for_files(
         ENCODING_ERROR → UnicodeDecodeError
         PIPELINE_ERROR → any other unexpected exception
     """
+    console = get_console_safely()
     steps = get_pipeline(pipeline_name)
     results: list[ProcessingContext] = []
     encountered_error_code: ExitCode | None = None
@@ -78,7 +94,7 @@ def run_steps_for_files(
             results.append(ctx_obj)
         except (FileNotFoundError, PermissionError, IsADirectoryError) as e:
             logger.error("Filesystem error while processing %s: %s", path, e)
-            click.secho(f"❌ Filesystem error processing {path}: {e}", fg="red")
+            console.error(f"❌ Filesystem error processing {path}: {e}")
             if isinstance(e, (FileNotFoundError, IsADirectoryError)):
                 logger.error("%s: %s", e, path)
                 encountered_error_code = encountered_error_code or ExitCode.FILE_NOT_FOUND
@@ -88,14 +104,12 @@ def run_steps_for_files(
             continue
         except UnicodeDecodeError as e:
             logger.error("Encoding error while reading %s: %s", path, e)
-            click.secho(f"🧵 Encoding error in {path}: {e}", fg="red")
+            console.error(f"🧵 Encoding error in {path}: {e}")
             encountered_error_code = encountered_error_code or ExitCode.ENCODING_ERROR
             continue
         except Exception as e:  # pragma: no cover
             logger.exception("Unexpected error processing %s", path)
-            click.secho(
-                f"⚠️  Unexpected error processing {path}: {e} (use -vv for traceback)", fg="red"
-            )
+            console.error(f"⚠️  Unexpected error processing {path}: {e} (use -vv for traceback)")
             encountered_error_code = encountered_error_code or ExitCode.PIPELINE_ERROR
             continue
 
@@ -134,7 +148,8 @@ def filter_view_results(
 def exit_if_no_files(file_list: list[Path]) -> bool:
     """Echo a friendly message and return True if there is nothing to process."""
     if not file_list:
-        click.secho("\nℹ️  No files to process.\n", fg="blue")
+        console = get_console_safely()
+        console.print(console.styled("\nℹ️  No files to process.\n", fg="blue"))
         return True
     return False
 

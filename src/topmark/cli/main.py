@@ -17,6 +17,8 @@ Key ideas:
 This file is intentionally compact so we can lift the patterns back into TopMark.
 """
 
+from typing import TYPE_CHECKING
+
 import click
 
 from topmark.cli.commands.check import check_command
@@ -27,6 +29,7 @@ from topmark.cli.commands.processors import processors_command
 from topmark.cli.commands.show_defaults import show_defaults_command
 from topmark.cli.commands.strip import strip_command
 from topmark.cli.commands.version import version_command
+from topmark.cli.console import ClickConsole
 
 # --- We use a module import here instead of relative import
 from topmark.cli.options import (
@@ -36,9 +39,11 @@ from topmark.cli.options import (
     resolve_color_mode,
     resolve_verbosity,
 )
-from topmark.cli_shared.console import Console
-from topmark.config.logging import get_logger, setup_logging
+from topmark.config.logging import get_logger, resolve_env_log_level, setup_logging
 from topmark.pipeline.processors import register_all_processors
+
+if TYPE_CHECKING:
+    from topmark.cli_shared.console_api import ConsoleLike
 
 logger = get_logger(__name__)
 
@@ -59,21 +64,21 @@ def init_common_state(
     """
     ctx.obj = ctx.obj or {}
 
-    # Program-output verbosity: map -v/-q to a non-negative level (0..2)
-    vlevel = max(0, min(2, verbose - quiet))
-    ctx.obj["verbosity_level"] = vlevel
+    # Configure program-output verbosity:
+    level_cli = resolve_verbosity(verbose, quiet)
+    ctx.obj["verbosity_level"] = level_cli
 
-    # Set the log level
-    level = resolve_verbosity(verbose, quiet)
-    ctx.obj["log_level"] = level
-    setup_logging(level=level)
+    # Configure internal logging via env:
+    level_env = resolve_env_log_level()
+    ctx.obj["log_level"] = level_env
+    setup_logging(level=level_env)
 
     effective_color_mode = ColorMode.NEVER if no_color else (color_mode or ColorMode.AUTO)
     enable_color = resolve_color_mode(cli_mode=effective_color_mode, output_format=None)
     ctx.obj["color_enabled"] = enable_color
     ctx.color = enable_color
 
-    console = Console(enable_color=not no_color)
+    console = ClickConsole(enable_color=not no_color)
     ctx.obj["console"] = console
 
 
@@ -102,11 +107,12 @@ def cli(
         color_mode=color_mode,
         no_color=no_color,
     )
+    console: ConsoleLike = ctx.obj["console"]
 
     if ctx.invoked_subcommand is None:
-        click.echo("Hint: use 'topmark check [PATHS...]' to validate headers.")
-        click.echo()
-        click.echo(ctx.get_help())
+        console.print("Hint: use 'topmark check [PATHS...]' to validate headers.")
+        console.print()
+        console.print(ctx.get_help())
 
 
 cli.add_command(version_command)

@@ -500,6 +500,8 @@ class ProcessingContext:
         # Local import to avoid import cycles at module import time
         from topmark.cli_shared.utils import classify_outcome
 
+        verbosity_level: int = self.config.verbosity_level or 0
+
         parts: list[str] = [f"{self.path}:"]
 
         # File type (dim), or <unknown> if resolution failed
@@ -523,6 +525,7 @@ class ProcessingContext:
                 parts.append("-")
                 parts.append(chalk.yellow("diff"))
 
+        diag_show_hint: str = ""
         if self.diagnostics:
             n_info = sum(1 for d in self.diagnostics if d.level is DiagnosticLevel.INFO)
             n_warn = sum(1 for d in self.diagnostics if d.level is DiagnosticLevel.WARNING)
@@ -530,6 +533,8 @@ class ProcessingContext:
             parts.append("-")
             # Compose a compact triage summary like "1 error, 2 warnings"
             triage: list[str] = []
+            if verbosity_level <= 0:
+                diag_show_hint = chalk.dim.italic(" (use '-v' to view)")
             if n_err:
                 triage.append(chalk.red_bright(f"{n_err} error" + ("s" if n_err != 1 else "")))
             if n_warn:
@@ -539,10 +544,10 @@ class ProcessingContext:
                 triage.append(chalk.blue(f"{n_info} info" + ("s" if n_info != 1 else "")))
             parts.append(", ".join(triage) if triage else chalk.blue("info"))
 
-        result: str = " ".join(parts)
+        result: str = " ".join(parts) + diag_show_hint
 
-        # Optional verbose listing (kept simple; could be gated by verbosity later)
-        if self.diagnostics and (self.config.verbosity_level or 0) >= 1:
+        # Optional verbose diagnostic listing (gated by verbosity level)
+        if self.diagnostics and verbosity_level > 0:
             details: list[str] = []
             for d in self.diagnostics:
                 prefix = {
@@ -550,7 +555,7 @@ class ProcessingContext:
                     DiagnosticLevel.WARNING: chalk.yellow("warning"),
                     DiagnosticLevel.INFO: chalk.blue("info"),
                 }[d.level]
-                details.append(f" - [{prefix}] {d.message}")
+                details.append(f"  [{prefix}] {d.message}")
             result += "\n" + "\n".join(details)
 
         return result

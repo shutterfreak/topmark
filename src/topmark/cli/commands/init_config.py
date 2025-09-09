@@ -15,12 +15,15 @@ generated header block and the default TOML configuration. Intended as a
 starting point for customizing a project's configuration.
 """
 
+from typing import TYPE_CHECKING
+
 import click
 
-from topmark.cli_shared.utils import default_header_overrides
+from topmark.cli.cmd_common import get_effective_verbosity
 from topmark.config import Config
-from topmark.constants import PYPROJECT_TOML_PATH
-from topmark.rendering.api import render_header_for_path
+
+if TYPE_CHECKING:
+    from topmark.cli_shared.console_api import ConsoleLike
 
 
 @click.command(
@@ -30,34 +33,51 @@ from topmark.rendering.api import render_header_for_path
 def init_config_command() -> None:
     """Print a starter config file to stdout.
 
-    Outputs an initial TopMark configuration file with default values and a header.
+    Outputs an initial TopMark configuration file with default values.
     Intended as a starting point for customization in your own project.
 
     Returns:
         None. Prints output to stdout.
     """
-    click.secho("Initial TopMark Configuration:", bold=True, underline=True)
+    ctx = click.get_current_context()
+    ctx.ensure_object(dict)
+    console: ConsoleLike = ctx.obj["console"]
 
-    header_overrides = default_header_overrides(
-        info="Initial TopMark configuration -- adjust according to your needs",
-        file_label="topmark.toml",
+    # Determine effective program-output verbosity for gating extra details
+    vlevel = get_effective_verbosity(ctx)
+
+    # Banner
+    if vlevel > 0:
+        console.print(
+            console.styled(
+                "Initial TopMark Configuration (TOML):",
+                bold=True,
+                underline=True,
+            )
+        )
+
+        console.print(
+            console.styled(
+                "# === BEGIN ===",
+                fg="cyan",
+                dim=True,
+            )
+        )
+
+    console.print(
+        console.styled(
+            Config.get_default_config_toml(),
+            fg="cyan",
+        )
     )
 
-    topmark_header = render_header_for_path(
-        config=Config.from_defaults(),
-        path=PYPROJECT_TOML_PATH,
-        header_fields_overrides=["fle", "file_relpath", "version", "info", "license", "copyright"],
-        header_overrides=header_overrides,
-    )
-
-    click.secho(
-        f"""\
-{topmark_header}
-
-{Config.get_default_config_toml()}
-## === END of TopMark Configuration ===
-""",
-        fg="cyan",
-    )
+    if vlevel > 0:
+        console.print(
+            console.styled(
+                "# === END ===",
+                fg="cyan",
+                dim=True,
+            )
+        )
 
     # No explicit return needed for Click commands.

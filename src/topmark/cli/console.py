@@ -1,7 +1,7 @@
 # topmark:header:start
 #
 #   file         : console.py
-#   file_relpath : src/topmark/cli_shared/console.py
+#   file_relpath : src/topmark/cli/console.py
 #   project      : TopMark
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
@@ -20,6 +20,8 @@ from typing import Any, TextIO, TypedDict
 
 import click
 
+from topmark.cli_shared.console_api import ConsoleLike
+
 
 # This TypedDict is for documentation and type-checking on the *caller* side.
 class StyleKwargs(TypedDict, total=False):
@@ -36,7 +38,7 @@ class StyleKwargs(TypedDict, total=False):
     # Ensure all valid arguments from click.style() are included here
 
 
-class Console:
+class ClickConsole(ConsoleLike):
     """Program-output console, independent from the logger.
 
     Attributes:
@@ -46,7 +48,11 @@ class Console:
     """
 
     def __init__(
-        self, *, enable_color: bool = True, out: TextIO | None = None, err: TextIO | None = None
+        self,
+        *,
+        enable_color: bool = True,
+        out: TextIO | None = None,
+        err: TextIO | None = None,
     ) -> None:
         """Initializes the Console.
 
@@ -78,7 +84,7 @@ class Console:
             text: Warning text.
             nl: If True, append a newline.
         """
-        click.echo(text, nl=nl, file=self.err, color=self.enable_color)
+        click.secho(text, nl=nl, file=self.err, color=self.enable_color, fg="yellow")
 
     def error(self, text: str, *, nl: bool = True) -> None:
         """Write an error message to stderr.
@@ -87,7 +93,7 @@ class Console:
             text: Error text.
             nl: If True, append a newline.
         """
-        click.echo(text, nl=nl, file=self.err, color=self.enable_color)
+        click.secho(text, nl=nl, file=self.err, color=self.enable_color, fg="bright_red")
 
     def styled(self, text: str, **style_kwargs: Any) -> str:
         """Return a styled string using click.style.

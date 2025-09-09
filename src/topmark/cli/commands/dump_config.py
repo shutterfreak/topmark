@@ -22,9 +22,11 @@ Input modes:
   * '-' as a PATH (content-on-STDIN) is ignored in dump-config.
 """
 
+from typing import TYPE_CHECKING
+
 import click
 
-from topmark.cli.cmd_common import build_config_common
+from topmark.cli.cmd_common import build_config_common, get_effective_verbosity
 from topmark.cli.io import plan_cli_inputs
 from topmark.cli.options import (
     CONTEXT_SETTINGS,
@@ -35,6 +37,9 @@ from topmark.cli.options import (
 from topmark.cli_shared.utils import safe_unlink
 from topmark.config.logging import get_logger
 from topmark.rendering.formats import HeaderOutputFormat
+
+if TYPE_CHECKING:
+    from topmark.cli_shared.console_api import ConsoleLike
 
 logger = get_logger(__name__)
 
@@ -105,24 +110,21 @@ def dump_config_command(
     """
     ctx = click.get_current_context()
     ctx.ensure_object(dict)
+    console: ConsoleLike = ctx.obj["console"]
 
     # dump-config is file-agnostic: ignore positional PATHS and --files-from
     original_args = list(ctx.args)
     if original_args:
         if "-" in original_args:
-            click.secho(
+            console.warn(
                 "Note: dump-config is file-agnostic; '-' (content from STDIN) is ignored.",
-                fg="yellow",
             )
-        click.secho(
-            "Note: dump-config is file-agnostic; positional paths are ignored.", fg="yellow"
-        )
+        console.warn("Note: dump-config is file-agnostic; positional paths are ignored.")
         ctx.args = []
     if files_from:
-        click.secho(
+        console.warn(
             "Note: dump-config ignores --files-from "
             "(file lists are not part of the configuration).",
-            fg="yellow",
         )
         files_from = []
 
@@ -150,23 +152,49 @@ def dump_config_command(
 
     temp_path = plan.temp_path  # for cleanup/STDIN-apply branch
 
+    # Determine effective program-output verbosity for gating extra details
+    vlevel = get_effective_verbosity(ctx, config)
+
     logger.trace("Config after merging CLI and discovered config: %s", config)
 
     # We don't actually care about the file list here; just dump the config
     import toml
 
     merged_config = toml.dumps(config.to_toml_dict())
-    click.secho("TopMark Config Dump:", bold=True, underline=True)
-    click.secho(
-        f"""\
-# Merged TopMark config (TOML):
 
-# === BEGIN ===
-{merged_config}
-## === END of TopMark Configuration ===
-""",
-        fg="cyan",
+    # Banner
+    if vlevel > 0:
+        console.print(
+            console.styled(
+                "TopMark Config Dump (TOML):\n",
+                bold=True,
+                underline=True,
+            )
+        )
+
+        console.print(
+            console.styled(
+                "# === BEGIN ===",
+                fg="cyan",
+                dim=True,
+            )
+        )
+
+    console.print(
+        console.styled(
+            merged_config,
+            fg="cyan",
+        )
     )
+
+    if vlevel > 0:
+        console.print(
+            console.styled(
+                "# === END ===",
+                fg="cyan",
+                dim=True,
+            )
+        )
 
     # Cleanup any temp file created by content-on-STDIN mode (defensive)
     if temp_path and temp_path.exists():

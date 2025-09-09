@@ -53,38 +53,20 @@ def resolve_verbosity(verbose_count: int, quiet_count: int) -> int:
         quiet_count: Number of times the quiet flag (-q) is passed.
 
     Returns:
-        The logging level as an integer.
+        The verbosity level as an integer.
 
     Raises:
-        UsageError: If both verbose and quiet flags are used simultaneously.
+        TopmarkUsageError: If both verbose and quiet flags are used simultaneously.
 
     Behavior:
         The --verbose and --quiet options are mutually exclusive.
-        Three or more -v flags set TRACE level.
-        Two -v flags set DEBUG level.
-        One -v flag sets INFO level.
-        One or more -q flags set ERROR level.
-        Default level is WARNING.
     """
     # They are mutually exclusive
     if verbose_count > 0 and quiet_count > 0:
         raise TopmarkUsageError("The '--verbose' and '--quiet' options are mutually exclusive.")
 
-    # Resolve verbosity levels
-    if verbose_count >= 3:  # -vvv
-        return LOG_LEVELS["TRACE"]
-    if verbose_count == 2:  # -vv
-        return LOG_LEVELS["DEBUG"]
-    if verbose_count == 1:  # -v
-        return LOG_LEVELS["INFO"]
-
-    # Resolve quiet levels
-    if quiet_count >= 1:  # -q
-        return LOG_LEVELS["ERROR"]
-    # Never mute LOG_LEVELS["CRITICAL"]
-
-    # Default is WARNING
-    return LOG_LEVELS["WARNING"]
+    verbosity_level = verbose_count - quiet_count
+    return verbosity_level
 
 
 #: Click context settings to allow Black-style extra args and unknown options.

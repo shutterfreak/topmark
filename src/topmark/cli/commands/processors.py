@@ -16,15 +16,19 @@ including JSON, NDJSON, Markdown, and a default human-readable format.
 """
 
 from collections import defaultdict
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import click
 
 from topmark.cli.cli_types import EnumChoiceParam
+from topmark.cli.cmd_common import get_effective_verbosity
 from topmark.cli_shared.utils import OutputFormat, render_markdown_table
 from topmark.constants import TOPMARK_VERSION
 from topmark.filetypes.instances import get_file_type_registry
 from topmark.filetypes.registry import get_header_processor_registry
+
+if TYPE_CHECKING:
+    from topmark.cli_shared.console_api import ConsoleLike
 
 
 @click.command(
@@ -64,18 +68,25 @@ def processors_command(
             (``default``, ``json``, ``ndjson``, or ``markdown``).
             If ``None``, uses the default human-readable format.
     """
-    ft = get_file_type_registry()
-    reg = get_header_processor_registry()
+    ctx = click.get_current_context()
+    ctx.ensure_object(dict)
+    console: ConsoleLike = ctx.obj["console"]
+
+    file_types = get_file_type_registry()
+    header_processors = get_header_processor_registry()
     fmt: OutputFormat = output_format or OutputFormat.DEFAULT
+
+    # Determine effective program-output verbosity for gating extra details
+    vlevel = get_effective_verbosity(ctx)
 
     # Invert mapping: proc class -> [filetype names]
     groups: dict[tuple[str, str], list[str]] = defaultdict(list)
-    for name, proc in reg.items():
+    for name, proc in header_processors.items():
         key = (proc.__class__.__module__, proc.__class__.__name__)
         groups[key].append(name)
 
     # Find unbound file types
-    unbound = sorted([name for name in ft.keys() if name not in reg])
+    unbound = sorted([name for name in file_types.keys() if name not in header_processors])
 
     # Build a unified payload for all formats
     payload_data: dict[str, Any] = {
@@ -90,14 +101,14 @@ def processors_command(
         }
         if show_details:
             processor_entry["filetypes"] = [
-                {"name": n, "description": ft[n].description} for n in sorted(names)
+                {"name": n, "description": file_types[n].description} for n in sorted(names)
             ]
         payload_data["processors"].append(processor_entry)
 
     for name in unbound:
         if show_details:
             payload_data["unbound_filetypes"].append(
-                {"name": name, "description": ft[name].description}
+                {"name": name, "description": file_types[name].description}
             )
         else:
             payload_data["unbound_filetypes"].append(name)
@@ -105,7 +116,7 @@ def processors_command(
     if fmt == OutputFormat.JSON:
         import json
 
-        click.echo(json.dumps(payload_data, indent=2))
+        console.print(json.dumps(payload_data, indent=2))
         return
 
     if fmt == OutputFormat.NDJSON:
@@ -113,14 +124,14 @@ def processors_command(
 
         # Output processors
         for proc in payload_data["processors"]:
-            click.echo(json.dumps({"processor": proc}))
+            console.print(json.dumps({"processor": proc}))
         # Output unbound file types
         for unbound_ft in payload_data["unbound_filetypes"]:
-            click.echo(json.dumps({"unbound_filetype": unbound_ft}))
+            console.print(json.dumps({"unbound_filetype": unbound_ft}))
         return
 
     if fmt == OutputFormat.MARKDOWN:
-        click.echo(f"""
+        console.print(f"""
 # Supported Header Processors
 
 TopMark version **{TOPMARK_VERSION}** supports the following header processors:
@@ -131,14 +142,14 @@ TopMark version **{TOPMARK_VERSION}** supports the following header processors:
             for proc in payload_data["processors"]:
                 headers = ["File Types", "Description"]
                 rows = []
-                click.echo(f"\n## **{proc['class']}** _({proc['module']})_\n")
-                # click.echo("| File Types | Description |")
-                # click.echo("|---|---|")
-                for ft in proc["filetypes"]:
-                    rows.append([f"`{ft['name']}`", ft["description"]])
-                    # click.echo(f"| `{ft['name']}` | {ft['description']} |")
+                console.print(f"\n## **{proc['class']}** _({proc['module']})_\n")
+                # console.print("| File Types | Description |")
+                # console.print("|---|---|")
+                for file_types in proc["filetypes"]:
+                    rows.append([f"`{file_types['name']}`", file_types["description"]])
+                    # console.print(f"| `{ft['name']}` | {ft['description']} |")
                 table = render_markdown_table(headers, rows)
-                click.echo(table)
+                console.print(table)
 
         else:
             headers = ["Processor", "Module", "File Types"]
@@ -153,42 +164,82 @@ TopMark version **{TOPMARK_VERSION}** supports the following header processors:
                     ]
                 )
             table = render_markdown_table(headers, rows)
-            click.echo(table)
+            console.print(table)
 
         if payload_data["unbound_filetypes"]:
-            click.echo("\n## File types without a registered processor\n")
+            console.print("\n## File types without a registered processor\n")
             headers = ["File Types", "Description"]
             rows = []
             for unbound_ft in payload_data["unbound_filetypes"]:
                 if show_details:
                     rows.append([f"`{unbound_ft['name']}`", f"`{unbound_ft['description']}`"])
                 else:
-                    click.echo(f"  - `{unbound_ft}`")
-        click.echo()
+                    console.print(f"  - `{unbound_ft}`")
+        console.print()
         return
 
-    else:  # OutputFormat.DEFAULT
-        # default human
-        click.secho("\nSupported Header Processors:\n", bold=True, underline=True)
-        for proc in payload_data["processors"]:
-            click.echo(
-                f"  - **{proc['class']}** {click.style('(' + proc['module'] + ')', dim=True)}"
+    else:  # OutputFormat.DEFAULT (default human output)
+        # Banner
+        if vlevel > 0:
+            console.print(
+                console.styled("\nSupported Header Processors:\n", bold=True, underline=True)
             )
-            if show_details:
-                for ft in proc["filetypes"]:
-                    click.echo(f"      - {ft['name']} - {click.style(ft['description'], dim=True)}")
-            else:
-                click.echo(f"      - {', '.join(proc['filetypes'])}")
 
-        if payload_data["unbound_filetypes"]:
-            click.secho("\nFile types without a registered processor:\n", bold=True)
+        total_proc = len(payload_data["processors"])
+        num_proc_width = len(str(total_proc))
+        proc_idx: int = 0
+
+        total_ft = len(file_types)
+        num_ft_width = len(str(total_ft))
+
+        for proc in payload_data["processors"]:
+            proc_idx += 1
+
             if show_details:
-                for unbound_ft in payload_data["unbound_filetypes"]:
-                    click.echo(
-                        f"  - {unbound_ft['name']} - "
-                        f"{click.style(unbound_ft['description'], dim=True)}"
+                console.print(
+                    f"{proc_idx:>{num_proc_width}}. {console.styled(proc['class'], bold=True)} {
+                        console.styled('(' + proc['module'] + ')', dim=True)
+                    }"
+                )
+                ft_idx = 0
+                for file_types in proc["filetypes"]:
+                    ft_idx += 1
+                    console.print(
+                        f"    {ft_idx:>{num_ft_width}}. {file_types['name']} - {
+                            console.styled(file_types['description'], dim=True)
+                        }"
                     )
             else:
-                click.echo(f"  - {', '.join(payload_data['unbound_filetypes'])}")
+                proc_ft_count = len(proc["filetypes"])
+                console.print(
+                    f"{proc_idx:>{num_proc_width}}. {console.styled(proc['class'], bold=True)} {
+                        console.styled('(' + proc['module'] + ')', dim=True)
+                    } (total: {proc_ft_count})"
+                )
+                console.print(f"    - {', '.join(proc['filetypes'])}")
 
-        click.echo()
+            if vlevel > 0:
+                console.print()
+
+        if payload_data["unbound_filetypes"]:
+            if show_details:
+                console.print(
+                    console.styled("File types without a registered processor:", bold=True)
+                )
+                ft_idx = 0
+                for unbound_ft in payload_data["unbound_filetypes"]:
+                    ft_idx += 1
+                    console.print(
+                        f"    {ft_idx:>{num_ft_width}}. {unbound_ft['name']} - "
+                        f"{console.styled(unbound_ft['description'], dim=True)}"
+                    )
+            else:
+                unreg_ft_count = len(payload_data["unbound_filetypes"])
+                console.print(
+                    f"{
+                        console.styled('File types without a registered processor:', bold=True)
+                    } (total: {unreg_ft_count})"
+                )
+                console.print(f"    - {', '.join(payload_data['unbound_filetypes'])}")
+
+    # No explicit return needed for Click commands.

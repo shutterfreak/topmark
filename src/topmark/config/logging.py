@@ -15,6 +15,7 @@ including a custom TRACE level, a specialized logger class, and colored output f
 """
 
 import logging
+import os
 import sys
 from collections.abc import Mapping
 from typing import Final, cast
@@ -105,15 +106,43 @@ class ChalkFormatter(logging.Formatter):
         return result
 
 
-def setup_logging(level: int = logging.INFO) -> None:
+def resolve_env_log_level() -> int | None:
+    """Return a logging level from environment or None if unset.
+
+    Honors TOPMARK_LOG_LEVEL (e.g., "TRACE", "DEBUG", "INFO", numeric "10").
+    """
+    val = os.environ.get("TOPMARK_LOG_LEVEL")
+    if val:
+        v = val.strip().upper()
+        if v.isdigit():
+            try:
+                return int(v)
+            except ValueError:
+                return None
+        name_to_level = {
+            "TRACE": TRACE_LEVEL,
+            "DEBUG": logging.DEBUG,
+            "INFO": logging.INFO,
+            "WARNING": logging.WARNING,
+            "WARN": logging.WARNING,
+            "ERROR": logging.ERROR,
+            "CRITICAL": logging.CRITICAL,
+            "FATAL": logging.CRITICAL,
+            "NOTSET": logging.NOTSET,
+        }
+        return name_to_level.get(v)
+    return None
+
+
+def setup_logging(level: int | None = None) -> None:
     """Configure the root logger with a specified log level and colored output.
 
-    This function sets the root logger's level, clears existing handlers to avoid duplicate logs,
-    adds a StreamHandler with colored formatting, and disables propagation to parent loggers.
-
-    Args:
-        level: The logging level to set for the root logger (default is logging.INFO).
+    If ``level`` is None, environment variables are consulted via
+    :func:`resolve_env_log_level`. Default is CRITICAL when unspecified.
     """
+    if level is None:
+        level = resolve_env_log_level() or logging.CRITICAL
+
     root_logger = logging.getLogger()
     root_logger.setLevel(level)
 

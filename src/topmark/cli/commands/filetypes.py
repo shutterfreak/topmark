@@ -16,16 +16,19 @@ configuring headers.
 """
 
 from collections import defaultdict
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import click
-from yachalk import chalk
 
 from topmark.cli.cli_types import EnumChoiceParam
+from topmark.cli.cmd_common import get_effective_verbosity
 from topmark.cli_shared.utils import OutputFormat, render_markdown_table
 from topmark.constants import TOPMARK_VERSION
 from topmark.filetypes.base import FileType
 from topmark.filetypes.instances import get_file_type_registry
+
+if TYPE_CHECKING:
+    from topmark.cli_shared.console_api import ConsoleLike
 
 
 def _policy_name(obj: object | None) -> str:
@@ -86,8 +89,15 @@ def filetypes_command(
     Returns:
         None. Prints output to stdout.
     """
+    ctx = click.get_current_context()
+    ctx.ensure_object(dict)
+    console: ConsoleLike = ctx.obj["console"]
+
     file_types = get_file_type_registry()
     fmt: OutputFormat = output_format or OutputFormat.DEFAULT
+
+    # Determine effective program-output verbosity for gating extra details
+    vlevel = get_effective_verbosity(ctx)
 
     def _serialize_details(ft: FileType) -> dict[str, Any]:
         """Serialize detailed information about a file type."""
@@ -114,7 +124,7 @@ def filetypes_command(
                     {"name": k, "description": v.description} for k, v in sorted(file_types.items())
                 ]
             )
-            click.echo(json.dumps(payload, indent=2))
+            console.print(json.dumps(payload, indent=2))
         else:  # NDJSON
             for k, v in sorted(file_types.items()):
                 obj = (
@@ -122,11 +132,11 @@ def filetypes_command(
                     if show_details
                     else {"name": k, "description": v.description}
                 )
-                click.echo(json.dumps(obj))
+                console.print(json.dumps(obj))
         return
 
     if fmt == OutputFormat.MARKDOWN:
-        click.echo(f"""
+        console.print(f"""
 # Supported File Types
                    
 TopMark version **{TOPMARK_VERSION}** supports the following file types:
@@ -174,9 +184,9 @@ TopMark version **{TOPMARK_VERSION}** supports the following file types:
                 rows.append(row)
 
             table = render_markdown_table(headers, rows, align={1: "right", 2: "right", 3: "right"})
-            click.echo(table)
+            console.print(table)
 
-            click.echo()
+            console.print()
         else:
             # Simpler table logic with dynamic widths
             headers = ["File Type", "Description"]
@@ -193,44 +203,72 @@ TopMark version **{TOPMARK_VERSION}** supports the following file types:
                     max_widths[i] = max(max_widths[i], len(str(col_data)))
 
             header_str = " | ".join(f"{headers[i]:<{max_widths[i]}}" for i in range(len(headers)))
-            click.echo(f"| {header_str} |")
+            console.print(f"| {header_str} |")
 
             separator_str = " | ".join(f"{'-' * max_widths[i]}" for i in range(len(headers)))
             # Add spaces around the separator string for correct alignment
-            click.echo(f"| {separator_str} |")
+            console.print(f"| {separator_str} |")
 
             for row in rows:
                 row_str = " | ".join(f"{row[i]:<{max_widths[i]}}" for i in range(len(row)))
-                click.echo(f"| {row_str} |")
+                console.print(f"| {row_str} |")
 
-            click.echo()
+            console.print()
         return
 
-    # DEFAULT human
-    click.secho("Supported file types:", bold=True, underline=True)
-    for k, v in sorted(file_types.items()):
-        if show_details:
-            exts = ", ".join(v.extensions) if v.extensions else ""
-            names = ", ".join(v.filenames) if v.filenames else ""
-            pats = ", ".join(v.patterns) if v.patterns else ""
-            skip = v.skip_processing
-            matcher = v.content_matcher is not None
-            policy = _policy_name(v.header_policy)
-            click.echo(f"  - {k} {chalk.dim('— ' + v.description)}")
-            if exts:
-                click.echo(f"      extensions     : {exts}")
-            if names:
-                click.echo(f"      filenames      : {names}")
-            if pats:
-                click.echo(f"      patterns       : {pats}")
-            if skip:
-                click.echo("      skip processing: yes")
-            if matcher:
-                assert v.content_matcher is not None
-                click.echo(f"      content matcher: {v.content_matcher.__name__}")
-            if policy:
-                click.echo(f"      header_policy  : {policy}")
-        else:
-            click.echo(f"  - {k:<12} {chalk.dim(v.description)}")
+    else:  # OutputFormat.DEFAULT (default human output)
+        # Banner
+        if vlevel > 0:
+            console.print(console.styled("Supported file types:\n", bold=True, underline=True))
+
+        total = len(file_types)
+        num_width = len(str(total))
+        idx: int = 0
+        k_len = max(1, max(len(k) for k in file_types.keys()))
+        for k, v in sorted(file_types.items()):
+            idx += 1
+            if show_details:
+                exts = ", ".join(v.extensions) if v.extensions else ""
+                names = ", ".join(v.filenames) if v.filenames else ""
+                pats = ", ".join(v.patterns) if v.patterns else ""
+                skip = v.skip_processing
+                matcher = v.content_matcher is not None
+                policy = _policy_name(v.header_policy)
+                console.print(
+                    f"{idx:>{num_width}}. {k} {console.styled('— ' + v.description, dim=True)}"
+                )
+                if exts:
+                    console.print(f"      extensions     : {exts}")
+                if names:
+                    console.print(f"      filenames      : {names}")
+                if pats:
+                    console.print(f"      patterns       : {pats}")
+                if skip:
+                    console.print("      skip processing: yes")
+                if matcher:
+                    assert v.content_matcher is not None
+                    console.print(
+                        f"      content matcher: yes {
+                            console.styled(
+                                '('
+                                + v.content_matcher.__module__
+                                + '.'
+                                + v.content_matcher.__name__
+                                + ')',
+                                dim=True,
+                            )
+                        }"
+                    )
+                if policy:
+                    console.print(f"      header_policy  : {policy}")
+            else:
+                if vlevel > 0:
+                    console.print(
+                        f"{idx:>{num_width}}. {k:<{k_len}} {
+                            console.styled(v.description, dim=True)
+                        }"
+                    )
+                else:
+                    console.print(f"{idx:>{num_width}}. {k:<{k_len}}")
 
     # No explicit return needed for Click commands.

@@ -15,13 +15,13 @@ Usage:
     with standardized messages and exit codes.
 
 Styling:
-    These exceptions use Click's styling (``click.style``) so that color
-    honoring matches the user's ``--color``/``--no-color`` settings and TTY
-    detection. If your own logger uses ``chalk`` elsewhere, that's fine—stick to
-    Click styling for exceptions printed by Click.
+    Exceptions prefer the project console if available (see `show()`); if no console
+    is present in the Click context, they fall back to Click's default styling.
 """
 
 from __future__ import annotations
+
+from typing import IO, Any
 
 import click
 
@@ -34,16 +34,33 @@ class TopmarkError(click.ClickException):
     exit_code = ExitCode.FAILURE
 
     def format_message(self) -> str:  # pragma: no cover - trivial
-        """Return a bright‑red styled message for Click's error output.
+        """Return the plain error message text.
 
-        Click's ``ClickException.show()`` prints ``"Error: " + format_message()``.
-        We colorize only the message text here so the ``Error:`` prefix remains
-        Click's default style (which may be themed by Click itself in future
-        versions).
+        Notes:
+            - Unlike Click’s default, this method does not add color.
+            - Colorization is applied in `show()` when a project console is present.
         """
         # ``self.message`` is set by ClickException; ensure it's a string.
         msg = str(getattr(self, "message", ""))
-        return click.style(msg, fg="bright_red")
+        return msg
+
+    def show(self, file: IO[Any] | None = None) -> None:  # pragma: no cover - Click prints errors
+        """Display the error using the project console if available.
+
+        Falls back to Click’s default error display when no console is present.
+        """
+        try:
+            ctx = click.get_current_context(silent=True)
+            if ctx is not None and isinstance(getattr(ctx, "obj", None), dict):
+                console = ctx.obj.get("console")
+                if console is not None:
+                    # Use console for user-facing error output with bright red style
+                    console.error(console.styled(self.format_message(), fg="bright_red"))
+                    return
+        except Exception:
+            pass
+        # Fallback to Click's default behavior (includes its own styling)
+        super().show(file)
 
 
 class TopmarkUsageError(TopmarkError):

@@ -39,8 +39,6 @@ Notes:
 
 from __future__ import annotations
 
-import logging
-import os
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
@@ -51,7 +49,7 @@ from topmark.cli.cmd_common import (
 from topmark.cli.io import InputPlan
 from topmark.cli_shared.utils import write_updates
 from topmark.config import Config
-from topmark.config.logging import get_logger, setup_logging
+from topmark.config.logging import get_logger
 from topmark.constants import TOPMARK_VERSION
 from topmark.pipeline.context import (
     ComparisonStatus,
@@ -63,9 +61,6 @@ from topmark.registry import Registry
 
 from .public_types import PublicDiagnostic
 from .types import DiagnosticTotals, FileResult, FileTypeInfo, Outcome, ProcessorInfo, RunResult
-
-if "TOPMARK_DEBUG" in os.environ:
-    setup_logging(level=logging.DEBUG)
 
 logger = get_logger(__name__)
 
@@ -298,7 +293,7 @@ def _build_cfg_and_files_via_cli_helpers(
     # but without relying on Click. We construct the ArgsNamespace-equivalent
     # mapping that `Config.load_merged()` expects.
     args_mapping = {
-        "log_level": logging.WARNING,
+        "verbosity_level": None,  # inherit program-output verbosity (tri-state)
         "files": list(plan.paths),
         "files_from": list(plan.files_from),
         "stdin": False,

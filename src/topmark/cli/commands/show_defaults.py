@@ -15,12 +15,15 @@ header template and the default TOML configuration bundled with the package.
 Intended as a reference for users customizing their own configuration files.
 """
 
+from typing import TYPE_CHECKING
+
 import click
 
-from topmark.cli_shared.utils import default_header_overrides
+from topmark.cli.cmd_common import get_effective_verbosity
 from topmark.config import Config
-from topmark.constants import PYPROJECT_TOML_PATH
-from topmark.rendering.api import render_header_for_path
+
+if TYPE_CHECKING:
+    from topmark.cli_shared.console_api import ConsoleLike
 
 
 @click.command(
@@ -30,29 +33,51 @@ from topmark.rendering.api import render_header_for_path
 def show_defaults_command() -> None:
     """Display the built-in default configuration.
 
-    Prints the TopMark default configuration as bundled with the package, including a header.
+    Outputs the TopMark default configuration file as bundled with the package.
     Useful as a reference for configuration structure and default values.
 
     Returns:
         None. Prints output to stdout.
     """
-    header_overrides = default_header_overrides(
-        info="Default TopMark Configuration", file_label="topmark.toml"
-    )
-    topmark_header = render_header_for_path(
-        config=Config.from_defaults(),
-        path=PYPROJECT_TOML_PATH,
-        header_fields_overrides=["file", "version", "info", "license", "copyright"],
-        header_overrides=header_overrides,
+    ctx = click.get_current_context()
+    ctx.ensure_object(dict)
+    console: ConsoleLike = ctx.obj["console"]
+
+    # Determine effective program-output verbosity for gating extra details
+    vlevel = get_effective_verbosity(ctx)
+
+    # Banner
+    if vlevel > 0:
+        console.print(
+            console.styled(
+                "Default TopMark Configuration (TOML):",
+                bold=True,
+                underline=True,
+            )
+        )
+
+        console.print(
+            console.styled(
+                "# === BEGIN ===",
+                fg="cyan",
+                dim=True,
+            )
+        )
+
+    console.print(
+        console.styled(
+            Config.to_cleaned_toml(Config.get_default_config_toml()),
+            fg="cyan",
+        )
     )
 
-    click.secho("Default TopMark Configuration:", bold=True, underline=True)
-    click.secho(
-        f"""\
-{topmark_header}
-{Config.to_cleaned_toml(Config.get_default_config_toml())}
-## === END of TopMark Configuration ===""",
-        fg="cyan",
-    )
+    if vlevel > 0:
+        console.print(
+            console.styled(
+                "# === END ===",
+                fg="cyan",
+                dim=True,
+            )
+        )
 
     # No explicit return needed for Click commands.

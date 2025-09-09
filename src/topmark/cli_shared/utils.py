@@ -24,9 +24,7 @@ from typing import TYPE_CHECKING, Mapping, Sequence
 
 from yachalk import chalk
 
-from topmark.config import Config
 from topmark.config.logging import get_logger
-from topmark.constants import PYPROJECT_TOML_PATH, TOPMARK_VERSION
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -35,41 +33,6 @@ if TYPE_CHECKING:
 
 
 logger = get_logger(__name__)
-
-
-def default_header_overrides(*, info: str, file_label: str = "topmark.toml") -> dict[str, str]:
-    """Build default header field overrides from TopMark’s own metadata.
-
-    Looks up TopMark’s ``pyproject.toml`` for the ``license`` and ``copyright``
-    fields and combines them with the supplied ``info`` and ``file_label``.
-
-    Args:
-      info (str): Short informational string to include in the generated header
-        (for example, ``"Built-in defaults"``).
-      file_label (str, optional): Value to use for the ``file`` field in the
-        generated header. Defaults to ``"topmark.toml"``.
-
-    Returns:
-      dict[str, str]: Mapping of header fields suitable for rendering.
-
-    Notes:
-      - ``version`` is populated from the running TopMark version.
-      - Missing metadata in ``pyproject.toml`` does not raise; it is omitted.
-    """
-    overrides: dict[str, str] = {
-        "file": file_label,
-        "version": TOPMARK_VERSION,
-        "info": info,
-    }
-    cfg = Config.from_toml_file(PYPROJECT_TOML_PATH)
-    if cfg:
-        lic = cfg.field_values.get("license")
-        cpr = cfg.field_values.get("copyright")
-        if lic:
-            overrides["license"] = lic
-        if cpr:
-            overrides["copyright"] = cpr
-    return overrides
 
 
 class OutputFormat(str, Enum):

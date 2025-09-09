@@ -77,7 +77,6 @@ class Config:
     config_files: list[Path | str] = field(default_factory=lambda: [])
 
     # Verbosity level
-    # verbosity_level (int | None): None = inherit, 0 = terse, 1 = verbose diagnostics
     verbosity_level: int | None = None
 
     # Header configuration fields and their values

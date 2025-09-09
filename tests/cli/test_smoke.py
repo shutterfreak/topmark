@@ -15,6 +15,7 @@ Provides minimal coverage that the CLI entry point is callable and that
 """
 
 from tests.cli.conftest import assert_SUCCESS, run_cli
+from topmark.constants import TOPMARK_VERSION
 
 
 def test_cli_entry() -> None:
@@ -32,4 +33,4 @@ def test_version() -> None:
 
     assert_SUCCESS(result)
 
-    assert "topmark" in result.output.lower()
+    assert TOPMARK_VERSION in result.output

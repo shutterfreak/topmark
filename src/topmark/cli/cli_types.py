@@ -19,7 +19,6 @@ across all TopMark commands and subcommands.
 """
 
 import glob
-import logging
 from enum import Enum
 from pathlib import Path
 from typing import (
@@ -63,7 +62,6 @@ class ArgsNamespace(TypedDict, total=False):
     file overrides, file selection, filtering, and formatting flags.
 
     Attributes:
-        log_level: Verbosity level for logging.
         verbosity_level: Program-output verbosity (0=terse, 1=verbose).
         no_config: Whether to ignore local config files.
         config_files: List of extra config file paths.
@@ -80,11 +78,7 @@ class ArgsNamespace(TypedDict, total=False):
     """
 
     # Global options: retrieve from ctx.obj
-    log_level: int
     verbosity_level: int | None
-
-    # TopMark Command
-    # command: TopMarkCommand
 
     # Command options: config
     no_config: bool | None
@@ -110,9 +104,7 @@ class ArgsNamespace(TypedDict, total=False):
 
 def build_args_namespace(
     *,
-    log_level: int = logging.WARNING,
     verbosity_level: int | None = None,
-    # command: TopMarkCommand = TopMarkCommand.NONE,
     no_config: bool | None = None,
     config_files: list[str] | None = None,
     files: list[str] | None = None,
@@ -130,7 +122,6 @@ def build_args_namespace(
     """Build an ArgsNamespace dictionary for CLI argument passing.
 
     Args:
-        log_level: Verbosity level for logging.
         verbosity_level: Program-output verbosity (0=terse, 1=verbose).
         no_config: Whether to ignore local config files.
         config_files: List of extra config file paths.
@@ -150,7 +141,6 @@ def build_args_namespace(
         Dictionary of CLI argument values for use throughout the CLI.
     """
     return {
-        "log_level": log_level,
         "verbosity_level": verbosity_level,
         # "command": command,
         "no_config": no_config,

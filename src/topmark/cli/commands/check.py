@@ -41,6 +41,8 @@ Examples:
     $ git ls-files | topmark check --files-from -
 """
 
+from typing import TYPE_CHECKING
+
 import click
 
 from topmark.cli.cli_types import EnumChoiceParam
@@ -48,6 +50,7 @@ from topmark.cli.cmd_common import (
     build_config_and_file_list,
     exit_if_no_files,
     filter_view_results,
+    get_effective_verbosity,
     maybe_exit_on_error,
     run_steps_for_files,
 )
@@ -65,7 +68,6 @@ from topmark.cli.utils import (
     emit_machine_output,
     emit_updated_content_to_stdout,
     render_banner,
-    render_footer,
     render_per_file_guidance,
     render_summary_counts,
 )
@@ -84,6 +86,9 @@ from topmark.pipeline.context import (
     WriteStatus,
 )
 from topmark.rendering.formats import HeaderOutputFormat
+
+if TYPE_CHECKING:
+    from topmark.cli_shared.console_api import ConsoleLike
 
 logger = get_logger(__name__)
 
@@ -223,6 +228,8 @@ def check_command(
       UNEXPECTED_ERROR (255): An unhandled error occurred.
     """
     ctx = click.get_current_context()
+    ctx.ensure_object(dict)
+    console: ConsoleLike = ctx.obj["console"]
 
     fmt: OutputFormat = output_format or OutputFormat.DEFAULT
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
@@ -260,6 +267,9 @@ def check_command(
     temp_path = plan.temp_path  # for cleanup/STDIN-apply branch
     stdin_mode = plan.stdin_mode
 
+    # Determine effective program-output verbosity for gating extra details
+    vlevel = get_effective_verbosity(ctx, config)
+
     logger.trace("Config after merging args and resolving file list: %s", config)
 
     # Use Click's text stream for stdin so CliRunner/invoke input is read reliably
@@ -270,7 +280,8 @@ def check_command(
         return
 
     # Banner
-    render_banner(ctx, n_files=len(file_list))
+    if vlevel > 0:
+        render_banner(ctx, n_files=len(file_list))
 
     # Always run the 'apply' pipeline when --apply is set so updated_file_lines are computed.
     # The --summary flag only affects how we render output, not which steps run.
@@ -311,9 +322,10 @@ def check_command(
 
             # Per-file guidance (only in non-summary human mode)
             if fmt == OutputFormat.DEFAULT and not summary_mode:
-                render_per_file_guidance(
-                    view_results, make_message=_check_msg, apply_changes=apply_changes
-                )
+                if vlevel >= 0:
+                    render_per_file_guidance(
+                        view_results, make_message=_check_msg, apply_changes=apply_changes
+                    )
 
         # Diff output
         emit_diffs(results=view_results, diff=diff, command=ctx.command)
@@ -345,13 +357,12 @@ def check_command(
         written, failed = write_updates(results, should_write=_should_write_check)
 
         if fmt == OutputFormat.DEFAULT:
-            click.secho(
+            msg = (
                 f"\n✅ Applied changes to {written} file(s)."
                 if written
-                else "\n✅ No changes to apply.",
-                fg="green",
-                bold=True,
+                else "\n✅ No changes to apply."
             )
+            console.print(console.styled(msg, fg="green", bold=True))
         if failed:
             raise TopmarkIOError(f"Failed to write {failed} file(s). See log for details.")
 
@@ -385,9 +396,6 @@ def check_command(
 
     # Exit on any error encountered during processing
     maybe_exit_on_error(code=encountered_error_code, temp_path=temp_path)
-
-    # Footer
-    render_footer()
 
     # Cleanup temp file if any (shouldn't be needed except on errors)
     if temp_path and temp_path.exists():

@@ -24,7 +24,13 @@ from tests.cli.conftest import assert_SUCCESS, run_cli
 
 def test_dump_config_outputs_valid_toml() -> None:
     """It should emit valid TOML wrapped in BEGIN/END markers and parse successfully."""
-    result = run_cli(["dump-config"])
+    result = run_cli(
+        [
+            "--no-color",  # Strip ANSI formatting to allow parsing the generated TOML
+            "-v",  # Render the BEGIN and END markers
+            "dump-config",
+        ]
+    )
 
     assert_SUCCESS(result)
 
