@@ -11,7 +11,7 @@
 """Stable public types for the TopMark API.
 
 This module defines enums, dataclasses, and TypedDicts that appear in the
-public function signatures and return values of :mod:`topmark.api`. These
+public function signatures and return values of [`topmark.api`][topmark.api]. These
 shapes follow the project's semver policy.
 """
 
@@ -21,27 +21,26 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Mapping, Sequence, TypedDict
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from .public_types import PublicDiagnostic
+
 
 class DiagnosticTotals(TypedDict):
     """Aggregate diagnostic counts across the returned *view*.
 
-    Keys:
-        info: Number of info diagnostics.
-        warning: Number of warning diagnostics.
-        error: Number of error diagnostics.
-        total: Sum of all diagnostics.
+    Attributes:
+        info (int): Number of info diagnostics.
+        warning (int): Number of warning diagnostics.
+        error (int): Number of error diagnostics.
+        total (int): Sum of all diagnostics.
     """
 
     info: int
     warning: int
     error: int
     total: int
-
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from .public_types import PublicDiagnostic
 
 
 class Outcome(str, Enum):
@@ -65,11 +64,11 @@ class FileResult:
     """Result for a single file.
 
     Attributes:
-        path: Absolute or workspace-relative path to the file.
-        outcome: High-level outcome bucket.
-        diff: Unified diff as a string when available (``None`` if not requested
+        path (Path): Absolute or workspace-relative path to the file.
+        outcome (Outcome): High-level outcome bucket.
+        diff (str | None): Unified diff as a string when available (``None`` if not requested
             or not applicable).
-        message: Optional human‑readable note (``None`` if not applicable).
+        message (str | None): Optional human‑readable note (``None`` if not applicable).
     """
 
     path: "Path"
@@ -83,19 +82,22 @@ class RunResult:
     """Aggregate result of a run.
 
     Attributes:
-        files: Ordered sequence of :class:`FileResult` entries **after view filtering**
+        files (Sequence[FileResult]): Ordered sequence of
+            [`FileResult`][topmark.api.types.FileResult] entries **after view filtering**
             (e.g., respecting `skip_compliant` / `skip_unsupported`).
-        summary: Mapping of :class:`Outcome` names to counts for the filtered `files`.
-        had_errors: True if any file encountered an error during processing (computed
+        summary (Mapping[str, int]): Mapping of [`Outcome`][topmark.api.types.Outcome] names
+            to counts for the filtered `files`.
+        had_errors (bool): `True` if any file encountered an error during processing (computed
             from the **unfiltered** result set so real errors aren’t hidden by filters).
-        skipped: Number of items removed by view filters (e.g., `skip_compliant`).
-        written: Number of files successfully written (only in apply mode; otherwise 0).
-        failed: Number of files that failed to write (only in apply mode; otherwise 0).
-        diagnostics: Optional mapping from file path to a list of public diagnostics.
-        diagnostic_totals: Optional aggregate counts across the **returned view**
-            (not the entire run).
-        diagnostic_totals_all: Optional aggregate counts across the **entire run**
-            (pre view filtering).
+        skipped (int): Number of items removed by view filters (e.g., `skip_compliant`).
+        written (int): Number of files successfully written (only in apply mode; otherwise 0).
+        failed (int): Number of files that failed to write (only in apply mode; otherwise 0).
+        diagnostics (dict[str, list[PublicDiagnostic]] | None): Optional mapping from file path
+            to a list of public diagnostics.
+        diagnostic_totals (DiagnosticTotals | None): Optional aggregate counts across the
+            **returned view** (not the entire run).
+        diagnostic_totals_all (DiagnosticTotals | None): Optional aggregate counts across the
+            **entire run** (pre view filtering).
     """
 
     files: Sequence[FileResult]
@@ -115,9 +117,9 @@ class WritePolicy:
     """Policy controlling which files to write when `apply=True`.
 
     Attributes:
-        allow_insert: Permit inserting a new header (add-only).
-        allow_replace: Permit replacing/updating an existing header (update-only).
-        allow_remove: Permit removing a header (strip).
+        allow_insert (bool): Permit inserting a new header (add-only).
+        allow_replace (bool): Permit replacing/updating an existing header (update-only).
+        allow_remove (bool): Permit removing a header (strip).
     """
 
     allow_insert: bool = False  # add missing headers
@@ -128,17 +130,18 @@ class WritePolicy:
 class FileTypeInfo(TypedDict, total=False):
     """Metadata about a registered file type.
 
-    Keys:
-        name: Identifier of the file type (e.g., ``"python"``).
-        description: Human description.
-        supported: File type is supported by a header processor
-        processor_name: Name of the header processor registered to the file type or None
-        extensions: Known filename extensions (without dots).
-        filenames: Exact filenames matched (e.g., ``"Makefile"``).
-        patterns: Glob-like patterns.
-        skip_processing: Whether the type is discoverable but not processed.
-        content_matcher: Whether a content matcher is configured.
-        header_policy: Policy/strategy name for header placement.
+    Attributes:
+        name (str): Identifier of the file type (e.g., ``"python"``).
+        description (str): Human description.
+        supported (bool): File type is supported by a header processor
+        processor_name (str | None): Name of the header processor registered to the file type
+            or `None`
+        extensions (Sequence[str]): Known filename extensions (without dots).
+        filenames (Sequence[str]): Exact filenames matched (e.g., ``"Makefile"``).
+        patterns (Sequence[str]): Glob-like patterns.
+        skip_processing (bool): Whether the type is discoverable but not processed.
+        content_matcher (bool): Whether a content matcher is configured.
+        header_policy (str): Policy/strategy name for header placement.
     """
 
     name: str
@@ -156,13 +159,13 @@ class FileTypeInfo(TypedDict, total=False):
 class ProcessorInfo(TypedDict, total=False):
     """Metadata about a registered header processor.
 
-    Keys:
-        name: Processor identifier (e.g., ``"pound"``, ``"slash"``, ``"xml"``).
-        description: Human description.
-        line_prefix: Line comment prefix (if applicable).
-        line_suffix: Line comment suffix (if applicable).
-        block_prefix: Block comment prefix (if applicable).
-        block_suffix: Block comment suffix (if applicable).
+    Attributes:
+        name (str): Processor identifier (e.g., ``"pound"``, ``"slash"``, ``"xml"``).
+        description (str): Human description.
+        line_prefix (str): Line comment prefix (if applicable).
+        line_suffix (str): Line comment suffix (if applicable).
+        block_prefix (str): Block comment prefix (if applicable).
+        block_suffix (str): Block comment suffix (if applicable).
     """
 
     name: str

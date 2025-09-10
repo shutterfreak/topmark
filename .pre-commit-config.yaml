@@ -9,34 +9,20 @@
 # topmark:header:end
 
 repos:
-  # Keep the repository versions aligned with the ones used in requirements-dev.in (pyproject.toml)
-  - repo: https://github.com/shutterfreak/topmark
-    rev: v0.5.0
-    hooks:
-      - id: topmark-check
-        # Optional: limit scope to supported text types
-        # files: '\.(py|md|toml|ya?ml|sh|Makefile)$'
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.12
-    hooks:
-      - id: ruff-format
-      - id: ruff-check
-  - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.405
-    hooks:
-      - id: pyright
+  # Fast generic checks first
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
-      - id: check-added-large-files
       - id: check-merge-conflict
       - id: check-yaml
+      - id: check-added-large-files
+
+  # Formatters
   - repo: https://github.com/ComPWA/mirrors-taplo
     rev: v0.9.3
     hooks:
       - id: taplo-format
-      - id: taplo-lint
-        args: ["--no-schema"]
+
   - repo: https://github.com/executablebooks/mdformat
     rev: 0.7.22
     hooks:
@@ -44,3 +30,36 @@ repos:
         exclude: ^docs/api/public\.md$
         additional_dependencies:
           - mdformat-tables
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.13.0
+    hooks:
+      - id: ruff-format
+      - id: ruff-check
+
+  # Project-specific header checker (after formatters)
+  - repo: https://github.com/shutterfreak/topmark
+    rev: v0.5.1
+    hooks:
+      - id: topmark-check
+        # files: '\.(py|md|toml|ya?ml|sh|Makefile)$'
+
+  # Docstring semantics
+  - repo: https://github.com/jsh9/pydoclint
+    rev: 0.7.3
+    hooks:
+      - id: pydoclint
+        args: ["-q"]
+
+  # TOML lint (after TOML format)
+  - repo: https://github.com/ComPWA/mirrors-taplo
+    rev: v0.9.3
+    hooks:
+      - id: taplo-lint
+        args: ["--no-schema"]
+
+  # Type checker last
+  - repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.405
+    hooks:
+      - id: pyright

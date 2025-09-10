@@ -174,7 +174,7 @@ def test_strip_ignores_missing_end_marker(tmp_path: Path) -> None:
     therefore perform no changes when `--apply` is used.
 
     Args:
-        tmp_path: Temporary path fixture provided by pytest.
+        tmp_path (Path): Temporary path fixture provided by pytest.
     """
     f = tmp_path / "bad.py"
     f.write_text(f"# {TOPMARK_START_MARKER}\n# x\nprint()\n", "utf-8")
@@ -196,7 +196,7 @@ def test_strip_include_from_exclude_from(tmp_path: Path) -> None:
     references are valid.
 
     Args:
-        tmp_path: Temporary directory provided by pytest.
+        tmp_path (Path): Temporary directory provided by pytest.
     """
     a = tmp_path / "a.py"
     b = tmp_path / "b.py"

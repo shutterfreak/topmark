@@ -153,79 +153,85 @@ Examples:
 )
 def check_command(
     *,
+    # Command options: common_file_filtering_options
     files_from: list[str],
     include_patterns: list[str],
     include_from: list[str],
     exclude_patterns: list[str],
     exclude_from: list[str],
-    no_config: bool,
-    config_paths: list[str],
     file_types: list[str],
     relative_to: str | None,
+    stdin_filename: str | None,
+    # Command options: config
+    no_config: bool,
+    config_paths: list[str],
+    # Command options: formatting
     align_fields: bool,
     header_format: HeaderOutputFormat | None,
+    # Command options: check and strip
     apply_changes: bool,
-    add_only: bool,
-    update_only: bool,
     diff: bool,
     summary_mode: bool,
     skip_compliant: bool,
     skip_unsupported: bool,
-    stdin_filename: str | None,
     output_format: OutputFormat | None,
+    # Command options: check
+    add_only: bool,
+    update_only: bool,
 ) -> None:
     """Run the unified default command (check/apply).
-
-    Returns: None.
 
     The command receives options parsed at the group level and reads positional
     paths from ``click.get_current_context().args`` (Black‑style). It supports
     three input styles:
 
-    1) Paths mode (default): PATHS and/or ``--files-from FILE``.
-    2) Content-on-STDIN: use ``-`` as the sole PATH **and** provide ``--stdin-filename``.
-    3) Lists-on-STDIN for one of the "...-from" options: ``--files-from -``,
+    1. Paths mode (default): PATHS and/or ``--files-from FILE``.
+    2. Content-on-STDIN: use ``-`` as the sole PATH **and** provide ``--stdin-filename``.
+    3. Lists-on-STDIN for one of the "...-from" options: ``--files-from -``,
        ``--include-from -``, or ``--exclude-from -`` (exactly one may consume STDIN).
 
     Args:
-      include_patterns (list[str]): Glob patterns to *include* (intersection).
-      include_from (list[str]): Files that contain include glob patterns (one per line).
-                                 Use ``-`` to read patterns from STDIN.
-      exclude_patterns (list[str]): Glob patterns to *exclude* (subtraction).
-      exclude_from (list[str]): Files that contain exclude glob patterns (one per line).
-                                 Use ``-`` to read patterns from STDIN.
-      files_from (list[str]): Files that contain newline‑delimited *paths* to add to the
-                              candidate set before filtering. Use ``-`` to read from STDIN.
-      no_config (bool): Ignore project configuration files and use defaults only.
-      config_paths (list[str]): Additional configuration file paths to load and merge.
-      file_types (list[str]): Restrict processing to the given TopMark file type identifiers.
-      relative_to (str | None): Base directory used to compute relative paths in outputs.
-      align_fields (bool): Align header fields by the colon for readability.
-      header_format (HeaderOutputFormat | None): Optional override for the header output format.
-      apply_changes (bool): Write changes to files; otherwise perform a dry run.
-      add_only (bool): Only add headers where missing (no updates).
-      update_only (bool): Only update existing non‑compliant headers (no additions).
-      diff (bool): Show unified diffs of header changes (human output only).
-      summary_mode (bool): Show outcome counts instead of per‑file details.
-      skip_compliant (bool): Suppress files whose comparison status is UNCHANGED.
-      skip_unsupported (bool): Suppress unsupported file types.
-      stdin_filename (str | None): Assumed filename when using ``-`` (content from STDIN).
-      output_format (OutputFormat | None): Output format to use
-        (``default``, ``json``, or ``ndjson``).
+        files_from (list[str]): Files that contain newline‑delimited *paths* to add to the
+            candidate set before filtering. Use ``-`` to read from STDIN.
+        include_patterns (list[str]): Glob patterns to *include* (intersection).
+        include_from (list[str]): Files that contain include glob patterns (one per line).
+            Use ``-`` to read patterns from STDIN.
+        exclude_patterns (list[str]): Glob patterns to *exclude* (subtraction).
+        exclude_from (list[str]): Files that contain exclude glob patterns (one per line).
+            Use ``-`` to read patterns from STDIN.
+        file_types (list[str]): Restrict processing to the given TopMark file type identifiers.
+        relative_to (str | None): Base directory used to compute relative paths in outputs.
+        stdin_filename (str | None): Assumed filename when  reading content from STDIN).
+        no_config (bool): If True, skip loading project/user configuration files.
+        config_paths (list[str]): Additional configuration file paths to load and merge.
+        align_fields (bool): Whether to align header fields when rendering (captured in config).
+        header_format (HeaderOutputFormat | None): Optional output format override for header
+            rendering (captured in config).
+        apply_changes (bool): Write changes to files; otherwise perform a dry run.
+        diff (bool): Show unified diffs of header changes (human output only).
+        summary_mode (bool): Show outcome counts instead of per‑file details.
+        skip_compliant (bool): Suppress files whose comparison status is UNCHANGED.
+        skip_unsupported (bool): Suppress unsupported file types.
+        output_format (OutputFormat | None): Output format to use
+            (``default``, ``json``, or ``ndjson``).
+        add_only (bool): Only add headers where missing (no updates).
+        update_only (bool): Only update existing non‑compliant headers (no additions).
 
     Raises:
-      UsageError: If no input is provided, or if mutually exclusive STDIN modes are combined.
+        TopmarkUsageError: If no input is provided, or if mutually exclusive STDIN modes
+            are combined.
+        TopmarkIOError: If an I/O error occurred (read/write).
 
     Exit Status:
-      SUCCESS (0): No changes required or all requested changes were written.
-      WOULD_CHANGE (2): Dry‑run detected files that would change with ``--apply``.
-      USAGE_ERROR (64): Invalid invocation (e.g., mixing ``-`` with ``--files-from -``).
-      FILE_NOT_FOUND (66): One or more specified files or directories could not be found.
-      PERMISSION_DENIED (77): Insufficient permissions to read or write a file.
-      ENCODING_ERROR (65): A file could not be decoded or encoded with the expected encoding.
-      IO_ERROR (74): An unexpected I/O failure occurred while writing changes.
-      PIPELINE_ERROR (70): An internal processing step failed.
-      UNEXPECTED_ERROR (255): An unhandled error occurred.
+        SUCCESS (0): No changes required or all requested changes were written.
+        WOULD_CHANGE (2): Dry‑run detected files that would change with ``--apply``.
+        USAGE_ERROR (64): Invalid invocation (e.g., mixing ``-`` with ``--files-from -``).
+        FILE_NOT_FOUND (66): One or more specified files or directories could not be found.
+        PERMISSION_DENIED (77): Insufficient permissions to read or write a file.
+        ENCODING_ERROR (65): A file could not be decoded or encoded with the expected encoding.
+        IO_ERROR (74): An unexpected I/O failure occurred while writing changes.
+        PIPELINE_ERROR (70): An internal processing step failed.
+        UNEXPECTED_ERROR (255): An unhandled error occurred.
     """
     ctx = click.get_current_context()
     ctx.ensure_object(dict)

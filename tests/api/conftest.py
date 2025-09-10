@@ -57,7 +57,7 @@ def register_pair() -> Iterator[Callable[[str], tuple[str, FileType]]]:
 
 @pytest.fixture()
 def proc_py() -> HeaderProcessor:
-    """Return the registered :class:`HeaderProcessor` for Python files (idempotent)."""
+    """Return the registered `HeaderProcessor` for Python files (idempotent)."""
     register_all_processors()
     ft_name = "python"
     proc = get_header_processor_registry().get(ft_name)
@@ -204,7 +204,7 @@ def api_check_dir(
     skip_unsupported: bool = False,
     file_types: Iterable[str] | None = ("python",),
 ) -> api.RunResult:
-    """Run :func:`topmark.api.check` against `root / 'src'` with common defaults."""
+    """Run [`topmark.api.check`][topmark.api.check] against `root / 'src'` with common defaults."""
     paths = [root / "src"]
     return api.check(
         paths,
@@ -226,7 +226,7 @@ def api_strip_dir(
     skip_unsupported: bool = False,
     file_types: Iterable[str] | None = ("python",),
 ) -> api.RunResult:
-    """Run :func:`topmark.api.strip` against `root / 'src'` with common defaults."""
+    """Run [`topmark.api.strip`][topmark.api.strip] against `root / 'src'` with common defaults."""
     paths = [root / "src"]
     return api.strip(
         paths,

@@ -67,21 +67,21 @@ logger = get_logger(__name__)
 def dump_config_command(
     # Command arguments
     *,
-    files_from: list[str] | None = None,
     # Command options: common_file_filtering_options
+    files_from: list[str] | None = None,
     include_patterns: list[str],
     include_from: list[str],
     exclude_patterns: list[str],
     exclude_from: list[str],
     file_types: list[str],
     relative_to: str | None,
+    stdin_filename: str | None,
     # Command options: config
     no_config: bool,
     config_paths: list[str],
     # Command options: formatting
     align_fields: bool,
     header_format: HeaderOutputFormat | None,
-    stdin_filename: str | None,
 ) -> None:
     """Dump the final merged configuration as TOML.
 
@@ -91,22 +91,22 @@ def dump_config_command(
     that need to consume the resolved configuration.
 
     Args:
-        files_from: Candidate file paths added from newline-delimited files
-            before filtering.
-        include_patterns: Additional include glob patterns to consider.
-        include_from: Paths to files containing include patterns (one per line).
-        exclude_patterns: Glob patterns to exclude from consideration.
-        exclude_from: Paths to files containing exclude patterns (one per line).
-        file_types: Explicit file‑type filters to restrict processing.
-        relative_to: Optional base directory for resolving relative paths.
-        no_config: If True, skip loading project/user configuration files.
-        config_paths: Additional TOML config files to merge into the effective config.
-        align_fields: Whether to align header fields when rendering (captured in config).
-        header_format: Optional output format override for header rendering (captured in config).
-        stdin_filename: Optional assumed filename when reading content from STDIN.
-
-    Returns:
-        None. Prints the merged configuration as TOML to stdout.
+        files_from (list[str] | None): Files that contain newline‑delimited *paths* to add to the
+            candidate set before filtering. Use ``-`` to read from STDIN.
+        include_patterns (list[str]): Glob patterns to *include* (intersection).
+        include_from (list[str]): Files that contain include glob patterns (one per line).
+            Use ``-`` to read patterns from STDIN.
+        exclude_patterns (list[str]): Glob patterns to *exclude* (subtraction).
+        exclude_from (list[str]): Files that contain exclude glob patterns (one per line).
+            Use ``-`` to read patterns from STDIN.
+        file_types (list[str]): Restrict processing to the given TopMark file type identifiers.
+        relative_to (str | None): Base directory used to compute relative paths in outputs.
+        stdin_filename (str | None): Assumed filename when  reading content from STDIN).
+        no_config (bool): If True, skip loading project/user configuration files.
+        config_paths (list[str]): Additional configuration file paths to load and merge.
+        align_fields (bool): Whether to align header fields when rendering (captured in config).
+        header_format (HeaderOutputFormat | None): Optional output format override for header
+            rendering (captured in config).
     """
     ctx = click.get_current_context()
     ctx.ensure_object(dict)

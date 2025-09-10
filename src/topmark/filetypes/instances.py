@@ -578,6 +578,7 @@ def get_file_type_registry() -> dict[str, FileType]:
     """Return the file type registry.
 
     Returns:
-        The file type registry as dict of file type names and FileType instances.
+        dict[str, FileType]: The file type registry as dict of file type names
+            and FileType instances.
     """
     return _file_type_registry

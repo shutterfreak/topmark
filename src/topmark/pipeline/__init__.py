@@ -19,7 +19,7 @@ header processing pipeline, including:
 - Contracts and status enums used to coordinate step behavior
 
 The public API is composed of the pipeline assembly helpers in
-:mod:`topmark.pipeline.pipelines`, the execution helper in
-:mod:`topmark.pipeline.runner`, and the shared context model in
-:mod:`topmark.pipeline.context`.
+[`topmark.pipeline.pipelines`][topmark.pipeline.pipelines], the execution helper in
+[`topmark.pipeline.runner`][topmark.pipeline.runner], and the shared context model in
+[`topmark.pipeline.context`][topmark.pipeline.context].
 """

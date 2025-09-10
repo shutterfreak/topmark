@@ -46,7 +46,6 @@ class PoundHeaderProcessor(HeaderProcessor):
     """
 
     def __init__(self) -> None:
-        """Initialize a PoundHeaderProcessor instance."""
         super().__init__(
             line_prefix="#",
         )
@@ -66,12 +65,12 @@ class PoundHeaderProcessor(HeaderProcessor):
           unless the next line is already blank/EOF.
 
         Args:
-          original_lines (list[str]): Original file lines.
-          insert_index (int): Line index where the header will be inserted.
-          rendered_header_lines (list[str]): Header lines to insert.
+            original_lines (list[str]): Original file lines.
+            insert_index (int): Line index where the header will be inserted.
+            rendered_header_lines (list[str]): Header lines to insert.
 
         Returns:
-          list[str]: Possibly modified header lines including any added padding.
+            list[str]: Possibly modified header lines including any added padding.
         """
         # Detect newline style; default to "\n"
         nl = detect_newline(original_lines)

@@ -44,6 +44,12 @@ def _parent_package(modname: str) -> str | None:
         topmark.cli.commands.check -> topmark.cli.commands
         topmark.cli -> topmark
         topmark -> None
+
+    Args:
+        modname (str): The nodule name.
+
+    Returns:
+        str | None: the parent package name for the module or None for top-level.
     """
     if "." not in modname:
         return None

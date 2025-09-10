@@ -90,10 +90,10 @@ def _to_config(value: Mapping[str, Any] | Config | None) -> Config:
     If `value` is None, returns `Config.from_defaults()` (no project config merge).
 
     Args:
-        value: Optional mapping or Config instance.
+        value (Mapping[str, Any] | Config | None): Optional mapping or Config instance.
 
     Returns:
-        A `Config` instance.
+        Config: A `Config` instance.
     """
     if value is None:
         # You may prefer Config.from_defaults() or a project loader if present
@@ -161,12 +161,24 @@ def _run_pipeline(
     """Resolve config + files, register processors, and run the pipeline.
 
     - Uses the same planner/resolver as the CLI (via `build_config_and_file_list`)
-    when `base_config is None`; otherwise honors the supplied mapping without
-    merging project config, then resolves files via `resolve_file_list`.
+      when `base_config is None`; otherwise honors the supplied mapping without
+      merging project config, then resolves files via `resolve_file_list`.
     - Ensures all header processors are registered before running the pipeline.
 
+    Args:
+        pipeline_name (str): The name of the pipeline.
+        paths (Iterable[Path | str]): List of paths to process.
+        base_config (Mapping[str, Any] | Config | None): The base Config instance.
+        file_types (Sequence[str] | None): Optional filter list of supported file types to process
+        apply_changes (bool): True if changes should be applied, False if dry-run.
+
     Returns:
-    (cfg, file_list, results, encountered_error_code)
+        tuple[Config, list[Path], list[ProcessingContext], object | None]: Tuple containing:
+            - the resulting Config object;
+            - the resolved (optionally filtered if `file_types` was specified) list of paths
+              to process;
+            - the results of running the pipeline as list of `ProcessingContext` instances;
+            - the encountered error code
     """
     logger.info("Building config and file list for paths: %s", paths)
     cfg, file_list = _build_cfg_and_files_via_cli_helpers(
@@ -336,17 +348,17 @@ def check(
     """Validate or apply TopMark headers for the given paths.
 
     Args:
-        paths: Files and/or directories to process. Globs are allowed by the
-            caller; TopMark will recurse and filter internally.
-        apply: If True, write changes in-place; otherwise perform a dry run.
-        config: Optional plain mapping merged/normalized into a `Config`. If
-            None, the same discovery/merging as the CLI is used.
-        file_types: Optional whitelist of TopMark file type identifiers to narrow
-            discovery.
-        add_only: Only add missing headers; do not update existing ones.
-        update_only: Only update non-compliant headers; do not add new ones.
-        skip_compliant: Exclude already-compliant files from the returned view.
-        skip_unsupported: Exclude unsupported files from the returned view.
+        paths (Iterable[Path | str]): Files and/or directories to process. Globs are allowed
+            by the caller; TopMark will recurse and filter internally.
+        apply (bool): If True, write changes in-place; otherwise perform a dry run.
+        config (Mapping[str, Any] | None): Optional plain mapping merged/normalized into a `Config`.
+            If `None`, the same discovery/merging as the CLI is used.
+        file_types (Sequence[str] | None): Optional whitelist of TopMark file type identifiers
+            to narrow discovery.
+        add_only (bool): Only add missing headers; do not update existing ones.
+        update_only (bool): Only update non-compliant headers; do not add new ones.
+        skip_compliant (bool) : Exclude already-compliant files from the returned view.
+        skip_unsupported (bool): Exclude unsupported files from the returned view.
 
     Returns:
         RunResult: Filtered per-file outcomes, counts, diagnostics, and write stats.
@@ -429,18 +441,19 @@ def strip(
     """Remove TopMark headers from files (dry-run or apply).
 
     Args:
-        paths: Files and/or directories to process. Globs are allowed by the caller.
-        apply: If True, write changes in-place; otherwise perform a dry run.
-        config: Optional plain mapping merged/normalized into a `Config`. If
-            None, the same discovery/merging as the CLI is used.
-        file_types: Optional whitelist of TopMark file type identifiers to narrow
-            discovery.
-        skip_compliant: Exclude already-compliant files from the returned view.
-        skip_unsupported: Exclude unsupported files from the returned view.
+        paths (Iterable[Path | str]): Files and/or directories to process. Globs are allowed
+            by the caller.
+        apply (bool): If True, write changes in-place; otherwise perform a dry run.
+        config (Mapping[str, Any] | None): Optional plain mapping merged/normalized into a `Config`.
+            If `None`, the same discovery/merging as the CLI is used.
+        file_types (Sequence[str] | None): Optional whitelist of TopMark file type identifiers
+            to narrow discovery.
+        skip_compliant (bool): Exclude already-compliant files from the returned view.
+        skip_unsupported (bool): Exclude unsupported files from the returned view.
 
     Returns:
         RunResult: Filtered per-file outcomes, counts, diagnostics, skipped count,
-        and write stats.
+            and write stats.
 
     Notes:
         The `skip_*` flags affect only the **returned view** and do not modify
@@ -498,10 +511,10 @@ def get_filetype_info(long: bool = False) -> list[FileTypeInfo]:
     """Return metadata about registered file types.
 
     Args:
-        long: If True, include extended metadata such as patterns and policy.
+        long (bool): If `True`, include extended metadata such as patterns and policy.
 
     Returns:
-        A list of `FileTypeInfo` dicts (stable, serializable metadata).
+        list[FileTypeInfo]: A list of `FileTypeInfo` dicts (stable, serializable metadata).
 
     Notes:
         For object-level access, prefer `FileTypeRegistry` from
@@ -539,10 +552,10 @@ def get_processor_info(long: bool = False) -> list[ProcessorInfo]:
     """Return metadata about registered header processors.
 
     Args:
-        long: If True, include extended details for line/block delimiters.
+        long (bool): If True, include extended details for line/block delimiters.
 
     Returns:
-        A list of `ProcessorInfo` dicts (stable, serializable metadata).
+        list[ProcessorInfo]: A list of `ProcessorInfo` dicts (stable, serializable metadata).
 
     Notes:
         For object-level access, prefer `HeaderProcessorRegistry` from

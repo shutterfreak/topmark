@@ -521,7 +521,7 @@ def test_xml_bom_preserved_text_insert(tmp_path: Path) -> None:
     remains at the start of the first output line.
 
     Args:
-        tmp_path: Temporary directory provided by pytest.
+        tmp_path (Path): Temporary directory provided by pytest.
     """
     f = tmp_path / "bom.xml"
     f.write_bytes(b"\xef\xbb\xbf<?xml version='1.0'?>\n<root/>\n")

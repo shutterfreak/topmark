@@ -26,12 +26,12 @@ class FileTypeHeaderPolicy:
     rules) are declared on the file type.
 
     Attributes:
-        supports_shebang: Whether this file type commonly starts with a shebang.
-        encoding_line_regex: Optional regex (string) to detect an encoding line
+        supports_shebang (bool): Whether this file type commonly starts with a shebang.
+        encoding_line_regex (str | None): Optional regex (string) to detect an encoding line
             immediately after a shebang (e.g., Python PEP 263).
-        pre_header_blank_after_block: Desired number of blank lines between any
+        pre_header_blank_after_block (int): Desired number of blank lines between any
             preamble block (shebang/encoding) and the TopMark header. Typically 1.
-        ensure_blank_after_header: Ensure there is at least one blank line after
+        ensure_blank_after_header (bool): Ensure there is at least one blank line after
             the TopMark header block.
     """
 
@@ -39,6 +39,3 @@ class FileTypeHeaderPolicy:
     encoding_line_regex: str | None = None
     pre_header_blank_after_block: int = 1
     ensure_blank_after_header: bool = True
-
-    allow_prolog: bool = True
-    require_header_on_own_lines: bool = True

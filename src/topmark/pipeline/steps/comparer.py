@@ -50,22 +50,23 @@ def compare(ctx: ProcessingContext) -> ProcessingContext:
     header fields to generate. In other cases it returns the context unchanged.
 
     Decision tree:
-      1) **Precomputed image**: If `ctx.updated_file_lines` exists (e.g., `strip`), set
+      1. **Precomputed image**: If `ctx.updated_file_lines` exists (e.g., `strip`), set
          `UNCHANGED` iff `file_lines == updated_file_lines`; else `CHANGED`.
-      2) **No generation**: If `generation == PENDING`, set `UNCHANGED`.
-      3) **Dict‑wise content**: Compare `existing_header_dict` vs `expected_header_dict`.
+      2. **No generation**: If `generation == PENDING`, set `UNCHANGED`.
+      3. **Dict‑wise content**: Compare `existing_header_dict` vs `expected_header_dict`.
          – Different → `CHANGED`.
          – Equal → proceed to (4).
-      4) **Formatting fallback**: If we have both `existing_header_block` and
+      4. **Formatting fallback**: If we have both `existing_header_block` and
          `expected_header_lines`, compare exact block text. If blocks differ (order,
          alignment, spacing, affixes, newline style), set `CHANGED`; otherwise `UNCHANGED`.
 
     Args:
-        ctx: The processing context carrying file state, statuses, and dictionaries.
+        ctx (ProcessingContext): The processing context carrying file state, statuses,
+            and dictionaries.
 
     Returns:
         ProcessingContext: The same context, with `status.comparison` updated to
-        ``CHANGED`` or ``UNCHANGED`` when applicable.
+            ``CHANGED`` or ``UNCHANGED`` when applicable.
     """
     # If we have a precomputed full file updated content, use direct comparison
     # (relevant for the strip pipeline)

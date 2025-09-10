@@ -15,12 +15,12 @@ This module exposes structured, read-only oriented registries plus optional
 mutation hooks. It is part of the public API and provides stable, serializable
 metadata views without exposing internal implementation details.
 
-The :class:`Registry` facade is the **stable public surface** for read-only
-operations; the concrete registries remain available for advanced scenarios
+The [`Registry`][topmark.registry.Registry] facade is the **stable public surface**
+for read-only operations; the concrete registries remain available for advanced scenarios
 and tests but are not part of the semver stability promise.
 
-A FileType can be recognized (present in FileTypeRegistry) but unsupported
-(no processor registered).
+A FileType can be recognized (present in [`FileTypeRegistry`][topmark.registry.FileTypeRegistry])
+but unsupported (no processor registered).
 
 Typical usage:
     ```python
@@ -65,9 +65,9 @@ class Binding:
     """Joined view of a file type and its (optional) processor.
 
     Attributes:
-        filetype: Serializable metadata for the file type.
-        processor: Serializable metadata for the bound processor, or ``None``
-            if the file type is recognized but currently unsupported.
+        filetype (FileTypeMeta): Serializable metadata for the file type.
+        processor (ProcessorMeta | None): Serializable metadata for the bound processor,
+            or ``None`` if the file type is recognized but currently unsupported.
     """
 
     filetype: FileTypeMeta
@@ -128,7 +128,7 @@ class Registry:
         """Return True if a processor is registered for the given file type name.
 
         Args:
-            name: File type identifier to query.
+            name (str): File type identifier to query.
 
         Returns:
             bool: ``True`` if the file type has a registered processor; otherwise ``False``.
@@ -141,7 +141,8 @@ class Registry:
     ) -> None:
         """Register a file type and optionally bind a processor (advanced).
 
-        This is a convenience passthrough to :class:`FileTypeRegistry.register`.
+        This is a convenience passthrough to
+        [`FileTypeRegistry.register`][topmark.registry.FileTypeRegistry.register].
         Mutates global state; prefer using in tests or controlled plugin init.
         """
         return FileTypeRegistry.register(ft_obj, processor=processor)
@@ -155,7 +156,8 @@ class Registry:
     def register_processor(name: str, processor_class: type["HeaderProcessor"]) -> None:
         """Register a header processor under a file type name (advanced).
 
-        Passthrough to :class:`HeaderProcessorRegistry.register`.
+        Passthrough to
+            [`HeaderProcessorRegistry.register`][topmark.registry.HeaderProcessorRegistry.register].
         """
         return HeaderProcessorRegistry.register(name, processor_class)
 

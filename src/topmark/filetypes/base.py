@@ -38,7 +38,7 @@ class ContentGate(Enum):
     content probing only occurs when the file already looks like the family by
     extension.
 
-    Members:
+    Attributes:
         NEVER: Never evaluate the content matcher.
         IF_EXTENSION: Probe content only if an extension matched.
         IF_FILENAME: Probe content only if a filename/tail matched.
@@ -66,36 +66,36 @@ class FileType:
     A *file type* describes how TopMark recognizes files on disk and whether they
     are eligible for header processing. Recognition can be based on filename
     extension, exact filename, regex pattern, and optionally **file content** via
-    :attr:`content_matcher`.
+    `content_matcher`.
 
     Attributes:
-        name: Internal identifier of the file type (e.g. ``"python"``).
-        extensions: List of filename extensions associated with this type. Values
+        name (str): Internal identifier of the file type (e.g. ``"python"``).
+        extensions (list[str]): List of filename extensions associated with this type. Values
             should include the leading dot (e.g. ``.py``) or be consistent with the
             matcher used elsewhere in TopMark.
-        filenames: Exact filenames or tail subpaths to match. If a value contains a
+        filenames (list[str]): Exact filenames or tail subpaths to match. If a value contains a
             path separator (``/`` or ``\\``), it is matched against the *tail* of the
             path (e.g. ``".vscode/settings.json"``). Otherwise, it must equal the
             basename exactly (e.g. ``"Makefile"``).
-        patterns: Regular expressions evaluated against the basename (see
-            :func:`re.fullmatch`). Useful for families of files that don't share a
+        patterns (list[str]): Regular expressions evaluated against the basename (see
+            `re.fullmatch`). Useful for families of files that don't share a
             simple extension.
-        description: Human‑readable description of the file type.
-        skip_processing: When ``True``, the pipeline **recognizes** files of this
+        description (str): Human‑readable description of the file type.
+        skip_processing (bool): When ``True``, the pipeline **recognizes** files of this
             type but intentionally **skips header processing** (e.g. JSON without
             comments, LICENSE files). This lets discovery work while keeping writes
             disabled by design.
-        content_matcher: Optional callable ``(Path) -> bool`` that performs
-            *content-based* recognition when name-based heuristics are
-            ambiguous. TopMark calls this **last** in :meth:`matches` after
+        content_matcher (Callable[[Path], bool] | None): Optional callable ``(Path) -> bool``
+            that performs *content-based* recognition when name-based heuristics are
+            ambiguous. TopMark calls this **last** in `matches` after
             testing extensions, filenames, and patterns. The callable should be
             fast, side‑effect free, and return ``True`` if the file is of this
             type. It must **not** raise; exceptions are caught and treated as
             non‑matches.
-        content_gate: Gate that controls when the content matcher is consulted.
-        header_policy: Optional :class:`FileTypeHeaderPolicy` that tunes placement
-            (e.g., shebang handling) and scanning windows around the expected
-            insertion anchor.
+        content_gate (ContentGate): Gate that controls when the content matcher is consulted.
+        header_policy (FileTypeHeaderPolicy | None): Optional `FileTypeHeaderPolicy`
+            that tunes placement (e.g., shebang handling) and scanning windows around the
+            expected insertion anchor.
 
     Content‑based recognition (example)
     ----------------------------------
@@ -117,8 +117,8 @@ class FileType:
     it with a suitable header processor makes them **supported** for processing.
 
     Notes:
-        * :meth:`matches` first tries extensions, filenames, and regex patterns.
-          Only if those fail and :attr:`content_matcher` is set will it call the
+        * `matches` first tries extensions, filenames, and regex patterns.
+          Only if those fail and `content_matcher` is set will it call the
           matcher to decide.
         * Content matchers should read a small portion of the file where possible
           to remain fast on large trees. The current implementation leaves that
@@ -148,10 +148,10 @@ class FileType:
         This method must be implemented by subclasses to define matching logic.
 
         Args:
-            path: The path to the file to check.
+            path (Path): The path to the file to check.
 
         Returns:
-            True if the file matches this file type, False otherwise.
+            bool: True if the file matches this file type, False otherwise.
         """
         # Extension match (simple suffix)
         if path.suffix in self.extensions:

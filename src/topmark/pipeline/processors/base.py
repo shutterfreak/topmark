@@ -38,29 +38,29 @@ class HeaderProcessor:
     """Base class for header processors that handle specific file types.
 
     A *header processor* knows how to **find**, **render**, and **modify** TopMark
-    headers for one concrete :class:`~topmark.filetypes.base.FileType`. The registry
-    binds a processor instance to a file type at runtime (``proc.file_type = ft``),
+    headers for one concrete [`topmark.filetypes.base.FileType`][topmark.filetypes.base.FileType].
+    The registry binds a processor instance to a file type at runtime (``proc.file_type = ft``),
     and TopMark uses that pairing during scanning and updates.
 
     Responsibilities:
         - **Scanning:** Locate existing headers via start/end markers and comment
-          affixes (see :meth:`get_header_bounds`, :meth:`line_has_directive`).
+          affixes (see `get_header_bounds`, `line_has_directive`).
         - **Parsing:** Extract key→value pairs from the header payload (see
-          :meth:`parse_fields`).
+          `parse_fields`).
         - **Rendering:** Emit preamble/fields/postamble with proper comment syntax
-          (see :meth:`render_preamble_lines`, :meth:`render_header_lines`,
-          :meth:`render_postamble_lines`).
+          (see `render_preamble_lines`, `render_header_lines`,
+          `render_postamble_lines`).
         - **Placement policy:** Determine insertion points; default is
           *shebang‑aware* for languages like Python (see
-          :meth:`get_header_insertion_index`).
+          `get_header_insertion_index`).
         - **Update/strip helpers:** Prepare insertions and removals in a way that
           preserves surrounding whitespace (see
-          :meth:`prepare_header_for_insertion`, :meth:`strip_header_block`).
+          `prepare_header_for_insertion`, `strip_header_block`).
 
     What this class does **not** do:
         - **Content‑based recognition.** Deciding *which* file type a path belongs
-          to is the role of :class:`~topmark.filetypes.base.FileType` via
-          :attr:`FileType.content_matcher`. The processor assumes it is already
+          to is the role of [`topmark.filetypes.base.FileType`][topmark.filetypes.base.FileType] via
+          `FileType.content_matcher`. The processor assumes it is already
           associated with the correct file type.
 
     Indentation semantics:
@@ -80,6 +80,30 @@ class HeaderProcessor:
         rather than this concrete base if you are authoring plugins. The registry
         binds processors to file types and exposes read‑only metadata for common
         integrations.
+
+    Args:
+        block_prefix (str): The prefix string for block-style header start.
+        block_suffix (str): The suffix string for block-style header end.
+        line_prefix (str): The prefix string for each line within the header block.
+        line_suffix (str): The suffix string for each line within the header block.
+        line_indent (str): The indentation applied to *header field lines* **after**
+            the comment prefix (e.g., spaces after `//`).
+        header_indent (str): The indentation applied *before* the comment prefix; used
+            to preserve existing leading indentation when replacing an indented
+            header block inside a document (e.g., nested JSONC).
+
+    Attributes:
+        file_type (FileType | None): The `FileType` registered to the header processor.
+        block_prefix (str): The prefix string for block-style header start.
+        block_suffix (str): The suffix string for block-style header end.
+        line_prefix (str): The prefix string for each line within the header block.
+        line_suffix (str): The suffix string for each line within the header block.
+        line_indent (str): The indentation applied to *header field lines* **after**
+            the comment prefix (e.g., spaces after `//`).
+        header_indent (str): The indentation applied *before* the comment prefix; used
+            to preserve existing leading indentation when replacing an indented
+            header block inside a document (e.g., nested JSONC).
+
     """
 
     file_type: FileType | None = None
@@ -96,11 +120,6 @@ class HeaderProcessor:
     # when replacing an indented header inside a document, e.g. JSONC nested blocks).
     header_indent: str = ""
 
-    """
-    The file type associated with this processor, used for matching files.
-    This should be set by the processor implementation.
-    """
-
     def __init__(
         self,
         *,
@@ -111,19 +130,6 @@ class HeaderProcessor:
         line_indent: str = "  ",
         header_indent: str = "",
     ) -> None:
-        """Initialize a HeaderProcessor instance.
-
-        Args:
-            block_prefix: The prefix string for block-style header start.
-            block_suffix: The suffix string for block-style header end.
-            line_prefix: The prefix string for each line within the header block.
-            line_suffix: The suffix string for each line within the header block.
-            line_indent: The indentation applied to *header field lines* **after**
-                the comment prefix (e.g., spaces after `//`).
-            header_indent: The indentation applied *before* the comment prefix; used
-                to preserve existing leading indentation when replacing an indented
-                header block inside a document (e.g., nested JSONC).
-        """
         self.file_type = None
 
         self.block_prefix = block_prefix
@@ -216,9 +222,12 @@ class HeaderProcessor:
     def _find_inner_marker_indices(self, lines: list[str]) -> tuple[int | None, int | None]:
         """Find START and END marker indices relative to the given slice.
 
+        Args:
+            lines (list[str]): The lines in which to search for the START and END markers.
+
         Returns:
-            (start_rel, end_rel) where both are relative indices into `lines`.
-            Any of them may be None if not found.
+            tuple[int | None, int | None]: (start_rel, end_rel) where both are relative indices
+                into `lines`. Any of them may be None if not found.
         """
         start_rel: int | None = None
         end_rel: int | None = None
@@ -243,6 +252,12 @@ class HeaderProcessor:
             - If a prefix is configured and present at start, remove it.
             - If a suffix is configured and present at end, remove it.
         Then strip surrounding whitespace.
+
+        Args:
+            line (str): The line to be stripped of its line prefix/suffix.
+
+        Returns:
+            str: The stripped line.
         """
         cleaned = line.rstrip("\r\n")
         if self.line_prefix and cleaned.lstrip().startswith(self.line_prefix):
@@ -279,7 +294,7 @@ class HeaderProcessor:
                 the instance's ``line_prefix`` when ``None``.
             line_suffix (str | None): Optional override for the line suffix; defaults to
                 the instance's ``line_suffix`` when ``None``.
-            header_indent: The indentation applied *before* the comment prefix; used
+            header_indent (str): The indentation applied *before* the comment prefix; used
                 to preserve existing leading indentation when replacing an indented
                 header block inside a document (e.g., nested JSONC).
             after_prefix_indent (str | None): Indentation to apply after the line prefix
@@ -334,13 +349,13 @@ class HeaderProcessor:
                 the instance's ``line_prefix`` when ``None``.
             line_suffix (str | None): Optional override for the line suffix; defaults to
                 the instance's ``line_suffix`` when ``None``.
-            header_indent: The indentation applied *before* the comment prefix; used
+            header_indent (str): The indentation applied *before* the comment prefix; used
                 to preserve existing leading indentation when replacing an indented
                 header block inside a document (e.g., nested JSONC).
 
         Returns:
-          list[str]: Preamble lines (each ending with ``newline_style``) that precede
-          the header fields.
+            list[str]: Preamble lines (each ending with ``newline_style``) that precede
+                the header fields.
         """
         bp = self.block_prefix if block_prefix is None else block_prefix
         lines: list[str] = []
@@ -393,13 +408,13 @@ class HeaderProcessor:
                 the instance's ``line_prefix`` when ``None``.
             line_suffix (str | None): Optional override for the line suffix; defaults to
                 the instance's ``line_suffix`` when ``None``.
-            header_indent: The indentation applied *before* the comment prefix; used
+            header_indent (str): The indentation applied *before* the comment prefix; used
                 to preserve existing leading indentation when replacing an indented
                 header block inside a document (e.g., nested JSONC).
 
         Returns:
-          list[str]: Postamble lines (each ending with ``newline_style``) that follow
-          the header fields.
+            list[str]: Postamble lines (each ending with ``newline_style``) that follow
+                the header fields.
         """
         bs = self.block_suffix if block_suffix is None else block_suffix
         lines: list[str] = []
@@ -454,19 +469,19 @@ class HeaderProcessor:
             block_suffix_override (str | None): Optional block suffix override.
             line_prefix_override (str | None): Optional line prefix override.
             line_suffix_override (str | None): Optional line suffix override.
-            header_indent_override (str | None): Optional indentation override *before*
-                the comment prefix, applied to complete header lines (used to preserve
-                existing leading indentation on replace).
             line_indent_override (str | None): Optional indentation override *after*
                 the comment prefix, applied to header field lines (defaults to the
                 processor's `line_indent`).
+            header_indent_override (str | None): Optional indentation override *before*
+                the comment prefix, applied to complete header lines (used to preserve
+                existing leading indentation on replace).
 
         Returns:
-          list[str]: Rendered header lines ending with ``newline_style``.
+            list[str]: Rendered header lines ending with ``newline_style``.
 
         Notes:
-          If ``config.header_format`` is ``HeaderOutputFormat.PLAIN``, the method emits
-          a raw/plain header (no prefixes/suffixes/indentation) unless overrides are given.
+            - If ``config.header_format`` is ``HeaderOutputFormat.PLAIN``, the method emits
+              a raw/plain header (no prefixes/suffixes/indentation) unless overrides are given.
         """
         assert config, "Config is undefined"
 
@@ -565,11 +580,11 @@ class HeaderProcessor:
         Subclasses may override this when a format imposes different placement rules.
 
         Args:
-          file_lines (list[str]): Lines from the file being processed.
+            file_lines (list[str]): Lines from the file being processed.
 
         Returns:
-          int: Index at which to insert the TopMark header, or ``NO_LINE_ANCHOR`` if
-          no insertion index can be found.
+            int: Index at which to insert the TopMark header, or ``NO_LINE_ANCHOR`` if
+                no insertion index can be found.
         """
         index = 0
         shebang_present = False
@@ -598,12 +613,12 @@ class HeaderProcessor:
         Subclasses may override this method for more flexible or format-specific matching.
 
         Args:
-          line (str): The line of text to check (whitespace is trimmed internally).
-          directive (str): The directive string to look for.
+            line (str): The line of text to check (whitespace is trimmed internally).
+            directive (str): The directive string to look for.
 
         Returns:
-          bool: ``True`` if the line contains the directive with the configured
-          prefix/suffix, otherwise ``False``.
+            bool: ``True`` if the line contains the directive with the configured
+                prefix/suffix, otherwise ``False``.
         """
         line = line.strip()
 
@@ -669,7 +684,7 @@ class HeaderProcessor:
         """Identify the inclusive (start, end) line indices of the TopMark header.
 
         Supports both line-comment and block-comment styles depending on the processor's
-        configuration. Uses :meth:`validate_header_location` to filter candidates near
+        configuration. Uses `validate_header_location` to filter candidates near
         the computed insertion anchor.
 
         Args:
@@ -699,18 +714,21 @@ class HeaderProcessor:
         return None, None
 
     def strip_header_block(
-        self, *, lines: list[str], span: tuple[int, int] | None = None
+        self,
+        *,
+        lines: list[str],
+        span: tuple[int, int] | None = None,
     ) -> tuple[list[str], tuple[int, int] | None]:
         """Remove the TopMark header block and return the updated file image.
 
         This method supports two detection modes:
 
-        1) **Policy-aware detection** (preferred):
+        1. **Policy-aware detection** (preferred):
            If ``span`` is not provided, the processor calls ``get_header_bounds(lines)``
            to locate a valid header near the computed insertion anchor. This respects
            file-type placement rules (shebang handling, XML prolog, Markdown fences, etc.).
 
-        2) **Permissive fallback** (best-effort):
+        2. **Permissive fallback** (best-effort):
            If policy-aware detection fails, the method performs a lightweight scan for
            the first ``START``..``END`` marker pair *anywhere* in the file. The scan
            accepts either exact directive matches (prefix/suffix aware) **or** marker
@@ -723,9 +741,11 @@ class HeaderProcessor:
         removal to avoid introducing an extra gap.
 
         Args:
-            lines: Full file content split into lines (each typically ending with a newline).
-            span: Optional inclusive ``(start, end)`` line index tuple, normally provided by
-                the scanner via ``ctx.existing_header_range``. When set, no scanning is performed.
+            lines (list[str]): Full file content split into lines (each typically ending
+                with a newline).
+            span (tuple[int, int] | None): Optional inclusive ``(start, end)`` line index tuple,
+                normally provided by the scanner via ``ctx.existing_header_range``.
+                When set, no scanning is performed.
 
         Returns:
             tuple[list[str], tuple[int, int] | None]:
@@ -861,11 +881,12 @@ class HeaderProcessor:
         helper does no placement validation; callers should apply policy checks.
 
         Args:
-            lines: Full file content split into lines.
+            lines (list[str]): Full file content split into lines.
 
         Returns:
-            A tuple ``(start_index, end_index)`` where both are 0-based line indices of
-            the directive lines (inclusive), or ``(None, None)`` when no pair is found.
+            tuple[int | None, int | None]: A tuple ``(start_index, end_index)`` where both
+            are 0-based line indices of the directive lines (inclusive), or ``(None, None)``
+            when no pair is found.
         """
         start_index: int | None = None
         end_index: int | None = None
@@ -888,9 +909,12 @@ class HeaderProcessor:
     def _get_bounds_block_comments(self, lines: list[str]) -> tuple[int | None, int | None]:
         """Identify the bounds of a block-comment-wrapped header (e.g. HTML, XML, Markdown).
 
+        Args:
+            lines (list[str]): The lines in which a comment block is to be found.
+
         Returns:
-            A tuple (start_index, end_index) representing the lines to include (inclusive),
-            or (None, None) if not found or malformed.
+            tuple[int | None, int | None]: A tuple (start_index, end_index) representing the lines
+            to include (inclusive), or (None, None) if not found or malformed.
         """
         block_prefix_index: int | None = None
         header_start_index: int | None = None

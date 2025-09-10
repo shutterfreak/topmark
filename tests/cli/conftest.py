@@ -35,21 +35,21 @@ def run_cli_in(
 ) -> Result:
     """Invoke the CLI with `tmp_path` as the working directory.
 
-    This helper temporarily calls :func:`os.chdir` to run the command from the
+    This helper temporarily calls `os.chdir` to run the command from the
     provided temporary directory so that relative paths and glob patterns are
     evaluated against that directory. It mirrors how end users typically run the
     tool from a project root and avoids accidental reliance on absolute patterns.
 
     Args:
-        tmp_path: Pytest-provided temporary directory used as the CWD for the
+        tmp_path (Path): Pytest-provided temporary directory used as the CWD for the
             command invocation.
-        argv: CLI argument vector, e.g. `["--apply", "*.py"]`.
-        input_text: Optional standard input to pass to the command. This can be
-            a string, bytes, or a file-like object for `--stdin` modes.
+        argv (str | Sequence[str] | None): CLI argument vector, e.g. `["--apply", "*.py"]`.
+        input_text (str | bytes | IO[Any] | None): Optional standard input to pass to the command.
+            This can be a string, bytes, or a file-like object for `--stdin` modes.
 
     Returns:
-        The :class:`click.testing.Result` produced by
-        :func:`click.testing.CliRunner.invoke`.
+        Result: The `click.testing.Result` produced by
+            `click.testing.CliRunner.invoke`.
 
     Example:
         ```python
@@ -76,18 +76,19 @@ def run_cli(
     Use this helper when the test does **not** depend on files created in
     ``tmp_path`` (e.g., ``--help`` / ``--version``) or when all provided paths are
     absolute. For tests that pass **relative** paths or glob patterns and create
-    files under ``tmp_path``, prefer :func:`run_cli_in` so those paths resolve
+    files under ``tmp_path``, prefer `run_cli_in` so those paths resolve
     against the temporary directory.
 
     Args:
-        argv: CLI argument vector, e.g. ``["--help"]`` or
+        argv (str | Sequence[str] | None): CLI argument vector, e.g. ``["--help"]`` or
             ``["--version"]``.
-        input_text: Optional standard input to pass to the command. This can be a
-            string, bytes, or a file-like object for ``--stdin`` modes.
+        input_text (str | bytes | IO[Any] | None): Optional standard input to pass
+            to the command. This can be a string, bytes, or a file-like object for
+            ``--stdin`` modes.
 
     Returns:
-        The :class:`click.testing.Result` produced by
-        :func:`click.testing.CliRunner.invoke`.
+        Result: The `click.testing.Result` produced by
+            `click.testing.CliRunner.invoke`.
 
     Example:
         ```python
@@ -103,7 +104,7 @@ def assert_SUCCESS(result: Result) -> None:
     """Assert that the command exited successfully (code 0).
 
     Args:
-        result: The Result object returned by `run_cli` or `run_cli_in`.
+        result (Result): The Result object returned by `run_cli` or `run_cli_in`.
     """
     assert result.exit_code == ExitCode.SUCCESS, result.output
 
@@ -112,7 +113,7 @@ def assert_WOULD_CHANGE(result: Result) -> None:
     """Assert that the command exited with WOULD_CHANGE (code 2).
 
     Args:
-        result: The Result object returned by `run_cli` or `run_cli_in`.
+        result (Result): The Result object returned by `run_cli` or `run_cli_in`.
     """
     # WOULD_CHANGE is a *normal* outcome; do not assert on exception.
     assert result.exit_code == ExitCode.WOULD_CHANGE, result.output
@@ -122,7 +123,7 @@ def assert_SUCCESS_or_WOULD_CHANGE(result: Result) -> None:
     """Assert that the command exited successfully (code 0).
 
     Args:
-        result: The Result object returned by `run_cli` or `run_cli_in`.
+        result (Result): The Result object returned by `run_cli` or `run_cli_in`.
     """
     assert result.exit_code in [ExitCode.SUCCESS, ExitCode.WOULD_CHANGE], result.output
 
@@ -131,7 +132,7 @@ def assert_USAGE_ERROR(result: Result) -> None:
     """Assert that the command exited with USAGE_ERROR (code 64).
 
     Args:
-        result: The Result object returned by `run_cli` or `run_cli_in`.
+        result (Result): The Result object returned by `run_cli` or `run_cli_in`.
     """
     # Your CLI returns USAGE_ERROR=64; Click’s UsageError type may be present.
     assert result.exit_code == ExitCode.USAGE_ERROR, result.output

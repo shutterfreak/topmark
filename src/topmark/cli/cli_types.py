@@ -61,21 +61,24 @@ class ArgsNamespace(TypedDict, total=False):
     access and transfer of parsed CLI state, including global options, config
     file overrides, file selection, filtering, and formatting flags.
 
+
     Attributes:
-        verbosity_level: Program-output verbosity (0=terse, 1=verbose).
-        apply_changes: Whether to apply the changed (dry-run if not set ot False).
-        no_config: Whether to ignore local config files.
-        config_files: List of extra config file paths.
-        files: List of file paths to process.
-        stdin: Whether to read file paths from stdin.
-        include_patterns: Glob patterns of files to include.
-        include_from: Files containing include patterns.
-        exclude_patterns: Glob patterns of files to exclude.
-        exclude_from: Files containing exclude patterns.
-        file_types: Restrict to given file types.
-        relative_to: Root directory for relative paths.
-        align_fields: Align header fields with colons.
-        header_format: Header output format (file type aware, plain, or json).
+        verbosity_level (int | None): Program-output verbosity (0=terse, 1=verbose).
+        apply_changes (bool | None): Whether to apply the changed (dry-run if not set ot False).
+        no_config (bool | None): Whether to ignore local config files.
+        config_files (list[str] | None): List of extra config file paths.
+        files (list[str]): List of file paths to process.
+        files_from (list[str]): List of files containing newline-delimited paths.
+        stdin (bool | None): Whether to read file paths from stdin.
+        include_patterns (list[str] | None): Glob patterns of files to include.
+        include_from (list[str] | None): Files containing include patterns.
+        exclude_patterns (list[str] | None): Glob patterns of files to exclude.
+        exclude_from (list[str] | None): Files containing exclude patterns.
+        file_types (list[str] | None): Restrict to given file types.
+        relative_to (str | None): Root directory for relative paths.
+        align_fields (bool | None): Align header fields with colons.
+        header_format (HeaderOutputFormat | None): Header output format
+            (file type aware, plain, or json).
     """
 
     # Global options: retrieve from ctx.obj
@@ -128,24 +131,24 @@ def build_args_namespace(
     """Build an ArgsNamespace dictionary for CLI argument passing.
 
     Args:
-        verbosity_level: Program-output verbosity (0=terse, 1=verbose).
-        apply_changes: Whether to apply the changed (dry-run if not set ot False).
-        no_config: Whether to ignore local config files.
-        config_files: List of extra config file paths.
-        files: List of file paths to process.
-        files_from: List of files containing newline-delimited paths.
-        stdin: Whether to read file paths from stdin.
-        include_patterns: Glob patterns of files to include.
-        include_from: Files containing include patterns.
-        exclude_patterns: Glob patterns of files to exclude.
-        exclude_from: Files containing exclude patterns.
-        file_types: Restrict to given file types.
-        relative_to: Root directory for relative paths.
-        align_fields: Align header fields with colons.
-        header_format: Header output format (native, plain, or json).
+        verbosity_level (int | None): Program-output verbosity (0=terse, 1=verbose).
+        apply_changes (bool | None): Whether to apply the changed (dry-run if not set ot False).
+        no_config (bool | None): Whether to ignore local config files.
+        config_files (list[str] | None): List of extra config file paths.
+        files (list[str] | None): List of file paths to process.
+        files_from (list[str] | None): List of files containing newline-delimited paths.
+        stdin (bool | None): Whether to read file paths from stdin.
+        include_patterns (list[str] | None): Glob patterns of files to include.
+        include_from (list[str] | None): Files containing include patterns.
+        exclude_patterns (list[str] | None): Glob patterns of files to exclude.
+        exclude_from (list[str] | None): Files containing exclude patterns.
+        file_types (list[str] | None): Restrict to given file types.
+        relative_to (str | None): Root directory for relative paths.
+        align_fields (bool | None): Align header fields with colons.
+        header_format (HeaderOutputFormat | None): Header output format (native, plain, or json).
 
     Returns:
-        Dictionary of CLI argument values for use throughout the CLI.
+        ArgsNamespace: Dictionary of CLI argument values for use throughout the CLI.
     """
     return {
         "verbosity_level": verbosity_level,
@@ -177,8 +180,7 @@ class EnumChoiceParam(ParamTypeBase, Generic[E]):
     name: str
     choices: list[str]
 
-    def __init__(self, enum_cls: type[E]):
-        """Initialize the EnumParam instance."""
+    def __init__(self, enum_cls: type[E]) -> None:
         self.enum_cls = enum_cls
         self.name = self.enum_cls.__name__.lower()
         # Assume the enum exposes string-valued members (e.g., HeaderOutputFormat)
@@ -260,12 +262,12 @@ def FileTypeParam(
     or is not a file.
 
     Args:
-        ctx: Click context.
-        param: The Click parameter.
-        value: The CLI argument value to validate.
+        ctx (click.Context): Click context.
+        param (click.Parameter): The Click parameter.
+        value (Any): The CLI argument value to validate.
 
     Returns:
-        The validated file path, or None if value is None.
+        Path | None: The validated file path, or None if value is None.
 
     Raises:
         click.BadParameter: If the file does not exist or is not a file.
@@ -289,12 +291,13 @@ def GlobParam(
     Expands the given glob pattern string into a list of Path objects matching the pattern.
 
     Args:
-        ctx: Click context.
-        param: The Click parameter.
-        value: The glob pattern string.
+        ctx (click.Context): Click context.
+        param (click.Parameter): The Click parameter.
+        value (Any): The glob pattern string.
 
     Returns:
-        List of Path objects matching the glob pattern, or an empty list if value is None.
+        list[Path]: List of Path objects matching the glob pattern, or an empty list
+            if value is None.
     """
     if value is None:
         return []

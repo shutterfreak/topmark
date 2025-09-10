@@ -75,7 +75,7 @@ help:
 	@echo "  verify                   Run all non-destructive checks (formatting, linting, type-checking)"
 	@echo "  format-check             Check code formatting without modifying files"
 	@echo "  format                   Format code (ruff, mdformat, taplo)"
-	@echo "  lint                     Run linters (ruff, pyright)"
+	@echo "  lint                     Run linters (ruff, pydoclint, pyright)"
 	@echo "  lint-fixall              Run linters and automatically fix fixable linting errors"
 	@echo ""
 	@echo "  test                     Run tests"
@@ -214,6 +214,7 @@ format: check-venv
 lint: check-venv
 	@echo "Running linters..."
 	$(VENV_BIN)/ruff check .
+	git ls-files '*.py' | xargs -r $(VENV_BIN)/pydoclint -q
 	$(VENV_BIN)/pyright src tests
 
 .lint-fixall: check-venv

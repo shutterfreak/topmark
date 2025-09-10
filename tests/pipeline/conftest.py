@@ -56,19 +56,19 @@ def run_insert(path: Path, cfg: Config) -> ProcessingContext:
     """Insert a header by running only the updater step.
 
     This mirrors the later pipeline phase by:
-      1) bootstrapping a ``ProcessingContext``,
-      2) running the resolver step to set ``ctx.file_type`` and ``ctx.header_processor``,
-      3) loading file contents into ``ctx.file_lines`` (reader step),
-      4) scanning for an existing TopMark header (scanner step), and
-      5) rendering the expected header lines, and
-      6) invoking the updater step.
+      1. bootstrapping a ``ProcessingContext``,
+      2. running the resolver step to set ``ctx.file_type`` and ``ctx.header_processor``,
+      3. loading file contents into ``ctx.file_lines`` (reader step),
+      4. scanning for an existing TopMark header (scanner step), and
+      5. rendering the expected header lines, and
+      6. invoking the updater step.
 
     Args:
-        path: File to modify.
-        cfg: TopMark configuration used for rendering.
+        path (Path): File to modify.
+        cfg (Config): TopMark configuration used for rendering.
 
     Returns:
-        The updated ``ProcessingContext`` with ``updated_file_lines`` set.
+        ProcessingContext: The updated ``ProcessingContext`` with ``updated_file_lines`` set.
     """
     ctx = ProcessingContext.bootstrap(path=path, config=cfg)
 
@@ -132,11 +132,11 @@ def find_line(lines: list[str], needle: str) -> int:
     Comparison strips trailing newline characters to be newline-style agnostic.
 
     Args:
-        lines: Sequence of lines (each typically ending with a newline).
-        needle: The exact content to match (no trailing newline).
+        lines (list[str]): Sequence of lines (each typically ending with a newline).
+        needle (str): The exact content to match (no trailing newline).
 
     Returns:
-        Zero-based index of the first matching line.
+        int: Zero-based index of the first matching line.
 
     Raises:
         AssertionError: If ``needle`` is not found.
@@ -175,11 +175,11 @@ def expected_block_lines_for(path: Path, newline: str = "\n") -> BlockSignatures
     ``rstrip()``.
 
     Args:
-        path: Path to the file under test; used to resolve the processor.
-        newline: Newline style to use when rendering test expectations.
+        path (Path): Path to the file under test; used to resolve the processor.
+        newline (str): Newline style to use when rendering test expectations.
 
     Returns:
-        A dict with canonical single-line strings suitable for assertions.
+        BlockSignatures: A dict with canonical single-line strings suitable for assertions.
     """
     # Ensure processors are registered and resolve the appropriate one
     proc: HeaderProcessor | None = get_processor_for_file(path)

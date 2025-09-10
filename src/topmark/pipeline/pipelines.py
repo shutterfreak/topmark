@@ -96,13 +96,13 @@ def get_pipeline(name: str) -> Sequence[Step]:
     """Return a pipeline by name, falling back to 'default' if unknown.
 
     Args:
-      name: Pipeline name (e.g., 'default', 'check', 'summary').
+        name (str): Pipeline name (e.g., 'default', 'check', 'summary').
 
     Returns:
-      An immutable sequence of Step callables.
+        Sequence[Step]: An immutable sequence of Step callables.
 
     Notes:
-      The return type is a Sequence for flexibility at call sites while
-      preserving immutability internally.
+        The return type is a Sequence for flexibility at call sites while
+        preserving immutability internally.
     """
     return PIPELINES.get(name, DEFAULT_PIPELINE)

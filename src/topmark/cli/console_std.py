@@ -17,19 +17,18 @@ from topmark.cli_shared.console_api import ConsoleLike
 
 
 class StdConsole(ConsoleLike):
-    """Simple console without colors."""
+    """Simple console without colors.
+
+    Args:
+        enable_color (bool): Ignored for this implementation. Present only to keep
+            the signature compatible with other ConsoleLike implementations.
+        out (TextIO | None): Stream for normal output. Defaults to sys.stdout.
+        err (TextIO | None): Stream for error/warning output. Defaults to sys.stderr.
+    """
 
     def __init__(
         self, *, enable_color: bool = False, out: TextIO | None = None, err: TextIO | None = None
     ) -> None:
-        """Initialize a StdConsole instance.
-
-        Args:
-            enable_color: Ignored for this implementation. Present only to keep
-                the signature compatible with other ConsoleLike implementations.
-            out: Stream for normal output. Defaults to sys.stdout.
-            err: Stream for error/warning output. Defaults to sys.stderr.
-        """
         self.enable_color = enable_color
         self.out = out or sys.stdout
         self.err = err or sys.stderr

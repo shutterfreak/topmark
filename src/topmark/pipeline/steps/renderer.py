@@ -45,8 +45,8 @@ def render(ctx: ProcessingContext) -> ProcessingContext:
         * `file_lines` – original lines, used to preserve newline style.
 
     Returns:
-      ProcessingContext: Same context with the following fields set depending on
-      the generation status:
+        ProcessingContext: Same context with the following fields set depending on
+        the generation status:
         * `NO_FIELDS` – no‑op; sets `expected_header_lines = None` and
           `expected_header_block = None`.
         * `GENERATED` – sets `expected_header_lines` and `expected_header_block`.

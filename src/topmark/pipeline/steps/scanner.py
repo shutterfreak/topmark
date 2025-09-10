@@ -33,18 +33,19 @@ def scan(ctx: ProcessingContext) -> ProcessingContext:
     """Detect and extract a TopMark header from file lines.
 
     Precondition:
-      - `ctx.status.file` is RESOLVED or EMPTY_FILE.
-      - `ctx.file_lines` populated by the reader step.
-      - `ctx.header_processor` is set.
+        - `ctx.status.file` is RESOLVED or EMPTY_FILE.
+        - `ctx.file_lines` populated by the reader step.
+        - `ctx.header_processor` is set.
 
     Args:
-      ctx: Processing context with file lines and a header processor.
+        ctx (ProcessingContext): Processing context with file lines and a
+            header processor.
 
     Returns:
-      The same context updated with:
-        - existing_header_range / existing_header_lines / existing_header_block
-        - existing_header_dict (parsed)
-        - status.header (MISSING, EMPTY, DETECTED, MALFORMED)
+        ProcessingContext: The same context updated with:
+            - existing_header_range / existing_header_lines / existing_header_block
+            - existing_header_dict (parsed)
+            - status.header (MISSING, EMPTY, DETECTED, MALFORMED)
     """
     # Pipeline safeguard
     if ctx.status.file not in [FileStatus.RESOLVED, FileStatus.EMPTY_FILE]:

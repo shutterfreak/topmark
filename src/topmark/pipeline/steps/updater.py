@@ -48,8 +48,9 @@ def _prepend_bom_to_lines_if_needed(lines: list[str], ctx: ProcessingContext) ->
         * Otherwise, prepend a BOM to the first line if it is not already present.
 
     Args:
-        lines: The updated file content as a list of lines (each with its own newline).
-        ctx: The pipeline processing context (provides ``leading_bom`` and ``has_shebang``).
+        lines (list[str]): The updated file content as a list of lines (each with its own newline).
+        ctx (ProcessingContext): The pipeline processing context
+            (provides ``leading_bom`` and ``has_shebang``).
 
     Returns:
         list[str]: The (possibly) modified list of lines. Never ``None``.

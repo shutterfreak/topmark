@@ -33,11 +33,12 @@ def run(ctx: ProcessingContext, steps: Sequence[Step]) -> ProcessingContext:
     """Execute the pipeline sequentially.
 
     Args:
-      ctx: Mutable processing context.
-      steps: Ordered sequence of pipeline steps. Each step takes and returns a context.
+        ctx (ProcessingContext): Mutable processing context.
+        steps (Sequence[Step]): Ordered sequence of pipeline steps.
+            Each step takes and returns a context.
 
     Returns:
-      The final processing context after all steps have run.
+        ProcessingContext: The final processing context after all steps have run.
     """
     logger.info(
         "header_format: %s",

@@ -46,7 +46,6 @@ class SlashHeaderProcessor(HeaderProcessor):
     """
 
     def __init__(self) -> None:
-        """Initialize a SlashHeaderProcessor instance."""
         super().__init__(line_prefix="//")
 
     def prepare_header_for_insertion(
@@ -61,12 +60,12 @@ class SlashHeaderProcessor(HeaderProcessor):
         trailing blank line if the next line isn't already blank or EOF.
 
         Args:
-          original_lines (list[str]): Original file lines.
-          insert_index (int): Line index where the header will be inserted.
-          rendered_header_lines (list[str]): Header lines to insert.
+            original_lines (list[str]): Original file lines.
+            insert_index (int): Line index where the header will be inserted.
+            rendered_header_lines (list[str]): Header lines to insert.
 
         Returns:
-          list[str]: Possibly modified header lines including any added padding.
+            list[str]: Possibly modified header lines including any added padding.
         """
         # Detect newline style; default to "\n"
         nl = detect_newline(original_lines)

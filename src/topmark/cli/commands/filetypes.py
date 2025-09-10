@@ -85,9 +85,6 @@ def filetypes_command(
         output_format (OutputFormat | None): Output format to use
             (``default``, ``json``, or ``ndjson``).
             If ``None``, uses the default human-readable format.
-
-    Returns:
-        None. Prints output to stdout.
     """
     ctx = click.get_current_context()
     ctx.ensure_object(dict)

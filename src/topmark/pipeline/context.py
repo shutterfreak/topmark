@@ -81,7 +81,7 @@ class FileStatus(BaseStatus):
         """Get the chalk color renderer associated with this file status.
 
         Returns:
-            Function to colorize a string for this status.
+            Callable[[str], str]: Function to colorize a string for this status.
         """
         return cast(
             "Callable[[str], str]",
@@ -120,7 +120,7 @@ class HeaderStatus(BaseStatus):
         """Get the chalk color renderer associated with this header status.
 
         Returns:
-            Function to colorize a string for this status.
+            Callable[[str], str]: Function to colorize a string for this status.
         """
         return cast(
             "Callable[[str], str]",
@@ -152,7 +152,7 @@ class GenerationStatus(BaseStatus):
         """Get the chalk color renderer associated with this generation status.
 
         Returns:
-            Function to colorize a string for this status.
+            Callable[[str], str]: Function to colorize a string for this status.
         """
         return cast(
             "Callable[[str], str]",
@@ -181,7 +181,7 @@ class ComparisonStatus(BaseStatus):
         """Get the chalk color renderer associated with this comparison status.
 
         Returns:
-            Function to colorize a string for this status.
+            Callable[[str], str]: Function to colorize a string for this status.
         """
         return cast(
             "Callable[[str], str]",
@@ -213,7 +213,7 @@ class StripStatus(BaseStatus):
         """Get the chalk color renderer associated with this strip status.
 
         Returns:
-            Function to colorize a string for this status.
+            Callable[[str], str]: Function to colorize a string for this status.
         """
         return cast(
             "Callable[[str], str]",
@@ -246,7 +246,7 @@ class WriteStatus(BaseStatus):
         """Get the chalk color renderer associated with this write status.
 
         Returns:
-            Function to colorize a string for this status.
+            Callable[[str], str]: Function to colorize a string for this status.
         """
         return cast(
             "Callable[[str], str]",
@@ -280,6 +280,9 @@ class DiagnosticLevel(Enum):
         """Return the `yachalk` color function associated with this severity level.
 
         Intended for human-readable output only; machine formats should not use colors.
+
+        Returns:
+            Callable[[str], str]: The `yachalk` color function associated with this severity level.
         """
         return cast(
             "Callable[[str], str]",
@@ -338,8 +341,9 @@ class ProcessingContext:
         leading_bom (bool): True when the original file began with a UTF-8 BOM
             ("\ufeff"). The reader sets this and strips the BOM from memory; the
             updater re-attaches it to the final output.
-        newline_style: str: The newline stile in the file (``LF``, ``CR``, ``CRLF``).
-        ends_with_newline: bool | None: True if the file ends with a newline.
+        has_shebang (bool): True if the first line starts with '#!' (post-BOM normalization).
+        newline_style (str): The newline stile in the file (``LF``, ``CR``, ``CRLF``).
+        ends_with_newline (bool | None): True if the file ends with a newline.
         existing_header_range (tuple[int, int] | None): The (start, end) line numbers
             of the existing header.
         existing_header_block (str | None): The text block of the existing header.
@@ -350,9 +354,9 @@ class ProcessingContext:
         expected_header_block (str | None): The fully formatted expected header text.
         expected_header_lines (list[str] | None): Raw lines of the expected header.
         expected_header_dict (dict[str, str] | None): Final rendered fields before formatting.
-        updated_file_lines: list[str] | None: Updated file content as a list of lines
-        header_diff: str | None: Unified diff (patch) for patching (updating) the header
-        diagnostics (list[str]): Any warnings or errors encountered during processing.
+        updated_file_lines (list[str] | None): Updated file content as a list of lines
+        header_diff (str | None): Unified diff (patch) for patching (updating) the header
+        diagnostics (list[Diagnostic]): Any warnings or errors encountered during processing.
     """
 
     # 📁 1. File input context
@@ -481,13 +485,14 @@ class ProcessingContext:
         primary outcome plus a few terse hints.
 
         Rendering rules:
-          1) Primary bucket comes from :func:`topmark.cli_shared.utils.classify_outcome`.
+          1. Primary bucket comes from
+             [`topmark.cli_shared.utils.classify_outcome`][topmark.cli_shared.utils.classify_outcome].
              This ensures stable wording across commands/pipelines.
-          2) If a write outcome is known (e.g., PREVIEWED/WRITTEN/INSERTED/REMOVED),
+          2. If a write outcome is known (e.g., PREVIEWED/WRITTEN/INSERTED/REMOVED),
              append it as a trailing hint.
-          3) If there is a diff but no write outcome (e.g., check/summary with
+          3. If there is a diff but no write outcome (e.g., check/summary with
              `--diff`), append a "diff" hint.
-          4) If diagnostics exist, append the diagnostic count as a hint.
+          4. If diagnostics exist, append the diagnostic count as a hint.
 
         Verbose per‑line diagnostics are emitted only when Config.verbosity_level >= 1
         (treats None as 0).

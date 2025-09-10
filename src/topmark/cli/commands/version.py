@@ -48,10 +48,7 @@ def version_command(
     Prints the TopMark version as installed in the current Python environment.
 
     Args:
-        output_format: Optional output format (plain text or markdown).
-
-    Returns:
-        None. Prints output to stdout.
+        output_format (OutputFormat | None): Optional output format (plain text or markdown).
     """
     ctx = click.get_current_context()
     ctx.ensure_object(dict)

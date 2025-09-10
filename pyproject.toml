@@ -10,7 +10,7 @@
 
 [project]
 name = "topmark"
-version = "0.5.1"
+version = "0.6.0.dev0"
 description = "A Python CLI to inspect, validate, and manage license and copyright headers."
 authors = [{ name = "Olivier Biot", email = "olivier.biot@gmail.com" }]
 license = "MIT"
@@ -54,6 +54,8 @@ build-backend = "setuptools.build_meta"
 dev = [
   # Python linter & formatter in one tool (we use it for both):
   "ruff",
+  # Python docstring linter:
+  "pydoclint",
   # Traditional Python linter with rich checks:
   "pylint",
   # Static type checker with fast, strict CLI (our primary type checker):
@@ -179,6 +181,7 @@ select = [
 ignore = [
   # Note: D212 and D213 cannot be enabled simultaneously
   "D213", # Keep D213 ignored for Google style
+  "D107", # Prefer class docstring over __init__ docstring (align with pydoclint)
   # If you prefer to allow first line not ending with a period (though usually good practice)
   # "D400",
   # If you don't want strict capitalization checks for the first word
@@ -191,6 +194,22 @@ ignore = [
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+
+[tool.pydoclint]
+style = "google"
+
+# Additional semantic checks (tune to your needs)
+arg-type-hints-in-docstring = true
+check-arg-order = true
+check-raises = true
+check-return-types = true
+require-return-section = true
+require-yields-section = false
+
+# You can also disable whole families of rules if needed
+# ignore = ["DOC501", "DOC502"]  # example
+
 
 # Pre-commit configuration
 # Coordinates with VS Code settings to ensure consistent formatting and linting across environments

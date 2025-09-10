@@ -47,10 +47,10 @@ def _compute_signals(ft: FileType, base_name: str, path_str: str, suffix: str) -
     """Compute name-based match signals for a file type.
 
     Args:
-        ft: File type whose rules are evaluated.
-        base_name: Basename of the path (e.g., "settings.json").
-        path_str: POSIX path string (used for tail matches like ".vscode/settings.json").
-        suffix: File suffix including the leading dot (e.g., ".json").
+        ft (FileType): File type whose rules are evaluated.
+        base_name (str): Basename of the path (e.g., "settings.json").
+        path_str (str): POSIX path string (used for tail matches like ".vscode/settings.json").
+        suffix (str): File suffix including the leading dot (e.g., ".json").
 
     Returns:
         MatchSignals: Booleans indicating extension, filename/tail, and pattern matches.
@@ -78,13 +78,13 @@ def _compute_signals(ft: FileType, base_name: str, path_str: str, suffix: str) -
 def _should_probe_content(ft: FileType, sig: MatchSignals) -> bool:
     """Decide whether the content matcher may be evaluated for this file type.
 
-    The decision is based on the file type's :class:`ContentGate` and the
+    The decision is based on the file type's `ContentGate` and the
     name-based match signals. This avoids probing content for clearly unrelated
     files (e.g., Markdown accidentally containing `//`).
 
     Args:
-        ft: File type whose gate is evaluated.
-        sig: Name-based match signals for the current path.
+        ft (FileType): File type whose gate is evaluated.
+        sig (MatchSignals): Name-based match signals for the current path.
 
     Returns:
         bool: True if calling `content_matcher` is allowed.
@@ -116,10 +116,10 @@ def _include_candidate(
     this requires a positive content hit when only the gated name signal matched.
 
     Args:
-        ft: File type considered as candidate.
-        sig: Name-based match signals for the current path.
-        gate: Effective :class:`ContentGate` for the file type.
-        content_hit: Result of calling the content matcher (if probed).
+        ft (FileType): File type considered as candidate.
+        sig (MatchSignals): Name-based match signals for the current path.
+        gate (ContentGate): Effective `ContentGate` for the file type.
+        content_hit (bool): Result of calling the content matcher (if probed).
 
     Returns:
         bool: True if the candidate should be considered.
@@ -155,11 +155,11 @@ def _score(
     > pattern > extension. Headerable types get +1 on ties.
 
     Args:
-        ft: File type under evaluation.
-        sig: Name-based match signals for the current path.
-        content_hit: Whether content-based refinement matched.
-        base_name: Basename of the path.
-        path_str: POSIX path string of the path.
+        ft (FileType): File type under evaluation.
+        sig (MatchSignals): Name-based match signals for the current path.
+        content_hit (bool): Whether content-based refinement matched.
+        base_name (str): Basename of the path.
+        path_str (str): POSIX path string of the path.
 
     Returns:
         int: A score where higher is better.
@@ -194,7 +194,7 @@ def resolve(ctx: ProcessingContext) -> ProcessingContext:
     human-readable diagnostic and sets an appropriate file status.
 
     Args:
-        ctx: Processing context representing the file being handled.
+        ctx (ProcessingContext): Processing context representing the file being handled.
 
     Returns:
         ProcessingContext: The same context, updated in place.

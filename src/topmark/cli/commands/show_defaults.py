@@ -35,9 +35,6 @@ def show_defaults_command() -> None:
 
     Outputs the TopMark default configuration file as bundled with the package.
     Useful as a reference for configuration structure and default values.
-
-    Returns:
-        None. Prints output to stdout.
     """
     ctx = click.get_current_context()
     ctx.ensure_object(dict)

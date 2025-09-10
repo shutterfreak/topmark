@@ -38,18 +38,18 @@ class ExitCode(IntEnum):
         WOULD_CHANGE: Dry-run: changes would be made if ``--apply`` were set.
         USAGE_ERROR: Command-line invocation error (invalid flags/args). Mirrors
             BSD ``EX_USAGE (64)``.
-        CONFIG_ERROR: Configuration error (missing/invalid/malformed config).
-            Mirrors BSD ``EX_CONFIG (78)``.
-        FILE_NOT_FOUND: Input path does not exist. Mirrors BSD ``EX_NOINPUT (66)``.
-        PERMISSION_DENIED: Insufficient permissions (read/write). Mirrors BSD
-            ``EX_NOPERM (77)``.
-        IO_ERROR: I/O error reading/writing a file. Mirrors BSD ``EX_IOERR (74)``.
         ENCODING_ERROR: Text decoding/encoding error (e.g., UnicodeDecodeError).
             Mirrors BSD ``EX_DATAERR (65)``.
+        FILE_NOT_FOUND: Input path does not exist. Mirrors BSD ``EX_NOINPUT (66)``.
         UNSUPPORTED_FILE_TYPE: Known/unsupported file type encountered (skipped
             as per policy). Mirrors BSD ``EX_UNAVAILABLE (69)``.
         PIPELINE_ERROR: Internal pipeline failure (processor/step contract
             violation). Mirrors BSD ``EX_SOFTWARE (70)``.
+        IO_ERROR: I/O error reading/writing a file. Mirrors BSD ``EX_IOERR (74)``.
+        PERMISSION_DENIED: Insufficient permissions (read/write). Mirrors BSD
+            ``EX_NOPERM (77)``.
+        CONFIG_ERROR: Configuration error (missing/invalid/malformed config).
+            Mirrors BSD ``EX_CONFIG (78)``.
         UNEXPECTED_ERROR: Unhandled/unknown error (last-resort). Mirrors BSD
             ``EX_SOFTWARE (70)`` but kept distinct for clarity.
     """

@@ -26,12 +26,12 @@ def strip(ctx: ProcessingContext) -> ProcessingContext:
     """Remove the TopMark header using the processor and known span if available.
 
     Args:
-      ctx (ProcessingContext): Pipeline context. Must contain file lines, the
-        active header processor, and (optionally) the scanner‑detected header span.
+        ctx (ProcessingContext): Pipeline context. Must contain file lines, the
+            active header processor, and (optionally) the scanner‑detected header span.
 
     Returns:
-      ProcessingContext: The same context, with ``updated_file_lines`` populated
-        when a removal occurs and ``StripStatus`` updated to reflect the outcome.
+        ProcessingContext: The same context, with ``updated_file_lines`` populated
+            when a removal occurs and ``StripStatus`` updated to reflect the outcome.
 
     Notes:
       - Leaves ``HeaderStatus`` untouched (owned by the scanner).

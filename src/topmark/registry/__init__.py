@@ -12,23 +12,26 @@
 
 This package exposes:
 
-* :class:`Registry` – the **stable, read-only facade** for integrators.
-* :class:`FileTypeRegistry` and :class:`HeaderProcessorRegistry` – advanced,
-  low-level registries intended for plugins and tests (no semver stability
-  guarantee).
+* [`Registry`][topmark.registry.Registry] – the **stable, read-only facade** for integrators.
+* [`FileTypeRegistry`][topmark.registry.FileTypeRegistry] and
+  [`HeaderProcessorRegistry`][topmark.registry.HeaderProcessorRegistry] – advanced,
+  low-level registries intended for plugins and tests (no semver stability guarantee).
 
 Most users should import from here:
 
-    from topmark.registry import Registry
-    fts = Registry.filetypes()
-    procs = Registry.processors()
+```python
+from topmark.registry import Registry
+fts = Registry.filetypes()
+procs = Registry.processors()
+```
 
 Advanced usage (mutation; global state):
 
-    from topmark.registry import FileTypeRegistry, HeaderProcessorRegistry
-    FileTypeRegistry.register(my_ft)
-    HeaderProcessorRegistry.register(my_ft.name, MyProc)
-
+```python
+from topmark.registry import FileTypeRegistry, HeaderProcessorRegistry
+FileTypeRegistry.register(my_ft)
+HeaderProcessorRegistry.register(my_ft.name, MyProc)
+```
 """
 
 from __future__ import annotations

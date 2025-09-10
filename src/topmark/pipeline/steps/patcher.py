@@ -34,11 +34,12 @@ def patch(ctx: ProcessingContext) -> ProcessingContext:
     normalized to ``UNCHANGED``.
 
     Args:
-        ctx: The processing context holding original/updated lines and statuses.
+        ctx (ProcessingContext): The processing context holding original/updated lines
+            and statuses.
 
     Returns:
         ProcessingContext: The same context with ``header_diff`` set when a
-        change is detected, and with comparison status updated.
+            change is detected, and with comparison status updated.
     """
     # Safeguard: Only run when comparison was performed
     if ctx.status.comparison not in [

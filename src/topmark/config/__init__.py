@@ -52,11 +52,16 @@ class Config:
 
     Attributes:
         timestamp (str): ISO-formatted timestamp when the Config instance was created.
+        verbosity_level (int | None): None = inherit, 0 = terse, 1 = verbose diagnostics.
+        apply_changes (bool | None): Runtime intent: whether to actually write changes (apply)
+            or preview only. None = inherit/unspecified, False = dry-run/preview, True = apply.
         config_files (list[Path | str]): List of paths or identifiers for config sources used.
         header_fields (list[str]): List of header fields from the [header] section.
         field_values (dict[str, str]): Mapping of field names to their string values from [fields].
         align_fields (bool | None): Whether to align fields, from [formatting].
-        raw_header (bool | None): Whether to use raw header formatting, from [formatting].
+        header_format (HeaderOutputFormat | None): Header output format
+            (file type aware, plain, or json).
+        relative_to_raw (str | None): Original string from config or CLI
         relative_to (Path | None): Base path for relative file references, from [files].
         stdin (bool | None): Whether to read from stdin; requires explicit True to activate.
         files (list[str]): List of files to process.
@@ -66,22 +71,20 @@ class Config:
         exclude_from (list[str]): Files containing exclude patterns.
         files_from (list[str]): Paths to files that list newline-delimited candidate file paths
             to add before filtering.
-        file_types (list[str]): File extensions or types to process.
-        verbosity_level (int | None): None = inherit, 0 = terse, 1 = verbose diagnostics.
+        file_types (set[str]): File extensions or types to process.
     """
 
     # Initialization timestamp for the config instance
     timestamp: str = datetime.now().isoformat()
 
-    # Paths or identifiers of configuration files or sources used to build this Config
-    config_files: list[Path | str] = field(default_factory=lambda: [])
-
     # Verbosity level
     verbosity_level: int | None = None
 
     # Runtime intent: whether to actually write changes (apply) or preview only
-    # None = inherit/unspecified, False = dry-run/preview, True = apply
     apply_changes: bool | None = None
+
+    # Paths or identifiers of configuration files or sources used to build this Config
+    config_files: list[Path | str] = field(default_factory=lambda: [])
 
     # Header configuration fields and their values
     header_fields: list[str] = field(default_factory=lambda: [])  # From [header].fields
@@ -89,7 +92,6 @@ class Config:
 
     # Formatting options
     align_fields: bool | None = None  # From [formatting]
-    # raw_header: bool | None = None  # From [formatting]
     header_format: HeaderOutputFormat | None = None
 
     # Base path for resolving relative file paths; from [files] section
@@ -120,6 +122,7 @@ class Config:
         resource = files("topmark.config") / DEFAULT_TOML_CONFIG_RESOURCE
         return resource.read_text(encoding="utf-8")
 
+    # TODO: review why it only returns the default TOML config!!!
     @classmethod
     def to_cleaned_toml(cls, toml_doc: str) -> str:
         """Return a cleaned TOML string with comments and extraneous whitespace removed.
@@ -154,6 +157,7 @@ class Config:
             use_defaults=True,  # We ONLY include defaults when loading from defaults!
         )
 
+    # TODO: Verify why `use_defaults` is not used/implemented!!!
     @classmethod
     def from_toml_dict(
         cls,
@@ -164,7 +168,7 @@ class Config:
         """Parse a dictionary representation of TOML data into a Config instance.
 
         Args:
-            data (dict): The parsed TOML data as a dictionary.
+            data (dict[str, Any]): The parsed TOML data as a dictionary.
             config_file (Path | None): Optional path to the source TOML file.
             use_defaults (bool): Whether to treat this data as default config (affects behavior).
 
@@ -427,10 +431,10 @@ class Config:
         """Load and merge configuration layers into a single Config instance.
 
         The merging order is:
-        1. Defaults (bundled topmark-default.toml)
-        2. Project config (topmark.toml or pyproject.toml), unless suppressed by --no-config
-        3. Additional config files specified via --config (in order)
-        4. CLI overrides applied last
+            1. Defaults (bundled topmark-default.toml)
+            2. Project config (topmark.toml or pyproject.toml), unless suppressed by --no-config
+            3. Additional config files specified via --config (in order)
+            4. CLI overrides applied last
 
         Args:
             args (ArgsLike): Parsed arguments mapping (from CLI or API).
@@ -544,7 +548,7 @@ class Config:
         """Convert the Config instance into a dictionary suitable for TOML serialization.
 
         Returns:
-            dict: Dictionary representing the config, structured for TOML output.
+            dict[str, Any]: Dictionary representing the config, structured for TOML output.
         """
         # Compose the config as a nested dictionary structure matching TOML layout
         return {

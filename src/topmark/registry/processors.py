@@ -12,8 +12,8 @@
 
 Exposes read-only views and optional mutation helpers for registered header
 processors. Most users should prefer the stable facade
-:class:`topmark.registry.Registry`. This module is intended for plugins and
-tests.
+[`topmark.registry.Registry`][topmark.registry.Registry]. This module is intended
+for plugins and tests.
 """
 
 from __future__ import annotations
@@ -78,7 +78,7 @@ class HeaderProcessorRegistry:
         """Return a header processor by name.
 
         Args:
-            name: Registered processor name.
+            name (str): Registered processor name.
 
         Returns:
             HeaderProcessor | None: The processor if found, else None.
@@ -139,9 +139,9 @@ class HeaderProcessorRegistry:
         """Register a header processor under a file type name.
 
         Args:
-            name: File type name under which the processor appears in the registry.
-            processor_class: A `HeaderProcessor` class. It will be instantiated
-                with no arguments and bound to the file type.
+            name (str): File type name under which the processor appears in the registry.
+            processor_class (type[HeaderProcessor]): A `HeaderProcessor` class. It will be
+                instantiated with no arguments and bound to the file type.
 
         Raises:
             ValueError: If the file type name is unknown or already registered.
@@ -176,7 +176,7 @@ class HeaderProcessorRegistry:
         """Unregister a header processor by name.
 
         Args:
-            name: Registered processor name.
+            name (str): Registered processor name.
 
         Returns:
             bool: True if removed, else False.

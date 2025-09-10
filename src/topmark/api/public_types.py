@@ -13,7 +13,7 @@
 These Protocols define the **stable, public contracts** for third‑party
 integrations that want to add file types and header processors without
 importing TopMark's internal base classes. Implement these Protocols in your
-extension and register the instances through :mod:`topmark.registry`.
+extension and register the instances through [`topmark.registry`][topmark.registry].
 
 Notes:
     * These are *structural* Protocols used for static typing (mypy/pyright).
@@ -25,7 +25,8 @@ Notes:
 Diagnostics
 -----------
 The public API uses JSON-friendly diagnostics with string literal severities.
-See :class:`PublicDiagnostic` for the shape and :data:`DiagnosticLevelLiteral`
+See [`PublicDiagnostic`][topmark.api.public_types.PublicDiagnostic] for the shape and
+[`DiagnosticLevelLiteral`][topmark.api.public_types.DiagnosticLevelLiteral]
 for the allowed values.
 """
 
@@ -86,7 +87,8 @@ class PublicHeaderProcessor(Protocol):
         description: Short human description for UI/logs.
         line_prefix/line_suffix: Line comment delimiters (if applicable).
         block_prefix/block_suffix: Block comment delimiters (if applicable).
-        file_type: The bound :class:`PublicFileType` instance (set by registry).
+        file_type: The bound [`PublicFileType`][topmark.api.public_types.PublicFileType] instance
+            (set by registry).
 
     Notes:
         A processor represents the **behavior** for rendering, scanning and

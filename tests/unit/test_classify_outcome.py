@@ -8,11 +8,11 @@
 #
 # topmark:header:end
 
-"""Unit tests for CLI summary bucketing in :func:`topmark.cli.utils.classify_outcome`.
+"""Unit tests for CLI summary bucketing in `topmark.cli.utils.classify_outcome`.
 
 These tests assert the **stable contract** (identifier → label family) documented
 in the function’s Google-style docstring. They avoid full pipeline execution by
-synthesizing minimal :class:`ProcessingContext` objects with relevant statuses.
+synthesizing minimal `ProcessingContext` objects with relevant statuses.
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ def _ctx_with_status(**kwargs: Any) -> ProcessingContext:
     """Return a minimal context with a custom `HeaderProcessingStatus`.
 
     Args:
-      **kwargs: Fields to override on :class:`HeaderProcessingStatus`.
+      **kwargs (Any): Fields to override on `HeaderProcessingStatus`.
 
     Returns:
       ProcessingContext: Context with the requested status, dummy path/config.

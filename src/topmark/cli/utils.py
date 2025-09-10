@@ -66,9 +66,9 @@ def emit_diffs(results: list[ProcessingContext], *, diff: bool, command: click.C
     """Print unified diffs for changed files in human output mode.
 
     Args:
-      results: List of processing contexts to inspect.
-      diff: If True, print unified diffs; if False, do nothing.
-      command: The Click command object (used for structured logging).
+      results (list[ProcessingContext]): List of processing contexts to inspect.
+      diff (bool): If True, print unified diffs; if False, do nothing.
+      command (click.Command): The Click command object (used for structured logging).
 
     Notes:
       - Diffs are only printed in human (DEFAULT) output mode.
@@ -90,9 +90,9 @@ def emit_machine_output(
     """Emit JSON/NDJSON for machine consumption.
 
     Args:
-      view_results: Ordered list of per-file processing results.
-      fmt: Output format (`OutputFormat.JSON` or `OutputFormat.NDJSON`).
-      summary_mode: If True, emit aggregated counts instead of per-file entries.
+      view_results (list[ProcessingContext]): Ordered list of per-file processing results.
+      fmt (OutputFormat): Output format (`OutputFormat.JSON` or `OutputFormat.NDJSON`).
+      summary_mode (bool): If True, emit aggregated counts instead of per-file entries.
 
     Notes:
       - This function never prints ANSI color or diffs.
@@ -131,8 +131,8 @@ def render_banner(ctx: click.Context, *, n_files: int) -> None:
     """Render the initial banner for a command.
 
     Args:
-      ctx: Click context (used to get the command name).
-      n_files: Number of files to be processed.
+      ctx (click.Context): Click context (used to get the command name).
+      n_files (int): Number of files to be processed.
     """
     console = get_console_safely()
     console.print(console.styled(f"\n🔍 Processing {n_files} file(s):\n", fg="blue"))

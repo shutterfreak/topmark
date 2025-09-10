@@ -187,7 +187,7 @@ def test_slash_replace_preserves_crlf(tmp_path: Path) -> None:
     the replacement header should maintain CRLF endings across all lines.
 
     Args:
-        tmp_path: Pytest fixture temporary directory.
+        tmp_path (Path): Pytest fixture temporary directory.
     """
     f = tmp_path / "r.cpp"
     with f.open("w", newline="\r\n") as fp:

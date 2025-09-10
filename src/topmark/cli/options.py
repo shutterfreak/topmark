@@ -49,11 +49,11 @@ def resolve_verbosity(verbose_count: int, quiet_count: int) -> int:
     """Resolve the final logging level based on verbose and quiet counts.
 
     Args:
-        verbose_count: Number of times the verbose flag (-v) is passed.
-        quiet_count: Number of times the quiet flag (-q) is passed.
+        verbose_count (int): Number of times the verbose flag (-v) is passed.
+        quiet_count (int): Number of times the quiet flag (-q) is passed.
 
     Returns:
-        The verbosity level as an integer.
+        int: The verbosity level as an integer.
 
     Raises:
         TopmarkUsageError: If both verbose and quiet flags are used simultaneously.
@@ -81,14 +81,14 @@ def common_verbose_options(f: Callable[P, R]) -> Callable[P, R]:
     """Adds --verbose and --quiet options to a command.
 
     Args:
-        f: The Click command function to decorate.
+        f (Callable[P, R]): The Click command function to decorate.
 
     Returns:
-        The decorated function with verbosity options added.
+        Callable[P, R]: The decorated function with verbosity options added.
 
     Behavior:
         Adds -v/--verbose and -q/--quiet options that count occurrences.
-        These options are mutually exclusive and control logging verbosity.
+            These options are mutually exclusive and control logging verbosity.
     """
     f = click.option(
         "-v",
@@ -112,10 +112,10 @@ def common_file_and_filtering_options(f: Callable[P, R]) -> Callable[P, R]:
     and ``--relative-to``.
 
     Args:
-        f: The Click command function to decorate.
+        f (Callable[P, R]): The Click command function to decorate.
 
     Returns:
-        The decorated function.
+        Callable[P, R]: The decorated function.
     """
     # Option for STDIN content mode (inserted before --files-from)
     f = click.option(
@@ -214,17 +214,18 @@ def extract_stdin_for_from_options(
     STDIN simultaneously, a UsageError is raised.
 
     Args:
-        files_from: Values passed via ``--files-from`` (may include '-').
-        include_from: Values passed via ``--include-from`` (may include '-').
-        exclude_from: Values passed via ``--exclude-from`` (may include '-').
-        stdin_text: Optional pre-read STDIN content. If provided, it is used
+        files_from (Iterable[str]): Values passed via ``--files-from`` (may include '-').
+        include_from (Iterable[str]): Values passed via ``--include-from`` (may include '-').
+        exclude_from (Iterable[str]): Values passed via ``--exclude-from`` (may include '-').
+        stdin_text (str | None): Optional pre-read STDIN content. If provided, it is used
             instead of calling ``click.get_text_stream('stdin').read()``.
 
     Returns:
-        A triple of raw texts, one for the option that requested STDIN (others are None).
+        tuple[str | None, str | None, str | None]: A triple of raw texts, one for the option that
+            requested STDIN (others are None).
 
     Raises:
-        UsageError: If multiple options request STDIN simultaneously.
+        TopmarkUsageError: If multiple options request STDIN simultaneously.
     """
     wants: list[StdinUse] = []
     if any(x == "-" for x in files_from):
@@ -283,10 +284,10 @@ def split_nonempty_lines(text: str | None) -> list[str]:
     Lines are stripped; blank lines and lines starting with '#' are ignored.
 
     Args:
-        text: Raw text (possibly None).
+        text (str | None): Raw text (possibly None).
 
     Returns:
-        List of cleaned lines.
+        list[str]: List of cleaned lines.
     """
     if not text:
         return []
@@ -316,18 +317,18 @@ def resolve_color_mode(
     """Determine whether color output should be enabled.
 
     Args:
-        cli_mode: Explicit color mode from CLI options (auto, always, never).
-        output_format: Output format string, e.g. "json", "ndjson".
-        stdout_isatty: Whether stdout is a TTY; if None, auto-detected.
+        cli_mode (ColorMode | None): Explicit color mode from CLI options (auto, always, never).
+        output_format (str | None): Output format string, e.g. "json", "ndjson".
+        stdout_isatty (bool | None): Whether stdout is a TTY; if None, auto-detected.
 
     Returns:
-        True if color output should be enabled, False otherwise.
+        bool: True if color output should be enabled, False otherwise.
 
     Behavior:
-        Disables color for JSON/NDJSON output formats.
-        Honors --color and --no-color CLI flags.
-        Honors FORCE_COLOR and NO_COLOR environment variables.
-        Defaults to enabling color if stdout is a TTY.
+        - Disables color for JSON/NDJSON output formats.
+        - Honors --color and --no-color CLI flags.
+        - Honors FORCE_COLOR and NO_COLOR environment variables.
+        - Defaults to enabling color if stdout is a TTY.
     """
     if output_format and output_format.lower() in {"json", "ndjson"}:
         return False
@@ -352,10 +353,10 @@ def common_color_options(f: Callable[P, R]) -> Callable[P, R]:
     """Adds --color and --no-color options to a command.
 
     Args:
-        f: The Click command function to decorate.
+        f (Callable[P, R]): The Click command function to decorate.
 
     Returns:
-        The decorated function with color options added.
+        Callable[P, R]: The decorated function with color options added.
 
     Behavior:
         Adds --color with choices (auto, always, never).
@@ -401,7 +402,7 @@ def trap_underscored_option(ctx: click.Context, param: click.Option, _value: obj
 def underscored_trap_option(*names: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Register hidden underscored spellings that raise a helpful error.
 
-    This wraps :func:`click.option` with common settings for underscored
+    This wraps `click.option` with common settings for underscored
     long-option traps, so callers don't repeat the same boilerplate.
 
     It also assigns a **unique destination name** for the hidden option so
@@ -411,12 +412,16 @@ def underscored_trap_option(*names: str) -> Callable[[Callable[P, R]], Callable[
     used, leading to false positives.
 
     Args:
-        *names: One or more underscored long option names to trap,
+        *names (str): One or more underscored long option names to trap,
             e.g. "--exclude_from". Multiple names are supported so a
             single decorator can catch several spellings.
 
+    Raises:
+        ValueError: if option name was not provided
+
     Returns:
-        A decorator compatible with Click's option stacking.
+        Callable[[Callable[P, R]], Callable[P, R]]: A decorator compatible with Click's
+            option stacking.
     """
     if not names:
         raise ValueError("underscored_trap_option requires at least one option name")
@@ -442,10 +447,10 @@ def common_logging_options(f: Callable[P, R]) -> Callable[P, R]:
     Adds ``-v/--verbose`` and ``-q/--quiet`` options.
 
     Args:
-        f: The Click command function to decorate.
+        f (Callable[P, R]): The Click command function to decorate.
 
     Returns:
-        The decorated function.
+        Callable[P, R]: The decorated function.
     """
     f = click.option(
         "--verbose",
@@ -471,10 +476,10 @@ def common_config_options(f: Callable[P, R]) -> Callable[P, R]:
     Adds ``--no-config`` and ``--config/-c`` options.
 
     Args:
-        f: The Click command function to decorate.
+        f (Callable[P, R]): The Click command function to decorate.
 
     Returns:
-        The decorated function.
+        Callable[P, R]: The decorated function.
     """
     f = click.option(
         "--no-config",
@@ -501,10 +506,10 @@ def common_header_formatting_options(f: Callable[P, R]) -> Callable[P, R]:
     Adds ``--align-fields/--no-align-fields`` and ``--header-format``.
 
     Args:
-        f: The Click command function to decorate.
+        f (Callable[P, R]): The Click command function to decorate.
 
     Returns:
-        The decorated function.
+        Callable[P, R]: The decorated function.
     """
     f = click.option(
         "--align-fields/--no-align-fields",

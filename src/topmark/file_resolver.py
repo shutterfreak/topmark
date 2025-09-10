@@ -36,10 +36,10 @@ def load_patterns_from_file(file_path: str | Path) -> list[str]:
     from each non‑ignored line. If the file cannot be read, an empty list is returned.
 
     Args:
-      file_path (str | Path): Path to the file containing one pattern per line.
+        file_path (str | Path): Path to the file containing one pattern per line.
 
     Returns:
-        A list of patterns as strings.
+        list[str]: A list of patterns as strings.
     """
     try:
         # Skip empty lines and commented-out lines
@@ -74,10 +74,10 @@ def resolve_file_list(config: Config) -> list[Path]:
       6. Returns a **sorted** list of Path objects for deterministic output.
 
     Args:
-      config (Config): Configuration values influencing path collection and filters.
+        config (Config): Configuration values influencing path collection and filters.
 
     Returns:
-      list[Path]: Sorted list of files selected for processing.
+        list[Path]: Sorted list of files selected for processing.
     """
     logger.debug("resolve_file_list(): config: %s", config)
 
@@ -249,11 +249,11 @@ def resolve_file_types(path: Path) -> list[FileType]:
     a list of matching FileType instances. Logs a warning if multiple matches are found.
 
     Args:
-      path (Path): Path to test.
+        path (Path): Path to test.
 
     Returns:
-      list[FileType]: Matching file types (may be empty). Logs a warning when
-      multiple types match the same path.
+        list[FileType]: Matching file types (may be empty). Logs a warning when
+            multiple types match the same path.
     """
     matches: list[FileType] = [ft for ft in get_file_type_registry().values() if ft.matches(path)]
     if len(matches) > 1:
@@ -273,10 +273,10 @@ def detect_newline(lines: list[str]) -> str:
     ``LF`` when no newline can be inferred (e.g., single line without terminator).
 
     Args:
-      lines (list[str]): Lines from a file, each potentially ending with a newline.
+        lines (list[str]): Lines from a file, each potentially ending with a newline.
 
     Returns:
-      str: The detected newline sequence (``LF``, ``CR``, or ``CRLF``).
+        str: The detected newline sequence (``LF``, ``CR``, or ``CRLF``).
     """
     for ln in lines:
         if ln.endswith("\r\n"):

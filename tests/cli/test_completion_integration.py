@@ -49,7 +49,8 @@ def _normalize_completion_output(
     - lists of strings
 
     Args:
-        result: The raw result object returned by Click completion.
+        result (str | list[CompletionItem] | list[str]): The raw result object returned
+            by Click completion.
 
     Returns:
         set[str]: A set of normalized suggestion strings.
@@ -79,8 +80,8 @@ def _bash_complete(args: list[str], incomplete: str) -> set[str]:
     """Run Click's Bash completion adapter and return suggestion strings.
 
     Args:
-        args: Arguments provided up to the completion point.
-        incomplete: The current incomplete word to complete.
+        args (list[str]): Arguments provided up to the completion point.
+        incomplete (str): The current incomplete word to complete.
 
     Returns:
         set[str]: A set of suggested completion strings.

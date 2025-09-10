@@ -35,9 +35,6 @@ def init_config_command() -> None:
 
     Outputs an initial TopMark configuration file with default values.
     Intended as a starting point for customization in your own project.
-
-    Returns:
-        None. Prints output to stdout.
     """
     ctx = click.get_current_context()
     ctx.ensure_object(dict)

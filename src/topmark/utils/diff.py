@@ -29,12 +29,12 @@ def render_patch(patch: Sequence[str] | str, show_line_numbers: bool = False) ->
     """Render a colorized preview of a unified diff.
 
     Args:
-        patch: A unified diff as **either** a list/sequence of lines **or** a single
-            multiline string.
-        show_line_numbers: Whether to prefix output with line numbers.
+        patch (Sequence[str] | str): A unified diff as **either** a list/sequence of lines
+            **or** a single multiline string.
+        show_line_numbers (bool): Whether to prefix output with line numbers.
 
     Returns:
-        The formatted, colorized diff preview.
+        str: The formatted, colorized diff preview.
     """
     # Normalize input to a list of lines
     if isinstance(patch, str):
@@ -81,14 +81,8 @@ def write_patch(patch_content: str, output_path: str) -> None:
     confirmed by the user.
 
     Args:
-        patch_content: The full diff text to write.
-        output_path: Destination path for the patch file.
-
-    Returns:
-        None.
-
-    Raises:
-        IOError: If an I/O error occurs during writing (reported to the user).
+        patch_content (str): The full diff text to write.
+        output_path (str): Destination path for the patch file.
     """
     if os.path.exists(output_path):
         response = input(f"File '{output_path}' already exists. Overwrite? (y/n): ")

@@ -29,18 +29,13 @@ from topmark.config import Config
 class DummyType:
     """Minimal dummy file type for testing.
 
-    Attributes:
-        name (str): Identifier for the dummy file type.
-        _pred (Callable[[Path], bool]): Predicate to test if a path matches.
+    Args:
+        name (str): The identifier of the file type.
+        predicate (Callable[[Path], bool]): A callable that returns True
+            if a path matches this type.
     """
 
     def __init__(self, name: str, predicate: Callable[[Path], bool]):
-        """Initialize a dummy file type.
-
-        Args:
-            name: The identifier of the file type.
-            predicate: A callable that returns True if a path matches this type.
-        """
         self.name = name
         self._pred = predicate
 
@@ -48,7 +43,7 @@ class DummyType:
         """Check if a given path matches this dummy file type.
 
         Args:
-            path: Path to test.
+            path (Path): Path to test.
 
         Returns:
             bool: True if the path matches, False otherwise.
@@ -71,13 +66,13 @@ def make_config(
     Missing fields default to None, which the resolver interprets as unset.
 
     Args:
-        files: Positional paths or globs.
-        include_patterns: Glob patterns to intersect with candidates.
-        include_from: Paths to files with include patterns.
-        exclude_patterns: Glob patterns to exclude from candidates.
-        exclude_from: Paths to files with exclude patterns.
-        config_files: Config-defined fallback paths.
-        file_types: File types to filter by.
+        files (list[str] | None): Positional paths or globs.
+        include_patterns (list[str] | None): Glob patterns to intersect with candidates.
+        include_from (list[str] | None): Paths to files with include patterns.
+        exclude_patterns (list[str] | None): Glob patterns to exclude from candidates.
+        exclude_from (list[str] | None): Paths to files with exclude patterns.
+        config_files (list[str] | None): Config-defined fallback paths.
+        file_types (list[str] | None): File types to filter by.
 
     Returns:
         Config: A namespace with the required attributes.
@@ -100,8 +95,8 @@ def write(p: Path, text: str = "") -> Path:
     """Write text to a file, creating parent directories if needed.
 
     Args:
-        p: Path of the file to create.
-        text: Content to write.
+        p (Path): Path of the file to create.
+        text (str): Content to write.
 
     Returns:
         Path: The created file path.
@@ -117,8 +112,8 @@ def test_candidates_from_positional_and_globs(
     """Expand candidate files from positional args and glob patterns.
 
     Args:
-        tmp_path: Pytest temporary directory fixture.
-        monkeypatch: Pytest monkeypatch fixture.
+        tmp_path (Path): Pytest temporary directory fixture.
+        monkeypatch (pytest.MonkeyPatch): Pytest monkeypatch fixture.
     """
     # Create files
     write(tmp_path / "a.txt", "x")
@@ -364,9 +359,9 @@ def test_file_type_unknown_is_ignored(
     """Warn and ignore unknown file types.
 
     Args:
-        tmp_path: Pytest temporary directory fixture.
-        monkeypatch: Pytest monkeypatch fixture.
-        caplog: Pytest fixture to capture log records.
+        tmp_path (Path): Pytest temporary directory fixture.
+        monkeypatch (pytest.MonkeyPatch): Pytest monkeypatch fixture.
+        caplog (pytest.LogCaptureFixture): Pytest fixture to capture log records.
     """
     (tmp_path / "a.py").write_text("x")
     monkeypatch.chdir(tmp_path)

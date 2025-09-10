@@ -10,7 +10,7 @@
 
 """Utilities for obtaining a program-output console independent of Click.
 
-This module exposes :func:`get_console_safely` which returns the project’s
+This module exposes `get_console_safely` which returns the project’s
 console for user-facing output when running under a Click context, and a
 no-dependency stdlib fallback (`StdConsole`) when no context is active
 (e.g., when the API is invoked directly from tests).
@@ -27,7 +27,7 @@ def get_console_safely() -> ConsoleLike:
 
     If an active Click context exists and a console instance is stored in
     ``ctx.obj["console"]``, that console is returned. Otherwise, a
-    :class:`~topmark.cli.console_std.StdConsole` is returned to avoid
+    [`topmark.cli.console_std.StdConsole`][topmark.cli.console_std.StdConsole] is returned to avoid
     raising ``RuntimeError: There is no active click context`` when the
     library is used programmatically (e.g., via pytest).
     """

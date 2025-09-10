@@ -125,12 +125,12 @@ def filter_view_results(
     """Apply --skip-compliant and --skip-unsupported filters to a results list.
 
     Args:
-        results: Full list of ProcessingContext results.
-        skip_compliant: If True, filter out files that are compliant/unchanged.
-        skip_unsupported: If True, filter out files that were skipped as unsupported.
+        results (list[ProcessingContext]): Full list of ProcessingContext results.
+        skip_compliant (bool): If True, filter out files that are compliant/unchanged.
+        skip_unsupported (bool): If True, filter out files that were skipped as unsupported.
 
     Returns:
-        Filtered list of ProcessingContext results.
+        list[ProcessingContext]: Filtered list of ProcessingContext results.
     """
     view = results
     if skip_compliant:

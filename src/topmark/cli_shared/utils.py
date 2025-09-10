@@ -38,14 +38,16 @@ logger = get_logger(__name__)
 class OutputFormat(str, Enum):
     """Output format for CLI rendering.
 
-    Members:
-      DEFAULT: Human-friendly text output; may include ANSI color if enabled.
-      JSON: A single JSON array of per-file objects (machine-readable).
-      NDJSON: One JSON object per line (newline-delimited JSON; machine-readable).
+    Attributes:
+        DEFAULT: Human-friendly text output; may include ANSI color if enabled.
+        JSON: A single JSON array of per-file objects (machine-readable).
+        NDJSON: One JSON object per line (newline-delimited JSON; machine-readable).
+        MARKDOWN: A Markdown document.
 
     Notes:
-      - Machine formats (``JSON`` and ``NDJSON``) must not include ANSI color or diffs.
-      - Use with :class:`EnumParam` to parse ``--format`` from Click.
+        - Machine formats (``JSON`` and ``NDJSON``) must not include ANSI color or diffs.
+        - Use with [`EnumChoiceParam`][topmark.cli.cli_types.EnumChoiceParam] to parse ``--format``
+          from Click.
     """
 
     DEFAULT = "default"
@@ -57,22 +59,22 @@ class OutputFormat(str, Enum):
 class ColorMode(Enum):
     """User intent for colorized terminal output.
 
-    Members:
-      AUTO: Enable color only when appropriate (typically when stdout is a TTY).
-      ALWAYS: Force-enable color regardless of TTY status.
-      NEVER: Disable color entirely.
+    Attributes:
+        AUTO: Enable color only when appropriate (typically when stdout is a TTY).
+        ALWAYS: Force-enable color regardless of TTY status.
+        NEVER: Disable color entirely.
 
     Typical usage:
-      - Parse `--color=auto|always|never` as `ColorMode`.
-      - Pass the parsed value to `resolve_color_mode()` along with the current
-        output format (e.g., `"json"` or `"ndjson"`) to obtain a final `bool`
-        indicating whether to emit ANSI styles.
+        - Parse `--color=auto|always|never` as `ColorMode`.
+        - Pass the parsed value to `resolve_color_mode()` along with the current
+          output format (e.g., `"json"` or `"ndjson"`) to obtain a final `bool`
+          indicating whether to emit ANSI styles.
 
     Example:
-      >>> resolve_color_mode(cli_mode=ColorMode.AUTO, output_format=None)
-      True  # on an interactive terminal
-      >>> resolve_color_mode(cli_mode=ColorMode.AUTO, output_format="json")
-      False  # machine formats are always colorless
+        >>> resolve_color_mode(cli_mode=ColorMode.AUTO, output_format=None)
+        True  # on an interactive terminal
+        >>> resolve_color_mode(cli_mode=ColorMode.AUTO, output_format="json")
+        False  # machine formats are always colorless
     """
 
     AUTO = "auto"
@@ -89,29 +91,30 @@ def resolve_color_mode(
     """Determine whether color output should be enabled.
 
     Decision precedence:
-      1. **Machine formats**: If `output_format` is `"json"` or `"ndjson"`, return False.
-      2. **CLI override**: If `cli_mode` is `ALWAYS` → True; if `NEVER` → False.
-      3. **Environment**:
-         - `FORCE_COLOR` (set and not equal to `"0"`) → True
-         - `NO_COLOR` (set to any value) → False
-      4. **Auto**: If none of the above decide, return `stdout.isatty()`.
+        1. **Machine formats**: If `output_format` is `"json"` or `"ndjson"`, return False.
+        2. **CLI override**: If `cli_mode` is `ALWAYS` → True; if `NEVER` → False.
+        3. **Environment**:
+            - `FORCE_COLOR` (set and not equal to `"0"`) → True
+            - `NO_COLOR` (set to any value) → False
+        4. **Auto**: If none of the above decide, return `stdout.isatty()`.
 
     Args:
-      cli_mode: Parsed `ColorMode` value from `--color`; `None` means “not provided”.
-      output_format: Structured output mode; `"json"` or `"ndjson"` suppress color.
-      stdout_isatty: Optional override for TTY detection. When `None`, the function
-        calls `sys.stdout.isatty()` and falls back to `False` on error.
+        cli_mode (ColorMode | None): Parsed `ColorMode` value from `--color`;
+            `None` means “not provided”.
+        output_format (str | None): Structured output mode; `"json"` or `"ndjson"` suppress color.
+        stdout_isatty (bool | None): Optional override for TTY detection. When `None`, the function
+            calls `sys.stdout.isatty()` and falls back to `False` on error.
 
     Returns:
-      True if ANSI color should be enabled; False otherwise.
+        bool: True if ANSI color should be enabled; False otherwise.
 
     Examples:
-      >>> resolve_color_mode(cli_mode=ColorMode.NEVER, output_format=None)
-      False
-      >>> resolve_color_mode(cli_mode=None, output_format="ndjson")
-      False
-      >>> resolve_color_mode(cli_mode=None, output_format=None, stdout_isatty=True)
-      True
+        >>> resolve_color_mode(cli_mode=ColorMode.NEVER, output_format=None)
+        False
+        >>> resolve_color_mode(cli_mode=None, output_format="ndjson")
+        False
+        >>> resolve_color_mode(cli_mode=None, output_format=None, stdout_isatty=True)
+        True
     """
     # 1) Machine formats never use color
     if output_format and output_format.lower() in {"json", "ndjson"}:
@@ -175,16 +178,17 @@ def classify_outcome(r: ProcessingContext) -> tuple[str, str, Callable[[str], st
     >   `color_fn`.
 
     Precedence:
-      - If the comparison result is UNCHANGED, this always takes precedence and the file
-        is classified as compliant ("ok", "up-to-date"), regardless of other header or strip status.
+        - If the comparison result is UNCHANGED, this always takes precedence and the file
+          is classified as compliant ("ok", "up-to-date"), regardless of other header
+          or strip status.
 
     Args:
-      r (ProcessingContext): Processing context for a single file.
+        r (ProcessingContext): Processing context for a single file.
 
     Returns:
-      tuple[str, str, Callable[[str], str]]: A tuple ``(key, label, color_fn)`` where
-      ``key`` is a stable identifier, ``label`` is a human-readable description, and
-      ``color_fn`` is a function from ``yachalk`` used to colorize the label.
+        tuple[str, str, Callable[[str], str]]: A tuple ``(key, label, color_fn)`` where
+            ``key`` is a stable identifier, ``label`` is a human-readable description, and
+            ``color_fn`` is a function from ``yachalk`` used to colorize the label.
     """
     # Import locally to avoid any import cycles at module import time.
     from topmark.pipeline.context import (
@@ -247,11 +251,11 @@ def count_by_outcome(
     Keeps the first-seen label and color for each key.
 
     Args:
-      results (list[ProcessingContext]): Processing contexts to classify and count.
+        results (list[ProcessingContext]): Processing contexts to classify and count.
 
     Returns:
-      dict[str, tuple[int, str, Callable[[str], str]]]: Mapping from classification
-      key to ``(count, label, color_fn)``.
+        dict[str, tuple[int, str, Callable[[str], str]]]: Mapping from classification
+            key to ``(count, label, color_fn)``.
     """
     counts: dict[str, tuple[int, str, Callable[[str], str]]] = {}
     for r in results:
@@ -269,15 +273,18 @@ def write_updates(
     """Write updated file contents back to disk according to a predicate.
 
     Args:
-      results: Processing contexts to consider for writing.
-      should_write: A predicate that returns True if the file should be written.
+        results (list[ProcessingContext]): Processing contexts to consider for writing.
+        should_write (Callable[[ProcessingContext], bool]): A predicate that returns True
+            if the file should be written.
 
     Returns:
-      A tuple `(written, failed)` with the number of files written and the number of failures.
+        tuple[int, int]: A tuple `(written, failed)` with the number of files written
+            and the number of failures.
 
     Notes:
-      - The function writes `updated_file_lines` as a single string with the default UTF‑8 encoding.
-      - Any exceptions per file are logged and counted as failures.
+        - The function writes `updated_file_lines` as a single string with the default
+          UTF‑8 encoding.
+        - Any exceptions per file are logged and counted as failures.
     """
     written = failed = 0
     for r in results:
@@ -296,10 +303,10 @@ def safe_unlink(path: Path | None) -> None:
     """Attempt to delete a file, ignoring any errors.
 
     Args:
-      path: Path to delete, or None (no-op).
+        path (Path | None): Path to delete, or None (no-op).
 
     Notes:
-      - Any errors during deletion are logged and ignored.
+        - Any errors during deletion are logged and ignored.
     """
     if path and path.exists():
         try:
@@ -320,18 +327,22 @@ def render_markdown_table(
     """Render a GitHub‑flavoured Markdown table with padded columns.
 
     Args:
-      headers: Column headers.
-      rows: A sequence of row sequences (each row same length as ``headers``).
-      align: Optional mapping of column index to alignment: ``"left"`` (default),
-        ``"right"``, or ``"center"``.
+        headers (Sequence[str]): Column headers.
+        rows (Sequence[Sequence[str]]): A sequence of row sequences (each row same length
+            as ``headers``).
+        align (Mapping[int, str] | None): Optional mapping of column index to alignment:
+            ``"left"`` (default), ``"right"``, or ``"center"``.
 
     Returns:
-      The Markdown table as a single string (ending with a newline).
+        str: The Markdown table as a single string (ending with a newline).
 
     Notes:
-      - Widths are computed from the visible string lengths of headers and cells.
-      - Alignment uses Markdown syntax: ``:---`` (left), ``:---:`` (center), ``---:`` (right).
-      - This function is Click‑free and suitable for reuse in any frontend.
+        - Widths are computed from the visible string lengths of headers and cells.
+        - Alignment uses Markdown syntax: ``:---`` (left), ``:---:`` (center), ``---:`` (right).
+        - This function is Click‑free and suitable for reuse in any frontend.
+
+    Raises:
+        ValueError: If any row length differs from the number of headers.
     """
     if not headers:
         return ""

@@ -11,7 +11,8 @@
 """Public file type registry (advanced).
 
 Exposes read-only views and optional mutation helpers for registered file
-types. Most users should prefer the stable facade :class:`topmark.registry.Registry`.
+types. Most users should prefer the stable facade
+[`topmark.registry.Registry`][topmark.registry.Registry].
 This module is intended for plugins and tests.
 """
 
@@ -86,7 +87,7 @@ class FileTypeRegistry:
         """Return a file type by name.
 
         Args:
-            name: Registered file type name.
+            name (str): Registered file type name.
 
         Returns:
             FileType | None: The `FileType` object if found, else None.
@@ -144,9 +145,10 @@ class FileTypeRegistry:
         """Register a new file type, and optionally attach a header processor.
 
         Args:
-            ft_obj: A `FileType` with a unique, non-empty `.name`.
-            processor: Optional `HeaderProcessor` instance or class to register for this file type.
-                If provided, the processor will be registered and bound to this file type.
+            ft_obj (FileType): A `FileType` with a unique, non-empty `.name`.
+            processor (type[HeaderProcessor] | None): Optional `HeaderProcessor` instance or class
+                to register for this file type. If provided, the processor will be registered and
+                bound to this file type.
 
         Raises:
             ValueError: If `.name` is empty or already registered, or if a processor is provided
@@ -179,10 +181,10 @@ class FileTypeRegistry:
         """Unregister a file type by name.
 
         Args:
-            name: Registered file type name.
+            name (str): Registered file type name.
 
         Returns:
-            bool: True if the entry existed and was removed, else False.
+            bool: `True` if the entry existed and was removed, else `False`.
 
         Notes:
             - This mutates global registry state.

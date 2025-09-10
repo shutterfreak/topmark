@@ -41,7 +41,6 @@ class XmlHeaderProcessor(HeaderProcessor):
     """
 
     def __init__(self) -> None:
-        """Initialize a XmlHeaderProcessor instance."""
         super().__init__(
             block_prefix="<!--",
             block_suffix="-->",
@@ -53,10 +52,10 @@ class XmlHeaderProcessor(HeaderProcessor):
         Rely solely on get_header_insertion_char_offset().
 
         Args:
-          file_lines: File content split into lines (unused).
+            file_lines (list[str]): File content split into lines (unused).
 
         Returns:
-          int: ``NO_LINE_ANCHOR`` to signal char-offset insertion.
+            int: ``NO_LINE_ANCHOR`` to signal char-offset insertion.
         """
         from .base import NO_LINE_ANCHOR
 
@@ -70,11 +69,11 @@ class XmlHeaderProcessor(HeaderProcessor):
         even when the root element follows on the same line.
 
         Args:
-          original_text (str): Full file content as a single string.
+            original_text (str): Full file content as a single string.
 
         Returns:
-          int | None: Character offset suitable for insertion, or ``None`` to use the
-          line-based strategy.
+            int | None: Character offset suitable for insertion, or ``None`` to use the
+                line-based strategy.
         """
         text = original_text
         if not text:
@@ -126,12 +125,12 @@ class XmlHeaderProcessor(HeaderProcessor):
             - Preserve the document's dominant newline style (``LF``, ``CR``, ``CRLF``).
 
         Args:
-          original_text (str): Full file content as a single string.
-          insert_offset (int): 0-based character offset where the header will be inserted.
-          rendered_header_text (str): Header block text (may already include newlines).
+            original_text (str): Full file content as a single string.
+            insert_offset (int): 0-based character offset where the header will be inserted.
+            rendered_header_text (str): Header block text (may already include newlines).
 
         Returns:
-          str: Possibly modified header text to splice at ``insert_offset``.
+            str: Possibly modified header text to splice at ``insert_offset``.
         """
         # Detect newline style
         nl = "\n"
@@ -187,12 +186,12 @@ class XmlHeaderProcessor(HeaderProcessor):
           (by checking the previous line), and ensure at least one trailing blank.
 
         Args:
-          original_lines (list[str]): Original file lines.
-          insert_index (int): Line index where the header will be inserted.
-          rendered_header_lines (list[str]): Header lines to insert.
+            original_lines (list[str]): Original file lines.
+            insert_index (int): Line index where the header will be inserted.
+            rendered_header_lines (list[str]): Header lines to insert.
 
         Returns:
-          list[str]: Possibly modified header lines including any added padding.
+            list[str]: Possibly modified header lines including any added padding.
         """
         nl = detect_newline(original_lines)
         out = list(rendered_header_lines)
@@ -229,13 +228,13 @@ class XmlHeaderProcessor(HeaderProcessor):
         headers that appear inside fenced code blocks.
 
         Args:
-          lines (list[str]): Full file content split into lines.
-          header_start_idx (int): 0-based index of the candidate header's first line.
-          header_end_idx (int): 0-based index of the candidate header's last line (inclusive).
-          anchor_idx (int): 0-based expected insertion line index.
+            lines (list[str]): Full file content split into lines.
+            header_start_idx (int): 0-based index of the candidate header's first line.
+            header_end_idx (int): 0-based index of the candidate header's last line (inclusive).
+            anchor_idx (int): 0-based expected insertion line index.
 
         Returns:
-          bool: ``True`` if the candidate is acceptable; ``False`` otherwise.
+            bool: ``True`` if the candidate is acceptable; ``False`` otherwise.
         """
         # First apply the base proximity rule
         if not super().validate_header_location(
@@ -261,11 +260,11 @@ class XmlHeaderProcessor(HeaderProcessor):
         and considers the index inside a fence when the count is odd.
 
         Args:
-          lines: Full file content split into lines.
-          idx: Zero-based line index to test.
+            lines (list[str]): Full file content split into lines.
+            idx (int): Zero-based line index to test.
 
         Returns:
-          bool: ``True`` if inside a code fence; ``False`` otherwise.
+            bool: ``True`` if inside a code fence; ``False`` otherwise.
         """
         import re as _re
 
@@ -282,10 +281,10 @@ class XmlHeaderProcessor(HeaderProcessor):
         """Remove the TopMark header block and return the updated file image.
 
         This XML/HTML-specific override performs extra cleanup:
-          1) Delegates to base removal.
-          2) Removes all surrounding blank lines (not just one).
-          3) Removes a tightly-wrapping <!-- ... --> block if present.
-          4) Collapses the XML declaration and the next element back onto one line.
+          1. Delegates to base removal.
+          2. Removes all surrounding blank lines (not just one).
+          3. Removes a tightly-wrapping <!-- ... --> block if present.
+          4. Collapses the XML declaration and the next element back onto one line.
         """
         # 1) Perform the generic removal first.
         new_lines, removed = super().strip_header_block(lines=lines, span=span)

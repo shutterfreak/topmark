@@ -51,16 +51,21 @@ register_all_processors()
 
 
 def init_common_state(
-    ctx: click.Context, *, verbose: int, quiet: int, color_mode: ColorMode | None, no_color: bool
+    ctx: click.Context,
+    *,
+    verbose: int,
+    quiet: int,
+    color_mode: ColorMode | None,
+    no_color: bool,
 ) -> None:
     """Initialize shared state (verbosity & color) on the Click context.
 
     Args:
-        ctx: Current Click context; will have ``obj`` and ``color`` set.
-        verbose: Count of ``-v`` flags (0..2).
-        quiet: Count of ``-q`` flags (0..2).
-        color_mode: Explicit color mode from ``--color`` (or ``None``).
-        no_color: Whether ``--no-color`` was passed; forces color off.
+        ctx (click.Context): Current Click context; will have ``obj`` and ``color`` set.
+        verbose (int): Count of ``-v`` flags (0..2).
+        quiet (int): Count of ``-q`` flags (0..2).
+        color_mode (ColorMode | None): Explicit color mode from ``--color`` (or ``None``).
+        no_color (bool): Whether ``--no-color`` was passed; forces color off.
     """
     ctx.obj = ctx.obj or {}
 
