@@ -41,6 +41,8 @@ Examples:
     $ git ls-files | topmark check --files-from -
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 import click
@@ -85,10 +87,10 @@ from topmark.pipeline.context import (
     ProcessingContext,
     WriteStatus,
 )
-from topmark.rendering.formats import HeaderOutputFormat
 
 if TYPE_CHECKING:
     from topmark.cli_shared.console_api import ConsoleLike
+    from topmark.rendering.formats import HeaderOutputFormat
 
 logger = get_logger(__name__)
 

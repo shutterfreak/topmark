@@ -16,12 +16,18 @@ configuration system by building an ArgsNamespace and merging user, project,
 and default config sources.
 """
 
-import click
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from topmark.cli.cli_types import ArgsNamespace, build_args_namespace
 from topmark.config import Config
 from topmark.config.logging import get_logger
-from topmark.rendering.formats import HeaderOutputFormat
+
+if TYPE_CHECKING:
+    import click
+
+    from topmark.rendering.formats import HeaderOutputFormat
 
 logger = get_logger(__name__)
 
@@ -73,16 +79,16 @@ def resolve_config_from_click(
     args: ArgsNamespace = build_args_namespace(
         verbosity_level=verbosity_level,
         apply_changes=apply_changes,
-        files=list(files),
-        files_from=list(files_from),
+        files=files,
+        files_from=files_from,
         stdin=stdin,
-        include_patterns=list(include_patterns),
-        include_from=list(include_from),
-        exclude_patterns=list(exclude_patterns),
-        exclude_from=list(exclude_from),
+        include_patterns=include_patterns,
+        include_from=include_from,
+        exclude_patterns=exclude_patterns,
+        exclude_from=exclude_from,
         no_config=no_config,
-        config_files=list(config_paths),
-        file_types=list(file_types),
+        config_files=config_paths,
+        file_types=file_types,
         relative_to=relative_to,
         align_fields=align_fields,
         header_format=header_format,

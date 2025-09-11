@@ -16,11 +16,17 @@ for specific file types, using the centralized file_type_registry.
 Each HeaderProcessor is associated with a FileType by name.
 """
 
-from collections.abc import Callable
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from topmark.config.logging import get_logger
 from topmark.filetypes.instances import get_file_type_registry
-from topmark.pipeline.processors.base import HeaderProcessor
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from topmark.pipeline.processors.base import HeaderProcessor
 
 logger = get_logger(__name__)
 

@@ -15,6 +15,8 @@ registered in TopMark, along with the file types they handle. It supports variou
 including JSON, NDJSON, Markdown, and a default human-readable format.
 """
 
+from __future__ import annotations
+
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 

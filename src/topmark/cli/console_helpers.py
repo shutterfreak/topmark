@@ -16,10 +16,16 @@ no-dependency stdlib fallback (`StdConsole`) when no context is active
 (e.g., when the API is invoked directly from tests).
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import click
 
 from topmark.cli.console_std import StdConsole
-from topmark.cli_shared.console_api import ConsoleLike
+
+if TYPE_CHECKING:
+    from topmark.cli_shared.console_api import ConsoleLike
 
 
 def get_console_safely() -> ConsoleLike:

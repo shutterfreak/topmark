@@ -17,6 +17,8 @@ Supports default configuration generation, CLI overrides, and fallback resolutio
 from topmark.toml or pyproject.toml.
 """
 
+from __future__ import annotations
+
 import functools
 from dataclasses import dataclass, field
 from datetime import datetime

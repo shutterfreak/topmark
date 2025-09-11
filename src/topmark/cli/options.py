@@ -15,11 +15,13 @@ resolution logic, so commands and groups can stay thin. The helpers here are
 Click-aware.
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import sys
 from enum import Enum
-from typing import Callable, Iterable, ParamSpec, TypeVar
+from typing import TYPE_CHECKING, Callable, ParamSpec, TypeVar
 
 import click
 from click.core import ParameterSource
@@ -28,6 +30,9 @@ from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.errors import TopmarkUsageError
 from topmark.config.logging import get_logger
 from topmark.rendering.formats import HeaderOutputFormat
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 P = ParamSpec("P")
 R = TypeVar("R")

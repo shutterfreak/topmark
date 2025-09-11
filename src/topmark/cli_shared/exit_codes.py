@@ -18,6 +18,8 @@ automation and tests to distinguish between a "would change" result and a usage 
 to disambiguate TopMark's dry-run from Click's own usage errors.
 """
 
+from __future__ import annotations
+
 from enum import IntEnum
 
 

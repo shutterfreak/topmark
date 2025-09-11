@@ -17,6 +17,8 @@ Key ideas:
 This file is intentionally compact so we can lift the patterns back into TopMark.
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 import click

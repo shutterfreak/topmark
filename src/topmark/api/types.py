@@ -71,7 +71,7 @@ class FileResult:
         message (str | None): Optional human‑readable note (``None`` if not applicable).
     """
 
-    path: "Path"
+    path: Path
     outcome: Outcome
     diff: str | None
     message: str | None

@@ -15,6 +15,8 @@ header template and the default TOML configuration bundled with the package.
 Intended as a reference for users customizing their own configuration files.
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 import click

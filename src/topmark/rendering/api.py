@@ -15,15 +15,21 @@ using the configured processing pipelines. It serves as the high-level
 interface for converting configuration and overrides into a formatted header string.
 """
 
-from dataclasses import replace
-from pathlib import Path
+from __future__ import annotations
 
-from topmark.config import Config
+from dataclasses import replace
+from typing import TYPE_CHECKING
+
 from topmark.pipeline import runner
 from topmark.pipeline.context import ProcessingContext
 from topmark.rendering.formats import HeaderOutputFormat
 
 from ..pipeline.pipelines import get_pipeline
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from topmark.config import Config
 
 
 def render_header_for_path(

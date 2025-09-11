@@ -15,6 +15,8 @@ internal logging. Use this for messages intended for end users, while
 reserving `logging` for diagnostics.
 """
 
+from __future__ import annotations
+
 import sys
 from typing import Any, TextIO, TypedDict
 

@@ -22,6 +22,8 @@ Input modes:
   * '-' as a PATH (content-on-STDIN) is ignored in dump-config.
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 import click
@@ -36,10 +38,10 @@ from topmark.cli.options import (
 )
 from topmark.cli_shared.utils import safe_unlink
 from topmark.config.logging import get_logger
-from topmark.rendering.formats import HeaderOutputFormat
 
 if TYPE_CHECKING:
     from topmark.cli_shared.console_api import ConsoleLike
+    from topmark.rendering.formats import HeaderOutputFormat
 
 logger = get_logger(__name__)
 

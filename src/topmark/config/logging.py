@@ -14,13 +14,17 @@ This module extends the standard logging module with TopMark-specific features,
 including a custom TRACE level, a specialized logger class, and colored output formatting.
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import sys
-from collections.abc import Mapping
-from typing import Final, cast
+from typing import TYPE_CHECKING, Final, cast
 
 from yachalk import chalk
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 # Define TRACE_LEVEL as a module-level constant
 TRACE_LEVEL: Final[int] = logging.DEBUG - 5

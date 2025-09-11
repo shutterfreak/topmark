@@ -9,3 +9,5 @@
 # topmark:header:end
 
 """Core CLI functionality for Topmark."""
+
+from __future__ import annotations

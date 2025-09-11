@@ -14,6 +14,8 @@ This protocol defines the small surface used by CLI commands to emit
 user-facing output, separate from internal logging.
 """
 
+from __future__ import annotations
+
 from typing import Protocol
 
 

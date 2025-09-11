@@ -40,7 +40,7 @@ Notes:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Iterable
 
 from topmark.cli.cmd_common import (
     filter_view_results,
@@ -61,6 +61,9 @@ from topmark.registry import Registry
 
 from .public_types import PublicDiagnostic
 from .types import DiagnosticTotals, FileResult, FileTypeInfo, Outcome, ProcessorInfo, RunResult
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
 
 logger = get_logger(__name__)
 
@@ -116,8 +119,8 @@ def _map_outcome(r: ProcessingContext, *, apply: bool) -> Outcome:
     if r.status.file is not FileStatus.RESOLVED:
         # Treat unsupported/matched-but-unhandled types as non-errors for API consumers.
         unsupported = {
-            getattr(FileStatus, "SKIPPED_UNSUPPORTED", None),
-            getattr(FileStatus, "SKIPPED_KNOWN_NO_HEADERS", None),
+            FileStatus.SKIPPED_UNSUPPORTED,
+            FileStatus.SKIPPED_KNOWN_NO_HEADERS,
         }
         if r.status.file in unsupported:
             return Outcome.UNCHANGED

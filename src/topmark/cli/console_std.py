@@ -10,6 +10,8 @@
 
 """Stdlib-based console implementation (no Click)."""
 
+from __future__ import annotations
+
 import sys
 from typing import TextIO
 

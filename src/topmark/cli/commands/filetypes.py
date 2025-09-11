@@ -15,6 +15,8 @@ descriptions. Useful for discovering available file type filters when
 configuring headers.
 """
 
+from __future__ import annotations
+
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 
@@ -24,11 +26,11 @@ from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cmd_common import get_effective_verbosity
 from topmark.cli_shared.utils import OutputFormat, render_markdown_table
 from topmark.constants import TOPMARK_VERSION
-from topmark.filetypes.base import FileType
 from topmark.filetypes.instances import get_file_type_registry
 
 if TYPE_CHECKING:
     from topmark.cli_shared.console_api import ConsoleLike
+    from topmark.filetypes.base import FileType
 
 
 def _policy_name(obj: object | None) -> str:

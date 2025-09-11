@@ -22,6 +22,8 @@ Typical usage:
 All subcommands live in [`topmark.cli.commands`][].
 """
 
+from __future__ import annotations
+
 from .main import cli
 
 __all__ = ["cli"]

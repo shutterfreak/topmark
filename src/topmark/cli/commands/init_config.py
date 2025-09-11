@@ -15,6 +15,8 @@ generated header block and the default TOML configuration. Intended as a
 starting point for customizing a project's configuration.
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 import click

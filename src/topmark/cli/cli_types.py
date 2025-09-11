@@ -18,6 +18,8 @@ These utilities ensure robust and uniform handling of CLI parameters
 across all TopMark commands and subcommands.
 """
 
+from __future__ import annotations
+
 import glob
 from enum import Enum
 from pathlib import Path
@@ -35,10 +37,10 @@ from typing import (
 
 import click
 
-from topmark.rendering.formats import HeaderOutputFormat
-
 if TYPE_CHECKING:
     from click.shell_completion import CompletionItem as ClickCompletionItem
+
+    from topmark.rendering.formats import HeaderOutputFormat
 
     class ParamTypeBase(Protocol):
         """Typed base to avoid subclassing Any when Click lacks stubs."""
