@@ -81,6 +81,7 @@ def make_config(
         "Config",
         SimpleNamespace(
             files=list(files or []),
+            files_from=list(files or []),
             include_patterns=list(include_patterns or []),
             include_from=list(include_from or []),
             exclude_patterns=list(exclude_patterns or []),

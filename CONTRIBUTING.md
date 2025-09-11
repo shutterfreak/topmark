@@ -315,8 +315,8 @@ We enforce API stability with tests and CI checks:
    current public function signatures (and facade methods) with a committed JSON baseline
    (`tests/api/public_api_snapshot.json`).
    - Day-to-day development: the test **skips** if the baseline is absent.
-   - Before release: generate the baseline (instructions are in the test docstring), commit it, and
-     ensure the test passes.
+   - Before release: run `make public-api-update` to generate/refresh the baseline
+     using `tools/api_snapshot.py`, commit it, and ensure the test passes.
 1. **CI version bump check (recommended)** — in CI, if the snapshot file changes in a PR, require
    that `project.version` in `pyproject.toml` is bumped accordingly.
 

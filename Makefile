@@ -19,6 +19,7 @@
 		format format-check git-archive help install lint lint-fixall \
 		pre-commit-autoupdate pre-commit-clean pre-commit-install \
 		pre-commit-refresh pre-commit-run pre-commit-uninstall \
+		public-api-check public-api-ensure-clean public-api-update \
 		rtd-venv setup source-snapshot \
 		sync-dev sync-dev-confirm sync-prod sync-prod-confirm \
 		test uninstall uninstall-confirm update-instructions-json upgrade-dev upgrade-pro venv verify
@@ -31,6 +32,7 @@ VENV_BIN = $(VENV)/bin
 RTD_VENV = .rtd
 RTD_VENV_BIN = $(RTD_VENV)/bin
 MKDOCS_RTD := $(RTD_VENV_BIN)/mkdocs
+PUBLIC_API_JSON := tests/api/public_api_snapshot.json
 
 # Define the root directory of the project, relative to the Makefile
 PROJECT_ROOT := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
@@ -79,6 +81,10 @@ help:
 	@echo "  lint-fixall              Run linters and automatically fix fixable linting errors"
 	@echo ""
 	@echo "  test                     Run tests"
+	@echo ""
+	@echo "  public-api-check         Check whether the public API snapshot changed"
+	@echo "  public-api-update        Regenerate tests/api/public_api_snapshot.json"
+	@echo "  public-api-ensure-clean  Fail if the public API snapshot differs from the baseline"
 	@echo ""
 	@echo "Documentation:"
 	@echo "  rtd-venv                 Create RTD docs virtual environment (.rtd) and install docs deps"
@@ -229,6 +235,33 @@ test: check-venv
 	@echo "Running tests..."
 	$(VENV_BIN)/pytest
 
+public-api-check: check-venv
+	@$(VENV_BIN)/pytest -qq tests/api/test_public_api_snapshot.py && \
+	echo "✅ Public API snapshot unchanged."
+
+.public-api-update: check-venv
+	@$(VENV_BIN)/$(PYTHON) tools/api_snapshot.py "$(PUBLIC_API_JSON)"
+	@if git diff --quiet -- "$(PUBLIC_API_JSON)" ; then \
+		echo "✅ Public API snapshot unchanged: $(PUBLIC_API_JSON)"; \
+	else \
+		git --no-pager diff -- "$(PUBLIC_API_JSON)"; \
+		echo "⚠️  Public API snapshot UPDATED: $(PUBLIC_API_JSON)"; \
+		echo "⚠️  Review diff, add $(PUBLIC_API_JSON) to git, bump version & update CHANGELOG."; \
+	fi
+
+public-api-update:
+	@read -p "⚠️  This will overwrite the public API snapshot. Continue? [y/N] " confirm && [ "$$confirm" = "y" ] && \
+	make .public-api-update
+
+# Fails if the snapshot differs from index
+public-api-ensure-clean: check-venv
+	@if git diff --quiet -- "$(PUBLIC_API_JSON)"; then \
+		echo "✅ Public API snapshot clean: $(PUBLIC_API_JSON)"; \
+	else \
+		git --no-pager diff -- "$(PUBLIC_API_JSON)"; \
+		echo "❌ Public API snapshot differs. Re-run: make public-api-update"; \
+		exit 1; \
+	fi
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Documentation
@@ -278,7 +311,7 @@ docs-deploy:
 
 build: check-venv
 	@echo "Building source and wheel distributions..."
-	$(VENV_BIN)/python -m build
+	$(VENV_BIN)/$(PYTHON) -m build
 
 git-archive: check-venv  | $(GIT_ARCHIVE_DIR)
 	@echo "Creating a time-stamped git archive..."
