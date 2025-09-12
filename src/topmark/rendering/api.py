@@ -59,21 +59,30 @@ def render_header_for_path(
     Returns:
         str: The rendered header as a single string (joined lines).
     """
-    # Work on a copy; never mutate the caller's config
-    eff_config = replace(config)
+    # Prepare effective values without mutating the original Config (it's frozen)
 
-    # Effective format and field order
-    eff_config.header_format = (
-        format_override or eff_config.header_format or HeaderOutputFormat.NATIVE
+    # Compute the effective format (override > config > default)
+    effective_format = format_override or config.header_format or HeaderOutputFormat.NATIVE
+
+    # Compute effective field order (override > config)
+    effective_fields = (
+        tuple(header_fields_overrides)
+        if header_fields_overrides is not None
+        else config.header_fields
     )
-    eff_config.header_fields = header_fields_overrides or config.header_fields
 
-    # Merge field values (config → overrides) for the effective field order
-    effective_fields = eff_config.header_fields
+    # Merge values (config → overrides) in the chosen field order
     merged: dict[str, str] = {k: config.field_values.get(k, "") for k in effective_fields}
     if header_overrides:
         merged.update(header_overrides)
-    eff_config.field_values = merged
+
+    # Build an effective frozen snapshot for the renderer
+    eff_config = replace(
+        config,
+        header_format=effective_format,
+        header_fields=effective_fields,
+        field_values=merged,
+    )
 
     # Get the pipeline steps
     steps = get_pipeline("render")

@@ -22,7 +22,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from tests.pipeline.conftest import run_insert
-from topmark.config import Config
+from topmark.config import MutableConfig
 from topmark.pipeline.processors import get_processor_for_file
 
 if TYPE_CHECKING:
@@ -35,7 +35,7 @@ def test_xml_single_line_insert_then_strip_preserves_layout(tmp_path: Path) -> N
     original = '<?xml version="1.0"?><root/>'  # no trailing newline
     f.write_text(original, encoding="utf-8")
 
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
     ctx = run_insert(f, cfg)
     after_insert = "".join(ctx.updated_file_lines or [])
     assert after_insert.startswith("\ufeff") or after_insert.startswith("<?xml"), (

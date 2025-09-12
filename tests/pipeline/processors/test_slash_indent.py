@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING
 
 from tests.conftest import mark_pipeline
 from tests.pipeline.conftest import expected_block_lines_for, find_line, run_insert
-from topmark.config import Config
+from topmark.config import MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline import runner
 from topmark.pipeline.context import ProcessingContext
@@ -49,7 +49,7 @@ def test_jsonc_insert_at_top_with_no_pre_prefix_indent(tmp_path: Path) -> None:
     f = tmp_path / "settings.json"
     f.write_text('// user note\n{\n  "a": 1\n}\n', encoding="utf-8")
 
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
     ctx = run_insert(f, cfg)
 
     lines = ctx.updated_file_lines or []
@@ -88,7 +88,7 @@ def test_jsonc_replace_preserves_pre_prefix_indent(tmp_path: Path) -> None:
     )
     f.write_text(seeded, encoding="utf-8")
 
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
     # Run the full check pipeline to exercise scan + replace
     ctx = ProcessingContext.bootstrap(path=f, config=cfg)
     steps = get_pipeline("check")
@@ -136,7 +136,7 @@ def test_jsonc_replace_keeps_crlf_and_indent(tmp_path: Path) -> None:
             '{\n  "x": 2\n}\n'
         )
 
-    ctx = run_insert(f, Config.from_defaults())
+    ctx = run_insert(f, MutableConfig.from_defaults().freeze())
     out = ctx.updated_file_lines or []
 
     # Preserve CRLF

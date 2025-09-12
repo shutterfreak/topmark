@@ -39,5 +39,6 @@ def get_console_safely() -> ConsoleLike:
     """
     ctx = click.get_current_context(silent=True)
     if ctx is not None and isinstance(getattr(ctx, "obj", None), dict) and "console" in ctx.obj:
-        return ctx.obj["console"]
+        console: ConsoleLike = ctx.obj["console"]
+        return console
     return StdConsole()

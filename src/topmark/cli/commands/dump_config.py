@@ -141,7 +141,7 @@ def dump_config_command(
         allow_empty_paths=True,
     )
 
-    config = build_config_common(
+    draft_config = build_config_common(
         ctx=ctx,
         plan=plan,
         no_config=no_config,
@@ -153,11 +153,11 @@ def dump_config_command(
     )
 
     temp_path = plan.temp_path  # for cleanup/STDIN-apply branch
-
+    config = draft_config.freeze()
     # Determine effective program-output verbosity for gating extra details
     vlevel = get_effective_verbosity(ctx, config)
 
-    logger.trace("Config after merging CLI and discovered config: %s", config)
+    logger.trace("Config after merging CLI and discovered config: %s", draft_config)
 
     # We don't actually care about the file list here; just dump the config
     import toml

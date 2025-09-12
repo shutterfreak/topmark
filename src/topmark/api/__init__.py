@@ -35,12 +35,37 @@ Notes:
 - A FileType instance is **supported** if it is recognized and is registered to
   a HeaderProcessor instance in the HeaderProcessorRegistry.
 - The API returns per-file diagnostics and aggregate counts; levels are "info", "warning", "error".
+
+Configuration contract
+----------------------
+- Public functions accept either a plain **mapping** (mirroring the TOML shape) or a frozen
+  `topmark.config.Config`. We normalize/merge internally and run the pipeline against an
+  **immutable snapshot**.
+- The internal `topmark.config.MutableConfig` builder is **not part of the public API**.
+  It exists to perform discovery/merging and then ``freeze()`` to a `Config` just before
+  execution. This keeps runtime deterministic and avoids accidental mutation.
+- To "update config" programmatically, pass a mapping to the function call:
+
+```python
+from topmark import api
+
+run = api.check(
+    ["src"],
+    config={
+        "fields": {"project": "TopMark", "license": "MIT"},
+        "header": {"fields": ["file", "project", "license"]},
+        "formatting": {"align_fields": True},
+        "files": {"file_types": ["python"], "exclude_patterns": [".venv"]},
+    },
+)
+```
 """
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterable
+from typing import TYPE_CHECKING, Any, Iterable, Sequence, cast
 
 from topmark.cli.cmd_common import (
     filter_view_results,
@@ -48,7 +73,7 @@ from topmark.cli.cmd_common import (
 )
 from topmark.cli.io import InputPlan
 from topmark.cli_shared.utils import write_updates
-from topmark.config import Config
+from topmark.config import Config, MutableConfig
 from topmark.config.logging import get_logger
 from topmark.constants import TOPMARK_VERSION
 from topmark.pipeline.context import (
@@ -87,24 +112,55 @@ __all__ = [
 # ---------- helpers (private) ----------
 
 
-def _to_config(value: Mapping[str, Any] | Config | None) -> Config:
-    """Normalize a mapping or Config to a Config instance.
+def _ensure_mutable_config(
+    value: Mapping[str, Any] | MutableConfig | Config | None,
+) -> MutableConfig:
+    """Return a **MutableConfig** from a mapping or a frozen `Config`.
 
-    If `value` is None, returns `Config.from_defaults()` (no project config merge).
+    This is an internal adapter that normalizes public inputs (``Mapping[str, Any]``
+    or a frozen ``Config``) to a **mutable** builder for merging and final
+    ``freeze()`` before pipeline execution.
 
     Args:
-        value (Mapping[str, Any] | Config | None): Optional mapping or Config instance.
+        value (Mapping[str, Any] | MutableConfig | Config | None): Optional mapping,
+            draft, or frozen config instance.
 
     Returns:
-        Config: A `Config` instance.
+        MutableConfig: A mutable draft configuration.
+
+    Note:
+        Public API functions accept **mappings** or **frozen** configs only.
+        Passing a ``MutableConfig`` is not part of the public contract, but we
+        accept it here for internal convenience.
     """
     if value is None:
-        # You may prefer Config.from_defaults() or a project loader if present
-        return Config.from_defaults()
-    if isinstance(value, Config):
+        return MutableConfig.from_defaults()
+    if isinstance(value, MutableConfig):
         return value
-    # Accept plain dict-like, normalize to internal Config
-    return Config.from_toml_dict(dict(value))
+    if isinstance(value, Config):
+        # Thaw a frozen Config into a mutable draft
+        return MutableConfig(
+            timestamp=value.timestamp,
+            verbosity_level=value.verbosity_level,
+            apply_changes=value.apply_changes,
+            config_files=list(value.config_files),
+            header_fields=list(value.header_fields),
+            field_values=dict(value.field_values),
+            align_fields=value.align_fields,
+            header_format=value.header_format,
+            relative_to_raw=value.relative_to_raw,
+            relative_to=value.relative_to,
+            stdin=value.stdin,
+            files=list(value.files),
+            include_patterns=list(value.include_patterns),
+            include_from=list(value.include_from),
+            exclude_patterns=list(value.exclude_patterns),
+            exclude_from=list(value.exclude_from),
+            files_from=list(value.files_from),
+            file_types=set(value.file_types),
+        )
+    # Accept plain dict-like, normalize to internal ConfigDraft via TOML-like dict
+    return MutableConfig.from_toml_dict(dict(value))
 
 
 def _map_outcome(r: ProcessingContext, *, apply: bool) -> Outcome:
@@ -188,20 +244,23 @@ def _run_pipeline(
         paths, base_config=base_config, file_types=file_types
     )
 
-    # Set the 'apply' mode in the Config instance
-    cfg.apply_changes = apply_changes
+    # (No mutation of cfg - Config is frozen)
 
     if not file_list:
         return cfg, file_list, [], None
 
-    logger.info("Processing %d files with TopMark %s", len(file_list), TOPMARK_VERSION)
-
     # Ensure all processors are registered before running the pipeline (idempotent)
     Registry.ensure_processors_registered()
 
+    # Use a snapshot that carries the apply intent
+    cfg_for_run = replace(cfg, apply_changes=apply_changes)
+
     results, encountered_error_code = run_steps_for_files(
-        file_list, pipeline_name=pipeline_name, config=cfg
+        file_list, pipeline_name=pipeline_name, config=cfg_for_run
     )
+
+    logger.info("Processing %d files with TopMark %s", len(file_list), TOPMARK_VERSION)
+
     return cfg, file_list, results, encountered_error_code
 
 
@@ -280,7 +339,8 @@ def _build_cfg_and_files_via_cli_helpers(
     """
     from topmark.file_resolver import resolve_file_list
 
-    cfg: Config = _to_config(base_config)
+    # Start from a mutable draft; we only build the frozen Config right before use
+    draft: MutableConfig = _ensure_mutable_config(base_config)
 
     logger.debug("Normalizing input paths: %s", paths)
 
@@ -301,10 +361,18 @@ def _build_cfg_and_files_via_cli_helpers(
     # inadvertently merging local project config. We still reuse the planner’s
     # normalization of paths.
     if base_config is not None:
-        cfg.files = list(plan.paths)
-        logger.debug("Found %d input paths", len(cfg.files))
+        # Start from defaults so that header fields/values are present unless overridden
+        draft_defaults = MutableConfig.from_defaults()
+        draft = draft_defaults.merge_with(
+            draft
+        )  # 'draft' came from _ensure_mutable_config(base_config)
+
+        # Apply the normalized inputs we computed
+        draft.files = list(plan.paths)
+        logger.debug("Found %d input paths", len(draft.files))
         if file_types:
-            cfg.file_types = set(file_types)
+            draft.file_types = set(file_types)
+        cfg = draft.freeze()
         file_list = resolve_file_list(cfg)
         logger.debug("Files found: %s", len(file_list))
         return cfg, file_list
@@ -312,7 +380,7 @@ def _build_cfg_and_files_via_cli_helpers(
     # Otherwise, perform project-config discovery & merge like the CLI,
     # but without relying on Click. We construct the ArgsNamespace-equivalent
     # mapping that `Config.load_merged()` expects.
-    args_mapping = {
+    args_mapping: dict[str, Any] = {
         "verbosity_level": None,  # inherit program-output verbosity (tri-state)
         "files": list(plan.paths),
         "files_from": list(plan.files_from),
@@ -329,12 +397,40 @@ def _build_cfg_and_files_via_cli_helpers(
         "header_format": None,
     }
 
-    cfg_built = Config.load_merged(args_mapping)  # uses project discovery/merge
+    draft = MutableConfig.from_defaults()
 
-    from topmark.file_resolver import resolve_file_list as _resolve_file_list
+    # Load local project config unless disabled by --no-config flag
+    if not args_mapping.get("no_config"):
+        for local_toml_file in ["topmark.toml", "pyproject.toml"]:
+            local_toml = Path(local_toml_file)
+            if local_toml.exists():
+                logger.info("Loading local config from: %s", local_toml)
+                local_config = MutableConfig.from_toml_file(local_toml)
+                if local_config is not None:
+                    draft = draft.merge_with(local_config)
+                break  # only first one
 
-    file_list = _resolve_file_list(cfg_built)
-    return cfg_built, file_list
+    # Additional explicit config files (none by default here, kept for parity)
+    config_files_seq: Sequence[str | Path] = cast(
+        "Sequence[str | Path]", args_mapping.get("config_files", ())
+    )
+    for entry in config_files_seq:
+        p = entry if isinstance(entry, Path) else Path(entry)
+        logger.debug("Adding config file '%s' (type=%s)", entry, type(entry).__name__)
+        if p.exists():
+            logger.info("Loading config override from: %s", p)
+            extra = MutableConfig.from_toml_file(p)
+            if extra is not None:
+                draft = draft.merge_with(extra)
+        else:
+            logger.debug("Config file does not exist: %s", p)
+
+    # Apply CLI-like overrides last and build the frozen Config
+    draft = draft.apply_cli_args(args_mapping)
+    cfg = draft.freeze()
+
+    file_list = resolve_file_list(cfg)
+    return cfg, file_list
 
 
 def check(

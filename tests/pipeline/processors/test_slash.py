@@ -20,7 +20,7 @@ from pathlib import Path
 
 from tests.conftest import mark_pipeline
 from tests.pipeline.conftest import expected_block_lines_for, find_line, run_insert
-from topmark.config import Config
+from topmark.config import MutableConfig
 from topmark.config.logging import get_logger
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline import runner
@@ -40,7 +40,7 @@ def test_slash_processor_basics(tmp_path: Path) -> None:
     f = tmp_path / "app.js"
     f.write_text("console.log('hi');\n")
 
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
     ctx = run_insert(f, cfg)
     assert ctx.file_type and ctx.file_type.name in {"javascript", "js"}  # adjust to your registry
     assert ctx.existing_header_range is None
@@ -55,7 +55,7 @@ def test_slash_insert_top_and_trailing_blank(tmp_path: Path) -> None:
     """
     f = tmp_path / "main.ts"
     f.write_text("export const x = 1;\n")
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
     ctx = run_insert(f, cfg)
 
     lines = ctx.updated_file_lines or []
@@ -83,7 +83,7 @@ def test_slash_detect_existing_header(tmp_path: Path) -> None:
         "\n"
         "#pragma once\n"
     )
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
     ctx = ProcessingContext.bootstrap(path=f, config=cfg)
     steps = get_pipeline("check")
     ctx = runner.run(ctx, steps)
@@ -106,7 +106,7 @@ def test_slash_malformed_header(tmp_path: Path) -> None:
         f"// {TOPMARK_END_MARKER}\n"
         "export {}\n"
     )
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
     ctx = ProcessingContext.bootstrap(path=f, config=cfg)
     ctx = runner.run(ctx, get_pipeline("check"))
 
@@ -126,7 +126,7 @@ def test_slash_idempotent_reapply_no_diff(tmp_path: Path) -> None:
     """
     f = tmp_path / "idem.ts"
     f.write_text('{\n  // comment\n  "a": 1\n}\n')
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
 
     ctx1 = run_insert(f, cfg)
     with f.open("w", encoding="utf-8", newline="") as fp:
@@ -146,7 +146,7 @@ def test_slash_crlf_preserves_newlines(tmp_path: Path) -> None:
     f = tmp_path / "win.cpp"
     with f.open("w", encoding="utf-8", newline="\r\n") as fp:
         fp.write("int main(){return 0;}\n")
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
     ctx = run_insert(f, cfg)
 
     for i, ln in enumerate(ctx.updated_file_lines or []):
@@ -193,7 +193,7 @@ def test_slash_replace_preserves_crlf(tmp_path: Path) -> None:
     with f.open("w", newline="\r\n") as fp:
         # Note: every "\n" will be replaced with the `newline` value specified: "\r\n"
         fp.write(f"// {TOPMARK_START_MARKER}\n// x\n// {TOPMARK_END_MARKER}\nint main(){{}}\n")
-    ctx = run_insert(f, Config.from_defaults())
+    ctx = run_insert(f, MutableConfig.from_defaults().freeze())
     for i, ln in enumerate(ctx.updated_file_lines or []):
         if i < len(ctx.updated_file_lines or []) - 1:
             assert ln.endswith("\r\n"), f"line {i} lost CRLF"

@@ -26,6 +26,33 @@ Use this section if you need details on functions, classes, or constants availab
 
 ## Public API (stable)
 
+### Configuration via mappings (immutable at runtime)
+
+Public API functions accept either a plain **mapping** (that mirrors the TOML structure) or a frozen
+`Config`. Internally, TopMark merges your input into a **mutable builder** and immediately
+`freeze()`s it into an immutable snapshot before running, which prevents accidental mutation and
+keeps results deterministic.
+
+`MutableConfig` is **internal** and not part of the stable API. If you want to “update the config”
+for a single run, pass just the keys you want to override as a mapping:
+
+```python
+from topmark import api
+
+result = api.check(
+    ["src"],
+    config={
+        "fields": {"project": "TopMark", "license": "MIT"},
+        "header": {"fields": ["file", "project", "license"]},
+        "formatting": {"align_fields": True},
+        "files": {"file_types": ["python"], "exclude_patterns": [".venv"]},
+    },
+)
+```
+
+This design keeps the public surface small and semver-stable while allowing flexible per-call
+configuration.
+
 ::: topmark.api
     options:
       heading_level: 2

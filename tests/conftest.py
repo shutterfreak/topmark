@@ -8,10 +8,20 @@
 #
 # topmark:header:end
 
-"""Pytest configuration file for the Topmark test suite.
+"""Pytest configuration for the Topmark test suite.
 
 This file sets up global fixtures and customizes the logging configuration for test runs,
 ensuring consistent and verbose logging output during testing.
+
+Notes:
+    Tests should respect the immutable/mutable configuration split:
+
+    - Build configs using `topmark.config.MutableConfig` (mutable), then
+      `freeze()` into a `topmark.config.Config` for **public API**
+      calls (``topmark.api.check/strip``).
+    - Do **not** mutate a frozen `Config`. If you need to tweak one,
+      call `Config.thaw()`, edit the returned `MutableConfig`,
+      then `freeze()` again.
 """
 
 from __future__ import annotations
@@ -20,6 +30,7 @@ from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
 
 import pytest
 
+from topmark.config import MutableConfig
 from topmark.config.logging import TRACE_LEVEL, setup_logging
 
 if TYPE_CHECKING:
@@ -90,7 +101,7 @@ def isolation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 def cfg(**overrides: Any) -> dict[str, Any]:
-    """Build a minimal config mapping for API calls.
+    """Build a minimal **mapping** for API calls (public surface).
 
     The shape mirrors the TOML structure (e.g., `[files]` table). Callers can
     override nested keys by passing dictionaries that will be merged shallowly.
@@ -108,3 +119,28 @@ def cfg(**overrides: Any) -> dict[str, Any]:
         else:
             base[k] = v
     return base
+
+
+def make_config(**overrides: Any) -> Config:
+    """Return a **frozen** `Config` built from defaults and overrides.
+
+    Recommended for public API calls in tests. Edits are applied on a mutable
+    builder and then frozen for use by the pipeline.
+    """
+    m = MutableConfig.from_defaults()
+    # apply overrides on the mutable builder
+    for k, v in overrides.items():
+        setattr(m, k, v)  # or a safer mapping of supported keys
+    return m.freeze()
+
+
+def make_mutable_config(**overrides: Any) -> MutableConfig:
+    """Return a **mutable** builder for scenarios that need staged edits.
+
+    Use this in tests that exercise merge logic. For public API calls, prefer
+    `make_config` or provide a mapping to the API directly.
+    """
+    m = MutableConfig.from_defaults()
+    for k, v in overrides.items():
+        setattr(m, k, v)
+    return m

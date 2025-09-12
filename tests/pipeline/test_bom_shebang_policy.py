@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from topmark.config import Config
+from topmark.config import MutableConfig
 from topmark.pipeline.context import (
     FileStatus,
     ProcessingContext,
@@ -40,7 +40,7 @@ def _ctx_for(path: Path) -> ProcessingContext:
 
     The resolver will populate `file_type` and `header_processor`.
     """
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
     return ProcessingContext.bootstrap(path=path, config=cfg)
 
 

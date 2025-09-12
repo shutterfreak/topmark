@@ -32,7 +32,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from tests.pipeline.conftest import run_insert
-from topmark.config import Config
+from topmark.config import MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 
 if TYPE_CHECKING:
@@ -71,7 +71,7 @@ def test_insert_preserves_newline_style(
     with f.open("w", encoding="utf-8", newline=newline) as fp:
         fp.write(f"{pre}seed{post}")
 
-    ctx = run_insert(f, Config.from_defaults())
+    ctx = run_insert(f, MutableConfig.from_defaults().freeze())
     lines = ctx.updated_file_lines or []
     for i, ln in enumerate(lines):
         if i < len(lines) - 1:

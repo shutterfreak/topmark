@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.config import Config
+from topmark.config import MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.context import (
     ComparisonStatus,
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 
 def test_comparer_precomputed_lines_set_changed(tmp_path: Path) -> None:
     """Mark CHANGED when `updated_file_lines` differs from `file_lines`."""
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
     ctx = ProcessingContext.bootstrap(path=(tmp_path / "x.py"), config=cfg)
     ctx.file_lines = ["a\n", "b\n"]
     ctx.updated_file_lines = ["a\n"]  # precomputed change (e.g., header removal or edit)
@@ -49,7 +49,7 @@ def test_comparer_precomputed_lines_set_changed(tmp_path: Path) -> None:
 
 def test_comparer_precomputed_lines_set_unchanged(tmp_path: Path) -> None:
     """Mark UNCHANGED when `updated_file_lines` is identical to `file_lines`."""
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
     ctx = ProcessingContext.bootstrap(path=(tmp_path / "y.py"), config=cfg)
     ctx.file_lines = ["same\n", "lines\n"]
     ctx.updated_file_lines = ["same\n", "lines\n"]  # no effective change
@@ -89,7 +89,7 @@ def test_formatting_only_changes_are_detected(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
 
     # Bootstrap a context and run reader+scanner to populate existing header
     ctx = ProcessingContext.bootstrap(path=f, config=cfg)

@@ -45,7 +45,8 @@ import click
 
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cmd_common import (
-    build_config_and_file_list,
+    build_config_common,
+    build_file_list,
     exit_if_no_files,
     filter_view_results,
     get_effective_verbosity,
@@ -239,7 +240,7 @@ def strip_command(
         exclude_patterns=exclude_patterns,
         stdin_filename=stdin_filename,
     )
-    config, file_list = build_config_and_file_list(
+    draft_config = build_config_common(
         ctx=ctx,
         plan=plan,
         no_config=no_config,
@@ -251,10 +252,17 @@ def strip_command(
     )
 
     # Propagate runtime intent for updater (terminal vs preview write status)
-    config.apply_changes = bool(apply_changes)
+    draft_config.apply_changes = bool(apply_changes)
+
+    config = draft_config.freeze()
 
     temp_path = plan.temp_path  # for cleanup/STDIN-apply branch
     stdin_mode = plan.stdin_mode
+    file_list = build_file_list(
+        config,
+        stdin_mode=stdin_mode,
+        temp_path=temp_path,
+    )
 
     # Determine effective program-output verbosity for gating extra details
     vlevel = get_effective_verbosity(ctx, config)

@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.config import Config
+from topmark.config import MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.context import ComparisonStatus, GenerationStatus, ProcessingContext
 from topmark.pipeline.steps import builder, comparer, reader, renderer, resolver, scanner
@@ -46,7 +46,7 @@ def test_e2e_content_change_detected(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
     ctx = ProcessingContext.bootstrap(path=f, config=cfg)
 
     # Full e2e path (no synthesis): resolver → reader → scanner → builder → renderer → comparer
@@ -89,7 +89,7 @@ def test_e2e_formatting_only_change_detected(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
 
     ctx = ProcessingContext.bootstrap(path=f, config=cfg)
     ctx = resolver.resolve(ctx)
@@ -105,8 +105,9 @@ def test_e2e_formatting_only_change_detected(tmp_path: Path) -> None:
     # Do NOT call renderer here: this test supplies the canonical render explicitly
     # so that we can focus the comparer on formatting-only differences.
     # Prepare a render-config that expresses the canonical order for the fields.
-    cfg_for_render = Config.from_defaults()
-    cfg_for_render.header_fields = ["license", "project"]
+    draft_cfg_for_render = MutableConfig.from_defaults()
+    draft_cfg_for_render.header_fields = ["license", "project"]
+    cfg_for_render = draft_cfg_for_render.freeze()
 
     assert ctx.header_processor is not None, "Header processor must be set by resolver"
     ctx.expected_header_dict = dict(ctx.existing_header_dict or {})

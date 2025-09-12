@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING
 import click
 
 from topmark.cli.cmd_common import get_effective_verbosity
-from topmark.config import Config
+from topmark.config import MutableConfig
 
 if TYPE_CHECKING:
     from topmark.cli_shared.console_api import ConsoleLike
@@ -65,7 +65,7 @@ def init_config_command() -> None:
 
     console.print(
         console.styled(
-            Config.get_default_config_toml(),
+            MutableConfig.get_default_config_toml(),
             fg="cyan",
         )
     )

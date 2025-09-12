@@ -18,10 +18,11 @@ and default config sources.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from topmark.cli.cli_types import ArgsNamespace, build_args_namespace
-from topmark.config import Config
+from topmark.config import MutableConfig
 from topmark.config.logging import get_logger
 
 if TYPE_CHECKING:
@@ -51,7 +52,7 @@ def resolve_config_from_click(
     config_paths: list[str],
     align_fields: bool,
     header_format: HeaderOutputFormat | None,
-) -> Config:
+) -> MutableConfig:
     """Build a [`Config`][topmark.config.Config] from Click parameters.
 
     Args:
@@ -74,7 +75,7 @@ def resolve_config_from_click(
         header_format (HeaderOutputFormat | None): Selected header output format.
 
     Returns:
-        Config: The merged configuration.
+        MutableConfig: The merged configuration.
     """
     args: ArgsNamespace = build_args_namespace(
         verbosity_level=verbosity_level,
@@ -94,4 +95,54 @@ def resolve_config_from_click(
         header_format=header_format,
     )
     logger.trace("ArgsNamespace: %s", args)
-    return Config.load_merged(args)
+
+    # Resolution order (most specific last):
+    #   1) packaged defaults
+    #   2) discovered project config in CWD (pyproject.toml → [tool.topmark], else topmark.toml),
+    #      unless --no-config is set OR explicit config files were provided
+    #   3) any explicitly provided config files, in the given order
+    #   4) CLI overrides (flags/args)
+    #
+    # The result is a MutableConfig (builder) which callers can .freeze() before running.
+
+    draft = MutableConfig.from_defaults()
+
+    # (2) discover a single local project config if allowed and none explicitly provided
+    if not args.get("no_config") and not (args.get("config_files") or []):
+        cwd = Path.cwd()
+        pyproject = cwd / "pyproject.toml"
+        topmark_toml = cwd / "topmark.toml"
+        discovered: Path | None = None
+        if pyproject.exists():
+            discovered = pyproject
+        elif topmark_toml.exists():
+            discovered = topmark_toml
+
+        if discovered is not None:
+            logger.info("Loading discovered project config: %s", discovered)
+            found = MutableConfig.from_toml_file(discovered)
+            if found is not None:
+                draft = draft.merge_with(found)
+            else:
+                logger.warning(
+                    "Discovered config is missing [tool.topmark] or invalid: %s",
+                    discovered,
+                )
+
+    # (3) apply any explicit config files next (these override discovered/defaults)
+    for entry in args.get("config_files") or []:
+        p = Path(entry)
+        if not p.exists():
+            logger.warning("Config file not found: %s", p)
+            continue
+        logger.info("Loading explicit config: %s", p)
+        extra = MutableConfig.from_toml_file(p)
+        if extra is not None:
+            draft = draft.merge_with(extra)
+        else:
+            logger.warning("Ignoring config without [tool.topmark]: %s", p)
+
+    # (4) finally, CLI args override everything
+    draft = draft.apply_cli_args(args)
+
+    return draft

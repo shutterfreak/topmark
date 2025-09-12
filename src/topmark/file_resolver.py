@@ -81,14 +81,17 @@ def resolve_file_list(config: Config) -> list[Path]:
     """
     logger.debug("resolve_file_list(): config: %s", config)
 
-    positional_paths = config.files if hasattr(config, "files") else []
-    include_patterns = config.include_patterns if hasattr(config, "include_patterns") else []
-    include_file = config.include_from if hasattr(config, "include_from") else None
-    exclude_patterns = config.exclude_patterns if hasattr(config, "exclude_patterns") else []
-    exclude_file = config.exclude_from if hasattr(config, "exclude_from") else None
-    config_files = config.config_files if hasattr(config, "config_files") else []
-    file_types: set[str] = config.file_types if hasattr(config, "file_types") else set()
-    files_from = config.files_from if hasattr(config, "files_from") else []
+    # Normalize config collections to stable, predictable types.
+    # Use getattr with defaults so SimpleNamespace-based test doubles work fine
+    positional_paths: tuple[str, ...] = tuple(getattr(config, "files", ()) or ())
+    include_patterns: tuple[str, ...] = tuple(getattr(config, "include_patterns", ()) or ())
+    include_file: tuple[str | Path, ...] = tuple(getattr(config, "include_from", ()) or ())
+    exclude_patterns: tuple[str, ...] = tuple(getattr(config, "exclude_patterns", ()) or ())
+    exclude_file: tuple[str | Path, ...] = tuple(getattr(config, "exclude_from", ()) or ())
+    config_files: tuple[str | Path, ...] = tuple(getattr(config, "config_files", ()) or ())
+    file_types: frozenset[str] = frozenset(getattr(config, "file_types", ()) or ())
+    files_from: tuple[str | Path, ...] = tuple(getattr(config, "files_from", ()) or ())
+    stdin_flag: bool = bool(getattr(config, "stdin", False))
 
     logger.trace(
         """\
@@ -100,6 +103,7 @@ def resolve_file_list(config: Config) -> list[Path]:
     config_files: %s
     file_type_list: %s
     files_from: %s
+    stdin_flag: %s
     config: %s
 """,
         positional_paths,
@@ -110,6 +114,7 @@ def resolve_file_list(config: Config) -> list[Path]:
         config_files,
         file_types,
         files_from,
+        stdin_flag,
         config,
     )
 
@@ -137,12 +142,15 @@ def resolve_file_list(config: Config) -> list[Path]:
         # Otherwise, return empty list (path does not exist or is unsupported)
         return []
 
-    # Step 1: Build candidate set from positional paths or config_files
-    if positional_paths:
+    # Step 1: Build candidate set from positional paths, or fall back to config_files
+    # when there are no positional paths and we’re not using stdin/files-from.
+
+    if len(positional_paths) > 0:
         # Use positional paths if provided
-        input_paths = [Path(p) for p in positional_paths]
-    elif config_files:
-        # Use config files as input paths if no positional paths or stdin
+        # NOTE: static code check incorrectly assumes code is unreachable
+        input_paths: list[Path] = [Path(p) for p in positional_paths]
+    elif not files_from and not stdin_flag:
+        # `config_files` are roots/patterns provided by configuration; expand them
         input_paths = [Path(p) for p in config_files]
     else:
         input_paths = []
@@ -201,7 +209,7 @@ def resolve_file_list(config: Config) -> list[Path]:
 
     # Step 3: Apply include intersection filter (if any include patterns)
     # Merge include_patterns + include_from patterns
-    combined_include_patterns = list(include_patterns or [])
+    combined_include_patterns: list[str] = list(include_patterns or [])
     if include_file:
         for f in include_file:
             # Load patterns from include files and add them to the include list
@@ -212,7 +220,7 @@ def resolve_file_list(config: Config) -> list[Path]:
         candidate_set = {p for p in candidate_set if include_spec.match_file(p.as_posix())}
 
     # Step 4: Apply exclude subtraction filter (if any exclude patterns)
-    combined_exclude_patterns = list(exclude_patterns or [])
+    combined_exclude_patterns: list[str] = list(exclude_patterns or [])
     if exclude_file:
         for f in exclude_file:
             # Load patterns from exclude files and add them to the exclude list

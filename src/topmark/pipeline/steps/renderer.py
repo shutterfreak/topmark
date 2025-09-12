@@ -48,9 +48,9 @@ def render(ctx: ProcessingContext) -> ProcessingContext:
         ProcessingContext: Same context with the following fields set depending on
         the generation status:
         * `NO_FIELDS` – no‑op; sets `expected_header_lines = None` and
-          `expected_header_block = None`.
+            `expected_header_block = None`.
         * `GENERATED` – sets `expected_header_lines` and `expected_header_block`.
-          If `expected_header_dict` is empty, produces an empty render defensively.
+            If `expected_header_dict` is empty, produces an empty render defensively.
         * any other status – returns unchanged.
 
     Notes:

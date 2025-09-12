@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.config import Config
+from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.context import ProcessingContext
 from topmark.pipeline.steps import (
@@ -59,7 +59,7 @@ def test_patcher_diff_preserves_crlf_and_render_markers(tmp_path: Path) -> None:
     with f.open("w", encoding="utf-8", newline="\r\n") as fp:
         fp.write(f"// {TOPMARK_START_MARKER}\n// h\n// {TOPMARK_END_MARKER}\nconsole.log(1)\n")
 
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
     ctx = _run_to_patcher(f, cfg)
 
     # We expect a change (strip/replace) to have produced a diff.

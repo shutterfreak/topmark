@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from topmark.cli_shared.utils import classify_outcome
-from topmark.config import Config
+from topmark.config import MutableConfig
 from topmark.pipeline.context import (
     ComparisonStatus,
     FileStatus,
@@ -43,7 +43,11 @@ def _ctx_with_status(**kwargs: Any) -> ProcessingContext:
       ProcessingContext: Context with the requested status, dummy path/config.
     """
     status = HeaderProcessingStatus(**kwargs)
-    return ProcessingContext(path=Path("/tmp/x"), config=Config.from_defaults(), status=status)
+    return ProcessingContext(
+        path=Path("/tmp/x"),
+        config=MutableConfig.from_defaults().freeze(),
+        status=status,
+    )
 
 
 def _assert_key_label(ctx: ProcessingContext, expected_key: str, label_sub: str) -> None:

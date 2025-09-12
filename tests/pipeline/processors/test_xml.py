@@ -20,7 +20,7 @@ from pathlib import Path
 
 from tests.conftest import mark_pipeline
 from tests.pipeline.conftest import expected_block_lines_for, find_line, run_insert
-from topmark.config import Config
+from topmark.config import MutableConfig
 from topmark.config.logging import get_logger
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline import runner
@@ -42,7 +42,7 @@ def test_xml_processor_basics(tmp_path: Path) -> None:
     file = tmp_path / "sample.html"
     file.write_text("<html>\n<body><p>Hello.</p></body></html>")
 
-    config = Config.from_defaults()
+    config = MutableConfig.from_defaults().freeze()
     context = ProcessingContext.bootstrap(path=file, config=config)
     steps = get_pipeline("check")
     context = runner.run(context, steps)
@@ -63,7 +63,7 @@ def test_html_top_of_file_with_trailing_blank(tmp_path: Path) -> None:
     f = tmp_path / "index.html"
     f.write_text("<!DOCTYPE html>\n<html></html>\n")
 
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
     ctx = run_insert(f, cfg)
 
     lines = ctx.updated_file_lines or []
@@ -89,7 +89,7 @@ def test_markdown_top_of_file_with_trailing_blank(tmp_path: Path) -> None:
     f = tmp_path / "README.md"
     f.write_text("# Title\n\nSome text.\n")
 
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
     ctx = run_insert(f, cfg)
 
     lines = ctx.updated_file_lines or []
@@ -112,7 +112,7 @@ def test_xml_with_declaration_only(tmp_path: Path) -> None:
     f = tmp_path / "doc.xml"
     f.write_text('<?xml version="1.0"?>\n<root/>\n')
 
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
     ctx = run_insert(f, cfg)
 
     lines = ctx.updated_file_lines or []
@@ -138,7 +138,7 @@ def test_xml_with_declaration_and_doctype(tmp_path: Path) -> None:
     f = tmp_path / "doc2.xml"
     f.write_text('<?xml version="1.0"?>\n<!DOCTYPE note SYSTEM "Note.dtd">\n<note/>\n')
 
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
     ctx = run_insert(f, cfg)
 
     lines = ctx.updated_file_lines or []
@@ -166,7 +166,7 @@ def test_svg_with_declaration(tmp_path: Path) -> None:
         '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"></svg>\n'
     )
 
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
     ctx = run_insert(f, cfg)
 
     lines = ctx.updated_file_lines or []
@@ -188,7 +188,7 @@ def test_vue_top_of_file(tmp_path: Path) -> None:
     f = tmp_path / "App.vue"
     f.write_text("<template>\n  <div/>\n</template>\n")
 
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
     ctx = run_insert(f, cfg)
 
     lines = ctx.updated_file_lines or []
@@ -210,7 +210,7 @@ def test_svelte_top_of_file(tmp_path: Path) -> None:
     f = tmp_path / "Widget.svelte"
     f.write_text("<script>\n  let x = 1;\n</script>\n")
 
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
     ctx = run_insert(f, cfg)
 
     lines = ctx.updated_file_lines or []
@@ -234,7 +234,7 @@ def test_xml_single_line_declaration(tmp_path: Path) -> None:
     # No newline between declaration and root element
     f.write_text('<?xml version="1.0"?><root/>\n')
 
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
     ctx = run_insert(f, cfg)
 
     lines = ctx.updated_file_lines or []
@@ -267,7 +267,7 @@ def test_xml_single_line_decl_and_doctype(tmp_path: Path) -> None:
     # XML declaration, DOCTYPE, and root all on a single line
     f.write_text('<?xml version="1.0"?><!DOCTYPE note SYSTEM "Note.dtd"><note/>\n')
 
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
     ctx = run_insert(f, cfg)
 
     lines = ctx.updated_file_lines or []
@@ -299,7 +299,7 @@ def test_html_with_existing_banner_comment(tmp_path: Path) -> None:
     f = tmp_path / "banner.html"
     f.write_text("<!-- existing:license banner -->\n<html></html>\n")
 
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
     ctx = run_insert(f, cfg)
 
     lines = ctx.updated_file_lines or []
@@ -329,7 +329,7 @@ def test_markdown_with_existing_banner_comment(tmp_path: Path) -> None:
     f = tmp_path / "BANNER.md"
     f.write_text("<!-- md:banner -->\n# Title\n\n")
 
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
     ctx = run_insert(f, cfg)
 
     lines = ctx.updated_file_lines or []
@@ -355,7 +355,7 @@ def test_xml_decl_then_existing_banner_comment(tmp_path: Path) -> None:
     f = tmp_path / "doc_with_banner.xml"
     f.write_text('<?xml version="1.0"?>\n<!-- xml:banner -->\n<root/>\n')
 
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
     ctx = run_insert(f, cfg)
 
     lines = ctx.updated_file_lines or []
@@ -388,7 +388,7 @@ def test_xml_decl_doctype_then_existing_banner_comment(tmp_path: Path) -> None:
         "<note/>\n"
     )
 
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
     ctx = run_insert(f, cfg)
 
     lines = ctx.updated_file_lines or []
@@ -414,7 +414,7 @@ def test_xml_idempotent_reapply_no_diff(tmp_path: Path) -> None:
     f = tmp_path / "idem.html"
     f.write_text("<html><body>hi</body></html>\n")
 
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
 
     ctx1 = run_insert(f, cfg)
     lines1 = ctx1.updated_file_lines or []
@@ -476,7 +476,7 @@ def test_markdown_fenced_code_no_insertion_inside(tmp_path: Path) -> None:
     """
     f = tmp_path / "FENCE.md"
     f.write_text(f"```html\n<!-- {TOPMARK_START_MARKER} -->\n```\nReal content\n")
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
     ctx = run_insert(f, cfg)
 
     lines = ctx.updated_file_lines or []
@@ -499,7 +499,7 @@ def test_xml_doctype_with_internal_subset(tmp_path: Path) -> None:
     """
     f = tmp_path / "subset.xml"
     f.write_text('<?xml version="1.0"?>\n<!DOCTYPE root [\n  <!ELEMENT root EMPTY>\n]>\n<root/>\n')
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
     ctx = run_insert(f, cfg)
     lines = ctx.updated_file_lines or []
 
@@ -525,7 +525,7 @@ def test_xml_bom_preserved_text_insert(tmp_path: Path) -> None:
     """
     f = tmp_path / "bom.xml"
     f.write_bytes(b"\xef\xbb\xbf<?xml version='1.0'?>\n<root/>\n")
-    ctx = run_insert(f, Config.from_defaults())
+    ctx = run_insert(f, MutableConfig.from_defaults().freeze())
 
     assert (ctx.updated_file_lines or [])[0].startswith("\ufeff")
 

@@ -17,7 +17,6 @@ encapsulate plumbing such as running pipelines, filtering, and error exits.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import click
@@ -32,8 +31,10 @@ from topmark.pipeline.context import ComparisonStatus, FileStatus, ProcessingCon
 from topmark.pipeline.pipelines import get_pipeline
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from topmark.cli.io import InputPlan
-    from topmark.config import Config
+    from topmark.config import Config, MutableConfig
     from topmark.rendering.formats import HeaderOutputFormat
 
 logger = get_logger(__name__)
@@ -173,7 +174,7 @@ def build_config_common(
     relative_to: str | None,
     align_fields: bool,
     header_format: HeaderOutputFormat | None,
-) -> Config:
+) -> MutableConfig:
     """Materialize Config from an input plan (no file list resolution)."""
     return resolve_config_from_click(
         ctx=ctx,
@@ -193,57 +194,3 @@ def build_config_common(
         align_fields=align_fields,
         header_format=header_format,
     )
-
-
-def build_config_and_file_list(
-    *,
-    ctx: click.Context,
-    plan: InputPlan,
-    no_config: bool,
-    config_paths: list[str],
-    file_types: list[str],
-    relative_to: str | None,
-    align_fields: bool,
-    header_format: HeaderOutputFormat | None,
-) -> tuple[Config, list[Path]]:
-    """Materialize Config and file list from an input plan."""
-    if plan.stdin_mode:
-        config = resolve_config_from_click(
-            ctx=ctx,
-            verbosity_level=ctx.obj.get("verbosity_level"),
-            apply_changes=ctx.obj.get("apply_changes"),
-            files=plan.paths,
-            files_from=plan.files_from,
-            stdin=True,
-            include_patterns=plan.include_patterns,
-            include_from=plan.include_from,
-            exclude_patterns=plan.exclude_patterns,
-            exclude_from=plan.exclude_from,
-            file_types=file_types,
-            relative_to=relative_to,
-            no_config=no_config,
-            config_paths=config_paths,
-            align_fields=align_fields,
-            header_format=header_format,
-        )
-        return config, [Path(plan.paths[0])]
-    else:
-        config = resolve_config_from_click(
-            ctx=ctx,
-            verbosity_level=ctx.obj.get("verbosity_level"),
-            apply_changes=ctx.obj.get("apply_changes"),
-            files=plan.paths,
-            files_from=plan.files_from,
-            stdin=False,
-            include_patterns=plan.include_patterns,
-            include_from=plan.include_from,
-            exclude_patterns=plan.exclude_patterns,
-            exclude_from=plan.exclude_from,
-            file_types=file_types,
-            relative_to=relative_to,
-            no_config=no_config,
-            config_paths=config_paths,
-            align_fields=align_fields,
-            header_format=header_format,
-        )
-        return config, resolve_file_list(config)

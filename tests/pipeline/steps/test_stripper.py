@@ -18,7 +18,7 @@ minimal `ProcessingContext` without running the full pipeline.
 
 from pathlib import Path
 
-from topmark.config import Config
+from topmark.config import MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.context import HeaderStatus, ProcessingContext
 from topmark.pipeline.processors.base import HeaderProcessor
@@ -34,7 +34,7 @@ def test_stripper_uses_span_and_trims_leading_blank(tmp_path: Path) -> None:
         "\n",
         "code\n",
     ]
-    cfg = Config.from_defaults()
+    cfg = MutableConfig.from_defaults().freeze()
     ctx = ProcessingContext.bootstrap(path=(tmp_path / "x.py"), config=cfg)
     ctx.file_lines = lines
     # Use the base processor; removal relies on span and generic bounds logic.
