@@ -1,8 +1,8 @@
 # topmark:header:start
 #
+#   project      : TopMark
 #   file         : filetypes.py
 #   file_relpath : src/topmark/cli/commands/filetypes.py
-#   project      : TopMark
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

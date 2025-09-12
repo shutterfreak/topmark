@@ -1,9 +1,9 @@
 <!--
 topmark:header:start
 
+  project      : TopMark
   file         : api-stability.md
   file_relpath : docs/dev/api-stability.md
-  project      : TopMark
   license      : MIT
   copyright    : (c) 2025 Olivier Biot
 

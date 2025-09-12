@@ -1,8 +1,8 @@
 # topmark:header:start
 #
+#   project      : TopMark
 #   file         : dump_config.py
 #   file_relpath : src/topmark/cli/commands/dump_config.py
-#   project      : TopMark
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

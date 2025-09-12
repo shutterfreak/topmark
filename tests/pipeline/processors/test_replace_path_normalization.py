@@ -1,8 +1,8 @@
 # topmark:header:start
 #
+#   project      : TopMark
 #   file         : test_replace_path_normalization.py
 #   file_relpath : tests/pipeline/processors/test_replace_path_normalization.py
-#   project      : TopMark
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

@@ -1,8 +1,8 @@
 # topmark:header:start
 #
+#   project      : TopMark
 #   file         : policy.py
 #   file_relpath : src/topmark/filetypes/policy.py
-#   project      : TopMark
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

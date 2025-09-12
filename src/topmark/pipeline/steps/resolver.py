@@ -1,8 +1,8 @@
 # topmark:header:start
 #
+#   project      : TopMark
 #   file         : resolver.py
 #   file_relpath : src/topmark/pipeline/steps/resolver.py
-#   project      : TopMark
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

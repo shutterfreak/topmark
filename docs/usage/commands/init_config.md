@@ -1,9 +1,9 @@
 <!--
 topmark:header:start
 
+  project      : TopMark
   file         : init_config.md
   file_relpath : docs/usage/commands/init_config.md
-  project      : TopMark
   license      : MIT
   copyright    : (c) 2025 Olivier Biot
 

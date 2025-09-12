@@ -1,8 +1,8 @@
 # topmark:header:start
 #
+#   project      : TopMark
 #   file         : test_bom_newline_matrix.py
 #   file_relpath : tests/pipeline/processors/test_bom_newline_matrix.py
-#   project      : TopMark
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

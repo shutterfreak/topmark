@@ -1,9 +1,9 @@
 <!--
 topmark:header:start
 
+  project      : TopMark
   file         : contributing.md
   file_relpath : docs/contributing.md
-  project      : TopMark
   license      : MIT
   copyright    : (c) 2025 Olivier Biot
 

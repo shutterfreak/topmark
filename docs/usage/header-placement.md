@@ -1,9 +1,9 @@
 <!--
 topmark:header:start
 
+  project      : TopMark
   file         : header-placement.md
   file_relpath : docs/usage/header-placement.md
-  project      : TopMark
   license      : MIT
   copyright    : (c) 2025 Olivier Biot
 

@@ -1,8 +1,8 @@
 // topmark:header:start
 //
+//   project      : TopMark
 //   file         : version-warning.js
 //   file_relpath : docs/assets/version-warning.js
-//   project      : TopMark
 //   license      : MIT
 //   copyright    : (c) 2025 Olivier Biot
 //

@@ -1,9 +1,9 @@
 <!--
 topmark:header:start
 
+  project      : TopMark
   file         : internals.md
   file_relpath : docs/api/internals.md
-  project      : TopMark
   license      : MIT
   copyright    : (c) 2025 Olivier Biot
 

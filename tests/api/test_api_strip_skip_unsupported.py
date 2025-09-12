@@ -1,8 +1,8 @@
 # topmark:header:start
 #
+#   project      : TopMark
 #   file         : test_api_strip_skip_unsupported.py
 #   file_relpath : tests/api/test_api_strip_skip_unsupported.py
-#   project      : TopMark
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

@@ -1,9 +1,9 @@
 <!--
 topmark:header:start
 
+  project      : TopMark
   file         : check.md
   file_relpath : docs/usage/commands/check.md
-  project      : TopMark
   license      : MIT
   copyright    : (c) 2025 Olivier Biot
 

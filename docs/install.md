@@ -1,9 +1,9 @@
 <!--
 topmark:header:start
 
+  project      : TopMark
   file         : install.md
   file_relpath : docs/install.md
-  project      : TopMark
   license      : MIT
   copyright    : (c) 2025 Olivier Biot
 

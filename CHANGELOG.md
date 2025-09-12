@@ -1,9 +1,9 @@
 <!--
 topmark:header:start
 
+  project      : TopMark
   file         : CHANGELOG.md
   file_relpath : CHANGELOG.md
-  project      : TopMark
   license      : MIT
   copyright    : (c) 2025 Olivier Biot
 
