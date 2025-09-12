@@ -10,7 +10,7 @@
 
 [project]
 name = "topmark"
-version = "0.6.0.dev0"
+version = "0.6.0"
 description = "A Python CLI to inspect, validate, and manage license and copyright headers."
 authors = [{ name = "Olivier Biot", email = "olivier.biot@gmail.com" }]
 license = "MIT"

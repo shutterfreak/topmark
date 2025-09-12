@@ -16,6 +16,60 @@ All notable changes to this project will be documented in this file. This projec
 [Semantic Versioning](https://semver.org/) and follows a Keep‑a‑Changelog–style structure with the
 sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
+## [0.6.0] - 2025-09-12
+
+### Added
+
+- **Public API docs**: explain configuration via mappings and why runtime uses an immutable `Config`. (Commit: `d778ace`)
+- **API snapshot tooling**:
+  - `tools/api_snapshot.py` to generate a curated public API snapshot.
+  - Make targets: `public-api-update`, `.public-api-update`, `public-api-check`, `public-api-ensure-clean`.
+  - Tox envs `py{310,311,312,313}-api` to run only the snapshot test. (Commit: `a584577`)
+- **Docs quality**:
+  - Standardize Google-style docstrings; integrate `pydoclint`.
+  - Improve MkDocs + mkdocstrings rendering. (Commit: `f649731`)
+
+### Changed
+
+- **Configuration architecture**:
+  - Introduce **`MutableConfig`** (internal builder) and **immutable `Config`** (runtime snapshot).
+  - Public API continues to accept **`Mapping[str, Any] | None`**; inputs are normalized internally and frozen before execution.
+  - Renderer constructs an effective snapshot without mutating inputs. (Commit: `d778ace`)
+- **Config resolution (CLI)**:
+  - Resolution order now explicit and consistent:
+    1. packaged defaults → 2) discovered project config in CWD (`pyproject.toml` `[tool.topmark]`, else `topmark.toml`) **unless** `--no-config` or explicit `--config` → 3) `--config` files (in order) → 4) CLI overrides. (Commit: `d778ace`)
+- **Header field ordering**:
+  - `topmark check` enforces the configured field order consistently. (Commit: `d778ace`)
+- **Typing/import hygiene**:
+  - Adopt postponed annotations and move type-only imports under `TYPE_CHECKING`.
+  - Narrow typing imports; reduce unnecessary list materialization in CLI plumbing.
+  - Faster imports; fewer cycles. (Commit: `adc35f9`)
+
+### Fixed
+
+- CLI and pipeline now reflect header order deterministically (no “up-to-date” false negatives when order differed). (Commit: `d778ace`)
+- Type-checking and lint issues (casts, variable redefinitions, analyzer false positives) resolved in CLI helpers and resolver paths. (Commits: `d778ace`, `adc35f9`)
+
+### Docs
+
+- Add **“Configuration via mappings (immutable at runtime)”** section to the public API docs and mirror a concise note in the `topmark.api` module docstring. (Commit: `d778ace`)
+- Normalize docstrings across the codebase; remove Sphinx roles in favor of Markdown-friendly mkdocstrings. (Commit: `f649731`)
+
+### Tooling
+
+- Add `pydoclint` to dev toolchain; wire into Makefile and pre-commit.
+- Reorder pre-commit hooks for faster feedback.
+- Snapshot workflow integrated into Makefile and CI-friendly checks. (Commits: `f649731`, `a584577`)
+
+### Chore
+
+- Repository-wide header reformat to the new field order (no functional changes). (Commit: `bcac2ed`)
+
+#### Notes
+
+- **No public API surface changes**: `topmark.api.check/strip` signatures unchanged.
+- `MutableConfig` is **internal** (not part of the stable API); public callers should pass a mapping or a frozen `Config`.
+
 ## [0.5.1] - 2025-09-09
 
 ### Fixed

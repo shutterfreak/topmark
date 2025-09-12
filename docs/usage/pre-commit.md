@@ -24,7 +24,7 @@ Add TopMark to a project's `.pre-commit-config.yaml`:
 ```yaml
 repos:
   - repo: https://github.com/shutterfreak/topmark
-    rev: v0.2.0   # pin to a released tag
+    rev: v0.6.0   # pin to a released tag
     hooks:
       - id: topmark-check
         # Optional: limit scope to supported text types
