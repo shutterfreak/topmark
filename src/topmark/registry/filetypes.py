@@ -59,10 +59,10 @@ class FileTypeRegistry:
         Returns:
             tuple[str, ...]: Sorted file type names.
         """
-        from topmark.filetypes.instances import get_file_type_registry as _get
+        from topmark.filetypes.instances import get_file_type_registry as _get_ft
 
         with cls._lock:
-            return tuple(sorted(_get().keys()))
+            return tuple(sorted(_get_ft().keys()))
 
     @classmethod
     def supported_names(cls) -> tuple[str, ...]:
@@ -92,10 +92,10 @@ class FileTypeRegistry:
         Returns:
             FileType | None: The `FileType` object if found, else None.
         """
-        from topmark.filetypes.instances import get_file_type_registry as _get
+        from topmark.filetypes.instances import get_file_type_registry as _get_ft
 
         with cls._lock:
-            return _get().get(name)
+            return _get_ft().get(name)
 
     @classmethod
     def as_mapping(cls) -> Mapping[str, FileType]:
@@ -107,10 +107,10 @@ class FileTypeRegistry:
         Notes:
             The returned mapping is a `MappingProxyType` and must not be mutated.
         """
-        from topmark.filetypes.instances import get_file_type_registry as _get
+        from topmark.filetypes.instances import get_file_type_registry as _get_ft
 
         with cls._lock:
-            return MappingProxyType(_get())
+            return MappingProxyType(_get_ft())
 
     @classmethod
     def iter_meta(cls) -> Iterator[FileTypeMeta]:
@@ -119,10 +119,10 @@ class FileTypeRegistry:
         Yields:
             FileTypeMeta: Serializable metadata about each file type.
         """
-        from topmark.filetypes.instances import get_file_type_registry as _get
+        from topmark.filetypes.instances import get_file_type_registry as _get_ft
 
         with cls._lock:
-            for name, ft in _get().items():
+            for name, ft in _get_ft().items():
                 yield FileTypeMeta(
                     name=name,
                     description=getattr(ft, "description", "") or "",
@@ -191,8 +191,8 @@ class FileTypeRegistry:
             - Thread safe via RLock; process-global state; do not mutate in long-lived
               multi-tenant processes.
         """
-        from topmark.filetypes.instances import get_file_type_registry as _get
+        from topmark.filetypes.instances import get_file_type_registry as _get_ft
 
         with cls._lock:
-            reg: MutableMapping[str, FileType] = _get()
+            reg: MutableMapping[str, FileType] = _get_ft()
             return reg.pop(name, None) is not None

@@ -238,7 +238,7 @@ topmark check --apply src/
 ```
 
 > For full details, options, examples, and exit codes, see the dedicated guide:
-> **[Adding & updating headers with `topmark`](docs/usage/commands/topmark.md)**
+> **[Adding & updating headers with `topmark`](docs/usage/commands/check.md)**
 
 ### Removing headers with `strip`
 

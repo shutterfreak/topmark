@@ -8,6 +8,12 @@
 #
 # topmark:header:end
 
+# Make broken internal links fail the build
+strict: true
+validation:
+  links:
+    # Treat absolute links to docs pages as relative to the docs root
+    absolute_links: relative_to_docs  
 site_name: TopMark
 site_description: A tool to inspect, validate, and manage file headers in codebases.
 site_author: Olivier Biot

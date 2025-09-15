@@ -31,6 +31,24 @@ repos:
         additional_dependencies:
           - mdformat-tables
 
+  - repo: local # Use local lychee setup to overcome the 'nightly' release tag problem in autoupdate
+    hooks:
+      - id: lychee-md
+        name: lychee (changed Markdown)
+        entry: lychee
+        language: system
+        args: ["--config", "lychee.toml", "--no-progress"]
+        files: ^(README\.md|docs/).*\.(md|MD)$
+        pass_filenames: true
+
+      - id: lychee-src
+        name: lychee (changed Python docstrings)
+        entry: lychee
+        language: system
+        args: ["--config", "lychee.toml", "--no-progress"]
+        files: ^src/.*\.py$
+        pass_filenames: true
+
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.13.0
     hooks:
@@ -39,7 +57,7 @@ repos:
 
   # Project-specific header checker (after formatters)
   - repo: https://github.com/shutterfreak/topmark
-    rev: v0.5.1
+    rev: v0.6.0
     hooks:
       - id: topmark-check
         # files: '\.(py|md|toml|ya?ml|sh|Makefile)$'
@@ -50,6 +68,17 @@ repos:
     hooks:
       - id: pydoclint
         args: ["-q"]
+
+  # Links in docstrings (code)
+  - repo: local
+    hooks:
+      - id: docstring-ref-links
+        name: docstring link style (TopMark)
+        entry: python
+        language: system
+        args: ["tools/check_docstring_links.py"]
+        files: ^src/.*\.py$
+        pass_filenames: true
 
   # TOML lint (after TOML format)
   - repo: https://github.com/ComPWA/mirrors-taplo

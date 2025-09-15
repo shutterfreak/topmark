@@ -15,11 +15,11 @@ This module exposes structured, read-only oriented registries plus optional
 mutation hooks. It is part of the public API and provides stable, serializable
 metadata views without exposing internal implementation details.
 
-The [`Registry`][topmark.registry.Registry] facade is the **stable public surface**
+The [`topmark.registry.Registry`][] facade is the **stable public surface**
 for read-only operations; the concrete registries remain available for advanced scenarios
 and tests but are not part of the semver stability promise.
 
-A FileType can be recognized (present in [`FileTypeRegistry`][topmark.registry.FileTypeRegistry])
+A FileType can be recognized (present in [`topmark.registry.FileTypeRegistry`][])
 but unsupported (no processor registered).
 
 Typical usage:
@@ -43,8 +43,8 @@ Typical usage:
 
 Warning:
     Mutations operate on global registries shared across the process. Use them
-    sparingly in production; in tests, wrap them in try/finally or a dedicated
-    context manager to ensure cleanup.
+    sparingly in production; in tests, wrap them in ``try``/``finally``
+    or a dedicated context manager to ensure cleanup.
 """
 
 from __future__ import annotations
@@ -81,7 +81,7 @@ def iter_bindings() -> Iterator[Binding]:
         Binding: A pair containing file type metadata and the optionally
         bound processor metadata (``None`` for unsupported types).
     """
-    proc = {m.name: m for m in HeaderProcessorRegistry.iter_meta()}
+    proc: dict[str, ProcessorMeta] = {m.name: m for m in HeaderProcessorRegistry.iter_meta()}
     for ft in FileTypeRegistry.iter_meta():
         yield Binding(filetype=ft, processor=proc.get(ft.name))
 

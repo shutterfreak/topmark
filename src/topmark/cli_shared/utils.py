@@ -46,7 +46,7 @@ class OutputFormat(str, Enum):
 
     Notes:
         - Machine formats (``JSON`` and ``NDJSON``) must not include ANSI color or diffs.
-        - Use with [`EnumChoiceParam`][topmark.cli.cli_types.EnumChoiceParam] to parse ``--format``
+        - Use with [`topmark.cli.cli_types.EnumChoiceParam`][] to parse ``--format``
           from Click.
     """
 

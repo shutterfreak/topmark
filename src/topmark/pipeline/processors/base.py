@@ -38,7 +38,7 @@ class HeaderProcessor:
     """Base class for header processors that handle specific file types.
 
     A *header processor* knows how to **find**, **render**, and **modify** TopMark
-    headers for one concrete [`topmark.filetypes.base.FileType`][topmark.filetypes.base.FileType].
+    headers for one concrete [`topmark.filetypes.base.FileType`][].
     The registry binds a processor instance to a file type at runtime (``proc.file_type = ft``),
     and TopMark uses that pairing during scanning and updates.
 
@@ -59,7 +59,7 @@ class HeaderProcessor:
 
     What this class does **not** do:
         - **Content‑based recognition.** Deciding *which* file type a path belongs
-          to is the role of [`topmark.filetypes.base.FileType`][topmark.filetypes.base.FileType] via
+          to is the role of [`topmark.filetypes.base.FileType`][] via
           `FileType.content_matcher`. The processor assumes it is already
           associated with the correct file type.
 

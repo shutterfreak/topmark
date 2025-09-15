@@ -39,9 +39,9 @@ Notes:
 Configuration contract
 ----------------------
 - Public functions accept either a plain **mapping** (mirroring the TOML shape) or a frozen
-  `topmark.config.Config`. We normalize/merge internally and run the pipeline against an
+  [`topmark.config.Config`][]. We normalize/merge internally and run the pipeline against an
   **immutable snapshot**.
-- The internal `topmark.config.MutableConfig` builder is **not part of the public API**.
+- The internal [`topmark.config.MutableConfig`][] builder is **not part of the public API**.
   It exists to perform discovery/merging and then ``freeze()`` to a `Config` just before
   execution. This keeps runtime deterministic and avoids accidental mutation.
 - To "update config" programmatically, pass a mapping to the function call:
@@ -617,7 +617,7 @@ def get_filetype_info(long: bool = False) -> list[FileTypeInfo]:
 
     Notes:
         For object-level access, prefer `FileTypeRegistry` from
-        `topmark.registry`. This function returns metadata (not the objects).
+        [`topmark.registry`][]. This function returns metadata (not the objects).
     """
     proc_reg = Registry.processors()
 
@@ -658,7 +658,7 @@ def get_processor_info(long: bool = False) -> list[ProcessorInfo]:
 
     Notes:
         For object-level access, prefer `HeaderProcessorRegistry` from
-        `topmark.registry`. This function returns metadata (not the objects).
+        [`topmark.registry`][]. This function returns metadata (not the objects).
     """
     # Ensure all processors are registered before listing (idempotent)
     Registry.ensure_processors_registered()

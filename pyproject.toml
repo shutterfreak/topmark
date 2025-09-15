@@ -10,7 +10,7 @@
 
 [project]
 name = "topmark"
-version = "0.6.0"
+version = "0.6.1"
 description = "A Python CLI to inspect, validate, and manage license and copyright headers."
 authors = [{ name = "Olivier Biot", email = "olivier.biot@gmail.com" }]
 license = "MIT"
@@ -95,7 +95,7 @@ docs = [
 ]
 test = [
   # Unit testing framework:
-  "pytest",
+  "pytest>=8.0",
   # Parallel test execution:
   "pytest-xdist",
 ]

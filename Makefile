@@ -15,13 +15,15 @@
 # Only the interactive targets are listed in the help menu.
 
 .PHONY: build check-venv check-rtd-venv clean compile compile-dev dev dev-install \
-		docs-build docs-deploy docs-serve docs-verify \
-		format format-check git-archive help install lint lint-fixall \
+		docs-build docs-deploy docs-serve docs-verify docstring-links \
+		format format-check git-archive help install \
+		links links-src links-all \
+		lint lint-fixall \
 		pre-commit-autoupdate pre-commit-clean pre-commit-install \
 		pre-commit-refresh pre-commit-run pre-commit-uninstall \
 		public-api-check public-api-ensure-clean public-api-update \
 		rtd-venv setup source-snapshot \
-		sync-dev sync-dev-confirm sync-prod sync-prod-confirm \
+		sync-dev sync-dev-confirm sync-doc sync-doc-confirm sync-prod sync-prod-confirm \
 		test uninstall uninstall-confirm update-instructions-json upgrade-dev upgrade-pro venv verify
 
 .DEFAULT_GOAL := help
@@ -79,8 +81,13 @@ help:
 	@echo "  format                   Format code (ruff, mdformat, taplo)"
 	@echo "  lint                     Run linters (ruff, pydoclint, pyright)"
 	@echo "  lint-fixall              Run linters and automatically fix fixable linting errors"
+	@echo "  docstring-links          Enforce docstring link style (tools/check_docstring_links.py)"
 	@echo ""
 	@echo "  test                     Run tests"
+	@echo ""
+	@echo "  links                    Check hyperlinks in docs/ and *.md (lychee)"
+	@echo "  links-src                Check hyperlinks found in Python docstrings under src/ (lychee)"
+	@echo "  links-all                Check hyperlinks in docs/, *.md, and Python docstrings (lychee)"
 	@echo ""
 	@echo "  public-api-check         Check whether the public API snapshot changed"
 	@echo "  public-api-update        Regenerate tests/api/public_api_snapshot.json"
@@ -123,6 +130,9 @@ help:
 
 check-venv:
 	@test -x "$(VENV_BIN)/$(PYTHON)" || (echo "❌ $(VENV) not found. Run: make venv" && exit 1)
+
+check-lychee:
+	@command -v lychee >/dev/null 2>&1 || (echo "❌ lychee not found. Install with: brew install lychee" && exit 1)
 
 venv:
 	@test -d $(VENV) || ( \
@@ -196,7 +206,7 @@ sync-dev:
 	make .sync-dev
 
 # The 'verify' target runs all non-destructive checks
-verify: check-venv format-check lint rtd-venv docs-verify
+verify: check-venv format-check lint docstring-links links rtd-venv docs-verify
 	@echo "All quality checks passed!"
 
 format-check: check-venv
@@ -234,6 +244,23 @@ lint-fixall:
 test: check-venv
 	@echo "Running tests..."
 	$(VENV_BIN)/pytest
+
+docstring-links: check-venv
+	@echo "Checking docstring link style..."
+	$(VENV_BIN)/$(PYTHON) tools/check_docstring_links.py --stats
+	@echo "All quality checks passed!"
+
+links: check-lychee
+	@echo "Checking links in docs/ and *.md with lychee..."
+	lychee --config lychee.toml --no-progress --verbose docs *.md
+
+links-src: check-lychee
+	@echo "Checking links in Python docstrings under src/ with lychee..."
+	find src -type f -name '*.py' -print0 | xargs -0 -r lychee --config lychee.toml --no-progress --verbose
+
+links-all: check-lychee links
+	@echo "Checking links in docs/, *.md, and Python docstrings with lychee..."
+	find src -type f -name '*.py' -print0 | xargs -0 -r lychee --config lychee.toml --no-progress --verbose
 
 public-api-check: check-venv
 	@$(VENV_BIN)/pytest -qq tests/api/test_public_api_snapshot.py && \

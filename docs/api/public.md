@@ -54,22 +54,22 @@ This design keeps the public surface small and semver-stable while allowing flex
 configuration.
 
 ::: topmark.api
-    options:
-      heading_level: 2
-      show_root_heading: false
-      members_order: source
-      filters:
-        - "!^_"
+options:
+heading_level: 2
+show_root_heading: false
+members_order: source
+filters:
+\- "!^\_"
 
 ::: topmark.registry
-    options:
-      heading_level: 2
-      show_root_heading: false
-      members_order: source
-      filters:
-        - "!^_"
+options:
+heading_level: 2
+show_root_heading: false
+members_order: source
+filters:
+\- "!^\_"
 
----
+______________________________________________________________________
 
 **Stability note:** See [API Stability](../dev/api-stability.md) for how we guard the
 public surface with a JSON snapshot across Python 3.10–3.13.

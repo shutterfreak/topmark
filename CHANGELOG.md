@@ -16,6 +16,29 @@ All notable changes to this project will be documented in this file. This projec
 [Semantic Versioning](https://semver.org/) and follows a Keep‑a‑Changelog–style structure with the
 sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
+## [0.6.1] - 2025-09-15
+
+### Added
+
+- **Docstring link checker**: new `tools/check_docstring_links.py` to enforce reference-style object links and flag raw URLs in docstrings. Includes accurate line/range reporting, code-region masking, and CLI flags `--stats` and `--ignore-inline-code`.
+- **Makefile targets**: `docstring-links`, `links`, `links-src`, `links-all`; centralized `check-lychee` gate.
+
+### Changed
+
+- **MkDocs build**: enable `strict: true` and link validation to fail on broken internal links.
+- **Docstrings/x‑refs**: convert internal references to mkdocstrings+autorefs style (e.g., `` [`pkg.mod.Object`][] `` or `[Text][pkg.mod.Object]`) and prefer fully‑qualified names.
+- **Docs structure**: normalize mkdocstrings blocks (minor tidy‑ups).
+
+### Fixed
+
+- **README**: correct the “Adding & updating headers with topmark” link to `docs/usage/commands/check.md`.
+
+### Tooling
+
+- **Lychee integration**: adopt Lychee for link checks (local + CI); scoped pre‑commit hooks.
+- **Testing**: raise `pytest` minimum to `>=8.0` in the `test` optional dependencies.
+- **Refactors**: minor non‑functional cleanups (rename local import alias in filetype registry; small typing improvements).
+
 ## [0.6.0] - 2025-09-12
 
 ### Added
