@@ -16,6 +16,12 @@ All notable changes to this project will be documented in this file. This projec
 [Semantic Versioning](https://semver.org/) and follows a Keep‑a‑Changelog–style structure with the
 sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
+## [0.6.2] - 2025-09-15
+
+### Fixed
+
+- **Docs build**: resolve Griffe parsing error by normalizing a parameter docstring format (remove stray space before colon) for `skip_compliant` in `topmark.api.check()` (file: `src/topmark/api/__init__.py`). This unblocks MkDocs/ReadTheDocs builds. No functional code changes.
+
 ## [0.6.1] - 2025-09-15
 
 ### Added

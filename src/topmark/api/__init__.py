@@ -456,7 +456,7 @@ def check(
             to narrow discovery.
         add_only (bool): Only add missing headers; do not update existing ones.
         update_only (bool): Only update non-compliant headers; do not add new ones.
-        skip_compliant (bool) : Exclude already-compliant files from the returned view.
+        skip_compliant (bool): Exclude already-compliant files from the returned view.
         skip_unsupported (bool): Exclude unsupported files from the returned view.
 
     Returns:
