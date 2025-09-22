@@ -13,66 +13,148 @@ name: Release to PyPI
 on:
   push:
     tags:
-      - "v*.*.*"       # e.g., v1.2.3 (final)
-      - "v*.*.*-rc*"   # e.g., v1.2.3-rc1 (pre-release to TestPyPI)
+      - "v*.*.*" # e.g., v1.2.3 (final)
+      - "v*.*.*-rc*" # e.g., v1.2.3-rc1 (pre-release to TestPyPI)
+  # Allow manual dry-runs that skip publishing
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run docs job only (skip publish)"
+        type: boolean
+        default: true
 
 permissions:
   contents: read
-  id-token: write   # REQUIRED for PyPI/TestPyPI Trusted Publishing (OIDC)
+  id-token: write # REQUIRED for PyPI/TestPyPI Trusted Publishing (OIDC)
 
 concurrency:
   group: pypi-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  publish-pypi:
-    if: ${{ !contains(github.ref, '-rc') }}
+  build-docs:
+    name: Build docs (strict)
     runs-on: ubuntu-latest
-    environment:
-      name: pypi
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.13" # align with RTD, optional
+
+      - name: Install docs deps (mirror RTD)
+        run: |
+          python -m pip install -U pip
+          pip install -c constraints.txt -e .[docs]
+
+      - name: Build docs
+        run: mkdocs build --strict
+
+  publish-package:
+    name: Publish to PyPI/TestPyPI
+    # The 'if' condition now handles both final and pre-releases
+    if: ${{ !inputs.dry_run }}
+    needs: [build-docs] # gate publish on docs success
+    runs-on: ubuntu-latest
+    environment: ${{ contains(github.ref, '-rc') && 'testpypi' || 'pypi' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12" # keep current build version
+
+      - name: Check version matches tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"           # e.g., v0.6.3 or v0.6.3-rc1
+          RAW_TAG="${TAG#v}"                 # strip leading 'v'
+          # Convert tag to PEP 440 (rc with no dash)
+          PEP440="$(echo "$RAW_TAG" | sed -E 's/-rc([0-9]+)$/rc\1/')"
+
+          PYPROJ_VER="$(python -c 'import tomllib, pathlib; print(tomllib.loads(pathlib.Path(\"pyproject.toml\").read_text(encoding=\"utf-8\")).get(\"project\", {}).get(\"version\", \"\"))')"
+
+          echo "Tag (raw)         : $TAG"
+          echo "Tag (pep440)      : $PEP440"
+          echo "pyproject version : $PYPROJ_VER"
+
+          if [[ "$PYPROJ_VER" != "$PEP440" ]]; then
+            echo "❌ Version mismatch: pyproject.toml has '$PYPROJ_VER' but tag implies '$PEP440'"
+            exit 1
+          fi
+          echo "✅ Version matches tag."
+
+      - name: Ensure RC version does not already exist on TestPyPI
+        if: contains(github.ref, '-rc')
+        shell: bash
+        run: |
+          set -euo pipefail
+          RAW="${GITHUB_REF_NAME#v}"
+          VER_PEP440="$(echo "$RAW" | sed -E 's/-rc([0-9]+)$/rc\1/')"
+          PKG="topmark"
+          URL="https://test.pypi.org/pypi/${PKG}/json"
+          echo "Checking TestPyPI for ${PKG}==${VER_PEP440} ..."
+          if curl -fsS "$URL" -o /tmp/tp.json; then
+            if python -c 'import json,sys; d=json.load(open("/tmp/tp.json")); sys.exit(0 if sys.argv[1] not in d.get("releases",{}) else 99)' "$VER_PEP440"; then
+              echo "✅ ${PKG}==${VER_PEP440} not found on TestPyPI — OK to publish."
+            else
+              echo "❌ ${PKG}==${VER_PEP440} already exists on TestPyPI. Bump the RC (e.g. -rc2) and try again."
+              exit 1
+            fi
+          else
+            echo "ℹ️ Package not found on TestPyPI yet — first publish will create it."
+          fi
 
       - name: Build sdist and wheel
         run: |
           python -m pip install -U pip build
           python -m build
 
-      - name: Publish to PyPI (Trusted Publishing)
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          attestations: true
-
-  publish-testpypi:
-    if: ${{ contains(github.ref, '-rc') }}
-    runs-on: ubuntu-latest
-    environment:
-      name: testpypi
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Build sdist and wheel
+      - name: Verify build artifacts
+        shell: bash
         run: |
-          python -m pip install -U pip build
-          python -m build
+          set -euo pipefail
+          ls -l dist || true
+          SDISTS=(dist/*.tar.gz)
+          WHEELS=(dist/*.whl)
+
+          [[ -e "${SDISTS[0]}" ]] || { echo "❌ No sdist (.tar.gz) found in dist/"; exit 1; }
+          [[ -e "${WHEELS[0]}" ]] || { echo "❌ No wheel (.whl) found in dist/"; exit 1; }
+
+          if [[ ${#SDISTS[@]} -ne 1 ]]; then
+            echo "❌ Expected exactly 1 sdist, found ${#SDISTS[@]}:"
+            printf ' - %s\n' "${SDISTS[@]}"
+            exit 1
+          fi
+
+          echo "✅ Found sdist:  ${SDISTS[0]}"
+          echo "✅ Found wheel(s):"
+          printf ' - %s\n' "${WHEELS[@]}"
+
+          if ls dist/*py3-none-any.whl >/dev/null 2>&1; then
+            echo "ℹ️ Detected universal pure-Python wheel (py3-none-any)."
+          fi
 
       - name: Publish to TestPyPI (Trusted Publishing)
+        if: contains(github.ref, '-rc')
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          repository-url: https://test.pypi.org/legacy/
           attestations: true
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+
+      - name: Publish to PyPI (Trusted Publishing)
+        if: ${{ !contains(github.ref, '-rc') }}
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          attestations: true
+          # (intentionally no repository-url here → real PyPI)
+          # (optionally omit skip-existing to fail on reuse; or set skip-existing: true if you prefer idempotency)
 
   github-release:
     if: ${{ !contains(github.ref, '-rc') }}
-    needs: publish-pypi
+    needs: publish-package # publish is already gated by docs
     runs-on: ubuntu-latest
     permissions:
       contents: write
