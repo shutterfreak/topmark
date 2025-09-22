@@ -28,11 +28,6 @@ site/
 .venv/
 .rtd/
 
-# pip-tools
-requirements.txt
-requirements-dev.txt
-requirements-docs.txt
-
 # mypy
 .mypy_cache/
 .dmypy.json
