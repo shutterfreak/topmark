@@ -16,6 +16,41 @@ All notable changes to this project will be documented in this file. This projec
 [Semantic Versioning](https://semver.org/) and follows a Keep‑a‑Changelog–style structure with the
 sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
+## [0.6.3] - Unreleased
+
+> No functional code changes to the library at runtime. This release focuses on CI/CD hardening, reproducible environments, and documentation.
+
+### Added
+
+- Documentation: CI workflow page and updated release workflow docs; header examples in `README.md` and `docs/index.md`.
+
+### Changed
+
+- CI: split the former `checks` into `lint` and `docs`; introduce a fast `api-snapshot` job (PR-only, runs when `src/**` changes); run full test matrix via `tox` on Python 3.10–3.13.
+- Reproducibility: adopt pinned lockfiles (`requirements.txt`, `requirements-dev.txt`, `requirements-docs.txt`) with cache-aware workflows; set `cache-dependency-path` accordingly.
+- Release workflow: unify publish job (PyPI/TestPyPI by tag), gate publishing on strict docs + tests, enforce version↔tag parity, verify artifacts before upload, and check RC uniqueness on TestPyPI.
+
+### Removed
+
+- Duplicate “Build docs (strict)” step from the `lint` job.
+- Stray `topmark.toml` at repo root.
+
+### Chore
+
+- Pre-commit: bump `topmark-check` hook to v0.6.2.
+- Tooling: whitespace tidy in `tox.ini`.
+
+#### Pre-releases
+
+- `0.6.3rc1` (2025-09-22): first release candidate to validate the new pipelines.
+
+______________________________________________________________________
+
+**Developer notes**
+
+- While cutting RCs, keep `pyproject.toml` at `0.6.3rcN` and tag `v0.6.3-rcN`. The release workflow will publish to TestPyPI and mark the GitHub release as pre-release.
+- For GA: bump to `0.6.3`, tag `v0.6.3`, and the workflow will publish to PyPI after docs+tests gates.
+
 ## [0.6.2] - 2025-09-15
 
 ### Fixed
