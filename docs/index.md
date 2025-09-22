@@ -47,6 +47,39 @@ for b in Registry.bindings():
 - Provides `strip` to remove headers (also dry‑run by default)
 - Works well in CI and with pre‑commit hooks
 
+## Example headers
+
+Here’s how TopMark headers appear in different file types (truncated for brevity):
+
+```bash
+#!/bin/bash
+
+# topmark:header:start
+#
+#   project   : TopMark
+#   file      : script.sh
+#   license   : MIT
+#   copyright : (c) 2025 Olivier Biot
+
+# topmark:header:end
+...
+```
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+topmark:header:start
+
+  project   : TopMark
+  file      : config.xml
+  license   : MIT
+  copyright : (c) 2025 Olivier Biot
+
+topmark:header:end
+-->
+...
+```
+
 ## Commands
 
 `topmark [SUBCOMMAND] [OPTIONS] [PATHS]...`

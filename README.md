@@ -28,6 +28,56 @@ Full documentation is available on Read the Docs: <https://topmark.readthedocs.i
 This README is the canonical, complete introduction for GitHub/PyPI. The docs site provides a
 concise landing page and deep links into topics (install, usage, CI, API, etc.).
 
+## 📝 Example headers
+
+TopMark inserts headers that are tailored to the comment style and conventions of each file type. Here are examples of how TopMark headers appear in different file formats:
+
+```bash
+#!/bin/bash
+
+# topmark:header:start
+#
+#   project   : TopMark
+#   file      : script.sh
+#   license   : MIT
+#   copyright : (c) 2025 Olivier Biot
+
+# topmark:header:end
+
+echo "Hello, World!"
+```
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+topmark:header:start
+
+  project   : TopMark
+  file      : config.xml
+  license   : MIT
+  copyright : (c) 2025 Olivier Biot
+
+topmark:header:end
+-->
+
+<configuration>
+    <!-- XML content here -->
+</configuration>
+```
+
+```javascript
+// topmark:header:start
+//
+//   project   : TopMark
+//   file      : app.js
+//   license   : MIT
+//   copyright : (c) 2025 Olivier Biot
+//
+// topmark:header:end
+
+console.log("Hello, World!");
+```
+
 ## ✨ Features
 
 - File header detection, insertion, and replacement
