@@ -52,7 +52,7 @@ Defined in `.github/workflows/release.yml`. The pipeline gates publishing on **d
 
 ```yaml
 permissions:
-  contents: read.   # required for checkout
+  contents: read    # required for checkout
   id-token: write   # required for authentication (OIDC) with PyPI/TestPyPI
 ```
 
@@ -70,14 +70,17 @@ concurrency:
 
 1. **build-docs** (always)
 
-   - Installs docs extras with `constraints.txt`
+   - Installs docs extras from **pinned** `requirements-docs.txt`
+   - Uses `cache-dependency-path` for cache invalidation (`requirements-*.txt`, `constraints.txt`)
    - `mkdocs build --strict`
 
 1. **tests** (always)
 
-   - Installs dev extras with `constraints.txt`
+   - Installs dev extras from **pinned** `requirements-dev.txt`
+   - Uses `cache-dependency-path` for cache invalidation
    - Runs smoke tests: `tox -e py313`
    - Runs public API snapshot: `tox -e py313-api`
+   - Exports `PIP_CONSTRAINT=constraints.txt` so tox-created envs also honor pins
 
 1. **publish-package** (skipped when `workflow_dispatch` with `dry_run=true`)
 
