@@ -57,7 +57,7 @@ repos:
 
   # Project-specific header checker (after formatters)
   - repo: https://github.com/shutterfreak/topmark
-    rev: v0.6.0
+    rev: v0.6.2
     hooks:
       - id: topmark-check
         # files: '\.(py|md|toml|ya?ml|sh|Makefile)$'
