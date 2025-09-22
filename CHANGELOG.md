@@ -16,19 +16,44 @@ All notable changes to this project will be documented in this file. This projec
 [Semantic Versioning](https://semver.org/) and follows a Keep‑a‑Changelog–style structure with the
 sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
-## [0.6.3] - Unreleased
+## [0.7.0] - Unreleased
 
-> No functional code changes to the library at runtime. This release focuses on CI/CD hardening, reproducible environments, and documentation.
+> No functional code changes to the library at runtime. This release focuses on CI/CD hardening, reproducible environments, documentation, and a polished `version` command.
 
 ### Added
 
-- Documentation: CI workflow page and updated release workflow docs; header examples in `README.md` and `docs/index.md`.
+- **CLI – `version` command**
+  - New `--semver` option to render the project version in **SemVer** form while keeping **PEP 440** as the default.
+  - New `--format json|markdown|text` options with standardized outputs.
+  - Introduce `topmark.utils.version.pep440_to_semver()` with graceful fallback.
+- **Tests**
+  - Expanded/parameterized tests for `version` across plain text, JSON, and Markdown (PEP 440 vs SemVer).
+- **Documentation**
+  - Document the SemVer output option for `topmark version` and clarify expected JSON/Markdown schemas.
+  - CI workflow page and updated release workflow docs; header examples in `README.md` and `docs/index.md`.
 
 ### Changed
 
-- CI: split the former `checks` into `lint` and `docs`; introduce a fast `api-snapshot` job (PR-only, runs when `src/**` changes); run full test matrix via `tox` on Python 3.10–3.13.
-- Reproducibility: adopt pinned lockfiles (`requirements.txt`, `requirements-dev.txt`, `requirements-docs.txt`) with cache-aware workflows; set `cache-dependency-path` accordingly.
-- Release workflow: unify publish job (PyPI/TestPyPI by tag), gate publishing on strict docs + tests, enforce version↔tag parity, verify artifacts before upload, and check RC uniqueness on TestPyPI.
+- **CLI output (breaking schemas; see below)**
+  - **JSON** now uses a stable schema:
+
+    ```json
+    {"version": "<str>", "format": "pep440|semver"}
+    ```
+
+  - **Markdown** output now includes the format label:
+
+    ```text
+    **TopMark version (pep440|semver): <version>**
+    ```
+
+  - **Plain text** remains just the version string for script-friendliness.
+- **CI**
+  - Split the former `checks` into `lint` and `docs`; introduce a fast `api-snapshot` job (PR-only, runs when `src/**` changes); run full test matrix via `tox` on Python 3.10–3.13.
+- **Reproducibility**
+  - Adopt pinned lockfiles (`requirements.txt`, `requirements-dev.txt`, `requirements-docs.txt`) with cache-aware workflows; set `cache-dependency-path` accordingly.
+- **Release workflow**
+  - Unify publish job (PyPI/TestPyPI by tag), gate publishing on strict docs + tests, enforce version↔tag parity, verify artifacts before upload, and check RC uniqueness on TestPyPI.
 
 ### Removed
 
@@ -40,6 +65,13 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 - Pre-commit: bump `topmark-check` hook to v0.6.2.
 - Tooling: whitespace tidy in `tox.ini`.
 
+### Breaking (pre-1.0)
+
+- **JSON** schema changed from `{"topmark_version": "<str>"}` to `{"version": "<str>", "format": "pep440|semver"}`.
+- **Markdown** line now explicitly includes the format label:\
+  `**TopMark version (pep440|semver): <version>**`.\
+  Update any consumers/parsers depending on the previous key or exact phrasing.
+
 #### Pre-releases
 
 - `0.6.3rc1` (2025-09-22): first release candidate to validate the new pipelines.
@@ -48,8 +80,8 @@ ______________________________________________________________________
 
 **Developer notes**
 
-- While cutting RCs, keep `pyproject.toml` at `0.6.3rcN` and tag `v0.6.3-rcN`. The release workflow will publish to TestPyPI and mark the GitHub release as pre-release.
-- For GA: bump to `0.6.3`, tag `v0.6.3`, and the workflow will publish to PyPI after docs+tests gates.
+- While cutting RCs, keep `pyproject.toml` at `0.7.0rcN` and tag `v0.7.0-rcN`. The release workflow will publish to TestPyPI and mark the GitHub release as pre-release.
+- For GA: bump to `0.7.0`, tag `v0.7.0`, and the workflow will publish to PyPI after docs+tests gates.
 
 ## [0.6.2] - 2025-09-15
 
