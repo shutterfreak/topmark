@@ -23,12 +23,36 @@ on:
     branches: [ main ]
 
 jobs:
+
+  # Detect what changed in the PR so we can cheaply gate jobs.
+  changes:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    outputs:
+      src_changed: ${{ steps.filter.outputs.src }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            src:
+              - 'src/**'
+              - 'tests/**'
+              - 'tools/**'
+      - run: echo "src_changed=${{ steps.filter.outputs.src }}"
+      
   checks:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: "3.13" }
+        with:
+          python-version: "3.13"
+          cache: pip
       - name: Install (dev+docs)
         run: |
           python -m pip install -U pip
@@ -40,6 +64,66 @@ jobs:
           pyright
           topmark-check
       - name: Custom docstring checks
-        run: python tools/check_docstrings.py --stats
+        run: python tools/check_docstring_links.py --stats
       - name: Build docs (strict)
         run: mkdocs build --strict
+
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install dev deps
+        run: |
+          python -m pip install -U pip
+          pip install -c constraints.txt -e .[dev]
+      - name: Run tox tests for ${{ matrix.python-version }}
+        run: |
+          case "${{ matrix.python-version }}" in
+            "3.10") tox -e py310 ;;
+            "3.11") tox -e py311 ;;
+            "3.12") tox -e py312 ;;
+            "3.13") tox -e py313 ;;
+          esac
+
+  api-snapshot:
+    # Fast, PR-only check that runs ONLY when src/** changed.
+    needs: changes
+    if: ${{ github.event_name == 'pull_request' && needs.changes.outputs.src_changed == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install minimal deps for API check
+        run: |
+          python -m pip install -U pip
+          # Only what the API snapshot env needs (keep it lean and quick)
+          pip install -c constraints.txt -e .[dev]
+      - name: Run API snapshot check
+        run: tox -e py313-api
+
+  links:
+    # Use official lychee Action; no cargo needed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check links in docs and top-level Markdown
+        uses: lycheeverse/lychee-action@v1
+        with:
+          args: >-
+            --config lychee.toml
+            --no-progress
+            --verbose
+            docs
+            *.md

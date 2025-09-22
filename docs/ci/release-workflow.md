@@ -12,8 +12,8 @@ topmark:header:end
 
 # Release workflow (GitHub Actions → PyPI/TestPyPI)
 
-TopMark uses GitHub Actions with **Trusted Publishing** to release packages to PyPI.\
-This workflow runs automatically when version tags are pushed to the repository.
+TopMark uses GitHub Actions with **Trusted Publishing** (OIDC) to release to PyPI/TestPyPI.\
+The workflow runs automatically when version tags are pushed. You can also manually trigger a dry-run.
 
 ## How to cut a release (maintainers)
 
@@ -40,23 +40,21 @@ This workflow runs automatically when version tags are pushed to the repository.
 
 ## Workflow overview
 
-Defined in `.github/workflows/release.yml`.
+Defined in `.github/workflows/release.yml`. The pipeline gates publishing on **docs** and **tests**.
 
 ### Triggers
 
 - Final release: tags matching `v*.*.*`
 - Release candidate: tags matching `v*.*.*-rc*`
+- Manual: `workflow_dispatch` with `dry_run=true` to run docs only (no publish)
 
 ### Permissions
 
 ```yaml
 permissions:
-  contents: read
-  id-token: write   # REQUIRED for OIDC with PyPI/TestPyPI
+  contents: read.   # required for checkout
+  id-token: write   # required for authentication (OIDC) with PyPI/TestPyPI
 ```
-
-- `contents: read` — required for checkout
-- `id-token: write` — required for authentication with PyPI/TestPyPI
 
 ### Concurrency
 
@@ -70,27 +68,43 @@ concurrency:
 
 ### Jobs
 
-1. **publish-pypi** (final releases only)
+1. **build-docs** (always)
 
-   - Runs on `ubuntu-latest`
-   - Builds sdist & wheel
-   - Publishes to PyPI via `pypa/gh-action-pypi-publish@release/v1`
+   - Installs docs extras with `constraints.txt`
+   - `mkdocs build --strict`
 
-1. **publish-testpypi** (release candidates only)
+1. **tests** (always)
 
-   - Runs on `ubuntu-latest`
-   - Builds sdist & wheel
-   - Publishes to TestPyPI using Trusted Publishing
-     (`repository-url: https://test.pypi.org/legacy/`)
+   - Installs dev extras with `constraints.txt`
+   - Runs smoke tests: `tox -e py313`
+   - Runs public API snapshot: `tox -e py313-api`
 
-1. **github-release** (final releases only, after publish-pypi)
+1. **publish-package** (skipped when `workflow_dispatch` with `dry_run=true`)
 
-   - Runs on `ubuntu-latest`
-   - Creates a GitHub Release using `softprops/action-gh-release@v2`
-   - Uses `tag_name` and `name` from the pushed tag
-   - Auto-generates release notes
+   - Verifies **version ↔ tag** match (PEP 440; e.g. `v1.2.3-rc1` → `1.2.3rc1`)
+   - Builds **sdist + wheel** and verifies artifacts exist
+   - If tag contains `-rc`, first checks **TestPyPI** does **not** already have that version
+   - Publishes with `pypa/gh-action-pypi-publish@release/v1`
+     - RC tags (`-rcN`) → **TestPyPI** (`repository-url: https://test.pypi.org/legacy/`, `skip-existing: true`)
+     - Final tags → **PyPI**
+
+1. **github-release** (final releases only)
+
+   - Creates a GitHub Release via `softprops/action-gh-release@v2`
+   - Uses the pushed tag and auto-generates notes
+
+### Environments
+
+Publishing targets are selected automatically:
+
+```yaml
+environment: ${{ contains(github.ref, '-rc') && 'testpypi' || 'pypi' }}
+```
+
+Use the repo’s **Environments** to set any environment-specific protections.
 
 ## Summary
 
-- Push **`vX.Y.Z-rcN`** → Publishes to **TestPyPI**
-- Push **`vX.Y.Z`** → Publishes to **PyPI** and creates a GitHub Release
+- Push **`vX.Y.Z-rcN`** → Build docs & tests, publish to **TestPyPI**
+- Push **`vX.Y.Z`** → Build docs & tests, publish to **PyPI**, create a GitHub Release
+- Manual **`workflow_dispatch`** with `dry_run=true` → Build docs only (no publish)

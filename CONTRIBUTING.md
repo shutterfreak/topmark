@@ -269,6 +269,13 @@ triggered by pushing a tag:
 - `vX.Y.Z-rcN` → publish release candidate to **TestPyPI**
 - `vX.Y.Z` → publish to **PyPI** and create a GitHub Release
 
+Publishing is gated by CI:
+
+- **Docs must build** with `mkdocs --strict`
+- **Tests must pass** (smoke + public API snapshot on 3.13)
+- The workflow enforces **version ↔ tag** parity (PEP 440) and verifies artifacts.
+- RC tags are published only if the **same version** doesn’t already exist on TestPyPI.
+
 Manual uploads (less common):
 
 ```bash

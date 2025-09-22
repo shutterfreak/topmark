@@ -13,11 +13,11 @@ strict: true
 validation:
   links:
     # Treat absolute links to docs pages as relative to the docs root
-    absolute_links: relative_to_docs  
+    absolute_links: relative_to_docs
 site_name: TopMark
 site_description: A tool to inspect, validate, and manage file headers in codebases.
 site_author: Olivier Biot
-copyright: 'Copyright &copy; 2025 Olivier Biot. Licensed under the MIT license.'
+copyright: "Copyright &copy; 2025 Olivier Biot. Licensed under the MIT license."
 site_url: https://topmark.readthedocs.io/
 repo_name: shutterfreak/topmark
 repo_url: https://github.com/shutterfreak/topmark
@@ -61,8 +61,8 @@ plugins:
             show_if_no_docstring: false
             merge_init_into_class: true
             filters:
-              - "!^_"                      # hide “private” members
-              - "!^__"                     # hide dunder members like __init__
+              - "!^_" # hide “private” members
+              - "!^__" # hide dunder members like __init__
   - gen-files:
       scripts:
         - docs/gen_api_pages.py
@@ -83,6 +83,7 @@ nav:
           - "Header placement": usage/header-placement.md
           - "Supported file types": usage/filetypes.md
   - CI/CD:
+      - CI workflow: ci/ci-workflow.md
       - Release workflow: ci/release-workflow.md
   - Contributing: contributing.md
   - API:

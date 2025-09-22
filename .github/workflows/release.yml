@@ -35,12 +35,14 @@ jobs:
   build-docs:
     name: Build docs (strict)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13" # align with RTD, optional
+          cache: pip
 
       - name: Install docs deps (mirror RTD)
         run: |
@@ -50,11 +52,30 @@ jobs:
       - name: Build docs
         run: mkdocs build --strict
 
+  tests:
+    name: Test (smoke + API) on 3.13
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install dev deps
+        run: |
+          python -m pip install -U pip
+          pip install -c constraints.txt -e .[dev]
+      - name: Run smoke tests (tox)
+        run: tox -e py313
+      - name: Run API snapshot check
+        run: tox -e py313-api
+
   publish-package:
     name: Publish to PyPI/TestPyPI
-    # The 'if' condition now handles both final and pre-releases
-    if: ${{ !inputs.dry_run }}
-    needs: [build-docs] # gate publish on docs success
+    # The 'if' condition now handles both final and pre-releases and works on push + dispatch
+    if: ${{ !(inputs.dry_run || false) }}
+    needs: [build-docs, tests] # gate publish on docs and tests
     runs-on: ubuntu-latest
     environment: ${{ contains(github.ref, '-rc') && 'testpypi' || 'pypi' }}
     steps:
@@ -63,6 +84,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12" # keep current build version
+          cache: pip
 
       - name: Check version matches tag
         shell: bash
@@ -156,6 +178,7 @@ jobs:
     if: ${{ !contains(github.ref, '-rc') }}
     needs: publish-package # publish is already gated by docs
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: write
     steps:
