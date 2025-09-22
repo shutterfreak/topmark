@@ -44,7 +44,7 @@ jobs:
               - 'tools/**'
       - run: echo "src_changed=${{ steps.filter.outputs.src }}"
       
-  checks:
+  lint:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -53,18 +53,35 @@ jobs:
         with:
           python-version: "3.13"
           cache: pip
-      - name: Install (dev+docs)
+      - name: Install dev toolchain (locked)
         run: |
           python -m pip install -U pip
-          pip install -c constraints.txt -e .[dev,docs]
-      - name: Lint & types & headers
+          pip install -r requirements-dev.txt
+      - name: Lint & types
         run: |
           ruff format --check .
           ruff check .
           pyright
-          topmark-check
+      - name: Header policy check (TopMark)
+        run: pre-commit run topmark-check --all-files
       - name: Custom docstring checks
         run: python tools/check_docstring_links.py --stats
+      - name: Build docs (strict)
+        run: mkdocs build --strict
+
+  docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install docs toolchain (locked)
+        run: |
+          python -m pip install -U pip
+          pip install -r requirements-docs.txt
       - name: Build docs (strict)
         run: mkdocs build --strict
 
@@ -83,7 +100,8 @@ jobs:
       - name: Install dev deps
         run: |
           python -m pip install -U pip
-          pip install -c constraints.txt -e .[dev]
+          pip install -r requirements-dev.txt
+          pip install -c constraints.txt -e .[test]
       - name: Run tox tests for ${{ matrix.python-version }}
         run: |
           case "${{ matrix.python-version }}" in
@@ -109,7 +127,7 @@ jobs:
         run: |
           python -m pip install -U pip
           # Only what the API snapshot env needs (keep it lean and quick)
-          pip install -c constraints.txt -e .[dev]
+          pip install -r requirements-dev.txt
       - name: Run API snapshot check
         run: tox -e py313-api
 
