@@ -28,6 +28,7 @@ ______________________________________________________________________
 ## Output
 
 - Prints only the version string (e.g., `1.2.3`, `1.2.3.dev0`, `1.2.3-rc.1`).
+- Generate version identifier in SemVer format with the `--semver` option.
 - Suitable for scripts (no extra labels or decoration).
 
 ______________________________________________________________________
