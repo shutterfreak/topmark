@@ -54,7 +54,7 @@ from topmark.cli.cmd_common import (
     run_steps_for_files,
 )
 from topmark.cli.errors import TopmarkIOError, TopmarkUsageError
-from topmark.cli.io import plan_cli_inputs
+from topmark.cli.io import InputPlan, plan_cli_inputs
 from topmark.cli.options import (
     CONTEXT_SETTINGS,
     common_config_options,
@@ -77,7 +77,7 @@ from topmark.cli_shared.utils import (
     safe_unlink,
     write_updates,
 )
-from topmark.config.logging import get_logger
+from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.pipeline.context import (
     ComparisonStatus,
     FileStatus,
@@ -87,10 +87,13 @@ from topmark.pipeline.context import (
 )
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from topmark.cli_shared.console_api import ConsoleLike
+    from topmark.config import Config, MutableConfig
     from topmark.rendering.formats import HeaderOutputFormat
 
-logger = get_logger(__name__)
+logger: TopmarkLogger = get_logger(__name__)
 
 
 @click.command(
@@ -231,7 +234,7 @@ def strip_command(
             )
 
     # === Build Config and file list ===
-    plan = plan_cli_inputs(
+    plan: InputPlan = plan_cli_inputs(
         ctx=ctx,
         files_from=files_from,
         include_from=include_from,
@@ -240,7 +243,7 @@ def strip_command(
         exclude_patterns=exclude_patterns,
         stdin_filename=stdin_filename,
     )
-    draft_config = build_config_common(
+    draft_config: MutableConfig = build_config_common(
         ctx=ctx,
         plan=plan,
         no_config=no_config,
@@ -254,18 +257,18 @@ def strip_command(
     # Propagate runtime intent for updater (terminal vs preview write status)
     draft_config.apply_changes = bool(apply_changes)
 
-    config = draft_config.freeze()
+    config: Config = draft_config.freeze()
 
-    temp_path = plan.temp_path  # for cleanup/STDIN-apply branch
-    stdin_mode = plan.stdin_mode
-    file_list = build_file_list(
+    temp_path: Path | None = plan.temp_path  # for cleanup/STDIN-apply branch
+    stdin_mode: bool = plan.stdin_mode
+    file_list: list[Path] = build_file_list(
         config,
         stdin_mode=stdin_mode,
         temp_path=temp_path,
     )
 
     # Determine effective program-output verbosity for gating extra details
-    vlevel = get_effective_verbosity(ctx, config)
+    vlevel: int = get_effective_verbosity(ctx, config)
 
     logger.trace("Config after merging args and resolving file list: %s", config)
 
@@ -289,7 +292,7 @@ def strip_command(
     )
 
     # Optional filtering
-    view_results = filter_view_results(
+    view_results: list[ProcessingContext] = filter_view_results(
         results, skip_compliant=skip_compliant, skip_unsupported=skip_unsupported
     )
 
@@ -330,8 +333,8 @@ def strip_command(
         return
 
     if apply_changes:
-        written = 0
-        failed = 0
+        written: int = 0
+        failed: int = 0
 
         def _should_write_strip(r: ProcessingContext) -> bool:
             """Determine whether to write this file in strip mode."""

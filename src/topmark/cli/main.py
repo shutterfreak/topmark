@@ -41,13 +41,13 @@ from topmark.cli.options import (
     resolve_color_mode,
     resolve_verbosity,
 )
-from topmark.config.logging import get_logger, resolve_env_log_level, setup_logging
+from topmark.config.logging import TopmarkLogger, get_logger, resolve_env_log_level, setup_logging
 from topmark.pipeline.processors import register_all_processors
 
 if TYPE_CHECKING:
     from topmark.cli_shared.console_api import ConsoleLike
 
-logger = get_logger(__name__)
+logger: TopmarkLogger = get_logger(__name__)
 
 register_all_processors()
 
@@ -72,16 +72,18 @@ def init_common_state(
     ctx.obj = ctx.obj or {}
 
     # Configure program-output verbosity:
-    level_cli = resolve_verbosity(verbose, quiet)
+    level_cli: int = resolve_verbosity(verbose, quiet)
     ctx.obj["verbosity_level"] = level_cli
 
     # Configure internal logging via env:
-    level_env = resolve_env_log_level()
+    level_env: int | None = resolve_env_log_level()
     ctx.obj["log_level"] = level_env
     setup_logging(level=level_env)
 
-    effective_color_mode = ColorMode.NEVER if no_color else (color_mode or ColorMode.AUTO)
-    enable_color = resolve_color_mode(cli_mode=effective_color_mode, output_format=None)
+    effective_color_mode: ColorMode = (
+        ColorMode.NEVER if no_color else (color_mode or ColorMode.AUTO)
+    )
+    enable_color: bool = resolve_color_mode(cli_mode=effective_color_mode, output_format=None)
     ctx.obj["color_enabled"] = enable_color
     ctx.color = enable_color
 

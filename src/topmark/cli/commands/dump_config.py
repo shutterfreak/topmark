@@ -29,7 +29,7 @@ from typing import TYPE_CHECKING
 import click
 
 from topmark.cli.cmd_common import build_config_common, get_effective_verbosity
-from topmark.cli.io import plan_cli_inputs
+from topmark.cli.io import InputPlan, plan_cli_inputs
 from topmark.cli.options import (
     CONTEXT_SETTINGS,
     common_config_options,
@@ -37,13 +37,16 @@ from topmark.cli.options import (
     common_header_formatting_options,
 )
 from topmark.cli_shared.utils import safe_unlink
-from topmark.config.logging import get_logger
+from topmark.config.logging import TopmarkLogger, get_logger
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from topmark.cli_shared.console_api import ConsoleLike
+    from topmark.config import Config, MutableConfig
     from topmark.rendering.formats import HeaderOutputFormat
 
-logger = get_logger(__name__)
+logger: TopmarkLogger = get_logger(__name__)
 
 
 @click.command(
@@ -110,12 +113,12 @@ def dump_config_command(
         header_format (HeaderOutputFormat | None): Optional output format override for header
             rendering (captured in config).
     """
-    ctx = click.get_current_context()
+    ctx: click.Context = click.get_current_context()
     ctx.ensure_object(dict)
     console: ConsoleLike = ctx.obj["console"]
 
     # dump-config is file-agnostic: ignore positional PATHS and --files-from
-    original_args = list(ctx.args)
+    original_args: list[str] = list(ctx.args)
     if original_args:
         if "-" in original_args:
             console.warn(
@@ -130,7 +133,7 @@ def dump_config_command(
         )
         files_from = []
 
-    plan = plan_cli_inputs(
+    plan: InputPlan = plan_cli_inputs(
         ctx=ctx,
         files_from=files_from or [],
         include_from=include_from,
@@ -141,7 +144,7 @@ def dump_config_command(
         allow_empty_paths=True,
     )
 
-    draft_config = build_config_common(
+    draft_config: MutableConfig = build_config_common(
         ctx=ctx,
         plan=plan,
         no_config=no_config,
@@ -152,17 +155,17 @@ def dump_config_command(
         header_format=header_format,
     )
 
-    temp_path = plan.temp_path  # for cleanup/STDIN-apply branch
-    config = draft_config.freeze()
+    temp_path: Path | None = plan.temp_path  # for cleanup/STDIN-apply branch
+    config: Config = draft_config.freeze()
     # Determine effective program-output verbosity for gating extra details
-    vlevel = get_effective_verbosity(ctx, config)
+    vlevel: int = get_effective_verbosity(ctx, config)
 
     logger.trace("Config after merging CLI and discovered config: %s", draft_config)
 
     # We don't actually care about the file list here; just dump the config
     import toml
 
-    merged_config = toml.dumps(config.to_toml_dict())
+    merged_config: str = toml.dumps(config.to_toml_dict())
 
     # Banner
     if vlevel > 0:

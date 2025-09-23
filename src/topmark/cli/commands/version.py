@@ -59,12 +59,12 @@ def version_command(
         output_format (OutputFormat | None): Optional output format (plain text or markdown).
         semver (bool): Return version identifier in `semver` if True, PEP440 (default) if False.
     """
-    ctx = click.get_current_context()
+    ctx: click.Context = click.get_current_context()
     ctx.ensure_object(dict)
     console: ConsoleLike = ctx.obj["console"]
 
     # Determine effective program-output verbosity for gating extra details
-    vlevel = get_effective_verbosity(ctx)
+    vlevel: int = get_effective_verbosity(ctx)
 
     topmark_version: str = TOPMARK_VERSION
     fmt: OutputFormat = output_format or OutputFormat.DEFAULT

@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING, Mapping, Sequence
 
 from yachalk import chalk
 
-from topmark.config.logging import get_logger
+from topmark.config.logging import TopmarkLogger, get_logger
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from topmark.pipeline.context import ProcessingContext
 
 
-logger = get_logger(__name__)
+logger: TopmarkLogger = get_logger(__name__)
 
 
 class OutputFormat(str, Enum):
@@ -127,7 +127,7 @@ def resolve_color_mode(
         return False
 
     # 3) Env overrides
-    force_color = os.getenv("FORCE_COLOR")
+    force_color: str | None = os.getenv("FORCE_COLOR")
     if force_color and force_color != "0":
         return True
     if os.getenv("NO_COLOR") is not None:
@@ -259,7 +259,11 @@ def count_by_outcome(
     """
     counts: dict[str, tuple[int, str, Callable[[str], str]]] = {}
     for r in results:
+        key: str
+        label: str
+        color: Callable[[str], str]
         key, label, color = classify_outcome(r)
+        n: int
         n, _, _ = counts.get(key, (0, label, color))
         counts[key] = (n + 1, label, color)
     return counts
@@ -286,7 +290,8 @@ def write_updates(
           UTF‑8 encoding.
         - Any exceptions per file are logged and counted as failures.
     """
-    written = failed = 0
+    written: int = 0
+    failed: int = 0
     for r in results:
         try:
             if should_write(r) and r.updated_file_lines is not None:
@@ -346,13 +351,13 @@ def render_markdown_table(
     """
     if not headers:
         return ""
-    ncols = len(headers)
+    ncols: int = len(headers)
     for r in rows:
         if len(r) != ncols:
             raise ValueError("All rows must have the same number of columns as headers")
 
     # Compute column widths
-    widths = [len(str(h)) for h in headers]
+    widths: list[int] = [len(str(h)) for h in headers]
     for r in rows:
         for i, cell in enumerate(r):
             widths[i] = max(widths[i], len(str(cell)))
@@ -361,12 +366,12 @@ def render_markdown_table(
         return f"{text:<{w}}"
 
     # Header line
-    header_line = " | ".join(_pad(str(headers[i]), widths[i]) for i in range(ncols))
+    header_line: str = " | ".join(_pad(str(headers[i]), widths[i]) for i in range(ncols))
 
     # Separator line with alignment markers
     def _sep_for(i: int) -> str:
-        style = (align or {}).get(i, "left").lower()
-        w = max(1, widths[i])
+        style: str = (align or {}).get(i, "left").lower()
+        w: int = max(1, widths[i])
         if style == "right":
             return "-" * (w - 1) + ":" if w > 1 else ":"
         if style == "center":
@@ -374,10 +379,12 @@ def render_markdown_table(
         # left/default
         return "-" * w
 
-    sep_line = " | ".join(_sep_for(i) for i in range(ncols))
+    sep_line: str = " | ".join(_sep_for(i) for i in range(ncols))
 
     # Data lines
-    data_lines = [" | ".join(_pad(str(r[i]), widths[i]) for i in range(ncols)) for r in rows]
+    data_lines: list[str] = [
+        " | ".join(_pad(str(r[i]), widths[i]) for i in range(ncols)) for r in rows
+    ]
 
     return (
         "| "

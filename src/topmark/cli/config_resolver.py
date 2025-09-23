@@ -23,14 +23,14 @@ from typing import TYPE_CHECKING
 
 from topmark.cli.cli_types import ArgsNamespace, build_args_namespace
 from topmark.config import MutableConfig
-from topmark.config.logging import get_logger
+from topmark.config.logging import TopmarkLogger, get_logger
 
 if TYPE_CHECKING:
     import click
 
     from topmark.rendering.formats import HeaderOutputFormat
 
-logger = get_logger(__name__)
+logger: TopmarkLogger = get_logger(__name__)
 
 
 # Helper: Build Config from Click params using ArgsNamespace and merged config logic
@@ -105,13 +105,13 @@ def resolve_config_from_click(
     #
     # The result is a MutableConfig (builder) which callers can .freeze() before running.
 
-    draft = MutableConfig.from_defaults()
+    draft: MutableConfig = MutableConfig.from_defaults()
 
     # (2) discover a single local project config if allowed and none explicitly provided
     if not args.get("no_config") and not (args.get("config_files") or []):
-        cwd = Path.cwd()
-        pyproject = cwd / "pyproject.toml"
-        topmark_toml = cwd / "topmark.toml"
+        cwd: Path = Path.cwd()
+        pyproject: Path = cwd / "pyproject.toml"
+        topmark_toml: Path = cwd / "topmark.toml"
         discovered: Path | None = None
         if pyproject.exists():
             discovered = pyproject
@@ -120,7 +120,7 @@ def resolve_config_from_click(
 
         if discovered is not None:
             logger.info("Loading discovered project config: %s", discovered)
-            found = MutableConfig.from_toml_file(discovered)
+            found: MutableConfig | None = MutableConfig.from_toml_file(discovered)
             if found is not None:
                 draft = draft.merge_with(found)
             else:
@@ -136,7 +136,7 @@ def resolve_config_from_click(
             logger.warning("Config file not found: %s", p)
             continue
         logger.info("Loading explicit config: %s", p)
-        extra = MutableConfig.from_toml_file(p)
+        extra: MutableConfig | None = MutableConfig.from_toml_file(p)
         if extra is not None:
             draft = draft.merge_with(extra)
         else:

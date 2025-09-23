@@ -28,7 +28,7 @@ from click.core import ParameterSource
 
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.errors import TopmarkUsageError
-from topmark.config.logging import get_logger
+from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.rendering.formats import HeaderOutputFormat
 
 if TYPE_CHECKING:
@@ -38,7 +38,7 @@ P = ParamSpec("P")
 R = TypeVar("R")
 
 # Custom verbosity levels, mapped to standard logging levels
-LOG_LEVELS = {
+LOG_LEVELS: dict[str, int] = {
     "TRACE": 5,  # Custom TRACE (5) sits below logging.DEBUG.
     "DEBUG": logging.DEBUG,
     "INFO": logging.INFO,
@@ -47,7 +47,7 @@ LOG_LEVELS = {
     "CRITICAL": logging.CRITICAL,
 }
 
-logger = get_logger(__name__)
+logger: TopmarkLogger = get_logger(__name__)
 
 
 def resolve_verbosity(verbose_count: int, quiet_count: int) -> int:
@@ -70,12 +70,12 @@ def resolve_verbosity(verbose_count: int, quiet_count: int) -> int:
     if verbose_count > 0 and quiet_count > 0:
         raise TopmarkUsageError("The '--verbose' and '--quiet' options are mutually exclusive.")
 
-    verbosity_level = verbose_count - quiet_count
+    verbosity_level: int = verbose_count - quiet_count
     return verbosity_level
 
 
 #: Click context settings to allow Black-style extra args and unknown options.
-CONTEXT_SETTINGS = {
+CONTEXT_SETTINGS: dict[str, list[str] | bool] = {
     "help_option_names": ["-h", "--help"],
     "ignore_unknown_options": True,
     "allow_extra_args": True,
@@ -246,7 +246,10 @@ def extract_stdin_for_from_options(
             f"Requested: {', '.join(wants)}"
         )
 
-    text_files = text_includes = text_excludes = None
+    text_files: str | None = None
+    text_includes: str | None = None
+    text_excludes: str | None = None
+    text: str | None = None
     if wants:
         text = stdin_text
         if text is None:
@@ -298,7 +301,7 @@ def split_nonempty_lines(text: str | None) -> list[str]:
         return []
     out: list[str] = []
     for line in text.splitlines():
-        s = line.strip()
+        s: str = line.strip()
         if not s or s.startswith("#"):
             continue
         out.append(s)
@@ -341,7 +344,7 @@ def resolve_color_mode(
         return True
     if cli_mode == ColorMode.NEVER:
         return False
-    force_color = os.getenv("FORCE_COLOR")
+    force_color: str | None = os.getenv("FORCE_COLOR")
     if force_color and force_color != "0":
         return True
     if os.getenv("NO_COLOR") is not None:
@@ -391,16 +394,16 @@ def trap_underscored_option(ctx: click.Context, param: click.Option, _value: obj
     instead of the generic "No such option" error.
     """
     # Only trigger if the user actually typed the option
-    name = getattr(param, "name", None)
+    name: str | None = param.name or None
     try:
-        src = ctx.get_parameter_source(name) if name else None
+        src: ParameterSource | None = ctx.get_parameter_source(name) if name else None
     except Exception:
         src = None
     if src is not ParameterSource.COMMANDLINE:
         return
 
-    bad = param.opts[0] if param.opts else "--?"
-    suggestion = bad.replace("_", "-")
+    bad: str = param.opts[0] if param.opts else "--?"
+    suggestion: str = bad.replace("_", "-")
     raise click.UsageError(f"Unknown option: {bad}. Did you mean {suggestion}?")
 
 
@@ -431,9 +434,9 @@ def underscored_trap_option(*names: str) -> Callable[[Callable[P, R]], Callable[
     if not names:
         raise ValueError("underscored_trap_option requires at least one option name")
 
-    first = names[0]
+    first: str = names[0]
     # Create a unique, non-conflicting Python destination name for the hidden option
-    dest = f"_trap_{first.lstrip('-').replace('-', '_')}"
+    dest: str = f"_trap_{first.lstrip('-').replace('-', '_')}"
 
     return click.option(
         *names,

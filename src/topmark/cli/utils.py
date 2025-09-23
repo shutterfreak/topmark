@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING
 
 from topmark.cli.console_helpers import get_console_safely
 from topmark.cli_shared.utils import OutputFormat, count_by_outcome
-from topmark.config.logging import get_logger
+from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.utils.diff import render_patch
 
 if TYPE_CHECKING:
@@ -28,21 +28,22 @@ if TYPE_CHECKING:
 
     import click
 
+    from topmark.cli_shared.console_api import ConsoleLike
     from topmark.pipeline.context import ProcessingContext
 
 
-logger = get_logger(__name__)
+logger: TopmarkLogger = get_logger(__name__)
 
 
 def render_summary_counts(view_results: list[ProcessingContext], *, total: int) -> None:
     """Print the human summary (aligned counts by outcome)."""
-    console = get_console_safely()
+    console: ConsoleLike = get_console_safely()
     console.print()
     console.print(console.styled("Summary by outcome:", bold=True, underline=True))
 
-    counts = count_by_outcome(view_results)
-    label_width = max((len(v[1]) for v in counts.values()), default=0) + 1
-    num_width = len(str(total))
+    counts: dict[str, tuple[int, str, Callable[[str], str]]] = count_by_outcome(view_results)
+    label_width: int = max((len(v[1]) for v in counts.values()), default=0) + 1
+    num_width: int = len(str(total))
     for _key, (n, label, color) in counts.items():
         console.print(color(f"  {label:<{label_width}}: {n:>{num_width}}"))
 
@@ -54,10 +55,10 @@ def render_per_file_guidance(
     apply_changes: bool,
 ) -> None:
     """Echo one human guidance line per result (when not in --summary)."""
-    console = get_console_safely()
+    console: ConsoleLike = get_console_safely()
     for r in view_results:
         console.print(r.summary)
-        msg = make_message(r, apply_changes)
+        msg: str | None = make_message(r, apply_changes)
         if msg:
             console.print(console.styled(f"   {msg}", fg="yellow"))
 
@@ -100,10 +101,12 @@ def emit_machine_output(
     """
     import json as _json
 
-    console = get_console_safely()
+    console: ConsoleLike = get_console_safely()
     if fmt == OutputFormat.NDJSON:
         if summary_mode:
-            counts = count_by_outcome(view_results)
+            counts: dict[str, tuple[int, str, Callable[[str], str]]] = count_by_outcome(
+                view_results
+            )
             for key, (n, label, _color) in counts.items():
                 console.print(_json.dumps({"key": key, "count": n, "label": label}))
         else:
@@ -112,16 +115,18 @@ def emit_machine_output(
     elif fmt == OutputFormat.JSON:
         if summary_mode:
             counts = count_by_outcome(view_results)
-            data = {k: {"count": n, "label": label} for k, (n, label, _color) in counts.items()}
+            data: dict[str, dict[str, int | str]] = {
+                k: {"count": n, "label": label} for k, (n, label, _color) in counts.items()
+            }
             console.print(_json.dumps(data, indent=2))
         else:
-            payload = [r.to_dict() for r in view_results]
+            payload: list[dict[str, object]] = [r.to_dict() for r in view_results]
             console.print(_json.dumps(payload, indent=2))
 
 
 def emit_updated_content_to_stdout(results: list[ProcessingContext]) -> None:
     """Write updated content to stdout when applying to a single STDIN file."""
-    console = get_console_safely()
+    console: ConsoleLike = get_console_safely()
     for r in results:
         if r.updated_file_lines is not None:
             console.print("".join(r.updated_file_lines), nl=False)
@@ -134,7 +139,7 @@ def render_banner(ctx: click.Context, *, n_files: int) -> None:
       ctx (click.Context): Click context (used to get the command name).
       n_files (int): Number of files to be processed.
     """
-    console = get_console_safely()
+    console: ConsoleLike = get_console_safely()
     console.print(console.styled(f"\n🔍 Processing {n_files} file(s):\n", fg="blue"))
     console.print(
         console.styled(f"📋 TopMark {ctx.command.name} Results:", bold=True, underline=True)

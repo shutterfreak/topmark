@@ -31,6 +31,8 @@ from topmark.filetypes.registry import get_header_processor_registry
 
 if TYPE_CHECKING:
     from topmark.cli_shared.console_api import ConsoleLike
+    from topmark.filetypes.base import FileType
+    from topmark.pipeline.processors.base import HeaderProcessor
 
 
 @click.command(
@@ -70,25 +72,27 @@ def processors_command(
             (``default``, ``json``, ``ndjson``, or ``markdown``).
             If ``None``, uses the default human-readable format.
     """
-    ctx = click.get_current_context()
+    ctx: click.Context = click.get_current_context()
     ctx.ensure_object(dict)
     console: ConsoleLike = ctx.obj["console"]
 
-    file_types = get_file_type_registry()
-    header_processors = get_header_processor_registry()
+    file_type: dict[str, FileType] = get_file_type_registry()
+    header_processors: dict[str, HeaderProcessor] = get_header_processor_registry()
     fmt: OutputFormat = output_format or OutputFormat.DEFAULT
 
     # Determine effective program-output verbosity for gating extra details
-    vlevel = get_effective_verbosity(ctx)
+    vlevel: int = get_effective_verbosity(ctx)
 
     # Invert mapping: proc class -> [filetype names]
     groups: dict[tuple[str, str], list[str]] = defaultdict(list)
     for name, proc in header_processors.items():
-        key = (proc.__class__.__module__, proc.__class__.__name__)
+        key: tuple[str, str] = (proc.__class__.__module__, proc.__class__.__name__)
         groups[key].append(name)
 
     # Find unbound file types
-    unbound = sorted([name for name in file_types.keys() if name not in header_processors])
+    unbound: list[str] = sorted(
+        [name for name in file_type.keys() if name not in header_processors]
+    )
 
     # Build a unified payload for all formats
     payload_data: dict[str, Any] = {
@@ -103,14 +107,14 @@ def processors_command(
         }
         if show_details:
             processor_entry["filetypes"] = [
-                {"name": n, "description": file_types[n].description} for n in sorted(names)
+                {"name": n, "description": file_type[n].description} for n in sorted(names)
             ]
         payload_data["processors"].append(processor_entry)
 
     for name in unbound:
         if show_details:
             payload_data["unbound_filetypes"].append(
-                {"name": name, "description": file_types[name].description}
+                {"name": name, "description": file_type[name].description}
             )
         else:
             payload_data["unbound_filetypes"].append(name)
@@ -142,15 +146,16 @@ TopMark version **{TOPMARK_VERSION}** supports the following header processors:
         rows: list[list[str]]
         if show_details:
             for proc in payload_data["processors"]:
-                headers = ["File Types", "Description"]
+                headers: list[str] = ["File Types", "Description"]
                 rows = []
                 console.print(f"\n## **{proc['class']}** _({proc['module']})_\n")
                 # console.print("| File Types | Description |")
                 # console.print("|---|---|")
-                for file_types in proc["filetypes"]:
-                    rows.append([f"`{file_types['name']}`", file_types["description"]])
+                ft: FileType
+                for ft in proc["filetypes"]:
+                    rows.append([f"`{ft.name}`", ft.description])
                     # console.print(f"| `{ft['name']}` | {ft['description']} |")
-                table = render_markdown_table(headers, rows)
+                table: str = render_markdown_table(headers, rows)
                 console.print(table)
 
         else:
@@ -187,30 +192,30 @@ TopMark version **{TOPMARK_VERSION}** supports the following header processors:
                 console.styled("\nSupported Header Processors:\n", bold=True, underline=True)
             )
 
-        total_proc = len(payload_data["processors"])
-        num_proc_width = len(str(total_proc))
+        total_proc: int = len(payload_data["processors"])
+        num_proc_width: int = len(str(total_proc))
         proc_idx: int = 0
 
-        total_ft = len(file_types)
-        num_ft_width = len(str(total_ft))
+        total_ft: int = len(file_type)
+        num_ft_width: int = len(str(total_ft))
 
         for proc in payload_data["processors"]:
             proc_idx += 1
 
-            module = console.styled("(" + proc["module"] + ")", dim=True)
+            module: str = console.styled("(" + proc["module"] + ")", dim=True)
             if show_details:
                 console.print(
                     f"{proc_idx:>{num_proc_width}}. {console.styled(proc['class'], bold=True)} "
                     + module
                 )
                 ft_idx = 0
-                for file_types in proc["filetypes"]:
+                for ft in proc["filetypes"]:
                     ft_idx += 1
-                    descr = console.styled(file_types["description"], dim=True)
+                    descr: str = console.styled(ft.description, dim=True)
 
-                    console.print(f"    {ft_idx:>{num_ft_width}}. {file_types['name']} - {descr}")
+                    console.print(f"    {ft_idx:>{num_ft_width}}. {file_type['name']} - {descr}")
             else:
-                proc_ft_count = len(proc["filetypes"])
+                proc_ft_count: int = len(proc["filetypes"])
                 console.print(
                     f"{proc_idx:>{num_proc_width}}. {console.styled(proc['class'], bold=True)} "
                     + module
@@ -222,7 +227,7 @@ TopMark version **{TOPMARK_VERSION}** supports the following header processors:
                 console.print()
 
         if payload_data["unbound_filetypes"]:
-            hdr_no_processor = console.styled(
+            hdr_no_processor: str = console.styled(
                 "File types without a registered processor:",
                 bold=True,
             )
@@ -236,7 +241,7 @@ TopMark version **{TOPMARK_VERSION}** supports the following header processors:
                         f"{console.styled(unbound_ft['description'], dim=True)}"
                     )
             else:
-                unreg_ft_count = len(payload_data["unbound_filetypes"])
+                unreg_ft_count: int = len(payload_data["unbound_filetypes"])
                 console.print(f"{hdr_no_processor} (total: {unreg_ft_count})")
                 console.print(f"    - {', '.join(payload_data['unbound_filetypes'])}")
 

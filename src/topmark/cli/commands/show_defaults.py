@@ -38,12 +38,12 @@ def show_defaults_command() -> None:
     Outputs the TopMark default configuration file as bundled with the package.
     Useful as a reference for configuration structure and default values.
     """
-    ctx = click.get_current_context()
+    ctx: click.Context = click.get_current_context()
     ctx.ensure_object(dict)
     console: ConsoleLike = ctx.obj["console"]
 
     # Determine effective program-output verbosity for gating extra details
-    vlevel = get_effective_verbosity(ctx)
+    vlevel: int = get_effective_verbosity(ctx)
 
     # Banner
     if vlevel > 0:

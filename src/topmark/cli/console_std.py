@@ -31,9 +31,9 @@ class StdConsole(ConsoleLike):
     def __init__(
         self, *, enable_color: bool = False, out: TextIO | None = None, err: TextIO | None = None
     ) -> None:
-        self.enable_color = enable_color
-        self.out = out or sys.stdout
-        self.err = err or sys.stderr
+        self.enable_color: bool = enable_color
+        self.out: TextIO = out or sys.stdout
+        self.err: TextIO = err or sys.stderr
 
     def print(self, text: str = "", *, nl: bool = True) -> None:
         """Write a message to stdout."""

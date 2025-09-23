@@ -31,7 +31,7 @@ from topmark.cli_shared.exit_codes import ExitCode
 class TopmarkError(click.ClickException):
     """Base class for all TopMark CLI errors."""
 
-    exit_code = ExitCode.FAILURE
+    exit_code: ExitCode = ExitCode.FAILURE
 
     def format_message(self) -> str:  # pragma: no cover - trivial
         """Return the plain error message text.
@@ -50,7 +50,7 @@ class TopmarkError(click.ClickException):
         Falls back to Click’s default error display when no console is present.
         """
         try:
-            ctx = click.get_current_context(silent=True)
+            ctx: click.Context | None = click.get_current_context(silent=True)
             if ctx is not None and isinstance(getattr(ctx, "obj", None), dict):
                 console = ctx.obj.get("console")
                 if console is not None:

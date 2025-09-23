@@ -213,7 +213,7 @@ class EnumChoiceParam(ParamTypeBase, Generic[E]):
             for choice in cast("Iterable[E]", self.enum_cls)
         }
 
-        key = value.lower()
+        key: str = value.lower()
         if key in lookup:
             return lookup[key]
 
@@ -240,7 +240,7 @@ class EnumChoiceParam(ParamTypeBase, Generic[E]):
             CompletionItem as RuntimeCompletionItem,
         )  # Click 8.x
 
-        prefix = (incomplete or "").lower()
+        prefix: str = (incomplete or "").lower()
         items: list["ClickCompletionItem"] = []
         for e in cast("Iterable[E]", self.enum_cls):
             val = str(getattr(e, "value", e))

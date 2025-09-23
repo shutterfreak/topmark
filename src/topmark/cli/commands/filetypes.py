@@ -26,6 +26,7 @@ from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cmd_common import get_effective_verbosity
 from topmark.cli_shared.utils import OutputFormat, render_markdown_table
 from topmark.constants import TOPMARK_VERSION
+from topmark.filetypes.base import FileType
 from topmark.filetypes.instances import get_file_type_registry
 
 if TYPE_CHECKING:
@@ -44,7 +45,7 @@ def _policy_name(obj: object | None) -> str:
     """
     if obj is None:
         return ""
-    name = getattr(obj, "name", None)
+    name: str | None = getattr(obj, "name", None)
     if name:
         return str(name)
     return obj.__class__.__name__
@@ -88,15 +89,15 @@ def filetypes_command(
             (``default``, ``json``, or ``ndjson``).
             If ``None``, uses the default human-readable format.
     """
-    ctx = click.get_current_context()
+    ctx: click.Context = click.get_current_context()
     ctx.ensure_object(dict)
     console: ConsoleLike = ctx.obj["console"]
 
-    file_types = get_file_type_registry()
+    file_types: dict[str, FileType] = get_file_type_registry()
     fmt: OutputFormat = output_format or OutputFormat.DEFAULT
 
     # Determine effective program-output verbosity for gating extra details
-    vlevel = get_effective_verbosity(ctx)
+    vlevel: int = get_effective_verbosity(ctx)
 
     def _serialize_details(ft: FileType) -> dict[str, Any]:
         """Serialize detailed information about a file type."""
@@ -142,7 +143,7 @@ TopMark version **{TOPMARK_VERSION}** supports the following file types:
 
 """)
         if show_details:
-            headers = [
+            headers: list[str] = [
                 "Identifier",
                 "Extensions",
                 "Filenames",
@@ -163,14 +164,14 @@ TopMark version **{TOPMARK_VERSION}** supports the following file types:
 
             # Collect data and calculate max width for each column
             for k, v in sorted(file_types.items()):
-                exts = ", ".join(v.extensions) if v.extensions else ""
-                names = ", ".join(v.filenames) if v.filenames else ""
-                pats = ", ".join(v.patterns) if v.patterns else ""
-                skip_processing = "**yes**" if v.skip_processing else "no"
-                has_matcher = "**yes**" if (v.content_matcher is not None) else "no"
-                policy = _policy_name(v.header_policy)
+                exts: str = ", ".join(v.extensions) if v.extensions else ""
+                names: str = ", ".join(v.filenames) if v.filenames else ""
+                pats: str = ", ".join(v.patterns) if v.patterns else ""
+                skip_processing: str = "**yes**" if v.skip_processing else "no"
+                has_matcher: str = "**yes**" if (v.content_matcher is not None) else "no"
+                policy: str = _policy_name(v.header_policy)
 
-                row = [
+                row: list[str] = [
                     f"`{k}`",
                     exts,
                     names,
@@ -182,7 +183,9 @@ TopMark version **{TOPMARK_VERSION}** supports the following file types:
                 ]
                 rows.append(row)
 
-            table = render_markdown_table(headers, rows, align={1: "right", 2: "right", 3: "right"})
+            table: str = render_markdown_table(
+                headers, rows, align={1: "right", 2: "right", 3: "right"}
+            )
             console.print(table)
 
             console.print()
@@ -201,15 +204,17 @@ TopMark version **{TOPMARK_VERSION}** supports the following file types:
                 for i, col_data in enumerate(row):
                     max_widths[i] = max(max_widths[i], len(str(col_data)))
 
-            header_str = " | ".join(f"{headers[i]:<{max_widths[i]}}" for i in range(len(headers)))
+            header_str: str = " | ".join(
+                f"{headers[i]:<{max_widths[i]}}" for i in range(len(headers))
+            )
             console.print(f"| {header_str} |")
 
-            separator_str = " | ".join(f"{'-' * max_widths[i]}" for i in range(len(headers)))
+            separator_str: str = " | ".join(f"{'-' * max_widths[i]}" for i in range(len(headers)))
             # Add spaces around the separator string for correct alignment
             console.print(f"| {separator_str} |")
 
             for row in rows:
-                row_str = " | ".join(f"{row[i]:<{max_widths[i]}}" for i in range(len(row)))
+                row_str: str = " | ".join(f"{row[i]:<{max_widths[i]}}" for i in range(len(row)))
                 console.print(f"| {row_str} |")
 
             console.print()

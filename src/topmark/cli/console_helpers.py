@@ -37,7 +37,7 @@ def get_console_safely() -> ConsoleLike:
     raising ``RuntimeError: There is no active click context`` when the
     library is used programmatically (e.g., via pytest).
     """
-    ctx = click.get_current_context(silent=True)
+    ctx: click.Context | None = click.get_current_context(silent=True)
     if ctx is not None and isinstance(getattr(ctx, "obj", None), dict) and "console" in ctx.obj:
         console: ConsoleLike = ctx.obj["console"]
         return console

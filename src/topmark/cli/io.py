@@ -97,19 +97,19 @@ def consume_stdin(
     if not sys.stdin or sys.stdin.isatty():
         return StdinResult(mode=StdinMode.NONE, paths=[], temp_path=None, errors=[])
 
-    data = sys.stdin.read()
+    data: str = sys.stdin.read()
     if data == "":
         return StdinResult(mode=StdinMode.NONE, paths=[], temp_path=None, errors=[])
 
     # Decide interpretation
-    force_content = expect == "content" or stdin_filename is not None
+    force_content: bool = expect == "content" or stdin_filename is not None
     if force_content:
         # Treat as a single file's content written to a temp file.
         # We use NamedTemporaryFile(delete=False) to hand back a stable path.
         # We do not delete it here; caller cleans up if needed.
         try:
             # Create temp file with a sensible suffix/name if provided
-            suffix = ""
+            suffix: str = ""
             if stdin_filename and "." in stdin_filename:
                 suffix = "." + stdin_filename.rsplit(".", 1)[-1]
 
@@ -129,8 +129,8 @@ def consume_stdin(
             )
 
     # Default/forced list mode: parse as list of paths (one per line)
-    lines = [ln.strip() for ln in data.splitlines()]
-    paths = [Path(ln) for ln in lines if ln and not ln.startswith("#")]
+    lines: list[str] = [ln.strip() for ln in data.splitlines()]
+    paths: list[Path] = [Path(ln) for ln in lines if ln and not ln.startswith("#")]
     return StdinResult(mode=StdinMode.LIST, paths=paths, temp_path=None, errors=[])
 
 
@@ -159,7 +159,7 @@ def merge_cli_paths_with_stdin(
         those options expect the STDIN lines to be routed into their respective option lists
         instead of positional PATHS.
     """
-    cli = [Path(p) for p in cli_paths]
+    cli: list[Path] = [Path(p) for p in cli_paths]
 
     if stdin_result.mode == "none":
         return cli
@@ -234,12 +234,15 @@ def plan_cli_inputs(
     Returns:
         InputPlan: The normalized input plan for config and file discovery.
     """
-    raw_args = list(ctx.args)
+    raw_args: list[str] = list(ctx.args)
 
     # detect content mode
-    stdin_mode = raw_args == ["-"]
+    stdin_mode: bool = raw_args == ["-"]
 
     # route list-on-STDIN to one of the ...-from options
+    files_from_text: str | None = None
+    include_from_text: str | None = None
+    exclude_from_text: str | None = None
     files_from_text, include_from_text, exclude_from_text = extract_stdin_for_from_options(
         files_from, include_from, exclude_from
     )
@@ -254,8 +257,8 @@ def plan_cli_inputs(
         )
 
     paths: list[str] = []
-    inc = list(include_patterns)
-    exc = list(exclude_patterns)
+    inc: list[str] = list(include_patterns)
+    exc: list[str] = list(exclude_patterns)
     temp_path: Path | None = None
 
     if stdin_mode:
@@ -263,7 +266,7 @@ def plan_cli_inputs(
             raise TopmarkUsageError(
                 "--stdin-filename is required when using '-' to read from STDIN."
             )
-        res = consume_stdin(expect="content", stdin_filename=stdin_filename)
+        res: StdinResult = consume_stdin(expect="content", stdin_filename=stdin_filename)
         if res.mode != "content" or not res.paths:
             raise TopmarkUsageError("No data received on STDIN while '-' was specified.")
         temp_path = res.paths[0]

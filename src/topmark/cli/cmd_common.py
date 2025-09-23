@@ -24,20 +24,23 @@ import click
 from topmark.cli.config_resolver import resolve_config_from_click
 from topmark.cli.console_helpers import get_console_safely
 from topmark.cli_shared.exit_codes import ExitCode
-from topmark.config.logging import get_logger
+from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.file_resolver import resolve_file_list
 from topmark.pipeline import runner
 from topmark.pipeline.context import ComparisonStatus, FileStatus, ProcessingContext
 from topmark.pipeline.pipelines import get_pipeline
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import Path
 
     from topmark.cli.io import InputPlan
+    from topmark.cli_shared.console_api import ConsoleLike
     from topmark.config import Config, MutableConfig
+    from topmark.pipeline.contracts import Step
     from topmark.rendering.formats import HeaderOutputFormat
 
-logger = get_logger(__name__)
+logger: TopmarkLogger = get_logger(__name__)
 
 
 def get_effective_verbosity(ctx: click.Context, config: "Config | None" = None) -> int:
@@ -48,7 +51,7 @@ def get_effective_verbosity(ctx: click.Context, config: "Config | None" = None) 
         2. ctx.obj["verbosity_level"] if present
         3. 0 (terse)
     """
-    cfg_level = getattr(config, "verbosity_level", None) if config else None
+    cfg_level: int | None = config.verbosity_level if config else None
     if cfg_level is not None:
         return int(cfg_level)
     return int(ctx.obj.get("verbosity_level", 0))
@@ -83,8 +86,8 @@ def run_steps_for_files(
         ENCODING_ERROR → UnicodeDecodeError
         PIPELINE_ERROR → any other unexpected exception
     """
-    console = get_console_safely()
-    steps = get_pipeline(pipeline_name)
+    console: ConsoleLike = get_console_safely()
+    steps: Sequence[Step] = get_pipeline(pipeline_name)
     results: list[ProcessingContext] = []
     encountered_error_code: ExitCode | None = None
 
