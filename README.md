@@ -30,7 +30,9 @@ concise landing page and deep links into topics (install, usage, CI, API, etc.).
 
 ## 📝 Example headers
 
-TopMark inserts headers that are tailored to the comment style and conventions of each file type. Here are examples of how TopMark headers appear in different file formats:
+TopMark inserts headers that are tailored to the comment style and conventions of each file type
+(line comments like `#`/`//`, and block comments like `/* … */`). Here are examples of how TopMark
+headers appear in different file formats:
 
 ```bash
 #!/bin/bash
@@ -76,6 +78,21 @@ topmark:header:end
 // topmark:header:end
 
 console.log("Hello, World!");
+```
+
+```css
+/*
+ * topmark:header:start
+ *
+ *   project   : TopMark
+ *   file      : styles.css
+ *   license   : MIT
+ *   copyright : (c) 2025 Olivier Biot
+ *
+ * topmark:header:end
+ */
+
+body { margin: 0; }
 ```
 
 ## ✨ Features

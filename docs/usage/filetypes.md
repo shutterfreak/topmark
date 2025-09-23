@@ -17,14 +17,23 @@ and update headers safely.
 
 ## Processors and File Types
 
-| Processor            | File types (examples)                                                                                          |
-| -------------------- | -------------------------------------------------------------------------------------------------------------- |
-| PoundHeaderProcessor | dockerfile, env, git-meta, ini, julia, makefile, perl, python, python-requirements, r, ruby, shell, toml, yaml |
-| SlashHeaderProcessor | c, cpp, cs, go, java, javascript, kotlin, rust, swift, typescript, vscode-jsonc                                |
-| XmlHeaderProcessor   | html, markdown, svelte, svg, vue, xhtml, xml, xsl, xslt, yaml                                                  |
+| Processor               | Module                               | File Types                                                                                                                                                |
+| ----------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CBlockHeaderProcessor` | `topmark.pipeline.processors.cblock` | `css`, `less`, `scss`, `solidity`, `sql`, `stylus`                                                                                                        |
+| `PoundHeaderProcessor`  | `topmark.pipeline.processors.pound`  | `dockerfile`, `env`, `git-meta`, `ini`, `julia`, `makefile`, `perl`, `python`, `python-requirements`, `python-stub`, `r`, `ruby`, `shell`, `toml`, `yaml` |
+| `SlashHeaderProcessor`  | `topmark.pipeline.processors.slash`  | `c`, `cpp`, `cs`, `go`, `java`, `javascript`, `jsonc`, `kotlin`, `rust`, `swift`, `typescript`, `vscode-jsonc`                                            |
+| `XmlHeaderProcessor`    | `topmark.pipeline.processors.xml`    | `html`, `markdown`, `svelte`, `svg`, `vue`, `xhtml`, `xml`, `xsl`, `xslt`                                                                                 |
 
-Some formats (e.g., strict JSON) are **recognized but intentionally skipped** because they lack a
-safe comment syntax. Use `--skip-unsupported` to hide them from the report while keeping safety.
+## File types without a registered processor
+
+The following formats are **recognized but intentionally skipped** because they lack a
+safe comment syntax:
+
+- `json`
+- `license_text`
+- `python-typed-marker`
+
+Use `--skip-unsupported` to hide them from the report while keeping safety.
 
 ## Listing Supported File Types
 
