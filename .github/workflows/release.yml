@@ -175,8 +175,7 @@ jobs:
           URL="${BASE_URL}/${PKG}/json"
           echo "Checking ${PKG}==${VER_PEP440} on ${CHANNEL} ..."
           if curl -fsS "$URL" -o /tmp/index.json; then
-            python -c 'import json, os, sys; d=json.load(open("/tmp/index.json")); sys.exit(0 if os.environ.get("VER_PEP440") not in d.get("releases", {}) else 99)'
-            if [[ $? -eq 0 ]]; then
+            if VER_PEP440="$VER_PEP440" python -c 'import json, os, sys; d=json.load(open("/tmp/index.json")); sys.exit(0 if os.environ.get("VER_PEP440") not in d.get("releases", {}) else 99)'; then
               echo "✅ ${PKG}==${VER_PEP440} not found on ${CHANNEL} — OK to publish."
             else
               echo "❌ ${PKG}==${VER_PEP440} already exists on ${CHANNEL}."
@@ -242,8 +241,7 @@ jobs:
             exit 0
           fi
           # PEP440-aware comparison
-          python -c 'import json, sys, os; from packaging.version import Version; data = json.load(open("/tmp/pypi.json")); new = Version(os.environ["NEW_VERSION"]); finals = [Version(v) for v, f in (data.get("releases") or {}).items() if not Version(v).is_prerelease and any(not x.get("yanked", False) for x in (f or []))]; sys.exit(0 if not finals or new > max(finals) else 99)'
-          if [[ $? -eq 0 ]]; then
+          if NEW_VERSION="$NEW_VERSION" python -c 'import json, sys, os; from packaging.version import Version; data = json.load(open("/tmp/pypi.json")); new = Version(os.environ["NEW_VERSION"]); finals = [Version(v) for v, f in (data.get("releases") or {}).items() if not Version(v).is_prerelease and any(not x.get("yanked", False) for x in (f or []))]; sys.exit(0 if not finals or new > max(finals) else 99)'; then
             echo "✅ ${NEW_VERSION} is newer than the latest final on PyPI — OK to publish."
           else
             echo "❌ ${NEW_VERSION} is NOT newer than the latest final on PyPI."
