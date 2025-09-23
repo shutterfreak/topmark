@@ -9,3 +9,5 @@
 # topmark:header:end
 
 """TopMark Project Supporting Tools."""
+
+from __future__ import annotations

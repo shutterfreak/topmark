@@ -21,6 +21,7 @@ import inspect
 import json
 import os
 import typing
+from argparse import Namespace
 
 from topmark import api
 from topmark.registry import Registry
@@ -126,5 +127,5 @@ if __name__ == "__main__":
         default="tests/api/public_api_snapshot.json",
         help="Output path for the snapshot JSON (default: tests/api/public_api_snapshot.json)",
     )
-    args = parser.parse_args()
+    args: Namespace = parser.parse_args()
     write_snapshot(args.path)

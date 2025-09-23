@@ -253,9 +253,9 @@ def main(
 
             # 1) Flag literal URLs unless whitelisted
             for m in URL_RE.finditer(masked):
-                url = m.group(0)
+                url: str = m.group(0)
                 if not allow_re or not allow_re.search(url):
-                    ln = _abs_line(m, docstring=ds, start_lineno=start_lineno)
+                    ln: int = _abs_line(m, docstring=ds, start_lineno=start_lineno)
                     errors.append(
                         f"{chalk.bold(path)}:{chalk.bold(ln)}: "
                         f"avoid raw URL in docstring -> {url}"
@@ -273,7 +273,7 @@ def main(
                 s: int = fqn_m.start()
                 if any(a <= s < b for (a, b) in ref_spans):
                     continue  # already inside a ref link
-                miss_line = _abs_line(fqn_m, docstring=ds, start_lineno=start_lineno)
+                miss_line: int = _abs_line(fqn_m, docstring=ds, start_lineno=start_lineno)
                 missing.append((fqn_m.group(0), miss_line))
 
             if missing:
