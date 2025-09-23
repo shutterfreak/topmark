@@ -22,11 +22,13 @@ It updates the context with the header range, extracted lines, a reconstructed h
 and parsed key-value fields.
 """
 
-from topmark.config.logging import get_logger
+from __future__ import annotations
+
+from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER, VALUE_NOT_SET
 from topmark.pipeline.context import FileStatus, HeaderStatus, ProcessingContext
 
-logger = get_logger(__name__)
+logger: TopmarkLogger = get_logger(__name__)
 
 
 def scan(ctx: ProcessingContext) -> ProcessingContext:
@@ -62,7 +64,7 @@ def scan(ctx: ProcessingContext) -> ProcessingContext:
         "context.header_processor not defined"
     )  # This should always be defined!
 
-    lines = ctx.file_lines
+    lines: list[str] | None = ctx.file_lines
     if not lines:
         # Defensive guard; upstream reader should have set UNREADABLE or EMPTY_FILE
         logger.error("scan(): No file lines available for %s", ctx.path)
@@ -71,7 +73,7 @@ def scan(ctx: ProcessingContext) -> ProcessingContext:
     # Use header_processor.get_header_bounds() to locate header start and end indices
     start_idx: int | None = None
     end_idx: int | None = None
-    bounds = (
+    bounds: tuple[int | None, int | None] | None = (
         ctx.header_processor.get_header_bounds(lines)
         if hasattr(ctx.header_processor, "get_header_bounds")
         else None

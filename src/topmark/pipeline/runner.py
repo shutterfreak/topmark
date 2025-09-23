@@ -16,17 +16,20 @@ for processor lookup and registration. It enables extensible, comment-style-base
 header processing for different file types.
 """
 
-from collections.abc import Sequence
+from __future__ import annotations
 
-from topmark.config.logging import get_logger
+from typing import TYPE_CHECKING
+
+from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.constants import VALUE_NOT_SET
 
-# from topmark.pipeline.context import ProcessingContext
-# from topmark.pipeline.processors import get_processor_for_file
-from .context import ProcessingContext
-from .contracts import Step
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
-logger = get_logger(__name__)
+    from .context import ProcessingContext
+    from .contracts import Step
+
+logger: TopmarkLogger = get_logger(__name__)
 
 
 def run(ctx: ProcessingContext, steps: Sequence[Step]) -> ProcessingContext:

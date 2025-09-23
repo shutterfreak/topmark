@@ -18,13 +18,12 @@ avoid interfering with tools that might not fully accept block comments.
 
 from __future__ import annotations
 
-import logging
-
+from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.file_resolver import detect_newline
 from topmark.filetypes.registry import register_filetype
 from topmark.pipeline.processors.base import HeaderProcessor
 
-logger = logging.getLogger(__name__)
+logger: TopmarkLogger = get_logger(__name__)
 
 
 @register_filetype("c")
@@ -68,11 +67,11 @@ class SlashHeaderProcessor(HeaderProcessor):
             list[str]: Possibly modified header lines including any added padding.
         """
         # Detect newline style; default to "\n"
-        nl = detect_newline(original_lines)
-        out = list(rendered_header_lines)
+        nl: str = detect_newline(original_lines)
+        out: list[str] = list(rendered_header_lines)
 
         # Trailing padding: ensure one blank line after header if not already blank/EOF
-        next_is_blank = (
+        next_is_blank: bool = (
             insert_index < len(original_lines) and original_lines[insert_index].strip() == ""
         )
         if not next_is_blank:

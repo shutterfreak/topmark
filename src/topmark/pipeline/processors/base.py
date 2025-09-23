@@ -18,16 +18,22 @@ The module also supports associating processors with file types to enable flexib
 extensible header processing in the TopMark pipeline.
 """
 
-import re
+from __future__ import annotations
 
-from topmark.config import Config
-from topmark.config.logging import get_logger
+import re
+from typing import TYPE_CHECKING
+
+from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
-from topmark.filetypes.base import FileType
-from topmark.pipeline.context import ProcessingContext
 from topmark.rendering.formats import HeaderOutputFormat
 
-logger = get_logger(__name__)
+if TYPE_CHECKING:
+    from topmark.config import Config
+    from topmark.filetypes.base import FileType
+    from topmark.filetypes.policy import FileTypeHeaderPolicy
+    from topmark.pipeline.context import ProcessingContext
+
+logger: TopmarkLogger = get_logger(__name__)
 
 
 # Sentinel value when get_header_insertion_index() cannot find an insertion index:
@@ -170,6 +176,8 @@ class HeaderProcessor:
         logger.info("line count: %d, lines: %s", len(lines), lines)
 
         # 1) Locate START and END markers *within* the provided slice.
+        start_rel: int | None
+        end_rel: int | None
         start_rel, end_rel = self._find_inner_marker_indices(lines)
         if start_rel is None or end_rel is None or end_rel <= start_rel:
             # Keep scanner as the single authority for header MALFORMED status.
@@ -178,21 +186,23 @@ class HeaderProcessor:
             return {}
 
         # 2) Extract payload (strictly between markers).
-        payload = lines[start_rel + 1 : end_rel]
+        payload: list[str] = lines[start_rel + 1 : end_rel]
         if not payload:
             return {}
 
         # 3) Parse lines as `key: value`, stripping comment affixes and whitespace.
         result: dict[str, str] = {}
         # Compute approximate absolute line number for diagnostics if we can.
-        abs_start, _ = context.existing_header_range
+        abs_start: int
+        _abs_end: int
+        abs_start, _abs_end = context.existing_header_range
 
         for i, raw in enumerate(payload, start=1):
             # Absolute line number in the original file (1-based)
             abs_line_no: int = abs_start + start_rel + i + 1
             logger.trace("Header line %d: [%s]", abs_line_no, raw)
 
-            cleaned = self._strip_line_affixes(raw).strip()
+            cleaned: str = self._strip_line_affixes(raw).strip()
             if not cleaned:
                 continue
 
@@ -202,9 +212,11 @@ class HeaderProcessor:
                 )
                 continue
 
+            key: str
+            value: str
             key, value = cleaned.split(":", 1)
-            k = key.strip()
-            v = value.strip()
+            k: str = key.strip()
+            v: str = value.strip()
             if not k:
                 logger.warning(
                     "Malformed header at line %d: %s",
@@ -259,11 +271,11 @@ class HeaderProcessor:
         Returns:
             str: The stripped line.
         """
-        cleaned = line.rstrip("\r\n")
+        cleaned: str = line.rstrip("\r\n")
         if self.line_prefix and cleaned.lstrip().startswith(self.line_prefix):
             # allow incidental indentation before the prefix
-            leading_ws_len = len(cleaned) - len(cleaned.lstrip())
-            head = cleaned[leading_ws_len:]
+            leading_ws_len: int = len(cleaned) - len(cleaned.lstrip())
+            head: str = cleaned[leading_ws_len:]
             if head.startswith(self.line_prefix):
                 cleaned = cleaned[:leading_ws_len] + head.removeprefix(self.line_prefix)
         elif self.line_prefix and not cleaned.strip().startswith(self.line_prefix):
@@ -304,12 +316,12 @@ class HeaderProcessor:
             str: The fully wrapped line (prefix + content + suffix) including the trailing
                 newline characters.
         """
-        lp = self.line_prefix if line_prefix is None else line_prefix
-        ls = self.line_suffix if line_suffix is None else line_suffix
+        lp: str = self.line_prefix if line_prefix is None else line_prefix
+        ls: str = self.line_suffix if line_suffix is None else line_suffix
         # Pre-prefix indentation is applied to the whole line before the prefix
-        lead = header_indent or ""
+        lead: str = header_indent or ""
         # Indentation after prefix defaults to instance setting unless overridden
-        api = self.line_indent if after_prefix_indent is None else after_prefix_indent
+        api: str = self.line_indent if after_prefix_indent is None else after_prefix_indent
 
         parts: list[str] = []
         if lp:
@@ -357,7 +369,7 @@ class HeaderProcessor:
             list[str]: Preamble lines (each ending with ``newline_style``) that precede
                 the header fields.
         """
-        bp = self.block_prefix if block_prefix is None else block_prefix
+        bp: str = self.block_prefix if block_prefix is None else block_prefix
         lines: list[str] = []
         if bp:
             lines.append(header_indent + bp + newline_style)
@@ -416,7 +428,7 @@ class HeaderProcessor:
             list[str]: Postamble lines (each ending with ``newline_style``) that follow
                 the header fields.
         """
-        bs = self.block_suffix if block_suffix is None else block_suffix
+        bs: str = self.block_suffix if block_suffix is None else block_suffix
         lines: list[str] = []
         # Empty line before end marker
         lines.append(
@@ -494,9 +506,12 @@ class HeaderProcessor:
         if config.header_format is HeaderOutputFormat.PLAIN:
             # Don't use the config's block_prefix/suffix or
             # line_prefix/suffix, but rather the provided overrides or defaults.
-            block_prefix = block_suffix = line_prefix = line_suffix = effective_line_indent = (
-                header_indent
-            ) = ""
+            block_prefix: str = ""
+            block_suffix: str = ""
+            line_prefix: str = ""
+            line_suffix: str = ""
+            effective_line_indent: str = ""
+            header_indent: str = ""
         else:
             # Use provided overrides or defaults from the instance
             block_prefix = (
@@ -519,7 +534,7 @@ class HeaderProcessor:
             )
 
         # Compute header field name width:
-        width = max(len(k) for k in header_values) + 1 if len(header_values) > 0 else 0
+        width: int = max(len(k) for k in header_values) + 1 if len(header_values) > 0 else 0
 
         # Build the header lines
         lines: list[str] = []
@@ -537,8 +552,8 @@ class HeaderProcessor:
 
         # Field lines (no blanks in-between)
         for field in config.header_fields:
-            value = header_values.get(field, "")
-            inner = f"{field:<{width}}: {value}" if width else f"{field}: {value}"
+            value: str = header_values.get(field, "")
+            inner: str = f"{field:<{width}}: {value}" if width else f"{field}: {value}"
             lines.append(
                 self._wrap_line(
                     inner,
@@ -590,7 +605,9 @@ class HeaderProcessor:
         shebang_present = False
 
         # Shebang handling based on per-file-type policy
-        policy = getattr(self.file_type, "header_policy", None)
+        policy: FileTypeHeaderPolicy | None = (
+            self.file_type.header_policy if self.file_type else None
+        )
         if policy and policy.supports_shebang and file_lines and file_lines[0].startswith("#!"):
             shebang_present = True
             index = 1
@@ -631,7 +648,7 @@ class HeaderProcessor:
             return False
 
         # Step 3: Remove the prefix and suffix and check the remaining content
-        candidate = line
+        candidate: str = line
         if self.line_prefix:
             candidate = candidate.removeprefix(self.line_prefix)
         if self.line_suffix:
@@ -694,10 +711,10 @@ class HeaderProcessor:
             tuple[int | None, int | None]: ``(start_index, end_index)`` (inclusive) when
                 a valid header is found, or ``(None, None)`` otherwise.
         """
-        anchor_idx = self.get_header_insertion_index(lines) or 0
+        anchor_idx: int = self.get_header_insertion_index(lines) or 0
 
         if self.block_prefix and self.block_suffix:
-            candidates = self._collect_bounds_block_comments(lines)
+            candidates: list[tuple[int, int]] = self._collect_bounds_block_comments(lines)
         else:
             candidates = self._collect_bounds_line_comments(lines)
 
@@ -755,6 +772,8 @@ class HeaderProcessor:
         # 1) Resolve bounds: prefer explicit span, else policy-aware detection.
         if span is None:
             # First try the standard, policy-aware bounds detection.
+            start: int | None
+            end: int | None
             start, end = self.get_header_bounds(lines)
             span = (start, end) if start is not None and end is not None else None
 
@@ -763,20 +782,20 @@ class HeaderProcessor:
                 # comment wrappers (e.g., XML/HTML `<!-- ... -->`).
                 # Useful when stripping headers that were inserted by older versions
                 # or were moved by formatting tools.
-                n = len(lines)
+                n: int = len(lines)
                 i = 0
                 while i < n:
                     # Accept either exact directive match (prefix/suffix-aware)
                     # or the directive appearing inside a single-line comment wrapper.
-                    start_match = self.line_has_directive(lines[i], TOPMARK_START_MARKER) or (
+                    start_match: bool = self.line_has_directive(lines[i], TOPMARK_START_MARKER) or (
                         TOPMARK_START_MARKER in lines[i]
                     )
                     if start_match:
-                        j = i + 1
+                        j: int = i + 1
                         while j < n:
-                            end_match = self.line_has_directive(lines[j], TOPMARK_END_MARKER) or (
-                                TOPMARK_END_MARKER in lines[j]
-                            )
+                            end_match: bool = self.line_has_directive(
+                                lines[j], TOPMARK_END_MARKER
+                            ) or (TOPMARK_END_MARKER in lines[j])
                             if end_match:
                                 span = (i, j)
                                 break
@@ -796,7 +815,7 @@ class HeaderProcessor:
             return lines, None
 
         # Remove the block (inclusive header span)
-        new_lines = lines[:start] + lines[end + 1 :]
+        new_lines: list[str] = lines[:start] + lines[end + 1 :]
 
         # Top-of-file cleanup: trim exactly one blank line left by removal.
         if start == 0 and new_lines and new_lines[0].strip() == "":
@@ -807,12 +826,12 @@ class HeaderProcessor:
     def _collect_bounds_line_comments(self, lines: list[str]) -> list[tuple[int, int]]:
         """Collect all (start,end) pairs for pound-style headers in the file."""
         results: list[tuple[int, int]] = []
-        i = 0
-        n = len(lines)
+        i: int = 0
+        n: int = len(lines)
         while i < n:
             if self.line_has_directive(lines[i], TOPMARK_START_MARKER):
-                start = i
-                j = i + 1
+                start: int = i
+                j: int = i + 1
                 while j < n and not self.line_has_directive(lines[j], TOPMARK_END_MARKER):
                     j += 1
                 if j < n and self.line_has_directive(lines[j], TOPMARK_END_MARKER):
@@ -830,31 +849,31 @@ class HeaderProcessor:
         without intervening non-blank content; otherwise return the markers only.
         """
         results: list[tuple[int, int]] = []
-        n = len(lines)
-        i = 0
+        n: int = len(lines)
+        i: int = 0
         while i < n:
             # Find a START marker
             if not self.line_has_directive(lines[i], TOPMARK_START_MARKER):
                 i += 1
                 continue
-            start_idx = i
+            start_idx: int = i
             # Find the matching END marker after start
             j = i + 1
             while j < n and not self.line_has_directive(lines[j], TOPMARK_END_MARKER):
                 j += 1
             if j >= n:
                 break  # unmatched START; stop collecting further
-            end_idx = j
+            end_idx: int = j
 
             # Try to expand to block_prefix/block_suffix if they tightly wrap the header
-            block_start = None
-            k = start_idx - 1
+            block_start: int | None = None
+            k: int = start_idx - 1
             while k >= 0 and lines[k].strip() == "":
                 k -= 1
             if k >= 0 and self.block_prefix and lines[k].strip() == self.block_prefix:
                 block_start = k
 
-            block_end = None
+            block_end: int | None = None
             k = end_idx + 1
             while k < n and lines[k].strip() == "":
                 k += 1

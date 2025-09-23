@@ -33,14 +33,16 @@ drifts both show up as "would update header", whereas true matches land in
 "up‑to‑date".
 """
 
-from topmark.config.logging import get_logger
+from __future__ import annotations
+
+from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.pipeline.context import (
     ComparisonStatus,
     GenerationStatus,
     ProcessingContext,
 )
 
-logger = get_logger(__name__)
+logger: TopmarkLogger = get_logger(__name__)
 
 
 def compare(ctx: ProcessingContext) -> ProcessingContext:
@@ -111,8 +113,8 @@ def compare(ctx: ProcessingContext) -> ProcessingContext:
         and ctx.existing_header_block is not None
         and ctx.expected_header_lines is not None
     ):
-        existing_block = ctx.existing_header_block
-        expected_block = "".join(ctx.expected_header_lines)
+        existing_block: str = ctx.existing_header_block
+        expected_block: str = "".join(ctx.expected_header_lines)
         if existing_block != expected_block:
             logger.debug(
                 "Header dicts equal but block text differs for %s → formatting change",

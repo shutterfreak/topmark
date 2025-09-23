@@ -23,3 +23,5 @@ The public API is composed of the pipeline assembly helpers in
 [`topmark.pipeline.runner`][topmark.pipeline.runner], and the shared context model in
 [`topmark.pipeline.context`][topmark.pipeline.context].
 """
+
+from __future__ import annotations

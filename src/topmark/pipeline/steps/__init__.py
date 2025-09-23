@@ -9,3 +9,5 @@
 # topmark:header:end
 
 """Step modules for the functional pipeline (no exports here)."""
+
+from __future__ import annotations

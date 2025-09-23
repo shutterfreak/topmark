@@ -14,6 +14,8 @@ This processor supports files using `<!-- ... -->`-style comments, such as MarkD
 It delegates header processing to the core pipeline dispatcher.
 """
 
+from __future__ import annotations
+
 import re
 
 from topmark.file_resolver import detect_newline
@@ -75,23 +77,23 @@ class XmlHeaderProcessor(HeaderProcessor):
             int | None: Character offset suitable for insertion, or ``None`` to use the
                 line-based strategy.
         """
-        text = original_text
+        text: str = original_text
         if not text:
             return 0
 
-        i = 0
+        i: int = 0
         # UTF-8 BOM
         if text.startswith("\ufeff"):
             i += 1
 
         # Leading ASCII whitespace
-        m = re.match(r"[\t \r\n]*", text[i:])
+        m: re.Match[str] | None = re.match(r"[\t \r\n]*", text[i:])
         if m:
             i += m.end()
 
         # XML declaration
         if text[i : i + 5] == "<?xml":
-            end_decl = text.find("?>", i)
+            end_decl: int = text.find("?>", i)
             if end_decl == -1:
                 return i  # malformed; be conservative
             i = end_decl + 2
@@ -101,7 +103,7 @@ class XmlHeaderProcessor(HeaderProcessor):
                 i += m.end()
             # Optional DOCTYPE (best-effort: up to next '>')
             if text[i : i + 9].upper() == "<!DOCTYPE":
-                end_doc = text.find(">", i)
+                end_doc: int = text.find(">", i)
                 if end_doc != -1:
                     i = end_doc + 1
                 m = re.match(r"[\t \r\n]*", text[i:])
@@ -137,10 +139,10 @@ class XmlHeaderProcessor(HeaderProcessor):
         if original_text.count("\r\n") >= original_text.count("\n") and "\r\n" in original_text:
             nl = "\r\n"
 
-        before = original_text[:insert_offset]
-        after = original_text[insert_offset:]
+        before: str = original_text[:insert_offset]
+        after: str = original_text[insert_offset:]
 
-        block = rendered_header_text
+        block: str = rendered_header_text
         if not (block.endswith("\n") or block.endswith("\r\n")):
             block = block + nl
 
@@ -148,7 +150,7 @@ class XmlHeaderProcessor(HeaderProcessor):
         if insert_offset > 0:
             # Count trailing newlines in 'before'
             trailing = 0
-            j = len(before)
+            j: int = len(before)
             while j > 0:
                 if nl == "\r\n" and before[max(0, j - 2) : j] == "\r\n":
                     trailing += 1
@@ -193,12 +195,12 @@ class XmlHeaderProcessor(HeaderProcessor):
         Returns:
             list[str]: Possibly modified header lines including any added padding.
         """
-        nl = detect_newline(original_lines)
-        out = list(rendered_header_lines)
+        nl: str = detect_newline(original_lines)
+        out: list[str] = list(rendered_header_lines)
 
         # Leading padding
         if insert_index > 0:
-            prev_is_blank = (
+            prev_is_blank: bool = (
                 insert_index - 1 < len(original_lines)
                 and original_lines[insert_index - 1].strip() == ""
             )
@@ -206,7 +208,7 @@ class XmlHeaderProcessor(HeaderProcessor):
                 out = [nl] + out
 
         # Trailing padding
-        next_is_blank = insert_index < len(original_lines) and (
+        next_is_blank: bool = insert_index < len(original_lines) and (
             original_lines[insert_index].strip() == ""
         )
         if not next_is_blank:
@@ -268,7 +270,7 @@ class XmlHeaderProcessor(HeaderProcessor):
         """
         import re as _re
 
-        fence = _re.compile(r"^\s*(```|~~~)")
+        fence: re.Pattern[str] = _re.compile(r"^\s*(```|~~~)")
         open_count = 0
         for i in range(0, min(idx + 1, len(lines))):
             if fence.match(lines[i]):
@@ -287,11 +289,15 @@ class XmlHeaderProcessor(HeaderProcessor):
           4. Collapses the XML declaration and the next element back onto one line.
         """
         # 1) Perform the generic removal first.
+        new_lines: list[str] = []
+        removed: tuple[int, int] | None = None
         new_lines, removed = super().strip_header_block(lines=lines, span=span)
         if removed is None:
             return new_lines, None
 
-        start, _ = removed
+        start: int
+        _end: int
+        start, _end = removed
 
         # --- Blank line cleanup around the removed header ---
         # After base removal, `start` points at the first line that originally
@@ -315,11 +321,11 @@ class XmlHeaderProcessor(HeaderProcessor):
         # outer wrapper lines. If the nearest non-blank line before `start` is exactly
         # the block prefix and the nearest non-blank line at/after `start` is exactly
         # the block suffix, drop both.
-        prev_idx = start - 1
+        prev_idx: int = start - 1
         # walk back to previous non-blank
         while 0 <= prev_idx < len(new_lines) and new_lines[prev_idx].strip() == "":
             prev_idx -= 1
-        next_idx = start
+        next_idx: int = start
         # walk forward to next non-blank
         while 0 <= next_idx < len(new_lines) and new_lines[next_idx].strip() == "":
             next_idx += 1
@@ -349,17 +355,17 @@ class XmlHeaderProcessor(HeaderProcessor):
         prev_idx = start - 1
         next_idx = start
         if 0 <= prev_idx < len(new_lines) and 0 <= next_idx < len(new_lines):
-            prev = new_lines[prev_idx]
-            next_line = new_lines[next_idx]
+            prev: str = new_lines[prev_idx]
+            next_line: str = new_lines[next_idx]
 
             # Allow for a UTF‑8 BOM and incidental leading whitespace on the decl line.
-            prev_no_bom = prev.lstrip("\ufeff")
+            prev_no_bom: str = prev.lstrip("\ufeff")
 
             # Recognize an XML declaration regardless of whether it currently ends with
             # a newline. Collapse boundary whitespace so there is *no* newline between
             # the declaration and the next node, restoring single‑line layout.
             if prev_no_bom.lstrip().startswith("<?xml"):
-                merged = prev.rstrip("\r\n") + next_line.lstrip()
+                merged: str = prev.rstrip("\r\n") + next_line.lstrip()
                 new_lines[prev_idx : next_idx + 1] = [merged]
 
         return new_lines, removed

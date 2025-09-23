@@ -15,17 +15,19 @@ based on the pipeline context and configuration. It produces the `expected_heade
 in the context, updates built-in fields, and sets the generation status accordingly.
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from topmark.config.logging import get_logger
+from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.pipeline.context import FileStatus, GenerationStatus, ProcessingContext
 from topmark.utils.file import compute_relpath
 
 if TYPE_CHECKING:
     from topmark.config import Config
 
-logger = get_logger(__name__)
+logger: TopmarkLogger = get_logger(__name__)
 
 
 def build(ctx: ProcessingContext) -> ProcessingContext:
@@ -64,11 +66,11 @@ def build(ctx: ProcessingContext) -> ProcessingContext:
 
     # Prepare built-in fields related to the file system
     # Resolve absolute paths first for consistency
-    absolute_path = file_path.resolve(strict=True)
-    relative_to = Path(config.relative_to).resolve() if config.relative_to else Path.cwd()
+    absolute_path: Path = file_path.resolve(strict=True)
+    relative_to: Path = Path(config.relative_to).resolve() if config.relative_to else Path.cwd()
     # Determine relative path from the file to the root path
     # Default to the current working directory if 'relative_to' is not configured
-    relative_path = compute_relpath(file_path, relative_to)
+    relative_path: Path = compute_relpath(file_path, relative_to)
 
     builtin_fields: dict[str, str] = {
         # Base file name (without any path)
@@ -90,7 +92,7 @@ def build(ctx: ProcessingContext) -> ProcessingContext:
         # Warn if configuration fields override built-in fields (potentially accidental)
         builtin_overlap: list[str] = [key for key in config.field_values if key in builtin_fields]
         if len(builtin_overlap) > 0:
-            builtin_overlap_repr = ", ".join(
+            builtin_overlap_repr: str = ", ".join(
                 key for key in config.field_values if key in builtin_fields
             )
             logger.warning(
@@ -108,7 +110,7 @@ def build(ctx: ProcessingContext) -> ProcessingContext:
     }
 
     for key in config.header_fields:
-        value = all_fields.get(key)
+        value: str | None = all_fields.get(key)
         if value is None:
             logger.warning("Unknown header field: %s", key)
             ctx.add_error(f"Unknown header field: {key}")

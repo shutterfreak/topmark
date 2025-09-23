@@ -10,19 +10,22 @@
 
 """Auto-import all processor modules in the current package."""
 
+from __future__ import annotations
+
 import importlib
 import pkgutil
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from topmark.config.logging import get_logger
-from topmark.pipeline.processors.base import HeaderProcessor
+from topmark.config.logging import TopmarkLogger, get_logger
+from topmark.filetypes.base import FileType
 
 if TYPE_CHECKING:
     from topmark.filetypes.base import FileType
+    from topmark.pipeline.processors.base import HeaderProcessor
 
 
-logger = get_logger(__name__)
+logger: TopmarkLogger = get_logger(__name__)
 
 
 def get_processor_for_file(path: Path) -> HeaderProcessor | None:
@@ -39,8 +42,8 @@ def get_processor_for_file(path: Path) -> HeaderProcessor | None:
     from topmark.filetypes.instances import get_file_type_registry
     from topmark.filetypes.registry import get_header_processor_registry
 
-    file_type_registry = get_file_type_registry()
-    header_processor_registry = get_header_processor_registry()
+    file_type_registry: dict[str, FileType] = get_file_type_registry()
+    header_processor_registry: dict[str, HeaderProcessor] = get_header_processor_registry()
 
     logger.debug("Looking up file type for file '%s'", path)
     logger.debug(
@@ -48,7 +51,7 @@ def get_processor_for_file(path: Path) -> HeaderProcessor | None:
         len(file_type_registry),
         ", ".join(sorted(file_type_registry.keys())),
     )
-    header_processor_list = sorted(
+    header_processor_list: list[str] = sorted(
         set(processor.__class__.__name__ for processor in header_processor_registry.values()),
     )
     logger.debug(

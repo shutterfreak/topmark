@@ -25,12 +25,18 @@ Implementation details:
     to "\n" and proceeds, rather than skipping the file.
 """
 
-import codecs
+from __future__ import annotations
 
-from topmark.config.logging import get_logger
+import codecs
+from typing import TYPE_CHECKING
+
+from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.pipeline.context import FileStatus, ProcessingContext
 
-logger = get_logger(__name__)
+if TYPE_CHECKING:
+    from topmark.filetypes.policy import FileTypeHeaderPolicy
+
+logger: TopmarkLogger = get_logger(__name__)
 
 
 def read(ctx: ProcessingContext) -> ProcessingContext:
@@ -73,14 +79,14 @@ def read(ctx: ProcessingContext) -> ProcessingContext:
     try:
         # Sniff the first 4KB to decide "text vs binary" and to detect newline style
         with open(ctx.path, "rb") as bf:
-            tail = b""  # carry 1 byte to detect CRLF across chunk boundaries
-            dec = codecs.getincrementaldecoder("utf-8")()
+            tail: bytes = b""  # carry 1 byte to detect CRLF across chunk boundaries
+            dec: codecs.BufferedIncrementalDecoder = codecs.getincrementaldecoder("utf-8")()
             while True:
-                chunk = bf.read(4096)
+                chunk: bytes = bf.read(4096)
                 if not chunk:
                     break
 
-                blob = tail + chunk
+                blob: bytes = tail + chunk
 
                 # NUL bytes strongly indicate a binary file; skip further processing
                 if b"\0" in blob:
@@ -142,7 +148,7 @@ def read(ctx: ProcessingContext) -> ProcessingContext:
             errors="replace",
             newline="",
         ) as f:
-            lines = list(f)
+            lines: list[str] = list(f)
 
         # Normalize a leading UTF‑8 BOM so downstream steps work on BOM‑free text.
         # We remember its presence to re‑attach it at write time in the updater.
@@ -159,7 +165,9 @@ def read(ctx: ProcessingContext) -> ProcessingContext:
         # Policy: on POSIX the shebang must be the very first two bytes. If this
         # file type supports shebang handling and a BOM was present *before* the
         # shebang, skip processing by default and surface a clear diagnostic.
-        policy = getattr(ctx.header_processor.file_type, "header_policy", None)
+        policy: FileTypeHeaderPolicy | None = (
+            ctx.header_processor.file_type.header_policy if ctx.header_processor.file_type else None
+        )
         if ctx.leading_bom and ctx.has_shebang and policy and policy.supports_shebang:
             ctx.add_error(
                 "UTF-8 BOM appears before the shebang; POSIX requires '#!' at byte 0. "

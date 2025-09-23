@@ -15,15 +15,17 @@ and produces a unified diff (header patch). It also formats a colorized preview
 for logging and CLI display.
 """
 
+from __future__ import annotations
+
 import difflib
 
 from yachalk import chalk
 
-from topmark.config.logging import get_logger
+from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.pipeline.context import ComparisonStatus, ProcessingContext
 from topmark.utils.diff import render_patch
 
-logger = get_logger(__name__)
+logger: TopmarkLogger = get_logger(__name__)
 
 
 def patch(ctx: ProcessingContext) -> ProcessingContext:
@@ -78,7 +80,7 @@ def patch(ctx: ProcessingContext) -> ProcessingContext:
         ctx.header_diff = None
         return ctx
 
-    patch_lines = list(
+    patch_lines: list[str] = list(
         difflib.unified_diff(
             ctx.file_lines or [],
             ctx.updated_file_lines or [],

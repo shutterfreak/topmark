@@ -15,6 +15,8 @@ This module provides type aliases for pipeline step functions used in TopMark.
 which takes a ProcessingContext as input and returns a ProcessingContext.
 """
 
+from __future__ import annotations
+
 from typing import Callable
 
 from .context import ProcessingContext

@@ -16,10 +16,12 @@ processor. It sets ``ctx.updated_file_lines`` only when a removal is performed
 and updates ``StripStatus`` to ``READY`` or ``NOT_NEEDED`` accordingly.
 """
 
-from topmark.config.logging import get_logger
+from __future__ import annotations
+
+from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.pipeline.context import HeaderStatus, ProcessingContext, StripStatus
 
-logger = get_logger(__name__)
+logger: TopmarkLogger = get_logger(__name__)
 
 
 def strip(ctx: ProcessingContext) -> ProcessingContext:
@@ -49,14 +51,15 @@ def strip(ctx: ProcessingContext) -> ProcessingContext:
     if ctx.header_processor is None:
         return ctx
 
-    lines = ctx.file_lines or []
+    lines: list[str] = ctx.file_lines or []
     if not lines:
         # Empty file
         return ctx
 
     # Prefer the span detected by the scanner; fall back to processor logic otherwise.
-    span = ctx.existing_header_range
-
+    span: tuple[int, int] | None = ctx.existing_header_range
+    new_lines: list[str] = []
+    removed: tuple[int, int] | None = None
     new_lines, removed = ctx.header_processor.strip_header_block(lines=lines, span=span)
     if removed is None or new_lines == lines:
         # Nothing to remove

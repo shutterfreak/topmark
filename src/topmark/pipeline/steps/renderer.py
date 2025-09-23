@@ -29,10 +29,12 @@ Notes:
   (comparer/patcher/updater) will use.
 """
 
-from topmark.config.logging import get_logger
+from __future__ import annotations
+
+from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.pipeline.context import GenerationStatus, ProcessingContext
 
-logger = get_logger(__name__)
+logger: TopmarkLogger = get_logger(__name__)
 
 
 def render(ctx: ProcessingContext) -> ProcessingContext:
@@ -81,9 +83,11 @@ def render(ctx: ProcessingContext) -> ProcessingContext:
     # headers (like JSONC inside an object) visually stable after replacement.
     header_indent_override: str | None = None
     if ctx.existing_header_range is not None and ctx.file_lines:
-        start_idx, _ = ctx.existing_header_range
-        first_line = ctx.file_lines[start_idx]
-        leading_ws = first_line[: len(first_line) - len(first_line.lstrip())]
+        start_idx: int
+        _end_idx: int
+        start_idx, _end_idx = ctx.existing_header_range
+        first_line: str = ctx.file_lines[start_idx]
+        leading_ws: str = first_line[: len(first_line) - len(first_line.lstrip())]
         if leading_ws and first_line.lstrip().startswith(ctx.header_processor.line_prefix):
             header_indent_override = leading_ws
 

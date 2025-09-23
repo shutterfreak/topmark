@@ -16,17 +16,26 @@ corresponding `HeaderProcessor` instance from the registry. It updates
 missing processors. It performs no I/O.
 """
 
+from __future__ import annotations
+
 import re
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
-from topmark.config.logging import get_logger
+from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.constants import VALUE_NOT_SET
 from topmark.filetypes.base import ContentGate, FileType
 from topmark.filetypes.instances import get_file_type_registry
 from topmark.filetypes.registry import get_header_processor_registry
 from topmark.pipeline.context import FileStatus, ProcessingContext
 
-logger = get_logger(__name__)
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
+
+    from topmark.pipeline.processors.base import HeaderProcessor
+
+logger: TopmarkLogger = get_logger(__name__)
 
 
 @dataclass(frozen=True)
@@ -55,15 +64,15 @@ def _compute_signals(ft: FileType, base_name: str, path_str: str, suffix: str) -
     Returns:
         MatchSignals: Booleans indicating extension, filename/tail, and pattern matches.
     """
-    exts = ft.extensions or []
-    fnames = ft.filenames or []
-    pats = ft.patterns or []
-    ext_match = suffix in exts
+    exts: list[str] = ft.extensions or []
+    fnames: list[str] = ft.filenames or []
+    pats: list[str] = ft.patterns or []
+    ext_match: bool = suffix in exts
     fname_match = False
     if fnames:
         for fname in fnames:
             # Normalize declared tail to POSIX to match path_str (which is POSIX)
-            tail = fname.replace("\\", "/")
+            tail: str = fname.replace("\\", "/")
             if "/" in tail:
                 if path_str.endswith(tail):
                     fname_match = True
@@ -89,7 +98,7 @@ def _should_probe_content(ft: FileType, sig: MatchSignals) -> bool:
     Returns:
         bool: True if calling `content_matcher` is allowed.
     """
-    gate = getattr(ft, "content_gate", ContentGate.NEVER)
+    gate: ContentGate = ft.content_gate or ContentGate.NEVER
     if gate is ContentGate.NEVER:
         return False
     if gate is ContentGate.IF_EXTENSION:
@@ -101,7 +110,7 @@ def _should_probe_content(ft: FileType, sig: MatchSignals) -> bool:
     if gate is ContentGate.IF_ANY_NAME_RULE:
         return sig.any
     if gate is ContentGate.IF_NONE:
-        no_rules = not ((ft.extensions or []) or (ft.filenames or []) or (ft.patterns or []))
+        no_rules: bool = not ((ft.extensions or []) or (ft.filenames or []) or (ft.patterns or []))
         return no_rules
     # ContentGate.ALWAYS
     return True
@@ -124,8 +133,8 @@ def _include_candidate(
     Returns:
         bool: True if the candidate should be considered.
     """
-    cm = getattr(ft, "content_matcher", None)
-    include = sig.any
+    cm: Callable[[Path], bool] | None = ft.content_matcher or None
+    include: bool = sig.any
     if not callable(cm):
         return include
 
@@ -164,9 +173,9 @@ def _score(
     Returns:
         int: A score where higher is better.
     """
-    s = 0
+    s: int = 0
     if sig.fname:
-        best = 0
+        best: int = 0
         for fname in ft.filenames or []:
             if base_name == fname or path_str.endswith(fname):
                 best = max(best, 100 + min(len(fname), 100))
@@ -176,7 +185,7 @@ def _score(
     if sig.pat:
         s = max(s, 70)
     if sig.ext:
-        best_ext = 50
+        best_ext: int = 50
         for ext in ft.extensions or []:
             if base_name.endswith(ext):
                 best_ext = max(best_ext, 50 + min(len(ext), 10))
@@ -211,17 +220,17 @@ def resolve(ctx: ProcessingContext) -> ProcessingContext:
     # then pick the most specific match.
     candidates: list[tuple[int, str, FileType]] = []
 
-    suffix = ctx.path.suffix
-    base_name = ctx.path.name
-    path_str = ctx.path.as_posix()
+    suffix: str = ctx.path.suffix
+    base_name: str = ctx.path.name
+    path_str: str = ctx.path.as_posix()
 
     # 1) Compute name signals -> 2) Gate content probe -> 3) Include? -> 4) Score
     for ft in get_file_type_registry().values():
-        sig = _compute_signals(ft, base_name, path_str, suffix)
-        gate = getattr(ft, "content_gate", ContentGate.NEVER)
-        should_probe = _should_probe_content(ft, sig)
+        sig: MatchSignals = _compute_signals(ft, base_name, path_str, suffix)
+        gate: ContentGate = ft.content_gate or ContentGate.NEVER
+        should_probe: bool = _should_probe_content(ft, sig)
 
-        cm = getattr(ft, "content_matcher", None)
+        cm: Callable[[Path], bool] | None = ft.content_matcher or None
         content_hit = False
         if should_probe and callable(cm):
             try:
@@ -243,6 +252,7 @@ def resolve(ctx: ProcessingContext) -> ProcessingContext:
     if candidates:
         # Best by (score DESC, name ASC) for deterministic choice
         candidates.sort(key=lambda x: (-x[0], x[1]))
+        file_type: FileType
         _, _, file_type = candidates[0]
 
         ctx.file_type = file_type
@@ -262,7 +272,7 @@ def resolve(ctx: ProcessingContext) -> ProcessingContext:
             return ctx
 
         # Matched a FileType, but no header processor is registered for it
-        processor = get_header_processor_registry().get(file_type.name)
+        processor: HeaderProcessor | None = get_header_processor_registry().get(file_type.name)
         if processor is None:
             ctx.status.file = (
                 FileStatus.SKIPPED_NO_HEADER_PROCESSOR

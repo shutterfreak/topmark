@@ -10,9 +10,7 @@
 
 """Context for header processing in the Topmark pipeline."""
 
-from __future__ import (
-    annotations,  # Enables forward references (optional in 3.12+ but good practice)
-)
+from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
@@ -516,6 +514,9 @@ class ProcessingContext:
             parts.append(chalk.dim("<unknown>"))
 
         # Primary bucket/label with color
+        key: str
+        label: str
+        color_fn: Callable[[str], str]
         key, label, color_fn = classify_outcome(self)
         parts.append("\u2013")  # en dash separator
         parts.append(color_fn(label))
@@ -532,9 +533,9 @@ class ProcessingContext:
 
         diag_show_hint: str = ""
         if self.diagnostics:
-            n_info = sum(1 for d in self.diagnostics if d.level is DiagnosticLevel.INFO)
-            n_warn = sum(1 for d in self.diagnostics if d.level is DiagnosticLevel.WARNING)
-            n_err = sum(1 for d in self.diagnostics if d.level is DiagnosticLevel.ERROR)
+            n_info: int = sum(1 for d in self.diagnostics if d.level is DiagnosticLevel.INFO)
+            n_warn: int = sum(1 for d in self.diagnostics if d.level is DiagnosticLevel.WARNING)
+            n_err: int = sum(1 for d in self.diagnostics if d.level is DiagnosticLevel.ERROR)
             parts.append("-")
             # Compose a compact triage summary like "1 error, 2 warnings"
             triage: list[str] = []
@@ -555,7 +556,7 @@ class ProcessingContext:
         if self.diagnostics and verbosity_level > 0:
             details: list[str] = []
             for d in self.diagnostics:
-                prefix = {
+                prefix: str = {
                     DiagnosticLevel.ERROR: chalk.red_bright("error"),
                     DiagnosticLevel.WARNING: chalk.yellow("warning"),
                     DiagnosticLevel.INFO: chalk.blue("info"),

@@ -27,11 +27,13 @@ The updater respects comparer outcomes and file fidelity:
     the original.
 """
 
-from topmark.config.logging import get_logger
+from __future__ import annotations
+
+from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.pipeline.context import ComparisonStatus, ProcessingContext, StripStatus, WriteStatus
 from topmark.pipeline.processors.base import NO_LINE_ANCHOR
 
-logger = get_logger(__name__)
+logger: TopmarkLogger = get_logger(__name__)
 
 
 def _prepend_bom_to_lines_if_needed(lines: list[str], ctx: ProcessingContext) -> list[str]:
@@ -73,7 +75,7 @@ def _prepend_bom_to_lines_if_needed(lines: list[str], ctx: ProcessingContext) ->
         return lines
 
     # Re-attach the stripped BOM
-    first = lines[0]
+    first: str = lines[0]
     if not first.startswith("\ufeff"):
         lines = lines[:]  # shallow copy to avoid mutating caller’s list
         lines[0] = "\ufeff" + first
@@ -131,13 +133,15 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
         ctx.status.write = WriteStatus.SKIPPED
         return ctx
 
-    original_lines = ctx.file_lines or []
-    rendered_expected_header_lines = ctx.expected_header_lines
+    original_lines: list[str] = ctx.file_lines or []
+    rendered_expected_header_lines: list[str] = ctx.expected_header_lines
 
     if ctx.existing_header_range is not None:
         # Replace existing header: remove old header lines and insert new header in place
+        start: int
+        end: int
         start, end = ctx.existing_header_range
-        new_lines = (
+        new_lines: list[str] = (
             original_lines[:start] + rendered_expected_header_lines + original_lines[end + 1 :]
         )
         # Prepend BOM if needed
@@ -156,11 +160,11 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
         # 1) text-based first
         try:
             original_text = "".join(original_lines)
-            char_offset = None
+            char_offset: int | None = None
             if hasattr(ctx.header_processor, "get_header_insertion_char_offset"):
                 char_offset = ctx.header_processor.get_header_insertion_char_offset(original_text)
             if char_offset is not None:
-                header_text = "".join(rendered_expected_header_lines)
+                header_text: str = "".join(rendered_expected_header_lines)
                 if hasattr(ctx.header_processor, "prepare_header_for_insertion_text"):
                     try:
                         header_text = ctx.header_processor.prepare_header_for_insertion_text(
@@ -187,7 +191,7 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
             logger.warning("text-based insertion failed for %s: %s", ctx.path, e)
 
         # 2) fallback: line-based
-        insert_index = ctx.header_processor.get_header_insertion_index(original_lines)
+        insert_index: int = ctx.header_processor.get_header_insertion_index(original_lines)
         if insert_index == NO_LINE_ANCHOR:
             ctx.status.write = WriteStatus.FAILED
             ctx.add_error(f"No line-based insertion anchor for file: {ctx.path}")
