@@ -9,3 +9,5 @@
 # topmark:header:end
 
 """TopMark Test Framework: Pipeline - Integration."""
+
+from __future__ import annotations

@@ -22,8 +22,8 @@ from topmark.utils.diff import render_patch
 def test_render_patch_accepts_str_and_list() -> None:
     """`render_patch` should accept both a diff string and an iterable of lines."""
     diff_text = "--- a\n+++ b\n-foo\n+bar\n"
-    s1 = render_patch(diff_text)
-    s2 = render_patch(diff_text.splitlines(False))
+    s1: str = render_patch(diff_text)
+    s2: str = render_patch(diff_text.splitlines(False))
 
     # Both should render to non-empty strings.
     assert isinstance(s1, str) and isinstance(s2, str) and s1 and s2
@@ -31,5 +31,5 @@ def test_render_patch_accepts_str_and_list() -> None:
 
 def test_render_patch_empty_input_is_safe() -> None:
     """Empty diff input should not raise and should return a string."""
-    s = render_patch("")
+    s: str = render_patch("")
     assert isinstance(s, str)

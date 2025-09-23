@@ -9,3 +9,5 @@
 # topmark:header:end
 
 """TopMark Test Framework: Unit tests."""
+
+from __future__ import annotations

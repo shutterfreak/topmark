@@ -17,14 +17,21 @@ Ensures that running `topmark dump-config`:
 - Produces a valid TOML snippet between markers that can be parsed by `tomllib`.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import tomlkit
 
 from tests.cli.conftest import assert_SUCCESS, run_cli
 
+if TYPE_CHECKING:
+    from click.testing import Result
+
 
 def test_dump_config_outputs_valid_toml() -> None:
     """It should emit valid TOML wrapped in BEGIN/END markers and parse successfully."""
-    result = run_cli(
+    result: Result = run_cli(
         [
             "--no-color",  # Strip ANSI formatting to allow parsing the generated TOML
             "-v",  # Render the BEGIN and END markers
@@ -37,10 +44,10 @@ def test_dump_config_outputs_valid_toml() -> None:
     assert "# === BEGIN ===" in result.output
 
     # Extract the TOML slice
-    start = result.output.find("# === BEGIN ===")
-    end = result.output.find("# === END ===")
-    toml_text = result.output[start:end].splitlines()[1:]  # drop marker line
-    parsed = tomlkit.parse("\n".join(toml_text))
+    start: int = result.output.find("# === BEGIN ===")
+    end: int = result.output.find("# === END ===")
+    toml_text: list[str] = result.output[start:end].splitlines()[1:]  # drop marker line
+    parsed: tomlkit.TOMLDocument = tomlkit.parse("\n".join(toml_text))
     assert "fields" in parsed
 
     assert "header" in parsed

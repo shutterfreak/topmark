@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from topmark.config import MutableConfig
+from topmark.config import Config, MutableConfig
 from topmark.pipeline.context import (
     FileStatus,
     ProcessingContext,
@@ -40,17 +40,17 @@ def _ctx_for(path: Path) -> ProcessingContext:
 
     The resolver will populate `file_type` and `header_processor`.
     """
-    cfg = MutableConfig.from_defaults().freeze()
+    cfg: Config = MutableConfig.from_defaults().freeze()
     return ProcessingContext.bootstrap(path=path, config=cfg)
 
 
 def test_reader_skips_when_bom_precedes_shebang_python(tmp_path: Path) -> None:
     """BOM + shebang for a shebang-aware type must be skipped with diagnostic."""
-    p = tmp_path / "bom_and_shebang.py"
+    p: Path = tmp_path / "bom_and_shebang.py"
     # NOTE: BOM first, then shebang — invalid for POSIX shebang recognition
     p.write_text("\ufeff#! /usr/bin/env python\nprint('x')\n", encoding="utf-8")
 
-    ctx = _ctx_for(p)
+    ctx: ProcessingContext = _ctx_for(p)
     ctx = resolve(ctx)
     ctx = read(ctx)
 
@@ -68,7 +68,7 @@ def test_reader_allows_shebang_without_bom_python(tmp_path: Path) -> None:
     p = tmp_path / "shebang_only.py"
     p.write_text("#! /usr/bin/env python\nprint('ok')\n", encoding="utf-8")
 
-    ctx = _ctx_for(p)
+    ctx: ProcessingContext = _ctx_for(p)
     ctx = resolve(ctx)
     ctx = read(ctx)
 
@@ -85,7 +85,7 @@ def test_reader_allows_shebang_without_bom_python(tmp_path: Path) -> None:
 def test_updater_suppresses_bom_reprepend_in_strip_fastpath() -> None:
     """Updater must not re-prepend BOM when a shebang is present (fast path)."""
     # Construct a context hitting the strip fast-path in update():
-    ctx = _ctx_for(path=Path("dummy.py"))
+    ctx: ProcessingContext = _ctx_for(path=Path("dummy.py"))
     ctx.leading_bom = True
     ctx.has_shebang = True
 

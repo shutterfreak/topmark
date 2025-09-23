@@ -26,6 +26,7 @@ Notes:
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
 
 import pytest
@@ -57,7 +58,7 @@ mark_cli = as_typed_mark(pytest.mark.cli)
 
 def parametrize(*args: Any, **kwargs: Any) -> Callable[[F], F]:
     """Typed wrapper for pytest.mark.parametrize."""
-    mark = pytest.mark.parametrize(*args, **kwargs)
+    mark: pytest.MarkDecorator = pytest.mark.parametrize(*args, **kwargs)
     return as_typed_mark(mark)
 
 
@@ -88,7 +89,7 @@ def isolation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     This keeps Click's working directory-dependent logic predictable and avoids
     scanning the repository when the test invokes commands with paths like ".".
     """
-    cwd = tmp_path / "proj"
+    cwd: Path = tmp_path / "proj"
     cwd.mkdir()
     (cwd / "src").mkdir()
     # create a tiny source file to satisfy any basic discovery, not processed further
@@ -127,7 +128,7 @@ def make_config(**overrides: Any) -> Config:
     Recommended for public API calls in tests. Edits are applied on a mutable
     builder and then frozen for use by the pipeline.
     """
-    m = MutableConfig.from_defaults()
+    m: MutableConfig = MutableConfig.from_defaults()
     # apply overrides on the mutable builder
     for k, v in overrides.items():
         setattr(m, k, v)  # or a safer mapping of supported keys
@@ -140,7 +141,7 @@ def make_mutable_config(**overrides: Any) -> MutableConfig:
     Use this in tests that exercise merge logic. For public API calls, prefer
     `make_config` or provide a mapping to the API directly.
     """
-    m = MutableConfig.from_defaults()
+    m: MutableConfig = MutableConfig.from_defaults()
     for k, v in overrides.items():
         setattr(m, k, v)
     return m

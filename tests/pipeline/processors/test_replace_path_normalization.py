@@ -20,14 +20,17 @@ existing header differs from the expected header produced by the default config.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tests.pipeline.conftest import run_insert
-from topmark.config import MutableConfig
+from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from topmark.pipeline.context import ProcessingContext
 
 
 def _is_crlf_lines(lines: list[str]) -> bool:
@@ -47,7 +50,7 @@ def _ends_with_newline(text: str) -> bool:
 
 def test_replace_preserves_crlf(tmp_path: Path) -> None:
     """Replace on a CRLF-seeded header preserves CRLF endings."""
-    f = tmp_path / "a.c"
+    f: Path = tmp_path / "a.c"
 
     # Write with platform newline enforcement: open(newline="\r\n") ensures CRLF.
     with f.open("w", encoding="utf-8", newline="\r\n") as fp:
@@ -55,21 +58,21 @@ def test_replace_preserves_crlf(tmp_path: Path) -> None:
             f"// {TOPMARK_START_MARKER}\n// x\n// {TOPMARK_END_MARKER}\nint main(){{return 0;}}\n"
         )
 
-    cfg = MutableConfig.from_defaults().freeze()
-    ctx = run_insert(f, cfg)  # should replace header
-    lines = ctx.updated_file_lines or []
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    ctx: ProcessingContext = run_insert(f, cfg)  # should replace header
+    lines: list[str] = ctx.updated_file_lines or []
     assert _is_crlf_lines(lines), "All lines (but maybe the last) must use CRLF"
 
 
 def test_replace_preserves_no_final_newline_lf(tmp_path: Path) -> None:
     """Replace on LF-seeded header without final newline preserves that policy."""
-    f = tmp_path / "a.py"
+    f: Path = tmp_path / "a.py"
     f.write_text(
         f"# {TOPMARK_START_MARKER}\n# x\n# {TOPMARK_END_MARKER}\nprint('x')",  # no final newline
         encoding="utf-8",
     )
 
-    cfg = MutableConfig.from_defaults().freeze()
-    ctx = run_insert(f, cfg)  # should replace header
-    out = "".join(ctx.updated_file_lines or [])
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    ctx: ProcessingContext = run_insert(f, cfg)  # should replace header
+    out: str = "".join(ctx.updated_file_lines or [])
     assert not _ends_with_newline(out), "Must preserve absence of final newline"

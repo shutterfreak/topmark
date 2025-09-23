@@ -16,19 +16,27 @@ idempotency and `strip_header_block` behavior including preservation of the
 XML declaration.
 """
 
-from pathlib import Path
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from tests.conftest import mark_pipeline
-from tests.pipeline.conftest import expected_block_lines_for, find_line, run_insert
-from topmark.config import MutableConfig
-from topmark.config.logging import get_logger
+from tests.pipeline.conftest import BlockSignatures, expected_block_lines_for, find_line, run_insert
+from topmark.config import Config, MutableConfig
+from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline import runner
 from topmark.pipeline.context import ProcessingContext
 from topmark.pipeline.pipelines import get_pipeline
 from topmark.pipeline.processors.xml import XmlHeaderProcessor
 
-logger = get_logger(__name__)
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from pathlib import Path
+
+    from topmark.pipeline.contracts import Step
+
+logger: TopmarkLogger = get_logger(__name__)
 
 
 @mark_pipeline
@@ -39,12 +47,12 @@ def test_xml_processor_basics(tmp_path: Path) -> None:
     existing header and resolve the file type to HTML.
     """
     # Create a sample file with html-prefixed comments
-    file = tmp_path / "sample.html"
+    file: Path = tmp_path / "sample.html"
     file.write_text("<html>\n<body><p>Hello.</p></body></html>")
 
-    config = MutableConfig.from_defaults().freeze()
-    context = ProcessingContext.bootstrap(path=file, config=config)
-    steps = get_pipeline("check")
+    config: Config = MutableConfig.from_defaults().freeze()
+    context: ProcessingContext = ProcessingContext.bootstrap(path=file, config=config)
+    steps: Sequence[Step] = get_pipeline("check")
     context = runner.run(context, steps)
 
     assert context.path == file
@@ -60,22 +68,22 @@ def test_html_top_of_file_with_trailing_blank(tmp_path: Path) -> None:
     Verifies that the block-open lands at index 0 and that a single blank line
     follows the closing marker for readability.
     """
-    f = tmp_path / "index.html"
+    f: Path = tmp_path / "index.html"
     f.write_text("<!DOCTYPE html>\n<html></html>\n")
 
-    cfg = MutableConfig.from_defaults().freeze()
-    ctx = run_insert(f, cfg)
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines = ctx.updated_file_lines or []
+    lines: list[str] = ctx.updated_file_lines or []
     logger.debug("ctx.updated_file_lines: %s", lines)
-    sig = expected_block_lines_for(f)
+    sig: BlockSignatures = expected_block_lines_for(f)
     if "block_open" in sig:
-        open_idx = find_line(lines, sig["block_open"])
+        open_idx: int = find_line(lines, sig["block_open"])
         assert open_idx == 0
-    start_idx = find_line(lines, sig["start_line"])
+    start_idx: int = find_line(lines, sig["start_line"])
     assert start_idx == 1
     if "block_close" in sig:
-        close_idx = find_line(lines, sig["block_close"])
+        close_idx: int = find_line(lines, sig["block_close"])
         assert close_idx + 1 < len(lines) and lines[close_idx + 1].strip() == ""
 
 
@@ -86,19 +94,19 @@ def test_markdown_top_of_file_with_trailing_blank(tmp_path: Path) -> None:
     Confirms the HTML-comment-based header is added at the top (block-open at 0,
     start-line at 1) and that a blank line follows the block.
     """
-    f = tmp_path / "README.md"
+    f: Path = tmp_path / "README.md"
     f.write_text("# Title\n\nSome text.\n")
 
-    cfg = MutableConfig.from_defaults().freeze()
-    ctx = run_insert(f, cfg)
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines = ctx.updated_file_lines or []
-    sig = expected_block_lines_for(f)
+    lines: list[str] = ctx.updated_file_lines or []
+    sig: BlockSignatures = expected_block_lines_for(f)
     if "block_open" in sig:
         assert find_line(lines, sig["block_open"]) == 0
     assert find_line(lines, sig["start_line"]) == 1
     if "block_close" in sig:
-        close_idx = find_line(lines, sig["block_close"])
+        close_idx: int = find_line(lines, sig["block_close"])
         assert close_idx + 1 < len(lines) and lines[close_idx + 1].strip() == ""
 
 
@@ -109,22 +117,22 @@ def test_xml_with_declaration_only(tmp_path: Path) -> None:
     Ensures the XML declaration remains line 0 and the header follows after a
     single blank separator.
     """
-    f = tmp_path / "doc.xml"
+    f: Path = tmp_path / "doc.xml"
     f.write_text('<?xml version="1.0"?>\n<root/>\n')
 
-    cfg = MutableConfig.from_defaults().freeze()
-    ctx = run_insert(f, cfg)
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines = ctx.updated_file_lines or []
-    sig = expected_block_lines_for(f)
+    lines: list[str] = ctx.updated_file_lines or []
+    sig: BlockSignatures = expected_block_lines_for(f)
     assert lines[0].lstrip("\ufeff").startswith("<?xml")
     if "block_open" in sig:
-        open_idx = find_line(lines, sig["block_open"])
+        open_idx: int = find_line(lines, sig["block_open"])
         assert open_idx == 2
-    start_idx = find_line(lines, sig["start_line"])
+    start_idx: int = find_line(lines, sig["start_line"])
     assert start_idx == 3
     if "block_close" in sig:
-        close_idx = find_line(lines, sig["block_close"])
+        close_idx: int = find_line(lines, sig["block_close"])
         assert close_idx + 1 < len(lines) and lines[close_idx + 1].strip() == ""
 
 
@@ -135,22 +143,22 @@ def test_xml_with_declaration_and_doctype(tmp_path: Path) -> None:
     Asserts correct placement of the block-open/start after the prolog elements
     and a single blank line.
     """
-    f = tmp_path / "doc2.xml"
+    f: Path = tmp_path / "doc2.xml"
     f.write_text('<?xml version="1.0"?>\n<!DOCTYPE note SYSTEM "Note.dtd">\n<note/>\n')
 
-    cfg = MutableConfig.from_defaults().freeze()
-    ctx = run_insert(f, cfg)
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines = ctx.updated_file_lines or []
-    sig = expected_block_lines_for(f)
+    lines: list[str] = ctx.updated_file_lines or []
+    sig: BlockSignatures = expected_block_lines_for(f)
     assert lines[0].lstrip("\ufeff").startswith("<?xml")
     if "block_open" in sig:
-        open_idx = find_line(lines, sig["block_open"])
+        open_idx: int = find_line(lines, sig["block_open"])
         assert open_idx == 3
-    start_idx = find_line(lines, sig["start_line"])
+    start_idx: int = find_line(lines, sig["start_line"])
     assert start_idx == 4
     if "block_close" in sig:
-        close_idx = find_line(lines, sig["block_close"])
+        close_idx: int = find_line(lines, sig["block_close"])
         assert close_idx + 1 < len(lines) and lines[close_idx + 1].strip() == ""
 
 
@@ -160,22 +168,22 @@ def test_svg_with_declaration(tmp_path: Path) -> None:
 
     Mirrors the XML behavior for SVG files.
     """
-    f = tmp_path / "icon.svg"
+    f: Path = tmp_path / "icon.svg"
     f.write_text(
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"></svg>\n'
     )
 
-    cfg = MutableConfig.from_defaults().freeze()
-    ctx = run_insert(f, cfg)
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines = ctx.updated_file_lines or []
-    sig = expected_block_lines_for(f)
+    lines: list[str] = ctx.updated_file_lines or []
+    sig: BlockSignatures = expected_block_lines_for(f)
     assert lines[0].lstrip("\ufeff").startswith("<?xml")
     if "block_open" in sig:
-        open_idx = find_line(lines, sig["block_open"])
+        open_idx: int = find_line(lines, sig["block_open"])
         assert open_idx == 2
-    start_idx = find_line(lines, sig["start_line"])
+    start_idx: int = find_line(lines, sig["start_line"])
     assert start_idx == 3
 
 

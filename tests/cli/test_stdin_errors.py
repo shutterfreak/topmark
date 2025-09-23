@@ -20,10 +20,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from click.testing import Result
+
 from tests.cli.conftest import assert_USAGE_ERROR, run_cli_in
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from click.testing import Result
 
 
 def test_default_rejects_stdin_with_file(tmp_path: Path) -> None:
@@ -31,7 +35,7 @@ def test_default_rejects_stdin_with_file(tmp_path: Path) -> None:
     (tmp_path / "x.py").write_text("print('x')\n", "utf-8")
 
     # Content-on-STDIN ("-") mixed with an explicit path must error
-    result = run_cli_in(tmp_path, ["check", "-", "x.py"], input_text="print('x')\n")
+    result: Result = run_cli_in(tmp_path, ["check", "-", "x.py"], input_text="print('x')\n")
 
     assert_USAGE_ERROR(result)
     # Message should mention '-' / STDIN and path mixing
@@ -42,7 +46,7 @@ def test_strip_rejects_stdin_with_file(tmp_path: Path) -> None:
     """Strip subcommand: error if '-' (STDIN) is combined with a file path."""
     (tmp_path / "h.py").write_text("# topmark:header:start\n# h\n# topmark:header:end\n", "utf-8")
 
-    result = run_cli_in(
+    result: Result = run_cli_in(
         tmp_path,
         ["strip", "-", "h.py"],
         input_text="# topmark:header:start\n# h\n# topmark:header:end\n",
@@ -57,7 +61,7 @@ def test_default_rejects_stdin_with_directory(tmp_path: Path) -> None:
     (tmp_path / "pkg").mkdir()
     (tmp_path / "pkg" / "y.py").write_text("print('y')\n", "utf-8")
 
-    result = run_cli_in(tmp_path, ["check", "-", "pkg"], input_text="print('y')\n")
+    result: Result = run_cli_in(tmp_path, ["check", "-", "pkg"], input_text="print('y')\n")
 
     assert_USAGE_ERROR(result)
     assert "-" in result.output or "STDIN" in result.output
@@ -67,7 +71,7 @@ def test_strip_rejects_stdin_with_directory(tmp_path: Path) -> None:
     """Strip subcommand: error if '-' (STDIN) is combined with a directory path."""
     (tmp_path / "docs").mkdir()
     (tmp_path / "docs" / "index.md").write_text("<!-- topmark:header:start -->\n", "utf-8")
-    result = run_cli_in(
+    result: Result = run_cli_in(
         tmp_path, ["strip", "-", "docs"], input_text="<!-- topmark:header:start -->\n"
     )
     assert_USAGE_ERROR(result)
@@ -78,7 +82,7 @@ def test_only_one_from_option_may_consume_stdin(tmp_path: Path) -> None:
     """Using more than one of --files-from -, --include-from -, --exclude-from - must error."""
     (tmp_path / "a.py").write_text("print()\n", "utf-8")
     # Both include-from and files-from try to read '-' → usage error
-    result = run_cli_in(
+    result: Result = run_cli_in(
         tmp_path,
         ["check", "--include-from", "-", "--files-from", "-", "a.py"],
         input_text="*.py\n",

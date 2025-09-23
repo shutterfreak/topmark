@@ -20,9 +20,14 @@ This module hardens the `strip` subcommand behavior across:
 All tests use CliRunner boundaries (no FS side effects beyond tmp_path).
 """
 
+from __future__ import annotations
+
 import os
 import re
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+from click.testing import Result
 
 from tests.cli.conftest import (
     assert_SUCCESS,
@@ -33,6 +38,11 @@ from tests.cli.conftest import (
 )
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from click.testing import Result
+
 
 def test_strip_dry_run_exits_2(tmp_path: Path) -> None:
     """Dry-run should exit 2 when a header is present (action would occur).
@@ -40,10 +50,10 @@ def test_strip_dry_run_exits_2(tmp_path: Path) -> None:
     Given a file that contains a recognizable TopMark header, calling `topmark strip`
     without `--apply` should signal "would change" with exit code 2.
     """
-    f = tmp_path / "x.py"
+    f: Path = tmp_path / "x.py"
     f.write_text(f"# {TOPMARK_START_MARKER}\n# ...\n# {TOPMARK_END_MARKER}\nprint('ok')\n", "utf-8")
 
-    result = run_cli(["strip", str(f)])
+    result: Result = run_cli(["strip", str(f)])
 
     # Exit 2 means "changes would be made" (pre-commit friendly).
     assert_WOULD_CHANGE(result)
@@ -54,10 +64,10 @@ def test_strip_dry_run_exit_0_when_no_header(tmp_path: Path) -> None:
 
     Ensures that files without a header do not trigger non-zero exit codes.
     """
-    f = tmp_path / "x.py"
+    f: Path = tmp_path / "x.py"
     f.write_text("print('ok')\n", "utf-8")
 
-    result = run_cli(["strip", str(f)])
+    result: Result = run_cli(["strip", str(f)])
 
     # No header → nothing to do → exit 0
     assert_SUCCESS(result)
@@ -69,20 +79,20 @@ def test_strip_apply_removes_and_is_idempotent(tmp_path: Path) -> None:
     First `--apply` removes the header block; a second run should keep the file
     unchanged and still succeed.
     """
-    f = tmp_path / "x.py"
-    before = f"# {TOPMARK_START_MARKER}\n# a\n# {TOPMARK_END_MARKER}\nprint('x')\n"
+    f: Path = tmp_path / "x.py"
+    before: str = f"# {TOPMARK_START_MARKER}\n# a\n# {TOPMARK_END_MARKER}\nprint('x')\n"
     f.write_text(before, "utf-8")
 
     # First application removes the header.
-    result_strip_1 = run_cli(["strip", "--apply", str(f)])
+    result_strip_1: Result = run_cli(["strip", "--apply", str(f)])
 
     assert_SUCCESS(result_strip_1)
 
-    after_strip_1 = f.read_text("utf-8")
+    after_strip_1: str = f.read_text("utf-8")
     assert TOPMARK_START_MARKER not in after_strip_1 and "print('x')" in after_strip_1
 
     # Second application should be a no-op and still succeed.
-    result_strip_2 = run_cli(["strip", "--apply", str(f)])
+    result_strip_2: Result = run_cli(["strip", "--apply", str(f)])
 
     assert_SUCCESS(result_strip_2)
 
@@ -94,10 +104,10 @@ def test_strip_diff_shows_patch(tmp_path: Path) -> None:
 
     Verifies presence of unified diff markers and a removed header line.
     """
-    f = tmp_path / "x.py"
+    f: Path = tmp_path / "x.py"
     f.write_text(f"# {TOPMARK_START_MARKER}\n# h\n# {TOPMARK_END_MARKER}\nprint()\n", "utf-8")
 
-    result = run_cli(["strip", "--diff", str(f)])
+    result: Result = run_cli(["strip", "--diff", str(f)])
 
     # With a removable header, diff-only should exit 2 (would change).
     assert_WOULD_CHANGE(result)
@@ -115,14 +125,14 @@ def test_strip_summary_buckets(tmp_path: Path) -> None:
 
     Ensures summary text reflects the separation of "ready to strip" and "no header".
     """
-    has = tmp_path / "has.py"
-    clean = tmp_path / "clean.py"
-    bad = tmp_path / "bad.py"
+    has: Path = tmp_path / "has.py"
+    clean: Path = tmp_path / "clean.py"
+    bad: Path = tmp_path / "bad.py"
     has.write_text(f"# {TOPMARK_START_MARKER}\n# h\n# {TOPMARK_END_MARKER}\nprint()\n", "utf-8")
     clean.write_text("print()\n", "utf-8")
     bad.write_text(f"# {TOPMARK_START_MARKER}\n# x\nprint()\n", "utf-8")
 
-    result = run_cli(
+    result: Result = run_cli(
         [
             "strip",
             "--summary",
@@ -145,15 +155,15 @@ def test_strip_accepts_positional_paths(tmp_path: Path) -> None:
 
     Uses a simple Markdown example to validate path ingress.
     """
-    p = tmp_path / "a.md"
+    p: Path = tmp_path / "a.md"
     p.write_text(f"<!-- {TOPMARK_START_MARKER} -->\n<!-- {TOPMARK_END_MARKER} -->\n", "utf-8")
 
-    result = run_cli(["strip", str(p)])
+    result: Result = run_cli(["strip", str(p)])
 
     # Header present → dry-run 'would change' = 2; tolerate 0 in edge runners.
     assert_SUCCESS_or_WOULD_CHANGE(result)
 
-    cwd = os.getcwd()
+    cwd: str = os.getcwd()
     try:
         # Use a relative glob; absolute patterns are intentionally unsupported by the resolver.
         os.chdir(tmp_path)  # make the glob relative
@@ -176,10 +186,10 @@ def test_strip_ignores_missing_end_marker(tmp_path: Path) -> None:
     Args:
         tmp_path (Path): Temporary path fixture provided by pytest.
     """
-    f = tmp_path / "bad.py"
+    f: Path = tmp_path / "bad.py"
     f.write_text(f"# {TOPMARK_START_MARKER}\n# x\nprint()\n", "utf-8")
 
-    result = run_cli(["strip", "--apply", str(f)])
+    result: Result = run_cli(["strip", "--apply", str(f)])
 
     assert_SUCCESS(result)
 
@@ -198,8 +208,8 @@ def test_strip_include_from_exclude_from(tmp_path: Path) -> None:
     Args:
         tmp_path (Path): Temporary directory provided by pytest.
     """
-    a = tmp_path / "a.py"
-    b = tmp_path / "b.py"
+    a: Path = tmp_path / "a.py"
+    b: Path = tmp_path / "b.py"
     a.write_text(f"# {TOPMARK_START_MARKER}\n# h\n# {TOPMARK_END_MARKER}\n", "utf-8")
     b.write_text(f"# {TOPMARK_START_MARKER}\n# h\n# {TOPMARK_END_MARKER}\n", "utf-8")
 

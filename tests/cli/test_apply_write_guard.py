@@ -23,6 +23,7 @@ Coverage targets:
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tests.cli.conftest import assert_SUCCESS, run_cli_in
@@ -30,6 +31,8 @@ from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from click.testing import Result
 
 
 def test_apply_does_not_write_skipped_known_no_headers(tmp_path: Path) -> None:
@@ -44,12 +47,12 @@ def test_apply_does_not_write_skipped_known_no_headers(tmp_path: Path) -> None:
          - File content is unchanged (no truncation).
     """
     # 1) Prepare a known no-headers file type with content
-    lic = tmp_path / "LICENSE"
+    lic: Path = tmp_path / "LICENSE"
     original = "MIT License\n\nCopyright..."
     lic.write_text(original, "utf-8")
 
     # 2) Apply: should not write (guarded by WriteStatus != INSERTED/REPLACED/REMOVED)
-    result = run_cli_in(tmp_path, ["check", "--apply", "LICENSE"])
+    result: Result = run_cli_in(tmp_path, ["check", "--apply", "LICENSE"])
 
     # 3) Assertions
     assert_SUCCESS(result)
@@ -71,20 +74,20 @@ def test_apply_writes_only_on_insert_and_is_idempotent(tmp_path: Path) -> None:
          - Exit SUCCESS.
          - File is unchanged (no touch-write).
     """
-    f = tmp_path / "x.py"
+    f: Path = tmp_path / "x.py"
     f.write_text("print('ok')\n", "utf-8")
 
     # First apply: header should be inserted.
-    result_1 = run_cli_in(tmp_path, ["check", "--apply", "x.py"])
+    result_1: Result = run_cli_in(tmp_path, ["check", "--apply", "x.py"])
 
     assert_SUCCESS(result_1)
 
-    after_first = f.read_text("utf-8")
+    after_first: str = f.read_text("utf-8")
 
     assert TOPMARK_START_MARKER in after_first
 
     # Second apply: should be a no-op; content identical.
-    result_2 = run_cli_in(tmp_path, ["check", "--apply", "x.py"])
+    result_2: Result = run_cli_in(tmp_path, ["check", "--apply", "x.py"])
 
     assert_SUCCESS(result_2)
 
@@ -103,24 +106,24 @@ def test_strip_apply_writes_only_on_removed_and_preserves_body(tmp_path: Path) -
       4) Run again to confirm idempotency (no further write).
     """
     # 1) Prepare a file with a header + body
-    p = tmp_path / "h.py"
+    p: Path = tmp_path / "h.py"
     p.write_text(
         f"# {TOPMARK_START_MARKER}\n# a\n# {TOPMARK_END_MARKER}\nprint('body')\n",
         "utf-8",
     )
 
     # 2) Apply strip
-    result_1 = run_cli_in(tmp_path, ["strip", "--apply", "h.py"])
+    result_1: Result = run_cli_in(tmp_path, ["strip", "--apply", "h.py"])
 
     assert_SUCCESS(result_1)
 
-    after1 = p.read_text("utf-8")
+    after1: str = p.read_text("utf-8")
 
     assert TOPMARK_START_MARKER not in after1
     assert "print('body')" in after1
 
     # 4) Second run: should be a no-op
-    result_2 = run_cli_in(tmp_path, ["strip", "--apply", "h.py"])
+    result_2: Result = run_cli_in(tmp_path, ["strip", "--apply", "h.py"])
 
     assert_SUCCESS(result_2)
 
@@ -137,17 +140,17 @@ def test_apply_write_guard_respects_relative_patterns(tmp_path: Path) -> None:
     Runs with a relative glob to ensure the resolver’s “relative-only” policy is honored.
     """
     (tmp_path / "a.py").write_text("print('a')\n", "utf-8")
-    lic = tmp_path / "LICENSE"
+    lic: Path = tmp_path / "LICENSE"
     original = "MIT\n"
     lic.write_text(original, "utf-8")
 
     # Use relative glob; absolute globs are unsupported by the resolver
-    result = run_cli_in(tmp_path, ["check", "--apply", "*.py", "LICENSE"])
+    result: Result = run_cli_in(tmp_path, ["check", "--apply", "*.py", "LICENSE"])
 
     assert_SUCCESS(result)
 
     # a.py should now have a header
-    a_text = (tmp_path / "a.py").read_text("utf-8")
+    a_text: str = (tmp_path / "a.py").read_text("utf-8")
 
     assert TOPMARK_START_MARKER in a_text
 
@@ -157,11 +160,11 @@ def test_apply_write_guard_respects_relative_patterns(tmp_path: Path) -> None:
 
 def test_apply_does_not_write_binary_like_file(tmp_path: Path) -> None:
     """`--apply` must not write for binary/unsupported files (e.g., favicon.ico)."""
-    ico = tmp_path / "favicon.ico"
+    ico: Path = tmp_path / "favicon.ico"
     data = b"\x00\x01\x02ICO"
     ico.write_bytes(data)
 
-    result = run_cli_in(tmp_path, ["check", "--apply", "favicon.ico"])
+    result: Result = run_cli_in(tmp_path, ["check", "--apply", "favicon.ico"])
 
     assert_SUCCESS(result)
 
@@ -171,12 +174,12 @@ def test_apply_does_not_write_binary_like_file(tmp_path: Path) -> None:
 def test_apply_guard_mixed_changed_and_skipped(tmp_path: Path) -> None:
     """A changed .py and skipped files in one run should only write the .py."""
     (tmp_path / "x.py").write_text("print('a')\n", "utf-8")
-    lic = tmp_path / "LICENSE"
+    lic: Path = tmp_path / "LICENSE"
     lic.write_text("MIT\n", "utf-8")
-    typed = tmp_path / "py.typed"
+    typed: Path = tmp_path / "py.typed"
     typed.write_text("typed\n", "utf-8")
 
-    result = run_cli_in(tmp_path, ["check", "--apply", "*.py", "LICENSE", "py.typed"])
+    result: Result = run_cli_in(tmp_path, ["check", "--apply", "*.py", "LICENSE", "py.typed"])
 
     assert_SUCCESS(result)
 
@@ -187,17 +190,17 @@ def test_apply_guard_mixed_changed_and_skipped(tmp_path: Path) -> None:
 
 def test_apply_with_diff_respects_write_guard(tmp_path: Path) -> None:
     """`--apply --diff` should write only when updater sets INSERTED/REPLACED."""
-    py = tmp_path / "x.py"
+    py: Path = tmp_path / "x.py"
     py.write_text("print('a')\n", "utf-8")
-    lic = tmp_path / "LICENSE"
+    lic: Path = tmp_path / "LICENSE"
     lic.write_text("MIT\n", "utf-8")
-    result_1 = run_cli_in(tmp_path, ["check", "--apply", "--diff", "x.py"])
+    result_1: Result = run_cli_in(tmp_path, ["check", "--apply", "--diff", "x.py"])
 
     assert_SUCCESS(result_1)
 
     assert "--- " in result_1.output
 
-    result_2 = run_cli_in(tmp_path, ["check", "--apply", "--diff", "LICENSE"])
+    result_2: Result = run_cli_in(tmp_path, ["check", "--apply", "--diff", "LICENSE"])
 
     assert_SUCCESS(result_2)
 
@@ -206,15 +209,15 @@ def test_apply_with_diff_respects_write_guard(tmp_path: Path) -> None:
 
 def test_strip_apply_no_header_is_noop(tmp_path: Path) -> None:
     """`strip --apply` should not write when no header exists."""
-    f = tmp_path / "no_header.py"
+    f: Path = tmp_path / "no_header.py"
     f.write_text("print('ok')\n", "utf-8")
-    before = f.read_text("utf-8")
+    before: str = f.read_text("utf-8")
 
-    result_1 = run_cli_in(tmp_path, ["strip", "--apply", "no_header.py"])
+    result_1: Result = run_cli_in(tmp_path, ["strip", "--apply", "no_header.py"])
 
     assert_SUCCESS(result_1)
 
-    result_2 = run_cli_in(tmp_path, ["strip", "--apply", "no_header.py"])
+    result_2: Result = run_cli_in(tmp_path, ["strip", "--apply", "no_header.py"])
 
     assert_SUCCESS(result_2)
 
@@ -227,7 +230,9 @@ def test_apply_write_guard_with_stdin(tmp_path: Path) -> None:
     (tmp_path / "LICENSE").write_text("MIT\n", "utf-8")
     input_list = "x.py\nLICENSE\n"
 
-    result = run_cli_in(tmp_path, ["check", "--apply", "--files-from", "-"], input_text=input_list)
+    result: Result = run_cli_in(
+        tmp_path, ["check", "--apply", "--files-from", "-"], input_text=input_list
+    )
 
     assert_SUCCESS(result)
 

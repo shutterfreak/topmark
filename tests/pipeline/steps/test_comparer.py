@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.config import MutableConfig
+from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.context import (
     ComparisonStatus,
@@ -37,8 +37,8 @@ if TYPE_CHECKING:
 
 def test_comparer_precomputed_lines_set_changed(tmp_path: Path) -> None:
     """Mark CHANGED when `updated_file_lines` differs from `file_lines`."""
-    cfg = MutableConfig.from_defaults().freeze()
-    ctx = ProcessingContext.bootstrap(path=(tmp_path / "x.py"), config=cfg)
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    ctx: ProcessingContext = ProcessingContext.bootstrap(path=(tmp_path / "x.py"), config=cfg)
     ctx.file_lines = ["a\n", "b\n"]
     ctx.updated_file_lines = ["a\n"]  # precomputed change (e.g., header removal or edit)
 
@@ -49,8 +49,8 @@ def test_comparer_precomputed_lines_set_changed(tmp_path: Path) -> None:
 
 def test_comparer_precomputed_lines_set_unchanged(tmp_path: Path) -> None:
     """Mark UNCHANGED when `updated_file_lines` is identical to `file_lines`."""
-    cfg = MutableConfig.from_defaults().freeze()
-    ctx = ProcessingContext.bootstrap(path=(tmp_path / "y.py"), config=cfg)
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    ctx: ProcessingContext = ProcessingContext.bootstrap(path=(tmp_path / "y.py"), config=cfg)
     ctx.file_lines = ["same\n", "lines\n"]
     ctx.updated_file_lines = ["same\n", "lines\n"]  # no effective change
 
@@ -78,7 +78,7 @@ def test_formatting_only_changes_are_detected(tmp_path: Path) -> None:
     the dicts equal while the rendered block text differs, so the comparer
     correctly flags the change as `CHANGED` for formatting reasons only.
     """
-    f = tmp_path / "formatting_only.py"
+    f: Path = tmp_path / "formatting_only.py"
     # Intentionally put fields in a non-canonical order (license before project)
     f.write_text(
         f"# {TOPMARK_START_MARKER}\n"
@@ -89,10 +89,10 @@ def test_formatting_only_changes_are_detected(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    cfg = MutableConfig.from_defaults().freeze()
+    cfg: Config = MutableConfig.from_defaults().freeze()
 
     # Bootstrap a context and run reader+scanner to populate existing header
-    ctx = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
 
     # Attach a processor (registry is set up by tests/pipeline/conftest.py)
     ctx = resolver.resolve(ctx)
@@ -111,7 +111,7 @@ def test_formatting_only_changes_are_detected(tmp_path: Path) -> None:
     # The renderer will place fields in config-defined order and add alignment/blank lines,
     # which differs from our on-disk order. Dicts will match; blocks will differ.
     assert ctx.header_processor is not None, "Header processor must be set by resolver"
-    expected_lines = ctx.header_processor.render_header_lines(
+    expected_lines: list[str] = ctx.header_processor.render_header_lines(
         header_values=ctx.existing_header_dict,
         config=cfg,
         newline_style=ctx.newline_style,

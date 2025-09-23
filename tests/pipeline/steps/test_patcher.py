@@ -40,7 +40,7 @@ if TYPE_CHECKING:
 
 def _run_to_patcher(path: Path, cfg: Config) -> ProcessingContext:
     """Drive the v2 pipeline up to `patcher.patch()` and return the ctx."""
-    ctx = ProcessingContext.bootstrap(path=path, config=cfg)
+    ctx: ProcessingContext = ProcessingContext.bootstrap(path=path, config=cfg)
     ctx = resolver.resolve(ctx)
     ctx = reader.read(ctx)
     ctx = scanner.scan(ctx)
@@ -54,16 +54,16 @@ def _run_to_patcher(path: Path, cfg: Config) -> ProcessingContext:
 
 def test_patcher_diff_preserves_crlf_and_render_markers(tmp_path: Path) -> None:
     r"""CRLF-seeded file → diff lines use CRLF; render_patch shows \\r\\n markers."""
-    f = tmp_path / "a.ts"
+    f: Path = tmp_path / "a.ts"
     # Ensure file content is CRLF-seeded.
     with f.open("w", encoding="utf-8", newline="\r\n") as fp:
         fp.write(f"// {TOPMARK_START_MARKER}\n// h\n// {TOPMARK_END_MARKER}\nconsole.log(1)\n")
 
-    cfg = MutableConfig.from_defaults().freeze()
-    ctx = _run_to_patcher(f, cfg)
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    ctx: ProcessingContext = _run_to_patcher(f, cfg)
 
     # We expect a change (strip/replace) to have produced a diff.
-    diff_text = ctx.header_diff or ""
+    diff_text: str = ctx.header_diff or ""
     assert diff_text, "Expected non-empty unified diff from patcher"
 
     # The raw diff is produced with lineterm = ctx.newline_style.
@@ -73,6 +73,6 @@ def test_patcher_diff_preserves_crlf_and_render_markers(tmp_path: Path) -> None:
 
     # Pass a list of lines to preserve native EOLs; when given a single string,
     # render_patch would lose CRLF markers due to splitlines() default behavior.
-    rendered = render_patch(diff_text.splitlines(keepends=True))
+    rendered: str = render_patch(diff_text.splitlines(keepends=True))
     assert ("\\r\\n" in rendered) or ("␍␊" in rendered) or ("CRLF" in rendered.upper())
     assert "\n\r" not in rendered  # avoid flipped sequence

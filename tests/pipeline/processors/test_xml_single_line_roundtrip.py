@@ -19,32 +19,38 @@ Covers the tricky single-line XML case:
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tests.pipeline.conftest import run_insert
-from topmark.config import MutableConfig
+from topmark.config import Config, MutableConfig
 from topmark.pipeline.processors import get_processor_for_file
 
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from topmark.pipeline.context import ProcessingContext
+    from topmark.pipeline.processors.base import HeaderProcessor
+
 
 def test_xml_single_line_insert_then_strip_preserves_layout(tmp_path: Path) -> None:
     """Round-trip keeps declaration intact and preserves no-FNL policy."""
-    f = tmp_path / "one.xml"
+    f: Path = tmp_path / "one.xml"
     original = '<?xml version="1.0"?><root/>'  # no trailing newline
     f.write_text(original, encoding="utf-8")
 
-    cfg = MutableConfig.from_defaults().freeze()
-    ctx = run_insert(f, cfg)
-    after_insert = "".join(ctx.updated_file_lines or [])
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    ctx: ProcessingContext = run_insert(f, cfg)
+    after_insert: str = "".join(ctx.updated_file_lines or [])
     assert after_insert.startswith("\ufeff") or after_insert.startswith("<?xml"), (
         "Declaration must remain first logical line"
     )
 
-    proc = get_processor_for_file(f)
+    proc: HeaderProcessor | None = get_processor_for_file(f)
     assert proc is not None
-    lines = after_insert.splitlines(keepends=True)
-    stripped_lines, _ = proc.strip_header_block(lines=lines, span=None)
-    roundtrip = "".join(stripped_lines)
+    lines: list[str] = after_insert.splitlines(keepends=True)
+    stripped_lines: list[str] = []
+    _span: tuple[int, int] | None = None
+    stripped_lines, _span = proc.strip_header_block(lines=lines, span=None)
+    roundtrip: str = "".join(stripped_lines)
     assert roundtrip == original, "Round-trip must preserve single-line structure without FNL"

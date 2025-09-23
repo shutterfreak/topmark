@@ -36,8 +36,8 @@ import pytest
 from tools.api_snapshot import collect_snapshot
 
 BASELINE_JSON = "public_api_snapshot.json"
-here = os.path.dirname(__file__)
-baseline_path = os.path.join(here, BASELINE_JSON)
+here: str = os.path.dirname(__file__)
+baseline_path: str = os.path.join(here, BASELINE_JSON)
 
 
 def _collect() -> Mapping[str, str]:

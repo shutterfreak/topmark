@@ -33,6 +33,7 @@ from typing_extensions import NotRequired, Required, TypedDict
 from tests.conftest import fixture
 from topmark.pipeline.context import ProcessingContext
 from topmark.pipeline.processors import get_processor_for_file, register_all_processors
+from topmark.pipeline.processors.base import HeaderProcessor
 from topmark.pipeline.steps import reader, resolver, scanner, updater
 
 if TYPE_CHECKING:
@@ -70,7 +71,7 @@ def run_insert(path: Path, cfg: Config) -> ProcessingContext:
     Returns:
         ProcessingContext: The updated ``ProcessingContext`` with ``updated_file_lines`` set.
     """
-    ctx = ProcessingContext.bootstrap(path=path, config=cfg)
+    ctx: ProcessingContext = ProcessingContext.bootstrap(path=path, config=cfg)
 
     # Run resolver first so ctx.file_type and ctx.header_processor are set based on
     # the registry and file path. Policies like shebang handling depend on this.
@@ -84,21 +85,23 @@ def run_insert(path: Path, cfg: Config) -> ProcessingContext:
     ctx = scanner.scan(ctx)
 
     # Ensure we have a processor (resolver should have set it). Fall back to registry lookup.
-    processor = ctx.header_processor or get_processor_for_file(path)
+    processor: HeaderProcessor | None = ctx.header_processor or get_processor_for_file(path)
     assert processor is not None, "No header processor for file"
     ctx.header_processor = processor
 
     # Render header with the detected newline style so header lines match file endings.
-    header_values = {field: "" for field in cfg.header_fields}
-    newline = ctx.newline_style or "\n"
+    header_values: dict[str, str] = {field: "" for field in cfg.header_fields}
+    newline: str = ctx.newline_style or "\n"
 
     # Preserve pre-prefix indentation (spaces/tabs before the prefix) when
     # replacing an existing header block, so nested JSONC headers stay aligned.
     header_indent_override: str | None = None
     if ctx.existing_header_range is not None and ctx.file_lines:
-        start_idx, _ = ctx.existing_header_range
-        first_line = ctx.file_lines[start_idx]
-        leading_ws = first_line[: len(first_line) - len(first_line.lstrip())]
+        start_idx: int
+        _end_idx: int
+        start_idx, _end_idx = ctx.existing_header_range
+        first_line: str = ctx.file_lines[start_idx]
+        leading_ws: str = first_line[: len(first_line) - len(first_line.lstrip())]
         if leading_ws and first_line.lstrip().startswith(processor.line_prefix):
             header_indent_override = leading_ws
 
@@ -113,9 +116,9 @@ def run_insert(path: Path, cfg: Config) -> ProcessingContext:
     # detection to support tests that directly call the updater with crafted content.
     if ctx.existing_header_range is None:
         try:
-            sig = expected_block_lines_for(path, newline=newline)
+            sig: BlockSignatures = expected_block_lines_for(path, newline=newline)
             start_idx = find_line(ctx.file_lines or [], sig["start_line"])
-            end_idx = find_line(ctx.file_lines or [], sig["end_line"])
+            end_idx: int = find_line(ctx.file_lines or [], sig["end_line"])
             ctx.existing_header_range = (start_idx, end_idx)
         except AssertionError:
             ctx.existing_header_range = None
@@ -188,8 +191,8 @@ def expected_block_lines_for(path: Path, newline: str = "\n") -> BlockSignatures
         proc = get_processor_for_file(path)
     assert proc is not None, f"No header processor found for {path}"
 
-    pre = proc.render_preamble_lines(newline_style=newline)
-    post = proc.render_postamble_lines(newline_style=newline)
+    pre: list[str] = proc.render_preamble_lines(newline_style=newline)
+    post: list[str] = proc.render_postamble_lines(newline_style=newline)
 
     def strip_nl(s: str) -> str:
         return s.rstrip("\r\n")

@@ -24,18 +24,22 @@ Scenarios covered:
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tests.conftest import mark_pipeline
-from tests.pipeline.conftest import expected_block_lines_for, find_line, run_insert
-from topmark.config import MutableConfig
+from tests.pipeline.conftest import BlockSignatures, expected_block_lines_for, find_line, run_insert
+from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline import runner
 from topmark.pipeline.context import ProcessingContext
 from topmark.pipeline.pipelines import get_pipeline
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import Path
+
+    from topmark.pipeline.contracts import Step
 
 
 @mark_pipeline
@@ -46,24 +50,24 @@ def test_jsonc_insert_at_top_with_no_pre_prefix_indent(tmp_path: Path) -> None:
     The header must be inserted before that line, starting at index 0, and
     header lines must begin with ``//`` (no leading spaces).
     """
-    f = tmp_path / "settings.json"
+    f: Path = tmp_path / "settings.json"
     f.write_text('// user note\n{\n  "a": 1\n}\n', encoding="utf-8")
 
-    cfg = MutableConfig.from_defaults().freeze()
-    ctx = run_insert(f, cfg)
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines = ctx.updated_file_lines or []
-    sig = expected_block_lines_for(f)
+    lines: list[str] = ctx.updated_file_lines or []
+    sig: BlockSignatures = expected_block_lines_for(f)
 
     # Header starts at the very top
     assert find_line(lines, sig["start_line"]) == 0
 
     # The header's start line has no pre-prefix indent (must start with //)
-    start_line = lines[0].rstrip("\r\n")
+    start_line: str = lines[0].rstrip("\r\n")
     assert start_line.startswith("// ") or start_line == "//"  # allow minimal forms
 
     # Exactly one blank line after the block
-    end_idx = find_line(lines, sig["end_line"])  # inclusive end marker
+    end_idx: int = find_line(lines, sig["end_line"])  # inclusive end marker
     assert end_idx + 1 < len(lines) and lines[end_idx + 1].strip() == ""
 
 
@@ -75,9 +79,9 @@ def test_jsonc_replace_preserves_pre_prefix_indent(tmp_path: Path) -> None:
     verify the replacement retains those four spaces, while using the processor's
     standard after-prefix spacing for the field lines.
     """
-    f = tmp_path / "indented.json"
+    f: Path = tmp_path / "indented.json"
     indent = "    "  # four spaces before prefix
-    seeded = (
+    seeded: str = (
         f"{indent}// {TOPMARK_START_MARKER}\n"
         f"{indent}//\n"
         f"{indent}//   file        : indented.json\n"
@@ -88,15 +92,15 @@ def test_jsonc_replace_preserves_pre_prefix_indent(tmp_path: Path) -> None:
     )
     f.write_text(seeded, encoding="utf-8")
 
-    cfg = MutableConfig.from_defaults().freeze()
+    cfg: Config = MutableConfig.from_defaults().freeze()
     # Run the full check pipeline to exercise scan + replace
-    ctx = ProcessingContext.bootstrap(path=f, config=cfg)
-    steps = get_pipeline("check")
+    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    steps: Sequence[Step] = get_pipeline("check")
     ctx = runner.run(ctx, steps)
 
-    out = ctx.updated_file_lines or []
+    out: list[str] = ctx.updated_file_lines or []
     # Start marker line should still carry the same pre-prefix indent
-    start_line = out[0].rstrip("\r\n")
+    start_line: str = out[0].rstrip("\r\n")
     assert start_line.startswith(indent + "//"), start_line
 
     # A representative field line should show after-prefix spacing of two spaces
@@ -104,7 +108,7 @@ def test_jsonc_replace_preserves_pre_prefix_indent(tmp_path: Path) -> None:
     # the prefix before the field text alignment logic runs.
     # Grab the first non-marker, non-blank header line.
     # Preamble layout: START, blank; then fields...
-    i = 0
+    i: int = 0
     while i < len(out) and not out[i].lstrip().startswith("//"):
         i += 1
     # Move to first field line after the blank line following START
@@ -113,18 +117,18 @@ def test_jsonc_replace_preserves_pre_prefix_indent(tmp_path: Path) -> None:
         i += 1
     # next is blank
     i += 2
-    field_line = out[i].rstrip("\r\n")
+    field_line: str = out[i].rstrip("\r\n")
     # It must still have the pre-prefix indent
     assert field_line.startswith(indent + "//"), field_line
     # And there should be at least two spaces after the prefix before the field name
-    after_prefix = field_line[len(indent + "//") :]
+    after_prefix: str = field_line[len(indent + "//") :]
     assert after_prefix.startswith("  "), after_prefix
 
 
 @mark_pipeline
 def test_jsonc_replace_keeps_crlf_and_indent(tmp_path: Path) -> None:
     """Replacement keeps CRLF line endings and preserved pre-prefix indent."""
-    f = tmp_path / "crlf_indented.json"
+    f: Path = tmp_path / "crlf_indented.json"
     indent = "\t\t"  # tabs are allowed as pre-prefix indent
     with f.open("w", encoding="utf-8", newline="\r\n") as fp:
         fp.write(
@@ -136,8 +140,8 @@ def test_jsonc_replace_keeps_crlf_and_indent(tmp_path: Path) -> None:
             '{\n  "x": 2\n}\n'
         )
 
-    ctx = run_insert(f, MutableConfig.from_defaults().freeze())
-    out = ctx.updated_file_lines or []
+    ctx: ProcessingContext = run_insert(f, MutableConfig.from_defaults().freeze())
+    out: list[str] = ctx.updated_file_lines or []
 
     # Preserve CRLF
     for i, ln in enumerate(out):

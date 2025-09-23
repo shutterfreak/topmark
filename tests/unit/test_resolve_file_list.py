@@ -15,15 +15,20 @@ as well as include/exclude filtering, pattern file handling, file type filtering
 and other edge cases like dotfiles, globs, and duplicates.
 """
 
-from pathlib import Path
-from types import SimpleNamespace
-from typing import Callable, cast
+from __future__ import annotations
 
-import pytest
+from types import SimpleNamespace
+from typing import TYPE_CHECKING, Callable, cast
 
 # Import the module under test
 import topmark.file_resolver as file_resolver_mod
-from topmark.config import Config
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    import pytest
+
+    from topmark.config import Config
 
 
 class DummyType:

@@ -14,12 +14,19 @@ Ensures that invoking `topmark filetypes` exits successfully and produces
 non-empty output, typically including the phrase "Supported file types".
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from tests.cli.conftest import assert_SUCCESS, run_cli
+
+if TYPE_CHECKING:
+    from click.testing import Result
 
 
 def test_filetypes_lists_known_types() -> None:
     """It should list supported file types and exit with code 0."""
-    result = run_cli(["filetypes"])
+    result: Result = run_cli(["filetypes"])
 
     assert_SUCCESS(result)
 

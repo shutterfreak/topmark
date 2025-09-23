@@ -26,6 +26,7 @@ pipeline-level processor behavior.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -36,7 +37,9 @@ from topmark.pipeline.processors import get_processor_for_file
 if TYPE_CHECKING:
     from pathlib import Path
 
-mark_pipeline = pytest.mark.pipeline
+    from topmark.pipeline.processors.base import HeaderProcessor
+
+mark_pipeline: pytest.MarkDecorator = pytest.mark.pipeline
 
 
 @pytest.mark.parametrize(
@@ -83,15 +86,17 @@ def test_strip_bounds_are_inclusive(
         header_close (str): End directive line including newline.
         body (str): A single body line including newline.
     """
-    f = tmp_path / f"x{ext}"
-    content = header_open + header_line + header_close + body
+    f: Path = tmp_path / f"x{ext}"
+    content: str = header_open + header_line + header_close + body
     f.write_text(content, encoding="utf-8")
 
-    proc = get_processor_for_file(f)
+    proc: HeaderProcessor | None = get_processor_for_file(f)
     assert proc is not None
-    lines = f.read_text(encoding="utf-8").splitlines(keepends=True)
+    lines: list[str] = f.read_text(encoding="utf-8").splitlines(keepends=True)
 
     # span covers indices 0..2 (inclusive)
+    new_lines: list[str] = []
+    span: tuple[int, int] | None = None
     new_lines, span = proc.strip_header_block(lines=lines, span=(0, 2))
     assert span == (0, 2)
     assert "".join(new_lines) == body

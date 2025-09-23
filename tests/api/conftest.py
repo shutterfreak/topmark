@@ -24,6 +24,7 @@ from topmark import api
 from topmark.filetypes.base import FileType
 from topmark.filetypes.registry import get_header_processor_registry
 from topmark.pipeline.processors import register_all_processors
+from topmark.pipeline.processors.base import HeaderProcessor
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
 
@@ -41,7 +42,7 @@ def register_pair() -> Iterator[Callable[[str], tuple[str, FileType]]]:
     registered: list[str] = []
 
     def _make(name: str) -> tuple[str, FileType]:
-        ft = stub_ft(name)
+        ft: FileType = stub_ft(name)
         FileTypeRegistry.register(ft)
         HeaderProcessorRegistry.register(name, stub_proc_cls())
         registered.append(name)
@@ -60,7 +61,7 @@ def proc_py() -> HeaderProcessor:
     """Return the registered `HeaderProcessor` for Python files (idempotent)."""
     register_all_processors()
     ft_name = "python"
-    proc = get_header_processor_registry().get(ft_name)
+    proc: HeaderProcessor | None = get_header_processor_registry().get(ft_name)
     assert proc, f"No HeaderProcessor registered to FileType '{ft_name}'"
     return proc
 
@@ -73,18 +74,18 @@ def repo_py_with_and_without_header(tmp_path: Path) -> Path:
       src/without_header.py -> Python (supported) without TopMark header
       src/with_header.py -> Python (supported) with TopMark header
     """
-    root = tmp_path
-    src = root / "src"
+    root: Path = tmp_path
+    src: Path = root / "src"
     src.mkdir()
 
     # Python file without header
-    without_header = src / "without_header.py"
+    without_header: Path = src / "without_header.py"
     without_header.write_text("print('hello')\n", encoding="utf-8")
 
     # Python file with header (insert the canonical header)
-    with_header = src / "with_header.py"
+    with_header: Path = src / "with_header.py"
     with_header.write_text("print('hello')\n", encoding="utf-8")
-    _ = api.check(
+    _run_result: api.RunResult = api.check(
         [with_header],
         apply=True,
         config=None,
@@ -102,14 +103,14 @@ def repo_py_with_header(tmp_path: Path) -> Path:
     Layout:
       src/with_header.py  -> will receive a canonical header via api.check(..., apply=True)
     """
-    root = tmp_path
-    src = root / "src"
+    root: Path = tmp_path
+    src: Path = root / "src"
     src.mkdir()
 
     # Python file with header (insert the canonical header)
-    with_header = src / "with_header.py"
+    with_header: Path = src / "with_header.py"
     with_header.write_text("print('hello')\n", encoding="utf-8")
-    _ = api.check(
+    _run_result: api.RunResult = api.check(
         [with_header],
         apply=True,
         config=None,
@@ -128,14 +129,14 @@ def repo_py_with_header_and_xyz(tmp_path: Path) -> Path:
       src/with_header.py -> Python (supported)
       src/notes.xyz      -> Unsupported extension
     """
-    root = tmp_path
-    src = root / "src"
+    root: Path = tmp_path
+    src: Path = root / "src"
     src.mkdir()
 
     # Python file with header (insert the canonical header)
-    with_header = src / "with_header.py"
+    with_header: Path = src / "with_header.py"
     with_header.write_text("print('hello')\n", encoding="utf-8")
-    _ = api.check(
+    _run_result: api.RunResult = api.check(
         [with_header],
         apply=True,
         config=None,
@@ -159,12 +160,12 @@ def repo_py_toml_xyz_no_header(tmp_path: Path) -> Path:
       src/note.xyz   -> treated as unsupported by TopMark
       src/data.toml  -> supported if TOML configured
     """
-    root = tmp_path
-    src = root / "src"
+    root: Path = tmp_path
+    src: Path = root / "src"
     src.mkdir()
 
     # Python file without header
-    without_header = src / "without_header.py"
+    without_header: Path = src / "without_header.py"
     without_header.write_text("print('hello')\n", encoding="utf-8")
 
     # Unsupported 'xyz' file extension without header
@@ -180,6 +181,8 @@ def repo_py_toml_xyz_no_header(tmp_path: Path) -> Path:
 
 def has_header(text: str, processor: HeaderProcessor) -> bool:
     """Return True if the file contents contains a TopMark header."""
+    start: int | None = None
+    end: int | None = None
     start, end = processor.get_header_bounds(text.splitlines(keepends=True))
     return start is not None and end is not None and start < end
 
@@ -205,7 +208,7 @@ def api_check_dir(
     file_types: Iterable[str] | None = ("python",),
 ) -> api.RunResult:
     """Run [`topmark.api.check`][topmark.api.check] against `root / 'src'` with common defaults."""
-    paths = [root / "src"]
+    paths: list[Path] = [root / "src"]
     return api.check(
         paths,
         apply=apply,
@@ -227,7 +230,7 @@ def api_strip_dir(
     file_types: Iterable[str] | None = ("python",),
 ) -> api.RunResult:
     """Run [`topmark.api.strip`][topmark.api.strip] against `root / 'src'` with common defaults."""
-    paths = [root / "src"]
+    paths: list[Path] = [root / "src"]
     return api.strip(
         paths,
         apply=apply,
@@ -244,23 +247,23 @@ def api_strip_dir(
 # Duck-typed stubs that satisfy just what the registry uses
 class _StubFileType:
     def __init__(self, name: str, description: str = "") -> None:
-        self.name = name
-        self.description = description
-        self.extensions = ()
-        self.filenames = ()
-        self.patterns = ()
+        self.name: str = name
+        self.description: str = description
+        self.extensions: tuple[str, ...] = ()
+        self.filenames: tuple[str, ...] = ()
+        self.patterns: tuple[str, ...] = ()
         self.skip_processing = False
         self.has_content_matcher = False
-        self.header_policy_name = ""
+        self.header_policy_name: str = ""
 
 
 class _StubProcessor:
     def __init__(self, description: str = "") -> None:
-        self.description = description
-        self.line_prefix = ""
-        self.line_suffix = ""
-        self.block_prefix = ""
-        self.block_suffix = ""
+        self.description: str = description
+        self.line_prefix: str = ""
+        self.line_suffix: str = ""
+        self.block_prefix: str = ""
+        self.block_suffix: str = ""
         # `file_type` is set by the registry upon registration
 
 

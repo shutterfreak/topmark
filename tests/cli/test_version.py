@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 import re
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import pytest
 from packaging.version import InvalidVersion, Version
@@ -23,14 +23,17 @@ from tests.cli.conftest import assert_SUCCESS, run_cli
 from topmark.constants import TOPMARK_VERSION
 from topmark.utils.version import pep440_to_semver
 
-_SEMVER_RE = re.compile(
+if TYPE_CHECKING:
+    from click.testing import Result
+
+_SEMVER_RE: re.Pattern[str] = re.compile(
     r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?(?:\+[0-9A-Za-z.-]+)?$"
 )
 
 
 def test_version_outputs_pep440_version() -> None:
     """It should output the PEP 440 version string (exact match)."""
-    result = run_cli(
+    result: Result = run_cli(
         [
             "--no-color",  # Disable color mode for RE pattern matching
             "version",
@@ -52,7 +55,7 @@ def test_version_outputs_pep440_version() -> None:
 
 def test_version_with_semver_flag_outputs_semver() -> None:
     """It should output the SemVer-rendered version string with --semver."""
-    result = run_cli(
+    result: Result = run_cli(
         [
             "--no-color",  # Disable color mode for RE pattern matching
             "version",
@@ -78,11 +81,11 @@ def test_version_with_semver_flag_outputs_semver() -> None:
 @pytest.mark.parametrize("use_semver", [False, True])
 def test_version_json_format(use_semver: bool) -> None:
     """`version --format json` returns parseable JSON with a correct version value."""
-    args = ["--no-color", "version", "--format", "json"]
+    args: list[str] = ["--no-color", "version", "--format", "json"]
     if use_semver:
         args.append("--semver")
 
-    result = run_cli(args)
+    result: Result = run_cli(args)
     assert_SUCCESS(result)
 
     # Must be valid JSON
@@ -96,7 +99,7 @@ def test_version_json_format(use_semver: bool) -> None:
     out: str = cast("str", payload["version"]).strip()
 
     if use_semver:
-        expected = pep440_to_semver(TOPMARK_VERSION)
+        expected: str = pep440_to_semver(TOPMARK_VERSION)
         assert out == expected
         assert re.fullmatch(_SEMVER_RE, out) is not None
     else:
@@ -111,11 +114,11 @@ def test_version_json_format(use_semver: bool) -> None:
 @pytest.mark.parametrize("use_semver", [False, True])
 def test_version_markdown_format(use_semver: bool) -> None:
     """`version --format markdown` prints a readable line that includes the correct version."""
-    args = ["--no-color", "version", "--format", "markdown"]
+    args: list[str] = ["--no-color", "version", "--format", "markdown"]
     if use_semver:
         args.append("--semver")
 
-    result = run_cli(args)
+    result: Result = run_cli(args)
     assert_SUCCESS(result)
 
     out = result.output.strip()

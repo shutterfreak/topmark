@@ -54,11 +54,11 @@ def _complete(incomplete: str = "") -> list[CompletionItem]:
     This isolates the test from Click's shell adapters and focuses on our
     custom parameter type's completion behavior.
     """
-    enum_type = EnumChoiceParam(HeaderOutputFormat)
+    enum_type: EnumChoiceParam[HeaderOutputFormat] = EnumChoiceParam(HeaderOutputFormat)
     # Minimal Click option and context
     opt = click.Option(("--header-format",), type=enum_type)
     ctx = click.Context(cli)
-    items = enum_type.shell_complete(ctx, opt, incomplete)
+    items: list[CompletionItem] = enum_type.shell_complete(ctx, opt, incomplete)
     if items:
         return items
     # Fallback for robustness; shouldn't happen on Click 8.2
@@ -72,8 +72,8 @@ def _values(items: Iterable[CompletionItem]) -> set[str]:
 
 def test_header_format_completion_lists_all_values() -> None:
     """`--header-format` completion should list all HeaderOutputFormat values."""
-    items = _complete("")
-    values = _values(items)
+    items: list[CompletionItem] = _complete("")
+    values: set[str] = _values(items)
     assert _enum_values(HeaderOutputFormat) <= values
 
 
@@ -83,14 +83,16 @@ def test_header_format_completion_lists_all_values() -> None:
 # adapt if enum values change
 def test_header_format_completion_filters_by_prefix(prefix: str) -> None:
     """Completion should be filtered by the typed prefix (case-insensitive)."""
-    items = _complete(prefix)
-    values = _values(items)
+    items: list[CompletionItem] = _complete(prefix)
+    values: set[str] = _values(items)
 
     # All suggested values must start with the prefix
     assert all(v.lower().startswith(prefix.lower()) for v in values)
 
     # At least one known enum value starting with the prefix should appear (when applicable)
-    expected = {v for v in _enum_values(HeaderOutputFormat) if v.lower().startswith(prefix)}
+    expected: set[str] = {
+        v for v in _enum_values(HeaderOutputFormat) if v.lower().startswith(prefix)
+    }
     if expected:
         assert expected & values
 
@@ -98,7 +100,7 @@ def test_header_format_completion_filters_by_prefix(prefix: str) -> None:
 @mark_cli
 def test_header_format_completion_handles_nonmatching_prefix() -> None:
     """Non-matching prefixes should yield an empty suggestion list."""
-    items = _complete("zzz")
+    items: list[CompletionItem] = _complete("zzz")
     assert _values(items) == set()
 
 
@@ -106,9 +108,9 @@ def test_header_format_completion_handles_nonmatching_prefix() -> None:
 def test_header_format_completion_works_across_commands() -> None:
     """The same option type should complete in other commands that accept it."""
     # If another command (e.g., check) exposes --header-format, it should complete too.
-    items = _complete("")
-    values = _values(items)
+    items: list[CompletionItem] = _complete("")
+    values: set[str] = _values(items)
     # Not all commands must expose the option, but when they do, values should be suggested.
     # Accept either empty (option not present) or the full enum set.
-    enum_vals = _enum_values(HeaderOutputFormat)
+    enum_vals: set[str] = _enum_values(HeaderOutputFormat)
     assert values in (set(), values | enum_vals) or enum_vals <= values

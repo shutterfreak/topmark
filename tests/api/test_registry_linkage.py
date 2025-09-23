@@ -22,19 +22,26 @@ interact:
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 
 from tests.api.conftest import stub_ft, stub_proc_cls
+from topmark.pipeline.processors.base import HeaderProcessor
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
+
+if TYPE_CHECKING:
+    from topmark.filetypes.base import FileType
+    from topmark.pipeline.processors.base import HeaderProcessor
 
 
 def test_supported_vs_unsupported_partition() -> None:
     """FileType may exist without processor; supported/unsupported reflect that."""
     ft_name = "x_demo"
-    ft = stub_ft(ft_name)
+    ft: FileType = stub_ft(ft_name)
 
-    proc_cls = stub_proc_cls()
+    proc_cls: type[HeaderProcessor] = stub_proc_cls()
 
     try:
         # Register FT only (recognized, unsupported)
@@ -52,7 +59,7 @@ def test_supported_vs_unsupported_partition() -> None:
         assert ft_name not in FileTypeRegistry.unsupported_names()
 
         # The processor should be bound to the FT object
-        proc_obj = HeaderProcessorRegistry.as_mapping()[ft_name]
+        proc_obj: HeaderProcessor = HeaderProcessorRegistry.as_mapping()[ft_name]
         assert getattr(proc_obj, "file_type", None) is not None
         assert proc_obj.file_type is not None
         assert proc_obj.file_type.name == ft_name
@@ -63,7 +70,7 @@ def test_supported_vs_unsupported_partition() -> None:
 
 def test_register_processor_fails_for_unknown_filetype() -> None:
     """Reject registering a processor for a non-existent file type."""
-    proc_cls = stub_proc_cls()
+    proc_cls: type[HeaderProcessor] = stub_proc_cls()
 
     with pytest.raises(ValueError):
         HeaderProcessorRegistry.register("nonexistent_ft", proc_cls)
@@ -71,8 +78,8 @@ def test_register_processor_fails_for_unknown_filetype() -> None:
 
 def test_supported_unsupported_partition_coherent() -> None:
     """Partition coherence (disjoint & covers all names)."""
-    all_names = set(FileTypeRegistry.names())
-    supp = set(FileTypeRegistry.supported_names())
-    unsupp = set(FileTypeRegistry.unsupported_names())
+    all_names: set[str] = set(FileTypeRegistry.names())
+    supp: set[str] = set(FileTypeRegistry.supported_names())
+    unsupp: set[str] = set(FileTypeRegistry.unsupported_names())
     assert supp.isdisjoint(unsupp)
     assert supp.union(unsupp) == all_names

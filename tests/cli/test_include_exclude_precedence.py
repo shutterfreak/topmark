@@ -17,6 +17,7 @@ Covers:
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tests.cli.conftest import assert_SUCCESS, run_cli_in
@@ -25,21 +26,23 @@ from topmark.constants import TOPMARK_START_MARKER
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from click.testing import Result
+
 
 def test_exclude_wins_over_include(tmp_path: Path) -> None:
     """When a file is matched by both include and exclude, exclude removes it."""
-    target = tmp_path / "keep.py"
-    other = tmp_path / "skip.py"
+    target: Path = tmp_path / "keep.py"
+    other: Path = tmp_path / "skip.py"
     target.write_text("print('ok')\n", "utf-8")
     other.write_text("print('skip')\n", "utf-8")
 
-    incf = tmp_path / "inc.txt"
-    excf = tmp_path / "exc.txt"
+    incf: Path = tmp_path / "inc.txt"
+    excf: Path = tmp_path / "exc.txt"
     # Both files included; exclude removes `skip.py`.
     incf.write_text("*.py\n# comment\n\n", "utf-8")
     excf.write_text("# exclude explicit below\nskip.py\n", "utf-8")
 
-    result = run_cli_in(
+    result: Result = run_cli_in(
         tmp_path,
         [
             "check",

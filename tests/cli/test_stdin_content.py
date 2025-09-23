@@ -20,6 +20,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from click.testing import Result
+
 from tests.cli.conftest import (
     assert_SUCCESS,
     assert_WOULD_CHANGE,
@@ -30,11 +32,13 @@ from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from click.testing import Result
+
 
 def test_check_content_stdin_dry_run() -> None:
     """Reading a single file from STDIN ('-') should behave like a real file in dry-run."""
     body = "print('x')\n"
-    result = run_cli(["check", "-", "--stdin-filename", "x.py"], input_text=body)
+    result: Result = run_cli(["check", "-", "--stdin-filename", "x.py"], input_text=body)
     assert_WOULD_CHANGE(result)  # header would be added
     # Should not write to disk (it prints diagnostics only); no file exists here.
 
@@ -42,7 +46,7 @@ def test_check_content_stdin_dry_run() -> None:
 def test_check_content_stdin_apply_prints_to_stdout(tmp_path: Path) -> None:
     """With --apply, content-on-STDIN writes the modified content to stdout (not the FS)."""
     body = "print('x')\n"
-    result = run_cli(["check", "--apply", "-", "--stdin-filename", "x.py"], input_text=body)
+    result: Result = run_cli(["check", "--apply", "-", "--stdin-filename", "x.py"], input_text=body)
     assert_SUCCESS(result)
     # Heuristic: the header start marker should appear in stdout output.
     from topmark.constants import TOPMARK_START_MARKER
@@ -52,15 +56,15 @@ def test_check_content_stdin_apply_prints_to_stdout(tmp_path: Path) -> None:
 
 def test_strip_content_stdin_dry_run() -> None:
     """Strip on content from STDIN should detect removal would occur."""
-    body = f"# {TOPMARK_START_MARKER}\n# h\n# {TOPMARK_END_MARKER}\nprint()\n"
-    result = run_cli(["strip", "-", "--stdin-filename", "x.py"], input_text=body)
+    body: str = f"# {TOPMARK_START_MARKER}\n# h\n# {TOPMARK_END_MARKER}\nprint()\n"
+    result: Result = run_cli(["strip", "-", "--stdin-filename", "x.py"], input_text=body)
     assert_WOULD_CHANGE(result)
 
 
 def test_strip_content_stdin_apply_prints_to_stdout() -> None:
     """With --apply, strip prints stripped content to stdout."""
-    body = f"# {TOPMARK_START_MARKER}\n# h\n# {TOPMARK_END_MARKER}\nprint('ok')\n"
-    result = run_cli(["strip", "--apply", "-", "--stdin-filename", "x.py"], input_text=body)
+    body: str = f"# {TOPMARK_START_MARKER}\n# h\n# {TOPMARK_END_MARKER}\nprint('ok')\n"
+    result: Result = run_cli(["strip", "--apply", "-", "--stdin-filename", "x.py"], input_text=body)
     assert_SUCCESS(result)
     # Header should be gone in stdout
     assert TOPMARK_START_MARKER not in result.output

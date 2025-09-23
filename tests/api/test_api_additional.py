@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 def test_check_mutually_exclusive_add_update_raises(repo_py_toml_xyz_no_header: Path) -> None:
     """`add_only` and `update_only` are mutually exclusive and should raise."""
     with pytest.raises(ValueError):
-        _ = api.check(
+        _run_result: api.RunResult = api.check(
             [repo_py_toml_xyz_no_header / "src"],
             apply=False,
             add_only=True,
@@ -44,14 +44,14 @@ def test_check_with_explicit_config_restricts_file_types(repo_py_toml_xyz_no_hea
     We pass a config mapping that limits `files.file_types` to ["python"]. The API
     should honor this mapping without merging project config and only return Python files.
     """
-    r = api.check(
+    r: api.RunResult = api.check(
         [repo_py_toml_xyz_no_header / "src"],
         apply=False,
         config=cfg(files={"file_types": ["python"]}),
         file_types=None,  # rely solely on config mapping here
     )
 
-    paths = {fr.path for fr in r.files}
+    paths: set[Path] = {fr.path for fr in r.files}
     assert repo_py_toml_xyz_no_header / "src" / "without_header.py" in paths
     # The unknown extension should not appear when restricted to python
     assert repo_py_toml_xyz_no_header / "src" / "readme.xyz" not in paths

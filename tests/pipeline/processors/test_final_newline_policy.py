@@ -23,12 +23,16 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from tests.pipeline.conftest import run_insert
-from topmark.config import MutableConfig
+from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
+from topmark.pipeline.context import ProcessingContext
 from topmark.pipeline.processors import get_processor_for_file
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from topmark.pipeline.context import ProcessingContext
+    from topmark.pipeline.processors.base import HeaderProcessor
 
 
 def _ends_with_newline(text: str) -> bool:
@@ -38,31 +42,31 @@ def _ends_with_newline(text: str) -> bool:
 
 def test_insert_preserves_no_final_newline_pound(tmp_path: Path) -> None:
     """Insert into Python file without final newline → still no final newline."""
-    f = tmp_path / "a.py"
+    f: Path = tmp_path / "a.py"
     # No final newline on purpose.
     f.write_text("print('x')", encoding="utf-8")
 
-    cfg = MutableConfig.from_defaults().freeze()
-    ctx = run_insert(f, cfg)
-    out = "".join(ctx.updated_file_lines or [])
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    ctx: ProcessingContext = run_insert(f, cfg)
+    out: str = "".join(ctx.updated_file_lines or [])
     assert not _ends_with_newline(out), "Output must preserve absence of final newline"
 
 
 def test_insert_preserves_final_newline_slash(tmp_path: Path) -> None:
     """Insert into C-like file with final newline → still has a final newline."""
-    f = tmp_path / "a.ts"
+    f: Path = tmp_path / "a.ts"
     f.write_text("console.log(1);\n", encoding="utf-8")
 
-    cfg = MutableConfig.from_defaults().freeze()
-    ctx = run_insert(f, cfg)
-    out = "".join(ctx.updated_file_lines or [])
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    ctx: ProcessingContext = run_insert(f, cfg)
+    out: str = "".join(ctx.updated_file_lines or [])
     assert _ends_with_newline(out), "Output must preserve final newline"
 
 
 def test_strip_preserves_final_newline_xml(tmp_path: Path) -> None:
     """Strip on XML preserves final newline parity."""
-    f1 = tmp_path / "with_nl.xml"
-    f2 = tmp_path / "no_nl.xml"
+    f1: Path = tmp_path / "with_nl.xml"
+    f2: Path = tmp_path / "no_nl.xml"
 
     with_nl = (
         '<?xml version="1.0"?>\n'
@@ -82,17 +86,21 @@ def test_strip_preserves_final_newline_xml(tmp_path: Path) -> None:
     f1.write_text(with_nl, encoding="utf-8")
     f2.write_text(no_nl, encoding="utf-8")
 
-    proc1 = get_processor_for_file(f1)
-    proc2 = get_processor_for_file(f2)
+    proc1: HeaderProcessor | None = get_processor_for_file(f1)
+    proc2: HeaderProcessor | None = get_processor_for_file(f2)
     assert proc1 and proc2
 
-    lines1 = f1.read_text(encoding="utf-8").splitlines(keepends=True)
-    lines2 = f2.read_text(encoding="utf-8").splitlines(keepends=True)
+    lines1: list[str] = f1.read_text(encoding="utf-8").splitlines(keepends=True)
+    lines2: list[str] = f2.read_text(encoding="utf-8").splitlines(keepends=True)
 
-    new1, _ = proc1.strip_header_block(lines=lines1, span=None)
-    new2, _ = proc2.strip_header_block(lines=lines2, span=None)
+    new1: list[str] = []
+    _span1: tuple[int, int] | None = None
+    new1, _span1 = proc1.strip_header_block(lines=lines1, span=None)
+    new2: list[str] = []
+    _span2: tuple[int, int] | None = None
+    new2, _span2 = proc2.strip_header_block(lines=lines2, span=None)
 
-    out1 = "".join(new1)
-    out2 = "".join(new2)
+    out1: str = "".join(new1)
+    out2: str = "".join(new2)
     assert _ends_with_newline(out1), "Strip must preserve final newline"
     assert not _ends_with_newline(out2), "Strip must preserve absence of final newline"

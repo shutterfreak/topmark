@@ -27,6 +27,7 @@ extensions and newline styles for broad coverage.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -38,7 +39,10 @@ from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 if TYPE_CHECKING:
     from pathlib import Path
 
-mark_pipeline = pytest.mark.pipeline
+    from topmark.pipeline.context import ProcessingContext
+    from topmark.pipeline.processors.base import HeaderProcessor
+
+mark_pipeline: pytest.MarkDecorator = pytest.mark.pipeline
 
 
 @pytest.mark.parametrize(
@@ -67,12 +71,12 @@ def test_insert_preserves_newline_style(
         post (str): Comment suffix for block comments (HTML), or ``\n`` otherwise.
         newline (str): The intended newline sequence for the file under test.
     """
-    f = tmp_path / f"nstyle{ext}"
+    f: Path = tmp_path / f"nstyle{ext}"
     with f.open("w", encoding="utf-8", newline=newline) as fp:
         fp.write(f"{pre}seed{post}")
 
-    ctx = run_insert(f, MutableConfig.from_defaults().freeze())
-    lines = ctx.updated_file_lines or []
+    ctx: ProcessingContext = run_insert(f, MutableConfig.from_defaults().freeze())
+    lines: list[str] = ctx.updated_file_lines or []
     for i, ln in enumerate(lines):
         if i < len(lines) - 1:
             assert ln.endswith(newline), f"line {i} lost newline style"
@@ -124,18 +128,20 @@ def test_strip_preserves_newline_style(
         newline (str): Newline sequence to enforce on disk.
     """
     # Build the content replacing internal newlines by the chosen style
-    content = (header_open + header_line + header_close + body).replace("\n", newline)
-    f = tmp_path / f"strip{ext}"
+    content: str = (header_open + header_line + header_close + body).replace("\n", newline)
+    f: Path = tmp_path / f"strip{ext}"
     with f.open("w", encoding="utf-8", newline="") as fp:
         fp.write(content)
 
     # Emulate strip pipeline: scanner -> stripper -> updater fast-path
     from topmark.pipeline.processors import get_processor_for_file
 
-    proc = get_processor_for_file(f)
+    proc: HeaderProcessor | None = get_processor_for_file(f)
     assert proc is not None
-    lines = f.read_text(encoding="utf-8").splitlines(keepends=True)
+    lines: list[str] = f.read_text(encoding="utf-8").splitlines(keepends=True)
 
+    new_lines: list[str] = []
+    span: tuple[int, int] | None = None
     new_lines, span = proc.strip_header_block(lines=lines)
     assert span is not None
 

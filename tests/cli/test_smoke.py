@@ -14,13 +14,20 @@ Provides minimal coverage that the CLI entry point is callable and that
 `--help` and `version` commands succeed.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from tests.cli.conftest import assert_SUCCESS, run_cli
 from topmark.constants import TOPMARK_VERSION
+
+if TYPE_CHECKING:
+    from click.testing import Result
 
 
 def test_cli_entry() -> None:
     """It should show usage information and exit code SUCCESS when `--help` is passed."""
-    result = run_cli(["--help"])
+    result: Result = run_cli(["--help"])
 
     assert_SUCCESS(result)
 
@@ -29,7 +36,7 @@ def test_cli_entry() -> None:
 
 def test_version() -> None:
     """It should show version information containing 'topmark' and exit code SUCCESS."""
-    result = run_cli(["version"])
+    result: Result = run_cli(["version"])
 
     assert_SUCCESS(result)
 

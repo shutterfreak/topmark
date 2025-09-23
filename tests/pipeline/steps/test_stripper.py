@@ -16,26 +16,31 @@ line when the header starts at the top of the file. The tests bootstrap a
 minimal `ProcessingContext` without running the full pipeline.
 """
 
-from pathlib import Path
+from __future__ import annotations
 
-from topmark.config import MutableConfig
+from typing import TYPE_CHECKING
+
+from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.context import HeaderStatus, ProcessingContext
 from topmark.pipeline.processors.base import HeaderProcessor
 from topmark.pipeline.steps.stripper import strip
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
 
 def test_stripper_uses_span_and_trims_leading_blank(tmp_path: Path) -> None:
     """When span is provided, stripper should remove exactly that region and trim."""
-    lines = [
+    lines: list[str] = [
         f"# {TOPMARK_START_MARKER}\n",
         "# h\n",
         f"# {TOPMARK_END_MARKER}\n",
         "\n",
         "code\n",
     ]
-    cfg = MutableConfig.from_defaults().freeze()
-    ctx = ProcessingContext.bootstrap(path=(tmp_path / "x.py"), config=cfg)
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    ctx: ProcessingContext = ProcessingContext.bootstrap(path=(tmp_path / "x.py"), config=cfg)
     ctx.file_lines = lines
     # Use the base processor; removal relies on span and generic bounds logic.
     ctx.header_processor = HeaderProcessor()

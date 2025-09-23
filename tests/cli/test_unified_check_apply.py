@@ -17,12 +17,17 @@ exits with code 0 on success.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
+
+from click.testing import Result
 
 from tests.cli.conftest import assert_SUCCESS, assert_WOULD_CHANGE, run_cli
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from click.testing import Result
 
 
 def test_check_mode_exits_2_when_changes_needed(tmp_path: Path) -> None:
@@ -31,10 +36,10 @@ def test_check_mode_exits_2_when_changes_needed(tmp_path: Path) -> None:
     We create a file without a header so TopMark would add one; in check mode
     it must not write and should signal the need to apply via exit code 2.
     """
-    f = tmp_path / "a.py"
+    f: Path = tmp_path / "a.py"
     f.write_text("print('x')\n", encoding="utf-8")
 
-    result = run_cli(["check", str(f)])
+    result: Result = run_cli(["check", str(f)])
 
     assert_WOULD_CHANGE(result)
 
@@ -44,15 +49,15 @@ def test_check_mode_exits_2_when_changes_needed(tmp_path: Path) -> None:
 
 def test_apply_writes_and_exits_0(tmp_path: Path) -> None:
     """With ``--apply``, changes are written and exit code is 0."""
-    f = tmp_path / "b.py"
+    f: Path = tmp_path / "b.py"
     before = "print('y')\n"
     f.write_text(before, encoding="utf-8")
 
-    result = run_cli(["check", "--apply", str(f)])
+    result: Result = run_cli(["check", "--apply", str(f)])
 
     assert_SUCCESS(result)
 
-    after = f.read_text(encoding="utf-8")
+    after: str = f.read_text(encoding="utf-8")
 
     # File should be changed (header inserted). We only assert that content differs.
     assert after != before, "file should have been modified"

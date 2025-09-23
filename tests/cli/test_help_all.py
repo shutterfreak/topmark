@@ -16,14 +16,29 @@ Ensures that:
 - Each registered subcommand provides a working `--help` page.
 """
 
+from typing import TYPE_CHECKING
+
+from click.testing import Result
+
 from tests.cli.conftest import assert_SUCCESS, run_cli
 
-COMMANDS = ["check", "strip", "dump-config", "filetypes", "init-config", "show-defaults", "version"]
+if TYPE_CHECKING:
+    from click.testing import Result
+
+COMMANDS: list[str] = [
+    "check",
+    "strip",
+    "dump-config",
+    "filetypes",
+    "init-config",
+    "show-defaults",
+    "version",
+]
 
 
 def test_group_help() -> None:
     """It should exit successfully (0) when running `topmark --help`."""
-    result = run_cli(["--help"])
+    result: Result = run_cli(["--help"])
 
     assert_SUCCESS(result)
 
@@ -31,6 +46,6 @@ def test_group_help() -> None:
 def test_each_command_has_help() -> None:
     """It should provide a `--help` page for each known subcommand."""
     for name in COMMANDS:
-        result = run_cli([name, "--help"])
+        result: Result = run_cli([name, "--help"])
 
         assert_SUCCESS(result)

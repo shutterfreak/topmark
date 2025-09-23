@@ -9,3 +9,5 @@
 # topmark:header:end
 
 """TopMark Test Framework: CLI."""
+
+from __future__ import annotations

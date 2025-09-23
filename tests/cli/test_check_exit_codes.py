@@ -15,18 +15,26 @@ with either 0 (SUCCESS) or 2 (WOULD_CHANGE). The behavior may be tightened
 later as the CLI spec is finalized.
 """
 
+from __future__ import annotations
+
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tests.cli.conftest import assert_WOULD_CHANGE, run_cli_in
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from click.testing import Result
 
 
 def test_check_exit_code_with_missing_header(tmp_path: Path) -> None:
     """It should exit with code `WOULD_CHANGE` (2)."""
     file_name = "foo.py"
-    f = tmp_path / file_name
+    f: Path = tmp_path / file_name
     f.write_text("print('hi')\n")
 
-    result = run_cli_in(tmp_path, ["check", file_name])
+    result: Result = run_cli_in(tmp_path, ["check", file_name])
 
     # When a header is missing, the default command should report WOULD_CHANGE (2).
     assert_WOULD_CHANGE(result)

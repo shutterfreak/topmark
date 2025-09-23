@@ -17,14 +17,18 @@ before invoking the Click CLI. This ensures that **relative** file patterns and
 matching TopMark's resolver contract that disallows absolute patterns.
 """
 
+from __future__ import annotations
+
 import os
-from pathlib import Path
-from typing import IO, Any, Sequence
+from typing import IO, TYPE_CHECKING, Any, Sequence
 
 from click.testing import CliRunner, Result
 
 from topmark.cli.main import cli
 from topmark.cli_shared.exit_codes import ExitCode
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def run_cli_in(
@@ -58,7 +62,7 @@ def run_cli_in(
         ```
     """
     runner = CliRunner()
-    cwd = os.getcwd()
+    cwd: str = os.getcwd()
     try:
         os.chdir(tmp_path)
         return runner.invoke(cli, argv, input=input_text)
