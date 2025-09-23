@@ -86,8 +86,8 @@ class ChalkFormatter(logging.Formatter):
         Returns:
             str: The colorized formatted log message as a string.
         """
-        level = record.levelno
-        message = super().format(record)
+        level: int = record.levelno
+        message: str = super().format(record)
 
         result: str = ""
 
@@ -116,15 +116,15 @@ def resolve_env_log_level() -> int | None:
 
     Honors TOPMARK_LOG_LEVEL (e.g., "TRACE", "DEBUG", "INFO", numeric "10").
     """
-    val = os.environ.get("TOPMARK_LOG_LEVEL")
+    val: str | None = os.environ.get("TOPMARK_LOG_LEVEL")
     if val:
-        v = val.strip().upper()
+        v: str = val.strip().upper()
         if v.isdigit():
             try:
                 return int(v)
             except ValueError:
                 return None
-        name_to_level = {
+        name_to_level: dict[str, int] = {
             "TRACE": TRACE_LEVEL,
             "DEBUG": logging.DEBUG,
             "INFO": logging.INFO,
@@ -149,10 +149,11 @@ def setup_logging(level: int | None = None) -> None:
     if level is None:
         level = resolve_env_log_level() or logging.CRITICAL
 
-    root_logger = logging.getLogger()
+    root_logger: logging.Logger = logging.getLogger()
     root_logger.setLevel(level)
 
     # Remove all existing handlers to prevent duplicate log messages
+    handler: logging.Handler
     if root_logger.handlers:
         for handler in root_logger.handlers[
             :
@@ -179,5 +180,5 @@ def get_logger(name: str) -> TopmarkLogger:
     Returns:
         TopmarkLogger: A TopmarkLogger instance.
     """
-    logger = logging.getLogger(name)
+    logger: logging.Logger = logging.getLogger(name)
     return cast("TopmarkLogger", logger)

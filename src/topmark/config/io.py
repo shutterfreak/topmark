@@ -30,13 +30,14 @@ from typing import TYPE_CHECKING, Any
 
 import toml
 
-from topmark.config.logging import get_logger
+from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.constants import DEFAULT_TOML_CONFIG_RESOURCE
 
 if TYPE_CHECKING:
+    from importlib.abc import Traversable
     from pathlib import Path
 
-logger = get_logger(__name__)
+logger: TopmarkLogger = get_logger(__name__)
 
 
 def load_defaults_dict() -> dict[str, Any]:
@@ -49,7 +50,7 @@ def load_defaults_dict() -> dict[str, Any]:
     Returns:
         dict[str, Any]: The parsed default configuration.
     """
-    res = files("topmark.config") / DEFAULT_TOML_CONFIG_RESOURCE
+    res: Traversable = files("topmark.config") / DEFAULT_TOML_CONFIG_RESOURCE
     logger.debug("Loading defaults from package resource: %s", res)
 
     return toml.loads(res.read_text(encoding="utf-8"))

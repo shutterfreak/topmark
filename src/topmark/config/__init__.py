@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Any, TypeGuard
 
 from topmark.config.io import clean_toml, load_defaults_dict, load_toml_dict, to_toml
-from topmark.config.logging import get_logger
+from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.rendering.formats import HeaderOutputFormat
 
 # ArgsLike: generic mapping accepted by config loaders (works for CLI namespaces and API dicts).
@@ -39,7 +39,7 @@ ArgsLike = Mapping[str, Any]
 # and key lookups, so Mapping is the right structural type. This allows the
 # CLI to pass its namespace and the API/tests to pass plain dicts.
 
-logger = get_logger(__name__)
+logger: TopmarkLogger = get_logger(__name__)
 
 
 # ------------------ Immutable runtime config ------------------
@@ -270,7 +270,7 @@ class MutableConfig:
         Returns:
             str: The contents of the default TOML configuration file.
         """
-        toml_data = load_defaults_dict()
+        toml_data: dict[str, Any] = load_defaults_dict()
         return to_toml(toml_data)
 
     @classmethod
@@ -363,12 +363,12 @@ class MutableConfig:
         # Helpers
         def get_table_value(table: dict[str, Any], key: str) -> dict[str, Any]:
             # Safely extract a sub-table (dict) from the TOML data
-            value = table.get(key)
+            value: Any | None = table.get(key)
             return value if is_str_any_dict(value) else {}
 
         def get_string_value(table: dict[str, Any], key: str, default: str = "") -> str:
             # Coerce various types to string if possible; fallback to default
-            value = table.get(key)
+            value: Any | None = table.get(key)
             if isinstance(value, str):
                 return value
             if isinstance(value, (int, float, bool)):
@@ -377,7 +377,7 @@ class MutableConfig:
 
         def get_bool_value(table: dict[str, Any], key: str, default: bool = False) -> bool:
             # Extract boolean value, coercing int to bool if needed
-            value = table.get(key)
+            value: Any | None = table.get(key)
             if isinstance(value, bool):
                 return value
             if isinstance(value, int):
@@ -388,7 +388,7 @@ class MutableConfig:
             table: dict[str, Any], key: str, default: list[Any] | None = None
         ) -> list[Any]:
             # Extract list value, ensure list type or fallback to default
-            value = table.get(key)
+            value: Any | None = table.get(key)
             if is_any_list(value):
                 return value
             return default or []
@@ -396,23 +396,23 @@ class MutableConfig:
         tool_cfg = data  # top-level tool configuration dictionary
 
         # Extract sub-tables for specific config sections; fallback to empty dicts
-        field_cfg = get_table_value(tool_cfg, "fields")
+        field_cfg: dict[str, Any] = get_table_value(tool_cfg, "fields")
         logger.trace("TOML [fields]: %s", field_cfg)
 
-        header_cfg = get_table_value(tool_cfg, "header")
+        header_cfg: dict[str, Any] = get_table_value(tool_cfg, "header")
         logger.trace("TOML [header]: %s", header_cfg)
 
-        formatting_cfg = get_table_value(tool_cfg, "formatting")
+        formatting_cfg: dict[str, Any] = get_table_value(tool_cfg, "formatting")
         logger.trace("TOML [formatting]: %s", formatting_cfg)
 
-        file_cfg = get_table_value(tool_cfg, "files")
+        file_cfg: dict[str, Any] = get_table_value(tool_cfg, "files")
         logger.trace("TOML [files]: %s", file_cfg)
 
-        include_patterns = get_list_value(file_cfg, "include_patterns")
-        include_from = get_list_value(file_cfg, "include_from")
-        exclude_patterns = get_list_value(file_cfg, "exclude_patterns")
-        exclude_from = get_list_value(file_cfg, "exclude_from")
-        files_from = get_list_value(file_cfg, "files_from")
+        include_patterns: list[str] = get_list_value(file_cfg, "include_patterns")
+        include_from: list[str] = get_list_value(file_cfg, "include_from")
+        exclude_patterns: list[str] = get_list_value(file_cfg, "exclude_patterns")
+        exclude_from: list[str] = get_list_value(file_cfg, "exclude_from")
+        files_from: list[str] = get_list_value(file_cfg, "files_from")
 
         # Coerce field values to strings, ignoring unsupported types with a warning
         field_values: dict[str, str] = {}
@@ -422,7 +422,7 @@ class MutableConfig:
             else:
                 logger.warning("Ignoring unsupported field value for '%s': %r", k, v)
 
-        header_fields = get_list_value(header_cfg, "fields")
+        header_fields: list[str] = get_list_value(header_cfg, "fields")
 
         # # Fallback: if no explicit header field order is provided, use the keys of
         # # the field_values table in their declared order. This preserves intuitive
@@ -431,22 +431,22 @@ class MutableConfig:
         #     header_fields = list(field_values.keys())
 
         # Parse relative_to path if present, resolve to absolute path
-        relative_to_raw = get_string_value(tool_cfg, "relative_to")
-        relative_to = Path(relative_to_raw).resolve() if relative_to_raw else None
+        relative_to_raw: str = get_string_value(tool_cfg, "relative_to")
+        relative_to: Path | None = Path(relative_to_raw).resolve() if relative_to_raw else None
 
         # align_fields = get_bool_value(formatting_cfg, "align_fields", True)
-        align_fields = get_bool_value(
+        align_fields: bool = get_bool_value(
             formatting_cfg, "align_fields"
         )  # NOTE: do not set a default value if not set
 
-        raw_header_format = get_string_value(
+        raw_header_format: str = get_string_value(
             formatting_cfg, "header_format"
         )  # NOTE: do not set a default value if not set
         if raw_header_format:
             try:
                 header_format = HeaderOutputFormat(raw_header_format)
             except ValueError:
-                valid_values = ", ".join(e.value for e in HeaderOutputFormat)
+                valid_values: str = ", ".join(e.value for e in HeaderOutputFormat)
                 logger.error(
                     "Invalid header format specifier found: %s (allowed values: %s)",
                     raw_header_format,
@@ -457,7 +457,7 @@ class MutableConfig:
             # choose your default; this keeps behavior predictable
             header_format = None
 
-        file_types = get_list_value(file_cfg, "file_types")
+        file_types: list[str] = get_list_value(file_cfg, "file_types")
         file_type_set: set[str] = set(file_types) if file_types else set()
         if file_types and len(file_types) != len(file_type_set):
             logger.warning("Duplicate file types found in config: %s", ", ".join(file_types))

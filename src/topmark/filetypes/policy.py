@@ -10,11 +10,17 @@
 
 """Policy describing how headers should be inserted for a file type."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from ..config.logging import get_logger
 
-logger = get_logger(__name__)
+if TYPE_CHECKING:
+    from topmark.config.logging import TopmarkLogger
+
+logger: TopmarkLogger = get_logger(__name__)
 
 
 @dataclass

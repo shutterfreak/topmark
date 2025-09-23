@@ -14,6 +14,8 @@ This module provides an enumeration of the different formats
 that can be used for rendering headers in TopMark.
 """
 
+from __future__ import annotations
+
 from enum import Enum
 
 

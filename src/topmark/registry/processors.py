@@ -24,6 +24,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Iterator, Mapping, MutableMapping
 
 if TYPE_CHECKING:
+    from topmark.filetypes.base import FileType
     from topmark.pipeline.processors.base import HeaderProcessor
 
 
@@ -155,7 +156,7 @@ class HeaderProcessorRegistry:
         from topmark.filetypes.registry import get_header_processor_registry as _get
 
         with cls._lock:
-            ft_reg = _get_ft()
+            ft_reg: dict[str, FileType] = _get_ft()
             if name not in ft_reg:
                 raise ValueError(f"Unknown file type: {name}")
 

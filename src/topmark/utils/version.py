@@ -10,6 +10,8 @@
 
 """Version utilities for TopMark."""
 
+from __future__ import annotations
+
 import re
 
 # Recognize the subset of PEP 440 we actually emit:
@@ -67,6 +69,9 @@ def pep440_to_semver(pep440_version: str) -> str:
         raise ValueError(f"Not a recognized PEP 440 version: {pep440_version!r}")
     if m.group("post") is not None:
         raise ValueError(f"Post-releases are not valid SemVer: {pep440_version!r}")
+    major: str | None = None
+    minor: str | None = None
+    patch: str | None = None
     major, minor, patch = m.group("major"), m.group("minor"), m.group("patch")
     base: str = f"{major}.{minor}.{patch}"
     pre: str = ""

@@ -13,9 +13,9 @@
 import os
 from pathlib import Path
 
-from topmark.config.logging import get_logger
+from topmark.config.logging import TopmarkLogger, get_logger
 
-logger = get_logger(__name__)
+logger: TopmarkLogger = get_logger(__name__)
 
 
 def compute_relpath(file_path: Path, root_path: Path) -> Path:
@@ -29,10 +29,10 @@ def compute_relpath(file_path: Path, root_path: Path) -> Path:
         Path: The relative path from root_path to file_path.
     """
     # Ensure the file_path is resolved to its absolute path
-    resolved_path = file_path.resolve()
+    resolved_path: Path = file_path.resolve()
 
     # Determine root directory for relative path computation
-    resolved_root = (root_path or Path.cwd()).resolve()
+    resolved_root: Path = (root_path or Path.cwd()).resolve()
 
     try:
         # Direct subpath case

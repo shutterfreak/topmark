@@ -20,15 +20,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.config.logging import get_logger
+from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.filetypes.instances import get_file_type_registry
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from topmark.filetypes.base import FileType
     from topmark.pipeline.processors.base import HeaderProcessor
 
-logger = get_logger(__name__)
+logger: TopmarkLogger = get_logger(__name__)
 
 
 _registry: dict[str, HeaderProcessor] = {}
@@ -49,11 +50,11 @@ def register_filetype(
     Raises:
         ValueError: If the file type name is unknown or already registered.
     """
-    file_type_registry = get_file_type_registry()
+    file_type_registry: dict[str, FileType] = get_file_type_registry()
     if name not in file_type_registry:
         raise ValueError(f"Unknown file type: {name}")
 
-    file_type = file_type_registry[name]
+    file_type: FileType = file_type_registry[name]
 
     def decorator(cls: type[HeaderProcessor]) -> type[HeaderProcessor]:
         """Decorator function that registers the processor class with the given extension.

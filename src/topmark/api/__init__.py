@@ -65,7 +65,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterable, Sequence, cast
+from typing import TYPE_CHECKING, Any, Iterable, Mapping, Sequence, cast
 
 from topmark.cli.cmd_common import (
     filter_view_results,
@@ -74,7 +74,7 @@ from topmark.cli.cmd_common import (
 from topmark.cli.io import InputPlan
 from topmark.cli_shared.utils import write_updates
 from topmark.config import Config, MutableConfig
-from topmark.config.logging import get_logger
+from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.constants import TOPMARK_VERSION
 from topmark.pipeline.context import (
     ComparisonStatus,
@@ -90,10 +90,12 @@ from .types import DiagnosticTotals, FileResult, FileTypeInfo, Outcome, Processo
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
-logger = get_logger(__name__)
+    from topmark.cli_shared.exit_codes import ExitCode
+
+logger: TopmarkLogger = get_logger(__name__)
 
 
-__all__ = [
+__all__: list[str] = [
     "Outcome",
     "FileResult",
     "RunResult",
@@ -174,7 +176,7 @@ def _map_outcome(r: ProcessingContext, *, apply: bool) -> Outcome:
     """
     if r.status.file is not FileStatus.RESOLVED:
         # Treat unsupported/matched-but-unhandled types as non-errors for API consumers.
-        unsupported = {
+        unsupported: set[FileStatus] = {
             FileStatus.SKIPPED_UNSUPPORTED,
             FileStatus.SKIPPED_KNOWN_NO_HEADERS,
         }
@@ -194,8 +196,8 @@ def _map_outcome(r: ProcessingContext, *, apply: bool) -> Outcome:
 def _to_file_result(r: ProcessingContext, *, apply: bool) -> FileResult:
     """Convert a ProcessingContext into a FileResult."""
     # Prefer a unified diff when available; otherwise None (human views may omit diffs).
-    diff = r.header_diff or None
-    message = getattr(r, "summary", None)
+    diff: str | None = r.header_diff or None
+    message: str | None = r.summary or None
     return FileResult(
         path=Path(str(r.path)), outcome=_map_outcome(r, apply=apply), diff=diff, message=message
     )
@@ -216,7 +218,7 @@ def _run_pipeline(
     base_config: Mapping[str, Any] | Config | None,
     file_types: Sequence[str] | None,
     apply_changes: bool,
-) -> tuple[Config, list[Path], list[ProcessingContext], object | None]:
+) -> tuple[Config, list[Path], list[ProcessingContext], ExitCode | None]:
     """Resolve config + files, register processors, and run the pipeline.
 
     - Uses the same planner/resolver as the CLI (via `build_config_and_file_list`)
@@ -232,14 +234,16 @@ def _run_pipeline(
         apply_changes (bool): True if changes should be applied, False if dry-run.
 
     Returns:
-        tuple[Config, list[Path], list[ProcessingContext], object | None]: Tuple containing:
+        tuple[Config, list[Path], list[ProcessingContext], ExitCode | None]: Tuple containing:
             - the resulting Config object;
             - the resolved (optionally filtered if `file_types` was specified) list of paths
               to process;
             - the results of running the pipeline as list of `ProcessingContext` instances;
-            - the encountered error code
+            - the encountered `ExitCode` error code
     """
     logger.info("Building config and file list for paths: %s", paths)
+    cfg: Config
+    file_list: list[Path]
     cfg, file_list = _build_cfg_and_files_via_cli_helpers(
         paths, base_config=base_config, file_types=file_types
     )
@@ -253,8 +257,10 @@ def _run_pipeline(
     Registry.ensure_processors_registered()
 
     # Use a snapshot that carries the apply intent
-    cfg_for_run = replace(cfg, apply_changes=apply_changes)
+    cfg_for_run: Config = replace(cfg, apply_changes=apply_changes)
 
+    results: list[ProcessingContext] = []
+    encountered_error_code: ExitCode | None
     results, encountered_error_code = run_steps_for_files(
         file_list, pipeline_name=pipeline_name, config=cfg_for_run
     )
@@ -275,10 +281,10 @@ def _apply_view_filter(
     `skipped_count` equals `len(results) - len(filtered_results)` and reflects only
     view-level filtering (not internal SKIPPED statuses).
     """
-    view_results = filter_view_results(
+    view_results: list[ProcessingContext] = filter_view_results(
         results, skip_compliant=skip_compliant, skip_unsupported=skip_unsupported
     )
-    skipped = len(results) - len(view_results)
+    skipped: int = len(results) - len(view_results)
     return view_results, skipped
 
 
@@ -305,19 +311,21 @@ def _collect_diagnostic_totals(results: list[ProcessingContext]) -> DiagnosticTo
     Counts reflect only the supplied `results` (typically the **view** after
     filtering), matching what is returned to the caller.
     """
-    total_info = total_warn = total_error = 0
+    total_info: int = 0
+    total_warn: int = 0
+    total_error: int = 0
     for r in results:
         if not r.diagnostics:
             continue
         for d in r.diagnostics:
-            lv = d.level.value
+            lv: str = d.level.value
             if lv == "info":
                 total_info += 1
             elif lv == "warning":
                 total_warn += 1
             elif lv == "error":
                 total_error += 1
-    total = total_info + total_warn + total_error
+    total: int = total_info + total_warn + total_error
     return {"info": total_info, "warning": total_warn, "error": total_error, "total": total}
 
 
@@ -362,7 +370,7 @@ def _build_cfg_and_files_via_cli_helpers(
     # normalization of paths.
     if base_config is not None:
         # Start from defaults so that header fields/values are present unless overridden
-        draft_defaults = MutableConfig.from_defaults()
+        draft_defaults: MutableConfig = MutableConfig.from_defaults()
         draft = draft_defaults.merge_with(
             draft
         )  # 'draft' came from _ensure_mutable_config(base_config)
@@ -372,8 +380,8 @@ def _build_cfg_and_files_via_cli_helpers(
         logger.debug("Found %d input paths", len(draft.files))
         if file_types:
             draft.file_types = set(file_types)
-        cfg = draft.freeze()
-        file_list = resolve_file_list(cfg)
+        cfg: Config = draft.freeze()
+        file_list: list[Path] = resolve_file_list(cfg)
         logger.debug("Files found: %s", len(file_list))
         return cfg, file_list
 
@@ -405,7 +413,7 @@ def _build_cfg_and_files_via_cli_helpers(
             local_toml = Path(local_toml_file)
             if local_toml.exists():
                 logger.info("Loading local config from: %s", local_toml)
-                local_config = MutableConfig.from_toml_file(local_toml)
+                local_config: MutableConfig | None = MutableConfig.from_toml_file(local_toml)
                 if local_config is not None:
                     draft = draft.merge_with(local_config)
                 break  # only first one
@@ -415,11 +423,11 @@ def _build_cfg_and_files_via_cli_helpers(
         "Sequence[str | Path]", args_mapping.get("config_files", ())
     )
     for entry in config_files_seq:
-        p = entry if isinstance(entry, Path) else Path(entry)
+        p: Path = entry if isinstance(entry, Path) else Path(entry)
         logger.debug("Adding config file '%s' (type=%s)", entry, type(entry).__name__)
         if p.exists():
             logger.info("Loading config override from: %s", p)
-            extra = MutableConfig.from_toml_file(p)
+            extra: MutableConfig | None = MutableConfig.from_toml_file(p)
             if extra is not None:
                 draft = draft.merge_with(extra)
         else:
@@ -475,6 +483,9 @@ def check(
         raise ValueError("Options add_only and update_only are mutually exclusive.")
 
     # Always use 'apply' pipeline to compute updated content even in dry-run
+    file_list: list[Path] = []
+    results: list[ProcessingContext] = []
+    encountered_error_code: ExitCode | None = None
     _, file_list, results, encountered_error_code = _run_pipeline(
         pipeline_name="apply",
         paths=paths,
@@ -485,20 +496,23 @@ def check(
     if not file_list:
         return RunResult(files=(), summary={}, had_errors=False)
 
+    view_results: list[ProcessingContext]
+    skipped: int
     view_results, skipped = _apply_view_filter(
         results, skip_compliant=skip_compliant, skip_unsupported=skip_unsupported
     )
 
-    files = tuple(_to_file_result(r, apply=apply) for r in view_results)
-    summary = _summarize(files)
-    had_errors = any(_map_outcome(r, apply=apply) is Outcome.ERROR for r in results) or (
+    files: tuple[FileResult, ...] = tuple(_to_file_result(r, apply=apply) for r in view_results)
+    summary: Mapping[str, int] = _summarize(files)
+    had_errors: bool = any(_map_outcome(r, apply=apply) is Outcome.ERROR for r in results) or (
         encountered_error_code is not None
     )
-    diagnostics = _collect_diagnostics(view_results)
-    diagnostic_totals = _collect_diagnostic_totals(view_results)
-    diagnostic_totals_all = _collect_diagnostic_totals(results)
+    diagnostics: dict[str, list[PublicDiagnostic]] = _collect_diagnostics(view_results)
+    diagnostic_totals: DiagnosticTotals = _collect_diagnostic_totals(view_results)
+    diagnostic_totals_all: DiagnosticTotals = _collect_diagnostic_totals(results)
 
-    written = failed = 0
+    written: int = 0
+    failed: int = 0
     if apply:
 
         def _should_write_check(r: ProcessingContext) -> bool:
@@ -559,6 +573,9 @@ def strip(
         pipeline write decisions.
     """
     # The 'strip' pipeline computes removal-ready updates even in dry-run
+    file_list: list[Path] = []
+    results: list[ProcessingContext] = []
+    encountered_error_code: ExitCode | None = None
     _, file_list, results, encountered_error_code = _run_pipeline(
         pipeline_name="strip",
         paths=paths,
@@ -569,20 +586,23 @@ def strip(
     if not file_list:
         return RunResult(files=(), summary={}, had_errors=False)
 
+    view_results: list[ProcessingContext]
+    skipped: int = 0
     view_results, skipped = _apply_view_filter(
         results, skip_compliant=skip_compliant, skip_unsupported=skip_unsupported
     )
 
-    files = tuple(_to_file_result(r, apply=apply) for r in view_results)
-    summary = _summarize(files)
-    had_errors = any(_map_outcome(r, apply=apply) is Outcome.ERROR for r in results) or (
+    files: tuple[FileResult, ...] = tuple(_to_file_result(r, apply=apply) for r in view_results)
+    summary: Mapping[str, int] = _summarize(files)
+    had_errors: bool = any(_map_outcome(r, apply=apply) is Outcome.ERROR for r in results) or (
         encountered_error_code is not None
     )
-    diagnostics = _collect_diagnostics(view_results)
-    diagnostic_totals = _collect_diagnostic_totals(view_results)
-    diagnostic_totals_all = _collect_diagnostic_totals(results)
+    diagnostics: dict[str, list[PublicDiagnostic]] = _collect_diagnostics(view_results)
+    diagnostic_totals: DiagnosticTotals = _collect_diagnostic_totals(view_results)
+    diagnostic_totals_all: DiagnosticTotals = _collect_diagnostic_totals(results)
 
-    written = failed = 0
+    written: int = 0
+    failed: int = 0
     if apply:
 
         def _should_write_strip(r: ProcessingContext) -> bool:
@@ -625,7 +645,7 @@ def get_filetype_info(long: bool = False) -> list[FileTypeInfo]:
     for name, ft in Registry.filetypes().items():
         processor = proc_reg.get(name, None) if proc_reg else None
         supported = bool(processor)
-        processor_name = processor.__class__.__name__ if processor else None
+        processor_name: str | None = processor.__class__.__name__ if processor else None
         info: FileTypeInfo = {
             "name": name,
             "description": getattr(ft, "description", ""),

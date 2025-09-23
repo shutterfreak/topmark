@@ -20,6 +20,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import TYPE_CHECKING
 
+from topmark.config import Config
 from topmark.pipeline import runner
 from topmark.pipeline.context import ProcessingContext
 from topmark.rendering.formats import HeaderOutputFormat
@@ -27,9 +28,11 @@ from topmark.rendering.formats import HeaderOutputFormat
 from ..pipeline.pipelines import get_pipeline
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import Path
 
     from topmark.config import Config
+    from topmark.pipeline.contracts import Step
 
 
 def render_header_for_path(
@@ -62,10 +65,12 @@ def render_header_for_path(
     # Prepare effective values without mutating the original Config (it's frozen)
 
     # Compute the effective format (override > config > default)
-    effective_format = format_override or config.header_format or HeaderOutputFormat.NATIVE
+    effective_format: HeaderOutputFormat = (
+        format_override or config.header_format or HeaderOutputFormat.NATIVE
+    )
 
     # Compute effective field order (override > config)
-    effective_fields = (
+    effective_fields: tuple[str, ...] = (
         tuple(header_fields_overrides)
         if header_fields_overrides is not None
         else config.header_fields
@@ -77,7 +82,7 @@ def render_header_for_path(
         merged.update(header_overrides)
 
     # Build an effective frozen snapshot for the renderer
-    eff_config = replace(
+    eff_config: Config = replace(
         config,
         header_format=effective_format,
         header_fields=effective_fields,
@@ -85,9 +90,9 @@ def render_header_for_path(
     )
 
     # Get the pipeline steps
-    steps = get_pipeline("render")
+    steps: Sequence[Step] = get_pipeline("render")
     # Bootstrap the context with the effective config
-    context = ProcessingContext.bootstrap(path=path, config=eff_config)
+    context: ProcessingContext = ProcessingContext.bootstrap(path=path, config=eff_config)
     # Run the pipeline
     context = runner.run(context, steps)
     # Return the header

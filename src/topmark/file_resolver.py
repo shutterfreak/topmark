@@ -16,17 +16,24 @@ by registered file types. Globs are expanded relative to the current working
 directory. The result is a deterministic, sorted list of files to process.
 """
 
+from __future__ import annotations
+
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from pathspec import PathSpec
 from pathspec.patterns.gitwildmatch import GitWildMatchPattern
 
-from topmark.config import Config
-from topmark.config.logging import get_logger
+from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.filetypes.base import FileType
 from topmark.filetypes.instances import get_file_type_registry
 
-logger = get_logger(__name__)
+if TYPE_CHECKING:
+    from topmark.config import Config
+    from topmark.filetypes.base import FileType
+
+
+logger: TopmarkLogger = get_logger(__name__)
 
 
 def load_patterns_from_file(file_path: str | Path) -> list[str]:
@@ -158,7 +165,7 @@ def resolve_file_list(config: Config) -> list[Path]:
     # Add paths from files-from (literal, not patterns)
     def _read_paths_from_file(fp: Path) -> list[Path]:
         try:
-            text = fp.read_text(encoding="utf-8")
+            text: str = fp.read_text(encoding="utf-8")
         except FileNotFoundError:
             logger.error("Cannot read file list from '%s' (not found).", fp)
             return []
@@ -166,6 +173,7 @@ def resolve_file_list(config: Config) -> list[Path]:
             logger.error("Cannot read file list from '%s': %s", fp, e)
             return []
         paths: list[Path] = []
+        line: str
         for line in text.splitlines():
             line = line.strip()
             if not line or line.startswith("#"):
@@ -185,7 +193,7 @@ def resolve_file_list(config: Config) -> list[Path]:
     for raw in input_paths:
         p = Path(raw)
         # Expand
-        expanded = expand_path(p)
+        expanded: list[Path] = expand_path(p)
         candidate_set.update(expanded)
 
         # Report problems *after* expansion
@@ -216,7 +224,7 @@ def resolve_file_list(config: Config) -> list[Path]:
             combined_include_patterns += load_patterns_from_file(f)
     if combined_include_patterns:
         # Only keep files matching any include pattern (intersection)
-        include_spec = PathSpec.from_lines(GitWildMatchPattern, combined_include_patterns)
+        include_spec: PathSpec = PathSpec.from_lines(GitWildMatchPattern, combined_include_patterns)
         candidate_set = {p for p in candidate_set if include_spec.match_file(p.as_posix())}
 
     # Step 4: Apply exclude subtraction filter (if any exclude patterns)
@@ -226,16 +234,16 @@ def resolve_file_list(config: Config) -> list[Path]:
             # Load patterns from exclude files and add them to the exclude list
             combined_exclude_patterns += load_patterns_from_file(f)
     if combined_exclude_patterns:
-        exclude_spec = PathSpec.from_lines(GitWildMatchPattern, combined_exclude_patterns)
+        exclude_spec: PathSpec = PathSpec.from_lines(GitWildMatchPattern, combined_exclude_patterns)
         candidate_set = {p for p in candidate_set if not exclude_spec.match_file(p.as_posix())}
 
-    filtered_files = candidate_set
+    filtered_files: set[Path] = candidate_set
 
     # Step 5: Filter files by configured file types if specified
     if file_types:
-        registry = get_file_type_registry()
+        registry: dict[str, FileType] = get_file_type_registry()
         # Warn about unknown file type names in config
-        unknown = sorted(t for t in file_types if t not in registry)
+        unknown: list[str] = sorted(t for t in file_types if t not in registry)
         if unknown:
             logger.warning("Unknown file types specified: %s", ", ".join(unknown))
 

@@ -15,14 +15,16 @@ and produces a unified diff (header patch). It also formats a colorized preview
 for logging and CLI display.
 """
 
+from __future__ import annotations
+
 import os
 from typing import Sequence
 
 from yachalk import chalk
 
-from topmark.config.logging import get_logger
+from topmark.config.logging import TopmarkLogger, get_logger
 
-logger = get_logger(__name__)
+logger: TopmarkLogger = get_logger(__name__)
 
 
 def render_patch(patch: Sequence[str] | str, show_line_numbers: bool = False) -> str:
@@ -66,7 +68,7 @@ def render_patch(patch: Sequence[str] | str, show_line_numbers: bool = False) ->
 
     # Optionally prefix each rendered line with a 4-digit line number.
     if show_line_numbers is True:
-        result = chalk.gray(
+        result: str = chalk.gray(
             "".join(f"{i:04d}|{process_line(line)}\n" for i, line in enumerate(lines, 1))
         )
     else:
@@ -85,7 +87,7 @@ def write_patch(patch_content: str, output_path: str) -> None:
         output_path (str): Destination path for the patch file.
     """
     if os.path.exists(output_path):
-        response = input(f"File '{output_path}' already exists. Overwrite? (y/n): ")
+        response: str = input(f"File '{output_path}' already exists. Overwrite? (y/n): ")
         if response.lower() not in ["y", "yes"]:
             print("Operation canceled: file was not overwritten.")
             return

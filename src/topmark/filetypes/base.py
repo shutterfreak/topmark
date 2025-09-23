@@ -18,16 +18,22 @@ If `skip_processing` is True, the pipeline will recognize files of this type and
 skip header processing by design.
 """
 
+from __future__ import annotations
+
 import re
-from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from topmark.config.logging import get_logger
-from topmark.filetypes.policy import FileTypeHeaderPolicy
+from topmark.config.logging import TopmarkLogger, get_logger
 
-logger = get_logger(__name__)
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
+
+    from topmark.filetypes.policy import FileTypeHeaderPolicy
+
+logger: TopmarkLogger = get_logger(__name__)
 
 
 class ContentGate(Enum):
@@ -162,8 +168,8 @@ class FileType:
         #   - "settings.json" matches only if basename == "settings.json"
         #   - ".vscode/settings.json" matches if path.as_posix().endswith(".vscode/settings.json")
         if self.filenames:
-            basename = path.name
-            posix = path.as_posix()
+            basename: str = path.name
+            posix: str = path.as_posix()
             for fname in self.filenames:
                 if "/" in fname or "\\" in fname:
                     if posix.endswith(fname):

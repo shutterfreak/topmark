@@ -78,8 +78,8 @@ class FileTypeRegistry:
         from topmark.filetypes.registry import get_header_processor_registry as _get_proc
 
         with cls._lock:
-            all_names = set(cls.names())
-            supported = set(_get_proc().keys())
+            all_names: set[str] = set(cls.names())
+            supported: set[str] = set(_get_proc().keys())
             return tuple(sorted(all_names - supported))
 
     @classmethod
@@ -166,7 +166,7 @@ class FileTypeRegistry:
 
         with cls._lock:
             reg: MutableMapping[str, "FileType"] = _get_ft()
-            name = ft_obj.name or ""
+            name: str = ft_obj.name or ""
             if not name:
                 raise ValueError("FileType.name is required.")
             if name in reg:

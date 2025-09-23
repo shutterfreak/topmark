@@ -9,3 +9,5 @@
 # topmark:header:end
 
 """Utils package containing reusable utility functions and helpers for the TopMark project."""
+
+from __future__ import annotations

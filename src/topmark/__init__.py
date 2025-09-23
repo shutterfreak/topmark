@@ -12,3 +12,5 @@
 
 Provides tools and utilities for evaluating and benchmarking models and algorithms.
 """
+
+from __future__ import annotations
