@@ -14,16 +14,18 @@ on:
   pull_request:
     paths:
       - "src/**"
+      - "tests/**"
+      - "tools/**"
       - "docs/**"
       - "mkdocs.yml"
       - "constraints.txt"
       - "pyproject.toml"
-      - "tools/**"
   push:
-    branches: [ main ]
+    branches: [main]
+    tags:
+      - "v*"
 
 jobs:
-
   # Detect what changed in the PR so we can cheaply gate jobs.
   changes:
     if: ${{ github.event_name == 'pull_request' }}
@@ -43,7 +45,7 @@ jobs:
               - 'tests/**'
               - 'tools/**'
       - run: echo "src_changed=${{ steps.filter.outputs.src }}"
-      
+
   lint:
     runs-on: ubuntu-latest
     timeout-minutes: 20

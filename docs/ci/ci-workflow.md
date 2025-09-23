@@ -12,7 +12,7 @@ topmark:header:end
 
 # Continuous Integration (CI)
 
-This repository runs CI on pull requests and on pushes to `main`. Jobs are split by concern to keep signals crisp and runs fast.
+This repository runs CI on pull requests, on pushes to `main`, and on version tags (`v*`). Jobs are split by concern to keep signals crisp and runs fast.
 
 ## Jobs
 
@@ -33,23 +33,47 @@ Fast quality gates on Python 3.13:
 - Installs the dev toolchain from the **pinned** `requirements-dev.txt`
 - Runs:
   - `ruff format --check .`
+
   - `ruff check .`
+
   - `pyright`
-  - `pre-commit` TopMark header policy: `pre-commit run topmark-check --all-files`
-  - custom docstring checks: `python tools/check_docstring_links.py --stats`
+
+  - TopMark header policy via pre-commit:
+
+    ```bash
+    pre-commit run topmark-check --all-files
+    ```
+
+  - Custom docstring link checks:
+
+    ```bash
+    python tools/check_docstring_links.py --stats
+    ```
 
 ### `docs`
 
 Strict documentation build (same pins as RTD):
 
 - Installs docs toolchain from **pinned** `requirements-docs.txt`
-- Builds with `mkdocs build --strict`
+
+- Builds with:
+
+  ```bash
+  mkdocs build --strict
+  ```
 
 ### `tests`
 
 Full test matrix via `tox` on Python 3.10–3.13:
 
 - Installs dev toolchain from **pinned** `requirements-dev.txt`
+
+- Installs project test extras:
+
+  ```bash
+  pip install -c constraints.txt -e .[test]
+  ```
+
 - Runs the matching tox env per Python: `py310`, `py311`, `py312`, `py313`
 
 ### `api-snapshot`
@@ -57,7 +81,12 @@ Full test matrix via `tox` on Python 3.10–3.13:
 PR-only, **quick** public API surface check that only runs when `src/**` changed:
 
 - Python 3.13 only
-- `tox -e py313-api`
+
+- Runs:
+
+  ```bash
+  tox -e py313-api
+  ```
 
 ### `links`
 
@@ -69,20 +98,31 @@ Site/link hygiene using `lycheeverse/lychee-action` against:
 ## Triggers
 
 - **Pull requests**:
-  - `changes`, `lint`, `docs`, `tests`, `links`
+  - Always runs: `changes`, `lint`, `docs`, `tests`, `links`
   - `api-snapshot` runs **only** if `changes.src_changed == 'true'`
 - **Push to `main`**:
-  - `lint`, `docs`, `tests`, `links` (and `api-snapshot` is skipped)
+  - Runs: `lint`, `docs`, `tests`, `links`
+- **Push tags `v*`**:
+  - Runs CI (useful because the release workflow listens to CI completion)
 
 ## Caching & Pins
 
-- Python installs: `actions/setup-python` pip cache is enabled.
-- Cache invalidation: workflows set `cache-dependency-path` to the lockfiles (`requirements-*.txt`, `constraints.txt`).
+- Pip caching is enabled via `actions/setup-python`.
+
+- Cache invalidation uses:
+
+  ```yaml
+  cache-dependency-path:
+    - requirements-*.txt
+    - constraints.txt
+  ```
+
 - Pin usage:
+
   - Dev checks/tests install from `requirements-dev.txt`
   - Docs build installs from `requirements-docs.txt`
-  - You can also export `PIP_CONSTRAINT=constraints.txt` for steps that create new venvs (e.g., inside tox) to force resolver pinning.
+  - You can export `PIP_CONSTRAINT=constraints.txt` inside jobs or tox envs to force the resolver to honor the constraint pins.
 
 ## Docstring checker policy
 
-`tools/check_docstring_links.py` enforces stable links in Python docstrings and warns on undesired patterns (e.g., raw URLs unless whitelisted). Keep it fast and deterministic so the `lint` job stays snappy.
+`tools/check_docstring_links.py` enforces stable links in Python docstrings and warns on undesired patterns. Keep it fast and deterministic so the `lint` job stays snappy.

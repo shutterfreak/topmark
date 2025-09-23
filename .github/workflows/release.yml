@@ -11,29 +11,117 @@
 name: Release to PyPI
 
 on:
+  # Allow direct tag push to trigger (fallback, local tagging, etc.)
   push:
     tags:
-      - "v*.*.*" # e.g., v1.2.3 (final)
-      - "v*.*.*-rc*" # e.g., v1.2.3-rc1 (pre-release to TestPyPI)
-  # Allow manual dry-runs that skip publishing
-  workflow_dispatch:
-    inputs:
-      dry_run:
-        description: "Run docs job only (skip publish)"
-        type: boolean
-        default: true
+      - "v*"
+
+  # Primary path: run **after** the CI workflow completes successfully
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
 
 permissions:
   contents: read
   id-token: write # REQUIRED for PyPI/TestPyPI Trusted Publishing (OIDC)
 
 concurrency:
-  group: pypi-${{ github.ref }}
-  cancel-in-progress: false
+  group: >-
+    pypi-${{ github.event_name == 'push'
+      && github.ref
+      || format('sha-{0}', github.event.workflow_run.head_sha) }}
+  cancel-in-progress: true
 
 jobs:
+  details:
+    name: Extract release details
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.set.outputs.tag }}
+      tag_no_v: ${{ steps.set.outputs.tag_no_v }}
+      version_pep440: ${{ steps.set.outputs.version_pep440 }}
+      version_semver: ${{ steps.set.outputs.version_semver }}
+      is_prerelease: ${{ steps.set.outputs.is_prerelease }}
+      channel: ${{ steps.set.outputs.channel }} # pypi | testpypi
+      release_name: ${{ steps.set.outputs.release_name }} # e.g. v1.2.3 or v1.2.3-rc1
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: set
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Determine the tag that should drive the release
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            RAW="${GITHUB_REF_NAME}"   # e.g. v0.7.0-rc1 or v0.7.0
+          elif [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            # Triggered after CI completed; find the tag that points at the CI head SHA
+            SHA="${{ github.event.workflow_run.head_sha }}"
+            git fetch --tags --force --prune
+            RAW="$(git tag --points-at "$SHA" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+|-a[0-9]+|-b[0-9]+)?$' | head -n1 || true)"
+            if [[ -z "$RAW" ]]; then
+              echo "No release tag (vX.Y.Z[-rcN|-aN|-bN]) found pointing at $SHA; exiting."
+              exit 1
+            fi
+          else
+            echo "Unsupported trigger: ${{ github.event_name }}"
+            exit 1
+          fi
+
+          TAG="$RAW"
+          TAG_NO_V="${RAW#v}"
+
+          # Convert tag -rcN/-aN/-bN to PEP 440 (rcN/aN/bN without dash)
+          PEP440="$(echo "$TAG_NO_V" | sed -E 's/-rc([0-9]+)$/rc\1/; s/-a([0-9]+)$/a\1/; s/-b([0-9]+)$/b\1/')"
+
+          # SemVer representation (keeps dash)
+          SEMVER="$TAG_NO_V"
+
+          # Pre-release detection → choose TestPyPI vs PyPI
+          if echo "$TAG_NO_V" | grep -Eq -- '-(rc|a|b)[0-9]+$'; then
+            IS_PRERELEASE=true
+            CHANNEL=testpypi
+          else
+            IS_PRERELEASE=false
+            CHANNEL=pypi
+          fi
+
+          echo "TAG=$TAG"
+          echo "TAG_NO_V=$TAG_NO_V"
+          echo "PEP440=$PEP440"
+          echo "SEMVER=$SEMVER"
+          echo "IS_PRERELEASE=$IS_PRERELEASE"
+          echo "CHANNEL=$CHANNEL"
+
+          {
+            echo "tag=$TAG"
+            echo "tag_no_v=$TAG_NO_V"
+            echo "version_pep440=$PEP440"
+            echo "version_semver=$SEMVER"
+            echo "is_prerelease=$IS_PRERELEASE"
+            echo "channel=$CHANNEL"
+            echo "release_name=$TAG"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - id: check-version
+        name: Ensure pyproject version matches tag (PEP 440)
+        shell: bash
+        run: |
+          set -euo pipefail
+          WANT="${{ steps.set.outputs.version_pep440 }}"
+          HAVE="$(python -c 'import tomllib, pathlib; print(tomllib.loads(pathlib.Path(\"pyproject.toml\").read_text(encoding=\"utf-8\")).get(\"project\", {}).get(\"version\", \"\"))')"
+          echo "pyproject.toml version : $HAVE"
+          echo "tag (PEP 440)          : $WANT"
+          test "$HAVE" = "$WANT" || { echo "❌ Version mismatch"; exit 1; }
+
   build-docs:
     name: Build docs (strict)
+    # Always runs (tag + manual dispatch)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -54,12 +142,20 @@ jobs:
       - name: Build docs
         run: mkdocs build --strict
 
-  tests:
-    name: Test (smoke + API) on 3.13
+  publish-package:
+    name: Publish to PyPI/TestPyPI
+    needs: [details, build-docs]
+    if: >-
+      ${{
+        (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/'))
+        ||
+        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+      }}
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    environment: ${{ needs.details.outputs.channel }} # 'testpypi' for rc/a/b, else 'pypi'
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
@@ -67,81 +163,33 @@ jobs:
           cache-dependency-path: |
             requirements-*.txt
             constraints.txt
-      - name: Install dev deps
-        run: |
-          python -m pip install -U pip
-          pip install -r requirements-dev.txt
-      - name: Run smoke tests (tox)
-        env:
-          PIP_CONSTRAINT: constraints.txt
-        run: tox -e py313
-      - name: Run API snapshot check
-        env:
-          PIP_CONSTRAINT: constraints.txt
-        run: tox -e py313-api
 
-  publish-package:
-    name: Publish to PyPI/TestPyPI
-    # The 'if' condition now handles both final and pre-releases and works on push + dispatch
-    if: ${{ !(inputs.dry_run || false) }}
-    needs: [build-docs, tests] # gate publish on docs and tests
-    runs-on: ubuntu-latest
-    environment: ${{ contains(github.ref, '-rc') && 'testpypi' || 'pypi' }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12" # keep current build version
-          cache: pip
-          cache-dependency-path: |
-            requirements-*.txt
-            constraints.txt
-      - name: Check version matches tag
+      - name: Ensure version not already exists on target index
         shell: bash
         run: |
           set -euo pipefail
-          TAG="${GITHUB_REF_NAME}"           # e.g., v0.6.3 or v0.6.3-rc1
-          RAW_TAG="${TAG#v}"                 # strip leading 'v'
-          # Convert tag to PEP 440 (rc with no dash)
-          PEP440="$(echo "$RAW_TAG" | sed -E 's/-rc([0-9]+)$/rc\1/')"
-
-          PYPROJ_VER="$(python -c 'import tomllib, pathlib; print(tomllib.loads(pathlib.Path(\"pyproject.toml\").read_text(encoding=\"utf-8\")).get(\"project\", {}).get(\"version\", \"\"))')"
-
-          echo "Tag (raw)         : $TAG"
-          echo "Tag (pep440)      : $PEP440"
-          echo "pyproject version : $PYPROJ_VER"
-
-          if [[ "$PYPROJ_VER" != "$PEP440" ]]; then
-            echo "❌ Version mismatch: pyproject.toml has '$PYPROJ_VER' but tag implies '$PEP440'"
-            exit 1
-          fi
-          echo "✅ Version matches tag."
-
-      - name: Ensure RC version does not already exist on TestPyPI
-        if: contains(github.ref, '-rc')
-        shell: bash
-        run: |
-          set -euo pipefail
-          RAW="${GITHUB_REF_NAME#v}"
-          VER_PEP440="$(echo "$RAW" | sed -E 's/-rc([0-9]+)$/rc\1/')"
           PKG="topmark"
-          URL="https://test.pypi.org/pypi/${PKG}/json"
-          echo "Checking TestPyPI for ${PKG}==${VER_PEP440} ..."
-          if curl -fsS "$URL" -o /tmp/tp.json; then
-            if python -c 'import json,sys; d=json.load(open("/tmp/tp.json")); sys.exit(0 if sys.argv[1] not in d.get("releases",{}) else 99)' "$VER_PEP440"; then
-              echo "✅ ${PKG}==${VER_PEP440} not found on TestPyPI — OK to publish."
+          VER_PEP440="${{ needs.details.outputs.version_pep440 }}"
+          CHANNEL="${{ needs.details.outputs.channel }}" # 'testpypi' or 'pypi'
+          BASE_URL=$([ "$CHANNEL" = "testpypi" ] && echo "https://test.pypi.org/pypi" || echo "https://pypi.org/pypi")
+          URL="${BASE_URL}/${PKG}/json"
+          echo "Checking ${PKG}==${VER_PEP440} on ${CHANNEL} ..."
+          if curl -fsS "$URL" -o /tmp/index.json; then
+            python -c 'import json, os, sys; d=json.load(open("/tmp/index.json")); sys.exit(0 if os.environ.get("VER_PEP440") not in d.get("releases", {}) else 99)'
+            if [[ $? -eq 0 ]]; then
+              echo "✅ ${PKG}==${VER_PEP440} not found on ${CHANNEL} — OK to publish."
             else
-              echo "❌ ${PKG}==${VER_PEP440} already exists on TestPyPI. Bump the RC (e.g. -rc2) and try again."
+              echo "❌ ${PKG}==${VER_PEP440} already exists on ${CHANNEL}."
+              echo "   Bump the version or delete the tag before retrying."
               exit 1
             fi
           else
-            echo "ℹ️ Package not found on TestPyPI yet — first publish will create it."
+            echo "ℹ️ Package not found on ${CHANNEL} yet — first publish will create it."
           fi
 
       - name: Build sdist and wheel
         run: |
-          python -m pip install -U pip build
+          python -m pip install -U pip build packaging
           python -m build
 
       - name: Verify build artifacts
@@ -169,16 +217,50 @@ jobs:
             echo "ℹ️ Detected universal pure-Python wheel (py3-none-any)."
           fi
 
+      - name: Verify filenames embed the right version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VER_PEP440="${{ needs.details.outputs.version_pep440 }}"
+          echo "Expecting version in filenames: ${VER_PEP440}"
+          test -e "dist/topmark-${VER_PEP440}.tar.gz" \
+            || { echo "❌ Missing sdist dist/topmark-${VER_PEP440}.tar.gz"; ls -l dist; exit 1; }
+          ls "dist/topmark-${VER_PEP440}-"*.whl >/dev/null 2>&1 \
+            || { echo "❌ Missing wheel dist/topmark-${VER_PEP440}-*.whl"; ls -l dist; exit 1; }
+
+      - name: Ensure new final release is newer than PyPI latest
+        if: ${{ needs.details.outputs.is_prerelease != 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          PKG="topmark"
+          NEW_VERSION="${{ needs.details.outputs.version_pep440 }}"
+          URL="https://pypi.org/pypi/${PKG}/json"
+          echo "Comparing ${NEW_VERSION} against latest final on PyPI…"
+          if ! curl -fsS "$URL" -o /tmp/pypi.json; then
+            echo "ℹ️ ${PKG} not found on PyPI yet — OK to publish ${NEW_VERSION}."
+            exit 0
+          fi
+          # PEP440-aware comparison
+          python -c 'import json, sys, os; from packaging.version import Version; data = json.load(open("/tmp/pypi.json")); new = Version(os.environ["NEW_VERSION"]); finals = [Version(v) for v, f in (data.get("releases") or {}).items() if not Version(v).is_prerelease and any(not x.get("yanked", False) for x in (f or []))]; sys.exit(0 if not finals or new > max(finals) else 99)'
+          if [[ $? -eq 0 ]]; then
+            echo "✅ ${NEW_VERSION} is newer than the latest final on PyPI — OK to publish."
+          else
+            echo "❌ ${NEW_VERSION} is NOT newer than the latest final on PyPI."
+            echo "   Bump the version or retag before retrying."
+            exit 1
+          fi
+
       - name: Publish to TestPyPI (Trusted Publishing)
-        if: contains(github.ref, '-rc')
+        if: ${{ needs.details.outputs.is_prerelease == 'true' }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          attestations: true
           repository-url: https://test.pypi.org/legacy/
+          attestations: true
           skip-existing: true
 
       - name: Publish to PyPI (Trusted Publishing)
-        if: ${{ !contains(github.ref, '-rc') }}
+        if: ${{ needs.details.outputs.is_prerelease != 'true' }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           attestations: true
@@ -186,10 +268,9 @@ jobs:
           # (optionally omit skip-existing to fail on reuse; or set skip-existing: true if you prefer idempotency)
 
   github-release:
-    if: ${{ !contains(github.ref, '-rc') }}
-    needs: publish-package # publish is already gated by docs
+    needs: [details, publish-package]
+    if: ${{ needs.details.outputs.is_prerelease != 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 5
     permissions:
       contents: write
     steps:
@@ -197,6 +278,6 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
+          tag_name: ${{ needs.details.outputs.tag }}
+          name: Release ${{ needs.details.outputs.release_name }}
           generate_release_notes: true
