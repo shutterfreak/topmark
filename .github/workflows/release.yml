@@ -114,7 +114,7 @@ jobs:
         run: |
           set -euo pipefail
           WANT="${{ steps.set.outputs.version_pep440 }}"
-          HAVE="$(python -c 'import tomllib, pathlib; print(tomllib.loads(pathlib.Path(\"pyproject.toml\").read_text(encoding=\"utf-8\")).get(\"project\", {}).get(\"version\", \"\"))')"
+          HAVE="$(python -c 'import tomllib, pathlib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text(encoding="utf-8")).get("project", {}).get("version", ""))')"
           echo "pyproject.toml version : $HAVE"
           echo "tag (PEP 440)          : $WANT"
           test "$HAVE" = "$WANT" || { echo "❌ Version mismatch"; exit 1; }
