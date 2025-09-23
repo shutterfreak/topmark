@@ -192,8 +192,11 @@ topmark show-defaults
 # Output a starter configuration to stdout
 topmark init-config
 
-# Show TopMark version in JSON format
+# Output TopMark version (PEP 440) in JSON format
 topmark version --format json
+
+# Output TopMark version (SemVer) to stdout
+topmark version --semver
 
 # Apply changes to files in-place
 topmark check --apply src/

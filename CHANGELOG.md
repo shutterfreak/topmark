@@ -35,6 +35,7 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 ### Changed
 
 - **CLI output (breaking schemas; see below)**
+
   - **JSON** now uses a stable schema:
 
     ```json
@@ -48,12 +49,36 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
     ```
 
   - **Plain text** remains just the version string for script-friendliness.
-- **CI**
-  - Split the former `checks` into `lint` and `docs`; introduce a fast `api-snapshot` job (PR-only, runs when `src/**` changes); run full test matrix via `tox` on Python 3.10–3.13.
+
+- **CI (`.github/workflows/ci.yml`)**
+
+  - Trigger on PRs, pushes to `main`, and **tags `v*`** (so the release workflow can listen to CI completion).
+  - Expand PR path filters to include `tests/**` and `tools/**`.
+  - Minor whitespace cleanups.
+
+- **Release (`.github/workflows/release.yml`)**
+
+  - **Dual trigger**: direct tag **`push`** *and* **`workflow_run`** (only proceeds when CI concludes successfully).
+  - New **`details`** job to normalize tag/version data and decide the **channel**:
+    - Extracts `tag`, `tag_no_v`, `version_pep440`, `version_semver`, `is_prerelease`.
+    - Derives **`channel`** (`testpypi` for `-rc/-a/-b`, `pypi` for finals).
+    - Verifies `pyproject.toml` version equals the PEP 440 version from the tag.
+  - Improved **concurrency** so push- vs workflow_run-triggered releases for the same ref/commit don’t overlap.
+  - **Docs are a hard gate**: build with pinned **`requirements-docs.txt`** and `mkdocs build --strict`.
+  - **Publish job**:
+    - Requires successful CI via `workflow_run` or allows direct tag `push`.
+    - Uses `environment: ${{ needs.details.outputs.channel }}` to select **TestPyPI vs PyPI**.
+    - Ensures the version doesn’t already exist on the target index (JSON API check).
+    - Builds artifacts and **verifies filenames** embed the exact PEP 440 version.
+    - **Final-only**: PEP 440-aware “newer than latest final on PyPI” guard.
+    - Publishes via `pypa/gh-action-pypi-publish@release/v1`:
+      - RCs → **TestPyPI** (`repository-url`, `skip-existing: true`)
+      - Finals → **PyPI**
+  - Create **GitHub Release** only for finals, using `details` outputs (`softprops/action-gh-release@v2`).
+
 - **Reproducibility**
+
   - Adopt pinned lockfiles (`requirements.txt`, `requirements-dev.txt`, `requirements-docs.txt`) with cache-aware workflows; set `cache-dependency-path` accordingly.
-- **Release workflow**
-  - Unify publish job (PyPI/TestPyPI by tag), gate publishing on strict docs + tests, enforce version↔tag parity, verify artifacts before upload, and check RC uniqueness on TestPyPI.
 
 ### Removed
 
