@@ -16,69 +16,69 @@ All notable changes to this project will be documented in this file. This projec
 [Semantic Versioning](https://semver.org/) and follows a Keep‑a‑Changelog–style structure with the
 sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
-## [0.7.0] - Unreleased
+## [0.7.0] - 2025-09-23
 
-> No functional code changes to the library at runtime. This release focuses on CI/CD hardening, reproducible environments, documentation, and a polished `version` command.
+### Highlights
+
+- **Version CLI overhaul**: `topmark version` now defaults to **PEP 440** output and supports multiple formats via `--format {pep440,semver,json,markdown}` (alias: `--semver`).
+- **Release hardening**: Fully revamped GitHub Actions release flow with strict gates (version/tag match, artifact checks, **docs must build**, TestPyPI for prereleases, PyPI for finals).
 
 ### Added
 
 - **CLI – `version` command**
-  - New `--semver` option to render the project version in **SemVer** form while keeping **PEP 440** as the default.
-  - New `--format json|markdown|text` options with standardized outputs.
-  - Introduce `topmark.utils.version.pep440_to_semver()` with graceful fallback.
+  - `--semver` option to render a **SemVer** view while keeping **PEP 440** as the default.
+  - `--format json|markdown|pep440|semver` with standardized outputs.
+  - `topmark.utils.version.pep440_to_semver()` with graceful fallback.
 - **Tests**
-  - Expanded/parameterized tests for `version` across plain text, JSON, and Markdown (PEP 440 vs SemVer).
-- **Documentation**
-  - Document the SemVer output option for `topmark version` and clarify expected JSON/Markdown schemas.
-  - CI workflow page and updated release workflow docs; header examples in `README.md` and `docs/index.md`.
+  - Expanded/parameterized tests for `version` across text/JSON/Markdown (PEP 440 vs SemVer).
 
 ### Changed
 
-- **CLI output (breaking schemas; see below)**
-
-  - **JSON** now uses a stable schema:
+- **CLI output (breaking schemas; see “Breaking” below)**
+  - **JSON** schema is now:
 
     ```json
     {"version": "<str>", "format": "pep440|semver"}
     ```
 
-  - **Markdown** output now includes the format label:
+  - **Markdown** now includes the format label:
 
-    ```text
+    ```
     **TopMark version (pep440|semver): <version>**
     ```
 
-  - **Plain text** remains just the version string for script-friendliness.
-
+  - **Plain text** remains just the version string (script-friendly).
 - **CI (`.github/workflows/ci.yml`)**
-
-  - Trigger on PRs, pushes to `main`, and **tags `v*`** (so the release workflow can listen to CI completion).
-  - Expand PR path filters to include `tests/**` and `tools/**`.
-  - Minor whitespace cleanups.
-
+  - Triggers on PRs, pushes to `main`, and **tags `v*`** (to feed the release workflow).
+  - PR path filters widened (e.g., `tests/**`, `tools/**`).
 - **Release (`.github/workflows/release.yml`)**
-
-  - **Dual trigger**: direct tag **`push`** *and* **`workflow_run`** (only proceeds when CI concludes successfully).
-  - New **`details`** job to normalize tag/version data and decide the **channel**:
-    - Extracts `tag`, `tag_no_v`, `version_pep440`, `version_semver`, `is_prerelease`.
-    - Derives **`channel`** (`testpypi` for `-rc/-a/-b`, `pypi` for finals).
-    - Verifies `pyproject.toml` version equals the PEP 440 version from the tag.
-  - Improved **concurrency** so push- vs workflow_run-triggered releases for the same ref/commit don’t overlap.
-  - **Docs are a hard gate**: build with pinned **`requirements-docs.txt`** and `mkdocs build --strict`.
-  - **Publish job**:
-    - Requires successful CI via `workflow_run` or allows direct tag `push`.
-    - Uses `environment: ${{ needs.details.outputs.channel }}` to select **TestPyPI vs PyPI**.
-    - Ensures the version doesn’t already exist on the target index (JSON API check).
+  - **Dual trigger**: tag **push** and **workflow_run** (proceeds only after green CI).
+  - New **`details`** job: normalizes tag, derives PEP 440/SemVer, decides **channel** (TestPyPI for `-rc/-a/-b`, PyPI for finals), and verifies `pyproject.toml` matches the tag.
+  - Improved **concurrency** to prevent overlapping runs for the same ref.
+  - **Publish** job:
+    - Requires green CI (via `workflow_run`) or allows direct tag push.
+    - `environment` auto-selects **TestPyPI** vs **PyPI**.
+    - Checks that the target version does **not** already exist.
     - Builds artifacts and **verifies filenames** embed the exact PEP 440 version.
-    - **Final-only**: PEP 440-aware “newer than latest final on PyPI” guard.
-    - Publishes via `pypa/gh-action-pypi-publish@release/v1`:
-      - RCs → **TestPyPI** (`repository-url`, `skip-existing: true`)
-      - Finals → **PyPI**
-  - Create **GitHub Release** only for finals, using `details` outputs (`softprops/action-gh-release@v2`).
+    - **Finals only**: guard that version is newer than latest final on PyPI.
+    - Publishes via trusted publishing (TestPyPI w/ `skip-existing: true` for prereleases; PyPI for finals).
+  - Creates a **GitHub Release** for finals using `details` outputs.
 
-- **Reproducibility**
+### Fixed
 
-  - Adopt pinned lockfiles (`requirements.txt`, `requirements-dev.txt`, `requirements-docs.txt`) with cache-aware workflows; set `cache-dependency-path` accordingly.
+- N/A (no user-visible fixes included in this release; tests/docs/tooling updates only).
+
+### Docs
+
+- New & updated workflow docs:
+  - `docs/ci/release-workflow.md` (RC vs final, gates, publishing).
+  - `CONTRIBUTING.md` (CI expectations, local checks).
+- `README.md` and `docs/index.md` examples updated for the new `version` outputs.
+
+### Tooling / Reproducibility
+
+- Adopt pinned lockfiles (`requirements.txt`, `requirements-dev.txt`, `requirements-docs.txt`) and `constraints.txt`.
+- Cache keyed on lockfiles; consistent `python -m pip` usage.
 
 ### Removed
 
@@ -88,25 +88,23 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 ### Chore
 
 - Pre-commit: bump `topmark-check` hook to v0.6.2.
-- Tooling: whitespace tidy in `tox.ini`.
+- Minor `tox.ini` whitespace tidy-ups.
 
 ### Breaking (pre-1.0)
 
 - **JSON** schema changed from `{"topmark_version": "<str>"}` to `{"version": "<str>", "format": "pep440|semver"}`.
-- **Markdown** line now explicitly includes the format label:\
+- **Markdown** now explicitly includes the format label:\
   `**TopMark version (pep440|semver): <version>**`.\
-  Update any consumers/parsers depending on the previous key or exact phrasing.
+  Update any consumers/parsers that relied on the previous key or phrasing.
 
 #### Pre-releases
 
-- `0.6.3rc1` (2025-09-22): first release candidate to validate the new pipelines.
-
-______________________________________________________________________
+- `0.7.0-rc1` and `0.7.0-rc2` were published to **TestPyPI** for validation; their contents are fully included in this final release.
 
 **Developer notes**
 
-- While cutting RCs, keep `pyproject.toml` at `0.7.0rcN` and tag `v0.7.0-rcN`. The release workflow will publish to TestPyPI and mark the GitHub release as pre-release.
-- For GA: bump to `0.7.0`, tag `v0.7.0`, and the workflow will publish to PyPI after docs+tests gates.
+- For RCs: keep `pyproject.toml` at `0.7.0rcN` and tag `v0.7.0-rcN` to publish to TestPyPI.
+- For GA: bump to `0.7.0`, tag `v0.7.0`, and the workflow publishes to PyPI after docs/tests gates.
 
 ## [0.6.2] - 2025-09-15
 
