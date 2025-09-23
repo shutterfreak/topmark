@@ -69,10 +69,10 @@ def pep440_to_semver(pep440_version: str) -> str:
         raise ValueError(f"Post-releases are not valid SemVer: {pep440_version!r}")
     major, minor, patch = m.group("major"), m.group("minor"), m.group("patch")
     base: str = f"{major}.{minor}.{patch}"
-    pre = ""
+    pre: str = ""
     if m.group("pre_label"):
         lbl: str = {"a": "alpha", "b": "beta", "rc": "rc"}[m.group("pre_label")]
-        pre: str = f"-{lbl}.{m.group('pre_num')}"
+        pre = f"-{lbl}.{m.group('pre_num')}"
     dev: str = f"{'.' if pre else '-'}dev.{m.group('dev')}" if m.group("dev") else ""
     local: str = f"+{m.group('local')}" if m.group("local") else ""
     return f"{base}{pre}{dev}{local}"
