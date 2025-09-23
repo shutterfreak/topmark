@@ -15,14 +15,20 @@ TopMark for file recognition and header processing. It also builds a registry
 mapping file type names to their definitions.
 """
 
-from pathlib import Path
+from __future__ import annotations
 
-from topmark.config.logging import get_logger
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.filetypes.policy import FileTypeHeaderPolicy
 
 from .base import ContentGate, FileType
 
-logger = get_logger(__name__)
+if TYPE_CHECKING:
+    from pathlib import Path
+
+logger: TopmarkLogger = get_logger(__name__)
 
 # Note: some FileTypes may set skip_processing=True to recognize-but-skip
 # (e.g., JSON, LICENSE, py.typed).
@@ -45,7 +51,7 @@ def _looks_like_jsonc(path: Path) -> bool:
       and **not** in an existing block comment.
     """
     try:
-        text = path.read_text(encoding="utf-8", errors="ignore")[:131072]
+        text: str = path.read_text(encoding="utf-8", errors="ignore")[:131072]
     except OSError:
         return False
 
@@ -56,11 +62,11 @@ def _looks_like_jsonc(path: Path) -> bool:
     in_string = False
     in_line_comment = False
     in_block_comment = False
-    i = 0
-    n = len(text)
+    i: int = 0
+    n: int = len(text)
 
     while i < n:
-        ch = text[i]
+        ch: str = text[i]
 
         # Handle end of line comments
         if in_line_comment:
@@ -88,7 +94,7 @@ def _looks_like_jsonc(path: Path) -> bool:
             if ch == '"':
                 # Count preceding backslashes to determine if escaped.
                 bs = 0
-                j = i - 1
+                j: int = i - 1
                 while j >= 0 and text[j] == "\\":
                     bs += 1
                     j -= 1
@@ -99,7 +105,7 @@ def _looks_like_jsonc(path: Path) -> bool:
 
         # Not in string/any comment: check for comment starts first.
         if ch == "/" and i + 1 < n:
-            nxt = text[i + 1]
+            nxt: str = text[i + 1]
             if nxt == "/":
                 # Found a line comment outside strings ⇒ JSONC
                 return True
@@ -158,6 +164,17 @@ file_types: list[FileType] = [
             supports_shebang=False,
             encoding_line_regex=None,
             pre_header_blank_after_block=1,
+            ensure_blank_after_header=True,
+        ),
+    ),
+    FileType(
+        name="css",
+        extensions=[".css"],
+        filenames=[],
+        patterns=[],
+        description="Cascading Style Sheets (CSS)",
+        header_policy=FileTypeHeaderPolicy(
+            supports_shebang=False,
             ensure_blank_after_header=True,
         ),
     ),
@@ -312,6 +329,17 @@ file_types: list[FileType] = [
         ),
     ),
     FileType(
+        name="less",
+        extensions=[".less"],
+        filenames=[],
+        patterns=[],
+        description="Less stylesheets (*.less)",
+        header_policy=FileTypeHeaderPolicy(
+            supports_shebang=False,
+            ensure_blank_after_header=True,
+        ),
+    ),
+    FileType(
         name="license_text",
         extensions=[],
         filenames=["LICENSE", "LICENSE.txt"],
@@ -377,6 +405,17 @@ file_types: list[FileType] = [
         ),
     ),
     FileType(
+        name="python-stub",
+        extensions=[".pyi"],
+        filenames=[],
+        patterns=[],
+        description="Python type stub files (*.pyi)",
+        header_policy=FileTypeHeaderPolicy(
+            supports_shebang=False,  # shebangs don’t make sense in stubs
+            ensure_blank_after_header=True,
+        ),
+    ),
+    FileType(
         name="python-typed-marker",
         extensions=[],
         filenames=["py.typed"],
@@ -424,6 +463,17 @@ file_types: list[FileType] = [
         ),
     ),
     FileType(
+        name="scss",
+        extensions=[".scss"],
+        filenames=[],
+        patterns=[],
+        description="Sass SCSS syntax (*.scss)",
+        header_policy=FileTypeHeaderPolicy(
+            supports_shebang=False,
+            ensure_blank_after_header=True,
+        ),
+    ),
+    FileType(
         name="shell",
         extensions=[".sh", ".bash", ".zsh"],
         filenames=[],
@@ -433,6 +483,39 @@ file_types: list[FileType] = [
             supports_shebang=True,
             encoding_line_regex=None,
             pre_header_blank_after_block=1,
+            ensure_blank_after_header=True,
+        ),
+    ),
+    FileType(
+        name="solidity",
+        extensions=[".sol"],
+        filenames=[],
+        patterns=[],
+        description="Solidity smart contracts (*.sol)",
+        header_policy=FileTypeHeaderPolicy(
+            supports_shebang=False,
+            ensure_blank_after_header=True,
+        ),
+    ),
+    FileType(
+        name="sql",
+        extensions=[".sql"],
+        filenames=[],
+        patterns=[],
+        description="SQL scripts (*.sql)",
+        header_policy=FileTypeHeaderPolicy(
+            supports_shebang=False,
+            ensure_blank_after_header=True,
+        ),
+    ),
+    FileType(
+        name="stylus",
+        extensions=[".styl"],
+        filenames=[],
+        patterns=[],
+        description="Stylus stylesheets (*.styl)",
+        header_policy=FileTypeHeaderPolicy(
+            supports_shebang=False,
             ensure_blank_after_header=True,
         ),
     ),

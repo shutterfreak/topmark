@@ -14,14 +14,21 @@ This processor supports files using `#`-style comments, such as Python, shell sc
 and Makefiles. It delegates header processing to the core pipeline dispatcher.
 """
 
-from topmark.config.logging import get_logger
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.file_resolver import detect_newline
 from topmark.filetypes.registry import register_filetype
 from topmark.pipeline.processors.base import (
     HeaderProcessor,
 )
 
-logger = get_logger(__name__)
+if TYPE_CHECKING:
+    from topmark.filetypes.policy import FileTypeHeaderPolicy
+
+logger: TopmarkLogger = get_logger(__name__)
 
 
 @register_filetype("dockerfile")
@@ -33,6 +40,7 @@ logger = get_logger(__name__)
 @register_filetype("perl")
 @register_filetype("python")
 @register_filetype("python-requirements")
+@register_filetype("python-stub")
 @register_filetype("r")
 @register_filetype("ruby")
 @register_filetype("shell")
@@ -73,12 +81,15 @@ class PoundHeaderProcessor(HeaderProcessor):
             list[str]: Possibly modified header lines including any added padding.
         """
         # Detect newline style; default to "\n"
-        nl = detect_newline(original_lines)
-        out = list(rendered_header_lines)
+        nl: str = detect_newline(original_lines)
+        out: list[str] = list(rendered_header_lines)
 
-        policy = getattr(self.file_type, "header_policy", None) if self.file_type else None
-        want_leading = 0
-        want_trailing = True
+        policy: FileTypeHeaderPolicy | None = (
+            self.file_type.header_policy if self.file_type else None
+        )
+
+        want_leading: int = 0
+        want_trailing: bool = True
         if policy is not None:
             want_leading = max(0, int(policy.pre_header_blank_after_block))
             want_trailing = bool(policy.ensure_blank_after_header)
@@ -89,7 +100,7 @@ class PoundHeaderProcessor(HeaderProcessor):
             pass
         else:
             if want_leading > 0:
-                prev_is_blank = (insert_index - 1) < len(original_lines) and original_lines[
+                prev_is_blank: bool = (insert_index - 1) < len(original_lines) and original_lines[
                     insert_index - 1
                 ].strip() == ""
                 if not prev_is_blank:
@@ -97,7 +108,7 @@ class PoundHeaderProcessor(HeaderProcessor):
 
         # Trailing padding
         if want_trailing:
-            next_is_blank = insert_index < len(original_lines) and (
+            next_is_blank: bool = insert_index < len(original_lines) and (
                 original_lines[insert_index].strip() == ""
             )
             if not next_is_blank:
