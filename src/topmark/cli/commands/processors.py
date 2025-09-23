@@ -76,7 +76,7 @@ def processors_command(
     ctx.ensure_object(dict)
     console: ConsoleLike = ctx.obj["console"]
 
-    file_type: dict[str, FileType] = get_file_type_registry()
+    file_types: dict[str, FileType] = get_file_type_registry()
     header_processors: dict[str, HeaderProcessor] = get_header_processor_registry()
     fmt: OutputFormat = output_format or OutputFormat.DEFAULT
 
@@ -91,7 +91,7 @@ def processors_command(
 
     # Find unbound file types
     unbound: list[str] = sorted(
-        [name for name in file_type.keys() if name not in header_processors]
+        [name for name in file_types.keys() if name not in header_processors]
     )
 
     # Build a unified payload for all formats
@@ -107,14 +107,14 @@ def processors_command(
         }
         if show_details:
             processor_entry["filetypes"] = [
-                {"name": n, "description": file_type[n].description} for n in sorted(names)
+                {"name": n, "description": file_types[n].description} for n in sorted(names)
             ]
         payload_data["processors"].append(processor_entry)
 
     for name in unbound:
         if show_details:
             payload_data["unbound_filetypes"].append(
-                {"name": name, "description": file_type[name].description}
+                {"name": name, "description": file_types[name].description}
             )
         else:
             payload_data["unbound_filetypes"].append(name)
@@ -151,9 +151,9 @@ TopMark version **{TOPMARK_VERSION}** supports the following header processors:
                 console.print(f"\n## **{proc['class']}** _({proc['module']})_\n")
                 # console.print("| File Types | Description |")
                 # console.print("|---|---|")
-                ft: FileType
+                ft: dict[str, str]
                 for ft in proc["filetypes"]:
-                    rows.append([f"`{ft.name}`", ft.description])
+                    rows.append([f"`{ft['name']}`", ft["description"]])
                     # console.print(f"| `{ft['name']}` | {ft['description']} |")
                 table: str = render_markdown_table(headers, rows)
                 console.print(table)
@@ -196,7 +196,7 @@ TopMark version **{TOPMARK_VERSION}** supports the following header processors:
         num_proc_width: int = len(str(total_proc))
         proc_idx: int = 0
 
-        total_ft: int = len(file_type)
+        total_ft: int = len(file_types)
         num_ft_width: int = len(str(total_ft))
 
         for proc in payload_data["processors"]:
@@ -211,9 +211,9 @@ TopMark version **{TOPMARK_VERSION}** supports the following header processors:
                 ft_idx = 0
                 for ft in proc["filetypes"]:
                     ft_idx += 1
-                    descr: str = console.styled(ft.description, dim=True)
+                    descr: str = console.styled(ft["description"], dim=True)
 
-                    console.print(f"    {ft_idx:>{num_ft_width}}. {file_type['name']} - {descr}")
+                    console.print(f"    {ft_idx:>{num_ft_width}}. {ft['name']} - {descr}")
             else:
                 proc_ft_count: int = len(proc["filetypes"])
                 console.print(
