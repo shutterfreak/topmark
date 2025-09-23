@@ -16,6 +16,51 @@ All notable changes to this project will be documented in this file. This projec
 [Semantic Versioning](https://semver.org/) and follows a Keep‑a‑Changelog–style structure with the
 sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
+## [0.8.0] - 2025-09-24
+
+### Highlights
+
+- **New C-style block header support**: introduce `CBlockHeaderProcessor` and register it for **CSS, SCSS, Less, Stylus, SQL, and Solidity**.
+- **Python stubs**: `.pyi` now use `PoundHeaderProcessor` (`#`-style), with sensible defaults (no shebang).
+
+### Added
+
+- **Processors**
+  - `CBlockHeaderProcessor` (C-style `/* … */` with per-line `*`) including tolerant directive detection (accepts `* topmark:…` or bare `topmark:…`).
+  - File type registrations: `css`, `scss`, `less`, `stylus`, `sql`, `solidity`.
+- **File types**
+  - `python-stub` (`.pyi`) bound to `PoundHeaderProcessor` (shebang disabled; ensure blank after header).
+- **Tests**
+  - Comprehensive `test_cblock.py` suite: insertion (top and not-at-top), tolerant detection, idempotency, CRLF preservation, strip (auto/explicit span), and parametric checks across registered extensions.
+
+### Changed
+
+- **Typing hardening (non-functional)**
+  - Widespread strict typing across `pipeline/`, `cli/` & `cli_shared/`, remaining `src/` modules, and `tools/`:
+    - Adopt postponed annotations; move type-only imports under `TYPE_CHECKING`.
+    - Introduce `TopmarkLogger` annotations; add precise return/locals typing.
+    - Minor import and hygiene cleanups for Pyright strict mode.
+
+### Fixed
+
+- **CLI `processors` command**
+  - Treat `filetypes` as dicts in `--long` + Markdown/default renderers to avoid `AttributeError` when running\
+    `topmark processors --format markdown --long`.
+- **Typing**
+  - Resolve a redefinition error from an incorrectly placed annotation in types code.
+
+### Docs
+
+- **README.md**: mention block (`/* … */`) alongside line (`#`, `//`) comment styles; add a CSS example.
+- **docs/usage/filetypes.md**: expand processor table with modules and registered file types; add `CBlockHeaderProcessor`.
+
+### Chore
+
+- Add standard TopMark headers to files in `typings/`.
+- Dev tooling: keep pre-commit/hooks in sync (see commit history for exact bumps).
+
+**Breaking changes**: _None._
+
 ## [0.7.0] - 2025-09-23
 
 ### Highlights
