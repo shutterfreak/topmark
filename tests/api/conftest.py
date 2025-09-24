@@ -22,8 +22,6 @@ import pytest
 
 from topmark import api
 from topmark.filetypes.base import FileType
-from topmark.filetypes.registry import get_header_processor_registry
-from topmark.pipeline.processors import register_all_processors
 from topmark.pipeline.processors.base import HeaderProcessor
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
@@ -58,10 +56,9 @@ def register_pair() -> Iterator[Callable[[str], tuple[str, FileType]]]:
 
 @pytest.fixture()
 def proc_py() -> HeaderProcessor:
-    """Return the registered `HeaderProcessor` for Python files (idempotent)."""
-    register_all_processors()
+    """Return the registered `HeaderProcessor` for Python files (composed view)."""
     ft_name = "python"
-    proc: HeaderProcessor | None = get_header_processor_registry().get(ft_name)
+    proc: HeaderProcessor | None = HeaderProcessorRegistry.get(ft_name)
     assert proc, f"No HeaderProcessor registered to FileType '{ft_name}'"
     return proc
 
