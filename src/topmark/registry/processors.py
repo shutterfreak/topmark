@@ -14,6 +14,14 @@ Exposes read-only views and optional mutation helpers for registered header
 processors. Most users should prefer the stable facade
 [`topmark.registry.Registry`][topmark.registry.Registry]. This module is intended
 for plugins and tests.
+
+Notes:
+    * Public views (`as_mapping()`, `names()`, `get()`) are sourced from a **composed**
+      registry (base + local overrides − removals) and exposed as `MappingProxyType`.
+    * `register()` / `unregister()` apply **overlay-only** changes; they do not mutate
+      the base processor mapping registered during import/decorator discovery.
+    * When registering a processor, the target `FileType` is resolved from the composed
+      file type view to ensure overlay-added types can be bound.
 """
 
 from __future__ import annotations
@@ -21,7 +29,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from threading import RLock
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Iterator, Mapping, MutableMapping
+from typing import TYPE_CHECKING, Iterator, Mapping
+
+from topmark.filetypes.base import FileType
 
 if TYPE_CHECKING:
     from topmark.filetypes.base import FileType
@@ -49,6 +59,21 @@ class HeaderProcessorRegistry:
     """
 
     _lock = RLock()
+    _overrides: dict[str, "HeaderProcessor"] = {}
+    _removals: set[str] = set()
+
+    @classmethod
+    def _compose(cls) -> dict[str, "HeaderProcessor"]:
+        """Compose base processor registry with local overrides/removals."""
+        from topmark.filetypes.registry import get_header_processor_registry as _get
+        from topmark.pipeline.processors import register_all_processors
+
+        register_all_processors()
+        base = dict(_get())
+        base.update(cls._overrides)
+        for name in cls._removals:
+            base.pop(name, None)
+        return base
 
     @classmethod
     def names(cls) -> tuple[str, ...]:
@@ -57,22 +82,14 @@ class HeaderProcessorRegistry:
         Returns:
             tuple[str, ...]: Sorted processor names.
         """
-        from topmark.filetypes.registry import get_header_processor_registry as _get
-        from topmark.pipeline.processors import register_all_processors
-
-        register_all_processors()
         with cls._lock:
-            return tuple(sorted(_get().keys()))
+            return tuple(sorted(cls._compose().keys()))
 
     @classmethod
     def is_registered(cls, filetype_name: str) -> bool:
         """Return True if a processor is registered for the given file type name."""
-        from topmark.filetypes.registry import get_header_processor_registry as _get
-        from topmark.pipeline.processors import register_all_processors
-
-        register_all_processors()
         with cls._lock:
-            return filetype_name in _get()
+            return filetype_name in cls._compose()
 
     @classmethod
     def get(cls, name: str) -> HeaderProcessor | None:
@@ -84,12 +101,8 @@ class HeaderProcessorRegistry:
         Returns:
             HeaderProcessor | None: The processor if found, else None.
         """
-        from topmark.filetypes.registry import get_header_processor_registry as _get
-        from topmark.pipeline.processors import register_all_processors
-
-        register_all_processors()
         with cls._lock:
-            return _get().get(name)
+            return cls._compose().get(name)
 
     @classmethod
     def as_mapping(cls) -> Mapping[str, HeaderProcessor]:
@@ -101,12 +114,8 @@ class HeaderProcessorRegistry:
         Notes:
             The returned mapping is a `MappingProxyType` and must not be mutated.
         """
-        from topmark.filetypes.registry import get_header_processor_registry as _get
-        from topmark.pipeline.processors import register_all_processors
-
-        register_all_processors()
         with cls._lock:
-            return MappingProxyType(_get())
+            return MappingProxyType(cls._compose())
 
     @classmethod
     def iter_meta(cls) -> Iterator[ProcessorMeta]:
@@ -115,12 +124,8 @@ class HeaderProcessorRegistry:
         Yields:
             ProcessorMeta: Serializable metadata about each processor.
         """
-        from topmark.filetypes.registry import get_header_processor_registry as _get
-        from topmark.pipeline.processors import register_all_processors
-
-        register_all_processors()
         with cls._lock:
-            for name, proc in _get().items():
+            for name, proc in cls._compose().items():
                 yield ProcessorMeta(
                     name=name,
                     description=getattr(proc, "description", "") or "",
@@ -152,25 +157,25 @@ class HeaderProcessorRegistry:
             - Thread safe via RLock; process-global state; do not mutate in long-lived
               multi-tenant processes.
         """
-        from topmark.filetypes.instances import get_file_type_registry as _get_ft
-        from topmark.filetypes.registry import get_header_processor_registry as _get
-
         with cls._lock:
-            ft_reg: dict[str, FileType] = _get_ft()
-            if name not in ft_reg:
+            # Resolve FileType from the composed registry (includes local overrides).
+            from topmark.registry.filetypes import FileTypeRegistry as _FTReg
+
+            ft_obj: FileType | None = _FTReg.get(name)
+            if ft_obj is None:
                 raise ValueError(f"Unknown file type: {name}")
 
-            reg: MutableMapping[str, "HeaderProcessor"] = _get()
-            if name in reg:
+            # Check composed view to avoid dupes
+            if name in cls._compose():
                 raise ValueError(f"File type '{name}' already has a registered processor.")
 
             # Instantiate if a class is provided
             proc_obj = processor_class()
 
             # Bind the processor to the FileType (mirror decorator behavior).
-            proc_obj.file_type = ft_reg[name]
+            proc_obj.file_type = ft_obj
 
-            reg[name] = proc_obj
+            cls._overrides[name] = proc_obj
 
     @classmethod
     def unregister(cls, name: str) -> bool:
@@ -187,8 +192,12 @@ class HeaderProcessorRegistry:
             - Thread safe via RLock; process-global state; do not mutate in long-lived
               multi-tenant processes.
         """
-        from topmark.filetypes.registry import get_header_processor_registry as _get
-
         with cls._lock:
-            reg: MutableMapping[str, HeaderProcessor] = _get()
-            return reg.pop(name, None) is not None
+            existed = False
+            if name in cls._overrides:
+                cls._overrides.pop(name, None)
+                existed = True
+            if name in cls._compose():
+                cls._removals.add(name)
+                existed = True
+            return existed

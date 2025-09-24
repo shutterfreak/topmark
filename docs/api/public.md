@@ -53,6 +53,28 @@ result = api.check(
 This design keeps the public surface small and semver-stable while allowing flexible per-call
 configuration.
 
+### Registries and extensibility (read‑only by default)
+
+The public API exposes **read‑only** registries for file types and header processors.
+They are returned as `Mapping` views (backed by `MappingProxyType`) to enforce immutability:
+
+- `api.get_file_type_registry() -> Mapping[str, FileType]`
+- `api.get_header_processor_registry() -> Mapping[str, HeaderProcessor]`
+
+If you need dynamic extensions in plugins or tests, use the **advanced** registries in
+`topmark.registry`:
+
+- `topmark.registry.FileTypeRegistry.register(ft, processor=...)`
+- `topmark.registry.FileTypeRegistry.unregister(name)`
+- `topmark.registry.HeaderProcessorRegistry.register(name, processor_cls)`
+- `topmark.registry.HeaderProcessorRegistry.unregister(name)`
+
+These mutation helpers apply **overlay-only changes**: they do not mutate the internal
+base mappings (built‑ins + entry points). Overlays are process‑local, thread‑safe (via
+an internal lock), and can be removed with `unregister(...)`. For long‑term or
+redistributable extensions, prefer publishing a plugin with an entry point group
+`topmark.filetypes`.
+
 ::: topmark.api
 options:
 heading_level: 2

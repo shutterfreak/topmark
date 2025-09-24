@@ -12,8 +12,19 @@
 
 Exposes read-only views and optional mutation helpers for registered file
 types. Most users should prefer the stable facade
-[`topmark.registry.Registry`][topmark.registry.Registry].
-This module is intended for plugins and tests.
+[`topmark.registry.Registry`][topmark.registry.Registry]. This module is intended
+for plugins and tests.
+
+Notes:
+    * All public views (`as_mapping()`, `names()`, etc.) are derived from a **composed**
+      registry (base built-ins + entry points + local overlays − removals) and are
+      returned as `MappingProxyType` to prevent accidental mutation.
+    * `register()` / `unregister()` perform **overlay-only** changes. They do not mutate
+      the internal base registry built by `topmark.filetypes.instances`. Overlays are
+      process-local and guarded by an `RLock`.
+    * `supported_names()` / `unsupported_names()` compute support against the **composed**
+      header processor registry to reflect overlay registrations made via
+      `HeaderProcessorRegistry`.
 """
 
 from __future__ import annotations
@@ -21,7 +32,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from threading import RLock
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Iterator, Mapping, MutableMapping
+from typing import TYPE_CHECKING, Iterator, Mapping
 
 if TYPE_CHECKING:
     from topmark.filetypes.base import FileType
@@ -52,6 +63,25 @@ class FileTypeRegistry:
 
     _lock = RLock()
 
+    # Local overlays; applied on top of the base (built-ins + plugins).
+    # These *do not* mutate the base registry returned by instances.
+    _overrides: dict[str, "FileType"] = {}
+    _removals: set[str] = set()
+
+    @classmethod
+    def _compose(cls) -> dict[str, "FileType"]:
+        """Compose base registry with local overlays/removals."""
+        from topmark.filetypes.instances import get_file_type_registry as _get_ft
+
+        # Start from a shallow copy of the base mapping
+        base: dict[str, FileType] = dict(_get_ft())
+        # Apply overrides (late wins)
+        base.update(cls._overrides)
+        # Drop removals
+        for name in cls._removals:
+            base.pop(name, None)
+        return base
+
     @classmethod
     def names(cls) -> tuple[str, ...]:
         """Return all registered file type names (sorted).
@@ -59,27 +89,26 @@ class FileTypeRegistry:
         Returns:
             tuple[str, ...]: Sorted file type names.
         """
-        from topmark.filetypes.instances import get_file_type_registry as _get_ft
-
         with cls._lock:
-            return tuple(sorted(_get_ft().keys()))
+            return tuple(sorted(cls._compose().keys()))
 
     @classmethod
     def supported_names(cls) -> tuple[str, ...]:
         """Return file type names that have a registered processor."""
-        from topmark.filetypes.registry import get_header_processor_registry as _get_proc
+        from topmark.registry.processors import HeaderProcessorRegistry as _HPReg
 
         with cls._lock:
-            return tuple(sorted(set(_get_proc().keys()) & set(cls.names())))
+            proc_names: set[str] = set(_HPReg.as_mapping().keys())
+            return tuple(sorted(proc_names & set(cls._compose().keys())))
 
     @classmethod
     def unsupported_names(cls) -> tuple[str, ...]:
         """Return file type names that are recognized but unsupported."""
-        from topmark.filetypes.registry import get_header_processor_registry as _get_proc
+        from topmark.registry.processors import HeaderProcessorRegistry as _HPReg
 
         with cls._lock:
-            all_names: set[str] = set(cls.names())
-            supported: set[str] = set(_get_proc().keys())
+            all_names: set[str] = set(cls._compose().keys())
+            supported: set[str] = set(_HPReg.as_mapping().keys())
             return tuple(sorted(all_names - supported))
 
     @classmethod
@@ -92,10 +121,8 @@ class FileTypeRegistry:
         Returns:
             FileType | None: The `FileType` object if found, else None.
         """
-        from topmark.filetypes.instances import get_file_type_registry as _get_ft
-
         with cls._lock:
-            return _get_ft().get(name)
+            return cls._compose().get(name)
 
     @classmethod
     def as_mapping(cls) -> Mapping[str, FileType]:
@@ -107,10 +134,8 @@ class FileTypeRegistry:
         Notes:
             The returned mapping is a `MappingProxyType` and must not be mutated.
         """
-        from topmark.filetypes.instances import get_file_type_registry as _get_ft
-
         with cls._lock:
-            return MappingProxyType(_get_ft())
+            return MappingProxyType(cls._compose())
 
     @classmethod
     def iter_meta(cls) -> Iterator[FileTypeMeta]:
@@ -119,10 +144,8 @@ class FileTypeRegistry:
         Yields:
             FileTypeMeta: Serializable metadata about each file type.
         """
-        from topmark.filetypes.instances import get_file_type_registry as _get_ft
-
         with cls._lock:
-            for name, ft in _get_ft().items():
+            for name, ft in cls._compose().items():
                 yield FileTypeMeta(
                     name=name,
                     description=getattr(ft, "description", "") or "",
@@ -161,17 +184,17 @@ class FileTypeRegistry:
             - Thread safe via RLock; process-global state; do not mutate in long-lived
               multi-tenant processes.
         """
-        from topmark.filetypes.instances import get_file_type_registry as _get_ft
         from topmark.registry.processors import HeaderProcessorRegistry
 
         with cls._lock:
-            reg: MutableMapping[str, "FileType"] = _get_ft()
             name: str = ft_obj.name or ""
             if not name:
                 raise ValueError("FileType.name is required.")
-            if name in reg:
+            # Check against *composed* view to avoid dupes
+            if name in cls._compose():
                 raise ValueError(f"Duplicate FileType name: {name}")
-            reg[name] = ft_obj
+            # Record override locally (no base mutation)
+            cls._overrides[name] = ft_obj
             if processor is not None:
                 # Chain to HeaderProcessorRegistry for linkage; raises on conflict
                 HeaderProcessorRegistry.register(name, processor)
@@ -191,8 +214,14 @@ class FileTypeRegistry:
             - Thread safe via RLock; process-global state; do not mutate in long-lived
               multi-tenant processes.
         """
-        from topmark.filetypes.instances import get_file_type_registry as _get_ft
-
         with cls._lock:
-            reg: MutableMapping[str, FileType] = _get_ft()
-            return reg.pop(name, None) is not None
+            # Remove local override (if any) and mark for removal from base
+            existed = False
+            if name in cls._overrides:
+                existed = True
+                cls._overrides.pop(name, None)
+            # If present only in base, we still support hiding it
+            if name in cls._compose():
+                existed = True
+                cls._removals.add(name)
+            return existed
