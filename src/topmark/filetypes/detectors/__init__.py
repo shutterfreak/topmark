@@ -10,7 +10,19 @@
 
 """Content-based file type detectors.
 
-Place fast, side-effect-free content probes here (e.g., JSONC detection).
+This package hosts lightweight, side-effect-free probes that inspect file
+content to disambiguate formats that share extensions (e.g., JSON vs JSONC).
+
+Typical usage is to reference detector callables from a ``FileType`` via a
+``content_matcher`` and restrict invocation with a ``content_gate`` (e.g.,
+``IF_EXTENSION``) to keep detection fast.
+
+Submodules:
+    jsonc: Heuristic JSON-with-comments detection.
+
+Notes:
+    Detectors should be fast and read only a small prefix of the file. Avoid
+    importing heavy dependencies here to keep CLI startup time low.
 """
 
 from __future__ import annotations
