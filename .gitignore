@@ -64,3 +64,6 @@ dist/
 
 # PyPI config
 .pypirc
+
+# lychee cache file
+.lycheecache
