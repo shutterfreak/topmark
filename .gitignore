@@ -67,3 +67,6 @@ dist/
 
 # lychee cache file
 .lycheecache
+
+# tox
+.tox/
