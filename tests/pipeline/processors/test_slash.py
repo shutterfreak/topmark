@@ -18,6 +18,7 @@ explicit spans.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -52,7 +53,24 @@ def test_slash_processor_basics(tmp_path: Path) -> None:
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
-    assert ctx.file_type and ctx.file_type.name in {"javascript", "js"}  # adjust to your registry
+    assert ctx.file_type and ctx.file_type.name == "javascript"
+    assert ctx.existing_header_range is None
+
+
+@mark_pipeline
+def test_slash_processor_with_content_matcher_detects_jsonc_in_json(tmp_path: Path) -> None:
+    """Detect JSON file is JSONC and confirm no pre-existing header.
+
+    Given a ``.json`` source without a TopMark block, the processor resolution should
+    map to a JSON with comments (via content matcher) and the scanner should report
+    no existing header.
+    """
+    f: Path = tmp_path / "test.json"
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    f.write_text("# JSON with comments\n" + json.dumps({"test": "Value", "try": True}))
+
+    ctx: ProcessingContext = run_insert(f, cfg)
+    assert ctx.file_type and ctx.file_type.name == "json"
     assert ctx.existing_header_range is None
 
 
