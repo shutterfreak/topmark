@@ -67,10 +67,10 @@ def test_slash_processor_with_content_matcher_detects_jsonc_in_json(tmp_path: Pa
     """
     f: Path = tmp_path / "test.json"
     cfg: Config = MutableConfig.from_defaults().freeze()
-    f.write_text("# JSON with comments\n" + json.dumps({"test": "Value", "try": True}))
+    f.write_text("// JSON with comments\n" + json.dumps({"test": "Value", "try": True}))
 
     ctx: ProcessingContext = run_insert(f, cfg)
-    assert ctx.file_type and ctx.file_type.name == "json"
+    assert ctx.file_type and ctx.file_type.name == "jsonc"
     assert ctx.existing_header_range is None
 
 

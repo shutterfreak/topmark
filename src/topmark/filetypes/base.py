@@ -23,7 +23,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from topmark.config.logging import TopmarkLogger, get_logger
 
@@ -159,38 +159,77 @@ class FileType:
         Returns:
             bool: True if the file matches this file type, False otherwise.
         """
-        # Extension match (simple suffix)
-        if path.suffix in self.extensions:
+        # Track which name rule (if any) matched; used for content gating.
+        matched_by: str | None = None
+
+        # 1) Extension match (simple suffix)
+        if self.extensions and path.suffix in self.extensions:
+            matched_by = "extension"
+        else:
+            # 2) Filenames: support exact basename or tail subpath matches
+            #    - "settings.json" matches only if basename == "settings.json"
+            #    - ".vscode/settings.json" matches
+            #      if path.as_posix().endswith(".vscode/settings.json")
+            if self.filenames:
+                basename: str = path.name
+                posix: str = path.as_posix()
+                for fname in self.filenames:
+                    if "/" in fname or "\\" in fname:
+                        if posix.endswith(fname):
+                            matched_by = "filename"
+                            break
+                    else:
+                        if basename == fname:
+                            matched_by = "filename"
+                            break
+
+            # 3) Regex patterns against basename (cached)
+            if matched_by is None and self.patterns:
+                if self._compiled_patterns is None:
+                    try:
+                        self._compiled_patterns = [re.compile(p) for p in self.patterns]
+                    except re.error:
+                        self._compiled_patterns = []
+                for regex in self._compiled_patterns:
+                    if regex.fullmatch(path.name):
+                        matched_by = "pattern"
+                        break
+
+        # If any name rule matched and no content matcher is defined, we're done.
+        if matched_by is not None and self.content_matcher is None:
             return True
 
-        # Filenames: support exact basename or tail subpath matches
-        # Examples:
-        #   - "settings.json" matches only if basename == "settings.json"
-        #   - ".vscode/settings.json" matches if path.as_posix().endswith(".vscode/settings.json")
-        if self.filenames:
-            basename: str = path.name
-            posix: str = path.as_posix()
-            for fname in self.filenames:
-                if "/" in fname or "\\" in fname:
-                    if posix.endswith(fname):
-                        return True
-                else:
-                    if basename == fname:
-                        return True
+        # If no name rule matched and no content matcher is defined, no match.
+        if matched_by is None and self.content_matcher is None:
+            return False
 
-        # Regex patterns against basename (cached)
-        if self.patterns:
-            if self._compiled_patterns is None:
-                try:
-                    self._compiled_patterns = [re.compile(p) for p in self.patterns]
-                except re.error:
-                    self._compiled_patterns = []
-            for regex in self._compiled_patterns:
-                if regex.fullmatch(path.name):
-                    return True
-        if self.content_matcher:
-            try:
-                return self.content_matcher(path)
-            except Exception:
-                return False
-        return False
+        # Evaluate whether the content matcher is *allowed* to run, based on the gate.
+        gate: Final[ContentGate] = self.content_gate
+        allow_by_gate: bool
+        if gate is ContentGate.NEVER:
+            allow_by_gate = False
+        elif gate is ContentGate.IF_EXTENSION:
+            allow_by_gate = matched_by == "extension"
+        elif gate is ContentGate.IF_FILENAME:
+            allow_by_gate = matched_by == "filename"
+        elif gate is ContentGate.IF_PATTERN:
+            allow_by_gate = matched_by == "pattern"
+        elif gate is ContentGate.IF_ANY_NAME_RULE:
+            allow_by_gate = matched_by is not None
+        elif gate is ContentGate.IF_NONE:
+            # Permit content probing only if *no* name rules exist for this type.
+            allow_by_gate = not (self.extensions or self.filenames or self.patterns)
+        elif gate is ContentGate.ALWAYS:
+            allow_by_gate = True
+        else:
+            allow_by_gate = False  # safety default
+
+        # If gate disallows probing, return the name-rule result.
+        if not allow_by_gate:
+            return matched_by is not None
+
+        # Gate allows probing: consult the content matcher.
+        try:
+            return bool(self.content_matcher(path))  # type: ignore[misc]
+        except Exception:
+            return False
