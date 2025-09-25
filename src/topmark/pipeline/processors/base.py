@@ -35,7 +35,7 @@ otherwise it falls back to the line-based strategy using the computed anchor.
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final, Pattern
 
 from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
@@ -51,7 +51,7 @@ logger: TopmarkLogger = get_logger(__name__)
 
 
 # Sentinel value when get_header_insertion_index() cannot find an insertion index:
-NO_LINE_ANCHOR: int = -1
+NO_LINE_ANCHOR: Final[int] = -1
 
 
 class HeaderProcessor:
@@ -171,6 +171,10 @@ class HeaderProcessor:
             self.line_indent = line_indent
         if header_indent is not None:
             self.header_indent = header_indent
+
+        # Cache for per-policy encoding regex to avoid recompilation
+        self._encoding_pattern: Pattern[str] | None = None
+        self._encoding_pattern_src: str | None = None
 
     def parse_fields(self, context: ProcessingContext) -> dict[str, str]:
         """Parse key-value pairs from the detected header block (outer slice).
@@ -660,7 +664,12 @@ class HeaderProcessor:
 
             # Optional encoding line immediately after shebang (e.g., Python)
             if policy.encoding_line_regex and len(file_lines) > index:
-                if re.search(policy.encoding_line_regex, file_lines[index]):
+                src = policy.encoding_line_regex
+                # Compile on first use or when the pattern string changes
+                if self._encoding_pattern is None or self._encoding_pattern_src != src:
+                    self._encoding_pattern = re.compile(src)
+                    self._encoding_pattern_src = src
+                if self._encoding_pattern.search(file_lines[index]):
                     index += 1
 
         # If a shebang block exists and the next line is already blank, consume exactly one
