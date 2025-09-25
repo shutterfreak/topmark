@@ -22,6 +22,7 @@ from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.file_resolver import detect_newline
 from topmark.filetypes.registry import register_filetype
 from topmark.pipeline.processors.base import HeaderProcessor
+from topmark.pipeline.processors.mixins import LineCommentMixin
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -38,14 +39,18 @@ logger: TopmarkLogger = get_logger(__name__)
 @register_filetype("swift")
 @register_filetype("typescript")
 @register_filetype("vscode-jsonc")
-class SlashHeaderProcessor(HeaderProcessor):
+class SlashHeaderProcessor(LineCommentMixin, HeaderProcessor):
     """Processor for files that accept C-style comments.
 
     We render the header as `//`-prefixed lines. Shebang handling is disabled.
     """
 
+    # LineCommentMixin:
+    line_prefix = "//"
+
     def __init__(self) -> None:
-        super().__init__(line_prefix="//")
+        # Rely on the class attribute for LineCommentMixin; just run base init.
+        super().__init__()
 
     def prepare_header_for_insertion(
         self,

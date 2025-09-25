@@ -88,13 +88,13 @@ class HeaderProcessor:
         integrations.
 
     Args:
-        block_prefix (str): The prefix string for block-style header start.
-        block_suffix (str): The suffix string for block-style header end.
-        line_prefix (str): The prefix string for each line within the header block.
-        line_suffix (str): The suffix string for each line within the header block.
-        line_indent (str): The indentation applied to *header field lines* **after**
+        block_prefix (str | None): The prefix string for block-style header start.
+        block_suffix (str | None): The suffix string for block-style header end.
+        line_prefix (str | None): The prefix string for each line within the header block.
+        line_suffix (str | None): The suffix string for each line within the header block.
+        line_indent (str | None): The indentation applied to *header field lines* **after**
             the comment prefix (e.g., spaces after `//`).
-        header_indent (str): The indentation applied *before* the comment prefix; used
+        header_indent (str | None): The indentation applied *before* the comment prefix; used
             to preserve existing leading indentation when replacing an indented
             header block inside a document (e.g., nested JSONC).
 
@@ -129,22 +129,27 @@ class HeaderProcessor:
     def __init__(
         self,
         *,
-        block_prefix: str = "",
-        block_suffix: str = "",
-        line_prefix: str = "",
-        line_suffix: str = "",
-        line_indent: str = "  ",
-        header_indent: str = "",
+        block_prefix: str | None = None,
+        block_suffix: str | None = None,
+        line_prefix: str | None = None,
+        line_suffix: str | None = None,
+        line_indent: str | None = None,
+        header_indent: str | None = None,
     ) -> None:
         self.file_type = None
 
-        self.block_prefix = block_prefix
-        self.block_suffix = block_suffix
-        self.line_prefix = line_prefix
-        self.line_suffix = line_suffix
-
-        self.line_indent = line_indent
-        self.header_indent = header_indent
+        if block_prefix is not None:
+            self.block_prefix = block_prefix
+        if block_suffix is not None:
+            self.block_suffix = block_suffix
+        if line_prefix is not None:
+            self.line_prefix = line_prefix
+        if line_suffix is not None:
+            self.line_suffix = line_suffix
+        if line_indent is not None:
+            self.line_indent = line_indent
+        if header_indent is not None:
+            self.header_indent = header_indent
 
     def parse_fields(self, context: ProcessingContext) -> dict[str, str]:
         """Parse key-value pairs from the detected header block (outer slice).
