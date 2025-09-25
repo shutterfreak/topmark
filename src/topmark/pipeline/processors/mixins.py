@@ -128,6 +128,56 @@ class LineCommentMixin(ShebangAwareMixin):
         return i
 
 
+# ---------------------------------------------------------------------------
+# BlockCommentMixin: helpers for block-comment based processors
+# ---------------------------------------------------------------------------
+
+
+class BlockCommentMixin:
+    """Shared helpers for block-comment processors (e.g., CSS/JS C-style).
+
+    Processors should define:
+        * ``block_prefix``: the opening delimiter (e.g., ``/*`` or ``<!--``).
+        * ``block_suffix``: the closing delimiter (e.g., ``*/`` or ``-->``).
+
+    The helpers here are intentionally minimal; they can be expanded as we
+    migrate concrete processors and spot duplication opportunities.
+    """
+
+    block_prefix: str = ""
+    block_suffix: str = ""
+
+    def is_block_prefix(self, line: str) -> bool:
+        """Return True if ``line.strip()`` equals the configured block prefix."""
+        return line.strip() == (self.block_prefix or "")
+
+    def is_block_suffix(self, line: str) -> bool:
+        """Return True if ``line.strip()`` equals the configured block suffix."""
+        return line.strip() == (self.block_suffix or "")
+
+    def render_block_line(self, payload: str) -> str:
+        """Render a content line inside a block (identity for now)."""
+        return payload
+
+    def ensure_block_padding(self, rendered_lines: list[str], *, newline: str) -> list[str]:
+        r"""Ensure the block text ends with a newline.
+
+        Args:
+            rendered_lines (list[str]): Lines that compose the block (including delimiters).
+            newline (str): Newline string to enforce at the end ("\n" or "\r\n").
+
+        Returns:
+            list[str]: Possibly adjusted copy with a trailing newline present.
+        """
+        out: list[str] = list(rendered_lines)
+        if not out:
+            return out
+        last = out[-1]
+        if not (last.endswith("\n") or last.endswith("\r\n")):
+            out[-1] = last + newline
+        return out
+
+
 class XmlPositionalMixin:
     """Helpers for tag-sensitive (positional) processors like XML/HTML.
 

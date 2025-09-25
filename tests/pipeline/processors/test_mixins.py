@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 from topmark.pipeline.processors.mixins import (
+    BlockCommentMixin,
     LineCommentMixin,
     XmlPositionalMixin,
 )
@@ -133,3 +134,27 @@ def test_line_mixin_skips_encoding_line_after_shebang() -> None:
 
     lines: list[str] = ["#!/usr/bin/env python\n", "# coding: utf-8\n", "print(1)\n"]
     assert p.find_insertion_index(lines) == 2
+
+
+# --- BlockCommentMixin tests ------------------------------------------------
+
+
+class _Block(BlockCommentMixin):
+    block_prefix = "/*"
+    block_suffix = "*/"
+
+
+def test_block_predicates() -> None:
+    """Detect block prefix/suffix by stripped equality."""
+    b = _Block()
+    assert b.is_block_prefix("  /*  ")
+    assert b.is_block_suffix("*/")
+    assert not b.is_block_prefix("<--")
+
+
+def test_block_padding_ensures_trailing_newline() -> None:
+    """Ensure block text ends with a newline."""
+    b = _Block()
+    lines = ["/*", " header ", "*/"]
+    out = b.ensure_block_padding(lines, newline="\n")
+    assert out[-1].endswith("\n")
