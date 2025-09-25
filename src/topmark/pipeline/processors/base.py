@@ -585,6 +585,26 @@ class HeaderProcessor:
 
         return lines
 
+    def compute_insertion_anchor(self, lines: list[str]) -> int:
+        """Return a stable line-based insertion anchor for the pipeline.
+
+        This small facade exists so pipeline steps have a single, stable
+        entry point for *line-based* placement. By default, it simply
+        delegates to :py:meth:`get_header_insertion_index`.
+
+        Processors that insert by **character offset** (e.g., XML/HTML) should
+        override :py:meth:`get_header_insertion_index` to return
+        :pydata:`NO_LINE_ANCHOR`, which this method will propagate unchanged.
+
+        Args:
+            lines (list[str]): Full file content split into lines.
+
+        Returns:
+            int: A 0-based line index where a header would be inserted, or
+                :pydata:`NO_LINE_ANCHOR` when line-based anchoring is not used.
+        """
+        return self.get_header_insertion_index(lines)
+
     def get_header_insertion_index(self, file_lines: list[str]) -> int:
         """Determine where to insert the header based on file type policy.
 
