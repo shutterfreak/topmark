@@ -12,10 +12,10 @@
 
 These mixins provide reusable behavior for:
 
-* Line-comment based processors (e.g., Pound/Slash) via [`LineCommentMixin`][].
+* Line-comment based processors (e.g., Pound/Slash) via ``LineCommentMixin``.
 * Positional, tag- or prolog-sensitive processors (e.g., XML/HTML) via
-  [`XmlPositionalMixin`][].
-* Shebang-aware insertion rules via [`ShebangAwareMixin`][].
+  ``XmlPositionalMixin``.
+* Shebang-aware insertion rules via ``ShebangAwareMixin``.
 
 They **do not** change public behavior on their own. Processors can adopt these
 mixins to share well-tested logic and reduce duplication.

@@ -26,10 +26,7 @@ if TYPE_CHECKING:
     from topmark.filetypes.base import FileType
 
 
-# Apply the dev-validation mark to the whole module
-pytestmark = [mark_dev_validation]
-
-
+@mark_dev_validation
 def test_registered_processors_map_to_existing_filetypes() -> None:
     """Every registered processor references an existing FileType."""
     ft_reg: Dict[str, FileType] = get_file_type_registry()
@@ -39,6 +36,7 @@ def test_registered_processors_map_to_existing_filetypes() -> None:
     assert missing == [], f"Processors registered for unknown file types: {missing!r}"
 
 
+@mark_dev_validation
 def test_one_processor_per_filetype() -> None:
     """There is at most one processor registered per file type name."""
     proc_reg: Dict[str, HeaderProcessor] = get_header_processor_registry()
@@ -74,6 +72,7 @@ def test_one_processor_per_filetype() -> None:
         "markdown",
     ],
 )
+@mark_dev_validation
 def test_xml_like_types_report_no_line_anchor(ft_name: str) -> None:
     """XML-like processors indicate char-offset placement via NO_LINE_ANCHOR."""
     proc_reg: Dict[str, HeaderProcessor] = get_header_processor_registry()

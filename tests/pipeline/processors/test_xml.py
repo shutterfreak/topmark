@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.pipeline.contracts import Step
+    from topmark.pipeline.processors.base import HeaderProcessor
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -434,7 +435,7 @@ def test_xml_strip_header_block_respects_declaration(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    proc: XmlHeaderProcessor | None = get_processor_for_file(f)
+    proc: HeaderProcessor | None = get_processor_for_file(f)
     assert proc is not None
 
     lines: list[str] = f.read_text(encoding="utf-8").splitlines(keepends=True)

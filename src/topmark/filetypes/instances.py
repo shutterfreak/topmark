@@ -76,16 +76,12 @@ def _iter_plugin_filetypes() -> Iterable[FileType]:
         eps = entry_points()
     except Exception:
         logger.exception("Failed to read entry points")
-        return ()
+        return
 
-    # Python 3.10+ API provides .select; older API uses dict-like .get
-    selector = getattr(eps, "select", None)
-    if callable(selector):
-        candidates: EntryPoints = eps.select(group=ENTRYPOINT_GROUP)
-    else:
-        candidates = eps.get(ENTRYPOINT_GROUP, [])  # type: ignore[assignment]
+    # Python 3.10+ API: EntryPoints.select is available and typed
+    candidates: EntryPoints = eps.select(group=ENTRYPOINT_GROUP)
 
-    for ep in candidates:  # type: ignore[assignment]
+    for ep in candidates:
         try:
             provider: Any = ep.load()
             provided: Any = provider() if callable(provider) else provider

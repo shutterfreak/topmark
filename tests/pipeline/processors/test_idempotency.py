@@ -88,10 +88,10 @@ def test_blank_line_after_header_for_line_and_block(
     lines: list[str] = ctx.updated_file_lines or []
 
     # Find the line index of the end-of-header marker (comment-wrapped).
-    end_idx = -1
+    end_idx: int = -1
     for i, line in enumerate(lines):
         if TOPMARK_END_MARKER in line:
-            end_idx: int = i
+            end_idx = i
             break
 
     assert end_idx >= 0, "inserted header must contain an end marker"
