@@ -22,20 +22,69 @@ Notes:
       the base processor mapping registered during import/decorator discovery.
     * When registering a processor, the target `FileType` is resolved from the composed
       file type view to ensure overlay-added types can be bound.
+    * When the environment variable ``TOPMARK_VALIDATE`` is set to a truthy value
+      (``1``, ``true``, ``yes``), lightweight developer validations will run on the
+      composed processor mapping (see `_dev_validate_processors`).
 """
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from threading import RLock
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Iterator, Mapping
+from typing import TYPE_CHECKING, Final, Iterator, Mapping
 
 from topmark.filetypes.base import FileType
+from topmark.filetypes.instances import get_file_type_registry
+from topmark.pipeline.processors.base import NO_LINE_ANCHOR
+from topmark.pipeline.processors.xml import XmlHeaderProcessor
 
 if TYPE_CHECKING:
     from topmark.filetypes.base import FileType
     from topmark.pipeline.processors.base import HeaderProcessor
+
+
+_validation_done: bool = False
+_VALIDATION_ENV: Final[str] = "TOPMARK_VALIDATE"
+
+
+def _dev_validate_processors(proc_map: Mapping[str, "HeaderProcessor"]) -> None:
+    """Run lightweight developer validations when TOPMARK_VALIDATE=1.
+
+    Checks:
+        * Every registered processor key matches an existing FileType name.
+        * XML-like processors (instances of XmlHeaderProcessor) report
+          NO_LINE_ANCHOR for their line-based index.
+
+    This function is a no-op unless the environment variable TOPMARK_VALIDATE
+    is set to a truthy value ("1", "true", "yes"). It is executed at most once
+    per process.
+    """
+    global _validation_done
+    if _validation_done:
+        return
+    if os.getenv(_VALIDATION_ENV, "").lower() not in {"1", "true", "yes"}:
+        return
+
+    ft_reg: dict[str, FileType] = get_file_type_registry()
+
+    # 1) All processors refer to existing file types
+    missing: list[str] = [name for name in proc_map.keys() if name not in ft_reg]
+    if missing:
+        raise RuntimeError(f"Processors registered for unknown file types: {missing!r}")
+
+    # 2) Xml-like processors use NO_LINE_ANCHOR for line-based index
+    for name, proc in proc_map.items():
+        if isinstance(proc, XmlHeaderProcessor):
+            if proc.get_header_insertion_index(["<root/>"]) != NO_LINE_ANCHOR:
+                raise RuntimeError(
+                    "XmlHeaderProcessor must return NO_LINE_ANCHOR from "
+                    "get_header_insertion_index(); offending type: "
+                    f"{name!r}"
+                )
+
+    _validation_done = True
 
 
 @dataclass(frozen=True)
@@ -69,10 +118,11 @@ class HeaderProcessorRegistry:
         from topmark.pipeline.processors import register_all_processors
 
         register_all_processors()
-        base = dict(_get())
+        base: dict[str, HeaderProcessor] = dict(_get())
         base.update(cls._overrides)
         for name in cls._removals:
             base.pop(name, None)
+        _dev_validate_processors(base)
         return base
 
     @classmethod

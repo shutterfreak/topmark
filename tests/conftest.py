@@ -54,6 +54,7 @@ def as_typed_mark(mark: Any) -> Callable[[F], F]:
 mark_integration = as_typed_mark(pytest.mark.integration)
 mark_pipeline = as_typed_mark(pytest.mark.pipeline)
 mark_cli = as_typed_mark(pytest.mark.cli)
+mark_dev_validation = as_typed_mark(pytest.mark.dev_validation)
 
 
 def parametrize(*args: Any, **kwargs: Any) -> Callable[[F], F]:
