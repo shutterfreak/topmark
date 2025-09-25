@@ -66,12 +66,11 @@ def test_xml_insertion_after_decl_and_doctype() -> None:
     assert x.find_xml_insertion_index(lines) == 2
 
 
-def test_xml_insertion_with_bom_only() -> None:
-    """XML insertion index skips just the BOM when present."""
-    bom = "\ufeff"
+def test_xml_insertion_does_not_handle_bom() -> None:
+    """Xml mixin leaves BOM handling to the reader step."""
     x = _Xml()
-    lines: list[str] = [bom + "<note>", "<to>Tove</to>"]
-    assert x.find_xml_insertion_index(lines) == 1
+    lines: list[str] = ["\ufeff<note>", "<to>Tove</to>"]
+    assert x.find_xml_insertion_index(lines) == 0
 
 
 def test_xml_declaration_predicate() -> None:

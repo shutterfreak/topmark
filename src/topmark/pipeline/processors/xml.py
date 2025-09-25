@@ -23,6 +23,7 @@ from topmark.filetypes.registry import register_filetype
 from topmark.pipeline.processors.base import (
     HeaderProcessor,
 )
+from topmark.pipeline.processors.mixins import XmlPositionalMixin
 
 
 @register_filetype("html")
@@ -34,8 +35,13 @@ from topmark.pipeline.processors.base import (
 @register_filetype("xml")
 @register_filetype("xsl")
 @register_filetype("xslt")
-class XmlHeaderProcessor(HeaderProcessor):
-    """Processor for files with HTML/XML-style block comments (<!-- ... -->).
+class XmlHeaderProcessor(XmlPositionalMixin, HeaderProcessor):
+    """Header processor for XML/HTML-like formats (uses XmlPositionalMixin).
+
+    Respects XML declaration and DOCTYPE placement. Text insertion hooks may
+    be used when declarations and content share a line; otherwise falls back
+    to line-based insertion. This class remains policy-aware via the base
+    processor for whitespace and alignment.
 
     Supported families include HTML, Markdown (HTML comments), XML and common
     XML-derived formats, as well as component templates that accept HTML comments
@@ -48,6 +54,8 @@ class XmlHeaderProcessor(HeaderProcessor):
             block_suffix="-->",
         )
 
+    # XML/HTML processor uses a char-offset insertion strategy;
+    # line-based helper is intentionally not used.
     def get_header_insertion_index(self, file_lines: list[str]) -> int:
         """Not used: return NO_LINE_ANCHOR.
 

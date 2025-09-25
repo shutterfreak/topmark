@@ -154,14 +154,13 @@ class XmlPositionalMixin:
     def find_xml_insertion_index(self, lines: Sequence[str]) -> int:
         """Return the line index after XML declaration and DOCTYPE (if present).
 
-        This respects (in order):
-            1. BOM on first line,
-            2. optional XML declaration on the (new) first line,
-            3. optional DOCTYPE declaration on the next line.
+        Notes:
+            BOM handling is performed upstream in the reader step; this helper
+            assumes lines are already normalized. The check is purely line-based
+            and does not attempt to coalesce declaration/content that share a
+            single line (the XML processor's char-offset path covers that case).
         """
         i = 0
-        if lines and lines[0].startswith(_RE_BOM):
-            i = 1
         if i < len(lines) and self.is_xml_declaration(lines[i]):
             i += 1
         if i < len(lines) and self.is_doctype_declaration(lines[i]):
