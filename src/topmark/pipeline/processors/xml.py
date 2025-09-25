@@ -38,14 +38,13 @@ from topmark.pipeline.processors.mixins import XmlPositionalMixin
 class XmlHeaderProcessor(XmlPositionalMixin, HeaderProcessor):
     """Header processor for XML/HTML-like formats (uses XmlPositionalMixin).
 
-    Respects XML declaration and DOCTYPE placement. Text insertion hooks may
-    be used when declarations and content share a line; otherwise falls back
-    to line-based insertion. This class remains policy-aware via the base
-    processor for whitespace and alignment.
+    This processor uses the **character-offset** strategy for placement:
+    `get_header_insertion_index()` returns `NO_LINE_ANCHOR` and
+    `get_header_insertion_char_offset()` computes the insertion offset. The
+    pipeline falls back to line-based insertion only when no offset is returned.
 
-    Supported families include HTML, Markdown (HTML comments), XML and common
-    XML-derived formats, as well as component templates that accept HTML comments
-    (e.g., .vue, .svelte).
+    It still leverages the base processor for rendering, whitespace alignment,
+    and policy-aware behavior where applicable.
     """
 
     def __init__(self) -> None:

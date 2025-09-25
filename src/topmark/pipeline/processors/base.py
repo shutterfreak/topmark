@@ -16,6 +16,20 @@ parsing, and rendering header fields according to comment styles and file extens
 
 The module also supports associating processors with file types to enable flexible,
 extensible header processing in the TopMark pipeline.
+
+Placement strategies
+--------------------
+TopMark supports two complementary placement strategies:
+
+* **Line-based insertion** (default): processors return a line anchor from
+  `get_header_insertion_index()`; pipeline steps use `compute_insertion_anchor()`
+  as the façade to obtain that anchor.
+* **Character-offset insertion** (for positional formats like XML/HTML): processors
+  return `NO_LINE_ANCHOR` from `get_header_insertion_index()` and implement
+  `get_header_insertion_char_offset()` to compute a byte/character offset.
+
+The pipeline first attempts text-based insertion when a char offset is provided;
+otherwise it falls back to the line-based strategy using the computed anchor.
 """
 
 from __future__ import annotations
@@ -80,6 +94,13 @@ class HeaderProcessor:
         ``line_suffix``, ``block_prefix``, ``block_suffix``) and may override any of
         the hooks documented below to support format‑specific behavior (e.g., XML
         prolog placement or Markdown fences).
+
+    Placement strategies:
+        - **Line-based** (default): override `get_header_insertion_index()` if needed.
+          Pipeline steps call `compute_insertion_anchor()` as a stable façade.
+        - **Character-offset** (XML/HTML-like): return `NO_LINE_ANCHOR` from
+          `get_header_insertion_index()` and implement
+          `get_header_insertion_char_offset()`; the pipeline will prefer this path.
 
     Public API note:
         In the stable public surface, consider typing against a minimal protocol
