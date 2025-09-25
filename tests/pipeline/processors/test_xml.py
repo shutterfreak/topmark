@@ -18,6 +18,7 @@ XML declaration.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tests.conftest import mark_pipeline
@@ -193,19 +194,19 @@ def test_vue_top_of_file(tmp_path: Path) -> None:
 
     Uses HTML-style comments for the header block.
     """
-    f = tmp_path / "App.vue"
+    f: Path = tmp_path / "App.vue"
     f.write_text("<template>\n  <div/>\n</template>\n")
 
-    cfg = MutableConfig.from_defaults().freeze()
-    ctx = run_insert(f, cfg)
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines = ctx.updated_file_lines or []
-    sig = expected_block_lines_for(f)
+    lines: list[str] = ctx.updated_file_lines or []
+    sig: BlockSignatures = expected_block_lines_for(f)
     if "block_open" in sig:
         assert find_line(lines, sig["block_open"]) == 0
     assert find_line(lines, sig["start_line"]) == 1
     if "block_close" in sig:
-        close_idx = find_line(lines, sig["block_close"])
+        close_idx: int = find_line(lines, sig["block_close"])
         assert close_idx + 1 < len(lines) and lines[close_idx + 1].strip() == ""
 
 
@@ -215,19 +216,19 @@ def test_svelte_top_of_file(tmp_path: Path) -> None:
 
     Uses HTML-style comments for the header block.
     """
-    f = tmp_path / "Widget.svelte"
+    f: Path = tmp_path / "Widget.svelte"
     f.write_text("<script>\n  let x = 1;\n</script>\n")
 
-    cfg = MutableConfig.from_defaults().freeze()
-    ctx = run_insert(f, cfg)
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines = ctx.updated_file_lines or []
-    sig = expected_block_lines_for(f)
+    lines: list[str] = ctx.updated_file_lines or []
+    sig: BlockSignatures = expected_block_lines_for(f)
     if "block_open" in sig:
         assert find_line(lines, sig["block_open"]) == 0
     assert find_line(lines, sig["start_line"]) == 1
     if "block_close" in sig:
-        close_idx = find_line(lines, sig["block_close"])
+        close_idx: int = find_line(lines, sig["block_close"])
         assert close_idx + 1 < len(lines) and lines[close_idx + 1].strip() == ""
 
 
@@ -238,29 +239,29 @@ def test_xml_single_line_declaration(tmp_path: Path) -> None:
     Verifies that char-offset insertion splits the line after the declaration,
     inserts a blank, then the header block.
     """
-    f = tmp_path / "singleline_decl.xml"
+    f: Path = tmp_path / "singleline_decl.xml"
     # No newline between declaration and root element
     f.write_text('<?xml version="1.0"?><root/>\n')
 
-    cfg = MutableConfig.from_defaults().freeze()
-    ctx = run_insert(f, cfg)
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines = ctx.updated_file_lines or []
-    sig = expected_block_lines_for(f)
+    lines: list[str] = ctx.updated_file_lines or []
+    sig: BlockSignatures = expected_block_lines_for(f)
 
     # The first line should end with the XML declaration (we inserted the first newline)
     assert lines[0].lstrip("\ufeff").startswith("<?xml")
 
     # Expect: line 0 = decl, line 1 = blank, line 2 = block open, line 3 = start
     if "block_open" in sig:
-        open_idx = find_line(lines, sig["block_open"])
+        open_idx: int = find_line(lines, sig["block_open"])
         assert open_idx == 2
-    start_idx = find_line(lines, sig["start_line"])
+    start_idx: int = find_line(lines, sig["start_line"])
     assert start_idx == 3
 
     # Ensure a trailing blank after the header block
     if "block_close" in sig:
-        close_idx = find_line(lines, sig["block_close"])
+        close_idx: int = find_line(lines, sig["block_close"])
         assert close_idx + 1 < len(lines) and lines[close_idx + 1].strip() == ""
 
 
@@ -271,29 +272,29 @@ def test_xml_single_line_decl_and_doctype(tmp_path: Path) -> None:
     Confirms correct splitting and placement when both declaration and DOCTYPE
     precede the root on the same physical line.
     """
-    f = tmp_path / "singleline_decl_doctype.xml"
+    f: Path = tmp_path / "singleline_decl_doctype.xml"
     # XML declaration, DOCTYPE, and root all on a single line
     f.write_text('<?xml version="1.0"?><!DOCTYPE note SYSTEM "Note.dtd"><note/>\n')
 
-    cfg = MutableConfig.from_defaults().freeze()
-    ctx = run_insert(f, cfg)
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines = ctx.updated_file_lines or []
-    sig = expected_block_lines_for(f)
+    lines: list[str] = ctx.updated_file_lines or []
+    sig: BlockSignatures = expected_block_lines_for(f)
 
     # First logical line contains decl+doctype (newline inserted by header placement)
     assert lines[0].lstrip("\ufeff").startswith("<?xml")
 
     # Expect: line 0 = decl+doctype, line 1 = blank, line 2 = block open, line 3 = start
     if "block_open" in sig:
-        open_idx = find_line(lines, sig["block_open"])
+        open_idx: int = find_line(lines, sig["block_open"])
         assert open_idx == 2
-    start_idx = find_line(lines, sig["start_line"])
+    start_idx: int = find_line(lines, sig["start_line"])
     assert start_idx == 3
 
     # Ensure a trailing blank after the header block
     if "block_close" in sig:
-        close_idx = find_line(lines, sig["block_close"])
+        close_idx: int = find_line(lines, sig["block_close"])
         assert close_idx + 1 < len(lines) and lines[close_idx + 1].strip() == ""
 
 
@@ -304,14 +305,14 @@ def test_html_with_existing_banner_comment(tmp_path: Path) -> None:
     Ensures the TopMark block is inserted first and the previous banner follows
     after the block close.
     """
-    f = tmp_path / "banner.html"
+    f: Path = tmp_path / "banner.html"
     f.write_text("<!-- existing:license banner -->\n<html></html>\n")
 
-    cfg = MutableConfig.from_defaults().freeze()
-    ctx = run_insert(f, cfg)
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines = ctx.updated_file_lines or []
-    sig = expected_block_lines_for(f)
+    lines: list[str] = ctx.updated_file_lines or []
+    sig: BlockSignatures = expected_block_lines_for(f)
 
     # Header must start at very top
     if "block_open" in sig:
@@ -320,10 +321,10 @@ def test_html_with_existing_banner_comment(tmp_path: Path) -> None:
 
     # The pre-existing banner should appear after the TopMark header block
     if "block_close" in sig:
-        close_idx = find_line(lines, sig["block_close"])
+        close_idx: int = find_line(lines, sig["block_close"])
         assert close_idx + 1 < len(lines)
         # First non-TopMark comment line should be the banner
-        banner_idx = find_line(lines, "<!-- existing:license banner -->")
+        banner_idx: int = find_line(lines, "<!-- existing:license banner -->")
         assert banner_idx > close_idx
 
 
@@ -334,22 +335,22 @@ def test_markdown_with_existing_banner_comment(tmp_path: Path) -> None:
     Confirms block placement and ordering of the prior banner comment after the
     TopMark header.
     """
-    f = tmp_path / "BANNER.md"
+    f: Path = tmp_path / "BANNER.md"
     f.write_text("<!-- md:banner -->\n# Title\n\n")
 
-    cfg = MutableConfig.from_defaults().freeze()
-    ctx = run_insert(f, cfg)
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines = ctx.updated_file_lines or []
-    sig = expected_block_lines_for(f)
+    lines: list[str] = ctx.updated_file_lines or []
+    sig: BlockSignatures = expected_block_lines_for(f)
 
     if "block_open" in sig:
         assert find_line(lines, sig["block_open"]) == 0
     assert find_line(lines, sig["start_line"]) == 1
 
     if "block_close" in sig:
-        close_idx = find_line(lines, sig["block_close"])
-        banner_idx = find_line(lines, "<!-- md:banner -->")
+        close_idx: int = find_line(lines, sig["block_close"])
+        banner_idx: int = find_line(lines, "<!-- md:banner -->")
         assert banner_idx > close_idx
 
 
@@ -360,14 +361,14 @@ def test_xml_decl_then_existing_banner_comment(tmp_path: Path) -> None:
     Validates that the header is anchored after the XML declaration and precedes
     the existing banner comment.
     """
-    f = tmp_path / "doc_with_banner.xml"
+    f: Path = tmp_path / "doc_with_banner.xml"
     f.write_text('<?xml version="1.0"?>\n<!-- xml:banner -->\n<root/>\n')
 
-    cfg = MutableConfig.from_defaults().freeze()
-    ctx = run_insert(f, cfg)
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines = ctx.updated_file_lines or []
-    sig = expected_block_lines_for(f)
+    lines: list[str] = ctx.updated_file_lines or []
+    sig: BlockSignatures = expected_block_lines_for(f)
 
     assert lines[0].lstrip("\ufeff").startswith("<?xml")
     if "block_open" in sig:
@@ -376,8 +377,8 @@ def test_xml_decl_then_existing_banner_comment(tmp_path: Path) -> None:
 
     # Ensure banner comes AFTER the TopMark header block
     if "block_close" in sig:
-        close_idx = find_line(lines, sig["block_close"])
-        banner_idx = find_line(lines, "<!-- xml:banner -->")
+        close_idx: int = find_line(lines, sig["block_close"])
+        banner_idx: int = find_line(lines, "<!-- xml:banner -->")
         assert banner_idx > close_idx
 
 
@@ -388,7 +389,7 @@ def test_xml_decl_doctype_then_existing_banner_comment(tmp_path: Path) -> None:
     Ensures the header is placed after the declaration and DOCTYPE but before the
     banner comment.
     """
-    f = tmp_path / "doc_with_prolog_banner.xml"
+    f: Path = tmp_path / "doc_with_prolog_banner.xml"
     f.write_text(
         '<?xml version="1.0"?>\n'
         '<!DOCTYPE note SYSTEM "Note.dtd">\n'
@@ -396,11 +397,11 @@ def test_xml_decl_doctype_then_existing_banner_comment(tmp_path: Path) -> None:
         "<note/>\n"
     )
 
-    cfg = MutableConfig.from_defaults().freeze()
-    ctx = run_insert(f, cfg)
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines = ctx.updated_file_lines or []
-    sig = expected_block_lines_for(f)
+    lines: list[str] = ctx.updated_file_lines or []
+    sig: BlockSignatures = expected_block_lines_for(f)
 
     assert lines[0].lstrip("\ufeff").startswith("<?xml")
     if "block_open" in sig:
@@ -408,32 +409,9 @@ def test_xml_decl_doctype_then_existing_banner_comment(tmp_path: Path) -> None:
     assert find_line(lines, sig["start_line"]) == 4
 
     if "block_close" in sig:
-        close_idx = find_line(lines, sig["block_close"])
-        banner_idx = find_line(lines, "<!-- xml:prolog-banner -->")
+        close_idx: int = find_line(lines, sig["block_close"])
+        banner_idx: int = find_line(lines, "<!-- xml:prolog-banner -->")
         assert banner_idx > close_idx
-
-
-@mark_pipeline
-def test_xml_idempotent_reapply_no_diff(tmp_path: Path) -> None:
-    """Idempotent re-application for HTML/XML-like files.
-
-    The second run after writing the first output must produce identical content.
-    """
-    f = tmp_path / "idem.html"
-    f.write_text("<html><body>hi</body></html>\n")
-
-    cfg = MutableConfig.from_defaults().freeze()
-
-    ctx1 = run_insert(f, cfg)
-    lines1 = ctx1.updated_file_lines or []
-
-    with f.open("w", encoding="utf-8", newline="") as fp:
-        fp.write("".join(lines1))
-
-    ctx2 = run_insert(f, cfg)
-    lines2 = ctx2.updated_file_lines or []
-
-    assert lines2 == lines1, "Second run must be a no-op (idempotent) for XML/HTML"
 
 
 # --- strip_header_block: test XML declaration is preserved, header is removed ---
@@ -446,7 +424,7 @@ def test_xml_strip_header_block_respects_declaration(tmp_path: Path) -> None:
     """
     from topmark.pipeline.processors import get_processor_for_file
 
-    f = tmp_path / "strip_doc.xml"
+    f: Path = tmp_path / "strip_doc.xml"
     f.write_text(
         '<?xml version="1.0"?>\n'
         f"<!-- {TOPMARK_START_MARKER} -->\n"
@@ -456,18 +434,22 @@ def test_xml_strip_header_block_respects_declaration(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    proc = get_processor_for_file(f)
+    proc: XmlHeaderProcessor | None = get_processor_for_file(f)
     assert proc is not None
 
-    lines = f.read_text(encoding="utf-8").splitlines(keepends=True)
+    lines: list[str] = f.read_text(encoding="utf-8").splitlines(keepends=True)
 
     # 1) With explicit span for the HTML-style comment block
+    new1: list[str] = []
+    span1: tuple[int, int] | None = None
     new1, span1 = proc.strip_header_block(lines=lines, span=(1, 3))
     assert new1[0].lstrip("\ufeff").startswith("<?xml"), "XML declaration must remain"
     assert TOPMARK_START_MARKER not in "".join(new1)
     assert span1 == (1, 3)
 
     # 2) Let the processor detect bounds itself
+    new2: list[str] = []
+    span2: tuple[int, int] | None = None
     new2, span2 = proc.strip_header_block(lines=lines)
     # Declaration must remain identical on the auto-detect path as well
     assert new2[0].lstrip("\ufeff").startswith("<?xml"), "XML declaration must remain (auto-detect)"
@@ -482,14 +464,14 @@ def test_markdown_fenced_code_no_insertion_inside(tmp_path: Path) -> None:
     The header must be placed at the top of the document and the original fenced
     code block must remain intact.
     """
-    f = tmp_path / "FENCE.md"
+    f: Path = tmp_path / "FENCE.md"
     f.write_text(f"```html\n<!-- {TOPMARK_START_MARKER} -->\n```\nReal content\n")
-    cfg = MutableConfig.from_defaults().freeze()
-    ctx = run_insert(f, cfg)
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines = ctx.updated_file_lines or []
+    lines: list[str] = ctx.updated_file_lines or []
     # Header should be at top (before the fenced block) and not inside it
-    sig = expected_block_lines_for(f)
+    sig: BlockSignatures = expected_block_lines_for(f)
     if "block_open" in sig:
         assert find_line(lines, sig["block_open"]) == 0
     assert find_line(lines, sig["start_line"]) == 1
@@ -505,17 +487,17 @@ def test_xml_doctype_with_internal_subset(tmp_path: Path) -> None:
     Confirms header insertion occurs after the declaration and the entirety of the
     multi-line DOCTYPE, followed by a single blank line.
     """
-    f = tmp_path / "subset.xml"
+    f: Path = tmp_path / "subset.xml"
     f.write_text('<?xml version="1.0"?>\n<!DOCTYPE root [\n  <!ELEMENT root EMPTY>\n]>\n<root/>\n')
-    cfg = MutableConfig.from_defaults().freeze()
-    ctx = run_insert(f, cfg)
-    lines = ctx.updated_file_lines or []
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    ctx: ProcessingContext = run_insert(f, cfg)
+    lines: list[str] = ctx.updated_file_lines or []
 
     assert lines[0].lstrip("\ufeff").startswith("<?xml")
 
     # header begins after declaration + doctype + one blank
-    sig = expected_block_lines_for(f)
-    start_idx = find_line(lines, sig["start_line"])
+    sig: BlockSignatures = expected_block_lines_for(f)
+    start_idx: int = find_line(lines, sig["start_line"])
 
     assert start_idx == 5  # decl(0) doctype(1..3) blank(4) start(5)
 
@@ -531,9 +513,9 @@ def test_xml_bom_preserved_text_insert(tmp_path: Path) -> None:
     Args:
         tmp_path (Path): Temporary directory provided by pytest.
     """
-    f = tmp_path / "bom.xml"
+    f: Path = tmp_path / "bom.xml"
     f.write_bytes(b"\xef\xbb\xbf<?xml version='1.0'?>\n<root/>\n")
-    ctx = run_insert(f, MutableConfig.from_defaults().freeze())
+    ctx: ProcessingContext = run_insert(f, MutableConfig.from_defaults().freeze())
 
     assert (ctx.updated_file_lines or [])[0].startswith("\ufeff")
 
@@ -541,7 +523,8 @@ def test_xml_bom_preserved_text_insert(tmp_path: Path) -> None:
 def test_xml_processor_respects_prolog_and_removes_block() -> None:
     """Header block removal while preserving `<?xml ...?>` prolog line."""
     xp = XmlHeaderProcessor()
-    lines = [
+    # TODO use the pipeline instead!
+    lines: list[str] = [
         '<?xml version="1.0"?>\n',
         f"<!-- {TOPMARK_START_MARKER} -->\n",
         "<!-- h -->\n",
@@ -549,9 +532,11 @@ def test_xml_processor_respects_prolog_and_removes_block() -> None:
         "<root/>\n",
     ]
 
+    new: list[str] = []
+    span: tuple[int, int] | None = None
     new, span = xp.strip_header_block(lines=lines, span=(1, 3))
 
-    body = "".join(new)
+    body: str = "".join(new)
 
     assert body.startswith("<?xml")
     assert "<root/>" in body

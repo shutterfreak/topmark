@@ -766,7 +766,17 @@ class HeaderProcessor:
             tuple[int | None, int | None]: ``(start_index, end_index)`` (inclusive) when
                 a valid header is found, or ``(None, None)`` otherwise.
         """
-        anchor_idx: int = self.get_header_insertion_index(lines) or 0
+        # Derive the expected anchor. Prefer the line-based façade; if a processor
+        # uses a char-offset strategy (returns NO_LINE_ANCHOR), translate the
+        # character offset into a line index for proximity validation.
+        anchor_idx: int = self.compute_insertion_anchor(lines)
+        if anchor_idx == NO_LINE_ANCHOR:
+            text: str = "".join(lines)
+            char_off: int | None = self.get_header_insertion_char_offset(text)
+            if char_off is not None:
+                anchor_idx = text[:char_off].count("\n")
+            else:
+                anchor_idx = 0
 
         if self.block_prefix and self.block_suffix:
             candidates: list[tuple[int, int]] = self._collect_bounds_block_comments(lines)
@@ -971,7 +981,7 @@ class HeaderProcessor:
                 logger.debug("Header start marker found at line %d", i + 1)
                 break
 
-        index = 0 if start_index is None else start_index + 1
+        index: int = 0 if start_index is None else start_index + 1
         for j in range(index, len(lines)):
             if self.line_has_directive(lines[j], TOPMARK_END_MARKER):
                 end_index = j

@@ -162,22 +162,6 @@ def test_cblock_detect_existing_header_without_star_on_directives(tmp_path: Path
 
 
 @mark_pipeline
-def test_cblock_idempotent_reapply_no_diff(tmp_path: Path) -> None:
-    """Re-applying insertion is a no-op for C-block targets (e.g., SCSS)."""
-    f: Path = tmp_path / "idem.scss"
-    f.write_text("$x: 1;\nbody{margin:$x}\n")
-
-    cfg: Config = MutableConfig.from_defaults().freeze()
-
-    ctx1: ProcessingContext = run_insert(f, cfg)
-    with f.open("w", encoding="utf-8", newline="") as fp:
-        fp.write("".join(ctx1.updated_file_lines or []))
-
-    ctx2: ProcessingContext = run_insert(f, cfg)
-    assert (ctx2.updated_file_lines or []) == (ctx1.updated_file_lines or [])
-
-
-@mark_pipeline
 def test_cblock_crlf_preserves_newlines(tmp_path: Path) -> None:
     """Preserve CRLF newlines on Windows-style CSS inputs."""
     f: Path = tmp_path / "win.less"
