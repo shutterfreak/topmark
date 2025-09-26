@@ -85,6 +85,7 @@ nav:
   - CI/CD:
       - CI workflow: ci/ci-workflow.md
       - Release workflow: ci/release-workflow.md
+      - Dev validation: ci/dev-validation.md
   - Contributing: contributing.md
   - API:
       - "Public API": api/public.md

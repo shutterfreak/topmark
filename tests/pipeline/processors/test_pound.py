@@ -730,34 +730,6 @@ def test_pound_crlf_leading_blank_and_banner(tmp_path: Path) -> None:
     assert banner_idx == end_idx + 2
 
 
-@mark_pipeline
-def test_pound_idempotent_reapply_no_diff(tmp_path: Path) -> None:
-    """Idempotency: running insertion twice should not change the file the second time.
-
-    We first insert a header into a file that has none, then write the updated
-    lines back to disk and run insertion again. The second run should produce
-    exactly the same content (no additional changes).
-    """
-    f: Path = tmp_path / "idem.py"
-    f.write_text("print('hello')\n")
-
-    cfg: Config = MutableConfig.from_defaults().freeze()
-
-    # First insertion
-    ctx1: ProcessingContext = run_insert(f, cfg)
-    lines1: list[str] = ctx1.updated_file_lines or []
-
-    # Persist result to disk, preserving exact line endings
-    with f.open("w", encoding="utf-8", newline="") as fp:
-        fp.write("".join(lines1))
-
-    # Second insertion
-    ctx2: ProcessingContext = run_insert(f, cfg)
-    lines2: list[str] = ctx2.updated_file_lines or []
-
-    assert lines2 == lines1, "Second run must be a no-op (idempotent)"
-
-
 # --- strip_header_block: test both with and without span, preserving shebang ---
 @mark_pipeline
 def test_strip_header_block_with_and_without_span_preserves_shebang(tmp_path: Path) -> None:

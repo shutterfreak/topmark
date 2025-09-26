@@ -24,6 +24,7 @@ from topmark.filetypes.registry import register_filetype
 from topmark.pipeline.processors.base import (
     HeaderProcessor,
 )
+from topmark.pipeline.processors.mixins import LineCommentMixin
 
 if TYPE_CHECKING:
     from topmark.filetypes.policy import FileTypeHeaderPolicy
@@ -46,17 +47,21 @@ logger: TopmarkLogger = get_logger(__name__)
 @register_filetype("shell")
 @register_filetype("toml")
 @register_filetype("yaml")
-class PoundHeaderProcessor(HeaderProcessor):
-    """Processor for files with pound-prefixed comments.
+class PoundHeaderProcessor(LineCommentMixin, HeaderProcessor):
+    """Header processor for line-comment `#` files (uses LineCommentMixin).
 
     This processor handles files that use `#` for comments, such as Python scripts,
     shell scripts, and Makefiles. It processes the header using the pipeline dispatcher.
+
+    Respects FileTypeHeaderPolicy for shebang and encoding line handling.
     """
 
+    # LineCommentMixin:
+    line_prefix = "#"
+
     def __init__(self) -> None:
-        super().__init__(
-            line_prefix="#",
-        )
+        # Rely on the class attribute for LineCommentMixin; just run base init.
+        super().__init__()
 
     def prepare_header_for_insertion(
         self,

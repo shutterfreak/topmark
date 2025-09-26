@@ -33,6 +33,7 @@ from __future__ import annotations
 from topmark.file_resolver import detect_newline
 from topmark.filetypes.registry import register_filetype
 from topmark.pipeline.processors.base import HeaderProcessor
+from topmark.pipeline.processors.mixins import BlockCommentMixin
 
 
 # Attach all relevant file types here; their concrete definitions live in filetypes/instances.py
@@ -42,22 +43,23 @@ from topmark.pipeline.processors.base import HeaderProcessor
 @register_filetype("solidity")
 @register_filetype("sql")
 @register_filetype("stylus")
-class CBlockHeaderProcessor(HeaderProcessor):
-    """Processor for C-style block comment headers."""
+class CBlockHeaderProcessor(BlockCommentMixin, HeaderProcessor):
+    """Processor for C-style block comment headers (uses BlockCommentMixin)."""
+
+    # We want:
+    #   block wrapper:   /*  ...  */
+    #   inner lines:     * <content>
+    #
+    # By using line_prefix="*" and line_indent="" we get "* content".
+    block_prefix = "/*"
+    block_suffix = "*/"
+    line_prefix = "*"
+    line_suffix = ""
+    line_indent = "  "  # produce "* topmark:start" (single space comes from wrapper)
 
     def __init__(self) -> None:
-        # We want:
-        #   block wrapper:   /*  ...  */
-        #   inner lines:     * <content>
-        #
-        # By using line_prefix="*" and line_indent="" we get "* content".
-        super().__init__(
-            block_prefix="/*",
-            block_suffix="*/",
-            line_prefix="*",
-            line_suffix="",
-            line_indent="  ",  # produce "* topmark:start" (single space comes from wrapper)
-        )
+        # Defer to base initializer; class attributes define affixes/indent.
+        super().__init__()
 
     # Broaden matching so we also recognize headers whose inner lines were written
     # WITHOUT the leading "*" (older tools / formatters sometimes do that).

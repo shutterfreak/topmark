@@ -94,6 +94,26 @@ Run the test suite:
 make test
 ```
 
+### Developer validation (optional)
+
+Enable lightweight registry and strategy checks while developing or debugging:
+
+```bash
+TOPMARK_VALIDATE=1 make test
+# or
+TOPMARK_VALIDATE=1 pytest -q
+```
+
+What this checks (dev-only; zero-cost in normal runs):
+
+- Every registered header **processor** maps to a known **FileType**.
+- XML/HTML-like processors use the **character-offset** strategy: they must
+  return `NO_LINE_ANCHOR` from `get_header_insertion_index()` and compute an
+  offset in `get_header_insertion_char_offset()`.
+
+These validations help catch subtle registry or placement regressions early
+(e.g., typos in type keys, accidental line-based use in XML processors).
+
 ### Python version compatibility
 
 TopMark supports Python 3.10–3.13.

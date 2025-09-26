@@ -18,13 +18,16 @@ This step is covered by unit tests across processors (pound, slash, xml) and sup
 line-based and text-based insertion as well as replacement and the strip fast-path.
 
 The updater respects comparer outcomes and file fidelity:
-  • If `status.strip == READY`, it emits the strip image (`updated_file_lines`) and
+  * If `status.strip == READY`, it emits the strip image (`updated_file_lines`) and
     sets `write=REMOVED` (BOM reattached when present).
-  • If `status.comparison == UNCHANGED`, it **short‑circuits** and sets `write=SKIPPED`,
+  * If `status.comparison == UNCHANGED`, it **short‑circuits** and sets `write=SKIPPED`,
     preserving the original image and producing no diff.
-  • For replace/insert operations, it reattaches a leading UTF‑8 BOM when the reader
+  * For replace/insert operations, it reattaches a leading UTF‑8 BOM when the reader
     detected one, and it avoids touch‑writes by checking if the resulting image equals
     the original.
+  * **Insert (line‑based fallback)**: Use `compute_insertion_anchor`, optionally adjust
+    whitespace via `prepare_header_for_insertion`, reattach BOM if needed; set `INSERTED`
+    unless the result is identical, in which case `SKIPPED`.
 """
 
 from __future__ import annotations
@@ -191,7 +194,7 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
             logger.warning("text-based insertion failed for %s: %s", ctx.path, e)
 
         # 2) fallback: line-based
-        insert_index: int = ctx.header_processor.get_header_insertion_index(original_lines)
+        insert_index: int = ctx.header_processor.compute_insertion_anchor(original_lines)
         if insert_index == NO_LINE_ANCHOR:
             ctx.status.write = WriteStatus.FAILED
             ctx.add_error(f"No line-based insertion anchor for file: {ctx.path}")

@@ -16,12 +16,26 @@ parsing, and rendering header fields according to comment styles and file extens
 
 The module also supports associating processors with file types to enable flexible,
 extensible header processing in the TopMark pipeline.
+
+Placement strategies
+--------------------
+TopMark supports two complementary placement strategies:
+
+* **Line-based insertion** (default): processors return a line anchor from
+  `get_header_insertion_index()`; pipeline steps use `compute_insertion_anchor()`
+  as the façade to obtain that anchor.
+* **Character-offset insertion** (for positional formats like XML/HTML): processors
+  return `NO_LINE_ANCHOR` from `get_header_insertion_index()` and implement
+  `get_header_insertion_char_offset()` to compute a byte/character offset.
+
+The pipeline first attempts text-based insertion when a char offset is provided;
+otherwise it falls back to the line-based strategy using the computed anchor.
 """
 
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final, Pattern
 
 from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
@@ -37,7 +51,7 @@ logger: TopmarkLogger = get_logger(__name__)
 
 
 # Sentinel value when get_header_insertion_index() cannot find an insertion index:
-NO_LINE_ANCHOR: int = -1
+NO_LINE_ANCHOR: Final[int] = -1
 
 
 class HeaderProcessor:
@@ -81,6 +95,13 @@ class HeaderProcessor:
         the hooks documented below to support format‑specific behavior (e.g., XML
         prolog placement or Markdown fences).
 
+    Placement strategies:
+        - **Line-based** (default): override `get_header_insertion_index()` if needed.
+          Pipeline steps call `compute_insertion_anchor()` as a stable façade.
+        - **Character-offset** (XML/HTML-like): return `NO_LINE_ANCHOR` from
+          `get_header_insertion_index()` and implement
+          `get_header_insertion_char_offset()`; the pipeline will prefer this path.
+
     Public API note:
         In the stable public surface, consider typing against a minimal protocol
         rather than this concrete base if you are authoring plugins. The registry
@@ -88,13 +109,13 @@ class HeaderProcessor:
         integrations.
 
     Args:
-        block_prefix (str): The prefix string for block-style header start.
-        block_suffix (str): The suffix string for block-style header end.
-        line_prefix (str): The prefix string for each line within the header block.
-        line_suffix (str): The suffix string for each line within the header block.
-        line_indent (str): The indentation applied to *header field lines* **after**
+        block_prefix (str | None): The prefix string for block-style header start.
+        block_suffix (str | None): The suffix string for block-style header end.
+        line_prefix (str | None): The prefix string for each line within the header block.
+        line_suffix (str | None): The suffix string for each line within the header block.
+        line_indent (str | None): The indentation applied to *header field lines* **after**
             the comment prefix (e.g., spaces after `//`).
-        header_indent (str): The indentation applied *before* the comment prefix; used
+        header_indent (str | None): The indentation applied *before* the comment prefix; used
             to preserve existing leading indentation when replacing an indented
             header block inside a document (e.g., nested JSONC).
 
@@ -129,22 +150,31 @@ class HeaderProcessor:
     def __init__(
         self,
         *,
-        block_prefix: str = "",
-        block_suffix: str = "",
-        line_prefix: str = "",
-        line_suffix: str = "",
-        line_indent: str = "  ",
-        header_indent: str = "",
+        block_prefix: str | None = None,
+        block_suffix: str | None = None,
+        line_prefix: str | None = None,
+        line_suffix: str | None = None,
+        line_indent: str | None = None,
+        header_indent: str | None = None,
     ) -> None:
         self.file_type = None
 
-        self.block_prefix = block_prefix
-        self.block_suffix = block_suffix
-        self.line_prefix = line_prefix
-        self.line_suffix = line_suffix
+        if block_prefix is not None:
+            self.block_prefix = block_prefix
+        if block_suffix is not None:
+            self.block_suffix = block_suffix
+        if line_prefix is not None:
+            self.line_prefix = line_prefix
+        if line_suffix is not None:
+            self.line_suffix = line_suffix
+        if line_indent is not None:
+            self.line_indent = line_indent
+        if header_indent is not None:
+            self.header_indent = header_indent
 
-        self.line_indent = line_indent
-        self.header_indent = header_indent
+        # Cache for per-policy encoding regex to avoid recompilation
+        self._encoding_pattern: Pattern[str] | None = None
+        self._encoding_pattern_src: str | None = None
 
     def parse_fields(self, context: ProcessingContext) -> dict[str, str]:
         """Parse key-value pairs from the detected header block (outer slice).
@@ -580,6 +610,26 @@ class HeaderProcessor:
 
         return lines
 
+    def compute_insertion_anchor(self, lines: list[str]) -> int:
+        """Return a stable line-based insertion anchor for the pipeline.
+
+        This small facade exists so pipeline steps have a single, stable
+        entry point for *line-based* placement. By default, it simply
+        delegates to :py:meth:`get_header_insertion_index`.
+
+        Processors that insert by **character offset** (e.g., XML/HTML) should
+        override :py:meth:`get_header_insertion_index` to return
+        :pydata:`NO_LINE_ANCHOR`, which this method will propagate unchanged.
+
+        Args:
+            lines (list[str]): Full file content split into lines.
+
+        Returns:
+            int: A 0-based line index where a header would be inserted, or
+                :pydata:`NO_LINE_ANCHOR` when line-based anchoring is not used.
+        """
+        return self.get_header_insertion_index(lines)
+
     def get_header_insertion_index(self, file_lines: list[str]) -> int:
         """Determine where to insert the header based on file type policy.
 
@@ -614,7 +664,12 @@ class HeaderProcessor:
 
             # Optional encoding line immediately after shebang (e.g., Python)
             if policy.encoding_line_regex and len(file_lines) > index:
-                if re.search(policy.encoding_line_regex, file_lines[index]):
+                src = policy.encoding_line_regex
+                # Compile on first use or when the pattern string changes
+                if self._encoding_pattern is None or self._encoding_pattern_src != src:
+                    self._encoding_pattern = re.compile(src)
+                    self._encoding_pattern_src = src
+                if self._encoding_pattern.search(file_lines[index]):
                     index += 1
 
         # If a shebang block exists and the next line is already blank, consume exactly one
@@ -711,7 +766,17 @@ class HeaderProcessor:
             tuple[int | None, int | None]: ``(start_index, end_index)`` (inclusive) when
                 a valid header is found, or ``(None, None)`` otherwise.
         """
-        anchor_idx: int = self.get_header_insertion_index(lines) or 0
+        # Derive the expected anchor. Prefer the line-based façade; if a processor
+        # uses a char-offset strategy (returns NO_LINE_ANCHOR), translate the
+        # character offset into a line index for proximity validation.
+        anchor_idx: int = self.compute_insertion_anchor(lines)
+        if anchor_idx == NO_LINE_ANCHOR:
+            text: str = "".join(lines)
+            char_off: int | None = self.get_header_insertion_char_offset(text)
+            if char_off is not None:
+                anchor_idx = text[:char_off].count("\n")
+            else:
+                anchor_idx = 0
 
         if self.block_prefix and self.block_suffix:
             candidates: list[tuple[int, int]] = self._collect_bounds_block_comments(lines)
@@ -916,7 +981,7 @@ class HeaderProcessor:
                 logger.debug("Header start marker found at line %d", i + 1)
                 break
 
-        index = 0 if start_index is None else start_index + 1
+        index: int = 0 if start_index is None else start_index + 1
         for j in range(index, len(lines)):
             if self.line_has_directive(lines[j], TOPMARK_END_MARKER):
                 end_index = j

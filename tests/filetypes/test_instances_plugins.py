@@ -49,6 +49,6 @@ def test_plugins_are_discovered(monkeypatch: pytest.MonkeyPatch) -> None:
         lambda: SimpleNamespace(select=_select),
     )
     # clear cache
-    get_file_type_registry.cache_clear()  # type: ignore[attr-defined]
+    get_file_type_registry.cache_clear()
     reg: dict[str, FileType] = get_file_type_registry()
     assert "pluggy" in reg
