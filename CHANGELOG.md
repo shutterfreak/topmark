@@ -16,6 +16,42 @@ All notable changes to this project will be documented in this file. This projec
 [Semantic Versioning](https://semver.org/) and follows a Keep‑a‑Changelog–style structure with the
 sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
+## [0.8.1] - 2025-09-26
+
+### Highlights
+
+- **XML re-apply fix**: prevent double-wrapped `<!-- … -->` blocks by anchoring bounds via character offset for XML/HTML processors.
+
+### Added
+
+- **Developer validation (opt-in)**: set `TOPMARK_VALIDATE=1` to validate:
+  - Processor ↔ FileType registry integrity.
+  - XML-like processors use the char-offset strategy (`NO_LINE_ANCHOR` for line index).
+- **Docs**:
+  - Placement strategies (line-based vs char-offset) documented in `base.py` / `xml.py`.
+  - New page `docs/ci/dev-validation.md`; CONTRIBUTING updated.
+
+### Changed
+
+- **Processor refactor**:
+  - Introduce mixins: `LineCommentMixin`, `BlockCommentMixin`, `XmlPositionalMixin`.
+  - Add `compute_insertion_anchor()` façade and route updater through it.
+  - Tighten typing (`Final[int]` for `NO_LINE_ANCHOR`; stricter annotations) and micro-perf (cache compiled encoding regex).
+- **File types**:
+  - Instances module made lazy, plugin-aware, and type-safe; detectors split out (JSONC).
+
+### Fixed
+
+- **XML idempotency**: re-apply no longer nests comment fences.
+- **Type checking & mypy**: generator return, entrypoint discovery, and strict typing cleanups.
+
+### CI / Tooling
+
+- **New CI job**: “Dev validation” runs only tests marked `dev_validation` with `TOPMARK_VALIDATE=1`.
+- **Pre-commit**: bump `ruff-pre-commit` to `v0.13.2`.
+
+**Breaking changes**: _None._
+
 ## [0.8.0] - 2025-09-24
 
 ### Highlights
