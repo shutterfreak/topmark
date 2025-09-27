@@ -87,7 +87,20 @@ def read(ctx: ProcessingContext) -> ProcessingContext:
     assert ctx.header_processor, "context.header_processor not defined"
     assert ctx.file_type, "context.file_type not defined"
 
-    if ctx.path.stat().st_size == 0:
+    # Guard against races: the file may disappear between bootstrap/resolve and read().
+    try:
+        st_size = ctx.path.stat().st_size
+    except FileNotFoundError:
+        ctx.status.file = FileStatus.SKIPPED_NOT_FOUND
+        logger.warning("%s: File not found: %s", ctx.status.file.value, ctx.path)
+        return ctx
+    except PermissionError as e:
+        ctx.status.file = FileStatus.UNREADABLE
+        logger.error("Permission denied reading file %s: %s", ctx.path, e)
+        ctx.add_error(f"Permission denied reading file: {e}")
+        return ctx
+
+    if st_size == 0:
         logger.warning("Found empty file: %s", ctx.path)
         ctx.add_warning("File is empty.")
         ctx.status.file = FileStatus.EMPTY_FILE
