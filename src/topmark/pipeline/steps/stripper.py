@@ -24,6 +24,25 @@ from topmark.pipeline.context import HeaderStatus, ProcessingContext, StripStatu
 logger: TopmarkLogger = get_logger(__name__)
 
 
+def _reapply_bom_after_strip(lines: list[str], ctx: ProcessingContext) -> list[str]:
+    """Re-attach a leading UTF-8 BOM to the first line when the original file had one.
+
+    Unlike the updater's BOM policy (which avoids re-adding a BOM in the presence of a shebang),
+    the goal here is round-trip fidelity: if the reader observed a leading BOM originally
+    (``ctx.leading_bom is True``), then the stripped image should preserve it as well.
+    """
+    if not lines:
+        return lines
+    if not getattr(ctx, "leading_bom", False):
+        return lines
+    first: str = lines[0]
+    if not first.startswith("\ufeff"):
+        out: list[str] = lines[:]
+        out[0] = "\ufeff" + first
+        return out
+    return lines
+
+
 def strip(ctx: ProcessingContext) -> ProcessingContext:
     """Remove the TopMark header using the processor and known span if available.
 
@@ -67,7 +86,7 @@ def strip(ctx: ProcessingContext) -> ProcessingContext:
         return ctx
 
     logger.info("Updated file lines: %s", new_lines[:15])
-    ctx.updated_file_lines = new_lines
+    ctx.updated_file_lines = _reapply_bom_after_strip(new_lines, ctx)
     # A header was present and removed
     ctx.status.strip = StripStatus.READY
     logger.debug(f"stripper: removed header lines at span {removed[0]}..{removed[1]}.")
