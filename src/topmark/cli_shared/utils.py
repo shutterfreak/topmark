@@ -289,13 +289,19 @@ def write_updates(
         - The function writes `updated_file_lines` as a single string with the default
           UTF‑8 encoding.
         - Any exceptions per file are logged and counted as failures.
+        - Files are written with `newline=""` to avoid platform newline translation.
     """
     written: int = 0
     failed: int = 0
     for r in results:
         try:
             if should_write(r) and r.updated_file_lines is not None:
-                Path(str(r.path)).write_text("".join(r.updated_file_lines), encoding="utf-8")
+                # Write exactly what the pipeline produced:
+                #  - `updated_file_lines` are keepends=True lines with the desired newline style
+                #  - We open with newline="" to disable any \n translation on output
+                data: str = "".join(r.updated_file_lines)
+                with Path(r.path).open("w", encoding="utf-8", newline="") as fh:
+                    fh.write(data)
                 written += 1
         except Exception as e:
             logger.error("Failed to write %s: %s", r.path, e)
