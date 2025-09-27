@@ -39,6 +39,27 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
+def _newline_histogram(lines: list[str]) -> dict[str, int]:
+    hist: dict[str, int] = {"\n": 0, "\r\n": 0, "\r": 0}
+    for ln in lines[:-1]:
+        if ln.endswith("\r\n"):
+            hist["\r\n"] += 1
+        elif ln.endswith("\n"):
+            hist["\n"] += 1
+        elif ln.endswith("\r"):
+            hist["\r"] += 1
+    # Last line may or may not end with a newline
+    if lines:
+        last: str = lines[-1]
+        if last.endswith("\r\n"):
+            hist["\r\n"] += 1
+        elif last.endswith("\n"):
+            hist["\n"] += 1
+        elif last.endswith("\r"):
+            hist["\r"] += 1
+    return hist
+
+
 def read(ctx: ProcessingContext) -> ProcessingContext:
     """Loads file lines and detects newline style.
 
@@ -96,7 +117,7 @@ def read(ctx: ProcessingContext) -> ProcessingContext:
 
                 # Attempt UTF-8 incremental decode; treat failures as non-text
                 try:
-                    _ = dec.decode(chunk, final=False)
+                    _: str = dec.decode(chunk, final=False)
                 except UnicodeDecodeError:
                     ctx.status.file = FileStatus.SKIPPED_NOT_TEXT_FILE
                     logger.warning("%s: Not UTF-8 text: %s", ctx.status.file.value, ctx.path)
@@ -194,6 +215,55 @@ def read(ctx: ProcessingContext) -> ProcessingContext:
 
         # Preserve original line endings; each element contains its own terminator
         ctx.file_lines = lines
+
+        # Check if multiple line endings occur in the file
+        hist: dict[str, int] = _newline_histogram(lines)
+        ctx.newline_hist = {k: v for k, v in hist.items() if v > 0}
+        total: int = sum(hist.values())
+        if total > 0:
+            dom_nl: str
+            dom_cnt: int
+            dom_nl, dom_cnt = max(hist.items(), key=lambda kv: kv[1])
+            ctx.dominant_newline = dom_nl if dom_cnt > 0 else None
+            ctx.dominance_ratio = (dom_cnt / total) if dom_cnt else 0.0
+        else:
+            ctx.dominant_newline = None
+            ctx.dominance_ratio = None
+
+        ctx.mixed_newlines = sum(1 for v in hist.values() if v > 0) >= 2
+
+        logger.debug(
+            "sniff nl=%r, hist=%s, dominant=%r, mixed=%s",
+            ctx.newline_style,
+            ctx.newline_hist,
+            ctx.dominant_newline,
+            ctx.mixed_newlines,
+        )
+
+        # Override the tentative sniff with the histogram winner whenever you have any line endings:
+        # NOTE: will be updated once we implement fixing / updating line endings
+        total = sum(hist.values())
+        if total > 0 and ctx.dominant_newline:
+            ctx.newline_style = ctx.dominant_newline
+
+        # Exit if mixed line endings found in file
+        if ctx.mixed_newlines:
+            ctx.status.file = FileStatus.SKIPPED_MIXED_LINE_ENDINGS
+            lf: int = ctx.newline_hist.get("\n", 0)
+            crlf: int = ctx.newline_hist.get("\r\n", 0)
+            cr: int = ctx.newline_hist.get("\r", 0)
+            ctx.add_error(
+                f"Mixed line endings detected (LF={lf}, CRLF={crlf}, CR={cr}). "
+                "Strict policy refuses to process mixed files."
+            )
+            logger.warning(
+                "Strict policy: mixed line endings (LF=%d, CRLF=%d, CR=%d) – skipping: %s",
+                lf,
+                crlf,
+                cr,
+                ctx.path,
+            )
+            return ctx
 
         ctx.status.file = FileStatus.RESOLVED
         logger.debug(

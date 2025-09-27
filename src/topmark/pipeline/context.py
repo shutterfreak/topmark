@@ -68,6 +68,7 @@ class FileStatus(BaseStatus):
     SKIPPED_FILE_ERROR = "skipped (error reading file)"
     SKIPPED_NOT_TEXT_FILE = "skipped (not a text file)"
     SKIPPED_NO_LINE_END = "skipped (no line end)"
+    SKIPPED_MIXED_LINE_ENDINGS = "skipped (mixed line endings)"
     SKIPPED_POLICY_BOM_BEFORE_SHEBANG = "skipped (policy: BOM before shebang)"
     UNREADABLE = "unreadable"
     SKIPPED_UNSUPPORTED = "skipped (unsupported file type)"
@@ -90,6 +91,7 @@ class FileStatus(BaseStatus):
                 FileStatus.SKIPPED_NOT_FOUND: chalk.red,
                 FileStatus.SKIPPED_FILE_ERROR: chalk.red_bright,
                 FileStatus.SKIPPED_NOT_TEXT_FILE: chalk.red,
+                FileStatus.SKIPPED_MIXED_LINE_ENDINGS: chalk.red,
                 FileStatus.SKIPPED_NO_LINE_END: chalk.red,
                 FileStatus.SKIPPED_POLICY_BOM_BEFORE_SHEBANG: chalk.red,
                 FileStatus.UNREADABLE: chalk.red_bright,
@@ -340,7 +342,11 @@ class ProcessingContext:
             ("\ufeff"). The reader sets this and strips the BOM from memory; the
             updater re-attaches it to the final output.
         has_shebang (bool): True if the first line starts with '#!' (post-BOM normalization).
-        newline_style (str): The newline stile in the file (``LF``, ``CR``, ``CRLF``).
+        newline_hist (dict[str, int]): histogram of newline styles found in the file
+        dominant_newline (str | None): Contains the dominant newline style
+        dominance_ratio (float | None): Dominance ratio of the dominant newline style
+        mixed_newlines (bool | None): True if mixed newline styles found in file
+        newline_style (str): The newline style in the file (``LF``, ``CR``, ``CRLF``).
         ends_with_newline (bool | None): True if the file ends with a newline.
         existing_header_range (tuple[int, int] | None): The (start, end) line numbers
             of the existing header.
@@ -368,6 +374,12 @@ class ProcessingContext:
     file_lines: list[str] | None = None  # Original file content as a list of lines
     leading_bom: bool = False  # True if original file began with a UTF-8 BOM
     has_shebang: bool = False  # True if the first line starts with '#!' (post-BOM normalization)
+
+    newline_hist: dict[str, int] = field(default_factory=lambda: {})
+    dominant_newline: str | None = None
+    dominance_ratio: float | None = None
+    mixed_newlines: bool | None = None
+
     newline_style: str = "\n"  # Newline style (default = "\n")
     ends_with_newline: bool | None = None  # True if file ends with a newline sequence
 
