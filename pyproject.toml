@@ -10,7 +10,7 @@
 
 [project]
 name = "topmark"
-version = "0.8.1" # PEP 440: "X.Y.Z.devN", "X.Y.ZrcN", or "X.Y.Z"
+version = "0.8.2.dev0" # PEP 440: "X.Y.Z.devN", "X.Y.ZrcN", or "X.Y.Z"
 description = "A Python CLI to inspect, validate, and manage license and copyright headers."
 authors = [{ name = "Olivier Biot", email = "olivier.biot@gmail.com" }]
 license = "MIT"
@@ -98,6 +98,8 @@ test = [
   "pytest>=8.0",
   # Parallel test execution:
   "pytest-xdist",
+  # property-based testing library
+  "hypothesis>=6.0",
 ]
 typing = [
   # Type stubs for the toml module:
@@ -238,10 +240,12 @@ markers = [
   "integration: environment-dependent integration checks (e.g., shell completion)",
   "pipeline: tests that exercise the processing pipeline",
   "cli: tests that exercise the CLI",
+  "dev_validation: developer validation tests (e.g., registry validation)",
 ]
 testpaths = ["tests"]
 norecursedirs = [
   ".git",
+  ".hypothesis",
   ".tox",
   ".venv",
   "venv",
