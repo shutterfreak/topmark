@@ -41,8 +41,17 @@ PROJECT_ROOT := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 
 # Define target directories as Make variables
 # This is a better practice than defining them inside the shell commands
+
 GIT_ARCHIVE_DIR := $(PROJECT_ROOT)archives/git
 SOURCE_SNAPSHOT_DIR := $(PROJECT_ROOT)archives/code-snapshot
+
+# Platform-aware env for tar (avoid macOS resource forks)
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+  TAR_ENV := COPYFILE_DISABLE=true
+else
+  TAR_ENV :=
+endif
 
 # A dedicated target for creating the directories
 # Use an order-only prerequisite to ensure the directories exist before the main targets run
@@ -352,7 +361,7 @@ source-snapshot: check-venv | $(SOURCE_SNAPSHOT_DIR)
 	@echo "NOTE: this will create an archive of the current source snapshot (not necessarily committed)."
 	@timestamp=$$(date +%Y%m%d-%H%M%S) ; \
 	TARGET_FILE="$(SOURCE_SNAPSHOT_DIR)/topmark-$${timestamp}_uncommitted.tar.gz" ; \
-	git ls-files -c -o --exclude-standard | sort -u | tar -czf "$$TARGET_FILE" -T - && \
+	git ls-files -c -o --exclude-standard | sort -u | $(TAR_ENV) tar -czf "$$TARGET_FILE" -T - && \
 	echo "Archive created: $$TARGET_FILE"
 
 
