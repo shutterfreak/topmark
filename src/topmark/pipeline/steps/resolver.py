@@ -67,7 +67,8 @@ def _compute_signals(ft: FileType, base_name: str, path_str: str, suffix: str) -
     exts: list[str] = ft.extensions or []
     fnames: list[str] = ft.filenames or []
     pats: list[str] = ft.patterns or []
-    ext_match: bool = suffix in exts
+    # Consider multi-dot extensions (e.g., ".d.ts") by checking the basename.
+    ext_match: bool = any(base_name.endswith(ext) for ext in exts)
     fname_match = False
     if fnames:
         for fname in fnames:
