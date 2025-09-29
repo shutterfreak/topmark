@@ -22,7 +22,7 @@ import difflib
 from yachalk import chalk
 
 from topmark.config.logging import TopmarkLogger, get_logger
-from topmark.pipeline.context import ComparisonStatus, ProcessingContext
+from topmark.pipeline.context import ComparisonStatus, ProcessingContext, may_proceed_to_patcher
 from topmark.utils.diff import render_patch
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -44,14 +44,11 @@ def patch(ctx: ProcessingContext) -> ProcessingContext:
             change is detected, and with comparison status updated.
     """
     # Safeguard: Only run when comparison was performed
-    if ctx.status.comparison not in [
-        ComparisonStatus.CHANGED,
-        ComparisonStatus.UNCHANGED,
-    ]:
+    if not may_proceed_to_patcher(ctx):
         return ctx
 
     # If nothing changed, ensure no diff is attached
-    if ctx.status.comparison is ComparisonStatus.UNCHANGED:
+    if ctx.status.comparison == ComparisonStatus.UNCHANGED:
         ctx.header_diff = None
         return ctx
 

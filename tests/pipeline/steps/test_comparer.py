@@ -25,9 +25,9 @@ from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.context import (
     ComparisonStatus,
-    FileStatus,
     GenerationStatus,
     ProcessingContext,
+    ResolveStatus,
 )
 from topmark.pipeline.steps import comparer, reader, resolver, scanner
 
@@ -100,7 +100,7 @@ def test_formatting_only_changes_are_detected(tmp_path: Path) -> None:
 
     ctx = reader.read(ctx)
     # Ensure the file was read
-    assert ctx.status.file in (FileStatus.RESOLVED, FileStatus.EMPTY_FILE)
+    assert ctx.status.resolve == ResolveStatus.RESOLVED
 
     ctx = scanner.scan(ctx)
     # Scanner should have detected a header

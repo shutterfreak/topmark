@@ -80,9 +80,9 @@ from topmark.cli_shared.utils import (
 from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.pipeline.context import (
     ComparisonStatus,
-    FileStatus,
     HeaderStatus,
     ProcessingContext,
+    ResolveStatus,
     WriteStatus,
 )
 
@@ -222,7 +222,7 @@ def strip_command(
       PIPELINE_ERROR (70): An internal processing step failed.
       UNEXPECTED_ERROR (255): An unhandled error occurred.
     """
-    ctx = click.get_current_context()
+    ctx: click.Context = click.get_current_context()
     ctx.ensure_object(dict)
     console: ConsoleLike = ctx.obj["console"]
 
@@ -338,7 +338,9 @@ def strip_command(
 
         def _should_write_strip(r: ProcessingContext) -> bool:
             """Determine whether to write this file in strip mode."""
-            return r.status.file is FileStatus.RESOLVED and r.status.write is WriteStatus.REMOVED
+            return (
+                r.status.resolve == ResolveStatus.RESOLVED and r.status.write == WriteStatus.REMOVED
+            )
 
         # Perform writes and count successes/failures
         written, failed = write_updates(results, should_write=_should_write_strip)
@@ -358,7 +360,7 @@ def strip_command(
 
     def _would_change_strip(results: list[ProcessingContext]) -> bool:
         """Return True if any file would be changed by `strip`."""
-        return any(r.status.comparison is ComparisonStatus.CHANGED for r in results)
+        return any(r.status.comparison == ComparisonStatus.CHANGED for r in results)
 
     if not apply_changes and _would_change_strip(results):
         ctx.exit(ExitCode.WOULD_CHANGE)

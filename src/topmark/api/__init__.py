@@ -78,8 +78,8 @@ from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.constants import TOPMARK_VERSION
 from topmark.pipeline.context import (
     ComparisonStatus,
-    FileStatus,
     ProcessingContext,
+    ResolveStatus,
     WriteStatus,
 )
 from topmark.registry import Registry
@@ -174,16 +174,16 @@ def _map_outcome(r: ProcessingContext, *, apply: bool) -> Outcome:
         - When `apply=False`, changed files are reported as `WOULD_CHANGE`.
         - When `apply=True`, changed files are reported as `CHANGED`.
     """
-    if r.status.file is not FileStatus.RESOLVED:
+    if r.status.resolve != ResolveStatus.RESOLVED:
         # Treat unsupported/matched-but-unhandled types as non-errors for API consumers.
-        unsupported: set[FileStatus] = {
-            FileStatus.SKIPPED_UNSUPPORTED,
-            FileStatus.SKIPPED_KNOWN_NO_HEADERS,
+        unsupported: set[ResolveStatus] = {
+            ResolveStatus.UNSUPPORTED,
+            ResolveStatus.TYPE_RESOLVED_HEADERS_UNSUPPORTED,
         }
-        if r.status.file in unsupported:
+        if r.status.resolve in unsupported:
             return Outcome.UNCHANGED
         return Outcome.ERROR
-    if r.status.comparison is ComparisonStatus.UNCHANGED:
+    if r.status.comparison == ComparisonStatus.UNCHANGED:
         return Outcome.UNCHANGED
     # At this point the file either would change or did change.
     if apply:
@@ -504,7 +504,7 @@ def check(
 
     files: tuple[FileResult, ...] = tuple(_to_file_result(r, apply=apply) for r in view_results)
     summary: Mapping[str, int] = _summarize(files)
-    had_errors: bool = any(_map_outcome(r, apply=apply) is Outcome.ERROR for r in results) or (
+    had_errors: bool = any(_map_outcome(r, apply=apply) == Outcome.ERROR for r in results) or (
         encountered_error_code is not None
     )
     diagnostics: dict[str, list[PublicDiagnostic]] = _collect_diagnostics(view_results)
@@ -517,11 +517,11 @@ def check(
 
         def _should_write_check(r: ProcessingContext) -> bool:
             """Determine whether to write this file in check mode."""
-            if add_only and r.status.write is not WriteStatus.INSERTED:
+            if add_only and r.status.write != WriteStatus.INSERTED:
                 return False
-            if update_only and r.status.write is not WriteStatus.REPLACED:
+            if update_only and r.status.write != WriteStatus.REPLACED:
                 return False
-            return r.status.file is FileStatus.RESOLVED and r.status.write in (
+            return r.status.resolve == ResolveStatus.RESOLVED and r.status.write in (
                 WriteStatus.INSERTED,
                 WriteStatus.REPLACED,
             )
@@ -594,7 +594,7 @@ def strip(
 
     files: tuple[FileResult, ...] = tuple(_to_file_result(r, apply=apply) for r in view_results)
     summary: Mapping[str, int] = _summarize(files)
-    had_errors: bool = any(_map_outcome(r, apply=apply) is Outcome.ERROR for r in results) or (
+    had_errors: bool = any(_map_outcome(r, apply=apply) == Outcome.ERROR for r in results) or (
         encountered_error_code is not None
     )
     diagnostics: dict[str, list[PublicDiagnostic]] = _collect_diagnostics(view_results)
@@ -608,7 +608,9 @@ def strip(
         def _should_write_strip(r: ProcessingContext) -> bool:
             """Determine whether to write this file in strip mode."""
             logger.debug("Deciding whether to write file %s: status=%s", r.path, r.status)
-            return r.status.file is FileStatus.RESOLVED and r.status.write is WriteStatus.REMOVED
+            return (
+                r.status.resolve == ResolveStatus.RESOLVED and r.status.write == WriteStatus.REMOVED
+            )
 
         # Perform writes and count successes/failures
         written, failed = write_updates(results, should_write=_should_write_strip)

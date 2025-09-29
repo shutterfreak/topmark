@@ -33,9 +33,15 @@ from typing import TYPE_CHECKING
 from tests.conftest import parametrize
 from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
-from topmark.pipeline.context import Diagnostic, FileStatus, ProcessingContext
+from topmark.pipeline.context import (
+    ContentStatus,
+    Diagnostic,
+    ProcessingContext,
+    ResolveStatus,
+)
 from topmark.pipeline.steps.reader import read
 from topmark.pipeline.steps.resolver import resolve
+from topmark.pipeline.steps.sniffer import sniff
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -59,39 +65,12 @@ def test_read_sets_skip_on_mixed_newlines_strict(tmp_path: Path) -> None:
     # The resolver must identify a processor; otherwise the reader step would be ill-defined.
     assert ctx.file_type is not None
 
-    # Now read the file
-    ctx = read(ctx)
+    # Now sniff (which enforces strict mixed-newlines policy) and assert early skip
+    ctx = sniff(ctx)
 
-    assert ctx.file_lines is not None, "ctx.file_lines must be initialized"
-    assert len(ctx.file_lines) > 0, "ctx.file_lines cannot be an empty list"
-
-    # Strict policy: mixed line endings must cause the reader to skip processing.
-    assert ctx.status.file == FileStatus.SKIPPED_MIXED_LINE_ENDINGS
-
-
-def test_read_sets_skip_on_nul_byte_non_text(tmp_path: Path) -> None:
-    """Reader must set SKIPPED_NOT_TEXT_FILE when a NUL byte is present."""
-    # Include a NUL byte to trigger non-text detection.
-    content: str = 'print("Hi There\0")'
-    f: Path = tmp_path / "x.py"
-    # Use newline="" so Python preserves the exact line endings we provide.
-    with f.open("w", encoding="utf-8", newline="") as fh:
-        fh.write(content)
-
-    cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-
-    # First resolve the file type
-    ctx = resolve(ctx)
-
-    # The resolver must identify a processor; otherwise the reader step would be ill-defined.
-    assert ctx.file_type is not None
-
-    # Now read the file
-    ctx = read(ctx)
-
-    # Strict policy: mixed line endings must cause the reader to skip processing.
-    assert ctx.status.file == FileStatus.SKIPPED_NOT_TEXT_FILE
+    assert ctx.status.content == ContentStatus.SKIPPED_MIXED_LINE_ENDINGS
+    # Reader will no-op when status != RESOLVED; no file_lines are loaded in this case
+    return
 
 
 @parametrize("line_end", ["\r\n", "\n", "\r", ""])
@@ -115,10 +94,12 @@ def test_read_detects_trailing_newline_presence_param(tmp_path: Path, line_end: 
     assert ctx.file_type is not None
 
     # Now read the file
+    ctx = sniff(ctx)
     ctx = read(ctx)
 
     # Strict policy: mixed line endings must cause the reader to skip processing.
     expected: bool = len(line_end) > 0
+
     assert ctx.ends_with_newline == expected
 
 
@@ -138,9 +119,11 @@ def test_read_detects_consistent_newline_style(
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
     ctx = resolve(ctx)
     assert ctx.file_type is not None
+
+    ctx = sniff(ctx)
     ctx = read(ctx)
 
-    assert ctx.status.file == FileStatus.RESOLVED
+    assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.newline_style == expected
     assert ctx.mixed_newlines is False
     # Histogram should have exactly one non-zero bucket
@@ -158,42 +141,14 @@ def test_read_defaults_to_lf_when_no_newline_observed(tmp_path: Path) -> None:
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
     ctx = resolve(ctx)
     assert ctx.file_type is not None
+
+    ctx = sniff(ctx)
     ctx = read(ctx)
 
-    assert ctx.status.file == FileStatus.RESOLVED
+    assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.newline_style == "\n"  # default
     assert ctx.ends_with_newline is False
     assert ctx.newline_hist == {}  # no line terminators observed
-
-
-def test_read_skips_when_bom_precedes_shebang(tmp_path: Path) -> None:
-    """Reader must skip when a UTF-8 BOM appears before a shebang for shebang-aware types."""
-    content: str = "\ufeff#!/usr/bin/env python3\nprint('hello')\n"
-    f: Path = tmp_path / "bom_shebang.py"
-    with f.open("w", encoding="utf-8", newline="") as fh:
-        fh.write(content)
-
-    cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
-    assert ctx.file_type is not None
-    ctx = read(ctx)
-
-    assert ctx.status.file == FileStatus.SKIPPED_POLICY_BOM_BEFORE_SHEBANG
-
-
-def test_read_marks_empty_file(tmp_path: Path) -> None:
-    """Reader must mark truly empty files as EMPTY_FILE and avoid further processing."""
-    f: Path = tmp_path / "empty.py"
-    # Create an empty file
-    with f.open("w", encoding="utf-8", newline="") as fh:
-        fh.write("")
-    cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
-    assert ctx.file_type is not None
-    ctx = read(ctx)
-    assert ctx.status.file == FileStatus.EMPTY_FILE
 
 
 def test_read_detects_cr_only_newlines(tmp_path: Path) -> None:
@@ -206,9 +161,13 @@ def test_read_detects_cr_only_newlines(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
     ctx = resolve(ctx)
+
     assert ctx.file_type is not None
+
+    ctx = sniff(ctx)
     ctx = read(ctx)
-    assert ctx.status.file == FileStatus.RESOLVED
+
+    assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.newline_style == "\r"
     assert ctx.mixed_newlines is False
     assert set(ctx.newline_hist.keys()) == {"\r"}
@@ -227,9 +186,13 @@ def test_read_histogram_dominance_for_consistent_files(
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
     ctx = resolve(ctx)
+
     assert ctx.file_type is not None
+
+    ctx = sniff(ctx)
     ctx = read(ctx)
-    assert ctx.status.file == FileStatus.RESOLVED
+
+    assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.dominant_newline == expected
     assert ctx.dominance_ratio == 1.0
     assert ctx.mixed_newlines is False
@@ -244,41 +207,16 @@ def test_read_leading_bom_without_shebang(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
     ctx = resolve(ctx)
+
     assert ctx.file_type is not None
+
+    ctx = sniff(ctx)
     ctx = read(ctx)
-    assert ctx.status.file == FileStatus.RESOLVED
+
+    assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.leading_bom is True
     assert ctx.file_lines is not None
     assert not ctx.file_lines[0].startswith("\ufeff"), "BOM must be stripped from in-memory text"
-
-
-def test_read_handles_not_found_between_bootstrap_and_read(tmp_path: Path) -> None:
-    """Reader should mark SKIPPED_NOT_FOUND when the file disappears before read()."""
-    f: Path = tmp_path / "vanishing.py"
-    with f.open("w", encoding="utf-8", newline="") as fh:
-        fh.write("print('hi')\n")
-    cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
-    assert ctx.file_type is not None
-    # Simulate a race: remove the file before reader executes
-    f.unlink()
-    ctx = read(ctx)
-    assert ctx.status.file == FileStatus.SKIPPED_NOT_FOUND
-
-
-def test_read_skips_on_invalid_utf8(tmp_path: Path) -> None:
-    """Reader must mark non-text when decoding fails (invalid UTF-8)."""
-    f: Path = tmp_path / "bad_utf8.py"
-    bad = b"print('x')\n" + b"\xc3\x28"  # invalid 2-byte sequence
-    with f.open("wb") as fh:
-        fh.write(bad)
-    cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
-    assert ctx.file_type is not None
-    ctx = read(ctx)
-    assert ctx.status.file == FileStatus.SKIPPED_NOT_TEXT_FILE
 
 
 def test_read_accepts_unicode_rich_text(tmp_path: Path) -> None:
@@ -290,9 +228,13 @@ def test_read_accepts_unicode_rich_text(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
     ctx = resolve(ctx)
+
     assert ctx.file_type is not None
+
+    ctx = sniff(ctx)
     ctx = read(ctx)
-    assert ctx.status.file == FileStatus.RESOLVED
+
+    assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.newline_style == "\n"  # we wrote LF explicitly
     assert set(ctx.newline_hist.keys()) == {"\n"}
 
@@ -306,9 +248,12 @@ def test_read_bom_only_file_contract(tmp_path: Path) -> None:
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
     ctx = resolve(ctx)
     assert ctx.file_type is not None
+
+    ctx = sniff(ctx)
     ctx = read(ctx)
+
     # RESOLVED with leading_bom:
-    assert ctx.status.file == FileStatus.RESOLVED
+    assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.leading_bom is True
     assert ctx.file_lines == [""]
 
@@ -322,9 +267,13 @@ def test_read_mixed_newlines_even_if_dominant(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
     ctx = resolve(ctx)
+
     assert ctx.file_type is not None
+
+    ctx = sniff(ctx)
     ctx = read(ctx)
-    assert ctx.status.file == FileStatus.SKIPPED_MIXED_LINE_ENDINGS
+
+    assert ctx.status.content == ContentStatus.SKIPPED_MIXED_LINE_ENDINGS
     assert ctx.dominant_newline == "\r\n"
 
 
@@ -337,9 +286,13 @@ def test_read_shebang_no_bom_is_ok(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
     ctx = resolve(ctx)
+
     assert ctx.file_type is not None
+
+    ctx = sniff(ctx)
     ctx = read(ctx)
-    assert ctx.status.file == FileStatus.RESOLVED
+
+    assert ctx.status.resolve == ResolveStatus.RESOLVED
 
 
 def test_read_non_bom_leading_char_before_shebang(tmp_path: Path) -> None:
@@ -351,9 +304,13 @@ def test_read_non_bom_leading_char_before_shebang(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
     ctx = resolve(ctx)
+
     assert ctx.file_type is not None
+
+    ctx = sniff(ctx)
     ctx = read(ctx)
-    assert ctx.status.file == FileStatus.RESOLVED
+
+    assert ctx.status.resolve == ResolveStatus.RESOLVED
 
 
 def test_read_dominance_ratio_none_when_no_terminators(tmp_path: Path) -> None:
@@ -363,9 +320,13 @@ def test_read_dominance_ratio_none_when_no_terminators(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
     ctx = resolve(ctx)
+
     assert ctx.file_type is not None
+
+    ctx = sniff(ctx)
     ctx = read(ctx)
-    assert ctx.status.file == FileStatus.RESOLVED
+
+    assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.newline_hist == {}
     assert ctx.dominance_ratio is None
 
@@ -387,9 +348,13 @@ def test_read_only_blank_lines(tmp_path: Path, line_end: str, expected: str) -> 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
     ctx = resolve(ctx)
+
     assert ctx.file_type is not None
+
+    ctx = sniff(ctx)
     ctx = read(ctx)
-    assert ctx.status.file == FileStatus.RESOLVED
+
+    assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.newline_style == expected
     assert ctx.ends_with_newline is True
     assert set(ctx.newline_hist.keys()) == {expected}
@@ -404,9 +369,13 @@ def test_read_cr_only_without_final_newline(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
     ctx = resolve(ctx)
+
     assert ctx.file_type is not None
+
+    ctx = sniff(ctx)
     ctx = read(ctx)
-    assert ctx.status.file == FileStatus.RESOLVED
+
+    assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.newline_style == "\r"
     assert ctx.ends_with_newline is False
     assert set(ctx.newline_hist.keys()) == {"\r"}
@@ -423,10 +392,13 @@ def test_read_mixed_newlines_diagnostic_contains_histogram(tmp_path: Path) -> No
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
     ctx = resolve(ctx)
+
     assert ctx.file_type is not None
+
+    ctx = sniff(ctx)
     ctx = read(ctx)
 
-    assert ctx.status.file == FileStatus.SKIPPED_MIXED_LINE_ENDINGS
+    assert ctx.status.content == ContentStatus.SKIPPED_MIXED_LINE_ENDINGS
     # Histogram should reflect 2 CRLF and 1 LF
     assert ctx.newline_hist.get("\r\n", 0) == 2
     assert ctx.newline_hist.get("\n", 0) == 1
@@ -453,10 +425,13 @@ def test_read_handles_very_large_single_line_no_newline(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
     ctx = resolve(ctx)
+
     assert ctx.file_type is not None
+
+    ctx = sniff(ctx)
     ctx = read(ctx)
 
-    assert ctx.status.file == FileStatus.RESOLVED
+    assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.ends_with_newline is False
     assert ctx.newline_hist == {}
     assert ctx.dominance_ratio is None

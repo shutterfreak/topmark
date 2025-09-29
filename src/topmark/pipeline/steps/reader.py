@@ -27,14 +27,13 @@ Implementation details:
 
 from __future__ import annotations
 
-import codecs
-from typing import TYPE_CHECKING
-
 from topmark.config.logging import TopmarkLogger, get_logger
-from topmark.pipeline.context import FileStatus, ProcessingContext
-
-if TYPE_CHECKING:
-    from topmark.filetypes.policy import FileTypeHeaderPolicy
+from topmark.pipeline.context import (
+    ContentStatus,
+    FsStatus,
+    ProcessingContext,
+    may_proceed_to_read,
+)
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -64,8 +63,8 @@ def read(ctx: ProcessingContext) -> ProcessingContext:
     """Loads file lines and detects newline style.
 
     This function preserves native newline conventions and records them in ``ctx.newline_style``.
-    It uses an incremental UTF-8 decoder for robust text sniffing, detects CRLF even when split
-    across reads, and defaults to LF when no newline is observed (e.g., single-line files).
+    It assumes the sniffer has already performed existence, permission, binary, BOM/shebang,
+    and mixed-newlines policy checks.
 
     Args:
         ctx (ProcessingContext): The processing context for the current file.
@@ -74,107 +73,22 @@ def read(ctx: ProcessingContext) -> ProcessingContext:
         ProcessingContext: The same context, updated in place.
 
     Notes:
-        - Sets ``ctx.ends_with_newline`` and populates ``ctx.file_lines``.
-        - Sets ``ctx.leading_bom`` when a UTF-8 BOM is present and strips it from the
-          in-memory lines.
+        - Assumes `sniffer.sniff()` has already handled existence, permissions,
+          binary detection, BOM/shebang ordering policy, and mixed-newlines policy.
+        - Sets `ctx.file_lines` (keepends), `ctx.ends_with_newline`, and a precise
+          newline histogram; updates `ctx.newline_style` to the dominant style if observed.
     """
-    # Safeguard: only proceed if the resolver step succeeded
-    if ctx.status.file is not FileStatus.RESOLVED:
-        # Stop processing if the file cannot be resolved
+    if not may_proceed_to_read(ctx):
         return ctx
 
     # Safeguard: header_processor and file_type have been set in resolver.resolve()
     assert ctx.header_processor, "context.header_processor not defined"
     assert ctx.file_type, "context.file_type not defined"
 
-    # Guard against races: the file may disappear between bootstrap/resolve and read().
-    try:
-        st_size = ctx.path.stat().st_size
-    except FileNotFoundError:
-        ctx.status.file = FileStatus.SKIPPED_NOT_FOUND
-        logger.warning("%s: File not found: %s", ctx.status.file.value, ctx.path)
-        return ctx
-    except PermissionError as e:
-        ctx.status.file = FileStatus.UNREADABLE
-        logger.error("Permission denied reading file %s: %s", ctx.path, e)
-        ctx.add_error(f"Permission denied reading file: {e}")
-        return ctx
+    # Sniffer has already performed existence/permission checks, binary sniff,
+    # BOM/shebang ordering policy, and a quick newline histogram. At this point
+    # we load the full file as text and compute precise metadata.
 
-    if st_size == 0:
-        logger.warning("Found empty file: %s", ctx.path)
-        ctx.add_warning("File is empty.")
-        ctx.status.file = FileStatus.EMPTY_FILE
-        return ctx
-
-    # Robustly checks if a file is a text file by looking for null bytes and
-    # attempting to decode with UTF-8 incrementally to handle multibyte splits.
-    # Newline convention detected during the binary/text sniff (\n, \r\n, or \r)
-    nl: str | None = None
-    try:
-        # Sniff the first 4KB to decide "text vs binary" and to detect newline style
-        with open(ctx.path, "rb") as bf:
-            tail: bytes = b""  # carry 1 byte to detect CRLF across chunk boundaries
-            dec: codecs.BufferedIncrementalDecoder = codecs.getincrementaldecoder("utf-8")()
-            while True:
-                chunk: bytes = bf.read(4096)
-                if not chunk:
-                    break
-
-                blob: bytes = tail + chunk
-
-                # NUL bytes strongly indicate a binary file; skip further processing
-                if b"\0" in blob:
-                    ctx.status.file = FileStatus.SKIPPED_NOT_TEXT_FILE
-                    logger.warning("%s: Binary (NUL byte): %s", ctx.status.file.value, ctx.path)
-                    return ctx
-
-                # Attempt UTF-8 incremental decode; treat failures as non-text
-                try:
-                    _: str = dec.decode(chunk, final=False)
-                except UnicodeDecodeError:
-                    ctx.status.file = FileStatus.SKIPPED_NOT_TEXT_FILE
-                    logger.warning("%s: Not UTF-8 text: %s", ctx.status.file.value, ctx.path)
-                    return ctx
-
-                # Choose a newline style heuristic:
-                # - Prefer CRLF if present
-                # - Else prefer lone CR if present (classic Mac)
-                # - Else prefer LF if present
-                # If no newline is seen in the sniffed chunks, handle later.
-                if b"\r\n" in blob:
-                    nl = "\r\n"
-                    break
-                elif b"\r" in blob and b"\n" not in blob:
-                    # Lone CR detected and no LF anywhere in the blob
-                    nl = "\r"
-                    # Do not break; continue scanning in case CRLF appears later
-                elif b"\n" in blob:
-                    # LF seen (possibly mixed), tentatively set to LF unless CRLF found later
-                    if nl is None:
-                        nl = "\n"
-
-                # Carry last byte to join with next chunk for CRLF detection
-                tail = chunk[-1:]
-
-    except FileNotFoundError:
-        ctx.status.file = FileStatus.SKIPPED_NOT_FOUND
-        logger.warning("%s: File not found: %s", ctx.status.file.value, ctx.path)
-
-    except Exception as e:  # Log and attach diagnostic; continue without raising
-        ctx.status.file = FileStatus.UNREADABLE
-        logger.error("Error reading file %s: %s", ctx.path, e)
-        ctx.add_error(f"Error reading file: {e}")
-
-    if nl:
-        # Store the line end style
-        ctx.newline_style = nl
-    else:
-        # No newline detected across sniffed chunks; assume LF and proceed.
-        # This allows single-line files without terminators to be processed safely.
-        ctx.newline_style = "\n"
-        logger.debug("No line end detected for %s; defaulting to LF (\\n)", ctx.path)
-
-    # Read the full content as text using the detected newline convention
     try:
         with ctx.path.open(
             "r",
@@ -187,49 +101,27 @@ def read(ctx: ProcessingContext) -> ProcessingContext:
         # Normalize a leading UTF‑8 BOM so downstream steps work on BOM‑free text.
         # We remember its presence to re‑attach it at write time in the updater.
         if lines and lines[0].startswith("\ufeff"):
-            ctx.leading_bom = True
+            if not ctx.leading_bom:
+                ctx.leading_bom = True
             lines = lines[:]  # copy to avoid mutating any shared list
             lines[0] = lines[0].lstrip("\ufeff")
 
-        # Record whether the (BOM‑normalized) first line starts with a shebang.
-        # This reflects the actual file content, independent of policy.
-        if lines and lines[0].startswith("#!"):
-            ctx.has_shebang = True
-
-        # Policy: on POSIX the shebang must be the very first two bytes. If this
-        # file type supports shebang handling and a BOM was present *before* the
-        # shebang, skip processing by default and surface a clear diagnostic.
-        policy: FileTypeHeaderPolicy | None = (
-            ctx.header_processor.file_type.header_policy if ctx.header_processor.file_type else None
-        )
-        if ctx.leading_bom and ctx.has_shebang and policy and policy.supports_shebang:
-            ctx.add_error(
-                "UTF-8 BOM appears before the shebang; POSIX requires '#!' at byte 0. "
-                "TopMark will not modify this file by default. Consider removing the BOM "
-                "or using a future '--fix-bom' option to resolve this conflict."
-            )
-            logger.warning(
-                "BOM precedes shebang; skipping per policy (file type: %s): %s",
-                ctx.file_type.name if ctx.file_type else "<unknown>",
-                ctx.path,
-            )
-            ctx.status.file = FileStatus.SKIPPED_POLICY_BOM_BEFORE_SHEBANG
+        # If no lines, set empty state but keep status RESOLVED (sniffer should have handled empty)
+        if len(lines) == 0:
+            # Edge case: file truncated to 0 bytes between sniff and read.
+            # Mirror sniffer semantics for consistency.
+            ctx.file_lines = []
+            ctx.ends_with_newline = False
+            ctx.status.fs = FsStatus.EMPTY
             return ctx
 
         # Record whether the file ends with a newline (used when generating patches)
-        if len(lines) == 0:
-            logger.warning("File has no lines (empty): %s", ctx.path)
-            ctx.add_warning("File is empty.")
-            ctx.status.file = FileStatus.EMPTY_FILE
-            return ctx
-
-        # Check if the last line has a newline
         ctx.ends_with_newline = lines[-1].endswith(("\r\n", "\n", "\r"))
 
         # Preserve original line endings; each element contains its own terminator
         ctx.file_lines = lines
 
-        # Check if multiple line endings occur in the file
+        # Compute detailed newline histogram
         hist: dict[str, int] = _newline_histogram(lines)
         ctx.newline_hist = {k: v for k, v in hist.items() if v > 0}
         total: int = sum(hist.values())
@@ -253,15 +145,20 @@ def read(ctx: ProcessingContext) -> ProcessingContext:
             ctx.mixed_newlines,
         )
 
-        # Override the tentative sniff with the histogram winner whenever you have any line endings:
+        # Finalize newline style based on full-text histogram:
+        # (sniffer’s value is tentative and used only for early diagnostics)
         # NOTE: will be updated once we implement fixing / updating line endings
         total = sum(hist.values())
         if total > 0 and ctx.dominant_newline:
             ctx.newline_style = ctx.dominant_newline
 
+        # # Option: Update the newline_style to the dominant newline if any
+        # if ctx.dominant_newline:
+        #     ctx.newline_style = ctx.dominant_newline
+
         # Exit if mixed line endings found in file
         if ctx.mixed_newlines:
-            ctx.status.file = FileStatus.SKIPPED_MIXED_LINE_ENDINGS
+            ctx.status.content = ContentStatus.SKIPPED_MIXED_LINE_ENDINGS
             lf: int = ctx.newline_hist.get("\n", 0)
             crlf: int = ctx.newline_hist.get("\r\n", 0)
             cr: int = ctx.newline_hist.get("\r", 0)
@@ -278,7 +175,7 @@ def read(ctx: ProcessingContext) -> ProcessingContext:
             )
             return ctx
 
-        ctx.status.file = FileStatus.RESOLVED
+        ctx.status.content = ContentStatus.OK
         logger.debug(
             "Reader step completed for %s, detected newline style: %r, ends_with_newline: %s",
             ctx.path,
@@ -286,18 +183,22 @@ def read(ctx: ProcessingContext) -> ProcessingContext:
             ctx.ends_with_newline,
         )
         logger.trace(
-            "File '%s' (file status: %s) - read_file_lines: lines: %d",
+            "File '%s' (content status: %s) - read_file_lines: lines: %d",
             ctx.path,
-            ctx.status.file.value,
+            ctx.status.content.value,
             len(ctx.file_lines) if ctx.file_lines else 0,
         )
 
         return ctx
 
     except Exception as e:  # Log and attach diagnostic; continue without raising
-        ctx.status.file = FileStatus.UNREADABLE
+        ctx.status.content = ContentStatus.UNREADABLE
         logger.error("Error reading file %s: %s", ctx.path, e)
         ctx.add_error(f"Error reading file: {e}")
 
-    logger.warning("%s: File cannot be processed: %s", ctx.status.file.value, ctx.path)
+    logger.warning(
+        "%s: File cannot be processed: %s",
+        ctx.status.content.value,
+        ctx.path,
+    )
     return ctx

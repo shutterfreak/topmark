@@ -21,7 +21,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from topmark.config.logging import TopmarkLogger, get_logger
-from topmark.pipeline.context import FileStatus, GenerationStatus, ProcessingContext
+from topmark.pipeline.context import (
+    GenerationStatus,
+    ProcessingContext,
+    may_proceed_to_build,
+)
 from topmark.utils.file import compute_relpath
 
 if TYPE_CHECKING:
@@ -48,19 +52,17 @@ def build(ctx: ProcessingContext) -> ProcessingContext:
     Notes:
         Diagnostics messages are added if unknown or missing header fields are detected.
     """
-    # Safeguard: Skip if file status is not ready for building headers
-    if ctx.status.file not in (FileStatus.RESOLVED, FileStatus.EMPTY_FILE):
-        return ctx
-    if ctx.header_processor is None:
+    if not may_proceed_to_build(ctx):
         return ctx
 
-    if not ctx.config.header_fields:
+    config: Config = ctx.config
+
+    if not config.header_fields:
         # No header fields specified in the configuration
         ctx.status.generation = GenerationStatus.NO_FIELDS
         logger.debug("No header fields specified.")
         return ctx
 
-    config: Config = ctx.config
     file_path: Path = ctx.path
     result: dict[str, str] = {}
 

@@ -83,9 +83,9 @@ from topmark.cli_shared.utils import (
 from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.pipeline.context import (
     ComparisonStatus,
-    FileStatus,
     HeaderStatus,
     ProcessingContext,
+    ResolveStatus,
     WriteStatus,
 )
 
@@ -337,7 +337,7 @@ def check_command(
                 if apply_changes:
                     return (
                         "➕ Adding header for '{p}'".format(p=r.path)
-                        if r.status.header is HeaderStatus.MISSING
+                        if r.status.header == HeaderStatus.MISSING
                         else "✏️  Updating header for '{p}'".format(p=r.path)
                     )
                 return f"🛠️  Run `topmark check --apply {r.path}` to update this file."
@@ -366,11 +366,11 @@ def check_command(
 
         def _should_write_check(r: ProcessingContext) -> bool:
             """Determine whether to write this file in check mode."""
-            if add_only and r.status.write is not WriteStatus.INSERTED:
+            if add_only and r.status.write != WriteStatus.INSERTED:
                 return False
-            if update_only and r.status.write is not WriteStatus.REPLACED:
+            if update_only and r.status.write != WriteStatus.REPLACED:
                 return False
-            return r.status.file is FileStatus.RESOLVED and r.status.write in (
+            return r.status.resolve == ResolveStatus.RESOLVED and r.status.write in (
                 WriteStatus.INSERTED,
                 WriteStatus.REPLACED,
             )
@@ -398,16 +398,16 @@ def check_command(
     ) -> bool:
         """Return True if any file would be changed by `check`."""
         if add_only:
-            return any(r.status.header is HeaderStatus.MISSING for r in results)
+            return any(r.status.header == HeaderStatus.MISSING for r in results)
         if update_only:
             return any(
-                (r.status.header is HeaderStatus.DETECTED)
-                and (r.status.comparison is ComparisonStatus.CHANGED)
+                (r.status.header == HeaderStatus.DETECTED)
+                and (r.status.comparison == ComparisonStatus.CHANGED)
                 for r in results
             )
         return any(
-            (r.status.header is HeaderStatus.MISSING)
-            or (r.status.comparison is ComparisonStatus.CHANGED)
+            (r.status.header == HeaderStatus.MISSING)
+            or (r.status.comparison == ComparisonStatus.CHANGED)
             for r in results
         )
 

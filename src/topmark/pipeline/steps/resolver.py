@@ -12,7 +12,7 @@
 
 This step determines the `FileType` for the current path and attaches the
 corresponding `HeaderProcessor` instance from the registry. It updates
-`ctx.status.file` accordingly and records diagnostics for unsupported files or
+`ctx.status.resolve` accordingly and records diagnostics for unsupported files or
 missing processors. It performs no I/O.
 """
 
@@ -27,7 +27,7 @@ from topmark.constants import VALUE_NOT_SET
 from topmark.filetypes.base import ContentGate, FileType
 from topmark.filetypes.instances import get_file_type_registry
 from topmark.filetypes.registry import get_header_processor_registry
-from topmark.pipeline.context import FileStatus, ProcessingContext
+from topmark.pipeline.context import ProcessingContext, ResolveStatus
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -52,14 +52,13 @@ class MatchSignals:
         return self.ext or self.fname or self.pat
 
 
-def _compute_signals(ft: FileType, base_name: str, path_str: str, suffix: str) -> MatchSignals:
+def _compute_signals(ft: FileType, base_name: str, path_str: str) -> MatchSignals:
     """Compute name-based match signals for a file type.
 
     Args:
         ft (FileType): File type whose rules are evaluated.
         base_name (str): Basename of the path (e.g., "settings.json").
         path_str (str): POSIX path string (used for tail matches like ".vscode/settings.json").
-        suffix (str): File suffix including the leading dot (e.g., ".json").
 
     Returns:
         MatchSignals: Booleans indicating extension, filename/tail, and pattern matches.
@@ -81,7 +80,7 @@ def _compute_signals(ft: FileType, base_name: str, path_str: str, suffix: str) -
             elif base_name == tail:
                 fname_match = True
                 break
-    pat_match = any(re.fullmatch(p, base_name) is not None for p in pats)
+    pat_match: bool = any(re.fullmatch(p, base_name) is not None for p in pats)
     return MatchSignals(ext_match, fname_match, pat_match)
 
 
@@ -117,9 +116,7 @@ def _should_probe_content(ft: FileType, sig: MatchSignals) -> bool:
     return True
 
 
-def _include_candidate(
-    ft: FileType, sig: MatchSignals, gate: ContentGate, content_hit: bool
-) -> bool:
+def _include_candidate(ft: FileType, sig: MatchSignals, content_hit: bool) -> bool:
     """Determine if a candidate should be included after gating content.
 
     Applies gate-aware inclusion rules. For overlay types (e.g., JSONC over JSON)
@@ -128,7 +125,6 @@ def _include_candidate(
     Args:
         ft (FileType): File type considered as candidate.
         sig (MatchSignals): Name-based match signals for the current path.
-        gate (ContentGate): Effective `ContentGate` for the file type.
         content_hit (bool): Result of calling the content matcher (if probed).
 
     Returns:
@@ -140,6 +136,7 @@ def _include_candidate(
         return include
 
     # Gate-aware inclusion
+    gate: ContentGate = ft.content_gate or ContentGate.NEVER
     if gate is ContentGate.NEVER:
         return include
     if gate is ContentGate.IF_EXTENSION and sig.ext:
@@ -200,8 +197,8 @@ def resolve(ctx: ProcessingContext) -> ProcessingContext:
     """Resolve and assign the file type and header processor for the file.
 
     Updates these fields on the context when successful: `ctx.file_type`,
-    `ctx.header_processor`, and `ctx.status.file`. On failure it appends a
-    human-readable diagnostic and sets an appropriate file status.
+    `ctx.header_processor`, and `ctx.status.resolve`. On failure it appends a
+    human-readable diagnostic and sets an appropriate resolve status.
 
     Args:
         ctx (ProcessingContext): Processing context representing the file being handled.
@@ -209,10 +206,12 @@ def resolve(ctx: ProcessingContext) -> ProcessingContext:
     Returns:
         ProcessingContext: The same context, updated in place.
     """
+    ctx.status.resolve = ResolveStatus.PENDING
+
     logger.debug(
-        "Resolve start: file='%s', status='%s', type=%s, processor=%s",
+        "Resolve start: file='%s', fs status='%s', type=%s, processor=%s",
         ctx.path,
-        ctx.status.file.value,
+        ctx.status.fs.value,
         getattr(ctx.file_type, "name", VALUE_NOT_SET),
         (ctx.header_processor.__class__.__name__ if ctx.header_processor else VALUE_NOT_SET),
     )
@@ -221,14 +220,12 @@ def resolve(ctx: ProcessingContext) -> ProcessingContext:
     # then pick the most specific match.
     candidates: list[tuple[int, str, FileType]] = []
 
-    suffix: str = ctx.path.suffix
     base_name: str = ctx.path.name
     path_str: str = ctx.path.as_posix()
 
     # 1) Compute name signals -> 2) Gate content probe -> 3) Include? -> 4) Score
     for ft in get_file_type_registry().values():
-        sig: MatchSignals = _compute_signals(ft, base_name, path_str, suffix)
-        gate: ContentGate = ft.content_gate or ContentGate.NEVER
+        sig: MatchSignals = _compute_signals(ft, base_name, path_str)
         should_probe: bool = _should_probe_content(ft, sig)
 
         cm: Callable[[Path], bool] | None = ft.content_matcher or None
@@ -239,7 +236,7 @@ def resolve(ctx: ProcessingContext) -> ProcessingContext:
             except Exception:
                 content_hit = False
 
-        if not _include_candidate(ft, sig, gate, content_hit):
+        if not _include_candidate(ft, sig, content_hit):
             continue
 
         candidates.append(
@@ -260,7 +257,7 @@ def resolve(ctx: ProcessingContext) -> ProcessingContext:
         logger.debug("File '%s' resolved to type: %s", ctx.path, file_type.name)
 
         if file_type.skip_processing:
-            ctx.status.file = FileStatus.SKIPPED_KNOWN_NO_HEADERS
+            ctx.status.resolve = ResolveStatus.TYPE_RESOLVED_HEADERS_UNSUPPORTED
             ctx.add_warning(
                 f"File type '{file_type.name}' recognized; "
                 "headers are not supported for this format. Skipping."
@@ -275,9 +272,7 @@ def resolve(ctx: ProcessingContext) -> ProcessingContext:
         # Matched a FileType, but no header processor is registered for it
         processor: HeaderProcessor | None = get_header_processor_registry().get(file_type.name)
         if processor is None:
-            ctx.status.file = (
-                FileStatus.SKIPPED_NO_HEADER_PROCESSOR
-            )  # or SKIPPED_NO_HEADER_MANAGER if that's your enum
+            ctx.status.resolve = ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED
             ctx.add_warning(f"No header processor registered for file type '{file_type.name}'.")
             logger.info(
                 "No header processor registered for file type '%s' (file '%s')",
@@ -288,7 +283,7 @@ def resolve(ctx: ProcessingContext) -> ProcessingContext:
 
         # Success: attach the processor and mark the file as resolved
         ctx.header_processor = processor
-        ctx.status.file = FileStatus.RESOLVED
+        ctx.status.resolve = ResolveStatus.RESOLVED
         logger.debug(
             "Resolve success: file='%s' type='%s' processor=%s",
             ctx.path,
@@ -298,7 +293,7 @@ def resolve(ctx: ProcessingContext) -> ProcessingContext:
         return ctx
 
     # No FileType matched: mark as unsupported and record a diagnostic
-    ctx.status.file = FileStatus.SKIPPED_UNSUPPORTED
+    ctx.status.resolve = ResolveStatus.UNSUPPORTED
     ctx.add_warning("No file type associated with this file.")
     logger.info("Unsupported file type for '%s' (no matcher)", ctx.path)
     return ctx

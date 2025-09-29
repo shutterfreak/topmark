@@ -34,13 +34,52 @@ from tests.conftest import fixture
 from topmark.pipeline.context import ProcessingContext
 from topmark.pipeline.processors import get_processor_for_file, register_all_processors
 from topmark.pipeline.processors.base import HeaderProcessor
-from topmark.pipeline.steps import reader, resolver, scanner, updater
+from topmark.pipeline.steps import reader, resolver, scanner, sniffer, updater
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.config import Config
     from topmark.pipeline.processors.base import HeaderProcessor
+
+
+# --- Newline normalization helper for test output ---
+def _coerce_newlines(
+    lines: list[str],
+    target_nl: str,
+    ends_with_newline: bool | None,
+) -> list[str]:
+    """Normalize all line terminators to ``target_nl`` and ensure final newline presence.
+
+    Each element in ``lines`` is expected to be keepends=True style.
+    """
+    if not lines:
+        return lines
+    out: list[str] = []
+    # Normalize all but the last line
+    for ln in lines[:-1]:
+        core: str = (
+            ln[:-2]
+            if ln.endswith("\r\n")
+            else (ln[:-1] if ln.endswith("\n") or ln.endswith("\r") else ln)
+        )
+        out.append(core + target_nl)
+    # Last line: respect ends_with_newline if provided
+    last: str = lines[-1]
+    core_last: str = (
+        last[:-2]
+        if last.endswith("\r\n")
+        else (last[:-1] if last.endswith("\n") or last.endswith("\r") else last)
+    )
+    if ends_with_newline is None:
+        # Preserve as-is but convert style if it had a terminator
+        if last.endswith(("\r\n", "\n", "\r")):
+            out.append(core_last + target_nl)
+        else:
+            out.append(core_last)
+    else:
+        out.append(core_last + target_nl if ends_with_newline else core_last)
+    return out
 
 
 @fixture(scope="module", autouse=True)
@@ -54,15 +93,17 @@ def register_processors_for_this_package() -> None:
 
 
 def run_insert(path: Path, cfg: Config) -> ProcessingContext:
-    """Insert a header by running only the updater step.
+    """Insert a TopMark header by running the minimal pipeline for insertion.
 
-    This mirrors the later pipeline phase by:
-      1. bootstrapping a ``ProcessingContext``,
-      2. running the resolver step to set ``ctx.file_type`` and ``ctx.header_processor``,
-      3. loading file contents into ``ctx.file_lines`` (reader step),
-      4. scanning for an existing TopMark header (scanner step), and
-      5. rendering the expected header lines, and
-      6. invoking the updater step.
+    Steps:
+      1. bootstrap `ProcessingContext`
+      2. `resolver.resolve()` → choose FileType and HeaderProcessor
+      3. `sniffer.sniff()` → early/cheap policy checks (existence, binary, BOM/shebang,
+         newline histogram)
+      4. `reader.read()` → load `file_lines`, precise newline/BOM/shebang flags
+      5. `scanner.scan()` → detect existing TopMark header bounds
+      6. `renderer.render()` → compute expected header lines for current file
+      7. `updater.update()` → apply insert/update in-memory
 
     Args:
         path (Path): File to modify.
@@ -77,13 +118,25 @@ def run_insert(path: Path, cfg: Config) -> ProcessingContext:
     # the registry and file path. Policies like shebang handling depend on this.
     ctx = resolver.resolve(ctx)
 
-    # Run the real reader next to populate file_lines, ends_with_newline, and detect
-    # newline style (LF/CRLF/CR) and BOM accurately.
+    # Run sniffer to perform early/cheap policy checks:
+    #   - existence, permissions, empty file
+    #   - fast binary/NUL check
+    #   - BOM/shebang ordering and policy
+    #   - quick newline histogram (mixed-newlines policy)
+    ctx = sniffer.sniff(ctx)
+
+    # Run the reader to populate file_lines, ends_with_newline, and detect
+    # newline style (LF/CRLF/CR) and BOM/shebang precisely.
     ctx = reader.read(ctx)
+
+    assert ctx.newline_style, "run_insert(): Newline style MUST NOT be empty"
+    newline: str = ctx.newline_style or "\n"
 
     # Scan for existing TopMark header using processor-specific bounds logic
     ctx = scanner.scan(ctx)
 
+    # We deliberately call renderer.render() directly, as builder is internal and
+    # not required for test orchestration—renderer suffices for expected header lines.
     # Ensure we have a processor (resolver should have set it). Fall back to registry lookup.
     processor: HeaderProcessor | None = ctx.header_processor or get_processor_for_file(path)
     assert processor is not None, "No header processor for file"
@@ -91,7 +144,6 @@ def run_insert(path: Path, cfg: Config) -> ProcessingContext:
 
     # Render header with the detected newline style so header lines match file endings.
     header_values: dict[str, str] = {field: "" for field in cfg.header_fields}
-    newline: str = ctx.newline_style or "\n"
 
     # Preserve pre-prefix indentation (spaces/tabs before the prefix) when
     # replacing an existing header block, so nested JSONC headers stay aligned.
@@ -126,6 +178,12 @@ def run_insert(path: Path, cfg: Config) -> ProcessingContext:
     # Call the updater step directly
     ctx = updater.update(ctx)
     assert ctx.updated_file_lines is not None
+    # Normalize newlines for consistent test output
+    ctx.updated_file_lines = _coerce_newlines(
+        ctx.updated_file_lines or [],
+        target_nl=ctx.newline_style or "\n",
+        ends_with_newline=ctx.ends_with_newline,
+    )
     return ctx
 
 

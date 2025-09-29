@@ -32,7 +32,7 @@ Notes:
 from __future__ import annotations
 
 from topmark.config.logging import TopmarkLogger, get_logger
-from topmark.pipeline.context import GenerationStatus, ProcessingContext
+from topmark.pipeline.context import GenerationStatus, ProcessingContext, may_proceed_to_render
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -58,15 +58,11 @@ def render(ctx: ProcessingContext) -> ProcessingContext:
     Notes:
       This step mutates `ctx` in place and performs no I/O.
     """
-    # Safeguard: only render when generation status indicates values are ready
-    if ctx.status.generation not in [
-        GenerationStatus.GENERATED,
-        GenerationStatus.NO_FIELDS,
-    ]:
+    if not may_proceed_to_render(ctx):
         return ctx
 
     # Nothing to render when no fields were generated; short-circuit safely.
-    if ctx.status.generation is GenerationStatus.NO_FIELDS:
+    if ctx.status.generation == GenerationStatus.NO_FIELDS:
         # Make it explicit that there is no “expected header” to compare against.
         ctx.expected_header_lines = None
         ctx.expected_header_block = None

@@ -27,6 +27,7 @@ from .steps import (
     renderer,
     resolver,
     scanner,
+    sniffer,
     stripper,
     updater,
 )
@@ -37,9 +38,10 @@ if TYPE_CHECKING:
     from topmark.pipeline.contracts import Step
 
 # Default pipeline used by the "check" command:
-# resolve → read → scan → build → render → compare → update → patch
+# resolve → sniff → read → scan → build → render → compare → update → patch
 DEFAULT_PIPELINE: Final[Tuple[Step, ...]] = (
     resolver.resolve,  # Resolve file type and assign header processor for the file
+    sniffer.sniff,  # Cheap pre-read checks and newline policy
     reader.read,  # Read the file
     scanner.scan,  # Scan the file for a header
     builder.build,  # Build the dict with expected header fields
@@ -52,6 +54,7 @@ DEFAULT_PIPELINE: Final[Tuple[Step, ...]] = (
 # A lighter-weight pipeline that stops after comparison (no update/patch)
 SUMMARY_PIPELINE: Final[Tuple[Step, ...]] = (
     resolver.resolve,
+    sniffer.sniff,
     reader.read,
     scanner.scan,
     builder.build,
@@ -59,9 +62,11 @@ SUMMARY_PIPELINE: Final[Tuple[Step, ...]] = (
     comparer.compare,
 )
 
-# Render-only pipeline: resolves, reads, scans, builds, and renders (no compare/update/patch)
+# Render-only pipeline: resolves, sniffs, reads, scans, builds, and renders
+# (no compare/update/patch)
 RENDER_PIPELINE: Final[Tuple[Step, ...]] = (
     resolver.resolve,
+    sniffer.sniff,
     reader.read,
     scanner.scan,
     builder.build,
@@ -74,6 +79,7 @@ APPLY_PIPELINE: Final[Tuple[Step, ...]] = DEFAULT_PIPELINE
 
 STRIP_PIPELINE: Final[Tuple[Step, ...]] = (
     resolver.resolve,
+    sniffer.sniff,
     reader.read,
     scanner.scan,
     stripper.strip,

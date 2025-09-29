@@ -54,30 +54,23 @@ class BaseStatus(Enum):
         return max(len(member.value) for member in type(self))
 
 
-class FileStatus(BaseStatus):
-    """Represents the status of file processing in the Topmark pipeline.
+class FsStatus(BaseStatus):
+    """Represents the status of file system checks in the pipeline.
 
-    Used to indicate the result of file-level operations such as type resolution,
-    exclusion, or file readability.
+    Used to indicate the result of existence and permission checks.
     """
 
     PENDING = "pending"
-    RESOLVED = "resolved"
-    EMPTY_FILE = "empty file"
-    SKIPPED_NOT_FOUND = "skipped (file not found)"
-    SKIPPED_FILE_ERROR = "skipped (error reading file)"
-    SKIPPED_NOT_TEXT_FILE = "skipped (not a text file)"
-    SKIPPED_NO_LINE_END = "skipped (no line end)"
-    SKIPPED_MIXED_LINE_ENDINGS = "skipped (mixed line endings)"
-    SKIPPED_POLICY_BOM_BEFORE_SHEBANG = "skipped (policy: BOM before shebang)"
-    UNREADABLE = "unreadable"
-    SKIPPED_UNSUPPORTED = "skipped (unsupported file type)"
-    SKIPPED_NO_HEADER_PROCESSOR = "skipped (no header processor)"
-    SKIPPED_KNOWN_NO_HEADERS = "skipped (known type: headers not supported)"
+    OK = "ok"
+    EMPTY = "empty file"
+    NOT_FOUND = "not found"
+    NO_READ_PERMISSION = "no read permission"
+    UNREADABLE = "read error"
+    NO_WRITE_PERMISSION = "no write permission"
 
     @property
     def color(self) -> Callable[[str], str]:
-        """Get the chalk color renderer associated with this file status.
+        """Get the chalk color renderer associated with this file system status.
 
         Returns:
             Callable[[str], str]: Function to colorize a string for this status.
@@ -85,19 +78,74 @@ class FileStatus(BaseStatus):
         return cast(
             "Callable[[str], str]",
             {
-                FileStatus.PENDING: chalk.gray,
-                FileStatus.RESOLVED: chalk.green,
-                FileStatus.EMPTY_FILE: chalk.yellow,
-                FileStatus.SKIPPED_NOT_FOUND: chalk.red,
-                FileStatus.SKIPPED_FILE_ERROR: chalk.red_bright,
-                FileStatus.SKIPPED_NOT_TEXT_FILE: chalk.red,
-                FileStatus.SKIPPED_MIXED_LINE_ENDINGS: chalk.red,
-                FileStatus.SKIPPED_NO_LINE_END: chalk.red,
-                FileStatus.SKIPPED_POLICY_BOM_BEFORE_SHEBANG: chalk.red,
-                FileStatus.UNREADABLE: chalk.red_bright,
-                FileStatus.SKIPPED_UNSUPPORTED: chalk.yellow,
-                FileStatus.SKIPPED_NO_HEADER_PROCESSOR: chalk.red,
-                FileStatus.SKIPPED_KNOWN_NO_HEADERS: chalk.yellow,
+                FsStatus.PENDING: chalk.gray,
+                FsStatus.OK: chalk.green,
+                FsStatus.EMPTY: chalk.yellow,
+                FsStatus.NOT_FOUND: chalk.red,
+                FsStatus.NO_READ_PERMISSION: chalk.red_bright,
+                FsStatus.UNREADABLE: chalk.red_bright,
+                FsStatus.NO_WRITE_PERMISSION: chalk.red_bright,
+            }[self],
+        )
+
+
+class ResolveStatus(BaseStatus):
+    """Represents the status of file type resolution in the pipeline.
+
+    Used to indicate whether the file type was successfully resolved or not.
+    """
+
+    PENDING = "pending"
+    RESOLVED = "resolved"
+    TYPE_RESOLVED_HEADERS_UNSUPPORTED = "known file type, headers not supported"
+    TYPE_RESOLVED_NO_PROCESSOR_REGISTERED = "known file type, no header processor"
+    UNSUPPORTED = "unsupported file type"
+
+    @property
+    def color(self) -> Callable[[str], str]:
+        """Get the chalk color renderer associated with this resolve status.
+
+        Returns:
+            Callable[[str], str]: Function to colorize a string for this status.
+        """
+        return cast(
+            "Callable[[str], str]",
+            {
+                ResolveStatus.PENDING: chalk.gray,
+                ResolveStatus.RESOLVED: chalk.green,
+                ResolveStatus.TYPE_RESOLVED_HEADERS_UNSUPPORTED: chalk.yellow,
+                ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED: chalk.red,
+                ResolveStatus.UNSUPPORTED: chalk.yellow,
+            }[self],
+        )
+
+
+class ContentStatus(BaseStatus):
+    """Represents the status of file content checks in the pipeline."""
+
+    PENDING = "pending"
+    OK = "ok"
+    SKIPPED_NOT_TEXT_FILE = "not a text file"
+    SKIPPED_MIXED_LINE_ENDINGS = "mixed line endings"
+    SKIPPED_POLICY_BOM_BEFORE_SHEBANG = "BOM before shebang"
+    UNREADABLE = "unreadable"
+
+    @property
+    def color(self) -> Callable[[str], str]:
+        """Get the chalk color renderer associated with this content status.
+
+        Returns:
+            Callable[[str], str]: Function to colorize a string for this status.
+        """
+        return cast(
+            "Callable[[str], str]",
+            {
+                ContentStatus.PENDING: chalk.gray,
+                ContentStatus.OK: chalk.green,
+                ContentStatus.SKIPPED_NOT_TEXT_FILE: chalk.red,
+                ContentStatus.SKIPPED_MIXED_LINE_ENDINGS: chalk.red,
+                ContentStatus.SKIPPED_POLICY_BOM_BEFORE_SHEBANG: chalk.red,
+                ContentStatus.UNREADABLE: chalk.red_bright,
             }[self],
         )
 
@@ -263,6 +311,125 @@ class WriteStatus(BaseStatus):
         )
 
 
+# --- Step gatekeeping ------------------------------------------------------
+
+
+def may_proceed_to_sniff(ctx: "ProcessingContext") -> bool:
+    """Determine if processing can proceed to the sniffer step.
+
+    Processing can proceed if:
+      - The file was successfully resolved (ctx.status.resolve is RESOLVED)
+      - A file type is present (ctx.file_type is not None)
+
+    Args:
+        ctx (ProcessingContext): The processing context for the current file.
+
+    Returns:
+        bool: True if processing can proceed to the sniffer step, False otherwise.
+    """
+    return ctx.status.resolve == ResolveStatus.RESOLVED and ctx.file_type is not None
+
+
+def may_proceed_to_read(ctx: "ProcessingContext") -> bool:
+    """Determine if processing can proceed to the read step.
+
+    Processing can proceed if:
+      - The file was successfully resolved (ctx.status.resolve is RESOLVED)
+      - A file type is present (ctx.file_type is not None)
+      - A header processor is available (ctx.header_processor is not None)
+
+    Note:
+        The file system status (`ctx.status.fs`) is not strictly required here,
+        to allow tests to skip the sniffer and invoke the reader directly. In such
+        cases, the reader is the definitive authority for content checks (existence,
+        permissions, binary/text, etc).
+
+    Args:
+        ctx (ProcessingContext): The processing context for the current file.
+
+    Returns:
+        bool: True if processing can proceed to the read step, False otherwise.
+    """
+    return (
+        ctx.status.resolve == ResolveStatus.RESOLVED
+        # and ctx.status.fs in {FsStatus.OK, FsStatus.EMPTY}
+        and ctx.file_type is not None
+        and ctx.header_processor is not None
+    )
+
+
+def may_proceed_to_scan(ctx: ProcessingContext) -> bool:
+    """Determine if processing can proceed to the scan step.
+
+    Processing can proceed if:
+      - The content checks passed (ctx.status.content is OK)
+      - The file type was successfully resolved (ctx.file_type is not None)
+      - A header processor is available (ctx.header_processor is not None)
+
+    Args:
+        ctx (ProcessingContext): The processing context for the current file.
+
+    Returns:
+        bool: True if processing can proceed to the scan step, False otherwise.
+    """
+    return (
+        ctx.status.content == ContentStatus.OK
+        and ctx.file_type is not None
+        and ctx.header_processor is not None
+    )
+
+
+def may_proceed_to_build(ctx: ProcessingContext) -> bool:
+    """Determine if processing can proceed to the build step.
+
+    Processing can proceed if:
+      - The file was successfully resolved (ctx.status.resolve is RESOLVED)
+      - A header processor is available (ctx.header_processor is not None)
+
+    Args:
+        ctx (ProcessingContext): The processing context for the current file.
+
+    Returns:
+        bool: True if processing can proceed to the build step, False otherwise.
+    """
+    return (
+        ctx.status.resolve == ResolveStatus.RESOLVED
+        and ctx.file_type is not None
+        and ctx.header_processor is not None
+        and ctx.file_lines is not None
+    )
+
+
+def may_proceed_to_patcher(ctx: ProcessingContext) -> bool:
+    """Determine if processing can proceed to the patcher step.
+
+    Processing can proceed if:
+      - The comparison step was performed (ctx.status.comparison is CHANGED or UNCHANGED)
+
+    Args:
+        ctx (ProcessingContext): The processing context for the current file.
+
+    Returns:
+        bool: True if processing can proceed to the patcher step, False otherwise.
+    """
+    return ctx.status.comparison in {ComparisonStatus.CHANGED, ComparisonStatus.UNCHANGED}
+
+
+def may_proceed_to_render(ctx: ProcessingContext) -> bool:
+    """Determine if processing can proceed to the render step.
+
+    Processing can proceed if:
+      - The header was successfully generated (ctx.status.generation is RENDERED or GENERATED)
+
+    Args:
+        ctx (ProcessingContext): The processing context for the current file.
+
+    Returns:
+        bool: True if processing can proceed to the render step, False otherwise.
+    """
+    return ctx.status.generation in {GenerationStatus.NO_FIELDS, GenerationStatus.GENERATED}
+
+
 # --- Diagnostics support ------------------------------------------------------
 class DiagnosticLevel(Enum):
     """Severity levels for diagnostics collected during processing.
@@ -314,12 +481,30 @@ class HeaderProcessingStatus:
     Fields correspond to each pipeline phase: file, header, generation, comparison, write.
     """
 
-    file: FileStatus = FileStatus.PENDING  # Status of file-level processing
+    # File system status (existence, permissions, binary):
+    fs: FsStatus = FsStatus.PENDING
+    # File type resolution status:
+    resolve: ResolveStatus = ResolveStatus.PENDING
+    # File content status (BOM, shebang, mixed newlines, readability):
+    content: ContentStatus = ContentStatus.PENDING
+
+    # Header-level axes
     header: HeaderStatus = HeaderStatus.PENDING  # Status of header detection/parsing
     generation: GenerationStatus = GenerationStatus.PENDING  # Status of header generation/rendering
     comparison: ComparisonStatus = ComparisonStatus.PENDING  # Status of header comparison
     write: WriteStatus = WriteStatus.PENDING  # Status of writing the header
     strip: StripStatus = StripStatus.PENDING  # Status of header stripping lifecycle
+
+    def reset(self) -> None:
+        """Set all status fields to PENDING."""
+        self.fs = FsStatus.PENDING
+        self.resolve = ResolveStatus.PENDING
+        self.content = ContentStatus.PENDING
+        self.header = HeaderStatus.PENDING
+        self.generation = GenerationStatus.PENDING
+        self.comparison = ComparisonStatus.PENDING
+        self.strip = StripStatus.PENDING
+        self.write = WriteStatus.PENDING
 
 
 @dataclass
@@ -415,7 +600,9 @@ class ProcessingContext:
             "path": str(self.path),
             "file_type": (self.file_type.name if self.file_type else None),
             "status": {
-                "file": self.status.file.name,
+                "fs": self.status.fs.name,
+                "resolve": self.status.resolve.name,
+                "content": self.status.content.name,
                 "header": self.status.header.name,
                 "generation": self.status.generation.name,
                 "comparison": self.status.comparison.name,
@@ -438,54 +625,6 @@ class ProcessingContext:
                 or self.status.comparison is ComparisonStatus.CHANGED
             ),
         }
-
-    def format_summary_v0_3_2(self) -> str:
-        """OLD - Return the current human-readable per-file summary string.
-
-        TODO: refine the rendering.
-        """
-        result: str = f"{self.path}: "
-        if not self.file_type or self.status.file != FileStatus.RESOLVED:
-            result += (
-                f"{chalk.dim(self.file_type.name if self.file_type else '<unknown>')} - "
-                f"{self.status.file.color('file ' + self.status.file.value)}"
-            )
-            return result
-
-        result += (
-            f"{chalk.dim(self.file_type.name)} - "
-            f"{self.status.file.color('file ' + self.status.file.value)}"
-        )
-        result += f", {self.status.header.color('header: ' + self.status.header.value)}"
-        result += f", {self.status.generation.color('new header: ' + self.status.generation.value)}"
-        result += f", {self.status.comparison.color('result: ' + self.status.comparison.value)}"
-        result += f", {self.status.strip.color('strip: ' + self.status.strip.value)}"
-        return result
-
-    def format_summary_v0_3_3_dev0(self) -> str:
-        """Return the current human-readable per-file summary string.
-
-        TODO: refine the rendering.
-        """
-        result: str = f"{self.path}: "
-        if not self.file_type or self.status.file != FileStatus.RESOLVED:
-            result += (
-                f"{chalk.dim(self.file_type.name if self.file_type else '<unknown>')} - "
-                f"{self.status.file.color('file ' + self.status.file.value)}"
-            )
-            return result
-
-        result += f"{chalk.dim(self.file_type.name)}"
-        result += f" - {self.status.header.color('header ' + self.status.header.value)}"
-        result += f" - {self.status.comparison.color(self.status.comparison.value)}"
-        if self.status.write != WriteStatus.PENDING:
-            result += f" - {self.status.write.color(self.status.write.value)}"
-        elif self.status.generation != GenerationStatus.PENDING:
-            result += f" - {self.status.generation.color(self.status.generation.value)}"
-        else:
-            f"{self.status.file.color('file ' + self.status.file.value)}"
-
-        return result
 
     def format_summary(self) -> str:
         """Return a concise, human‑readable one‑liner for this file.

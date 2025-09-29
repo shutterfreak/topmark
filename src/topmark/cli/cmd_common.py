@@ -23,11 +23,12 @@ import click
 
 from topmark.cli.config_resolver import resolve_config_from_click
 from topmark.cli.console_helpers import get_console_safely
+from topmark.cli_shared.console_api import ConsoleLike
 from topmark.cli_shared.exit_codes import ExitCode
 from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.file_resolver import resolve_file_list
 from topmark.pipeline import runner
-from topmark.pipeline.context import ComparisonStatus, FileStatus, ProcessingContext
+from topmark.pipeline.context import ComparisonStatus, ProcessingContext, ResolveStatus
 from topmark.pipeline.pipelines import get_pipeline
 
 if TYPE_CHECKING:
@@ -136,15 +137,15 @@ def filter_view_results(
     Returns:
         list[ProcessingContext]: Filtered list of ProcessingContext results.
     """
-    view = results
+    view: list[ProcessingContext] = results
     if skip_compliant:
-        view = [r for r in view if r.status.comparison is not ComparisonStatus.UNCHANGED]
+        view = [r for r in view if r.status.comparison != ComparisonStatus.UNCHANGED]
     if skip_unsupported:
         view = [
             r
             for r in view
-            if r.status.file
-            not in {FileStatus.SKIPPED_UNSUPPORTED, FileStatus.SKIPPED_KNOWN_NO_HEADERS}
+            if r.status.resolve
+            not in {ResolveStatus.UNSUPPORTED, ResolveStatus.TYPE_RESOLVED_HEADERS_UNSUPPORTED}
         ]
     return view
 
@@ -152,7 +153,7 @@ def filter_view_results(
 def exit_if_no_files(file_list: list[Path]) -> bool:
     """Echo a friendly message and return True if there is nothing to process."""
     if not file_list:
-        console = get_console_safely()
+        console: ConsoleLike = get_console_safely()
         console.print(console.styled("\nℹ️  No files to process.\n", fg="blue"))
         return True
     return False

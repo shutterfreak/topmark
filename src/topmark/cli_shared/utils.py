@@ -171,6 +171,13 @@ def classify_outcome(r: ProcessingContext) -> tuple[str, str, Callable[[str], st
     - `header:empty` / `header:malformed` → "header (empty|malformed)"
     - `compare_error` → "cannot compare"
 
+    ### Sniffer outcomes:
+
+    Early refusals from the `sniffer` step (e.g., not a text file, mixed line endings)
+    are reflected via `status.file` and therefore classified here as `file:*` buckets.
+    For human and JSON summaries, consult `status.sniff` to see that the refusal
+    came from the sniffer and why.
+
     > Notes:
     > - Tests should match labels **loosely** (e.g., substrings) to allow minor
     >   wording adjustments without breaking the public contract.
@@ -193,16 +200,20 @@ def classify_outcome(r: ProcessingContext) -> tuple[str, str, Callable[[str], st
     # Import locally to avoid any import cycles at module import time.
     from topmark.pipeline.context import (
         ComparisonStatus,
-        FileStatus,
         GenerationStatus,
         HeaderStatus,
+        ResolveStatus,
         StripStatus,
     )
 
     logger.debug("status: %s", r.status)
 
-    if r.status.file is not FileStatus.RESOLVED:
-        return (f"file:{r.status.file.name}", f"{r.status.file.value}", r.status.file.color)
+    if r.status.resolve is not ResolveStatus.RESOLVED:
+        return (
+            f"file:{r.status.resolve.name}",
+            f"{r.status.resolve.value}",
+            r.status.resolve.color,
+        )
 
     # Highest precedence: if comparison says UNCHANGED, treat as compliant
     if r.status.comparison is ComparisonStatus.UNCHANGED:

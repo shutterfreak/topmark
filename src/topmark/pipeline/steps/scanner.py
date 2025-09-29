@@ -26,7 +26,12 @@ from __future__ import annotations
 
 from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER, VALUE_NOT_SET
-from topmark.pipeline.context import FileStatus, HeaderStatus, ProcessingContext
+from topmark.pipeline.context import (
+    FsStatus,
+    HeaderStatus,
+    ProcessingContext,
+    may_proceed_to_scan,
+)
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -49,9 +54,7 @@ def scan(ctx: ProcessingContext) -> ProcessingContext:
             - existing_header_dict (parsed)
             - status.header (MISSING, EMPTY, DETECTED, MALFORMED)
     """
-    # Pipeline safeguard
-    if ctx.status.file not in [FileStatus.RESOLVED, FileStatus.EMPTY_FILE]:
-        # Stop processing if the file is neither resolved nor empty (which implies resolved)
+    if not may_proceed_to_scan(ctx):
         return ctx
 
     logger.debug(
@@ -63,6 +66,13 @@ def scan(ctx: ProcessingContext) -> ProcessingContext:
     assert ctx.header_processor, (
         "context.header_processor not defined"
     )  # This should always be defined!
+
+    if ctx.status.fs == FsStatus.EMPTY:
+        # An empty file is considered to have no header, but we can still proceed
+        logger.info("File %s is empty; no header to scan.", ctx.path)
+        ctx.status.header = HeaderStatus.MISSING
+        lines = []
+        return ctx
 
     lines: list[str] | None = ctx.file_lines
     if not lines:
@@ -136,8 +146,11 @@ def scan(ctx: ProcessingContext) -> ProcessingContext:
         ctx.status.header = HeaderStatus.DETECTED
 
     logger.debug(
-        "File status: %s, header status: %s, existing header range: %s",
-        ctx.status.file.value,
+        "File status: %s, resolve status: %s, content status: %s, header status: %s, "
+        + "existing header range: %s",
+        ctx.status.fs.value,
+        ctx.status.resolve.value,
+        ctx.status.content.value,
         ctx.status.header.value,
         ctx.existing_header_range or VALUE_NOT_SET,
     )

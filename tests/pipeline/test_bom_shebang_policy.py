@@ -25,13 +25,14 @@ from pathlib import Path
 
 from topmark.config import Config, MutableConfig
 from topmark.pipeline.context import (
-    FileStatus,
+    ContentStatus,
     ProcessingContext,
     StripStatus,
     WriteStatus,
 )
 from topmark.pipeline.steps.reader import read
 from topmark.pipeline.steps.resolver import resolve
+from topmark.pipeline.steps.sniffer import sniff
 from topmark.pipeline.steps.updater import update
 
 
@@ -52,11 +53,11 @@ def test_reader_skips_when_bom_precedes_shebang_python(tmp_path: Path) -> None:
 
     ctx: ProcessingContext = _ctx_for(p)
     ctx = resolve(ctx)
-    ctx = read(ctx)
+    ctx = sniff(ctx)
 
     assert ctx.leading_bom is True
     assert ctx.has_shebang is True
-    assert ctx.status.file == FileStatus.SKIPPED_POLICY_BOM_BEFORE_SHEBANG
+    assert ctx.status.content == ContentStatus.SKIPPED_POLICY_BOM_BEFORE_SHEBANG
     assert any(
         "BOM appears before the shebang" in d.message or "BOM precedes shebang" in d.message
         for d in ctx.diagnostics
@@ -65,18 +66,21 @@ def test_reader_skips_when_bom_precedes_shebang_python(tmp_path: Path) -> None:
 
 def test_reader_allows_shebang_without_bom_python(tmp_path: Path) -> None:
     """Shebang without BOM should proceed normally and not be skipped."""
-    p = tmp_path / "shebang_only.py"
+    p: Path = tmp_path / "shebang_only.py"
     p.write_text("#! /usr/bin/env python\nprint('ok')\n", encoding="utf-8")
 
     ctx: ProcessingContext = _ctx_for(p)
     ctx = resolve(ctx)
-    ctx = read(ctx)
+    ctx = sniff(ctx)
 
     assert ctx.leading_bom is False
     assert ctx.has_shebang is True
-    # Should not be skipped by the BOM/shebang policy
-    assert ctx.status.file != FileStatus.SKIPPED_POLICY_BOM_BEFORE_SHEBANG
+    # Should not be skipped by the BOM/shebang policy (reader did not run, status still PENDING)
+    assert ctx.status.content == ContentStatus.PENDING
+
     # Reader should have loaded lines
+    ctx = read(ctx)  # optional: then assert lines were loaded
+
     assert ctx.file_lines and ctx.file_lines[0].startswith("#!"), (
         ctx.file_lines[:2] if ctx.file_lines else "(File has no lines)"
     )

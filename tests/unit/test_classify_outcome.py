@@ -24,11 +24,11 @@ from topmark.cli_shared.utils import classify_outcome
 from topmark.config import MutableConfig
 from topmark.pipeline.context import (
     ComparisonStatus,
-    FileStatus,
     GenerationStatus,
     HeaderProcessingStatus,
     HeaderStatus,
     ProcessingContext,
+    ResolveStatus,
     StripStatus,
 )
 
@@ -63,14 +63,16 @@ def _assert_key_label(ctx: ProcessingContext, expected_key: str, label_sub: str)
 
 def test_strip_ready_bucket() -> None:
     """When `strip` prepared a removal, bucket is `strip:ready` (would change)."""
-    ctx: ProcessingContext = _ctx_with_status(file=FileStatus.RESOLVED, strip=StripStatus.READY)
+    ctx: ProcessingContext = _ctx_with_status(
+        resolve=ResolveStatus.RESOLVED, strip=StripStatus.READY
+    )
     _assert_key_label(ctx, "strip:ready", "strip header")
 
 
 def test_strip_none_missing_header() -> None:
     """No header present → `strip:none` (no work to do)."""
     ctx: ProcessingContext = _ctx_with_status(
-        file=FileStatus.RESOLVED,
+        resolve=ResolveStatus.RESOLVED,
         strip=StripStatus.NOT_NEEDED,
         header=HeaderStatus.MISSING,
     )
@@ -83,7 +85,7 @@ def test_strip_none_missing_header() -> None:
 def test_insert_bucket_on_missing_header() -> None:
     """Default command: missing header and generation ready → `insert`."""
     ctx: ProcessingContext = _ctx_with_status(
-        file=FileStatus.RESOLVED,
+        resolve=ResolveStatus.RESOLVED,
         header=HeaderStatus.MISSING,
         generation=GenerationStatus.GENERATED,
     )
@@ -93,7 +95,7 @@ def test_insert_bucket_on_missing_header() -> None:
 def test_update_bucket_on_changed_header() -> None:
     """Default command: detected header and comparison changed → `update`."""
     ctx: ProcessingContext = _ctx_with_status(
-        file=FileStatus.RESOLVED,
+        resolve=ResolveStatus.RESOLVED,
         header=HeaderStatus.DETECTED,
         comparison=ComparisonStatus.CHANGED,
     )
@@ -103,7 +105,7 @@ def test_update_bucket_on_changed_header() -> None:
 def test_ok_bucket_on_unchanged() -> None:
     """Default command: detected header and unchanged → `ok` (up-to-date)."""
     ctx: ProcessingContext = _ctx_with_status(
-        file=FileStatus.RESOLVED,
+        resolve=ResolveStatus.RESOLVED,
         header=HeaderStatus.DETECTED,
         comparison=ComparisonStatus.UNCHANGED,
     )
@@ -113,7 +115,7 @@ def test_ok_bucket_on_unchanged() -> None:
 def test_no_fields_bucket() -> None:
     """Default command: generation has no fields → `no_fields`."""
     ctx: ProcessingContext = _ctx_with_status(
-        file=FileStatus.RESOLVED,
+        resolve=ResolveStatus.RESOLVED,
         header=HeaderStatus.MISSING,
         generation=GenerationStatus.NO_FIELDS,
     )
@@ -123,14 +125,17 @@ def test_no_fields_bucket() -> None:
 def test_malformed_and_empty_buckets() -> None:
     """Default command: header empty/malformed map to `header:*` buckets."""
     ctx_empty: ProcessingContext = _ctx_with_status(
-        file=FileStatus.RESOLVED, header=HeaderStatus.EMPTY
+        resolve=ResolveStatus.RESOLVED, header=HeaderStatus.EMPTY
     )
     key1: str
     label1: str
     key1, label1, _ = classify_outcome(ctx_empty)
     assert key1 == "header:empty" and "empty" in label1.lower()
 
-    ctx_bad = _ctx_with_status(file=FileStatus.RESOLVED, header=HeaderStatus.MALFORMED)
+    ctx_bad = _ctx_with_status(
+        resolve=ResolveStatus.RESOLVED,
+        header=HeaderStatus.MALFORMED,
+    )
     key2: str
     label2: str
     key2, label2, _ = classify_outcome(ctx_bad)
@@ -139,7 +144,7 @@ def test_malformed_and_empty_buckets() -> None:
 
 def test_file_axis_errors_are_passed_through() -> None:
     """Non-RESOLVED file states map to `file:*` buckets with labels from FileStatus."""
-    ctx: ProcessingContext = _ctx_with_status(file=FileStatus.SKIPPED_UNSUPPORTED)
+    ctx: ProcessingContext = _ctx_with_status(resolve=ResolveStatus.UNSUPPORTED)
     key: str
     label: str
     key, label, _ = classify_outcome(ctx)
