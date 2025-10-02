@@ -32,14 +32,52 @@ The updater respects comparer outcomes and file fidelity:
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.pipeline.context import ComparisonStatus, ProcessingContext, StripStatus, WriteStatus
 from topmark.pipeline.processors.base import NO_LINE_ANCHOR
 
+if TYPE_CHECKING:
+    from topmark.filetypes.base import FileType, InsertCapability, InsertChecker, InsertCheckResult
 logger: TopmarkLogger = get_logger(__name__)
 
 
-def _prepend_bom_to_lines_if_needed(lines: list[str], ctx: ProcessingContext) -> list[str]:
+def _drop_trailing_blank_if_header_at_eof(
+    lines: list[str],
+    insert_index: int,
+    header_len: int,
+) -> list[str]:
+    """If the header occupies the tail of the file and the last line is blank, drop it.
+
+    This avoids creating an extra blank *after* the header when there is no
+    following body content. It preserves the policy of ensuring a blank line
+    before body text, while keeping insert→strip→insert idempotent for empty bodies.
+
+    Args:
+        lines (list[str]): The file content as a list of lines (each with its own newline).
+        insert_index (int): The line index where the header was inserted.
+        header_len (int): The number of lines in the inserted header.
+
+    Returns:
+        list[str]: The (possibly) modified list of lines. Never ``None``.
+    """
+    if not lines:
+        return lines
+    tail_start: int = insert_index + header_len
+    if tail_start >= len(lines):
+        # Header runs to EOF: drop any number of trailing blank lines.
+        i: int = len(lines) - 1
+        while i >= 0 and lines[i].strip() == "":
+            i -= 1
+        return lines[: i + 1]
+    return lines
+
+
+def _prepend_bom_to_lines_if_needed(
+    lines: list[str],
+    ctx: ProcessingContext,
+) -> list[str]:
     """Re-prepend a UTF-8 BOM to the first line when appropriate.
 
     The reader strips a leading BOM ("\ufeff") from the in-memory image and records
@@ -136,7 +174,41 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
         ctx.status.write = WriteStatus.SKIPPED
         return ctx
 
-    original_lines: list[str] = ctx.file_lines or []
+    # --- Pre-insert capability check (authoritative) --------------------------
+    try:
+        ft: FileType | None = getattr(ctx, "file_type", None)
+        checker: InsertChecker | None = getattr(ft, "pre_insert_checker", None) if ft else None
+        if checker is not None:
+            # Local import to avoid potential import cycles
+            from topmark.filetypes.base import InsertCapability
+
+            try:
+                result: InsertCheckResult = checker(ctx) or {}
+            except Exception as exc:
+                logger.exception(
+                    "pre-insert checker failed for %s: %s", getattr(ft, "name", ft), exc
+                )
+                result = {"capability": InsertCapability.SKIP_OTHER, "reason": "checker error"}
+
+            cap: InsertCapability = result.get("capability", InsertCapability.OK)
+            if cap is not InsertCapability.OK:
+                reason: str = result.get("reason", "pre-insert checker skipped update")
+                logger.debug("pre-insert: %s – %s", getattr(cap, "value", cap), reason)
+                # Preserve original image; mark as skipped
+                original_lines: list[str] = ctx.file_lines or []
+                ctx.updated_file_lines = original_lines
+                ctx.status.write = WriteStatus.SKIPPED
+                # Surface hint for UX/debugging (non-fatal)
+                try:
+                    ctx.add_warning(reason)
+                except Exception:
+                    pass
+                return ctx
+    except Exception:
+        # Never let the gate crash the updater; continue with normal flow
+        logger.debug("pre-insert gate: ignored due to unexpected error", exc_info=True)
+
+    original_lines = ctx.file_lines or []
     rendered_expected_header_lines: list[str] = ctx.expected_header_lines
 
     if ctx.existing_header_range is not None:
@@ -162,23 +234,48 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
     else:
         # 1) text-based first
         try:
-            original_text = "".join(original_lines)
+            logger.debug("upd.path: try=text; file=%s", ctx.path)
+            original_text: str = "".join(original_lines)
             char_offset: int | None = None
             if hasattr(ctx.header_processor, "get_header_insertion_char_offset"):
                 char_offset = ctx.header_processor.get_header_insertion_char_offset(original_text)
+            logger.debug("upd.text: offset=%s; head[:40]=%r", char_offset, original_text[:40])
+
             if char_offset is not None:
                 header_text: str = "".join(rendered_expected_header_lines)
                 if hasattr(ctx.header_processor, "prepare_header_for_insertion_text"):
                     try:
                         header_text = ctx.header_processor.prepare_header_for_insertion_text(
-                            original_text, char_offset, header_text
+                            original_text=original_text,
+                            insert_offset=char_offset,
+                            rendered_header_text=header_text,
+                            newline_style=ctx.newline_style or "\n",
                         )
                     except Exception as e:
                         logger.warning(
                             "prepare_header_for_insertion_text failed for %s: %s", ctx.path, e
                         )
+                logger.debug(
+                    "upd.text.pad: insert_offset=%d; header_head[:40]=%r",
+                    char_offset,
+                    header_text[:40],
+                )
+                logger.debug(
+                    "upd.text.splice: pre_tail[:10]=%r post_head[:10]=%r",
+                    original_text[max(0, char_offset - 10) : char_offset],
+                    original_text[char_offset : char_offset + 10],
+                )
+                new_text: str = (
+                    original_text[:char_offset] + header_text + original_text[char_offset:]
+                )
+                # If header text ends at EOF with trailing blank lines, drop them all.
+                # The blank-after-header policy should only apply when body text follows.
+                while new_text.endswith("\r\n\r\n"):
+                    new_text = new_text[:-2]  # drop one CRLF pair
+                while new_text.endswith("\n\n") or new_text.endswith("\r\r"):
+                    new_text = new_text[:-1]  # drop one LF or CR
+                logger.trace("Updater (text): trimmed EOF blanks; len=%d", len(new_text))
 
-                new_text = original_text[:char_offset] + header_text + original_text[char_offset:]
                 # Prepend BOM if needed
                 if getattr(ctx, "leading_bom", False) and not new_text.startswith("\ufeff"):
                     new_text = "\ufeff" + new_text
@@ -208,16 +305,37 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
 
         # optional whitespace adjustments
         try:
-            rendered_expected_header_lines = ctx.header_processor.prepare_header_for_insertion(
-                original_lines, insert_index, rendered_expected_header_lines
+            header_lines: list[str] = ctx.header_processor.prepare_header_for_insertion(
+                original_lines=original_lines,
+                insert_index=insert_index,
+                rendered_header_lines=rendered_expected_header_lines,
+                newline_style=ctx.newline_style or "\n",
             )
         except Exception as e:
             logger.warning("prepare_header_for_insertion failed for %s: %s", ctx.path, e)
+            header_lines = rendered_expected_header_lines
 
-        new_lines = (
-            original_lines[:insert_index]
-            + rendered_expected_header_lines
-            + original_lines[insert_index:]
+        # Splice header; if inserting at BOF and the first original line is a BOM-only blank,
+        # consume it so we don't leave a dangling BOM+blank after the header.
+        body_start: int = insert_index
+        if insert_index == 0 and original_lines:
+            first: str = original_lines[0]
+            # Consume only a BOM-bearing blank at BOF (e.g., "\ufeff" or "\ufeff\n"),
+            # but preserve a user-authored plain blank line.
+            is_bom_blank: bool = (
+                first.startswith("\ufeff") and first.replace("\ufeff", "").strip() == ""
+            )
+            if is_bom_blank:
+                body_start = 1
+                logger.trace(
+                    "Updater (line): consuming BOM-only/blank line at BOF after header insertion"
+                )
+
+        new_lines = original_lines[:insert_index] + header_lines + original_lines[body_start:]
+
+        # If header occupies the tail and last line is blank, drop all trailing blanks.
+        new_lines = _drop_trailing_blank_if_header_at_eof(
+            new_lines, insert_index, len(header_lines)
         )
         # Prepend BOM if needed
         new_lines = _prepend_bom_to_lines_if_needed(new_lines, ctx)

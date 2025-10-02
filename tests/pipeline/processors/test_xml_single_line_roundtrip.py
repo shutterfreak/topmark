@@ -51,6 +51,11 @@ def test_xml_single_line_insert_then_strip_preserves_layout(tmp_path: Path) -> N
     lines: list[str] = after_insert.splitlines(keepends=True)
     stripped_lines: list[str] = []
     _span: tuple[int, int] | None = None
-    stripped_lines, _span = proc.strip_header_block(lines=lines, span=None)
+    stripped_lines, _span = proc.strip_header_block(
+        lines=lines,
+        span=None,
+        newline_style=ctx.newline_style,  # from ProcessingContext
+        ends_with_newline=False,  # original was single-line without FNL
+    )
     roundtrip: str = "".join(stripped_lines)
     assert roundtrip == original, "Round-trip must preserve single-line structure without FNL"

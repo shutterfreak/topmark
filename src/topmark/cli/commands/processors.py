@@ -143,12 +143,26 @@ def processors_command(
 TopMark version **{TOPMARK_VERSION}** supports the following header processors:
 
 """)
+        if show_details:
+            console.print("""
+**Legend**
+
+- This section groups file types by the **header processor** class handling them.
+- See `topmark filetypes --format=markdown --long` for per‑type matching rules, content matchers,
+  insert checkers, and policy details.
+            """)
+        else:
+            console.print("""
+_This table lists header processors and the file types they handle. Use `--long` to expand
+per‑processor file type listings into separate tables._
+            """)
         rows: list[list[str]]
         if show_details:
             for proc in payload_data["processors"]:
                 headers: list[str] = ["File Types", "Description"]
                 rows = []
                 console.print(f"\n## **{proc['class']}** _({proc['module']})_\n")
+                console.print("File types handled by this processor:")
                 # console.print("| File Types | Description |")
                 # console.print("|---|---|")
                 ft: dict[str, str]
@@ -175,6 +189,10 @@ TopMark version **{TOPMARK_VERSION}** supports the following header processors:
 
         if payload_data["unbound_filetypes"]:
             console.print("\n## File types without a registered processor\n")
+            console.print(
+                "These file types are recognized by TopMark but currently have "
+                "no header processor bound. They will be listed, but not processed."
+            )
             headers = ["File Types", "Description"]
             rows = []
             for unbound_ft in payload_data["unbound_filetypes"]:
@@ -183,6 +201,9 @@ TopMark version **{TOPMARK_VERSION}** supports the following header processors:
                 else:
                     console.print(f"  - `{unbound_ft}`")
         console.print()
+        # Footer for documentation friendliness
+        console.print("\n---\n")
+        console.print(f"_Generated with TopMark v{TOPMARK_VERSION}_\n")
         return
 
     else:  # OutputFormat.DEFAULT (default human output)

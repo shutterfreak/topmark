@@ -23,12 +23,11 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Any, Final, Protocol, TypedDict, runtime_checkable
 
 from topmark.config.logging import TopmarkLogger, get_logger
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
     from pathlib import Path
 
     from topmark.filetypes.policy import FileTypeHeaderPolicy
@@ -65,6 +64,106 @@ class ContentGate(Enum):
     ALWAYS = "always"  # use sparingly
 
 
+@runtime_checkable
+class ContentMatcher(Protocol):
+    """Protocol for content-based file type matchers.
+
+    A content matcher is a callable that inspects a file's contents to determine
+    if it matches a specific file type. This is useful for file types that cannot
+    be reliably identified by name alone. The matcher should be fast, side-effect
+    free, and return True if the file is of the expected type.
+    """
+
+    def __call__(self, path: Path) -> bool:
+        """Check if the file at `path` matches the expected type.
+
+        Args:
+            path (Path): The path to the file to check.
+
+        Returns:
+            bool: True if the file matches the expected type, False otherwise.
+
+        """
+        ...
+
+
+class InsertCapability(Enum):
+    """Advisory on whether a header insertion is advisable in the current context.
+
+    Attributes:
+        OK: Insertion is advisable.
+        SKIP_UNSUPPORTED_CONTENT: Insertion should be skipped because the file
+            content is not suitable (e.g., XML prolog-only files).
+        SKIP_POLICY: Insertion should be skipped due to policy (e.g., file type
+            configured to skip processing).
+        SKIP_READONLY: Insertion should be skipped because the file is read-only
+            (future use; not implemented yet).
+        SKIP_OTHER: Insertion should be skipped for other reasons (e.g., pre-insert
+            checks failed).
+    """
+
+    OK = "ok"
+    SKIP_UNSUPPORTED_CONTENT = "skip_unsupported_content"  # e.g., XML prolog-only
+    SKIP_POLICY = "skip_policy"  # e.g., policy says no
+    SKIP_READONLY = "skip_readonly"  # future: fs flags
+    SKIP_OTHER = "skip_other"
+
+
+class InsertCheckResult(TypedDict, total=False):
+    """Result of a pre-insert check.
+
+    Attributes:
+        capability (InsertCapability): Advisory on whether insertion is OK
+            or should be skipped (and why).
+        reason (str, optional): Human-readable explanation for the advisory.
+    """
+
+    capability: InsertCapability
+    reason: str
+
+
+@runtime_checkable
+class PreInsertContextView(Protocol):
+    """Minimal view of ProcessingContext for pre-insert checkers.
+
+    This protocol defines the minimal set of attributes that a ProcessingContext
+    must have to be used by pre-insert checkers. It allows checkers to be defined
+    without depending on the full ProcessingContext class.
+    """
+
+    # The minimal attributes checkers need; add more if needed later
+    file_lines: list[str] | None
+    newline_style: str
+    header_processor: Any  # concrete checker can cast to its processor class if needed
+    file_type: "FileType | None"
+
+
+@runtime_checkable
+class InsertChecker(Protocol):
+    """Protocol for pre-insert checkers associated with a FileType.
+
+    A pre-insert checker is a callable that inspects the current processing context
+    before a header insertion is attempted. It can advise whether insertion is
+    advisable, should be skipped, or is outright disallowed.
+    The checker receives a minimal view of the ProcessingContext to avoid
+    unnecessary dependencies.
+    """
+
+    def __call__(self, ctx: PreInsertContextView) -> InsertCheckResult:
+        """Check if insertion is advisable in the given context.
+
+        Args:
+            ctx (PreInsertContextView): The current minimal processing context.
+
+        Returns:
+            InsertCheckResult: A dictionary with:
+                * `capability` (InsertCapability): Advisory on whether insertion is OK
+                  or should be skipped (and why).
+                * `reason` (str, optional): Human-readable explanation for the advisory.
+        """
+        ...
+
+
 @dataclass
 class FileType:
     r"""Represents a file type recognized by TopMark.
@@ -91,7 +190,7 @@ class FileType:
             type but intentionally **skips header processing** (e.g. JSON without
             comments, LICENSE files). This lets discovery work while keeping writes
             disabled by design.
-        content_matcher (Callable[[Path], bool] | None): Optional callable ``(Path) -> bool``
+        content_matcher (ContentMatcher | None): Optional content matcher
             that performs *content-based* recognition when name-based heuristics are
             ambiguous. TopMark calls this **last** in `matches` after
             testing extensions, filenames, and patterns. The callable should be
@@ -102,6 +201,8 @@ class FileType:
         header_policy (FileTypeHeaderPolicy | None): Optional `FileTypeHeaderPolicy`
             that tunes placement (e.g., shebang handling) and scanning windows around the
             expected insertion anchor.
+        pre_insert_checker (InsertChecker | None): Optional pre-insert checker:
+            “may we add a TopMark header here?”
 
     Content‑based recognition (example)
     ----------------------------------
@@ -140,10 +241,12 @@ class FileType:
     # Useful for formats that do not support comments (e.g., JSON), marker files, or LICENSE texts.
     skip_processing: bool = False
     # Call-back for checking the file type based on the file contents rather than the file name
-    content_matcher: Callable[[Path], bool] | None = None
+    content_matcher: ContentMatcher | None = None
     # Gate defining when the matcher should trigger a match
     content_gate: ContentGate = ContentGate.NEVER
     header_policy: FileTypeHeaderPolicy | None = None
+    # Optional pre-insert checker: “may we add a TopMark header here?”
+    pre_insert_checker: InsertChecker | None = None
 
     # Compiled regex patterns (cached)
     _compiled_patterns: list[re.Pattern[str]] | None = None

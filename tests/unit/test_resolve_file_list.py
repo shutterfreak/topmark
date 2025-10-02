@@ -40,9 +40,9 @@ class DummyType:
             if a path matches this type.
     """
 
-    def __init__(self, name: str, predicate: Callable[[Path], bool]):
-        self.name = name
-        self._pred = predicate
+    def __init__(self, name: str, predicate: Callable[[Path], bool]) -> None:
+        self.name: str = name
+        self._pred: Callable[[Path], bool] = predicate
 
     def matches(self, path: Path) -> bool:
         """Check if a given path matches this dummy file type.
@@ -130,9 +130,9 @@ def test_candidates_from_positional_and_globs(
     # Glob relative to tmp_path as CWD
     with monkeypatch.context() as m:
         m.chdir(tmp_path)
-        cfg = make_config(files=["**/*.py"])
-        files = file_resolver_mod.resolve_file_list(cfg)
-        rel = sorted(p.as_posix() for p in files)
+        cfg: Config = make_config(files=["**/*.py"])
+        files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+        rel: list[str] = sorted(p.as_posix() for p in files)
 
         assert rel == ["b.py", "pkg/c.py"]
 
@@ -146,8 +146,8 @@ def test_fallback_to_config_files_when_no_positional(
 
     with monkeypatch.context() as m:
         m.chdir(tmp_path)
-        cfg = make_config(config_files=["src"])
-        files = file_resolver_mod.resolve_file_list(cfg)
+        cfg: Config = make_config(config_files=["src"])
+        files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
         rel = sorted(p.as_posix() for p in files)
 
         assert rel == ["src/x.py", "src/x.txt"]
@@ -162,9 +162,9 @@ def test_include_intersection_filters_candidates(
 
     with monkeypatch.context() as m:
         m.chdir(tmp_path)
-        cfg = make_config(files=["."], include_patterns=["**/*.py"])
-        files = file_resolver_mod.resolve_file_list(cfg)
-        rel = sorted(p.as_posix() for p in files)
+        cfg: Config = make_config(files=["."], include_patterns=["**/*.py"])
+        files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+        rel: list[str] = sorted(p.as_posix() for p in files)
 
         assert rel == ["a.py"]
 
@@ -179,9 +179,9 @@ def test_exclude_subtraction_filters_candidates(
 
     with monkeypatch.context() as m:
         m.chdir(tmp_path)
-        cfg = make_config(files=["."], exclude_patterns=["**/*.md"])
-        files = file_resolver_mod.resolve_file_list(cfg)
-        rel = sorted(p.as_posix() for p in files)
+        cfg: Config = make_config(files=["."], exclude_patterns=["**/*.md"])
+        files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+        rel: list[str] = sorted(p.as_posix() for p in files)
 
         assert rel == ["a.py", "c.txt"]
 
@@ -196,14 +196,14 @@ def test_include_from_and_exclude_from_files(
     write(tmp_path / "docs" / "readme.md", "x")
 
     # Pattern files
-    inc = write(tmp_path / "inc.txt", "**/*.py\n# comment\n")
-    exc = write(tmp_path / "exc.txt", "b.py\n")
+    inc: Path = write(tmp_path / "inc.txt", "**/*.py\n# comment\n")
+    exc: Path = write(tmp_path / "exc.txt", "b.py\n")
 
     with monkeypatch.context() as m:
         m.chdir(tmp_path)
-        cfg = make_config(files=["."], include_from=[str(inc)], exclude_from=[str(exc)])
-        files = file_resolver_mod.resolve_file_list(cfg)
-        rel = sorted(p.as_posix() for p in files)
+        cfg: Config = make_config(files=["."], include_from=[str(inc)], exclude_from=[str(exc)])
+        files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+        rel: list[str] = sorted(p.as_posix() for p in files)
 
         assert rel == ["a.py"]  # b.py excluded, readme.md not included
 
@@ -223,9 +223,9 @@ def test_file_types_filtering(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     with monkeypatch.context() as m:
         m.chdir(tmp_path)
         m.setattr(file_resolver_mod, "get_file_type_registry", lambda: fake_registry())
-        cfg = make_config(files=["."], file_types=["py"])
-        files = file_resolver_mod.resolve_file_list(cfg)
-        rel = sorted(p.as_posix() for p in files)
+        cfg: Config = make_config(files=["."], file_types=["py"])
+        files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+        rel: list[str] = sorted(p.as_posix() for p in files)
 
         assert rel == ["a.py"]
 
@@ -239,10 +239,10 @@ def test_returns_sorted_and_files_only(tmp_path: Path, monkeypatch: pytest.Monke
 
     with monkeypatch.context() as m:
         m.chdir(tmp_path)
-        cfg = make_config(files=["."])
-        files = file_resolver_mod.resolve_file_list(cfg)
+        cfg: Config = make_config(files=["."])
+        files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
         # No directories, sorted
-        rel = sorted(p.as_posix() for p in files)
+        rel: list[str] = sorted(p.as_posix() for p in files)
 
         assert rel == ["a.py", "dir/b.py", "z.py"]
 
@@ -255,13 +255,13 @@ def test_include_and_exclude_together(tmp_path: Path, monkeypatch: pytest.Monkey
 
     with monkeypatch.context() as m:
         m.chdir(tmp_path)
-        cfg = make_config(
+        cfg: Config = make_config(
             files=["."],
             include_patterns=["keep/**/*.py"],
             exclude_patterns=["**/no.py"],
         )
-        files = file_resolver_mod.resolve_file_list(cfg)
-        rel = sorted(p.as_posix() for p in files)
+        files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+        rel: list[str] = sorted(p.as_posix() for p in files)
 
         assert rel == ["keep/yes.py"]
 
@@ -269,7 +269,7 @@ def test_include_and_exclude_together(tmp_path: Path, monkeypatch: pytest.Monkey
 def test_no_inputs_returns_empty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Return an empty list when both positional and config_files are absent."""
     monkeypatch.chdir(tmp_path)
-    cfg = make_config()
+    cfg: Config = make_config()
 
     assert file_resolver_mod.resolve_file_list(cfg) == []
 
@@ -278,7 +278,7 @@ def test_include_no_matches_yields_empty(tmp_path: Path, monkeypatch: pytest.Mon
     """Include patterns that match nothing yield an empty result set."""
     (tmp_path / "a.py").write_text("x")
     monkeypatch.chdir(tmp_path)
-    cfg = make_config(
+    cfg: Config = make_config(
         files=["."],
         include_patterns=["**/*.md"],
     )
@@ -289,7 +289,7 @@ def test_exclude_wins_over_include(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     """Exclude takes precedence over include when both match."""
     (tmp_path / "keep.md").write_text("x")
     monkeypatch.chdir(tmp_path)
-    cfg = make_config(
+    cfg: Config = make_config(
         files=["."],
         include_patterns=["**/*.md"],
         exclude_patterns=["**/*.md"],
@@ -303,17 +303,17 @@ def test_pattern_files_ignore_comments_and_blanks(
     """Ignore blank lines and lines starting with '#' in pattern files."""
     (tmp_path / "a.py").write_text("x")
     (tmp_path / "b.py").write_text("x")
-    inc = tmp_path / "inc.txt"
+    inc: Path = tmp_path / "inc.txt"
     inc.write_text("#comment\n\n**/*.py\n")
-    exc = tmp_path / "exc.txt"
+    exc: Path = tmp_path / "exc.txt"
     exc.write_text("b.py\n# another\n\n")
     monkeypatch.chdir(tmp_path)
-    cfg = make_config(
+    cfg: Config = make_config(
         files=["."],
         include_from=[str(inc)],
         exclude_from=[str(exc)],
     )
-    rel = [p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg)]
+    rel: list[str] = [p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg)]
     assert rel == ["a.py"]
 
 
@@ -322,10 +322,10 @@ def test_glob_relative_to_cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     (tmp_path / "src" / "x.py").parent.mkdir(parents=True, exist_ok=True)
     (tmp_path / "src" / "x.py").write_text("x")
     monkeypatch.chdir(tmp_path / "src")
-    cfg = make_config(
+    cfg: Config = make_config(
         files=["*.py"],
     )
-    rel = [p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg)]
+    rel: list[str] = [p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg)]
     assert rel == ["x.py"]
 
 
@@ -336,11 +336,11 @@ def test_includes_dotfiles_and_dotdirs_by_default(
     (tmp_path / ".hidden").mkdir()
     (tmp_path / ".hidden" / ".x.py").write_text("x")
     monkeypatch.chdir(tmp_path)
-    cfg = make_config(
+    cfg: Config = make_config(
         files=["."],
         include_patterns=["**/*.py"],
     )
-    rel = [p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg)]
+    rel: list[str] = [p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg)]
     assert rel == [".hidden/.x.py"]
 
 
@@ -352,10 +352,10 @@ def test_deduplicates_overlapping_roots_and_globs(
     (tmp_path / "dir" / "b.py").parent.mkdir(parents=True, exist_ok=True)
     (tmp_path / "dir" / "b.py").write_text("x")
     monkeypatch.chdir(tmp_path)
-    cfg = make_config(
+    cfg: Config = make_config(
         files=[".", "dir", "**/*.py"],
     )
-    rel = [p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg)]
+    rel: list[str] = [p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg)]
     assert rel == ["a.py", "dir/b.py"]
 
 
@@ -377,11 +377,11 @@ def test_file_type_unknown_is_ignored(
 
     monkeypatch.setattr(file_resolver_mod, "get_file_type_registry", lambda: fake_registry())
     caplog.set_level("WARNING")
-    cfg = make_config(
+    cfg: Config = make_config(
         files=["."],
         file_types=["py", "unknown"],
     )
-    files = file_resolver_mod.resolve_file_list(cfg)
+    files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
     assert [p.as_posix() for p in files] == ["a.py"]
     assert any("Unknown file types specified" in r.message for r in caplog.records)
 
@@ -392,11 +392,11 @@ def test_config_files_respected_by_filters(tmp_path: Path, monkeypatch: pytest.M
     (tmp_path / "src" / "a.py").write_text("x")
     (tmp_path / "src" / "b.txt").write_text("x")
     monkeypatch.chdir(tmp_path)
-    cfg = make_config(
+    cfg: Config = make_config(
         config_files=["src"],
         include_patterns=["**/*.py"],
     )
-    rel = [p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg)]
+    rel: list[str] = [p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg)]
     assert rel == ["src/a.py"]
 
 
@@ -407,8 +407,8 @@ def test_empty_include_means_no_include_filter(
     (tmp_path / "a.py").write_text("x")
     (tmp_path / "b.txt").write_text("x")
     monkeypatch.chdir(tmp_path)
-    cfg = make_config(
+    cfg: Config = make_config(
         files=["."],
     )
-    rel = [p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg)]
+    rel: list[str] = [p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg)]
     assert rel == ["a.py", "b.txt"]

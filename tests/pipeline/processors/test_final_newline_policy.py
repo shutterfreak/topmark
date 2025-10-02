@@ -68,14 +68,14 @@ def test_strip_preserves_final_newline_xml(tmp_path: Path) -> None:
     f1: Path = tmp_path / "with_nl.xml"
     f2: Path = tmp_path / "no_nl.xml"
 
-    with_nl = (
+    with_nl: str = (
         '<?xml version="1.0"?>\n'
         f"<!-- {TOPMARK_START_MARKER} -->\n"
         "<!-- h -->\n"
         f"<!-- {TOPMARK_END_MARKER} -->\n"
         "<root/>\n"  # final newline
     )
-    no_nl = (
+    no_nl: str = (
         '<?xml version="1.0"?>\n'
         f"<!-- {TOPMARK_START_MARKER} -->\n"
         "<!-- h -->\n"
@@ -95,10 +95,20 @@ def test_strip_preserves_final_newline_xml(tmp_path: Path) -> None:
 
     new1: list[str] = []
     _span1: tuple[int, int] | None = None
-    new1, _span1 = proc1.strip_header_block(lines=lines1, span=None)
+    new1, _span1 = proc1.strip_header_block(
+        lines=lines1,
+        span=None,
+        newline_style="\n",  # the fixture uses LF
+        ends_with_newline=True,  # with_nl: ends with "\n"
+    )
     new2: list[str] = []
     _span2: tuple[int, int] | None = None
-    new2, _span2 = proc2.strip_header_block(lines=lines2, span=None)
+    new2, _span2 = proc2.strip_header_block(
+        lines=lines2,
+        span=None,
+        newline_style="\n",  # the fixture uses LF
+        ends_with_newline=False,  # no_nl: no trailing newline
+    )
 
     out1: str = "".join(new1)
     out2: str = "".join(new2)

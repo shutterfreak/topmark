@@ -21,7 +21,7 @@ Exports:
 
 Notes:
     - JSONC detection is content-based via
-      :func:`topmark.filetypes.detectors.jsonc.looks_like_jsonc` and gated to
+      [`topmark.filetypes.detectors.jsonc.looks_like_jsonc`][] and gated to
       run only for ``.json`` files.
     - Plain JSON is recognized but marked ``skip_processing=True`` to avoid
       inserting headers into a format that does not permit comments.
@@ -29,6 +29,7 @@ Notes:
 
 from __future__ import annotations
 
+from topmark.filetypes.checks.json_like import json_like_can_insert
 from topmark.filetypes.detectors.jsonc import looks_like_jsonc
 from topmark.filetypes.policy import FileTypeHeaderPolicy
 
@@ -71,6 +72,7 @@ FILETYPES: list[FileType] = [
             pre_header_blank_after_block=1,
             ensure_blank_after_header=True,
         ),
+        pre_insert_checker=json_like_can_insert,
     ),
     FileType(
         name="python-requirements",

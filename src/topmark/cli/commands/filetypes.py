@@ -24,7 +24,7 @@ import click
 
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cmd_common import get_effective_verbosity
-from topmark.cli_shared.utils import OutputFormat, render_markdown_table
+from topmark.cli_shared.utils import OutputFormat, format_callable_pretty, render_markdown_table
 from topmark.constants import TOPMARK_VERSION
 from topmark.filetypes.base import FileType
 from topmark.filetypes.instances import get_file_type_registry
@@ -101,7 +101,7 @@ def filetypes_command(
 
     def _serialize_details(ft: FileType) -> dict[str, Any]:
         """Serialize detailed information about a file type."""
-        policy_name = _policy_name(ft.header_policy)
+        policy_name: str = _policy_name(ft.header_policy)
         return {
             "name": ft.name,
             "description": ft.description,
@@ -110,6 +110,7 @@ def filetypes_command(
             "patterns": list(ft.patterns or []),
             "skip_processing": bool(ft.skip_processing),
             "has_content_matcher": ft.content_matcher is not None,
+            "has_insert_checker": ft.pre_insert_checker is not None,
             "header_policy": policy_name,
         }
 
@@ -143,6 +144,24 @@ TopMark version **{TOPMARK_VERSION}** supports the following file types:
 
 """)
         if show_details:
+            console.print("""
+**Legend**
+
+- **Identifier**: File type key used in configuration.
+- **Extensions/Filenames/Patterns**: How files are matched on disk.
+- **Skip Processing**: If **yes**, the file type is recognized but never modified by TopMark.
+- **Content Matcher**: A content‑based detector (in addition to path matching) that refines
+  detection (e.g., JSON vs JSONC).
+- **Insert Checker**: A pre‑insert capability check that decides if a TopMark header **may** be
+  added for the concrete file content (e.g., skip prolog‑only XML).
+- **Header Policy**: Formatting/spacing policy applied by the header processor for this type.
+            """)
+        else:
+            console.print("""
+_This list shows the file type identifiers and a short description. Use `--long` to see
+matching rules and policy details._
+            """)
+        if show_details:
             headers: list[str] = [
                 "Identifier",
                 "Extensions",
@@ -150,6 +169,7 @@ TopMark version **{TOPMARK_VERSION}** supports the following file types:
                 "Patterns",
                 "Skip Processing",
                 "Content Matcher",
+                "Insert Checker",
                 "Header Policy",
                 "Description",
             ]
@@ -169,6 +189,7 @@ TopMark version **{TOPMARK_VERSION}** supports the following file types:
                 pats: str = ", ".join(v.patterns) if v.patterns else ""
                 skip_processing: str = "**yes**" if v.skip_processing else "no"
                 has_matcher: str = "**yes**" if (v.content_matcher is not None) else "no"
+                has_insert_checker: str = "**yes**" if (v.pre_insert_checker is not None) else "no"
                 policy: str = _policy_name(v.header_policy)
 
                 row: list[str] = [
@@ -178,6 +199,7 @@ TopMark version **{TOPMARK_VERSION}** supports the following file types:
                     f"`{pats}`" if pats else "",
                     skip_processing,
                     has_matcher,
+                    has_insert_checker,
                     policy,
                     v.description,
                 ]
@@ -218,6 +240,9 @@ TopMark version **{TOPMARK_VERSION}** supports the following file types:
                 console.print(f"| {row_str} |")
 
             console.print()
+        # Footer for documentation friendliness
+        console.print("\n---\n")
+        console.print(f"_Generated with TopMark v{TOPMARK_VERSION}_\n")
         return
 
     else:  # OutputFormat.DEFAULT (default human output)
@@ -225,18 +250,18 @@ TopMark version **{TOPMARK_VERSION}** supports the following file types:
         if vlevel > 0:
             console.print(console.styled("Supported file types:\n", bold=True, underline=True))
 
-        total = len(file_types)
-        num_width = len(str(total))
+        total: int = len(file_types)
+        num_width: int = len(str(total))
         idx: int = 0
-        k_len = max(1, max(len(k) for k in file_types.keys()))
+        k_len: int = max(1, max(len(k) for k in file_types.keys()))
         for k, v in sorted(file_types.items()):
             idx += 1
             if show_details:
                 exts = ", ".join(v.extensions) if v.extensions else ""
                 names = ", ".join(v.filenames) if v.filenames else ""
                 pats = ", ".join(v.patterns) if v.patterns else ""
-                skip = v.skip_processing
-                matcher = v.content_matcher is not None
+                skip: bool = v.skip_processing
+                matcher: bool = v.content_matcher is not None
                 policy = _policy_name(v.header_policy)
                 console.print(
                     f"{idx:>{num_width}}. {k} {console.styled('— ' + v.description, dim=True)}"
@@ -252,15 +277,21 @@ TopMark version **{TOPMARK_VERSION}** supports the following file types:
                 if matcher:
                     assert v.content_matcher is not None
                     content_matcher_name: str = console.styled(
-                        "(" + v.content_matcher.__module__ + "." + v.content_matcher.__name__ + ")",
-                        dim=True,
+                        format_callable_pretty(v.content_matcher), dim=True
                     )
                     console.print(f"      content matcher: yes {content_matcher_name}")
+
+                if v.pre_insert_checker is not None:
+                    insert_checker_name: str = console.styled(
+                        format_callable_pretty(v.pre_insert_checker), dim=True
+                    )
+                    console.print(f"      insert checker : yes {insert_checker_name}")
+
                 if policy:
                     console.print(f"      header_policy  : {policy}")
             else:
                 if vlevel > 0:
-                    descr = console.styled(v.description, dim=True)
+                    descr: str = console.styled(v.description, dim=True)
                     console.print(f"{idx:>{num_width}}. {k:<{k_len}} {descr}")
                 else:
                     console.print(f"{idx:>{num_width}}. {k:<{k_len}}")

@@ -39,6 +39,7 @@ from typing import TYPE_CHECKING, Final, Pattern
 
 from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
+from topmark.pipeline.policy_whitespace import is_pure_spacer
 from topmark.rendering.formats import HeaderOutputFormat
 
 if TYPE_CHECKING:
@@ -52,6 +53,18 @@ logger: TopmarkLogger = get_logger(__name__)
 
 # Sentinel value when get_header_insertion_index() cannot find an insertion index:
 NO_LINE_ANCHOR: Final[int] = -1
+
+
+def _equals_affix_ignoring_space_tab(line: str, affix: str) -> bool:
+    """Return True if `line` equals `affix` when ignoring only spaces/tabs and EOLs.
+
+    We intentionally do *not* use `str.strip()` here because it removes all
+    Unicode whitespace (including control chars like form-feed). For block
+    affix equality we want to allow incidental spaces/tabs around the affix,
+    but preserve any other leading characters as significant.
+    """
+    s = line.rstrip("\r\n").strip(" \t")
+    return s == (affix or "")
 
 
 class HeaderProcessor:
@@ -615,18 +628,18 @@ class HeaderProcessor:
 
         This small facade exists so pipeline steps have a single, stable
         entry point for *line-based* placement. By default, it simply
-        delegates to :py:meth:`get_header_insertion_index`.
+        delegates to `get_header_insertion_index`.
 
         Processors that insert by **character offset** (e.g., XML/HTML) should
-        override :py:meth:`get_header_insertion_index` to return
-        :pydata:`NO_LINE_ANCHOR`, which this method will propagate unchanged.
+        override `get_header_insertion_index` to return
+        `NO_LINE_ANCHOR`, which this method will propagate unchanged.
 
         Args:
             lines (list[str]): Full file content split into lines.
 
         Returns:
             int: A 0-based line index where a header would be inserted, or
-                :pydata:`NO_LINE_ANCHOR` when line-based anchoring is not used.
+                `NO_LINE_ANCHOR` when line-based anchoring is not used.
         """
         return self.get_header_insertion_index(lines)
 
@@ -672,8 +685,14 @@ class HeaderProcessor:
                 if self._encoding_pattern.search(file_lines[index]):
                     index += 1
 
-        # If a shebang block exists and the next line is already blank, consume exactly one
-        if shebang_present and index < len(file_lines) and file_lines[index].strip() == "":
+        # If a shebang block exists and the next line is a *policy-blank*, consume exactly one.
+        # This keeps a single spacer between the preamble and the header without eating content
+        # under STRICT (e.g., form-feed \x0c is preserved).
+        if (
+            shebang_present
+            and index < len(file_lines)
+            and is_pure_spacer(file_lines[index], policy)
+        ):
             index += 1
 
         return index
@@ -692,6 +711,8 @@ class HeaderProcessor:
             bool: ``True`` if the line contains the directive with the configured
                 prefix/suffix, otherwise ``False``.
         """
+        # This method matches directives with configured affixes; policy-based blank
+        # collapsing does not apply here. Normalize incidental whitespace for affix matching.
         line = line.strip()
 
         # Step 1: Check for the presence of the defined prefix
@@ -709,7 +730,7 @@ class HeaderProcessor:
         if self.line_suffix:
             candidate = candidate.removesuffix(self.line_suffix)
 
-        # Step 4: Strip white space after stripped line prefix and before stripped line suffix
+        # # Step 4: Strip whitespace after removing affixes to match the directive exactly.
         candidate = candidate.strip()
 
         return candidate == directive
@@ -752,7 +773,12 @@ class HeaderProcessor:
 
         return (anchor_idx - before) <= header_start_idx <= (anchor_idx + after)
 
-    def get_header_bounds(self, lines: list[str]) -> tuple[int | None, int | None]:
+    def get_header_bounds(
+        self,
+        *,
+        lines: list[str],
+        newline_style: str,
+    ) -> tuple[int | None, int | None]:
         """Identify the inclusive (start, end) line indices of the TopMark header.
 
         Supports both line-comment and block-comment styles depending on the processor's
@@ -761,6 +787,7 @@ class HeaderProcessor:
 
         Args:
             lines (list[str]): Full list of lines from the file.
+            newline_style (str): Newline style (``LF``, ``CR``, ``CRLF``).
 
         Returns:
             tuple[int | None, int | None]: ``(start_index, end_index)`` (inclusive) when
@@ -774,7 +801,9 @@ class HeaderProcessor:
             text: str = "".join(lines)
             char_off: int | None = self.get_header_insertion_char_offset(text)
             if char_off is not None:
-                anchor_idx = text[:char_off].count("\n")
+                anchor_idx = text[:char_off].count(
+                    newline_style
+                )  # FIXME: use newline_style from ProcessingContext
             else:
                 anchor_idx = 0
 
@@ -800,13 +829,16 @@ class HeaderProcessor:
         *,
         lines: list[str],
         span: tuple[int, int] | None = None,
+        newline_style: str = "\n",
+        ends_with_newline: bool | None = None,
     ) -> tuple[list[str], tuple[int, int] | None]:
         """Remove the TopMark header block and return the updated file image.
 
         This method supports two detection modes:
 
         1. **Policy-aware detection** (preferred):
-           If ``span`` is not provided, the processor calls ``get_header_bounds(lines)``
+           If ``span`` is not provided, the processor calls
+           ``get_header_bounds(lines, newoline_style)``
            to locate a valid header near the computed insertion anchor. This respects
            file-type placement rules (shebang handling, XML prolog, Markdown fences, etc.).
 
@@ -828,6 +860,9 @@ class HeaderProcessor:
             span (tuple[int, int] | None): Optional inclusive ``(start, end)`` line index tuple,
                 normally provided by the scanner via ``ctx.existing_header_range``.
                 When set, no scanning is performed.
+            newline_style (str): Newline style (``LF``, ``CR``, ``CRLF``).
+            ends_with_newline (bool | None): If known, whether the original file
+                ended with a newline. If ``None``, this information is not available.
 
         Returns:
             tuple[list[str], tuple[int, int] | None]:
@@ -839,7 +874,7 @@ class HeaderProcessor:
             # First try the standard, policy-aware bounds detection.
             start: int | None
             end: int | None
-            start, end = self.get_header_bounds(lines)
+            start, end = self.get_header_bounds(lines=lines, newline_style=newline_style)
             span = (start, end) if start is not None and end is not None else None
 
             if span is None:
@@ -881,10 +916,20 @@ class HeaderProcessor:
 
         # Remove the block (inclusive header span)
         new_lines: list[str] = lines[:start] + lines[end + 1 :]
+        policy: FileTypeHeaderPolicy | None = getattr(
+            getattr(self, "file_type", None), "header_policy", None
+        )
 
-        # Top-of-file cleanup: trim exactly one blank line left by removal.
-        if start == 0 and new_lines and new_lines[0].strip() == "":
-            new_lines = new_lines[1:]
+        # Policy-aware cleanup: trim exactly one spacer left by removal.
+        # Use in-place deletion (del) to preserve list identity.
+        if start == 0:
+            # Top-of-file: remove a single leading spacer if present
+            if new_lines and is_pure_spacer(new_lines[0], policy):
+                del new_lines[0]
+        else:
+            # General case: remove a single spacer at the removal site
+            if 0 <= start < len(new_lines) and is_pure_spacer(new_lines[start], policy):
+                del new_lines[start]
 
         return new_lines, (start, end)
 
@@ -923,7 +968,7 @@ class HeaderProcessor:
                 continue
             start_idx: int = i
             # Find the matching END marker after start
-            j = i + 1
+            j: int = i + 1
             while j < n and not self.line_has_directive(lines[j], TOPMARK_END_MARKER):
                 j += 1
             if j >= n:
@@ -933,16 +978,30 @@ class HeaderProcessor:
             # Try to expand to block_prefix/block_suffix if they tightly wrap the header
             block_start: int | None = None
             k: int = start_idx - 1
-            while k >= 0 and lines[k].strip() == "":
+            policy: FileTypeHeaderPolicy | None = getattr(
+                getattr(self, "file_type", None), "header_policy", None
+            )
+            # Walk left over policy-blank spacers only; do not consume control whitespace
+            # under STRICT.
+            while k >= 0 and is_pure_spacer(lines[k], policy):
                 k -= 1
-            if k >= 0 and self.block_prefix and lines[k].strip() == self.block_prefix:
+            if (
+                k >= 0
+                and self.block_prefix
+                and _equals_affix_ignoring_space_tab(lines[k], self.block_prefix)
+            ):
                 block_start = k
 
             block_end: int | None = None
             k = end_idx + 1
-            while k < n and lines[k].strip() == "":
+            # Walk right over policy-blank spacers only.
+            while k < n and is_pure_spacer(lines[k], policy):
                 k += 1
-            if k < n and self.block_suffix and lines[k].strip() == self.block_suffix:
+            if (
+                k < n
+                and self.block_suffix
+                and _equals_affix_ignoring_space_tab(lines[k], self.block_suffix)
+            ):
                 block_end = k
 
             if (
@@ -1006,8 +1065,10 @@ class HeaderProcessor:
         block_suffix_index: int | None = None
 
         for i, line in enumerate(lines):
-            stripped = line.strip()
-            if self.block_prefix and stripped == self.block_prefix and block_prefix_index is None:
+            # Affix equality ignores incidental surrounding spaces;
+            # blank collapsing is not performed here.
+            normalized: str = line.rstrip("\r\n").strip(" \t")
+            if self.block_prefix and normalized == self.block_prefix and block_prefix_index is None:
                 block_prefix_index = i
                 logger.debug("Block prefix found at line %d", i + 1)
             if self.line_has_directive(line, TOPMARK_START_MARKER) and header_start_index is None:
@@ -1016,7 +1077,7 @@ class HeaderProcessor:
             if self.line_has_directive(line, TOPMARK_END_MARKER):
                 header_end_index = i
                 logger.debug("Header end marker found at line %d", i + 1)
-            if self.block_suffix and stripped == self.block_suffix:
+            if self.block_suffix and normalized == self.block_suffix:
                 block_suffix_index = i
                 logger.debug("Block suffix found at line %d", i + 1)
 
@@ -1032,20 +1093,23 @@ class HeaderProcessor:
 
     def prepare_header_for_insertion(
         self,
+        *,
         original_lines: list[str],
         insert_index: int,
         rendered_header_lines: list[str],
+        newline_style: str,
     ) -> list[str]:
         """Adjust whitespace around the header for line-based insertion.
 
         Default implementation returns ``rendered_header_lines`` unchanged. Subclasses
-        can override to add/remove leading or trailing blank lines depending on
-        surrounding context.
+        and mixins can override to add/remove leading or trailing blank lines
+        depending on surrounding context.
 
         Args:
             original_lines (list[str]): The original file lines.
             insert_index (int): Line index at which the header will be inserted.
             rendered_header_lines (list[str]): The header lines to insert.
+            newline_style (str): Newline style (``LF``, ``CR``, ``CRLF``).
 
         Returns:
             list[str]: Possibly modified header lines to insert at ``insert_index``.
@@ -1071,9 +1135,11 @@ class HeaderProcessor:
 
     def prepare_header_for_insertion_text(
         self,
+        *,
         original_text: str,
         insert_offset: int,
         rendered_header_text: str,
+        newline_style: str,
     ) -> str:
         """Adjust the rendered header *text* before text-based insertion.
 
@@ -1084,6 +1150,7 @@ class HeaderProcessor:
             original_text (str): Full file content as a single string.
             insert_offset (int): 0-based character offset where the header will be inserted.
             rendered_header_text (str): The header block as a single string.
+            newline_style (str): Newline style (``LF``, ``CR``, ``CRLF``).
 
         Returns:
             str: The (possibly modified) header text to splice into ``original_text`` at

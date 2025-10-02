@@ -176,11 +176,14 @@ def repo_py_toml_xyz_no_header(tmp_path: Path) -> Path:
 # Helpers
 
 
-def has_header(text: str, processor: HeaderProcessor) -> bool:
+def has_header(text: str, processor: HeaderProcessor, newline_style: str) -> bool:
     """Return True if the file contents contains a TopMark header."""
     start: int | None = None
     end: int | None = None
-    start, end = processor.get_header_bounds(text.splitlines(keepends=True))
+    start, end = processor.get_header_bounds(
+        lines=text.splitlines(keepends=True),
+        newline_style=newline_style,
+    )
     return start is not None and end is not None and start < end
 
 

@@ -71,10 +71,10 @@ def scan(ctx: ProcessingContext) -> ProcessingContext:
         # An empty file is considered to have no header, but we can still proceed
         logger.info("File %s is empty; no header to scan.", ctx.path)
         ctx.status.header = HeaderStatus.MISSING
-        lines = []
+        lines: list[str] | None = []
         return ctx
 
-    lines: list[str] | None = ctx.file_lines
+    lines = ctx.file_lines
     if not lines:
         # Defensive guard; upstream reader should have set UNREADABLE or EMPTY_FILE
         logger.error("scan(): No file lines available for %s", ctx.path)
@@ -84,7 +84,7 @@ def scan(ctx: ProcessingContext) -> ProcessingContext:
     start_idx: int | None = None
     end_idx: int | None = None
     bounds: tuple[int | None, int | None] | None = (
-        ctx.header_processor.get_header_bounds(lines)
+        ctx.header_processor.get_header_bounds(lines=lines, newline_style=ctx.newline_style)
         if hasattr(ctx.header_processor, "get_header_bounds")
         else None
     )

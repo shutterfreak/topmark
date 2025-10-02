@@ -36,6 +36,7 @@ from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.context import (
     ContentStatus,
     Diagnostic,
+    FsStatus,
     ProcessingContext,
     ResolveStatus,
 )
@@ -254,8 +255,10 @@ def test_read_bom_only_file_contract(tmp_path: Path) -> None:
 
     # RESOLVED with leading_bom:
     assert ctx.status.resolve == ResolveStatus.RESOLVED
+    assert ctx.status.fs == FsStatus.EMPTY
     assert ctx.leading_bom is True
-    assert ctx.file_lines == [""]
+    assert ctx.ends_with_newline is False
+    assert ctx.file_lines == []  # BOM-only file is treated as empty
 
 
 def test_read_mixed_newlines_even_if_dominant(tmp_path: Path) -> None:

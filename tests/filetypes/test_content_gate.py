@@ -13,9 +13,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
-from topmark.filetypes.base import ContentGate, FileType
+from topmark.filetypes.base import ContentGate, ContentMatcher, FileType
 from topmark.filetypes.policy import FileTypeHeaderPolicy
 
 if TYPE_CHECKING:
@@ -41,7 +41,7 @@ def _ft(
     extensions: list[str] | None = None,
     filenames: list[str] | None = None,
     patterns: list[str] | None = None,
-    matcher: Callable[[Path], bool] | None = None,
+    matcher: ContentMatcher | None = None,
     gate: ContentGate = ContentGate.ALWAYS,
 ) -> FileType:
     return FileType(

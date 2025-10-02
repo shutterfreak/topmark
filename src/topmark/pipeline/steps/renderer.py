@@ -31,8 +31,13 @@ Notes:
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.pipeline.context import GenerationStatus, ProcessingContext, may_proceed_to_render
+
+if TYPE_CHECKING:
+    from topmark.filetypes.base import InsertCapability
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -94,13 +99,30 @@ def render(ctx: ProcessingContext) -> ProcessingContext:
         ctx.expected_header_block = ""
         return ctx
 
+    # If sniffer recorded an advisory pre-insert capability, surface it here for UX.
+    try:
+        from topmark.filetypes.base import InsertCapability  # local import to avoid cycles
+
+        cap: InsertCapability = ctx.pre_insert_capability
+        if cap is not InsertCapability.OK:
+            reason: str = ctx.pre_insert_reason or "unspecified reason"
+            logger.info("renderer advisory: pre-insert %s – %s", getattr(cap, "value", cap), reason)
+            # Soft-signal for CLI/UI; do not change control flow here.
+            try:
+                ctx.add_warning(reason)
+            except Exception:
+                pass
+    except Exception:
+        # Advisory only; never break rendering
+        logger.debug("renderer advisory: unable to surface pre-insert hint", exc_info=True)
+
     # Render using the file-type processor, honoring the detected newline style.
     ctx.expected_header_lines = ctx.header_processor.render_header_lines(
         header_values=ctx.expected_header_dict,
         config=ctx.config,
         newline_style=ctx.newline_style,
         # keep any other overrides you already pass (block_prefix/suffix, line_prefix/suffix, etc.)
-        header_indent_override=header_indent_override,  # <— NEW: preserve pre-prefix indent
+        header_indent_override=header_indent_override,  # preserve pre-prefix indent
         # line_indent_override stays as default so fields still use processor’s after-prefix spacing
     )
 

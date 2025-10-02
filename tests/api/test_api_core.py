@@ -71,19 +71,19 @@ def test_apply_check_writes_when_needed(
     assert any(fr.outcome.value in {"would_change", "changed"} for fr in r0.files)
     r1: api.RunResult = api.check([target], apply=True, file_types=["python"], add_only=True)
     assert r1.written >= 1
-    assert has_header(target.read_text(encoding="utf-8"), proc_py)
+    assert has_header(target.read_text(encoding="utf-8"), proc_py, "\n")
 
 
 def test_strip_removes_header(repo_py_with_header: Path, proc_py: HeaderProcessor) -> None:
     """Dry-run reports change; apply strips existing header."""
     root: Path = repo_py_with_header
     target: Path = root / "src" / "with_header.py"
-    assert has_header(target.read_text(encoding="utf-8"), proc_py)
+    assert has_header(target.read_text(encoding="utf-8"), proc_py, "\n")
     r0: api.RunResult = api.strip([target], apply=False, file_types=["python"])
     assert any(fr.outcome.value in {"would_change", "changed"} for fr in r0.files)
     r1: api.RunResult = api.strip([target], apply=True, file_types=["python"])
     assert r1.written >= 1
-    assert not has_header(target.read_text(encoding="utf-8"), proc_py)
+    assert not has_header(target.read_text(encoding="utf-8"), proc_py, "\n")
 
 
 def test_config_mapping_limits_discovery(tmp_path: Path) -> None:

@@ -46,8 +46,8 @@ def test_check_apply_add_only_inserts_header_for_missing(
     a: Path = repo_py_with_and_without_header / "src" / "without_header.py"
     b: Path = repo_py_with_and_without_header / "src" / "with_header.py"
 
-    assert not has_header(read_text(a), proc_py)
-    assert has_header(read_text(b), proc_py)
+    assert not has_header(read_text(a), proc_py, "\n")
+    assert has_header(read_text(b), proc_py, "\n")
 
     r: RunResult = api_check_dir(
         repo_py_with_and_without_header, apply=True, add_only=True
@@ -56,8 +56,8 @@ def test_check_apply_add_only_inserts_header_for_missing(
     assert r.written >= 1
 
     # a.py now has a header, b.py unchanged
-    assert has_header(read_text(a), proc_py)
-    assert has_header(read_text(b), proc_py)
+    assert has_header(read_text(a), proc_py, "\n")
+    assert has_header(read_text(b), proc_py, "\n")
 
 
 def test_check_apply_update_only_does_not_add_new_headers(
@@ -71,7 +71,7 @@ def test_check_apply_update_only_does_not_add_new_headers(
     r: RunResult = api_check_dir(repo_py_with_and_without_header, apply=True, update_only=True)
     # Should not create a header in a.py because update_only=True
     assert r.had_errors is False
-    assert has_header(read_text(a), proc_py) is False
+    assert has_header(read_text(a), proc_py, "\n") is False
 
 
 def test_skip_compliant_filters_out_b_py_in_view(repo_py_with_and_without_header: Path) -> None:
@@ -101,10 +101,10 @@ def test_strip_apply_removes_headers(
     """Apply strip: removes header from b.py."""
     b: Path = repo_py_with_and_without_header / "src" / "with_header.py"
 
-    assert has_header(read_text(b), proc_py)
+    assert has_header(read_text(b), proc_py, "\n")
 
     r: RunResult = api_strip_dir(repo_py_with_and_without_header, apply=True)
     assert r.had_errors is False
     assert r.written >= 1
     # Header gone
-    assert not has_header(read_text(b), proc_py)
+    assert not has_header(read_text(b), proc_py, "\n")

@@ -19,6 +19,8 @@ from typing import TYPE_CHECKING, cast
 
 from yachalk import chalk
 
+from topmark.filetypes.base import InsertCapability
+
 if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
@@ -533,6 +535,9 @@ class ProcessingContext:
         mixed_newlines (bool | None): True if mixed newline styles found in file
         newline_style (str): The newline style in the file (``LF``, ``CR``, ``CRLF``).
         ends_with_newline (bool | None): True if the file ends with a newline.
+        pre_insert_capability (InsertCapability): Advisory from sniffer
+            about pre-insert checks (e.g. spacers, empty body), defaults to OK
+        pre_insert_reason (str | None): Reason why insertion may be problematic
         existing_header_range (tuple[int, int] | None): The (start, end) line numbers
             of the existing header.
         existing_header_block (str | None): The text block of the existing header.
@@ -567,6 +572,10 @@ class ProcessingContext:
 
     newline_style: str = "\n"  # Newline style (default = "\n")
     ends_with_newline: bool | None = None  # True if file ends with a newline sequence
+
+    # Advisory from sniffer about pre-insert checks (e.g. spacers, empty body)
+    pre_insert_capability: InsertCapability = InsertCapability.OK
+    pre_insert_reason: str | None = None
 
     # 🔍 2. Existing header (detected from original file)
     existing_header_range: tuple[int, int] | None = (

@@ -30,7 +30,6 @@ We emit the wrapper lines '/*' and '*/' and render inner lines as '* ...'.
 
 from __future__ import annotations
 
-from topmark.file_resolver import detect_newline
 from topmark.filetypes.registry import register_filetype
 from topmark.pipeline.processors.base import HeaderProcessor
 from topmark.pipeline.processors.mixins import BlockCommentMixin
@@ -90,16 +89,26 @@ class CBlockHeaderProcessor(BlockCommentMixin, HeaderProcessor):
 
     def prepare_header_for_insertion(
         self,
+        *,
         original_lines: list[str],
         insert_index: int,
         rendered_header_lines: list[str],
+        newline_style: str,
     ) -> list[str]:
         """Ensure sensible padding around the header.
 
         - At top-of-file: no leading blank; ensure >=1 trailing blank unless next line is blank/EOF.
         - After preceding content: ensure exactly one leading blank; ensure >=1 trailing blank.
+
+        Args:
+            original_lines (list[str]): The original file lines.
+            insert_index (int): Line index at which the header will be inserted.
+            rendered_header_lines (list[str]): The header lines to insert.
+            newline_style (str): Newline style (``LF``, ``CR``, ``CRLF``).
+
+        Returns:
+            list[str]: Possibly modified header lines to insert at ``insert_index``.
         """
-        nl: str = detect_newline(original_lines)
         out: list[str] = list(rendered_header_lines)
 
         # Leading padding
@@ -109,13 +118,13 @@ class CBlockHeaderProcessor(BlockCommentMixin, HeaderProcessor):
                 and original_lines[insert_index - 1].strip() == ""
             )
             if not prev_is_blank:
-                out = [nl] + out
+                out = [newline_style] + out
 
         # Trailing padding
         next_is_blank: bool = (
             insert_index < len(original_lines) and original_lines[insert_index].strip() == ""
         )
         if not next_is_blank:
-            out = out + [nl]
+            out = out + [newline_style]
 
         return out

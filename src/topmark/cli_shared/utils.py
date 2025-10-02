@@ -19,8 +19,9 @@ from __future__ import annotations
 import os
 import sys
 from enum import Enum
+from inspect import getmodule
 from pathlib import Path
-from typing import TYPE_CHECKING, Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Mapping, Sequence
 
 from yachalk import chalk
 
@@ -413,3 +414,33 @@ def render_markdown_table(
         + "\n".join("| " + line + " |" for line in data_lines)
         + "\n"
     )
+
+
+def format_callable_pretty(obj: Any) -> str:
+    """Return a human-friendly (module.qualname) for any callable.
+
+    Handles functions, bound methods, callable instances, and partials. Falls
+    back to the callable's class name when needed, and uses ``inspect.getmodule``
+    as a last resort to resolve the module name.
+
+    Args:
+        obj (Any): The callable object to describe.
+
+    Returns:
+        str: A string like ``"(package.module.QualifiedName)"`` or ``"(QualifiedName)"``
+            if the module cannot be resolved.
+    """
+    mod_name: str | None = getattr(obj, "__module__", None)
+    call_name: str | None = getattr(obj, "__qualname__", None)
+
+    if call_name is None:
+        call_name = getattr(obj, "__name__", None)
+    if call_name is None:
+        call_name = type(obj).__name__
+
+    if not mod_name:
+        mod = getmodule(obj)
+        if mod is not None and getattr(mod, "__name__", None):
+            mod_name = mod.__name__
+
+    return f"({mod_name}.{call_name})" if mod_name else f"({call_name})"

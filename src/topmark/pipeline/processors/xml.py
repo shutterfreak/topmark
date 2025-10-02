@@ -17,13 +17,18 @@ It delegates header processing to the core pipeline dispatcher.
 from __future__ import annotations
 
 import re
+from typing import TYPE_CHECKING
 
-from topmark.file_resolver import detect_newline
+from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.filetypes.registry import register_filetype
-from topmark.pipeline.processors.base import (
-    HeaderProcessor,
-)
-from topmark.pipeline.processors.mixins import XmlPositionalMixin
+from topmark.pipeline.policy_whitespace import is_pure_spacer
+from topmark.pipeline.processors.base import HeaderProcessor
+from topmark.pipeline.processors.mixins import BlockCommentMixin, XmlPositionalMixin
+
+if TYPE_CHECKING:
+    from topmark.filetypes.policy import FileTypeHeaderPolicy
+
+logger: TopmarkLogger = get_logger(__name__)
 
 
 @register_filetype("html")
@@ -35,7 +40,7 @@ from topmark.pipeline.processors.mixins import XmlPositionalMixin
 @register_filetype("xml")
 @register_filetype("xsl")
 @register_filetype("xslt")
-class XmlHeaderProcessor(XmlPositionalMixin, HeaderProcessor):
+class XmlHeaderProcessor(XmlPositionalMixin, BlockCommentMixin, HeaderProcessor):
     """Header processor for XML/HTML-like formats (uses XmlPositionalMixin).
 
     This processor uses the **character-offset** strategy for placement:
@@ -85,107 +90,206 @@ class XmlHeaderProcessor(XmlPositionalMixin, HeaderProcessor):
                 line-based strategy.
         """
         text: str = original_text
+        logger.debug(
+            "xml.insert.char: begin; len=%d; head=%r", len(original_text), original_text[:40]
+        )
+
         if not text:
             return 0
 
-        i: int = 0
+        offset: int = 0
         # UTF-8 BOM
         if text.startswith("\ufeff"):
-            i += 1
+            offset += 1
 
         # Leading ASCII whitespace
-        m: re.Match[str] | None = re.match(r"[\t \r\n]*", text[i:])
+        m: re.Match[str] | None = re.match(r"[\t \r\n]*", text[offset:])
         if m:
-            i += m.end()
+            offset += m.end()
 
         # XML declaration
-        if text[i : i + 5] == "<?xml":
-            end_decl: int = text.find("?>", i)
+        if text[offset : offset + 5] == "<?xml":
+            end_decl: int = text.find("?>", offset)
             if end_decl == -1:
-                return i  # malformed; be conservative
-            i = end_decl + 2
+                logger.warning(
+                    "xml.insert.char: malformed decl; i=%d; head=%r", offset, original_text[:40]
+                )
+                return offset  # malformed; be conservative
+            offset = end_decl + 2
             # Whitespace after declaration
-            m = re.match(r"[\t \r\n]*", text[i:])
+            m = re.match(r"[\t \r\n]*", text[offset:])
             if m:
-                i += m.end()
+                offset += m.end()
             # Optional DOCTYPE (best-effort: up to next '>')
-            if text[i : i + 9].upper() == "<!DOCTYPE":
-                end_doc: int = text.find(">", i)
+            if text[offset : offset + 9].upper() == "<!DOCTYPE":
+                end_doc: int = text.find(">", offset)
                 if end_doc != -1:
-                    i = end_doc + 1
-                m = re.match(r"[\t \r\n]*", text[i:])
+                    offset = end_doc + 1
+                m = re.match(r"[\t \r\n]*", text[offset:])
                 if m:
-                    i += m.end()
+                    offset += m.end()
 
         # Return current offset; padding handled in prepare_header_for_insertion_text
-        return i
+        logger.debug(
+            "xml.get_header_insertion_char_offset: returning offset %d; original_text[:40]: [%r]",
+            offset,
+            original_text[:40],
+        )
+        if "<?xml" in original_text and offset < original_text.find("<?xml"):
+            logger.warning(
+                "xml.insert.char: offset before first decl!? off=%d idx(%s)=%d",
+                offset,
+                "<?xml",
+                original_text.find("<?xml"),
+            )
+
+        return offset
 
     def prepare_header_for_insertion_text(
         self,
+        *,
         original_text: str,
         insert_offset: int,
         rendered_header_text: str,
+        newline_style: str,
     ) -> str:
         """Adjust whitespace so the header block sits on its own lines.
 
-        Approach:
-            - If inserting at char>0: ensure exactly one blank line before the block.
-            - Always ensure at least one blank line after the block.
-            - Preserve the document's dominant newline style (``LF``, ``CR``, ``CRLF``).
+        Policy: for XML-like formats we *always* want a leading blank after the
+        prolog/doctype when inserting after it; by default we also want a
+        trailing blank before body content. Trailing can be disabled explicitly
+        via policy.ensure_blank_after_header = False.
 
         Args:
             original_text (str): Full file content as a single string.
             insert_offset (int): 0-based character offset where the header will be inserted.
             rendered_header_text (str): Header block text (may already include newlines).
+            newline_style (str): Newline style (``LF``, ``CR``, ``CRLF``).
 
         Returns:
             str: Possibly modified header text to splice at ``insert_offset``.
         """
-        # Detect newline style
-        nl = "\n"
-        if original_text.count("\r\n") >= original_text.count("\n") and "\r\n" in original_text:
-            nl = "\r\n"
+        logger.debug(
+            "xml.insert.char.pad: offset=%d; before_tail=%r after_head=%r",
+            insert_offset,
+            original_text[max(0, insert_offset - 10) : insert_offset],
+            original_text[insert_offset : insert_offset + 10],
+        )
+        policy: FileTypeHeaderPolicy | None = getattr(
+            getattr(self, "file_type", None), "header_policy", None
+        )
+        # Policy: for XML-like formats we *always* want a leading blank after the
+        # prolog/doctype when inserting after it; by default we also want a
+        # trailing blank before body content. Trailing can be disabled explicitly
+        # via policy.ensure_blank_after_header = False.
+        want_trailing: bool = True
+        if policy is not None and hasattr(policy, "ensure_blank_after_header"):
+            want_trailing = policy.ensure_blank_after_header
 
-        before: str = original_text[:insert_offset]
-        after: str = original_text[insert_offset:]
-
+        # Ensure the rendered block itself ends with exactly one newline
         block: str = rendered_header_text
         if not (block.endswith("\n") or block.endswith("\r\n")):
-            block = block + nl
+            block = block + newline_style
 
-        # Exactly one blank line before (if not at start)
+        # Determine if the char immediately before insert_offset is an EOL
+        prev_char_is_eol: bool = False
+
+        # --- Leading padding (after prolog/doctype, always for XML-like) ---
+        # Add a single blank line *only* when inserting after a prolog/doctype and
+        # the previous logical line is not already a policy-blank.
+        add_leading_blank: bool = False
         if insert_offset > 0:
-            # Count trailing newlines in 'before'
-            trailing = 0
-            j: int = len(before)
-            while j > 0:
-                if nl == "\r\n" and before[max(0, j - 2) : j] == "\r\n":
-                    trailing += 1
-                    j -= 2
-                elif before[j - 1 : j] == "\n":
-                    trailing += 1
-                    j -= 1
-                else:
-                    break
-            if trailing == 0:
-                block = nl + nl + block
-            elif trailing == 1:
-                block = nl + block
-            else:
-                # already >= one blank line; keep as-is
-                pass
+            # Determine previous logical line boundaries (CRLF-safe)
+            i: int = insert_offset - 1
+            # back up one if we are on LF of a CRLF pair
+            if i > 0 and original_text[i] == "\n" and original_text[i - 1] == "\r":
+                i -= 1
+            # find start-of-line
+            sol: int = i
+            while sol > 0 and original_text[sol - 1] not in ("\n", "\r"):
+                sol -= 1
+            prev_line: str = original_text[sol : i + 1]
 
-        # Ensure at least one blank line after
-        if not (after.startswith("\n") or after.startswith("\r\n")):
-            block = block + nl
+            # Heuristic: consider "after_prolog" when the previous line *is* a decl/doctype
+            # (trim EOLs for matching). We do not rely on a sliding window substring test.
+            prev_line_stripped: str = prev_line.rstrip("\r\n")
+
+            # after_prolog: bool = prev_line_stripped.startswith(
+            #     "<?xml"
+            # ) or prev_line_stripped.upper().startswith("<!DOCTYPE")
+
+            # after prev_line_stripped is computed:
+            after_prolog: bool = prev_line_stripped.startswith(
+                "<?xml"
+            ) or prev_line_stripped.upper().startswith("<!DOCTYPE")
+            if not after_prolog and prev_line_stripped.endswith(">"):
+                # look back up to 3 lines above for a DOCTYPE opener
+                scan_sol = sol
+                look_back = 0
+                while scan_sol > 0 and look_back < 3:
+                    # jump to previous line start
+                    scan_sol -= 1
+                    while scan_sol > 0 and original_text[scan_sol - 1] not in ("\n", "\r"):
+                        scan_sol -= 1
+                    lb_line = original_text[scan_sol:sol].rstrip("\r\n")
+                    if lb_line.upper().startswith("<!DOCTYPE"):
+                        after_prolog = True
+                        break
+                    # prepare next iteration
+                    sol = scan_sol
+                    look_back += 1
+
+            # Determine if the char immediately before insert_offset is an EOL
+
+            if insert_offset > 0:
+                c: str = original_text[insert_offset - 1]
+                if c in ("\n", "\r"):
+                    prev_char_is_eol = True
+                elif insert_offset >= 2 and original_text[insert_offset - 2] == "\r" and c == "\n":
+                    # CRLF pair: treat as EOL
+                    prev_char_is_eol = True
+
+            if after_prolog and not is_pure_spacer(prev_line, policy):
+                add_leading_blank = True
+
+        if add_leading_blank:
+            # If we are splitting a single physical line (prolog + root on one line),
+            # we need two newlines: one to end the prolog line and one blank line.
+            # If the prolog already ended with an EOL, we only need one blank line.
+            if not prev_char_is_eol:
+                block = (newline_style * 2) + block
+            else:
+                block = newline_style + block
+
+        # --- Trailing padding (policy-aware, idempotent) --------------------
+        # Add a single blank line *only* when body content follows and the next slice
+        # up to the next EOL is not a policy-blank.
+        if want_trailing and insert_offset < len(original_text):
+            # Determine end-of-line from insert_offset (CRLF-safe)
+            j: int = insert_offset
+            n: int = len(original_text)
+            while j < n and original_text[j] not in ("\n", "\r"):
+                j += 1
+            next_slice: str = original_text[insert_offset:j]
+            if not is_pure_spacer(next_slice, policy):
+                block = block + newline_style
+        # else: at EOF → no spacer
+
+        logger.debug(
+            "xml.insert.char.pad: block_head[:40]=%r block_tail[:40]=%r",
+            block[:40],
+            block[-40:],
+        )
 
         return block
 
     def prepare_header_for_insertion(
         self,
+        *,
         original_lines: list[str],
         insert_index: int,
         rendered_header_lines: list[str],
+        newline_style: str,
     ) -> list[str]:
         """Ensure sensible padding around the header for HTML/XML-like files.
 
@@ -198,28 +302,66 @@ class XmlHeaderProcessor(XmlPositionalMixin, HeaderProcessor):
             original_lines (list[str]): Original file lines.
             insert_index (int): Line index where the header will be inserted.
             rendered_header_lines (list[str]): Header lines to insert.
+            newline_style (str): Newline style (``LF``, ``CR``, ``CRLF``).
 
         Returns:
             list[str]: Possibly modified header lines including any added padding.
         """
-        nl: str = detect_newline(original_lines)
         out: list[str] = list(rendered_header_lines)
 
-        # Leading padding
-        if insert_index > 0:
-            prev_is_blank: bool = (
-                insert_index - 1 < len(original_lines)
-                and original_lines[insert_index - 1].strip() == ""
-            )
-            if not prev_is_blank:
-                out = [nl] + out
-
-        # Trailing padding
-        next_is_blank: bool = insert_index < len(original_lines) and (
-            original_lines[insert_index].strip() == ""
+        # Policy: for XML-like formats we *always* want a leading blank after the
+        # prolog/doctype when inserting after it; by default we also want a
+        # trailing blank before body content. Trailing can be disabled explicitly
+        # via policy.ensure_blank_after_header = False.
+        policy: FileTypeHeaderPolicy | None = getattr(
+            getattr(self, "file_type", None), "header_policy", None
         )
-        if not next_is_blank:
-            out = out + [nl]
+        # Default: want a blank before body content; tests expect this for XML/HTML-like
+        want_trailing: bool = True
+        if policy is not None and hasattr(policy, "ensure_blank_after_header"):
+            want_trailing = bool(policy.ensure_blank_after_header)
+
+        # ---- Leading padding (after prolog/doctype) ------------------------
+        add_leading_blank: bool = False
+        if insert_index > 0:
+            # Previous logical line
+            prev_line: str = (
+                original_lines[insert_index - 1] if (insert_index - 1) < len(original_lines) else ""
+            )
+            prev_is_blank: bool = is_pure_spacer(prev_line, policy)
+
+            # Detect insertion right after a prolog/doctype. Handle multi-line DOCTYPE
+            # where the previous line is the tail (e.g., "]>").
+            prev_line_stripped: str = prev_line.rstrip("\r\n")
+            after_prolog: bool = prev_line_stripped.lstrip("\ufeff \t").startswith(
+                "<?xml"
+            ) or prev_line_stripped.lstrip().upper().startswith("<!DOCTYPE")
+            if not after_prolog and prev_line_stripped.endswith(">"):
+                # Look back up to 3 lines for a DOCTYPE opener
+                back = 1
+                i = insert_index - 2
+                while back <= 3 and i >= 0 and not after_prolog:
+                    cand = original_lines[i].rstrip("\r\n")
+                    if cand.lstrip().upper().startswith("<!DOCTYPE"):
+                        after_prolog = True
+                        break
+                    i -= 1
+                    back += 1
+
+            if after_prolog and not prev_is_blank:
+                add_leading_blank = True
+
+        if add_leading_blank:
+            out = [newline_style] + out
+
+        # ---- Trailing padding (before body) --------------------------------
+        if want_trailing:
+            has_next: bool = insert_index < len(original_lines)
+            if has_next:
+                next_line: str = original_lines[insert_index]
+                if not is_pure_spacer(next_line, policy):
+                    out = out + [newline_style]
+            # If no body follows (EOF), do not add a trailing spacer.
 
         return out
 
@@ -285,94 +427,62 @@ class XmlHeaderProcessor(XmlPositionalMixin, HeaderProcessor):
         return (open_count % 2) == 1
 
     def strip_header_block(
-        self, *, lines: list[str], span: tuple[int, int] | None = None
+        self,
+        *,
+        lines: list[str],
+        span: tuple[int, int] | None = None,
+        newline_style: str = "\n",
+        ends_with_newline: bool | None = None,
     ) -> tuple[list[str], tuple[int, int] | None]:
-        """Remove the TopMark header block and return the updated file image.
+        """Remove the TopMark header with minimal, policy-aware cleanup.
 
-        This XML/HTML-specific override performs extra cleanup:
-          1. Delegates to base removal.
-          2. Removes all surrounding blank lines (not just one).
-          3. Removes a tightly-wrapping <!-- ... --> block if present.
-          4. Collapses the XML declaration and the next element back onto one line.
+        Strategy 1 (strict gate): malformed or unsafe XML never reaches here because
+        the pre-insert checker will skip insertion. Therefore we keep removal simple
+        and conservative:
+
+        - Delegate removal to the base class (span-aware, policy bounds).
+        - Do **not** modify the XML declaration, DOCTYPE, or attempt single-line
+          rejoin of the prolog seam.
+        - If a trailing *policy-blank* immediately follows the removed header and
+          the policy requested a spacer (``ensure_blank_after_header=True``), remove
+          **at most one** such spacer line to restore the pre-header adjacency.
+
+        Args:
+            lines (list[str]): Full file content split into lines (keepends=True).
+            span (tuple[int, int] | None): Optional (start, end) indices of the
+                header block to remove; if ``None``, the base class attempts auto-detect.
+            newline_style (str): Newline style (``LF``, ``CR``, ``CRLF``).
+            ends_with_newline (bool | None): Whether the original file ended with a
+                newline; not used by this simplified implementation but kept for
+                signature compatibility.
+
+        Returns:
+            tuple[list[str], tuple[int, int] | None]: A tuple containing:
+                - The updated list of file lines with the header removed.
+                - The (start, end) line indices (inclusive) of the removed block
+                  in the original input.
         """
-        # 1) Perform the generic removal first.
-        new_lines: list[str] = []
-        removed: tuple[int, int] | None = None
-        new_lines, removed = super().strip_header_block(lines=lines, span=span)
-        if removed is None:
-            return new_lines, None
+        # Delegate policy-aware detection and removal to the base implementation
+        updated: list[str]
+        removed_span: tuple[int, int] | None
+        updated, removed_span = super().strip_header_block(
+            lines=lines,
+            span=span,
+            newline_style=newline_style,
+            ends_with_newline=ends_with_newline,
+        )
+        if removed_span is None:
+            return updated, None
 
-        start: int
-        _end: int
-        start, _end = removed
+        policy: FileTypeHeaderPolicy | None = getattr(
+            getattr(self, "file_type", None), "header_policy", None
+        )
 
-        # --- Blank line cleanup around the removed header ---
-        # After base removal, `start` points at the first line that originally
-        # followed the header. Our insertion logic may have introduced *one or more*
-        # blank lines both before and after the header. We normalize these by
-        # deleting all contiguous blank lines after `start`, and then all contiguous
-        # blank lines immediately before `start`.
+        # Remove *one* trailing spacer that we likely introduced after the header
+        # (only when policy asked for it). Never touch pre-header blanks or the prolog.
+        if policy and bool(getattr(policy, "ensure_blank_after_header", False)):
+            start, _end = removed_span
+            if 0 <= start < len(updated) and is_pure_spacer(updated[start], policy):
+                del updated[start]
 
-        # 2a) Remove all trailing blanks at `start`, not just one.
-        while 0 <= start < len(new_lines) and new_lines[start].strip() == "":
-            del new_lines[start]
-            # `start` still points to the first content line after the header.
-
-        # 2b) Remove all preceding blanks right before `start`.
-        while 0 < start <= len(new_lines) and new_lines[start - 1].strip() == "":
-            del new_lines[start - 1]
-            start -= 1  # shift left because we deleted just before `start`
-
-        # --- Remove a tightly wrapping block comment (`<!--` ... `-->`) if present ---
-        # After deletion of the inner START..END marker lines, we can be left with the
-        # outer wrapper lines. If the nearest non-blank line before `start` is exactly
-        # the block prefix and the nearest non-blank line at/after `start` is exactly
-        # the block suffix, drop both.
-        prev_idx: int = start - 1
-        # walk back to previous non-blank
-        while 0 <= prev_idx < len(new_lines) and new_lines[prev_idx].strip() == "":
-            prev_idx -= 1
-        next_idx: int = start
-        # walk forward to next non-blank
-        while 0 <= next_idx < len(new_lines) and new_lines[next_idx].strip() == "":
-            next_idx += 1
-
-        if (
-            0 <= prev_idx < len(new_lines)
-            and 0 <= next_idx < len(new_lines)
-            and new_lines[prev_idx].strip() == (self.block_prefix or "")
-            and new_lines[next_idx].strip() == (self.block_suffix or "")
-            and prev_idx < next_idx
-        ):
-            # Delete suffix first, then prefix to preserve indices
-            del new_lines[next_idx]
-            del new_lines[prev_idx]
-            # After removing the prefix at prev_idx, `start` shifts left if it was
-            # beyond prev_idx. Recompute `start` as the first non-blank that follows
-            # the (now removed) wrapper region.
-            start = prev_idx
-            while 0 <= start < len(new_lines) and new_lines[start].strip() == "":
-                del new_lines[start]
-            # remove any residual blanks immediately before
-            while 0 < start <= len(new_lines) and new_lines[start - 1].strip() == "":
-                del new_lines[start - 1]
-                start -= 1
-
-        # --- Collapse declaration + following element back onto one line ---
-        prev_idx = start - 1
-        next_idx = start
-        if 0 <= prev_idx < len(new_lines) and 0 <= next_idx < len(new_lines):
-            prev: str = new_lines[prev_idx]
-            next_line: str = new_lines[next_idx]
-
-            # Allow for a UTF‑8 BOM and incidental leading whitespace on the decl line.
-            prev_no_bom: str = prev.lstrip("\ufeff")
-
-            # Recognize an XML declaration regardless of whether it currently ends with
-            # a newline. Collapse boundary whitespace so there is *no* newline between
-            # the declaration and the next node, restoring single‑line layout.
-            if prev_no_bom.lstrip().startswith("<?xml"):
-                merged: str = prev.rstrip("\r\n") + next_line.lstrip()
-                new_lines[prev_idx : next_idx + 1] = [merged]
-
-        return new_lines, removed
+        return updated, removed_span

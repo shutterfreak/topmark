@@ -25,6 +25,7 @@ Notes:
 
 from __future__ import annotations
 
+from topmark.filetypes.checks.xml import xml_can_insert
 from topmark.filetypes.policy import FileTypeHeaderPolicy
 
 from ..base import FileType
@@ -106,6 +107,7 @@ FILETYPES: list[FileType] = [
         filenames=[],
         patterns=[],
         description="Scalable Vector Graphics (SVG)",
+        pre_insert_checker=xml_can_insert,
     ),
     FileType(
         name="typescript",
@@ -128,10 +130,11 @@ FILETYPES: list[FileType] = [
     ),
     FileType(
         name="xhtml",
-        extensions=[".xhtml"],
+        extensions=[".xhtml", ".xht"],
         filenames=[],
         patterns=[],
         description="XHTML documents",
+        pre_insert_checker=xml_can_insert,
     ),
     FileType(
         name="xml",
@@ -139,6 +142,7 @@ FILETYPES: list[FileType] = [
         filenames=["pom.xml"],
         patterns=[],
         description="Extensible Markup Language (XML)",
+        pre_insert_checker=xml_can_insert,
     ),
     FileType(
         name="xsl",
@@ -146,6 +150,7 @@ FILETYPES: list[FileType] = [
         filenames=[],
         patterns=[],
         description="XSL stylesheets",
+        pre_insert_checker=xml_can_insert,
     ),
     FileType(
         name="xslt",
@@ -153,5 +158,6 @@ FILETYPES: list[FileType] = [
         filenames=[],
         patterns=[],
         description="XSLT stylesheets",
+        pre_insert_checker=xml_can_insert,
     ),
 ]

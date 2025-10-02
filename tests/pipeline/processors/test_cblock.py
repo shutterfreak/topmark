@@ -286,7 +286,10 @@ def test_cblock_not_at_top_insertion_single_leading_blank(tmp_path: Path) -> Non
 
     # Ask the processor to prepare insertion at index 1 (i.e., after prelude line)
     prepared: list[str] = proc.prepare_header_for_insertion(
-        original_lines=original, insert_index=1, rendered_header_lines=rendered_header
+        original_lines=original,
+        insert_index=1,
+        rendered_header_lines=rendered_header,
+        newline_style=newline,
     )
 
     # Build the final output to check exact placement

@@ -1034,7 +1034,7 @@ def test_resolve_deep_filename_tail_normalization(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Filename-tail rules with nested paths must match after backslash->slash normalization."""
-    d: resolver_mod.Path = tmp_path / "a" / "b" / ".config" / "tool"
+    d: Path = tmp_path / "a" / "b" / ".config" / "tool"
     d.mkdir(parents=True, exist_ok=True)
     f: Path = d / "settings.json"
     f.write_text("{}\n", encoding="utf-8")

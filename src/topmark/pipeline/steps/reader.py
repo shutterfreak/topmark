@@ -105,14 +105,17 @@ def read(ctx: ProcessingContext) -> ProcessingContext:
                 ctx.leading_bom = True
             lines = lines[:]  # copy to avoid mutating any shared list
             lines[0] = lines[0].lstrip("\ufeff")
+            # For a BOM-only file, lines == [""], so it doesn’t take the empty-file branch.
+            # Downstream, an empty "" line can look like “body exists” to spacing logic.
 
-        # If no lines, set empty state but keep status RESOLVED (sniffer should have handled empty)
-        if len(lines) == 0:
+        # If no lines, or BOM-only (single empty logical line after BOM strip), mark empty.
+        if len(lines) == 0 or (len(lines) == 1 and lines[0] == ""):
             # Edge case: file truncated to 0 bytes between sniff and read.
             # Mirror sniffer semantics for consistency.
             ctx.file_lines = []
             ctx.ends_with_newline = False
             ctx.status.fs = FsStatus.EMPTY
+            # NOTE: real zero-length files already marked EMPTY in sniffer
             return ctx
 
         # Record whether the file ends with a newline (used when generating patches)

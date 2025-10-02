@@ -19,7 +19,6 @@ avoid interfering with tools that might not fully accept block comments.
 from __future__ import annotations
 
 from topmark.config.logging import TopmarkLogger, get_logger
-from topmark.file_resolver import detect_newline
 from topmark.filetypes.registry import register_filetype
 from topmark.pipeline.processors.base import HeaderProcessor
 from topmark.pipeline.processors.mixins import LineCommentMixin
@@ -51,35 +50,3 @@ class SlashHeaderProcessor(LineCommentMixin, HeaderProcessor):
     def __init__(self) -> None:
         # Rely on the class attribute for LineCommentMixin; just run base init.
         super().__init__()
-
-    def prepare_header_for_insertion(
-        self,
-        original_lines: list[str],
-        insert_index: int,
-        rendered_header_lines: list[str],
-    ) -> list[str]:
-        """Ensure a blank line after the header unless one already exists.
-
-        We never add a leading blank at the top-of-file. We add exactly one
-        trailing blank line if the next line isn't already blank or EOF.
-
-        Args:
-            original_lines (list[str]): Original file lines.
-            insert_index (int): Line index where the header will be inserted.
-            rendered_header_lines (list[str]): Header lines to insert.
-
-        Returns:
-            list[str]: Possibly modified header lines including any added padding.
-        """
-        # Detect newline style; default to "\n"
-        nl: str = detect_newline(original_lines)
-        out: list[str] = list(rendered_header_lines)
-
-        # Trailing padding: ensure one blank line after header if not already blank/EOF
-        next_is_blank: bool = (
-            insert_index < len(original_lines) and original_lines[insert_index].strip() == ""
-        )
-        if not next_is_blank:
-            out = out + [nl]
-
-        return out
