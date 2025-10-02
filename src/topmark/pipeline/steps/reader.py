@@ -27,6 +27,8 @@ Implementation details:
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.pipeline.context import (
     ContentStatus,
@@ -34,6 +36,9 @@ from topmark.pipeline.context import (
     ProcessingContext,
     may_proceed_to_read,
 )
+
+if TYPE_CHECKING:
+    from topmark.filetypes.base import FileType, InsertChecker, InsertCheckResult
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -192,7 +197,34 @@ def read(ctx: ProcessingContext) -> ProcessingContext:
             len(ctx.file_lines) if ctx.file_lines else 0,
         )
 
-        return ctx
+        # Advisory-only pre-insert probe.
+        # Now that `file_lines` are populated, we can compute a *preview* of
+        # whether insertion would be allowed. This is used for bucketing and
+        # debug logs only; the updater remains the authoritative gate and is the
+        # only step that emits user-facing diagnostics.
+        ft: FileType | None = ctx.file_type
+        checker: InsertChecker | None = ft.pre_insert_checker if ft else None
+        if checker is not None:
+            # Keep the reader resilient: the checker is extensible code and may raise.
+            # We intentionally keep the try/except *tight* around the invocation.
+            try:
+                from topmark.filetypes.base import InsertCapability  # local to avoid cycles
+
+                res: "InsertCheckResult" = checker(ctx) or {}
+                if res:
+                    ctx.pre_insert_capability = res.get("capability", InsertCapability.UNEVALUATED)
+                    ctx.pre_insert_reason = res.get("reason", "")
+                    ctx.pre_insert_origin = res.get("origin", __name__)
+                logger.debug(
+                    "reader advisory: pre-insert %s – %s",
+                    getattr(ctx.pre_insert_capability, "value", ctx.pre_insert_capability),
+                    ctx.pre_insert_reason,
+                )
+            except Exception:
+                # Advisory-only; never fail the reader on checker issues.
+                logger.debug("reader advisory pre-insert checker failed; ignoring", exc_info=True)
+
+        return ctx  # TODO: check indentation level
 
     except Exception as e:  # Log and attach diagnostic; continue without raising
         ctx.status.content = ContentStatus.UNREADABLE

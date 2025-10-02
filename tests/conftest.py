@@ -31,8 +31,7 @@ from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
 
 import pytest
 
-from topmark.config import MutableConfig
-from topmark.config.logging import TRACE_LEVEL, setup_logging
+from topmark.config import MutableConfig, logging
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -73,14 +72,28 @@ def fixture(*args: Any, **kwargs: Any) -> Callable[[F], F]:
     return as_typed_mark(pytest.fixture(*args, **kwargs))
 
 
+@pytest.fixture(autouse=True)
+def silence_topmark_logging(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ensure TopMark's runtime log level is not forced via env during tests.
+
+    This avoids accidental DEBUG/TRACE noise when the developer has exported
+    TOPMARK_LOG_LEVEL in their shell. Individual tests can still raise the level
+    via `pytest_configure` or `caplog`.
+    """
+    # Ensure environment never forces DEBUG during test runs
+    monkeypatch.delenv("TOPMARK_LOG_LEVEL", raising=False)
+
+
 @hookimpl(tryfirst=True)
 def pytest_configure(config: Config) -> None:  # pylint: disable=unused-argument
     """Configure pytest settings and customize logging for the test suite.
 
-    This function sets the logging level to TRACE (if available) for all tests,
+    This function sets the logging level to TRACE for all tests,
     ensuring detailed output is captured during test execution.
     """
-    setup_logging(level=TRACE_LEVEL)
+    logging.setup_logging(level=logging.TRACE_LEVEL)
+    # Less noisy, supported by default logging module (logging.logging):
+    # setup_logging(level=logging.logging.DEBUG)
 
 
 @pytest.fixture

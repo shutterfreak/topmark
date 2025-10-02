@@ -91,6 +91,7 @@ class InsertCapability(Enum):
     """Advisory on whether a header insertion is advisable in the current context.
 
     Attributes:
+        UNEVALUATED: No checker result yet.
         OK: Insertion is advisable.
         SKIP_UNSUPPORTED_CONTENT: Insertion should be skipped because the file
             content is not suitable (e.g., XML prolog-only files).
@@ -102,6 +103,7 @@ class InsertCapability(Enum):
             checks failed).
     """
 
+    UNEVALUATED = "unevaluated"  # no checker result yet
     OK = "ok"
     SKIP_UNSUPPORTED_CONTENT = "skip_unsupported_content"  # e.g., XML prolog-only
     SKIP_POLICY = "skip_policy"  # e.g., policy says no
@@ -116,10 +118,12 @@ class InsertCheckResult(TypedDict, total=False):
         capability (InsertCapability): Advisory on whether insertion is OK
             or should be skipped (and why).
         reason (str, optional): Human-readable explanation for the advisory.
+        origin (str): Origin of the result
     """
 
     capability: InsertCapability
     reason: str
+    origin: str
 
 
 @runtime_checkable

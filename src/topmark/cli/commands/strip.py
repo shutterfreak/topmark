@@ -346,7 +346,7 @@ def strip_command(
         written, failed = write_updates(results, should_write=_should_write_strip)
 
         if fmt == OutputFormat.DEFAULT:
-            msg = (
+            msg: str = (
                 f"\n✅ Removed headers in {written} file(s)."
                 if written
                 else "\n✅ No changes to apply."

@@ -26,8 +26,9 @@ from tests.pipeline.conftest import BlockSignatures, expected_block_lines_for, f
 from topmark.config import Config, MutableConfig
 from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
+from topmark.filetypes.base import InsertCapability
 from topmark.pipeline import runner
-from topmark.pipeline.context import ProcessingContext
+from topmark.pipeline.context import ProcessingContext, ResolveStatus, WriteStatus
 from topmark.pipeline.pipelines import get_pipeline
 from topmark.pipeline.processors.xml import XmlHeaderProcessor
 
@@ -247,23 +248,11 @@ def test_xml_single_line_declaration(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
-    sig: BlockSignatures = expected_block_lines_for(f)
-
-    # The first line should end with the XML declaration (we inserted the first newline)
-    assert lines[0].lstrip("\ufeff").startswith("<?xml")
-
-    # Expect: line 0 = decl, line 1 = blank, line 2 = block open, line 3 = start
-    if "block_open" in sig:
-        open_idx: int = find_line(lines, sig["block_open"])
-        assert open_idx == 2
-    start_idx: int = find_line(lines, sig["start_line"])
-    assert start_idx == 3
-
-    # Ensure a trailing blank after the header block
-    if "block_close" in sig:
-        close_idx: int = find_line(lines, sig["block_close"])
-        assert close_idx + 1 < len(lines) and lines[close_idx + 1].strip() == ""
+    # Strict XML InsertChecker flags this as unsupported due to reflow:
+    assert ctx.status.resolve == ResolveStatus.RESOLVED
+    assert ctx.pre_insert_capability == InsertCapability.SKIP_UNSUPPORTED_CONTENT
+    assert ctx.status.write == WriteStatus.SKIPPED
+    assert (ctx.updated_file_lines or []) == (ctx.file_lines or [])
 
 
 @mark_pipeline
@@ -280,23 +269,11 @@ def test_xml_single_line_decl_and_doctype(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
-    sig: BlockSignatures = expected_block_lines_for(f)
-
-    # First logical line contains decl+doctype (newline inserted by header placement)
-    assert lines[0].lstrip("\ufeff").startswith("<?xml")
-
-    # Expect: line 0 = decl+doctype, line 1 = blank, line 2 = block open, line 3 = start
-    if "block_open" in sig:
-        open_idx: int = find_line(lines, sig["block_open"])
-        assert open_idx == 2
-    start_idx: int = find_line(lines, sig["start_line"])
-    assert start_idx == 3
-
-    # Ensure a trailing blank after the header block
-    if "block_close" in sig:
-        close_idx: int = find_line(lines, sig["block_close"])
-        assert close_idx + 1 < len(lines) and lines[close_idx + 1].strip() == ""
+    # Strict XML InsertChecker flags this as unsupported due to reflow:
+    assert ctx.status.resolve == ResolveStatus.RESOLVED
+    assert ctx.pre_insert_capability == InsertCapability.SKIP_UNSUPPORTED_CONTENT
+    assert ctx.status.write == WriteStatus.SKIPPED
+    assert (ctx.updated_file_lines or []) == (ctx.file_lines or [])
 
 
 @mark_pipeline

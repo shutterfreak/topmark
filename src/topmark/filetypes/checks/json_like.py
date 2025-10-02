@@ -42,10 +42,15 @@ def json_like_can_insert(
                 or should be skipped (and why).
             * `reason` (str, optional): Human-readable explanation for the advisory.
     """
+    origin: str = f"{__name__}.json_like_can_insert"
+
     # Only act for JSON-family types; other types OK
     ftname: str = (ctx.file_type.name if ctx.file_type else "").lower()
     if ftname not in ("jsonc", "json-with-comments"):
-        return {"capability": InsertCapability.OK}
+        return {
+            "capability": InsertCapability.OK,
+            "origin": origin,
+        }
 
     text: str = "".join(ctx.file_lines or [])
     has_non_topmark_comment: bool = ("//" in text or "/*" in text) and (
@@ -53,9 +58,13 @@ def json_like_can_insert(
     )
 
     if has_non_topmark_comment or allow_promote:
-        return {"capability": InsertCapability.OK}
+        return {
+            "capability": InsertCapability.OK,
+            "origin": origin,
+        }
 
     return {
         "capability": InsertCapability.SKIP_POLICY,
         "reason": "JSON lacks comments; promotion to JSONC is disabled",
+        "origin": origin,
     }

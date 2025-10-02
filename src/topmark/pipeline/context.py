@@ -536,8 +536,9 @@ class ProcessingContext:
         newline_style (str): The newline style in the file (``LF``, ``CR``, ``CRLF``).
         ends_with_newline (bool | None): True if the file ends with a newline.
         pre_insert_capability (InsertCapability): Advisory from sniffer
-            about pre-insert checks (e.g. spacers, empty body), defaults to OK
+            about pre-insert checks (e.g. spacers, empty body), defaults to UNEVALUATED
         pre_insert_reason (str | None): Reason why insertion may be problematic
+        pre_insert_origin (str | None): Origin of pre_insertion diagnostic
         existing_header_range (tuple[int, int] | None): The (start, end) line numbers
             of the existing header.
         existing_header_block (str | None): The text block of the existing header.
@@ -574,9 +575,9 @@ class ProcessingContext:
     ends_with_newline: bool | None = None  # True if file ends with a newline sequence
 
     # Advisory from sniffer about pre-insert checks (e.g. spacers, empty body)
-    pre_insert_capability: InsertCapability = InsertCapability.OK
+    pre_insert_capability: InsertCapability = InsertCapability.UNEVALUATED
     pre_insert_reason: str | None = None
-
+    pre_insert_origin: str | None = None
     # 🔍 2. Existing header (detected from original file)
     existing_header_range: tuple[int, int] | None = (
         None  # (start_line, end_line) of detected header
@@ -624,14 +625,19 @@ class ProcessingContext:
                 {"level": d.level.value, "message": d.message} for d in self.diagnostics
             ],
             "diagnostic_counts": {
-                "info": sum(1 for d in self.diagnostics if d.level is DiagnosticLevel.INFO),
-                "warning": sum(1 for d in self.diagnostics if d.level is DiagnosticLevel.WARNING),
-                "error": sum(1 for d in self.diagnostics if d.level is DiagnosticLevel.ERROR),
+                "info": sum(1 for d in self.diagnostics if d.level == DiagnosticLevel.INFO),
+                "warning": sum(1 for d in self.diagnostics if d.level == DiagnosticLevel.WARNING),
+                "error": sum(1 for d in self.diagnostics if d.level == DiagnosticLevel.ERROR),
+            },
+            "pre_insert_check": {
+                "capability": self.pre_insert_capability.name,
+                "reason": self.pre_insert_reason,
+                "origin": self.pre_insert_origin,
             },
             # Heuristic: treat MISSING or CHANGED as a would-change indicator
             "would_change": (
-                self.status.header is HeaderStatus.MISSING
-                or self.status.comparison is ComparisonStatus.CHANGED
+                self.status.header == HeaderStatus.MISSING
+                or self.status.comparison == ComparisonStatus.CHANGED
             ),
         }
 
@@ -684,7 +690,7 @@ class ProcessingContext:
         if key != "ok":
             # Secondary hints: write status > diff marker > diagnostics
 
-            if self.status.write is not WriteStatus.PENDING:
+            if self.status.write != WriteStatus.PENDING:
                 parts.append("-")
                 parts.append(self.status.write.color(self.status.write.value))
             elif self.header_diff:
@@ -693,9 +699,9 @@ class ProcessingContext:
 
         diag_show_hint: str = ""
         if self.diagnostics:
-            n_info: int = sum(1 for d in self.diagnostics if d.level is DiagnosticLevel.INFO)
-            n_warn: int = sum(1 for d in self.diagnostics if d.level is DiagnosticLevel.WARNING)
-            n_err: int = sum(1 for d in self.diagnostics if d.level is DiagnosticLevel.ERROR)
+            n_info: int = sum(1 for d in self.diagnostics if d.level == DiagnosticLevel.INFO)
+            n_warn: int = sum(1 for d in self.diagnostics if d.level == DiagnosticLevel.WARNING)
+            n_err: int = sum(1 for d in self.diagnostics if d.level == DiagnosticLevel.ERROR)
             parts.append("-")
             # Compose a compact triage summary like "1 error, 2 warnings"
             triage: list[str] = []

@@ -38,7 +38,6 @@ from topmark.pipeline.context import (
 if TYPE_CHECKING:
     from os import stat_result
 
-    from topmark.filetypes.base import FileType, InsertCapability, InsertChecker, InsertCheckResult
     from topmark.filetypes.policy import FileTypeHeaderPolicy
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -301,32 +300,6 @@ def sniff(ctx: ProcessingContext) -> ProcessingContext:
         ctx.leading_bom,
         ctx.has_shebang,
     )
-
-    # Optional advisory: if a pre-insert checker exists, probe now to surface intent early.
-    # This is advisory only; updater.update() is authoritative and will re-check.
-    try:
-        ft: FileType | None = getattr(ctx, "file_type", None)
-        checker: InsertChecker | None = getattr(ft, "pre_insert_checker", None) if ft else None
-        if checker is not None:
-            from topmark.filetypes.base import InsertCapability
-
-            try:
-                res: InsertCheckResult = checker(ctx) or {}
-                cap: InsertCapability = res.get("capability", InsertCapability.OK)
-                if cap is not InsertCapability.OK:
-                    ctx.pre_insert_capability = cap
-                    ctx.pre_insert_reason = res.get("reason", "")
-                    logger.debug(
-                        "sniffer advisory: %s – %s",
-                        getattr(cap, "value", cap),
-                        res.get("reason", ""),
-                    )
-            except Exception:
-                # Advisory only — swallow errors
-                logger.debug("sniffer advisory pre-insert checker raised; ignoring", exc_info=True)
-    except Exception:
-        # Advisory only; never fail the sniffer on checker issues
-        logger.debug("sniffer advisory setup failed; ignoring", exc_info=True)
 
     ctx.status.fs = FsStatus.OK
     return ctx

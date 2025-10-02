@@ -81,6 +81,7 @@ from topmark.cli_shared.utils import (
     write_updates,
 )
 from topmark.config.logging import TopmarkLogger, get_logger
+from topmark.filetypes.base import InsertCapability
 from topmark.pipeline.context import (
     ComparisonStatus,
     HeaderStatus,
@@ -396,7 +397,14 @@ def check_command(
         add_only: bool,
         update_only: bool,
     ) -> bool:
-        """Return True if any file would be changed by `check`."""
+        """Return True if any file would be changed by `check`.
+
+        This function computes the *semantic* would-change condition based on
+        header/comparison status and the `--add-only` / `--update-only` intent.
+        It assumes the caller has already removed results that are **unsafe to
+        insert** per the pre-insert capability gate. See the `effective_results`
+        filter below.
+        """
         if add_only:
             return any(r.status.header == HeaderStatus.MISSING for r in results)
         if update_only:
@@ -411,8 +419,21 @@ def check_command(
             for r in results
         )
 
+    # Consider WOULD_CHANGE only for files that are safe to insert/update.
+    # Files flagged by the pre-insert gate (capability != OK) are excluded here,
+    # so they do not contribute to the --would-change exit code.
+    effective_results: list[ProcessingContext] = [
+        r
+        for r in results
+        if r.pre_insert_capability
+        in {
+            InsertCapability.UNEVALUATED,
+            InsertCapability.OK,
+        }
+    ]
+
     if not apply_changes and _would_change_check(
-        results, add_only=add_only, update_only=update_only
+        effective_results, add_only=add_only, update_only=update_only
     ):
         ctx.exit(ExitCode.WOULD_CHANGE)
 

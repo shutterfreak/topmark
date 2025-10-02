@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING, Any, Mapping, Sequence
 from yachalk import chalk
 
 from topmark.config.logging import TopmarkLogger, get_logger
+from topmark.filetypes.base import InsertCapability
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -209,41 +210,48 @@ def classify_outcome(r: ProcessingContext) -> tuple[str, str, Callable[[str], st
 
     logger.debug("status: %s", r.status)
 
-    if r.status.resolve is not ResolveStatus.RESOLVED:
+    if r.status.resolve != ResolveStatus.RESOLVED:
         return (
             f"file:{r.status.resolve.name}",
             f"{r.status.resolve.value}",
             r.status.resolve.color,
         )
 
+    # First report if a resolved file cannot have a header inserted safely ()
+    if r.status.resolve == ResolveStatus.RESOLVED and r.pre_insert_capability not in {
+        InsertCapability.UNEVALUATED,
+        InsertCapability.OK,
+    }:
+        return ("unsafe:insert", "unsafe to insert header", chalk.yellow)
+
     # Highest precedence: if comparison says UNCHANGED, treat as compliant
-    if r.status.comparison is ComparisonStatus.UNCHANGED:
+    if r.status.comparison == ComparisonStatus.UNCHANGED:
         return ("ok", "up-to-date", chalk.green)
 
     # If the stripper step participated, prefer strip-centric labels.
-    if r.status.strip is StripStatus.READY:
+    if r.status.strip == StripStatus.READY:
         # We computed updated_file_lines that remove the header.
         return ("strip:ready", "would strip header", chalk.yellow)
 
-    if r.status.strip is StripStatus.NOT_NEEDED:
+    if r.status.strip == StripStatus.NOT_NEEDED:
         # Nothing to strip — refine message based on what scanner/comparer saw.
-        if r.status.header is HeaderStatus.MISSING:
+        if r.status.header == HeaderStatus.MISSING:
             # No header present in the original file.
             return ("strip:none", "no header", chalk.green)
         # Fallback for strip pipeline where nothing changed.
         return ("strip:none", "no changes to strip", chalk.green)
 
     # If generation produced no fields, prefer a dedicated bucket over insert/missing
-    if r.status.generation is GenerationStatus.NO_FIELDS:
+    if r.status.generation == GenerationStatus.NO_FIELDS:
         return ("no_fields", "no fields to render", chalk.yellow)
 
     # Non-strip pipelines (or stripper didn't run): use standard classification.
-    if r.status.header is HeaderStatus.MISSING:
-        if r.status.generation is GenerationStatus.PENDING:
+    if r.status.header == HeaderStatus.MISSING:
+        if r.status.generation == GenerationStatus.PENDING:
             return ("strip:none", "no header", chalk.green)
         return ("insert", "would insert header", chalk.green)
-    if r.status.header is HeaderStatus.DETECTED:
-        if r.status.comparison is ComparisonStatus.CHANGED:
+    if r.status.header == HeaderStatus.DETECTED:
+        if r.status.comparison == ComparisonStatus.CHANGED:
             return ("update", "would update header", chalk.yellow_bright)
         return ("compare_error", "cannot compare", chalk.red)
     if r.status.header in {HeaderStatus.EMPTY, HeaderStatus.MALFORMED}:

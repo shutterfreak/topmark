@@ -156,7 +156,7 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
         return ctx
 
     # If the comparer determined the file is already compliant, do nothing.
-    if ctx.status.comparison is ComparisonStatus.UNCHANGED:
+    if ctx.status.comparison == ComparisonStatus.UNCHANGED:
         ctx.status.write = WriteStatus.SKIPPED
         # Preserve the original image as the "updated" content for downstream steps.
         ctx.updated_file_lines = ctx.file_lines or []
@@ -174,39 +174,58 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
         ctx.status.write = WriteStatus.SKIPPED
         return ctx
 
+    from topmark.filetypes.base import InsertCapability  # local to avoid cycles
+
+    ft: FileType | None = ctx.file_type
+    checker: InsertChecker | None = ft.pre_insert_checker if ft else None
+
+    # --- Pre-insert capability gate (authoritative) ---------------------------
+    if checker is not None and ctx.pre_insert_capability != InsertCapability.OK:
+        # Advisory-only pre-insert probe already ran in reader step.
+        # Here we enforce the gate: if the advisory is not OK, skip updating.
+        reason: str = ctx.pre_insert_reason or "pre-insert check refused insertion"
+        origin: str = ctx.pre_insert_origin or __name__
+        logger.debug(
+            "pre-insert (advisory): %s – %s",
+            getattr(ctx.pre_insert_capability, "value", ctx.pre_insert_capability),
+            reason,
+        )
+        ctx.updated_file_lines = ctx.file_lines or []
+        ctx.status.write = WriteStatus.SKIPPED
+        ctx.add_warning(f"{reason} (origin: {origin})")
+        return ctx
+
     # --- Pre-insert capability check (authoritative) --------------------------
-    try:
-        ft: FileType | None = getattr(ctx, "file_type", None)
-        checker: InsertChecker | None = getattr(ft, "pre_insert_checker", None) if ft else None
-        if checker is not None:
-            # Local import to avoid potential import cycles
-            from topmark.filetypes.base import InsertCapability
+    # Only evaluate here if the advisory checker did not run (UNEVALUATED).
+    if checker is not None and ctx.pre_insert_capability == InsertCapability.UNEVALUATED:
+        try:
+            result: InsertCheckResult = checker(ctx) or {}
+        except Exception as exc:
+            logger.exception("pre-insert checker failed for %s: %s", getattr(ft, "name", ft), exc)
+            from topmark.cli_shared.utils import format_callable_pretty
 
-            try:
-                result: InsertCheckResult = checker(ctx) or {}
-            except Exception as exc:
-                logger.exception(
-                    "pre-insert checker failed for %s: %s", getattr(ft, "name", ft), exc
-                )
-                result = {"capability": InsertCapability.SKIP_OTHER, "reason": "checker error"}
+            result = {
+                "capability": InsertCapability.SKIP_OTHER,
+                "reason": f"checker error: {format_callable_pretty(checker)}, {exc}",
+                "origin": __name__,
+            }
 
-            cap: InsertCapability = result.get("capability", InsertCapability.OK)
-            if cap is not InsertCapability.OK:
-                reason: str = result.get("reason", "pre-insert checker skipped update")
-                logger.debug("pre-insert: %s – %s", getattr(cap, "value", cap), reason)
-                # Preserve original image; mark as skipped
-                original_lines: list[str] = ctx.file_lines or []
-                ctx.updated_file_lines = original_lines
-                ctx.status.write = WriteStatus.SKIPPED
-                # Surface hint for UX/debugging (non-fatal)
-                try:
-                    ctx.add_warning(reason)
-                except Exception:
-                    pass
-                return ctx
-    except Exception:
-        # Never let the gate crash the updater; continue with normal flow
-        logger.debug("pre-insert gate: ignored due to unexpected error", exc_info=True)
+        # Persist the authoritative view for downstream bucketing/rendering
+        cap: InsertCapability = result.get("capability", InsertCapability.OK)
+        ctx.pre_insert_capability = cap
+        ctx.pre_insert_reason = result.get("reason", ctx.pre_insert_reason)
+        ctx.pre_insert_origin = result.get("origin", __name__)
+
+        if cap != InsertCapability.OK:
+            reason = ctx.pre_insert_reason or "pre-insert checker skipped update"
+            origin = ctx.pre_insert_origin or __name__
+            logger.debug("pre-insert: %s – %s", getattr(cap, "value", cap), reason)
+            # Preserve original image; mark as skipped
+            original_lines: list[str] = ctx.file_lines or []
+            ctx.updated_file_lines = original_lines
+            ctx.status.write = WriteStatus.SKIPPED
+            ctx.add_warning(f"{reason} (origin: {origin})")
+            return ctx
 
     original_lines = ctx.file_lines or []
     rendered_expected_header_lines: list[str] = ctx.expected_header_lines
