@@ -130,9 +130,9 @@ pyproject-hooks==1.2.0
     # via
     #   build
     #   pip-tools
-pyright==1.1.405
+pyright==1.1.406
     # via topmark
-pytest==8.4.1
+pytest==8.4.2
     # via
     #   pytest-xdist
     #   topmark
