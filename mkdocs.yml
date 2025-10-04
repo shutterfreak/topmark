@@ -82,6 +82,9 @@ nav:
           - "Pre-commit": usage/pre-commit.md
           - "Header placement": usage/header-placement.md
           - "Supported file types": usage/filetypes.md
+  - Configuration:
+      - Overview: configuration/index.md
+      - Discovery & Precedence: configuration/discovery.md
   - CI/CD:
       - CI workflow: ci/ci-workflow.md
       - Release workflow: ci/release-workflow.md

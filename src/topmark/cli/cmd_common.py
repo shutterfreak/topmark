@@ -179,7 +179,13 @@ def build_config_common(
     align_fields: bool,
     header_format: HeaderOutputFormat | None,
 ) -> MutableConfig:
-    """Materialize Config from an input plan (no file list resolution)."""
+    """Materialize Config from an input plan (no file list resolution).
+
+    Uses layered config discovery:
+      * defaults → user → project chain (root→cwd; pyproject.toml then topmark.toml per dir)
+        → extra files → CLI.
+      * The discovery anchor is the first provided path (or CWD if none/STDIN).
+    """
     return resolve_config_from_click(
         ctx=ctx,
         verbosity_level=ctx.obj.get("verbosity_level"),

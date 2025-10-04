@@ -53,6 +53,14 @@ ______________________________________________________________________
   (list mode).
 - Idempotent: re‑running after headers are removed results in **no changes**.
 
+> **How config is resolved**
+>
+> TopMark merges config from **defaults → user → project chain → `--config` → CLI**.
+> Globs are evaluated relative to the **workspace base** (`relative_to`).
+> Paths to other files (like `exclude_from`) are resolved relative to the **config file** that declared them.
+>
+> See: [`Configuration → Discovery & Precedence`](../../configuration/discovery.md).
+
 ______________________________________________________________________
 
 ## Machine-readable output

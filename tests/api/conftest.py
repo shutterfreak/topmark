@@ -16,7 +16,7 @@ and small utilities that are reused across tests under `tests/api/`.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterable, Iterator, cast
+from typing import TYPE_CHECKING, Any, Iterable, Iterator, cast
 
 import pytest
 
@@ -32,6 +32,44 @@ if TYPE_CHECKING:
 
     from topmark.filetypes.base import FileType
     from topmark.pipeline.processors.base import HeaderProcessor
+
+
+def cfg(**overrides: Any) -> dict[str, Any]:
+    """Build a minimal **mapping** for API calls that accept a config dict.
+
+    This helper intentionally returns a plain dictionary shaped like the
+    TOML structure (e.g., the ``[files]`` table). It is used to exercise the
+    public API branch where callers pass a *mapping* instead of a fully
+    constructed :class:`topmark.config.Config`.
+
+    Notes:
+        * Only a tiny base is provided (``files.file_types = ["python"]``) so tests
+          are explicit about what is enabled. Merging of ``overrides`` is **shallow**
+          at the top level for convenience.
+        * No defaults, no layered discovery, no path normalization, and no
+          ``PatternSource`` coercion happen here—that behavior is covered by tests
+          using :func:`tests.conftest.make_config` / ``make_mutable_config``.
+
+    Args:
+        **overrides (Any): Arbitrary keyword arguments collected into a
+            ``dict[str, Any]``. Keys correspond to top-level TOML tables
+            (e.g., ``files``), and values may be nested mappings.
+
+    Returns:
+        dict[str, Any]: A TOML-shaped mapping suitable for ``api.check(..., config=...)``.
+    """
+    base: dict[str, Any] = {
+        "files": {
+            # When provided, discovery should consider only these types
+            "file_types": ["python"],
+        },
+    }
+    for k, v in overrides.items():
+        if isinstance(v, dict) and isinstance(base.get(k), dict):
+            base[k].update(v)  # shallow merge for convenience in tests
+        else:
+            base[k] = v
+    return base
 
 
 @pytest.fixture()

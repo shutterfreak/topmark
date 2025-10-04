@@ -395,19 +395,37 @@ For configuration examples, hook policies, and troubleshooting, see the dedicate
 
 ## 🛠 Configuration
 
-You can specify one or more `--config` files, or rely on local fallback resolution:
+TopMark supports **layered configuration discovery** with clear precedence and path semantics.
+Configuration can come from multiple sources and is merged in the following order:
 
-- `topmark.toml` in the working directory
-- `pyproject.toml` using the `[tool.topmark]` table
+1. **Built-in defaults** (`topmark-default.toml`)
 
-TopMark reads configuration from one or more TOML files. Configuration is merged from:
+1. **User config** (`~/.config/topmark/topmark.toml` or `~/.topmark.toml`)
 
-1. Built-in defaults
-1. Local project config (if not disabled via `--no-config`)
-1. Additional files via `--config`
-1. CLI overrides
+1. **Project chain** discovered upward from the working directory:
 
-Example configuration snippet (`topmark.toml`):
+   - `pyproject.toml` (`[tool.topmark]` table)
+   - `topmark.toml` (tool-specific file)
+   - same-directory precedence: `pyproject.toml` → `topmark.toml`
+   - stops when `root = true` is found
+
+1. **Explicit config files** via `--config` (ou can specify one or more `--config` files)
+
+1. **CLI flags and options** (highest precedence)
+
+Each layer is merged into a single effective configuration, which can be inspected with
+`topmark dump-config`.
+
+TopMark distinguishes **two base directories** when resolving paths:
+
+- **Workspace base** (`relative_to`): for evaluating globs such as `include_patterns` and `exclude_patterns`.
+- **Config-local base**: for resolving paths declared in a given config file, such as
+  `exclude_from` or `files_from`.
+
+> For complete details and examples, see\
+> [`Configuration: Discovery & Precedence`](docs/configuration/discovery.md).
+
+### Example (`topmark.toml`)
 
 ```toml
 [fields]
@@ -433,10 +451,11 @@ relative_to = "."
 
 ### Notes
 
-- `formatting.align_fields = true` vertically aligns the field names within the rendered header
-  lines for readability.
-- File-type specific behavior (shebang handling, XML prolog, blank line policies) is driven by
-  internal **FileTypeHeaderPolicy** defaults and can be extended to new types.
+- `formatting.align_fields = true` vertically aligns field names for readability.
+- File-type–specific behavior (shebang handling, XML prolog, blank-line policies) is driven by
+  the internal **FileTypeHeaderPolicy** defaults.
+- Use `topmark dump-config` to see the **effective merged configuration** after all layers
+  and overrides are applied.
 
 The `EnumParam` class enables shell completion for enum-based CLI options.
 

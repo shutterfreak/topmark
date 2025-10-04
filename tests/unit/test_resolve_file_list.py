@@ -17,11 +17,13 @@ and other edge cases like dotfiles, globs, and duplicates.
 
 from __future__ import annotations
 
-from types import SimpleNamespace
-from typing import TYPE_CHECKING, Callable, cast
+from pathlib import Path
+from typing import TYPE_CHECKING, Callable
+
+import topmark.file_resolver as file_resolver_mod
 
 # Import the module under test
-import topmark.file_resolver as file_resolver_mod
+from tests.conftest import make_config
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -54,47 +56,6 @@ class DummyType:
             bool: True if the path matches, False otherwise.
         """
         return self._pred(path)
-
-
-def make_config(
-    *,
-    files: list[str] | None = None,
-    include_patterns: list[str] | None = None,
-    include_from: list[str] | None = None,
-    exclude_patterns: list[str] | None = None,
-    exclude_from: list[str] | None = None,
-    config_files: list[str] | None = None,
-    file_types: list[str] | None = None,
-) -> Config:
-    """Construct a Config-like object for tests.
-
-    Missing fields default to None, which the resolver interprets as unset.
-
-    Args:
-        files (list[str] | None): Positional paths or globs.
-        include_patterns (list[str] | None): Glob patterns to intersect with candidates.
-        include_from (list[str] | None): Paths to files with include patterns.
-        exclude_patterns (list[str] | None): Glob patterns to exclude from candidates.
-        exclude_from (list[str] | None): Paths to files with exclude patterns.
-        config_files (list[str] | None): Config-defined fallback paths.
-        file_types (list[str] | None): File types to filter by.
-
-    Returns:
-        Config: A namespace with the required attributes.
-    """
-    return cast(
-        "Config",
-        SimpleNamespace(
-            files=list(files or []),
-            files_from=list(files or []),
-            include_patterns=list(include_patterns or []),
-            include_from=list(include_from or []),
-            exclude_patterns=list(exclude_patterns or []),
-            exclude_from=list(exclude_from or []),
-            config_files=list(config_files or []),
-            file_types=list(file_types or []),
-        ),
-    )
 
 
 def write(p: Path, text: str = "") -> Path:

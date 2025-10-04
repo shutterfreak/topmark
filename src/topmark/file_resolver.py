@@ -10,8 +10,8 @@
 
 """Resolve input files for TopMark based on config, paths, and filters.
 
-This module expands positional arguments and stdin‑provided paths, applies
-include/exclude patterns (including patterns loaded from files), and filters
+This module expands positional arguments and paths read upstream from STDIN
+(when provided by the CLI layer), applies include/exclude patterns, and filters
 by registered file types. Globs are expanded relative to the current working
 directory. The result is a deterministic, sorted list of files to process.
 """
@@ -24,40 +24,91 @@ from typing import TYPE_CHECKING
 from pathspec import PathSpec
 from pathspec.patterns.gitwildmatch import GitWildMatchPattern
 
+from topmark.config import PatternSource  # runtime use
 from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.filetypes.base import FileType
 from topmark.filetypes.instances import get_file_type_registry
 
 if TYPE_CHECKING:
-    from topmark.config import Config
+    from topmark.config import Config, PatternSource
     from topmark.filetypes.base import FileType
 
 
 logger: TopmarkLogger = get_logger(__name__)
 
 
-def load_patterns_from_file(file_path: str | Path) -> list[str]:
-    """Load non‑empty, non‑comment patterns from a text file.
+def load_patterns_from_file(source: PatternSource) -> list[str]:
+    """Load non-empty, non-comment patterns from a text file.
 
-    Lines that are empty or start with ``#`` are ignored. Whitespace is trimmed
-    from each non‑ignored line. If the file cannot be read, an empty list is returned.
+    The pattern semantics mirror .gitignore: each pattern is later evaluated
+    relative to the pattern file's own base directory (``source.base``).
 
     Args:
-        file_path (str | Path): Path to the file containing one pattern per line.
+        source (PatternSource): Reference to the pattern file and its base.
 
     Returns:
         list[str]: A list of patterns as strings.
     """
     try:
-        # Skip empty lines and commented-out lines
-        return [
-            line.strip()
-            for line in Path(file_path).read_text(encoding="utf-8").splitlines()
-            if line.strip() and not line.strip().startswith("#")
-        ]
+        text: str = source.path.read_text(encoding="utf-8")
     except FileNotFoundError as e:
-        logger.error("Cannot read patterns from '%s': %s", file_path, e)
+        logger.error("Cannot read patterns from '%s': %s", source.path, e)
         return []
+    except OSError as e:
+        logger.error("Cannot read patterns from '%s': %s", source.path, e)
+        return []
+    patterns: list[str] = []
+    for line in text.splitlines():
+        s: str = line.strip()
+        if not s or s.startswith("#"):
+            continue
+        patterns.append(s)
+    logger.debug("Loaded %d pattern(s) from %s (base=%s)", len(patterns), source.path, source.base)
+    return patterns
+
+
+def _read_paths_from_source(source: PatternSource) -> list[Path]:
+    """Read newline-delimited file paths from a list file.
+
+    Relative entries are resolved against the list file's base directory
+    (``source.base``).
+
+    Args:
+        source (PatternSource): List file reference and its resolution base.
+
+    Returns:
+        list[Path]: Absolute paths read from the file (comments/blank lines ignored).
+    """
+    try:
+        text: str = source.path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        logger.error("Cannot read file list from '%s' (not found).", source.path)
+        return []
+    except OSError as e:
+        logger.error("Cannot read file list from '%s': %s", source.path, e)
+        return []
+    out: list[Path] = []
+    for line in text.splitlines():
+        s: str = line.strip()
+        if not s or s.startswith("#"):
+            continue
+        p = Path(s)
+        if not p.is_absolute():
+            p: Path = (source.base / p).resolve()
+        else:
+            p = p.resolve()
+        out.append(p)
+    logger.debug("Loaded %d path(s) from %s (base=%s)", len(out), source.path, source.base)
+    return out
+
+
+def _rel_for_match(path: Path, base: Path) -> str:
+    """Return a POSIX-style relative path (or absolute as fallback) for PathSpec matching."""
+    try:
+        rel: Path = path.resolve().relative_to(base.resolve())
+        return rel.as_posix()
+    except Exception:
+        return path.as_posix()
 
 
 def resolve_file_list(config: Config) -> list[Path]:
@@ -92,35 +143,41 @@ def resolve_file_list(config: Config) -> list[Path]:
     # Use getattr with defaults so SimpleNamespace-based test doubles work fine
     positional_paths: tuple[str, ...] = tuple(getattr(config, "files", ()) or ())
     include_patterns: tuple[str, ...] = tuple(getattr(config, "include_patterns", ()) or ())
-    include_file: tuple[str | Path, ...] = tuple(getattr(config, "include_from", ()) or ())
+    include_sources: tuple[PatternSource, ...] = tuple(getattr(config, "include_from", ()) or ())
     exclude_patterns: tuple[str, ...] = tuple(getattr(config, "exclude_patterns", ()) or ())
-    exclude_file: tuple[str | Path, ...] = tuple(getattr(config, "exclude_from", ()) or ())
+    exclude_sources: tuple[PatternSource, ...] = tuple(getattr(config, "exclude_from", ()) or ())
     config_files: tuple[str | Path, ...] = tuple(getattr(config, "config_files", ()) or ())
     file_types: frozenset[str] = frozenset(getattr(config, "file_types", ()) or ())
-    files_from: tuple[str | Path, ...] = tuple(getattr(config, "files_from", ()) or ())
+    files_from_sources: tuple[PatternSource, ...] = tuple(getattr(config, "files_from", ()) or ())
     stdin_flag: bool = bool(getattr(config, "stdin", False))
+    workspace_root: Path | None = getattr(config, "relative_to", None)
+    # Defensive fallback only; in normal operation resolve_config_from_click() sets this.
+    if workspace_root is None:
+        workspace_root = Path.cwd()
 
     logger.trace(
         """\
     positional_paths: %s
     include_patterns: %s
-    include_file: %s
+    include_sources: %s
     exclude_patterns: %s
-    exclude_file: %s
+    exclude_sources: %s
     config_files: %s
     file_type_list: %s
-    files_from: %s
+    files_from_sources: %s
+    workspace_root: %s
     stdin_flag: %s
     config: %s
 """,
         positional_paths,
         include_patterns,
-        include_file,
+        include_sources,
         exclude_patterns,
-        exclude_file,
+        exclude_sources,
         config_files,
         file_types,
-        files_from,
+        files_from_sources,
+        workspace_root,
         stdin_flag,
         config,
     )
@@ -156,34 +213,17 @@ def resolve_file_list(config: Config) -> list[Path]:
         # Use positional paths if provided
         # NOTE: static code check incorrectly assumes code is unreachable
         input_paths: list[Path] = [Path(p) for p in positional_paths]
-    elif not files_from and not stdin_flag:
+    elif not files_from_sources and not stdin_flag:
         # `config_files` are roots/patterns provided by configuration; expand them
         input_paths = [Path(p) for p in config_files]
     else:
         input_paths = []
 
-    # Add paths from files-from (literal, not patterns)
-    def _read_paths_from_file(fp: Path) -> list[Path]:
-        try:
-            text: str = fp.read_text(encoding="utf-8")
-        except FileNotFoundError:
-            logger.error("Cannot read file list from '%s' (not found).", fp)
-            return []
-        except OSError as e:
-            logger.error("Cannot read file list from '%s': %s", fp, e)
-            return []
-        paths: list[Path] = []
-        line: str
-        for line in text.splitlines():
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            paths.append(Path(line))
-        return paths
-
-    # Merge paths from files-from into the candidate inputs
-    for fp in files_from or []:
-        input_paths.extend(_read_paths_from_file(Path(fp)))
+    logger.debug("Initial input paths: %s", input_paths)
+    # Merge paths from files-from into the candidate inputs (resolve relatives vs. source.base)
+    for src in files_from_sources or []:
+        input_paths.extend(_read_paths_from_source(src))
+    logger.debug("Input paths before expansion: %s", input_paths)
 
     # Step 2: Expand base paths into a set of files (and directories initially)
     candidate_set: set[Path] = set()
@@ -217,25 +257,58 @@ def resolve_file_list(config: Config) -> list[Path]:
 
     # Step 3: Apply include intersection filter (if any include patterns)
     # Merge include_patterns + include_from patterns
-    combined_include_patterns: list[str] = list(include_patterns or [])
-    if include_file:
-        for f in include_file:
-            # Load patterns from include files and add them to the include list
-            combined_include_patterns += load_patterns_from_file(f)
-    if combined_include_patterns:
-        # Only keep files matching any include pattern (intersection)
-        include_spec: PathSpec = PathSpec.from_lines(GitWildMatchPattern, combined_include_patterns)
-        candidate_set = {p for p in candidate_set if include_spec.match_file(p.as_posix())}
+    any_includes: bool = bool(include_patterns) or bool(include_sources)
+    if any_includes:
+        kept: set[Path] = set()
+        # 3.1 workspace-root include patterns
+        if include_patterns:
+            # NOTE: static code analysis reports that this branch is unreachable -- CHECK!
+            spec_root: PathSpec = PathSpec.from_lines(GitWildMatchPattern, list(include_patterns))
+            if workspace_root is not None:
+                for p in candidate_set:
+                    if spec_root.match_file(_rel_for_match(p, workspace_root)):
+                        kept.add(p)
+            else:
+                for p in candidate_set:
+                    if spec_root.match_file(p.as_posix()):
+                        kept.add(p)
+        # 3.2 include_from sources (each with its own base)
+        for src in include_sources:
+            pats: list[str] = load_patterns_from_file(src)
+            if not pats:
+                continue
+            spec_src: PathSpec = PathSpec.from_lines(GitWildMatchPattern, pats)
+            for p in candidate_set:
+                if spec_src.match_file(_rel_for_match(p, src.base)):
+                    kept.add(p)
+        candidate_set = kept
 
-    # Step 4: Apply exclude subtraction filter (if any exclude patterns)
-    combined_exclude_patterns: list[str] = list(exclude_patterns or [])
-    if exclude_file:
-        for f in exclude_file:
-            # Load patterns from exclude files and add them to the exclude list
-            combined_exclude_patterns += load_patterns_from_file(f)
-    if combined_exclude_patterns:
-        exclude_spec: PathSpec = PathSpec.from_lines(GitWildMatchPattern, combined_exclude_patterns)
-        candidate_set = {p for p in candidate_set if not exclude_spec.match_file(p.as_posix())}
+    # Step 4: Apply exclude subtraction filter (if any exclude patterns/sources)
+    any_excludes: bool = bool(exclude_patterns) or bool(exclude_sources)
+    if any_excludes:
+        kept: set[Path] = set()
+        # 4.1 workspace-root exclude patterns
+        if exclude_patterns:
+            # NOTE: static code analysis reports that this branch is unreachable -- CHECK!
+            spec_root = PathSpec.from_lines(GitWildMatchPattern, list(exclude_patterns))
+            if workspace_root is not None:
+                for p in candidate_set:
+                    if not spec_root.match_file(_rel_for_match(p, workspace_root)):
+                        kept.add(p)
+            else:
+                for p in candidate_set:
+                    if not spec_root.match_file(p.as_posix()):
+                        kept.add(p)
+        else:
+            kept = set(candidate_set)
+        # 4.2 exclude_from sources (each with its own base)
+        for src in exclude_sources:
+            pats = load_patterns_from_file(src)
+            if not pats:
+                continue
+            spec_src = PathSpec.from_lines(GitWildMatchPattern, pats)
+            kept = {p for p in kept if not spec_src.match_file(_rel_for_match(p, src.base))}
+        candidate_set = kept
 
     filtered_files: set[Path] = candidate_set
 
@@ -282,17 +355,17 @@ def resolve_file_types(path: Path) -> list[FileType]:
 
 
 def detect_newline(lines: list[str]) -> str:
-    """Detect the newline style used by a sequence of lines.
+    r"""Detect the newline sequence used by the provided lines.
 
-    Scans the provided lines in order and returns the first encountered newline
-    sequence: ``CRLF`` ``LF``, or ``CR``. Falls back to
-    ``LF`` when no newline can be inferred (e.g., single line without terminator).
+    Scans in order and returns the first encountered newline **sequence**:
+    ``\"\\r\\n\"``, ``\"\\n\"``, or ``\"\\r\"``. Falls back to ``\"\\n\"`` when no
+    newline can be inferred (e.g., single line without terminator).
 
     Args:
         lines (list[str]): Lines from a file, each potentially ending with a newline.
 
     Returns:
-        str: The detected newline sequence (``LF``, ``CR``, or ``CRLF``).
+        str: One of ``\"\\r\\n\"``, ``\"\\n\"``, or ``\"\\r\"``.
     """
     for ln in lines:
         if ln.endswith("\r\n"):

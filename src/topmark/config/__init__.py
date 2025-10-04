@@ -20,15 +20,27 @@ from topmark.toml or pyproject.toml.
 from __future__ import annotations
 
 import functools
+import os
 
 # For runtime type checks, prefer collections.abc
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
+from os import PathLike
 from pathlib import Path
-from typing import Any, TypeGuard
+from typing import Any, Callable
 
-from topmark.config.io import clean_toml, load_defaults_dict, load_toml_dict, to_toml
+from topmark.config.io import (
+    clean_toml,
+    get_bool_value_or_none,
+    get_list_value,
+    get_string_value,
+    get_string_value_or_none,
+    get_table_value,
+    load_defaults_dict,
+    load_toml_dict,
+    to_toml,
+)
 from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.rendering.formats import HeaderOutputFormat
 
@@ -43,6 +55,43 @@ logger: TopmarkLogger = get_logger(__name__)
 
 
 # ------------------ Immutable runtime config ------------------
+
+
+# Internal helpers for normalization
+def _abs_path_from(base: Path, raw: str | PathLike[str]) -> Path:
+    """Return an absolute Path for *raw* using *base* if *raw* is relative."""
+    s = str(raw)
+    p = Path(s)
+    return (base / p).resolve() if not p.is_absolute() else p.resolve()
+
+
+def _ps_from_config(raw: str, config_dir: Path) -> PatternSource:
+    """Create PatternSource from a config-file-declared path using that file's directory."""
+    p: Path = _abs_path_from(config_dir, raw)
+    return PatternSource(path=p, base=p.parent)
+
+
+def _ps_from_cli(raw: str, cwd: Path) -> PatternSource:
+    """Create PatternSource from a CLI-declared path using CWD (invocation site)."""
+    p: Path = _abs_path_from(cwd, raw)
+    return PatternSource(path=p, base=p.parent)
+
+
+def _extend_ps(
+    dst: list[PatternSource],
+    items: Iterable[str],
+    mk: Callable[[str, Path], PatternSource],
+    kind: str,
+    base: Path,
+) -> None:
+    for raw in items or []:
+        ps: PatternSource = mk(raw, base)
+        dst.append(ps)
+        logger.debug(
+            "Normalized %s '%s' against %s -> %s (base=%s)", kind, raw, base, ps.path, ps.base
+        )
+
+
 @dataclass(frozen=True, slots=True)
 class Config:
     """Immutable runtime configuration for TopMark.
@@ -52,6 +101,8 @@ class Config:
     (``tuple``/``frozenset``) to prevent accidental mutation during processing.
     Use `Config.thaw` to obtain a mutable builder for edits, and `MutableConfig.freeze`
     to return to an immutable runtime snapshot.
+
+    Layered merging with clear precedence is provided by `MutableConfig.load_merged()`.
 
     Attributes:
         timestamp (str): ISO-formatted timestamp when the Config instance was created.
@@ -69,12 +120,12 @@ class Config:
         relative_to (Path | None): Base path for relative file references, from [files].
         stdin (bool | None): Whether to read from stdin; requires explicit True to activate.
         files (tuple[str, ...]): List of files to process.
-        include_patterns (tuple[str, ...]): Glob patterns to include.
-        include_from (tuple[str, ...]): Files containing include patterns.
-        exclude_patterns (tuple[str, ...]): Glob patterns to exclude.
-        exclude_from (tuple[str, ...]): Files containing exclude patterns.
-        files_from (tuple[str, ...]): Paths to files that list newline-delimited candidate
+        include_from (tuple[PatternSource, ...]): Files containing include patterns.
+        exclude_from (tuple[PatternSource, ...]): Files containing exclude patterns.
+        files_from (tuple[PatternSource, ...]): Paths to files that list newline-delimited candidate
             file paths to add before filtering.
+        include_patterns (tuple[str, ...]): Glob patterns to include.
+        exclude_patterns (tuple[str, ...]): Glob patterns to exclude.
         file_types (frozenset[str]): File extensions or types to process.
     """
 
@@ -103,40 +154,56 @@ class Config:
     # File processing options
     stdin: bool | None
     files: tuple[str, ...]
+
+    include_from: tuple[PatternSource, ...]
+    exclude_from: tuple[PatternSource, ...]
+    files_from: tuple[PatternSource, ...]
+
     include_patterns: tuple[str, ...]
-    include_from: tuple[str, ...]
     exclude_patterns: tuple[str, ...]
-    exclude_from: tuple[str, ...]
-    files_from: tuple[str, ...]
 
     # File types (linked to file extensions) to process (filter)
     file_types: frozenset[str]
 
-    def to_toml_dict(self) -> dict[str, Any]:
+    def to_toml_dict(self, *, include_files: bool = False) -> dict[str, Any]:
         """Convert this immutable Config into a TOML-serializable dict.
+
+        Args:
+            include_files (bool): Whether to include the `files` list in the output.
+                Defaults to False to avoid spamming the output with potentially
+                large file lists. Set to True for full export.
+
+        Returns:
+            dict[str, Any]: the TOML-serializable dict representing the Config
 
         Note:
             Export-only convenience for documentation/snapshots. Parsing and
             loading live on the **mutable** side (see `MutableConfig` and
            `topmark.config.io`).
         """
-        return {
+        toml_dict: dict[str, Any] = {
             "fields": dict(self.field_values),
             "header": {"fields": list(self.header_fields)},
             "formatting": {
                 "align_fields": self.align_fields,
-                "header_format": self.header_format,
+                "header_format": (
+                    self.header_format.value if self.header_format is not None else None
+                ),
             },
             "files": {
                 "file_types": list(self.file_types),
+                "files_from": [str(ps.path) for ps in self.files_from],
+                "include_from": [str(ps.path) for ps in self.include_from],
+                "exclude_from": [str(ps.path) for ps in self.exclude_from],
                 "include_patterns": list(self.include_patterns),
-                "include_from": list(self.include_from),
                 "exclude_patterns": list(self.exclude_patterns),
-                "exclude_from": list(self.exclude_from),
-                "files_from": list(self.files_from),
                 "relative_to": self.relative_to_raw,
+                "config_files": list(self.config_files),
             },
         }
+        if include_files and self.files:
+            toml_dict["files"]["files"] = list(self.files)
+        return toml_dict
 
     def thaw(self) -> MutableConfig:
         """Return a mutable copy of this frozen config.
@@ -144,6 +211,9 @@ class Config:
         Symmetry:
             Mirrors `MutableConfig.freeze`. Prefer thaw→edit→freeze rather
             than mutating a runtime `Config`.
+
+        Returns:
+            MutableConfig: A mutable builder initialized from this snapshot.
         """
         return MutableConfig(
             timestamp=self.timestamp,
@@ -167,6 +237,25 @@ class Config:
         )
 
 
+# ------------------ Pattern source reference ------------------
+@dataclass(frozen=True)
+class PatternSource:
+    """Reference to a pattern or file list declared in a config source.
+
+    This value object captures both the absolute path to the referenced file
+    and the *base directory* used to interpret the file's contents when it
+    contains relative patterns (e.g., a gitignore-style file).
+
+    Attributes:
+        path (Path): Absolute path to the referenced file (e.g., ".gitignore").
+        base (Path): Absolute directory used as the matching base for the file's
+            patterns. Typically equals ``path.parent``.
+    """
+
+    path: Path
+    base: Path
+
+
 # -------------------------- Mutable builder --------------------------
 @dataclass
 class MutableConfig:
@@ -175,7 +264,7 @@ class MutableConfig:
     This builder collects config from defaults, project files, extra files, and CLI
     overrides. It remains convenient to mutate (``list``/``set``), then produces
     an immutable `Config` via `freeze`. TOML I/O is delegated to
-    +   `topmark.config.io` to keep this class focused on merge policy.
+    `topmark.config.io` to keep this class focused on merge policy.
 
     Attributes:
         timestamp (str): ISO-formatted timestamp when the Config instance was created.
@@ -192,12 +281,12 @@ class MutableConfig:
         relative_to (Path | None): Base path for relative file references, from [files].
         stdin (bool | None): Whether to read from stdin; requires explicit True to activate.
         files (list[str]): List of files to process.
+        include_from (list[PatternSource]): Files containing include patterns.
+        exclude_from (list[PatternSource]): Files containing exclude patterns.
+        files_from (list[PatternSource]): Paths to files that list newline-delimited
+            candidate file paths to add before filtering.
         include_patterns (list[str]): Glob patterns to include.
-        include_from (list[str]): Files containing include patterns.
         exclude_patterns (list[str]): Glob patterns to exclude.
-        exclude_from (list[str]): Files containing exclude patterns.
-        files_from (list[str]): Paths to files that list newline-delimited candidate file paths
-            to add before filtering.
         file_types (set[str]): File extensions or types to process.
     """
 
@@ -228,11 +317,13 @@ class MutableConfig:
     # File processing options
     stdin: bool | None = None  # Explicit True required to enable reading from stdin
     files: list[str] = field(default_factory=lambda: [])
+
+    include_from: list[PatternSource] = field(default_factory=lambda: [])
+    exclude_from: list[PatternSource] = field(default_factory=lambda: [])
+    files_from: list[PatternSource] = field(default_factory=lambda: [])
+
     include_patterns: list[str] = field(default_factory=lambda: [])
-    include_from: list[str] = field(default_factory=lambda: [])
     exclude_patterns: list[str] = field(default_factory=lambda: [])
-    exclude_from: list[str] = field(default_factory=lambda: [])
-    files_from: list[str] = field(default_factory=lambda: [])
 
     # File types filter
     file_types: set[str] = field(default_factory=lambda: set[str]())
@@ -290,7 +381,7 @@ class MutableConfig:
         """Load the default configuration from the bundled topmark-default.toml file.
 
         Returns:
-            MutableConfig: A Config instance populated with default values.
+            MutableConfig: A `MutableConfig` instance populated with default values.
         """
         default_toml_data: dict[str, Any] = load_defaults_dict()
 
@@ -330,10 +421,99 @@ class MutableConfig:
             else:
                 toml_data = tool_section
 
-        draft: MutableConfig = cls.from_toml_dict(toml_data)
+        # Parse the extracted TOML data into a MutableConfig;
+        # pass the config file path so the dict parser knows the base directory
+        draft: MutableConfig = cls.from_toml_dict(toml_data, config_file=path)
         draft.config_files = [path]
         logger.debug("Generated MutableConfig: %s", draft)
         return draft
+
+    @classmethod
+    def discover_local_config_files(cls, start: Path) -> list[Path]:
+        """Return config files discovered by walking upward from ``start``.
+
+        Layered discovery semantics:
+          * We traverse from the anchor directory up to the filesystem root and
+            collect config files in **root-most → nearest** order.
+          * In a given directory, we consider **both** `pyproject.toml` (with
+            `[tool.topmark]`) and `topmark.toml`. When **both** are present, we
+            append **`pyproject.toml` first and `topmark.toml` second** so that a
+            later merge (nearest-last-wins) gives same-directory precedence to
+            `topmark.toml`.
+          * If a discovered config sets ``root = true`` (top-level key in
+            `topmark.toml`, or within `[tool.topmark]` for `pyproject.toml`), we
+            stop traversing further up after collecting the current directory's
+            files.
+
+        Args:
+            start (Path): The Path instance where discovery starts.
+
+        Returns:
+            list[Path]: Discovered config file paths ordered for stable merging
+            (root-most first, nearest last; within a directory: pyproject → topmark).
+        """
+        candidates: list[Path] = []
+        cur: Path = start.resolve()  # Resolve symlinks and get absolute path
+        seen: set[Path] = set()
+
+        # Ensure we start from a directory anchor
+        if cur.is_file():
+            cur = cur.parent
+
+        # Walk up to filesystem root
+        while True:
+            root_stop_here = False
+
+            # Same-directory precedence: add pyproject first, then topmark
+            for name in ("pyproject.toml", "topmark.toml"):
+                p: Path = cur / name
+                if p.exists() and p.is_file() and p not in seen:
+                    candidates.append(p)
+                    seen.add(p)
+                    logger.debug("Discovered config file: %s", p)
+                    # Check for `root = true` to stop traversal after this dir
+                    try:
+                        data: dict[str, Any] = load_toml_dict(p)
+                        if name == "pyproject.toml":
+                            tool: dict[str, Any] = data.get("tool", {})
+                            topmark_tbl: dict[str, Any] = tool.get("topmark", {})
+                            if bool(topmark_tbl.get("root", False)):
+                                root_stop_here = True
+                        else:  # topmark.toml
+                            if bool(data.get("root", False)):
+                                root_stop_here = True
+                    except Exception as e:
+                        # Best-effort discovery; ignore parse errors here.
+                        logger.debug("Ignoring parse error in %s: %s", p, e)
+                        pass
+
+            parent: Path = cur.parent
+            if parent == cur:
+                break
+            if root_stop_here:
+                # Stop after collecting current directory entries if `root=true`
+                logger.debug("Stopping upward config discovery at %s due to root=true", cur)
+                break
+            cur = parent
+
+        # Root-most first, nearest last → merge in this order
+        return candidates
+
+    @classmethod
+    def discover_user_config_file(cls) -> Path | None:
+        """Return a user-scoped config path if it exists.
+
+        Looks under XDG config (``$XDG_CONFIG_HOME/topmark/topmark.toml``) and a legacy
+        fallback (``~/.topmark.toml``). The first existing path is returned.
+        """
+        xdg: str | None = os.environ.get("XDG_CONFIG_HOME")
+        base: Path = Path(xdg) if xdg else Path.home() / ".config"
+        xdg_path: Path = base / "topmark" / "topmark.toml"
+        legacy: Path = Path.home() / ".topmark.toml"
+        for p in (xdg_path, legacy):
+            if p.exists() and p.is_file():
+                return p
+        return None
 
     @classmethod
     def from_toml_dict(
@@ -342,7 +522,11 @@ class MutableConfig:
         config_file: Path | None = None,
         use_defaults: bool = False,
     ) -> MutableConfig:
-        """Parse a dictionary representation of TOML data into a Config instance.
+        """Create a draft config from a parsed TOML dict.
+
+        - Path-to-file entries declared in the config are normalized to absolute paths
+          using the *config file's* directory (config-local base).
+        - Glob strings are kept as-is (evaluated later against `relative_to`).
 
         Args:
             data (dict[str, Any]): The parsed TOML data as a dictionary.
@@ -352,77 +536,78 @@ class MutableConfig:
         Returns:
             MutableConfig: The resulting MutableConfig instance.
         """
-
-        # Type guards
-        def is_str_any_dict(val: Any) -> TypeGuard[dict[str, Any]]:
-            return isinstance(val, dict)
-
-        def is_any_list(val: Any) -> TypeGuard[list[Any]]:
-            return isinstance(val, list)
-
-        # Helpers
-        def get_table_value(table: dict[str, Any], key: str) -> dict[str, Any]:
-            # Safely extract a sub-table (dict) from the TOML data
-            value: Any | None = table.get(key)
-            return value if is_str_any_dict(value) else {}
-
-        def get_string_value(table: dict[str, Any], key: str, default: str = "") -> str:
-            # Coerce various types to string if possible; fallback to default
-            value: Any | None = table.get(key)
-            if isinstance(value, str):
-                return value
-            if isinstance(value, (int, float, bool)):
-                return str(value)
-            return default
-
-        def get_bool_value(table: dict[str, Any], key: str, default: bool = False) -> bool:
-            # Extract boolean value, coercing int to bool if needed
-            value: Any | None = table.get(key)
-            if isinstance(value, bool):
-                return value
-            if isinstance(value, int):
-                return bool(value)
-            return default
-
-        def get_list_value(
-            table: dict[str, Any], key: str, default: list[Any] | None = None
-        ) -> list[Any]:
-            # Extract list value, ensure list type or fallback to default
-            value: Any | None = table.get(key)
-            if is_any_list(value):
-                return value
-            return default or []
-
-        tool_cfg = data  # top-level tool configuration dictionary
+        tool_tbl: dict[str, Any] = data  # top-level tool configuration dictionary
 
         # Extract sub-tables for specific config sections; fallback to empty dicts
-        field_cfg: dict[str, Any] = get_table_value(tool_cfg, "fields")
-        logger.trace("TOML [fields]: %s", field_cfg)
+        field_tbl: dict[str, Any] = get_table_value(tool_tbl, "fields")
+        logger.trace("TOML [fields]: %s", field_tbl)
 
-        header_cfg: dict[str, Any] = get_table_value(tool_cfg, "header")
-        logger.trace("TOML [header]: %s", header_cfg)
+        header_tbl: dict[str, Any] = get_table_value(tool_tbl, "header")
+        logger.trace("TOML [header]: %s", header_tbl)
 
-        formatting_cfg: dict[str, Any] = get_table_value(tool_cfg, "formatting")
-        logger.trace("TOML [formatting]: %s", formatting_cfg)
+        formatting_tbl: dict[str, Any] = get_table_value(tool_tbl, "formatting")
+        logger.trace("TOML [formatting]: %s", formatting_tbl)
 
-        file_cfg: dict[str, Any] = get_table_value(tool_cfg, "files")
-        logger.trace("TOML [files]: %s", file_cfg)
+        files_tbl: dict[str, Any] = get_table_value(tool_tbl, "files")
+        logger.trace("TOML [files]: %s", files_tbl)
 
-        include_patterns: list[str] = get_list_value(file_cfg, "include_patterns")
-        include_from: list[str] = get_list_value(file_cfg, "include_from")
-        exclude_patterns: list[str] = get_list_value(file_cfg, "exclude_patterns")
-        exclude_from: list[str] = get_list_value(file_cfg, "exclude_from")
-        files_from: list[str] = get_list_value(file_cfg, "files_from")
+        # Start from a fresh draft with current timestamp
+        draft: MutableConfig = cls(timestamp=datetime.now().isoformat())
+
+        # Config file's directory for relative path resolution
+        cfg_dir: Path | None = config_file.parent.resolve() if config_file else None
+
+        # ----- config_files: normalize to absolute paths if possible -----
+        config_files: tuple[list[Path]] = ([config_file] if config_file else [],)
+        draft.config_files = [str(p) for p in config_files[0]] if config_files[0] else []
+
+        # ----- files: normalize to absolute strings against the config file dir -----
+        raw_files: list[str] = list(files_tbl.get("files", [])) if "files" in files_tbl else []
+        if raw_files:
+            if cfg_dir is not None:
+                for f in raw_files:
+                    absf: Path = _abs_path_from(cfg_dir, f)
+                    draft.files.append(str(absf))
+                    logger.debug("Normalized config files entry against %s: %s", cfg_dir, absf)
+            else:
+                draft.files.extend(raw_files)
+
+        # ----- include_from / exclude_from / files_from: convert to PatternSource now -----
+        def _normalize_sources(key: str) -> None:
+            vals: list[str] = list(files_tbl.get(key, [])) if key in files_tbl else []
+            if not vals:
+                return
+            if cfg_dir is not None:
+                _extend_ps(getattr(draft, key), vals, _ps_from_config, f"config {key}", cfg_dir)
+            else:
+                # Rare fallback: without a config file path, use CWD to avoid losing info
+                _extend_ps(
+                    getattr(draft, key),
+                    vals,
+                    _ps_from_cli,
+                    f"config {key}",
+                    Path.cwd().resolve(),
+                )
+
+        for _k in ("include_from", "exclude_from", "files_from"):
+            _normalize_sources(_k)
+
+        # ----- glob arrays remain raw strings (evaluated later vs relative_to) -----
+        draft.include_patterns.extend(list(files_tbl.get("include_patterns", [])))
+        draft.exclude_patterns.extend(list(files_tbl.get("exclude_patterns", [])))
 
         # Coerce field values to strings, ignoring unsupported types with a warning
         field_values: dict[str, str] = {}
-        for k, v in field_cfg.items():
+        for k, v in field_tbl.items():
             if isinstance(v, (str, int, float, bool)):
                 field_values[k] = str(v)
             else:
                 logger.warning("Ignoring unsupported field value for '%s': %r", k, v)
+        draft.field_values = field_values
 
-        header_fields: list[str] = get_list_value(header_cfg, "fields")
+        # Header fields: list of strings
+        header_fields: list[str] = get_list_value(header_tbl, "fields")
+        draft.header_fields = header_fields or []
 
         # # Fallback: if no explicit header field order is provided, use the keys of
         # # the field_values table in their declared order. This preserves intuitive
@@ -431,20 +616,33 @@ class MutableConfig:
         #     header_fields = list(field_values.keys())
 
         # Parse relative_to path if present, resolve to absolute path
-        relative_to_raw: str = get_string_value(tool_cfg, "relative_to")
-        relative_to: Path | None = Path(relative_to_raw).resolve() if relative_to_raw else None
+        draft.relative_to_raw = get_string_value(files_tbl, "relative_to")
+        if draft.relative_to_raw:
+            p = Path(draft.relative_to_raw)
+            if p.is_absolute():
+                draft.relative_to = p.resolve()
+            else:
+                if cfg_dir is not None:
+                    # Resolve relative-to against the CONFIG FILE’s directory
+                    draft.relative_to = (cfg_dir / p).resolve()
+                else:
+                    # Defaults or synthetic dicts: don’t bind to CWD; let the resolver
+                    # pick the project root later.
+                    draft.relative_to = None
+        else:
+            draft.relative_to = None
 
         # align_fields = get_bool_value(formatting_cfg, "align_fields", True)
-        align_fields: bool = get_bool_value(
-            formatting_cfg, "align_fields"
+        draft.align_fields = get_bool_value_or_none(
+            formatting_tbl, "align_fields"
         )  # NOTE: do not set a default value if not set
 
-        raw_header_format: str = get_string_value(
-            formatting_cfg, "header_format"
+        raw_header_format: str | None = get_string_value_or_none(
+            formatting_tbl, "header_format"
         )  # NOTE: do not set a default value if not set
         if raw_header_format:
             try:
-                header_format = HeaderOutputFormat(raw_header_format)
+                draft.header_format = HeaderOutputFormat(raw_header_format)
             except ValueError:
                 valid_values: str = ", ".join(e.value for e in HeaderOutputFormat)
                 logger.error(
@@ -452,32 +650,91 @@ class MutableConfig:
                     raw_header_format,
                     valid_values,
                 )
-                header_format = None
+                draft.header_format = None
         else:
             # choose your default; this keeps behavior predictable
-            header_format = None
+            draft.header_format = None
 
-        file_types: list[str] = get_list_value(file_cfg, "file_types")
-        file_type_set: set[str] = set(file_types) if file_types else set()
-        if file_types and len(file_types) != len(file_type_set):
+        file_types: list[str] = get_list_value(files_tbl, "file_types")
+        draft.file_types = set(file_types) if file_types else set()
+        if file_types and len(file_types) != len(draft.file_types):
             logger.warning("Duplicate file types found in config: %s", ", ".join(file_types))
 
-        return cls(
-            config_files=[config_file] if config_file else [],
-            field_values=field_values,
-            header_fields=header_fields or [],
-            align_fields=align_fields,
-            header_format=header_format,
-            relative_to_raw=relative_to_raw,
-            relative_to=relative_to,
-            stdin=False,  # Default to False unless explicitly set later -- TODO: False or None?
-            include_patterns=include_patterns or [],
-            include_from=include_from or [],
-            exclude_patterns=exclude_patterns or [],
-            exclude_from=exclude_from or [],
-            files_from=files_from or [],
-            file_types=file_type_set,
-        )
+        draft.stdin = False  # Default to False unless explicitly set later -- TODO: False or None?
+
+        return draft
+
+    @classmethod
+    def load_merged(
+        cls,
+        *,
+        input_paths: Iterable[str | Path] | None = None,
+        extra_config_files: Iterable[str | Path] | None = None,
+        no_config: bool = False,
+        file_types: Iterable[str] | None = None,
+    ) -> MutableConfig:
+        """Load a layered configuration with clear precedence.
+
+        Precedence (lowest → highest):
+            1. Built-in defaults (``topmark-default.toml``)
+            2. User config (``$XDG_CONFIG_HOME/topmark/topmark.toml`` or ``~/.topmark.toml``)
+            3. Project chain discovered upward from the anchor (root → current)
+            4. Extra config files explicitly provided (in order)
+            5. CLI/application overrides via ``apply_cli_args`` (outside this function)
+
+        Args:
+            input_paths (Iterable[str | Path] | None): Paths the caller intends to process.
+                Used only to pick a discovery anchor (first path's directory) when present;
+                otherwise CWD.
+            extra_config_files (Iterable[str | Path] | None): Explicit config files to merge
+                after discovery.
+            no_config (bool): If True, skip user and project discovery.
+            file_types (Iterable[str] | None): Optional filter to seed the draft for parity
+                with CLI.
+
+        Returns:
+            MutableConfig: A merged draft that callers can further override then freeze.
+        """
+        # 1) start from defaults
+        draft: MutableConfig = cls.from_defaults()
+
+        # Optionally seed file_types for parity with CLI flags
+        if file_types:
+            draft.file_types = set(str(x) for x in file_types)
+
+        if not no_config:
+            # 2) user config
+            user_cfg: Path | None = cls.discover_user_config_file()
+            if user_cfg is not None:
+                maybe: MutableConfig | None = cls.from_toml_file(user_cfg)
+                if maybe is not None:
+                    draft = draft.merge_with(maybe)
+
+            # 3) project chain (root → anchor)
+            if input_paths:
+                try:
+                    first: str | Path = next(iter(input_paths))
+                    anchor: Path = Path(first).resolve()
+                except StopIteration:
+                    anchor = Path.cwd()
+            else:
+                anchor = Path.cwd()
+
+            for cfg_path in cls.discover_local_config_files(anchor):
+                maybe = cls.from_toml_file(cfg_path)
+                if maybe is not None:
+                    draft = draft.merge_with(maybe)
+
+        # 4) extra config files
+        if extra_config_files:
+            for entry in extra_config_files:
+                p: Path = entry if isinstance(entry, Path) else Path(entry)
+                if p.exists() and p.is_file():
+                    maybe = cls.from_toml_file(p)
+                    if maybe is not None:
+                        draft = draft.merge_with(maybe)
+
+        return draft
 
     # ------------------------------- Merging -------------------------------
     def merge_with(self, other: MutableConfig) -> MutableConfig:
@@ -526,6 +783,12 @@ class MutableConfig:
 
         Returns:
             MutableConfig: The updated MutableConfig instance with CLI overrides applied.
+
+        Note:
+            CLI path-to-file options (``--include-from``, ``--exclude-from``,
+            ``--files-from``) are normalized against the **current working
+            directory** (invocation site). Glob arrays remain as strings and
+            are later evaluated relative to ``relative_to``.
         """
         logger.debug("Applying CLI arguments to MutableConfig: %s", args)
 
@@ -549,17 +812,45 @@ class MutableConfig:
             if self.files:
                 self.stdin = False
 
-        # Override include/exclude patterns and files if specified
+        # Glob arrays from CLI: keep as strings (evaluated later vs relative_to)
         if args.get("include_patterns"):
-            self.include_patterns = list(args["include_patterns"])
-        if args.get("include_from"):
-            self.include_from = list(args["include_from"])
+            # self.include_patterns = list(args["include_patterns"])
+            self.include_patterns.extend(list(args.get("include_patterns") or []))
         if args.get("exclude_patterns"):
-            self.exclude_patterns = list(args["exclude_patterns"])
+            # self.exclude_patterns = list(args["exclude_patterns"])
+            self.exclude_patterns.extend(list(args.get("exclude_patterns") or []))
+
+        # Override include/exclude patterns and files if specified
+        cwd: Path = Path.cwd().resolve()
+
+        # Normalize CLI path-to-file options from the invocation CWD
+        if args.get("include_from"):
+            # self.include_from = list(args["include_from"])
+            _extend_ps(
+                self.include_from,
+                args.get("include_from") or [],
+                _ps_from_cli,
+                "CLI --include-from",
+                cwd,
+            )
         if args.get("exclude_from"):
-            self.exclude_from = list(args["exclude_from"])
+            # self.exclude_from = list(args["exclude_from"])
+            _extend_ps(
+                self.exclude_from,
+                args.get("exclude_from") or [],
+                _ps_from_cli,
+                "CLI --exclude-from",
+                cwd,
+            )
         if args.get("files_from"):
-            self.files_from = list(args["files_from"])
+            # self.files_from = list(args["files_from"])
+            _extend_ps(
+                self.files_from,
+                args.get("files_from") or [],
+                _ps_from_cli,
+                "CLI --files-from",
+                cwd,
+            )
 
         # Override relative_to path if specified, resolving to absolute path
         if args.get("relative_to"):

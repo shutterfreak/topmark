@@ -233,7 +233,7 @@ def strip_command(
                 f"{ctx.command.name}: --diff is not supported with machine-readable output formats."
             )
 
-    # === Build Config and file list ===
+    # === Build Config (layered discovery) and file list ===
     plan: InputPlan = plan_cli_inputs(
         ctx=ctx,
         files_from=files_from,

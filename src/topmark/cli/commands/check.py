@@ -256,7 +256,7 @@ def check_command(
             f"{ctx.command.name}: Options --add-only and --update-only are mutually exclusive."
         )
 
-    # === Build Config and file list ===
+    # === Build Config (layered discovery) and file list ===
     plan: InputPlan = plan_cli_inputs(
         ctx=ctx,
         files_from=files_from,

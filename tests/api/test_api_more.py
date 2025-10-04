@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests.conftest import cfg
+from tests.api.conftest import cfg
 from topmark import api
 
 if TYPE_CHECKING:

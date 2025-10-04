@@ -260,6 +260,12 @@ norecursedirs = [
 python_files = ["test_*.py", "*_test.py"]
 
 # TopMark related configuration for the project repository
+[tool.topmark]
+# TopMark config note:
+# This repository uses layered config discovery (defaults → user → project chain → extras → CLI).
+# See the shipped default file for details:
+#   src/topmark/config/topmark-default.toml  (section: “Config discovery & precedence”)
+root = true # Mark this directory as the root for config discovery
 [tool.topmark.fields]
 project = "TopMark"
 license = "MIT"

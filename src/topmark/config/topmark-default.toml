@@ -13,6 +13,31 @@
 #########################
 # This file is used to define the default configuration for TopMark.
 
+# ------------------------------
+# Config discovery & precedence
+# ------------------------------
+# TopMark discovers configuration from (lowest → highest precedence):
+#   1. Built-in defaults (this file bundled with TopMark)
+#   2. User config (~/.config/topmark/topmark.toml or ~/.topmark.toml)
+#   3. Project configs discovered upward from the working directory to the root
+#      • In each directory, TopMark considers both:
+#          - pyproject.toml  (table: [tool.topmark])
+#          - topmark.toml    (tool-specific file)
+#        Same-directory precedence: pyproject.toml is merged first,
+#        then topmark.toml overrides it.
+#      • Directories are merged root → current (nearest wins).
+#      • Set `root = true` in a discovered config to stop further upward traversal.
+#   4. Extra config files passed explicitly via --config (in the order provided)
+#   5. CLI overrides (highest precedence)
+#
+# To mark a directory boundary for discovery, set:
+#   root = true
+# in `topmark.toml`, or within `[tool.topmark]` in `pyproject.toml`.
+# The default is `root = false` (continue traversing parents).
+#
+# Example (uncomment to stop discovery above this directory):
+# root = true
+
 
 # ==========================
 # Header field configuration

@@ -32,6 +32,14 @@ ______________________________________________________________________
 - **File‑agnostic**: does not resolve or process any PATHS.
 - **Reference**: useful to understand default header layout and file‑type policies.
 
+> **How config is resolved**
+>
+> TopMark merges config from **defaults → user → project chain → `--config` → CLI**.
+> Globs are evaluated relative to the **workspace base** (`relative_to`).
+> Paths to other files (like `exclude_from`) are resolved relative to the **config file** that declared them.
+>
+> See: [`Configuration → Discovery & Precedence`](../../configuration/discovery.md).
+
 ______________________________________________________________________
 
 ## When to use
