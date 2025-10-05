@@ -84,6 +84,45 @@ NOTE: `relative_to` is used **only** for header metadata (e.g., `file_relpath`),
 
 ______________________________________________________________________
 
+## Root semantics
+
+`root = true` in a discovered config stops the upward traversal **above** that directory.
+
+- Where to put it:
+  - In `topmark.toml`, at the top level.
+  - In `pyproject.toml`, under `[tool.topmark]`.
+- Effect:
+  - Directories at or below the marked directory remain eligible (the marked directory can still be merged),
+    but parent directories are **not** considered.
+  - This ensures a repository (or workspace) boundary for discovery.
+- Interaction with explicit `--config`:
+  - `--config` files are merged **after** discovery, so they still apply even if `root = true` stopped discovery.
+- Multiple roots:
+  - If multiple configs on the path specify `root = true`, the *nearest* one wins (since discovery walks **root → current** and the merge order is nearest-last).
+
+Example:
+
+```toml
+# repo/topmark.toml
+root = true
+
+[files]
+include_patterns = ["src/**/*.py"]
+```
+
+Running `topmark check` in `repo/app/` will:
+
+1. Use `repo/` as part of the project chain (because it contains a config),
+1. Stop searching parents above `repo/`,
+1. Evaluate `include_patterns` relative to `repo/`.
+
+See also:
+
+- [Discovery order](#discovery-order-lowest-highest-precedence)
+- [Path semantics](#path-semantics-sources-define-the-base)
+
+______________________________________________________________________
+
 ## CLI behavior
 
 - **CLI path-to-file options** (`--include-from`, `--exclude-from`, `--files-from`):\
