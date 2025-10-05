@@ -12,8 +12,12 @@
 
 This module expands positional arguments and paths read upstream from STDIN
 (when provided by the CLI layer), applies include/exclude patterns, and filters
-by registered file types. Globs are expanded relative to the current working
-directory. The result is a deterministic, sorted list of files to process.
+by registered file types.  Positional globs are expanded relative to the current
+working directory (CWD). Globs declared in configuration files are expanded
+relative to the directory of each declaring config file; globs passed via CLI
+are expanded relative to CWD. Path-to-file settings are resolved against their
+declaring sources. ``config.relative_to`` is used only for header metadata.
+The result is a deterministic, sorted list of files to process.
 """
 
 from __future__ import annotations
@@ -92,9 +96,9 @@ def _read_paths_from_source(source: PatternSource) -> list[Path]:
         s: str = line.strip()
         if not s or s.startswith("#"):
             continue
-        p = Path(s)
+        p: Path = Path(s)
         if not p.is_absolute():
-            p: Path = (source.base / p).resolve()
+            p = (source.base / p).resolve()
         else:
             p = p.resolve()
         out.append(p)
@@ -103,7 +107,15 @@ def _read_paths_from_source(source: PatternSource) -> list[Path]:
 
 
 def _rel_for_match(path: Path, base: Path) -> str:
-    """Return a POSIX-style relative path (or absolute as fallback) for PathSpec matching."""
+    """Return a POSIX-style relative path (or absolute as fallback) for PathSpec matching.
+
+    Args:
+        path (Path): Absolute or relative file path to test.
+        base (Path): Base directory against which the path is relativized for matching.
+
+    Returns:
+        str: POSIX-style relative path for matching (or absolute POSIX path if not under base).
+    """
     try:
         rel: Path = path.resolve().relative_to(base.resolve())
         return rel.as_posix()
@@ -111,14 +123,41 @@ def _rel_for_match(path: Path, base: Path) -> str:
         return path.as_posix()
 
 
+def _iter_config_base_dirs(config_files: tuple[str | Path, ...]) -> list[Path]:
+    """Return parent directories of real config files only.
+
+    Skips non-files (e.g., markers like "<CLI overrides>") and resolves to absolute paths.
+
+    Args:
+        config_files (tuple[str | Path, ...]): Sequence of config source identifiers
+            (paths or markers like "<CLI overrides>").
+
+    Returns:
+        list[Path]: Unique parent directories of real config files, resolved to absolute paths.
+    """
+    bases: list[Path] = []
+    for cf in config_files:
+        try:
+            p = Path(cf)
+        except TypeError:
+            continue
+        if p.exists() and p.is_file():
+            b = p.resolve().parent
+            if b not in bases:
+                bases.append(b)
+    return bases
+
+
 def resolve_file_list(config: Config) -> list[Path]:
     """Return the list of input files to process, applying candidate expansion and filters.
 
     The resolver implements these semantics:
       1. **Candidate set**: Expand positional paths (files, directories recursively, and globs).
-         If no positional paths are provided, fall back to `config_files`.
-         Also, extend with any literal paths read from `--files-from` files
-         (added before filtering).
+         If no positional paths are provided, extend with any literal paths read from
+         ``--files-from`` **before filtering**. If the candidate set is still empty and
+         include globs are configured, expand those include globs from **both** the current
+         working directory (CLI perspective) and each discovered/explicit config file’s
+         directory (config perspective) to seed candidates.
       2. **File-only**: Only files (not directories) are kept for filtering.
       3. **Include intersection**: If any include patterns
          (from `include_patterns` or `include_from` files)
@@ -140,17 +179,24 @@ def resolve_file_list(config: Config) -> list[Path]:
     logger.debug("resolve_file_list(): config: %s", config)
 
     # Normalize config collections to stable, predictable types.
-    # Use getattr with defaults so SimpleNamespace-based test doubles work fine
-    positional_paths: tuple[str, ...] = tuple(getattr(config, "files", ()) or ())
-    include_patterns: tuple[str, ...] = tuple(getattr(config, "include_patterns", ()) or ())
-    include_sources: tuple[PatternSource, ...] = tuple(getattr(config, "include_from", ()) or ())
-    exclude_patterns: tuple[str, ...] = tuple(getattr(config, "exclude_patterns", ()) or ())
-    exclude_sources: tuple[PatternSource, ...] = tuple(getattr(config, "exclude_from", ()) or ())
-    config_files: tuple[str | Path, ...] = tuple(getattr(config, "config_files", ()) or ())
-    file_types: frozenset[str] = frozenset(getattr(config, "file_types", ()) or ())
-    files_from_sources: tuple[PatternSource, ...] = tuple(getattr(config, "files_from", ()) or ())
-    stdin_flag: bool = bool(getattr(config, "stdin", False))
-    workspace_root: Path | None = getattr(config, "relative_to", None)
+    positional_paths: tuple[str, ...] = config.files
+
+    include_patterns: tuple[str, ...] = config.include_patterns
+    exclude_patterns: tuple[str, ...] = config.exclude_patterns
+
+    include_sources: tuple[PatternSource, ...] = config.include_from
+    exclude_sources: tuple[PatternSource, ...] = config.exclude_from
+
+    # TODO: keep raw + implement as PatternSource in config?
+    config_files: tuple[Path | str, ...] = config.config_files
+
+    file_types: frozenset[str] = frozenset(config.file_types)
+
+    files_from_sources: tuple[PatternSource, ...] = config.files_from
+
+    stdin_flag: bool = config.stdin or False
+
+    workspace_root: Path | None = config.relative_to
     # Defensive fallback only; in normal operation resolve_config_from_click() sets this.
     if workspace_root is None:
         workspace_root = Path.cwd()
@@ -206,24 +252,48 @@ def resolve_file_list(config: Config) -> list[Path]:
         # Otherwise, return empty list (path does not exist or is unsupported)
         return []
 
-    # Step 1: Build candidate set from positional paths, or fall back to config_files
-    # when there are no positional paths and we’re not using stdin/files-from.
-
+    # Step 1: Build candidate set from positional paths only; do not treat
+    # config files as inputs. We'll optionally seed from include globs later.
     if len(positional_paths) > 0:
         # Use positional paths if provided
-        # NOTE: static code check incorrectly assumes code is unreachable
+        # NOTE: This branch is reachable depending on CLI/config inputs;
+        # some static analyzers may flag it falsely.
         input_paths: list[Path] = [Path(p) for p in positional_paths]
-    elif not files_from_sources and not stdin_flag:
-        # `config_files` are roots/patterns provided by configuration; expand them
-        input_paths = [Path(p) for p in config_files]
     else:
         input_paths = []
 
     logger.debug("Initial input paths: %s", input_paths)
     # Merge paths from files-from into the candidate inputs (resolve relatives vs. source.base)
-    for src in files_from_sources or []:
-        input_paths.extend(_read_paths_from_source(src))
+    for psrc in files_from_sources or []:
+        input_paths.extend(_read_paths_from_source(psrc))
     logger.debug("Input paths before expansion: %s", input_paths)
+
+    cwd: Path = Path.cwd()
+
+    # If there are no explicit inputs (positional or files-from) but include globs
+    # were provided, expand them relative to the workspace root to seed candidates.
+    if not input_paths and include_patterns:
+        # NOTE: This branch is reachable depending on CLI/config inputs;
+        # some static analyzers may flag it falsely.
+        expanded_from_includes: set[Path] = set()
+        # 1) Expand as if patterns came from CLI (CWD)
+        for pat in include_patterns:
+            for hit in cwd.glob(pat):
+                if hit.is_file():
+                    expanded_from_includes.add(hit.resolve())
+        # 2) Expand as if patterns came from each declaring config file directory
+        for base_dir in _iter_config_base_dirs(config_files):
+            for pat in include_patterns:
+                for hit in base_dir.glob(pat):
+                    if hit.is_file():
+                        expanded_from_includes.add(hit.resolve())
+        if expanded_from_includes:
+            input_paths.extend(sorted(expanded_from_includes))
+            logger.debug(
+                "Expanded include_patterns from CWD and %d config dir(s): %d match(es)",
+                len(tuple(config_files)),
+                len(expanded_from_includes),
+            )
 
     # Step 2: Expand base paths into a set of files (and directories initially)
     candidate_set: set[Path] = set()
@@ -260,54 +330,63 @@ def resolve_file_list(config: Config) -> list[Path]:
     any_includes: bool = bool(include_patterns) or bool(include_sources)
     if any_includes:
         kept: set[Path] = set()
-        # 3.1 workspace-root include patterns
+        # 3.1 include_patterns: evaluate against CWD and each config file directory
         if include_patterns:
-            # NOTE: static code analysis reports that this branch is unreachable -- CHECK!
+            # NOTE: This branch is reachable depending on CLI/config inputs;
+            # some static analyzers may flag it falsely.
             spec_root: PathSpec = PathSpec.from_lines(GitWildMatchPattern, list(include_patterns))
-            if workspace_root is not None:
-                for p in candidate_set:
-                    if spec_root.match_file(_rel_for_match(p, workspace_root)):
+            bases: list[Path] = [cwd.resolve()]
+            # add parent directories of discovered/explicit config files
+            for base_dir in _iter_config_base_dirs(config_files):
+                if base_dir not in bases:
+                    bases.append(base_dir)
+            for p in candidate_set:
+                # match if it matches under ANY base
+                for base in bases:
+                    if spec_root.match_file(_rel_for_match(p, base)):
                         kept.add(p)
-            else:
-                for p in candidate_set:
-                    if spec_root.match_file(p.as_posix()):
-                        kept.add(p)
+                        break
         # 3.2 include_from sources (each with its own base)
-        for src in include_sources:
-            pats: list[str] = load_patterns_from_file(src)
+        for psrc in include_sources:
+            pats: list[str] = load_patterns_from_file(psrc)
             if not pats:
                 continue
             spec_src: PathSpec = PathSpec.from_lines(GitWildMatchPattern, pats)
             for p in candidate_set:
-                if spec_src.match_file(_rel_for_match(p, src.base)):
+                if spec_src.match_file(_rel_for_match(p, psrc.base)):
                     kept.add(p)
         candidate_set = kept
 
     # Step 4: Apply exclude subtraction filter (if any exclude patterns/sources)
     any_excludes: bool = bool(exclude_patterns) or bool(exclude_sources)
     if any_excludes:
-        kept: set[Path] = set()
-        # 4.1 workspace-root exclude patterns
+        kept = set()
+        # 4.1 exclude_patterns: evaluate against CWD and each config file directory
         if exclude_patterns:
-            # NOTE: static code analysis reports that this branch is unreachable -- CHECK!
+            # NOTE: This branch is reachable depending on CLI/config inputs;
+            # some static analyzers may flag it falsely.
             spec_root = PathSpec.from_lines(GitWildMatchPattern, list(exclude_patterns))
-            if workspace_root is not None:
-                for p in candidate_set:
-                    if not spec_root.match_file(_rel_for_match(p, workspace_root)):
-                        kept.add(p)
-            else:
-                for p in candidate_set:
-                    if not spec_root.match_file(p.as_posix()):
-                        kept.add(p)
+            bases = [cwd.resolve()]
+            for base_dir in _iter_config_base_dirs(config_files):
+                if base_dir not in bases:
+                    bases.append(base_dir)
+            for p in candidate_set:
+                matched = False
+                for base in bases:
+                    if spec_root.match_file(_rel_for_match(p, base)):
+                        matched = True
+                        break
+                if not matched:
+                    kept.add(p)
         else:
             kept = set(candidate_set)
         # 4.2 exclude_from sources (each with its own base)
-        for src in exclude_sources:
-            pats = load_patterns_from_file(src)
+        for psrc in exclude_sources:
+            pats = load_patterns_from_file(psrc)
             if not pats:
                 continue
             spec_src = PathSpec.from_lines(GitWildMatchPattern, pats)
-            kept = {p for p in kept if not spec_src.match_file(_rel_for_match(p, src.base))}
+            kept = {p for p in kept if not spec_src.match_file(_rel_for_match(p, psrc.base))}
         candidate_set = kept
 
     filtered_files: set[Path] = candidate_set
@@ -327,8 +406,22 @@ def resolve_file_list(config: Config) -> list[Path]:
             return any(ft.matches(path) for ft in selected_types)
 
         filtered_files = {f for f in filtered_files if _matches_selected_types(f)}
-    logger.trace("Files to process: %d -- %s", len(filtered_files), sorted(filtered_files))
-    return sorted(filtered_files)
+
+    # Step 6 (Finalize): dedupe by real path, prefer CWD-relative presentation
+    out_by_real: dict[Path, Path] = {}
+    for p in filtered_files:  # <-- use filtered_files, not candidate_set
+        real: Path = p.resolve()
+        try:
+            rel_to_cwd: Path = real.relative_to(cwd.resolve())
+            rep: Path = rel_to_cwd
+        except Exception:
+            rep = real  # keep absolute if not within CWD
+        if real not in out_by_real:
+            out_by_real[real] = rep
+
+    result: list[Path] = sorted(out_by_real.values(), key=lambda q: q.as_posix())
+    logger.trace("Files to process: %d -- %s", len(result), result)
+    return result
 
 
 def resolve_file_types(path: Path) -> list[FileType]:

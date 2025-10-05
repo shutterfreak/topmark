@@ -30,8 +30,11 @@ TopMark merges configuration from multiple sources with **clear precedence**. Th
    - `~/.topmark.toml`
 
 1. **Project configs (root → current)**\
-   Discovered upward from the **anchor directory** to the filesystem root:
+   Discovered upward from the **discovery anchor** to the filesystem root:
 
+   - **Anchor selection:** the first input path you pass (its **parent** directory if it
+     is a file). If no input paths are given (or you read from STDIN), the anchor is the
+     **current working directory**. Use `--no-config` to skip this layer.
    - In each directory, TopMark considers both:
      - `pyproject.toml` (`[tool.topmark]`)
      - `topmark.toml` (tool-specific file)
@@ -41,12 +44,12 @@ TopMark merges configuration from multiple sources with **clear precedence**. Th
      In `pyproject.toml`, put it under `[tool.topmark]`.
 
 1. **Explicit config files**\
-   Provided via `--config PATH`, merged **in the order given**.
+   Provided via `--config PATH`, merged **in the order given** (after discovery).
 
 1. **CLI overrides (highest)**\
    Options and flags on the command line.
 
-> **Anchor selection:** The discovery anchor is the first input path you pass (its parent directory if it is a file). If no input paths are given (or you read from STDIN), the anchor is the **current working directory**.
+> **Summary:** defaults → user → project chain (root→current; same-dir: pyproject then topmark) → `--config` (in order) → CLI. Use `--no-config` to skip the project chain.
 
 ### Summary table
 
@@ -60,23 +63,24 @@ TopMark merges configuration from multiple sources with **clear precedence**. Th
 
 ______________________________________________________________________
 
-## Path semantics: two distinct bases
+## Path semantics: sources define the base
 
-TopMark uses **two different bases** to resolve paths:
+TopMark resolves paths relative to **where they are defined**:
 
-1. **Workspace base** (aka run/project root) → used for **globs**
+1. **Config‑declared globs** (e.g., `files.include_patterns`, `files.exclude_patterns`)
 
-   - Config key examples: `files.include_patterns`, `files.exclude_patterns`
-   - Base path: `relative_to` (if set), otherwise the **nearest discovered config directory**.
-   - Effect: globs are evaluated *consistently* regardless of your current working directory.
+   - Resolved relative to the **directory containing that config file**.
 
-1. **Config-local base** → used for **paths to other files**
+1. **CLI‑declared globs** (`--include`, `--exclude`)
 
-   - Config key examples: `files.include_from`, `files.exclude_from`, `files.files_from`, and (if used) literal `files` lists.
-   - Base path: **the directory of the config file** that declares the path.
-   - Behavior: these paths are normalized to absolute when a config file is loaded.
+   - Resolved relative to the **current working directory** (where `topmark` is invoked).
 
-**Pattern file semantics:** Pattern files (e.g. `.gitignore`) have their own base: patterns are evaluated relative to the **directory that contains the pattern file**. TopMark preserves this behavior per file.
+1. **Path‑to‑file settings**
+
+   - Examples: `files.include_from`, `files.exclude_from`, `files.files_from`.
+   - Resolved relative to the **declaring config file’s directory**; for CLI options, resolved relative to **CWD**. The referenced files’ own patterns are then evaluated relative to each file’s own directory.
+
+NOTE: `relative_to` is used **only** for header metadata (e.g., `file_relpath`), and **not** for glob expansion or filtering.
 
 ______________________________________________________________________
 

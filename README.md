@@ -398,29 +398,31 @@ For configuration examples, hook policies, and troubleshooting, see the dedicate
 TopMark supports **layered configuration discovery** with clear precedence and path semantics.
 Configuration can come from multiple sources and is merged in the following order:
 
-1. **Built-in defaults** (`topmark-default.toml`)
+1. **Built‑in defaults** (`topmark-default.toml`)
 
 1. **User config** (`~/.config/topmark/topmark.toml` or `~/.topmark.toml`)
 
-1. **Project chain** discovered upward from the working directory:
+1. **Project chain** discovered upward from the **discovery anchor**:
+   (first input path; its parent if it’s a file; otherwise CWD when no inputs)
 
    - `pyproject.toml` (`[tool.topmark]` table)
-   - `topmark.toml` (tool-specific file)
-   - same-directory precedence: `pyproject.toml` → `topmark.toml`
+   - `topmark.toml` (tool‑specific file)
+   - same‑directory precedence: `pyproject.toml` → `topmark.toml`
    - stops when `root = true` is found
 
-1. **Explicit config files** via `--config` (ou can specify one or more `--config` files)
+1. **Explicit config files** via `--config` (you can specify one or more `--config` files)
 
 1. **CLI flags and options** (highest precedence)
 
 Each layer is merged into a single effective configuration, which can be inspected with
 `topmark dump-config`.
 
-TopMark distinguishes **two base directories** when resolving paths:
+TopMark resolves paths relative to **where they are defined**:
 
-- **Workspace base** (`relative_to`): for evaluating globs such as `include_patterns` and `exclude_patterns`.
-- **Config-local base**: for resolving paths declared in a given config file, such as
-  `exclude_from` or `files_from`.
+- **Config‑declared globs** are resolved relative to the **config file’s directory**.
+- **CLI‑declared globs** are resolved relative to the **current working directory**.
+- **Path‑to‑file settings** (e.g., `exclude_from`, `files_from`) are resolved relative to the **declaring source** (config dir or CWD for CLI).
+- `relative_to` affects only header metadata (e.g., `file_relpath`), not discovery.
 
 > For complete details and examples, see\
 > [`Configuration: Discovery & Precedence`](docs/configuration/discovery.md).

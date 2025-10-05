@@ -13,6 +13,13 @@
 This module defines the Config dataclass, logic to parse and load TOML-based configuration files,
 and utilities to safely extract and coerce typed values from tomlkit Tables.
 
+Path resolution policy:
+* Globs in config files → resolved relative to the config file directory.
+* Globs passed via CLI → resolved relative to the invocation CWD.
+* Path-to-file settings → resolved relative to their declaring source (config dir or CWD).
+  `relative_to` is used only for header metadata.
+
+
 Supports default configuration generation, CLI overrides, and fallback resolution
 from topmark.toml or pyproject.toml.
 """
@@ -65,25 +72,35 @@ def _abs_path_from(base: Path, raw: str | PathLike[str]) -> Path:
     return (base / p).resolve() if not p.is_absolute() else p.resolve()
 
 
-def _ps_from_config(raw: str, config_dir: Path) -> PatternSource:
+def ps_from_config(raw: str, config_dir: Path) -> PatternSource:
     """Create PatternSource from a config-file-declared path using that file's directory."""
     p: Path = _abs_path_from(config_dir, raw)
     return PatternSource(path=p, base=p.parent)
 
 
-def _ps_from_cli(raw: str, cwd: Path) -> PatternSource:
+def ps_from_cli(raw: str, cwd: Path) -> PatternSource:
     """Create PatternSource from a CLI-declared path using CWD (invocation site)."""
     p: Path = _abs_path_from(cwd, raw)
     return PatternSource(path=p, base=p.parent)
 
 
-def _extend_ps(
+def extend_ps(
     dst: list[PatternSource],
     items: Iterable[str],
     mk: Callable[[str, Path], PatternSource],
     kind: str,
     base: Path,
 ) -> None:
+    """Append pattern sources created from ``items`` to ``dst``.
+
+    Args:
+        dst (list[PatternSource]): Destination list to extend in-place.
+        items (Iterable[str]): Raw pattern declarations to normalize; skipped if falsy.
+        mk (Callable[[str, Path], PatternSource]): Factory that materializes a
+            ``PatternSource`` given the raw entry and resolution base.
+        kind (str): Human-readable label used for debug logging.
+        base (Path): Directory against which relative entries are resolved.
+    """
     for raw in items or []:
         ps: PatternSource = mk(raw, base)
         dst.append(ps)
@@ -117,7 +134,9 @@ class Config:
         header_format (HeaderOutputFormat | None): Header output format
             (file type aware, plain, or json).
         relative_to_raw (str | None): Original string from config or CLI
-        relative_to (Path | None): Base path for relative file references, from [files].
+        relative_to (Path | None): Base path used only for header metadata (e.g., file_relpath).
+            Note: Glob expansion and filtering are resolved relative to their declaring source
+            (config file dir or CWD for CLI), not relative_to.
         stdin (bool | None): Whether to read from stdin; requires explicit True to activate.
         files (tuple[str, ...]): List of files to process.
         include_from (tuple[PatternSource, ...]): Files containing include patterns.
@@ -452,7 +471,8 @@ class MutableConfig:
             list[Path]: Discovered config file paths ordered for stable merging
             (root-most first, nearest last; within a directory: pyproject → topmark).
         """
-        candidates: list[Path] = []
+        # Collect per-directory entries preserving same-dir precedence (pyproject → topmark)
+        per_dir: list[list[Path]] = []
         cur: Path = start.resolve()  # Resolve symlinks and get absolute path
         seen: set[Path] = set()
 
@@ -460,15 +480,16 @@ class MutableConfig:
         if cur.is_file():
             cur = cur.parent
 
-        # Walk up to filesystem root
+        # Walk up to filesystem root, recording entries per directory
         while True:
             root_stop_here = False
+            dir_entries: list[Path] = []
 
-            # Same-directory precedence: add pyproject first, then topmark
+            # Same-directory precedence: add pyproject first, then topmark (local order)
             for name in ("pyproject.toml", "topmark.toml"):
                 p: Path = cur / name
                 if p.exists() and p.is_file() and p not in seen:
-                    candidates.append(p)
+                    dir_entries.append(p)
                     seen.add(p)
                     logger.debug("Discovered config file: %s", p)
                     # Check for `root = true` to stop traversal after this dir
@@ -485,19 +506,26 @@ class MutableConfig:
                     except Exception as e:
                         # Best-effort discovery; ignore parse errors here.
                         logger.debug("Ignoring parse error in %s: %s", p, e)
-                        pass
+
+            if dir_entries:
+                # Keep entries grouped per directory: [pyproject, topmark]
+                per_dir.append(dir_entries)
 
             parent: Path = cur.parent
             if parent == cur:
                 break
             if root_stop_here:
-                # Stop after collecting current directory entries if `root=true`
                 logger.debug("Stopping upward config discovery at %s due to root=true", cur)
                 break
             cur = parent
 
-        # Root-most first, nearest last → merge in this order
-        return candidates
+        # Flatten per-directory lists in root→current order, preserving local precedence
+        ordered: list[Path] = []
+        for dir_list in reversed(per_dir):  # root-most first
+            # Within a directory: pyproject then topmark (tool file overrides)
+            ordered.extend(dir_list)  # pyproject then topmark within the directory
+
+        return ordered
 
     @classmethod
     def discover_user_config_file(cls) -> Path | None:
@@ -578,13 +606,13 @@ class MutableConfig:
             if not vals:
                 return
             if cfg_dir is not None:
-                _extend_ps(getattr(draft, key), vals, _ps_from_config, f"config {key}", cfg_dir)
+                extend_ps(getattr(draft, key), vals, ps_from_config, f"config {key}", cfg_dir)
             else:
                 # Rare fallback: without a config file path, use CWD to avoid losing info
-                _extend_ps(
+                extend_ps(
                     getattr(draft, key),
                     vals,
-                    _ps_from_cli,
+                    ps_from_cli,
                     f"config {key}",
                     Path.cwd().resolve(),
                 )
@@ -668,71 +696,67 @@ class MutableConfig:
     def load_merged(
         cls,
         *,
-        input_paths: Iterable[str | Path] | None = None,
-        extra_config_files: Iterable[str | Path] | None = None,
+        input_paths: Iterable[Path] | None = None,
+        extra_config_files: Iterable[Path] | None = None,
         no_config: bool = False,
         file_types: Iterable[str] | None = None,
-    ) -> MutableConfig:
-        """Load a layered configuration with clear precedence.
+    ) -> "MutableConfig":
+        """Discover and merge configuration layers into a draft `MutableConfig`.
 
-        Precedence (lowest → highest):
-            1. Built-in defaults (``topmark-default.toml``)
-            2. User config (``$XDG_CONFIG_HOME/topmark/topmark.toml`` or ``~/.topmark.toml``)
-            3. Project chain discovered upward from the anchor (root → current)
-            4. Extra config files explicitly provided (in order)
-            5. CLI/application overrides via ``apply_cli_args`` (outside this function)
+        Merge order (lowest → highest precedence):
+            1) Built-in defaults
+            2) User config (XDG / legacy)
+            3) Project configs discovered upward **root → current**; within a directory
+               `pyproject.toml` is merged first, then `topmark.toml` (tool file overrides)
+            4) Extra config files passed explicitly via ``--config`` (in the order provided)
 
         Args:
-            input_paths (Iterable[str | Path] | None): Paths the caller intends to process.
-                Used only to pick a discovery anchor (first path's directory) when present;
-                otherwise CWD.
-            extra_config_files (Iterable[str | Path] | None): Explicit config files to merge
-                after discovery.
+            input_paths (Iterable[Path] | None):
+                Discovery anchor(s). The first path (or CWD if none) is used as the starting
+                directory for upward discovery. If it is a file, its parent directory is used.
+            extra_config_files (Iterable[Path] | None):
+                Explicit additional config files to merge **after** discovery (their given order).
             no_config (bool): If True, skip user and project discovery.
             file_types (Iterable[str] | None): Optional filter to seed the draft for parity
                 with CLI.
 
         Returns:
-            MutableConfig: A merged draft that callers can further override then freeze.
+            MutableConfig: A mutable configuration draft ready to be frozen or further edited.
         """
-        # 1) start from defaults
+        # 1) Start from defaults
         draft: MutableConfig = cls.from_defaults()
+
+        # Determine discovery anchor
+        anchor: Path = list(input_paths)[0] if input_paths else Path.cwd()
+        if anchor.is_file():
+            anchor = anchor.parent
 
         # Optionally seed file_types for parity with CLI flags
         if file_types:
-            draft.file_types = set(str(x) for x in file_types)
+            draft.file_types = set(x for x in file_types)
 
         if not no_config:
-            # 2) user config
-            user_cfg: Path | None = cls.discover_user_config_file()
-            if user_cfg is not None:
-                maybe: MutableConfig | None = cls.from_toml_file(user_cfg)
-                if maybe is not None:
-                    draft = draft.merge_with(maybe)
+            # 2) Merge user config (if present)
+            user_cfg_path: Path | None = cls.discover_user_config_file()
+            if user_cfg_path is not None:
+                user_cfg: MutableConfig | None = cls.from_toml_file(user_cfg_path)
+                if user_cfg is not None:
+                    draft = draft.merge_with(user_cfg)
 
-            # 3) project chain (root → anchor)
-            if input_paths:
-                try:
-                    first: str | Path = next(iter(input_paths))
-                    anchor: Path = Path(first).resolve()
-                except StopIteration:
-                    anchor = Path.cwd()
-            else:
-                anchor = Path.cwd()
+            # 3) Discover project configs upward from anchor and merge **root → current**
+            discovered: list[Path] = cls.discover_local_config_files(anchor)
+            # `discover_local_config_files` already returns root-most → nearest; within a directory
+            # it yields `pyproject.toml` then `topmark.toml`.
+            for cfg_path in discovered:
+                mc: MutableConfig | None = cls.from_toml_file(cfg_path)
+                if mc is not None:
+                    draft = draft.merge_with(mc)
 
-            for cfg_path in cls.discover_local_config_files(anchor):
-                maybe = cls.from_toml_file(cfg_path)
-                if maybe is not None:
-                    draft = draft.merge_with(maybe)
-
-        # 4) extra config files
-        if extra_config_files:
-            for entry in extra_config_files:
-                p: Path = entry if isinstance(entry, Path) else Path(entry)
-                if p.exists() and p.is_file():
-                    maybe = cls.from_toml_file(p)
-                    if maybe is not None:
-                        draft = draft.merge_with(maybe)
+        # 4) Merge extra config files (e.g., --config), in the given order
+        for extra in extra_config_files or ():  # explicit files override discovered ones
+            mc = cls.from_toml_file(Path(extra))
+            if mc is not None:
+                draft = draft.merge_with(mc)
 
         return draft
 
@@ -826,28 +850,28 @@ class MutableConfig:
         # Normalize CLI path-to-file options from the invocation CWD
         if args.get("include_from"):
             # self.include_from = list(args["include_from"])
-            _extend_ps(
+            extend_ps(
                 self.include_from,
                 args.get("include_from") or [],
-                _ps_from_cli,
+                ps_from_cli,
                 "CLI --include-from",
                 cwd,
             )
         if args.get("exclude_from"):
             # self.exclude_from = list(args["exclude_from"])
-            _extend_ps(
+            extend_ps(
                 self.exclude_from,
                 args.get("exclude_from") or [],
-                _ps_from_cli,
+                ps_from_cli,
                 "CLI --exclude-from",
                 cwd,
             )
         if args.get("files_from"):
             # self.files_from = list(args["files_from"])
-            _extend_ps(
+            extend_ps(
                 self.files_from,
                 args.get("files_from") or [],
-                _ps_from_cli,
+                ps_from_cli,
                 "CLI --files-from",
                 cwd,
             )

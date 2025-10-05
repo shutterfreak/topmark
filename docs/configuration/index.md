@@ -14,13 +14,17 @@ topmark:header:end
 
 TopMark supports layered configuration with explicit precedence:
 
-- Defaults → User → Project chain → `--config` → CLI
-- Globs evaluated relative to the **workspace base** (`relative_to`)
-- Path-to-file settings resolved relative to the **config file's directory**
+- **Defaults** → **User** (e.g. `$HOME/.config/topmark.toml`) → **Project chain**
+  (discovered upward from the discovery anchor) → **`--config`** → **CLI**
+- **Globs declared in config files** are resolved relative to the **directory of that config file**.
+- **Globs declared via CLI** are resolved relative to the **current working directory** (invocation site).
+- **Path-to-file settings** (e.g., `exclude_from`, `files_from`) are resolved relative to the **declaring config file** (or CWD for CLI-provided values).
+- `relative_to` affects only header metadata (e.g., `file_relpath`), not discovery.
 
 Start here:
 
 - [`Discovery & Precedence`](./discovery.md)
+- [`Root semantics`](./discovery.md#root-semantics) for how discovery stops at `root = true`
 
 Also see:
 

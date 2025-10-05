@@ -19,21 +19,35 @@
 # TopMark discovers configuration from (lowest → highest precedence):
 #   1. Built-in defaults (this file bundled with TopMark)
 #   2. User config (~/.config/topmark/topmark.toml or ~/.topmark.toml)
-#   3. Project configs discovered upward from the working directory to the root
-#      • In each directory, TopMark considers both:
+#   3. Project configs discovered upward from the *discovery anchor* to the root
+#      * The discovery anchor is the first input path (its parent if it's a file);
+#        if no inputs are provided, the anchor is the current working directory.
+#      * In each directory, TopMark considers both:
 #          - pyproject.toml  (table: [tool.topmark])
 #          - topmark.toml    (tool-specific file)
 #        Same-directory precedence: pyproject.toml is merged first,
 #        then topmark.toml overrides it.
-#      • Directories are merged root → current (nearest wins).
-#      • Set `root = true` in a discovered config to stop further upward traversal.
-#   4. Extra config files passed explicitly via --config (in the order provided)
+#      * Directories are merged root → current (nearest wins).
+#      * Set `root = true` in a discovered config to stop further upward traversal.
+#   4. Extra config files passed explicitly via --config (merged in the order provided)
 #   5. CLI overrides (highest precedence)
+#
+# Path resolution rules:
+#   * Globs declared in config files are resolved relative to the directory that contains
+#     that config file. Globs declared via CLI are resolved relative to the current working
+#     directory (invocation site).
+#   * Path-to-file settings (e.g., include_from/exclude_from/files_from) are resolved relative
+#     to the declaring source (config file directory, or CWD for CLI options). The referenced
+#     files’ own patterns are evaluated relative to each file’s own directory.
+#   * `relative_to` affects only header metadata (e.g., `file_relpath`), not discovery.
 #
 # To mark a directory boundary for discovery, set:
 #   root = true
 # in `topmark.toml`, or within `[tool.topmark]` in `pyproject.toml`.
 # The default is `root = false` (continue traversing parents).
+#
+# Special flags:
+#   * --no-config disables user+project discovery (only defaults → --config → CLI).
 #
 # Example (uncomment to stop discovery above this directory):
 # root = true

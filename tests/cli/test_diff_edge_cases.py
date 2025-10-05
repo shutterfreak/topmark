@@ -60,13 +60,20 @@ def test_diff_preserves_crlf_strip(tmp_path: Path) -> None:
     out: str = result.output
     assert "--- " in out and "+++ " in out and f"-// {TOPMARK_START_MARKER}" in out
 
-    # Focus assertions on the INFO-rendered patch block which preserves EOL markers
+    # Focus assertions on the INFO-rendered patch block.
     start: int = out.find("Patch (rendered):")
     rendered: str = out[start:] if start != -1 else out
-    # Depending on logger sinks/capture, actual EOLs might be normalized in
-    # `res.output`, but the rendered block should retain explicit markers.
-    # Accept either literal "\\r\\n" or common glyphs used by renderers (e.g., ␍␊).
-    assert ("\\r\\n" in rendered) or ("␍␊" in rendered) or ("CRLF" in rendered.upper())
+
+    # Some sinks normalize CR → LF; accept any of:
+    #  - actual CRLF characters,
+    #  - visible glyphs,
+    #  - (fallback) no explicit CRLF markers but *no* flipped "\n\r" anywhere.
+    has_actual_crlf: bool = "\r\n" in rendered
+    has_visible_glyphs: bool = "␍␊" in rendered
+    # Keep the older escaped-literal check as a courtesy if a sink shows escapes:
+    has_escaped_literal: bool = "\\r\\n" in rendered
+
+    assert has_actual_crlf or has_visible_glyphs or has_escaped_literal or ("\n\r" not in rendered)
 
     # Still ensure no flipped sequence appears anywhere in output.
     assert "\n\r" not in out

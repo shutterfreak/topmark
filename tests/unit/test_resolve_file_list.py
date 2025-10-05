@@ -98,19 +98,34 @@ def test_candidates_from_positional_and_globs(
         assert rel == ["b.py", "pkg/c.py"]
 
 
-def test_fallback_to_config_files_when_no_positional(
+def test_fallback_to_include_seed_when_no_positional(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Fall back to config_files when no positional paths are provided."""
+    """When no positional paths are provided, include globs can seed candidates.
+
+    Config-declared globs are evaluated relative to the declaring config file’s
+    directory; CLI-declared globs are evaluated relative to CWD. Here we simulate
+    a discovered config file by providing its path via `config_files` so that
+    the seeding step expands the include pattern against that base.
+    """
     write(tmp_path / "src" / "x.py", "x")
     write(tmp_path / "src" / "x.txt", "x")
 
+    # Create a real config file to act as a base for config-declared globs
+    cfg_file: Path = tmp_path / "pyproject.toml"
+    cfg_file.write_text("[tool.topmark]\n", encoding="utf-8")
+
     with monkeypatch.context() as m:
         m.chdir(tmp_path)
-        cfg: Config = make_config(config_files=["src"])
+        cfg: Config = make_config(
+            config_files=[str(cfg_file)],
+            include_patterns=["src/**/*"],
+        )
         files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
-        rel = sorted(p.as_posix() for p in files)
-
+        # Results may contain absolute paths (from seeding). Normalize to tmp_path-relative.
+        rel: list[str] = sorted(
+            (p if not p.is_absolute() else p.relative_to(tmp_path)).as_posix() for p in files
+        )
         assert rel == ["src/x.py", "src/x.txt"]
 
 
@@ -352,12 +367,20 @@ def test_config_files_respected_by_filters(tmp_path: Path, monkeypatch: pytest.M
     (tmp_path / "src" / "a.py").parent.mkdir(parents=True, exist_ok=True)
     (tmp_path / "src" / "a.py").write_text("x")
     (tmp_path / "src" / "b.txt").write_text("x")
+
     monkeypatch.chdir(tmp_path)
+    # Create a real config file so the include pattern is evaluated against its directory
+    cfg_file: Path = tmp_path / "pyproject.toml"
+    cfg_file.write_text("[tool.topmark]\n", encoding="utf-8")
+
     cfg: Config = make_config(
-        config_files=["src"],
-        include_patterns=["**/*.py"],
+        config_files=[str(cfg_file)],
+        include_patterns=["src/**/*.py"],
     )
-    rel: list[str] = [p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg)]
+    files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+    rel: list[str] = sorted(
+        (p if not p.is_absolute() else p.relative_to(tmp_path)).as_posix() for p in files
+    )
     assert rel == ["src/a.py"]
 
 
@@ -373,3 +396,223 @@ def test_empty_include_means_no_include_filter(
     )
     rel: list[str] = [p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg)]
     assert rel == ["a.py", "b.txt"]
+
+
+def test_no_seeding_when_files_from_present(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Seeding only when there are no inputs.
+
+    Case A: files_from present → do not seed from include_patterns.
+    Case B: positional files present → do not seed from include_patterns.
+    """
+    inc: Path = tmp_path / "inc.txt"
+    inc.write_text("**/*.py\n", encoding="utf-8")
+    # files_from lists a literal that doesn't exist: still counts as “inputs present”
+    lst: Path = tmp_path / "list.txt"
+    lst.write_text("missing.py\n", encoding="utf-8")
+    (tmp_path / "src" / "a.py").parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / "src" / "a.py").write_text("x", encoding="utf-8")
+
+    monkeypatch.chdir(tmp_path)
+    cfg: Config = make_config(
+        include_patterns=["src/**/*.py"],  # would seed if no inputs
+        files_from=[str(lst)],
+        include_from=[str(inc)],  # irrelevant here
+    )
+    files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+    # Because files_from existed, no seeding should occur → no files
+    assert files == []
+
+
+def test_config_declared_globs_match_under_config_dir_even_if_cwd_diff(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Config-declared glob bases vs CWD; both bases are tried.
+
+    Put a pyproject.toml in proj/ and run from a sibling directory;
+    confirm files under proj/src/ match via config base even though CWD doesn’t match.
+    """
+    proj: Path = tmp_path / "proj"
+    (proj / "src").mkdir(parents=True)
+    (proj / "src" / "a.py").write_text("x", encoding="utf-8")
+    (tmp_path / "elsewhere").mkdir()
+
+    cfg_file: Path = proj / "pyproject.toml"
+    cfg_file.write_text("[tool.topmark]\n", encoding="utf-8")
+
+    monkeypatch.chdir(tmp_path / "elsewhere")
+    cfg: Config = make_config(config_files=[str(cfg_file)], include_patterns=["src/**/*.py"])
+    files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+    # Normalize relative to tmp_path for stability
+    rel: list[str] = sorted(
+        (p if not p.is_absolute() else p.relative_to(tmp_path)).as_posix() for p in files
+    )
+    assert rel == ["proj/src/a.py"]
+
+
+def test_pattern_file_base_outside_cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """include_from and exclude_from bases respected.
+
+    Store a pattern file outside CWD and confirm matching occurs relative to
+    the pattern file’s directory.
+    """
+    root: Path = tmp_path / "root"
+    ext: Path = tmp_path / "ext"
+    (root / "pkg").mkdir(parents=True)
+    (root / "pkg" / "a.py").write_text("x", encoding="utf-8")
+
+    inc: Path = ext / "inc.txt"
+    inc.parent.mkdir()
+    inc.write_text("pkg/**/*.py\n", encoding="utf-8")
+
+    monkeypatch.chdir(root)
+    cfg: Config = make_config(files=["."], include_from=[str(inc)])
+    files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+    assert [p.as_posix() for p in files] == ["pkg/a.py"]
+
+
+def test_include_intersection_mixed_sources(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Include intersection from both include_patterns and include_from.
+
+    The effective include set is the union of pattern sources; the intersection
+    is then applied against the candidate set. Here:
+      - include_patterns keeps anything under src/**.py
+      - include_from contributes "**/*.md"
+    After intersecting with the candidate set (files=["."]), we should keep
+    both a.py and docs/readme.md.
+    """
+    (tmp_path / "src" / "a.py").parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / "src" / "a.py").write_text("x", encoding="utf-8")
+    (tmp_path / "docs" / "readme.md").parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / "docs" / "readme.md").write_text("x", encoding="utf-8")
+    inc_file: Path = tmp_path / "inc.txt"
+    inc_file.write_text("**/*.md\n", encoding="utf-8")
+
+    monkeypatch.chdir(tmp_path)
+    cfg: Config = make_config(
+        files=["."],
+        include_patterns=["src/**/*.py"],
+        include_from=[str(inc_file)],
+    )
+    rel: list[str] = sorted(p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg))
+    assert rel == ["docs/readme.md", "src/a.py"]
+
+
+def test_exclude_from_overrides_include_patterns(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Exclude patterns from a pattern file remove matches from included set."""
+    (tmp_path / "src" / "a.py").parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / "src" / "a.py").write_text("x", encoding="utf-8")
+    (tmp_path / "src" / "b.py").write_text("x", encoding="utf-8")
+
+    exc_file: Path = tmp_path / "exc.txt"
+    exc_file.write_text("**/b.py\n", encoding="utf-8")
+
+    monkeypatch.chdir(tmp_path)
+    cfg: Config = make_config(
+        files=["."],
+        include_patterns=["src/**/*.py"],
+        exclude_from=[str(exc_file)],
+    )
+    rel: list[str] = sorted(p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg))
+    assert rel == ["src/a.py"]
+
+
+def test_deduplicates_mixed_absolute_and_relative(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """De-duplicate when the same file is reachable via absolute and relative specs."""
+    a = tmp_path / "pkg" / "a.py"
+    a.parent.mkdir(parents=True, exist_ok=True)
+    a.write_text("x", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    cfg: Config = make_config(
+        files=["pkg", str(a.resolve()), "**/a.py"],
+    )
+    rel: list[str] = [p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg)]
+    # Only one instance should remain
+    assert rel == ["pkg/a.py"]
+
+
+def test_multiple_unknown_file_types_warn_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """When multiple unknown file types are configured, warn once listing all."""
+    (tmp_path / "a.py").write_text("x", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
+    # Minimal registry with just 'py'
+    def fake_registry() -> dict[str, DummyType]:
+        return {"py": DummyType("py", lambda p: p.suffix == ".py")}
+
+    monkeypatch.setattr(file_resolver_mod, "get_file_type_registry", lambda: fake_registry())
+    caplog.set_level("WARNING")
+    cfg: Config = make_config(
+        files=["."],
+        file_types=["unknown1", "py", "unknown2"],
+    )
+    files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+    assert [p.as_posix() for p in files] == ["a.py"]
+    msgs: list[str] = [
+        r.message for r in caplog.records if "Unknown file types specified" in r.message
+    ]
+    assert len(msgs) == 1
+    assert "unknown1" in msgs[0] and "unknown2" in msgs[0]
+
+
+def test_pattern_files_trim_whitespace_and_trailing_spaces(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Pattern loader ignores whitespace-only lines and trims trailing spaces."""
+    (tmp_path / "a.py").write_text("x", encoding="utf-8")
+    (tmp_path / "b.py").write_text("x", encoding="utf-8")
+
+    inc: Path = tmp_path / "inc.txt"
+    inc.write_text("   \n**/*.py   \n   \n", encoding="utf-8")
+    exc: Path = tmp_path / "exc.txt"
+    exc.write_text("b.py   \n   \n", encoding="utf-8")
+
+    monkeypatch.chdir(tmp_path)
+    cfg: Config = make_config(
+        files=["."],
+        include_from=[str(inc)],
+        exclude_from=[str(exc)],
+    )
+    rel: list[str] = [p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg)]
+    assert rel == ["a.py"]
+
+
+def test_missing_pattern_files_fail_gracefully(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Missing include_from/exclude_from files log an error and (for include) filter to none."""
+    (tmp_path / "a.py").write_text("x", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    caplog.set_level("ERROR")
+
+    cfg: Config = make_config(
+        files=["."],
+        include_from=[str(tmp_path / "missing-include.txt")],  # non-existent
+    )
+    files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+    # include_from with no readable patterns → include filter removes all
+    assert files == []
+    assert any("Cannot read patterns from" in r.message for r in caplog.records)
+
+
+def test_exclude_dotfiles_with_pattern(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Dotfiles and dotdirs are included by default but can be excluded via patterns."""
+    (tmp_path / ".hidden").mkdir()
+    (tmp_path / ".hidden" / ".x.py").write_text("x", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    cfg: Config = make_config(
+        files=["."],
+        include_patterns=["**/*.py"],
+        exclude_patterns=["**/.*"],
+    )
+    rel: list[str] = [p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg)]
+    assert rel == []
