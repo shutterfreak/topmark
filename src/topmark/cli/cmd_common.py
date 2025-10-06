@@ -176,7 +176,7 @@ def build_config_common(
     config_paths: list[str],
     file_types: list[str],
     relative_to: str | None,
-    align_fields: bool,
+    align_fields: bool | None,
     header_format: HeaderOutputFormat | None,
 ) -> MutableConfig:
     """Materialize Config from an input plan (no file list resolution).

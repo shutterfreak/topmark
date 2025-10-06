@@ -522,6 +522,7 @@ def common_header_formatting_options(f: Callable[P, R]) -> Callable[P, R]:
     f = click.option(
         "--align-fields/--no-align-fields",
         is_flag=True,
+        default=None,
         help="Align header fields with colons.",
     )(f)
     f = underscored_trap_option("--align_fields")(f)

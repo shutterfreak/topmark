@@ -50,7 +50,7 @@ def resolve_config_from_click(
     relative_to: str | None,
     no_config: bool,
     config_paths: list[str],
-    align_fields: bool,
+    align_fields: bool | None,
     header_format: HeaderOutputFormat | None,
 ) -> MutableConfig:
     """Build a [`Config`][topmark.config.Config] from Click parameters.
@@ -89,7 +89,7 @@ def resolve_config_from_click(
         relative_to (str | None): Root directory used to compute relative paths.
         no_config (bool): If True, ignore local project config files.
         config_paths (list[str]): Extra config TOML file paths to merge.
-        align_fields (bool): Whether to align header fields with colons.
+        align_fields (bool | None): Whether to align header fields with colons.
         header_format (HeaderOutputFormat | None): Selected header output format.
 
     Returns:
