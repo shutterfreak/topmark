@@ -26,10 +26,4 @@
 #   (remove or relax the relevant line locally, re-run compile, and verify)
 #
 # --- Tooling-specific constraints ---
-# mkdocs-material 9.6.x requires 'backrefs ~= 5.7.post1'. backrefs 6.x breaks
-# the current release chain (observed Aug 2025). Keep until upstream supports 6.x.
-backrefs==5.7.post1
-
-# mdformat 0.7.x requires 'markdown-it-py < 4.0.0'. Version 4.0.0 introduces
-# breaking changes that cause mdformat to fail. Keep until mdformat supports 4.x.
-markdown-it-py<4.0.0
+# There are currently no known constraints.

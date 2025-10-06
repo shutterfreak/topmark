@@ -27,9 +27,9 @@ sys.path.insert(0, os.path.abspath("src"))
 import importlib
 import pkgutil
 from collections import defaultdict
-from typing import DefaultDict, Iterable
+from typing import Any, DefaultDict, Iterable
 
-import mkdocs_gen_files  # type: ignore[import-not-found]
+import mkdocs_gen_files
 
 import topmark
 
@@ -70,7 +70,7 @@ def _exists_in_src(modname: str) -> bool:
     Accepts either a module (src/topmark/foo.py) or a package
     (src/topmark/foo/__init__.py).
     """
-    rel = modname.replace(".", "/")
+    rel: str = modname.replace(".", "/")
     return os.path.exists(os.path.join("src", f"{rel}.py")) or os.path.exists(
         os.path.join("src", rel, "__init__.py")
     )
@@ -78,7 +78,7 @@ def _exists_in_src(modname: str) -> bool:
 
 def _is_package(modname: str) -> bool:
     """Return True if the module is a package with an ``__init__.py`` under ./src."""
-    rel = modname.replace(".", "/")
+    rel: str = modname.replace(".", "/")
     return os.path.isdir(os.path.join("src", rel)) and os.path.exists(
         os.path.join("src", rel, "__init__.py")
     )
@@ -95,7 +95,7 @@ def _rel(from_doc: str, to_doc: str) -> str:
 
 def _breadcrumbs_for_parts(parts: list[str], current_doc: str) -> list[tuple[str, str | None]]:
     """Build compact breadcrumbs for parts under `topmark` relative to current doc."""
-    depth = len(parts)
+    depth: int = len(parts)
     crumbs: list[tuple[str, str | None]] = []
     if depth == 0:
         return [("topmark", None)]
@@ -104,8 +104,8 @@ def _breadcrumbs_for_parts(parts: list[str], current_doc: str) -> list[tuple[str
     crumbs.append(("topmark", _rel(current_doc, top_index)))
     # intermediate ancestors (labels are segment-only)
     for i in range(1, depth):
-        ancestor = "api/internals/topmark/" + "/".join(parts[:i]) + "/index.md"
-        href = _rel(current_doc, ancestor)
+        ancestor: str = "api/internals/topmark/" + "/".join(parts[:i]) + "/index.md"
+        href: str = _rel(current_doc, ancestor)
         crumbs.append((parts[i - 1], href))
     # current page label (last segment), no link
     crumbs.append((parts[-1], None))
@@ -116,13 +116,13 @@ def _breadcrumbs_for_package(pkg: str, current_doc: str) -> list[tuple[str, str 
     assert pkg.startswith("topmark"), pkg
     if pkg == "topmark":
         return [("topmark", None)]
-    segs = pkg.split(".")[1:]  # after 'topmark'
+    segs: list[str] = pkg.split(".")[1:]  # after 'topmark'
     return _breadcrumbs_for_parts(segs, current_doc)
 
 
 def _breadcrumbs_for_module(modname: str, current_doc: str) -> list[tuple[str, str | None]]:
     assert modname.startswith("topmark"), modname
-    segs = modname.split(".")[1:]  # after 'topmark'
+    segs: list[str] = modname.split(".")[1:]  # after 'topmark'
     return _breadcrumbs_for_parts(segs, current_doc)
 
 
@@ -132,18 +132,18 @@ def _first_line_summary(modname: str) -> str | None:
         mod = importlib.import_module(modname)
     except Exception:
         return None
-    doc_obj = getattr(mod, "__doc__", None)
+    doc_obj: Any | None = getattr(mod, "__doc__", None)
     if not isinstance(doc_obj, str):
         return None
     for line in doc_obj.splitlines():
-        s = line.strip()
+        s: str = line.strip()
         if s:
             return s
     return None
 
 
 # Modules/prefixes to skip from internals (documented on the Public API page)
-_SKIP_PREFIXES: tuple[str, ...] = (
+PUBLIC_API_PREFIXES: tuple[str, ...] = (
     "topmark.api",
     "topmark.registry",
 )
@@ -151,7 +151,7 @@ _SKIP_PREFIXES: tuple[str, ...] = (
 
 def _should_skip(modname: str) -> bool:
     # Skip dunder/private and our public-facing packages
-    if modname.startswith(_SKIP_PREFIXES):
+    if modname.startswith(PUBLIC_API_PREFIXES):
         return True
     if any(part.startswith("_") for part in modname.split(".")):
         return True
@@ -160,7 +160,7 @@ def _should_skip(modname: str) -> bool:
 
 def _walk(package: object) -> Iterable[str]:
     for m in pkgutil.walk_packages(topmark.__path__, topmark.__name__ + "."):
-        name = m.name
+        name: str = m.name
         if _should_skip(name):
             continue
         if not _exists_in_src(name):
@@ -179,14 +179,16 @@ for name in sorted(set(_walk(topmark))):
     except Exception:  # pragma: no cover - generation-time guard
         continue
 
-    path = name.replace(".", "/") + ".md"
-    current_doc = f"api/internals/{path}"
+    path: str = name.replace(".", "/") + ".md"
+    current_doc: str = f"api/internals/{path}"
     with mkdocs_gen_files.open(current_doc, "w") as fd:
         fd.write(f"# {name}\n\n")
         # Breadcrumbs for module pages
-        bc = _breadcrumbs_for_module(name, current_doc)
+        bc: list[tuple[str, str | None]] = _breadcrumbs_for_module(name, current_doc)
         if bc:
             rendered: list[str] = []
+            label: str
+            href: str | None
             for label, href in bc:
                 if href is None:
                     rendered.append(label)
@@ -207,11 +209,11 @@ for name in sorted(set(_walk(topmark))):
     )
 
     if name != "topmark" and name.startswith("topmark."):
-        top = name.split(".", 2)[1] if "." in name else name
+        top: str = name.split(".", 2)[1] if "." in name else name
         groups[top].append(name)
 
     # Record this module under its parent package for index generation
-    parent = _parent_package(name)
+    parent: str | None = _parent_package(name)
     if parent is not None:
         packages[parent].add(name)
 
@@ -227,17 +229,38 @@ with mkdocs_gen_files.open(index_path, "w") as fd:
     for group in sorted(groups):
         fd.write(f"## {group}\n\n")
         for mod in sorted(groups[group]):
-            link = _rel(index_path, f"api/internals/{mod.replace('.', '/')}.md")
+            link: str = _rel(index_path, f"api/internals/{mod.replace('.', '/')}.md")
             label = mod  # full dotted path for clarity
             fd.write(f"- [{label}]({link})\n")
         fd.write("\n")
 
 
+# Public (reference) API:
+for mod in PUBLIC_API_PREFIXES:
+    mod_ref_doc: str = f"api/reference/{mod}.md"
+    mod_ref_md: str = f"""# `{mod}`
+
+::: {mod}
+options:
+  heading_level: 1
+  show_root_heading: true
+  members_order: source
+  filters:
+    - "!^_"
+"""
+    with mkdocs_gen_files.open(mod_ref_doc, "w") as fd:
+        fd.write(mod_ref_md)
+    mkdocs_gen_files.set_edit_path(
+        mod_ref_doc,
+        "src/" + mod_ref_doc.replace("reference/", "").replace(".", "/") + ".py",
+    )  # generated only
+
+
 # Write per-package indices with links to immediate children
 for pkg, children in sorted(packages.items()):
     # Compute the docs path for this package's index
-    pkg_path = pkg.replace(".", "/")
-    pkg_index_path = f"api/internals/{pkg_path}/index.md"
+    pkg_path: str = pkg.replace(".", "/")
+    pkg_index_path: str = f"api/internals/{pkg_path}/index.md"
     current_doc = pkg_index_path
 
     with mkdocs_gen_files.open(pkg_index_path, "w") as fd:
@@ -264,13 +287,13 @@ for pkg, children in sorted(packages.items()):
 
         fd.write("## Immediate children in this package\n\n")
         for child_full in sorted(children):
-            child_name = _child_segment(child_full)
+            child_name: str = _child_segment(child_full)
             # If child is a subpackage, link to its index.md; otherwise to its module page
             if _exists_in_src(child_full) and _is_package(child_full):
                 link = f"./{child_name}/index.md"
             else:
                 link = f"./{child_name}.md"
-            summary = _first_line_summary(child_full)
+            summary: str | None = _first_line_summary(child_full)
             if summary:
                 fd.write(f"- [{child_full}]({link}) — {summary}\n")
             else:

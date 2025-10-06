@@ -79,19 +79,23 @@ dev = [
 ]
 docs = [
   # Static site generator core:
-  "mkdocs>=1.6",
+  "mkdocs>=1.6.0",
   # MkDocs theme with rich features:
-  "mkdocs-material>=9.5",
+  "mkdocs-material>=9.5.19",
   # Auto API reference from docstrings/type hints:
-  "mkdocstrings[python]>=0.25",
+  "mkdocstrings[python]>=0.29.0",
   # Enable symbol cross-refs in Markdown
-  "mkdocs-autorefs>=0.5",
+  "mkdocs-autorefs>=0.6.0",
+  # Content Inclusion: Processes {% include-markdown ... %} for external snippets
+  "mkdocs-include-markdown-plugin>=7.2.0",
   # Extra Markdown extensions (admonitions, superfences, etc.):
-  "pymdown-extensions>=10.8",
+  "pymdown-extensions>=10.16",
   # Programmatically generate documentation pages during the build
-  "mkdocs-gen-files>=0.5,<0.6",
+  "mkdocs-gen-files>=0.5,<0.7",
+  # Custom Logic: Runs your on_page_markdown hook for callout conversion
+  "mkdocs-simple-hooks>=0.1.5",
   # Python linter & formatter in one tool (docs uses formatter only):
-  "ruff",
+  "ruff>=0.5.0",
 ]
 test = [
   # Unit testing framework:
@@ -116,6 +120,16 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+# Markdown formatting
+[tool.mdformat]
+wrap = 100
+extensions = [
+  "admonitions", # For !!! note syntax
+  "gfm",         # For GFM features like tables
+  "tables",      # For tables
+]
+# NOTE: exclude only supported in Python 3.13+
 
 
 # TOML formatting

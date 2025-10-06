@@ -35,13 +35,21 @@ theme:
     - navigation.top
     - navigation.tracking
 markdown_extensions:
-  - admonition
+  # Allow Markdown inside raw HTML (needed for <div markdown="1"> wrappers)
+  - md_in_html
+  # TOC & classic admonitions (kept for !!! note/... syntax)
   - toc:
       permalink: true
+  - admonition
   - pymdownx.details
-  - pymdownx.superfences
+  - pymdownx.blocks.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: flow
+          class: highlight
+          # The function reference must be aligned with 'name' and 'class'
+          format: pymdownx.superfences.fence_code_format
   - pymdownx.highlight
-  - pymdownx.snippets
 plugins:
   - search
   - autorefs
@@ -63,6 +71,18 @@ plugins:
             filters:
               - "!^_" # hide “private” members
               - "!^__" # hide dunder members like __init__
+
+  # 1. Include-markdown runs here, inserting the snippet content.
+  - include-markdown:
+      rewrite_relative_urls: true
+
+  # 2. Your custom hook runs LAST, guaranteeing it sees all text (main page + snippets).
+  #    This overrides the non-functional native conversion.
+  - mkdocs-simple-hooks:
+      hooks:
+        on_page_markdown: "docs.hooks:on_page_markdown"
+
+  # 3. gen-files, being a generator, can safely remain last.
   - gen-files:
       scripts:
         - docs/gen_api_pages.py
@@ -92,6 +112,8 @@ nav:
   - Contributing: contributing.md
   - API:
       - "Public API": api/public.md
+      - "topmark.api": api/reference/topmark.api.md
+      - "topmark.registry": api/reference/topmark.registry.md
       - "Internals": api/internals.md
   - Development:
       - "API Stability": dev/api-stability.md

@@ -13,7 +13,8 @@ topmark:header:end
 # TopMark `strip` Command Guide
 
 The `topmark strip` subcommand removes the entire TopMark header block from targeted files. It is
-**dry‑run by default** (summaries end with `- previewed`) and becomes destructive only with `--apply` (summaries end with `- removed`) when run with `--apply`.
+**dry‑run by default** (summaries end with `- previewed`) and becomes destructive only with
+`--apply` (summaries end with `- removed`) when run with `--apply`.
 
 ______________________________________________________________________
 
@@ -53,17 +54,7 @@ ______________________________________________________________________
   (list mode).
 - Idempotent: re‑running after headers are removed results in **no changes**.
 
-> **How config is resolved**
->
-> TopMark merges config from **defaults → user → project chain → `--config` → CLI**.
-> **Project discovery** starts from the *discovery anchor*: the **first input path**
-> (its parent if it’s a file) or **CWD** when no inputs are provided. Use `--no-config`
-> to skip the project chain. **Globs declared in config files** are resolved relative
-> to the **config file’s directory**. **Globs passed via CLI** are resolved relative
-> to the **current working directory**. Paths to other files (like `exclude_from`)
-> are resolved relative to the **declaring source** (config dir or CWD for CLI).
->
-> See: [`Configuration → Discovery & Precedence`](../../configuration/discovery.md).
+{% include-markdown "\_snippets/config-resolution.md" %}
 
 ______________________________________________________________________
 
@@ -83,7 +74,8 @@ Notes:
 
 Program-output verbosity is separate from internal logging:
 
-- `-v`, `--verbose` increases **program output** detail (adds per‑line diagnostics in summaries) and also increases the logger level.
+- `-v`, `--verbose` increases **program output** detail (adds per‑line diagnostics in summaries) and
+  also increases the logger level.
 - `-q`, `--quiet` suppresses most **program output** and lowers logger noise.
 
 Notes:

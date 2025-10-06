@@ -49,8 +49,8 @@ ______________________________________________________________________
   - `--include-from` / `--exclude-from` are honored.
   - `--include-from -` / `--exclude-from -` read patterns from STDIN.
 
-- Output is **plain TOML**. When run with higher verbosity (e.g., `-v`), the TOML is wrapped
-  between BEGIN/END markers for easy parsing:
+- Output is **plain TOML**. When run with higher verbosity (e.g., `-v`), the TOML is wrapped between
+  BEGIN/END markers for easy parsing:
 
   # === BEGIN ===
 
@@ -58,17 +58,7 @@ ______________________________________________________________________
 
   # === END ===
 
-> **How config is resolved**
->
-> TopMark merges config from **defaults → user → project chain → `--config` → CLI**.
-> **Project discovery** starts from the *discovery anchor*: the **first input path**
-> (its parent if it’s a file) or **CWD** when no inputs are provided. Use `--no-config`
-> to skip the project chain. **Globs declared in config files** are resolved relative
-> to the **config file’s directory**. **Globs passed via CLI** are resolved relative
-> to the **current working directory**. Paths to other files (like `exclude_from`)
-> are resolved relative to the **declaring source** (config dir or CWD for CLI).
->
-> See: [`Configuration → Discovery & Precedence`](../../configuration/discovery.md).
+{% include-markdown "\_snippets/config-resolution.md" %}
 
 ______________________________________________________________________
 
@@ -103,9 +93,8 @@ ______________________________________________________________________
 
 ## Verbosity
 
-`dump-config` prints configuration; it does not render program output with per‑file diagnostics.
-The `verbosity_level` setting is a runtime/CLI concern and is **not** serialized to TOML in the
-output.
+`dump-config` prints configuration; it does not render program output with per‑file diagnostics. The
+`verbosity_level` setting is a runtime/CLI concern and is **not** serialized to TOML in the output.
 
 When verbosity ≥ 1, BEGIN/END markers are included around the TOML output.
 

@@ -32,15 +32,17 @@ TopMark merges configuration from multiple sources with **clear precedence**. Th
 1. **Project configs (root → current)**\
    Discovered upward from the **discovery anchor** to the filesystem root:
 
-   - **Anchor selection:** the first input path you pass (its **parent** directory if it
-     is a file). If no input paths are given (or you read from STDIN), the anchor is the
-     **current working directory**. Use `--no-config` to skip this layer.
+   - **Anchor selection:** the first input path you pass (its **parent** directory if it is a file).
+     If no input paths are given (or you read from STDIN), the anchor is the **current working
+     directory**. Use `--no-config` to skip this layer.
    - In each directory, TopMark considers both:
      - `pyproject.toml` (`[tool.topmark]`)
      - `topmark.toml` (tool-specific file)
-   - **Same-directory precedence:** `pyproject.toml` is merged first, then `topmark.toml` can override it.
+   - **Same-directory precedence:** `pyproject.toml` is merged first, then `topmark.toml` can
+     override it.
    - **Nearest-last wins:** directories are merged **root → current** (the nearest config wins).
-   - **Stopping discovery:** set `root = true` in a discovered config to stop traversal above that directory.\
+   - **Stopping discovery:** set `root = true` in a discovered config to stop traversal above that
+     directory.\
      In `pyproject.toml`, put it under `[tool.topmark]`.
 
 1. **Explicit config files**\
@@ -49,7 +51,8 @@ TopMark merges configuration from multiple sources with **clear precedence**. Th
 1. **CLI overrides (highest)**\
    Options and flags on the command line.
 
-> **Summary:** defaults → user → project chain (root→current; same-dir: pyproject then topmark) → `--config` (in order) → CLI. Use `--no-config` to skip the project chain.
+> **Summary:** defaults → user → project chain (root→current; same-dir: pyproject then topmark) →
+> `--config` (in order) → CLI. Use `--no-config` to skip the project chain.
 
 ### Summary table
 
@@ -78,9 +81,12 @@ TopMark resolves paths relative to **where they are defined**:
 1. **Path‑to‑file settings**
 
    - Examples: `files.include_from`, `files.exclude_from`, `files.files_from`.
-   - Resolved relative to the **declaring config file’s directory**; for CLI options, resolved relative to **CWD**. The referenced files’ own patterns are then evaluated relative to each file’s own directory.
+   - Resolved relative to the **declaring config file’s directory**; for CLI options, resolved
+     relative to **CWD**. The referenced files’ own patterns are then evaluated relative to each
+     file’s own directory.
 
-NOTE: `relative_to` is used **only** for header metadata (e.g., `file_relpath`), and **not** for glob expansion or filtering.
+NOTE: `relative_to` is used **only** for header metadata (e.g., `file_relpath`), and **not** for
+glob expansion or filtering.
 
 ______________________________________________________________________
 
@@ -92,13 +98,15 @@ ______________________________________________________________________
   - In `topmark.toml`, at the top level.
   - In `pyproject.toml`, under `[tool.topmark]`.
 - Effect:
-  - Directories at or below the marked directory remain eligible (the marked directory can still be merged),
-    but parent directories are **not** considered.
+  - Directories at or below the marked directory remain eligible (the marked directory can still be
+    merged), but parent directories are **not** considered.
   - This ensures a repository (or workspace) boundary for discovery.
 - Interaction with explicit `--config`:
-  - `--config` files are merged **after** discovery, so they still apply even if `root = true` stopped discovery.
+  - `--config` files are merged **after** discovery, so they still apply even if `root = true`
+    stopped discovery.
 - Multiple roots:
-  - If multiple configs on the path specify `root = true`, the *nearest* one wins (since discovery walks **root → current** and the merge order is nearest-last).
+  - If multiple configs on the path specify `root = true`, the *nearest* one wins (since discovery
+    walks **root → current** and the merge order is nearest-last).
 
 Example:
 
@@ -126,10 +134,11 @@ ______________________________________________________________________
 ## CLI behavior
 
 - **CLI path-to-file options** (`--include-from`, `--exclude-from`, `--files-from`):\
-  Resolved relative to the **current working directory** (your invocation site), then normalized to absolute.
+  Resolved relative to the **current working directory** (your invocation site), then normalized to
+  absolute.
 
 - **CLI globs** (`--include`, `--exclude`):\
-  Kept as strings and evaluated later relative to the **workspace base** (`relative_to`).
+  Resolved relative to the **current working directory** (your invocation site).
 
 ______________________________________________________________________
 

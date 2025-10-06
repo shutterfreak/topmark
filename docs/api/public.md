@@ -55,8 +55,8 @@ configuration.
 
 ### Registries and extensibility (read‑only by default)
 
-The public API exposes **read‑only** registries for file types and header processors.
-They are returned as `Mapping` views (backed by `MappingProxyType`) to enforce immutability:
+The public API exposes **read‑only** registries for file types and header processors. They are
+returned as `Mapping` views (backed by `MappingProxyType`) to enforce immutability:
 
 - `api.get_file_type_registry() -> Mapping[str, FileType]`
 - `api.get_header_processor_registry() -> Mapping[str, HeaderProcessor]`
@@ -69,29 +69,17 @@ If you need dynamic extensions in plugins or tests, use the **advanced** registr
 - `topmark.registry.HeaderProcessorRegistry.register(name, processor_cls)`
 - `topmark.registry.HeaderProcessorRegistry.unregister(name)`
 
-These mutation helpers apply **overlay-only changes**: they do not mutate the internal
-base mappings (built‑ins + entry points). Overlays are process‑local, thread‑safe (via
-an internal lock), and can be removed with `unregister(...)`. For long‑term or
-redistributable extensions, prefer publishing a plugin with an entry point group
-`topmark.filetypes`.
+These mutation helpers apply **overlay-only changes**: they do not mutate the internal base mappings
+(built‑ins + entry points). Overlays are process‑local, thread‑safe (via an internal lock), and can
+be removed with `unregister(...)`. For long‑term or redistributable extensions, prefer publishing a
+plugin with an entry point group `topmark.filetypes`.
 
-::: topmark.api
-options:
-heading_level: 2
-show_root_heading: false
-members_order: source
-filters:
-\- "!^\_"
+See the generated API reference:
 
-::: topmark.registry
-options:
-heading_level: 2
-show_root_heading: false
-members_order: source
-filters:
-\- "!^\_"
+- [`topmark.api`](../api/reference/topmark.api.md)
+- [`topmark.registry`](../api/reference/topmark.registry.md)
 
 ______________________________________________________________________
 
-**Stability note:** See [API Stability](../dev/api-stability.md) for how we guard the
-public surface with a JSON snapshot across Python 3.10–3.13.
+**Stability note:** See [API Stability](../dev/api-stability.md) for how we guard the public surface
+with a JSON snapshot across Python 3.10–3.13.
