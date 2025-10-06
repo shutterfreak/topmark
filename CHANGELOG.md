@@ -16,6 +16,84 @@ All notable changes to this project will be documented in this file. This projec
 [Semantic Versioning](https://semver.org/) and follows a Keep‑a‑Changelog–style structure with the
 sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
+## [0.9.0] - 2025-10-06
+
+### Highlights
+
+- **Configuration resolution finalized** — TopMark now fully supports layered config discovery with deterministic merge precedence, explicit anchor semantics, and path-aware pattern resolution.
+- **Docs & MkDocs rebuild** — Documentation migrated to a snippet-driven architecture with reusable callouts, dynamic version injection, and a modernized MkDocs toolchain.
+- **CLI alignment fix** — The `--align-fields` flag is now tri-state, preserving `pyproject.toml` defaults when the flag is omitted.
+- **Public API parity** — The Python API now mirrors CLI behavior, respecting discovery, precedence, and formatting options such as `align_fields`.
+- **Note:** Config discovery and precedence are now finalized; projects that relied on implicit or CWD-only behavior may see changes in which configuration takes effect.\
+  See [**Configuration → Discovery & Precedence**](docs/configuration/discovery.md).
+
+### Added
+
+- **Configuration system**
+  - Complete implementation of **layered discovery**:
+    - Precedence: defaults → user → project chain (`root → cwd`; per-dir: `pyproject.toml` → `topmark.toml`) → `--config` → CLI.
+    - **Discovery anchor** = first input path (or its parent if file) → falls back to CWD.
+    - **`root = true`** stops traversal; ensures predictable isolation.
+  - Added `PatternSource` abstraction for tracking pattern bases.
+  - Added `MutableConfig.load_merged()` and detailed docstrings for all discovery steps.
+  - New test suite `tests/config/test_config_resolution.py` for full coverage of anchors, globs, and precedence.
+- **Header rendering**
+  - Conditional field alignment via `config.align_fields` in `HeaderProcessor.render_header_lines()`.
+- **API**
+  - Public API functions use the authoritative discovery and merge logic.
+  - Added `tests/api/test_api_discovery_parity.py` to guarantee CLI/API parity.
+- **MkDocs & docs**
+  - Introduced snippet-based reusable callouts (`> [!NOTE]`) rendered through a custom **simple hook**.
+  - Added `docs/hooks.py` to convert callouts and inject `%%TOPMARK_VERSION%%` dynamically.
+  - Added `docs/_snippets/config-resolution.md` for consistent “How config is resolved” sections.
+  - Automated generation of API reference pages for `topmark.api` and `topmark.registry`.
+  - Updated `mkdocs.yml` plugin chain (include-markdown, simple-hooks, md_in_html, gen-files).
+  - Added dynamic version display in docs (via `pre_build` hook).
+
+### Changed
+
+- **CLI**
+  - `--align-fields` is now **tri-state** (`True`, `False`, `None`)—when omitted, TOML defaults are respected.
+  - `topmark dump-config` and all CLI flows now reflect the effective merged configuration.
+- **Processor pipeline**
+  - Field alignment respects `config.align_fields`.
+  - Improved XML and JSON insertion gate logic to prevent unsafe mutations.
+- **Documentation build**
+  - Rebuilt MkDocs toolchain to use:
+    - `mkdocs-include-markdown-plugin`
+    - `mkdocs-simple-hooks`
+    - `mkdocstrings[python]`
+    - `mkdocs-gen-files`
+  - Moved mdformat configuration from `.mdformat.yml` → `[tool.mdformat]` in `pyproject.toml`.
+  - Updated pre-commit and CI workflows to install `[docs]` extras automatically.
+- **Formatting**
+  - Reflowed all documentation via `mdformat` (100-column wrap, normalized lists and spacing).
+
+### Fixed
+
+- **Config precedence bug** — Same-directory order (`pyproject.toml` before `topmark.toml`) was previously inverted; now fixed via per-directory grouping.
+- **CLI override bug** — `--align-fields` no longer forces `false` when omitted; correctly inherits TOML default.
+- **Header alignment** — Processors no longer align fields when `align_fields = false`.
+- **Docs build** — Resolved missing MkDocs plugin errors in CI (`include-markdown` and `simple-hooks`).
+- **Lychee false positives** — Updated snippet links and exclusion list to prevent link-checker failures.
+- **Version token substitution** — The documentation now correctly substitutes `%%TOPMARK_VERSION%%` via pre-build hook.
+
+### Docs / Tooling
+
+- Overhauled `pyproject.toml` `[project.optional-dependencies].docs` section to include all MkDocs plugins.
+- Added `requirements-docs.txt` synced with `pyproject.toml` extras for CI.
+- CI and release workflows (`ci.yml`, `release.yml`) now install docs extras (`-e .[docs]`) with constraints.
+- Bumped doc dependencies: `mkdocs>=1.6.0`, `mkdocs-material>=9.5.19`, `pymdown-extensions>=10.16`.
+- Removed obsolete `.mdformat.yml` and outdated constraints for `backrefs` and `markdown-it-py`.
+
+**Breaking changes**: _None_ (pre-1.0).\
+All changes are backward-compatible with v0.8.x configurations and APIs.
+
+______________________________________________________________________
+
+✅ **Summary:**\
+TopMark 0.9.0 consolidates its configuration system, aligns CLI and API behavior, and modernizes the documentation pipeline. Config resolution, discovery anchors, and formatting flags now work predictably across CLI, API, and generated docs.
+
 ## [0.8.1] - 2025-09-26
 
 ### Highlights
