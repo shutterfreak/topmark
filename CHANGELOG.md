@@ -20,7 +20,8 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ### Highlights
 
-- **XML re-apply fix**: prevent double-wrapped `<!-- … -->` blocks by anchoring bounds via character offset for XML/HTML processors.
+- **XML re-apply fix**: prevent double-wrapped `<!-- … -->` blocks by anchoring bounds via character
+  offset for XML/HTML processors.
 
 ### Added
 
@@ -36,7 +37,8 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 - **Processor refactor**:
   - Introduce mixins: `LineCommentMixin`, `BlockCommentMixin`, `XmlPositionalMixin`.
   - Add `compute_insertion_anchor()` façade and route updater through it.
-  - Tighten typing (`Final[int]` for `NO_LINE_ANCHOR`; stricter annotations) and micro-perf (cache compiled encoding regex).
+  - Tighten typing (`Final[int]` for `NO_LINE_ANCHOR`; stricter annotations) and micro-perf (cache
+    compiled encoding regex).
 - **File types**:
   - Instances module made lazy, plugin-aware, and type-safe; detectors split out (JSONC).
 
@@ -47,7 +49,8 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ### CI / Tooling
 
-- **New CI job**: “Dev validation” runs only tests marked `dev_validation` with `TOPMARK_VALIDATE=1`.
+- **New CI job**: “Dev validation” runs only tests marked `dev_validation` with
+  `TOPMARK_VALIDATE=1`.
 - **Pre-commit**: bump `ruff-pre-commit` to `v0.13.2`.
 
 **Breaking changes**: _None._
@@ -56,23 +59,30 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ### Highlights
 
-- **New C-style block header support**: introduce `CBlockHeaderProcessor` and register it for **CSS, SCSS, Less, Stylus, SQL, and Solidity**.
-- **Python stubs**: `.pyi` now use `PoundHeaderProcessor` (`#`-style), with sensible defaults (no shebang).
+- **New C-style block header support**: introduce `CBlockHeaderProcessor` and register it for **CSS,
+  SCSS, Less, Stylus, SQL, and Solidity**.
+- **Python stubs**: `.pyi` now use `PoundHeaderProcessor` (`#`-style), with sensible defaults (no
+  shebang).
 
 ### Added
 
 - **Processors**
-  - `CBlockHeaderProcessor` (C-style `/* … */` with per-line `*`) including tolerant directive detection (accepts `* topmark:…` or bare `topmark:…`).
+  - `CBlockHeaderProcessor` (C-style `/* … */` with per-line `*`) including tolerant directive
+    detection (accepts `* topmark:…` or bare `topmark:…`).
   - File type registrations: `css`, `scss`, `less`, `stylus`, `sql`, `solidity`.
 - **File types**
-  - `python-stub` (`.pyi`) bound to `PoundHeaderProcessor` (shebang disabled; ensure blank after header).
+  - `python-stub` (`.pyi`) bound to `PoundHeaderProcessor` (shebang disabled; ensure blank after
+    header).
 - **Tests**
-  - Comprehensive `test_cblock.py` suite: insertion (top and not-at-top), tolerant detection, idempotency, CRLF preservation, strip (auto/explicit span), and parametric checks across registered extensions.
+  - Comprehensive `test_cblock.py` suite: insertion (top and not-at-top), tolerant detection,
+    idempotency, CRLF preservation, strip (auto/explicit span), and parametric checks across
+    registered extensions.
 
 ### Changed
 
 - **Typing hardening (non-functional)**
-  - Widespread strict typing across `pipeline/`, `cli/` & `cli_shared/`, remaining `src/` modules, and `tools/`:
+  - Widespread strict typing across `pipeline/`, `cli/` & `cli_shared/`, remaining `src/` modules,
+    and `tools/`:
     - Adopt postponed annotations; move type-only imports under `TYPE_CHECKING`.
     - Introduce `TopmarkLogger` annotations; add precise return/locals typing.
     - Minor import and hygiene cleanups for Pyright strict mode.
@@ -80,15 +90,18 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 ### Fixed
 
 - **CLI `processors` command**
-  - Treat `filetypes` as dicts in `--long` + Markdown/default renderers to avoid `AttributeError` when running\
+  - Treat `filetypes` as dicts in `--long` + Markdown/default renderers to avoid `AttributeError`
+    when running\
     `topmark processors --format markdown --long`.
 - **Typing**
   - Resolve a redefinition error from an incorrectly placed annotation in types code.
 
 ### Docs
 
-- **README.md**: mention block (`/* … */`) alongside line (`#`, `//`) comment styles; add a CSS example.
-- **docs/usage/filetypes.md**: expand processor table with modules and registered file types; add `CBlockHeaderProcessor`.
+- **README.md**: mention block (`/* … */`) alongside line (`#`, `//`) comment styles; add a CSS
+  example.
+- **docs/usage/filetypes.md**: expand processor table with modules and registered file types; add
+  `CBlockHeaderProcessor`.
 
 ### Chore
 
@@ -101,8 +114,10 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ### Highlights
 
-- **Version CLI overhaul**: `topmark version` now defaults to **PEP 440** output and supports multiple formats via `--format {pep440,semver,json,markdown}` (alias: `--semver`).
-- **Release hardening**: Fully revamped GitHub Actions release flow with strict gates (version/tag match, artifact checks, **docs must build**, TestPyPI for prereleases, PyPI for finals).
+- **Version CLI overhaul**: `topmark version` now defaults to **PEP 440** output and supports
+  multiple formats via `--format {pep440,semver,json,markdown}` (alias: `--semver`).
+- **Release hardening**: Fully revamped GitHub Actions release flow with strict gates (version/tag
+  match, artifact checks, **docs must build**, TestPyPI for prereleases, PyPI for finals).
 
 ### Added
 
@@ -134,7 +149,8 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
   - PR path filters widened (e.g., `tests/**`, `tools/**`).
 - **Release (`.github/workflows/release.yml`)**
   - **Dual trigger**: tag **push** and **workflow_run** (proceeds only after green CI).
-  - New **`details`** job: normalizes tag, derives PEP 440/SemVer, decides **channel** (TestPyPI for `-rc/-a/-b`, PyPI for finals), and verifies `pyproject.toml` matches the tag.
+  - New **`details`** job: normalizes tag, derives PEP 440/SemVer, decides **channel** (TestPyPI for
+    `-rc/-a/-b`, PyPI for finals), and verifies `pyproject.toml` matches the tag.
   - Improved **concurrency** to prevent overlapping runs for the same ref.
   - **Publish** job:
     - Requires green CI (via `workflow_run`) or allows direct tag push.
@@ -142,7 +158,8 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
     - Checks that the target version does **not** already exist.
     - Builds artifacts and **verifies filenames** embed the exact PEP 440 version.
     - **Finals only**: guard that version is newer than latest final on PyPI.
-    - Publishes via trusted publishing (TestPyPI w/ `skip-existing: true` for prereleases; PyPI for finals).
+    - Publishes via trusted publishing (TestPyPI w/ `skip-existing: true` for prereleases; PyPI for
+      finals).
   - Creates a **GitHub Release** for finals using `details` outputs.
 
 ### Fixed
@@ -158,7 +175,8 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ### Tooling / Reproducibility
 
-- Adopt pinned lockfiles (`requirements.txt`, `requirements-dev.txt`, `requirements-docs.txt`) and `constraints.txt`.
+- Adopt pinned lockfiles (`requirements.txt`, `requirements-dev.txt`, `requirements-docs.txt`) and
+  `constraints.txt`.
 - Cache keyed on lockfiles; consistent `python -m pip` usage.
 
 ### Removed
@@ -173,14 +191,16 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ### Breaking (pre-1.0)
 
-- **JSON** schema changed from `{"topmark_version": "<str>"}` to `{"version": "<str>", "format": "pep440|semver"}`.
+- **JSON** schema changed from `{"topmark_version": "<str>"}` to
+  `{"version": "<str>", "format": "pep440|semver"}`.
 - **Markdown** now explicitly includes the format label:\
   `**TopMark version (pep440|semver): <version>**`.\
   Update any consumers/parsers that relied on the previous key or phrasing.
 
 #### Pre-releases
 
-- `0.7.0-rc1` and `0.7.0-rc2` were published to **TestPyPI** for validation; their contents are fully included in this final release.
+- `0.7.0-rc1` and `0.7.0-rc2` were published to **TestPyPI** for validation; their contents are
+  fully included in this final release.
 
 **Developer notes**
 
@@ -191,39 +211,50 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ### Fixed
 
-- **Docs build**: resolve Griffe parsing error by normalizing a parameter docstring format (remove stray space before colon) for `skip_compliant` in `topmark.api.check()` (file: `src/topmark/api/__init__.py`). This unblocks MkDocs/ReadTheDocs builds. No functional code changes.
+- **Docs build**: resolve Griffe parsing error by normalizing a parameter docstring format (remove
+  stray space before colon) for `skip_compliant` in `topmark.api.check()` (file:
+  `src/topmark/api/__init__.py`). This unblocks MkDocs/ReadTheDocs builds. No functional code
+  changes.
 
 ## [0.6.1] - 2025-09-15
 
 ### Added
 
-- **Docstring link checker**: new `tools/check_docstring_links.py` to enforce reference-style object links and flag raw URLs in docstrings. Includes accurate line/range reporting, code-region masking, and CLI flags `--stats` and `--ignore-inline-code`.
-- **Makefile targets**: `docstring-links`, `links`, `links-src`, `links-all`; centralized `check-lychee` gate.
+- **Docstring link checker**: new `tools/check_docstring_links.py` to enforce reference-style object
+  links and flag raw URLs in docstrings. Includes accurate line/range reporting, code-region
+  masking, and CLI flags `--stats` and `--ignore-inline-code`.
+- **Makefile targets**: `docstring-links`, `links`, `links-src`, `links-all`; centralized
+  `check-lychee` gate.
 
 ### Changed
 
 - **MkDocs build**: enable `strict: true` and link validation to fail on broken internal links.
-- **Docstrings/x‑refs**: convert internal references to mkdocstrings+autorefs style (e.g., `` [`pkg.mod.Object`][] `` or `[Text][pkg.mod.Object]`) and prefer fully‑qualified names.
+- **Docstrings/x‑refs**: convert internal references to mkdocstrings+autorefs style (e.g.,
+  `` [`pkg.mod.Object`][] `` or `[Text][pkg.mod.Object]`) and prefer fully‑qualified names.
 - **Docs structure**: normalize mkdocstrings blocks (minor tidy‑ups).
 
 ### Fixed
 
-- **README**: correct the “Adding & updating headers with topmark” link to `docs/usage/commands/check.md`.
+- **README**: correct the “Adding & updating headers with topmark” link to
+  `docs/usage/commands/check.md`.
 
 ### Tooling
 
 - **Lychee integration**: adopt Lychee for link checks (local + CI); scoped pre‑commit hooks.
 - **Testing**: raise `pytest` minimum to `>=8.0` in the `test` optional dependencies.
-- **Refactors**: minor non‑functional cleanups (rename local import alias in filetype registry; small typing improvements).
+- **Refactors**: minor non‑functional cleanups (rename local import alias in filetype registry;
+  small typing improvements).
 
 ## [0.6.0] - 2025-09-12
 
 ### Added
 
-- **Public API docs**: explain configuration via mappings and why runtime uses an immutable `Config`. (Commit: `d778ace`)
+- **Public API docs**: explain configuration via mappings and why runtime uses an immutable
+  `Config`. (Commit: `d778ace`)
 - **API snapshot tooling**:
   - `tools/api_snapshot.py` to generate a curated public API snapshot.
-  - Make targets: `public-api-update`, `.public-api-update`, `public-api-check`, `public-api-ensure-clean`.
+  - Make targets: `public-api-update`, `.public-api-update`, `public-api-check`,
+    `public-api-ensure-clean`.
   - Tox envs `py{310,311,312,313}-api` to run only the snapshot test. (Commit: `a584577`)
 - **Docs quality**:
   - Standardize Google-style docstrings; integrate `pydoclint`.
@@ -233,11 +264,14 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 - **Configuration architecture**:
   - Introduce **`MutableConfig`** (internal builder) and **immutable `Config`** (runtime snapshot).
-  - Public API continues to accept **`Mapping[str, Any] | None`**; inputs are normalized internally and frozen before execution.
+  - Public API continues to accept **`Mapping[str, Any] | None`**; inputs are normalized internally
+    and frozen before execution.
   - Renderer constructs an effective snapshot without mutating inputs. (Commit: `d778ace`)
 - **Config resolution (CLI)**:
   - Resolution order now explicit and consistent:
-    1. packaged defaults → 2) discovered project config in CWD (`pyproject.toml` `[tool.topmark]`, else `topmark.toml`) **unless** `--no-config` or explicit `--config` → 3) `--config` files (in order) → 4) CLI overrides. (Commit: `d778ace`)
+    1. packaged defaults → 2) discovered project config in CWD (`pyproject.toml` `[tool.topmark]`,
+       else `topmark.toml`) **unless** `--no-config` or explicit `--config` → 3) `--config` files
+       (in order) → 4) CLI overrides. (Commit: `d778ace`)
 - **Header field ordering**:
   - `topmark check` enforces the configured field order consistently. (Commit: `d778ace`)
 - **Typing/import hygiene**:
@@ -247,13 +281,17 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ### Fixed
 
-- CLI and pipeline now reflect header order deterministically (no “up-to-date” false negatives when order differed). (Commit: `d778ace`)
-- Type-checking and lint issues (casts, variable redefinitions, analyzer false positives) resolved in CLI helpers and resolver paths. (Commits: `d778ace`, `adc35f9`)
+- CLI and pipeline now reflect header order deterministically (no “up-to-date” false negatives when
+  order differed). (Commit: `d778ace`)
+- Type-checking and lint issues (casts, variable redefinitions, analyzer false positives) resolved
+  in CLI helpers and resolver paths. (Commits: `d778ace`, `adc35f9`)
 
 ### Docs
 
-- Add **“Configuration via mappings (immutable at runtime)”** section to the public API docs and mirror a concise note in the `topmark.api` module docstring. (Commit: `d778ace`)
-- Normalize docstrings across the codebase; remove Sphinx roles in favor of Markdown-friendly mkdocstrings. (Commit: `f649731`)
+- Add **“Configuration via mappings (immutable at runtime)”** section to the public API docs and
+  mirror a concise note in the `topmark.api` module docstring. (Commit: `d778ace`)
+- Normalize docstrings across the codebase; remove Sphinx roles in favor of Markdown-friendly
+  mkdocstrings. (Commit: `f649731`)
 
 ### Tooling
 
@@ -263,20 +301,21 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ### Chore
 
-- Repository-wide header reformat to the new field order (no functional changes). (Commit: `bcac2ed`)
+- Repository-wide header reformat to the new field order (no functional changes). (Commit:
+  `bcac2ed`)
 
 #### Notes
 
 - **No public API surface changes**: `topmark.api.check/strip` signatures unchanged.
-- `MutableConfig` is **internal** (not part of the stable API); public callers should pass a mapping or a frozen `Config`.
+- `MutableConfig` is **internal** (not part of the stable API); public callers should pass a mapping
+  or a frozen `Config`.
 
 ## [0.5.1] - 2025-09-09
 
 ### Fixed
 
-- **Python 3.10/3.11 compatibility**: replace multiline f‑strings in CLI output code paths
-  (not supported before Python 3.12) with concatenation/temporary variables.
-  Affected commands:
+- **Python 3.10/3.11 compatibility**: replace multiline f‑strings in CLI output code paths (not
+  supported before Python 3.12) with concatenation/temporary variables. Affected commands:
   - `filetypes`: numbered list rendering and detail lines (description/content matcher)
   - `processors`: processor header lines and per‑filetype detail lines
 
@@ -299,16 +338,20 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 ### Changed
 
 - **CLI & console output**
-  - Decoupled program‑output verbosity from internal logging; all user output routed through `ConsoleLike`
+  - Decoupled program‑output verbosity from internal logging; all user output routed through
+    `ConsoleLike`
   - Banners/extra guidance are gated by verbosity (quiet by default; add `-v` for more detail)
   - `filetypes` and `processors` now render numbered lists with right‑aligned indices
-  - `dump-config` / `init-config`: emit **plain TOML** by default; BEGIN/END markers appear at higher verbosity
+  - `dump-config` / `init-config`: emit **plain TOML** by default; BEGIN/END markers appear at
+    higher verbosity
 - **Public API (behavioral)**
-  - Apply vs preview now consistently reflected in per‑file results (`PREVIEWED` vs terminal write statuses)
+  - Apply vs preview now consistently reflected in per‑file results (`PREVIEWED` vs terminal write
+    statuses)
 
 ### Fixed
 
-- **Pre‑commit hooks**: remove redundant `--quiet` (default output is already terse) and fix its placement.
+- **Pre‑commit hooks**: remove redundant `--quiet` (default output is already terse) and fix its
+  placement.
 
 ### Docs
 
@@ -321,8 +364,8 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 #### ⚠️ Breaking (pre‑1.0)
 
 - Dry‑run summaries now end with **`- previewed`** instead of terminal verbs.\
-  Update any scripts/tests parsing human summaries that previously matched
-  `- inserted` / `- removed` / `- replaced` during dry‑run.
+  Update any scripts/tests parsing human summaries that previously matched `- inserted` /
+  `- removed` / `- replaced` during dry‑run.
 - Human‑readable CLI output may differ (verbosity‑gated banners and numbered lists).
 
 ## [0.4.0] - 2025-09-08
@@ -345,12 +388,12 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 - **Public API**: `diagnostics` in `RunResult` now returns a mapping
   `dict[str, list[PublicDiagnostic]]` instead of `dict[str, list[str]]`.
-- **Summaries**: `ProcessingContext.format_summary()` now aligns with pipeline outcomes and
-  appends compact triage (e.g., `1 error, 2 warnings`) plus hints (`previewed`, `diff`).
-- **Verbosity handling**: CLI `-v/--verbose` and `-q/--quiet` feed a program-output verbosity
-  level separately from the logger level; per-command logger overrides were removed.
-- **Config.merge_with()**: `verbosity_level` now honors **override semantics** (other wins),
-  and supports tri-state inheritance.
+- **Summaries**: `ProcessingContext.format_summary()` now aligns with pipeline outcomes and appends
+  compact triage (e.g., `1 error, 2 warnings`) plus hints (`previewed`, `diff`).
+- **Verbosity handling**: CLI `-v/--verbose` and `-q/--quiet` feed a program-output verbosity level
+  separately from the logger level; per-command logger overrides were removed.
+- **Config.merge_with()**: `verbosity_level` now honors **override semantics** (other wins), and
+  supports tri-state inheritance.
 - **API surface**: `PublicDiagnostic` re-exported from `topmark.api` and included in `__all__`.
 
 ### Fixed
@@ -365,8 +408,8 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 #### ⚠️ Breaking (pre‑1.0)
 
-- `RunResult.diagnostics` type changed to a structured public form. Integrations consuming
-  plain strings should switch to `d["message"]` and may use `d["level"]` for triage.
+- `RunResult.diagnostics` type changed to a structured public form. Integrations consuming plain
+  strings should switch to `d["message"]` and may use `d["level"]` for triage.
 - New aggregate fields (`diagnostic_totals`, `diagnostic_totals_all`) are added alongside
   `diagnostics`.
 

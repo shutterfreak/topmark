@@ -12,7 +12,8 @@ topmark:header:end
 
 # Continuous Integration (CI)
 
-This repository runs CI on pull requests, on pushes to `main`, and on version tags (`v*`). Jobs are split by concern to keep signals crisp and runs fast.
+This repository runs CI on pull requests, on pushes to `main`, and on version tags (`v*`). Jobs are
+split by concern to keep signals crisp and runs fast.
 
 ## Jobs
 
@@ -121,8 +122,10 @@ Site/link hygiene using `lycheeverse/lychee-action` against:
 
   - Dev checks/tests install from `requirements-dev.txt`
   - Docs build installs from `requirements-docs.txt`
-  - You can export `PIP_CONSTRAINT=constraints.txt` inside jobs or tox envs to force the resolver to honor the constraint pins.
+  - You can export `PIP_CONSTRAINT=constraints.txt` inside jobs or tox envs to force the resolver to
+    honor the constraint pins.
 
 ## Docstring checker policy
 
-`tools/check_docstring_links.py` enforces stable links in Python docstrings and warns on undesired patterns. Keep it fast and deterministic so the `lint` job stays snappy.
+`tools/check_docstring_links.py` enforces stable links in Python docstrings and warns on undesired
+patterns. Keep it fast and deterministic so the `lint` job stays snappy.

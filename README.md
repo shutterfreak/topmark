@@ -138,14 +138,16 @@ pip install topmark
 
 ## ⚙️ Usage
 
-> **Note**: In dry-run mode, TopMark shows summaries ending with `- previewed`. When run with `--apply`, summaries end with terminal statuses such as `- inserted`, `- replaced`, or `- removed`.
+> **Note**: In dry-run mode, TopMark shows summaries ending with `- previewed`. When run with
+> `--apply`, summaries end with terminal statuses such as `- inserted`, `- replaced`, or
+> `- removed`.
 
 ```bash
 topmark [SUBCOMMAND] [OPTIONS] [PATHS]...
 ```
 
-The `check` and `strip` commands performs a dry‑run by default
-and will only apply changes when `--apply` is provided.
+The `check` and `strip` commands performs a dry‑run by default and will only apply changes when
+`--apply` is provided.
 
 Logging verbosity is controlled globally:
 
@@ -402,8 +404,8 @@ Configuration can come from multiple sources and is merged in the following orde
 
 1. **User config** (`~/.config/topmark/topmark.toml` or `~/.topmark.toml`)
 
-1. **Project chain** discovered upward from the **discovery anchor**:
-   (first input path; its parent if it’s a file; otherwise CWD when no inputs)
+1. **Project chain** discovered upward from the **discovery anchor**: (first input path; its parent
+   if it’s a file; otherwise CWD when no inputs)
 
    - `pyproject.toml` (`[tool.topmark]` table)
    - `topmark.toml` (tool‑specific file)
@@ -421,7 +423,8 @@ TopMark resolves paths relative to **where they are defined**:
 
 - **Config‑declared globs** are resolved relative to the **config file’s directory**.
 - **CLI‑declared globs** are resolved relative to the **current working directory**.
-- **Path‑to‑file settings** (e.g., `exclude_from`, `files_from`) are resolved relative to the **declaring source** (config dir or CWD for CLI).
+- **Path‑to‑file settings** (e.g., `exclude_from`, `files_from`) are resolved relative to the
+  **declaring source** (config dir or CWD for CLI).
 - `relative_to` affects only header metadata (e.g., `file_relpath`), not discovery.
 
 > For complete details and examples, see\
@@ -454,10 +457,10 @@ relative_to = "."
 ### Notes
 
 - `formatting.align_fields = true` vertically aligns field names for readability.
-- File-type–specific behavior (shebang handling, XML prolog, blank-line policies) is driven by
-  the internal **FileTypeHeaderPolicy** defaults.
-- Use `topmark dump-config` to see the **effective merged configuration** after all layers
-  and overrides are applied.
+- File-type–specific behavior (shebang handling, XML prolog, blank-line policies) is driven by the
+  internal **FileTypeHeaderPolicy** defaults.
+- Use `topmark dump-config` to see the **effective merged configuration** after all layers and
+  overrides are applied.
 
 The `EnumParam` class enables shell completion for enum-based CLI options.
 

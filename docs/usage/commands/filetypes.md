@@ -70,9 +70,9 @@ ______________________________________________________________________
 
 ## Numbered output & verbosity
 
-In human-readable formats, TopMark renders a **numbered list** of file types with
-right-aligned indices (e.g., `1.`, `2.`, …) to keep long lists scannable. With `--long`
-or higher verbosity, additional details are shown alongside each identifier.
+In human-readable formats, TopMark renders a **numbered list** of file types with right-aligned
+indices (e.g., `1.`, `2.`, …) to keep long lists scannable. With `--long` or higher verbosity,
+additional details are shown alongside each identifier.
 
 ______________________________________________________________________
 

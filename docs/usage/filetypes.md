@@ -26,8 +26,8 @@ and update headers safely.
 
 ## File types without a registered processor
 
-The following formats are **recognized but intentionally skipped** because they lack a
-safe comment syntax:
+The following formats are **recognized but intentionally skipped** because they lack a safe comment
+syntax:
 
 - `json`
 - `license_text`

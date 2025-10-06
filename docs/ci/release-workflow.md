@@ -44,7 +44,8 @@ The release workflow runs on:
 
 ## Workflow overview
 
-Defined in `.github/workflows/release.yml`. Publishing is gated by **docs** (built here) and **CI success** (gated upstream).
+Defined in `.github/workflows/release.yml`. Publishing is gated by **docs** (built here) and **CI
+success** (gated upstream).
 
 ### Triggers
 
@@ -80,7 +81,8 @@ concurrency:
 
 1. **details** (extract release info)
 
-   Discovers the driving tag (from `push` ref or from the CI head SHA), normalizes versions, and decides where to publish:
+   Discovers the driving tag (from `push` ref or from the CI head SHA), normalizes versions, and
+   decides where to publish:
 
    - Outputs:
      - `tag` (e.g., `v1.2.3`, `v1.2.3-rc1`)
@@ -115,7 +117,8 @@ concurrency:
      - **Ensure target version isn’t already on the index** (PyPI/TestPyPI JSON check)
      - **Build artifacts**: `sdist` + `wheel`
      - **Verify filenames embed the exact version**
-     - **Final-only**: ensure the new version is **greater** than the latest **final** on PyPI (PEP 440 compare)
+     - **Final-only**: ensure the new version is **greater** than the latest **final** on PyPI (PEP
+       440 compare)
      - **Publish** with `pypa/gh-action-pypi-publish@release/v1`
        - Pre-releases → **TestPyPI** (`repository-url` set, `skip-existing: true`)
        - Finals → **PyPI** (no `repository-url`)
@@ -128,17 +131,19 @@ concurrency:
 ### Test gating
 
 - Full test matrix is handled by the **CI** workflow.
-- The release workflow **listens to CI** via `workflow_run` and only publishes when CI has **succeeded**.
+- The release workflow **listens to CI** via `workflow_run` and only publishes when CI has
+  **succeeded**.
 
 ### Version & artifacts validation
 
 - Tag ↔ `pyproject.toml` version must match (PEP 440).
 - Artifacts must exist and include the exact version in their filenames:
-  - `dist/topmark-<version>.tar.gz`
-  - `dist/topmark-<version>-*.whl`
+  - `dist/topmark-≪version≫.tar.gz`
+  - `dist/topmark-≪version≫-*.whl`
 
 ## Summary
 
 - Push **`vX.Y.Z-rcN`** → CI runs → Release workflow runs → Build docs → Publish to **TestPyPI**.
-- Push **`vX.Y.Z`** → CI runs → Release workflow runs → Build docs → Publish to **PyPI** → Create a GitHub Release.
+- Push **`vX.Y.Z`** → CI runs → Release workflow runs → Build docs → Publish to **PyPI** → Create a
+  GitHub Release.
 - Pre-release vs final publishing is **automatic** via the `details` job; no manual toggles needed.

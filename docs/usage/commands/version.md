@@ -35,5 +35,5 @@ ______________________________________________________________________
 
 ## Options
 
-This command is intentionally minimal and usually has no options. See `topmark version -h` for
-any environment-specific flags that may be available in your build.
+This command is intentionally minimal and usually has no options. See `topmark version -h` for any
+environment-specific flags that may be available in your build.

@@ -55,8 +55,8 @@ ______________________________________________________________________
 
 ## Verbosity
 
-`init-config` prints plain TOML to stdout. When run with higher verbosity (e.g., `-v`), the
-output is wrapped between BEGIN/END markers for easy parsing in scripts and tests.
+`init-config` prints plain TOML to stdout. When run with higher verbosity (e.g., `-v`), the output
+is wrapped between BEGIN/END markers for easy parsing in scripts and tests.
 
 ______________________________________________________________________
 

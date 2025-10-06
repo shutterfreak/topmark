@@ -107,12 +107,11 @@ TOPMARK_VALIDATE=1 pytest -q
 What this checks (dev-only; zero-cost in normal runs):
 
 - Every registered header **processor** maps to a known **FileType**.
-- XML/HTML-like processors use the **character-offset** strategy: they must
-  return `NO_LINE_ANCHOR` from `get_header_insertion_index()` and compute an
-  offset in `get_header_insertion_char_offset()`.
+- XML/HTML-like processors use the **character-offset** strategy: they must return `NO_LINE_ANCHOR`
+  from `get_header_insertion_index()` and compute an offset in `get_header_insertion_char_offset()`.
 
-These validations help catch subtle registry or placement regressions early
-(e.g., typos in type keys, accidental line-based use in XML processors).
+These validations help catch subtle registry or placement regressions early (e.g., typos in type
+keys, accidental line-based use in XML processors).
 
 ### Python version compatibility
 
@@ -342,8 +341,8 @@ We enforce API stability with tests and CI checks:
    current public function signatures (and facade methods) with a committed JSON baseline
    (`tests/api/public_api_snapshot.json`).
    - Day-to-day development: the test **skips** if the baseline is absent.
-   - Before release: run `make public-api-update` to generate/refresh the baseline
-     using `tools/api_snapshot.py`, commit it, and ensure the test passes.
+   - Before release: run `make public-api-update` to generate/refresh the baseline using
+     `tools/api_snapshot.py`, commit it, and ensure the test passes.
 1. **CI version bump check (recommended)** — in CI, if the snapshot file changes in a PR, require
    that `project.version` in `pyproject.toml` is bumped accordingly.
 
