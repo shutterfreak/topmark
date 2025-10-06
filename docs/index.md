@@ -10,7 +10,7 @@ topmark:header:start
 topmark:header:end
 -->
 
-# TopMark Documentation
+# TopMark Documentation (%%TOPMARK_VERSION%%)
 
 TopMark inspects and manages per-file headers (project/license/copyright) across codebases. It is
 comment‑aware, file‑type‑aware, and **dry‑run by default** for safe CI usage.

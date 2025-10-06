@@ -80,6 +80,9 @@ plugins:
   #    This overrides the non-functional native conversion.
   - mkdocs-simple-hooks:
       hooks:
+        # Ensure the version is loaded before the build starts:
+        on_pre_build: "docs.hooks:pre_build"
+        # Process on-page markdown:
         on_page_markdown: "docs.hooks:on_page_markdown"
 
   # 3. gen-files, being a generator, can safely remain last.
@@ -98,6 +101,7 @@ nav:
           - "show-defaults": usage/commands/show_defaults.md
           - "filetypes": usage/commands/filetypes.md
           - "processors": usage/commands/processors.md
+          - "version": usage/commands/version.md
       - Guides:
           - "Pre-commit": usage/pre-commit.md
           - "Header placement": usage/header-placement.md

@@ -10,7 +10,7 @@ topmark:header:start
 topmark:header:end
 -->
 
-# API Reference
+# API Reference (%%TOPMARK_VERSION%%)
 
 These pages are auto‑generated using [mkdocstrings](https://mkdocstrings.github.io/), pulling
 docstrings directly from the TopMark source code.

@@ -31,24 +31,69 @@ as long as the wrapper allows Markdown rendering (``<div markdown="1"> … </div
 
 from __future__ import annotations
 
+import logging
 import re
 from importlib.metadata import version as get_version
+from pathlib import Path
 from typing import Any, Match
+
+import toml
+
+logger: logging.Logger = logging.getLogger(__name__)
 
 # ---------- pre_build: capture version once ----------
 
+# Module-level variable to store the version, accessible by all functions in this module.
+topmark_version_id: str = "dev"
 
-def pre_build(config: dict[str, Any]) -> None:
+
+def get_version_from_toml() -> str:
+    """Reads the version directly from the static pyproject.toml entry."""
+    # Assumes pyproject.toml is in the project root relative to where the script is run
+    toml_path: Path = Path(__file__).resolve().parents[3] / "pyproject.toml"
+
+    # You are using tomlkit and toml in your dependencies, so use one of those:
+    # Requires 'toml' package
+    data: dict[str, Any] = toml.load(toml_path)
+
+    ver: str = data["project"]["version"] + " hi there!"
+
+    logger.info("Version: %s", ver)
+
+    return ver
+
+
+def pre_build(config: dict[str, Any], **kwargs: Any) -> dict[str, Any] | None:
     """Capture the TopMark version once before any page is processed.
 
+    This function attempts to retrieve the installed TopMark package version using
+    :py:func:`importlib.metadata.version` and stores it in the module-level global
+    variable ``topmark_version_id``. This ensures the correct version token can be
+    substituted in all pages via the :py:func:`on_page_markdown` hook.
+
     Args:
-        config (dict[str, Any]): MkDocs config dict; we stash the version under
-            ``config['extra']['topmark_version']`` for later token substitution.
+        config (dict[str, Any]): The MkDocs config dictionary. While this hook
+            function doesn't modify the config directly to store the version (it
+            uses a global variable instead), it must be passed by the MkDocs hook
+            system.
+        **kwargs (Any): Additional keyword arguments passed by the MkDocs hook system
+            (e.g., ``files``, ``site_dir``, etc.). Currently unused.
+
+    Returns:
+        dict[str, Any] | None: The modified config dictionary. We return the original
+        ``config`` object to satisfy the MkDocs hook API, although it has not been
+        modified within this function.
     """
+    global topmark_version_id  # MUST declare global intent to WRITE
+
     try:
-        config.setdefault("extra", {})["topmark_version"] = get_version("topmark")
+        # This will set the actual version (e.g., "0.9.0rc1" or "dev")
+        topmark_version_id = get_version("topmark")
     except Exception:
-        config.setdefault("extra", {})["topmark_version"] = "dev"
+        # If the package isn't installed, it keeps the default "dev"
+        pass
+
+    return config
 
 
 # ---------- helpers: GH Actions shielding & GH callouts ----------
@@ -187,7 +232,12 @@ def _render_admonition(kind: str, title: str, inner_markdown: str) -> str:
 # ---------- page_markdown: do transformations ----------
 
 
-def on_page_markdown(markdown: str, page: Any, config: dict[str, Any], files: Any) -> str:  # noqa: ANN401
+def on_page_markdown(
+    markdown: str,
+    page: Any,
+    config: dict[str, Any],
+    files: Any,
+) -> str:
     """Transform Markdown for each page before Markdown extensions run.
 
     The transformation pipeline performs:
@@ -206,8 +256,8 @@ def on_page_markdown(markdown: str, page: Any, config: dict[str, Any], files: An
         str: The transformed Markdown string.
     """
     # 0) Replace version tokens
-    version: str = config.get("extra", {}).get("topmark_version", "dev")
-    markdown = markdown.replace("%%TOPMARK_VERSION%%", str(version))
+    global topmark_version_id  # MUST declare global intent to READ
+    markdown = markdown.replace("%%TOPMARK_VERSION%%", str(topmark_version_id))
 
     # 1) Shield GH Actions blocks (noop for simple-hooks)
     markdown = _wrap_actions_blocks_with_raw(markdown)
