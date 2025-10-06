@@ -10,4 +10,6 @@
 
 # Development dependencies - managed in pyproject.toml
 
+# Pin docs stack **and** runtime deps for reliable local/CI builds
+-r requirements.in
 -e .[docs]

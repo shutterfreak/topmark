@@ -16,7 +16,7 @@
 #
 -e .
     # via -r requirements.in
-click==8.2.1
+click==8.3.0
     # via topmark
 importlib-resources==6.5.2
     # via yachalk

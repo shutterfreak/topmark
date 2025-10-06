@@ -14,7 +14,8 @@
 # - `target` is the user-facing version with confirmation prompt
 # Only the interactive targets are listed in the help menu.
 
-.PHONY: build check-venv check-rtd-venv clean compile compile-dev dev dev-install \
+.PHONY: build check-venv check-doc-venv clean compile compile-dev compile-docs \
+		dev dev-install doc-venv \
 		docs-build docs-deploy docs-serve docs-verify docstring-links \
 		format format-check git-archive help install \
 		links links-src links-all \
@@ -22,9 +23,10 @@
 		pre-commit-autoupdate pre-commit-clean pre-commit-install \
 		pre-commit-refresh pre-commit-run pre-commit-uninstall \
 		public-api-check public-api-ensure-clean public-api-update \
-		rtd-venv setup source-snapshot \
+		setup source-snapshot \
 		sync-dev sync-dev-confirm sync-doc sync-doc-confirm sync-prod sync-prod-confirm \
-		test uninstall uninstall-confirm update-instructions-json upgrade-dev upgrade-pro venv verify
+		test uninstall uninstall-confirm update-instructions-json upgrade-dev upgrade-doc upgrade-pro \
+		venv verify
 
 .DEFAULT_GOAL := help
 
@@ -84,6 +86,8 @@ help:
 	@echo "  compile-dev              Compile development dependencies"
 	@echo "  upgrade-dev              Upgrade lock file with pip-compile -U and sync dev env"
 	@echo "  sync-dev                 Sync .venv with dev requirements"
+	@echo "  compile-docs             Compile docs lock from requirements-docs.in"
+	@echo "  sync-doc                 Sync .rtd with requirements-docs.txt"
 	@echo ""
 	@echo "  verify                   Run all non-destructive checks (formatting, linting, type-checking)"
 	@echo "  format-check             Check code formatting without modifying files"
@@ -103,8 +107,8 @@ help:
 	@echo "  public-api-ensure-clean  Fail if the public API snapshot differs from the baseline"
 	@echo ""
 	@echo "Documentation:"
-	@echo "  rtd-venv                 Create RTD docs virtual environment (.rtd) and install docs deps"
-	@echo "  upgrade-rtd              Upgrade lock file with pip-compile -U and sync docs env"
+	@echo "  doc-venv                 Create RTD docs virtual environment (.rtd) and install docs deps"
+	@echo "  upgrade-doc              Upgrade lock file with pip-compile -U and sync docs env"
 	@echo ""
 	@echo "  docs-serve               Serve docs locally (uses .rtd) with live reload"
 	@echo "  docs-build               Build docs strictly (uses .rtd)"
@@ -215,7 +219,7 @@ sync-dev:
 	make .sync-dev
 
 # The 'verify' target runs all non-destructive checks
-verify: check-venv format-check lint docstring-links links rtd-venv docs-verify
+verify: check-venv format-check lint docstring-links links doc-venv docs-verify
 	@echo "All quality checks passed!"
 
 format-check: check-venv
@@ -303,10 +307,10 @@ public-api-ensure-clean: check-venv
 # Documentation
 # ----------------------------------------------------------------------------------------------------------------------
 
-check-rtd-venv:
-	@test -x "$(RTD_VENV_BIN)/$(PYTHON)" || (echo "❌ $(RTD_VENV) not found. Run: make rtd-venv" && exit 1)
+check-doc-venv:
+	@test -x "$(RTD_VENV_BIN)/$(PYTHON)" || (echo "❌ $(RTD_VENV) not found. Run: make doc-venv" && exit 1)
 
-rtd-venv:
+doc-venv:
 	@test -d $(RTD_VENV) || ( \
 		echo "Creating ReadTheDocs virtual environment..." && \
 		virtualenv $(RTD_VENV) && \
@@ -317,23 +321,33 @@ rtd-venv:
 	)
 	@echo "Activate the ReadTheDocs virtual environment ($(RTD_VENV))  with: source $(RTD_VENV_BIN)/activate"
 
-upgrade-rtd: check-rtd-venv
+compile-docs: check-doc-venv
+	$(RTD_VENV_BIN)/pip-compile -q -c constraints.txt --strip-extras requirements-docs.in
+
+upgrade-doc: check-doc-venv
 	$(RTD_VENV_BIN)/pip-compile --upgrade -c constraints.txt --strip-extras requirements-docs.in
 
-docs-verify: check-rtd-venv
+.sync-doc: check-doc-venv
+	$(RTD_VENV_BIN)/pip-sync requirements-docs.txt
+
+sync-doc:
+	@read -p "⚠️  This will overwrite your .rtd environment with requirements-docs.txt. Continue? [y/N] " confirm && [ "$$confirm" = "y" ] && \
+	make .sync-doc
+
+docs-verify: check-doc-venv
 	$(MKDOCS_RTD) build --strict
 
-docs-build: check-rtd-venv
+docs-build: check-doc-venv
 	$(MKDOCS_RTD) build --strict
 
-.docs-serve: check-rtd-venv
+.docs-serve: check-doc-venv
 	$(MKDOCS_RTD) serve
 
 docs-serve:
 	@read -p "Start MkDocs dev server? [y/N] " confirm && [ "$$confirm" = "y" ] && \
 	make .docs-serve
 
-.docs-deploy: check-rtd-venv
+.docs-deploy: check-doc-venv
 	$(MKDOCS_RTD) gh-deploy --force
 
 docs-deploy:
