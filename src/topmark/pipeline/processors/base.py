@@ -545,6 +545,7 @@ class HeaderProcessor:
             self.__class__.__name__,
             ", ".join(config.header_fields),
         )
+        logger.debug("render_header_lines: align_fields=%s", config.align_fields)
 
         if config.header_format is HeaderOutputFormat.PLAIN:
             # Don't use the config's block_prefix/suffix or
@@ -576,8 +577,12 @@ class HeaderProcessor:
                 header_indent_override if header_indent_override is not None else self.header_indent
             )
 
-        # Compute header field name width:
-        width: int = max(len(k) for k in header_values) + 1 if len(header_values) > 0 else 0
+        # Compute header field name width only when alignment is enabled.
+        # When align_fields is False, emit compact "field : value" without padding.
+        if config.align_fields and header_values:
+            width: int = max(len(k) for k in header_values) + 1
+        else:
+            width = 0
 
         # Build the header lines
         lines: list[str] = []

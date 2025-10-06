@@ -65,7 +65,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterable, Mapping, Sequence, cast
+from typing import TYPE_CHECKING, Any, Iterable, Mapping, Sequence
 
 from topmark.cli.cmd_common import (
     filter_view_results,
@@ -340,10 +340,16 @@ def _build_cfg_and_files_via_cli_helpers(
 ) -> tuple[Config, list[Path]]:
     """Use the same config+file discovery as the CLI.
 
-    If `base_config` is provided, we normalize it to Config and resolve the file
-    list directly with `resolve_file_list(cfg)` to avoid merging project config
-    implicitly. Otherwise we perform project-config discovery & merge without Click
-    and then resolve files.
+    If `base_config` is provided (mapping or frozen `Config`), we normalize it
+    and resolve files directly via `resolve_file_list(cfg)` **without** merging
+    project config implicitly (globs are interpreted from CWD, like CLI args).
+
+    If `base_config` is `None`, we perform full discovery using
+    `MutableConfig.load_merged(input_paths=...)` which implements:
+    defaults → user → project chain (root→current; same dir: pyproject then topmark;
+    stop at root=true) → --config (none here) → CLI overrides.
+    Globs declared in discovered config files are evaluated relative to each
+    **config file's directory**; CLI-like overrides (for this helper) use CWD.
     """
     from topmark.file_resolver import resolve_file_list
 
@@ -385,59 +391,22 @@ def _build_cfg_and_files_via_cli_helpers(
         logger.debug("Files found: %s", len(file_list))
         return cfg, file_list
 
-    # Otherwise, perform project-config discovery & merge like the CLI,
-    # but without relying on Click. We construct the ArgsNamespace-equivalent
-    # mapping that `Config.load_merged()` expects.
-    args_mapping: dict[str, Any] = {
-        "verbosity_level": None,  # inherit program-output verbosity (tri-state)
-        "files": list(plan.paths),
-        "files_from": list(plan.files_from),
-        "stdin": False,
-        "include_patterns": list(plan.include_patterns),
-        "include_from": list(plan.include_from),
-        "exclude_patterns": list(plan.exclude_patterns),
-        "exclude_from": list(plan.exclude_from),
-        "no_config": False,
-        "config_files": [],
-        "file_types": list(file_types) if file_types else [],
-        "relative_to": None,
-        "align_fields": False,
-        "header_format": None,
-    }
-
-    draft = MutableConfig.from_defaults()
-
-    # Load local project config unless disabled by --no-config flag
-    if not args_mapping.get("no_config"):
-        for local_toml_file in ["topmark.toml", "pyproject.toml"]:
-            local_toml = Path(local_toml_file)
-            if local_toml.exists():
-                logger.info("Loading local config from: %s", local_toml)
-                local_config: MutableConfig | None = MutableConfig.from_toml_file(local_toml)
-                if local_config is not None:
-                    draft = draft.merge_with(local_config)
-                break  # only first one
-
-    # Additional explicit config files (none by default here, kept for parity)
-    config_files_seq: Sequence[str | Path] = cast(
-        "Sequence[str | Path]", args_mapping.get("config_files", ())
+    # Otherwise, perform project-config discovery & merge using the authoritative loader.
+    # Discovery anchor: first normalized input path (its parent if it's a file), or CWD if none.
+    anchor_inputs: list[Path] = [Path(p) for p in plan.paths] or [Path.cwd()]
+    draft = MutableConfig.load_merged(
+        input_paths=tuple(anchor_inputs),
+        extra_config_files=(),  # none here; API parity with "no --config"
     )
-    for entry in config_files_seq:
-        p: Path = entry if isinstance(entry, Path) else Path(entry)
-        logger.debug("Adding config file '%s' (type=%s)", entry, type(entry).__name__)
-        if p.exists():
-            logger.info("Loading config override from: %s", p)
-            extra: MutableConfig | None = MutableConfig.from_toml_file(p)
-            if extra is not None:
-                draft = draft.merge_with(extra)
-        else:
-            logger.debug("Config file does not exist: %s", p)
 
-    # Apply CLI-like overrides last and build the frozen Config
-    draft = draft.apply_cli_args(args_mapping)
+    # Apply the normalized inputs we computed (CLI-like overrides last)
+    draft.files = list(plan.paths)
+    if file_types:
+        draft.file_types = set(file_types)
+
     cfg = draft.freeze()
-
     file_list = resolve_file_list(cfg)
+    logger.debug("Files found: %s", len(file_list))
     return cfg, file_list
 
 
@@ -641,7 +610,7 @@ def get_filetype_info(long: bool = False) -> list[FileTypeInfo]:
         For object-level access, prefer `FileTypeRegistry` from
         [`topmark.registry`][]. This function returns metadata (not the objects).
     """
-    proc_reg = Registry.processors()
+    proc_reg: Mapping[str, object] = Registry.processors()
 
     items: list[FileTypeInfo] = []
     for name, ft in Registry.filetypes().items():
