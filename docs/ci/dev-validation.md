@@ -10,15 +10,42 @@ topmark:header:start
 topmark:header:end
 -->
 
-# Developer validation (optional)
+# 🧩 Developer Validation Marker
 
-TopMark provides opt-in developer-time validations to catch subtle registry or placement regressions
-during refactoring or when adding new processors. Enable it by setting `TOPMARK_VALIDATE=1`.
+TopMark defines an internal **pytest marker** `@mark_dev_validation`, used for selective validation of developer-only integrity tests (e.g., registry consistency).
+
+## Purpose
+
+This marker distinguishes tests that check **internal invariants** rather than user-facing behavior.
+
+Typical use cases:
+
+- Registry consistency between processors and file types
+- Sanity checks for internal plugin mappings or invariants
+
+Example:
+
+```python
+from tests.conftest import mark_dev_validation
+
+@mark_dev_validation
+def test_registered_processors_map_to_existing_filetypes():
+    ...
+```
+
+## Execution
+
+Currently, these tests are **run with all other tests** (no separate tox job).\
+In earlier versions, a dedicated `dev-validation` CI job existed, but this was merged into the general test suite for simplicity.
+
+To run only these tests locally:
 
 ```bash
 TOPMARK_VALIDATE=1 pytest -q
 # or when running the CLI during development
 TOPMARK_VALIDATE=1 topmark processors --format json
+# or:
+pytest -m dev_validation
 ```
 
 ## What it checks
@@ -36,27 +63,6 @@ users.
 - Ensures XML/HTML-like processors don’t regress into line-based insertion, which can cause
   double-wrapped `<!-- -->` header blocks.
 - Mirrors guardrails used by mature Python projects for safer refactors.
-
-## CI usage (example)
-
-Add a dev job in your GitHub Actions workflow to run validations alongside tests:
-
-```yaml
-jobs:
-  tests:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.11", "3.12", "3.13"]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-      - run: pip install -e .[dev]
-      - name: Run tests with developer validation
-        run: TOPMARK_VALIDATE=1 pytest -q
-```
 
 ## Scope and overhead
 

@@ -10,140 +10,131 @@ topmark:header:start
 topmark:header:end
 -->
 
-# Release workflow (GitHub Actions → PyPI/TestPyPI)
+# 🚀 Release Workflow
 
-TopMark uses GitHub Actions with **Trusted Publishing** (OIDC) to release to PyPI/TestPyPI.\
-The release workflow runs on:
+This document describes the **automated release pipeline** defined in [`.github/workflows/release.yml`](../../.github/workflows/release.yml).
 
-- Direct **tag pushes** (`v*`)
-- **After CI completes successfully** via `workflow_run` on the `CI` workflow
+______________________________________________________________________
 
-> **RC vs final:**\
-> Tags with a suffix (`-rcN`, `-aN`, `-bN`) go to **TestPyPI**.\
-> Final tags (`vX.Y.Z`) go to **PyPI** and create a GitHub Release.
+## Trigger Conditions
 
-## How to cut a release (maintainers)
+The release workflow runs automatically when:
 
-1. Update the version in `pyproject.toml` (PEP 440).
+- A **tag** matching `v*` is pushed (e.g., `v0.9.1`, `v0.10.0-rc1`), **or**
+- The **CI** workflow completes successfully for a tagged commit
 
-1. Commit and push your changes.
+It supports both **final** and **pre-release** (rc/a/b) versions using **PEP 440 normalization**.
 
-1. Tag and push:
+______________________________________________________________________
+
+## Job Summary
+
+| Job                 | Purpose                                                              |
+| ------------------- | -------------------------------------------------------------------- |
+| **details**         | Parse the release tag and extract version, channel, and release name |
+| **build-docs**      | Build docs in strict mode via tox                                    |
+| **publish-package** | Verify, build, and publish to PyPI/TestPyPI                          |
+| **github-release**  | Create a GitHub release for final (non-prerelease) tags              |
+
+______________________________________________________________________
+
+## 🧱 Core Design
+
+### Trusted Publishing via OIDC
+
+No API tokens are stored — PyPI and TestPyPI releases use **Trusted Publishing** with OIDC credentials.
+
+### Tox-Centric Docs Build
+
+All docs are built through tox for parity with CI and local dev:
+
+```yaml
+- name: Bootstrap tox
+  run: |
+      python -m pip install -U pip
+      pip install tox
+- name: Build docs (strict via tox)
+  run: tox -e docs
+```
+
+### 🧰 Caching
+
+Each job caches both pip and `.tox` directories for faster re-runs:
+
+```yaml
+- name: Cache pip & tox
+  uses: actions/cache@v4
+  with:
+      path: |
+          ~/.cache/pip
+          .tox
+      key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('tox.ini', 'pyproject.toml', 'requirements-*.txt', 'constraints.txt') }}
+```
+
+### 🧩 Version Validation
+
+Before publishing, the workflow ensures:
+
+- `pyproject.toml` version matches the tag.
+- Version doesn’t already exist on the target index.
+- (Final releases only) new version > latest final on PyPI.
+
+### 📦 Package Validation
+
+- Builds sdist + wheel with `python -m build`
+
+- Verifies filenames and version correctness
+
+- Publishes to PyPI or TestPyPI via:
+
+  ```yaml
+  uses: pypa/gh-action-pypi-publish@release/v1
+  ```
+
+______________________________________________________________________
+
+## 🔁 Release Flow
+
+1. Bump version in `pyproject.toml`
+
+1. Commit & tag:
 
    ```bash
-   # Final release
-   git tag vX.Y.Z
-   git push origin vX.Y.Z
-
-   # Release candidate
-   git tag vX.Y.Z-rc1
-   git push origin vX.Y.Z-rc1
+   git commit -am "chore(release): 0.9.1"
+   git tag v0.9.1
+   git push origin main --tags
    ```
 
-1. Wait for **CI** to finish green. The release workflow will run (via `workflow_run`) and publish.
+1. CI runs and passes
 
-## Workflow overview
+1. Release workflow builds docs, validates, and publishes
 
-Defined in `.github/workflows/release.yml`. Publishing is gated by **docs** (built here) and **CI
-success** (gated upstream).
+1. GitHub release is created automatically (for non-prereleases)
 
-### Triggers
+______________________________________________________________________
 
-- **push**: tags matching `v*`
-- **workflow_run**: when the `CI` workflow has `conclusion: success`
+## 🔖 Channels
 
-### Permissions
+| Tag           | Channel  | Example           |
+| ------------- | -------- | ----------------- |
+| `v0.10.0`     | PyPI     | Stable            |
+| `v0.10.0-rc1` | TestPyPI | Release candidate |
+| `v0.10.0-a1`  | TestPyPI | Alpha             |
+| `v0.10.0-b1`  | TestPyPI | Beta              |
 
-```yaml
-permissions:
-  contents: read     # required for checkout and reading repo
-  id-token: write    # required for PyPI/TestPyPI Trusted Publishing (OIDC)
-```
+______________________________________________________________________
 
-### Concurrency
+## 🧠 Notes for Maintainers
 
-Ensures release runs for the **same tag/commit** don’t overlap (works for both triggers):
+- Keep **pyproject version** aligned with tags.
 
-```yaml
-concurrency:
-  group: >-
-    pypi-${{ github.event_name == 'push'
-      && github.ref
-      || format('sha-{0}', github.event.workflow_run.head_sha) }}
-  cancel-in-progress: true
-```
+- Delete stale `.tox` or `.venv` dirs before local build tests.
 
-- For `push`: group is the tag ref (e.g., `refs/tags/v0.7.0-rc2`)
-- For `workflow_run`: group is the CI head SHA (`sha-<commit>`)
-- This keeps the push-triggered run and the CI-triggered run serialized per release.
+- Validate with:
 
-### Jobs
+  ```bash
+  tox -e docs
+  python -m build && twine check dist/*
+  ```
 
-1. **details** (extract release info)
-
-   Discovers the driving tag (from `push` ref or from the CI head SHA), normalizes versions, and
-   decides where to publish:
-
-   - Outputs:
-     - `tag` (e.g., `v1.2.3`, `v1.2.3-rc1`)
-     - `tag_no_v` (e.g., `1.2.3`, `1.2.3-rc1`)
-     - `version_pep440` (e.g., `1.2.3rc1`)
-     - `version_semver` (e.g., `1.2.3-rc1`)
-     - `is_prerelease` (`true` for `-rc/-a/-b`)
-     - `channel` (`testpypi` for pre-release; otherwise `pypi`)
-   - Ensures `pyproject.toml` version **equals** the tag’s **PEP 440** value.
-
-1. **build-docs** (always)
-
-   - Installs docs deps from **pinned** `requirements-docs.txt`
-   - Uses pip caching with `cache-dependency-path` (`requirements-*.txt`, `constraints.txt`)
-   - Builds with `mkdocs build --strict`
-
-1. **publish-package** (needs: `details`, `build-docs`)
-
-   - **Skips** unless:
-
-     - `push` on tag, **or**
-     - `workflow_run` of `CI` with `conclusion: success`
-
-   - Environment is selected from `details.outputs.channel`:
-
-     ```yaml
-     environment: ${{ needs.details.outputs.channel }}  # 'testpypi' or 'pypi'
-     ```
-
-   - Steps:
-
-     - **Ensure target version isn’t already on the index** (PyPI/TestPyPI JSON check)
-     - **Build artifacts**: `sdist` + `wheel`
-     - **Verify filenames embed the exact version**
-     - **Final-only**: ensure the new version is **greater** than the latest **final** on PyPI (PEP
-       440 compare)
-     - **Publish** with `pypa/gh-action-pypi-publish@release/v1`
-       - Pre-releases → **TestPyPI** (`repository-url` set, `skip-existing: true`)
-       - Finals → **PyPI** (no `repository-url`)
-
-1. **github-release** (final releases only)
-
-   - Creates a GitHub Release via `softprops/action-gh-release@v2`
-   - Uses the discovered tag and auto-generated notes
-
-### Test gating
-
-- Full test matrix is handled by the **CI** workflow.
-- The release workflow **listens to CI** via `workflow_run` and only publishes when CI has
-  **succeeded**.
-
-### Version & artifacts validation
-
-- Tag ↔ `pyproject.toml` version must match (PEP 440).
-- Artifacts must exist and include the exact version in their filenames:
-  - `dist/topmark-≪version≫.tar.gz`
-  - `dist/topmark-≪version≫-*.whl`
-
-## Summary
-
-- Push **`vX.Y.Z-rcN`** → CI runs → Release workflow runs → Build docs → Publish to **TestPyPI**.
-- Push **`vX.Y.Z`** → CI runs → Release workflow runs → Build docs → Publish to **PyPI** → Create a
-  GitHub Release.
-- Pre-release vs final publishing is **automatic** via the `details` job; no manual toggles needed.
+- Run `make verify` before tagging.

@@ -10,122 +10,99 @@ topmark:header:start
 topmark:header:end
 -->
 
-# Continuous Integration (CI)
+# 🧪 Continuous Integration (CI)
 
-This repository runs CI on pull requests, on pushes to `main`, and on version tags (`v*`). Jobs are
-split by concern to keep signals crisp and runs fast.
+This document describes the automated **CI pipeline** for TopMark, implemented in [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml).
 
-## Jobs
+______________________________________________________________________
 
-### `changes`
+## Overview
 
-Determines whether source-related paths changed (used to gate quick checks on PRs):
+The CI workflow validates all contributions (pushes and pull requests).\
+It ensures **type safety, formatting, linting, documentation integrity, test coverage, and API stability**.
 
-- Uses `dorny/paths-filter`
-- Output: `src_changed` (`true`/`false`) when any of:
-  - `src/**`
-  - `tests/**`
-  - `tools/**`
+### Trigger Conditions
 
-### `lint`
+- On **push** to `main`
+- On **tag** push (`v*`)
+- On **pull request** affecting `src/**`, `tests/**`, `tools/**`, or documentation
 
-Fast quality gates on Python 3.13:
+______________________________________________________________________
 
-- Installs the dev toolchain from the **pinned** `requirements-dev.txt`
-- Runs:
-  - `ruff format --check .`
+## Jobs Summary
 
-  - `ruff check .`
+| Job              | Purpose                                                         | Tools                                                          |
+| ---------------- | --------------------------------------------------------------- | -------------------------------------------------------------- |
+| **changes**      | Detect if `src/**` changed to gate PR jobs                      | `dorny/paths-filter`                                           |
+| **lint**         | Run formatting, linting, type checks, and docstring link checks | `tox -e format-check`, `tox -e lint`, `tox -e docstring-links` |
+| **pre-commit**   | Validate all configured `pre-commit` hooks                      | `pre-commit`                                                   |
+| **docs**         | Build documentation strictly (warnings = errors)                | `tox -e docs`                                                  |
+| **tests**        | Run test matrix across Python 3.10–3.14                         | `tox -e py310..py314`                                          |
+| **api-snapshot** | Verify public API stability for PRs                             | `tox -e py313-api`                                             |
+| **links**        | Validate all Markdown links (docs + root files)                 | `lycheeverse/lychee-action`                                    |
 
-  - `pyright`
+______________________________________________________________________
 
-  - TopMark header policy via pre-commit:
+## Key Features
 
-    ```bash
-    pre-commit run topmark-check --all-files
-    ```
+### 🧱 Tox-Centric Execution
 
-  - Custom docstring link checks:
+All heavy lifting is delegated to **tox environments**:
 
-    ```bash
-    python tools/check_docstring_links.py --stats
-    ```
+- Ensures local runs and CI behave identically
+- Simplifies Makefile and workflow logic
+- Uses per-job caching for `~/.cache/pip` and `.tox`
 
-### `docs`
+```yaml
+- name: Bootstrap tox
+  run: |
+      python -m pip install -U pip
+      pip install tox
+```
 
-Strict documentation build (same pins as RTD):
+### ⚡ Caching
 
-- Installs docs toolchain from **pinned** `requirements-docs.txt`
+Each job caches both pip and tox environments for speed:
 
-- Builds with:
+```yaml
+- name: Cache pip & tox
+  uses: actions/cache@v4
+  with:
+      path: |
+          ~/.cache/pip
+          .tox
+      key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('tox.ini', 'pyproject.toml', 'requirements-*.txt', 'constraints.txt') }}
+```
 
-  ```bash
-  mkdocs build --strict
-  ```
+### ✅ Pre-commit Validation
 
-### `tests`
+Runs all hooks defined in `.pre-commit-config.yaml`:
 
-Full test matrix via `tox` on Python 3.10–3.13:
+```yaml
+- name: Run pre-commit hooks
+  run: pre-commit run --all-files --show-diff-on-failure
+```
 
-- Installs dev toolchain from **pinned** `requirements-dev.txt`
+### 🔍 API Stability Check
 
-- Installs project test extras:
+For pull requests that modify `src/**`, a quick snapshot test ensures the **public API has not changed** unexpectedly.
 
-  ```bash
-  pip install -c constraints.txt -e .[test]
-  ```
+______________________________________________________________________
 
-- Runs the matching tox env per Python: `py310`, `py311`, `py312`, `py313`
+## Local Reproduction
 
-### `api-snapshot`
+Run equivalent checks locally with:
 
-PR-only, **quick** public API surface check that only runs when `src/**` changed:
+```bash
+make verify     # runs all lint/format/docs checks
+make test       # runs tox matrix
+make pytest     # run pytest in current interpreter
+```
 
-- Python 3.13 only
+______________________________________________________________________
 
-- Runs:
+## Future Improvements
 
-  ```bash
-  tox -e py313-api
-  ```
-
-### `links`
-
-Site/link hygiene using `lycheeverse/lychee-action` against:
-
-- `docs/`
-- top-level `*.md`
-
-## Triggers
-
-- **Pull requests**:
-  - Always runs: `changes`, `lint`, `docs`, `tests`, `links`
-  - `api-snapshot` runs **only** if `changes.src_changed == 'true'`
-- **Push to `main`**:
-  - Runs: `lint`, `docs`, `tests`, `links`
-- **Push tags `v*`**:
-  - Runs CI (useful because the release workflow listens to CI completion)
-
-## Caching & Pins
-
-- Pip caching is enabled via `actions/setup-python`.
-
-- Cache invalidation uses:
-
-  ```yaml
-  cache-dependency-path:
-    - requirements-*.txt
-    - constraints.txt
-  ```
-
-- Pin usage:
-
-  - Dev checks/tests install from `requirements-dev.txt`
-  - Docs build installs from `requirements-docs.txt`
-  - You can export `PIP_CONSTRAINT=constraints.txt` inside jobs or tox envs to force the resolver to
-    honor the constraint pins.
-
-## Docstring checker policy
-
-`tools/check_docstring_links.py` enforces stable links in Python docstrings and warns on undesired
-patterns. Keep it fast and deterministic so the `lint` job stays snappy.
+- Optionally switch `api-snapshot` job to use `tox -m api-check` (runs across all Python versions)
+- Enable coverage reporting and artifact upload
+- Integrate performance regressions or profiling gates
