@@ -16,6 +16,78 @@ All notable changes to this project will be documented in this file. This projec
 [Semantic Versioning](https://semver.org/) and follows a Keep‑a‑Changelog–style structure with the
 sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
+## [0.9.1] - 2025-10-07
+
+### Highlights
+
+- **Python 3.14 support (prerelease)** — test matrix, classifiers, and tooling updated for 3.10–3.14.
+- **Tox-first developer workflow** — Makefile simplified to delegate heavy lifting to tox; consistent local/CI behavior.
+- **Property-based hardening** — Hypothesis harness added for idempotence and edge-case discovery.
+- **Robust idempotence & XML/HTML guardrails** — Safer insertion rules and whitespace/newline preservation.
+
+### Added
+
+- **Testing & quality**
+  - Hypothesis-based **property tests** for insert→strip→insert idempotence and edge cases across common file types.
+  - CI **pre-commit** job to run fast hooks on every PR/push (heavy/duplicated hooks handled elsewhere).
+- **Python versions**
+  - CI matrix extended to **3.14** (rc/dev as needed) with `allow-prereleases: true`.
+
+### Changed
+
+- **Developer workflow**
+  - **Makefile overhaul**: now a thin wrapper that delegates to tox envs:
+    - Core targets: `verify`, `test`, `pytest`, `property-test`, `lint`, `lint-fixall`, `format`, `format-check`, `docs-build`, `docs-serve`, `api-snapshot*`.
+    - Lock management: `lock-compile-*`, `lock-dry-run-*`, `lock-upgrade-*`.
+    - Parallel runners passthroughs: `PYTEST_PAR`, `TOX_PAR`.
+  - **tox.ini refactor**:
+    - Clear env families for typecheck, lint, docs, link checks, property tests, API checks.
+    - Less duplication; per-env Pyright via `--pythonversion`.
+- **Type checking & compatibility**
+  - Keep editor Pyright baseline at `pythonVersion = "3.10"`; run version-specific checks via tox.
+  - Python 3.14 compatibility for `Traversable` import via `importlib.resources.abc`.
+- **XML/HTML insertion policy**
+  - Assign XML insert checker to HTML where appropriate; add reflow/idempotence safety checks.
+
+### Fixed
+
+- **Idempotence & formatting drift**
+  - Preserve user whitespace; avoid collapsing whitespace-only lines (e.g., `" \n"` vs `"\n"`).
+  - Normalize handling of the **single blank line** after headers (owned newline only).
+  - Respect **BOM** and trailing blanks; collapse only file-style blanks, not arbitrary whitespace.
+  - Stripper/Updater: honor content status; avoid unintended rewrites.
+- **Insertion safety**
+  - Skip reflow-unsafe XML/HTML cases (e.g., single-line prolog/body, NEL/LS/PS scenarios).
+  - Mixed line endings are skipped by the reader to avoid non-idempotent outcomes.
+
+### CI / Tooling
+
+- **CI (`ci.yml`)**
+  - **Tox-first** for lint (`format-check`, `lint`, `docstring-links`), docs (`docs`), tests (`py310…py314`), and API snapshot (`py313-api`).
+  - Add caching for **pip** and **.tox** across jobs; add `actions/checkout@v4` before cache globbing.
+  - New **pre-commit** job; skip heavy/duplicated hooks in that job (`lychee-*`, `pyright`, `docstring-ref-links`) since they run in other jobs.
+- **Release (`release.yml`)**
+  - Build docs via **tox**; add pip/.tox caching to **build-docs** and **publish-package**.
+- **Docs**
+  - Refresh **CONTRIBUTING.md**, **INSTALL.md**, **README.md**, and **docs/dev/api-stability.md** to match the tox/Makefile workflow.
+  - New CI/release workflow docs; fix broken links to workflow YAMLs.
+
+### Developer notes
+
+- We’ve moved from pure **venv** workflows (`.venv`, `.rtd`) to a **tox-based** model.
+  - Please **delete** any old `.venv` and `.rtd` directories.
+
+  - If you want IDE/Pyright import resolution, recreate only the **optional** editor venv:
+
+    ```bash
+    make venv && make venv-sync-dev
+    ```
+
+  - Use `make verify`, `make test`, `make pytest [PYTEST_PAR="-n auto"]`, `make docs-*`, `make api-snapshot*`, and the `lock-*` targets for daily work.
+
+**Breaking changes**: _None._\
+Public API remains stable; changes focus on tooling, CI reliability, and correctness fixes.
+
 ## [0.9.0] - 2025-10-06
 
 ### Highlights
