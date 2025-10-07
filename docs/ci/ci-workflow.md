@@ -12,7 +12,7 @@ topmark:header:end
 
 # 🧪 Continuous Integration (CI)
 
-This document describes the automated **CI pipeline** for TopMark, implemented in [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml).
+This document describes the automated **CI pipeline** for TopMark, implemented in `.github/workflows/ci.yml`.
 
 ______________________________________________________________________
 

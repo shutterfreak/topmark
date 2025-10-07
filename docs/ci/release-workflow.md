@@ -12,7 +12,7 @@ topmark:header:end
 
 # 🚀 Release Workflow
 
-This document describes the **automated release pipeline** defined in [`.github/workflows/release.yml`](../../.github/workflows/release.yml).
+This document describes the **automated release pipeline** defined in `.github/workflows/release.yml`.
 
 ______________________________________________________________________
 
