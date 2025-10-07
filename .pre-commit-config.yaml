@@ -50,14 +50,14 @@ repos:
         pass_filenames: true
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.13.3
+    rev: v0.14.0
     hooks:
       - id: ruff-format
       - id: ruff-check
 
   # Project-specific header checker (after formatters)
   - repo: https://github.com/shutterfreak/topmark
-    rev: v0.9.0
+    rev: v0.9.1
     hooks:
       - id: topmark-check
         # files: '\.(py|md|toml|ya?ml|sh|Makefile)$'
