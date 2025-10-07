@@ -8,278 +8,141 @@
 #
 # topmark:header:end
 
-# Pattern note:
-# Destructive targets are split into two:
-# - `.target` is the non-interactive implementation (scriptable)
-# - `target` is the user-facing version with confirmation prompt
-# Only the interactive targets are listed in the help menu.
-
-.PHONY: build check-venv check-doc-venv clean compile compile-dev compile-docs \
-		dev dev-install doc-venv \
-		docs-build docs-deploy docs-serve docs-verify docstring-links \
-		format format-check git-archive help install \
-		links links-src links-all \
-		lint lint-fixall \
-		pre-commit-autoupdate pre-commit-clean pre-commit-install \
-		pre-commit-refresh pre-commit-run pre-commit-uninstall \
-		public-api-check public-api-ensure-clean public-api-update \
-		setup source-snapshot \
-		sync-dev sync-dev-confirm sync-doc sync-doc-confirm sync-prod sync-prod-confirm \
-		test uninstall uninstall-confirm update-instructions-json upgrade-dev upgrade-doc upgrade-pro \
-		venv verify
+.PHONY: \
+	check-venv check-lychee \
+	help \
+	test verify lint lint-fixall \
+	format-check format docstring-links \
+	pytest \
+	property-test \
+	docs-build docs-serve \
+	links links-src links-all \
+	api-snapshot api-snapshot-dev api-snapshot-update api-snapshot-ensure-clean \
+	venv venv-sync-dev venv-clean \
+	lock-compile-prod lock-compile-dev lock-compile-docs \
+	lock-dry-run-prod lock-dry-run-dev lock-dry-run-docs \
+	lock-upgrade-prod lock-upgrade-dev lock-upgrade-docs
 
 .DEFAULT_GOAL := help
+TOX ?= tox
+TOX_PAR ?=            # e.g. set TOX_PAR="-p auto" or "-p 4"
+TOX_FLAGS ?= -q       # keep your quiet flag; CI can override
+PYTEST_PAR ?=         # e.g. set PYTEST_PAR="-n auto" or "-n 4"
+PY ?= python
+VENV := .venv
+VENV_BIN := $(VENV)/bin
 
-PYTHON := python
-VENV = .venv
-VENV_BIN = $(VENV)/bin
-RTD_VENV = .rtd
-RTD_VENV_BIN = $(RTD_VENV)/bin
-MKDOCS_RTD := $(RTD_VENV_BIN)/mkdocs
 PUBLIC_API_JSON := tests/api/public_api_snapshot.json
 
-# Define the root directory of the project, relative to the Makefile
-PROJECT_ROOT := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
-
-# Define target directories as Make variables
-# This is a better practice than defining them inside the shell commands
-
-GIT_ARCHIVE_DIR := $(PROJECT_ROOT)archives/git
-SOURCE_SNAPSHOT_DIR := $(PROJECT_ROOT)archives/code-snapshot
-
-# Platform-aware env for tar (avoid macOS resource forks)
-UNAME_S := $(shell uname -s)
-ifeq ($(UNAME_S),Darwin)
-  TAR_ENV := COPYFILE_DISABLE=true
-else
-  TAR_ENV :=
-endif
-
-# A dedicated target for creating the directories
-# Use an order-only prerequisite to ensure the directories exist before the main targets run
-# The `|` indicates that the `archives` and `git` targets are only for ordering
-# and don't need to be checked for freshness against the main targets.
-$(GIT_ARCHIVE_DIR) $(SOURCE_SNAPSHOT_DIR):
-	mkdir -p $@
-
-# ----------------------------------------------------------------------------------------------------------------------
-# Help: Show categorized make targets
-# ----------------------------------------------------------------------------------------------------------------------
-
-help:
-	@echo "Usage: make <target>"
-	@echo ""
-	@echo "Setup:"
-	@echo "  venv                     Create virtual environment (.venv) and install pip-tools"
-	@echo "  setup                    Run full dev setup (venv, compile locks, sync dev)"
-	@echo "  dev-install              Install TopMark in editable mode into the active venv"
-	@echo ""
-	@echo "Production / Install:"
-	@echo "  compile                  Compile production dependencies"
-	@echo "  install                  Install production dependencies"
-	@echo "  upgrade-prod             Upgrade prod lock file with pip-compile -U (requirements.in → requirements.txt)"
-	@echo "  sync-prod                Sync .venv with production requirements"
-	@echo "  uninstall                Uninstall all packages in the environment"
-	@echo ""
-	@echo "Development / Quality:"
-	@echo "  dev                      Install development dependencies"
-	@echo "  compile-dev              Compile development dependencies"
-	@echo "  upgrade-dev              Upgrade lock file with pip-compile -U and sync dev env"
-	@echo "  sync-dev                 Sync .venv with dev requirements"
-	@echo "  compile-docs             Compile docs lock from requirements-docs.in"
-	@echo "  sync-doc                 Sync .rtd with requirements-docs.txt"
-	@echo ""
-	@echo "  verify                   Run all non-destructive checks (formatting, linting, type-checking)"
-	@echo "  format-check             Check code formatting without modifying files"
-	@echo "  format                   Format code (ruff, mdformat, taplo)"
-	@echo "  lint                     Run linters (ruff, pydoclint, pyright)"
-	@echo "  lint-fixall              Run linters and automatically fix fixable linting errors"
-	@echo "  docstring-links          Enforce docstring link style (tools/check_docstring_links.py)"
-	@echo ""
-	@echo "  test                     Run tests"
-	@echo ""
-	@echo "  links                    Check hyperlinks in docs/ and *.md (lychee)"
-	@echo "  links-src                Check hyperlinks found in Python docstrings under src/ (lychee)"
-	@echo "  links-all                Check hyperlinks in docs/, *.md, and Python docstrings (lychee)"
-	@echo ""
-	@echo "  public-api-check         Check whether the public API snapshot changed"
-	@echo "  public-api-update        Regenerate tests/api/public_api_snapshot.json"
-	@echo "  public-api-ensure-clean  Fail if the public API snapshot differs from the baseline"
-	@echo ""
-	@echo "Documentation:"
-	@echo "  doc-venv                 Create RTD docs virtual environment (.rtd) and install docs deps"
-	@echo "  upgrade-doc              Upgrade lock file with pip-compile -U and sync docs env"
-	@echo ""
-	@echo "  docs-serve               Serve docs locally (uses .rtd) with live reload"
-	@echo "  docs-build               Build docs strictly (uses .rtd)"
-	@echo "  docs-verify              Alias for docs-build (CI-friendly)"
-	@echo "  docs-deploy              Deploy docs to GitHub Pages (gh-deploy) from .rtd"
-
-	@echo ""
-	@echo "Packaging:"
-	@echo "  build                    Build the project"
-	@echo "  git-archive              Build a time-stamped git archive of the project"
-	@echo "  source-snapshot          Create a time-stamped source snapshot archive of the current state"
-	@echo "                           (not necessarily committed)."
-	@echo ""
-	@echo "pre-commit Hooks:"
-	@echo "  pre-commit-install       Install Git pre-commit hook defined in .pre-commit-config.yaml"
-	@echo "  pre-commit-run           Run all pre-commit hooks on all tracked files"
-	@echo "  pre-commit-autoupdate    Update pinned hook versions in .pre-commit-config.yaml"
-	@echo "  pre-commit-refresh       Autoupdate and clean all pre-commit environments"
-	@echo "  pre-commit-clean         Clean cached hook environments"
-	@echo "  pre-commit-uninstall     Remove Git pre-commit hook"
-	@echo ""
-	@echo "Maintenance:"
-	@echo "  clean                    Remove Python cache and build artifacts"
-	@echo ""
-	@echo "NOTES:"
-	@echo " ⚠️ Requires pip-tools >= 7.4 to support --strip-extras, which is used in the Makefile to prepare for pip-tools 8.0 default behavior."
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-# Setup
-# ----------------------------------------------------------------------------------------------------------------------
-
+# Simple tool presence checks
 check-venv:
-	@test -x "$(VENV_BIN)/$(PYTHON)" || (echo "❌ $(VENV) not found. Run: make venv" && exit 1)
+	@command -v $(TOX) >/dev/null 2>&1 || (echo "❌ tox not found. Install with: pipx install tox" && exit 1)
 
 check-lychee:
 	@command -v lychee >/dev/null 2>&1 || (echo "❌ lychee not found. Install with: brew install lychee" && exit 1)
 
-venv:
-	@test -d $(VENV) || ( \
-		echo "Creating virtual environment..." && \
-		virtualenv $(VENV) && \
-		. $(VENV_BIN)/activate && \
-		$(VENV_BIN)/pip install -U pip && \
-		$(VENV_BIN)/pip install pip-tools \
-	)
-	@echo "Activate the virtual environment ($(VENV))  with: source $(VENV_BIN)/activate"
-
-setup: venv compile compile-dev sync-dev
+help:
+	@echo "Usage: make <target>"
 	@echo ""
-	@echo "Project ready for development!"
+	@echo "Core:"
+	@echo "  test            Run the test suite (tox default envs)"
+	@echo "  pytest          Run tests with current interpreter (no tox); supports PYTEST_PAR=-n auto"
+	@echo "  verify          Run formatting checks, lint, and one typecheck env"
+	@echo "  lint            Run ruff + pydoclint"
+	@echo "  lint-fixall     Run ruff with --fix (auto-fix lint issues)"
+	@echo "  format-check    Check code/markdown/toml formatting"
+	@echo "  format          Format code/markdown/toml (auto-fix)"
+	@echo "  docstring-links Enforce docstring link style (tools/check_docstring_links.py)"
+	@echo "  property-test   Run Hypothesis hardening tests (manual, opt-in)"
 	@echo ""
-	@echo "NOTES:"
-	@echo " * Activate the virtual environment ($(VENV))  with: source $(VENV_BIN)/activate"
-
-dev-install: check-venv
-	. $(VENV_BIN)/activate && \
-	$(VENV_BIN)/pip install -e .
-
-# ----------------------------------------------------------------------------------------------------------------------
-# Production / Install
-# ----------------------------------------------------------------------------------------------------------------------
-
-compile: check-venv
-	# Compile from .in, strip extras to keep lock files reproducible
-	$(VENV_BIN)/pip-compile -c constraints.txt --strip-extras requirements.in
-
-install: compile
-	$(VENV_BIN)/pip install -r requirements.txt
-
-upgrade-prod: check-venv
-	$(VENV_BIN)/pip-compile --upgrade -c constraints.txt --strip-extras requirements.in
-
-.sync-prod: check-venv
-	$(VENV_BIN)/pip-sync requirements.txt
-
-sync-prod:
-	@read -p "⚠️  This will overwrite your current environment with requirements.txt. Continue? [y/N] " confirm && [ "$$confirm" = "y" ] && \
-	make .sync-prod
-
-.uninstall: check-venv
-	$(VENV_BIN)/pip freeze | xargs $(VENV_BIN)/pip uninstall -y
-
-uninstall:
-	@read -p "⚠️  This will uninstall all packages in the current environment. Continue? [y/N] " confirm && [ "$$confirm" = "y" ] && \
-	make .uninstall
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-# Development / Quality
-# ----------------------------------------------------------------------------------------------------------------------
-
-compile-dev: check-venv
-	# Compile from .in, strip extras to keep lock files reproducible
-	$(VENV_BIN)/pip-compile -c constraints.txt --strip-extras requirements-dev.in
-
-dev: compile-dev
-	$(VENV_BIN)/pip-sync requirements-dev.txt
-
-upgrade-dev: check-venv
-	$(VENV_BIN)/pip-compile --upgrade -c constraints.txt --strip-extras requirements-dev.in
-
-.sync-dev: check-venv
-	$(VENV_BIN)/pip-sync requirements-dev.txt
-
-sync-dev:
-	@read -p "⚠️  This will overwrite your current dev environment with requirements-dev.txt. Continue? [y/N] " confirm && [ "$$confirm" = "y" ] && \
-	make .sync-dev
-
-# The 'verify' target runs all non-destructive checks
-verify: check-venv format-check lint docstring-links links doc-venv docs-verify
-	@echo "All quality checks passed!"
-
-format-check: check-venv
-	@echo "Checking code formatting..."
-	$(VENV_BIN)/ruff format --check .
-	@echo "Checking MarkDown formatting..."
-	# mdformat automatically uses the .mdformat.yml exclude file
-	git ls-files -- '*.md' | xargs -r $(VENV_BIN)/mdformat --check
-	@echo "Checking TOML formatting..."
-	$(VENV_BIN)/taplo format --check .
-
-format: check-venv
-	@echo "Formatting code..."
-	$(VENV_BIN)/ruff format .
-	@echo "Formatting MarkDown..."
-	# mdformat automatically uses the .mdformat.yml exclude file
-	git ls-files -- '*.md' | xargs -r $(VENV_BIN)/mdformat
-	@echo "Formatting TOML..."
-	$(VENV_BIN)/taplo format .
-
-lint: check-venv
-	@echo "Running linters..."
-	$(VENV_BIN)/ruff check .
-	git ls-files '*.py' | xargs -r $(VENV_BIN)/pydoclint -q
-	$(VENV_BIN)/pyright src tests
-
-.lint-fixall: check-venv
-	@echo "Running linters and automatically fixing fixable linting errors..."
-	$(VENV_BIN)/ruff check --fix .
-
-lint-fixall:
-	@read -p "⚠️  This will try to fix (overwrite) all fixable linting errors. Continue? [y/N] " confirm && [ "$$confirm" = "y" ] && \
-	make .lint-fixall
+	@echo "Docs:"
+	@echo "  docs-build      Build docs strictly (tox: docs)"
+	@echo "  docs-serve      Serve docs locally (tox: docs-serve)"
+	@echo ""
+	@echo "Misc:"
+	@echo "  links           Check links in docs/ and *.md (tox: links)"
+	@echo "  links-src       Check links found in Python docstrings under src/ (tox: links-src)"
+	@echo "  links-all       Check links in docs/, *.md, and Python docstrings (tox: links-all)"
+	@echo "  api-snapshot-dev         Check API snapshot with current interpreter (fast local)"
+	@echo "  api-snapshot             Check API snapshot across all supported Pythons (tox label)"
+	@echo "  api-snapshot-update      Regenerate tests/api/public_api_snapshot.json (interactive)"
+	@echo "  api-snapshot-ensure-clean  Fail if snapshot differs from Git index"
+	@echo ""
+	@echo "Local editor venv (optional, for Pyright/import resolution in IDE):"
+	@echo "  venv            Create .venv with pip-tools"
+	@echo "  venv-sync-dev   pip-sync requirements-dev.txt into .venv"
+	@echo "  venv-clean      Remove .venv"
+	@echo ""
+	@echo "Lock management (pip-compile; run manually when you choose to refresh pins):"
+	@echo "  lock-compile-prod     requirements.in  -> requirements.txt"
+	@echo "  lock-compile-dev      requirements-dev.in -> requirements-dev.txt"
+	@echo "  lock-compile-docs     requirements-docs.in -> requirements-docs.txt"
+	@echo ""
+	@echo "  lock-dry-run-prod     Preview upgrades for prod lock (no file changes)"
+	@echo "  lock-dry-run-dev      Preview upgrades for dev lock (no file changes)"
+	@echo "  lock-dry-run-docs     Preview upgrades for docs lock (no file changes)"
+	@echo ""
+	@echo "  lock-upgrade-prod     Upgrade pins in requirements.txt"
+	@echo "  lock-upgrade-dev      Upgrade pins in requirements-dev.txt"
+	@echo "  lock-upgrade-docs     Upgrade pins in requirements-docs.txt"
 
 test: check-venv
-	@echo "Running tests..."
-	$(VENV_BIN)/pytest
+	@echo "Running tests via tox..."
+	$(TOX) $(TOX_PAR) $(TOX_FLAGS)
 
-docstring-links: check-venv
-	@echo "Checking docstring link style..."
-	$(VENV_BIN)/$(PYTHON) tools/check_docstring_links.py --stats
+verify:
+	@echo "Running non-destructive checks via tox..."
+	$(TOX) $(TOX_PAR) $(TOX_FLAGS) -e format-check -e lint -e links -e docs
 	@echo "All quality checks passed!"
 
+lint: check-venv
+	$(TOX) $(TOX_PAR) $(TOX_FLAGS) -e lint
+
+lint-fixall: check-venv
+	$(TOX) $(TOX_PAR) $(TOX_FLAGS) -e lint-fixall
+
+format-check: check-venv
+	$(TOX) $(TOX_PAR) $(TOX_FLAGS) -e format-check
+
+format: check-venv
+	$(TOX) $(TOX_PAR) $(TOX_FLAGS) -e format
+
+docstring-links: check-venv
+	$(TOX) $(TOX_PAR) $(TOX_FLAGS) -e docstring-links
+
+# Run pytest directly (no tox) with the current interpreter
+pytest:
+	pytest $(PYTEST_PAR) -q
+
+property-test:
+	$(TOX) $(TOX_PAR) $(TOX_FLAGS) -e property-test
+
+docs-build:
+	$(TOX) -e docs
+
+docs-serve:
+	$(TOX) -e docs-serve
+
 links: check-lychee
-	@echo "Checking links in docs/ and *.md with lychee..."
-	lychee --config lychee.toml --no-progress --verbose docs *.md
+	$(TOX) $(TOX_PAR) $(TOX_FLAGS) -e links
 
 links-src: check-lychee
-	@echo "Checking links in Python docstrings under src/ with lychee..."
-	find src -type f -name '*.py' -print0 | xargs -0 -r lychee --config lychee.toml --no-progress --verbose
+	$(TOX) $(TOX_PAR) $(TOX_FLAGS) -e links-src
 
 links-all: check-lychee links
-	@echo "Checking links in docs/, *.md, and Python docstrings with lychee..."
-	find src -type f -name '*.py' -print0 | xargs -0 -r lychee --config lychee.toml --no-progress --verbose
+	$(TOX) $(TOX_PAR) $(TOX_FLAGS) -e links-all
 
-public-api-check: check-venv
+# Matrix (all supported Pythons via tox label)
+api-snapshot:
+	$(TOX) -m api-check
+
+# Local fast check (current interpreter only)
+api-snapshot-dev: check-venv
 	@$(VENV_BIN)/pytest -qq tests/api/test_public_api_snapshot.py && \
 	echo "✅ Public API snapshot unchanged."
 
-.public-api-update: check-venv
+# Update snapshot (interactive)
+.api-snapshot-update: check-venv
 	@$(VENV_BIN)/$(PYTHON) tools/api_snapshot.py "$(PUBLIC_API_JSON)"
 	@if git diff --quiet -- "$(PUBLIC_API_JSON)" ; then \
 		echo "✅ Public API snapshot unchanged: $(PUBLIC_API_JSON)"; \
@@ -289,137 +152,66 @@ public-api-check: check-venv
 		echo "⚠️  Review diff, add $(PUBLIC_API_JSON) to git, bump version & update CHANGELOG."; \
 	fi
 
-public-api-update:
+api-snapshot-update:
 	@read -p "⚠️  This will overwrite the public API snapshot. Continue? [y/N] " confirm && [ "$$confirm" = "y" ] && \
-	make .public-api-update
+	$(MAKE) .api-snapshot-update
 
-# Fails if the snapshot differs from index
-public-api-ensure-clean: check-venv
+# Fail if snapshot differs from index
+api-snapshot-ensure-clean: check-venv
 	@if git diff --quiet -- "$(PUBLIC_API_JSON)"; then \
 		echo "✅ Public API snapshot clean: $(PUBLIC_API_JSON)"; \
 	else \
 		git --no-pager diff -- "$(PUBLIC_API_JSON)"; \
-		echo "❌ Public API snapshot differs. Re-run: make public-api-update"; \
+		echo "❌ Public API snapshot differs. Re-run: make api-snapshot-update"; \
 		exit 1; \
 	fi
 
-# ----------------------------------------------------------------------------------------------------------------------
-# Documentation
-# ----------------------------------------------------------------------------------------------------------------------
-
-check-doc-venv:
-	@test -x "$(RTD_VENV_BIN)/$(PYTHON)" || (echo "❌ $(RTD_VENV) not found. Run: make doc-venv" && exit 1)
-
-doc-venv:
-	@test -d $(RTD_VENV) || ( \
-		echo "Creating ReadTheDocs virtual environment..." && \
-		virtualenv $(RTD_VENV) && \
-		. $(RTD_VENV_BIN)/activate && \
-		$(RTD_VENV_BIN)/pip install -U pip && \
-		$(RTD_VENV_BIN)/pip install -c constraints.txt ".[docs]" && \
-		$(RTD_VENV_BIN)/pip install pip-tools \
+# ---- Optional local convenience venv for editor / pyright (tox still runs checks) ----
+venv:
+	@test -d $(VENV) || ( \
+		echo "Creating $(VENV)..." && \
+		$(PY) -m venv $(VENV) && \
+		$(VENV_BIN)/pip install -U pip && \
+		$(VENV_BIN)/pip install pip-tools \
 	)
-	@echo "Activate the ReadTheDocs virtual environment ($(RTD_VENV))  with: source $(RTD_VENV_BIN)/activate"
+	@echo "Activate with: source $(VENV_BIN)/activate"
 
-compile-docs: check-doc-venv
-	$(RTD_VENV_BIN)/pip-compile -q -c constraints.txt --strip-extras requirements-docs.in
+venv-sync-dev: venv
+	$(VENV_BIN)/pip-sync requirements-dev.txt
+	@echo "Synced dev deps into $(VENV)."
 
-upgrade-doc: check-doc-venv
-	$(RTD_VENV_BIN)/pip-compile --upgrade -c constraints.txt --strip-extras requirements-docs.in
+venv-clean:
+	@rm -rf $(VENV)
+	@echo "Removed $(VENV)."
 
-.sync-doc: check-doc-venv
-	$(RTD_VENV_BIN)/pip-sync requirements-docs.txt
+# ---- Lock management (pins). These do NOT affect tox; tox uses the compiled locks. ----
+lock-compile-prod: venv
+	$(VENV_BIN)/pip-compile -q -c constraints.txt --strip-extras requirements.in
 
-sync-doc:
-	@read -p "⚠️  This will overwrite your .rtd environment with requirements-docs.txt. Continue? [y/N] " confirm && [ "$$confirm" = "y" ] && \
-	make .sync-doc
+lock-compile-dev: venv
+	$(VENV_BIN)/pip-compile -q -c constraints.txt --strip-extras requirements-dev.in
 
-docs-verify: check-doc-venv
-	$(MKDOCS_RTD) build --strict
-
-docs-build: check-doc-venv
-	$(MKDOCS_RTD) build --strict
-
-.docs-serve: check-doc-venv
-	$(MKDOCS_RTD) serve
-
-docs-serve:
-	@read -p "Start MkDocs dev server? [y/N] " confirm && [ "$$confirm" = "y" ] && \
-	make .docs-serve
-
-.docs-deploy: check-doc-venv
-	$(MKDOCS_RTD) gh-deploy --force
-
-docs-deploy:
-	@read -p "⚠️  This will deploy the 'site' to GitHub Pages (gh-pages). Continue? [y/N] " confirm && [ "$$confirm" = "y" ] && \
-	make .docs-deploy
+lock-compile-docs: venv
+	$(VENV_BIN)/pip-compile -q -c constraints.txt --strip-extras requirements-docs.in
 
 
-# ----------------------------------------------------------------------------------------------------------------------
-# Packaging
-# ----------------------------------------------------------------------------------------------------------------------
+# (Preview) dry-run upgrade helpers — show solver changes without writing files
+lock-dry-run-prod: venv
+	$(VENV_BIN)/pip-compile -U -c constraints.txt --strip-extras --dry-run requirements.in
 
-build: check-venv
-	@echo "Building source and wheel distributions..."
-	$(VENV_BIN)/$(PYTHON) -m build
+lock-dry-run-dev: venv
+	$(VENV_BIN)/pip-compile -U -c constraints.txt --strip-extras --dry-run requirements-dev.in
 
-git-archive: check-venv  | $(GIT_ARCHIVE_DIR)
-	@echo "Creating a time-stamped git archive..."
-	@timestamp=$$(date +%Y%m%d-%H%M%S) ; \
-	TARGET_FILE="$(GIT_ARCHIVE_DIR)/topmark-$${timestamp}.tar.gz" ; \
-	git archive --format=tar HEAD | gzip > "$$TARGET_FILE" && \
-	echo "Archive created: $$TARGET_FILE"
+lock-dry-run-docs: venv
+	$(VENV_BIN)/pip-compile -U -c constraints.txt --strip-extras --dry-run requirements-docs.in
 
-source-snapshot: check-venv | $(SOURCE_SNAPSHOT_DIR)
-	@echo "Creating a time-stamped source snapshot archive..."
-	@echo "NOTE: this will create an archive of the current source snapshot (not necessarily committed)."
-	@timestamp=$$(date +%Y%m%d-%H%M%S) ; \
-	TARGET_FILE="$(SOURCE_SNAPSHOT_DIR)/topmark-$${timestamp}_uncommitted.tar.gz" ; \
-	git ls-files -c -o --exclude-standard | sort -u | $(TAR_ENV) tar -czf "$$TARGET_FILE" -T - && \
-	echo "Archive created: $$TARGET_FILE"
+# Upgrade helpers — write solver changes to files:
+lock-upgrade-prod: venv
+	$(VENV_BIN)/pip-compile -U -c constraints.txt --strip-extras requirements.in
 
+lock-upgrade-dev: venv
+	$(VENV_BIN)/pip-compile -U -c constraints.txt --strip-extras requirements-dev.in
 
-# ----------------------------------------------------------------------------------------------------------------------
-# pre-commit Hooks
-# ----------------------------------------------------------------------------------------------------------------------
+lock-upgrade-docs: venv
+	$(VENV_BIN)/pip-compile -U -c constraints.txt --strip-extras requirements-docs.in
 
-pre-commit-install: check-venv
-	$(VENV_BIN)/pre-commit install
-
-pre-commit-run: check-venv
-	$(VENV_BIN)/pre-commit run --all-files
-
-.pre-commit-autoupdate: check-venv
-	$(VENV_BIN)/pre-commit autoupdate
-
-pre-commit-autoupdate:
-	@read -p "⚠️  This will update pinned versions in .pre-commit-config.yaml. Continue? [y/N] " confirm && [ "$$confirm" = "y" ] && \
-	make .pre-commit-autoupdate
-
-pre-commit-clean: check-venv
-	$(VENV_BIN)/pre-commit clean
-
-.pre-commit-refresh: check-venv
-	$(VENV_BIN)/pre-commit autoupdate && \
-	$(VENV_BIN)/pre-commit clean
-
-pre-commit-refresh:
-	@read -p "⚠️  This will autoupdate all pre-commit hooks and clean existing hook caches. Continue? [y/N] " confirm && [ "$$confirm" = "y" ] && \
-	make .pre-commit-refresh
-
-pre-commit-uninstall: check-venv
-	$(VENV_BIN)/pre-commit uninstall
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-# Maintenance
-# ----------------------------------------------------------------------------------------------------------------------
-
-.clean:
-	@echo "Cleaning build artifacts..."
-	find . -type d -name '__pycache__' -exec rm -r {} +;
-	find . -type f -name '*.pyc' -delete
-
-clean:
-	@read -p "⚠️  This will delete all build artifacts. Continue? [y/N] " confirm && [ "$$confirm" = "y" ] && \
-	make .clean

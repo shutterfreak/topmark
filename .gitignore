@@ -70,3 +70,6 @@ dist/
 
 # tox
 .tox/
+
+# hypothesis
+.hypothesis/

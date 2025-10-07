@@ -250,7 +250,7 @@ def test_xml_single_line_declaration(tmp_path: Path) -> None:
 
     # Strict XML InsertChecker flags this as unsupported due to reflow:
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.pre_insert_capability == InsertCapability.SKIP_UNSUPPORTED_CONTENT
+    assert ctx.pre_insert_capability == InsertCapability.SKIP_IDEMPOTENCE_RISK
     assert ctx.status.write == WriteStatus.SKIPPED
     assert (ctx.updated_file_lines or []) == (ctx.file_lines or [])
 
@@ -271,7 +271,7 @@ def test_xml_single_line_decl_and_doctype(tmp_path: Path) -> None:
 
     # Strict XML InsertChecker flags this as unsupported due to reflow:
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.pre_insert_capability == InsertCapability.SKIP_UNSUPPORTED_CONTENT
+    assert ctx.pre_insert_capability == InsertCapability.SKIP_IDEMPOTENCE_RISK
     assert ctx.status.write == WriteStatus.SKIPPED
     assert (ctx.updated_file_lines or []) == (ctx.file_lines or [])
 

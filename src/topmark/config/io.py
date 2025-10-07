@@ -34,7 +34,14 @@ from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.constants import DEFAULT_TOML_CONFIG_RESOURCE
 
 if TYPE_CHECKING:
-    from importlib.abc import Traversable
+    import sys
+
+    if sys.version_info >= (3, 14):
+        # Python 3.14+: Traversable moved here
+        from importlib.resources.abc import Traversable
+    else:
+        # Python <=3.13
+        from importlib.abc import Traversable
     from pathlib import Path
 
 logger: TopmarkLogger = get_logger(__name__)

@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING
 
 from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
-from topmark.pipeline.context import HeaderStatus, ProcessingContext
+from topmark.pipeline.context import ContentStatus, HeaderStatus, ProcessingContext
 from topmark.pipeline.processors.base import HeaderProcessor
 from topmark.pipeline.steps.stripper import strip
 
@@ -45,6 +45,9 @@ def test_stripper_uses_span_and_trims_leading_blank(tmp_path: Path) -> None:
     # Use the base processor; removal relies on span and generic bounds logic.
     ctx.header_processor = HeaderProcessor()
     ctx.existing_header_range = (0, 2)  # as provided by scanner
+
+    # ✅ Simulate reader result so stripper proceeds
+    ctx.status.content = ContentStatus.OK
 
     # ✅ Simulate scanner result so stripper proceeds
     ctx.status.header = HeaderStatus.DETECTED

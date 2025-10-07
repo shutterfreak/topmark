@@ -35,7 +35,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.config.logging import TopmarkLogger, get_logger
-from topmark.pipeline.context import ComparisonStatus, ProcessingContext, StripStatus, WriteStatus
+from topmark.pipeline.context import (
+    ComparisonStatus,
+    ContentStatus,
+    ProcessingContext,
+    StripStatus,
+    WriteStatus,
+)
 from topmark.pipeline.processors.base import NO_LINE_ANCHOR
 
 if TYPE_CHECKING:
@@ -147,6 +153,12 @@ def update(ctx: ProcessingContext) -> ProcessingContext:
     """
     logger.debug("ctx.config.apply_changes = %s", ctx.config.apply_changes)
     apply: bool = False if ctx.config.apply_changes is None else ctx.config.apply_changes
+
+    if ctx.status.content != ContentStatus.OK:
+        ctx.status.write = WriteStatus.SKIPPED
+        ctx.add_info(f"Could not update file (status: {ctx.status.content.value}).")
+        logger.debug("Updater: skipping (content status=%s)", ctx.status.content.value)
+        return ctx
 
     if ctx.status.strip == StripStatus.READY:
         # Previous step computed updated_file_lines for a removal.

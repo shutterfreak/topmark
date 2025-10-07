@@ -48,6 +48,7 @@ FILETYPES: list[FileType] = [
         filenames=[],
         patterns=[],
         description="HyperText Markup Language (HTML)",
+        pre_insert_checker=xml_can_insert,
     ),
     FileType(
         name="javascript",

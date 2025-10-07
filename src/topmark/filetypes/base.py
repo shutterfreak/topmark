@@ -99,6 +99,9 @@ class InsertCapability(Enum):
             configured to skip processing).
         SKIP_READONLY: Insertion should be skipped because the file is read-only
             (future use; not implemented yet).
+        SKIP_IDEMPOTENCE_RISK: Skip because we cannot guarantee insert→strip idempotence
+            (e.g., insertion would reflow a physical line or introduce ambiguous
+            blank-line padding).
         SKIP_OTHER: Insertion should be skipped for other reasons (e.g., pre-insert
             checks failed).
     """
@@ -108,6 +111,9 @@ class InsertCapability(Enum):
     SKIP_UNSUPPORTED_CONTENT = "skip_unsupported_content"  # e.g., XML prolog-only
     SKIP_POLICY = "skip_policy"  # e.g., policy says no
     SKIP_READONLY = "skip_readonly"  # future: fs flags
+    SKIP_IDEMPOTENCE_RISK = (
+        "skip_idempotence_risk"  # e.g., would introduce reflow which might break idempotence
+    )
     SKIP_OTHER = "skip_other"
 
 

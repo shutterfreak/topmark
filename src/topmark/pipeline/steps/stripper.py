@@ -21,8 +21,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.config.logging import TopmarkLogger, get_logger
-from topmark.pipeline.context import HeaderStatus, ProcessingContext, StripStatus
-from topmark.pipeline.policy_whitespace import is_effectively_empty_body, is_pure_spacer
+from topmark.pipeline.context import ContentStatus, HeaderStatus, ProcessingContext, StripStatus
 
 if TYPE_CHECKING:
     from topmark.filetypes.policy import FileTypeHeaderPolicy
@@ -76,6 +75,13 @@ def strip(ctx: ProcessingContext) -> ProcessingContext:
       - Trims a single leading blank line when the header starts at the top of the file
         (handled inside the processor).
     """
+    if ctx.status.content != ContentStatus.OK:
+        # Respect content policy: do not attempt to strip when content was refused
+        ctx.status.strip = StripStatus.NOT_NEEDED
+        ctx.add_info(f"Could not strip header from file (status: {ctx.status.content.value}).")
+        logger.debug("Stripper: skipping (content status=%s)", ctx.status.content.value)
+        return ctx
+
     if ctx.status.header is HeaderStatus.MISSING:
         ctx.status.strip = StripStatus.NOT_NEEDED
         return ctx
@@ -117,23 +123,21 @@ def strip(ctx: ProcessingContext) -> ProcessingContext:
         start: int
         _end: int
         start, _end = removed
-        # After removal, the original header start index is where a spacer would remain.
+        # After removal, the original header start index is where our *own* blank
+        # separator would remain (if we previously inserted one). Only drop an
+        # *exact* blank line that matches the file's newline style (e.g., "\n" or "\r\n"),
+        # and DO NOT drop whitespace-only lines like " \n" — those belong to the user's body.
         if 0 <= start < len(new_lines):
             nxt: str = new_lines[start]
-            if is_pure_spacer(nxt, policy):
-                logger.debug(
-                    "stripper: dropped one trailing pure spacer after removed header "
-                    "(ensure_blank_after_header=True)"
-                )
+            if nxt == ctx.newline_style:
+                logger.debug("stripper: dropped exact blank separator after removed header")
                 new_lines.pop(start)
 
-    # If the body is effectively empty after stripping, collapse to truly empty here.
-    # BOM reattachment (if any) will be handled uniformly below.
-
-    if is_effectively_empty_body(new_lines, policy):
-        logger.debug(
-            "stripper: body effectively empty after strip (policy-driven); collapsing to empty."
-        )
+    # If the body after header removal consists only of *exact* blank lines that
+    # match the file's newline style (e.g., "\n" or "\r\n"), collapse them.
+    # Do NOT collapse whitespace-only lines like " \n" — those belong to the user's body.
+    if new_lines and all(ln == ctx.newline_style for ln in new_lines):
+        logger.debug("stripper: body is only exact blank lines; collapsing to empty.")
         new_lines = []
 
     logger.info("Updated file lines: %s", new_lines[:15])
@@ -157,18 +161,23 @@ def strip(ctx: ProcessingContext) -> ProcessingContext:
             # Case 1: BOM-only image — keep as-is for round-trip fidelity.
             pass
         else:
-            # Case 2: If first is BOM and the rest are blank, collapse to BOM-only.
-            # If the stripped image contains only blank lines (and no BOM), collapse to truly empty.
+            # Case 2: If first is BOM and the rest are *exact* blanks, collapse to BOM-only.
+            # Case 3: If the stripped image contains only *exact* blank lines (and no BOM),
+            #         collapse to truly empty.
             if (
                 ctx.updated_file_lines[0].startswith("\ufeff")
                 and len(ctx.updated_file_lines) > 1
-                and all(is_pure_spacer(s, policy) for s in ctx.updated_file_lines[1:])
+                # TODO - dedicated strip WS policy:
+                # and all(is_pure_spacer(s, policy) for s in ctx.updated_file_lines[1:]
+                and all(s == ctx.newline_style for s in ctx.updated_file_lines[1:])
             ):
                 # First line is BOM-only, there is at least one trailing line,
                 # and everything after is blank: collapse to BOM-only.
                 ctx.updated_file_lines = ["\ufeff"]
-            elif all(is_pure_spacer(s, policy) for s in ctx.updated_file_lines):
-                # Case 3: If *all* lines are blank-like and no BOM, collapse to empty.
+            # elif all(is_pure_spacer(s, policy) for s in ctx.updated_file_lines):
+            # (TODO - dedicated strip WS policy - see commented-out previous line)
+            elif all(s == ctx.newline_style for s in ctx.updated_file_lines):
+                # Case 4: If *all* lines are blank-like and no BOM, collapse to empty.
                 ctx.updated_file_lines = []
             # Case 4: Otherwise, leave as-is (body has non-blank content).
 

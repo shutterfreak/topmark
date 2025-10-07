@@ -156,16 +156,15 @@ class LineCommentMixin(ShebangAwareMixin):
         rendered_header_lines: list[str],
         newline_style: str,
     ) -> list[str]:
-        """Apply context‑aware padding around the header for line‑comment styles.
+        r"""Apply context-aware padding around the header for line-comment styles.
 
-        Semantics (policy‑aware):
-          - **Leading**: At top‑of‑file (index 0) never add a leading blank. If inserting
-            after a preamble (index > 0) and the policy requests a leading spacer
-            (``pre_header_blank_after_block > 0``), add exactly one blank if the
-            previous line is not already blank.
-          - **Trailing**: Add a single trailing spacer **only when body content follows**
-            and the next line is not already blank, and only if the policy
-            (``ensure_blank_after_header=True``) requests it. At EOF, do not add a spacer.
+        Design goals:
+          - Preserve **user whitespace** verbatim. In particular, if the first body
+            line is whitespace-only (e.g., ``" \\n"``), do **not** rewrite or
+            collapse it to an exact blank.
+          - Add at most one **exact** blank separator (``newline_style``) *that we own*
+            after the header **only if** body content follows and the next line is
+            not already an exact blank. Never add a spacer at EOF.
 
         Args:
             original_lines (list[str]): Original file lines (keepends=True).
@@ -202,8 +201,14 @@ class LineCommentMixin(ShebangAwareMixin):
             has_next: bool = insert_index < len(original_lines)
             if has_next:
                 nxt: str = original_lines[insert_index]
-                # Only add a spacer when *body content follows* and next line isn't blank-like.
-                if not is_pure_spacer(nxt, policy):
+                # Trailing spacer: add exactly one **owned** blank iff body follows AND
+                # the very next line is **not** already an exact blank **and** does not
+                # begin with a newline-equivalent control (bare CR, NEL, LS, PS).
+                # Never modify the user's next line even if it's whitespace-only.
+
+                # Treat these as newline-equivalent sentinels at line start.
+                _nl_sentinels: tuple[str, ...] = ("\r", "\x85", "\u2028", "\u2029")
+                if nxt != newline_style and not (nxt and nxt[0] in _nl_sentinels):
                     out = out + [newline_style]
             # else: inserting at EOF → no body follows → no spacer
 

@@ -31,10 +31,10 @@ from typing import TYPE_CHECKING
 from typing_extensions import NotRequired, Required, TypedDict
 
 from tests.conftest import fixture
-from topmark.pipeline.context import ProcessingContext
+from topmark.pipeline.context import ProcessingContext, WriteStatus
 from topmark.pipeline.processors import get_processor_for_file, register_all_processors
 from topmark.pipeline.processors.base import HeaderProcessor
-from topmark.pipeline.steps import reader, resolver, scanner, sniffer, updater
+from topmark.pipeline.steps import reader, resolver, scanner, sniffer, stripper, updater
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -177,7 +177,69 @@ def run_insert(path: Path, cfg: Config) -> ProcessingContext:
 
     # Call the updater step directly
     ctx = updater.update(ctx)
-    assert ctx.updated_file_lines is not None
+    assert ctx.status.write is not WriteStatus.PENDING
+
+    # Normalize newlines for consistent test output
+    ctx.updated_file_lines = _coerce_newlines(
+        ctx.updated_file_lines or [],
+        target_nl=ctx.newline_style or "\n",
+        ends_with_newline=ctx.ends_with_newline,
+    )
+    return ctx
+
+
+def run_strip(path: Path, cfg: Config) -> ProcessingContext:
+    """Strip a TopMark header by running the minimal pipeline for removal.
+
+    Steps:
+      1. bootstrap `ProcessingContext`
+      2. `resolver.resolve()` → choose FileType and HeaderProcessor
+      3. `sniffer.sniff()` → early/cheap policy checks (existence, binary, BOM/shebang,
+         newline histogram)
+      4. `reader.read()` → load `file_lines`, precise newline/BOM/shebang flags
+      5. `scanner.scan()` → detect existing TopMark header bounds
+      6. `stripper.strip()` → remove header block in-memory (preserving BOM/newlines)
+
+    Args:
+        path (Path): File to modify.
+        cfg (Config): TopMark configuration (not used for stripping, but kept for symmetry).
+
+    Returns:
+        ProcessingContext: The updated ``ProcessingContext`` with ``updated_file_lines`` set
+        to the stripped content.
+    """
+    ctx: ProcessingContext = ProcessingContext.bootstrap(path=path, config=cfg)
+
+    # Run resolver to set file_type and header_processor
+    ctx = resolver.resolve(ctx)
+
+    # Run sniffer to perform early/cheap policy checks:
+    #   - existence, permissions, empty file
+    #   - fast binary/NUL check
+    #   - BOM/shebang ordering and policy
+    #   - quick newline histogram (mixed-newlines policy)
+    # Sniffer sets tentative newline info and may short-circuit (non-RESOLVED status).
+    ctx = sniffer.sniff(ctx)
+
+    # Run reader to load file_lines, ends_with_newline, and detect
+    # newline style/BOM/shebang precisely. Reader refines newline info and loads lines.
+    ctx = reader.read(ctx)
+
+    # Scan for an existing TopMark header using processor-specific bounds logic
+    ctx = scanner.scan(ctx)
+
+    # Ensure we have a processor (resolver should have set it)
+    processor: HeaderProcessor | None = ctx.header_processor or get_processor_for_file(path)
+    assert processor is not None, "No header processor for file"
+    ctx.header_processor = processor
+
+    # Invoke the stripper step; it will use ``existing_header_range`` if present,
+    # or fall back to processor auto-detection.
+    ctx = stripper.strip(ctx)
+    # Stripper can return NOT_NEEDED and produce no updated image (e.g., no header found).
+    # Keep the original image so the caller can still reason about content round-trips.
+    if ctx.updated_file_lines is None:
+        ctx.updated_file_lines = ctx.file_lines or []
     # Normalize newlines for consistent test output
     ctx.updated_file_lines = _coerce_newlines(
         ctx.updated_file_lines or [],

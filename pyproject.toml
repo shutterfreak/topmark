@@ -242,8 +242,12 @@ stubPath = "typings"
 pythonVersion = "3.10"
 include = ["src", "tests"]
 exclude = [".venv", "venv", "build", "dist", "**/__pycache__"]
-# Pyright needs to find your virtual environment to resolve imports.
-# Assuming your virtual environment is in the project root:
+# Editor-only integration:
+# The settings below help your **editor** (VS Code Pyright extension) resolve imports
+# from a local convenience environment (e.g. `.venv`). They are **not** used by CI,
+# because our actual type checks run inside tox-managed environments where Pyright
+# is invoked with an explicit `--pythonversion` per env.
+# If you don't maintain a local `.venv`, you can remove these two lines.
 venvPath = "."
 venv = ".venv"
 reportMissingImports = true
@@ -256,6 +260,7 @@ markers = [
   "pipeline: tests that exercise the processing pipeline",
   "cli: tests that exercise the CLI",
   "dev_validation: developer validation tests (e.g., registry validation)",
+  "hypothesis_slow: long-running property tests (skipped in CI)",
 ]
 testpaths = ["tests"]
 norecursedirs = [

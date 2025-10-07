@@ -95,6 +95,7 @@ def test_updater_suppresses_bom_reprepend_in_strip_fastpath() -> None:
 
     # Simulate prior steps setting up a removal result
     ctx.updated_file_lines = ["#! /usr/bin/env python\n", "print('x')\n"]
+    ctx.status.content = ContentStatus.OK
     ctx.status.strip = StripStatus.READY
 
     ctx = update(ctx)

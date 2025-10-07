@@ -62,6 +62,9 @@ repos:
       - id: topmark-check
         # files: '\.(py|md|toml|ya?ml|sh|Makefile)$'
 
+      - id: topmark-apply
+        # files: '\.(py|md|toml|ya?ml|sh|Makefile)$'
+
   # Docstring semantics
   - repo: https://github.com/jsh9/pydoclint
     rev: 0.7.3
