@@ -28,7 +28,14 @@ from topmark.cli_shared.exit_codes import ExitCode
 from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.file_resolver import resolve_file_list
 from topmark.pipeline import runner
-from topmark.pipeline.context import ComparisonStatus, ProcessingContext, ResolveStatus
+from topmark.pipeline.context import (
+    ComparisonStatus,
+    ContentStatus,
+    GenerationStatus,
+    ProcessingContext,
+    ResolveStatus,
+    StripStatus,
+)
 from topmark.pipeline.pipelines import get_pipeline
 
 if TYPE_CHECKING:
@@ -139,14 +146,40 @@ def filter_view_results(
     """
     view: list[ProcessingContext] = results
     if skip_compliant:
-        view = [r for r in view if r.status.comparison != ComparisonStatus.UNCHANGED]
+        view = [
+            r
+            for r in view
+            if not (
+                r.status.resolve == ResolveStatus.RESOLVED
+                and r.status.content == ContentStatus.OK
+                and (
+                    # “check/update” style: rendered or no-fields and unchanged
+                    (
+                        r.status.comparison == ComparisonStatus.UNCHANGED
+                        and r.status.generation
+                        in {
+                            GenerationStatus.GENERATED,
+                            GenerationStatus.NO_FIELDS,
+                        }
+                    )
+                    # “strip” style: nothing to strip (image unchanged is implied)
+                    or r.status.strip == StripStatus.NOT_NEEDED
+                )
+            )
+        ]
+
     if skip_unsupported:
         view = [
             r
             for r in view
             if r.status.resolve
-            not in {ResolveStatus.UNSUPPORTED, ResolveStatus.TYPE_RESOLVED_HEADERS_UNSUPPORTED}
+            not in {
+                ResolveStatus.UNSUPPORTED,
+                ResolveStatus.TYPE_RESOLVED_HEADERS_UNSUPPORTED,
+                ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED,
+            }
         ]
+
     return view
 
 
