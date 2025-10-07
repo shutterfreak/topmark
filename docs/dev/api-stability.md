@@ -10,37 +10,123 @@ topmark:header:start
 topmark:header:end
 -->
 
-# API Stability & Snapshot Test
+# API Stability & Snapshot Policy
 
-TopMark enforces a stable public API across Python 3.10–3.13 using a JSON snapshot.
+TopMark enforces a **stable public API** across all supported Python versions (**3.10–3.14**) using a JSON-based snapshot test.\
+This ensures that downstream users can rely on consistent function signatures and symbols across releases.
 
-## What’s covered
+______________________________________________________________________
 
-- `from topmark import api`: symbols in `api.__all__`
-- `Registry.filetypes`, `Registry.processors`, `Registry.bindings` method signatures
+## 🧩 What’s Covered
 
-To avoid CPython version drift, class/enum constructors are normalized in the test:
+The snapshot captures public-facing API symbols and their structure, including:
 
-- Enums → `"<enum>"`
-- Other classes → `"<class>"`
-- Functions/callables keep real signatures
+- `from topmark import api`: all entries defined in `api.__all__`
+- `Registry.filetypes`, `Registry.processors`, and `Registry.bindings` method signatures
+- Enum and class structure normalization for cross-version consistency:
+  - Enums → `"<enum>"`
+  - Classes → `"<class>"`
+  - Functions → real signatures are preserved
 
-## (Re)generating the snapshot
+The comparison is deterministic across Python versions by normalizing class representations and ordering.
 
-Use the Make target to refresh the snapshot when you intentionally change the public API:
+______________________________________________________________________
+
+## 🔍 Running the API Stability Tests
+
+You can verify API stability via either **tox** or **make**.
+
+### Quick local check (current interpreter only)
 
 ```bash
-make public-api-update
+make api-snapshot-dev
 ```
 
-This runs `tools/api_snapshot.py` to write `tests/api/public_api_snapshot.json`. Commit the file
-along with a version bump and a CHANGELOG entry.
+This runs the API snapshot test once using your active Python interpreter.
 
-## Policy
+### Full matrix check (across all supported Pythons)
 
-- If the snapshot test fails, either:
-  - You unintentionally changed the public API → revert or adjust the change; or
-  - You intentionally changed it → update the snapshot **and** bump the version; add a CHANGELOG
-    entry.
-- The snapshot must pass on Python 3.10–3.13 (tox matrix).
-- Keep `tests/api/public_api_snapshot.json` under version control.
+```bash
+make api-snapshot
+```
+
+This executes the snapshot tests for all Python versions defined in the tox matrix (3.10–3.14).\
+It corresponds to running:
+
+```bash
+tox -m api-check
+```
+
+### Regenerate snapshot (when public API changes intentionally)
+
+```bash
+make api-snapshot-update
+```
+
+This regenerates the file `tests/api/public_api_snapshot.json` via `tools/api_snapshot.py`, showing the diff and instructing you to commit and update the version if the API changed.
+
+### Ensure snapshot is clean (CI gate)
+
+```bash
+make api-snapshot-ensure-clean
+```
+
+Fails if the current working tree differs from the committed snapshot — useful in CI to detect unintended API drift.
+
+______________________________________________________________________
+
+## 🧱 Policy
+
+- **Automatic validation:**\
+  Every PR and CI run verifies that the public API matches the committed snapshot.
+
+- **If the snapshot test fails:**
+
+  1. **Unintentional change:** fix or revert the code to match the current public API.
+  1. **Intentional change:** regenerate the snapshot (`make api-snapshot-update`), commit the new snapshot, and **bump the version** in `pyproject.toml`.\
+     Also add a corresponding entry to the `CHANGELOG.md`.
+
+- **Supported Python range:** 3.10–3.14 (tox matrix).\
+  Future minor Python releases will be added once supported by CI.
+
+- **File under version control:**\
+  `tests/api/public_api_snapshot.json` must always be checked in and tracked.
+
+______________________________________________________________________
+
+## ⚙️ Implementation Notes
+
+- The snapshot test is implemented in `tests/api/test_public_api_snapshot.py`.
+- The generator logic lives in `tools/api_snapshot.py`.
+- Normalization ensures consistent diffing across OSes and Python builds.
+
+______________________________________________________________________
+
+## ✅ Practical Workflow
+
+1. Modify or extend the TopMark public API.
+
+1. Run:
+
+   ```bash
+   make api-snapshot-dev
+   ```
+
+   If it fails due to expected changes:
+
+1. Regenerate snapshot:
+
+   ```bash
+   make api-snapshot-update
+   ```
+
+1. Commit the updated `tests/api/public_api_snapshot.json`.
+
+1. Bump the version in `pyproject.toml`.
+
+1. Update `CHANGELOG.md` accordingly.
+
+______________________________________________________________________
+
+**Summary:**\
+The API snapshot system protects TopMark’s public interface from unintended breakage while still allowing controlled evolution under semantic versioning.
