@@ -32,13 +32,36 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-def run(ctx: ProcessingContext, steps: Sequence[Step]) -> ProcessingContext:
+def trim_views(ctx: ProcessingContext) -> None:
+    """Release heavy in-memory views after the write decision.
+
+    Drops large buffers; retains only summary-friendly data.
+    """
+    if ctx.render:
+        ctx.render.block = None
+        ctx.render.lines = None
+    if ctx.updated:
+        ctx.updated.lines = None
+    if ctx.diff:
+        ctx.diff.text = None
+    if ctx.image:
+        ctx.image.release()
+
+
+def run(
+    ctx: ProcessingContext,
+    steps: Sequence[Step],
+    *,
+    prune: bool = True,
+) -> ProcessingContext:
     """Execute the pipeline sequentially.
 
     Args:
         ctx (ProcessingContext): Mutable processing context.
         steps (Sequence[Step]): Ordered sequence of pipeline steps.
             Each step takes and returns a context.
+        prune (bool): Trim the views at the end of a run to reduce memory usage
+            (default: `True`).
 
     Returns:
         ProcessingContext: The final processing context after all steps have run.
@@ -49,4 +72,8 @@ def run(ctx: ProcessingContext, steps: Sequence[Step]) -> ProcessingContext:
     )
     for step in steps:
         ctx = step(ctx)
+
+    if prune is True:
+        trim_views(ctx)
+
     return ctx

@@ -20,11 +20,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from tests.pipeline.conftest import materialize_updated_lines
 from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.context import ContentStatus, HeaderStatus, ProcessingContext
 from topmark.pipeline.processors.base import HeaderProcessor
 from topmark.pipeline.steps.stripper import strip
+from topmark.pipeline.views import HeaderView, ListFileImageView
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -41,10 +43,17 @@ def test_stripper_uses_span_and_trims_leading_blank(tmp_path: Path) -> None:
     ]
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=(tmp_path / "x.py"), config=cfg)
-    ctx.file_lines = lines
+    ctx.image = ListFileImageView(lines)
+
     # Use the base processor; removal relies on span and generic bounds logic.
     ctx.header_processor = HeaderProcessor()
-    ctx.existing_header_range = (0, 2)  # as provided by scanner
+
+    ctx.header = HeaderView(
+        range=(0, 2),  # as provided by scanner
+        lines=None,
+        block=None,
+        mapping=None,
+    )
 
     # ✅ Simulate reader result so stripper proceeds
     ctx.status.content = ContentStatus.OK
@@ -53,7 +62,8 @@ def test_stripper_uses_span_and_trims_leading_blank(tmp_path: Path) -> None:
     ctx.status.header = HeaderStatus.DETECTED
 
     ctx = strip(ctx)
+    updated_lines: list[str] = materialize_updated_lines(ctx)
     # After stripping, only the code line should remain; statuses updated accordingly.
-    assert ctx.updated_file_lines == ["code\n"]
+    assert updated_lines == ["code\n"]
     assert ctx.status.strip.name == "READY"
     assert ctx.status.header is HeaderStatus.DETECTED

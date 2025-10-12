@@ -53,6 +53,6 @@ def test_public_api_snapshot() -> None:
     with open(baseline_path, "r", encoding="utf-8") as f:
         baseline = json.load(f)
     assert _collect() == baseline, (
-        "Public API changed. Run: make public-api-update, then review, "
+        "Public API changed. Run: make api-snapshot-update, then review, "
         "bump version & update CHANGELOG."
     )

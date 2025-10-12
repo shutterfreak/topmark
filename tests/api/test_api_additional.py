@@ -22,6 +22,7 @@ import pytest
 
 from tests.api.conftest import cfg
 from topmark import api
+from topmark.api.public_types import PublicPolicy
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -33,8 +34,10 @@ def test_check_mutually_exclusive_add_update_raises(repo_py_toml_xyz_no_header: 
         _run_result: api.RunResult = api.check(
             [repo_py_toml_xyz_no_header / "src"],
             apply=False,
-            add_only=True,
-            update_only=True,
+            policy=PublicPolicy(
+                add_only=True,
+                update_only=True,
+            ),
         )
 
 

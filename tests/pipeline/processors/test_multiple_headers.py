@@ -23,7 +23,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tests.pipeline.conftest import run_insert
+from tests.pipeline.conftest import materialize_updated_lines, run_insert
 from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.processors import get_processor_for_file
@@ -51,7 +51,10 @@ def test_multiple_headers_insert_replaces_first_only_pound(tmp_path: Path) -> No
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
-    out: str = "".join(ctx.updated_file_lines or [])
+
+    lines: list[str] = materialize_updated_lines(ctx)
+    out: str = "".join(lines)
+
     # Still two headers remain, but the first was replaced to the expected format.
     assert _count_markers(out) == 2
     # Sanity: the second legacy payload survives.
@@ -75,7 +78,10 @@ def test_multiple_headers_strip_removes_first_only_xml(tmp_path: Path) -> None:
     new: list[str] = []
     span: tuple[int, int] | None = None
     new, span = proc.strip_header_block(lines=lines, span=None)
+
     assert span is not None, "First header must be detected and removed"
+
     out: str = "".join(new)
+
     assert _count_markers(out) == 1, "Only the first header should be removed"
     assert "<!-- y -->" in out, "Second header content must remain"

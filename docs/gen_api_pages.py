@@ -46,7 +46,7 @@ def _parent_package(modname: str) -> str | None:
         topmark -> None
 
     Args:
-        modname (str): The nodule name.
+        modname (str): The module name.
 
     Returns:
         str | None: the parent package name for the module or None for top-level.
@@ -171,6 +171,8 @@ def _walk(package: object) -> Iterable[str]:
 # Group modules by their first segment after `topmark` (e.g. cli, pipeline, filetypes)
 groups: dict[str, list[str]] = defaultdict(list)
 
+skipped_import: list[tuple[str, str]] = []  # (module, reason)
+written_pages: int = 0
 
 for name in sorted(set(_walk(topmark))):
     # Only generate a page if the module imports cleanly; otherwise skip.
@@ -203,10 +205,11 @@ for name in sorted(set(_walk(topmark))):
         fd.write("      filters:\n")
         fd.write('        - "!^_"\n')
 
-    mkdocs_gen_files.set_edit_path(
-        current_doc,
-        "src/" + name.replace(".", "/") + ".py",
-    )
+    written_pages += 1
+
+    src_rel: str = name.replace(".", "/")
+    src_path: str = f"src/{src_rel}/__init__.py" if _is_package(name) else f"src/{src_rel}.py"
+    mkdocs_gen_files.set_edit_path(current_doc, src_path)
 
     if name != "topmark" and name.startswith("topmark."):
         top: str = name.split(".", 2)[1] if "." in name else name
@@ -252,7 +255,7 @@ options:
         fd.write(mod_ref_md)
     mkdocs_gen_files.set_edit_path(
         mod_ref_doc,
-        "src/" + mod_ref_doc.replace("reference/", "").replace(".", "/") + ".py",
+        "src/" + mod.replace(".", "/") + ".py",
     )  # generated only
 
 
@@ -262,6 +265,8 @@ for pkg, children in sorted(packages.items()):
     pkg_path: str = pkg.replace(".", "/")
     pkg_index_path: str = f"api/internals/{pkg_path}/index.md"
     current_doc = pkg_index_path
+    pkg_src_rel: str = pkg.replace(".", "/")
+    mkdocs_gen_files.set_edit_path(pkg_index_path, f"src/{pkg_src_rel}/__init__.py")
 
     with mkdocs_gen_files.open(pkg_index_path, "w") as fd:
         # Render the package module docstring at the top via mkdocstrings
@@ -276,6 +281,7 @@ for pkg, children in sorted(packages.items()):
                 else:
                     crumbs_rendered.append(f"[{label}]({href})")
             fd.write(" / ".join(crumbs_rendered) + "\n\n")
+
         fd.write("::: " + pkg + "\n")
         fd.write("    options:\n")
         fd.write("      heading_level: 2\n")
@@ -299,3 +305,14 @@ for pkg, children in sorted(packages.items()):
             else:
                 fd.write(f"- [{child_full}]({link})\n")
         fd.write("\n")
+
+
+# --- Summary (printed only if TOPMARK_DOCS_DEBUG is set) ---
+print(
+    f"summary: wrote {written_pages} pages; "
+    f"{len(skipped_import)} modules skipped due to import errors"
+)
+for mod, reason in skipped_import[:20]:
+    print(f"  - skipped: {mod} -> {reason}")
+if len(skipped_import) > 20:
+    print(f"  ... and {len(skipped_import) - 20} more")

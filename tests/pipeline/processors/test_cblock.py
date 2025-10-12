@@ -22,17 +22,24 @@ Covers:
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 
 from tests.conftest import mark_pipeline
-from tests.pipeline.conftest import BlockSignatures, expected_block_lines_for, find_line, run_insert
+from tests.pipeline.conftest import (
+    BlockSignatures,
+    expected_block_lines_for,
+    find_line,
+    materialize_updated_lines,
+    run_insert,
+)
 from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline import runner
 from topmark.pipeline.context import ProcessingContext
-from topmark.pipeline.pipelines import get_pipeline
+from topmark.pipeline.pipelines import Pipeline
 from topmark.pipeline.processors.base import HeaderProcessor
 
 if TYPE_CHECKING:
@@ -53,13 +60,14 @@ def test_cblock_processor_basics(tmp_path: Path) -> None:
     # Use the short insert helper which runs resolver+reader+scanner, but we only
     # need to assert the basics exposed by the scan results.
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    steps: Sequence[Step] = get_pipeline("check")
-    ctx = runner.run(ctx, steps)
+    pipeline: Sequence[Step] = Pipeline.CHECK.steps
+    ctx = runner.run(ctx, pipeline)
 
     assert ctx.file_type is not None
     # Depending on registry naming you might use "css"
     assert ctx.file_type.name in {"css"}
-    assert ctx.existing_header_range is None
+    assert ctx.header is None
+    assert ctx.status.header.name == "MISSING"
 
 
 @mark_pipeline
@@ -84,7 +92,7 @@ def test_cblock_all_registrations_insert_and_trailing_blank(
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     sig: BlockSignatures = expected_block_lines_for(f)
 
     # Block-open should be first, start line second
@@ -111,16 +119,19 @@ def test_cblock_detect_existing_header_with_star_prefix(tmp_path: Path) -> None:
     # 1) Insert a canonical header using the updater path
     ctx_insert: ProcessingContext = run_insert(f, cfg)
 
+    lines: list[str] = materialize_updated_lines(ctx_insert)
+
     with f.open("w", encoding="utf-8", newline="") as fp:
-        fp.write("".join(ctx_insert.updated_file_lines or []))
+        fp.write("".join(lines))
 
     # 2) Re-run the 'check' pipeline to ensure the scanner detects the header
     ctx_check: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    steps: Sequence[Step] = get_pipeline("check")
-    ctx_check = runner.run(ctx_check, steps)
+    pipeline: Sequence[Step] = Pipeline.CHECK.steps
+    ctx_check = runner.run(ctx_check, pipeline)
 
-    assert ctx_check.existing_header_range is not None
-    assert ctx_check.existing_header_dict is not None
+    assert ctx_check.header is not None
+    assert ctx_check.header.range is not None
+    assert ctx_check.header.mapping is not None
     # The file field is empty by default in tests, so just assert dict presence
 
 
@@ -137,7 +148,7 @@ def test_cblock_detect_existing_header_without_star_on_directives(tmp_path: Path
 
     # Generate a canonical header
     ctx: ProcessingContext = run_insert(f, cfg)
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
 
     # Find directive lines and strip the leading '*' just on start/end lines
     new_lines: list[str] = []
@@ -156,9 +167,10 @@ def test_cblock_detect_existing_header_without_star_on_directives(tmp_path: Path
 
     # Now the scanner should still detect it
     ctx2: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    steps: Sequence[Step] = get_pipeline("check")
-    ctx2 = runner.run(ctx2, steps)
-    assert ctx2.existing_header_range is not None
+    pipeline: Sequence[Step] = Pipeline.CHECK.steps
+    ctx2 = runner.run(ctx2, pipeline)
+    assert ctx2.header is not None
+    assert ctx2.header.range is not None
 
 
 @mark_pipeline
@@ -171,7 +183,9 @@ def test_cblock_crlf_preserves_newlines(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    for i, ln in enumerate(ctx.updated_file_lines or []):
+    lines: list[str] = materialize_updated_lines(ctx)
+
+    for i, ln in enumerate(lines):
         assert ln.endswith("\r\n"), f"line {i} not CRLF: {ln!r}"
 
 
@@ -208,13 +222,13 @@ def test_cblock_strip_header_block_with_and_without_span(tmp_path: Path) -> None
 @mark_pipeline
 def test_cblock_banner_comment_after_header(tmp_path: Path) -> None:
     """Header must precede any pre-existing banner comment."""
-    f = tmp_path / "banner.css"
+    f: Path = tmp_path / "banner.css"
     f.write_text("/* existing:license banner */\nhtml{font-size:16px}\n")
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     sig: BlockSignatures = expected_block_lines_for(f)
 
     # Header must start at very top
@@ -240,7 +254,7 @@ def test_cblock_strip_header_block_generated(tmp_path: Path) -> None:
 
     # Generate a canonical header
     ctx: ProcessingContext = run_insert(f, cfg)
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     f.write_text("".join(lines), encoding="utf-8")
 
     proc: HeaderProcessor | None = get_processor_for_file(f)

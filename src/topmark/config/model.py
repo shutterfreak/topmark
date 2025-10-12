@@ -53,6 +53,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from topmark.config.io import (
+    TomlTable,
+    TomlTableMap,
     clean_toml,
     get_bool_value_or_none,
     get_list_value,
@@ -65,6 +67,7 @@ from topmark.config.io import (
 )
 from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.config.paths import abs_path_from, extend_ps, ps_from_cli, ps_from_config
+from topmark.config.policy import MutablePolicy, Policy
 from topmark.rendering.formats import HeaderOutputFormat
 
 if TYPE_CHECKING:
@@ -100,6 +103,10 @@ class Config:
         verbosity_level (int | None): None = inherit, 0 = terse, 1 = verbose diagnostics.
         apply_changes (bool | None): Runtime intent: whether to actually write changes (apply)
             or preview only. None = inherit/unspecified, False = dry-run/preview, True = apply.
+        policy (Policy): Global, resolved, immutable runtime policy (plain booleans),
+            applied after discovery.
+        policy_by_type (Mapping[str, Policy]): Per-file-type resolved policy overrides
+            (plain booleans), applied after discovery.
         config_files (tuple[Path | str, ...]): List of paths or identifiers for config sources used.
         header_fields (tuple[str, ...]): List of header fields from the [header] section.
         field_values (Mapping[str, str]): Mapping of field names to their string values
@@ -120,6 +127,11 @@ class Config:
         include_patterns (tuple[str, ...]): Glob patterns to include.
         exclude_patterns (tuple[str, ...]): Glob patterns to exclude.
         file_types (frozenset[str]): File extensions or types to process.
+
+    Policy resolution:
+        Public/API overlays are applied to a mutable draft **after** discovery and
+        before freezing to this immutable `Config`. Per-type policies override
+        the global policy for matching file types.
     """
 
     # Initialization timestamp for the config instance
@@ -128,6 +140,10 @@ class Config:
     # Verbosity & runtime intent
     verbosity_level: int | None
     apply_changes: bool | None
+
+    # Policy containers
+    policy: Policy
+    policy_by_type: Mapping[str, Policy]  # e.g., {"python": Policy(...)}
 
     # Provenance
     config_files: tuple[Path | str, ...]
@@ -158,7 +174,7 @@ class Config:
     # File types (linked to file extensions) to process (filter)
     file_types: frozenset[str]
 
-    def to_toml_dict(self, *, include_files: bool = False) -> dict[str, Any]:
+    def to_toml_dict(self, *, include_files: bool = False) -> TomlTable:
         """Convert this immutable Config into a TOML-serializable dict.
 
         Args:
@@ -167,14 +183,14 @@ class Config:
                 large file lists. Set to True for full export.
 
         Returns:
-            dict[str, Any]: the TOML-serializable dict representing the Config
+            TomlTable: the TOML-serializable dict representing the Config
 
         Note:
             Export-only convenience for documentation/snapshots. Parsing and
             loading live on the **mutable** side (see `MutableConfig` and
-           `topmark.config.io`).
+            `topmark.config.io`).
         """
-        toml_dict: dict[str, Any] = {
+        toml_dict: TomlTable = {
             "fields": dict(self.field_values),
             "header": {"fields": list(self.header_fields)},
             "formatting": {
@@ -194,8 +210,27 @@ class Config:
                 "config_files": list(self.config_files),
             },
         }
+
+        # Policy serialization (global and per-type)
+        toml_dict["policy"] = {
+            "add_only": self.policy.add_only,
+            "update_only": self.policy.update_only,
+            "allow_header_in_empty_files": self.policy.allow_header_in_empty_files,
+        }
+        if self.policy_by_type:
+            toml_dict["policy_by_type"] = {
+                ft: {
+                    "add_only": p.add_only,
+                    "update_only": p.update_only,
+                    "allow_header_in_empty_files": p.allow_header_in_empty_files,
+                }
+                for ft, p in self.policy_by_type.items()
+            }
+
+        # Include files in TOML export
         if include_files and self.files:
             toml_dict["files"]["files"] = list(self.files)
+
         return toml_dict
 
     def thaw(self) -> MutableConfig:
@@ -212,6 +247,8 @@ class Config:
             timestamp=self.timestamp,
             verbosity_level=self.verbosity_level,
             apply_changes=self.apply_changes,
+            policy=self.policy.thaw(),
+            policy_by_type={k: v.thaw() for k, v in self.policy_by_type.items()},
             config_files=list(self.config_files),
             header_fields=list(self.header_fields),
             field_values=dict(self.field_values),
@@ -245,6 +282,8 @@ class MutableConfig:
         verbosity_level (int | None): None = inherit, 0 = terse, 1 = verbose diagnostics.
         apply_changes (bool | None): Runtime intent: whether to actually write changes (apply)
             or preview only. None = inherit/unspecified, False = dry-run/preview, True = apply.
+        policy (MutablePolicy): Optional global policy overrides (public shape).
+        policy_by_type (dict[str, MutablePolicy]): Optional per-type policy.
         config_files (list[Path | str]): List of paths or identifiers for config sources used.
         header_fields (list[str]): List of header fields from the [header] section.
         field_values (dict[str, str]): Mapping of field names to their string values from [fields].
@@ -272,6 +311,10 @@ class MutableConfig:
 
     # Runtime intent: whether to actually write changes (apply) or preview only
     apply_changes: bool | None = None
+
+    # Policy containers:
+    policy: MutablePolicy = field(default_factory=MutablePolicy)
+    policy_by_type: dict[str, MutablePolicy] = field(default_factory=lambda: {})
 
     # Provenance
     config_files: list[Path | str] = field(default_factory=lambda: [])
@@ -305,10 +348,30 @@ class MutableConfig:
     # ---------------------------- Build/freeze ----------------------------
     def freeze(self) -> Config:
         """Freeze the draft into an immutable `Config` snapshot."""
+        # Resolve global policy against an all-false base
+        global_policy_frozen: Policy = self.policy.resolve(Policy())
+
+        # Validate mutual exclusivity on resolved global policy
+        if global_policy_frozen.add_only and global_policy_frozen.update_only:
+            raise ValueError("Policy invalid: `add_only` and `update_only` cannot both be True.")
+
+        # Resolve per-type policies against the resolved global policy
+        frozen_by_type: dict[str, Policy] = {}
+        for ft, mp in self.policy_by_type.items():
+            resolved: Policy = mp.resolve(global_policy_frozen)
+            if resolved.add_only and resolved.update_only:
+                raise ValueError(
+                    f"Policy invalid for type '{ft}': "
+                    "`add_only` and `update_only` cannot both be True."
+                )
+            frozen_by_type[ft] = resolved
+
         return Config(
             timestamp=self.timestamp,
             verbosity_level=self.verbosity_level,
             apply_changes=self.apply_changes,
+            policy=global_policy_frozen,
+            policy_by_type=frozen_by_type,
             config_files=tuple(self.config_files),
             header_fields=tuple(self.header_fields),
             field_values=dict(self.field_values),
@@ -335,7 +398,7 @@ class MutableConfig:
         Returns:
             str: The contents of the default TOML configuration file.
         """
-        toml_data: dict[str, Any] = load_defaults_dict()
+        toml_data: TomlTable = load_defaults_dict()
         return to_toml(toml_data)
 
     @classmethod
@@ -357,7 +420,7 @@ class MutableConfig:
         Returns:
             MutableConfig: A `MutableConfig` instance populated with default values.
         """
-        default_toml_data: dict[str, Any] = load_defaults_dict()
+        default_toml_data: TomlTable = load_defaults_dict()
 
         # Note: `config_file` is set to None because this is a package resource,
         # not a user-specified filesystem path.
@@ -384,11 +447,11 @@ class MutableConfig:
         """
         logger.debug("Creating MutableConfig from TOML config: %s", path)
 
-        toml_data: dict[str, Any] = load_toml_dict(path)
+        toml_data: TomlTable = load_toml_dict(path)
 
         if path.name == "pyproject.toml":
             # Extract [tool.topmark] subsection from pyproject.toml
-            tool_section: dict[str, Any] = toml_data.get("tool", {}).get("topmark", {})
+            tool_section: TomlTable = toml_data.get("tool", {}).get("topmark", {})
             if not tool_section:
                 logger.error(f"[tool.topmark] section missing or malformed in {path}")
                 return None
@@ -449,10 +512,10 @@ class MutableConfig:
                     logger.debug("Discovered config file: %s", p)
                     # Check for `root = true` to stop traversal after this dir
                     try:
-                        data: dict[str, Any] = load_toml_dict(p)
+                        data: TomlTable = load_toml_dict(p)
                         if name == "pyproject.toml":
-                            tool: dict[str, Any] = data.get("tool", {})
-                            topmark_tbl: dict[str, Any] = tool.get("topmark", {})
+                            tool: TomlTable = data.get("tool", {})
+                            topmark_tbl: TomlTable = tool.get("topmark", {})
                             if bool(topmark_tbl.get("root", False)):
                                 root_stop_here = True
                         else:  # topmark.toml
@@ -501,7 +564,7 @@ class MutableConfig:
     @classmethod
     def from_toml_dict(
         cls,
-        data: dict[str, Any],
+        data: TomlTable,
         config_file: Path | None = None,
         use_defaults: bool = False,
     ) -> MutableConfig:
@@ -512,27 +575,33 @@ class MutableConfig:
         - Glob strings are kept as-is (evaluated later against `relative_to`).
 
         Args:
-            data (dict[str, Any]): The parsed TOML data as a dictionary.
+            data (TomlTable): The parsed TOML data as a dictionary.
             config_file (Path | None): Optional path to the source TOML file.
             use_defaults (bool): Whether to treat this data as default config (affects behavior).
 
         Returns:
             MutableConfig: The resulting MutableConfig instance.
         """
-        tool_tbl: dict[str, Any] = data  # top-level tool configuration dictionary
+        tool_tbl: TomlTable = data  # top-level tool configuration dictionary
 
         # Extract sub-tables for specific config sections; fallback to empty dicts
-        field_tbl: dict[str, Any] = get_table_value(tool_tbl, "fields")
+        field_tbl: TomlTable = get_table_value(tool_tbl, "fields")
         logger.trace("TOML [fields]: %s", field_tbl)
 
-        header_tbl: dict[str, Any] = get_table_value(tool_tbl, "header")
+        header_tbl: TomlTable = get_table_value(tool_tbl, "header")
         logger.trace("TOML [header]: %s", header_tbl)
 
-        formatting_tbl: dict[str, Any] = get_table_value(tool_tbl, "formatting")
+        formatting_tbl: TomlTable = get_table_value(tool_tbl, "formatting")
         logger.trace("TOML [formatting]: %s", formatting_tbl)
 
-        files_tbl: dict[str, Any] = get_table_value(tool_tbl, "files")
+        files_tbl: TomlTable = get_table_value(tool_tbl, "files")
         logger.trace("TOML [files]: %s", files_tbl)
+
+        policy_tbl: TomlTable = get_table_value(tool_tbl, "policy")
+        logger.trace("TOML [policy]: %s", policy_tbl)
+
+        policy_by_type_tbl: TomlTableMap = get_table_value(tool_tbl, "policy_by_type")
+        logger.trace("TOML [policy_by_type]: %s", policy_by_type_tbl)
 
         # Start from a fresh draft with current timestamp
         draft: MutableConfig = cls(timestamp=datetime.now().isoformat())
@@ -543,6 +612,14 @@ class MutableConfig:
         # ----- config_files: normalize to absolute paths if possible -----
         config_files: tuple[list[Path]] = ([config_file] if config_file else [],)
         draft.config_files = [str(p) for p in config_files[0]] if config_files[0] else []
+
+        # ----- Global policy -----
+        draft.policy = MutablePolicy.from_toml_table(policy_tbl)
+
+        # ----- Policy by FileType -----
+        draft.policy_by_type = {
+            str(ft): MutablePolicy.from_toml_table(tbl) for ft, tbl in policy_by_type_tbl.items()
+        }
 
         # ----- files: normalize to absolute strings against the config file dir -----
         raw_files: list[str] = list(files_tbl.get("files", [])) if "files" in files_tbl else []
@@ -718,6 +795,46 @@ class MutableConfig:
     # ------------------------------- Merging -------------------------------
     def merge_with(self, other: MutableConfig) -> MutableConfig:
         """Return a new draft where values from ``other`` override this draft."""
+        # --- merge global policy (tri-state) ---
+        # Create a new MutablePolicy that prefers `other`’s explicitly-set fields.
+        merged_global = MutablePolicy(
+            add_only=other.policy.add_only
+            if other.policy.add_only is not None
+            else self.policy.add_only,
+            update_only=other.policy.update_only
+            if other.policy.update_only is not None
+            else self.policy.update_only,
+            allow_header_in_empty_files=(
+                other.policy.allow_header_in_empty_files
+                if other.policy.allow_header_in_empty_files is not None
+                else self.policy.allow_header_in_empty_files
+            ),
+        )
+
+        # --- merge per-type policy (key-wise union; tri-state per field) ---
+        merged_by_type: dict[str, MutablePolicy] = {}
+        all_keys: set[str] = set(self.policy_by_type.keys()) | set(other.policy_by_type.keys())
+        for k in all_keys:
+            base: MutablePolicy | None = self.policy_by_type.get(k)
+            over: MutablePolicy | None = other.policy_by_type.get(k)
+            if base is None:
+                if over is not None:
+                    merged_by_type[k] = over  # take as-is
+            elif over is None:
+                merged_by_type[k] = base  # keep base
+            else:
+                merged_by_type[k] = MutablePolicy(
+                    add_only=over.add_only if over.add_only is not None else base.add_only,
+                    update_only=over.update_only
+                    if over.update_only is not None
+                    else base.update_only,
+                    allow_header_in_empty_files=(
+                        over.allow_header_in_empty_files
+                        if over.allow_header_in_empty_files is not None
+                        else base.allow_header_in_empty_files
+                    ),
+                )
+
         merged = MutableConfig(
             timestamp=self.timestamp,
             config_files=self.config_files + other.config_files,
@@ -748,6 +865,11 @@ class MutableConfig:
             if other.apply_changes is not None
             else self.apply_changes,
         )
+
+        # Attach merged policies
+        merged.policy = merged_global
+        merged.policy_by_type = merged_by_type
+
         return merged
 
     def apply_cli_args(self, args: ArgsLike) -> MutableConfig:
@@ -781,8 +903,15 @@ class MutableConfig:
             self.config_files = [CLI_OVERRIDE_STR]
 
         # Merge CLI config_files (config paths) if provided
-        if args.get("config_files"):
+        if "config_files" in args:
             self.config_files.extend(args["config_files"])
+
+        # Merge add_only and update_only in policy
+        if "add_only" in args:
+            self.policy.add_only = args["add_only"]  # set only if passed
+        if "update_only" in args:
+            self.policy.update_only = args["update_only"]
+        # ... but do not zero-out policy_by_type when CLI says nothing
 
         # Override files to process if specified
         if "files" in args:
@@ -792,10 +921,10 @@ class MutableConfig:
                 self.stdin = False
 
         # Glob arrays from CLI: keep as strings (evaluated later vs relative_to)
-        if args.get("include_patterns"):
+        if "include_patterns" in args:
             # self.include_patterns = list(args["include_patterns"])
             self.include_patterns.extend(list(args.get("include_patterns") or []))
-        if args.get("exclude_patterns"):
+        if "exclude_patterns" in args:
             # self.exclude_patterns = list(args["exclude_patterns"])
             self.exclude_patterns.extend(list(args.get("exclude_patterns") or []))
 
@@ -803,7 +932,7 @@ class MutableConfig:
         cwd: Path = Path.cwd().resolve()
 
         # Normalize CLI path-to-file options from the invocation CWD
-        if args.get("include_from"):
+        if "include_from" in args:
             # self.include_from = list(args["include_from"])
             extend_ps(
                 self.include_from,
@@ -812,7 +941,7 @@ class MutableConfig:
                 "CLI --include-from",
                 cwd,
             )
-        if args.get("exclude_from"):
+        if "exclude_from" in args:
             # self.exclude_from = list(args["exclude_from"])
             extend_ps(
                 self.exclude_from,
@@ -821,7 +950,7 @@ class MutableConfig:
                 "CLI --exclude-from",
                 cwd,
             )
-        if args.get("files_from"):
+        if "files_from" in args:
             # self.files_from = list(args["files_from"])
             extend_ps(
                 self.files_from,
@@ -832,12 +961,13 @@ class MutableConfig:
             )
 
         # Override relative_to path if specified, resolving to absolute path
-        if args.get("relative_to"):
+        if "relative_to" in args and args["relative_to"] not in (None, ""):
             self.relative_to_raw = args["relative_to"]
             self.relative_to = Path(args["relative_to"]).resolve()
+        # If key not present or value is None, **keep** whatever came from discovery/TOML.
 
         # Override file_types filter if specified
-        if args.get("file_types"):
+        if "file_types" in args:
             self.file_types = set(args["file_types"])
 
         # Apply CLI flags that require explicit True to activate or to explicitly disable

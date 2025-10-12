@@ -10,9 +10,20 @@
 
 """Builder step for TopMark pipeline.
 
-This step builds a dictionary containing the expected (updated) header fields for a file,
-based on the pipeline context and configuration. It produces the `expected_header_dict`
-in the context, updates built-in fields, and sets the generation status accordingly.
+This step computes the **field dictionaries** that will later be rendered into a
+TopMark header. It derives built‑in fields from the filesystem (e.g., `file`,
+`file_relpath`) and merges them with `Config.field_values`, then selects only
+those keys listed in `Config.header_fields`.
+
+Outputs:
+  * `ctx.build.builtins`: the derived built‑in field mapping.
+  * `ctx.build.selected`: the filtered/merged mapping to be rendered by the renderer.
+  * `ctx.status.generation`: set to `GENERATED` (or `NO_FIELDS` when no fields are
+    configured).
+
+Notes:
+  This step does **not** render text. The renderer consumes `ctx.build.selected`
+  and produces the final lines/block in `ctx.render`.
 """
 
 from __future__ import annotations
@@ -24,8 +35,9 @@ from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.pipeline.context import (
     GenerationStatus,
     ProcessingContext,
-    may_proceed_to_build,
+    may_proceed_to_builder,
 )
+from topmark.pipeline.views import BuilderView
 from topmark.utils.file import compute_relpath
 
 if TYPE_CHECKING:
@@ -35,24 +47,30 @@ logger: TopmarkLogger = get_logger(__name__)
 
 
 def build(ctx: ProcessingContext) -> ProcessingContext:
-    """Build the dict with expected (updated) header fields.
+    """Build the field dictionaries used to render a TopMark header.
 
-    This step analyzes the processing context and configuration to determine the
-    expected header fields for the current file. It sets built-in fields related
-    to file paths and combines them with any additional user-defined fields.
+    This step analyzes the processing context and configuration to compute:
+      * derived built‑in fields based on the file path; and
+      * the final field mapping to be rendered (subset/overrides as per config).
 
     Args:
         ctx (ProcessingContext): The current processing context containing file info,
             configuration, and status.
 
     Returns:
-        ProcessingContext: The updated processing context with the expected header
-            dictionary and updated generation status.
+        ProcessingContext: The updated context with:
+            - `ctx.build.builtins`: built‑in field mapping.
+            - `ctx.build.selected`: selected/merged field mapping.
+            - `ctx.status.generation`: updated to `GENERATED` or `NO_FIELDS`.
 
     Notes:
-        Diagnostics messages are added if unknown or missing header fields are detected.
+        Diagnostic messages are added if unknown header fields are referenced in
+        `Config.header_fields` or when built‑ins are overridden by `Config.field_values`.
     """
-    if not may_proceed_to_build(ctx):
+    logger.debug("ctx: %s", ctx)
+
+    if not may_proceed_to_builder(ctx):
+        logger.info("Builder skipped by may_proceed_to_builder()")
         return ctx
 
     config: Config = ctx.config
@@ -87,9 +105,7 @@ def build(ctx: ProcessingContext) -> ProcessingContext:
         "abspath": absolute_path.parent.as_posix() if absolute_path else "",
     }
 
-    ctx.builtin_fields = builtin_fields
-
-    # Merge in any additional fields from the configuration
+    # Merge in any additional fields from the configuration (may override built‑ins).
     if config.field_values:
         # Warn if configuration fields override built-in fields (potentially accidental)
         builtin_overlap: list[str] = [key for key in config.field_values if key in builtin_fields]
@@ -103,9 +119,7 @@ def build(ctx: ProcessingContext) -> ProcessingContext:
             )
             ctx.add_warning(f"Redefined built-in fields: {builtin_overlap_repr}")
 
-    # Merge built-in and configuration-defined fields
-    # Allow user-defined fields to override built-ins when both are in config.field_values
-    # Restrict to fields listed in config.header_fields
+    # Merge built‑ins with configuration‑defined values; allow overrides; restrict to header_fields.
     all_fields: dict[str, str] = {
         **builtin_fields,
         **config.field_values,
@@ -119,19 +133,19 @@ def build(ctx: ProcessingContext) -> ProcessingContext:
         else:
             result[key] = value
 
-    ctx.expected_header_dict = result
+    # Populate BuilderView with builtins and selected field mappings
+    ctx.build = BuilderView(builtins=builtin_fields, selected=result)
+    # Populate RenderView with mapping only; lines/block are filled by renderer
     ctx.status.generation = GenerationStatus.GENERATED
 
     logger.debug(
-        "File '%s' : header status %s, expected fields:\n%s",
+        "Builder: %s – header status=%s, selected fields:\n%s",
         ctx.path,
         ctx.status.header.value,
-        "\n".join(
-            f"  {key:<20} : {value}" for key, value in (ctx.expected_header_dict or {}).items()
-        ),
+        "\n".join(f"  {key:<20} : {value}" for key, value in (ctx.build.selected or {}).items()),
     )
     logger.info(
-        "Phase 3 - Scanned file %s: header status: %s, generation status: %s",
+        "Builder completed for %s: header status=%s, generation status=%s",
         ctx.path,
         ctx.status.header.value,
         ctx.status.generation.value,

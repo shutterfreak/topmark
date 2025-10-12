@@ -51,7 +51,9 @@ def test_strip_dry_run_exits_2(tmp_path: Path) -> None:
     without `--apply` should signal "would change" with exit code 2.
     """
     f: Path = tmp_path / "x.py"
-    f.write_text(f"# {TOPMARK_START_MARKER}\n# ...\n# {TOPMARK_END_MARKER}\nprint('ok')\n", "utf-8")
+    f.write_text(
+        f"# {TOPMARK_START_MARKER}\n# test:header\n# {TOPMARK_END_MARKER}\nprint('ok')\n", "utf-8"
+    )
 
     result: Result = run_cli(["strip", str(f)])
 
@@ -80,7 +82,7 @@ def test_strip_apply_removes_and_is_idempotent(tmp_path: Path) -> None:
     unchanged and still succeed.
     """
     f: Path = tmp_path / "x.py"
-    before: str = f"# {TOPMARK_START_MARKER}\n# a\n# {TOPMARK_END_MARKER}\nprint('x')\n"
+    before: str = f"# {TOPMARK_START_MARKER}\n# test:header\n# {TOPMARK_END_MARKER}\nprint('x')\n"
     f.write_text(before, "utf-8")
 
     # First application removes the header.
@@ -105,7 +107,9 @@ def test_strip_diff_shows_patch(tmp_path: Path) -> None:
     Verifies presence of unified diff markers and a removed header line.
     """
     f: Path = tmp_path / "x.py"
-    f.write_text(f"# {TOPMARK_START_MARKER}\n# h\n# {TOPMARK_END_MARKER}\nprint()\n", "utf-8")
+    f.write_text(
+        f"# {TOPMARK_START_MARKER}\n# test:header\n# {TOPMARK_END_MARKER}\nprint()\n", "utf-8"
+    )
 
     result: Result = run_cli(["strip", "--diff", str(f)])
 
@@ -128,7 +132,9 @@ def test_strip_summary_buckets(tmp_path: Path) -> None:
     has: Path = tmp_path / "has.py"
     clean: Path = tmp_path / "clean.py"
     bad: Path = tmp_path / "bad.py"
-    has.write_text(f"# {TOPMARK_START_MARKER}\n# h\n# {TOPMARK_END_MARKER}\nprint()\n", "utf-8")
+    has.write_text(
+        f"# {TOPMARK_START_MARKER}\n# test:header\n# {TOPMARK_END_MARKER}\nprint()\n", "utf-8"
+    )
     clean.write_text("print()\n", "utf-8")
     bad.write_text(f"# {TOPMARK_START_MARKER}\n# x\nprint()\n", "utf-8")
 
@@ -147,7 +153,7 @@ def test_strip_summary_buckets(tmp_path: Path) -> None:
 
     # Expect human-facing wording present for both categories.
     assert re.search(r"would strip header[ ]*: 1", result.output), "missing 'would strip header: 1'"
-    assert re.search(r"up-to-date[ ]*: 2", result.output), "missing 'up-to-date: 2'"
+    assert re.search(r"no header[ ]*: 2", result.output), "missing 'no header: 2'"
 
 
 def test_strip_accepts_positional_paths(tmp_path: Path) -> None:
@@ -210,8 +216,8 @@ def test_strip_include_from_exclude_from(tmp_path: Path) -> None:
     """
     a: Path = tmp_path / "a.py"
     b: Path = tmp_path / "b.py"
-    a.write_text(f"# {TOPMARK_START_MARKER}\n# h\n# {TOPMARK_END_MARKER}\n", "utf-8")
-    b.write_text(f"# {TOPMARK_START_MARKER}\n# h\n# {TOPMARK_END_MARKER}\n", "utf-8")
+    a.write_text(f"# {TOPMARK_START_MARKER}\n# test:header\n# {TOPMARK_END_MARKER}\n", "utf-8")
+    b.write_text(f"# {TOPMARK_START_MARKER}\n# test:header\n# {TOPMARK_END_MARKER}\n", "utf-8")
 
     # Use **relative** patterns: resolver disallows absolute patterns.
     incf = "inc.txt"
@@ -221,7 +227,7 @@ def test_strip_include_from_exclude_from(tmp_path: Path) -> None:
 
     # Non-relative glob patterns are unsupported
 
-    result = run_cli_in(
+    result: Result = run_cli_in(
         tmp_path,
         [
             "strip",

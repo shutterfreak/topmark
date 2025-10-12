@@ -23,7 +23,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Final, Protocol, TypedDict, runtime_checkable
+from typing import TYPE_CHECKING, Any, Final, Iterable, Protocol, TypedDict, runtime_checkable
 
 from topmark.config.logging import TopmarkLogger, get_logger
 
@@ -142,7 +142,7 @@ class PreInsertContextView(Protocol):
     """
 
     # The minimal attributes checkers need; add more if needed later
-    file_lines: list[str] | None
+    lines: Iterable[str]
     newline_style: str
     header_processor: Any  # concrete checker can cast to its processor class if needed
     file_type: "FileType | None"

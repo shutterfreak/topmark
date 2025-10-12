@@ -60,9 +60,12 @@ def test_file_type_filter_limits_processing_strip(tmp_path: Path) -> None:
     """`--file-type` also constrains `strip` to the selected types."""
     py: Path = tmp_path / "b.py"
     ts: Path = tmp_path / "b.ts"
-    py.write_text(f"# {TOPMARK_START_MARKER}\n# h\n# {TOPMARK_END_MARKER}\nprint()\n", "utf-8")
+    py.write_text(
+        f"# {TOPMARK_START_MARKER}\n# test:header\n# {TOPMARK_END_MARKER}\nprint()\n", "utf-8"
+    )
     ts.write_text(
-        f"// {TOPMARK_START_MARKER}\n// h\n// {TOPMARK_END_MARKER}\nconsole.log(1)\n", "utf-8"
+        f"// {TOPMARK_START_MARKER}\n// test:header\n// {TOPMARK_END_MARKER}\nconsole.log(1)\n",
+        "utf-8",
     )
 
     # Strip only for python → TS header remains
@@ -81,7 +84,9 @@ def test_skip_compliant_hides_clean_files(tmp_path: Path) -> None:
     """`--skip-compliant` removes compliant files from per-file and summary output."""
     f1: Path = tmp_path / "has.py"
     f2: Path = tmp_path / "clean.py"
-    f1.write_text(f"# {TOPMARK_START_MARKER}\n# h\n# {TOPMARK_END_MARKER}\nprint()\n", "utf-8")
+    f1.write_text(
+        f"# {TOPMARK_START_MARKER}\n# test:header\n# {TOPMARK_END_MARKER}\nprint()\n", "utf-8"
+    )
     f2.write_text("print()\n", "utf-8")
 
     # In summary mode, ensure the compliant bucket isn't shown when skip-compliant is set.

@@ -21,6 +21,7 @@ copyright: "Copyright &copy; 2025 Olivier Biot. Licensed under the MIT license."
 site_url: https://topmark.readthedocs.io/
 repo_name: shutterfreak/topmark
 repo_url: https://github.com/shutterfreak/topmark
+edit_uri: edit/main/docs/
 theme:
   name: material
   language: en
@@ -51,8 +52,22 @@ markdown_extensions:
           format: pymdownx.superfences.fence_code_format
   - pymdownx.highlight
 plugins:
-  - search
-  - autorefs
+  # 3. gen-files, being a generator, can safely remain last.
+  - gen-files:
+      scripts:
+        - docs/gen_api_pages.py
+  # 1. Include-markdown runs here, inserting the snippet content.
+  - include-markdown:
+      rewrite_relative_urls: true
+  # 2. Your custom hook runs LAST, guaranteeing it sees all text (main page + snippets).
+  #    This overrides the non-functional native conversion.
+  - mkdocs-simple-hooks:
+      hooks:
+        # Ensure the version is loaded before the build starts:
+        on_pre_build: "docs.hooks:pre_build"
+        # Process on-page markdown:
+        on_page_markdown: "docs.hooks:on_page_markdown"
+
   - mkdocstrings:
       default_handler: python
       handlers:
@@ -72,23 +87,9 @@ plugins:
               - "!^_" # hide “private” members
               - "!^__" # hide dunder members like __init__
 
-  # 1. Include-markdown runs here, inserting the snippet content.
-  - include-markdown:
-      rewrite_relative_urls: true
+  - autorefs
+  - search
 
-  # 2. Your custom hook runs LAST, guaranteeing it sees all text (main page + snippets).
-  #    This overrides the non-functional native conversion.
-  - mkdocs-simple-hooks:
-      hooks:
-        # Ensure the version is loaded before the build starts:
-        on_pre_build: "docs.hooks:pre_build"
-        # Process on-page markdown:
-        on_page_markdown: "docs.hooks:on_page_markdown"
-
-  # 3. gen-files, being a generator, can safely remain last.
-  - gen-files:
-      scripts:
-        - docs/gen_api_pages.py
 nav:
   - Home: index.md
   - Installation: install.md
@@ -121,5 +122,8 @@ nav:
       - "Internals": api/internals.md
   - Development:
       - "API Stability": dev/api-stability.md
+watch:
+  - src
+  - docs
 extra_javascript:
   - assets/version-warning.js

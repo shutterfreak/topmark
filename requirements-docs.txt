@@ -15,7 +15,7 @@
 #    pip-compile --constraint=constraints.txt --strip-extras requirements-docs.in
 #
 -e .
-    # via -r requirements.in
+    # via -
 babel==2.17.0
     # via mkdocs-material
 backrefs==5.9
@@ -125,13 +125,15 @@ pyyaml-env-tag==1.1
     # via mkdocs
 requests==2.32.5
     # via mkdocs-material
-ruff==0.13.3
+ruff==0.14.0
     # via topmark
 six==1.17.0
     # via python-dateutil
 toml==0.10.2
     # via topmark
 tomlkit==0.13.3
+    # via topmark
+typing-extensions==4.15.0
     # via topmark
 urllib3==2.5.0
     # via requests

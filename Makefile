@@ -15,7 +15,7 @@
 	format-check format docstring-links \
 	pytest \
 	property-test \
-	docs-build docs-serve \
+	docs-build docs-serve docs-clean \
 	links links-src links-all \
 	api-snapshot api-snapshot-dev api-snapshot-update api-snapshot-ensure-clean \
 	venv venv-sync-dev venv-clean \
@@ -58,6 +58,7 @@ help:
 	@echo "Docs:"
 	@echo "  docs-build      Build docs strictly (tox: docs)"
 	@echo "  docs-serve      Serve docs locally (tox: docs-serve)"
+	@echo "  docs-clean      Remove MkDocs build output (site/)"
 	@echo ""
 	@echo "Misc:"
 	@echo "  links           Check links in docs/ and *.md (tox: links)"
@@ -123,6 +124,9 @@ docs-build:
 docs-serve:
 	$(TOX) -e docs-serve
 
+docs-clean:
+	rm -rf site
+
 links: check-lychee
 	$(TOX) $(TOX_PAR) $(TOX_FLAGS) -e links
 
@@ -143,7 +147,7 @@ api-snapshot-dev: check-venv
 
 # Update snapshot (interactive)
 .api-snapshot-update: check-venv
-	@$(VENV_BIN)/$(PYTHON) tools/api_snapshot.py "$(PUBLIC_API_JSON)"
+	@$(VENV_BIN)/$(PY) tools/api_snapshot.py "$(PUBLIC_API_JSON)"
 	@if git diff --quiet -- "$(PUBLIC_API_JSON)" ; then \
 		echo "✅ Public API snapshot unchanged: $(PUBLIC_API_JSON)"; \
 	else \

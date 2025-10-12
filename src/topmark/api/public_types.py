@@ -76,6 +76,50 @@ class PublicFileType(Protocol):
     header_policy_name: str
 
 
+class PublicPolicy(TypedDict, total=False):
+    """Public, JSON-friendly policy overlay.
+
+    This structure mirrors a subset of the internal policy and can be passed
+    to `topmark.api.check()` / `topmark.api.strip()` to refine intent. All keys
+    are optional; unspecified options inherit from project/default config.
+
+    Keys:
+        add_only (bool): When `True`, allow only **insertion** of missing headers.
+            Updates to existing headers are blocked.
+        update_only (bool): When `True`, allow only **updates** to existing headers.
+            Insertion of missing headers is blocked.
+        allow_header_in_empty_files (bool): Permit inserting a header in an otherwise
+            empty file (e.g., `__init__.py`).
+
+    Notes:
+        This is a stable public contract; the internal policy may have additional
+        fields introduced over time. Unknown keys are ignored.
+    """
+
+    add_only: bool
+    update_only: bool
+    allow_header_in_empty_files: bool
+    # future: allow_unsafe_insert, allow_strip_on_malformed, etc.
+
+
+class PublicPolicyByType(TypedDict, total=False):
+    """Per-file-type public policy overlays.
+
+    A mapping from file type identifier (e.g., `"python"`) to a
+    `PublicPolicy` overlay that applies only to that type.
+
+    Example:
+        {"python": {"allow_header_in_empty_files": True}}
+
+    Notes:
+        Keys must match registered file type identifiers.
+    """
+
+    # keys are file type ids (e.g., "python"); values are PublicPolicy
+    # e.g. {"python": {"allow_header_in_empty_files": True}}
+    ...
+
+
 class PublicHeaderProcessor(Protocol):
     """Minimal public contract for a header processor bound to one file type.
 

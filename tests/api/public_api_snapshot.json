@@ -9,9 +9,9 @@
   "Registry.filetypes": "() -> 'Mapping[str, object]'",
   "Registry.processors": "() -> 'Mapping[str, object]'",
   "RunResult": "<class>",
-  "check": "(paths: 'Iterable[Path | str]', *, apply: 'bool' = False, config: 'Mapping[str, Any] | None' = None, file_types: 'Sequence[str] | None' = None, add_only: 'bool' = False, update_only: 'bool' = False, skip_compliant: 'bool' = False, skip_unsupported: 'bool' = False) -> 'RunResult'",
+  "check": "(paths: 'Iterable[Path | str]', *, apply: 'bool' = False, diff: 'bool' = False, config: 'Mapping[str, Any] | None' = None, policy: 'PublicPolicy | None' = None, policy_by_type: 'Mapping[str, PublicPolicy] | None' = None, file_types: 'Sequence[str] | None' = None, skip_compliant: 'bool' = False, skip_unsupported: 'bool' = False, prune: 'bool' = False) -> 'RunResult'",
   "get_filetype_info": "(long: 'bool' = False) -> 'list[FileTypeInfo]'",
   "get_processor_info": "(long: 'bool' = False) -> 'list[ProcessorInfo]'",
-  "strip": "(paths: 'Iterable[Path | str]', *, apply: 'bool' = False, config: 'Mapping[str, Any] | None' = None, file_types: 'Sequence[str] | None' = None, skip_compliant: 'bool' = False, skip_unsupported: 'bool' = False) -> 'RunResult'",
+  "strip": "(paths: 'Iterable[Path | str]', *, apply: 'bool' = False, diff: 'bool' = False, config: 'Mapping[str, Any] | None' = None, policy: 'PublicPolicy | None' = None, policy_by_type: 'Mapping[str, PublicPolicy] | None' = None, file_types: 'Sequence[str] | None' = None, skip_compliant: 'bool' = False, skip_unsupported: 'bool' = False, prune: 'bool' = False) -> 'RunResult'",
   "version": "() -> 'str'"
 }

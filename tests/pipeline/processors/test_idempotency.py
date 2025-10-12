@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.pipeline.conftest import run_insert
+from tests.pipeline.conftest import materialize_updated_lines, run_insert
 from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER
 
@@ -52,7 +52,7 @@ def test_idempotent_double_insert(tmp_path: Path, filename: str, content: str) -
 
     # First run inserts a header (if not present yet)
     ctx1: ProcessingContext = run_insert(f, cfg)
-    lines1: list[str] = ctx1.updated_file_lines or []
+    lines1: list[str] = materialize_updated_lines(ctx1)
 
     # Write updates to file
     with f.open("w", encoding="utf-8", newline="") as fp:
@@ -60,11 +60,11 @@ def test_idempotent_double_insert(tmp_path: Path, filename: str, content: str) -
 
     # Second run should be a no-op (idempotent)
     ctx2: ProcessingContext = run_insert(f, cfg)
-    lines2: list[str] = ctx2.updated_file_lines or []
+    lines2: list[str] = materialize_updated_lines(ctx2)
 
     assert lines2 == lines1, "Second run must be a no-op (idempotent)"
-    # Header should exist after first insert; guard it lightly
-    assert ctx1.existing_header_range is not None or ctx2.existing_header_range is not None
+    # Header must be detected by scanner on the second run (it’s now in the original file)
+    assert ctx2.header is not None
 
 
 @pytest.mark.parametrize(
@@ -85,7 +85,7 @@ def test_blank_line_after_header_for_line_and_block(
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
 
     # Find the line index of the end-of-header marker (comment-wrapped).
     end_idx: int = -1

@@ -75,6 +75,15 @@ COMMENT_STYLES: tuple[CommentStyle, ...] = (
 )
 
 
+def _normalize_eol(s: str, le: str) -> str:
+    """Normalize all end-of-line markers in ``s`` to ``le``."""
+    # First collapse CRLF and lone CR to LF, then map LF to target `le`
+    s = s.replace("\r\n", "\n").replace("\r", "\n")
+    if le != "\n":
+        s = s.replace("\n", le)
+    return s
+
+
 def _merge_fields(core: dict[str, str], extra: dict[str, str]) -> dict[str, str]:
     merged: dict[str, str] = {**core, **extra}
     return merged
@@ -201,6 +210,7 @@ def s_source_envelope_for_ext(
         if tail and not tail.lstrip().startswith("<"):
             # Wrap arbitrary text to keep XML processor assumptions valid
             content = content[:head_len] + f"<root>{tail}</root>\n"
+        content = _normalize_eol(content, le)
         style: CommentStyle = XML
 
     elif ext in (".py", ".sh"):
@@ -227,10 +237,15 @@ def s_source_envelope_for_ext(
         if body and not body.endswith(("\n", "\r", "\r\n")):
             body = body + le
 
-        lead = (bom or "") + (shebang + le if shebang else "")
+        # Shebang must be the first bytes in the file. If a shebang is present,
+        # suppress BOM to avoid generating invalid envelopes that our pipeline
+        # (correctly) refuses to modify under strict policy.
+        safe_bom: str = "" if shebang else (bom or "")
+        lead = safe_bom + (shebang + le if shebang else "")
         if pre_junk:
             lead += pre_junk + le
         content = lead + body
+        content = _normalize_eol(content, le)
         style = POUND
 
     else:
@@ -256,6 +271,7 @@ def s_source_envelope_for_ext(
         if pre_junk:
             lead += pre_junk + le
         content = lead + body
+        content = _normalize_eol(content, le)
         style = SLASH
 
     return content, style, le, ext

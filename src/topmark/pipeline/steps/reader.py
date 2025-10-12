@@ -11,10 +11,10 @@
 r"""File reader step for the TopMark pipeline.
 
 This step determines whether the target is a UTF-8 text file, detects the
-newline convention (LF, CRLF, or CR), and loads the file lines while preserving
+newline convention (LF, CRLF, or CR), and loads the file image (lines) while preserving
 original line endings. It updates the processing context with the detected
-newline style, whether the file ends with a newline, and the raw lines for
-subsequent steps.
+newline style, whether the file ends with a newline, and exposes the file image for subsequent
+steps via a view (see `ctx.image`).
 
 Implementation details:
   * Uses an incremental UTF-8 decoder to avoid false negatives when multibyte
@@ -30,12 +30,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.config.logging import TopmarkLogger, get_logger
+from topmark.filetypes.base import FileType
+from topmark.pipeline.adapters import PreInsertViewAdapter
 from topmark.pipeline.context import (
     ContentStatus,
     FsStatus,
     ProcessingContext,
-    may_proceed_to_read,
+    may_proceed_to_reader,
 )
+from topmark.pipeline.views import ListFileImageView
 
 if TYPE_CHECKING:
     from topmark.filetypes.base import FileType, InsertChecker, InsertCheckResult
@@ -80,10 +83,15 @@ def read(ctx: ProcessingContext) -> ProcessingContext:
     Notes:
         - Assumes `sniffer.sniff()` has already handled existence, permissions,
           binary detection, BOM/shebang ordering policy, and mixed-newlines policy.
-        - Sets `ctx.file_lines` (keepends), `ctx.ends_with_newline`, and a precise
-          newline histogram; updates `ctx.newline_style` to the dominant style if observed.
+        - Sets `ctx.image = ListFileImageView(lines)` (preserving original line endings),
+          provides streaming access through `ctx.iter_file_lines()`, and records
+          `ctx.ends_with_newline`, a precise newline histogram in `ctx.newline_hist`,
+          and the dominant newline style in `ctx.newline_style`.
     """
-    if not may_proceed_to_read(ctx):
+    logger.debug("ctx: %s", ctx)
+
+    if not may_proceed_to_reader(ctx):
+        logger.info("Reader skipped by may_proceed_to_reader()")
         return ctx
 
     # Safeguard: header_processor and file_type have been set in resolver.resolve()
@@ -117,7 +125,6 @@ def read(ctx: ProcessingContext) -> ProcessingContext:
         if len(lines) == 0 or (len(lines) == 1 and lines[0] == ""):
             # Edge case: file truncated to 0 bytes between sniff and read.
             # Mirror sniffer semantics for consistency.
-            ctx.file_lines = []
             ctx.ends_with_newline = False
             ctx.status.fs = FsStatus.EMPTY
             # NOTE: real zero-length files already marked EMPTY in sniffer
@@ -127,7 +134,7 @@ def read(ctx: ProcessingContext) -> ProcessingContext:
         ctx.ends_with_newline = lines[-1].endswith(("\r\n", "\n", "\r"))
 
         # Preserve original line endings; each element contains its own terminator
-        ctx.file_lines = lines
+        ctx.image = ListFileImageView(lines)
 
         # Compute detailed newline histogram
         hist: dict[str, int] = _newline_histogram(lines)
@@ -191,14 +198,14 @@ def read(ctx: ProcessingContext) -> ProcessingContext:
             ctx.ends_with_newline,
         )
         logger.trace(
-            "File '%s' (content status: %s) - read_file_lines: lines: %d",
+            "File '%s' (content status: %s) - lines: %d",
             ctx.path,
             ctx.status.content.value,
-            len(ctx.file_lines) if ctx.file_lines else 0,
+            len(lines) if lines else 0,
         )
 
         # Advisory-only pre-insert probe.
-        # Now that `file_lines` are populated, we can compute a *preview* of
+        # Now that the file image is available, we can compute a *preview* of
         # whether insertion would be allowed. This is used for bucketing and
         # debug logs only; the updater remains the authoritative gate and is the
         # only step that emits user-facing diagnostics.
@@ -210,7 +217,8 @@ def read(ctx: ProcessingContext) -> ProcessingContext:
             try:
                 from topmark.filetypes.base import InsertCapability  # local to avoid cycles
 
-                res: "InsertCheckResult" = checker(ctx) or {}
+                view = PreInsertViewAdapter(ctx)
+                res: "InsertCheckResult" = checker(view) or {}
                 if res:
                     ctx.pre_insert_capability = res.get("capability", InsertCapability.UNEVALUATED)
                     ctx.pre_insert_reason = res.get("reason", "")
@@ -224,7 +232,7 @@ def read(ctx: ProcessingContext) -> ProcessingContext:
                 # Advisory-only; never fail the reader on checker issues.
                 logger.debug("reader advisory pre-insert checker failed; ignoring", exc_info=True)
 
-        return ctx  # TODO: check indentation level
+        return ctx
 
     except Exception as e:  # Log and attach diagnostic; continue without raising
         ctx.status.content = ContentStatus.UNREADABLE

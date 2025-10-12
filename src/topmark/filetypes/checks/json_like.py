@@ -52,7 +52,7 @@ def json_like_can_insert(
             "origin": origin,
         }
 
-    text: str = "".join(ctx.file_lines or [])
+    text: str = "".join(ctx.lines or [])
     has_non_topmark_comment: bool = ("//" in text or "/*" in text) and (
         "topmark:header" not in text
     )

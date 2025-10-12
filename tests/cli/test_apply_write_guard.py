@@ -108,7 +108,7 @@ def test_strip_apply_writes_only_on_removed_and_preserves_body(tmp_path: Path) -
     # 1) Prepare a file with a header + body
     p: Path = tmp_path / "h.py"
     p.write_text(
-        f"# {TOPMARK_START_MARKER}\n# a\n# {TOPMARK_END_MARKER}\nprint('body')\n",
+        f"# {TOPMARK_START_MARKER}\n# test:header\n# {TOPMARK_END_MARKER}\nprint('body')\n",
         "utf-8",
     )
 

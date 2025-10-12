@@ -25,7 +25,7 @@ from topmark.pipeline import runner
 from topmark.pipeline.context import ProcessingContext
 from topmark.rendering.formats import HeaderOutputFormat
 
-from ..pipeline.pipelines import get_pipeline
+from ..pipeline.pipelines import Pipeline
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -90,11 +90,14 @@ def render_header_for_path(
     )
 
     # Get the pipeline steps
-    steps: Sequence[Step] = get_pipeline("render")
+    pipeline: Sequence[Step] = Pipeline.CHECK_RENDER.steps
+
     # Bootstrap the context with the effective config
     context: ProcessingContext = ProcessingContext.bootstrap(path=path, config=eff_config)
     # Run the pipeline
-    context = runner.run(context, steps)
+    context = runner.run(context, pipeline)
     # Return the header
 
-    return context.expected_header_block or ""
+    if context.render:
+        return context.render.block or ""
+    return ""

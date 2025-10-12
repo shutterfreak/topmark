@@ -22,14 +22,21 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tests.conftest import mark_pipeline
-from tests.pipeline.conftest import BlockSignatures, expected_block_lines_for, find_line, run_insert
+from tests.pipeline.conftest import (
+    BlockSignatures,
+    expected_block_lines_for,
+    find_line,
+    materialize_image_lines,
+    materialize_updated_lines,
+    run_insert,
+)
 from topmark.config import Config, MutableConfig
 from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.filetypes.base import InsertCapability
 from topmark.pipeline import runner
 from topmark.pipeline.context import ProcessingContext, ResolveStatus, WriteStatus
-from topmark.pipeline.pipelines import get_pipeline
+from topmark.pipeline.pipelines import Pipeline
 from topmark.pipeline.processors.xml import XmlHeaderProcessor
 
 if TYPE_CHECKING:
@@ -54,14 +61,14 @@ def test_xml_processor_basics(tmp_path: Path) -> None:
     file.write_text("<html>\n<body><p>Hello.</p></body></html>")
 
     config: Config = MutableConfig.from_defaults().freeze()
-    context: ProcessingContext = ProcessingContext.bootstrap(path=file, config=config)
-    steps: Sequence[Step] = get_pipeline("check")
-    context = runner.run(context, steps)
+    ctx: ProcessingContext = ProcessingContext.bootstrap(path=file, config=config)
+    pipeline: Sequence[Step] = Pipeline.CHECK.steps
+    ctx = runner.run(ctx, pipeline)
 
-    assert context.path == file
-    assert context.file_type and context.file_type.name == "html"
-    assert context.file_lines is not None
-    assert context.existing_header_range is None
+    assert ctx.path == file
+    assert ctx.file_type and ctx.file_type.name == "html"
+    assert ctx.image is not None
+    assert ctx.header is None
 
 
 @mark_pipeline
@@ -77,7 +84,7 @@ def test_html_top_of_file_with_trailing_blank(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     logger.debug("ctx.updated_file_lines: %s", lines)
     sig: BlockSignatures = expected_block_lines_for(f)
     if "block_open" in sig:
@@ -103,7 +110,7 @@ def test_markdown_top_of_file_with_trailing_blank(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     sig: BlockSignatures = expected_block_lines_for(f)
     if "block_open" in sig:
         assert find_line(lines, sig["block_open"]) == 0
@@ -126,7 +133,7 @@ def test_xml_with_declaration_only(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     sig: BlockSignatures = expected_block_lines_for(f)
     assert lines[0].lstrip("\ufeff").startswith("<?xml")
     if "block_open" in sig:
@@ -152,7 +159,7 @@ def test_xml_with_declaration_and_doctype(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     sig: BlockSignatures = expected_block_lines_for(f)
     assert lines[0].lstrip("\ufeff").startswith("<?xml")
     if "block_open" in sig:
@@ -180,7 +187,7 @@ def test_svg_with_declaration(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     sig: BlockSignatures = expected_block_lines_for(f)
     assert lines[0].lstrip("\ufeff").startswith("<?xml")
     if "block_open" in sig:
@@ -202,7 +209,7 @@ def test_vue_top_of_file(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     sig: BlockSignatures = expected_block_lines_for(f)
     if "block_open" in sig:
         assert find_line(lines, sig["block_open"]) == 0
@@ -224,7 +231,7 @@ def test_svelte_top_of_file(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     sig: BlockSignatures = expected_block_lines_for(f)
     if "block_open" in sig:
         assert find_line(lines, sig["block_open"]) == 0
@@ -252,7 +259,11 @@ def test_xml_single_line_declaration(tmp_path: Path) -> None:
     assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.pre_insert_capability == InsertCapability.SKIP_IDEMPOTENCE_RISK
     assert ctx.status.write == WriteStatus.SKIPPED
-    assert (ctx.updated_file_lines or []) == (ctx.file_lines or [])
+
+    current_lines: list[str] = materialize_image_lines(ctx)
+    updated_lines: list[str] = materialize_updated_lines(ctx)
+
+    assert current_lines == updated_lines
 
 
 @mark_pipeline
@@ -273,7 +284,11 @@ def test_xml_single_line_decl_and_doctype(tmp_path: Path) -> None:
     assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.pre_insert_capability == InsertCapability.SKIP_IDEMPOTENCE_RISK
     assert ctx.status.write == WriteStatus.SKIPPED
-    assert (ctx.updated_file_lines or []) == (ctx.file_lines or [])
+
+    current_lines: list[str] = materialize_image_lines(ctx)
+    updated_lines: list[str] = materialize_updated_lines(ctx)
+
+    assert current_lines == updated_lines
 
 
 @mark_pipeline
@@ -289,7 +304,7 @@ def test_html_with_existing_banner_comment(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     sig: BlockSignatures = expected_block_lines_for(f)
 
     # Header must start at very top
@@ -319,7 +334,7 @@ def test_markdown_with_existing_banner_comment(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     sig: BlockSignatures = expected_block_lines_for(f)
 
     if "block_open" in sig:
@@ -345,7 +360,7 @@ def test_xml_decl_then_existing_banner_comment(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     sig: BlockSignatures = expected_block_lines_for(f)
 
     assert lines[0].lstrip("\ufeff").startswith("<?xml")
@@ -378,7 +393,7 @@ def test_xml_decl_doctype_then_existing_banner_comment(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     sig: BlockSignatures = expected_block_lines_for(f)
 
     assert lines[0].lstrip("\ufeff").startswith("<?xml")
@@ -447,7 +462,7 @@ def test_markdown_fenced_code_no_insertion_inside(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     # Header should be at top (before the fenced block) and not inside it
     sig: BlockSignatures = expected_block_lines_for(f)
     if "block_open" in sig:
@@ -469,7 +484,7 @@ def test_xml_doctype_with_internal_subset(tmp_path: Path) -> None:
     f.write_text('<?xml version="1.0"?>\n<!DOCTYPE root [\n  <!ELEMENT root EMPTY>\n]>\n<root/>\n')
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
 
     assert lines[0].lstrip("\ufeff").startswith("<?xml")
 
@@ -495,7 +510,9 @@ def test_xml_bom_preserved_text_insert(tmp_path: Path) -> None:
     f.write_bytes(b"\xef\xbb\xbf<?xml version='1.0'?>\n<root/>\n")
     ctx: ProcessingContext = run_insert(f, MutableConfig.from_defaults().freeze())
 
-    assert (ctx.updated_file_lines or [])[0].startswith("\ufeff")
+    updated_lines: list[str] = materialize_updated_lines(ctx)
+
+    assert updated_lines[0].startswith("\ufeff")
 
 
 def test_xml_processor_respects_prolog_and_removes_block() -> None:

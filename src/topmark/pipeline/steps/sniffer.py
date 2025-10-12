@@ -32,7 +32,7 @@ from topmark.pipeline.context import (
     ContentStatus,
     FsStatus,
     ProcessingContext,
-    may_proceed_to_sniff,
+    may_proceed_to_sniffer,
 )
 
 if TYPE_CHECKING:
@@ -148,10 +148,13 @@ def sniff(ctx: ProcessingContext) -> ProcessingContext:
       - Does **not** populate `ctx.file_lines`; that is the reader's job.
       - If this step sets a non-RESOLVED file status, later steps will early-return.
     """
+    logger.debug("ctx: %s", ctx)
+
     ctx.status.fs = FsStatus.PENDING
 
     # Only proceed if resolve succeeded
-    if not may_proceed_to_sniff(ctx):
+    if not may_proceed_to_sniffer(ctx):
+        logger.info("Sniffer skipped by may_proceed_to_sniffer()")
         return ctx
 
     # Existence / permission

@@ -99,6 +99,37 @@ align_fields = true
 # header_format = "native"
 
 
+# ======================
+# Policy configuration
+# ======================
+
+[policy]
+# Global policy that governs whether TopMark may add or update headers.
+#
+# add_only:
+#   * true  → Only insert missing headers; do not update existing headers.
+#   * false → Allow both insert and update (subject to other policy flags).
+add_only = false
+#
+# update_only:
+#   * true  → Only update existing headers; do not insert missing headers.
+#   * false → Allow both update and insert (subject to other policy flags).
+update_only = false
+#
+# allow_header_in_empty_files:
+#   Permit inserting a header into an otherwise empty file (e.g., `__init__.py`).
+#   This is disabled by default to avoid surprising diffs in empty placeholders.
+allow_header_in_empty_files = false
+
+# Per‑file‑type policy overrides.
+# Define sub‑tables under `[policy_by_type.<file_type_id>]` to fine‑tune behavior.
+#
+# Example (uncomment to allow headers in empty Python files only):
+#
+# [policy_by_type.python]
+# allow_header_in_empty_files = true
+
+
 # ===================
 # Files configuration
 # ===================

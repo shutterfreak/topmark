@@ -16,9 +16,10 @@ header defaults extraction, color handling, and summary rendering.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Iterable, Sequence
 
 from topmark.cli.console_helpers import get_console_safely
+from topmark.cli_shared.console_api import ConsoleLike
 from topmark.cli_shared.utils import OutputFormat, count_by_outcome
 from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.utils.diff import render_patch
@@ -77,12 +78,14 @@ def emit_diffs(results: list[ProcessingContext], *, diff: bool, command: click.C
     """
     import pprint
 
-    console = get_console_safely()
+    console: ConsoleLike = get_console_safely()
     logger.debug("topmark %s: diff: %s, entries: %d", command.name, diff, len(results))
     for r in results:
         logger.trace("topmark %s: diff: %s, result: %s", command.name, diff, pprint.pformat(r, 2))
-        if diff and r.header_diff:
-            console.print(render_patch(r.header_diff))
+        if diff:
+            diff_text: str | None = r.diff.text if r.diff else None
+            if diff_text:
+                console.print(render_patch(diff_text))
 
 
 def emit_machine_output(
@@ -128,8 +131,10 @@ def emit_updated_content_to_stdout(results: list[ProcessingContext]) -> None:
     """Write updated content to stdout when applying to a single STDIN file."""
     console: ConsoleLike = get_console_safely()
     for r in results:
-        if r.updated_file_lines is not None:
-            console.print("".join(r.updated_file_lines), nl=False)
+        if r.updated:
+            updated_file_lines: Sequence[str] | Iterable[str] | None = r.updated.lines
+            if updated_file_lines is not None:
+                console.print("".join(updated_file_lines), nl=False)
 
 
 def render_banner(ctx: click.Context, *, n_files: int) -> None:

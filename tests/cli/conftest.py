@@ -36,6 +36,7 @@ def run_cli_in(
     argv: str | Sequence[str] | None,
     *,
     input_text: str | bytes | IO[Any] | None = None,
+    prune: bool = False,
 ) -> Result:
     """Invoke the CLI with `tmp_path` as the working directory.
 
@@ -50,6 +51,7 @@ def run_cli_in(
         argv (str | Sequence[str] | None): CLI argument vector, e.g. `["--apply", "*.py"]`.
         input_text (str | bytes | IO[Any] | None): Optional standard input to pass to the command.
             This can be a string, bytes, or a file-like object for `--stdin` modes.
+        prune (bool): If `True`, trim heavy views after the run (keeps summaries).
 
     Returns:
         Result: The `click.testing.Result` produced by
@@ -65,7 +67,12 @@ def run_cli_in(
     cwd: str = os.getcwd()
     try:
         os.chdir(tmp_path)
-        return runner.invoke(cli, argv, input=input_text)
+        return runner.invoke(
+            cli,
+            argv,
+            input=input_text,
+            obj={"prune": prune},  # inject test override into Click’s context object
+        )
     finally:
         os.chdir(cwd)
 
@@ -74,6 +81,7 @@ def run_cli(
     argv: str | Sequence[str] | None,
     *,
     input_text: str | bytes | IO[Any] | None = None,
+    prune: bool = False,
 ) -> Result:
     """Invoke the CLI without changing the working directory.
 
@@ -89,6 +97,7 @@ def run_cli(
         input_text (str | bytes | IO[Any] | None): Optional standard input to pass
             to the command. This can be a string, bytes, or a file-like object for
             ``--stdin`` modes.
+        prune (bool): If `True`, trim heavy views after the run (keeps summaries).
 
     Returns:
         Result: The `click.testing.Result` produced by
@@ -101,7 +110,12 @@ def run_cli(
         ```
     """
     runner = CliRunner()
-    return runner.invoke(cli, argv, input=input_text)
+    return runner.invoke(
+        cli,
+        argv,
+        input=input_text,
+        obj={"prune": prune},  # inject test override into Click’s context object
+    )
 
 
 def assert_SUCCESS(result: Result) -> None:

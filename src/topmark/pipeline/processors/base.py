@@ -40,13 +40,17 @@ from typing import TYPE_CHECKING, Final, Pattern
 from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.policy_whitespace import is_pure_spacer
+from topmark.pipeline.processors.types import HeaderParseResult
 from topmark.rendering.formats import HeaderOutputFormat
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from topmark.config import Config
     from topmark.filetypes.base import FileType
     from topmark.filetypes.policy import FileTypeHeaderPolicy
     from topmark.pipeline.context import ProcessingContext
+    from topmark.pipeline.views import HeaderView
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -63,7 +67,7 @@ def _equals_affix_ignoring_space_tab(line: str, affix: str) -> bool:
     affix equality we want to allow incidental spaces/tabs around the affix,
     but preserve any other leading characters as significant.
     """
-    s = line.rstrip("\r\n").strip(" \t")
+    s: str = line.rstrip("\r\n").strip(" \t")
     return s == (affix or "")
 
 
@@ -189,56 +193,64 @@ class HeaderProcessor:
         self._encoding_pattern: Pattern[str] | None = None
         self._encoding_pattern_src: str | None = None
 
-    def parse_fields(self, context: ProcessingContext) -> dict[str, str]:
-        """Parse key-value pairs from the detected header block (outer slice).
+    def parse_fields(self, context: ProcessingContext) -> HeaderParseResult:
+        """Parse key-value pairs from the detected header block (*view-based*).
 
-        This implementation is robust to scanners providing an *outer* slice that may
-        include block wrappers and always includes the TopMark START/END marker lines.
-        It searches within ``context.existing_header_lines`` for the first START marker
-        and the next END marker, then parses only the payload lines between them.
+        This implementation expects the scanner to have populated
+        `context.header` with an outer slice (markers included). It searches
+        within ``context.header.lines`` for the first START marker and the next END
+        marker, then parses only the payload lines between them.
 
         Args:
-            context (ProcessingContext): Pipeline context with ``existing_header_lines``
-                set to the outer header slice (markers included).
+            context (ProcessingContext): Pipeline context where ``header`` has been
+                set to a [`topmark.pipeline.views.HeaderView`][] (range/lines/block/mapping).
 
         Returns:
-            dict[str, str]: Mapping of parsed header fields (key → value). Returns an
-                empty dict if no payload is found or markers are missing.
+            HeaderParseResult: Parsed mapping and per-line success/error counters.
 
         Notes:
             - Comment affixes (``line_prefix`` / ``line_suffix``) are stripped per line.
-            - Malformed field lines add diagnostics but do not set MALFORMED; reserve
-              MALFORMED for marker issues (normally handled by the scanner).
+            - Malformed field lines add diagnostics but do not mutate ``context.status.header``
+              (handled by the scanner).
             - Subclasses may override to support multi-line fields or alternate syntax.
         """
-        lines: list[str] | None = context.existing_header_lines
-        # TODO: improve
-        if not context.existing_header_range or not lines:
-            return {}
+        # Keep track of processed header entries (lines)
+        cnt_header_ok: int = 0
+        cnt_header_error: int = 0
 
-        logger.info("line count: %d, lines: %s", len(lines), lines)
+        empty_result = HeaderParseResult()
+
+        hv: HeaderView | None = context.header
+        if hv is None or hv.range is None or hv.lines is None:
+            return HeaderParseResult(
+                fields={}, success_count=cnt_header_ok, error_count=cnt_header_error
+            )
+
+        # Operate on the header lines as provided by the scanner (outer slice).
+        lines: list[str] = list(hv.lines)
+        if not lines:
+            return empty_result
 
         # 1) Locate START and END markers *within* the provided slice.
         start_rel: int | None
         end_rel: int | None
         start_rel, end_rel = self._find_inner_marker_indices(lines)
         if start_rel is None or end_rel is None or end_rel <= start_rel:
-            # Keep scanner as the single authority for header MALFORMED status.
-            # Here we just surface a diagnostic to aid debugging.
+            # Keep scanner as the single authority for MALFORMED; just surface a diagnostic.
             context.add_error("parse_fields(): could not locate a valid START/END marker pair.")
-            return {}
+            return empty_result
 
         # 2) Extract payload (strictly between markers).
         payload: list[str] = lines[start_rel + 1 : end_rel]
         if not payload:
-            return {}
+            return empty_result
 
         # 3) Parse lines as `key: value`, stripping comment affixes and whitespace.
-        result: dict[str, str] = {}
+        header_mapping: dict[str, str] = {}
         # Compute approximate absolute line number for diagnostics if we can.
         abs_start: int
         _abs_end: int
-        abs_start, _abs_end = context.existing_header_range
+        abs_start, _abs_end = hv.range
 
         for i, raw in enumerate(payload, start=1):
             # Absolute line number in the original file (1-based)
@@ -250,9 +262,16 @@ class HeaderProcessor:
                 continue
 
             if ":" not in cleaned:
+                # Header line has no colon
+                logger.warning(
+                    "Malformed header at line %d (no colon found): %s",
+                    abs_line_no,
+                    raw,
+                )
                 context.add_error(
                     f"Unrecognized header field name at line {abs_line_no}: '{raw.rstrip()}'"
                 )
+                cnt_header_error += 1
                 continue
 
             key: str
@@ -261,18 +280,26 @@ class HeaderProcessor:
             k: str = key.strip()
             v: str = value.strip()
             if not k:
+                # Header line has colon but empty text before colon
                 logger.warning(
-                    "Malformed header at line %d: %s",
+                    "Malformed header at line %d (empty text before colon): %s",
                     abs_line_no,
                     raw,
                 )
                 context.add_error(
                     f"Empty header field name at line {abs_line_no}: '{raw.rstrip()}'"
                 )
+                cnt_header_error += 1
                 continue
-            result[k] = v
 
-        return result
+            header_mapping[k] = v
+            cnt_header_ok += 1
+
+        return HeaderParseResult(
+            fields=header_mapping,
+            success_count=cnt_header_ok,
+            error_count=cnt_header_error,
+        )
 
     def _find_inner_marker_indices(self, lines: list[str]) -> tuple[int | None, int | None]:
         """Find START and END marker indices relative to the given slice.
@@ -773,6 +800,7 @@ class HeaderProcessor:
         before = 0
         after = 2
         if self.file_type is not None:
+            # TODO: add both properties to the FileType dataclass
             before = int(getattr(self.file_type, "scan_window_before", before) or 0)
             after = int(getattr(self.file_type, "scan_window_after", after) or 2)
 
@@ -781,29 +809,44 @@ class HeaderProcessor:
     def get_header_bounds(
         self,
         *,
-        lines: list[str],
+        lines: Iterable[str],
         newline_style: str,
     ) -> tuple[int | None, int | None]:
-        """Identify the inclusive (start, end) line indices of the TopMark header.
+        """Locate the TopMark header bounds as (start_idx, end_idx), inclusive.
 
-        Supports both line-comment and block-comment styles depending on the processor's
-        configuration. Uses `validate_header_location` to filter candidates near
-        the computed insertion anchor.
+        This scanner searches for the first ``TOPMARK_START_MARKER`` and the next
+        ``TOPMARK_END_MARKER`` using the processor's affix rules
+        (``line_has_directive``). It accepts any iterable of lines to avoid
+        requiring a full materialization up-front.
 
         Args:
-            lines (list[str]): Full list of lines from the file.
-            newline_style (str): Newline style (``LF``, ``CR``, ``CRLF``).
+            lines (Iterable[str]): Logical file lines (``keepends=True``). The iterable
+                may be list-backed or lazy (e.g., a generator).
+            newline_style (str): Dominant newline style (``LF``, ``CR``, ``CRLF``);
+                unused by the default scanner but kept for parity with callers.
 
         Returns:
-            tuple[int | None, int | None]: ``(start_index, end_index)`` (inclusive) when
-                a valid header is found, or ``(None, None)`` otherwise.
+            tuple[int | None, int | None]: A pair ``(start_idx, end_idx)`` when a
+                plausible header is found, otherwise ``(None, None)``. Indices are
+                0-based and inclusive.
+
+        Notes:
+            - Implementations may override for format-specific heuristics.
+            - We materialize to a local list only once to support look-ahead and
+              validation helpers that require random access.
         """
+        # Materialize locally to support look-ahead and validation helpers.
+        buf: list[str] = list(lines)
+
+        if not buf:
+            return (None, None)
+
         # Derive the expected anchor. Prefer the line-based façade; if a processor
         # uses a char-offset strategy (returns NO_LINE_ANCHOR), translate the
         # character offset into a line index for proximity validation.
-        anchor_idx: int = self.compute_insertion_anchor(lines)
+        anchor_idx: int = self.compute_insertion_anchor(buf)
         if anchor_idx == NO_LINE_ANCHOR:
-            text: str = "".join(lines)
+            text: str = "".join(buf)
             char_off: int | None = self.get_header_insertion_char_offset(text)
             if char_off is not None:
                 anchor_idx = text[:char_off].count(
@@ -813,13 +856,14 @@ class HeaderProcessor:
                 anchor_idx = 0
 
         if self.block_prefix and self.block_suffix:
-            candidates: list[tuple[int, int]] = self._collect_bounds_block_comments(lines)
+            candidates: list[tuple[int, int]] = self._collect_bounds_block_comments(buf)
+            # should return outer-inclusive spans
         else:
-            candidates = self._collect_bounds_line_comments(lines)
+            candidates = self._collect_bounds_line_comments(buf)
 
         for s, e in candidates:
             if self.validate_header_location(
-                lines,
+                buf,
                 header_start_idx=s,
                 header_end_idx=e,
                 anchor_idx=anchor_idx,

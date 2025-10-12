@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tests.conftest import parametrize
+from tests.pipeline.conftest import materialize_image_lines
 from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.context import (
@@ -216,8 +217,10 @@ def test_read_leading_bom_without_shebang(tmp_path: Path) -> None:
 
     assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.leading_bom is True
-    assert ctx.file_lines is not None
-    assert not ctx.file_lines[0].startswith("\ufeff"), "BOM must be stripped from in-memory text"
+    assert ctx.image is not None
+    lines: list[str] = materialize_image_lines(ctx)
+    assert lines is not None
+    assert not lines[0].startswith("\ufeff"), "BOM must be stripped from in-memory text"
 
 
 def test_read_accepts_unicode_rich_text(tmp_path: Path) -> None:
@@ -258,7 +261,10 @@ def test_read_bom_only_file_contract(tmp_path: Path) -> None:
     assert ctx.status.fs == FsStatus.EMPTY
     assert ctx.leading_bom is True
     assert ctx.ends_with_newline is False
-    assert ctx.file_lines == []  # BOM-only file is treated as empty
+
+    lines: list[str] = materialize_image_lines(ctx)
+
+    assert lines == []  # BOM-only file is treated as empty
 
 
 def test_read_mixed_newlines_even_if_dominant(tmp_path: Path) -> None:
@@ -438,5 +444,8 @@ def test_read_handles_very_large_single_line_no_newline(tmp_path: Path) -> None:
     assert ctx.ends_with_newline is False
     assert ctx.newline_hist == {}
     assert ctx.dominance_ratio is None
-    assert isinstance(ctx.file_lines, list) and len(ctx.file_lines) == 1
-    assert ctx.file_lines[0].endswith("\n") is False
+
+    lines: list[str] = materialize_image_lines(ctx)
+
+    assert isinstance(lines, list) and len(lines) == 1
+    assert lines[0].endswith("\n") is False

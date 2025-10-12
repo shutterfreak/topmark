@@ -22,7 +22,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tests.pipeline.conftest import run_insert
+from tests.pipeline.conftest import materialize_updated_lines, run_insert
 from topmark.config import Config, MutableConfig
 from topmark.pipeline.processors import get_processor_for_file
 
@@ -41,7 +41,10 @@ def test_xml_single_line_insert_then_strip_preserves_layout(tmp_path: Path) -> N
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
-    after_insert: str = "".join(ctx.updated_file_lines or [])
+
+    lines: list[str] = materialize_updated_lines(ctx)
+    after_insert: str = "".join(lines)
+
     assert after_insert.startswith("\ufeff") or after_insert.startswith("<?xml"), (
         "Declaration must remain first logical line"
     )

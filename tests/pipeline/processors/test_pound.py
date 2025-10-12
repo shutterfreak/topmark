@@ -20,14 +20,22 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
+
 from tests.conftest import mark_pipeline
-from tests.pipeline.conftest import BlockSignatures, expected_block_lines_for, find_line, run_insert
+from tests.pipeline.conftest import (
+    BlockSignatures,
+    expected_block_lines_for,
+    find_line,
+    materialize_updated_lines,
+    run_insert,
+)
 from topmark.config import Config, MutableConfig
 from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline import runner
 from topmark.pipeline.context import HeaderStatus, ProcessingContext
-from topmark.pipeline.pipelines import get_pipeline
+from topmark.pipeline.pipelines import Pipeline
 from topmark.pipeline.processors.pound import PoundHeaderProcessor
 
 if TYPE_CHECKING:
@@ -52,14 +60,14 @@ def test_pound_processor_basics(tmp_path: Path) -> None:
     file.write_text("#!/usr/bin/env python3\n\nprint('hello')\n")
 
     config: Config = MutableConfig.from_defaults().freeze()
-    context: ProcessingContext = ProcessingContext.bootstrap(path=file, config=config)
-    steps: Sequence[Step] = get_pipeline("check")
-    context = runner.run(context, steps)
+    ctx: ProcessingContext = ProcessingContext.bootstrap(path=file, config=config)
+    pipeline: Sequence[Step] = Pipeline.CHECK.steps
+    ctx = runner.run(ctx, pipeline)
 
-    assert context.path == file
-    assert context.file_type and context.file_type.name == "python"
-    assert context.file_lines is not None
-    assert context.existing_header_range is None
+    assert ctx.path == file
+    assert ctx.file_type and ctx.file_type.name == "python"
+    assert ctx.image is not None  # or: assert context.file_line_count() > 0
+    assert ctx.header is None
 
 
 @mark_pipeline
@@ -87,15 +95,16 @@ def test_pound_processor_detects_existing_header(tmp_path: Path) -> None:
     )
 
     config: Config = MutableConfig.from_defaults().freeze()
-    context: ProcessingContext = ProcessingContext.bootstrap(path=file, config=config)
-    steps: Sequence[Step] = get_pipeline("check")
-    context = runner.run(context, steps)
+    ctx: ProcessingContext = ProcessingContext.bootstrap(path=file, config=config)
+    pipeline: Sequence[Step] = Pipeline.CHECK.steps
+    ctx = runner.run(ctx, pipeline)
 
-    assert context.file_type and context.file_type.name == "python"
-    assert context.existing_header_range == (0, 5)
-    assert context.existing_header_dict is not None
-    assert "file" in context.existing_header_dict
-    assert context.existing_header_dict["file"] == "example.py"
+    assert ctx.file_type and ctx.file_type.name == "python"
+    assert ctx.header is not None
+    assert ctx.header.range == (0, 5)
+    assert ctx.header.mapping is not None
+    assert "file" in ctx.header.mapping
+    assert ctx.header.mapping["file"] == "example.py"
 
 
 @mark_pipeline
@@ -113,18 +122,38 @@ def test_pound_processor_missing_header(tmp_path: Path) -> None:
     file.write_text("#!/usr/bin/env python3\n\nprint('no header here')\n")
 
     config: Config = MutableConfig.from_defaults().freeze()
-    context: ProcessingContext = ProcessingContext.bootstrap(path=file, config=config)
-    steps: Sequence[Step] = get_pipeline("check")
-    context = runner.run(context, steps)
+    ctx: ProcessingContext = ProcessingContext.bootstrap(path=file, config=config)
+    pipeline: Sequence[Step] = Pipeline.CHECK.steps
+    ctx = runner.run(ctx, pipeline)
 
-    assert context.file_type and context.file_type.name == "python"
-    assert context.existing_header_range is None
-    assert context.existing_header_dict == {} or context.existing_header_dict is None
-    assert context.status.header.name == "MISSING"
+    assert ctx.file_type and ctx.file_type.name == "python"
+    assert ctx.header is None
+    assert ctx.status.header.name == "MISSING"
 
 
 @mark_pipeline
-def test_pound_processor_malformed_header(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "header_fields, expected_status",
+    [
+        (
+            "# bad header\n",  # Missing colon
+            HeaderStatus.MALFORMED_ALL_FIELDS,
+        ),
+        (
+            "# valid: header\n# bad header\n",  # One header OK, one with missing colon
+            HeaderStatus.MALFORMED_SOME_FIELDS,
+        ),
+        (
+            "# valid: header\n",  # Header OK
+            HeaderStatus.DETECTED,
+        ),
+    ],
+)
+def test_pound_malformed_header_fields(
+    tmp_path: Path,
+    header_fields: str,
+    expected_status: HeaderStatus,
+) -> None:
     """Test that PoundHeaderProcessor handles malformed TopMark headers.
 
     This test verifies that if the header block is incomplete or malformed,
@@ -132,25 +161,22 @@ def test_pound_processor_malformed_header(tmp_path: Path) -> None:
 
     Args:
         tmp_path (Path): Temporary path provided by pytest for test file creation.
+        header_fields (str): Header fields for the test
+        expected_status (HeaderStatus): expected HeaderStatus value for the test
     """
     file: Path = tmp_path / "malformed.py"
     file.write_text(
-        f"# {TOPMARK_START_MARKER}\n"
-        "#   file example.py\n"  # Missing colon
-        f"# {TOPMARK_END_MARKER}\n"
-        "\n"
-        "print('oops')\n"
+        f"# {TOPMARK_START_MARKER}\n{header_fields}# {TOPMARK_END_MARKER}\n\nprint('oops')\n"
     )
 
     config: Config = MutableConfig.from_defaults().freeze()
-    context: ProcessingContext = ProcessingContext.bootstrap(path=file, config=config)
-    steps: Sequence[Step] = get_pipeline("check")
-    context = runner.run(context, steps)
+    ctx: ProcessingContext = ProcessingContext.bootstrap(path=file, config=config)
+    pipeline: Sequence[Step] = Pipeline.CHECK.steps
+    ctx = runner.run(ctx, pipeline)
 
-    assert context.file_type and context.file_type.name == "python"
-    assert context.existing_header_range == (0, 2)
-    assert context.existing_header_dict == {} or context.existing_header_dict is None
-    assert context.status.header in {HeaderStatus.MALFORMED, HeaderStatus.EMPTY}
+    assert ctx.file_type and ctx.file_type.name == "python"
+    assert ctx.header is not None
+    assert ctx.status.header == expected_status
 
 
 @mark_pipeline
@@ -172,9 +198,10 @@ def test_insert_with_shebang_adds_single_blank_line(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     logger.debug(
-        "expected_header_block:\n=== BEGIN ===\n$%s\n=== END ===", ctx.expected_header_block
+        "expected_header_block:\n=== BEGIN ===\n$%s\n=== END ===",
+        ctx.render.block if ctx.render else "",
     )
     logger.debug("lines:\n=== BEGIN ===\n$%s\n=== END ===", "\n".join(lines))
     # shebang should remain first
@@ -209,7 +236,7 @@ def test_insert_with_shebang_existing_blank_not_duplicated(tmp_path: Path) -> No
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     sig: BlockSignatures = expected_block_lines_for(f)
     # header should start at index 2 as well: shebang (0), existing blank (1), header (2)
     start_idx: int = find_line(lines, sig["start_line"])
@@ -234,7 +261,7 @@ def test_insert_with_shebang_and_encoding(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     sig: BlockSignatures = expected_block_lines_for(f)
     # header should start after: shebang (0), encoding (1), inserted blank (2) => header (3)
     start_idx: int = find_line(lines, sig["start_line"])
@@ -255,7 +282,7 @@ def test_insert_without_shebang_starts_at_top_and_blank_after(tmp_path: Path) ->
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     sig: BlockSignatures = expected_block_lines_for(f)
     # header must start at beginning of file
     start_idx: int = find_line(lines, sig["start_line"])
@@ -286,7 +313,7 @@ def test_insert_trailing_blank_not_added_if_next_line_is_blank(tmp_path: Path) -
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     sig: BlockSignatures = expected_block_lines_for(f)
     # header at top
     start_idx: int = find_line(lines, sig["start_line"])
@@ -311,7 +338,7 @@ def test_shell_with_shebang_spacing(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     assert lines[0].startswith("#!")
     sig: BlockSignatures = expected_block_lines_for(f)
     start_idx: int = find_line(lines, sig["start_line"])
@@ -329,7 +356,7 @@ def test_r_with_shebang_spacing(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     assert lines[0].startswith("#!")
     sig: BlockSignatures = expected_block_lines_for(f)
     start_idx: int = find_line(lines, sig["start_line"])
@@ -345,7 +372,7 @@ def test_julia_with_shebang_spacing(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     assert lines[0].startswith("#!")
     sig: BlockSignatures = expected_block_lines_for(f)
     start_idx: int = find_line(lines, sig["start_line"])
@@ -361,7 +388,7 @@ def test_ruby_with_shebang_and_encoding(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     assert lines[0].startswith("#!")
     sig: BlockSignatures = expected_block_lines_for(f)
     start_idx: int = find_line(lines, sig["start_line"])
@@ -377,7 +404,7 @@ def test_perl_with_shebang_spacing(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     assert lines[0].startswith("#!")
     sig: BlockSignatures = expected_block_lines_for(f)
     start_idx: int = find_line(lines, sig["start_line"])
@@ -393,7 +420,7 @@ def test_dockerfile_top_and_trailing_blank(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     sig: BlockSignatures = expected_block_lines_for(f)
     start_idx: int = find_line(lines, sig["start_line"])
     assert start_idx == 0
@@ -410,7 +437,7 @@ def test_yaml_top_and_trailing_blank(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     sig: BlockSignatures = expected_block_lines_for(f)
     start_idx: int = find_line(lines, sig["start_line"])
     assert start_idx == 0
@@ -427,7 +454,7 @@ def test_toml_top_and_trailing_blank(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     sig: BlockSignatures = expected_block_lines_for(f)
     start_idx: int = find_line(lines, sig["start_line"])
     assert start_idx == 0
@@ -444,7 +471,7 @@ def test_env_without_shebang_top_and_trailing_blank(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     sig: BlockSignatures = expected_block_lines_for(f)
     start_idx: int = find_line(lines, sig["start_line"])
     assert start_idx == 0
@@ -466,8 +493,7 @@ def test_pound_crlf_preserves_newlines(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
-    # joined = "".join(lines)
+    lines: list[str] = materialize_updated_lines(ctx)
 
     # All lines should end with CRLF (no bare LF)
     for i, ln in enumerate(lines):
@@ -495,7 +521,7 @@ def test_pound_banner_at_top_header_precedes_banner(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     sig: BlockSignatures = expected_block_lines_for(f)
 
     # Header must start at the very top
@@ -524,7 +550,7 @@ def test_pound_shebang_then_banner_header_between(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     sig: BlockSignatures = expected_block_lines_for(f)
 
     # Shebang should remain first
@@ -560,7 +586,7 @@ def test_pound_shebang_encoding_then_banner_header_between(tmp_path: Path) -> No
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     sig: BlockSignatures = expected_block_lines_for(f)
 
     assert lines[0].startswith("#!")
@@ -587,7 +613,7 @@ def test_pound_crlf_with_banner_preserves_newlines_and_order(tmp_path: Path) -> 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     for i, ln in enumerate(lines):
         assert ln.endswith("\r\n"), f"line {i} does not end with CRLF: {ln!r}"
 
@@ -622,7 +648,7 @@ def test_pound_banner_with_leading_blanks(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     sig: BlockSignatures = expected_block_lines_for(f)
 
     start_idx: int = find_line(lines, sig["start_line"])
@@ -654,7 +680,7 @@ def test_pound_long_hash_rule_banner(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     sig: BlockSignatures = expected_block_lines_for(f)
 
     start_idx: int = find_line(lines, sig["start_line"])
@@ -682,7 +708,7 @@ def test_pound_shebang_then_long_hash_rule_banner(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     sig: BlockSignatures = expected_block_lines_for(f)
 
     assert lines[0].startswith("#!")
@@ -715,7 +741,7 @@ def test_pound_crlf_leading_blank_and_banner(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     for i, ln in enumerate(lines):
         assert ln.endswith("\r\n"), f"line {i} does not end with CRLF: {ln!r}"
 
@@ -791,8 +817,11 @@ def test_pound_encoding_only_at_top(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
     sig: BlockSignatures = expected_block_lines_for(f)
+
+    lines: list[str] = materialize_updated_lines(ctx)
+
     # header should still start at top, not after encoding-only line
-    assert find_line(ctx.updated_file_lines or [], sig["start_line"]) == 0
+    assert find_line(lines, sig["start_line"]) == 0
 
 
 @mark_pipeline
@@ -807,8 +836,10 @@ def test_pound_bom_preserved(tmp_path: Path) -> None:
     f.write_bytes(b"\xef\xbb\xbfprint('x')\n")  # UTF-8 BOM
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
+    lines: list[str] = materialize_updated_lines(ctx)
+
     # BOM should still be present at the beginning of the first line
-    assert (ctx.updated_file_lines or [])[0].startswith("\ufeff")
+    assert (lines or [])[0].startswith("\ufeff")
 
 
 def test_pound_processor_only_removes_first_header_block() -> None:

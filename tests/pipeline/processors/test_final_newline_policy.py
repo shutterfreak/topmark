@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests.pipeline.conftest import run_insert
+from tests.pipeline.conftest import materialize_updated_lines, run_insert
 from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.context import ProcessingContext
@@ -48,7 +48,9 @@ def test_insert_preserves_no_final_newline_pound(tmp_path: Path) -> None:
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
-    out: str = "".join(ctx.updated_file_lines or [])
+
+    lines: list[str] = materialize_updated_lines(ctx)
+    out: str = "".join(lines)
     assert not _ends_with_newline(out), "Output must preserve absence of final newline"
 
 
@@ -59,7 +61,9 @@ def test_insert_preserves_final_newline_slash(tmp_path: Path) -> None:
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
-    out: str = "".join(ctx.updated_file_lines or [])
+
+    lines: list[str] = materialize_updated_lines(ctx)
+    out: str = "".join(lines)
     assert _ends_with_newline(out), "Output must preserve final newline"
 
 

@@ -56,14 +56,14 @@ def test_check_content_stdin_apply_prints_to_stdout(tmp_path: Path) -> None:
 
 def test_strip_content_stdin_dry_run() -> None:
     """Strip on content from STDIN should detect removal would occur."""
-    body: str = f"# {TOPMARK_START_MARKER}\n# h\n# {TOPMARK_END_MARKER}\nprint()\n"
+    body: str = f"# {TOPMARK_START_MARKER}\n# test:header\n# {TOPMARK_END_MARKER}\nprint()\n"
     result: Result = run_cli(["strip", "-", "--stdin-filename", "x.py"], input_text=body)
     assert_WOULD_CHANGE(result)
 
 
 def test_strip_content_stdin_apply_prints_to_stdout() -> None:
     """With --apply, strip prints stripped content to stdout."""
-    body: str = f"# {TOPMARK_START_MARKER}\n# h\n# {TOPMARK_END_MARKER}\nprint('ok')\n"
+    body: str = f"# {TOPMARK_START_MARKER}\n# test:header\n# {TOPMARK_END_MARKER}\nprint('ok')\n"
     result: Result = run_cli(["strip", "--apply", "-", "--stdin-filename", "x.py"], input_text=body)
     assert_SUCCESS(result)
     # Header should be gone in stdout

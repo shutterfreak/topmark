@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Iterator, cast
 import pytest
 
 from topmark import api
+from topmark.api.public_types import PublicPolicy
 from topmark.filetypes.base import FileType
 from topmark.pipeline.processors.base import HeaderProcessor
 from topmark.registry.filetypes import FileTypeRegistry
@@ -125,7 +126,9 @@ def repo_py_with_and_without_header(tmp_path: Path) -> Path:
         apply=True,
         config=None,
         file_types=["python"],
-        add_only=True,  # ensure header is inserted/normalized if missing/drifting
+        policy=PublicPolicy(
+            add_only=True
+        ),  # ensure header is inserted/normalized if missing/drifting
     )
 
     return tmp_path
@@ -150,7 +153,9 @@ def repo_py_with_header(tmp_path: Path) -> Path:
         apply=True,
         config=None,
         file_types=["python"],
-        add_only=True,  # ensure header is inserted/normalized if missing/drifting
+        policy=PublicPolicy(
+            add_only=True,  # ensure header is inserted/normalized if missing/drifting
+        ),
     )
 
     return root
@@ -176,7 +181,9 @@ def repo_py_with_header_and_xyz(tmp_path: Path) -> Path:
         apply=True,
         config=None,
         file_types=["python"],
-        add_only=True,  # ensure header is inserted/normalized if missing/drifting
+        policy=PublicPolicy(
+            add_only=True,  # ensure header is inserted/normalized if missing/drifting
+        ),
     )
 
     # Unsupported 'xyz' file extension without header
@@ -239,11 +246,11 @@ def api_check_dir(
     root: Path,
     *,
     apply: bool = False,
-    add_only: bool = False,
-    update_only: bool = False,
+    policy: PublicPolicy | None = None,
     skip_compliant: bool = False,
     skip_unsupported: bool = False,
     file_types: Iterable[str] | None = ("python",),
+    prune: bool = False,
 ) -> api.RunResult:
     """Run [`topmark.api.check`][topmark.api.check] against `root / 'src'` with common defaults."""
     paths: list[Path] = [root / "src"]
@@ -252,10 +259,10 @@ def api_check_dir(
         apply=apply,
         config=None,  # let API load topmark.toml from repo root
         file_types=list(file_types) if file_types else None,
-        add_only=add_only,
-        update_only=update_only,
+        policy=policy,
         skip_compliant=skip_compliant,
         skip_unsupported=skip_unsupported,
+        prune=prune,
     )
 
 
@@ -263,9 +270,11 @@ def api_strip_dir(
     root: Path,
     *,
     apply: bool = False,
+    policy: PublicPolicy | None = None,
     skip_compliant: bool = False,
     skip_unsupported: bool = False,
     file_types: Iterable[str] | None = ("python",),
+    prune: bool = False,
 ) -> api.RunResult:
     """Run [`topmark.api.strip`][topmark.api.strip] against `root / 'src'` with common defaults."""
     paths: list[Path] = [root / "src"]
@@ -274,8 +283,10 @@ def api_strip_dir(
         apply=apply,
         config=None,
         file_types=list(file_types) if file_types else None,
+        policy=policy,
         skip_compliant=skip_compliant,
         skip_unsupported=skip_unsupported,
+        prune=prune,
     )
 
 

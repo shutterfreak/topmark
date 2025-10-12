@@ -162,14 +162,18 @@ def classify_outcome(r: ProcessingContext) -> tuple[str, str, Callable[[str], st
     are used by tests:
 
     **Strip pipeline** (`topmark strip`):
-    - `strip:ready` → "would strip header"
-    - `strip:none`  → "no header" (or "no changes to strip" in rare cases)
+    - `strip:ready`   → "would strip header"
+    - `strip:none`    → "no header" (or "no changes to strip" in rare cases)
+    - `strip:failed`  → "cannot strip header"
+
+    **General:**
+    - `header:malformed` → "header malformed"
 
     **Default pipeline** (`topmark`):
-    - `insert`      → "would insert header"
-    - `update`      → "would update header"
-    - `ok`          → "up-to-date"
-    - `no_fields`   → "no fields to render"
+    - `insert`        → "would insert header"
+    - `update`        → "would update header"
+    - `ok`            → "up-to-date"
+    - `no_fields`     → "no fields to render"
     - `header:empty` / `header:malformed` → "header (empty|malformed)"
     - `compare_error` → "cannot compare"
 
@@ -187,9 +191,11 @@ def classify_outcome(r: ProcessingContext) -> tuple[str, str, Callable[[str], st
     >   `color_fn`.
 
     Precedence:
-        - If the comparison result is UNCHANGED, this always takes precedence and the file
-          is classified as compliant ("ok", "up-to-date"), regardless of other header
-          or strip status.
+        - If the strip pipeline participated, strip-related and malformed-header outcomes
+          are considered **before** the generic UNCHANGED → ok rule. This ensures that
+          malformed headers in strip mode are never reported as up-to-date.
+        - If the comparison result is UNCHANGED, this takes precedence only if no strip/malformed
+          outcome applies.
 
     Args:
         r (ProcessingContext): Processing context for a single file.
@@ -224,14 +230,21 @@ def classify_outcome(r: ProcessingContext) -> tuple[str, str, Callable[[str], st
     }:
         return ("unsafe:insert", "unsafe to insert header", chalk.yellow)
 
-    # Highest precedence: if comparison says UNCHANGED, treat as compliant
-    if r.status.comparison == ComparisonStatus.UNCHANGED:
-        return ("ok", "up-to-date", chalk.green)
+    # Malformed headers must not be reported as up-to-date
+    if r.status.header == HeaderStatus.MALFORMED:
+        return ("header:malformed", "header malformed", r.status.header.color)
+    elif r.status.header in {
+        HeaderStatus.MALFORMED_ALL_FIELDS,
+        HeaderStatus.MALFORMED_SOME_FIELDS,
+    }:
+        return ("header:malformed", "header fields malformed", r.status.header.color)
 
-    # If the stripper step participated, prefer strip-centric labels.
+    # If the strip pipeline participated, handle it before comparison fallbacks.
     if r.status.strip == StripStatus.READY:
-        # We computed updated_file_lines that remove the header.
         return ("strip:ready", "would strip header", chalk.yellow)
+
+    if r.status.strip == StripStatus.FAILED:
+        return ("strip:failed", "cannot strip header", chalk.red_bright)
 
     if r.status.strip == StripStatus.NOT_NEEDED:
         # Nothing to strip — refine message based on what scanner/comparer saw.
@@ -240,6 +253,10 @@ def classify_outcome(r: ProcessingContext) -> tuple[str, str, Callable[[str], st
             return ("strip:none", "no header", chalk.green)
         # Fallback for strip pipeline where nothing changed.
         return ("strip:none", "no changes to strip", chalk.green)
+
+    # If comparison says UNCHANGED, treat as compliant
+    if r.status.comparison == ComparisonStatus.UNCHANGED:
+        return ("ok", "up-to-date", chalk.green)
 
     # If generation produced no fields, prefer a dedicated bucket over insert/missing
     if r.status.generation == GenerationStatus.NO_FIELDS:
@@ -315,11 +332,11 @@ def write_updates(
     failed: int = 0
     for r in results:
         try:
-            if should_write(r) and r.updated_file_lines is not None:
+            if should_write(r) and r.updated is not None and r.updated.lines:
                 # Write exactly what the pipeline produced:
                 #  - `updated_file_lines` are keepends=True lines with the desired newline style
                 #  - We open with newline="" to disable any \n translation on output
-                data: str = "".join(r.updated_file_lines)
+                data: str = "".join(r.updated.lines)
                 with Path(r.path).open("w", encoding="utf-8", newline="") as fh:
                     fh.write(data)
                 written += 1

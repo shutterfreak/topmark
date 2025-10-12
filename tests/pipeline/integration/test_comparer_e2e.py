@@ -25,6 +25,7 @@ from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.context import ComparisonStatus, GenerationStatus, ProcessingContext
 from topmark.pipeline.steps import builder, comparer, reader, renderer, resolver, scanner
+from topmark.pipeline.views import BuilderView, RenderView
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -110,20 +111,29 @@ def test_e2e_formatting_only_change_detected(tmp_path: Path) -> None:
     cfg_for_render: Config = draft_cfg_for_render.freeze()
 
     assert ctx.header_processor is not None, "Header processor must be set by resolver"
-    ctx.expected_header_dict = dict(ctx.existing_header_dict or {})
+    assert ctx.header is not None
+    assert ctx.build is not None
+
+    ctx.build = BuilderView(
+        builtins=None,
+        selected=ctx.header.mapping or {},
+    )
 
     expected_lines: list[str] = ctx.header_processor.render_header_lines(
-        header_values=ctx.expected_header_dict,
+        header_values=ctx.build.selected or {},
         config=cfg_for_render,
         newline_style=ctx.newline_style,
     )
-
-    ctx.expected_header_lines = expected_lines
+    ctx.render = RenderView(lines=expected_lines, block="".join(expected_lines))
     ctx.status.generation = GenerationStatus.GENERATED
 
     ctx = comparer.compare(ctx)
 
     # Dicts must match, but block text must differ (ordering/spacing) → CHANGED
-    assert ctx.expected_header_dict == ctx.existing_header_dict
-    assert "".join(ctx.expected_header_lines or []) != (ctx.existing_header_block or "")
+    assert (
+        ctx.header is not None
+        and ctx.build is not None
+        and ctx.build.selected == ctx.header.mapping
+    )
+    assert ctx.render is not None and "".join(ctx.render.lines or []) != (ctx.header.block or "")
     assert ctx.status.comparison is ComparisonStatus.CHANGED

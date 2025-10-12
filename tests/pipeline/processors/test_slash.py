@@ -22,14 +22,22 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
+
 from tests.conftest import mark_pipeline
-from tests.pipeline.conftest import BlockSignatures, expected_block_lines_for, find_line, run_insert
+from tests.pipeline.conftest import (
+    BlockSignatures,
+    expected_block_lines_for,
+    find_line,
+    materialize_updated_lines,
+    run_insert,
+)
 from topmark.config import Config, MutableConfig
 from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline import runner
-from topmark.pipeline.context import ProcessingContext
-from topmark.pipeline.pipelines import get_pipeline
+from topmark.pipeline.context import HeaderStatus, ProcessingContext
+from topmark.pipeline.pipelines import Pipeline
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -54,7 +62,7 @@ def test_slash_processor_basics(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
     assert ctx.file_type and ctx.file_type.name == "javascript"
-    assert ctx.existing_header_range is None
+    assert ctx.header is None
 
 
 @mark_pipeline
@@ -71,7 +79,7 @@ def test_slash_processor_with_content_matcher_detects_jsonc_in_json(tmp_path: Pa
 
     ctx: ProcessingContext = run_insert(f, cfg)
     assert ctx.file_type and ctx.file_type.name == "jsonc"
-    assert ctx.existing_header_range is None
+    assert ctx.header is None
 
 
 @mark_pipeline
@@ -86,7 +94,7 @@ def test_slash_insert_top_and_trailing_blank(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     sig: BlockSignatures = expected_block_lines_for(f)
     assert find_line(lines, sig["start_line"]) == 0
     end_idx: int = find_line(lines, sig["end_line"])
@@ -113,36 +121,58 @@ def test_slash_detect_existing_header(tmp_path: Path) -> None:
     )
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    steps: Sequence[Step] = get_pipeline("check")
-    ctx = runner.run(ctx, steps)
+    pipeline: Sequence[Step] = Pipeline.CHECK.steps
+    ctx = runner.run(ctx, pipeline)
 
-    assert ctx.existing_header_range == (0, 5)
-    assert ctx.existing_header_dict and ctx.existing_header_dict.get("file") == "lib.h"
+    assert ctx.header is not None
+    assert ctx.header.range == (0, 5)
+    assert ctx.header.mapping and ctx.header.mapping.get("file") == "lib.h"
 
 
 @mark_pipeline
-def test_slash_malformed_header(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "header_fields, expected_status",
+    [
+        (
+            "// bad header\n",  # Missing colon
+            HeaderStatus.MALFORMED_ALL_FIELDS,
+        ),
+        (
+            "// valid: header\n# bad header\n",  # Missing colon
+            HeaderStatus.MALFORMED_SOME_FIELDS,
+        ),
+        (
+            "// valid: header\n",  # Header OK
+            HeaderStatus.DETECTED,
+        ),
+    ],
+)
+def test_slash_malformed_header_fields(
+    tmp_path: Path,
+    header_fields: str,
+    expected_status: HeaderStatus,
+) -> None:
     """Tolerate malformed field lines without crashing.
 
     Ensures the scanner records the header span but yields an empty/invalid field
     map and sets a non-OK header status (``MALFORMED`` or ``EMPTY``).
+
+    Args:
+        tmp_path (Path): Temporary path provided by pytest for test file creation.
+        header_fields (str): Header fields for the test
+        expected_status (HeaderStatus): expected HeaderStatus value for the test
     """
     f: Path = tmp_path / "bad.ts"
     f.write_text(
-        f"// {TOPMARK_START_MARKER}\n"
-        "//   file bad.ts\n"  # missing ':'
-        f"// {TOPMARK_END_MARKER}\n"
-        "export {}\n"
+        f"// {TOPMARK_START_MARKER}\n// {header_fields}// {TOPMARK_END_MARKER}\nexport {{}}\n"
     )
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = runner.run(ctx, get_pipeline("check"))
+    pipeline: Sequence[Step] = Pipeline.CHECK.steps
+    ctx = runner.run(ctx, pipeline)
 
-    from topmark.pipeline.context import HeaderStatus
-
-    assert ctx.existing_header_range == (0, 2)
-    assert ctx.existing_header_dict in ({}, None)
-    assert ctx.status.header in {HeaderStatus.MALFORMED, HeaderStatus.EMPTY}
+    assert ctx.header is not None
+    assert ctx.status.header == expected_status
 
 
 @mark_pipeline
@@ -157,11 +187,13 @@ def test_slash_idempotent_reapply_no_diff(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
 
     ctx1: ProcessingContext = run_insert(f, cfg)
+    lines1: list[str] = materialize_updated_lines(ctx1)
     with f.open("w", encoding="utf-8", newline="") as fp:
-        fp.write("".join(ctx1.updated_file_lines or []))
+        fp.write("".join(lines1))
     ctx2: ProcessingContext = run_insert(f, cfg)
+    lines2: list[str] = materialize_updated_lines(ctx2)
 
-    assert (ctx2.updated_file_lines or []) == (ctx1.updated_file_lines or [])
+    assert lines1 == lines2
 
 
 @mark_pipeline
@@ -177,7 +209,8 @@ def test_slash_crlf_preserves_newlines(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    for i, ln in enumerate(ctx.updated_file_lines or []):
+    lines: list[str] = materialize_updated_lines(ctx)
+    for i, ln in enumerate(lines):
         assert ln.endswith("\r\n"), f"line {i} not CRLF: {ln!r}"
 
 
@@ -226,6 +259,8 @@ def test_slash_replace_preserves_crlf(tmp_path: Path) -> None:
         # Note: every "\n" will be replaced with the `newline` value specified: "\r\n"
         fp.write(f"// {TOPMARK_START_MARKER}\n// x\n// {TOPMARK_END_MARKER}\nint main(){{}}\n")
     ctx: ProcessingContext = run_insert(f, MutableConfig.from_defaults().freeze())
-    for i, ln in enumerate(ctx.updated_file_lines or []):
-        if i < len(ctx.updated_file_lines or []) - 1:
+    lines: list[str] = materialize_updated_lines(ctx)
+
+    for i, ln in enumerate(lines):
+        if i < len(lines) - 1:
             assert ln.endswith("\r\n"), f"line {i} lost CRLF"

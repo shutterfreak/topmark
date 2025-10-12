@@ -21,12 +21,13 @@ same discovery/precedence model as the CLI:
 from __future__ import annotations
 
 import textwrap
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
 from topmark import api
 from topmark.cli.cmd_common import run_steps_for_files
 from topmark.config import MutableConfig
 from topmark.file_resolver import resolve_file_list
+from topmark.pipeline.pipelines import Pipeline
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -35,6 +36,7 @@ if TYPE_CHECKING:
 
     from topmark.cli_shared.exit_codes import ExitCode
     from topmark.pipeline.context import ProcessingContext
+    from topmark.pipeline.contracts import Step
 
 
 def _write(p: Path, s: str) -> None:
@@ -73,7 +75,8 @@ def _run_cli_like(
     files: list[Path] = resolve_file_list(cfg)
     results: list[ProcessingContext]
     _exit_code: ExitCode | None
-    results, _exit_code = run_steps_for_files(files, pipeline_name="apply", config=cfg)
+    pipeline: Sequence[Step] = Pipeline.CHECK_APPLY_PATCH.steps
+    results, _exit_code = run_steps_for_files(files, pipeline=pipeline, config=cfg, prune=False)
     return draft, files, results
 
 
@@ -109,7 +112,9 @@ def test_same_dir_precedence_topmark_over_pyproject(
     )
 
     # API run (anchor = project dir)
-    rr: api.RunResult = api.check([str(proj)], apply=False, file_types=("python",))
+    rr: api.RunResult = api.check(
+        [str(proj)], apply=False, diff=True, prune=False, file_types=("python",)
+    )
     assert rr.files, "API produced no files to check"
     api_diff: str = rr.files[0].diff or ""
 
@@ -123,7 +128,7 @@ def test_same_dir_precedence_topmark_over_pyproject(
     # The aligned form must be present (topmark.toml overrides pyproject.toml)
     assert _contains_aligned_fields(api_diff), "API did not reflect topmark.toml override"
     # Parity: ensure CLI-like result also aligns
-    cli_diff: str = results[0].header_diff or ""
+    cli_diff: str = results[0].diff.text or "" if results[0].diff else ""
     assert _contains_aligned_fields(cli_diff), "CLI-like did not reflect topmark.toml override"
 
 
@@ -156,7 +161,9 @@ def test_discovery_anchor_subdir_nearest_wins(tmp_path: Path) -> None:
     )
 
     # API run with anchor at child dir
-    rr: api.RunResult = api.check([str(child)], apply=False, file_types=("python",))
+    rr: api.RunResult = api.check(
+        [str(child)], apply=False, diff=True, prune=False, file_types=("python",)
+    )
     assert rr.files
     api_diff: str = rr.files[0].diff or ""
     assert _contains_aligned_fields(api_diff), "API did not honor nearest (child) config"
@@ -167,7 +174,7 @@ def test_discovery_anchor_subdir_nearest_wins(tmp_path: Path) -> None:
     results: list[ProcessingContext]
     _draft, files, results = _run_cli_like(child, file_types=("python",))
     assert files
-    cli_diff: str = results[0].header_diff or ""
+    cli_diff: str = results[0].diff.text or "" if results[0].diff else ""
     assert _contains_aligned_fields(cli_diff), "CLI-like did not honor nearest (child) config"
 
 
@@ -205,7 +212,7 @@ def test_root_true_stops_traversal(tmp_path: Path) -> None:
     )
 
     # API run anchored at sub (should stop at root because of root=true)
-    rr: api.RunResult = api.check([str(sub)], apply=False, file_types=("python",))
+    rr: api.RunResult = api.check([str(sub)], apply=False, diff=True, file_types=("python",))
     assert rr.files
     api_diff: str = rr.files[0].diff or ""
     assert _contains_unaligned_fields(api_diff), "API did not stop at root=true boundary"
@@ -216,5 +223,5 @@ def test_root_true_stops_traversal(tmp_path: Path) -> None:
     results: list[ProcessingContext]
     _draft, files, results = _run_cli_like(sub, file_types=("python",))
     assert files
-    cli_diff: str = results[0].header_diff or ""
+    cli_diff: str = results[0].diff.text or "" if results[0].diff else ""
     assert _contains_unaligned_fields(cli_diff), "CLI-like did not stop at root=true boundary"

@@ -23,6 +23,7 @@ import pytest
 
 from tests.api.conftest import has_header
 from topmark import api
+from topmark.api.public_types import PublicPolicy
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -58,7 +59,7 @@ def test_skip_compliant_and_unsupported(repo_py_with_header_and_xyz: Path) -> No
 def test_add_only_and_update_only_conflict(tmp_path: Path) -> None:
     """Mutually exclusive flags (add_only & update_only) raise ValueError."""
     with pytest.raises(ValueError):
-        api.check([tmp_path], apply=False, add_only=True, update_only=True)
+        api.check([tmp_path], apply=False, policy=PublicPolicy(add_only=True, update_only=True))
 
 
 def test_apply_check_writes_when_needed(
@@ -67,9 +68,19 @@ def test_apply_check_writes_when_needed(
     """Dry-run reports change; apply writes header for missing file."""
     root: Path = repo_py_with_and_without_header
     target: Path = root / "src" / "without_header.py"
-    r0: api.RunResult = api.check([target], apply=False, file_types=["python"], add_only=True)
+    r0: api.RunResult = api.check(
+        [target],
+        apply=False,
+        file_types=["python"],
+        policy=PublicPolicy(add_only=True),
+    )
     assert any(fr.outcome.value in {"would_change", "changed"} for fr in r0.files)
-    r1: api.RunResult = api.check([target], apply=True, file_types=["python"], add_only=True)
+    r1: api.RunResult = api.check(
+        [target],
+        apply=True,
+        file_types=["python"],
+        policy=PublicPolicy(add_only=True),
+    )
     assert r1.written >= 1
     assert has_header(target.read_text(encoding="utf-8"), proc_py, "\n")
 

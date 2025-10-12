@@ -84,7 +84,7 @@ def xml_can_insert(ctx: PreInsertContextView) -> InsertCheckResult:
             * `reason` (str, optional): Human-readable explanation for the advisory.
     """
     origin: str = f"{__name__}.xml_can_insert"
-    lines: list[str] = list(ctx.file_lines or [])
+    lines: list[str] = list(ctx.lines or [])
     text: str = "".join(lines)
     proc: HeaderProcessor | None = ctx.header_processor
     if not proc or not hasattr(proc, "get_header_insertion_char_offset"):

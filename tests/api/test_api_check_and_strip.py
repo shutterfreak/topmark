@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tests.api.conftest import api_check_dir, api_strip_dir, by_path_outcome, has_header, read_text
+from topmark.api.public_types import PublicPolicy
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -50,7 +51,11 @@ def test_check_apply_add_only_inserts_header_for_missing(
     assert has_header(read_text(b), proc_py, "\n")
 
     r: RunResult = api_check_dir(
-        repo_py_with_and_without_header, apply=True, add_only=True
+        repo_py_with_and_without_header,
+        apply=True,
+        policy=PublicPolicy(
+            add_only=True,
+        ),
     )  # only add missing
     assert r.had_errors is False
     assert r.written >= 1
@@ -68,7 +73,14 @@ def test_check_apply_update_only_does_not_add_new_headers(
     a: Path = repo_py_with_and_without_header / "src" / "without_header.py"
     a.write_text("print('hello')\n", encoding="utf-8")
 
-    r: RunResult = api_check_dir(repo_py_with_and_without_header, apply=True, update_only=True)
+    r: RunResult = api_check_dir(
+        repo_py_with_and_without_header,
+        apply=True,
+        policy=PublicPolicy(
+            update_only=True,
+        ),
+        prune=False,
+    )
     # Should not create a header in a.py because update_only=True
     assert r.had_errors is False
     assert has_header(read_text(a), proc_py, "\n") is False

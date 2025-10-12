@@ -36,7 +36,6 @@ from topmark.pipeline.context import (
     ResolveStatus,
     StripStatus,
 )
-from topmark.pipeline.pipelines import get_pipeline
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -81,8 +80,9 @@ def build_file_list(config: Config, *, stdin_mode: bool, temp_path: Path | None)
 def run_steps_for_files(
     file_list: list[Path],
     *,
-    pipeline_name: str,
+    pipeline: Sequence[Step],
     config: Config,
+    prune: bool = True,
 ) -> tuple[list[ProcessingContext], ExitCode | None]:
     """Run a pipeline for each file and return (results, encountered_error_code).
 
@@ -95,14 +95,13 @@ def run_steps_for_files(
         PIPELINE_ERROR → any other unexpected exception
     """
     console: ConsoleLike = get_console_safely()
-    steps: Sequence[Step] = get_pipeline(pipeline_name)
     results: list[ProcessingContext] = []
     encountered_error_code: ExitCode | None = None
 
     for path in file_list:
         try:
             ctx_obj: ProcessingContext = ProcessingContext.bootstrap(path=path, config=config)
-            ctx_obj = runner.run(ctx_obj, steps)
+            ctx_obj = runner.run(ctx_obj, pipeline, prune=prune)
             results.append(ctx_obj)
         except (FileNotFoundError, PermissionError, IsADirectoryError) as e:
             logger.error("Filesystem error while processing %s: %s", path, e)

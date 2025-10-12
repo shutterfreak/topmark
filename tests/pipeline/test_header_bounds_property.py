@@ -23,9 +23,9 @@ from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
-from hypothesis import HealthCheck, given, settings
+from hypothesis import HealthCheck, assume, given, settings
 
-from tests.pipeline.conftest import run_insert, run_strip
+from tests.pipeline.conftest import materialize_updated_lines, run_insert, run_strip
 from tests.strategies_topmark import s_source_envelope_for_ext
 from topmark.config import Config, MutableConfig
 
@@ -84,16 +84,19 @@ def test_insert_strip_idempotent_roundtrip(
     with f.open("w", encoding="utf-8", newline="") as fh:
         fh.write(content)
 
-    # Use a default frozen config
-    cfg: Config = MutableConfig.from_defaults().freeze()
+    # Use a config that allows inserting headers into empty files (for property tests)
+    mcfg: MutableConfig = MutableConfig.from_defaults()
+    mcfg.policy.allow_header_in_empty_files = True
+    cfg: Config = mcfg.freeze()
 
     # 1) Insert/update a header
     ctx1: ProcessingContext = run_insert(f, cfg)
-    # If insertion is refused (e.g., empty XML, prolog-only, or guarded by checker),
-    # idempotence doesn't apply for this sample.
-    if ctx1.updated_file_lines is None:
-        pytest.skip("Pre-insert advisory refused insertion for this sample.")
-    updated1: str = "".join(ctx1.updated_file_lines)
+    # Require that the first pass actually performed an insert/replace; otherwise
+    # this sample is out-of-scope for the roundtrip property.
+    assume(ctx1.updated is not None and ctx1.updated.lines is not None)
+    updated1: str = "".join(materialize_updated_lines(ctx1))
+    # Ensure that the header was actually inserted in the first pass.
+    assume("topmark:header:start" in updated1)
 
     # f.write_text(updated1, encoding="utf-8")
     # Preserve line endings
@@ -102,11 +105,13 @@ def test_insert_strip_idempotent_roundtrip(
 
     # 2) Strip the header back out
     ctx_strip: ProcessingContext = run_strip(f, cfg)
-    if ctx_strip.updated_file_lines is None:
-        # This happens if there wasn't a header to strip (should be rare here),
-        # but keep the property total by skipping such samples.
-        pytest.skip("No header to strip after first insertion.")
-    stripped: str = "".join(ctx_strip.updated_file_lines)
+    assume(ctx_strip.updated is not None and ctx_strip.updated.lines is not None)
+    # Use helper to materialize a concrete list[str] for typing clarity.
+    stripped: str = "".join(materialize_updated_lines(ctx_strip))
+
+    # Ensure the header markers are actually gone in the updated image.
+    assume("topmark:header:start" not in stripped)
+
     # f.write_text(stripped, encoding="utf-8")
     # Preserve line endings
     with f.open("w", encoding="utf-8", newline="") as fh:
@@ -114,7 +119,7 @@ def test_insert_strip_idempotent_roundtrip(
 
     # 3) Insert again
     ctx2: ProcessingContext = run_insert(f, cfg)
-    updated2: str = "".join(ctx2.updated_file_lines or [])
+    updated2: str = "".join(materialize_updated_lines(ctx2))
 
     # Idempotence: applying insert→strip→insert yields stable output
     assert updated1 == updated2

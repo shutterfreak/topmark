@@ -77,6 +77,8 @@ dev = [
   "build",
   # Upload distributions to PyPI:
   "twine",
+  # Add deprecation annotations:
+  "typing-extensions",
 ]
 docs = [
   # Static site generator core:
@@ -97,6 +99,8 @@ docs = [
   "mkdocs-simple-hooks>=0.1.5",
   # Python linter & formatter in one tool (docs uses formatter only):
   "ruff>=0.5.0",
+  # Add deprecation annotations:
+  "typing-extensions",
 ]
 test = [
   # Unit testing framework:
@@ -278,6 +282,8 @@ norecursedirs = [
   "sample_files",
 ]
 python_files = ["test_*.py", "*_test.py"]
+filterwarnings = ["default::DeprecationWarning"]
+
 
 # TopMark related configuration for the project repository
 [tool.topmark]
@@ -286,14 +292,26 @@ python_files = ["test_*.py", "*_test.py"]
 # See the shipped default file for details:
 #   src/topmark/config/topmark-default.toml  (section: “Config discovery & precedence”)
 root = true # Mark this directory as the root for config discovery
+
 [tool.topmark.fields]
 project = "TopMark"
 license = "MIT"
 copyright = "(c) 2025 Olivier Biot"
+
 [tool.topmark.header]
 fields = ["project", "file", "file_relpath", "license", "copyright"]
+
+[tool.topmark.policy]
+add_only = false
+update_only = false
+allow_header_in_empty_files = false
+
+[tool.topmark.policy_by_type.python]
+allow_header_in_empty_files = true
+
 [tool.topmark.formatting]
 align_fields = true # Align colons of fields
+
 [tool.topmark.files]
 file_types = []
 exclude_from = [".gitignore"]

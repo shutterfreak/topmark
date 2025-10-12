@@ -23,7 +23,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tests.pipeline.conftest import run_insert
+from tests.pipeline.conftest import materialize_updated_lines, run_insert
 from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 
@@ -60,7 +60,8 @@ def test_replace_preserves_crlf(tmp_path: Path) -> None:
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)  # should replace header
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
+
     assert _is_crlf_lines(lines), "All lines (but maybe the last) must use CRLF"
 
 
@@ -74,5 +75,7 @@ def test_replace_preserves_no_final_newline_lf(tmp_path: Path) -> None:
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)  # should replace header
-    out: str = "".join(ctx.updated_file_lines or [])
+    lines: list[str] = materialize_updated_lines(ctx)
+    out: str = "".join(lines)
+
     assert not _ends_with_newline(out), "Must preserve absence of final newline"

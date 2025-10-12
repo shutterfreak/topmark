@@ -50,7 +50,9 @@ def test_diff_preserves_crlf_strip(tmp_path: Path) -> None:
     file_name = "a.ts"
     f: Path = tmp_path / file_name
     with f.open("w", encoding="utf-8", newline="\r\n") as fp:
-        fp.write(f"// {TOPMARK_START_MARKER}\n// h\n// {TOPMARK_END_MARKER}\nconsole.log(1)\n")
+        fp.write(
+            f"// {TOPMARK_START_MARKER}\n// test:header\n// {TOPMARK_END_MARKER}\nconsole.log(1)\n"
+        )
 
     result: Result = run_cli_in(tmp_path, ["strip", "--diff", str(f)])
 

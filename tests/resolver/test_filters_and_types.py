@@ -38,8 +38,8 @@ def test_strip_honors_include_exclude(tmp_path: Path) -> None:
     """
     a: Path = tmp_path / "a.py"
     b: Path = tmp_path / "b.py"
-    a.write_text(f"# {TOPMARK_START_MARKER}\n# h\n# {TOPMARK_END_MARKER}\n", "utf-8")
-    b.write_text(f"# {TOPMARK_START_MARKER}\n# h\n# {TOPMARK_END_MARKER}\n", "utf-8")
+    a.write_text(f"# {TOPMARK_START_MARKER}\n# test:header\n# {TOPMARK_END_MARKER}\n", "utf-8")
+    b.write_text(f"# {TOPMARK_START_MARKER}\n# test:header\n# {TOPMARK_END_MARKER}\n", "utf-8")
 
     # Exclude b.py via explicit relative path; only a.py should be considered.
     result_1: Result = run_cli_in(tmp_path, ["strip", "-i", "*.py", "-e", "b.py", "a.py", "b.py"])

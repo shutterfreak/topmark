@@ -8,12 +8,12 @@
 #
 # topmark:header:end
 
-"""Pipeline step that removes the TopMark header.
+"""Pipeline step that removes the TopMark header (view‑based).
 
 The step uses the scanner‑detected header span when available
-(``ctx.existing_header_range``) and delegates removal to the active header
-processor. It sets ``ctx.updated_file_lines`` only when a removal is performed
-and updates ``StripStatus`` to ``READY`` or ``NOT_NEEDED`` accordingly.
+(``ctx.header.range``) and delegates removal to the active header processor.
+It sets ``ctx.updated`` with the stripped image (no I/O) and updates
+``StripStatus`` to ``READY`` or ``NOT_NEEDED`` accordingly.
 """
 
 from __future__ import annotations
@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING
 
 from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.pipeline.context import ContentStatus, HeaderStatus, ProcessingContext, StripStatus
+from topmark.pipeline.views import UpdatedView
 
 if TYPE_CHECKING:
     from topmark.filetypes.policy import FileTypeHeaderPolicy
@@ -60,15 +61,15 @@ def _reapply_bom_after_strip(lines: list[str], ctx: ProcessingContext) -> list[s
 
 
 def strip(ctx: ProcessingContext) -> ProcessingContext:
-    """Remove the TopMark header using the processor and known span if available.
+    """Remove the TopMark header using the processor and known span if available (view‑based).
 
     Args:
-        ctx (ProcessingContext): Pipeline context. Must contain file lines, the
+        ctx (ProcessingContext): Pipeline context. Must contain a file image, the
             active header processor, and (optionally) the scanner‑detected header span.
 
     Returns:
-        ProcessingContext: The same context, with ``updated_file_lines`` populated
-            when a removal occurs and ``StripStatus`` updated to reflect the outcome.
+        ProcessingContext: The same context, with ``ctx.updated`` populated when a
+            removal occurs and ``StripStatus`` updated to reflect the outcome.
 
     Notes:
       - Leaves ``HeaderStatus`` untouched (owned by the scanner).
@@ -93,22 +94,23 @@ def strip(ctx: ProcessingContext) -> ProcessingContext:
     if ctx.header_processor is None:
         return ctx
 
-    lines: list[str] = ctx.file_lines or []
-    if not lines:
+    original_lines: list[str] = list(ctx.iter_file_lines())
+    if not original_lines:
         # Empty file
+        ctx.status.strip = StripStatus.NOT_NEEDED
         return ctx
 
     # Prefer the span detected by the scanner; fall back to processor logic otherwise.
-    span: tuple[int, int] | None = ctx.existing_header_range
-    new_lines: list[str] = []
-    removed: tuple[int, int] | None = None
+    span: tuple[int, int] | None = ctx.header.range if ctx.header else None
+    new_lines: list[str]
+    removed: tuple[int, int] | None
     new_lines, removed = ctx.header_processor.strip_header_block(
-        lines=lines,
+        lines=original_lines,
         span=span,
         newline_style=ctx.newline_style,
         ends_with_newline=ctx.ends_with_newline,
     )
-    if removed is None or new_lines == lines:
+    if removed is None or new_lines == original_lines:
         # Nothing to remove
         ctx.status.strip = StripStatus.NOT_NEEDED
         return ctx
@@ -141,23 +143,23 @@ def strip(ctx: ProcessingContext) -> ProcessingContext:
         new_lines = []
 
     logger.info("Updated file lines: %s", new_lines[:15])
-    ctx.updated_file_lines = _reapply_bom_after_strip(new_lines, ctx)
+    updated_lines: list[str] = _reapply_bom_after_strip(new_lines, ctx)
 
     # Preserve original final-newline (FNL) semantics: if the original file did not
     # end with a newline, strip a single trailing newline sequence from the final line
     # of the stripped image. This keeps single-line XML round-trips stable.
-    if ctx.ends_with_newline is False and ctx.updated_file_lines:
+    if ctx.ends_with_newline is False and updated_lines:
         # Only trim when you know the original had no final newline
         # (ctx.ends_with_newline is neither None nor True):
-        last: str = ctx.updated_file_lines[-1]
+        last: str = updated_lines[-1]
         if last.endswith("\r\n"):
-            ctx.updated_file_lines[-1] = last[:-2]
+            updated_lines[-1] = last[:-2]
         elif last.endswith("\n") or last.endswith("\r"):
-            ctx.updated_file_lines[-1] = last[:-1]
+            updated_lines[-1] = last[:-1]
 
     # Normalize trailing blanks conservatively. If we have BOM-only, keep it.
-    if ctx.updated_file_lines:
-        if len(ctx.updated_file_lines) == 1 and ctx.updated_file_lines[0] == "\ufeff":
+    if updated_lines:
+        if len(updated_lines) == 1 and updated_lines[0] == "\ufeff":
             # Case 1: BOM-only image — keep as-is for round-trip fidelity.
             pass
         else:
@@ -165,23 +167,24 @@ def strip(ctx: ProcessingContext) -> ProcessingContext:
             # Case 3: If the stripped image contains only *exact* blank lines (and no BOM),
             #         collapse to truly empty.
             if (
-                ctx.updated_file_lines[0].startswith("\ufeff")
-                and len(ctx.updated_file_lines) > 1
+                updated_lines[0].startswith("\ufeff")
+                and len(updated_lines) > 1
                 # TODO - dedicated strip WS policy:
-                # and all(is_pure_spacer(s, policy) for s in ctx.updated_file_lines[1:]
-                and all(s == ctx.newline_style for s in ctx.updated_file_lines[1:])
+                # and all(is_pure_spacer(s, policy) for s in updated_lines[1:]
+                and all(s == ctx.newline_style for s in updated_lines[1:])
             ):
                 # First line is BOM-only, there is at least one trailing line,
                 # and everything after is blank: collapse to BOM-only.
-                ctx.updated_file_lines = ["\ufeff"]
-            # elif all(is_pure_spacer(s, policy) for s in ctx.updated_file_lines):
+                updated_lines = ["\ufeff"]
+            # elif all(is_pure_spacer(s, policy) for s in updated_lines):
             # (TODO - dedicated strip WS policy - see commented-out previous line)
-            elif all(s == ctx.newline_style for s in ctx.updated_file_lines):
+            elif all(s == ctx.newline_style for s in updated_lines):
                 # Case 4: If *all* lines are blank-like and no BOM, collapse to empty.
-                ctx.updated_file_lines = []
+                updated_lines = []
             # Case 4: Otherwise, leave as-is (body has non-blank content).
+    ctx.updated = UpdatedView(lines=updated_lines)
 
     # A header was present and removed
     ctx.status.strip = StripStatus.READY
-    logger.debug(f"stripper: removed header lines at span {removed[0]}..{removed[1]}.")
+    logger.debug("stripper: removed header lines at span %d..%d", removed[0], removed[1])
     return ctx

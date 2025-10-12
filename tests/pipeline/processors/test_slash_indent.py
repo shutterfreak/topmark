@@ -28,12 +28,18 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tests.conftest import mark_pipeline
-from tests.pipeline.conftest import BlockSignatures, expected_block_lines_for, find_line, run_insert
+from tests.pipeline.conftest import (
+    BlockSignatures,
+    expected_block_lines_for,
+    find_line,
+    materialize_updated_lines,
+    run_insert,
+)
 from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline import runner
 from topmark.pipeline.context import ProcessingContext
-from topmark.pipeline.pipelines import get_pipeline
+from topmark.pipeline.pipelines import Pipeline
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -56,7 +62,7 @@ def test_jsonc_insert_at_top_with_no_pre_prefix_indent(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
-    lines: list[str] = ctx.updated_file_lines or []
+    lines: list[str] = materialize_updated_lines(ctx)
     sig: BlockSignatures = expected_block_lines_for(f)
 
     # Header starts at the very top
@@ -95,10 +101,10 @@ def test_jsonc_replace_preserves_pre_prefix_indent(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     # Run the full check pipeline to exercise scan + replace
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    steps: Sequence[Step] = get_pipeline("check")
-    ctx = runner.run(ctx, steps)
+    pipeline: Sequence[Step] = Pipeline.CHECK_APPLY.steps
+    ctx = runner.run(ctx, pipeline, prune=False)
 
-    out: list[str] = ctx.updated_file_lines or []
+    out: list[str] = materialize_updated_lines(ctx)
     # Start marker line should still carry the same pre-prefix indent
     start_line: str = out[0].rstrip("\r\n")
     assert start_line.startswith(indent + "//"), start_line
@@ -141,7 +147,7 @@ def test_jsonc_replace_keeps_crlf_and_indent(tmp_path: Path) -> None:
         )
 
     ctx: ProcessingContext = run_insert(f, MutableConfig.from_defaults().freeze())
-    out: list[str] = ctx.updated_file_lines or []
+    out: list[str] = materialize_updated_lines(ctx)
 
     # Preserve CRLF
     for i, ln in enumerate(out):

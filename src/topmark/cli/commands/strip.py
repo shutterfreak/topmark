@@ -39,7 +39,7 @@ Examples:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
 import click
 
@@ -75,7 +75,6 @@ from topmark.cli_shared.exit_codes import ExitCode
 from topmark.cli_shared.utils import (
     OutputFormat,
     safe_unlink,
-    write_updates,
 )
 from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.pipeline.context import (
@@ -85,12 +84,14 @@ from topmark.pipeline.context import (
     ResolveStatus,
     WriteStatus,
 )
+from topmark.pipeline.pipelines import Pipeline
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.cli_shared.console_api import ConsoleLike
     from topmark.config import Config, MutableConfig
+    from topmark.pipeline.contracts import Step
     from topmark.rendering.formats import HeaderOutputFormat
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -225,6 +226,10 @@ def strip_command(
     ctx: click.Context = click.get_current_context()
     ctx.ensure_object(dict)
     console: ConsoleLike = ctx.obj["console"]
+    prune_override: bool | None = ctx.obj.get(
+        "prune"
+    )  # injected by tests via CliRunner.invoke(..., obj=...)
+    prune: bool = bool(prune_override) if prune_override else False
 
     fmt: OutputFormat = output_format or OutputFormat.DEFAULT
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
@@ -283,12 +288,22 @@ def strip_command(
     if vlevel > 0:
         render_banner(ctx, n_files=len(file_list))
 
-    pipeline_name = "strip"
+    pipeline: Sequence[Step]
+    if apply_changes is True:
+        if diff is True:
+            pipeline = Pipeline.STRIP_APPLY_PATCH.steps
+        else:
+            pipeline: Sequence[Step] = Pipeline.STRIP_APPLY.steps
+    elif diff is True:
+        pipeline = Pipeline.STRIP_PATCH.steps
+    else:
+        pipeline = Pipeline.STRIP.steps
+
     results: list[ProcessingContext] = []
     encountered_error_code: ExitCode | None = None
 
     results, encountered_error_code = run_steps_for_files(
-        file_list, pipeline_name=pipeline_name, config=config
+        file_list, pipeline=pipeline, config=config, prune=prune
     )
 
     # Optional filtering
@@ -333,17 +348,19 @@ def strip_command(
         return
 
     if apply_changes:
-        written: int = 0
-        failed: int = 0
-
-        def _should_write_strip(r: ProcessingContext) -> bool:
-            """Determine whether to write this file in strip mode."""
-            return (
-                r.status.resolve == ResolveStatus.RESOLVED and r.status.write == WriteStatus.REMOVED
-            )
-
-        # Perform writes and count successes/failures
-        written, failed = write_updates(results, should_write=_should_write_strip)
+        # Count outcomes after the pipeline writer step finalized statuses.
+        # Writer preserves REMOVED when it actually removed; in rare cases it may set WRITTEN.
+        written: int = sum(
+            1
+            for r in results
+            if r.status.resolve == ResolveStatus.RESOLVED  # Redundant?
+            and r.status.write
+            in {
+                WriteStatus.REMOVED,
+                WriteStatus.WRITTEN,
+            }
+        )
+        failed: int = sum(1 for r in results if r.status.write == WriteStatus.FAILED)
 
         if fmt == OutputFormat.DEFAULT:
             msg: str = (
@@ -355,14 +372,7 @@ def strip_command(
         if failed:
             raise TopmarkIOError(f"Failed to write {failed} file(s). See log for details.")
 
-    # Exit code policy for `strip`: non-zero only if a removal would occur.
-    # A missing header is *not* an error condition for `strip`.
-
-    def _would_change_strip(results: list[ProcessingContext]) -> bool:
-        """Return True if any file would be changed by `strip`."""
-        return any(r.status.comparison == ComparisonStatus.CHANGED for r in results)
-
-    if not apply_changes and _would_change_strip(results):
+    if not apply_changes and any(r.effective_would_strip for r in results):
         ctx.exit(ExitCode.WOULD_CHANGE)
 
     # Exit on any error encountered during processing

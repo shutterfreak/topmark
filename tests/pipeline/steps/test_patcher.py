@@ -57,13 +57,16 @@ def test_patcher_diff_preserves_crlf_and_render_markers(tmp_path: Path) -> None:
     f: Path = tmp_path / "a.ts"
     # Ensure file content is CRLF-seeded.
     with f.open("w", encoding="utf-8", newline="\r\n") as fp:
-        fp.write(f"// {TOPMARK_START_MARKER}\n// h\n// {TOPMARK_END_MARKER}\nconsole.log(1)\n")
+        # Add a syntactically valid TopMark header field (key:value)
+        fp.write(
+            f"// {TOPMARK_START_MARKER}\n// test:header\n// {TOPMARK_END_MARKER}\nconsole.log(1)\n"
+        )
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = _run_to_patcher(f, cfg)
 
     # We expect a change (strip/replace) to have produced a diff.
-    diff_text: str = ctx.header_diff or ""
+    diff_text: str = (ctx.diff.text if ctx.diff else "") or ""
     assert diff_text, "Expected non-empty unified diff from patcher"
 
     # The raw diff is produced with lineterm = ctx.newline_style.

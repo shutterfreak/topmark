@@ -43,7 +43,7 @@ Examples:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
 import click
 
@@ -78,23 +78,22 @@ from topmark.cli_shared.exit_codes import ExitCode
 from topmark.cli_shared.utils import (
     OutputFormat,
     safe_unlink,
-    write_updates,
 )
 from topmark.config.logging import TopmarkLogger, get_logger
-from topmark.filetypes.base import InsertCapability
 from topmark.pipeline.context import (
     ComparisonStatus,
     HeaderStatus,
     ProcessingContext,
-    ResolveStatus,
     WriteStatus,
 )
+from topmark.pipeline.pipelines import Pipeline
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.cli_shared.console_api import ConsoleLike
     from topmark.config import Config, MutableConfig
+    from topmark.pipeline.contracts import Step
     from topmark.rendering.formats import HeaderOutputFormat
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -243,6 +242,10 @@ def check_command(
     ctx: click.Context = click.get_current_context()
     ctx.ensure_object(dict)
     console: ConsoleLike = ctx.obj["console"]
+    prune_override: bool | None = ctx.obj.get(
+        "prune"
+    )  # injected by tests via CliRunner.invoke(..., obj=...)
+    prune: bool = bool(prune_override) if prune_override else False
 
     fmt: OutputFormat = output_format or OutputFormat.DEFAULT
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
@@ -306,14 +309,24 @@ def check_command(
     if vlevel > 0:
         render_banner(ctx, n_files=len(file_list))
 
-    # Always run the 'apply' pipeline when --apply is set so updated_file_lines are computed.
-    # The --summary flag only affects how we render output, not which steps run.
-    pipeline_name: str = "apply" if apply_changes else ("summary" if summary_mode else "apply")
+    pipeline: Sequence[Step]
+    if apply_changes is True:
+        if diff is True:
+            pipeline = Pipeline.CHECK_APPLY_PATCH.steps
+        else:
+            pipeline: Sequence[Step] = Pipeline.CHECK_APPLY.steps
+    elif diff is True:
+        pipeline = Pipeline.CHECK_PATCH.steps
+    else:
+        pipeline = Pipeline.CHECK.steps
+    # NOTE: if we decide to add '--print-header' (not with '--appy'): Pipeline.CHECK_RENDER
+    # NOTE: Print existing header: new command!
+
     results: list[ProcessingContext] = []
     encountered_error_code: ExitCode | None = None
 
     results, encountered_error_code = run_steps_for_files(
-        file_list, pipeline_name=pipeline_name, config=config
+        file_list, pipeline=pipeline, config=config, prune=prune
     )
 
     # Optional filtering
@@ -362,22 +375,20 @@ def check_command(
         return
 
     if apply_changes:
-        written: int = 0
-        failed: int = 0
-
-        def _should_write_check(r: ProcessingContext) -> bool:
-            """Determine whether to write this file in check mode."""
-            if add_only and r.status.write != WriteStatus.INSERTED:
-                return False
-            if update_only and r.status.write != WriteStatus.REPLACED:
-                return False
-            return r.status.resolve == ResolveStatus.RESOLVED and r.status.write in (
+        # Count outcomes after the pipeline writer step finalized statuses.
+        # Writer preserves INSERTED/REPLACED when it actually wrote;
+        # in rare cases it may set WRITTEN.
+        written: int = sum(
+            1
+            for r in results
+            if r.status.write
+            in {
                 WriteStatus.INSERTED,
                 WriteStatus.REPLACED,
-            )
-
-        # Perform writes and count successes/failures
-        written, failed = write_updates(results, should_write=_should_write_check)
+                WriteStatus.WRITTEN,
+            }
+        )
+        failed: int = sum(1 for r in results if r.status.write == WriteStatus.FAILED)
 
         if fmt == OutputFormat.DEFAULT:
             msg: str = (
@@ -389,52 +400,7 @@ def check_command(
         if failed:
             raise TopmarkIOError(f"Failed to write {failed} file(s). See log for details.")
 
-    # Exit code policy: in check mode, non-zero if changes would be needed
-
-    def _would_change_check(
-        results: list[ProcessingContext],
-        *,
-        add_only: bool,
-        update_only: bool,
-    ) -> bool:
-        """Return True if any file would be changed by `check`.
-
-        This function computes the *semantic* would-change condition based on
-        header/comparison status and the `--add-only` / `--update-only` intent.
-        It assumes the caller has already removed results that are **unsafe to
-        insert** per the pre-insert capability gate. See the `effective_results`
-        filter below.
-        """
-        if add_only:
-            return any(r.status.header == HeaderStatus.MISSING for r in results)
-        if update_only:
-            return any(
-                (r.status.header == HeaderStatus.DETECTED)
-                and (r.status.comparison == ComparisonStatus.CHANGED)
-                for r in results
-            )
-        return any(
-            (r.status.header == HeaderStatus.MISSING)
-            or (r.status.comparison == ComparisonStatus.CHANGED)
-            for r in results
-        )
-
-    # Consider WOULD_CHANGE only for files that are safe to insert/update.
-    # Files flagged by the pre-insert gate (capability != OK) are excluded here,
-    # so they do not contribute to the --would-change exit code.
-    effective_results: list[ProcessingContext] = [
-        r
-        for r in results
-        if r.pre_insert_capability
-        in {
-            InsertCapability.UNEVALUATED,
-            InsertCapability.OK,
-        }
-    ]
-
-    if not apply_changes and _would_change_check(
-        effective_results, add_only=add_only, update_only=update_only
-    ):
+    if not apply_changes and any(r.effective_would_add_or_update for r in results):
         ctx.exit(ExitCode.WOULD_CHANGE)
 
     # Exit on any error encountered during processing

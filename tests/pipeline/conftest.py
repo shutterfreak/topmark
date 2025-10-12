@@ -26,15 +26,16 @@ Key utilities:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Iterable, Sequence
 
 from typing_extensions import NotRequired, Required, TypedDict
 
 from tests.conftest import fixture
-from topmark.pipeline.context import ProcessingContext, WriteStatus
+from topmark.pipeline.context import ProcessingContext
 from topmark.pipeline.processors import get_processor_for_file, register_all_processors
 from topmark.pipeline.processors.base import HeaderProcessor
 from topmark.pipeline.steps import reader, resolver, scanner, sniffer, stripper, updater
+from topmark.pipeline.views import HeaderView, UpdatedView
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -90,6 +91,30 @@ def register_processors_for_this_package() -> None:
     registration fixture in each test module under ``tests/pipeline/processors``.
     """
     register_all_processors()
+
+
+def materialize_image_lines(ctx: ProcessingContext) -> list[str]:
+    """Return the current file image lines as a concrete list for test assertions.
+
+    Converts the possibly lazy iterator from ``ctx.image.iter_lines()`` into a list
+    without altering the ProcessingContext. Safe for test-only use.
+    """
+    if not ctx.image:
+        return []
+    # `iter_lines()` always yields keepends=True lines
+    return list(ctx.image.iter_lines())
+
+
+def materialize_updated_lines(ctx: ProcessingContext) -> list[str]:
+    """Return updated file lines as a concrete list for test assertions.
+
+    Converts the possibly lazy iterable in ``ctx.updated.lines`` into a list
+    without altering the ProcessingContext. Safe for test-only use.
+    """
+    if not ctx.updated or ctx.updated.lines is None:
+        return []
+    seq: Sequence[str] | Iterable[str] = ctx.updated.lines
+    return seq if isinstance(seq, list) else list(seq)
 
 
 def run_insert(path: Path, cfg: Config) -> ProcessingContext:
@@ -148,16 +173,26 @@ def run_insert(path: Path, cfg: Config) -> ProcessingContext:
     # Preserve pre-prefix indentation (spaces/tabs before the prefix) when
     # replacing an existing header block, so nested JSONC headers stay aligned.
     header_indent_override: str | None = None
-    if ctx.existing_header_range is not None and ctx.file_lines:
+
+    buf: list[str]
+    if ctx.image:
+        buf = list(ctx.iter_file_lines())  # Materialize
+    else:
+        buf = []  # Default for further processing
+
+    # if ctx.existing_header_range is not None and ctx.file_lines:
+    if ctx.image and ctx.header and ctx.header.range:
         start_idx: int
         _end_idx: int
-        start_idx, _end_idx = ctx.existing_header_range
-        first_line: str = ctx.file_lines[start_idx]
+        start_idx, _end_idx = ctx.header.range
+
+        first_line: str = buf[start_idx]
         leading_ws: str = first_line[: len(first_line) - len(first_line.lstrip())]
         if leading_ws and first_line.lstrip().startswith(processor.line_prefix):
             header_indent_override = leading_ws
 
-    ctx.expected_header_lines = processor.render_header_lines(
+    # Compute expected (rendered) header lines using the processor
+    expected_header_lines: list[str] = processor.render_header_lines(
         header_values,
         cfg,
         newline,
@@ -166,25 +201,51 @@ def run_insert(path: Path, cfg: Config) -> ProcessingContext:
 
     # If scanner did not find a header, attempt a lightweight signature-based
     # detection to support tests that directly call the updater with crafted content.
-    if ctx.existing_header_range is None:
+    if ctx.header is None or ctx.header.range is None:
         try:
             sig: BlockSignatures = expected_block_lines_for(path, newline=newline)
-            start_idx = find_line(ctx.file_lines or [], sig["start_line"])
-            end_idx: int = find_line(ctx.file_lines or [], sig["end_line"])
-            ctx.existing_header_range = (start_idx, end_idx)
+            start_idx = find_line(buf or [], sig["start_line"])
+            end_idx: int = find_line(buf, sig["end_line"])
+            detected_range: tuple[int, int] | None = (start_idx, end_idx)
         except AssertionError:
-            ctx.existing_header_range = None
+            detected_range = None
+
+        # Build a HeaderView so downstream steps (updater/comparer) have a consistent view
+        if detected_range is not None:
+            s: int
+            e: int
+            s, e = detected_range
+            slice_lines: list[str] = buf[s : e + 1]
+            ctx.header = HeaderView(
+                range=detected_range,
+                lines=slice_lines,
+                block="".join(slice_lines),
+                mapping=None,
+            )
+        else:
+            ctx.header = None
+
+    # Populate the RenderView with the expected header text
+    from topmark.pipeline.views import RenderView  # local import for tests
+
+    ctx.render = RenderView(lines=expected_header_lines, block="".join(expected_header_lines))
 
     # Call the updater step directly
     ctx = updater.update(ctx)
-    assert ctx.status.write is not WriteStatus.PENDING
 
-    # Normalize newlines for consistent test output
-    ctx.updated_file_lines = _coerce_newlines(
-        ctx.updated_file_lines or [],
+    # Normalize newlines for consistent test output using the updated view
+    updated_seq: Sequence[str] | Iterable[str] = (
+        ctx.updated.lines if (ctx.updated and ctx.updated.lines is not None) else []
+    )
+    updated_file_lines: list[str] = (
+        updated_seq if isinstance(updated_seq, list) else list(updated_seq)
+    )
+    updated_file_lines = _coerce_newlines(
+        updated_file_lines,
         target_nl=ctx.newline_style or "\n",
         ends_with_newline=ctx.ends_with_newline,
     )
+    ctx.updated = UpdatedView(lines=updated_file_lines)
     return ctx
 
 
@@ -238,14 +299,23 @@ def run_strip(path: Path, cfg: Config) -> ProcessingContext:
     ctx = stripper.strip(ctx)
     # Stripper can return NOT_NEEDED and produce no updated image (e.g., no header found).
     # Keep the original image so the caller can still reason about content round-trips.
-    if ctx.updated_file_lines is None:
-        ctx.updated_file_lines = ctx.file_lines or []
-    # Normalize newlines for consistent test output
-    ctx.updated_file_lines = _coerce_newlines(
-        ctx.updated_file_lines or [],
+    if ctx.updated is None or ctx.updated.lines is None:
+        original_lines: list[str] = list(ctx.iter_file_lines())
+        from topmark.pipeline.views import UpdatedView as _UpdatedView
+
+        ctx.updated = _UpdatedView(lines=original_lines)
+
+    # Normalize newlines for consistent test output using the updated view
+    updated_seq: Sequence[str] | Iterable[str] = (
+        ctx.updated.lines if ctx.updated and ctx.updated.lines is not None else []
+    )
+    updated_lines: list[str] = updated_seq if isinstance(updated_seq, list) else list(updated_seq)
+    updated_lines = _coerce_newlines(
+        updated_lines,
         target_nl=ctx.newline_style or "\n",
         ends_with_newline=ctx.ends_with_newline,
     )
+    ctx.updated = UpdatedView(lines=updated_lines)
     return ctx
 
 

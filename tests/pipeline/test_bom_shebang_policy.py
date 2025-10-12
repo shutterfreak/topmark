@@ -23,10 +23,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from tests.pipeline.conftest import materialize_image_lines
 from topmark.config import Config, MutableConfig
 from topmark.pipeline.context import (
     ContentStatus,
     ProcessingContext,
+    ResolveStatus,
     StripStatus,
     WriteStatus,
 )
@@ -34,6 +36,7 @@ from topmark.pipeline.steps.reader import read
 from topmark.pipeline.steps.resolver import resolve
 from topmark.pipeline.steps.sniffer import sniff
 from topmark.pipeline.steps.updater import update
+from topmark.pipeline.views import UpdatedView
 
 
 def _ctx_for(path: Path) -> ProcessingContext:
@@ -81,8 +84,11 @@ def test_reader_allows_shebang_without_bom_python(tmp_path: Path) -> None:
     # Reader should have loaded lines
     ctx = read(ctx)  # optional: then assert lines were loaded
 
-    assert ctx.file_lines and ctx.file_lines[0].startswith("#!"), (
-        ctx.file_lines[:2] if ctx.file_lines else "(File has no lines)"
+    assert ctx.image
+    file_lines: list[str] = materialize_image_lines(ctx)
+
+    assert file_lines and file_lines[0].startswith("#!"), (
+        file_lines[:2] if file_lines else "(File has no lines)"
     )
 
 
@@ -94,7 +100,11 @@ def test_updater_suppresses_bom_reprepend_in_strip_fastpath() -> None:
     ctx.has_shebang = True
 
     # Simulate prior steps setting up a removal result
-    ctx.updated_file_lines = ["#! /usr/bin/env python\n", "print('x')\n"]
+    updated_file_lines: list[str] = ["#! /usr/bin/env python\n", "print('x')\n"]
+    ctx.updated = UpdatedView(lines=updated_file_lines)  # precomputed change
+
+    # Ensure the may_proceed_to_updater() gating helper allows processing:
+    ctx.status.resolve = ResolveStatus.RESOLVED
     ctx.status.content = ContentStatus.OK
     ctx.status.strip = StripStatus.READY
 
@@ -102,8 +112,9 @@ def test_updater_suppresses_bom_reprepend_in_strip_fastpath() -> None:
 
     assert ctx.status.write == WriteStatus.PREVIEWED  # Dry-run mode
     # Should *not* have a BOM re-attached
-    assert ctx.updated_file_lines
-    assert not ctx.updated_file_lines[0].startswith("\ufeff"), ctx.updated_file_lines[0]
+    assert ctx.updated
+
+    assert not updated_file_lines[0].startswith("\ufeff"), updated_file_lines[0]
     # Diagnostic should be present to explain why BOM was not re-appended
     assert any("BOM appears before the shebang" in d.message for d in ctx.diagnostics), (
         ctx.diagnostics
