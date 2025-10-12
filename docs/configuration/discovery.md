@@ -10,14 +10,11 @@ topmark:header:start
 topmark:header:end
 -->
 
-# Configuration: Discovery & Precedence
+# Configuration: Discovery, Precedence & Policy
 
-TopMark merges configuration from multiple sources with **clear precedence**. This page explains:
+TopMark merges configuration from multiple sources with **clear precedence** and now supports **policy-based control** over header insertion and updates.
 
-- How configuration files are discovered
-- How merges are applied (lowest → highest precedence)
-- How **globs** vs **path-to-file settings** are resolved with different bases
-- How CLI flags fit into the picture
+______________________________________________________________________
 
 ## Discovery order (lowest → highest precedence)
 
@@ -32,18 +29,15 @@ TopMark merges configuration from multiple sources with **clear precedence**. Th
 1. **Project configs (root → current)**\
    Discovered upward from the **discovery anchor** to the filesystem root:
 
-   - **Anchor selection:** the first input path you pass (its **parent** directory if it is a file).
-     If no input paths are given (or you read from STDIN), the anchor is the **current working
-     directory**. Use `--no-config` to skip this layer.
+   - **Anchor selection:** the first input path you pass (its **parent** directory if it is a file).\
+     If no input paths are given (or you read from STDIN), the anchor is the **current working directory**.\
+     Use `--no-config` to skip this layer.
    - In each directory, TopMark considers both:
      - `pyproject.toml` (`[tool.topmark]`)
-     - `topmark.toml` (tool-specific file)
-   - **Same-directory precedence:** `pyproject.toml` is merged first, then `topmark.toml` can
-     override it.
+     - `topmark.toml`
+   - **Same-directory precedence:** `pyproject.toml` is merged first, then `topmark.toml` can override it.
    - **Nearest-last wins:** directories are merged **root → current** (the nearest config wins).
-   - **Stopping discovery:** set `root = true` in a discovered config to stop traversal above that
-     directory.\
-     In `pyproject.toml`, put it under `[tool.topmark]`.
+   - **Stopping discovery:** set `root = true` to stop traversal above that directory.
 
 1. **Explicit config files**\
    Provided via `--config PATH`, merged **in the order given** (after discovery).
@@ -51,8 +45,8 @@ TopMark merges configuration from multiple sources with **clear precedence**. Th
 1. **CLI overrides (highest)**\
    Options and flags on the command line.
 
-> **Summary:** defaults → user → project chain (root→current; same-dir: pyproject then topmark) →
-> `--config` (in order) → CLI. Use `--no-config` to skip the project chain.
+> **Summary:** defaults → user → project chain (root→current) → `--config` (in order) → CLI.\
+> Use `--no-config` to skip discovery.
 
 ### Summary table
 
@@ -66,33 +60,24 @@ TopMark merges configuration from multiple sources with **clear precedence**. Th
 
 ______________________________________________________________________
 
-## Path semantics: sources define the base
+## Path semantics
 
 TopMark resolves paths relative to **where they are defined**:
 
-1. **Config‑declared globs** (e.g., `files.include_patterns`, `files.exclude_patterns`)
+| Source                                                               | Resolution base                               |
+| -------------------------------------------------------------------- | --------------------------------------------- |
+| Config-declared globs (`include_patterns`, `exclude_patterns`)       | Directory of the config file                  |
+| CLI globs (`--include`, `--exclude`)                                 | Current working directory                     |
+| Path-to-file settings (`include_from`, `exclude_from`, `files_from`) | Directory of defining config (or CWD for CLI) |
 
-   - Resolved relative to the **directory containing that config file**.
-
-1. **CLI‑declared globs** (`--include`, `--exclude`)
-
-   - Resolved relative to the **current working directory** (where `topmark` is invoked).
-
-1. **Path‑to‑file settings**
-
-   - Examples: `files.include_from`, `files.exclude_from`, `files.files_from`.
-   - Resolved relative to the **declaring config file’s directory**; for CLI options, resolved
-     relative to **CWD**. The referenced files’ own patterns are then evaluated relative to each
-     file’s own directory.
-
-NOTE: `relative_to` is used **only** for header metadata (e.g., `file_relpath`), and **not** for
-glob expansion or filtering.
+Note: `relative_to` only affects metadata fields like `file_relpath`, not file matching.
 
 ______________________________________________________________________
 
 ## Root semantics
 
-`root = true` in a discovered config stops the upward traversal **above** that directory.
+`root = true` stops traversal above the directory where it’s defined.\
+This defines a discovery boundary similar to tools like **Black**, **isort**, or **ruff**.
 
 - Where to put it:
   - In `topmark.toml`, at the top level.
@@ -131,65 +116,75 @@ See also:
 
 ______________________________________________________________________
 
-## CLI behavior
+## Policy resolution
 
-- **CLI path-to-file options** (`--include-from`, `--exclude-from`, `--files-from`):\
-  Resolved relative to the **current working directory** (your invocation site), then normalized to
-  absolute.
+TopMark applies **effective policies** by merging global and per-file-type rules:
 
-- **CLI globs** (`--include`, `--exclude`):\
-  Resolved relative to the **current working directory** (your invocation site).
+```toml
+[tool.topmark.policy]
+add_only = false
+update_only = false
+allow_header_in_empty_files = false
+
+[tool.topmark.policy_by_type."python"]
+allow_header_in_empty_files = true
+```
+
+The effective policy is computed as:
+
+```text
+effective = merge(global_policy, policy_by_type[file_type])
+```
+
+| Policy key                    | Description                                                 |
+| ----------------------------- | ----------------------------------------------------------- |
+| `add_only`                    | Only allow header insertion (no updates)                    |
+| `update_only`                 | Only allow header updates (no new insertions)               |
+| `allow_header_in_empty_files` | Permit header addition to empty files (e.g., `__init__.py`) |
 
 ______________________________________________________________________
 
-## Examples
+## Gatekeeping & Pipeline
 
-### Basic discovery with `root = true`
+Each pipeline step (reader, builder, renderer, comparer, updater, writer) is protected by **gating helpers** such as `may_proceed_to_writer(ctx)`.\
+These consider:
 
-```toml
-# topmark.toml (in repo root)
-root = true
+- File system status
+- Comparison result
+- Strip vs insert/update mode
+- Policy permissions (`permitted_by_policy`)
+- Feasibility (`can_change`)
 
-[files]
-# Evaluate globs relative to the repo root
-include_patterns = ["src/**/*.py"]
-```
-
-- Running `topmark check` in subdirectories still uses the **repo root** for glob evaluation.
-- Most-near configs override more distant ones unless `root = true` stops traversal earlier.
-
-### Pattern files from different places
-
-```toml
-# pyproject.toml, [tool.topmark] table (project root)
-[tool.topmark.files]
-exclude_from = [".gitignore"]  # resolved to <repo>/.gitignore
-
-# topmark.toml in a nested app/
-[files]
-exclude_from = ["app.ignore"]  # resolved to <repo>/app/app.ignore
-```
-
-- Both entries are normalized to **absolute** paths at load time.
-- When applying patterns:
-  - `.gitignore` rules apply with base `<repo>/`
-  - `app.ignore` rules apply with base `<repo>/app/`
+This ensures TopMark won’t modify files unless explicitly permitted by configuration and policy.
 
 ______________________________________________________________________
 
 ## Observability
 
-Run with `-v` to see:
+Run with `-v` or `--verbose` to see:
 
-- Discovery anchor and workspace base (`relative_to`)
-- Discovered config chain (root → current)
-- Normalization of pattern-file paths (with their base)
-- Which layer provided a given setting
+- Discovery anchor and workspace base
+- Config chain (root → current)
+- Normalization of pattern-file paths
+- Active policy and per-file-type overrides
+
+______________________________________________________________________
+
+## Examples
+
+### Allow headers in empty Python files
+
+```toml
+[tool.topmark.policy_by_type."python"]
+allow_header_in_empty_files = true
+```
+
+Now, even an empty `__init__.py` or `placeholder.py` can receive a header.
 
 ______________________________________________________________________
 
 ## See also
 
-- Default config with extensive comments:\
-  `src/topmark/config/topmark-default.toml`
-- API: `MutableConfig.load_merged()` and `resolve_config_from_click()` (mkdocstrings)
+- Default configuration: `src/topmark/config/topmark-default.toml`
+- Implementation: `MutableConfig.load_merged()` and `effective_policy()` in `topmark.config.model`
+- Related doc: `README.md`

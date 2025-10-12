@@ -17,7 +17,7 @@ topmark:header:end
 [![Downloads](https://static.pepy.tech/badge/topmark)](https://pepy.tech/project/topmark)
 [![GitHub release](https://img.shields.io/github/v/release/shutterfreak/topmark)](https://github.com/shutterfreak/topmark/releases)
 
-**TopMark** is a command-line tool to inspect, validate, and manage file headers in diverse codebases.\
+**TopMark** is a command-line tool to inspect, insert, validate, and manage file headers in diverse codebases.\
 It maintains consistent metadata across files by supporting multiple comment styles, configuration formats, and dry-run safety.
 
 ______________________________________________________________________
@@ -37,10 +37,11 @@ ______________________________________________________________________
 - Comment-aware (line and block styles)
 - Configurable header fields and alignment
 - Dry-run by default for safety
+- **Policy-based control** over when headers may be inserted, updated, or added to empty files
 - Layered configuration via:
   - `pyproject.toml` (`[tool.topmark]`)
   - `topmark.toml`
-  - CLI overrides
+  - CLI overrides and `--config`
 - Fine-grained include/exclude rules
 - Selective application via file patterns or `stdin`
 - Strict static typing (PEP 604 unions, Pyright)
@@ -204,19 +205,17 @@ TopMark preserves line endings, shebangs, BOMs, and indentation rules for each f
 
 ______________________________________________________________________
 
-## 🧠 Configuration
+## 🧠 Configuration & Policy
 
-TopMark supports **layered configuration discovery**:
+TopMark supports **layered configuration discovery** and a flexible **policy system** controlling insert/update behavior.
+
+### Discovery order
 
 1. Built-in defaults (`topmark-default.toml`)
 1. User config (`~/.config/topmark/topmark.toml` or `~/.topmark.toml`)
 1. Project config (nearest upward `pyproject.toml` or `topmark.toml`)
-1. Explicit `--config` files (highest precedence)
-1. CLI flags and options
-
-```bash
-topmark dump-config --exclude .venv --exclude-from .gitignore
-```
+1. Explicit `--config` files (merged in order)
+1. CLI flags and options (highest precedence)
 
 ### Example `topmark.toml`
 
@@ -229,6 +228,14 @@ copyright = "(c) 2025 Olivier Biot"
 [header]
 fields = ["file", "file_relpath", "project", "license", "copyright"]
 
+[tool.topmark.policy]
+add_only = false
+update_only = false
+allow_header_in_empty_files = false
+
+[tool.topmark.policy_by_type."python"]
+allow_header_in_empty_files = true
+
 [formatting]
 align_fields = true
 raw_header = false
@@ -239,7 +246,19 @@ exclude_from = [".gitignore"]
 relative_to = "."
 ```
 
-> See [`docs/configuration/discovery.md`](docs/configuration/discovery.md) for details.
+### Policy semantics
+
+| Setting                       | Meaning                                                                 |
+| ----------------------------- | ----------------------------------------------------------------------- |
+| `add_only = true`             | Only insert headers into files without one; skip updating existing ones |
+| `update_only = true`          | Only update existing headers; skip inserting new ones                   |
+| `allow_header_in_empty_files` | Allow adding headers to empty files (useful for e.g. `__init__.py`)     |
+
+Per-type overrides under `[tool.topmark.policy_by_type."filetype"]` can adjust specific behavior.
+
+These policy options apply equally to the **CLI** and the **public API**.
+
+> See `docs/configuration/discovery.md` for more detail on config precedence and path semantics.
 
 ______________________________________________________________________
 
@@ -269,16 +288,22 @@ ______________________________________________________________________
 
 ## 🔒 Public API
 
-TopMark exposes a minimal **stable Python API** under `topmark.api`.
+The public API now an optional `policy` argument (global or per-type) that integrates with the same resolution mechanism used by the CLI.
 
 ### Example
 
 ```python
 from pathlib import Path
 from topmark import api
+from topmark.api.public_types import Policy
 
 # Dry-run header checks
-result = api.check([Path("src")])
+result = api.check(
+    [Path("src")],
+    apply=True,
+    policy=Policy(add_only=True)
+)
+
 print(result.summary)
 print(result.had_errors)
 
