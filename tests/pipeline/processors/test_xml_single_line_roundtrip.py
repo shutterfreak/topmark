@@ -19,12 +19,20 @@ Covers the tricky single-line XML case:
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tests.pipeline.conftest import materialize_updated_lines, run_insert
 from topmark.config import Config, MutableConfig
+from topmark.constants import TOPMARK_START_MARKER
 from topmark.pipeline.processors import get_processor_for_file
+from topmark.pipeline.processors.types import StripDiagKind, StripDiagnostic
+from topmark.pipeline.status import (
+    ComparisonStatus,
+    ContentStatus,
+    GenerationStatus,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -33,8 +41,8 @@ if TYPE_CHECKING:
     from topmark.pipeline.processors.base import HeaderProcessor
 
 
-def test_xml_single_line_insert_then_strip_preserves_layout(tmp_path: Path) -> None:
-    """Round-trip keeps declaration intact and preserves no-FNL policy."""
+def test_xml_prolog_and_body_on_same_line_blocked_by_policy(tmp_path: Path) -> None:
+    """XML prolog and body on same line would reflow, blocked by policy."""
     f: Path = tmp_path / "one.xml"
     original = '<?xml version="1.0"?><root/>'  # no trailing newline
     f.write_text(original, encoding="utf-8")
@@ -42,23 +50,44 @@ def test_xml_single_line_insert_then_strip_preserves_layout(tmp_path: Path) -> N
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
+    assert ctx.status.content == ContentStatus.SKIPPED_REFLOW
+    assert ctx.flow.halt is True
+
+
+def test_xml_prolog_and_body_on_same_line_alllowed_by_policy(tmp_path: Path) -> None:
+    """XML prolog and body on same line would reflow, allowed by policy."""
+    f: Path = tmp_path / "one.xml"
+    original = '<?xml version="1.0"?><root/>'  # no trailing newline
+    f.write_text(original, encoding="utf-8")
+
+    draft: MutableConfig = MutableConfig.from_defaults()
+    draft.policy.allow_reflow = True
+    cfg: Config = draft.freeze()
+    ctx: ProcessingContext = run_insert(f, cfg)
+
     lines: list[str] = materialize_updated_lines(ctx)
     after_insert: str = "".join(lines)
 
-    assert after_insert.startswith("\ufeff") or after_insert.startswith("<?xml"), (
-        "Declaration must remain first logical line"
-    )
+    assert ctx.status.generation == GenerationStatus.GENERATED
+    assert ctx.status.comparison == ComparisonStatus.CHANGED
+    assert any(TOPMARK_START_MARKER in line for line in lines)
 
     proc: HeaderProcessor | None = get_processor_for_file(f)
     assert proc is not None
     lines: list[str] = after_insert.splitlines(keepends=True)
     stripped_lines: list[str] = []
     _span: tuple[int, int] | None = None
-    stripped_lines, _span = proc.strip_header_block(
+    diag: StripDiagnostic
+    stripped_lines, _span, diag = proc.strip_header_block(
         lines=lines,
         span=None,
         newline_style=ctx.newline_style,  # from ProcessingContext
         ends_with_newline=False,  # original was single-line without FNL
     )
+    assert diag.kind == StripDiagKind.REMOVED
     roundtrip: str = "".join(stripped_lines)
-    assert roundtrip == original, "Round-trip must preserve single-line structure without FNL"
+
+    # Assert that original and roundtrip only differ in white space
+    # The re.sub(r'\s+', '', ...) function removes all whitespace characters
+    # (space, tab, newline, etc.) from both strings before comparison.
+    assert re.sub(r"\s+", "", original) == re.sub(r"\s+", "", roundtrip)

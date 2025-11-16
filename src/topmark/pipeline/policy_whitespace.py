@@ -24,7 +24,10 @@ Helpers
   without consuming control characters such as form-feed unless the policy opts in.
 """
 
-from topmark.filetypes.policy import BlankCollapseMode, FileTypeHeaderPolicy
+from topmark.filetypes.policy import (
+    BlankCollapseMode,
+    FileTypeHeaderPolicy,
+)
 
 
 def is_pure_spacer(line: str, policy: FileTypeHeaderPolicy | None) -> bool:
@@ -102,11 +105,11 @@ def is_effectively_empty_body(
     for ln in lines:
         if ln == "":
             continue
-        s = ln.replace("\ufeff", "")  # ignore BOM
+        s: str = ln.replace("\ufeff", "")  # ignore BOM
         # Remove EOLs for content check
-        s_noeol = s.replace("\r", "").replace("\n", "")
+        s_noeol: str = s.replace("\r", "").replace("\n", "")
         if mode is BlankCollapseMode.UNICODE:
-            t = s_noeol.strip()
+            t: str = s_noeol.strip()
             if t == "":
                 continue
             if not all(ch in extra for ch in t):

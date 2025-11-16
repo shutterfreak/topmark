@@ -11,22 +11,22 @@
 """Configuration model and merge policy.
 
 This module defines:
-    - :class:`Config`: an immutable, runtime snapshot used by processing steps.
-    - :class:`MutableConfig`: a mutable builder used during discovery/merge; it
-      can be frozen into :class:`Config` and thawed back for edits.
+    - `Config`: an immutable, runtime snapshot used by processing steps.
+    - `MutableConfig`: a mutable builder used during discovery/merge; it
+      can be frozen into `Config` and thawed back for edits.
 
 Scope:
     - *In scope*: data shapes, defaulting rules at the field level, merge policy
-      (:meth:`MutableConfig.merge_with`), and freeze/thaw mechanics.
+      (`MutableConfig.merge_with`), and freeze/thaw mechanics.
     - *Out of scope*: filesystem discovery and TOML I/O. Those belong in
       dedicated modules (e.g., ``discovery.py`` and ``loader.py``) to keep this
       model import-light and avoid cycles. The project may re-export such helpers
-      from :mod:`topmark.config` for a stable public API.
+      from `topmark.config` for a stable public API.
 
 Immutability:
-    - :class:`Config` stores tuples/frozensets and is ``frozen=True`` to prevent
-      accidental mutation at runtime. Use :meth:`Config.thaw` → edit →
-      :meth:`MutableConfig.freeze` for safe updates.
+    - `Config` stores tuples/frozensets and is ``frozen=True`` to prevent
+      accidental mutation at runtime. Use `Config.thaw` → edit →
+      `MutableConfig.freeze` for safe updates.
 
 Path semantics:
     - Path-to-file options declared in config are normalized against that config
@@ -49,12 +49,11 @@ import os
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from topmark.config.io import (
-    TomlTable,
-    TomlTableMap,
     clean_toml,
     get_bool_value_or_none,
     get_list_value,
@@ -65,12 +64,14 @@ from topmark.config.io import (
     load_toml_dict,
     to_toml,
 )
-from topmark.config.logging import TopmarkLogger, get_logger
+from topmark.config.logging import get_logger
 from topmark.config.paths import abs_path_from, extend_ps, ps_from_cli, ps_from_config
 from topmark.config.policy import MutablePolicy, Policy
 from topmark.rendering.formats import HeaderOutputFormat
 
 if TYPE_CHECKING:
+    from topmark.config.io import TomlTable, TomlTableMap
+    from topmark.config.logging import TopmarkLogger
     from topmark.config.types import PatternSource
 
 # ArgsLike: generic mapping accepted by config loaders (works for CLI namespaces and API dicts).
@@ -81,6 +82,62 @@ ArgsLike = Mapping[str, Any]
 # CLI to pass its namespace and the API/tests to pass plain dicts.
 
 logger: TopmarkLogger = get_logger(__name__)
+
+
+class OutputTarget(str, Enum):
+    """Available targets for writing processed file content."""
+
+    FILE = "Write to file"
+    STDOUT = "Write to STDOUT"
+
+    @classmethod
+    def from_name(cls, key_name: str | None) -> OutputTarget | None:
+        """Finds the OutputTarget member by its case-insensitive name (e.g., 'file', 'stdout').
+
+        Args:
+            key_name (str | None): The string name of the member (e.g., "file") or None.
+
+        Returns:
+            OutputTarget | None: The matching OutputTarget member or None
+                if the key is None or unmatched.
+        """
+        if key_name is None:
+            return None
+
+        # 1. Convert input to uppercase to match Enum member names (FILE, STDOUT)
+        target_name: str = key_name.upper()
+
+        # 2. Use the Enum's __members__ dictionary for a safe, direct lookup
+        return cls.__members__.get(target_name)
+
+
+class FileWriteStrategy(str, Enum):
+    """Available strategies for writing file content."""
+
+    ATOMIC = "Safe atomic writer (default)"
+    IN_PLACE = "Fast in-place writer"
+
+    @classmethod
+    def from_name(cls, key_name: str | None) -> FileWriteStrategy | None:
+        """Finds the FileWriteStrategy member by its case-insensitive name.
+
+        Args:
+            key_name (str | None): The string name of the member (e.g., 'atomic', 'in_place')
+                or None.
+
+        Returns:
+            FileWriteStrategy | None: The matching FileWriteStrategy member or None
+                if the key is None or unmatched.
+        """
+        if key_name is None:
+            return None
+
+        # 1. Convert input to uppercase to match Enum member names (ATOMIC, IN_PLACE)
+        target_name: str = key_name.upper()
+
+        # 2. Use the Enum's __members__ dictionary for a safe, direct lookup
+        #    cls.__members__ maps string names to Enum instances.
+        return cls.__members__.get(target_name)
 
 
 # ------------------ Immutable runtime config ------------------
@@ -103,6 +160,9 @@ class Config:
         verbosity_level (int | None): None = inherit, 0 = terse, 1 = verbose diagnostics.
         apply_changes (bool | None): Runtime intent: whether to actually write changes (apply)
             or preview only. None = inherit/unspecified, False = dry-run/preview, True = apply.
+        output_target (OutputTarget | None): Where to send output: `"file"` or `"stdout"`.
+        file_write_strategy (FileWriteStrategy | None): How to write when `output_target == "file"`:
+            `"atomic"` (safe default) or `"inplace"` (fast, less safe).
         policy (Policy): Global, resolved, immutable runtime policy (plain booleans),
             applied after discovery.
         policy_by_type (Mapping[str, Policy]): Per-file-type resolved policy overrides
@@ -139,7 +199,13 @@ class Config:
 
     # Verbosity & runtime intent
     verbosity_level: int | None
+
     apply_changes: bool | None
+
+    # Output target for writing (file, stdout)
+    output_target: OutputTarget | None
+    # File writer (atomic, in-place)
+    file_write_strategy: FileWriteStrategy | None
 
     # Policy containers
     policy: Policy
@@ -199,6 +265,10 @@ class Config:
                     self.header_format.value if self.header_format is not None else None
                 ),
             },
+            "writer": {
+                "target": self.output_target,
+                "strategy": self.file_write_strategy,
+            },
             "files": {
                 "file_types": list(self.file_types),
                 "files_from": [str(ps.path) for ps in self.files_from],
@@ -247,6 +317,8 @@ class Config:
             timestamp=self.timestamp,
             verbosity_level=self.verbosity_level,
             apply_changes=self.apply_changes,
+            output_target=self.output_target,
+            file_write_strategy=self.file_write_strategy,
             policy=self.policy.thaw(),
             policy_by_type={k: v.thaw() for k, v in self.policy_by_type.items()},
             config_files=list(self.config_files),
@@ -282,6 +354,9 @@ class MutableConfig:
         verbosity_level (int | None): None = inherit, 0 = terse, 1 = verbose diagnostics.
         apply_changes (bool | None): Runtime intent: whether to actually write changes (apply)
             or preview only. None = inherit/unspecified, False = dry-run/preview, True = apply.
+        output_target (OutputTarget | None): Where to send output: `"file"` or `"stdout"`.
+        file_write_strategy (FileWriteStrategy | None): How to write when `output_target == "file"`:
+            `"atomic"` (safe default) or `"inplace"` (fast, less safe).
         policy (MutablePolicy): Optional global policy overrides (public shape).
         policy_by_type (dict[str, MutablePolicy]): Optional per-type policy.
         config_files (list[Path | str]): List of paths or identifiers for config sources used.
@@ -311,6 +386,11 @@ class MutableConfig:
 
     # Runtime intent: whether to actually write changes (apply) or preview only
     apply_changes: bool | None = None
+
+    # Output target for writing (file, stdout)
+    output_target: OutputTarget | None = None
+    # File writer (atomic, in-place)
+    file_write_strategy: FileWriteStrategy | None = None
 
     # Policy containers:
     policy: MutablePolicy = field(default_factory=MutablePolicy)
@@ -370,6 +450,8 @@ class MutableConfig:
             timestamp=self.timestamp,
             verbosity_level=self.verbosity_level,
             apply_changes=self.apply_changes,
+            output_target=self.output_target,
+            file_write_strategy=self.file_write_strategy,
             policy=global_policy_frozen,
             policy_by_type=frozen_by_type,
             config_files=tuple(self.config_files),
@@ -603,6 +685,9 @@ class MutableConfig:
         policy_by_type_tbl: TomlTableMap = get_table_value(tool_tbl, "policy_by_type")
         logger.trace("TOML [policy_by_type]: %s", policy_by_type_tbl)
 
+        writer_tbl: TomlTable = get_table_value(tool_tbl, "writer")
+        logger.trace("TOML [writer]: %s", writer_tbl)
+
         # Start from a fresh draft with current timestamp
         draft: MutableConfig = cls(timestamp=datetime.now().isoformat())
 
@@ -612,6 +697,20 @@ class MutableConfig:
         # ----- config_files: normalize to absolute paths if possible -----
         config_files: tuple[list[Path]] = ([config_file] if config_file else [],)
         draft.config_files = [str(p) for p in config_files[0]] if config_files[0] else []
+
+        # ----- Writer mode: atomic (True) vs in-place (False) -----
+        draft.output_target = OutputTarget.from_name(
+            get_string_value_or_none(
+                writer_tbl,
+                "target",
+            )
+        )
+        draft.file_write_strategy = FileWriteStrategy.from_name(
+            get_string_value_or_none(
+                writer_tbl,
+                "strategy",
+            )
+        )
 
         # ----- Global policy -----
         draft.policy = MutablePolicy.from_toml_table(policy_tbl)
@@ -864,6 +963,12 @@ class MutableConfig:
             apply_changes=other.apply_changes
             if other.apply_changes is not None
             else self.apply_changes,
+            output_target=other.output_target
+            if other.output_target is not None
+            else self.output_target,
+            file_write_strategy=other.file_write_strategy
+            if other.file_write_strategy is not None
+            else self.file_write_strategy,
         )
 
         # Attach merged policies
@@ -998,6 +1103,16 @@ class MutableConfig:
 
         if "apply_changes" in args and args["apply_changes"] is not None:
             self.apply_changes = bool(args["apply_changes"])
+
+        if "write_mode" in args and args["write_mode"] is not None:
+            logger.error("CLI ARGS: write_mode: {%s}", args["write_mode"])
+            write_mode: str = args["write_mode"].upper()
+            self.file_write_strategy: FileWriteStrategy | None = FileWriteStrategy.from_name(
+                write_mode  # ATOMIC or  IN_PLACE
+            )
+            self.output_target: OutputTarget | None = OutputTarget.from_name(
+                write_mode,
+            )  # STDOUT (or FILE - not provided from CLI)
 
         logger.debug("Patched MutableConfig: %s", self)
         logger.info("Applied CLI overrides to MutableConfig")

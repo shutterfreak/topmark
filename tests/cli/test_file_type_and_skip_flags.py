@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING
 
 from tests.cli.conftest import assert_SUCCESS, assert_SUCCESS_or_WOULD_CHANGE, run_cli
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
+from topmark.pipeline.status import ResolveStatus, StripStatus
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -97,10 +98,8 @@ def test_skip_compliant_hides_clean_files(tmp_path: Path) -> None:
     assert_SUCCESS_or_WOULD_CHANGE(result)
 
     out: str = result.output.lower()
-    # NOTE: Labels come from classify_outcome(); compliant buckets ("no header"
-    # or "up-to-date") may still be shown depending on current summary settings.
-    # We only require that the would-change bucket is present.
-    assert "would strip header" in out
+    # NOTE: Labels come from map_bucket/summary labels
+    assert StripStatus.READY.value in out
 
 
 def test_skip_unsupported_hides_unknown(tmp_path: Path) -> None:
@@ -110,19 +109,18 @@ def test_skip_unsupported_hides_unknown(tmp_path: Path) -> None:
     unk.write_text("payload\n", "utf-8")
 
     # Normal mode
-    result_summary: Result = run_cli(
+    result_normal: Result = run_cli(
         ["check", "--skip-unsupported", str(unk)],
     )
 
     # nothing to do, and unknown is skipped from output
-    assert_SUCCESS(result_summary)
+    assert_SUCCESS(result_normal)
 
     # Summary mode: the "unsupported" bucket should not be present now.
-    result_normal: Result = run_cli(
+    result_summary: Result = run_cli(
         ["check", "--summary", "--skip-unsupported", str(unk)],
     )
 
-    assert_SUCCESS(result_normal)
+    assert_SUCCESS(result_summary)
 
-    out: str = result_normal.output.lower()
-    assert "unsupported" not in out
+    assert ResolveStatus.UNSUPPORTED.value not in result_summary.output

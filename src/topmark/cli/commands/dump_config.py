@@ -29,7 +29,7 @@ from typing import TYPE_CHECKING
 import click
 
 from topmark.cli.cmd_common import build_config_common, get_effective_verbosity
-from topmark.cli.io import InputPlan, plan_cli_inputs
+from topmark.cli.io import plan_cli_inputs
 from topmark.cli.options import (
     CONTEXT_SETTINGS,
     common_config_options,
@@ -37,13 +37,15 @@ from topmark.cli.options import (
     common_header_formatting_options,
 )
 from topmark.cli_shared.utils import safe_unlink
-from topmark.config.logging import TopmarkLogger, get_logger
+from topmark.config.logging import get_logger
 
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from topmark.cli.io import InputPlan
     from topmark.cli_shared.console_api import ConsoleLike
     from topmark.config import Config, MutableConfig
+    from topmark.config.logging import TopmarkLogger
     from topmark.rendering.formats import HeaderOutputFormat
 
 logger: TopmarkLogger = get_logger(__name__)

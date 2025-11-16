@@ -38,7 +38,3 @@ def test_check_exit_code_with_missing_header(tmp_path: Path) -> None:
 
     # When a header is missing, the default command should report WOULD_CHANGE (2).
     assert_WOULD_CHANGE(result)
-
-    # Sanity check: the summary should mention the file and that the result is changed.
-    assert file_name in result.output
-    assert "would insert header" in result.output

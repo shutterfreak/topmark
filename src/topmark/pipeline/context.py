@@ -14,315 +14,61 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from functools import cached_property
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Iterable, Sequence, cast
 
 from yachalk import chalk
 
-from topmark.config.policy import Policy, effective_policy
+# from topmark.api.view import (
+#     NO_REASON_PROVIDED,
+#     map_bucket,
+#     outcome_color,
+# )
+from topmark.config.logging import get_logger
+from topmark.config.policy import effective_policy
+from topmark.core.enum_mixins import enum_from_name
 from topmark.filetypes.base import InsertCapability
+from topmark.pipeline.hints import Cluster, Hint, select_headline_hint
+from topmark.pipeline.views import UpdatedView, Views
+
+from .status import (
+    ComparisonStatus,
+    ContentStatus,
+    FsStatus,
+    GenerationStatus,
+    HeaderStatus,
+    PatchStatus,
+    PlanStatus,
+    RenderStatus,
+    ResolveStatus,
+    StripStatus,
+    WriteStatus,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
     from pathlib import Path
 
     from topmark.config import Config
+    from topmark.config.logging import TopmarkLogger
+    from topmark.config.policy import Policy
     from topmark.filetypes.base import FileType
+    from topmark.pipeline.contracts import Step
     from topmark.pipeline.processors.base import HeaderProcessor
-
-    from .views import BuilderView, DiffView, FileImageView, HeaderView, RenderView, UpdatedView
-
-
-class BaseStatus(Enum):
-    """Base class for status enums in the Topmark pipeline.
-
-    This class serves as a common base for all status enums representing different
-    phases of the header processing pipeline (e.g., file, header, generation, comparison, write).
-    It provides shared utilities, such as computing the maximum value length for pretty-printing.
-
-    Usage:
-        Subclass this class to define specific statuses for each pipeline phase.
-    """
-
-    @cached_property
-    def value_length(self) -> int:
-        """Maximum length of the enum *value* strings for this enum type.
-
-        Note:
-            This is effectively a class-level property cached per enum member the
-            first time it is accessed. Access ``SomeStatus.ANY.value_length`` to get
-            the max width for ``SomeStatus``.
-
-        Returns:
-            int: The length of the longest enum value string in the subclass.
-        """
-        return max(len(member.value) for member in type(self))
+    from topmark.rendering.colored_enum import Colorizer
 
 
-class FsStatus(BaseStatus):
-    """Represents the status of file system checks in the pipeline.
+logger: TopmarkLogger = get_logger(__name__)
 
-    Used to indicate the result of existence and permission checks.
-    """
-
-    PENDING = "pending"
-    OK = "ok"
-    EMPTY = "empty file"
-    NOT_FOUND = "not found"
-    NO_READ_PERMISSION = "no read permission"
-    UNREADABLE = "read error"
-    NO_WRITE_PERMISSION = "no write permission"
-
-    @property
-    def color(self) -> Callable[[str], str]:
-        """Get the chalk color renderer associated with this file system status.
-
-        Returns:
-            Callable[[str], str]: Function to colorize a string for this status.
-        """
-        return cast(
-            "Callable[[str], str]",
-            {
-                FsStatus.PENDING: chalk.gray,
-                FsStatus.OK: chalk.green,
-                FsStatus.EMPTY: chalk.yellow,
-                FsStatus.NOT_FOUND: chalk.red,
-                FsStatus.NO_READ_PERMISSION: chalk.red_bright,
-                FsStatus.UNREADABLE: chalk.red_bright,
-                FsStatus.NO_WRITE_PERMISSION: chalk.red_bright,
-            }[self],
-        )
-
-
-class ResolveStatus(BaseStatus):
-    """Represents the status of file type resolution in the pipeline.
-
-    Used to indicate whether the file type was successfully resolved or not.
-    """
-
-    PENDING = "pending"
-    RESOLVED = "resolved"
-    TYPE_RESOLVED_HEADERS_UNSUPPORTED = "known file type, headers not supported"
-    TYPE_RESOLVED_NO_PROCESSOR_REGISTERED = "known file type, no header processor"
-    UNSUPPORTED = "unsupported file type"
-
-    @property
-    def color(self) -> Callable[[str], str]:
-        """Get the chalk color renderer associated with this resolve status.
-
-        Returns:
-            Callable[[str], str]: Function to colorize a string for this status.
-        """
-        return cast(
-            "Callable[[str], str]",
-            {
-                ResolveStatus.PENDING: chalk.gray,
-                ResolveStatus.RESOLVED: chalk.green,
-                ResolveStatus.TYPE_RESOLVED_HEADERS_UNSUPPORTED: chalk.yellow,
-                ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED: chalk.red,
-                ResolveStatus.UNSUPPORTED: chalk.yellow,
-            }[self],
-        )
-
-
-class ContentStatus(BaseStatus):
-    """Represents the status of file content checks in the pipeline."""
-
-    PENDING = "pending"
-    OK = "ok"
-    SKIPPED_NOT_TEXT_FILE = "not a text file"
-    SKIPPED_MIXED_LINE_ENDINGS = "mixed line endings"
-    SKIPPED_POLICY_BOM_BEFORE_SHEBANG = "BOM before shebang"
-    UNREADABLE = "unreadable"
-
-    @property
-    def color(self) -> Callable[[str], str]:
-        """Get the chalk color renderer associated with this content status.
-
-        Returns:
-            Callable[[str], str]: Function to colorize a string for this status.
-        """
-        return cast(
-            "Callable[[str], str]",
-            {
-                ContentStatus.PENDING: chalk.gray,
-                ContentStatus.OK: chalk.green,
-                ContentStatus.SKIPPED_NOT_TEXT_FILE: chalk.red,
-                ContentStatus.SKIPPED_MIXED_LINE_ENDINGS: chalk.red,
-                ContentStatus.SKIPPED_POLICY_BOM_BEFORE_SHEBANG: chalk.red,
-                ContentStatus.UNREADABLE: chalk.red_bright,
-            }[self],
-        )
-
-
-class HeaderStatus(BaseStatus):
-    """Represents the status of header processing for a file in the pipeline.
-
-    Used to indicate detection, parsing, and validation results for the file header.
-    """
-
-    PENDING = "pending"
-    MISSING = "missing"
-    DETECTED = "detected"
-    MALFORMED = "malformed"
-    MALFORMED_ALL_FIELDS = "malformed (all fields invalid)"
-    MALFORMED_SOME_FIELDS = "malformed (some fields invalid)"
-    EMPTY = "empty"
-    ERRORED = "errored"
-
-    @property
-    def color(self) -> Callable[[str], str]:
-        """Get the chalk color renderer associated with this header status.
-
-        Returns:
-            Callable[[str], str]: Function to colorize a string for this status.
-        """
-        return cast(
-            "Callable[[str], str]",
-            {
-                HeaderStatus.PENDING: chalk.gray,
-                HeaderStatus.MISSING: chalk.blue,
-                HeaderStatus.DETECTED: chalk.green,
-                HeaderStatus.MALFORMED: chalk.red_bright,
-                HeaderStatus.MALFORMED_ALL_FIELDS: chalk.red_bright,
-                HeaderStatus.MALFORMED_SOME_FIELDS: chalk.red_bright,
-                HeaderStatus.EMPTY: chalk.yellow_bright,
-                HeaderStatus.ERRORED: chalk.red_bright,
-            }[self],
-        )
-
-
-class GenerationStatus(BaseStatus):
-    """Represents the status of header generation in the pipeline.
-
-    Used to indicate whether a new header was generated, rendered,
-    or if required fields are missing.
-    """
-
-    PENDING = "pending"
-    GENERATED = "generated"
-    NO_FIELDS = "no fields"
-    RENDERED = "rendered"
-
-    @property
-    def color(self) -> Callable[[str], str]:
-        """Get the chalk color renderer associated with this generation status.
-
-        Returns:
-            Callable[[str], str]: Function to colorize a string for this status.
-        """
-        return cast(
-            "Callable[[str], str]",
-            {
-                GenerationStatus.PENDING: chalk.gray,
-                GenerationStatus.GENERATED: chalk.green,
-                GenerationStatus.NO_FIELDS: chalk.yellow_bright,
-                GenerationStatus.RENDERED: chalk.blue,
-            }[self],
-        )
-
-
-class ComparisonStatus(BaseStatus):
-    """Represents the status of comparing the current and expected header in the pipeline.
-
-    Used to indicate if the header has changed, is unchanged, or cannot be compared.
-    """
-
-    PENDING = "pending"
-    CHANGED = "changed"
-    UNCHANGED = "unchanged"
-    SKIPPED = "skipped"
-    CANNOT_COMPARE = "can't compare"
-
-    @property
-    def color(self) -> Callable[[str], str]:
-        """Get the chalk color renderer associated with this comparison status.
-
-        Returns:
-            Callable[[str], str]: Function to colorize a string for this status.
-        """
-        return cast(
-            "Callable[[str], str]",
-            {
-                ComparisonStatus.PENDING: chalk.gray,
-                ComparisonStatus.CHANGED: chalk.red,
-                ComparisonStatus.UNCHANGED: chalk.green,
-                ComparisonStatus.SKIPPED: chalk.yellow,
-                ComparisonStatus.CANNOT_COMPARE: chalk.red_bright,
-            }[self],
-        )
-
-
-class StripStatus(BaseStatus):
-    """Represents the status of header stripping in the pipeline.
-
-    This axis is orthogonal to scanner detection and write outcomes:
-      - Scanner (HeaderStatus) tells us whether a header exists in the original file.
-      - StripStatus tells us whether we prepared/performed a removal.
-      - WriteStatus records the final write outcome (e.g., REMOVED on apply).
-    """
-
-    PENDING = "pending"
-    NOT_NEEDED = "not needed"  # no header present to remove
-    READY = "ready"  # removal prepared (updated_file_lines computed)
-    FAILED = "failed"
-
-    @property
-    def color(self) -> Callable[[str], str]:
-        """Get the chalk color renderer associated with this strip status.
-
-        Returns:
-            Callable[[str], str]: Function to colorize a string for this status.
-        """
-        return cast(
-            "Callable[[str], str]",
-            {
-                StripStatus.PENDING: chalk.gray,
-                StripStatus.NOT_NEEDED: chalk.blue,
-                StripStatus.READY: chalk.green,
-                StripStatus.FAILED: chalk.red_bright,
-            }[self],
-        )
-
-
-class WriteStatus(BaseStatus):
-    """Represents the status of the header write operation in the pipeline.
-
-    Used to indicate whether the header was written, previewed, skipped, or failed.
-    """
-
-    PENDING = "pending"
-    PREVIEWED = "previewed"
-    WRITTEN = "written"
-    SKIPPED = "skipped"
-    FAILED = "failed"
-    REPLACED = "replaced"
-    INSERTED = "inserted"
-    REMOVED = "removed"
-
-    @property
-    def color(self) -> Callable[[str], str]:
-        """Get the chalk color renderer associated with this write status.
-
-        Returns:
-            Callable[[str], str]: Function to colorize a string for this status.
-        """
-        return cast(
-            "Callable[[str], str]",
-            {
-                WriteStatus.PENDING: chalk.gray,
-                WriteStatus.PREVIEWED: chalk.blue,
-                WriteStatus.WRITTEN: chalk.green,
-                WriteStatus.SKIPPED: chalk.yellow,
-                WriteStatus.FAILED: chalk.red_bright,
-                WriteStatus.REPLACED: chalk.green,
-                WriteStatus.INSERTED: chalk.green_bright,
-                WriteStatus.REMOVED: chalk.yellow_bright,
-            }[self],
-        )
-
-
-# --- Gating helpers (replace the existing block with the definitions below) ---
+__all__: list[str] = [
+    "allow_empty_by_policy",
+    "allow_empty_header_by_policy",
+    "ReasonHint",
+    "FlowControl",
+    "DiagnosticLevel",
+    "Diagnostic",
+    "HeaderProcessingStatus",
+    "ProcessingContext",
+]
 
 
 def allow_empty_by_policy(ctx: "ProcessingContext") -> bool:
@@ -332,221 +78,207 @@ def allow_empty_by_policy(ctx: "ProcessingContext") -> bool:
     """
     # If you expose a cached effective policy, use that; else compute via `effective_policy(...)`.
     # Assuming `ctx.file_type` is set when resolve == RESOLVED.
-    try:
-        eff: Policy = effective_policy(ctx.config, ctx.file_type.name if ctx.file_type else None)
-    except Exception:
-        # Be conservative if we cannot resolve type/policy here.
+
+    eff: Policy | None = ctx.get_effective_policy()
+    if eff is None:
         return False
-    return ctx.status.fs.name == "EMPTY" and eff.allow_header_in_empty_files is True
+
+    return ctx.status.fs == FsStatus.EMPTY and eff.allow_header_in_empty_files is True
+
+
+def allow_empty_header_by_policy(ctx: "ProcessingContext") -> bool:
+    """Return True if the effective policy allows empty header insertions.
+
+    This checks the resolved per-type effective policy (global overlaid by per-type).
+    """
+    # If you expose a cached effective policy, use that; else compute via `effective_policy(...)`.
+    # Assuming `ctx.file_type` is set when resolve == RESOLVED.
+    eff: Policy | None = ctx.get_effective_policy()
+    if eff is None:
+        return False
+
+    return eff.render_empty_header_when_no_fields
+
+
+def allow_content_reflow_by_policy(ctx: "ProcessingContext") -> bool:
+    """Return True if the effective policy allows content reflow.
+
+    This checks the resolved per-type effective policy (global overlaid by per-type).
+    """
+    # If you expose a cached effective policy, use that; else compute via `effective_policy(...)`.
+    # Assuming `ctx.file_type` is set when resolve == RESOLVED.
+    eff: Policy | None = ctx.get_effective_policy()
+    if eff is None:
+        return False
+
+    return eff.allow_reflow
+
+
+def allows_mixed_line_endings_by_policy(ctx: "ProcessingContext") -> bool:
+    """Return True if policy allows proceeding despite soft FS violations.
+
+    This helper is used by early pipeline steps (e.g., ReaderStep) to continue
+    when Sniffer detected *soft* file-system issues that a project might choose
+    to tolerate. Hard errors (e.g., not found, unreadable, binary) must remain
+    terminal and are not bypassed here.
+
+    Soft violations considered:
+      - FsStatus.BOM_BEFORE_SHEBANG
+      - FsStatus.MIXED_LINE_ENDINGS
+
+    Policy fields:
+      - If the effective `Policy` defines `ignore_mixed_line_endings` and it is True,
+        we allow proceeding on `MIXED_LINE_ENDINGS`.
+
+    Notes:
+      - This function is forward-compatible: it uses `getattr(...)` so it returns
+        False for unknown fields on older Policy versions (safe default).
+      - We *always* allow when `FsStatus` is already OK/EMPTY; for EMPTY, your
+        existing `allow_empty_by_policy()` governs header insertion later.
+
+    Args:
+        ctx (ProcessingContext): Processing context containing fs status and config.
+
+    Returns:
+        bool: True if we may proceed despite a soft FS violation.
+    """
+    # Always OK to proceed if FS is healthy or empty (read can still run).
+    if ctx.status.fs in {FsStatus.OK, FsStatus.EMPTY}:
+        return True
+
+    eff: Policy | None = ctx.get_effective_policy()
+    if eff is None:
+        return False
+
+    if ctx.status.fs == FsStatus.MIXED_LINE_ENDINGS:
+        # Newer policies may provide this flag; default False if absent.
+        return bool(getattr(eff, "ignore_mixed_line_endings", False))
+
+    # All other FS states should not be skipped by policy here.
+    return False
+
+
+def allows_bom_before_shebang_by_policy(ctx: "ProcessingContext") -> bool:
+    """Return True if policy allows proceeding despite soft FS violations.
+
+    This helper is used by early pipeline steps (e.g., ReaderStep) to continue
+    when Sniffer detected *soft* file-system issues that a project might choose
+    to tolerate. Hard errors (e.g., not found, unreadable, binary) must remain
+    terminal and are not bypassed here.
+
+    Soft violations considered:
+      - FsStatus.BOM_BEFORE_SHEBANG
+
+    Policy fields:
+      - If the effective `Policy` defines `ignore_bom_before_shebang` and it is True,
+        we allow proceeding on `BOM_BEFORE_SHEBANG`.
+
+    Notes:
+      - This function is forward-compatible: it uses `getattr(...)` so it returns
+        False for unknown fields on older Policy versions (safe default).
+      - We *always* allow when `FsStatus` is already OK/EMPTY; for EMPTY, your
+        existing `allow_empty_by_policy()` governs header insertion later.
+
+    Args:
+        ctx (ProcessingContext): Processing context containing fs status and config.
+
+    Returns:
+        bool: True if we may proceed despite a soft FS violation.
+    """
+    # Always OK to proceed if FS is healthy or empty (read can still run).
+    if ctx.status.fs in {FsStatus.OK, FsStatus.EMPTY}:
+        return True
+
+    eff: Policy | None = ctx.get_effective_policy()
+    if eff is None:
+        return False
+
+    if ctx.status.fs == FsStatus.BOM_BEFORE_SHEBANG:
+        # Newer policies may provide this flag; default False if absent.
+        return bool(getattr(eff, "ignore_bom_before_shebang", False))
+
+    # All other FS states should not be skipped by policy here.
+    return False
+
+
+def policy_allows_fs_skip(ctx: "ProcessingContext") -> bool:
+    """Return True if policy allows proceeding despite soft FS violations.
+
+    This helper is used by early pipeline steps (e.g., ReaderStep) to continue
+    when Sniffer detected *soft* file-system issues that a project might choose
+    to tolerate. Hard errors (e.g., not found, unreadable, binary) must remain
+    terminal and are not bypassed here.
+
+    Soft violations considered:
+      - FsStatus.BOM_BEFORE_SHEBANG
+      - FsStatus.MIXED_LINE_ENDINGS
+
+    Policy fields:
+      - If the effective `Policy` defines `ignore_bom_before_shebang` and it is True,
+        we allow proceeding on `BOM_BEFORE_SHEBANG`.
+      - If the effective `Policy` defines `ignore_mixed_line_endings` and it is True,
+        we allow proceeding on `MIXED_LINE_ENDINGS`.
+
+    Notes:
+      - This function is forward-compatible: it uses `getattr(...)` so it returns
+        False for unknown fields on older Policy versions (safe default).
+      - We *always* allow when `FsStatus` is already OK/EMPTY; for EMPTY, your
+        existing `allow_empty_by_policy()` governs header insertion later.
+
+    Args:
+        ctx (ProcessingContext): Processing context containing fs status and config.
+
+    Returns:
+        bool: True if we may proceed despite a soft FS violation.
+    """
+    # Always OK to proceed if FS is healthy or empty (read can still run).
+    if ctx.status.fs in {FsStatus.OK, FsStatus.EMPTY}:
+        return True
+
+    eff: Policy | None = ctx.get_effective_policy()
+    if eff is None:
+        return False
+
+    if ctx.status.fs == FsStatus.BOM_BEFORE_SHEBANG:
+        # Newer policies may provide this flag; default False if absent.
+        return bool(getattr(eff, "ignore_bom_before_shebang", False))
+
+    if ctx.status.fs == FsStatus.MIXED_LINE_ENDINGS:
+        # Newer policies may provide this flag; default False if absent.
+        return bool(getattr(eff, "ignore_mixed_line_endings", False))
+
+    # All other FS states should not be skipped by policy here.
+    return False
 
 
 # --- Step gatekeeping ------------------------------------------------------
 
 
-def may_proceed_to_sniffer(ctx: "ProcessingContext") -> bool:
-    """Determine if processing can proceed to the sniffer step.
+@dataclass
+class ReasonHint:
+    """Lightweight advisory hint attached by steps.
 
-    Processing can proceed if:
-      - The file was successfully resolved (ctx.status.resolve is RESOLVED)
-      - A file type is present (ctx.file_type is not None)
+    Hints are non‑binding breadcrumbs to help explain *why* a step reached
+    a given state. They should never change classification/outcome directly.
 
-    Args:
-        ctx (ProcessingContext): The processing context for the current file.
-
-    Returns:
-        bool: True if processing can proceed to the sniffer step, False otherwise.
+    Attributes:
+        axis (str): Logical axis the hint refers to (e.g., "fs", "content").
+        code (str): Short, machine‑friendly reason code (e.g., "no-read").
+        message (str): Human‑readable message explaining the reason succinctly.
     """
-    return ctx.status.resolve == ResolveStatus.RESOLVED and ctx.file_type is not None
+
+    axis: str
+    code: str
+    message: str
 
 
-def may_proceed_to_reader(ctx: "ProcessingContext") -> bool:
-    """Determine if processing can proceed to the read step.
+@dataclass
+class FlowControl:
+    """Execution flow control for the current file."""
 
-    Processing can proceed if:
-      - The file was successfully resolved (ctx.status.resolve is RESOLVED)
-      - A file type is present (ctx.file_type is not None)
-      - A header processor is available (ctx.header_processor is not None)
-
-    Note:
-        The file system status (`ctx.status.fs`) is not strictly required here,
-        to allow tests to skip the sniffer and invoke the reader directly. In such
-        cases, the reader is the definitive authority for content checks (existence,
-        permissions, binary/text, etc).
-
-    Args:
-        ctx (ProcessingContext): The processing context for the current file.
-
-    Returns:
-        bool: True if processing can proceed to the read step, False otherwise.
-    """
-    return (
-        ctx.status.resolve == ResolveStatus.RESOLVED
-        # and ctx.status.fs in {FsStatus.OK, FsStatus.EMPTY}
-        and ctx.file_type is not None
-        and ctx.header_processor is not None
-    )
-
-
-def may_proceed_to_scanner(ctx: ProcessingContext) -> bool:
-    """Determine if processing can proceed to the scan step.
-
-    Processing can proceed if:
-      - The file was successfully resolved (ctx.status.resolve is RESOLVED)
-      - The file type was resolved (ctx.file_type is not None)
-      - A header processor is available (ctx.header_processor is not None)
-    """
-    return (
-        ctx.status.resolve == ResolveStatus.RESOLVED
-        and ctx.file_type is not None
-        and ctx.header_processor is not None
-    )
-
-
-def may_proceed_to_builder(ctx: ProcessingContext) -> bool:
-    """Determine if processing can proceed to the build step.
-
-    Processing can proceed if:
-      - The file was successfully resolved (ctx.status.resolve is RESOLVED)
-      - A header processor is available (ctx.header_processor is not None)
-      - The file image is available (the file image is available via `ctx.image`).
-
-    Args:
-        ctx (ProcessingContext): The processing context for the current file.
-
-    Returns:
-        bool: True if processing can proceed to the build step, False otherwise.
-    """
-    return (
-        ctx.status.resolve == ResolveStatus.RESOLVED
-        and ctx.file_type is not None
-        and ctx.header_processor is not None
-        # builder does not need the original image; it can run on empty files
-        and (
-            ctx.status.content == ContentStatus.OK
-            or allow_empty_by_policy(ctx)  # Enable empty+policy path
-        )
-    )
-
-
-def may_proceed_to_patcher(ctx: ProcessingContext) -> bool:
-    """Determine if processing can proceed to the patcher step.
-
-    Processing can proceed if:
-      - The comparison step was performed (ctx.status.comparison is CHANGED or UNCHANGED)
-
-    Args:
-        ctx (ProcessingContext): The processing context for the current file.
-
-    Returns:
-        bool: True if processing can proceed to the patcher step, False otherwise.
-    """
-    return ctx.status.comparison in {
-        ComparisonStatus.CHANGED,
-        ComparisonStatus.UNCHANGED,
-    }
-
-
-def may_proceed_to_renderer(ctx: ProcessingContext) -> bool:
-    """Determine if processing can proceed to the render step.
-
-    Processing can proceed if:
-      - The header was successfully generated (ctx.status.generation is RENDERED or GENERATED)
-
-    Args:
-        ctx (ProcessingContext): The processing context for the current file.
-
-    Returns:
-        bool: True if processing can proceed to the render step, False otherwise.
-    """
-    return (
-        ctx.status.resolve == ResolveStatus.RESOLVED
-        and ctx.file_type is not None
-        and ctx.header_processor is not None
-        and ctx.status.generation
-        in {
-            GenerationStatus.GENERATED,
-            GenerationStatus.NO_FIELDS,
-        }
-        or allow_empty_by_policy(ctx)  # Allow render when empty+policy applies
-    )
-
-
-def may_proceed_to_comparer(ctx: "ProcessingContext") -> bool:
-    """TODO Google-style docstring with type annotations."""
-    return (
-        ctx.status.resolve == ResolveStatus.RESOLVED
-        and ctx.file_type is not None
-        and ctx.header_processor is not None
-        and (
-            ctx.status.generation
-            in {
-                GenerationStatus.GENERATED,
-                GenerationStatus.NO_FIELDS,
-            }
-            or allow_empty_by_policy(ctx)  # Allow render when empty+policy applies
-            or (ctx.updated is not None and ctx.updated.lines is not None)
-        )
-    )
-
-
-def may_proceed_to_updater(ctx: "ProcessingContext") -> bool:
-    """TODO Google-style docstring with type annotations."""
-    if ctx.status.resolve != ResolveStatus.RESOLVED:
-        return False
-    # Strip fast-path
-    if ctx.status.strip == StripStatus.READY:
-        return True
-    # Normal update: content OK or empty+policy allowed
-    if ctx.status.content == ContentStatus.OK or allow_empty_by_policy(ctx):
-        return ctx.status.comparison == ComparisonStatus.CHANGED or (
-            ctx.render is not None and ctx.render.lines is not None
-        )
-    return False
-
-
-def may_proceed_to_writer(ctx: "ProcessingContext") -> bool:
-    """Return `True` if the writer step may write to the sink.
-
-    Conditions (all must hold):
-        * `ctx.can_change is True` (authoritative feasibility/safety guard).
-        * Intent is present:
-            - Check mode: missing header **or** comparison is `CHANGED`.
-            - Strip mode: `StripStatus.READY`.
-        * Policy permits add/update (policy does **not** govern strip intent).
-        * Updater selected a concrete write (`INSERTED` / `REPLACED` / `REMOVED`).
-
-    Args:
-        ctx (ProcessingContext): The processing context.
-
-    Returns:
-        bool: `True` if the writer should execute; otherwise `False`.
-    """
-    # add/update intent (check mode)
-    would_add_or_update: bool = (
-        ctx.status.header == HeaderStatus.MISSING
-        or ctx.status.comparison == ComparisonStatus.CHANGED
-    )
-    # strip intent (strip mode)
-    would_strip: bool = ctx.status.strip == StripStatus.READY
-
-    # policy doesn’t govern stripping; it only affects add/update
-    policy_allows: bool = (
-        (ctx.permitted_by_policy is not False) or would_strip  # policy doesn’t govern strip
-    )
-
-    return (
-        ctx.can_change is True  # Authoritative guard
-        # and ctx.status.resolve == ResolveStatus.RESOLVED
-        # and ctx.status.fs == FsStatus.OK
-        and (would_add_or_update or would_strip)
-        and policy_allows
-        and ctx.status.write
-        in {
-            WriteStatus.INSERTED,
-            WriteStatus.REPLACED,
-            WriteStatus.REMOVED,
-        }
-    )
+    halt: bool = False
+    reason: str = ""  # short code, e.g. "unsupported", "unchanged-summary"
+    at_step: str = ""  # step name that requested the halt
 
 
 # --- Diagnostics support ------------------------------------------------------
@@ -600,29 +332,52 @@ class HeaderProcessingStatus:
     Fields correspond to each pipeline phase: file, header, generation, comparison, write.
     """
 
-    # File system status (existence, permissions, binary):
-    fs: FsStatus = FsStatus.PENDING
     # File type resolution status:
     resolve: ResolveStatus = ResolveStatus.PENDING
+
+    # File system status (existence, permissions, binary):
+    fs: FsStatus = FsStatus.PENDING
+
     # File content status (BOM, shebang, mixed newlines, readability):
     content: ContentStatus = ContentStatus.PENDING
 
-    # Header-level axes
+    # Header-level axes: detect existing header
     header: HeaderStatus = HeaderStatus.PENDING  # Status of header detection/parsing
-    generation: GenerationStatus = GenerationStatus.PENDING  # Status of header generation/rendering
-    comparison: ComparisonStatus = ComparisonStatus.PENDING  # Status of header comparison
-    write: WriteStatus = WriteStatus.PENDING  # Status of writing the header
+
+    # A. Check -- insert / update headers
+    # A.1 Generate updated header list and updated header value dict
+    generation: GenerationStatus = GenerationStatus.PENDING  # Status of header dict generation
+
+    # A.2 Render the updated header according to the file type and header processor
+    render: RenderStatus = RenderStatus.PENDING  # Status of header rendering
+
+    # B. Strip -- remove existing header
     strip: StripStatus = StripStatus.PENDING  # Status of header stripping lifecycle
+
+    # Compare existing and updated file image
+    comparison: ComparisonStatus = ComparisonStatus.PENDING  # Status of header comparison
+
+    # Plan updates to the file
+    plan: PlanStatus = PlanStatus.PENDING  # Status of file update (prior to writing)
+
+    # Generate a patch for updated files
+    patch: PatchStatus = PatchStatus.PENDING  # Status of patch generation
+
+    # Write changes
+    write: WriteStatus = WriteStatus.PENDING  # Status of writing the header
 
     def reset(self) -> None:
         """Set all status fields to PENDING."""
-        self.fs = FsStatus.PENDING
         self.resolve = ResolveStatus.PENDING
+        self.fs = FsStatus.PENDING
         self.content = ContentStatus.PENDING
         self.header = HeaderStatus.PENDING
         self.generation = GenerationStatus.PENDING
-        self.comparison = ComparisonStatus.PENDING
+        self.render = RenderStatus.PENDING
         self.strip = StripStatus.PENDING
+        self.comparison = ComparisonStatus.PENDING
+        self.plan = PlanStatus.PENDING
+        self.patch = PatchStatus.PENDING
         self.write = WriteStatus.PENDING
 
 
@@ -638,8 +393,10 @@ class ProcessingContext:
     Attributes:
         path (Path): The file path to process.
         config (Config): The configuration for processing.
+        steps (dict[str, int]): Keep track of the pipeline steps executed.
         file_type (FileType | None): The resolved file type, if applicable.
         status (HeaderProcessingStatus): Processing status for each pipeline phase.
+        flow (FlowControl): If `True`, stop processing (reached a terminal state).
         header_processor (HeaderProcessor | None): The header processor instance for this file.
         leading_bom (bool): True when the original file began with a UTF-8 BOM
             ("\ufeff"). The reader sets this and strips the BOM from memory; the
@@ -656,20 +413,18 @@ class ProcessingContext:
         pre_insert_reason (str | None): Reason why insertion may be problematic.
         pre_insert_origin (str | None): Origin of the pre-insertion diagnostic.
         diagnostics (list[Diagnostic]): Warnings or errors encountered during processing.
-        image (FileImageView | None): Snapshot-oriented view of the file contents for reuse
-            across phases.
-        header (HeaderView | None): Structured header view produced by the scan phase.
-        build (BuilderView | None): Field dictionaries produced by the builder step.
-        render (RenderView | None): View capturing the rendered header output.
-        updated (UpdatedView | None): View of the post-processing file image.
-        diff (DiffView | None): Diff view describing header changes for reporting.
+        reason_hints (list[Hint]): Pre-outcome hints (non-binding).
+        views (Views): Bundle that carries image/header/build/render/updated/diff
+            views for this file. The runner may prune these after processing.
     """
 
-    # 📁 1. File input context
     path: Path  # The file path to process (absolute or relative to working directory)
     config: "Config"  # Active config at time of processing
+    steps: dict[str, int] = field(default_factory=lambda: {})  # Track the pipeline steps
     file_type: "FileType | None" = None  # Resolved file type (e.g., PythonFileType)
     status: HeaderProcessingStatus = field(default_factory=HeaderProcessingStatus)
+    flow: FlowControl = field(default_factory=FlowControl)
+
     header_processor: "HeaderProcessor | None" = (
         None  # HeaderProcessor instance for this file type, if applicable
     )
@@ -689,36 +444,42 @@ class ProcessingContext:
     pre_insert_capability: InsertCapability = InsertCapability.UNEVALUATED
     pre_insert_reason: str | None = None
     pre_insert_origin: str | None = None
-    # # 🔍 2. Existing header (detected from original file)
-    # existing_header_range: tuple[int, int] | None = (
-    #     None  # (start_line, end_line) of detected header
-    # )
-    # existing_header_block: str | None = None  # Text block of the detected header
-    # existing_header_lines: list[str] | None = None  # Raw lines of the detected header
-    # existing_header_dict: dict[str, str] | None = None  # Parsed fields from the detected header
-
-    # # 🧮 3. Derived and expected header state (from config + file path)
-    # builtin_fields: dict[str, str] | None = (
-    #     None  # Built-in/derived fields, e.g. {"file": ..., "file_relpath": ...}
-    # )
-    # expected_header_block: str | None = None  # Fully formatted header text to be written
-    # expected_header_lines: list[str] | None = None  # Raw lines of the expected header
-    # expected_header_dict: dict[str, str] | None = None  # Final rendered fields before formatting
-
-    # # 4. Updated file and resulting diff
-    # updated_file_lines: list[str] | None = None  # Updated file content as a list of lines
-    # header_diff: str | None = None  # Unified diff (patch) for patching (updating) the header
 
     # Processing diagnostics: warnings/errors collected during processing
     diagnostics: list[Diagnostic] = field(default_factory=list[Diagnostic])
 
+    # Pre-outcome hints (non-binding)
+    reason_hints: list[Hint] = field(default_factory=list[Hint])
+
     # View-based properties
-    image: FileImageView | None = None  # File image view
-    header: HeaderView | None = None  # File header view
-    build: BuilderView | None = None  # New file header build view
-    render: RenderView | None = None  # New file header render view
-    updated: UpdatedView | None = None  # New file updated view
-    diff: DiffView | None = None  # File diff view
+    views: Views = field(default_factory=Views)
+    # image: FileImageView | None = None  # File image view
+    # header: HeaderView | None = None  # File header view
+    # build: BuilderView | None = None  # New file header build view
+    # render: RenderView | None = None  # New file header render view
+    # updated: UpdatedView | None = None  # New file updated view
+    # diff: DiffView | None = None  # File diff view
+
+    # Cache per instance
+    _eff_policy: Policy | None = None  # cached
+
+    def get_effective_policy(self) -> Policy | None:
+        """Get the effective policy for the given processing context.
+
+        Combines the effective processing context at Config level
+        with overrides for the given FileType instance.
+        """
+        if self._eff_policy is not None:
+            return self._eff_policy
+        try:
+            eff: Policy = effective_policy(
+                self.config, self.file_type.name if self.file_type else None
+            )
+        except Exception:
+            return None
+        # Cache per-context so policy_by_type lookups aren’t repeated.
+        self._eff_policy = eff
+        return eff
 
     @property
     def would_change(self) -> bool | None:
@@ -783,40 +544,101 @@ class ProcessingContext:
         return False
 
     @property
-    def permitted_by_policy(self) -> bool | None:
+    def check_permitted_by_policy(self) -> bool | None:
         """Whether policy allows the intended type of change (tri-state).
 
         Returns:
             bool | None:
-                - True  : policy allows the intended change (insert/replace/strip)
+                - True  : policy allows the intended change (insert/replace)
                 - False : policy forbids it (e.g., add_only forbids replace)
                 - None  : indeterminate (no clear intent yet)
         """
-        # Strip isn’t governed by add_only/update_only
-        if self.status.strip in {StripStatus.READY, StripStatus.FAILED}:
-            return True
+        pol: Policy | None = self.get_effective_policy()
+        pol_check_add_only: bool = pol.add_only if pol else False
+        pol_check_update_only: bool = pol.update_only if pol else False
+
+        if self.status.strip != StripStatus.PENDING:
+            # StripperStep did run
+            return None
+
+        if self.status.header == HeaderStatus.PENDING:
+            # ScannerStep did not run
+            return None
+
+        # Insert path (missing header)
+        if pol_check_add_only:
+            if (
+                self.status.header
+                in {
+                    HeaderStatus.DETECTED,
+                    HeaderStatus.EMPTY,
+                    # HeaderStatus.MALFORMED_ALL_FIELDS,
+                    # HeaderStatus.MALFORMED_SOME_FIELDS,
+                }
+                # and self.status.comparison == ComparisonStatus.CHANGED
+            ):
+                logger.error(
+                    "permitted_by_policy: header: %s, comparison: %s "
+                    "-- pol_check_add_only: %s, will return False",
+                    self.status.header,
+                    self.status.comparison,
+                    pol_check_add_only,
+                )
+                return False  # forbidden when add-only
+            else:
+                logger.error(
+                    "permitted_by_policy: header: %s, comparison: %s "
+                    "-- pol_check_add_only: %s, will return True",
+                    self.status.header,
+                    self.status.comparison,
+                    pol_check_add_only,
+                )
+                return True
+
+        # Replace path (existing but different)
+        if pol_check_update_only:
+            if (
+                self.status.header == HeaderStatus.MISSING
+                # and self.status.comparison == ComparisonStatus.CHANGED
+            ):
+                logger.error(
+                    "permitted_by_policy: header: %s, comparison: %s "
+                    "-- pol_check_update_only: %s, will return False",
+                    self.status.header,
+                    self.status.comparison,
+                    pol_check_update_only,
+                )
+                return False  # forbidden when update-only
+            else:
+                logger.error(
+                    "permitted_by_policy: header: %s, comparison: %s "
+                    "-- pol_check_update_only: %s, will return True",
+                    self.status.header,
+                    self.status.comparison,
+                    pol_check_update_only,
+                )
+                return True
 
         # No clear intent yet → unknown
         if self.status.header not in {
             HeaderStatus.MISSING,
             HeaderStatus.DETECTED,
-        } and self.status.comparison not in {ComparisonStatus.CHANGED, ComparisonStatus.UNCHANGED}:
+        } and self.status.comparison not in {
+            ComparisonStatus.CHANGED,
+            ComparisonStatus.UNCHANGED,
+        }:
+            logger.error(
+                "permitted_by_policy: header: %s, comparison: %s -- will return None",
+                self.status.header,
+                self.status.comparison,
+            )
             return None
 
-        pol: Policy = effective_policy(
-            self.config,
-            (getattr(self.file_type, "id", None) or getattr(self.file_type, "name", None))
-            if self.file_type
-            else None,
+        logger.error(
+            "permitted_by_policy: header: %s, comparison: %s -- PROCEED",
+            self.status.header,
+            self.status.comparison,
         )
-
-        # Insert path (missing header)
-        if self.status.header == HeaderStatus.MISSING:
-            return not pol.update_only  # forbidden when update-only
-
-        # Replace path (existing but different)
-        if self.status.comparison == ComparisonStatus.CHANGED:
-            return not pol.add_only  # forbidden when add-only
 
         # Unchanged or no-op
         return True
@@ -835,7 +657,7 @@ class ProcessingContext:
         return (
             self.would_add_or_update
             and self.can_change is True
-            and (self.permitted_by_policy is not False)
+            and (self.check_permitted_by_policy is not False)
         )
 
     @property
@@ -849,20 +671,27 @@ class ProcessingContext:
         # Policy doesn’t block strip; feasibility is in can_change
         return self.would_strip and self.can_change is True
 
-    # @property
-    # def effective_would_change(self) -> bool:
-    #     """Generic “some kind of change” view (fine for summaries, not for exit codes)."""
-    #     return (
-    #         (
-    #             self.would_add_or_update
-    #             or self.would_strip
-    #             or self.status.strip == StripStatus.FAILED
-    #         )
-    #         and self.can_change is True
-    #         and (self.permitted_by_policy is not False)
-    #     )
+    def add_hint(self, hint: Hint) -> None:
+        """TODO Google-style docstring with type annotations."""
+        logger.info(
+            "Adding hint: axis: %s, code: %s, message: %s", hint.axis, hint.code, hint.message
+        )
+        self.reason_hints.append(hint)
+        for h in self.reason_hints:
+            logger.info("hint -- axis: %s, code: %s, message: %s", h.axis, h.code, h.message)
 
-    def iter_file_lines(self) -> Iterable[str]:
+    def stop_flow(self, reason: str, at_step: Step) -> None:
+        """Request a graceful, terminal stop for the rest of the pipeline.
+
+        Args:
+            reason (str): Reason for halting the flow.
+            at_step (Step): the step requesting the halt.
+        """
+        logger.info("Flow halted in %s: %s", at_step.name, reason)
+        self.flow = FlowControl(halt=True, reason=reason, at_step=at_step.name)
+
+    # TODO: decide to keep or always refer to FileImageViewiter_lines() instead.
+    def iter_image_lines(self) -> Iterable[str]:
         """Iterate the current file image without materializing.
 
         This accessor hides the underlying representation (list-backed, mmap-backed,
@@ -873,94 +702,84 @@ class ProcessingContext:
             Iterable[str]: An iterator over the file's lines. If no image is present,
             an empty iterator is returned.
         """
-        if self.image is not None:
-            return self.image.iter_lines()
+        if self.views.image is not None:
+            return self.views.image.iter_lines()
         return iter(())  # empty
 
-    def file_line_count(self) -> int:
+    def image_line_count(self) -> int:
         """Return the number of logical lines without materializing.
 
         Returns:
             int: Total number of lines in the current image, or ``0`` if no image
             is present.
         """
-        if self.image is not None:
-            return self.image.line_count()
+        if self.views.image is not None:
+            return self.views.image.line_count()
         return 0
+
+    def iter_updated_lines(self) -> Iterable[str]:
+        """Iterate the updated file image lines, if present.
+
+        Returns:
+            Iterable[str]: Iterator over updated lines. If no updated image is
+            available (no planner/strip output), returns an empty iterator.
+        """
+        uv: UpdatedView | None = self.views.updated
+        if not uv or uv.lines is None:
+            return iter(())
+        seq_or_it: Sequence[str] | Iterable[str] = uv.lines
+        # If it's already a concrete sequence, avoid copying:
+        if isinstance(seq_or_it, list) or isinstance(seq_or_it, tuple):
+            return iter(seq_or_it)
+        # Fallback: it's an arbitrary iterable (possibly a generator)
+        return iter(seq_or_it)
+
+    def materialize_image_lines(self) -> list[str]:
+        """Return the original file image as a materialized list of lines.
+
+        Returns:
+            list[str]: List of logical lines from the current image view.
+        """
+        return list(self.iter_image_lines())
+
+    def materialize_updated_lines(self) -> list[str]:
+        """Return the updated file image as a materialized list of lines.
+
+        Returns:
+            list[str]: List of updated lines if present, otherwise an empty list.
+        """
+        uv: UpdatedView | None = self.views.updated
+        if not uv or uv.lines is None:
+            return []
+        seq_or_it: Sequence[str] | Iterable[str] = uv.lines
+        return seq_or_it if isinstance(seq_or_it, list) else list(seq_or_it)
 
     def to_dict(self) -> dict[str, object]:
         """Return a machine-readable representation of this processing result.
 
         The schema is stable for CLI/CI consumption and avoids color/formatting.
-        Uses view-based properties (header/build/render/updated/diff).
+        View details are provided by ``self.views.as_dict()`` to keep this method
+        small and consistent with the Views bundling.
         """
-        header_dict: dict[str, object] | None
-        if self.header is None:
-            header_dict = None
-        else:
-            header_dict = {
-                "range": self.header.range,
-                "fields": (self.header.mapping or {}),
-                "success_count": self.header.success_count,
-                "error_count": self.header.error_count,
-                # do not include raw block text by default to keep payload lean
-            }
-
-        build_dict: dict[str, object] | None
-        if self.build is None:
-            build_dict = None
-        else:
-            build_dict = {
-                "builtins": (self.build.builtins or {}),
-                "selected": (self.build.selected or {}),
-            }
-
-        render_dict: dict[str, object] | None
-        if self.render is None:
-            render_dict = None
-        else:
-            # keep output concise; expose counts rather than full text
-            line_count: int = len(self.render.lines) if (self.render.lines is not None) else 0
-            render_dict = {
-                "has_lines": self.render.lines is not None,
-                "line_count": line_count,
-            }
-
-        updated_dict: dict[str, object] | None
-        if self.updated is None:
-            updated_dict = None
-        else:
-            # updated.lines may be an Iterable; avoid materializing to count
-            updated_dict = {
-                "has_lines": self.updated.lines is not None,
-            }
-
-        diff_dict: dict[str, object] | None
-        if self.diff is None:
-            diff_dict = None
-        else:
-            diff_dict = {
-                "has_diff": bool(self.diff.text),
-            }
+        views_summary: dict[str, object] = self.views.as_dict()
 
         return {
             "path": str(self.path),
             "file_type": (self.file_type.name if self.file_type else None),
             "status": {
-                "fs": self.status.fs.name,
                 "resolve": self.status.resolve.name,
+                "fs": self.status.fs.name,
                 "content": self.status.content.name,
                 "header": self.status.header.name,
                 "generation": self.status.generation.name,
+                "render": self.status.render.name,
                 "comparison": self.status.comparison.name,
-                "write": self.status.write.name,
                 "strip": self.status.strip.name,
+                "plan": self.status.plan.name,
+                "patch": self.status.patch.name,
+                "write": self.status.write.name,
             },
-            "header": header_dict,
-            "build": build_dict,
-            "render": render_dict,
-            "updated": updated_dict,
-            "diff": diff_dict,
+            "views": views_summary,
             "diagnostics": [
                 {"level": d.level.value, "message": d.message} for d in self.diagnostics
             ],
@@ -977,7 +796,7 @@ class ProcessingContext:
             "outcome": {
                 "would_change": self.would_change,
                 "can_change": self.can_change,
-                "permitted_by_policy": self.permitted_by_policy,
+                "permitted_by_policy": self.check_permitted_by_policy,
                 "check": {
                     "would_add_or_update": self.would_add_or_update,
                     "effective_would_add_or_update": self.effective_would_add_or_update,
@@ -986,7 +805,6 @@ class ProcessingContext:
                     "would_strip": self.would_strip,
                     "effective_would_strip": self.effective_would_strip,
                 },
-                # "effective_would_change": self.effective_would_change,
             },
         }
 
@@ -998,9 +816,9 @@ class ProcessingContext:
         primary outcome plus a few terse hints.
 
         Rendering rules:
-          1. Primary bucket comes from
-             [`topmark.cli_shared.utils.classify_outcome`][topmark.cli_shared.utils.classify_outcome].
-             This ensures stable wording across commands/pipelines.
+          1. Primary bucket comes from the view-layer classification helper
+             `map_bucket()` in `topmark.api.view`. This ensures stable wording
+             across commands and pipelines.
           2. If a write outcome is known (e.g., PREVIEWED/WRITTEN/INSERTED/REMOVED),
              append it as a trailing hint.
           3. If there is a diff but no write outcome (e.g., check/summary with
@@ -1016,7 +834,6 @@ class ProcessingContext:
             path/to/file.py: python – would strip header - diff - 2 issues
         """
         # Local import to avoid import cycles at module import time
-        from topmark.cli_shared.utils import classify_outcome
 
         verbosity_level: int = self.config.verbosity_level or 0
 
@@ -1028,23 +845,35 @@ class ProcessingContext:
         else:
             parts.append(chalk.dim("<unknown>"))
 
-        # Primary bucket/label with color
-        key: str
-        label: str
-        color_fn: Callable[[str], str]
-        key, label, color_fn = classify_outcome(self)
-        parts.append("\u2013")  # en dash separator
-        parts.append(color_fn(label))
+        head: Hint | None = None
+        if not self.reason_hints:
+            key: str = "no_hint"
+            label: str = "No diagnostic hints"
+        else:
+            head = select_headline_hint(self.reason_hints)
+            if head is None:
+                key = "no_hint"
+                label = "No diagnostic hints"
+            else:
+                key = head.code
+                label = f"{head.axis.value.title()}: {head.message}"
 
-        if key != "ok":
-            # Secondary hints: write status > diff marker > diagnostics
+        # Color choice can still be simple or based on cluster:
+        cluster: str | None = head.cluster if head else None
+        cluster_elem: Cluster | None = enum_from_name(Cluster, cluster)
+        color_fn: Colorizer = cluster_elem.color if cluster_elem else chalk.red.dim.italic
 
-            if self.status.write != WriteStatus.PENDING:
-                parts.append("-")
-                parts.append(self.status.write.color(self.status.write.value))
-            elif self.diff and self.diff.text:
-                parts.append("-")
-                parts.append(chalk.yellow("diff"))
+        parts.append("-")
+        parts.append(color_fn(f"{key}: {label}"))
+
+        # Secondary hints: write status > diff marker > diagnostics
+
+        if self.status.write != WriteStatus.PENDING:
+            parts.append("-")
+            parts.append(self.status.write.color(self.status.write.value))
+        elif self.views.diff and self.views.diff.text:
+            parts.append("-")
+            parts.append(chalk.yellow("diff"))
 
         diag_show_hint: str = ""
         if self.diagnostics:
@@ -1099,6 +928,7 @@ class ProcessingContext:
             message (str): The diagnostic message.
         """
         self.diagnostics.append(Diagnostic(DiagnosticLevel.INFO, message))
+        logger.info(message)
 
     def add_warning(self, message: str) -> None:
         """Add an `warning` diagnostic to the processing context.
@@ -1107,6 +937,7 @@ class ProcessingContext:
             message (str): The diagnostic message.
         """
         self.diagnostics.append(Diagnostic(DiagnosticLevel.WARNING, message))
+        logger.warning(message)
 
     def add_error(self, message: str) -> None:
         """Add an `error` diagnostic to the processing context.
@@ -1115,3 +946,4 @@ class ProcessingContext:
             message (str): The diagnostic message.
         """
         self.diagnostics.append(Diagnostic(DiagnosticLevel.ERROR, message))
+        logger.error(message)

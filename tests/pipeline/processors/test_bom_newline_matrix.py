@@ -35,6 +35,7 @@ import pytest
 from tests.pipeline.conftest import materialize_updated_lines, run_insert
 from topmark.config import MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
+from topmark.pipeline.processors.types import StripDiagKind, StripDiagnostic
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -142,7 +143,9 @@ def test_strip_preserves_newline_style(
 
     new_lines: list[str] = []
     span: tuple[int, int] | None = None
-    new_lines, span = proc.strip_header_block(lines=lines)
+    diag: StripDiagnostic
+    new_lines, span, diag = proc.strip_header_block(lines=lines)
+    assert diag.kind == StripDiagKind.REMOVED
     assert span is not None
 
     # Simulate updater fast-path BOM/newline handling via the context defaults

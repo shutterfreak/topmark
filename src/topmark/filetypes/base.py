@@ -25,11 +25,12 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Final, Iterable, Protocol, TypedDict, runtime_checkable
 
-from topmark.config.logging import TopmarkLogger, get_logger
+from topmark.config.logging import get_logger
 
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from topmark.config.logging import TopmarkLogger
     from topmark.filetypes.policy import FileTypeHeaderPolicy
 
 logger: TopmarkLogger = get_logger(__name__)

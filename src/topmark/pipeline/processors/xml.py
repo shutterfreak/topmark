@@ -19,20 +19,21 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
-from topmark.config.logging import TopmarkLogger, get_logger
+from topmark.config.logging import get_logger
 from topmark.filetypes.registry import register_filetype
 from topmark.pipeline.policy_whitespace import is_pure_spacer
 from topmark.pipeline.processors.base import HeaderProcessor
 from topmark.pipeline.processors.mixins import BlockCommentMixin, XmlPositionalMixin
 
 if TYPE_CHECKING:
+    from topmark.config.logging import TopmarkLogger
     from topmark.filetypes.policy import FileTypeHeaderPolicy
+    from topmark.pipeline.processors.types import StripDiagnostic
 
 logger: TopmarkLogger = get_logger(__name__)
 
 
 @register_filetype("html")
-@register_filetype("markdown")
 @register_filetype("svelte")
 @register_filetype("svg")
 @register_filetype("vue")
@@ -224,7 +225,7 @@ class XmlHeaderProcessor(XmlPositionalMixin, BlockCommentMixin, HeaderProcessor)
             ) or prev_line_stripped.upper().startswith("<!DOCTYPE")
             if not after_prolog and prev_line_stripped.endswith(">"):
                 # look back up to 3 lines above for a DOCTYPE opener
-                scan_sol = sol
+                scan_sol: int = sol
                 look_back = 0
                 while scan_sol > 0 and look_back < 3:
                     # jump to previous line start
@@ -375,8 +376,10 @@ class XmlHeaderProcessor(XmlPositionalMixin, BlockCommentMixin, HeaderProcessor)
     ) -> bool:
         """Validate the location of a detected header for XML/HTML-like files.
 
-        Applies base proximity rules and a Markdown-specific safeguard to reject
-        headers that appear inside fenced code blocks.
+        Applies the base proximity rules to ensure the detected header appears
+        close to the expected insertion anchor (after prolog/doctype) and not
+        in an obviously invalid location. Markdown-specific safeguards for
+        fenced code blocks are handled by `MarkdownHeaderProcessor`.
 
         Args:
             lines (list[str]): Full file content split into lines.
@@ -388,43 +391,12 @@ class XmlHeaderProcessor(XmlPositionalMixin, BlockCommentMixin, HeaderProcessor)
             bool: ``True`` if the candidate is acceptable; ``False`` otherwise.
         """
         # First apply the base proximity rule
-        if not super().validate_header_location(
+        return super().validate_header_location(
             lines,
             header_start_idx=header_start_idx,
             header_end_idx=header_end_idx,
             anchor_idx=anchor_idx,
-        ):
-            return False
-
-        # Additional guard for Markdown: ignore headers that appear inside fenced code blocks
-        # (``` or ~~~). This keeps README examples from being treated as real headers.
-        if getattr(self.file_type, "name", "").lower() == "markdown":
-            if self._inside_code_fence(lines, header_start_idx):
-                return False
-        return True
-
-    def _inside_code_fence(self, lines: list[str], idx: int) -> bool:
-        """Return True if ``idx`` lies inside a Markdown fenced code block.
-
-        Counts opening fence markers (`````
-        or ``~~~``) up to and including ``idx``
-        and considers the index inside a fence when the count is odd.
-
-        Args:
-            lines (list[str]): Full file content split into lines.
-            idx (int): Zero-based line index to test.
-
-        Returns:
-            bool: ``True`` if inside a code fence; ``False`` otherwise.
-        """
-        import re as _re
-
-        fence: re.Pattern[str] = _re.compile(r"^\s*(```|~~~)")
-        open_count = 0
-        for i in range(0, min(idx + 1, len(lines))):
-            if fence.match(lines[i]):
-                open_count += 1
-        return (open_count % 2) == 1
+        )
 
     def strip_header_block(
         self,
@@ -433,7 +405,7 @@ class XmlHeaderProcessor(XmlPositionalMixin, BlockCommentMixin, HeaderProcessor)
         span: tuple[int, int] | None = None,
         newline_style: str = "\n",
         ends_with_newline: bool | None = None,
-    ) -> tuple[list[str], tuple[int, int] | None]:
+    ) -> tuple[list[str], tuple[int, int] | None, StripDiagnostic]:
         """Remove the TopMark header with minimal, policy-aware cleanup.
 
         Strategy 1 (strict gate): malformed or unsafe XML never reaches here because
@@ -457,32 +429,40 @@ class XmlHeaderProcessor(XmlPositionalMixin, BlockCommentMixin, HeaderProcessor)
                 signature compatibility.
 
         Returns:
-            tuple[list[str], tuple[int, int] | None]: A tuple containing:
+            tuple[list[str], tuple[int, int] | None, StripDiagnostic]: A tuple containing:
                 - The updated list of file lines with the header removed.
                 - The (start, end) line indices (inclusive) of the removed block
                   in the original input.
+                - The diagnostic describing the outcome.
         """
         # Delegate policy-aware detection and removal to the base implementation
         updated: list[str]
         removed_span: tuple[int, int] | None
-        updated, removed_span = super().strip_header_block(
+        diag: StripDiagnostic | None
+        updated, removed_span, diag = super().strip_header_block(
             lines=lines,
             span=span,
             newline_style=newline_style,
             ends_with_newline=ends_with_newline,
         )
-        if removed_span is None:
-            return updated, None
 
-        policy: FileTypeHeaderPolicy | None = getattr(
-            getattr(self, "file_type", None), "header_policy", None
+        # XML-specific tweak: if a header was removed and policy ensures a spacer after header,
+        # drop exactly one spacer line that matches the file's newline style (no whitespace-only).
+        if removed_span is None:
+            return updated, None, diag
+
+        policy: FileTypeHeaderPolicy | None = (
+            self.file_type.header_policy if self.file_type else None
         )
 
         # Remove *one* trailing spacer that we likely introduced after the header
         # (only when policy asked for it). Never touch pre-header blanks or the prolog.
         if policy and bool(getattr(policy, "ensure_blank_after_header", False)):
+            start: int
+            _end: int
             start, _end = removed_span
             if 0 <= start < len(updated) and is_pure_spacer(updated[start], policy):
                 del updated[start]
+            diag.notes.append("xml: removed one trailing spacer per policy")
 
-        return updated, removed_span
+        return updated, removed_span, diag

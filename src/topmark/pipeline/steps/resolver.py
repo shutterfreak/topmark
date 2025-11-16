@@ -8,12 +8,14 @@
 #
 # topmark:header:end
 
-"""File type and header processor resolver step for the TopMark pipeline.
+"""Resolve file type and select header processor.
 
-This step determines the `FileType` for the current path and attaches the
-corresponding `HeaderProcessor` instance from the registry. It updates
-`ctx.status.resolve` accordingly and records diagnostics for unsupported files or
-missing processors. It performs no I/O.
+Determines `ctx.file_type` from name/content signals and attaches a registered
+`HeaderProcessor` if available. Sets `ctx.status.resolve` accordingly.
+
+Sets:
+  - `ResolveStatus` → {RESOLVED, TYPE_RESOLVED_HEADERS_UNSUPPORTED,
+                       TYPE_RESOLVED_NO_PROCESSOR_REGISTERED, UNSUPPORTED}
 """
 
 from __future__ import annotations
@@ -22,17 +24,21 @@ import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from topmark.config.logging import TopmarkLogger, get_logger
+from topmark.config.logging import get_logger
 from topmark.constants import VALUE_NOT_SET
 from topmark.filetypes.base import ContentGate, FileType
 from topmark.filetypes.instances import get_file_type_registry
 from topmark.filetypes.registry import get_header_processor_registry
-from topmark.pipeline.context import ProcessingContext, ResolveStatus
+from topmark.pipeline.hints import Axis, Cluster, KnownCode, make_hint
+from topmark.pipeline.status import ResolveStatus
+from topmark.pipeline.steps.base import BaseStep
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
+    from topmark.config.logging import TopmarkLogger
+    from topmark.pipeline.context import ProcessingContext
     from topmark.pipeline.processors.base import HeaderProcessor
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -193,107 +199,191 @@ def _score(
     return s
 
 
-def resolve(ctx: ProcessingContext) -> ProcessingContext:
-    """Resolve and assign the file type and header processor for the file.
+class ResolverStep(BaseStep):
+    """Resolve file type and attach a header processor (no I/O).
 
-    Updates these fields on the context when successful: `ctx.file_type`,
-    `ctx.header_processor`, and `ctx.status.resolve`. On failure it appends a
-    human-readable diagnostic and sets an appropriate resolve status.
+    This step evaluates name rules (extensions/filenames/patterns) and, if allowed
+    by the file type's content-gate, optional content probes to pick the best
+    `FileType`. It also binds the matching `HeaderProcessor` (if registered).
 
-    Args:
-        ctx (ProcessingContext): Processing context representing the file being handled.
+    Axes written:
+      - resolve
 
-    Returns:
-        ProcessingContext: The same context, updated in place.
+    Sets:
+      - ResolveStatus: {PENDING, RESOLVED, TYPE_RESOLVED_HEADERS_UNSUPPORTED,
+                        TYPE_RESOLVED_NO_PROCESSOR_REGISTERED, UNSUPPORTED}
     """
-    ctx.status.resolve = ResolveStatus.PENDING
 
-    logger.debug(
-        "Resolve start: file='%s', fs status='%s', type=%s, processor=%s",
-        ctx.path,
-        ctx.status.fs.value,
-        getattr(ctx.file_type, "name", VALUE_NOT_SET),
-        (ctx.header_processor.__class__.__name__ if ctx.header_processor else VALUE_NOT_SET),
-    )
+    def __init__(self) -> None:
+        super().__init__(name=self.__class__.__name__, axes_written=(Axis.RESOLVE,))
 
-    # Attempt to match the path against each registered FileType,
-    # then pick the most specific match.
-    candidates: list[tuple[int, str, FileType]] = []
+    def may_proceed(self, ctx: ProcessingContext) -> bool:
+        """Return True (resolver is the first step and always runs).
 
-    base_name: str = ctx.path.name
-    path_str: str = ctx.path.as_posix()
+        Args:
+            ctx (ProcessingContext): The processing context for the current file.
 
-    # 1) Compute name signals -> 2) Gate content probe -> 3) Include? -> 4) Score
-    for ft in get_file_type_registry().values():
-        sig: MatchSignals = _compute_signals(ft, base_name, path_str)
-        should_probe: bool = _should_probe_content(ft, sig)
+        Returns:
+            bool: True if processing can proceed to the build step, False otherwise.
+        """
+        return True
 
-        cm: Callable[[Path], bool] | None = ft.content_matcher or None
-        content_hit = False
-        if should_probe and callable(cm):
-            try:
-                content_hit = bool(cm(ctx.path))
-            except Exception:
-                content_hit = False
+    def run(self, ctx: ProcessingContext) -> None:
+        """Resolve and assign the file type and header processor for the file.
 
-        if not _include_candidate(ft, sig, content_hit):
-            continue
+        Updates these fields on the context when successful: `ctx.file_type`,
+        `ctx.header_processor`, and `ctx.status.resolve`. On failure it appends a
+        human-readable diagnostic and sets an appropriate resolve status.
 
-        candidates.append(
-            (
-                _score(ft, sig, content_hit, base_name, path_str),
-                ft.name,
-                ft,
-            )
-        )
+        Args:
+            ctx (ProcessingContext): Processing context representing the file being handled.
 
-    if candidates:
-        # Best by (score DESC, name ASC) for deterministic choice
-        candidates.sort(key=lambda x: (-x[0], x[1]))
-        file_type: FileType
-        _, _, file_type = candidates[0]
+        Side effects:
+            Sets `ctx.file_type`, `ctx.header_processor`, and `ctx.status.resolve`.
+            Appends human-readable diagnostics when resolution fails or is partial.
+        """
+        ctx.status.resolve = ResolveStatus.PENDING
 
-        ctx.file_type = file_type
-        logger.debug("File '%s' resolved to type: %s", ctx.path, file_type.name)
-
-        if file_type.skip_processing:
-            ctx.status.resolve = ResolveStatus.TYPE_RESOLVED_HEADERS_UNSUPPORTED
-            ctx.add_warning(
-                f"File type '{file_type.name}' recognized; "
-                "headers are not supported for this format. Skipping."
-            )
-            logger.info(
-                "Skipping header processing for '%s' (file type '%s' marked skip_processing=True)",
-                ctx.path,
-                file_type.name,
-            )
-            return ctx
-
-        # Matched a FileType, but no header processor is registered for it
-        processor: HeaderProcessor | None = get_header_processor_registry().get(file_type.name)
-        if processor is None:
-            ctx.status.resolve = ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED
-            ctx.add_warning(f"No header processor registered for file type '{file_type.name}'.")
-            logger.info(
-                "No header processor registered for file type '%s' (file '%s')",
-                file_type.name,
-                ctx.path,
-            )
-            return ctx
-
-        # Success: attach the processor and mark the file as resolved
-        ctx.header_processor = processor
-        ctx.status.resolve = ResolveStatus.RESOLVED
         logger.debug(
-            "Resolve success: file='%s' type='%s' processor=%s",
+            "Resolve start: file='%s', fs status='%s', type=%s, processor=%s",
             ctx.path,
-            file_type.name,
-            processor.__class__.__name__,
+            ctx.status.fs.value,
+            getattr(ctx.file_type, "name", VALUE_NOT_SET),
+            (ctx.header_processor.__class__.__name__ if ctx.header_processor else VALUE_NOT_SET),
         )
-        return ctx
 
-    # No FileType matched: mark as unsupported and record a diagnostic
-    ctx.status.resolve = ResolveStatus.UNSUPPORTED
-    ctx.add_warning("No file type associated with this file.")
-    logger.info("Unsupported file type for '%s' (no matcher)", ctx.path)
-    return ctx
+        # Attempt to match the path against each registered FileType,
+        # then pick the most specific match.
+        candidates: list[tuple[int, str, FileType]] = []
+
+        base_name: str = ctx.path.name
+        path_str: str = ctx.path.as_posix()
+
+        # 1) Compute name signals -> 2) Gate content probe -> 3) Include? -> 4) Score
+        for ft in get_file_type_registry().values():
+            sig: MatchSignals = _compute_signals(ft, base_name, path_str)
+            should_probe: bool = _should_probe_content(ft, sig)
+
+            cm: Callable[[Path], bool] | None = ft.content_matcher or None
+            content_hit = False
+            if should_probe and callable(cm):
+                try:
+                    content_hit = bool(cm(ctx.path))
+                except Exception:
+                    content_hit = False
+
+            if not _include_candidate(ft, sig, content_hit):
+                continue
+
+            candidates.append(
+                (
+                    _score(ft, sig, content_hit, base_name, path_str),
+                    ft.name,
+                    ft,
+                )
+            )
+
+        if candidates:
+            # Best by (score DESC, name ASC) for deterministic choice
+            candidates.sort(key=lambda x: (-x[0], x[1]))
+            file_type: FileType
+            _, _, file_type = candidates[0]
+
+            ctx.file_type = file_type
+            logger.debug("File '%s' resolved to type: %s", ctx.path, file_type.name)
+
+            if file_type.skip_processing:
+                logger.info(
+                    "Skipping header processing for '%s' "
+                    "(file type '%s' marked skip_processing=True)",
+                    ctx.path,
+                    file_type.name,
+                )
+                ctx.status.resolve = ResolveStatus.TYPE_RESOLVED_HEADERS_UNSUPPORTED
+                reason: str = (
+                    f"File type '{file_type.name}' recognized; "
+                    "headers are not supported for this format."
+                )
+                ctx.add_info(reason)
+                ctx.stop_flow(reason=reason, at_step=self)
+                return
+
+            # Matched a FileType, but no header processor is registered for it
+            processor: HeaderProcessor | None = get_header_processor_registry().get(file_type.name)
+            if processor is None:
+                logger.info(
+                    "No header processor registered for file type '%s' (file '%s')",
+                    file_type.name,
+                    ctx.path,
+                )
+                ctx.status.resolve = ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED
+                reason = f"No header processor registered for file type '{file_type.name}'."
+                ctx.add_info(reason)
+                ctx.stop_flow(reason=reason, at_step=self)
+                return
+
+            # Success: attach the processor and mark the file as resolved
+            ctx.header_processor = processor
+            ctx.status.resolve = ResolveStatus.RESOLVED
+            logger.debug(
+                "Resolve success: file='%s' type='%s' processor=%s",
+                ctx.path,
+                file_type.name,
+                processor.__class__.__name__,
+            )
+            return
+
+        # No FileType matched
+        logger.info("Unsupported file type for '%s' (no matcher)", ctx.path)
+        ctx.status.resolve = ResolveStatus.UNSUPPORTED
+        reason = "No file type associated with this file."
+        ctx.add_info(reason)
+        ctx.stop_flow(reason=reason, at_step=self)
+        return
+
+    def hint(self, ctx: ProcessingContext) -> None:
+        """Advise about resolution outcome (non-binding).
+
+        Args:
+            ctx (ProcessingContext): The processing context.
+        """
+        st: ResolveStatus = ctx.status.resolve
+
+        # May proceed to next step:
+        if st == ResolveStatus.RESOLVED:
+            # Implies file_type and header_processor are defined
+            pass  # healthy, no hint
+        # Stop processing:
+        elif st == ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED:
+            ctx.add_hint(
+                make_hint(
+                    axis=Axis.RESOLVE,
+                    code=KnownCode.DISCOVERY_NO_PROCESSOR,
+                    cluster=Cluster.SKIPPED,
+                    message="no header processor registered",
+                    terminal=True,
+                )
+            )
+        elif st == ResolveStatus.TYPE_RESOLVED_HEADERS_UNSUPPORTED:
+            ctx.add_hint(
+                make_hint(
+                    axis=Axis.RESOLVE,
+                    code=KnownCode.DISCOVERY_UNSUPPORTED,
+                    cluster=Cluster.SKIPPED,
+                    message="headers not supported for this type",
+                    terminal=True,
+                )
+            )
+        elif st == ResolveStatus.UNSUPPORTED:
+            ctx.add_hint(
+                make_hint(
+                    axis=Axis.RESOLVE,
+                    code=KnownCode.DISCOVERY_UNSUPPORTED,
+                    cluster=Cluster.SKIPPED,
+                    message="file type is not supported",
+                    terminal=True,
+                )
+            )
+        elif st == ResolveStatus.PENDING:
+            # resolver did not complete
+            ctx.stop_flow(reason=f"{self.__class__.__name__} did not set state.", at_step=self)

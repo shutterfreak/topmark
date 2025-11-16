@@ -41,6 +41,7 @@ from topmark.pipeline import runner
 from topmark.pipeline.context import ProcessingContext
 from topmark.pipeline.pipelines import Pipeline
 from topmark.pipeline.processors.base import HeaderProcessor
+from topmark.pipeline.processors.types import StripDiagKind, StripDiagnostic
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -66,7 +67,7 @@ def test_cblock_processor_basics(tmp_path: Path) -> None:
     assert ctx.file_type is not None
     # Depending on registry naming you might use "css"
     assert ctx.file_type.name in {"css"}
-    assert ctx.header is None
+    assert ctx.views.header is None
     assert ctx.status.header.name == "MISSING"
 
 
@@ -127,12 +128,17 @@ def test_cblock_detect_existing_header_with_star_prefix(tmp_path: Path) -> None:
     # 2) Re-run the 'check' pipeline to ensure the scanner detects the header
     ctx_check: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
     pipeline: Sequence[Step] = Pipeline.CHECK.steps
-    ctx_check = runner.run(ctx_check, pipeline)
+    ctx_check = runner.run(
+        ctx_check,
+        pipeline,
+        prune=False,  # We must inspect ctx_check.views.header
+    )
 
-    assert ctx_check.header is not None
-    assert ctx_check.header.range is not None
-    assert ctx_check.header.mapping is not None
+    assert ctx_check.views.header is not None
+    assert ctx_check.views.header.range is not None
+    assert ctx_check.views.header.mapping is not None
     # The file field is empty by default in tests, so just assert dict presence
+    ctx_check.views.release_all()  # Release the views
 
 
 @mark_pipeline
@@ -169,8 +175,8 @@ def test_cblock_detect_existing_header_without_star_on_directives(tmp_path: Path
     ctx2: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
     pipeline: Sequence[Step] = Pipeline.CHECK.steps
     ctx2 = runner.run(ctx2, pipeline)
-    assert ctx2.header is not None
-    assert ctx2.header.range is not None
+    assert ctx2.views.header is not None
+    assert ctx2.views.header.range is not None
 
 
 @mark_pipeline
@@ -208,14 +214,18 @@ def test_cblock_strip_header_block_with_and_without_span(tmp_path: Path) -> None
     # Explicit span (block occupies lines 0..4)
     new1: list[str] = []
     span1: tuple[int, int] | None = None
-    new1, span1 = proc.strip_header_block(lines=lines, span=(0, 4))
+    diag1: StripDiagnostic
+    new1, span1, diag1 = proc.strip_header_block(lines=lines, span=(0, 4))
     assert TOPMARK_START_MARKER not in "".join(new1)
+    assert diag1.kind == StripDiagKind.REMOVED
     assert span1 == (0, 4)
 
     # Auto-detect span
     new2: list[str] = []
     span2: tuple[int, int] | None = None
-    new2, span2 = proc.strip_header_block(lines=lines)
+    diag2: StripDiagnostic
+    new2, span2, diag2 = proc.strip_header_block(lines=lines)
+    assert diag2.kind == StripDiagKind.REMOVED
     assert new2 == new1 and span2 == (0, 4)
 
 
@@ -263,7 +273,9 @@ def test_cblock_strip_header_block_generated(tmp_path: Path) -> None:
     # Let processor auto-detect the span and strip
     new_lines: list[str]
     span: tuple[int, int] | None = None
-    new_lines, span = proc.strip_header_block(lines=f.read_text().splitlines(keepends=True))
+    diag: StripDiagnostic
+    new_lines, span, diag = proc.strip_header_block(lines=f.read_text().splitlines(keepends=True))
+    assert diag.kind == StripDiagKind.REMOVED
     assert span is not None
     assert "topmark:start" not in "".join(new_lines)
 

@@ -11,13 +11,13 @@
 """Tests for the XmlHeaderProcessor (HTML/XML-style ``<!-- ... -->`` comments).
 
 Exercises placement rules for HTML, XML (with declaration and DOCTYPE), SVG,
-Markdown (HTML comments), and component templates (Vue, Svelte). Also validates
-idempotency and `strip_header_block` behavior including preservation of the
-XML declaration.
+and component templates (Vue, Svelte). Also validates idempotency and `strip_header_block` behavior
+ including preservation of the XML declaration.
 """
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -26,7 +26,6 @@ from tests.pipeline.conftest import (
     BlockSignatures,
     expected_block_lines_for,
     find_line,
-    materialize_image_lines,
     materialize_updated_lines,
     run_insert,
 )
@@ -35,9 +34,17 @@ from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.filetypes.base import InsertCapability
 from topmark.pipeline import runner
-from topmark.pipeline.context import ProcessingContext, ResolveStatus, WriteStatus
+from topmark.pipeline.context import ProcessingContext
 from topmark.pipeline.pipelines import Pipeline
+from topmark.pipeline.processors import get_processor_for_file
+from topmark.pipeline.processors.types import StripDiagKind, StripDiagnostic
 from topmark.pipeline.processors.xml import XmlHeaderProcessor
+from topmark.pipeline.status import (
+    ComparisonStatus,
+    ContentStatus,
+    GenerationStatus,
+    ResolveStatus,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -67,8 +74,8 @@ def test_xml_processor_basics(tmp_path: Path) -> None:
 
     assert ctx.path == file
     assert ctx.file_type and ctx.file_type.name == "html"
-    assert ctx.image is not None
-    assert ctx.header is None
+    assert ctx.views.image is not None
+    assert ctx.views.header is None
 
 
 @mark_pipeline
@@ -92,29 +99,6 @@ def test_html_top_of_file_with_trailing_blank(tmp_path: Path) -> None:
         assert open_idx == 0
     start_idx: int = find_line(lines, sig["start_line"])
     assert start_idx == 1
-    if "block_close" in sig:
-        close_idx: int = find_line(lines, sig["block_close"])
-        assert close_idx + 1 < len(lines) and lines[close_idx + 1].strip() == ""
-
-
-@mark_pipeline
-def test_markdown_top_of_file_with_trailing_blank(tmp_path: Path) -> None:
-    """Markdown supports HTML comments; insert at top with trailing blank.
-
-    Confirms the HTML-comment-based header is added at the top (block-open at 0,
-    start-line at 1) and that a blank line follows the block.
-    """
-    f: Path = tmp_path / "README.md"
-    f.write_text("# Title\n\nSome text.\n")
-
-    cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = run_insert(f, cfg)
-
-    lines: list[str] = materialize_updated_lines(ctx)
-    sig: BlockSignatures = expected_block_lines_for(f)
-    if "block_open" in sig:
-        assert find_line(lines, sig["block_open"]) == 0
-    assert find_line(lines, sig["start_line"]) == 1
     if "block_close" in sig:
         close_idx: int = find_line(lines, sig["block_close"])
         assert close_idx + 1 < len(lines) and lines[close_idx + 1].strip() == ""
@@ -246,7 +230,8 @@ def test_xml_single_line_declaration(tmp_path: Path) -> None:
     """Declaration and root on one line: insert after decl (+1 blank).
 
     Verifies that char-offset insertion splits the line after the declaration,
-    inserts a blank, then the header block.
+    inserts a blank, then the header block. Don't write to file, compare the
+    image lines and updated lines.
     """
     f: Path = tmp_path / "singleline_decl.xml"
     # No newline between declaration and root element
@@ -258,12 +243,63 @@ def test_xml_single_line_declaration(tmp_path: Path) -> None:
     # Strict XML InsertChecker flags this as unsupported due to reflow:
     assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.pre_insert_capability == InsertCapability.SKIP_IDEMPOTENCE_RISK
-    assert ctx.status.write == WriteStatus.SKIPPED
+    assert ctx.status.content == ContentStatus.SKIPPED_REFLOW
+    assert ctx.flow.halt is True
 
-    current_lines: list[str] = materialize_image_lines(ctx)
-    updated_lines: list[str] = materialize_updated_lines(ctx)
 
-    assert current_lines == updated_lines
+def test_xml_prolog_and_body_on_same_line_blocked_by_policy(tmp_path: Path) -> None:
+    """XML prolog and body on same line would reflow, blocked by policy."""
+    f: Path = tmp_path / "one.xml"
+    original = '<?xml version="1.0"?><root/>'  # no trailing newline
+    f.write_text(original, encoding="utf-8")
+
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    ctx: ProcessingContext = run_insert(f, cfg)
+
+    # Strict XML InsertChecker flags this as unsupported due to reflow:
+    assert ctx.status.resolve == ResolveStatus.RESOLVED
+    assert ctx.pre_insert_capability == InsertCapability.SKIP_IDEMPOTENCE_RISK
+    assert ctx.status.content == ContentStatus.SKIPPED_REFLOW
+    assert ctx.flow.halt is True
+
+
+def test_xml_prolog_and_body_on_same_line_alllowed_by_policy(tmp_path: Path) -> None:
+    """XML prolog and body on same line would reflow, allowed by policy."""
+    f: Path = tmp_path / "one.xml"
+    original = '<?xml version="1.0"?><root/>'  # no trailing newline
+    f.write_text(original, encoding="utf-8")
+
+    draft: MutableConfig = MutableConfig.from_defaults()
+    draft.policy.allow_reflow = True
+    cfg: Config = draft.freeze()
+    ctx: ProcessingContext = run_insert(f, cfg)
+
+    lines: list[str] = materialize_updated_lines(ctx)
+    after_insert: str = "".join(lines)
+
+    assert ctx.status.generation == GenerationStatus.GENERATED
+    assert ctx.status.comparison == ComparisonStatus.CHANGED
+    assert any(TOPMARK_START_MARKER in line for line in lines)
+
+    proc: HeaderProcessor | None = get_processor_for_file(f)
+    assert proc is not None
+    lines: list[str] = after_insert.splitlines(keepends=True)
+    stripped_lines: list[str] = []
+    _span: tuple[int, int] | None = None
+    diag: StripDiagnostic
+    stripped_lines, _span, diag = proc.strip_header_block(
+        lines=lines,
+        span=None,
+        newline_style=ctx.newline_style,  # from ProcessingContext
+        ends_with_newline=False,  # original was single-line without FNL
+    )
+    assert diag.kind == StripDiagKind.REMOVED
+    roundtrip: str = "".join(stripped_lines)
+
+    # Assert that original and roundtrip only differ in white space
+    # The re.sub(r'\s+', '', ...) function removes all whitespace characters
+    # (space, tab, newline, etc.) from both strings before comparison.
+    assert re.sub(r"\s+", "", original) == re.sub(r"\s+", "", roundtrip)
 
 
 @mark_pipeline
@@ -271,7 +307,8 @@ def test_xml_single_line_decl_and_doctype(tmp_path: Path) -> None:
     """Declaration + DOCTYPE + root on one line: insert after prolog (+1 blank).
 
     Confirms correct splitting and placement when both declaration and DOCTYPE
-    precede the root on the same physical line.
+    precede the root on the same physical line. Don't write to file, compare the
+    image lines and updated lines.
     """
     f: Path = tmp_path / "singleline_decl_doctype.xml"
     # XML declaration, DOCTYPE, and root all on a single line
@@ -283,12 +320,8 @@ def test_xml_single_line_decl_and_doctype(tmp_path: Path) -> None:
     # Strict XML InsertChecker flags this as unsupported due to reflow:
     assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.pre_insert_capability == InsertCapability.SKIP_IDEMPOTENCE_RISK
-    assert ctx.status.write == WriteStatus.SKIPPED
-
-    current_lines: list[str] = materialize_image_lines(ctx)
-    updated_lines: list[str] = materialize_updated_lines(ctx)
-
-    assert current_lines == updated_lines
+    assert ctx.status.content == ContentStatus.SKIPPED_REFLOW
+    assert ctx.flow.halt is True
 
 
 @mark_pipeline
@@ -318,32 +351,6 @@ def test_html_with_existing_banner_comment(tmp_path: Path) -> None:
         assert close_idx + 1 < len(lines)
         # First non-TopMark comment line should be the banner
         banner_idx: int = find_line(lines, "<!-- existing:license banner -->")
-        assert banner_idx > close_idx
-
-
-@mark_pipeline
-def test_markdown_with_existing_banner_comment(tmp_path: Path) -> None:
-    """Markdown: header precedes any existing banner comment.
-
-    Confirms block placement and ordering of the prior banner comment after the
-    TopMark header.
-    """
-    f: Path = tmp_path / "BANNER.md"
-    f.write_text("<!-- md:banner -->\n# Title\n\n")
-
-    cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = run_insert(f, cfg)
-
-    lines: list[str] = materialize_updated_lines(ctx)
-    sig: BlockSignatures = expected_block_lines_for(f)
-
-    if "block_open" in sig:
-        assert find_line(lines, sig["block_open"]) == 0
-    assert find_line(lines, sig["start_line"]) == 1
-
-    if "block_close" in sig:
-        close_idx: int = find_line(lines, sig["block_close"])
-        banner_idx: int = find_line(lines, "<!-- md:banner -->")
         assert banner_idx > close_idx
 
 
@@ -435,7 +442,9 @@ def test_xml_strip_header_block_respects_declaration(tmp_path: Path) -> None:
     # 1) With explicit span for the HTML-style comment block
     new1: list[str] = []
     span1: tuple[int, int] | None = None
-    new1, span1 = proc.strip_header_block(lines=lines, span=(1, 3))
+    diag1: StripDiagnostic
+    new1, span1, diag1 = proc.strip_header_block(lines=lines, span=(1, 3))
+    assert diag1.kind == StripDiagKind.REMOVED
     assert new1[0].lstrip("\ufeff").startswith("<?xml"), "XML declaration must remain"
     assert TOPMARK_START_MARKER not in "".join(new1)
     assert span1 == (1, 3)
@@ -443,34 +452,13 @@ def test_xml_strip_header_block_respects_declaration(tmp_path: Path) -> None:
     # 2) Let the processor detect bounds itself
     new2: list[str] = []
     span2: tuple[int, int] | None = None
-    new2, span2 = proc.strip_header_block(lines=lines)
+    diag2: StripDiagnostic
+    new2, span2, diag2 = proc.strip_header_block(lines=lines)
     # Declaration must remain identical on the auto-detect path as well
+    assert diag2.kind == StripDiagKind.REMOVED
     assert new2[0].lstrip("\ufeff").startswith("<?xml"), "XML declaration must remain (auto-detect)"
     assert new2 == new1
     assert span2 == (1, 3)
-
-
-@mark_pipeline
-def test_markdown_fenced_code_no_insertion_inside(tmp_path: Path) -> None:
-    """Do not insert inside Markdown fenced code blocks.
-
-    The header must be placed at the top of the document and the original fenced
-    code block must remain intact.
-    """
-    f: Path = tmp_path / "FENCE.md"
-    f.write_text(f"```html\n<!-- {TOPMARK_START_MARKER} -->\n```\nReal content\n")
-    cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = run_insert(f, cfg)
-
-    lines: list[str] = materialize_updated_lines(ctx)
-    # Header should be at top (before the fenced block) and not inside it
-    sig: BlockSignatures = expected_block_lines_for(f)
-    if "block_open" in sig:
-        assert find_line(lines, sig["block_open"]) == 0
-    assert find_line(lines, sig["start_line"]) == 1
-    assert f"<!-- {TOPMARK_START_MARKER} -->" in "".join(lines), (
-        "Original fence content must remain untouched"
-    )
 
 
 @mark_pipeline
@@ -529,8 +517,10 @@ def test_xml_processor_respects_prolog_and_removes_block() -> None:
 
     new: list[str] = []
     span: tuple[int, int] | None = None
-    new, span = xp.strip_header_block(lines=lines, span=(1, 3))
+    diag: StripDiagnostic
+    new, span, diag = xp.strip_header_block(lines=lines, span=(1, 3))
 
+    assert diag.kind == StripDiagKind.REMOVED
     body: str = "".join(new)
 
     assert body.startswith("<?xml")

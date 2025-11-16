@@ -116,7 +116,7 @@ class ListFileImageView:
 
 
 @dataclass(slots=True)
-class HeaderView:
+class HeaderView(Releasable):
     """Structured view of the *existing* header detected by the scanner.
 
     Attributes:
@@ -132,10 +132,6 @@ class HeaderView:
             parsed and added to the ``mapping`` dictionary. Defaults to 0.
         error_count (int): The number of header lines that were malformed (e.g.,
             missing a colon, or having an empty field name). Defaults to 0.
-
-    Notes:
-        This view is intentionally lightweight and does not implement
-        `Releasable`. The runner prunes heavy buffers elsewhere.
     """
 
     range: tuple[int, int] | None
@@ -145,9 +141,15 @@ class HeaderView:
     success_count: int = 0
     error_count: int = 0
 
+    def release(self) -> None:
+        """Release header buffers (lines, block, mapping)."""
+        self.lines = None
+        self.block = None
+        self.mapping = None
+
 
 @dataclass(slots=True)
-class BuilderView:
+class BuilderView(Releasable):
     """Structured view of field dictionaries produced by the builder step.
 
     Attributes:
@@ -163,9 +165,14 @@ class BuilderView:
     builtins: dict[str, str] | None
     selected: dict[str, str] | None
 
+    def release(self) -> None:
+        """Release the diff payload to reduce memory usage."""
+        self.builtins = None
+        self.selected = None
+
 
 @dataclass(slots=True)
-class RenderView:
+class RenderView(Releasable):
     """Structured view of the *expected* header produced by the renderer.
 
     Attributes:
@@ -181,9 +188,14 @@ class RenderView:
     lines: Sequence[str] | None
     block: str | None
 
+    def release(self) -> None:
+        """Release the renderer payload to reduce memory usage."""
+        self.lines = None
+        self.block = None
+
 
 @dataclass(slots=True)
-class UpdatedView:
+class UpdatedView(Releasable):
     """View of the pipeline's updated file image.
 
     ``lines`` may be a sequence (e.g., ``list[str]``) or a lazy iterable
@@ -202,9 +214,13 @@ class UpdatedView:
 
     lines: Sequence[str] | Iterable[str] | None
 
+    def release(self) -> None:
+        """Release the updated file image payload to reduce memory usage."""
+        self.lines = None
+
 
 @dataclass(slots=True)
-class DiffView:
+class DiffView(Releasable):
     """Unified diff view for CLI/CI consumption.
 
     Attributes:
@@ -212,7 +228,58 @@ class DiffView:
             no diff was generated.
 
     Notes:
-        Pruning is done by nulling ``text`` in the runner.
+        Pruning is done by calling ``release()``, which nulls ``text`` to free memory.
     """
 
     text: str | None
+
+    def release(self) -> None:
+        """Release the diff payload to reduce memory usage."""
+        self.text = None
+
+
+@dataclass(slots=True)
+class Views:
+    """Bundle of phase-scoped, releasable views for a single file.
+
+    Notes:
+        The bundle itself provides `release_all()` to prune memory after a run.
+        Individual views remain responsible for their own `release()` behavior.
+    """
+
+    image: FileImageView | None = None
+    header: HeaderView | None = None
+    build: BuilderView | None = None
+    render: RenderView | None = None
+    updated: UpdatedView | None = None
+    diff: DiffView | None = None
+
+    def release_all(self) -> None:
+        """Release all non-None views safely (idempotent)."""
+        if self.image:
+            self.image.release()
+        if self.header:
+            self.header.release()
+        if self.build:
+            self.build.release()
+        if self.render:
+            self.render.release()
+        if self.updated:
+            self.updated.release()
+        if self.diff:
+            self.diff.release()
+        # HeaderView is intentionally light; no release.
+
+    def as_dict(self) -> dict[str, object]:
+        """Short machine-friendly summary; avoid heavy text blobs."""
+        return {
+            "image_lines": self.image.line_count() if self.image else 0,
+            "header_range": getattr(self.header, "range", None),
+            "header_fields": (self.header.mapping or {}) if self.header else None,
+            "build_selected": (self.build.selected if self.build else None),
+            "render_line_count": (
+                len(self.render.lines) if (self.render and self.render.lines is not None) else 0
+            ),
+            "updated_has_lines": self.updated is not None and self.updated.lines is not None,
+            "diff_present": bool(self.diff and self.diff.text),
+        }

@@ -31,13 +31,16 @@ from tests.pipeline.conftest import (
     find_line,
     materialize_updated_lines,
     run_insert,
+    run_writer,
 )
 from topmark.config import Config, MutableConfig
 from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline import runner
-from topmark.pipeline.context import HeaderStatus, ProcessingContext
+from topmark.pipeline.context import ProcessingContext
 from topmark.pipeline.pipelines import Pipeline
+from topmark.pipeline.processors.types import StripDiagKind, StripDiagnostic
+from topmark.pipeline.status import HeaderStatus
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -62,7 +65,7 @@ def test_slash_processor_basics(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
     assert ctx.file_type and ctx.file_type.name == "javascript"
-    assert ctx.header is None
+    assert ctx.views.header is None
 
 
 @mark_pipeline
@@ -79,7 +82,7 @@ def test_slash_processor_with_content_matcher_detects_jsonc_in_json(tmp_path: Pa
 
     ctx: ProcessingContext = run_insert(f, cfg)
     assert ctx.file_type and ctx.file_type.name == "jsonc"
-    assert ctx.header is None
+    assert ctx.views.header is None
 
 
 @mark_pipeline
@@ -122,11 +125,16 @@ def test_slash_detect_existing_header(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
     pipeline: Sequence[Step] = Pipeline.CHECK.steps
-    ctx = runner.run(ctx, pipeline)
+    ctx = runner.run(
+        ctx,
+        pipeline,
+        prune=False,  # We must inspect ctx_check.views.header
+    )
 
-    assert ctx.header is not None
-    assert ctx.header.range == (0, 5)
-    assert ctx.header.mapping and ctx.header.mapping.get("file") == "lib.h"
+    assert ctx.views.header is not None
+    assert ctx.views.header.range == (0, 5)
+    assert ctx.views.header.mapping and ctx.views.header.mapping.get("file") == "lib.h"
+    ctx.views.release_all()  # Release the views
 
 
 @mark_pipeline
@@ -171,7 +179,7 @@ def test_slash_malformed_header_fields(
     pipeline: Sequence[Step] = Pipeline.CHECK.steps
     ctx = runner.run(ctx, pipeline)
 
-    assert ctx.header is not None
+    assert ctx.views.header is not None
     assert ctx.status.header == expected_status
 
 
@@ -187,9 +195,11 @@ def test_slash_idempotent_reapply_no_diff(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
 
     ctx1: ProcessingContext = run_insert(f, cfg)
+
     lines1: list[str] = materialize_updated_lines(ctx1)
-    with f.open("w", encoding="utf-8", newline="") as fp:
-        fp.write("".join(lines1))
+    # Write results of first run to disk
+    ctx1 = run_writer(ctx1)
+
     ctx2: ProcessingContext = run_insert(f, cfg)
     lines2: list[str] = materialize_updated_lines(ctx2)
 
@@ -234,13 +244,19 @@ def test_slash_strip_header_block_with_and_without_span(tmp_path: Path) -> None:
 
     new1: list[str] = []
     span1: tuple[int, int] | None = None
-    new1, span1 = proc.strip_header_block(lines=lines, span=(0, 2))
+    diag1: StripDiagnostic
+    new1, span1, diag1 = proc.strip_header_block(lines=lines, span=(0, 2))
+
+    assert diag1.kind == StripDiagKind.REMOVED
     assert TOPMARK_START_MARKER not in "".join(new1)
     assert span1 == (0, 2)
 
     new2: list[str] = []
     span2: tuple[int, int] | None = None
-    new2, span2 = proc.strip_header_block(lines=lines)
+    diag2: StripDiagnostic
+    new2, span2, diag2 = proc.strip_header_block(lines=lines)
+
+    assert diag2.kind == StripDiagKind.REMOVED
     assert new2 == new1 and span2 == (0, 2)
 
 

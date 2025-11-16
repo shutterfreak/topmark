@@ -30,12 +30,14 @@ from importlib import import_module
 from importlib.metadata import EntryPoints, entry_points
 from typing import TYPE_CHECKING, Any, Final, Iterable, Sequence, cast
 
-from topmark.config.logging import TopmarkLogger, get_logger
+from topmark.config.logging import get_logger
 
 from .base import FileType
 
 if TYPE_CHECKING:
     from types import ModuleType
+
+    from topmark.config.logging import TopmarkLogger
 
 logger: TopmarkLogger = get_logger(__name__)
 

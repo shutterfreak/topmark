@@ -28,11 +28,13 @@ from click.core import ParameterSource
 
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.errors import TopmarkUsageError
-from topmark.config.logging import TopmarkLogger, get_logger
+from topmark.config.logging import get_logger
 from topmark.rendering.formats import HeaderOutputFormat
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+
+    from topmark.config.logging import TopmarkLogger
 
 P = ParamSpec("P")
 R = TypeVar("R")

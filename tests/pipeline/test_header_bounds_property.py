@@ -93,7 +93,7 @@ def test_insert_strip_idempotent_roundtrip(
     ctx1: ProcessingContext = run_insert(f, cfg)
     # Require that the first pass actually performed an insert/replace; otherwise
     # this sample is out-of-scope for the roundtrip property.
-    assume(ctx1.updated is not None and ctx1.updated.lines is not None)
+    assume(ctx1.views.updated is not None and ctx1.views.updated.lines is not None)
     updated1: str = "".join(materialize_updated_lines(ctx1))
     # Ensure that the header was actually inserted in the first pass.
     assume("topmark:header:start" in updated1)
@@ -105,7 +105,7 @@ def test_insert_strip_idempotent_roundtrip(
 
     # 2) Strip the header back out
     ctx_strip: ProcessingContext = run_strip(f, cfg)
-    assume(ctx_strip.updated is not None and ctx_strip.updated.lines is not None)
+    assume(ctx_strip.views.updated is not None and ctx_strip.views.updated.lines is not None)
     # Use helper to materialize a concrete list[str] for typing clarity.
     stripped: str = "".join(materialize_updated_lines(ctx_strip))
 

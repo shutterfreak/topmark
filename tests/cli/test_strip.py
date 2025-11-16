@@ -37,6 +37,7 @@ from tests.cli.conftest import (
     run_cli_in,
 )
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
+from topmark.pipeline.status import HeaderStatus, StripStatus
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -152,8 +153,15 @@ def test_strip_summary_buckets(tmp_path: Path) -> None:
     assert_SUCCESS_or_WOULD_CHANGE(result)
 
     # Expect human-facing wording present for both categories.
-    assert re.search(r"would strip header[ ]*: 1", result.output), "missing 'would strip header: 1'"
-    assert re.search(r"no header[ ]*: 2", result.output), "missing 'no header: 2'"
+    assert re.search(rf"{HeaderStatus.MALFORMED.value}[ ]*: 1", result.output), (
+        f"{HeaderStatus.MALFORMED.value}: 1'"
+    )
+    assert re.search(rf"{StripStatus.NOT_NEEDED.value}[ ]*: 1", result.output), (
+        f"{StripStatus.NOT_NEEDED.value}: 1'"
+    )
+    assert re.search(rf"{StripStatus.READY.value}[ ]*: 1", result.output), (
+        f"{StripStatus.READY.value}: 1'"
+    )
 
 
 def test_strip_accepts_positional_paths(tmp_path: Path) -> None:

@@ -23,19 +23,19 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests.pipeline.conftest import materialize_image_lines
+from tests.pipeline.conftest import materialize_image_lines, run_steps
 from topmark.config import Config, MutableConfig
-from topmark.pipeline.context import (
+from topmark.pipeline.context import ProcessingContext
+from topmark.pipeline.status import (
     ContentStatus,
-    ProcessingContext,
+    PlanStatus,
     ResolveStatus,
     StripStatus,
-    WriteStatus,
 )
-from topmark.pipeline.steps.reader import read
-from topmark.pipeline.steps.resolver import resolve
-from topmark.pipeline.steps.sniffer import sniff
-from topmark.pipeline.steps.updater import update
+from topmark.pipeline.steps.planner import PlannerStep
+from topmark.pipeline.steps.reader import ReaderStep
+from topmark.pipeline.steps.resolver import ResolverStep
+from topmark.pipeline.steps.sniffer import SnifferStep
 from topmark.pipeline.views import UpdatedView
 
 
@@ -55,8 +55,14 @@ def test_reader_skips_when_bom_precedes_shebang_python(tmp_path: Path) -> None:
     p.write_text("\ufeff#! /usr/bin/env python\nprint('x')\n", encoding="utf-8")
 
     ctx: ProcessingContext = _ctx_for(p)
-    ctx = resolve(ctx)
-    ctx = sniff(ctx)
+    ctx = run_steps(
+        ctx,
+        (
+            ResolverStep(),
+            SnifferStep(),
+            ReaderStep(),
+        ),
+    )
 
     assert ctx.leading_bom is True
     assert ctx.has_shebang is True
@@ -73,8 +79,13 @@ def test_reader_allows_shebang_without_bom_python(tmp_path: Path) -> None:
     p.write_text("#! /usr/bin/env python\nprint('ok')\n", encoding="utf-8")
 
     ctx: ProcessingContext = _ctx_for(p)
-    ctx = resolve(ctx)
-    ctx = sniff(ctx)
+    ctx = run_steps(
+        ctx,
+        (
+            ResolverStep(),
+            SnifferStep(),
+        ),
+    )
 
     assert ctx.leading_bom is False
     assert ctx.has_shebang is True
@@ -82,9 +93,9 @@ def test_reader_allows_shebang_without_bom_python(tmp_path: Path) -> None:
     assert ctx.status.content == ContentStatus.PENDING
 
     # Reader should have loaded lines
-    ctx = read(ctx)  # optional: then assert lines were loaded
+    ctx = run_steps(ctx, (ReaderStep(),))  # optional: then assert lines were loaded
 
-    assert ctx.image
+    assert ctx.views.image
     file_lines: list[str] = materialize_image_lines(ctx)
 
     assert file_lines and file_lines[0].startswith("#!"), (
@@ -101,18 +112,18 @@ def test_updater_suppresses_bom_reprepend_in_strip_fastpath() -> None:
 
     # Simulate prior steps setting up a removal result
     updated_file_lines: list[str] = ["#! /usr/bin/env python\n", "print('x')\n"]
-    ctx.updated = UpdatedView(lines=updated_file_lines)  # precomputed change
+    ctx.views.updated = UpdatedView(lines=updated_file_lines)  # precomputed change
 
     # Ensure the may_proceed_to_updater() gating helper allows processing:
     ctx.status.resolve = ResolveStatus.RESOLVED
     ctx.status.content = ContentStatus.OK
     ctx.status.strip = StripStatus.READY
 
-    ctx = update(ctx)
+    ctx = run_steps(ctx, (PlannerStep(),))
 
-    assert ctx.status.write == WriteStatus.PREVIEWED  # Dry-run mode
+    assert ctx.status.plan == PlanStatus.PREVIEWED  # Dry-run mode
     # Should *not* have a BOM re-attached
-    assert ctx.updated
+    assert ctx.views.updated
 
     assert not updated_file_lines[0].startswith("\ufeff"), updated_file_lines[0]
     # Diagnostic should be present to explain why BOM was not re-appended

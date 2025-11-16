@@ -20,11 +20,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.config.logging import TopmarkLogger, get_logger
+from topmark.config.logging import get_logger
 from topmark.constants import VALUE_NOT_SET
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+    from topmark.config.logging import TopmarkLogger
 
     from .context import ProcessingContext
     from .contracts import Step
@@ -37,15 +39,7 @@ def trim_views(ctx: ProcessingContext) -> None:
 
     Drops large buffers; retains only summary-friendly data.
     """
-    if ctx.render:
-        ctx.render.block = None
-        ctx.render.lines = None
-    if ctx.updated:
-        ctx.updated.lines = None
-    if ctx.diff:
-        ctx.diff.text = None
-    if ctx.image:
-        ctx.image.release()
+    ctx.views.release_all()
 
 
 def run(

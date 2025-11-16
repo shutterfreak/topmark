@@ -14,8 +14,8 @@ This module hosts stable, import-friendly definitions that other config modules
 can depend on without risk of circular imports.
 
 Exports:
-    - :data:`ArgsLike`: structural mapping type for CLI/API argument dicts.
-    - :class:`PatternSource`: immutable reference to a file containing patterns
+    - `ArgsLike`: structural mapping type for CLI/API argument dicts.
+    - `PatternSource`: immutable reference to a file containing patterns
       (e.g., include/exclude lists) together with the base directory used to
       interpret relative entries inside that file.
 
@@ -33,10 +33,12 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from topmark.config.logging import TopmarkLogger, get_logger
+from topmark.config.logging import get_logger
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from topmark.config.logging import TopmarkLogger
 
 # ArgsLike: generic mapping accepted by config loaders (works for CLI namespaces and API dicts).
 ArgsLike = Mapping[str, Any]

@@ -18,11 +18,14 @@ for logging and CLI display.
 from __future__ import annotations
 
 import os
-from typing import Sequence
+from typing import TYPE_CHECKING, Sequence
 
 from yachalk import chalk
 
-from topmark.config.logging import TopmarkLogger, get_logger
+from topmark.config.logging import get_logger
+
+if TYPE_CHECKING:
+    from topmark.config.logging import TopmarkLogger
 
 logger: TopmarkLogger = get_logger(__name__)
 

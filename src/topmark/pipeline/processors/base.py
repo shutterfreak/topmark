@@ -37,16 +37,23 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Final, Pattern
 
-from topmark.config.logging import TopmarkLogger, get_logger
+from topmark.config.logging import get_logger
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.policy_whitespace import is_pure_spacer
-from topmark.pipeline.processors.types import HeaderParseResult
+from topmark.pipeline.processors.types import (
+    BoundsKind,
+    HeaderBounds,
+    HeaderParseResult,
+    StripDiagKind,
+    StripDiagnostic,
+)
 from topmark.rendering.formats import HeaderOutputFormat
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from topmark.config import Config
+    from topmark.config.logging import TopmarkLogger
     from topmark.filetypes.base import FileType
     from topmark.filetypes.policy import FileTypeHeaderPolicy
     from topmark.pipeline.context import ProcessingContext
@@ -220,7 +227,7 @@ class HeaderProcessor:
 
         empty_result = HeaderParseResult()
 
-        hv: HeaderView | None = context.header
+        hv: HeaderView | None = context.views.header
         if hv is None or hv.range is None or hv.lines is None:
             return HeaderParseResult(
                 fields={}, success_count=cnt_header_ok, error_count=cnt_header_error
@@ -811,13 +818,13 @@ class HeaderProcessor:
         *,
         lines: Iterable[str],
         newline_style: str,
-    ) -> tuple[int | None, int | None]:
+    ) -> HeaderBounds:
         """Locate the TopMark header bounds as (start_idx, end_idx), inclusive.
 
-        This scanner searches for the first ``TOPMARK_START_MARKER`` and the next
-        ``TOPMARK_END_MARKER`` using the processor's affix rules
-        (``line_has_directive``). It accepts any iterable of lines to avoid
-        requiring a full materialization up-front.
+        This method first performs a **marker preflight** to catch malformed
+        shapes (e.g., lone ``:end``, lone ``:start``, multiple or reversed markers).
+        It then applies format-aware detection and proximity validation to return
+        a valid span when present.
 
         Args:
             lines (Iterable[str]): Logical file lines (``keepends=True``). The iterable
@@ -826,32 +833,96 @@ class HeaderProcessor:
                 unused by the default scanner but kept for parity with callers.
 
         Returns:
-            tuple[int | None, int | None]: A pair ``(start_idx, end_idx)`` when a
-                plausible header is found, otherwise ``(None, None)``. Indices are
-                0-based and inclusive.
+            HeaderBounds: A discriminated result:
+                - ``BoundsKind.SPAN`` with ``start`` (inclusive) and ``end`` (exclusive)
+                  when a valid header can be used.
+                - ``BoundsKind.MALFORMED`` with a best-effort range and ``reason`` when
+                  markers exist but the shape is invalid.
+                - ``BoundsKind.NONE`` when no markers are present.
 
         Notes:
-            - Implementations may override for format-specific heuristics.
-            - We materialize to a local list only once to support look-ahead and
-              validation helpers that require random access.
+            Subclasses may override this method to provide format-specific detection
+            and location validation but should preserve the discriminated-union
+            semantics of the return value.
         """
-        # Materialize locally to support look-ahead and validation helpers.
+        # Materialize once for look-ahead and validation.
         buf: list[str] = list(lines)
 
         if not buf:
-            return (None, None)
+            return HeaderBounds(kind=BoundsKind.NONE)
 
-        # Derive the expected anchor. Prefer the line-based façade; if a processor
-        # uses a char-offset strategy (returns NO_LINE_ANCHOR), translate the
-        # character offset into a line index for proximity validation.
+        # --- Preflight: marker-shape scan (format-agnostic) --------------------
+        start_idxs: list[int] = []
+        end_idxs: list[int] = []
+        i: int
+        ln: str
+        for i, ln in enumerate(buf):
+            # Accept either exact directive lines or markers inside a single-line comment
+            # wrapper; the more exact check (line_has_directive) happens later.
+            if TOPMARK_START_MARKER in ln:
+                start_idxs.append(i)
+            if TOPMARK_END_MARKER in ln:
+                end_idxs.append(i)
+
+        if end_idxs and not start_idxs:
+            i = end_idxs[0]
+            reason: str = "end marker without preceding start"
+            logger.debug(reason)
+            return HeaderBounds(
+                kind=BoundsKind.MALFORMED,
+                start=None,
+                end=i + 1,
+                reason="end marker without preceding start",
+            )
+
+        if start_idxs and not end_idxs:
+            s: int = start_idxs[0]
+            reason = "start marker without matching end"
+            logger.debug(reason)
+            return HeaderBounds(
+                kind=BoundsKind.MALFORMED,
+                start=s,
+                end=None,
+                reason="start marker without matching end",
+            )
+
+        if start_idxs and end_idxs:
+            # We only want to find the first header occurrence
+            s0: int
+            e0: int
+            s0, e0 = start_idxs[0], end_idxs[0]
+            if e0 < s0:
+                s_min: int = min(s0, e0)
+                e_max: int = max(s0, e0) + 1
+                reason = "end marker before start marker"
+                logger.debug(reason)
+                return HeaderBounds(
+                    kind=BoundsKind.MALFORMED,
+                    start=s_min,
+                    end=e_max,
+                    reason=reason,
+                )
+            elif e0 == s0:
+                # Exclusive end: cover the single offending line for consistent diagnostics.
+                reason = "start and end marker on the same line"
+                logger.debug(reason)
+                return HeaderBounds(
+                    kind=BoundsKind.MALFORMED,
+                    start=s0,
+                    end=e0 + 1,
+                    reason=reason,
+                )
+
+        # --- Policy-aware detection near computed anchor -----------------------
         anchor_idx: int = self.compute_insertion_anchor(buf)
         if anchor_idx == NO_LINE_ANCHOR:
             text: str = "".join(buf)
             char_off: int | None = self.get_header_insertion_char_offset(text)
             if char_off is not None:
-                anchor_idx = text[:char_off].count(
-                    newline_style
-                )  # FIXME: use newline_style from ProcessingContext
+                # Translate char offset to a line index using newline_style
+                # (best-effort; the default processor doesn’t rely on it further).
+                nl: str = newline_style or "\n"
+                anchor_idx = text[:char_off].count(nl)
             else:
                 anchor_idx = 0
 
@@ -861,17 +932,19 @@ class HeaderProcessor:
         else:
             candidates = self._collect_bounds_line_comments(buf)
 
-        for s, e in candidates:
+        for s, e_inclusive in candidates:
+            # Convert inclusive end → exclusive end for view/bounds consumers.
+            e_exclusive: int = e_inclusive + 1
             if self.validate_header_location(
                 buf,
                 header_start_idx=s,
-                header_end_idx=e,
+                header_end_idx=e_inclusive,
                 anchor_idx=anchor_idx,
             ):
-                return s, e
+                return HeaderBounds(kind=BoundsKind.SPAN, start=s, end=e_exclusive)
 
-        # No valid header near the expected anchor → treat as absent
-        return None, None
+        # No acceptable header near the anchor; treat as absent.
+        return HeaderBounds(kind=BoundsKind.NONE)
 
     def strip_header_block(
         self,
@@ -880,7 +953,7 @@ class HeaderProcessor:
         span: tuple[int, int] | None = None,
         newline_style: str = "\n",
         ends_with_newline: bool | None = None,
-    ) -> tuple[list[str], tuple[int, int] | None]:
+    ) -> tuple[list[str], tuple[int, int] | None, StripDiagnostic]:
         """Remove the TopMark header block and return the updated file image.
 
         This method supports two detection modes:
@@ -914,17 +987,37 @@ class HeaderProcessor:
                 ended with a newline. If ``None``, this information is not available.
 
         Returns:
-            tuple[list[str], tuple[int, int] | None]:
-                ``(new_lines, removed_span)`` where ``removed_span`` is the inclusive
-                span actually removed, or ``None`` if no header was found.
+            tuple[list[str], tuple[int, int] | None, StripDiagnostic]: A tuple containing:
+                - The updated list of file lines with the header removed.
+                - The (start, end) line indices (inclusive) of the removed block
+                  in the original input.
+                - The diagnostic describing the outcome.
         """
         # 1) Resolve bounds: prefer explicit span, else policy-aware detection.
         if span is None:
             # First try the standard, policy-aware bounds detection.
             start: int | None
             end: int | None
-            start, end = self.get_header_bounds(lines=lines, newline_style=newline_style)
-            span = (start, end) if start is not None and end is not None else None
+            bounds: HeaderBounds = self.get_header_bounds(lines=lines, newline_style=newline_style)
+            if bounds.kind is BoundsKind.SPAN:
+                # convert exclusive end to inclusive span expected by this method
+                assert bounds.start is not None and bounds.end is not None
+                span = (bounds.start, bounds.end - 1)
+
+            elif bounds.kind is BoundsKind.MALFORMED:
+                # Do not strip malformed headers; return unchanged lines.
+                return (
+                    lines,
+                    None,
+                    StripDiagnostic(
+                        kind=StripDiagKind.MALFORMED_REFUSED,
+                        reason=bounds.reason,
+                    ),
+                )
+
+            else:  # BoundsKind.NONE
+                span = None
+                # fall through to the permissive scan you already have
 
             if span is None:
                 # Permissive scan: accept directive substrings inside single-line
@@ -955,13 +1048,25 @@ class HeaderProcessor:
 
         # 2) No header? Return original content unchanged.
         if span is None:
-            return lines, None
+            return (
+                lines,
+                None,
+                StripDiagnostic(
+                    kind=StripDiagKind.NOT_FOUND,
+                ),
+            )
 
         start, end = span
         # Defensive validation of bounds
         if start < 0 or end < start or end >= len(lines):
             # Defensive: invalid span -> no-op
-            return lines, None
+            return (
+                lines,
+                None,
+                StripDiagnostic(
+                    kind=StripDiagKind.NOT_FOUND,
+                ),
+            )
 
         # Remove the block (inclusive header span)
         new_lines: list[str] = lines[:start] + lines[end + 1 :]
@@ -980,7 +1085,14 @@ class HeaderProcessor:
             if 0 <= start < len(new_lines) and is_pure_spacer(new_lines[start], policy):
                 del new_lines[start]
 
-        return new_lines, (start, end)
+        return (
+            new_lines,
+            (start, end),
+            StripDiagnostic(
+                kind=StripDiagKind.REMOVED,
+                removed_span=(start, end),
+            ),
+        )
 
     def _collect_bounds_line_comments(self, lines: list[str]) -> list[tuple[int, int]]:
         """Collect all (start,end) pairs for pound-style headers in the file."""

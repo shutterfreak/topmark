@@ -99,6 +99,27 @@ align_fields = true
 # header_format = "native"
 
 
+# ====================
+# Writer configuration
+# ====================
+
+[writer]
+# Writer options.
+#
+# Output destination for processed files. Possible values:
+#   "file"   → Write results to files (default).
+#   "stdout" → Emit updated content to standard output (no file writes).
+#
+# When using the CLI, this can be set via `--write-mode stdout`.
+# output_target = "file"
+#
+# Strategy used when writing to files (ignored for stdout). Possible values:
+#   "atomic"  → Write to a temporary file and replace the original (safe, default).
+#   "inplace" → Overwrite files in place (faster, less safe).
+#
+# This can be controlled from the CLI via `--write-mode atomic` or `--write-mode inplace`.
+file_write_strategy = "atomic"
+
 # ======================
 # Policy configuration
 # ======================

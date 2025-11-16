@@ -18,10 +18,15 @@ avoid interfering with tools that might not fully accept block comments.
 
 from __future__ import annotations
 
-from topmark.config.logging import TopmarkLogger, get_logger
+from typing import TYPE_CHECKING
+
+from topmark.config.logging import get_logger
 from topmark.filetypes.registry import register_filetype
 from topmark.pipeline.processors.base import HeaderProcessor
 from topmark.pipeline.processors.mixins import LineCommentMixin
+
+if TYPE_CHECKING:
+    from topmark.config.logging import TopmarkLogger
 
 logger: TopmarkLogger = get_logger(__name__)
 

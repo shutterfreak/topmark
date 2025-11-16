@@ -35,11 +35,13 @@ from typing import TYPE_CHECKING, Any, TypeGuard, cast
 
 import toml
 
-from topmark.config.logging import TopmarkLogger, get_logger
+from topmark.config.logging import get_logger
 from topmark.constants import DEFAULT_TOML_CONFIG_RESOURCE
 
 if TYPE_CHECKING:
     import sys
+
+    from topmark.config.logging import TopmarkLogger
 
     if sys.version_info >= (3, 14):
         # Python 3.14+: Traversable moved here
@@ -86,7 +88,7 @@ def as_toml_table(obj: object) -> TomlTable | None:
         TomlTable | None: ``obj`` cast to ``TomlTable`` when it is a ``dict``,
         otherwise ``None``.
     """
-    return obj if isinstance(obj, dict) else None  # type: ignore[return-value]
+    return obj if is_toml_table(obj) else None
 
 
 def as_toml_table_map(obj: object) -> TomlTableMap:

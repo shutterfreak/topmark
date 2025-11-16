@@ -47,15 +47,24 @@ class Outcome(str, Enum):
     """Per-file outcome bucket.
 
     Values mirror CLI semantics:
-      - ``UNCHANGED``: Header is present and compliant; no changes needed.
+      - ``PENDING``: Outcome is undecided.
+      - ``UNCHANGED``: No changes needed.
       - ``WOULD_CHANGE``: Dry-run detected changes would be made (apply=False).
-      - ``CHANGED``: A write occurred (apply=True) or formatting-only drift fixed.
-      - ``ERROR``: File failed to process.
+      - ``CHANGED``: A write occurred (apply=True).
+      - ``SKIPPED``: File processing skipped.
     """
 
+    PENDING = "pending"
+    SKIPPED = "skipped"
     UNCHANGED = "unchanged"
-    WOULD_CHANGE = "would_change"
+    WOULD_CHANGE = "would change"
+    WOULD_INSERT = "would insert"
+    WOULD_UPDATE = "would update"
+    WOULD_STRIP = "would strip"
     CHANGED = "changed"
+    INSERTED = "inserted"
+    UPDATED = "updated"
+    STRIPPED = "stripped"
     ERROR = "error"
 
 
@@ -69,12 +78,16 @@ class FileResult:
         diff (str | None): Unified diff as a string when available (``None`` if not requested
             or not applicable).
         message (str | None): Optional human‑readable note (``None`` if not applicable).
+        bucket_key (str | None): Bucket key.
+        bucket_label (str | None): Bucket label.
     """
 
     path: Path
     outcome: Outcome
     diff: str | None
     message: str | None
+    bucket_key: str | None = None
+    bucket_label: str | None = None
 
 
 @dataclass(frozen=True)
@@ -92,6 +105,7 @@ class RunResult:
         skipped (int): Number of items removed by view filters (e.g., `skip_compliant`).
         written (int): Number of files successfully written (only in apply mode; otherwise 0).
         failed (int): Number of files that failed to write (only in apply mode; otherwise 0).
+        bucket_summary (Mapping[str, int] | None): Bucket summary.
         diagnostics (dict[str, list[PublicDiagnostic]] | None): Optional mapping from file path
             to a list of public diagnostics.
         diagnostic_totals (DiagnosticTotals | None): Optional aggregate counts across the
@@ -106,6 +120,7 @@ class RunResult:
     skipped: int = 0
     written: int = 0
     failed: int = 0
+    bucket_summary: Mapping[str, int] | None = None
     diagnostics: dict[str, list[PublicDiagnostic]] | None = None
     diagnostic_totals: DiagnosticTotals | None = None
     diagnostic_totals_all: DiagnosticTotals | None = None

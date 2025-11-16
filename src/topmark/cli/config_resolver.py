@@ -21,13 +21,15 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from topmark.cli.cli_types import ArgsNamespace, build_args_namespace
+from topmark.cli.cli_types import build_args_namespace
 from topmark.config import MutableConfig
-from topmark.config.logging import TopmarkLogger, get_logger
+from topmark.config.logging import get_logger
 
 if TYPE_CHECKING:
     import click
 
+    from topmark.cli.cli_types import ArgsNamespace
+    from topmark.config.logging import TopmarkLogger
     from topmark.rendering.formats import HeaderOutputFormat
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -39,6 +41,7 @@ def resolve_config_from_click(
     ctx: click.Context,
     verbosity_level: int | None,
     apply_changes: bool | None,
+    write_mode: str | None,
     files: list[str],
     files_from: list[str],
     stdin: bool,
@@ -78,6 +81,8 @@ def resolve_config_from_click(
         verbosity_level (int | None): Program-output verbosity (0=terse, 1=verbose);
             None = inherit from parent context.
         apply_changes (bool | None): Whether to apply the changes (dry-run if not set or False).
+        write_mode (str | None): Whether to use safe atomic writing, faster in-place writing
+            or writing to STDOUT (default: atomic writer).
         files (list[str]): File paths passed on the command line.
         files_from (list[str]): Paths to files that contain lists of file paths.
         stdin (bool): Whether to read file paths from standard input.
@@ -99,6 +104,7 @@ def resolve_config_from_click(
     args: ArgsNamespace = build_args_namespace(
         verbosity_level=verbosity_level,
         apply_changes=apply_changes,
+        write_mode=write_mode,
         files=files,
         files_from=files_from,
         stdin=stdin,

@@ -32,20 +32,86 @@ from typing_extensions import NotRequired, Required, TypedDict
 
 from tests.conftest import fixture
 from topmark.pipeline.context import ProcessingContext
+from topmark.pipeline.pipelines import CHECK_PATCH_PIPELINE, CHECK_SUMMMARY_PIPELINE
 from topmark.pipeline.processors import get_processor_for_file, register_all_processors
 from topmark.pipeline.processors.base import HeaderProcessor
-from topmark.pipeline.steps import reader, resolver, scanner, sniffer, stripper, updater
-from topmark.pipeline.views import HeaderView, UpdatedView
+from topmark.pipeline.steps.builder import BuilderStep
+from topmark.pipeline.steps.comparer import ComparerStep
+from topmark.pipeline.steps.patcher import PatcherStep
+from topmark.pipeline.steps.planner import PlannerStep
+from topmark.pipeline.steps.reader import ReaderStep
+from topmark.pipeline.steps.renderer import RendererStep
+from topmark.pipeline.steps.resolver import ResolverStep
+from topmark.pipeline.steps.scanner import ScannerStep
+from topmark.pipeline.steps.sniffer import SnifferStep
+from topmark.pipeline.steps.stripper import StripperStep
+from topmark.pipeline.steps.writer import WriterStep
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.config import Config
+    from topmark.pipeline.contracts import Step
     from topmark.pipeline.processors.base import HeaderProcessor
 
 
+def run_resolver(ctx: ProcessingContext) -> ProcessingContext:
+    """Run the ResolverStep."""
+    return ResolverStep()(ctx)
+
+
+def run_sniffer(ctx: ProcessingContext) -> ProcessingContext:
+    """Run the SnifferStep."""
+    return SnifferStep()(ctx)
+
+
+def run_reader(ctx: ProcessingContext) -> ProcessingContext:
+    """Run the ReaderStep."""
+    return ReaderStep()(ctx)
+
+
+def run_scanner(ctx: ProcessingContext) -> ProcessingContext:
+    """Run the ScannerStep."""
+    return ScannerStep()(ctx)
+
+
+def run_builder(ctx: ProcessingContext) -> ProcessingContext:
+    """Run the BuilderStep."""
+    return BuilderStep()(ctx)
+
+
+def run_renderer(ctx: ProcessingContext) -> ProcessingContext:
+    """Run the RendererStep."""
+    return RendererStep()(ctx)
+
+
+def run_planner(ctx: ProcessingContext) -> ProcessingContext:
+    """Run the PlannerStep."""
+    return PlannerStep()(ctx)
+
+
+def run_comparer(ctx: ProcessingContext) -> ProcessingContext:
+    """Run the ComparerStep."""
+    return ComparerStep()(ctx)
+
+
+def run_patcher(ctx: ProcessingContext) -> ProcessingContext:
+    """Run the PatcherStep."""
+    return PatcherStep()(ctx)
+
+
+def run_stripper(ctx: ProcessingContext) -> ProcessingContext:
+    """Run the StripperStep."""
+    return StripperStep()(ctx)
+
+
+def run_writer(ctx: ProcessingContext) -> ProcessingContext:
+    """Run the WriterStep."""
+    return WriterStep()(ctx)
+
+
 # --- Newline normalization helper for test output ---
-def _coerce_newlines(
+def coerce_newlines(
     lines: list[str],
     target_nl: str,
     ends_with_newline: bool | None,
@@ -96,39 +162,65 @@ def register_processors_for_this_package() -> None:
 def materialize_image_lines(ctx: ProcessingContext) -> list[str]:
     """Return the current file image lines as a concrete list for test assertions.
 
-    Converts the possibly lazy iterator from ``ctx.image.iter_lines()`` into a list
+    Converts the possibly lazy iterator from ``ctx.views.image.iter_lines()`` into a list
     without altering the ProcessingContext. Safe for test-only use.
     """
-    if not ctx.image:
+    if not ctx.views.image:
         return []
     # `iter_lines()` always yields keepends=True lines
-    return list(ctx.image.iter_lines())
+    return list(ctx.views.image.iter_lines())
 
 
 def materialize_updated_lines(ctx: ProcessingContext) -> list[str]:
     """Return updated file lines as a concrete list for test assertions.
 
-    Converts the possibly lazy iterable in ``ctx.updated.lines`` into a list
+    Converts the possibly lazy iterable in ``ctx.views.updated.lines`` into a list
     without altering the ProcessingContext. Safe for test-only use.
     """
-    if not ctx.updated or ctx.updated.lines is None:
+    if not ctx.views.updated or ctx.views.updated.lines is None:
         return []
-    seq: Sequence[str] | Iterable[str] = ctx.updated.lines
+    seq: Sequence[str] | Iterable[str] = ctx.views.updated.lines
     return seq if isinstance(seq, list) else list(seq)
 
 
-def run_insert(path: Path, cfg: Config) -> ProcessingContext:
-    """Insert a TopMark header by running the minimal pipeline for insertion.
+# --- Class-based step runner helpers (tests) ---
+def run_steps(ctx: ProcessingContext, steps: list[Step] | tuple[Step, ...]) -> ProcessingContext:
+    """Run a list of class-based steps against a context and return it.
 
-    Steps:
-      1. bootstrap `ProcessingContext`
-      2. `resolver.resolve()` → choose FileType and HeaderProcessor
-      3. `sniffer.sniff()` → early/cheap policy checks (existence, binary, BOM/shebang,
-         newline histogram)
-      4. `reader.read()` → load `file_lines`, precise newline/BOM/shebang flags
-      5. `scanner.scan()` → detect existing TopMark header bounds
-      6. `renderer.render()` → compute expected header lines for current file
-      7. `updater.update()` → apply insert/update in-memory
+    This helper mirrors the engine's simple sequential execution. It does not
+    short-circuit on `may_proceed()`—each step enforces its own gating, as
+    in production.
+    """
+    for step in steps:
+        step(ctx)
+    return ctx
+
+
+# Common step chains used by tests
+SCAN_STEPS: list[Step] = [
+    ResolverStep(),
+    SnifferStep(),
+    ReaderStep(),
+    ScannerStep(),
+]
+STRIP_STEPS: list[Step] = SCAN_STEPS + [
+    StripperStep(),
+    PlannerStep(),
+]
+CHECK_COMPARE_STEPS: list[Step] = SCAN_STEPS + [
+    RendererStep(),
+    ComparerStep(),
+]
+# For insert/update tests that render and compare before updating, test modules
+# can extend SCAN_STEPS with Builder/Renderer/Comparer if needed.
+
+
+def run_insert(path: Path, cfg: Config) -> ProcessingContext:
+    """Run a minimal insert/update flow for tests using class-based steps.
+
+    This helper executes the discovery stages (resolve/sniff/read/scan) and
+    then runs the updater. Tests that need rendering/compare can extend this
+    chain in their own modules.
 
     Args:
         path (Path): File to modify.
@@ -139,127 +231,34 @@ def run_insert(path: Path, cfg: Config) -> ProcessingContext:
     """
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=path, config=cfg)
 
-    # Run resolver first so ctx.file_type and ctx.header_processor are set based on
-    # the registry and file path. Policies like shebang handling depend on this.
-    ctx = resolver.resolve(ctx)
+    run_steps(ctx, CHECK_SUMMMARY_PIPELINE + (PlannerStep(),))
 
-    # Run sniffer to perform early/cheap policy checks:
-    #   - existence, permissions, empty file
-    #   - fast binary/NUL check
-    #   - BOM/shebang ordering and policy
-    #   - quick newline histogram (mixed-newlines policy)
-    ctx = sniffer.sniff(ctx)
+    return ctx
 
-    # Run the reader to populate file_lines, ends_with_newline, and detect
-    # newline style (LF/CRLF/CR) and BOM/shebang precisely.
-    ctx = reader.read(ctx)
 
-    assert ctx.newline_style, "run_insert(): Newline style MUST NOT be empty"
-    newline: str = ctx.newline_style or "\n"
+def run_insert_diff(path: Path, cfg: Config) -> ProcessingContext:
+    """Run a minimal insert/update flow for tests using class-based steps.
 
-    # Scan for existing TopMark header using processor-specific bounds logic
-    ctx = scanner.scan(ctx)
+    This helper executes the discovery stages (resolve/sniff/read/scan) and
+    then runs the updater. Tests that need rendering/compare can extend this
+    chain in their own modules.
 
-    # We deliberately call renderer.render() directly, as builder is internal and
-    # not required for test orchestration—renderer suffices for expected header lines.
-    # Ensure we have a processor (resolver should have set it). Fall back to registry lookup.
-    processor: HeaderProcessor | None = ctx.header_processor or get_processor_for_file(path)
-    assert processor is not None, "No header processor for file"
-    ctx.header_processor = processor
+    Args:
+        path (Path): File to modify.
+        cfg (Config): TopMark configuration used for rendering.
 
-    # Render header with the detected newline style so header lines match file endings.
-    header_values: dict[str, str] = {field: "" for field in cfg.header_fields}
+    Returns:
+        ProcessingContext: The updated ``ProcessingContext`` with ``updated_file_lines`` set.
+    """
+    ctx: ProcessingContext = ProcessingContext.bootstrap(path=path, config=cfg)
 
-    # Preserve pre-prefix indentation (spaces/tabs before the prefix) when
-    # replacing an existing header block, so nested JSONC headers stay aligned.
-    header_indent_override: str | None = None
+    run_steps(ctx, CHECK_PATCH_PIPELINE + (PlannerStep(),))
 
-    buf: list[str]
-    if ctx.image:
-        buf = list(ctx.iter_file_lines())  # Materialize
-    else:
-        buf = []  # Default for further processing
-
-    # if ctx.existing_header_range is not None and ctx.file_lines:
-    if ctx.image and ctx.header and ctx.header.range:
-        start_idx: int
-        _end_idx: int
-        start_idx, _end_idx = ctx.header.range
-
-        first_line: str = buf[start_idx]
-        leading_ws: str = first_line[: len(first_line) - len(first_line.lstrip())]
-        if leading_ws and first_line.lstrip().startswith(processor.line_prefix):
-            header_indent_override = leading_ws
-
-    # Compute expected (rendered) header lines using the processor
-    expected_header_lines: list[str] = processor.render_header_lines(
-        header_values,
-        cfg,
-        newline,
-        header_indent_override=header_indent_override,
-    )
-
-    # If scanner did not find a header, attempt a lightweight signature-based
-    # detection to support tests that directly call the updater with crafted content.
-    if ctx.header is None or ctx.header.range is None:
-        try:
-            sig: BlockSignatures = expected_block_lines_for(path, newline=newline)
-            start_idx = find_line(buf or [], sig["start_line"])
-            end_idx: int = find_line(buf, sig["end_line"])
-            detected_range: tuple[int, int] | None = (start_idx, end_idx)
-        except AssertionError:
-            detected_range = None
-
-        # Build a HeaderView so downstream steps (updater/comparer) have a consistent view
-        if detected_range is not None:
-            s: int
-            e: int
-            s, e = detected_range
-            slice_lines: list[str] = buf[s : e + 1]
-            ctx.header = HeaderView(
-                range=detected_range,
-                lines=slice_lines,
-                block="".join(slice_lines),
-                mapping=None,
-            )
-        else:
-            ctx.header = None
-
-    # Populate the RenderView with the expected header text
-    from topmark.pipeline.views import RenderView  # local import for tests
-
-    ctx.render = RenderView(lines=expected_header_lines, block="".join(expected_header_lines))
-
-    # Call the updater step directly
-    ctx = updater.update(ctx)
-
-    # Normalize newlines for consistent test output using the updated view
-    updated_seq: Sequence[str] | Iterable[str] = (
-        ctx.updated.lines if (ctx.updated and ctx.updated.lines is not None) else []
-    )
-    updated_file_lines: list[str] = (
-        updated_seq if isinstance(updated_seq, list) else list(updated_seq)
-    )
-    updated_file_lines = _coerce_newlines(
-        updated_file_lines,
-        target_nl=ctx.newline_style or "\n",
-        ends_with_newline=ctx.ends_with_newline,
-    )
-    ctx.updated = UpdatedView(lines=updated_file_lines)
     return ctx
 
 
 def run_strip(path: Path, cfg: Config) -> ProcessingContext:
-    """Strip a TopMark header by running the minimal pipeline for removal.
-
-    Steps:
-      1. bootstrap `ProcessingContext`
-      2. `resolver.resolve()` → choose FileType and HeaderProcessor
-      3. `sniffer.sniff()` → early/cheap policy checks (existence, binary, BOM/shebang,
-         newline histogram)
-      4. `reader.read()` → load `file_lines`, precise newline/BOM/shebang flags
-      5. `scanner.scan()` → detect existing TopMark header bounds
-      6. `stripper.strip()` → remove header block in-memory (preserving BOM/newlines)
+    """Run a strip flow (resolve → sniff → read → scan → strip → update).
 
     Args:
         path (Path): File to modify.
@@ -271,51 +270,14 @@ def run_strip(path: Path, cfg: Config) -> ProcessingContext:
     """
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=path, config=cfg)
 
-    # Run resolver to set file_type and header_processor
-    ctx = resolver.resolve(ctx)
+    run_steps(ctx, STRIP_STEPS)
+    return ctx
 
-    # Run sniffer to perform early/cheap policy checks:
-    #   - existence, permissions, empty file
-    #   - fast binary/NUL check
-    #   - BOM/shebang ordering and policy
-    #   - quick newline histogram (mixed-newlines policy)
-    # Sniffer sets tentative newline info and may short-circuit (non-RESOLVED status).
-    ctx = sniffer.sniff(ctx)
 
-    # Run reader to load file_lines, ends_with_newline, and detect
-    # newline style/BOM/shebang precisely. Reader refines newline info and loads lines.
-    ctx = reader.read(ctx)
-
-    # Scan for an existing TopMark header using processor-specific bounds logic
-    ctx = scanner.scan(ctx)
-
-    # Ensure we have a processor (resolver should have set it)
-    processor: HeaderProcessor | None = ctx.header_processor or get_processor_for_file(path)
-    assert processor is not None, "No header processor for file"
-    ctx.header_processor = processor
-
-    # Invoke the stripper step; it will use ``existing_header_range`` if present,
-    # or fall back to processor auto-detection.
-    ctx = stripper.strip(ctx)
-    # Stripper can return NOT_NEEDED and produce no updated image (e.g., no header found).
-    # Keep the original image so the caller can still reason about content round-trips.
-    if ctx.updated is None or ctx.updated.lines is None:
-        original_lines: list[str] = list(ctx.iter_file_lines())
-        from topmark.pipeline.views import UpdatedView as _UpdatedView
-
-        ctx.updated = _UpdatedView(lines=original_lines)
-
-    # Normalize newlines for consistent test output using the updated view
-    updated_seq: Sequence[str] | Iterable[str] = (
-        ctx.updated.lines if ctx.updated and ctx.updated.lines is not None else []
-    )
-    updated_lines: list[str] = updated_seq if isinstance(updated_seq, list) else list(updated_seq)
-    updated_lines = _coerce_newlines(
-        updated_lines,
-        target_nl=ctx.newline_style or "\n",
-        ends_with_newline=ctx.ends_with_newline,
-    )
-    ctx.updated = UpdatedView(lines=updated_lines)
+def run_scan(path: Path, cfg: Config) -> ProcessingContext:
+    """Run just the discovery/scan steps to populate header and content views."""
+    ctx: ProcessingContext = ProcessingContext.bootstrap(path=path, config=cfg)
+    run_steps(ctx, SCAN_STEPS)
     return ctx
 
 

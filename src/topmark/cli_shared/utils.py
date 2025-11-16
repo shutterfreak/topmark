@@ -23,14 +23,12 @@ from inspect import getmodule
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Mapping, Sequence
 
-from yachalk import chalk
-
-from topmark.config.logging import TopmarkLogger, get_logger
-from topmark.filetypes.base import InsertCapability
+from topmark.config.logging import get_logger
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from topmark.config.logging import TopmarkLogger
     from topmark.pipeline.context import ProcessingContext
 
 
@@ -144,168 +142,7 @@ def resolve_color_mode(
     return bool(stdout_isatty)
 
 
-# --- CLI presentation helpers -------------------------------------------------
-def classify_outcome(r: ProcessingContext) -> tuple[str, str, Callable[[str], str]]:
-    """Classify a single file’s processing result into a summary bucket.
-
-    This function converts a file’s `HeaderProcessingStatus` (available on
-    `ProcessingContext.status`) into a stable, human‑facing bucket used by the
-    CLI summary. It returns `(key, label, color_fn)` where:
-
-    - `key` is a **stable identifier** suitable for aggregation (see below),
-    - `label` is the **user‑visible** description printed in the summary, and
-    - `color_fn` is a `yachalk` styling function to colorize the label in text mode.
-
-    ### Buckets (stable contract)
-
-    The following identifiers and labels are considered part of the CLI contract and
-    are used by tests:
-
-    **Strip pipeline** (`topmark strip`):
-    - `strip:ready`   → "would strip header"
-    - `strip:none`    → "no header" (or "no changes to strip" in rare cases)
-    - `strip:failed`  → "cannot strip header"
-
-    **General:**
-    - `header:malformed` → "header malformed"
-
-    **Default pipeline** (`topmark`):
-    - `insert`        → "would insert header"
-    - `update`        → "would update header"
-    - `ok`            → "up-to-date"
-    - `no_fields`     → "no fields to render"
-    - `header:empty` / `header:malformed` → "header (empty|malformed)"
-    - `compare_error` → "cannot compare"
-
-    ### Sniffer outcomes:
-
-    Early refusals from the `sniffer` step (e.g., not a text file, mixed line endings)
-    are reflected via `status.file` and therefore classified here as `file:*` buckets.
-    For human and JSON summaries, consult `status.sniff` to see that the refusal
-    came from the sniffer and why.
-
-    > Notes:
-    > - Tests should match labels **loosely** (e.g., substrings) to allow minor
-    >   wording adjustments without breaking the public contract.
-    > - JSON/NDJSON output does not include ANSI color; only the human format uses
-    >   `color_fn`.
-
-    Precedence:
-        - If the strip pipeline participated, strip-related and malformed-header outcomes
-          are considered **before** the generic UNCHANGED → ok rule. This ensures that
-          malformed headers in strip mode are never reported as up-to-date.
-        - If the comparison result is UNCHANGED, this takes precedence only if no strip/malformed
-          outcome applies.
-
-    Args:
-        r (ProcessingContext): Processing context for a single file.
-
-    Returns:
-        tuple[str, str, Callable[[str], str]]: A tuple ``(key, label, color_fn)`` where
-            ``key`` is a stable identifier, ``label`` is a human-readable description, and
-            ``color_fn`` is a function from ``yachalk`` used to colorize the label.
-    """
-    # Import locally to avoid any import cycles at module import time.
-    from topmark.pipeline.context import (
-        ComparisonStatus,
-        GenerationStatus,
-        HeaderStatus,
-        ResolveStatus,
-        StripStatus,
-    )
-
-    logger.debug("status: %s", r.status)
-
-    if r.status.resolve != ResolveStatus.RESOLVED:
-        return (
-            f"file:{r.status.resolve.name}",
-            f"{r.status.resolve.value}",
-            r.status.resolve.color,
-        )
-
-    # First report if a resolved file cannot have a header inserted safely ()
-    if r.status.resolve == ResolveStatus.RESOLVED and r.pre_insert_capability not in {
-        InsertCapability.UNEVALUATED,
-        InsertCapability.OK,
-    }:
-        return ("unsafe:insert", "unsafe to insert header", chalk.yellow)
-
-    # Malformed headers must not be reported as up-to-date
-    if r.status.header == HeaderStatus.MALFORMED:
-        return ("header:malformed", "header malformed", r.status.header.color)
-    elif r.status.header in {
-        HeaderStatus.MALFORMED_ALL_FIELDS,
-        HeaderStatus.MALFORMED_SOME_FIELDS,
-    }:
-        return ("header:malformed", "header fields malformed", r.status.header.color)
-
-    # If the strip pipeline participated, handle it before comparison fallbacks.
-    if r.status.strip == StripStatus.READY:
-        return ("strip:ready", "would strip header", chalk.yellow)
-
-    if r.status.strip == StripStatus.FAILED:
-        return ("strip:failed", "cannot strip header", chalk.red_bright)
-
-    if r.status.strip == StripStatus.NOT_NEEDED:
-        # Nothing to strip — refine message based on what scanner/comparer saw.
-        if r.status.header == HeaderStatus.MISSING:
-            # No header present in the original file.
-            return ("strip:none", "no header", chalk.green)
-        # Fallback for strip pipeline where nothing changed.
-        return ("strip:none", "no changes to strip", chalk.green)
-
-    # If comparison says UNCHANGED, treat as compliant
-    if r.status.comparison == ComparisonStatus.UNCHANGED:
-        return ("ok", "up-to-date", chalk.green)
-
-    # If generation produced no fields, prefer a dedicated bucket over insert/missing
-    if r.status.generation == GenerationStatus.NO_FIELDS:
-        return ("no_fields", "no fields to render", chalk.yellow)
-
-    # Non-strip pipelines (or stripper didn't run): use standard classification.
-    if r.status.header == HeaderStatus.MISSING:
-        if r.status.generation == GenerationStatus.PENDING:
-            return ("strip:none", "no header", chalk.green)
-        return ("insert", "would insert header", chalk.green)
-    if r.status.header == HeaderStatus.DETECTED:
-        if r.status.comparison == ComparisonStatus.CHANGED:
-            return ("update", "would update header", chalk.yellow_bright)
-        return ("compare_error", "cannot compare", chalk.red)
-    if r.status.header in {HeaderStatus.EMPTY, HeaderStatus.MALFORMED}:
-        return (
-            f"header:{r.status.header.name.lower()}",
-            f"header {r.status.header.value}",
-            r.status.header.color,
-        )
-    return ("other", "other", chalk.gray)
-
-
-def count_by_outcome(
-    results: list[ProcessingContext],
-) -> dict[str, tuple[int, str, Callable[[str], str]]]:
-    """Count results by classification key.
-
-    Keeps the first-seen label and color for each key.
-
-    Args:
-        results (list[ProcessingContext]): Processing contexts to classify and count.
-
-    Returns:
-        dict[str, tuple[int, str, Callable[[str], str]]]: Mapping from classification
-            key to ``(count, label, color_fn)``.
-    """
-    counts: dict[str, tuple[int, str, Callable[[str], str]]] = {}
-    for r in results:
-        key: str
-        label: str
-        color: Callable[[str], str]
-        key, label, color = classify_outcome(r)
-        n: int
-        n, _, _ = counts.get(key, (0, label, color))
-        counts[key] = (n + 1, label, color)
-    return counts
-
-
+# TODO: check if still used (is implemented in pipeline now)
 def write_updates(
     results: list[ProcessingContext],
     *,
@@ -332,11 +169,12 @@ def write_updates(
     failed: int = 0
     for r in results:
         try:
-            if should_write(r) and r.updated is not None and r.updated.lines:
+            updated_view = r.views.updated
+            if should_write(r) and updated_view is not None and updated_view.lines:
                 # Write exactly what the pipeline produced:
                 #  - `updated_file_lines` are keepends=True lines with the desired newline style
                 #  - We open with newline="" to disable any \n translation on output
-                data: str = "".join(r.updated.lines)
+                data: str = "".join(updated_view.lines)
                 with Path(r.path).open("w", encoding="utf-8", newline="") as fh:
                     fh.write(data)
                 written += 1

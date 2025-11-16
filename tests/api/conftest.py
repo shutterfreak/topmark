@@ -24,6 +24,7 @@ from topmark import api
 from topmark.api.public_types import PublicPolicy
 from topmark.filetypes.base import FileType
 from topmark.pipeline.processors.base import HeaderProcessor
+from topmark.pipeline.processors.types import BoundsKind
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
 
@@ -41,7 +42,7 @@ def cfg(**overrides: Any) -> dict[str, Any]:
     This helper intentionally returns a plain dictionary shaped like the
     TOML structure (e.g., the ``[files]`` table). It is used to exercise the
     public API branch where callers pass a *mapping* instead of a fully
-    constructed :class:`topmark.config.Config`.
+    constructed [`Config`][topmark.config.Config].
 
     Notes:
         * Only a tiny base is provided (``files.file_types = ["python"]``) so tests
@@ -49,7 +50,7 @@ def cfg(**overrides: Any) -> dict[str, Any]:
           at the top level for convenience.
         * No defaults, no layered discovery, no path normalization, and no
           ``PatternSource`` coercion happen here—that behavior is covered by tests
-          using :func:`tests.conftest.make_config` / ``make_mutable_config``.
+          using `tests.conftest.make_config` / `tests.conftest.make_mutable_config`.
 
     Args:
         **overrides (Any): Arbitrary keyword arguments collected into a
@@ -222,14 +223,22 @@ def repo_py_toml_xyz_no_header(tmp_path: Path) -> Path:
 
 
 def has_header(text: str, processor: HeaderProcessor, newline_style: str) -> bool:
-    """Return True if the file contents contains a TopMark header."""
-    start: int | None = None
-    end: int | None = None
-    start, end = processor.get_header_bounds(
+    """Return True if the file contents contains a **valid** TopMark header span.
+
+    A header is considered present only when `get_header_bounds()` returns
+    `BoundsKind.SPAN` with a non-empty, exclusive-end range. Malformed shapes
+    (e.g., only end marker) are **not** treated as a present header.
+    """
+    bounds = processor.get_header_bounds(
         lines=text.splitlines(keepends=True),
         newline_style=newline_style,
     )
-    return start is not None and end is not None and start < end
+    return (
+        bounds.kind is BoundsKind.SPAN
+        and bounds.start is not None
+        and bounds.end is not None
+        and bounds.start < bounds.end  # exclusive end; guarantees non-empty span
+    )
 
 
 def by_path_outcome(run_result: api.RunResult) -> dict[Path, str]:

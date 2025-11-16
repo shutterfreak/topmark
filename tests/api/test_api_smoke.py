@@ -15,6 +15,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark import api
+from topmark.api.types import Outcome
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -40,16 +41,16 @@ def test_list_processors_is_nonempty() -> None:
     assert procs and all("name" in p for p in procs), "processors list should not be empty"
 
 
-def test_strip_dry_run_reports_would_change(repo_py_with_header: Path) -> None:
-    """api.strip() reports 'would_change' on supported file without header."""
+def test_strip_dry_run_reports_would_strip(repo_py_with_header: Path) -> None:
+    """api.strip() reports 'WOULD_STRIP' on supported file without header."""
     r: api.RunResult = api.strip([repo_py_with_header / "src"], apply=False, file_types=["python"])
     # At least one file (with_header.py) should be reported as would_change
-    assert r.summary.get("would_change", 0) >= 1
+    assert Outcome.WOULD_STRIP in r.summary.keys()
     assert r.written == 0 and r.failed == 0
 
 
 def test_strip_apply_then_check_is_unchanged(repo_py_with_header: Path) -> None:
-    """api.check() after api.strip(apply=True) reports 'would_change'."""
+    """api.check() after api.strip(apply=True) reports 'WOULD_INSERT'."""
     src_dir: Path = repo_py_with_header / "src"
 
     # Apply strip: remove headers
@@ -63,4 +64,4 @@ def test_strip_apply_then_check_is_unchanged(repo_py_with_header: Path) -> None:
 
     # Accept either: would_change (header would be re-inserted) or unchanged
     # depending on project defaults. Assert at least one bucket is present.
-    assert any(k in r_check.summary for k in ("would_change", "unchanged"))
+    assert Outcome.WOULD_INSERT in r_check.summary.keys()

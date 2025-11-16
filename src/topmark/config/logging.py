@@ -28,6 +28,9 @@ if TYPE_CHECKING:
 
 # Define TRACE_LEVEL as a module-level constant
 TRACE_LEVEL: Final[int] = logging.DEBUG - 5
+if not hasattr(logging, "TRACE"):
+    logging.addLevelName(TRACE_LEVEL, "TRACE")
+    logging.TRACE = TRACE_LEVEL  # type: ignore[attr-defined]
 
 
 class TopmarkLogger(logging.Logger):
@@ -58,11 +61,6 @@ class TopmarkLogger(logging.Logger):
                 stacklevel=2,
             )
 
-
-if not hasattr(logging, "TRACE"):
-    logging.addLevelName(TRACE_LEVEL, "TRACE")
-    # Expose TRACE_LEVEL as logging.TRACE
-    logging.TRACE = TRACE_LEVEL  # type: ignore
 
 logging.setLoggerClass(TopmarkLogger)
 

@@ -24,9 +24,9 @@ import textwrap
 from typing import TYPE_CHECKING, Sequence
 
 from topmark import api
-from topmark.cli.cmd_common import run_steps_for_files
 from topmark.config import MutableConfig
 from topmark.file_resolver import resolve_file_list
+from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.pipelines import Pipeline
 
 if TYPE_CHECKING:
@@ -76,7 +76,12 @@ def _run_cli_like(
     results: list[ProcessingContext]
     _exit_code: ExitCode | None
     pipeline: Sequence[Step] = Pipeline.CHECK_APPLY_PATCH.steps
-    results, _exit_code = run_steps_for_files(files, pipeline=pipeline, config=cfg, prune=False)
+    results, _exit_code = run_steps_for_files(
+        file_list=files,
+        pipeline=pipeline,
+        config=cfg,
+        prune=False,
+    )
     return draft, files, results
 
 
@@ -128,7 +133,7 @@ def test_same_dir_precedence_topmark_over_pyproject(
     # The aligned form must be present (topmark.toml overrides pyproject.toml)
     assert _contains_aligned_fields(api_diff), "API did not reflect topmark.toml override"
     # Parity: ensure CLI-like result also aligns
-    cli_diff: str = results[0].diff.text or "" if results[0].diff else ""
+    cli_diff: str = results[0].views.diff.text or "" if results[0].views.diff else ""
     assert _contains_aligned_fields(cli_diff), "CLI-like did not reflect topmark.toml override"
 
 
@@ -174,7 +179,7 @@ def test_discovery_anchor_subdir_nearest_wins(tmp_path: Path) -> None:
     results: list[ProcessingContext]
     _draft, files, results = _run_cli_like(child, file_types=("python",))
     assert files
-    cli_diff: str = results[0].diff.text or "" if results[0].diff else ""
+    cli_diff: str = results[0].views.diff.text or "" if results[0].views.diff else ""
     assert _contains_aligned_fields(cli_diff), "CLI-like did not honor nearest (child) config"
 
 
@@ -223,5 +228,5 @@ def test_root_true_stops_traversal(tmp_path: Path) -> None:
     results: list[ProcessingContext]
     _draft, files, results = _run_cli_like(sub, file_types=("python",))
     assert files
-    cli_diff: str = results[0].diff.text or "" if results[0].diff else ""
+    cli_diff: str = results[0].views.diff.text or "" if results[0].views.diff else ""
     assert _contains_unaligned_fields(cli_diff), "CLI-like did not stop at root=true boundary"

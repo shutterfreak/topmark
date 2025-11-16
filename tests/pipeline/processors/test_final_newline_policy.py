@@ -27,6 +27,7 @@ from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.context import ProcessingContext
 from topmark.pipeline.processors import get_processor_for_file
+from topmark.pipeline.processors.types import StripDiagKind, StripDiagnostic
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -75,14 +76,14 @@ def test_strip_preserves_final_newline_xml(tmp_path: Path) -> None:
     with_nl: str = (
         '<?xml version="1.0"?>\n'
         f"<!-- {TOPMARK_START_MARKER} -->\n"
-        "<!-- h -->\n"
+        "<!-- test:header -->\n"
         f"<!-- {TOPMARK_END_MARKER} -->\n"
         "<root/>\n"  # final newline
     )
     no_nl: str = (
         '<?xml version="1.0"?>\n'
         f"<!-- {TOPMARK_START_MARKER} -->\n"
-        "<!-- h -->\n"
+        "<!-- test:header -->\n"
         f"<!-- {TOPMARK_END_MARKER} -->\n"
         "<root/>"  # no final newline
     )
@@ -99,7 +100,8 @@ def test_strip_preserves_final_newline_xml(tmp_path: Path) -> None:
 
     new1: list[str] = []
     _span1: tuple[int, int] | None = None
-    new1, _span1 = proc1.strip_header_block(
+    diag1: StripDiagnostic
+    new1, _span1, diag1 = proc1.strip_header_block(
         lines=lines1,
         span=None,
         newline_style="\n",  # the fixture uses LF
@@ -107,7 +109,8 @@ def test_strip_preserves_final_newline_xml(tmp_path: Path) -> None:
     )
     new2: list[str] = []
     _span2: tuple[int, int] | None = None
-    new2, _span2 = proc2.strip_header_block(
+    diag2: StripDiagnostic
+    new2, _span2, diag2 = proc2.strip_header_block(
         lines=lines2,
         span=None,
         newline_style="\n",  # the fixture uses LF
@@ -116,5 +119,7 @@ def test_strip_preserves_final_newline_xml(tmp_path: Path) -> None:
 
     out1: str = "".join(new1)
     out2: str = "".join(new2)
+    assert diag1.kind == StripDiagKind.REMOVED
+    assert diag2.kind == StripDiagKind.REMOVED
     assert _ends_with_newline(out1), "Strip must preserve final newline"
     assert not _ends_with_newline(out2), "Strip must preserve absence of final newline"

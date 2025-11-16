@@ -33,6 +33,7 @@ if TYPE_CHECKING:
 
     from topmark.config import Config
     from topmark.pipeline.contracts import Step
+    from topmark.pipeline.views import RenderView
 
 
 def render_header_for_path(
@@ -98,6 +99,7 @@ def render_header_for_path(
     context = runner.run(context, pipeline)
     # Return the header
 
-    if context.render:
-        return context.render.block or ""
+    rennder_view: RenderView | None = context.views.render
+    if rennder_view:
+        return rennder_view.block or ""
     return ""

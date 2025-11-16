@@ -17,8 +17,8 @@ across modules.
 
 Key behaviors:
     - ``abs_path_from(base, raw)``: resolve ``raw`` against ``base`` when
-      relative; always returns an absolute, resolved :class:`pathlib.Path`.
-    - ``ps_from_config(raw, config_dir)``: create a :class:`PatternSource` for a
+      relative; always returns an absolute, resolved `pathlib.Path`.
+    - ``ps_from_config(raw, config_dir)``: create a `PatternSource` for a
       path declared *inside a config file*, anchoring to that file's directory.
     - ``ps_from_cli(raw, cwd)``: same, but for CLI-declared paths, anchoring to
       the invocation CWD.
@@ -38,12 +38,14 @@ from pathlib import Path
 # For runtime type checks, prefer collections.abc
 from typing import TYPE_CHECKING, Callable
 
-from topmark.config.logging import TopmarkLogger, get_logger
+from topmark.config.logging import get_logger
 from topmark.config.types import PatternSource
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from os import PathLike
+
+    from topmark.config.logging import TopmarkLogger
 
 logger: TopmarkLogger = get_logger(__name__)
 

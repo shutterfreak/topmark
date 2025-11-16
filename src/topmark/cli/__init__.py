@@ -24,6 +24,5 @@ All subcommands live in [`topmark.cli.commands`][].
 
 from __future__ import annotations
 
-from .main import cli
-
-__all__: list[str] = ["cli"]
+__all__: list[str] = []
+# Do NOT import .main or commands at module import time

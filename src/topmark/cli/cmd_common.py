@@ -24,27 +24,17 @@ import click
 from topmark.cli.config_resolver import resolve_config_from_click
 from topmark.cli.console_helpers import get_console_safely
 from topmark.cli_shared.console_api import ConsoleLike
-from topmark.cli_shared.exit_codes import ExitCode
-from topmark.config.logging import TopmarkLogger, get_logger
+from topmark.config.logging import get_logger
 from topmark.file_resolver import resolve_file_list
-from topmark.pipeline import runner
-from topmark.pipeline.context import (
-    ComparisonStatus,
-    ContentStatus,
-    GenerationStatus,
-    ProcessingContext,
-    ResolveStatus,
-    StripStatus,
-)
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
     from pathlib import Path
 
     from topmark.cli.io import InputPlan
     from topmark.cli_shared.console_api import ConsoleLike
+    from topmark.cli_shared.exit_codes import ExitCode
     from topmark.config import Config, MutableConfig
-    from topmark.pipeline.contracts import Step
+    from topmark.config.logging import TopmarkLogger
     from topmark.rendering.formats import HeaderOutputFormat
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -75,111 +65,6 @@ def build_file_list(config: Config, *, stdin_mode: bool, temp_path: Path | None)
         assert temp_path is not None
         return [temp_path]
     return resolve_file_list(config)
-
-
-def run_steps_for_files(
-    file_list: list[Path],
-    *,
-    pipeline: Sequence[Step],
-    config: Config,
-    prune: bool = True,
-) -> tuple[list[ProcessingContext], ExitCode | None]:
-    """Run a pipeline for each file and return (results, encountered_error_code).
-
-    Catches common filesystem/encoding errors so command bodies don’t duplicate try/except.
-
-    Exit code mapping:
-        FILE_NOT_FOUND → FileNotFoundError / IsADirectoryError
-        PERMISSION_DENIED → PermissionError
-        ENCODING_ERROR → UnicodeDecodeError
-        PIPELINE_ERROR → any other unexpected exception
-    """
-    console: ConsoleLike = get_console_safely()
-    results: list[ProcessingContext] = []
-    encountered_error_code: ExitCode | None = None
-
-    for path in file_list:
-        try:
-            ctx_obj: ProcessingContext = ProcessingContext.bootstrap(path=path, config=config)
-            ctx_obj = runner.run(ctx_obj, pipeline, prune=prune)
-            results.append(ctx_obj)
-        except (FileNotFoundError, PermissionError, IsADirectoryError) as e:
-            logger.error("Filesystem error while processing %s: %s", path, e)
-            console.error(f"❌ Filesystem error processing {path}: {e}")
-            if isinstance(e, (FileNotFoundError, IsADirectoryError)):
-                logger.error("%s: %s", e, path)
-                encountered_error_code = encountered_error_code or ExitCode.FILE_NOT_FOUND
-            else:
-                logger.error("%s: %s", e, path)
-                encountered_error_code = encountered_error_code or ExitCode.PERMISSION_DENIED
-            continue
-        except UnicodeDecodeError as e:
-            logger.error("Encoding error while reading %s: %s", path, e)
-            console.error(f"🧵 Encoding error in {path}: {e}")
-            encountered_error_code = encountered_error_code or ExitCode.ENCODING_ERROR
-            continue
-        except Exception as e:  # pragma: no cover
-            logger.exception("Unexpected error processing %s", path)
-            console.error(f"⚠️  Unexpected error processing {path}: {e} (use -vv for traceback)")
-            encountered_error_code = encountered_error_code or ExitCode.PIPELINE_ERROR
-            continue
-
-    return results, encountered_error_code
-
-
-def filter_view_results(
-    results: list[ProcessingContext],
-    *,
-    skip_compliant: bool,
-    skip_unsupported: bool,
-) -> list[ProcessingContext]:
-    """Apply --skip-compliant and --skip-unsupported filters to a results list.
-
-    Args:
-        results (list[ProcessingContext]): Full list of ProcessingContext results.
-        skip_compliant (bool): If True, filter out files that are compliant/unchanged.
-        skip_unsupported (bool): If True, filter out files that were skipped as unsupported.
-
-    Returns:
-        list[ProcessingContext]: Filtered list of ProcessingContext results.
-    """
-    view: list[ProcessingContext] = results
-    if skip_compliant:
-        view = [
-            r
-            for r in view
-            if not (
-                r.status.resolve == ResolveStatus.RESOLVED
-                and r.status.content == ContentStatus.OK
-                and (
-                    # “check/update” style: rendered or no-fields and unchanged
-                    (
-                        r.status.comparison == ComparisonStatus.UNCHANGED
-                        and r.status.generation
-                        in {
-                            GenerationStatus.GENERATED,
-                            GenerationStatus.NO_FIELDS,
-                        }
-                    )
-                    # “strip” style: nothing to strip (image unchanged is implied)
-                    or r.status.strip == StripStatus.NOT_NEEDED
-                )
-            )
-        ]
-
-    if skip_unsupported:
-        view = [
-            r
-            for r in view
-            if r.status.resolve
-            not in {
-                ResolveStatus.UNSUPPORTED,
-                ResolveStatus.TYPE_RESOLVED_HEADERS_UNSUPPORTED,
-                ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED,
-            }
-        ]
-
-    return view
 
 
 def exit_if_no_files(file_list: list[Path]) -> bool:
@@ -220,8 +105,9 @@ def build_config_common(
     """
     return resolve_config_from_click(
         ctx=ctx,
-        verbosity_level=ctx.obj.get("verbosity_level"),
-        apply_changes=ctx.obj.get("apply_changes"),
+        verbosity_level=ctx.obj.get("verbosity_level"),  # Global context
+        apply_changes=ctx.obj.get("apply_changes"),  # Command context for check, strip
+        write_mode=ctx.obj.get("write_mode"),  # Command context for check, strip
         files=plan.paths,
         files_from=plan.files_from,
         stdin=plan.stdin_mode,

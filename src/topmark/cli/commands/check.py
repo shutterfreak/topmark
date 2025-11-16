@@ -47,18 +47,18 @@ from typing import TYPE_CHECKING, Sequence
 
 import click
 
+from topmark.api.runtime import select_pipeline
+from topmark.api.view import Intent, determine_intent, filter_view_results
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cmd_common import (
     build_config_common,
     build_file_list,
     exit_if_no_files,
-    filter_view_results,
     get_effective_verbosity,
     maybe_exit_on_error,
-    run_steps_for_files,
 )
 from topmark.cli.errors import TopmarkIOError, TopmarkUsageError
-from topmark.cli.io import InputPlan, plan_cli_inputs
+from topmark.cli.io import plan_cli_inputs
 from topmark.cli.options import (
     CONTEXT_SETTINGS,
     common_config_options,
@@ -75,24 +75,23 @@ from topmark.cli.utils import (
     render_summary_counts,
 )
 from topmark.cli_shared.exit_codes import ExitCode
-from topmark.cli_shared.utils import (
-    OutputFormat,
-    safe_unlink,
-)
-from topmark.config.logging import TopmarkLogger, get_logger
-from topmark.pipeline.context import (
+from topmark.cli_shared.utils import OutputFormat, safe_unlink
+from topmark.config.logging import get_logger
+from topmark.pipeline.engine import run_steps_for_files
+from topmark.pipeline.status import (
     ComparisonStatus,
     HeaderStatus,
-    ProcessingContext,
     WriteStatus,
 )
-from topmark.pipeline.pipelines import Pipeline
 
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from topmark.cli.io import InputPlan
     from topmark.cli_shared.console_api import ConsoleLike
     from topmark.config import Config, MutableConfig
+    from topmark.config.logging import TopmarkLogger
+    from topmark.pipeline.context import ProcessingContext
     from topmark.pipeline.contracts import Step
     from topmark.rendering.formats import HeaderOutputFormat
 
@@ -119,6 +118,15 @@ Examples:
 @common_header_formatting_options
 @click.option(
     "--apply", "apply_changes", is_flag=True, help="Write changes to files (off by default)."
+)
+@click.option(
+    "--write-mode",
+    "write_mode",
+    type=click.Choice(["atomic", "inplace", "stdout"], case_sensitive=False),
+    help=(
+        "Select write strategy: 'atomic' (safe, default), "
+        "'inplace' (fast, less safe), or 'stdout' (emit result to standard output)."
+    ),
 )
 @click.option(
     "--add-only", "add_only", is_flag=True, help="Only add headers where missing (no updates)."
@@ -176,6 +184,7 @@ def check_command(
     header_format: HeaderOutputFormat | None,
     # Command options: check and strip
     apply_changes: bool,
+    write_mode: str | None,
     diff: bool,
     summary_mode: bool,
     skip_compliant: bool,
@@ -214,6 +223,8 @@ def check_command(
         header_format (HeaderOutputFormat | None): Optional output format override for header
             rendering (captured in config).
         apply_changes (bool): Write changes to files; otherwise perform a dry run.
+        write_mode (str | None): Whether to use safe atomic writing, faster in-place writing
+            or writing to STDOUT (default: atomic writer).
         diff (bool): Show unified diffs of header changes (human output only).
         summary_mode (bool): Show outcome counts instead of per‑file details.
         skip_compliant (bool): Suppress files whose comparison status is UNCHANGED.
@@ -246,6 +257,10 @@ def check_command(
         "prune"
     )  # injected by tests via CliRunner.invoke(..., obj=...)
     prune: bool = bool(prune_override) if prune_override else False
+
+    # Add apply_changes and write_mode to Click context
+    ctx.obj["apply_changes"] = apply_changes
+    ctx.obj["write_mode"] = write_mode
 
     fmt: OutputFormat = output_format or OutputFormat.DEFAULT
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
@@ -309,29 +324,24 @@ def check_command(
     if vlevel > 0:
         render_banner(ctx, n_files=len(file_list))
 
-    pipeline: Sequence[Step]
-    if apply_changes is True:
-        if diff is True:
-            pipeline = Pipeline.CHECK_APPLY_PATCH.steps
-        else:
-            pipeline: Sequence[Step] = Pipeline.CHECK_APPLY.steps
-    elif diff is True:
-        pipeline = Pipeline.CHECK_PATCH.steps
-    else:
-        pipeline = Pipeline.CHECK.steps
-    # NOTE: if we decide to add '--print-header' (not with '--appy'): Pipeline.CHECK_RENDER
-    # NOTE: Print existing header: new command!
+    # Choose the concrete pipeline variant
+    pipeline: Sequence[Step] = select_pipeline("check", apply=apply_changes, diff=diff)
 
     results: list[ProcessingContext] = []
     encountered_error_code: ExitCode | None = None
 
     results, encountered_error_code = run_steps_for_files(
-        file_list, pipeline=pipeline, config=config, prune=prune
+        file_list=file_list,
+        pipeline=pipeline,
+        config=config,
+        prune=prune,
     )
 
     # Optional filtering
     view_results: list[ProcessingContext] = filter_view_results(
-        results, skip_compliant=skip_compliant, skip_unsupported=skip_unsupported
+        results,
+        skip_compliant=skip_compliant,
+        skip_unsupported=skip_unsupported,
     )
 
     # Machine formats first
@@ -348,12 +358,18 @@ def check_command(
                 """Generate a per-file message for 'check' results."""
                 if r.status.comparison != ComparisonStatus.CHANGED:
                     return None
+
                 if apply_changes:
+                    intent: Intent = determine_intent(r)
+                    if r.status.write == WriteStatus.FAILED:
+                        return f"❌ Could not {intent.value} header: {r.status.write.value}"
+
                     return (
                         "➕ Adding header for '{p}'".format(p=r.path)
                         if r.status.header == HeaderStatus.MISSING
                         else "✏️  Updating header for '{p}'".format(p=r.path)
                     )
+
                 return f"🛠️  Run `topmark check --apply {r.path}` to update this file."
 
             # Per-file guidance (only in non-summary human mode)
@@ -376,18 +392,7 @@ def check_command(
 
     if apply_changes:
         # Count outcomes after the pipeline writer step finalized statuses.
-        # Writer preserves INSERTED/REPLACED when it actually wrote;
-        # in rare cases it may set WRITTEN.
-        written: int = sum(
-            1
-            for r in results
-            if r.status.write
-            in {
-                WriteStatus.INSERTED,
-                WriteStatus.REPLACED,
-                WriteStatus.WRITTEN,
-            }
-        )
+        written: int = sum(1 for r in results if r.status.write == WriteStatus.WRITTEN)
         failed: int = sum(1 for r in results if r.status.write == WriteStatus.FAILED)
 
         if fmt == OutputFormat.DEFAULT:

@@ -19,19 +19,19 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from tests.pipeline.conftest import (
+    run_builder,
+    run_comparer,
+    run_patcher,
+    run_planner,
+    run_reader,
+    run_renderer,
+    run_resolver,
+    run_scanner,
+)
 from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.context import ProcessingContext
-from topmark.pipeline.steps import (
-    builder,
-    comparer,
-    patcher,
-    reader,
-    renderer,
-    resolver,
-    scanner,
-    updater,
-)
 from topmark.utils.diff import render_patch
 
 if TYPE_CHECKING:
@@ -41,14 +41,14 @@ if TYPE_CHECKING:
 def _run_to_patcher(path: Path, cfg: Config) -> ProcessingContext:
     """Drive the v2 pipeline up to `patcher.patch()` and return the ctx."""
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=path, config=cfg)
-    ctx = resolver.resolve(ctx)
-    ctx = reader.read(ctx)
-    ctx = scanner.scan(ctx)
-    ctx = builder.build(ctx)
-    ctx = renderer.render(ctx)
-    ctx = updater.update(ctx)  # produce updated_file_lines for the diff
-    ctx = comparer.compare(ctx)  # compare using updated image
-    ctx = patcher.patch(ctx)
+    ctx = run_resolver(ctx)
+    ctx = run_reader(ctx)
+    ctx = run_scanner(ctx)
+    ctx = run_builder(ctx)
+    ctx = run_renderer(ctx)
+    ctx = run_planner(ctx)  # produce updated_file_lines for the diff
+    ctx = run_comparer(ctx)  # compare using updated image
+    ctx = run_patcher(ctx)
     return ctx
 
 
@@ -66,7 +66,7 @@ def test_patcher_diff_preserves_crlf_and_render_markers(tmp_path: Path) -> None:
     ctx: ProcessingContext = _run_to_patcher(f, cfg)
 
     # We expect a change (strip/replace) to have produced a diff.
-    diff_text: str = (ctx.diff.text if ctx.diff else "") or ""
+    diff_text: str = (ctx.views.diff.text if ctx.views.diff else "") or ""
     assert diff_text, "Expected non-empty unified diff from patcher"
 
     # The raw diff is produced with lineterm = ctx.newline_style.

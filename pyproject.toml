@@ -312,6 +312,9 @@ allow_header_in_empty_files = true
 [tool.topmark.formatting]
 align_fields = true # Align colons of fields
 
+[tool.topmark.writer]
+strategy = "atomic" # Use the safe atomic writer (default)
+
 [tool.topmark.files]
 file_types = []
 exclude_from = [".gitignore"]

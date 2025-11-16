@@ -33,6 +33,7 @@ import pytest
 
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.processors import get_processor_for_file
+from topmark.pipeline.processors.types import StripDiagKind, StripDiagnostic
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -97,6 +98,8 @@ def test_strip_bounds_are_inclusive(
     # span covers indices 0..2 (inclusive)
     new_lines: list[str] = []
     span: tuple[int, int] | None = None
-    new_lines, span = proc.strip_header_block(lines=lines, span=(0, 2))
+    diag: StripDiagnostic
+    new_lines, span, diag = proc.strip_header_block(lines=lines, span=(0, 2))
+    assert diag.kind == StripDiagKind.REMOVED
     assert span == (0, 2)
     assert "".join(new_lines) == body

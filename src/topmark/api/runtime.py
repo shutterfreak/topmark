@@ -26,17 +26,18 @@ from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable, Literal, Mapping, Sequence
 
-from topmark.cli.cmd_common import run_steps_for_files
-from topmark.cli.io import InputPlan
 from topmark.config import Config, MutableConfig
-from topmark.config.logging import TopmarkLogger, get_logger
+from topmark.config.logging import get_logger
 from topmark.config.policy import MutablePolicy
 from topmark.constants import TOPMARK_VERSION
+from topmark.file_resolver import resolve_file_list
+from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.pipelines import Pipeline
 from topmark.registry import Registry
 
 if TYPE_CHECKING:
     from topmark.cli_shared.exit_codes import ExitCode
+    from topmark.config.logging import TopmarkLogger
     from topmark.pipeline.context import ProcessingContext
     from topmark.pipeline.contracts import Step
 
@@ -53,7 +54,7 @@ __all__: list[str] = [
 
 
 def ensure_mutable_config(
-    value: Mapping[str, Any] | MutableConfig | Config | None,
+    config: Mapping[str, Any] | MutableConfig | Config | None,
 ) -> MutableConfig:
     """Return a **MutableConfig** from a mapping or a frozen `Config`.
 
@@ -61,7 +62,7 @@ def ensure_mutable_config(
     to a **mutable** builder for merging and final ``freeze()`` before pipeline execution.
 
     Args:
-        value (Mapping[str, Any] | MutableConfig | Config | None): Optional mapping,
+        config (Mapping[str, Any] | MutableConfig | Config | None): Optional (TOML) mapping,
             draft, or frozen config instance.
 
     Returns:
@@ -72,36 +73,40 @@ def ensure_mutable_config(
         `MutableConfig` is not part of the public contract; this helper accepts it
         internally for convenience during discovery tests.
     """
-    if value is None:
+    if config is None:
+        logger.debug("No config provided - returning MutableConfig.from_defaults()")
         return MutableConfig.from_defaults()
-    if isinstance(value, MutableConfig):
-        return value
-    if isinstance(value, Config):
+    if isinstance(config, MutableConfig):
+        logger.debug("Supplied config is MutableConfig - returning as is")
+        return config
+    if isinstance(config, Config):
         # Thaw a frozen Config into a mutable draft
+        logger.debug("Supplied config is Config - returning MutableConfig")
         return MutableConfig(
-            timestamp=value.timestamp,
-            verbosity_level=value.verbosity_level,
-            apply_changes=value.apply_changes,
-            policy=value.policy.thaw(),
-            policy_by_type={k: v.thaw() for k, v in value.policy_by_type.items()},
-            config_files=list(value.config_files),
-            header_fields=list(value.header_fields),
-            field_values=dict(value.field_values),
-            align_fields=value.align_fields,
-            header_format=value.header_format,
-            relative_to_raw=value.relative_to_raw,
-            relative_to=value.relative_to,
-            stdin=value.stdin,
-            files=list(value.files),
-            include_patterns=list(value.include_patterns),
-            include_from=list(value.include_from),
-            exclude_patterns=list(value.exclude_patterns),
-            exclude_from=list(value.exclude_from),
-            files_from=list(value.files_from),
-            file_types=set(value.file_types),
+            timestamp=config.timestamp,
+            verbosity_level=config.verbosity_level,
+            apply_changes=config.apply_changes,
+            policy=config.policy.thaw(),
+            policy_by_type={k: v.thaw() for k, v in config.policy_by_type.items()},
+            config_files=list(config.config_files),
+            header_fields=list(config.header_fields),
+            field_values=dict(config.field_values),
+            align_fields=config.align_fields,
+            header_format=config.header_format,
+            relative_to_raw=config.relative_to_raw,
+            relative_to=config.relative_to,
+            stdin=config.stdin,
+            files=list(config.files),
+            include_patterns=list(config.include_patterns),
+            include_from=list(config.include_from),
+            exclude_patterns=list(config.exclude_patterns),
+            exclude_from=list(config.exclude_from),
+            files_from=list(config.files_from),
+            file_types=set(config.file_types),
         )
-    # Accept plain dict-like, normalize to internal ConfigDraft via TOML-like dict
-    return MutableConfig.from_toml_dict(dict(value))
+    # Accept plain dict-like, normalize to internal MutableConfig via TOML-like dict
+    logger.debug("Supplied config is TOML Mapping - returning MutableConfig.from_toml_dict(config)")
+    return MutableConfig.from_toml_dict(dict(config))
 
 
 def build_cfg_and_files_via_cli_helpers(
@@ -110,81 +115,84 @@ def build_cfg_and_files_via_cli_helpers(
     base_config: Mapping[str, Any] | Config | None,
     file_types: Sequence[str] | None,
 ) -> tuple[Config, list[Path]]:
-    """Use the same config+file discovery as the CLI.
+    """Build a frozen `Config` and resolve files using the same rules as the CLI.
 
-    If `base_config` is provided (mapping or frozen `Config`), we normalize it
-    and resolve files directly via `resolve_file_list(cfg)` **without** merging
-    project config implicitly (globs are interpreted from CWD, like CLI args).
+    Two modes are supported:
 
-    If `base_config` is `None`, we perform full discovery using
-    `MutableConfig.load_merged(input_paths=...)` which implements:
-    defaults → user → project chain (root→current; same dir: pyproject then topmark;
-    stop at root=true) → --config (none here) → CLI overrides.
-    Globs declared in discovered config files are evaluated relative to each
-    **config file's directory**; CLI-like overrides (for this helper) use CWD.
+    * Seeded mode (`base_config` provided):
+        - Normalize `paths` from the current working directory (CLI parity).
+        - Start from defaults, merge the provided `base_config` (mapping or frozen `Config`)
+          using the same merge semantics as the CLI, and **do not** discover project configs.
+        - Resolve the file list with `resolve_file_list(cfg)`.
+
+    * Discovery mode (`base_config` is `None`):
+        - Perform layered discovery via `MutableConfig.load_merged`, starting from the
+          first `paths` element (its parent if it is a file) or CWD when `paths` is empty.
+        - Discovery order: defaults → user → project (root→current; per-dir: pyproject then topmark)
+          → extra config files (none here) → CLI-like overrides.
+        - Evaluate globs declared in discovered configs relative to each config file's directory.
 
     Args:
-        paths (Iterable[Path | str]): Files and/or directories to process.
-        base_config (Mapping[str, Any] | Config | None): Mapping or frozen `Config` to seed from;
-            `None` triggers discovery and layered merge (CLI parity).
-        file_types (Sequence[str] | None): Optional whitelist of file type identifiers.
+        paths (Iterable[Path | str]): Files and/or directories to process. Items are
+            normalized to strings early for stability and logging. Empty input falls
+            back to CWD as the discovery anchor in discovery mode.
+        base_config (Mapping[str, Any] | Config | None): Optional mapping or frozen
+            `Config` to seed from. When provided, discovery is skipped and only the
+            provided configuration is honored.
+        file_types (Sequence[str] | None): Optional whitelist of file type identifiers
+            to seed the draft for parity with CLI behavior.
 
     Returns:
-        tuple[Config, list[Path]]: Frozen config and the resolved file list.
-    """
-    from topmark.file_resolver import resolve_file_list
+        tuple[Config, list[Path]]: A 2-tuple `(cfg, files)` where `cfg` is the frozen
+        configuration used to resolve files and `files` is the resolved/filtered list.
 
+    Notes:
+        * In both modes, input `paths` are normalized to strings, assigned to the draft's
+          `files`, then the final `cfg` is frozen prior to calling `resolve_file_list`.
+        * This helper deliberately avoids side effects beyond logging. All config
+          discovery and merge logic is delegated to `MutableConfig`.
+    """
     # Start from a mutable draft; we only build the frozen Config right before use
     draft: MutableConfig = ensure_mutable_config(base_config)
 
     logger.debug("Normalizing input paths: %s", paths)
 
-    plan = InputPlan(
-        stdin_mode=False,
-        temp_path=None,
-        paths=[str(Path(p)) for p in paths],
-        include_patterns=[],
-        exclude_patterns=[],
-        files_from=[],
-        include_from=[],
-        exclude_from=[],
-    )
+    # Normalize input paths to strings from CWD for stability and logging parity with CLI.
+    paths_str: list[str] = [str(Path(p)) for p in paths]
 
-    logger.debug("Input plan: %s", plan)
-
-    # If the caller supplied a mapping/Config, honor it directly to avoid
-    # inadvertently merging local project config. We still reuse the planner’s
-    # normalization of paths.
+    # If the caller supplied a mapping/Config, discovery is intentionally skipped.
+    # Only the provided config is honored, and project config is NOT merged.
     if base_config is not None:
         # Start from defaults so that header fields/values are present unless overridden
         draft_defaults: MutableConfig = MutableConfig.from_defaults()
-        draft = draft_defaults.merge_with(
-            draft
-        )  # 'draft' came from _ensure_mutable_config(base_config)
+        draft = draft_defaults.merge_with(draft)
 
-        # Apply the normalized inputs we computed
-        draft.files = list(plan.paths)
+        # Assign normalized paths to draft.files for consistency
+        draft.files = list(paths_str)
         logger.debug("Found %d input paths", len(draft.files))
         if file_types:
             draft.file_types = set(file_types)
+        # Freeze the config before resolving files,
+        # as resolve_file_list expects an immutable Config.
         cfg: Config = draft.freeze()
         file_list: list[Path] = resolve_file_list(cfg)
         logger.debug("Files found: %s", len(file_list))
         return cfg, file_list
 
     # Otherwise, perform project-config discovery & merge using the authoritative loader.
-    # Discovery anchor: first normalized input path (its parent if it's a file), or CWD if none.
-    anchor_inputs: list[Path] = [Path(p) for p in plan.paths] or [Path.cwd()]
+    # If input paths are empty, anchor discovery at CWD.
+    # If the first path is a file, use its parent.
+    anchor_inputs: list[Path] = [Path(p) for p in paths_str] or [Path.cwd()]
     draft = MutableConfig.load_merged(
         input_paths=tuple(anchor_inputs),
         extra_config_files=(),  # none here; API parity with "no --config"
     )
 
-    # Apply the normalized inputs we computed (CLI-like overrides last)
-    draft.files = list(plan.paths)
+    # Assign normalized paths to draft.files for CLI-like override semantics.
+    draft.files = list(paths_str)
     if file_types:
         draft.file_types = set(file_types)
-
+    # Freeze the config before resolving files, as resolve_file_list expects an immutable Config.
     cfg = draft.freeze()
     file_list = resolve_file_list(cfg)
     logger.debug("Files found: %s", len(file_list))
@@ -202,6 +210,8 @@ def select_pipeline(kind: Literal["check", "strip"], *, apply: bool, diff: bool)
     Returns:
         Sequence[Step]: The ordered list of steps to execute.
     """
+    # NOTE: Print existing header: new command!
+    # NOTE: if we decide to add '--print-header' (not with '--appy'): Pipeline.CHECK_RENDER
     if kind == "check":
         return (
             Pipeline.CHECK_APPLY_PATCH.steps
@@ -280,7 +290,6 @@ def run_pipeline(
 
     # 2) Apply public policy overlays AFTER discovery, then materialize apply intent.
     draft: MutableConfig = cfg.thaw()
-
     if policy is not None:
         # Merge a shallow public policy into the tri-state MutablePolicy
         if "add_only" in policy:
@@ -318,7 +327,7 @@ def run_pipeline(
     results: list[ProcessingContext] = []
     encountered_error_code: ExitCode | None
     results, encountered_error_code = run_steps_for_files(
-        file_list,
+        file_list=file_list,
         pipeline=pipeline,
         config=cfg_for_run,
         prune=prune,

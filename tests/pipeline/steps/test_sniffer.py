@@ -26,10 +26,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from tests.pipeline.conftest import run_resolver, run_sniffer
 from topmark.config import Config, MutableConfig
-from topmark.pipeline.context import ContentStatus, FsStatus, ProcessingContext
-from topmark.pipeline.steps.resolver import resolve
-from topmark.pipeline.steps.sniffer import sniff
+from topmark.pipeline.context import ProcessingContext
+from topmark.pipeline.status import FsStatus
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -48,13 +48,13 @@ def test_sniff_skips_on_nul_byte_non_text(tmp_path: Path) -> None:
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
 
     # First resolve the file type
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
 
     # The resolver must identify a processor; otherwise the reader step would be ill-defined.
     assert ctx.file_type is not None
 
-    ctx = sniff(ctx)
-    assert ctx.status.content == ContentStatus.SKIPPED_NOT_TEXT_FILE
+    ctx = run_sniffer(ctx)
+    assert ctx.status.fs == FsStatus.BINARY
 
 
 def test_sniff_skips_when_bom_precedes_shebang(tmp_path: Path) -> None:
@@ -66,11 +66,10 @@ def test_sniff_skips_when_bom_precedes_shebang(tmp_path: Path) -> None:
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
     assert ctx.file_type is not None
-    ctx = sniff(ctx)
-
-    assert ctx.status.content == ContentStatus.SKIPPED_POLICY_BOM_BEFORE_SHEBANG
+    ctx = run_sniffer(ctx)
+    assert ctx.status.fs == FsStatus.BOM_BEFORE_SHEBANG
 
 
 def test_sniff_marks_empty_file(tmp_path: Path) -> None:
@@ -81,9 +80,9 @@ def test_sniff_marks_empty_file(tmp_path: Path) -> None:
         fh.write("")
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
     assert ctx.file_type is not None
-    ctx = sniff(ctx)
+    ctx = run_sniffer(ctx)
     assert ctx.status.fs == FsStatus.EMPTY
 
 
@@ -94,11 +93,11 @@ def test_sniff_marks_not_found_when_disappears(tmp_path: Path) -> None:
         fh.write("print('hi')\n")
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
     assert ctx.file_type is not None
     # Simulate a race: remove the file before reader executes
     f.unlink()
-    ctx = sniff(ctx)
+    ctx = run_sniffer(ctx)
     assert ctx.status.fs == FsStatus.NOT_FOUND
 
 
@@ -110,7 +109,21 @@ def test_sniff_skips_on_invalid_utf8(tmp_path: Path) -> None:
         fh.write(bad)
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
     assert ctx.file_type is not None
-    ctx = sniff(ctx)
-    assert ctx.status.content == ContentStatus.SKIPPED_NOT_TEXT_FILE
+    ctx = run_sniffer(ctx)
+    assert ctx.status.fs == FsStatus.UNICODE_DECODE_ERROR
+
+
+def test_sniff_strict_mixed_newlines(tmp_path: Path) -> None:
+    """Sniffer must report mixed line endings."""
+    f: Path = tmp_path / "bad_utf8.py"
+    mixed = "# A test file\r\n# with mixed\r# line endings\r\nprint('x')\n"  # mixed line endings
+    with f.open("w", encoding="utf-8", newline="") as fh:
+        fh.write(mixed)
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx = run_resolver(ctx)
+    assert ctx.file_type is not None
+    ctx = run_sniffer(ctx)
+    assert ctx.status.fs == FsStatus.MIXED_LINE_ENDINGS

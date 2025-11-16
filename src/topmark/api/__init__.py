@@ -67,12 +67,9 @@ from typing import TYPE_CHECKING, Any, Iterable, Mapping, Sequence
 
 from topmark.api.runtime import run_pipeline, select_pipeline
 from topmark.api.view import finalize_run_result
-from topmark.config.logging import TopmarkLogger, get_logger
+from topmark.config.logging import get_logger
 from topmark.constants import TOPMARK_VERSION
-from topmark.pipeline.context import (
-    ProcessingContext,
-    WriteStatus,
-)
+from topmark.pipeline.status import PlanStatus
 from topmark.registry import Registry
 
 from .public_types import PublicDiagnostic, PublicPolicy
@@ -84,6 +81,8 @@ if TYPE_CHECKING:
 
     from topmark.cli_shared.exit_codes import ExitCode
     from topmark.config import Config
+    from topmark.config.logging import TopmarkLogger
+    from topmark.pipeline.context import ProcessingContext
     from topmark.pipeline.contracts import Step
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -171,10 +170,10 @@ def check(
     )
 
     # Use common post-run assembly with the write-status set for "check"
-    write_statuses: set[WriteStatus] = {
-        WriteStatus.INSERTED,
-        WriteStatus.REPLACED,
-        WriteStatus.WRITTEN,
+    update_statuses: set[PlanStatus] = {
+        PlanStatus.INSERTED,
+        PlanStatus.REPLACED,
+        PlanStatus.REMOVED,
     }
     return finalize_run_result(
         results=results,
@@ -182,7 +181,7 @@ def check(
         apply=apply,
         skip_compliant=skip_compliant,
         skip_unsupported=skip_unsupported,
-        write_statuses=write_statuses,
+        update_statuses=update_statuses,
         encountered_error_code=encountered_error_code,
     )
 
@@ -250,9 +249,8 @@ def strip(
     )
 
     # Use common post-run assembly with the write-status set for "strip"
-    write_statuses: set[WriteStatus] = {
-        WriteStatus.REMOVED,
-        WriteStatus.WRITTEN,
+    update_statuses: set[PlanStatus] = {
+        PlanStatus.REMOVED,
     }
     return finalize_run_result(
         results=results,
@@ -260,7 +258,7 @@ def strip(
         apply=apply,
         skip_compliant=skip_compliant,
         skip_unsupported=skip_unsupported,
-        write_statuses=write_statuses,
+        update_statuses=update_statuses,
         encountered_error_code=encountered_error_code,
     )
 

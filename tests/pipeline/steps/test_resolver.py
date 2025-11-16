@@ -26,13 +26,14 @@ from types import SimpleNamespace
 from typing import TYPE_CHECKING, Callable, cast
 
 import topmark.pipeline.steps.resolver as resolver_mod
+from tests.pipeline.conftest import run_resolver
 from topmark.config import Config, MutableConfig
 from topmark.filetypes.base import (
     ContentGate,
     FileType,  # runtime import for typing/cast correctness
 )
-from topmark.pipeline.context import ProcessingContext, ResolveStatus
-from topmark.pipeline.steps.resolver import resolve
+from topmark.pipeline.context import ProcessingContext
+from topmark.pipeline.status import ResolveStatus
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -104,7 +105,7 @@ def test_resolve_python_file_resolves_with_processor(
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
 
     # Resolve the file type
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
 
     assert ctx.status.resolve == ResolveStatus.RESOLVED
 
@@ -129,7 +130,7 @@ def test_resolve_unknown_extension_marked_unsupported(
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
 
     assert ctx.status.resolve == ResolveStatus.UNSUPPORTED
     assert ctx.file_type is None
@@ -162,7 +163,7 @@ def test_resolve_sets_skip_when_no_processor_registered(
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
 
     # Should match a FileType (Python) but have no processor
     assert ctx.file_type is not None
@@ -195,7 +196,7 @@ def test_resolve_respects_skip_processing_filetype(
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
 
     assert ctx.file_type is not None and ctx.file_type.name == "Docs"
     assert ctx.header_processor is None
@@ -231,7 +232,7 @@ def test_resolve_can_use_content_gate_when_allowed(
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
 
     assert ctx.file_type is not None and ctx.file_type.name == "Magic"
     assert ctx.header_processor is None
@@ -276,7 +277,7 @@ def test_resolve_deterministic_name_tiebreak(
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
 
     assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.file_type and ctx.file_type.name == "AJson"  # name ASC
@@ -320,7 +321,7 @@ def test_resolve_filename_tail_beats_extension(
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
 
     assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.file_type and ctx.file_type.name == "ByTail"
@@ -361,7 +362,7 @@ def test_resolve_pattern_beats_extension(tmp_path: Path, monkeypatch: pytest.Mon
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
 
     assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.file_type and ctx.file_type.name == "ByPat"
@@ -407,7 +408,7 @@ def test_resolve_content_upgrade_over_extension(
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
 
     assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.file_type and ctx.file_type.name == "JSONC"
@@ -454,7 +455,7 @@ def test_resolve_gating_if_extension_excludes_when_miss(
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
 
     assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.file_type and ctx.file_type.name == "JSON"
@@ -501,7 +502,7 @@ def test_resolve_gating_if_any_requires_content_hit(
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
 
     assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.file_type and ctx.file_type.name == "ByExt"
@@ -536,7 +537,7 @@ def test_resolve_gating_if_none_allows_pure_content_match(
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
 
     assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.file_type and ctx.file_type.name == "Magic"
@@ -582,7 +583,7 @@ def test_resolve_content_matcher_exception_is_safe(
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
 
     assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.file_type and ctx.file_type.name == "Fallback"
@@ -617,7 +618,7 @@ def test_resolve_filename_tail_backslash_normalization(
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
 
     assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.file_type and ctx.file_type.name == "VSCode"
@@ -660,7 +661,7 @@ def test_resolve_multi_dot_extension_specificity(
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
 
     assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.file_type and ctx.file_type.name == "DTS"
@@ -690,7 +691,7 @@ def test_resolve_skip_processing_overrides_registered_processor(
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
 
     assert ctx.status.resolve == ResolveStatus.TYPE_RESOLVED_HEADERS_UNSUPPORTED
     assert ctx.header_processor is None
@@ -708,7 +709,7 @@ def test_resolve_empty_registry_means_unsupported(
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
 
     assert ctx.status.resolve is ResolveStatus.UNSUPPORTED
     assert ctx.file_type is None
@@ -754,7 +755,7 @@ def test_resolve_filename_tail_beats_pattern(
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
     assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.file_type and ctx.file_type.name == "ByTail"
 
@@ -782,7 +783,7 @@ def test_resolve_extension_case_sensitivity_current_contract(
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
     # With only the lowercase extension registered, expect unsupported or no-processor
     # on a different fallback.
     assert ctx.status.resolve in {
@@ -831,7 +832,7 @@ def test_resolve_pattern_fullmatch_not_search(
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx1: ProcessingContext = ProcessingContext.bootstrap(path=f1, config=cfg)
-    ctx1 = resolve(ctx1)
+    ctx1 = run_resolver(ctx1)
     assert ctx1.status.resolve == ResolveStatus.RESOLVED
     assert ctx1.file_type and ctx1.file_type.name == "ByPat"
 
@@ -840,7 +841,7 @@ def test_resolve_pattern_fullmatch_not_search(
         resolver_mod, "get_header_processor_registry", lambda: _one_processor_registry("ByBak")
     )
     ctx2: ProcessingContext = ProcessingContext.bootstrap(path=f2, config=cfg)
-    ctx2 = resolve(ctx2)
+    ctx2 = run_resolver(ctx2)
     assert ctx2.status.resolve == ResolveStatus.RESOLVED
     assert ctx2.file_type and ctx2.file_type.name == "ByBak"
 
@@ -883,7 +884,7 @@ def test_resolve_gating_if_pattern_requires_content_hit(
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
     assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.file_type and ctx.file_type.name == "Text"
 
@@ -927,7 +928,7 @@ def test_resolve_gating_if_filename_requires_content_hit(
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
     assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.file_type and ctx.file_type.name == "YAML"
 
@@ -957,7 +958,7 @@ def test_resolve_content_only_with_always_gate(
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
     assert ctx.file_type and ctx.file_type.name == "Magic"
     assert ctx.status.resolve == ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED
 
@@ -995,7 +996,7 @@ def test_resolve_tie_with_both_processors_uses_name_asc(
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
     assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.file_type and ctx.file_type.name == "Alpha"
 
@@ -1025,7 +1026,7 @@ def test_resolve_processor_registry_name_mismatch_leads_to_skip(
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
     assert ctx.status.resolve == ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED
     assert ctx.file_type and ctx.file_type.name == "Python"
 
@@ -1056,6 +1057,6 @@ def test_resolve_deep_filename_tail_normalization(
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
-    ctx = resolve(ctx)
+    ctx = run_resolver(ctx)
     assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.file_type and ctx.file_type.name == "ToolCfg"

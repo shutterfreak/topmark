@@ -24,6 +24,7 @@ import pytest
 from tests.api.conftest import has_header
 from topmark import api
 from topmark.api.public_types import PublicPolicy
+from topmark.api.types import Outcome
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -74,7 +75,7 @@ def test_apply_check_writes_when_needed(
         file_types=["python"],
         policy=PublicPolicy(add_only=True),
     )
-    assert any(fr.outcome.value in {"would_change", "changed"} for fr in r0.files)
+    assert any(fr.outcome in {Outcome.WOULD_INSERT, Outcome.WOULD_UPDATE} for fr in r0.files)
     r1: api.RunResult = api.check(
         [target],
         apply=True,
@@ -91,7 +92,9 @@ def test_strip_removes_header(repo_py_with_header: Path, proc_py: HeaderProcesso
     target: Path = root / "src" / "with_header.py"
     assert has_header(target.read_text(encoding="utf-8"), proc_py, "\n")
     r0: api.RunResult = api.strip([target], apply=False, file_types=["python"])
-    assert any(fr.outcome.value in {"would_change", "changed"} for fr in r0.files)
+    # assert any(fr.outcome.value in {"would_change", "changed"} for fr in r0.files)
+    assert any(fr.outcome == Outcome.WOULD_STRIP for fr in r0.files)
+
     r1: api.RunResult = api.strip([target], apply=True, file_types=["python"])
     assert r1.written >= 1
     assert not has_header(target.read_text(encoding="utf-8"), proc_py, "\n")

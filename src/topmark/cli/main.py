@@ -41,11 +41,12 @@ from topmark.cli.options import (
     resolve_color_mode,
     resolve_verbosity,
 )
-from topmark.config.logging import TopmarkLogger, get_logger, resolve_env_log_level, setup_logging
+from topmark.config.logging import get_logger, resolve_env_log_level, setup_logging
 from topmark.pipeline.processors import register_all_processors
 
 if TYPE_CHECKING:
     from topmark.cli_shared.console_api import ConsoleLike
+    from topmark.config.logging import TopmarkLogger
 
 logger: TopmarkLogger = get_logger(__name__)
 

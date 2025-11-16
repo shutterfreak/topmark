@@ -58,10 +58,10 @@ def _offset_to_line_col(lines: list[str], offset: int) -> tuple[int, int]:
         return (0, 0)
     acc = 0
     for i, ln in enumerate(lines):
-        nxt = acc + len(ln)
+        nxt: int = acc + len(ln)
         if offset < nxt:
             return (i, offset - acc)
-        acc = nxt
+        acc: int = nxt
     # Past-the-end safeguard: clamp to last line
     return (len(lines) - 1, max(0, offset - acc))
 

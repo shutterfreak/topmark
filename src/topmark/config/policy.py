@@ -53,6 +53,10 @@ class Policy:
         update_only (bool): Only update existing headers; do not add new ones.
         allow_header_in_empty_files (bool): Allow inserting headers in empty files
             (e.g., `__init__.py`).
+        render_empty_header_when_no_fields (bool): Allow inserting empty headers when
+            no fields are defined.
+        allow_reflow (bool): If True, allow revlowing file content when inserting a header.
+            This potentially breaks check/strip idempotence.
 
     Notes:
         `Policy` holds plain booleans and is fully resolved at runtime (no tri-state).
@@ -62,6 +66,8 @@ class Policy:
     add_only: bool = False
     update_only: bool = False
     allow_header_in_empty_files: bool = False
+    render_empty_header_when_no_fields: bool = False
+    allow_reflow: bool = False
 
     def thaw(self) -> "MutablePolicy":
         """Return a mutable builder initialized from this frozen policy.
@@ -73,6 +79,8 @@ class Policy:
             add_only=self.add_only,
             update_only=self.update_only,
             allow_header_in_empty_files=self.allow_header_in_empty_files,
+            render_empty_header_when_no_fields=self.render_empty_header_when_no_fields,
+            allow_reflow=self.allow_reflow,
         )
 
 
@@ -86,11 +94,15 @@ class MutablePolicy:
         add_only (bool | None): See `Policy`. `None` means "inherit".
         update_only (bool | None): See `Policy`. `None` means "inherit".
         allow_header_in_empty_files (bool | None): See `Policy`. `None` means "inherit".
+        render_empty_header_when_no_fields (bool | None): See `Policy`. `None` means "inherit".
+        allow_reflow (bool | None): See `Policy`. `None` means "inherit".
     """
 
     add_only: bool | None = None
     update_only: bool | None = None
     allow_header_in_empty_files: bool | None = None
+    render_empty_header_when_no_fields: bool | None = None
+    allow_reflow: bool | None = None
 
     def merge_with(self, other: "MutablePolicy") -> "MutablePolicy":
         """Return a new MutablePolicy by applying ``other`` over ``self`` (last-wins).
@@ -113,6 +125,11 @@ class MutablePolicy:
             allow_header_in_empty_files=pick(
                 override=other.allow_header_in_empty_files, current=self.allow_header_in_empty_files
             ),
+            render_empty_header_when_no_fields=pick(
+                override=other.render_empty_header_when_no_fields,
+                current=self.render_empty_header_when_no_fields,
+            ),
+            allow_reflow=pick(override=other.allow_reflow, current=self.allow_reflow),
         )
 
     def resolve(self, base: Policy) -> Policy:
@@ -132,6 +149,12 @@ class MutablePolicy:
                 if self.allow_header_in_empty_files is None
                 else self.allow_header_in_empty_files
             ),
+            render_empty_header_when_no_fields=(
+                base.render_empty_header_when_no_fields
+                if self.render_empty_header_when_no_fields is None
+                else self.render_empty_header_when_no_fields
+            ),
+            allow_reflow=base.allow_reflow if self.allow_reflow is None else self.allow_reflow,
         )
 
     def freeze(self) -> Policy:
@@ -163,6 +186,8 @@ class MutablePolicy:
             add_only=pick("add_only"),
             update_only=pick("update_only"),
             allow_header_in_empty_files=pick("allow_header_in_empty_files"),
+            render_empty_header_when_no_fields=pick("render_empty_header_when_no_fields"),
+            allow_reflow=pick("allow_reflow"),
         )
 
     def to_toml_table(self) -> dict[str, Any]:
@@ -178,6 +203,10 @@ class MutablePolicy:
             out["update_only"] = self.update_only
         if self.allow_header_in_empty_files is not None:
             out["allow_header_in_empty_files"] = self.allow_header_in_empty_files
+        if self.render_empty_header_when_no_fields is not None:
+            out["render_empty_header_when_no_fields"] = self.render_empty_header_when_no_fields
+        if self.allow_reflow is not None:
+            out["allow_reflow"] = self.allow_reflow
         return out
 
 

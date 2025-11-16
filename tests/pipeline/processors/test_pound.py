@@ -34,9 +34,11 @@ from topmark.config import Config, MutableConfig
 from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline import runner
-from topmark.pipeline.context import HeaderStatus, ProcessingContext
+from topmark.pipeline.context import ProcessingContext
 from topmark.pipeline.pipelines import Pipeline
 from topmark.pipeline.processors.pound import PoundHeaderProcessor
+from topmark.pipeline.processors.types import StripDiagKind, StripDiagnostic
+from topmark.pipeline.status import HeaderStatus
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -66,8 +68,8 @@ def test_pound_processor_basics(tmp_path: Path) -> None:
 
     assert ctx.path == file
     assert ctx.file_type and ctx.file_type.name == "python"
-    assert ctx.image is not None  # or: assert context.file_line_count() > 0
-    assert ctx.header is None
+    assert ctx.views.image is not None  # or: assert context.file_line_count() > 0
+    assert ctx.views.header is None
 
 
 @mark_pipeline
@@ -97,14 +99,19 @@ def test_pound_processor_detects_existing_header(tmp_path: Path) -> None:
     config: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = ProcessingContext.bootstrap(path=file, config=config)
     pipeline: Sequence[Step] = Pipeline.CHECK.steps
-    ctx = runner.run(ctx, pipeline)
+    ctx = runner.run(
+        ctx,
+        pipeline,
+        prune=False,  # We must inspect ctx_check.views.header
+    )
 
     assert ctx.file_type and ctx.file_type.name == "python"
-    assert ctx.header is not None
-    assert ctx.header.range == (0, 5)
-    assert ctx.header.mapping is not None
-    assert "file" in ctx.header.mapping
-    assert ctx.header.mapping["file"] == "example.py"
+    assert ctx.views.header is not None
+    assert ctx.views.header.range == (0, 5)
+    assert ctx.views.header.mapping is not None
+    assert "file" in ctx.views.header.mapping
+    assert ctx.views.header.mapping["file"] == "example.py"
+    ctx.views.release_all()  # Release the views
 
 
 @mark_pipeline
@@ -127,7 +134,7 @@ def test_pound_processor_missing_header(tmp_path: Path) -> None:
     ctx = runner.run(ctx, pipeline)
 
     assert ctx.file_type and ctx.file_type.name == "python"
-    assert ctx.header is None
+    assert ctx.views.header is None
     assert ctx.status.header.name == "MISSING"
 
 
@@ -175,7 +182,7 @@ def test_pound_malformed_header_fields(
     ctx = runner.run(ctx, pipeline)
 
     assert ctx.file_type and ctx.file_type.name == "python"
-    assert ctx.header is not None
+    assert ctx.views.header is not None
     assert ctx.status.header == expected_status
 
 
@@ -201,7 +208,7 @@ def test_insert_with_shebang_adds_single_blank_line(tmp_path: Path) -> None:
     lines: list[str] = materialize_updated_lines(ctx)
     logger.debug(
         "expected_header_block:\n=== BEGIN ===\n$%s\n=== END ===",
-        ctx.render.block if ctx.render else "",
+        ctx.views.render.block if ctx.views.render else "",
     )
     logger.debug("lines:\n=== BEGIN ===\n$%s\n=== END ===", "\n".join(lines))
     # shebang should remain first
@@ -790,7 +797,9 @@ def test_strip_header_block_with_and_without_span_preserves_shebang(tmp_path: Pa
     # 1) With explicit span
     new1: list[str] = []
     span1: tuple[int, int] | None = None
-    new1, span1 = proc.strip_header_block(lines=lines, span=(1, 3))
+    diag1: StripDiagnostic
+    new1, span1, diag1 = proc.strip_header_block(lines=lines, span=(1, 3))
+    assert diag1.kind == StripDiagKind.REMOVED
     assert new1[0].startswith("#!"), "shebang must be preserved"
     joined1: str = "".join(new1)
     assert TOPMARK_START_MARKER not in joined1
@@ -799,8 +808,10 @@ def test_strip_header_block_with_and_without_span_preserves_shebang(tmp_path: Pa
     # 2) Without span (processor must detect bounds)
     new2: list[str] = []
     span2: tuple[int, int] | None = None
+    diag2: StripDiagnostic
 
-    new2, span2 = proc.strip_header_block(lines=lines, span=None)
+    new2, span2, diag2 = proc.strip_header_block(lines=lines, span=None)
+    assert diag2.kind == StripDiagKind.REMOVED
     assert new2 == new1
     assert span2 == (1, 3)
 
@@ -858,14 +869,15 @@ def test_pound_processor_only_removes_first_header_block() -> None:
 
     new: list[str] = []
     span: tuple[int, int] | None = None
+    diag: StripDiagnostic
 
-    new, span = p.strip_header_block(lines=lines, span=(0, 2))
+    new, span, diag = p.strip_header_block(lines=lines, span=(0, 2))
 
     # First header removed; later example block must remain.
+    assert diag.kind == StripDiagKind.REMOVED
+
     s: str = "".join(new)
 
     assert "code\n" in s and "more\n" in s
-
     assert f"# {TOPMARK_START_MARKER}" in s  # second block still present
-
     assert span == (0, 2)

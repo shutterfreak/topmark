@@ -28,212 +28,302 @@ from __future__ import annotations
 from itertools import islice
 from typing import TYPE_CHECKING
 
-from topmark.config.logging import TopmarkLogger, get_logger
-from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER, VALUE_NOT_SET
-from topmark.pipeline.context import (
+from topmark.config.logging import get_logger
+from topmark.pipeline.hints import Axis, Cluster, KnownCode, make_hint
+from topmark.pipeline.processors.types import BoundsKind, HeaderBounds
+from topmark.pipeline.status import (
+    ContentStatus,
     FsStatus,
     HeaderStatus,
-    ProcessingContext,
-    may_proceed_to_scanner,
 )
+from topmark.pipeline.steps.base import BaseStep
 from topmark.pipeline.views import HeaderView
 
 if TYPE_CHECKING:
+    from topmark.config.logging import TopmarkLogger
+    from topmark.pipeline.context import ProcessingContext
     from topmark.pipeline.processors.types import HeaderParseResult
 
 logger: TopmarkLogger = get_logger(__name__)
 
 
-def scan(ctx: ProcessingContext) -> ProcessingContext:
-    """Detect and extract a TopMark header from the file image.
+class ScannerStep(BaseStep):
+    """Detect and parse TopMark headers from the file image.
 
-    Precondition:
-        - ``ctx.status.file`` is RESOLVED or EMPTY_FILE.
-        - ``ctx.image`` (or legacy backing) is populated by the reader step.
-        - ``ctx.header_processor`` is set.
+    Uses the active `HeaderProcessor` to locate header bounds and parse fields into
+    a `HeaderView`. Leaves unrelated axes untouched.
 
-    Args:
-        ctx (ProcessingContext): Processing context with the file image and a header processor.
+    Preconditions:
+      - `ctx.image` is available (typically set by ReaderStep).
+      - `ctx.header_processor` is set.
 
-    Returns:
-        ProcessingContext: The same context updated with:
-        - ``ctx.header``: a ``HeaderView`` containing range/lines/block/mapping
-        - ``ctx.status.header``: one of {MISSING, EMPTY, DETECTED, MALFORMED}
+    Axes written:
+      - header
+
+    Sets:
+      - HeaderStatus: {PENDING, MISSING, EMPTY, DETECTED,
+                       MALFORMED, MALFORMED_SOME_FIELDS, MALFORMED_ALL_FIELDS}
     """
-    logger.debug("ctx: %s", ctx)
 
-    if not may_proceed_to_scanner(ctx):
-        logger.info("Scanner skipped by may_proceed_to_scanner()")
-        return ctx
+    def __init__(self) -> None:
+        super().__init__(name=self.__class__.__name__, axes_written=(Axis.HEADER,))
 
-    logger.debug(
-        "Phase 2 - Scanning file %s of type %s for header fields",
-        ctx.path,
-        ctx.file_type,
-    )
+    def may_proceed(self, ctx: ProcessingContext) -> bool:
+        """Determine if processing can proceed to the scan step.
 
-    assert ctx.header_processor, (
-        "context.header_processor not defined"
-    )  # This should always be defined!
+        Processing can proceed if:
+        - The file was successfully resolved (ctx.status.resolve is RESOLVED)
+        - The file type was resolved (ctx.file_type is not None)
+        - A header processor is available (ctx.header_processor is not None)
 
-    if ctx.status.fs == FsStatus.EMPTY:
-        # An empty file is considered to have no header, but we can still proceed
-        logger.info("File %s is empty; no header to scan.", ctx.path)
-        ctx.status.header = HeaderStatus.MISSING
-        return ctx
+        Args:
+            ctx (ProcessingContext): The processing context for the current file.
 
-    if ctx.file_line_count() == 0:
-        # Defensive guard; upstream reader should have set UNREADABLE or EMPTY_FILE
-        logger.error("scan(): No file lines available for %s", ctx.path)
-        return ctx
+        Returns:
+            bool: True if processing can proceed to the build step, False otherwise.
+        """
+        if ctx.flow.halt:
+            return False
+        return (
+            ctx.header_processor is not None
+            and ctx.status.content == ContentStatus.OK
+            and ctx.status.content
+            not in {
+                ContentStatus.PENDING,
+                ContentStatus.UNSUPPORTED,
+                ContentStatus.UNREADABLE,
+            }
+        )
 
-    # Use header_processor.get_header_bounds() to locate header start and end indices
-    start_idx: int | None = None
-    end_idx: int | None = None
-    bounds: tuple[int | None, int | None] | None = (
-        ctx.header_processor.get_header_bounds(
-            lines=ctx.iter_file_lines(),
+    def run(self, ctx: ProcessingContext) -> None:
+        """Detect and extract a TopMark header from the file image.
+
+        Behavior with discriminated ``HeaderBounds``:
+            - ``NONE`` → mark ``HeaderStatus.MISSING`` and return.
+            - ``MALFORMED`` → build a minimal ``HeaderView`` (when possible), set
+              ``HeaderStatus.MALFORMED``, attach a diagnostic hint, and stop flow.
+            - ``SPAN`` → slice the span, build ``HeaderView``, parse fields, and set
+              one of ``{DETECTED, EMPTY, MALFORMED_SOME_FIELDS, MALFORMED_ALL_FIELDS}``.
+
+        Args:
+            ctx (ProcessingContext): Processing context with the file image and a header processor.
+
+        Mutations:
+            ProcessingContext: The same context updated with:
+            - ``ctx.header``: a ``HeaderView`` containing range/lines/block/mapping
+            - ``ctx.status.header``: one of {MISSING, EMPTY, DETECTED, MALFORMED}
+        """
+        logger.debug(
+            "Scanning file %s of type %s for header fields",
+            ctx.path,
+            ctx.file_type,
+        )
+        logger.debug("ctx: %s", ctx)
+
+        assert ctx.header_processor  # Satisfy static code analysis
+
+        if ctx.status.fs == FsStatus.EMPTY:
+            # An empty file is considered to have no header, but we can still proceed
+            logger.info("File %s is empty; no header to scan.", ctx.path)
+            ctx.status.header = HeaderStatus.MISSING
+            return
+
+        if ctx.image_line_count() == 0:
+            # Defensive guard; upstream reader should have set UNREADABLE or EMPTY_FILE
+            # TODO: check if ctx.status.header must be set (is now DEFAULT)
+            logger.error("scan(): No file lines available for %s", ctx.path)
+            return
+
+        # Use header_processor.get_header_bounds() to locate header start and end indices
+        hb: HeaderBounds = ctx.header_processor.get_header_bounds(
+            lines=ctx.iter_image_lines(),
             newline_style=ctx.newline_style,
         )
-        if hasattr(ctx.header_processor, "get_header_bounds")
-        else None
-    )
-    if bounds:
-        start_idx, end_idx = bounds
 
-    # Validate header boundaries and update status accordingly
+        # NONE → MISSING
+        if hb.kind is BoundsKind.NONE:
+            logger.info("No header found in '%s'", ctx.path)
+            ctx.status.header = HeaderStatus.MISSING
+            return
 
-    if start_idx is None and end_idx is None:
-        logger.info("No header found in '%s'", ctx.path)
-        ctx.status.header = HeaderStatus.MISSING
-        return ctx
-
-    if start_idx is not None and end_idx is None:
-        ctx.status.header = HeaderStatus.MALFORMED
-        ctx.add_warning(
-            f"Malformed header: found header start at line {start_idx + 1} but no matching end."
-        )
-        logger.warning("Malformed header: found header start but no matching end in %s", ctx.path)
-        return ctx
-
-    if start_idx is None and end_idx is not None:
-        ctx.status.header = HeaderStatus.MALFORMED
-        ctx.add_warning(
-            f"Malformed header: found header end at line {end_idx + 1} but no matching start."
-        )
-        logger.warning("Malformed header: found header end but no matching start in %s", ctx.path)
-        return ctx
-
-    if start_idx is None or end_idx is None:
-        logger.warning(
-            "Malformed header: header must be enclosed between '%s' and '%s'",
-            TOPMARK_START_MARKER,
-            TOPMARK_END_MARKER,
-        )
-        ctx.status.header = HeaderStatus.MALFORMED
-        return ctx
-
-    if end_idx < start_idx:
-        ctx.status.header = HeaderStatus.MALFORMED
-        ctx.add_warning(
-            f"Malformed header: end marker at line {end_idx + 1} "
-            f"before start marker at line {start_idx + 1}."
-        )
-        logger.warning(
-            "Malformed header: end marker found before start marker",
-        )
-        return ctx
-
-    # Header found and valid: ensure we have inclusive indices
-    existing_header_range: tuple[int, int] = (start_idx, end_idx)
-    # Slice via iterator to avoid materializing the full file
-    header_iter: islice[str] = islice(ctx.iter_file_lines(), start_idx, end_idx + 1)
-    existing_header_lines: list[str] = list(header_iter)
-    existing_header_block: str = "".join(existing_header_lines)
-
-    # 1) Create the view first (mapping=None for now)
-    ctx.header = HeaderView(
-        range=existing_header_range,
-        lines=existing_header_lines,
-        block=existing_header_block,
-        mapping=None,
-    )
-
-    # 2) Now parse fields (parse_fields reads from context.header)
-    parse_result: HeaderParseResult = ctx.header_processor.parse_fields(ctx)
-
-    # 3) Attach mapping and counts to the view
-    ctx.header.mapping = parse_result.fields
-    ctx.header.success_count = parse_result.success_count
-    ctx.header.error_count = parse_result.error_count
-
-    logger.debug(
-        "Header extracted from lines %d to %d (success: %d, error: %d):\n%s",
-        start_idx + 1,
-        end_idx + 1,
-        ctx.header.success_count,
-        ctx.header.error_count,
-        ctx.header.block,
-    )
-
-    total_count: int = ctx.header.success_count + ctx.header.error_count
-    logger.debug(
-        "Header markers present, found %d header lines (%d ok, %d with errors): %s",
-        total_count,
-        ctx.header.success_count,
-        ctx.header.error_count,
-        ctx.path,
-    )
-
-    if ctx.header.error_count > 0:
-        # At least one header fleid line errored
-
-        if ctx.header.success_count == 0:
-            # All header lines in the header block are malformed
-            ctx.status.header = HeaderStatus.MALFORMED_ALL_FIELDS
-            logger.info("Header markers present, all header field lines invalid.")
-            ctx.add_warning(
-                f"Header markers present at line {start_idx + 1} and {end_idx + 1}, "
-                f"skipped {ctx.header.error_count} invalid header lines, "
-                "no valid header lines found."
+        # MALFORMED → terminal (always)
+        if hb.kind is BoundsKind.MALFORMED:
+            s_opt: int | None
+            e_opt: int | None
+            s_opt, e_opt = hb.start, hb.end
+            if s_opt is not None and e_opt is not None and s_opt < e_opt:
+                # materialize minimal view for diagnostics
+                lines: list[str] = list(islice(ctx.iter_image_lines(), s_opt, e_opt))
+                ctx.views.header = HeaderView(
+                    range=(s_opt, e_opt - 1),  # store inclusive range for views
+                    lines=lines,
+                    block="".join(lines),
+                    mapping=None,
+                )
+            ctx.status.header = HeaderStatus.MALFORMED
+            reason: str = hb.reason or "Malformed header markers"
+            ctx.add_warning(reason)
+            ctx.add_hint(
+                make_hint(
+                    axis=Axis.HEADER,
+                    code=KnownCode.HEADER_MALFORMED,
+                    cluster=Cluster.ERROR,
+                    message=reason,
+                    terminal=True,
+                )
             )
-            return ctx
+            ctx.stop_flow(reason=f"scanner: {reason}", at_step=self)
+            return
+
+        # SPAN → slice, parse, classify
+        s_excl: int | None = hb.start
+        e_excl: int | None = hb.end  # exclusive
+        assert s_excl is not None and e_excl is not None and s_excl < e_excl
+
+        # Header found and valid: ensure we have inclusive indices
+        # Slice via iterator to avoid materializing the full file
+        header_lines: list[str] = list(islice(ctx.iter_image_lines(), s_excl, e_excl))
+        header_block: str = "".join(header_lines)
+
+        # 1) Create the view first (mapping=None for now). Store an inclusive range for the view.
+        ctx.views.header = HeaderView(
+            range=(s_excl, e_excl - 1),
+            lines=header_lines,
+            block=header_block,
+            mapping=None,
+        )
+
+        # 2) Parse fields (parse_fields reads from context.header)
+        parse_result: HeaderParseResult = ctx.header_processor.parse_fields(ctx)
+
+        # 3) Attach mapping and counts to the view
+        ctx.views.header.mapping = parse_result.fields
+        ctx.views.header.success_count = parse_result.success_count
+        ctx.views.header.error_count = parse_result.error_count
+
+        # Now we no longer write to ctx.views.header
+        header_view: HeaderView = ctx.views.header
+        total_count: int = header_view.success_count + header_view.error_count
+
+        logger.debug(
+            "Header extracted from lines %d to %d, found %d header lines (%d ok, %d with errors), "
+            "header block:\n%s",
+            s_excl + 1,
+            e_excl + 1,
+            total_count,
+            header_view.success_count,
+            header_view.error_count,
+            header_view.block,
+        )
+
+        if header_view.error_count > 0:
+            # At least one header fleid line errored
+            reason = (
+                f"Header markers present at line {s_excl + 1} and {e_excl + 1}, "
+                f"total: {total_count}, "
+                f"ok: {header_view.success_count}, errors: {header_view.error_count}, "
+            )
+
+            if header_view.success_count == 0:
+                # All header lines in the header block are malformed
+                ctx.status.header = HeaderStatus.MALFORMED_ALL_FIELDS
+                ctx.add_warning(f"{reason} - header contains no valid header lines.")
+                return
+            else:
+                # At least one remaining valid header line
+                ctx.status.header = HeaderStatus.MALFORMED_SOME_FIELDS
+                ctx.add_warning(f"{reason} - header contains valid and invalid header lines.")
+                return
+
+        if not header_view.mapping:
+            ctx.status.header = HeaderStatus.EMPTY
+            logger.info("Header markers present but no fields in '%s'", ctx.path)
+            ctx.add_warning(
+                f"Header markers present at line {s_excl + 1} and {e_excl + 1} but no fields."
+            )
         else:
-            # At least one remaining valid header line
-            ctx.status.header = HeaderStatus.MALFORMED_SOME_FIELDS
-            logger.info(
-                "Header markers present, %d of %d field lines invalid.",
-                ctx.header.error_count,
-                total_count,
-            )
-            ctx.add_warning(
-                f"Header markers present at line {start_idx + 1} and {end_idx + 1}, "
-                f"skipped {ctx.header.error_count} invalid header lines, "
-                f"{ctx.header.success_count} valid header lines found."
-            )
-            return ctx
+            ctx.status.header = HeaderStatus.DETECTED
 
-    if not ctx.header.mapping:
-        ctx.status.header = HeaderStatus.EMPTY
-        logger.info("Header markers present but no fields in '%s'", ctx.path)
-        ctx.add_warning(
-            f"Header markers present at line {start_idx + 1} and {end_idx + 1} but no fields."
+        logger.debug(
+            "File status: %s, resolve status: %s, content status: %s, header status: %s",
+            ctx.status.fs.value,
+            ctx.status.resolve.value,
+            ctx.status.content.value,
+            ctx.status.header.value,
         )
-    else:
-        ctx.status.header = HeaderStatus.DETECTED
+        logger.trace(
+            "Existing header dict: %s",
+            header_view.mapping,
+        )
 
-    logger.debug(
-        "File status: %s, resolve status: %s, content status: %s, header status: %s, "
-        + "existing header range: %s",
-        ctx.status.fs.value,
-        ctx.status.resolve.value,
-        ctx.status.content.value,
-        ctx.status.header.value,
-        ctx.header.range or VALUE_NOT_SET,
-    )
-    logger.trace(
-        "Existing header dict: %s",
-        ctx.header.mapping,
-    )
+        return
 
-    return ctx
+    def hint(self, ctx: ProcessingContext) -> None:
+        """Attach header detection hints (non-binding).
+
+        Args:
+            ctx (ProcessingContext): The processing context.
+        """
+        st: HeaderStatus = ctx.status.header
+
+        # May proceed to next step (always):
+        if st == HeaderStatus.DETECTED:
+            if ctx.check_permitted_by_policy is False:
+                ctx.stop_flow(reason="stopped by policy", at_step=self)
+            pass  # detected; normal path
+        elif st == HeaderStatus.MISSING:
+            ctx.add_hint(
+                make_hint(
+                    axis=Axis.HEADER,
+                    code=KnownCode.HEADER_MISSING,
+                    cluster=Cluster.PENDING,
+                    message="no TopMark header detected",
+                )
+            )
+            if ctx.check_permitted_by_policy is False:
+                ctx.stop_flow(reason="stopped by policy", at_step=self)
+
+        elif st == HeaderStatus.EMPTY:
+            ctx.add_hint(
+                make_hint(
+                    axis=Axis.HEADER,
+                    code=KnownCode.HEADER_EMPTY,
+                    cluster=Cluster.PENDING,
+                    message="empty TopMark header",
+                )
+            )
+            if ctx.check_permitted_by_policy is False:
+                ctx.stop_flow(reason="stopped by policy", at_step=self)
+        # May proceed to next step (policy):
+        elif st == HeaderStatus.MALFORMED_ALL_FIELDS:
+            ctx.add_hint(
+                make_hint(
+                    axis=Axis.HEADER,
+                    code=KnownCode.HEADER_MALFORMED,
+                    cluster=Cluster.BLOCKED_POLICY,
+                    message="some header fields malformed",
+                )
+            )
+        elif st == HeaderStatus.MALFORMED_SOME_FIELDS:
+            ctx.add_hint(
+                make_hint(
+                    axis=Axis.HEADER,
+                    code=KnownCode.HEADER_MALFORMED,
+                    cluster=Cluster.BLOCKED_POLICY,
+                    message="all header fields malformed",
+                )
+            )
+        # Stop processing:
+        elif st == HeaderStatus.MALFORMED:
+            ctx.add_hint(
+                make_hint(
+                    axis=Axis.HEADER,
+                    code=KnownCode.HEADER_MALFORMED,
+                    cluster=Cluster.SKIPPED,
+                    message="malformed TopMark header",
+                    terminal=True,
+                )
+            )
+        elif st == HeaderStatus.PENDING:
+            # scanner did not complete
+            ctx.stop_flow(reason=f"{self.__class__.__name__} did not set state.", at_step=self)

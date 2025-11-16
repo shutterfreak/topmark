@@ -64,7 +64,7 @@ def test_idempotent_double_insert(tmp_path: Path, filename: str, content: str) -
 
     assert lines2 == lines1, "Second run must be a no-op (idempotent)"
     # Header must be detected by scanner on the second run (it’s now in the original file)
-    assert ctx2.header is not None
+    assert ctx2.views.header is not None
 
 
 @pytest.mark.parametrize(

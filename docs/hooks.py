@@ -14,12 +14,12 @@ This module provides small, deterministic Markdown transformations that run duri
 MkDocs build. It intentionally avoids Jinja templating and focuses on two tasks:
 
 1) **Version token substitution** (``%%TOPMARK_VERSION%%``) using the installed
-   TopMark distribution version, captured once in :func:`pre_build`.
+   TopMark distribution version, captured once in `pre_build`.
 2) **GitHub-style callouts** conversion (``> [!NOTE] ...`` etc.) into Material for
-   MkDocs admonitions, implemented in :func:`on_page_markdown`. The conversion also
+   MkDocs admonitions, implemented in `on_page_markdown`. The conversion also
    de-quotes the title when the first body line is a bold heading (``**Title**``).
 
-In addition, :func:`on_page_markdown` includes a harmless guard that leaves fenced code
+In addition, `on_page_markdown` includes a harmless guard that leaves fenced code
 blocks containing GitHub Actions expressions (``${{ ... }}``) untouched. With
 ``mkdocs-simple-hooks`` we do not run Jinja in Markdown, so this is effectively a no-op,
 but it documents intent and keeps parity with earlier macro-based approaches.
@@ -67,9 +67,9 @@ def pre_build(config: dict[str, Any], **kwargs: Any) -> dict[str, Any] | None:
     """Capture the TopMark version once before any page is processed.
 
     This function attempts to retrieve the installed TopMark package version using
-    :py:func:`importlib.metadata.version` and stores it in the module-level global
+    `importlib.metadata.version` and stores it in the module-level global
     variable ``topmark_version_id``. This ensures the correct version token can be
-    substituted in all pages via the :py:func:`on_page_markdown` hook.
+    substituted in all pages via the `on_page_markdown` hook.
 
     Args:
         config (dict[str, Any]): The MkDocs config dictionary. While this hook

@@ -67,6 +67,8 @@ class ArgsNamespace(TypedDict, total=False):
     Attributes:
         verbosity_level (int | None): Program-output verbosity (0=terse, 1=verbose).
         apply_changes (bool | None): Whether to apply the changed (dry-run if not set ot False).
+        write_mode (str | None): Whether to use safe atomic writing, faster in-place writing
+            or writing to STDOUT (default: atomic writer).
         no_config (bool | None): Whether to ignore local config files.
         config_files (list[str] | None): List of extra config file paths.
         files (list[str]): List of file paths to process.
@@ -89,6 +91,8 @@ class ArgsNamespace(TypedDict, total=False):
     # Runtime intent: whether to actually write changes (apply) or preview only
     # None = inherit/unspecified, False = dry-run/preview, True = apply
     apply_changes: bool | None
+
+    write_mode: str | None
 
     # Command options: config
     no_config: bool | None
@@ -116,6 +120,7 @@ def build_args_namespace(
     *,
     verbosity_level: int | None = None,
     apply_changes: bool | None = None,
+    write_mode: str | None = None,
     no_config: bool | None = None,
     config_files: list[str] | None = None,
     files: list[str] | None = None,
@@ -135,6 +140,8 @@ def build_args_namespace(
     Args:
         verbosity_level (int | None): Program-output verbosity (0=terse, 1=verbose).
         apply_changes (bool | None): Whether to apply the changed (dry-run if not set ot False).
+        write_mode (str | None): Whether to use safe atomic writing, faster in-place writing
+            or writing to STDOUT (default: atomic writer).
         no_config (bool | None): Whether to ignore local config files.
         config_files (list[str] | None): List of extra config file paths.
         files (list[str] | None): List of file paths to process.
@@ -155,6 +162,7 @@ def build_args_namespace(
     return {
         "verbosity_level": verbosity_level,
         "apply_changes": apply_changes,
+        "write_mode": write_mode,
         "no_config": no_config,
         "config_files": config_files,
         "files": files if files is not None else [],

@@ -18,16 +18,24 @@ duplication between `check()` and `strip()` and keeps the public surface tidy.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Mapping, Sequence
+from typing import TYPE_CHECKING, Callable, Mapping, Sequence
+
+from yachalk import chalk
 
 from topmark.api.public_types import PublicDiagnostic
-from topmark.cli.cmd_common import filter_view_results
-from topmark.config.logging import TopmarkLogger, get_logger
-from topmark.pipeline.context import (
+from topmark.config.logging import get_logger
+from topmark.pipeline.status import (
     ComparisonStatus,
-    ProcessingContext,
+    ContentStatus,
+    FsStatus,
+    GenerationStatus,
+    HeaderStatus,
+    PlanStatus,
     ResolveStatus,
+    StripStatus,
     WriteStatus,
 )
 
@@ -35,13 +43,16 @@ from .types import DiagnosticTotals, FileResult, Outcome, RunResult
 
 if TYPE_CHECKING:
     from topmark.cli_shared.exit_codes import ExitCode
+    from topmark.config.logging import TopmarkLogger
+    from topmark.pipeline.context import ProcessingContext
+    from topmark.pipeline.views import DiffView
 
     from .public_types import PublicDiagnostic
 
 logger: TopmarkLogger = get_logger(__name__)
 
 __all__: list[str] = [
-    "map_outcome",
+    "classify_outcome",
     "to_file_result",
     "apply_view_filter",
     "summarize",
@@ -52,7 +63,7 @@ __all__: list[str] = [
 ]
 
 
-def map_outcome(r: ProcessingContext, *, apply: bool) -> Outcome:
+def classify_outcome(r: ProcessingContext, *, apply: bool) -> Outcome:
     """Translate a `ProcessingContext` status into a public `Outcome`.
 
     Args:
@@ -68,23 +79,7 @@ def map_outcome(r: ProcessingContext, *, apply: bool) -> Outcome:
         - When `apply=False`, changed files are reported as `WOULD_CHANGE`.
         - When `apply=True`, changed files are reported as `CHANGED`.
     """
-    if r.status.resolve != ResolveStatus.RESOLVED:
-        # Treat unsupported/matched-but-unhandled types as non-errors for API consumers.
-        unsupported: set[ResolveStatus] = {
-            ResolveStatus.UNSUPPORTED,
-            ResolveStatus.TYPE_RESOLVED_HEADERS_UNSUPPORTED,
-        }
-        if r.status.resolve in unsupported:
-            return Outcome.UNCHANGED
-        return Outcome.ERROR
-    if r.status.comparison == ComparisonStatus.UNCHANGED:
-        return Outcome.UNCHANGED
-    # At this point the file either would change or did change.
-    if apply:
-        # In apply mode, run_steps_for_files computes updates; caller may write them.
-        return Outcome.CHANGED
-    # Dry-run: would change
-    return Outcome.WOULD_CHANGE
+    return map_bucket(r, apply=apply).outcome
 
 
 def to_file_result(r: ProcessingContext, *, apply: bool) -> FileResult:
@@ -98,11 +93,322 @@ def to_file_result(r: ProcessingContext, *, apply: bool) -> FileResult:
         FileResult: Public, JSON-friendly per-file result.
     """
     # Prefer a unified diff when available; otherwise None (human views may omit diffs).
-    diff: str | None = r.diff.text if r.diff else None
+    diff_view: DiffView | None = r.views.diff
+    diff: str | None = diff_view.text if diff_view else None
     message: str | None = r.summary or None
+
+    # Compute CLI bucket for API visibility (key + human label)
+    bucket: ResultBucket = map_bucket(r, apply=apply)
+    key: str = bucket.outcome.value
+    label: str = bucket.reason or NO_REASON_PROVIDED
+
     return FileResult(
-        path=Path(str(r.path)), outcome=map_outcome(r, apply=apply), diff=diff, message=message
+        path=Path(str(r.path)),
+        outcome=classify_outcome(r, apply=apply),
+        diff=diff,
+        message=message,
+        bucket_key=key,
+        bucket_label=label,
     )
+
+
+# --- CLI presentation helpers -------------------------------------------------
+
+
+class Intent(Enum):
+    STRIP = "strip"
+    INSERT = "insert"
+    UPDATE = "update"
+    NONE = "none"  # no clear action (compare skipped, etc.)
+
+
+def determine_intent(r: ProcessingContext) -> Intent:
+    if r.status.strip != StripStatus.PENDING:
+        return Intent.STRIP
+    if r.status.header == HeaderStatus.MISSING:
+        return Intent.INSERT
+    if r.status.header != HeaderStatus.PENDING:
+        return Intent.UPDATE
+    return Intent.NONE
+
+
+NO_REASON_PROVIDED: str = "(no reason provided)"
+
+FormatCallable = Callable[[str], str]
+
+
+_OUTCOME_COLOR: dict[Outcome, FormatCallable] = {
+    Outcome.PENDING: chalk.gray,
+    Outcome.SKIPPED: chalk.yellow,
+    Outcome.WOULD_CHANGE: chalk.red_bright,
+    Outcome.CHANGED: chalk.yellow_bright,
+    Outcome.UNCHANGED: chalk.green,
+    Outcome.WOULD_INSERT: chalk.yellow,
+    Outcome.WOULD_UPDATE: chalk.yellow,
+    Outcome.WOULD_STRIP: chalk.yellow,
+    Outcome.INSERTED: chalk.yellow_bright,
+    Outcome.UPDATED: chalk.yellow_bright,
+    Outcome.STRIPPED: chalk.yellow_bright,
+    Outcome.ERROR: chalk.red_bright,
+}
+
+
+def outcome_color(o: Outcome) -> FormatCallable:
+    return _OUTCOME_COLOR[o]
+
+
+@dataclass
+class ResultBucket:
+    outcome: Outcome = Outcome.PENDING
+    reason: str | None = None
+
+    def __init__(self, *, outcome: Outcome | None, reason: str | None) -> None:
+        if outcome is not None:
+            self.outcome = outcome
+        if reason is not None:
+            self.reason = reason
+
+        logger.debug("ResultBucket: %s", self.__repr__())
+
+    def __repr__(self) -> str:
+        return f"{self.outcome.value}: {self.reason or NO_REASON_PROVIDED}"
+
+
+def map_bucket(r: ProcessingContext, *, apply: bool) -> ResultBucket:
+    """Maps a bucket to an Outcome."""
+    _i: int = 0
+
+    def dl(k: str, lbl: str) -> str:
+        return f"[{k}] {lbl}"
+
+    intent: Intent = determine_intent(r)
+    logger.warning("intent: %s; apply: %s; status: %s", intent.value, apply, r.status)
+
+    # 1a) hard skips/errors first
+    if r.status.resolve != ResolveStatus.RESOLVED:
+        reason: str = dl("01", r.status.resolve.value)
+        return ResultBucket(outcome=Outcome.SKIPPED, reason=reason)
+    if r.status.fs in {FsStatus.NOT_FOUND, FsStatus.NO_READ_PERMISSION, FsStatus.UNREADABLE}:
+        reason = dl("02", r.status.fs.value)
+        return ResultBucket(outcome=Outcome.ERROR, reason=reason)
+    if apply and r.status.fs == FsStatus.NO_WRITE_PERMISSION:
+        reason = dl("03", r.status.fs.value)
+        return ResultBucket(outcome=Outcome.ERROR, reason=reason)
+    if r.status.content in {
+        ContentStatus.PENDING,
+        ContentStatus.UNSUPPORTED,
+        ContentStatus.UNREADABLE,
+    }:
+        reason = dl("04", r.status.content.value)
+        return ResultBucket(outcome=Outcome.SKIPPED, reason=reason)
+
+    # 1b) The following entries may be overridden by policy (TODO):
+    if r.status.content in {
+        ContentStatus.SKIPPED_MIXED_LINE_ENDINGS,
+        ContentStatus.SKIPPED_POLICY_BOM_BEFORE_SHEBANG,
+        ContentStatus.SKIPPED_REFLOW,
+    }:
+        reason = dl("05", r.status.content.value)
+        return ResultBucket(outcome=Outcome.SKIPPED, reason=reason)
+
+    # 1c) Empty files without an "allow_header_in_empty_files" policy override
+    #     are treated as compliant (ignored by the compliance check).
+    #     We still surface the "File is empty." warning for visibility, but
+    #     they should not be marked as WOULD_INSERT / MUST_UPDATE.
+    if r.status.fs == FsStatus.EMPTY and not r.can_change:
+        reason = dl("04e", "empty_file")
+        return ResultBucket(outcome=Outcome.UNCHANGED, reason=reason)
+
+    if r.status.header == HeaderStatus.MALFORMED:
+        reason = dl("20", r.status.header.value)
+        return ResultBucket(outcome=Outcome.ERROR, reason=reason)
+
+    # Policy
+    if r.check_permitted_by_policy is False:
+        reason = "skipped by policy"
+        return ResultBucket(outcome=Outcome.SKIPPED, reason=reason)
+
+    logger.warning(
+        "map_bucket: not forbidden by policy, permitted is %s", r.check_permitted_by_policy
+    )
+
+    # 4) unchanged
+    if r.status.comparison == ComparisonStatus.UNCHANGED:
+        reason = dl("13", "up-to-date")
+        return ResultBucket(outcome=Outcome.UNCHANGED, reason=reason)
+
+    # Pre-compute the Outcome value for a change (makes only sense when change detected):
+    outcome_if_changed: Outcome
+    if apply:
+        if intent == Intent.STRIP:
+            outcome_if_changed = Outcome.STRIPPED
+        elif intent == Intent.INSERT:
+            outcome_if_changed = Outcome.INSERTED
+        elif intent == Intent.UPDATE:
+            outcome_if_changed = Outcome.UPDATED
+        else:
+            outcome_if_changed = Outcome.CHANGED
+    else:
+        if intent == Intent.STRIP:
+            outcome_if_changed = Outcome.WOULD_STRIP
+        elif intent == Intent.INSERT:
+            outcome_if_changed = Outcome.WOULD_INSERT
+        elif intent == Intent.UPDATE:
+            outcome_if_changed = Outcome.WOULD_UPDATE
+        else:
+            outcome_if_changed = Outcome.WOULD_CHANGE
+
+    reason_if_changed: str = f"{r.status.header.value}, {r.status.comparison.value}"
+
+    # 2) written (implies 'apply' path)
+    if r.status.write == WriteStatus.WRITTEN:
+        reason = dl("06", reason_if_changed)
+        return ResultBucket(
+            outcome=outcome_if_changed,
+            reason=reason,
+        )
+    if r.status.write == WriteStatus.FAILED:
+        reason = dl("07", r.status.write.value)
+        return ResultBucket(
+            outcome=Outcome.ERROR,
+            reason=reason,
+        )
+
+    if r.status.comparison == ComparisonStatus.CHANGED:
+        if intent == Intent.STRIP:
+            reason = dl("08.1", f"{r.status.header.value}, {r.status.strip.value}")
+        elif intent in (Intent.INSERT, Intent.UPDATE):
+            reason = dl("08.2", r.status.header.value)
+        else:
+            reason = dl("08.3", reason_if_changed)
+        return ResultBucket(
+            outcome=outcome_if_changed,
+            reason=reason,
+        )
+
+    # 3) dry-run; or effective intent without writes
+    if not apply:
+        if intent in (Intent.INSERT, Intent.UPDATE):
+            if r.effective_would_add_or_update:
+                reason = dl("09", r.status.header.value)
+                return ResultBucket(outcome=outcome_if_changed, reason=reason)
+            reason = dl("10", r.status.header.value)
+            return ResultBucket(outcome=outcome_if_changed, reason=reason)
+        if intent == Intent.STRIP:
+            if r.effective_would_strip:
+                reason = dl("11", r.status.header.value)
+                return ResultBucket(outcome=outcome_if_changed, reason=reason)
+            if r.status.strip == StripStatus.NOT_NEEDED:
+                reason = r.status.strip.value
+                return ResultBucket(outcome=Outcome.UNCHANGED, reason=reason)
+        if r.status.plan == PlanStatus.PREVIEWED:
+            reason = dl("12", reason_if_changed)
+            return ResultBucket(
+                outcome=outcome_if_changed,
+                reason=reason,
+            )
+
+    if r.status.generation == GenerationStatus.NO_FIELDS:
+        reason = dl("14", r.status.generation.value)
+        return ResultBucket(outcome=Outcome.UNCHANGED, reason=reason)
+
+    if r.status.plan in (
+        PlanStatus.SKIPPED,
+        PlanStatus.FAILED,
+    ):
+        reason = dl("15", r.status.plan.value)
+        return ResultBucket(
+            outcome=Outcome.SKIPPED,
+            reason=reason,  # or other e.g. reason_if_changed?
+        )
+
+    # 5) pending (optional)
+    # If you prefer to collapse this to 'unchanged', return "unchanged" here instead.
+    reason = dl("16", NO_REASON_PROVIDED)
+    return ResultBucket(outcome=Outcome.PENDING, reason=reason)  # "pending"
+
+
+def collect_outcome_counts(
+    results: list[ProcessingContext],
+) -> dict[str, tuple[int, str, Callable[[str], str]]]:
+    """Count results by classification key.
+
+    Keeps the first-seen label and color for each key.
+
+    Args:
+        results (list[ProcessingContext]): Processing contexts to classify and count.
+
+    Returns:
+        dict[str, tuple[int, str, Callable[[str], str]]]: Mapping from classification
+            key to ``(count, label, color_fn)``.
+    """
+    counts: dict[str, tuple[int, str, Callable[[str], str]]] = {}
+
+    for r in results:
+        apply: bool = r.config.apply_changes is True
+        bucket: ResultBucket = map_bucket(r, apply=apply)
+        color: FormatCallable = outcome_color(bucket.outcome)
+        key: str = bucket.outcome.value
+        label: str = bucket.reason or NO_REASON_PROVIDED
+        n: int
+        n, _, _ = counts.get(key, (0, label, color))
+        counts[key] = (n + 1, label, color)
+    return counts
+
+
+def filter_view_results(
+    results: list[ProcessingContext],
+    *,
+    skip_compliant: bool,
+    skip_unsupported: bool,
+) -> list[ProcessingContext]:
+    """Apply --skip-compliant and --skip-unsupported filters to a results list.
+
+    Args:
+        results (list[ProcessingContext]): Full list of ProcessingContext results.
+        skip_compliant (bool): If True, filter out files that are compliant/unchanged.
+        skip_unsupported (bool): If True, filter out files that were skipped as unsupported.
+
+    Returns:
+        list[ProcessingContext]: Filtered list of ProcessingContext results.
+    """
+    view: list[ProcessingContext] = results
+    if skip_compliant:
+        view = [
+            r
+            for r in view
+            if not (
+                r.status.resolve == ResolveStatus.RESOLVED
+                and r.status.content == ContentStatus.OK
+                and (
+                    # “check/update” style: rendered or no-fields and unchanged
+                    (
+                        r.status.comparison == ComparisonStatus.UNCHANGED
+                        and r.status.generation
+                        in {
+                            GenerationStatus.GENERATED,
+                            GenerationStatus.NO_FIELDS,
+                        }
+                    )
+                    # “strip” style: nothing to strip (image unchanged is implied)
+                    or r.status.strip == StripStatus.NOT_NEEDED
+                )
+            )
+        ]
+
+    if skip_unsupported:
+        view = [
+            r
+            for r in view
+            if r.status.resolve
+            not in {
+                ResolveStatus.UNSUPPORTED,
+                ResolveStatus.TYPE_RESOLVED_HEADERS_UNSUPPORTED,
+                ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED,
+            }
+        ]
+
+    return view
 
 
 def apply_view_filter(
@@ -148,21 +454,23 @@ def count_writes(
     results: Sequence[ProcessingContext],
     *,
     apply: bool,
-    eligible: set[WriteStatus],
+    eligible: set[PlanStatus],
 ) -> tuple[int, int]:
     """Return `(written, failed)` counts for the given results.
 
     Args:
         results (Sequence[ProcessingContext]): Pipeline results.
         apply (bool): Whether the run was in apply mode (counts are zero when False).
-        eligible (set[WriteStatus]): Which `WriteStatus` values count as "written".
+        eligible (set[PlanStatus]): Which `WriteStatus` values count as "written".
 
     Returns:
         tuple[int, int]: The `(written, failed)` counts.
     """
     if not apply:
         return 0, 0
-    written: int = sum(1 for r in results if r.status.write in eligible)
+    written: int = sum(
+        1 for r in results if r.status.plan in eligible and r.status.write == WriteStatus.WRITTEN
+    )
     failed: int = sum(1 for r in results if r.status.write == WriteStatus.FAILED)
     return written, failed
 
@@ -224,7 +532,7 @@ def finalize_run_result(
     apply: bool,
     skip_compliant: bool,
     skip_unsupported: bool,
-    write_statuses: set[WriteStatus],
+    update_statuses: set[PlanStatus],
     encountered_error_code: "ExitCode | None",
 ) -> RunResult:
     """Assemble a `RunResult` from pipeline results with consistent view filtering.
@@ -239,7 +547,7 @@ def finalize_run_result(
         apply (bool): Whether the run was in apply mode (affects counting).
         skip_compliant (bool): If `True`, hide compliant files in the returned view.
         skip_unsupported (bool): If `True`, hide unsupported files in the view.
-        write_statuses (set[WriteStatus]): Which `WriteStatus` values count as "written".
+        update_statuses (set[PlanStatus]): Which `UpdateStatus` values count as "updated".
         encountered_error_code (ExitCode | None): Fatal exit code if any was encountered.
 
     Returns:
@@ -256,21 +564,30 @@ def finalize_run_result(
     files: tuple[FileResult, ...] = tuple(to_file_result(r, apply=apply) for r in view_results)
     summary: Mapping[str, int] = summarize(files)
 
-    had_errors: bool = any(map_outcome(r, apply=apply) == Outcome.ERROR for r in results) or (
-        encountered_error_code is not None
-    )
-
     diagnostics: dict[str, list[PublicDiagnostic]] = collect_diagnostics(view_results)
     diagnostic_totals: DiagnosticTotals = collect_diagnostic_totals(view_results)
     diagnostic_totals_all: DiagnosticTotals = collect_diagnostic_totals(results)
+    had_errors: bool = (diagnostic_totals_all["error"] > 0) or (encountered_error_code is not None)
 
     written: int
     failed: int
-    written, failed = count_writes(results, apply=apply, eligible=write_statuses)
+    written, failed = count_writes(results, apply=apply, eligible=update_statuses)
+
+    bucket_summary: dict[str, int] = {}
+    for fr in files:
+        # Each FileResult already carries bucket_key. If absent, recompute from ctx.
+        if fr.bucket_key:
+            b_key: str = fr.bucket_key
+        else:
+            # If you already track the surviving contexts in this scope as `view_ctxs`,
+            # you can recompute with map_result_bucket(ctx). Otherwise, keep it simple:
+            b_key = fr.outcome.value  # harmless fallback (shouldn't happen)
+        bucket_summary[b_key] = bucket_summary.get(b_key, 0) + 1
 
     return RunResult(
         files=files,
         summary=summary,
+        bucket_summary=bucket_summary,
         had_errors=had_errors,
         skipped=skipped,
         written=written,

@@ -26,15 +26,16 @@ from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Iterable, Literal, NamedTuple
 
-if TYPE_CHECKING:
-    import click
-
 from topmark.cli.errors import TopmarkUsageError
 from topmark.cli.options import (
     extract_stdin_for_from_options,
     split_nonempty_lines,
     strip_dash_sentinels,
 )
+
+if TYPE_CHECKING:
+    import click
+
 
 # Keep this module narrowly scoped to STDIN handling only.
 

@@ -8,99 +8,132 @@
 #
 # topmark:header:end
 
-"""Named pipeline variants for TopMark.
+"""Named pipeline variants for TopMark (immutable, typed step sequences).
 
-This module exposes immutable, typed step sequences and a registry mapping names
-to pipelines. The default set targets the "check" workflow; additional variants
-are safe to add here (e.g., 'summary', 'apply').
+This module exposes immutable, typed step tuples and a registry mapping names
+to pipelines. Pipelines are built from class-based steps that implement the
+[`Step`][topmark.pipeline.contracts.Step] protocol.
+
+Overview
+--------
+- ``SCAN``: resolve → sniff → read → scan
+- ``CHECK_RENDER``: SCAN + build → render
+- ``CHECK`` (summary): CHECK_RENDER + compare
+- ``CHECK_*`` (apply/patch): CHECK + update → (patch/write) variants
+- ``STRIP`` (summary): SCAN + strip → compare
+- ``STRIP_*`` (apply/patch): STRIP + update → (patch/write) variants
+
+Mermaid (orientation)
+---------------------
+```mermaid
+flowchart TD
+  subgraph Discovery
+    R[resolver] --> S[sniffer] --> D[reader] --> N[scanner]
+  end
+  subgraph Check
+    N --> B[builder] --> T[renderer] --> C[comparer]
+  end
+  subgraph Strip
+    N --> P[stripper] --> C
+  end
+  subgraph Mutations
+    C --> U[updater]
+    U -->|patch| H[patcher]
+    U -->|apply| W[writer]
+  end
+```
+
+Notes:
+* Pipelines are immutable (Final[Tuple[Step, ...]]) and steps are
+  instantiated objects (not functions).
+* Steps only write to the status axes they declare; outcome classification is
+  derived centrally at the view/API layer.
 """
 
 from __future__ import annotations
 
 from enum import Enum
-from typing import TYPE_CHECKING, Final, Tuple
+from typing import Final, Tuple
+
+from topmark.pipeline.contracts import Step
 
 from .steps import (
     builder,
     comparer,
     patcher,
+    planner,
     reader,
     renderer,
     resolver,
     scanner,
     sniffer,
     stripper,
-    updater,
     writer,
 )
 
-if TYPE_CHECKING:
-    from topmark.pipeline.contracts import Step
-
-
 # Perform basic TopMark header scanning:
 SCAN_PIPELINE: Final[Tuple[Step, ...]] = (
-    resolver.resolve,  # Resolve file type and assign header processor for the file
-    sniffer.sniff,  # Cheap pre-read checks and newline policy
-    reader.read,  # Read the file
-    scanner.scan,  # Scan the file for a header
+    resolver.ResolverStep(),  # Resolve file type and assign header processor for the file
+    sniffer.SnifferStep(),  # Cheap pre-read checks and newline policy
+    reader.ReaderStep(),  # Read the file
+    scanner.ScannerStep(),  # Scan the file for a header
 )
 
 # Render-only pipeline: resolves, sniffs, reads, scans, builds, and renders
 # (no compare/update/patch):
 CHECK_RENDER_PIPELINE: Final[Tuple[Step, ...]] = SCAN_PIPELINE + (
-    builder.build,  # Build the dict with expected header fields
-    renderer.render,  # Render the updated header
+    builder.BuilderStep(),  # Build the dict with expected header fields
+    renderer.RendererStep(),  # Render the updated header
 )
 
 # A lightweight pipeline that stops after comparison (no update/patch):
 CHECK_SUMMMARY_PIPELINE: Final[Tuple[Step, ...]] = CHECK_RENDER_PIPELINE + (
-    comparer.compare,  # Compare existing header with rendered new header
+    comparer.ComparerStep(),  # Compare existing header with rendered new header
 )
 
 # Only for generating unified diffs:
 CHECK_PATCH_PIPELINE: Final[Tuple[Step, ...]] = CHECK_SUMMMARY_PIPELINE + (
-    updater.update,  # Update the file
-    patcher.patch,  # Generate unified diff (needs comparer.compare)
+    planner.PlannerStep(),  # Update the file
+    patcher.PatcherStep(),  # Generate unified diff (needs comparer.compare)
 )
 
 CHECK_APPLY_PIPELINE: Final[Tuple[Step, ...]] = CHECK_SUMMMARY_PIPELINE + (
-    updater.update,  # Update the file
-    writer.write,  # Write changes to file/stdout
+    planner.PlannerStep(),  # Update the file
+    writer.WriterStep(),  # Write changes to file/stdout
 )
 
 CHECK_APPLY_PATCH_PIPELINE: Final[Tuple[Step, ...]] = CHECK_SUMMMARY_PIPELINE + (
-    updater.update,  # Update the file
-    patcher.patch,  # Generate unified diff (needs comparer.compare)
-    writer.write,  # Write changes to file/stdout
+    planner.PlannerStep(),  # Update the file
+    patcher.PatcherStep(),  # Generate unified diff (needs comparer.compare)
+    writer.WriterStep(),  # Write changes to file/stdout
 )
 
 STRIP_PIPELINE: Final[Tuple[Step, ...]] = SCAN_PIPELINE + (
-    stripper.strip,  # Strip the header from the file
+    stripper.StripperStep(),  # Strip the header from the file
 )
 
 STRIP_SUMMMARY_PIPELINE: Final[Tuple[Step, ...]] = STRIP_PIPELINE + (
-    comparer.compare,  # Compare existing header with rendered new header
+    comparer.ComparerStep(),  # Compare existing header with rendered new header
 )
 
 # Only for generating unified diffs:
 STRIP_PATCH_PIPELINE: Final[Tuple[Step, ...]] = STRIP_SUMMMARY_PIPELINE + (
-    updater.update,  # Update the file
-    patcher.patch,  # Generate unified diff (needs comparer.compare)
+    planner.PlannerStep(),  # Update the file
+    patcher.PatcherStep(),  # Generate unified diff (needs comparer.compare)
 )
 
 STRIP_APPLY_PIPELINE: Final[Tuple[Step, ...]] = STRIP_SUMMMARY_PIPELINE + (
-    updater.update,  # Update the file
-    writer.write,  # Write changes to file/stdout
+    planner.PlannerStep(),  # Update the file
+    writer.WriterStep(),  # Write changes to file/stdout
 )
 STRIP_APPLY_PATCH_PIPELINE: Final[Tuple[Step, ...]] = STRIP_SUMMMARY_PIPELINE + (
-    updater.update,  # Update the file
-    patcher.patch,  # Generate unified diff (needs comparer.compare)
-    writer.write,  # Write changes to file/stdout
+    planner.PlannerStep(),  # Update the file
+    patcher.PatcherStep(),  # Generate unified diff (needs comparer.compare)
+    writer.WriterStep(),  # Write changes to file/stdout
 )
 
 
-class Pipeline(Enum):
+class Pipeline(Tuple[Step, ...], Enum):
     """Available execution pipelines for file processing, mapped to their step sequences."""
 
     # Note: Enum members use underscores instead of hyphens for valid Python identifiers.
@@ -122,6 +155,11 @@ class Pipeline(Enum):
 
     @property
     def steps(self) -> Tuple[Step, ...]:
-        """Returns the immutable sequence of steps for this pipeline."""
-        # The value of an Enum member is the tuple assigned to it.
+        """Return the instantiated, ordered step sequence for this pipeline.
+
+        Returns:
+            Tuple[Step, ...]: An immutable tuple of step *instances* that
+            implement the [`Step`][topmark.pipeline.contracts.Step] protocol. The
+            runner will invoke them as callables in order.
+        """
         return self.value

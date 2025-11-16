@@ -63,7 +63,7 @@ class PreInsertViewAdapter:
     file_type: FileType | None
 
     def __init__(self, ctx: ProcessingContext) -> None:
-        self.lines: Iterable[str] = ctx.iter_file_lines()
+        self.lines: Iterable[str] = ctx.iter_image_lines()
         self.newline_style: str = ctx.newline_style
         self.header_processor: HeaderProcessor | None = ctx.header_processor
         self.file_type: FileType | None = ctx.file_type
