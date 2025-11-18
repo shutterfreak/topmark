@@ -2,17 +2,18 @@
 topmark:header:start
 
   project      : TopMark
-  file         : dump_config.md
-  file_relpath : docs/usage/commands/dump_config.md
+  file         : config_dump.md
+  file_relpath : docs/usage/commands/config_dump.md
   license      : MIT
   copyright    : (c) 2025 Olivier Biot
 
 topmark:header:end
 -->
 
-# TopMark `dump-config` Command Guide
+# TopMark `config dump` Command Guide
 
-The `dump-config` subcommand prints the **effective TopMark configuration** as TOML after applying
+The `config dump` subcommand (part of the TopMark [`config` Command Family](config.md))
+prints the **effective TopMark configuration** as TOML after applying
 built-in defaults, discovered project/user config, and any CLI overrides.
 
 It is **file-agnostic**: it does not resolve or process any files.
@@ -23,13 +24,13 @@ ______________________________________________________________________
 
 ```bash
 # Dump merged configuration (TOML)
-topmark dump-config
+topmark config dump
 
 # Honor include/exclude patterns and pattern files
-topmark dump-config --exclude .venv --exclude-from .gitignore
+topmark config dump --exclude .venv --exclude-from .gitignore
 
 # Honor patterns from STDIN
-printf "*.py\n" | topmark dump-config --include-from -
+printf "*.py\n" | topmark config dump --include-from -
 ```
 
 ______________________________________________________________________
@@ -52,11 +53,11 @@ ______________________________________________________________________
 - Output is **plain TOML**. When run with higher verbosity (e.g., `-v`), the TOML is wrapped between
   BEGIN/END markers for easy parsing:
 
-  # === BEGIN ===
+  \# === BEGIN[TOML] ===
 
   ...TOML...
 
-  # === END ===
+  \# === END[TOML] ===
 
 {% include-markdown "\_snippets/config-resolution.md" %}
 
@@ -66,7 +67,7 @@ ______________________________________________________________________
 
 - **List on STDIN for patterns**: `--include-from -` or `--exclude-from -` read newline-delimited
   patterns from STDIN.
-- **Content on STDIN** (`-` as PATH) is **ignored** by `dump-config`. This mode is only meaningful
+- **Content on STDIN** (`-` as PATH) is **ignored** by `config dump`. This mode is only meaningful
   for file-processing commands (e.g., `check`, `strip`).
 - **`--files-from`** is **ignored**. File lists are considered *inputs*, not *configuration*.
 
@@ -87,13 +88,13 @@ ______________________________________________________________________
 | `--align-fields`  | Whether to align header fields (captured in config).                       |
 | `--header-format` | Header rendering format override (captured in config).                     |
 
-> Run `topmark dump-config -h` for the full list of options and help text.
+> Run `topmark config dump -h` for the full list of options and help text.
 
 ______________________________________________________________________
 
 ## Verbosity
 
-`dump-config` prints configuration; it does not render program output with per‑file diagnostics. The
+`config dump` prints configuration; it does not render program output with per‑file diagnostics. The
 `verbosity_level` setting is a runtime/CLI concern and is **not** serialized to TOML in the output.
 
 When verbosity ≥ 1, BEGIN/END markers are included around the TOML output.

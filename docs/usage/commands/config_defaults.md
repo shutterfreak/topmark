@@ -2,18 +2,23 @@
 topmark:header:start
 
   project      : TopMark
-  file         : show_defaults.md
-  file_relpath : docs/usage/commands/show_defaults.md
+  file         : config_defaults.md
+  file_relpath : docs/usage/commands/config_defaults.md
   license      : MIT
   copyright    : (c) 2025 Olivier Biot
 
 topmark:header:end
 -->
 
-# TopMark `show-defaults` Command Guide
+# TopMark `config defaults` Command Guide
 
-The `show-defaults` subcommand prints TopMark’s **built‑in default configuration** as TOML. No
-project files are discovered or merged — this is the raw baseline that ships with TopMark.
+The `config defaults` subcommand (part of the TopMark [`config` Command Family](config.md))
+prints TopMark’s **built‑in default configuration** as TOML.
+It uses a cleaned, comment-free representation derived from the bundled
+default config (no project files are discovered or merged).
+
+- `default` / `markdown` formats: minimal, comment-free TOML.
+- `json` / `ndjson`: a plain Config snapshot, with no diagnostics.
 
 ______________________________________________________________________
 
@@ -21,7 +26,7 @@ ______________________________________________________________________
 
 ```bash
 # Show the internal default configuration (TOML)
-topmark show-defaults
+topmark config defaults
 ```
 
 ______________________________________________________________________
@@ -52,7 +57,7 @@ ______________________________________________________________________
 
 ## Options (subset)
 
-This command is intentionally minimal and usually has no options. See `topmark show-defaults -h` for
+This command is intentionally minimal and usually has no options. See `topmark config defaults -h` for
 any environment‑specific flags that may be available in your build.
 
 ______________________________________________________________________

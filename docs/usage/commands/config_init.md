@@ -2,18 +2,30 @@
 topmark:header:start
 
   project      : TopMark
-  file         : init_config.md
-  file_relpath : docs/usage/commands/init_config.md
+  file         : config_init.md
+  file_relpath : docs/usage/commands/config_init.md
   license      : MIT
   copyright    : (c) 2025 Olivier Biot
 
 topmark:header:end
 -->
 
-# TopMark `init-config` Command Guide
+# TopMark `config init` Command Guide
 
-The `init-config` subcommand prints a **starter TopMark configuration** as TOML to stdout. It does
-not read or write any files by itself — redirect the output to create a config file.
+The `config init` subcommand (part of the TopMark [`config` Command Family](config.md))
+prints the **annotated default template** that ships with TopMark.
+This file is heavily commented and is intended as a scaffold for a new config file.
+
+- `default` / `markdown`: full commented template from the bundled resource.
+- `json` / `ndjson`: minimal Config snapshot derived from the same defaults,
+  without comments or diagnostics.
+
+Notes:
+
+- Specify `--pyproject` if you want to add the configuration to your project's `pyproject.toml`.
+  This will encapsulate the TopMark TOML config in a `[tool.topmark]` table.
+- When choosing `json` or `ndjson`, the output is identical to
+  [`topmark config defaults`](config_defaults.md)
 
 ______________________________________________________________________
 
@@ -21,13 +33,13 @@ ______________________________________________________________________
 
 ```bash
 # Print a starter configuration to stdout
-topmark init-config
+topmark config init
 
 # Create a new project config file
-topmark init-config > topmark.toml
+topmark config init > topmark.toml
 
 # Or integrate into pyproject
-topmark init-config >> pyproject.toml
+topmark config init --pyproject >> pyproject.toml
 ```
 
 ______________________________________________________________________
@@ -55,14 +67,14 @@ ______________________________________________________________________
 
 ## Verbosity
 
-`init-config` prints plain TOML to stdout. When run with higher verbosity (e.g., `-v`), the output
+`config init` prints plain TOML to stdout. When run with higher verbosity (e.g., `-v`), the output
 is wrapped between BEGIN/END markers for easy parsing in scripts and tests.
 
 ______________________________________________________________________
 
 ## Options (subset)
 
-This command is intentionally minimal and usually has no options. See `topmark init-config -h` for
+This command is intentionally minimal and usually has no options. See `topmark config init -h` for
 any environment‑specific flags that may be available in your build.
 
 ______________________________________________________________________

@@ -12,7 +12,7 @@ topmark:header:end
 
 # TopMark `strip` Command Guide
 
-The `topmark strip` subcommand removes the entire TopMark header block from targeted files. It is
+The `strip` command removes the entire TopMark header block from targeted files. It is
 **dry‑run by default** (summaries end with `- previewed`) and becomes destructive only with
 `--apply` (summaries end with `- removed`) when run with `--apply`.
 
@@ -60,7 +60,7 @@ ______________________________________________________________________
 
 ## Machine-readable output
 
-Use `--format json` or `--format ndjson` to emit output suitable for tooling:
+Use `--output-format json` or `--output-format ndjson` to emit output suitable for tooling:
 
 - **JSON**: pretty-printed array (or summary object when `--summary`).
 - **NDJSON**: one JSON object per line (or one summary line per outcome with `--summary`).
@@ -70,13 +70,46 @@ Notes:
 - Diffs (`--diff`) are **human-only** and are not included in JSON/NDJSON.
 - Summary mode aggregates outcomes and suppresses per-file guidance lines.
 
+### JSON schema (detail mode)
+
+When `--summary` is **not** set, `topmark strip` emits a single JSON object:
+
+```jsonc
+{
+  "config": { /* ConfigPayload */ },
+  "config_diagnostics": {
+    "diagnostics": [ { "level": "warning", "message": "..." }, ... ],
+    "diagnostic_counts": { "info": 0, "warning": 1, "error": 0 }
+  },
+  "results": [
+    {
+      "path": "src/foo.py",
+      "status": { "...": "..." },
+      "diagnostics": [ /* per-file diagnostics */ ],
+      "diagnostic_counts": { "...": 0 },
+      "outcome": { /* outcome summary */ }
+    },
+    ...
+  ]
+}
+```
+
+> [!NOTE] **Config diagnostics**
+>
+> The `config_diagnostics` block only appears in machine-readable output for
+> commands that actually *run* a pipeline (`check`, `strip`). It summarises any
+> issues discovered while loading and merging configuration (e.g. invalid keys,
+> deprecated options, or conflicting settings).
+>
+> Pure config commands (`topmark config ...`) emit only the `config` snapshot in
+> JSON/NDJSON and omit `config_diagnostics`.
+
 ## Verbosity & logging
 
 Program-output verbosity is separate from internal logging:
 
-- `-v`, `--verbose` increases **program output** detail (adds per‑line diagnostics in summaries) and
-  also increases the logger level.
-- `-q`, `--quiet` suppresses most **program output** and lowers logger noise.
+- `-v`, `--verbose` increases **program output** detail (e.g., renders per‑line diagnostics).
+- `-q`, `--quiet` suppresses most **program output**.
 
 Notes:
 

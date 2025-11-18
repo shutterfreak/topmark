@@ -195,10 +195,10 @@ topmark strip src/
 topmark strip --apply src/
 
 # Show supported file types in Markdown format
-topmark filetypes --format markdown --long
+topmark filetypes --output-format markdown --long
 
 # List processors and associated file types
-topmark processors --format markdown --long
+topmark processors --output-format markdown --long
 ```
 
 TopMark preserves line endings, shebangs, BOMs, and indentation rules for each file type.

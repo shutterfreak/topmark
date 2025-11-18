@@ -24,17 +24,17 @@ ______________________________________________________________________
 topmark processors
 
 # Detailed Markdown table
-topmark processors --long --format markdown
+topmark processors --long --output-format markdown
 
 # Machine‑readable
-topmark processors --format json | jq
+topmark processors --output-format json | jq
 ```
 
 ______________________________________________________________________
 
 ## Output formats
 
-Use `--format` to pick the output format:
+Use `--output-format` to pick the output format:
 
 - `default` — human‑readable (brief or detailed)
 - `json` — a single JSON document
@@ -76,13 +76,13 @@ ______________________________________________________________________
 topmark processors
 
 # Detailed Markdown table (ideal for project docs)
-topmark processors --long --format markdown
+topmark processors --long --output-format markdown
 
 # JSON for scripting
-topmark processors --long --format json | jq '.processors[] | {cls: .class, n: (.filetypes|length)}'
+topmark processors --long --output-format json | jq '.processors[] | {cls: .class, n: (.filetypes|length)}'
 
 # NDJSON for streaming
-topmark processors --format ndjson | grep processor | head -n 5
+topmark processors --output-format ndjson | grep processor | head -n 5
 ```
 
 ______________________________________________________________________

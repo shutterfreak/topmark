@@ -25,17 +25,17 @@ ______________________________________________________________________
 topmark filetypes
 
 # List all supported file types in Markdown (detailed mode)
-topmark filetypes --long --format markdown
+topmark filetypes --long --output-format markdown
 
 # Machine‑readable
-topmark filetypes --format json | jq
+topmark filetypes --output-format json | jq
 ```
 
 ______________________________________________________________________
 
 ## Output formats
 
-Use `--format` to pick the output format:
+Use `--output-format` to pick the output format:
 
 - `default` — human‑readable (brief or detailed)
 - `json` — a single JSON document (array of file types)
@@ -86,13 +86,13 @@ topmark filetypes
 topmark filetypes --long
 
 # Detailed Markdown table (ideal for project docs)
-topmark filetypes --long --format markdown
+topmark filetypes --long --output-format markdown
 
 # JSON for scripting
-topmark filetypes --long --format json | jq '.[] | select(.skip_processing==false)'
+topmark filetypes --long --output-format json | jq '.[] | select(.skip_processing==false)'
 
 # NDJSON for streaming
-topmark filetypes --format ndjson | head -n 5
+topmark filetypes --output-format ndjson | head -n 5
 ```
 
 ______________________________________________________________________
