@@ -43,7 +43,7 @@ Lists all header processors currently registered in TopMark, along with the file
 Use this command to see which processors are available and which file types they support.""",
 )
 @click.option(
-    "--format",
+    "--output-format",
     "output_format",
     type=EnumChoiceParam(OutputFormat),
     default=None,
@@ -148,8 +148,8 @@ TopMark version **{TOPMARK_VERSION}** supports the following header processors:
 **Legend**
 
 - This section groups file types by the **header processor** class handling them.
-- See `topmark filetypes --format=markdown --long` for per‑type matching rules, content matchers,
-  insert checkers, and policy details.
+- See `topmark filetypes --output-format=markdown --long` for per‑type matching rules,
+  content matchers, insert checkers, and policy details.
             """)
         else:
             console.print("""

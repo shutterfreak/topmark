@@ -13,17 +13,19 @@
 Ensures that running `topmark dump-config`:
 
 - Exits successfully (exit code 0).
-- Prints markers `# === BEGIN ===` and `# === END ===`.
+- Prints markers `TOML_BLOCK_START` and `TOML_BLOCK_END`.
 - Produces a valid TOML snippet between markers that can be parsed by `tomllib`.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-import tomlkit
+import pytest
+import toml
 
 from tests.cli.conftest import assert_SUCCESS, run_cli
+from topmark.constants import TOML_BLOCK_END, TOML_BLOCK_START
 
 if TYPE_CHECKING:
     from click.testing import Result
@@ -35,19 +37,28 @@ def test_dump_config_outputs_valid_toml() -> None:
         [
             "--no-color",  # Strip ANSI formatting to allow parsing the generated TOML
             "-v",  # Render the BEGIN and END markers
-            "dump-config",
+            "config",
+            "dump",
         ]
     )
 
     assert_SUCCESS(result)
 
-    assert "# === BEGIN ===" in result.output
+    assert TOML_BLOCK_START in result.output
+    assert TOML_BLOCK_END in result.output
 
     # Extract the TOML slice
-    start: int = result.output.find("# === BEGIN ===")
-    end: int = result.output.find("# === END ===")
+    start: int = result.output.find(TOML_BLOCK_START)
+    end: int = result.output.find(TOML_BLOCK_END)
     toml_text: list[str] = result.output[start:end].splitlines()[1:]  # drop marker line
-    parsed: tomlkit.TOMLDocument = tomlkit.parse("\n".join(toml_text))
-    assert "fields" in parsed
-
-    assert "header" in parsed
+    try:
+        parsed: dict[str, Any] = toml.loads("\n".join(toml_text))
+        assert "fields" in parsed
+        assert "header" in parsed
+    except TypeError as e:
+        # If an exception is caught, use pytest.fail() to fail the test explicitly.
+        # You can include the exception details in the message for better debugging.
+        pytest.fail(f"TypeError during TOML parsing: {e}")
+    except toml.TomlDecodeError as e:
+        # Fail the test if the TOML decoding fails.
+        pytest.fail(f"TomlDecodeError: {e}")

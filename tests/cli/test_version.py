@@ -80,8 +80,8 @@ def test_version_with_semver_flag_outputs_semver() -> None:
 
 @pytest.mark.parametrize("use_semver", [False, True])
 def test_version_json_format(use_semver: bool) -> None:
-    """`version --format json` returns parseable JSON with a correct version value."""
-    args: list[str] = ["--no-color", "version", "--format", "json"]
+    """`version --output-format json` returns parseable JSON with a correct version value."""
+    args: list[str] = ["--no-color", "version", "--output-format", "json"]
     if use_semver:
         args.append("--semver")
 
@@ -113,8 +113,8 @@ def test_version_json_format(use_semver: bool) -> None:
 
 @pytest.mark.parametrize("use_semver", [False, True])
 def test_version_markdown_format(use_semver: bool) -> None:
-    """`version --format markdown` prints a readable line that includes the correct version."""
-    args: list[str] = ["--no-color", "version", "--format", "markdown"]
+    """`version --output-format markdown` prints a readable line with the correct version."""
+    args: list[str] = ["--no-color", "version", "--output-format", "markdown"]
     if use_semver:
         args.append("--semver")
 

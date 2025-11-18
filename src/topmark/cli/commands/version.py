@@ -40,7 +40,7 @@ if TYPE_CHECKING:
     help="Render the version as SemVer instead of PEP 440 (maps rc→-rc.N, dev→-dev.N).",
 )
 @click.option(
-    "--format",
+    "--output-format",
     "output_format",
     type=EnumChoiceParam(OutputFormat),
     default=None,

@@ -1,19 +1,20 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : dump_config.py
-#   file_relpath : src/topmark/cli/commands/dump_config.py
+#   file         : config_dump.py
+#   file_relpath : src/topmark/cli/commands/config_dump.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""TopMark `dump-config` command.
+"""TopMark `config dump` command.
 
 Emits the effective TopMark configuration as TOML after applying defaults,
-project/user config files, and any CLI overrides. The output is wrapped
-between `# === BEGIN ===` and `# === END ===` markers for easy parsing in
-tests or tooling.
+project/user config files, and any CLI overrides.
+
+The output is wrapped between `TOML_BLOCK_START` and `TOML_BLOCK_END` markers
+for easy parsing in tests or tooling.
 
 Input modes:
   * This command is file-agnostic: positional PATHS and --files-from are ignored
@@ -28,7 +29,12 @@ from typing import TYPE_CHECKING
 
 import click
 
-from topmark.cli.cmd_common import build_config_common, get_effective_verbosity
+from topmark.cli.cli_types import EnumChoiceParam
+from topmark.cli.cmd_common import (
+    build_config_common,
+    get_effective_verbosity,
+    render_config_diagnostics,
+)
 from topmark.cli.io import plan_cli_inputs
 from topmark.cli.options import (
     CONTEXT_SETTINGS,
@@ -36,8 +42,10 @@ from topmark.cli.options import (
     common_file_and_filtering_options,
     common_header_formatting_options,
 )
-from topmark.cli_shared.utils import safe_unlink
+from topmark.cli.utils import emit_config_machine, render_toml_block
+from topmark.cli_shared.utils import OutputFormat, safe_unlink
 from topmark.config.logging import get_logger
+from topmark.constants import TOML_BLOCK_END, TOML_BLOCK_START
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -64,14 +72,22 @@ logger: TopmarkLogger = get_logger(__name__)
         "Notes:\n"
         "  • File lists are inputs, not configuration; they are ignored by dump-config.\n"
         "  • Pattern sources are part of configuration and are included in the dump.\n"
-        "  • Output is wrapped between '# === BEGIN ===' and '# === END ===' markers."
+        "  • In the default (human) format, output is wrapped between "
+        f"'{TOML_BLOCK_START}' and '{TOML_BLOCK_END}' markers."
     ),
     context_settings=CONTEXT_SETTINGS,
 )
 @common_config_options
 @common_file_and_filtering_options
 @common_header_formatting_options
-def dump_config_command(
+@click.option(
+    "--output-format",
+    "output_format",
+    type=EnumChoiceParam(OutputFormat),
+    default=None,
+    help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
+)
+def config_dump_command(
     # Command arguments
     *,
     # Command options: common_file_filtering_options
@@ -89,6 +105,7 @@ def dump_config_command(
     # Command options: formatting
     align_fields: bool,
     header_format: HeaderOutputFormat | None,
+    output_format: OutputFormat | None,
 ) -> None:
     """Dump the final merged configuration as TOML.
 
@@ -96,6 +113,10 @@ def dump_config_command(
     config files, and CLI overrides, then prints it as TOML surrounded by
     BEGIN/END markers. This is useful for debugging or for external tools
     that need to consume the resolved configuration.
+
+    Notes:
+        - In JSON/NDJSON modes, this command emits only a Config snapshot
+          (no diagnostics).
 
     Args:
         files_from (list[str] | None): Files that contain newline‑delimited *paths* to add to the
@@ -114,10 +135,17 @@ def dump_config_command(
         align_fields (bool): Whether to align header fields when rendering (captured in config).
         header_format (HeaderOutputFormat | None): Optional output format override for header
             rendering (captured in config).
+        output_format (OutputFormat | None): Output format to use
+            (``default``, ``markdown``, ``json``, or ``ndjson``).
+
+    Raises:
+        NotImplementedError: When providing an unsupported OutputType.
     """
     ctx: click.Context = click.get_current_context()
     ctx.ensure_object(dict)
     console: ConsoleLike = ctx.obj["console"]
+
+    fmt: OutputFormat = output_format or OutputFormat.DEFAULT
 
     # dump-config is file-agnostic: ignore positional PATHS and --files-from
     original_args: list[str] = list(ctx.args)
@@ -157,51 +185,50 @@ def dump_config_command(
         header_format=header_format,
     )
 
-    temp_path: Path | None = plan.temp_path  # for cleanup/STDIN-apply branch
     config: Config = draft_config.freeze()
+
+    # Display Config diagnostics before resolving files
+    if fmt == OutputFormat.DEFAULT:
+        render_config_diagnostics(ctx=ctx, config=config)
+
+    temp_path: Path | None = plan.temp_path  # for cleanup/STDIN-apply branch
     # Determine effective program-output verbosity for gating extra details
     vlevel: int = get_effective_verbosity(ctx, config)
 
     logger.trace("Config after merging CLI and discovered config: %s", draft_config)
 
     # We don't actually care about the file list here; just dump the config
-    import toml
 
-    merged_config: str = toml.dumps(config.to_toml_dict())
+    if fmt == OutputFormat.DEFAULT:
+        import toml
 
-    # Banner
-    if vlevel > 0:
-        console.print(
-            console.styled(
-                "TopMark Config Dump (TOML):\n",
-                bold=True,
-                underline=True,
-            )
+        merged_config: str = toml.dumps(config.to_toml_dict())
+        render_toml_block(
+            console=console,
+            title="TopMark Config Dump (TOML):",
+            toml_text=merged_config,
+            verbosity_level=vlevel,
         )
 
-        console.print(
-            console.styled(
-                "# === BEGIN ===",
-                fg="cyan",
-                dim=True,
-            )
-        )
+    elif fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
+        # Machine-readable formats: emit JSON/NDJSON without human banners
+        emit_config_machine(config, fmt=fmt)
 
-    console.print(
-        console.styled(
-            merged_config,
-            fg="cyan",
-        )
-    )
+    elif fmt == OutputFormat.MARKDOWN:
+        import toml
 
-    if vlevel > 0:
-        console.print(
-            console.styled(
-                "# === END ===",
-                fg="cyan",
-                dim=True,
-            )
-        )
+        merged_config: str = toml.dumps(config.to_toml_dict())
+
+        # Markdown: heading plus fenced TOML block, no ANSI styling.
+        console.print("# TopMark Config Dump (TOML)")
+        console.print()
+        console.print("```toml")
+        console.print(merged_config.rstrip("\n"))
+        console.print("```")
+
+    else:
+        # Defensive guard in case OutputFormat gains new members
+        raise NotImplementedError(f"Unsupported output format: {fmt!r}")
 
     # Cleanup any temp file created by content-on-STDIN mode (defensive)
     if temp_path and temp_path.exists():

@@ -60,7 +60,7 @@ Use this command to see which file types can be processed and referenced in conf
 """,
 )
 @click.option(
-    "--format",
+    "--output-format",
     "output_format",
     type=EnumChoiceParam(OutputFormat),
     default=None,

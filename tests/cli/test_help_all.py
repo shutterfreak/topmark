@@ -16,7 +16,7 @@ Ensures that:
 - Each registered subcommand provides a working `--help` page.
 """
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Tuple
 
 from click.testing import Result
 
@@ -25,14 +25,25 @@ from tests.cli.conftest import assert_SUCCESS, run_cli
 if TYPE_CHECKING:
     from click.testing import Result
 
-COMMANDS: list[str] = [
-    "check",
-    "strip",
-    "dump-config",
-    "filetypes",
-    "init-config",
-    "show-defaults",
-    "version",
+COMMANDS: list[Tuple[str, ...]] = [
+    ("check",),
+    ("strip",),
+    ("config",),
+    (
+        "config",
+        "init",
+    ),
+    (
+        "config",
+        "defaults",
+    ),
+    (
+        "config",
+        "dump",
+    ),
+    ("filetypes",),
+    ("processors",),
+    ("version",),
 ]
 
 
@@ -45,7 +56,7 @@ def test_group_help() -> None:
 
 def test_each_command_has_help() -> None:
     """It should provide a `--help` page for each known subcommand."""
-    for name in COMMANDS:
-        result: Result = run_cli([name, "--help"])
+    for cmd in COMMANDS:
+        result: Result = run_cli(cmd + ("--help",))
 
         assert_SUCCESS(result)

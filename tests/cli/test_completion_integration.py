@@ -116,7 +116,7 @@ def _bash_complete(args: list[str], incomplete: str) -> set[str]:
 @mark_integration
 def test_header_format_bash_completion_lists_all_values() -> None:
     """End-to-end: `--header-format` should suggest enum values via Bash adapter."""
-    suggestions: set[str] = _bash_complete(["dump-config", "--header-format"], "")
+    suggestions: set[str] = _bash_complete(["config", "dump", "--header-format"], "")
     expected: set[str] = {e.value for e in HeaderOutputFormat}
     if not suggestions:
         pytest.xfail("No suggestions produced by BashComplete in this environment")
@@ -127,7 +127,7 @@ def test_header_format_bash_completion_lists_all_values() -> None:
 @parametrize("prefix,expected_one", [("n", "native"), ("p", "plain"), ("j", "json")])
 def test_header_format_bash_completion_filters_by_prefix(prefix: str, expected_one: str) -> None:
     """End-to-end: prefix should filter suggestions (case-insensitive)."""
-    suggestions: set[str] = _bash_complete(["dump-config", "--header-format"], prefix)
+    suggestions: set[str] = _bash_complete(["config", "dump", "--header-format"], prefix)
     if not suggestions:
         pytest.xfail("No suggestions produced by BashComplete in this environment")
     assert any(s.lower().startswith(prefix) for s in suggestions)

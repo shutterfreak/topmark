@@ -52,6 +52,7 @@ from topmark.cli.cmd_common import (
     exit_if_no_files,
     get_effective_verbosity,
     maybe_exit_on_error,
+    render_config_diagnostics,
 )
 from topmark.cli.errors import TopmarkIOError, TopmarkUsageError
 from topmark.cli.io import plan_cli_inputs
@@ -64,7 +65,7 @@ from topmark.cli.options import (
 )
 from topmark.cli.utils import (
     emit_diffs,
-    emit_machine_output,
+    emit_processing_results_machine,
     emit_updated_content_to_stdout,
     render_banner,
     render_per_file_guidance,
@@ -151,7 +152,7 @@ Examples:
 )
 @underscored_trap_option("--skip_unsupported")
 @click.option(
-    "--format",
+    "--output-format",
     "output_format",
     type=EnumChoiceParam(OutputFormat),
     default=None,
@@ -265,6 +266,7 @@ def strip_command(
         exclude_patterns=exclude_patterns,
         stdin_filename=stdin_filename,
     )
+
     draft_config: MutableConfig = build_config_common(
         ctx=ctx,
         plan=plan,
@@ -280,6 +282,10 @@ def strip_command(
     draft_config.apply_changes = bool(apply_changes)
 
     config: Config = draft_config.freeze()
+
+    # Display Config diagnostics before resolving files
+    if fmt == OutputFormat.DEFAULT:
+        render_config_diagnostics(ctx=ctx, config=config)
 
     temp_path: Path | None = plan.temp_path  # for cleanup/STDIN-apply branch
     stdin_mode: bool = plan.stdin_mode
@@ -327,7 +333,12 @@ def strip_command(
 
     # Machine formats first
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
-        emit_machine_output(view_results, fmt, summary_mode)
+        emit_processing_results_machine(
+            config=config,
+            results=view_results,
+            fmt=fmt,
+            summary_mode=summary_mode,
+        )
     else:
         # Human output
         if summary_mode:
