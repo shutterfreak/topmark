@@ -75,6 +75,45 @@ Fails if the current working tree differs from the committed snapshot — useful
 
 ______________________________________________________________________
 
+## TOML I/O and tomlkit internals
+
+The helper `topmark.config.io.nest_toml_under_section` uses `tomlkit`’s
+`TOMLDocument` and its `.body` layout to preserve comments and whitespace
+when nesting an existing document under a dotted section (for example
+`tool.topmark` when generating a `pyproject.toml` block).
+
+This function is intentionally covered by focused tests
+(see `tests/config/test_io.py`) so that changes in tomlkit’s internal
+representation (e.g. how comments or whitespace nodes are stored) are
+caught early. If a future tomlkit release breaks these tests, the
+expected behavior here is the reference: preamble and postamble comments
+must be preserved, and the nested document must remain valid TOML.
+
+______________________________________________________________________
+
+## Config sanitization and invariants
+
+The method `MutableConfig.sanitize()` in `topmark.config.model` is the
+central place to enforce invariants on configuration values before they
+are frozen into an immutable `Config`.
+
+Current rules are intentionally conservative (for example, rejecting
+glob-like paths in `include_from` / `exclude_from` / `files_from`), but
+this method is expected to grow stricter over time. New checks should:
+
+- Prefer emitting diagnostics (warnings or errors) over raising
+  exceptions where possible.
+- Use `Config.diagnostics` to surface problems to the CLI and JSON/NDJSON
+  machine output.
+- Avoid changing the *shape* of the public config API; instead, treat
+  sanitization as validating and annotating existing fields.
+
+If downstream tools rely on exact error messages or the absence of
+diagnostics, they should be treated as internal integrations rather than
+stable public API.
+
+______________________________________________________________________
+
 ## 🧱 Policy
 
 - **Automatic validation:**\

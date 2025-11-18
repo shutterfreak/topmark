@@ -112,7 +112,7 @@ Running `topmark check` in `repo/app/` will:
 See also:
 
 - [Discovery order](#discovery-order-lowest-highest-precedence)
-- [Path semantics](#path-semantics-sources-define-the-base)
+- [Path semantics](#path-semantics)
 
 ______________________________________________________________________
 

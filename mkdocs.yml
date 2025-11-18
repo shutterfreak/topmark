@@ -97,9 +97,10 @@ nav:
       - Commands:
           - "check": usage/commands/check.md
           - "strip": usage/commands/strip.md
-          - "dump-config": usage/commands/dump_config.md
-          - "init-config": usage/commands/init_config.md
-          - "show-defaults": usage/commands/show_defaults.md
+          - "config": usage/commands/config.md
+          - "config dump": usage/commands/config_dump.md
+          - "config defaults": usage/commands/config_defaults.md
+          - "config init": usage/commands/config_init.md
           - "filetypes": usage/commands/filetypes.md
           - "processors": usage/commands/processors.md
           - "version": usage/commands/version.md
@@ -122,6 +123,7 @@ nav:
       - "Internals": api/internals.md
   - Development:
       - "API Stability": dev/api-stability.md
+      - "Machine output": dev/machine-output.md
 watch:
   - src
   - docs
