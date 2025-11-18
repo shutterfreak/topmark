@@ -32,6 +32,9 @@ site/
 .mypy_cache/
 .dmypy.json
 
+# ruff
+.ruff_cache/
+
 # pyenv - Python versions
 .python-version
 

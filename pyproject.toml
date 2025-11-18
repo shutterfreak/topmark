@@ -318,4 +318,5 @@ strategy = "atomic" # Use the safe atomic writer (default)
 [tool.topmark.files]
 file_types = []
 exclude_from = [".gitignore"]
+exclude_patterns = [".git/"]
 relative_to = "."

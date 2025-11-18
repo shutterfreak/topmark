@@ -26,8 +26,6 @@ import topmark.file_resolver as file_resolver_mod
 from tests.conftest import make_config
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     import pytest
 
     from topmark.config import Config
@@ -616,3 +614,95 @@ def test_exclude_dotfiles_with_pattern(tmp_path: Path, monkeypatch: pytest.Monke
     )
     rel: list[str] = [p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg)]
     assert rel == []
+
+
+def test_positional_glob_matches_path_rglob(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Positional glob expansion should mirror Path('.').rglob(pattern).
+
+    This guards the behavior of the `expand_path` glob branch: using
+    Path('.').rglob(pattern) semantics for CLI-style globs.
+    """
+    # Arrange: small tree
+    write(tmp_path / "a.py", "x")
+    write(tmp_path / "b.txt", "x")
+    write(tmp_path / "pkg" / "c.py", "x")
+    write(tmp_path / "pkg" / "d.md", "x")
+
+    pattern: str = "pkg/**/*.py"
+
+    with monkeypatch.context() as m:
+        m.chdir(tmp_path)
+
+        # Expected behavior from Path('.').rglob(pattern)
+        expected: list[Path] = sorted(p for p in Path(".").rglob(pattern) if p.is_file())
+
+        # TopMark resolver using the same positional glob
+        cfg: Config = make_config(files=[pattern])
+        files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+        result: list[Path] = sorted(files)
+
+        assert [p.as_posix() for p in result] == [p.as_posix() for p in expected]
+
+
+def test_files_from_seeds_candidates(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """files_from should seed candidates before include/exclude filtering.
+
+    A list file can introduce explicit paths, which are then subject to the
+    usual include/exclude logic. Here we verify that literal paths from
+    files_from are honored when they exist.
+    """
+    # Create some files
+    write(tmp_path / "src" / "a.py", "x")
+    write(tmp_path / "src" / "b.txt", "x")
+    write(tmp_path / "other" / "c.py", "x")
+
+    # List file with two entries (one .py, one .txt)
+    lst: Path = write(
+        tmp_path / "files.txt",
+        "src/a.py\nsrc/b.txt\n",
+    )
+
+    with monkeypatch.context() as m:
+        m.chdir(tmp_path)
+
+        # Use files_from as the only input source; no positional paths.
+        cfg: Config = make_config(
+            files_from=[str(lst)],
+        )
+        files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+        rel: list[str] = sorted(p.as_posix() for p in files)
+
+        # Expect both listed files, but not 'other/c.py' (not in the list)
+        assert rel == ["src/a.py", "src/b.txt"]
+
+
+def test_nonexistent_literal_paths_are_ignored(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Nonexistent literal paths should be ignored after logging a warning.
+
+    This pins down current behavior: literal paths that do not exist
+    are not fatal and do not contribute to the final candidate set.
+    """
+    # One real file and one missing literal
+    write(tmp_path / "a.py", "x")
+    missing: Path = tmp_path / "missing.py"
+
+    with monkeypatch.context() as m:
+        m.chdir(tmp_path)
+        caplog.set_level("WARNING")
+
+        cfg: Config = make_config(files=["a.py", str(missing)])
+        files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+        rel: list[str] = [p.as_posix() for p in files]
+
+        # Only the existing file should remain
+        assert rel == ["a.py"]
+
+        # And we should have logged at least one warning about the missing path
+        msgs: list[str] = [
+            r.message for r in caplog.records if "No such file or directory" in r.message
+        ]
+        assert msgs, "Expected a warning about the missing literal path"

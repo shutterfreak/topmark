@@ -22,6 +22,7 @@ The result is a deterministic, sorted list of files to process.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -202,6 +203,8 @@ def resolve_file_list(config: Config) -> list[Path]:
     if workspace_root is None:
         workspace_root = Path.cwd()
 
+    cwd: Path = Path.cwd()
+
     logger.trace(
         """\
     positional_paths: %s
@@ -229,6 +232,54 @@ def resolve_file_list(config: Config) -> list[Path]:
         config,
     )
 
+    # -------- Precompute exclude specs to allow directory-level pruning --------
+
+    exclude_pattern_spec: PathSpec | None = None
+    exclude_pattern_bases: list[Path] = []
+    exclude_source_specs: list[tuple[PathSpec, Path]] = []
+
+    if exclude_patterns:
+        # Same bases as in Step 4: CWD + config file directories
+        exclude_pattern_bases = [cwd.resolve()]
+        for base_dir in _iter_config_base_dirs(config_files):
+            if base_dir not in exclude_pattern_bases:
+                exclude_pattern_bases.append(base_dir)
+        exclude_pattern_spec = PathSpec.from_lines(
+            GitWildMatchPattern,
+            list(exclude_patterns),
+        )
+
+    if exclude_sources:
+        # Precompute specs for exclude_from files to prune directories early
+        for psrc in exclude_sources:
+            pats: list[str] = load_patterns_from_file(psrc)
+            if not pats:
+                continue
+            spec_src: PathSpec = PathSpec.from_lines(GitWildMatchPattern, pats)
+            exclude_source_specs.append((spec_src, psrc.base))
+
+    def _is_excluded_dir(path: Path) -> bool:
+        """Return True if a directory should be pruned during traversal.
+
+        This uses the same PathSpec semantics as the later exclude subtraction step,
+        but is applied to directory paths so we can avoid descending into subtrees
+        that would be entirely excluded anyway.
+        """
+        real: Path = path.resolve()
+
+        # 1) Global exclude_patterns against CWD + config dirs
+        if exclude_pattern_spec is not None:
+            for base in exclude_pattern_bases:
+                if exclude_pattern_spec.match_file(_rel_for_match(real, base)):
+                    return True
+
+        # 2) exclude_from specs (each with its own base)
+        for spec, base in exclude_source_specs:
+            if spec.match_file(_rel_for_match(real, base)):
+                return True
+
+        return False
+
     def expand_path(p: Path) -> list[Path]:
         """Expand a base path into a list of files and directories.
 
@@ -241,14 +292,52 @@ def resolve_file_list(config: Config) -> list[Path]:
         Returns:
             list[Path]: List of expanded paths (files and directories).
         """
-        # Glob patterns are expanded relative to CWD (Black‑style args).
+
+        def _walk_dir(root: Path) -> list[Path]:
+            """Walk a directory tree, pruning excluded subdirectories early."""
+            out: list[Path] = []
+
+            # If the root directory itself is excluded, skip its entire subtree.
+            if _is_excluded_dir(root):
+                logger.debug("Skipping excluded root dir during expansion: %s", root)
+                return out
+
+            for dirpath, dirnames, filenames in os.walk(root):
+                dirpath_path: Path = Path(dirpath)
+
+                # Prune excluded subdirectories in-place so os.walk never enters them.
+                kept_dirnames: list[str] = []
+                for name in dirnames:
+                    subdir: Path = dirpath_path / name
+                    if _is_excluded_dir(subdir):
+                        logger.debug("Pruning excluded subdir during expansion: %s", subdir)
+                        continue
+                    kept_dirnames.append(name)
+                dirnames[:] = kept_dirnames
+
+                for fname in filenames:
+                    out.append(dirpath_path / fname)
+
+            return out
+
+        # Glob patterns are expanded relative to CWD (Black-style args).
+        # Keep this branch exactly as before to preserve Path.rglob semantics.
         if "*" in str(p):
+            logger.debug("Processing glob pattern: %s", p)
             return list(Path(".").rglob(str(p)))
-        # If the path is a directory, recursively include all files and subdirectories
-        elif p.is_dir():
-            return list(p.rglob("*"))
+        # If the path is a directory, recursively include all files and subdirectories,
+        # but prune directories that are already excluded by config.
+        if p.is_dir():
+            logger.debug("Processing dir: %s", p)
+            path_list: list[Path] = _walk_dir(p)
+            logger.debug(
+                "Processing dir: %s - returning %d item(s)",
+                p,
+                len(path_list),
+            )
+            return path_list
         # If the path is a file, return it as a single-item list
-        elif p.is_file():
+        if p.is_file():
             return [p]
         # Otherwise, return empty list (path does not exist or is unsupported)
         return []
@@ -268,8 +357,6 @@ def resolve_file_list(config: Config) -> list[Path]:
     for psrc in files_from_sources or []:
         input_paths.extend(_read_paths_from_source(psrc))
     logger.debug("Input paths before expansion: %s", input_paths)
-
-    cwd: Path = Path.cwd()
 
     # If there are no explicit inputs (positional or files-from) but include globs
     # were provided, expand them relative to the workspace root to seed candidates.
@@ -361,7 +448,7 @@ def resolve_file_list(config: Config) -> list[Path]:
     # Step 4: Apply exclude subtraction filter (if any exclude patterns/sources)
     any_excludes: bool = bool(exclude_patterns) or bool(exclude_sources)
     if any_excludes:
-        kept = set()
+        kept: set[Path] = set()
         # 4.1 exclude_patterns: evaluate against CWD and each config file directory
         if exclude_patterns:
             # NOTE: This branch is reachable depending on CLI/config inputs;
@@ -410,7 +497,7 @@ def resolve_file_list(config: Config) -> list[Path]:
 
     # Step 6 (Finalize): dedupe by real path, prefer CWD-relative presentation
     out_by_real: dict[Path, Path] = {}
-    for p in filtered_files:  # <-- use filtered_files, not candidate_set
+    for p in filtered_files:
         real: Path = p.resolve()
         try:
             rel_to_cwd: Path = real.relative_to(cwd.resolve())
