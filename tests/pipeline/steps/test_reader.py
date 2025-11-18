@@ -34,7 +34,7 @@ from tests.conftest import parametrize
 from tests.pipeline.conftest import materialize_image_lines, run_reader, run_resolver, run_sniffer
 from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
-from topmark.pipeline.context import Diagnostic, ProcessingContext
+from topmark.pipeline.context import ProcessingContext
 from topmark.pipeline.status import (
     ContentStatus,
     FsStatus,
@@ -43,6 +43,8 @@ from topmark.pipeline.status import (
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from topmark.core.diagnostics import Diagnostic
 
 
 def test_read_sets_skip_on_mixed_newlines_strict(tmp_path: Path) -> None:

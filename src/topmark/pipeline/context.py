@@ -13,18 +13,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import TYPE_CHECKING, Iterable, Sequence, cast
+from typing import TYPE_CHECKING, Iterable, Sequence
 
 from yachalk import chalk
 
-# from topmark.api.view import (
-#     NO_REASON_PROVIDED,
-#     map_bucket,
-#     outcome_color,
-# )
 from topmark.config.logging import get_logger
 from topmark.config.policy import effective_policy
+from topmark.core.diagnostics import (
+    Diagnostic,
+    DiagnosticLevel,
+    DiagnosticStats,
+    compute_diagnostic_stats,
+)
 from topmark.core.enum_mixins import enum_from_name
 from topmark.filetypes.base import InsertCapability
 from topmark.pipeline.hints import Cluster, Hint, select_headline_hint
@@ -45,7 +45,7 @@ from .status import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable
+    from collections.abc import Iterable
     from pathlib import Path
 
     from topmark.config import Config
@@ -64,8 +64,6 @@ __all__: list[str] = [
     "allow_empty_header_by_policy",
     "ReasonHint",
     "FlowControl",
-    "DiagnosticLevel",
-    "Diagnostic",
     "HeaderProcessingStatus",
     "ProcessingContext",
 ]
@@ -281,50 +279,6 @@ class FlowControl:
     at_step: str = ""  # step name that requested the halt
 
 
-# --- Diagnostics support ------------------------------------------------------
-class DiagnosticLevel(Enum):
-    """Severity levels for diagnostics collected during processing.
-
-    Levels map to terminal colors and are ordered by importance: ERROR > WARNING > INFO.
-    This enum is **internal**; the public API exposes string literals.
-    """
-
-    INFO = "info"
-    WARNING = "warning"
-    ERROR = "error"
-
-    @property
-    def color(self) -> Callable[[str], str]:
-        """Return the `yachalk` color function associated with this severity level.
-
-        Intended for human-readable output only; machine formats should not use colors.
-
-        Returns:
-            Callable[[str], str]: The `yachalk` color function associated with this severity level.
-        """
-        return cast(
-            "Callable[[str], str]",
-            {
-                DiagnosticLevel.INFO: chalk.blue,
-                DiagnosticLevel.WARNING: chalk.yellow,
-                DiagnosticLevel.ERROR: chalk.red_bright,
-            }[self],
-        )
-
-
-@dataclass(frozen=True)
-class Diagnostic:
-    """Internal structured diagnostic with a severity level and message.
-
-    Note:
-        This type is **not** part of the public API surface. Conversions to
-        `PublicDiagnostic` happen at the API boundary.
-    """
-
-    level: DiagnosticLevel
-    message: str
-
-
 @dataclass
 class HeaderProcessingStatus:
     """Tracks the status of each processing phase for a single file.
@@ -453,12 +407,6 @@ class ProcessingContext:
 
     # View-based properties
     views: Views = field(default_factory=Views)
-    # image: FileImageView | None = None  # File image view
-    # header: HeaderView | None = None  # File header view
-    # build: BuilderView | None = None  # New file header build view
-    # render: RenderView | None = None  # New file header render view
-    # updated: UpdatedView | None = None  # New file updated view
-    # diff: DiffView | None = None  # File diff view
 
     # Cache per instance
     _eff_policy: Policy | None = None  # cached
@@ -577,7 +525,7 @@ class ProcessingContext:
                 }
                 # and self.status.comparison == ComparisonStatus.CHANGED
             ):
-                logger.error(
+                logger.debug(
                     "permitted_by_policy: header: %s, comparison: %s "
                     "-- pol_check_add_only: %s, will return False",
                     self.status.header,
@@ -586,7 +534,7 @@ class ProcessingContext:
                 )
                 return False  # forbidden when add-only
             else:
-                logger.error(
+                logger.debug(
                     "permitted_by_policy: header: %s, comparison: %s "
                     "-- pol_check_add_only: %s, will return True",
                     self.status.header,
@@ -601,7 +549,7 @@ class ProcessingContext:
                 self.status.header == HeaderStatus.MISSING
                 # and self.status.comparison == ComparisonStatus.CHANGED
             ):
-                logger.error(
+                logger.debug(
                     "permitted_by_policy: header: %s, comparison: %s "
                     "-- pol_check_update_only: %s, will return False",
                     self.status.header,
@@ -610,7 +558,7 @@ class ProcessingContext:
                 )
                 return False  # forbidden when update-only
             else:
-                logger.error(
+                logger.debug(
                     "permitted_by_policy: header: %s, comparison: %s "
                     "-- pol_check_update_only: %s, will return True",
                     self.status.header,
@@ -627,14 +575,14 @@ class ProcessingContext:
             ComparisonStatus.CHANGED,
             ComparisonStatus.UNCHANGED,
         }:
-            logger.error(
+            logger.debug(
                 "permitted_by_policy: header: %s, comparison: %s -- will return None",
                 self.status.header,
                 self.status.comparison,
             )
             return None
 
-        logger.error(
+        logger.debug(
             "permitted_by_policy: header: %s, comparison: %s -- PROCEED",
             self.status.header,
             self.status.comparison,
@@ -877,9 +825,10 @@ class ProcessingContext:
 
         diag_show_hint: str = ""
         if self.diagnostics:
-            n_info: int = sum(1 for d in self.diagnostics if d.level == DiagnosticLevel.INFO)
-            n_warn: int = sum(1 for d in self.diagnostics if d.level == DiagnosticLevel.WARNING)
-            n_err: int = sum(1 for d in self.diagnostics if d.level == DiagnosticLevel.ERROR)
+            stats: DiagnosticStats = compute_diagnostic_stats(self.diagnostics)
+            n_info: int = stats.n_info
+            n_warn: int = stats.n_warning
+            n_err: int = stats.n_error
             parts.append("-")
             # Compose a compact triage summary like "1 error, 2 warnings"
             triage: list[str] = []

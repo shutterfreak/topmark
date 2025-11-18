@@ -31,6 +31,7 @@ from __future__ import annotations
 # For runtime type checks, prefer collections.abc
 from collections.abc import Mapping
 from dataclasses import dataclass
+from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from topmark.config.logging import get_logger
@@ -67,3 +68,59 @@ class PatternSource:
 
     path: Path
     base: Path
+
+
+class OutputTarget(str, Enum):
+    """Available targets for writing processed file content."""
+
+    FILE = "Write to file"
+    STDOUT = "Write to STDOUT"
+
+    @classmethod
+    def from_name(cls, key_name: str | None) -> OutputTarget | None:
+        """Finds the OutputTarget member by its case-insensitive name (e.g., 'file', 'stdout').
+
+        Args:
+            key_name (str | None): The string name of the member (e.g., "file") or None.
+
+        Returns:
+            OutputTarget | None: The matching OutputTarget member or None
+                if the key is None or unmatched.
+        """
+        if key_name is None:
+            return None
+
+        # 1. Convert input to uppercase to match Enum member names (FILE, STDOUT)
+        target_name: str = key_name.upper()
+
+        # 2. Use the Enum's __members__ dictionary for a safe, direct lookup
+        return cls.__members__.get(target_name)
+
+
+class FileWriteStrategy(str, Enum):
+    """Available strategies for writing file content."""
+
+    ATOMIC = "Safe atomic writer (default)"
+    IN_PLACE = "Fast in-place writer"
+
+    @classmethod
+    def from_name(cls, key_name: str | None) -> FileWriteStrategy | None:
+        """Finds the FileWriteStrategy member by its case-insensitive name.
+
+        Args:
+            key_name (str | None): The string name of the member (e.g., 'atomic', 'in_place')
+                or None.
+
+        Returns:
+            FileWriteStrategy | None: The matching FileWriteStrategy member or None
+                if the key is None or unmatched.
+        """
+        if key_name is None:
+            return None
+
+        # 1. Convert input to uppercase to match Enum member names (ATOMIC, IN_PLACE)
+        target_name: str = key_name.upper()
+
+        # 2. Use the Enum's __members__ dictionary for a safe, direct lookup
+        #    cls.__members__ maps string names to Enum instances.
+        return cls.__members__.get(target_name)

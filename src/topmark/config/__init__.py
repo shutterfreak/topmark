@@ -32,7 +32,7 @@ Path resolution policy (summary):
 * ``relative_to`` is used only for header metadata (e.g. ``file_relpath``).
 """
 
-from .model import Config, MutableConfig
+from .model import Config, MutableConfig, sanitize_config
 from .types import ArgsLike, PatternSource
 
 __all__: list[str] = [
@@ -40,4 +40,5 @@ __all__: list[str] = [
     "ArgsLike",
     "Config",
     "MutableConfig",
+    "sanitize_config",
 ]

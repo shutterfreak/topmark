@@ -19,11 +19,14 @@ TOPMARK_VERSION: str = get_version("topmark")
 
 PYPROJECT_TOML_PATH: Path = Path(__file__).parent.parent.parent / "pyproject.toml"
 
-# Name of the bundled default config inside the package `topmark.config`.
-# This is used with importlib.resources in config/__init__.py
-DEFAULT_TOML_CONFIG_RESOURCE: str = "topmark-default.toml"
+# Name of the bundled default config inside the package `topmark.config`:
+DEFAULT_TOML_CONFIG_PACKAGE: str = "topmark.config"
+DEFAULT_TOML_CONFIG_NAME: str = "topmark-default.toml"
 
 TOPMARK_START_MARKER: str = "topmark:header:start"
 TOPMARK_END_MARKER: str = "topmark:header:end"
+
+TOML_BLOCK_START: str = "# === BEGIN[TOML] ==="
+TOML_BLOCK_END: str = "# === END[TOML] ==="
 
 VALUE_NOT_SET: str = "<not set>"

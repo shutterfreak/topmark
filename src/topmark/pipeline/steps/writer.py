@@ -40,8 +40,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
 from topmark.config.logging import get_logger
-from topmark.config.model import FileWriteStrategy, OutputTarget
 from topmark.config.policy import effective_policy
+from topmark.config.types import FileWriteStrategy, OutputTarget
 from topmark.pipeline.hints import Axis, Cluster, KnownCode, make_hint
 from topmark.pipeline.status import (
     PlanStatus,

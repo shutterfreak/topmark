@@ -49,7 +49,6 @@ import os
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -67,6 +66,8 @@ from topmark.config.io import (
 from topmark.config.logging import get_logger
 from topmark.config.paths import abs_path_from, extend_ps, ps_from_cli, ps_from_config
 from topmark.config.policy import MutablePolicy, Policy
+from topmark.config.types import FileWriteStrategy, OutputTarget
+from topmark.core.diagnostics import Diagnostic, DiagnosticLevel
 from topmark.rendering.formats import HeaderOutputFormat
 
 if TYPE_CHECKING:
@@ -82,62 +83,6 @@ ArgsLike = Mapping[str, Any]
 # CLI to pass its namespace and the API/tests to pass plain dicts.
 
 logger: TopmarkLogger = get_logger(__name__)
-
-
-class OutputTarget(str, Enum):
-    """Available targets for writing processed file content."""
-
-    FILE = "Write to file"
-    STDOUT = "Write to STDOUT"
-
-    @classmethod
-    def from_name(cls, key_name: str | None) -> OutputTarget | None:
-        """Finds the OutputTarget member by its case-insensitive name (e.g., 'file', 'stdout').
-
-        Args:
-            key_name (str | None): The string name of the member (e.g., "file") or None.
-
-        Returns:
-            OutputTarget | None: The matching OutputTarget member or None
-                if the key is None or unmatched.
-        """
-        if key_name is None:
-            return None
-
-        # 1. Convert input to uppercase to match Enum member names (FILE, STDOUT)
-        target_name: str = key_name.upper()
-
-        # 2. Use the Enum's __members__ dictionary for a safe, direct lookup
-        return cls.__members__.get(target_name)
-
-
-class FileWriteStrategy(str, Enum):
-    """Available strategies for writing file content."""
-
-    ATOMIC = "Safe atomic writer (default)"
-    IN_PLACE = "Fast in-place writer"
-
-    @classmethod
-    def from_name(cls, key_name: str | None) -> FileWriteStrategy | None:
-        """Finds the FileWriteStrategy member by its case-insensitive name.
-
-        Args:
-            key_name (str | None): The string name of the member (e.g., 'atomic', 'in_place')
-                or None.
-
-        Returns:
-            FileWriteStrategy | None: The matching FileWriteStrategy member or None
-                if the key is None or unmatched.
-        """
-        if key_name is None:
-            return None
-
-        # 1. Convert input to uppercase to match Enum member names (ATOMIC, IN_PLACE)
-        target_name: str = key_name.upper()
-
-        # 2. Use the Enum's __members__ dictionary for a safe, direct lookup
-        #    cls.__members__ maps string names to Enum instances.
-        return cls.__members__.get(target_name)
 
 
 # ------------------ Immutable runtime config ------------------
@@ -187,6 +132,8 @@ class Config:
         include_patterns (tuple[str, ...]): Glob patterns to include.
         exclude_patterns (tuple[str, ...]): Glob patterns to exclude.
         file_types (frozenset[str]): File extensions or types to process.
+        diagnostics (tuple[Diagnostic, ...]): Warnings or errors encountered while loading,
+            merging or sanitizing config.
 
     Policy resolution:
         Public/API overlays are applied to a mutable draft **after** discovery and
@@ -240,6 +187,9 @@ class Config:
     # File types (linked to file extensions) to process (filter)
     file_types: frozenset[str]
 
+    # Collected diagnostics while loading / merging / sanitizing config.
+    diagnostics: tuple[Diagnostic, ...]
+
     def to_toml_dict(self, *, include_files: bool = False) -> TomlTable:
         """Convert this immutable Config into a TOML-serializable dict.
 
@@ -256,6 +206,14 @@ class Config:
             loading live on the **mutable** side (see `MutableConfig` and
             `topmark.config.io`).
         """
+        # Normalize writer strategy for TOML (map enum to a stable, config-friendly token)
+        if self.file_write_strategy is None:
+            writer_strategy: str | None = None
+        else:
+            # FileWriteStrategy names are things like "ATOMIC" / "INPLACE";
+            # map them back to lowercase tokens used in config.
+            writer_strategy = self.file_write_strategy.name.lower()
+
         toml_dict: TomlTable = {
             "fields": dict(self.field_values),
             "header": {"fields": list(self.header_fields)},
@@ -267,7 +225,7 @@ class Config:
             },
             "writer": {
                 "target": self.output_target,
-                "strategy": self.file_write_strategy,
+                "strategy": writer_strategy,
             },
             "files": {
                 "file_types": list(self.file_types),
@@ -277,7 +235,9 @@ class Config:
                 "include_patterns": list(self.include_patterns),
                 "exclude_patterns": list(self.exclude_patterns),
                 "relative_to": self.relative_to_raw,
-                "config_files": list(self.config_files),
+                "config_files": [
+                    str(p) if isinstance(p, Path) else str(p) for p in self.config_files
+                ],
             },
         }
 
@@ -336,7 +296,24 @@ class Config:
             exclude_from=list(self.exclude_from),
             files_from=list(self.files_from),
             file_types=set(self.file_types),
+            diagnostics=list(self.diagnostics),
         )
+
+
+def sanitize_config(config: Config) -> Config:
+    """Sanitize a Config object.
+
+    Thaws the Config into a MutableConfig, sanitizes and freezes again.
+
+    Args:
+        config (Config): The Config to sanitize.
+
+    Returns:
+        Config: The sanitized Config instance.
+    """
+    m: MutableConfig = config.thaw()
+    m.sanitize()
+    return m.freeze()
 
 
 # -------------------------- Mutable builder --------------------------
@@ -376,6 +353,8 @@ class MutableConfig:
         include_patterns (list[str]): Glob patterns to include.
         exclude_patterns (list[str]): Glob patterns to exclude.
         file_types (set[str]): File extensions or types to process.
+        diagnostics (list[Diagnostic]): Warnings or errors encountered while loading,
+            merging or sanitizing config.
     """
 
     # Initialization timestamp for the draft instance
@@ -425,9 +404,18 @@ class MutableConfig:
     # File types filter
     file_types: set[str] = field(default_factory=lambda: set[str]())
 
+    # Collected diagnostics while loading / merging / sanitizing config.
+    diagnostics: list[Diagnostic] = field(default_factory=list[Diagnostic])
+
     # ---------------------------- Build/freeze ----------------------------
     def freeze(self) -> Config:
-        """Freeze the draft into an immutable `Config` snapshot."""
+        """Freeze this mutable builder into an immutable Config.
+
+        This method applies final sanitation and normalizes internal container
+        types before constructing the immutable `Config` snapshot.
+        """
+        self.sanitize()
+
         # Resolve global policy against an all-false base
         global_policy_frozen: Policy = self.policy.resolve(Policy())
 
@@ -463,12 +451,13 @@ class MutableConfig:
             relative_to=self.relative_to,
             stdin=self.stdin,
             files=tuple(self.files),
-            include_patterns=tuple(self.include_patterns),
             include_from=tuple(self.include_from),
-            exclude_patterns=tuple(self.exclude_patterns),
             exclude_from=tuple(self.exclude_from),
             files_from=tuple(self.files_from),
+            include_patterns=tuple(self.include_patterns),
+            exclude_patterns=tuple(self.exclude_patterns),
             file_types=frozenset(self.file_types),
+            diagnostics=tuple(self.diagnostics),
         )
 
     # --------------------------- Loaders/parsers --------------------------
@@ -1119,3 +1108,55 @@ class MutableConfig:
         logger.debug("apply_cli_args(): finalized stdin=%s files=%s", self.stdin, self.files)
 
         return self
+
+    def sanitize(self) -> None:
+        """Normalize and validate draft config in-place.
+
+        This step enforces invariants expected by downstream components
+        (file_resolver, pipeline, CLI). It is intended to be called just before
+        freezing into an immutable `Config`.
+
+        Current rules:
+            - include_from / exclude_from / files_from entries must refer to
+              concrete files, not glob-style paths. Any `PatternSource.path`
+              containing glob metacharacters (*, ?, [, ]) is ignored with a warning.
+
+        Future extensions may:
+            - validate relative_to vs. config_files,
+            - check existence of pattern files,
+            - normalize duplicate patterns or sources.
+        """
+
+        def _has_glob_chars(p: Path) -> bool:
+            s: str = str(p)
+            return any(ch in s for ch in "*?[]")
+
+        def _sanitize_sources(name: str, sources: list[PatternSource]) -> None:
+            if not sources:
+                return
+            kept: list[PatternSource] = []
+            for ps in sources:
+                if _has_glob_chars(ps.path):
+                    msg: str = (
+                        f"Ignoring {name} entry with glob characters in path: {ps.path} "
+                        "(these options expect concrete files; use "
+                        "include_patterns / exclude_patterns for globs)."
+                    )
+                    logger.warning(msg)
+                    self.diagnostics.append(Diagnostic(level=DiagnosticLevel.WARNING, message=msg))
+                    continue
+                kept.append(ps)
+
+            if len(kept) != len(sources):
+                logger.debug(
+                    "Sanitized %s: kept %d source(s), dropped %d invalid source(s)",
+                    name,
+                    len(kept),
+                    len(sources) - len(kept),
+                )
+
+            sources[:] = kept
+
+        _sanitize_sources("include_from", self.include_from)
+        _sanitize_sources("exclude_from", self.exclude_from)
+        _sanitize_sources("files_from", self.files_from)
