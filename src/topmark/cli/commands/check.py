@@ -75,9 +75,9 @@ from topmark.cli.utils import (
     render_per_file_guidance,
     render_summary_counts,
 )
-from topmark.cli_shared.exit_codes import ExitCode
 from topmark.cli_shared.utils import OutputFormat, safe_unlink
 from topmark.config.logging import get_logger
+from topmark.core.exit_codes import ExitCode
 from topmark.pipeline.context.policy import effective_would_add_or_update
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.status import (

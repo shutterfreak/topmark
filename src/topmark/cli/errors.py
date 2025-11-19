@@ -25,7 +25,7 @@ from typing import IO, Any
 
 import click
 
-from topmark.cli_shared.exit_codes import ExitCode
+from topmark.core.exit_codes import ExitCode
 
 
 class TopmarkError(click.ClickException):

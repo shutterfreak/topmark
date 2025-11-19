@@ -40,8 +40,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.cli_shared.exit_codes import ExitCode
 from topmark.config.logging import get_logger
+from topmark.core.exit_codes import ExitCode
 from topmark.pipeline import runner
 from topmark.pipeline.context.model import ProcessingContext
 

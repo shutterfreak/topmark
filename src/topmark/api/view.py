@@ -51,8 +51,8 @@ from topmark.pipeline.status import (
 from .types import DiagnosticTotals, FileResult, Outcome, RunResult
 
 if TYPE_CHECKING:
-    from topmark.cli_shared.exit_codes import ExitCode
     from topmark.config.logging import TopmarkLogger
+    from topmark.core.exit_codes import ExitCode
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.views import DiffView
     from topmark.rendering.colored_enum import Colorizer

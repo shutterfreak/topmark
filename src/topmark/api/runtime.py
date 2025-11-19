@@ -36,8 +36,8 @@ from topmark.pipeline.pipelines import Pipeline
 from topmark.registry import Registry
 
 if TYPE_CHECKING:
-    from topmark.cli_shared.exit_codes import ExitCode
     from topmark.config.logging import TopmarkLogger
+    from topmark.core.exit_codes import ExitCode
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.protocols import Step
 

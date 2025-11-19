@@ -79,9 +79,9 @@ if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
     from pathlib import Path
 
-    from topmark.cli_shared.exit_codes import ExitCode
     from topmark.config import Config
     from topmark.config.logging import TopmarkLogger
+    from topmark.core.exit_codes import ExitCode
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.protocols import Step
 

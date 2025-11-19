@@ -25,7 +25,7 @@ from typing import IO, TYPE_CHECKING, Any, Sequence
 from click.testing import CliRunner, Result
 
 from topmark.cli.main import cli
-from topmark.cli_shared.exit_codes import ExitCode
+from topmark.core.exit_codes import ExitCode
 
 if TYPE_CHECKING:
     from pathlib import Path

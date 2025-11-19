@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 
     import pytest
 
-    from topmark.cli_shared.exit_codes import ExitCode
+    from topmark.core.exit_codes import ExitCode
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.protocols import Step
 

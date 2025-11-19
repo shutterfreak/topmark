@@ -39,9 +39,9 @@ if TYPE_CHECKING:
 
     from topmark.cli.io import InputPlan
     from topmark.cli_shared.console_api import ConsoleLike
-    from topmark.cli_shared.exit_codes import ExitCode
     from topmark.config import Config, MutableConfig
     from topmark.config.logging import TopmarkLogger
+    from topmark.core.exit_codes import ExitCode
     from topmark.rendering.formats import HeaderOutputFormat
 
 logger: TopmarkLogger = get_logger(__name__)

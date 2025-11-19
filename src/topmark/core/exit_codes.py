@@ -2,20 +2,23 @@
 #
 #   project      : TopMark
 #   file         : exit_codes.py
-#   file_relpath : src/topmark/cli_shared/exit_codes.py
+#   file_relpath : src/topmark/core/exit_codes.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""Exit codes for TopMark CLI.
+"""Exit codes for the TopMark runtime and CLI.
 
-TopMark aligns with the BSD `sysexits` convention where practical, so that other tooling
-can interpret failures consistently. The one deliberate divergence is `WOULD_CHANGE=2`,
-which is used to signal a dry-run state where changes would be made; this allows
-automation and tests to distinguish between a "would change" result and a usage error
-(which, in Click, also defaults to 2). Tests must assert `result.exception is None`
-to disambiguate TopMark's dry-run from Click's own usage errors.
+This module centralizes the exit codes used by the CLI, engine helpers, and
+tests. TopMark aligns with the BSD ``sysexits`` convention where practical so
+that other tooling can interpret failures consistently. The one deliberate
+divergence is ``WOULD_CHANGE = 2``, which is used to signal a dry-run state
+where changes would be made; this allows automation and tests to distinguish
+between a "would change" result and a usage error (which, in Click, also
+defaults to 2). When used with Click-based CLIs, tests must assert
+``result.exception is None`` to disambiguate TopMark's dry-run from Click's
+own usage errors.
 """
 
 from __future__ import annotations
@@ -24,14 +27,15 @@ from enum import IntEnum
 
 
 class ExitCode(IntEnum):
-    """Standardized exit codes for TopMark CLI.
+    """Standardized exit codes for the TopMark runtime and CLI.
 
-    TopMark follows the BSD `sysexits` convention where practical so other
+    TopMark follows the BSD ``sysexits`` convention where practical so other
     tooling can interpret failures consistently. The one deliberate
-    divergence is ``WOULD_CHANGE = 2`` which TopMark uses to signal a dry-run
-    state where changes would be made; tests must assert that no Click
-    exception was raised (``result.exception is None``) to disambiguate from
-    Click's own usage errors (which also default to 2).
+    divergence is ``WOULD_CHANGE = 2``, which TopMark uses to signal a dry-run
+    state where changes would be made. When running under a Click-based CLI,
+    tests must assert that no Click exception was raised
+    (``result.exception is None``) to disambiguate from Click's own usage
+    errors (which also default to 2).
 
     Attributes:
         SUCCESS: Successful execution with no errors.

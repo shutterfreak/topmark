@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING
 from click.testing import Result
 
 from tests.cli.conftest import assert_SUCCESS, run_cli_in
-from topmark.cli_shared.exit_codes import ExitCode
+from topmark.core.exit_codes import ExitCode
 
 if TYPE_CHECKING:
     from pathlib import Path
