@@ -270,6 +270,64 @@ Exact fields may evolve, but currently include:
 The canonical reference is the type and builder used by
 `build_processing_results_payload` in `topmark.cli_shared.machine_output`.
 
+### Additional diagnostic fields
+
+Recent versions of TopMark enrich the per-file result with a few
+diagnostic helpers intended to make CI and tooling integration easier.
+
+```jsonc
+{
+  "diagnostic_counts": {
+    "info": 0,
+    "warning": 2,
+    "error": 1
+  },
+  "pre_insert_check": {
+    "capability": "UNSUPPORTED", // InsertCapability enum name
+    "reason": "header insertion is not supported for this file type",
+    "origin": "SnifferStep"
+  },
+  "outcome": {
+    "would_change": true,
+    "can_change": true,
+    "permitted_by_policy": true,
+    "check": {
+      "would_add_or_update": true,
+      "effective_would_add_or_update": true
+    },
+    "strip": {
+      "would_strip": false,
+      "effective_would_strip": false
+    }
+  }
+}
+```
+
+- `diagnostic_counts`: pre-computed counts of diagnostics by level. This
+  mirrors the `diagnostics` list but makes it trivial to gate builds on
+  “no errors” or “no warnings” without having to reduce the list yourself.
+
+- `pre_insert_check`: summarizes the pre-insertion capabilities derived
+  from the sniffer and file-type policies:
+
+  - `capability`: enum name from `InsertCapability` (for example
+    `"UNSUPPORTED"`, `"OK"`, `"NEEDS_SPACER"`).
+  - `reason`: short, human-readable explanation (may be `null`).
+  - `origin`: source of the diagnostic (typically a step name).
+
+- `outcome`: high-level intent and feasibility flags derived from
+  the pipeline status and the effective policy:
+
+  - `would_change`: `true` if the pipeline intends to change the file
+    (insert/update/strip a header), `false` if definitely no change,
+    `null` when indeterminate.
+  - `can_change`: `true` if a change is structurally and operationally
+    safe given the current statuses (resolve/fs/strip/header).
+  - `permitted_by_policy`: tri-state flag indicating whether the
+    intended change is allowed by policy (`true`/`false`/`null`).
+  - `check.*`: intent and feasibility for insert/update operations.
+  - `strip.*`: intent and feasibility for strip operations.
+
 ______________________________________________________________________
 
 ## Config-only commands
