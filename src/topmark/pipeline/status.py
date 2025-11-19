@@ -125,7 +125,7 @@ class RenderStatus(BaseStatus):
         RENDERED: The expected header text was successfully rendered.
     """
 
-    PENDING = ("header field rednering pending", chalk.gray)
+    PENDING = ("header field rendering pending", chalk.gray)
     RENDERED = ("header fields rendered", chalk.blue)
     SKIPPED = ("header rendering skipped", chalk.yellow)
 

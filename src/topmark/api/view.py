@@ -182,7 +182,7 @@ def map_bucket(r: ProcessingContext, *, apply: bool) -> ResultBucket:
         return f"[{k}] {lbl}"
 
     intent: Intent = determine_intent(r)
-    logger.warning("intent: %s; apply: %s; status: %s", intent.value, apply, r.status)
+    logger.info("intent: %s; apply: %s; status: %s", intent.value, apply, r.status)
 
     # 1a) hard skips/errors first
     if r.status.resolve != ResolveStatus.RESOLVED:
@@ -228,9 +228,7 @@ def map_bucket(r: ProcessingContext, *, apply: bool) -> ResultBucket:
         reason = "skipped by policy"
         return ResultBucket(outcome=Outcome.SKIPPED, reason=reason)
 
-    logger.warning(
-        "map_bucket: not forbidden by policy, permitted is %s", r.check_permitted_by_policy
-    )
+    logger.info("map_bucket: not forbidden by policy, permitted is %s", r.check_permitted_by_policy)
 
     # 4) unchanged
     if r.status.comparison == ComparisonStatus.UNCHANGED:
