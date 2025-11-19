@@ -32,31 +32,25 @@ import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Iterable, Sequence
 
-from yachalk import chalk
-
 from topmark.config.logging import get_logger
 from topmark.config.policy import effective_policy
 from topmark.core.diagnostics import (
     Diagnostic,
     DiagnosticLevel,
-    DiagnosticStats,
-    compute_diagnostic_stats,
 )
-from topmark.core.enum_mixins import enum_from_name
 from topmark.filetypes.base import InsertCapability
-from topmark.pipeline.context.policy import allow_empty_by_policy
-from topmark.pipeline.context.status import HeaderProcessingStatus
-from topmark.pipeline.hints import Cluster, Hint, select_headline_hint
-from topmark.pipeline.views import UpdatedView, Views
-
-from ..status import (
-    ComparisonStatus,
-    FsStatus,
-    HeaderStatus,
-    ResolveStatus,
-    StripStatus,
-    WriteStatus,
+from topmark.pipeline.context.policy import (
+    can_change,
+    check_permitted_by_policy,
+    effective_would_add_or_update,
+    effective_would_strip,
+    would_add_or_update,
+    would_change,
+    would_strip,
 )
+from topmark.pipeline.context.status import HeaderProcessingStatus
+from topmark.pipeline.hints import Hint
+from topmark.pipeline.views import UpdatedView, Views
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -68,7 +62,6 @@ if TYPE_CHECKING:
     from topmark.filetypes.base import FileType
     from topmark.pipeline.processors.base import HeaderProcessor
     from topmark.pipeline.protocols import Step
-    from topmark.rendering.colored_enum import Colorizer
 
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -205,196 +198,6 @@ class ProcessingContext:
         # Cache per-context so policy_by_type lookups aren’t repeated.
         self._eff_policy = eff
         return eff
-
-    @property
-    def would_change(self) -> bool | None:
-        """Return whether a change *would* occur (tri-state).
-
-        Returns:
-            bool | None: ``True`` if a change is intended (e.g., comparison is
-                CHANGED, a header is missing, or the strip step prepared/attempted
-                a removal), ``False`` if definitively no change (e.g., UNCHANGED or
-                strip NOT_NEEDED), and ``None`` when indeterminate because the
-                comparison was skipped/pending and the strip step did not run.
-        """
-        # Strip intent takes precedence: READY means we intend to remove, and
-        # FAILED still represents an intent (feasibility is handled by can_change).
-        if self.status.strip in {StripStatus.READY, StripStatus.FAILED}:
-            return True
-        # Default pipeline intents
-        if self.status.header == HeaderStatus.MISSING:
-            return True
-        if self.status.comparison == ComparisonStatus.CHANGED:
-            return True
-        if (
-            self.status.comparison == ComparisonStatus.UNCHANGED
-            or self.status.strip == StripStatus.NOT_NEEDED
-        ):
-            return False
-        # Anything else (PENDING, SKIPPED, CANNOT_COMPARE with no strip decision)
-        return None
-
-    @property
-    def can_change(self) -> bool:
-        """Return whether a change *can* be applied safely.
-
-        This reflects operational feasibility (filesystem/resolve status) and
-        structural safety, with a policy-based allowance for inserting into empty files.
-        """
-        # baseline feasibility + structural safety
-        feasible: bool = (
-            self.status.resolve == ResolveStatus.RESOLVED
-            # if strip preparation failed, we can’t change via strip:
-            and self.status.strip != StripStatus.FAILED
-            # malformed headers block safe mutation in the default pipeline:
-            and self.status.header
-            not in {
-                HeaderStatus.MALFORMED,
-                HeaderStatus.MALFORMED_ALL_FIELDS,
-                HeaderStatus.MALFORMED_SOME_FIELDS,
-            }
-        )
-
-        if not feasible:
-            return False
-
-        # Filesystem feasibility:
-        # - OK files: allowed
-        # - EMPTY files: allowed if per-type policy permits insertion into empty files
-        if self.status.fs == FsStatus.OK:
-            return True
-        if self.status.fs == FsStatus.EMPTY and allow_empty_by_policy(self):
-            return True
-
-        return False
-
-    @property
-    def check_permitted_by_policy(self) -> bool | None:
-        """Whether policy allows the intended type of change (tri-state).
-
-        Returns:
-            bool | None:
-                - True  : policy allows the intended change (insert/replace)
-                - False : policy forbids it (e.g., add_only forbids replace)
-                - None  : indeterminate (no clear intent yet)
-        """
-        pol: Policy | None = self.get_effective_policy()
-        pol_check_add_only: bool = pol.add_only if pol else False
-        pol_check_update_only: bool = pol.update_only if pol else False
-
-        if self.status.strip != StripStatus.PENDING:
-            # StripperStep did run
-            return None
-
-        if self.status.header == HeaderStatus.PENDING:
-            # ScannerStep did not run
-            return None
-
-        # Insert path (missing header)
-        if pol_check_add_only:
-            if (
-                self.status.header
-                in {
-                    HeaderStatus.DETECTED,
-                    HeaderStatus.EMPTY,
-                    # HeaderStatus.MALFORMED_ALL_FIELDS,
-                    # HeaderStatus.MALFORMED_SOME_FIELDS,
-                }
-                # and self.status.comparison == ComparisonStatus.CHANGED
-            ):
-                logger.debug(
-                    "permitted_by_policy: header: %s, comparison: %s "
-                    "-- pol_check_add_only: %s, will return False",
-                    self.status.header,
-                    self.status.comparison,
-                    pol_check_add_only,
-                )
-                return False  # forbidden when add-only
-            else:
-                logger.debug(
-                    "permitted_by_policy: header: %s, comparison: %s "
-                    "-- pol_check_add_only: %s, will return True",
-                    self.status.header,
-                    self.status.comparison,
-                    pol_check_add_only,
-                )
-                return True
-
-        # Replace path (existing but different)
-        if pol_check_update_only:
-            if (
-                self.status.header == HeaderStatus.MISSING
-                # and self.status.comparison == ComparisonStatus.CHANGED
-            ):
-                logger.debug(
-                    "permitted_by_policy: header: %s, comparison: %s "
-                    "-- pol_check_update_only: %s, will return False",
-                    self.status.header,
-                    self.status.comparison,
-                    pol_check_update_only,
-                )
-                return False  # forbidden when update-only
-            else:
-                logger.debug(
-                    "permitted_by_policy: header: %s, comparison: %s "
-                    "-- pol_check_update_only: %s, will return True",
-                    self.status.header,
-                    self.status.comparison,
-                    pol_check_update_only,
-                )
-                return True
-
-        # No clear intent yet → unknown
-        if self.status.header not in {
-            HeaderStatus.MISSING,
-            HeaderStatus.DETECTED,
-        } and self.status.comparison not in {
-            ComparisonStatus.CHANGED,
-            ComparisonStatus.UNCHANGED,
-        }:
-            logger.debug(
-                "permitted_by_policy: header: %s, comparison: %s -- will return None",
-                self.status.header,
-                self.status.comparison,
-            )
-            return None
-
-        logger.debug(
-            "permitted_by_policy: header: %s, comparison: %s -- PROCEED",
-            self.status.header,
-            self.status.comparison,
-        )
-
-        # Unchanged or no-op
-        return True
-
-    @property
-    def would_add_or_update(self) -> bool:
-        """Intent for check/apply: True if we'd insert or replace a header."""
-        return (
-            self.status.header == HeaderStatus.MISSING
-            or self.status.comparison == ComparisonStatus.CHANGED
-        )
-
-    @property
-    def effective_would_add_or_update(self) -> bool:
-        """True iff add/update is intended, feasible, and allowed by policy."""
-        return (
-            self.would_add_or_update
-            and self.can_change is True
-            and (self.check_permitted_by_policy is not False)
-        )
-
-    @property
-    def would_strip(self) -> bool:
-        """Intent for strip: True if a removal would occur."""
-        return self.status.strip == StripStatus.READY
-
-    @property
-    def effective_would_strip(self) -> bool:
-        """True iff a strip is intended and feasible."""
-        # Policy doesn’t block strip; feasibility is in can_change
-        return self.would_strip and self.can_change is True
 
     @property
     def step_axes(self) -> dict[str, list[str]]:
@@ -546,139 +349,19 @@ class ProcessingContext:
                 "origin": self.pre_insert_origin,
             },
             "outcome": {
-                "would_change": self.would_change,
-                "can_change": self.can_change,
-                "permitted_by_policy": self.check_permitted_by_policy,
+                "would_change": would_change(self),
+                "can_change": can_change(self),
+                "permitted_by_policy": check_permitted_by_policy(self),
                 "check": {
-                    "would_add_or_update": self.would_add_or_update,
-                    "effective_would_add_or_update": self.effective_would_add_or_update,
+                    "would_add_or_update": would_add_or_update(self),
+                    "effective_would_add_or_update": effective_would_add_or_update(self),
                 },
                 "strip": {
-                    "would_strip": self.would_strip,
-                    "effective_would_strip": self.effective_would_strip,
+                    "would_strip": would_strip(self),
+                    "effective_would_strip": effective_would_strip(self),
                 },
             },
         }
-
-    def format_summary(self) -> str:
-        """Return a concise, human‑readable one‑liner for this file.
-
-        The summary is aligned with TopMark's pipeline phases and mirrors what
-        comparable tools (e.g., *ruff*, *black*, *prettier*) surface: a clear
-        primary outcome plus a few terse hints.
-
-        Rendering rules:
-          1. Primary bucket comes from the view-layer classification helper
-             `map_bucket()` in `topmark.api.view`. This ensures stable wording
-             across commands and pipelines.
-          2. If a write outcome is known (e.g., PREVIEWED/WRITTEN/INSERTED/REMOVED),
-             append it as a trailing hint.
-          3. If there is a diff but no write outcome (e.g., check/summary with
-             `--diff`), append a "diff" hint.
-          4. If diagnostics exist, append the diagnostic count as a hint.
-
-        Verbose per‑line diagnostics are emitted only when Config.verbosity_level >= 1
-        (treats None as 0).
-
-        Examples (colors omitted here):
-            path/to/file.py: python – would insert header - previewed
-            path/to/file.py: python – up-to-date
-            path/to/file.py: python – would strip header - diff - 2 issues
-
-        Returns:
-            str: Human-readable one-line summary, possibly followed by
-            additional lines for verbose diagnostics depending on the
-            configuration verbosity level.
-        """
-        # Local import to avoid import cycles at module import time
-
-        verbosity_level: int = self.config.verbosity_level or 0
-
-        parts: list[str] = [f"{self.path}:"]
-
-        # File type (dim), or <unknown> if resolution failed
-        if self.file_type is not None:
-            parts.append(chalk.dim(self.file_type.name))
-        else:
-            parts.append(chalk.dim("<unknown>"))
-
-        head: Hint | None = None
-        if not self.reason_hints:
-            key: str = "no_hint"
-            label: str = "No diagnostic hints"
-        else:
-            head = select_headline_hint(self.reason_hints)
-            if head is None:
-                key = "no_hint"
-                label = "No diagnostic hints"
-            else:
-                key = head.code
-                label = f"{head.axis.value.title()}: {head.message}"
-
-        # Color choice can still be simple or based on cluster:
-        cluster: str | None = head.cluster if head else None
-        # head.cluster now carries the cluster value (e.g. "changed") but
-        # enum_from_name(Cluster, cluster) looks up by enum name (e.g. "CHANGED").
-        # Hence we use case insensitive lookup:
-        cluster_elem: Cluster | None = enum_from_name(
-            Cluster,
-            cluster,
-            case_insensitive=True,
-        )
-        color_fn: Colorizer = cluster_elem.color if cluster_elem else chalk.red.italic
-
-        parts.append("-")
-        parts.append(color_fn(f"{key}: {label}"))
-
-        # Secondary hints: write status > diff marker > diagnostics
-
-        if self.status.write != WriteStatus.PENDING:
-            parts.append("-")
-            parts.append(self.status.write.color(self.status.write.value))
-        elif self.views.diff and self.views.diff.text:
-            parts.append("-")
-            parts.append(chalk.yellow("diff"))
-
-        diag_show_hint: str = ""
-        if self.diagnostics:
-            stats: DiagnosticStats = compute_diagnostic_stats(self.diagnostics)
-            n_info: int = stats.n_info
-            n_warn: int = stats.n_warning
-            n_err: int = stats.n_error
-            parts.append("-")
-            # Compose a compact triage summary like "1 error, 2 warnings"
-            triage: list[str] = []
-            if verbosity_level <= 0:
-                diag_show_hint = chalk.dim.italic(" (use '-v' to view)")
-            if n_err:
-                triage.append(chalk.red_bright(f"{n_err} error" + ("s" if n_err != 1 else "")))
-            if n_warn:
-                triage.append(chalk.yellow(f"{n_warn} warning" + ("s" if n_warn != 1 else "")))
-            if n_info and not (n_err or n_warn):
-                # Only show infos when there are no higher severities
-                triage.append(chalk.blue(f"{n_info} info" + ("s" if n_info != 1 else "")))
-            parts.append(", ".join(triage) if triage else chalk.blue("info"))
-
-        result: str = " ".join(parts) + diag_show_hint
-
-        # Optional verbose diagnostic listing (gated by verbosity level)
-        if self.diagnostics and verbosity_level > 0:
-            details: list[str] = []
-            for d in self.diagnostics:
-                prefix: str = {
-                    DiagnosticLevel.ERROR: chalk.red_bright("error"),
-                    DiagnosticLevel.WARNING: chalk.yellow("warning"),
-                    DiagnosticLevel.INFO: chalk.blue("info"),
-                }[d.level]
-                details.append(f"  [{prefix}] {d.message}")
-            result += "\n" + "\n".join(details)
-
-        return result
-
-    @property
-    def summary(self) -> str:
-        """Return a formatted summary string of the processing status for this file."""
-        return self.format_summary()
 
     @classmethod
     def bootstrap(cls, *, path: Path, config: Config) -> ProcessingContext:

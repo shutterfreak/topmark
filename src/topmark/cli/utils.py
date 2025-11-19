@@ -34,7 +34,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Iterable, Sequence
 
-from topmark.api.view import collect_outcome_counts
+from topmark.api.view import collect_outcome_counts, format_summary
 from topmark.cli.console_helpers import get_console_safely
 from topmark.cli_shared.console_api import ConsoleLike
 from topmark.cli_shared.machine_output import (
@@ -88,7 +88,7 @@ def render_per_file_guidance(
     """Echo one human guidance line per result (when not in --summary)."""
     console: ConsoleLike = get_console_safely()
     for r in view_results:
-        console.print(r.summary)
+        console.print(format_summary(r))
         msg: str | None = make_message(r, apply_changes)
         if msg:
             console.print(console.styled(f"   {msg}", fg="yellow"))

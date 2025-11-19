@@ -78,6 +78,7 @@ from topmark.cli.utils import (
 from topmark.cli_shared.exit_codes import ExitCode
 from topmark.cli_shared.utils import OutputFormat, safe_unlink
 from topmark.config.logging import get_logger
+from topmark.pipeline.context.policy import effective_would_add_or_update
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.status import (
     ComparisonStatus,
@@ -416,7 +417,7 @@ def check_command(
         if failed:
             raise TopmarkIOError(f"Failed to write {failed} file(s). See log for details.")
 
-    if not apply_changes and any(r.effective_would_add_or_update for r in results):
+    if not apply_changes and any(effective_would_add_or_update(r) for r in results):
         ctx.exit(ExitCode.WOULD_CHANGE)
 
     # Exit on any error encountered during processing

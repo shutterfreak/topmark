@@ -78,6 +78,7 @@ from topmark.cli_shared.utils import (
     safe_unlink,
 )
 from topmark.config.logging import get_logger
+from topmark.pipeline.context.policy import effective_would_strip
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.status import (
     ComparisonStatus,
@@ -394,7 +395,7 @@ def strip_command(
         if failed:
             raise TopmarkIOError(f"Failed to write {failed} file(s). See log for details.")
 
-    if not apply_changes and any(r.effective_would_strip for r in results):
+    if not apply_changes and any(effective_would_strip(r) for r in results):
         ctx.exit(ExitCode.WOULD_CHANGE)
 
     # Exit on any error encountered during processing

@@ -27,6 +27,15 @@ from yachalk import chalk
 
 from topmark.api.public_types import PublicDiagnostic
 from topmark.config.logging import get_logger
+from topmark.core.diagnostics import DiagnosticLevel, DiagnosticStats, compute_diagnostic_stats
+from topmark.core.enum_mixins import enum_from_name
+from topmark.pipeline.context.policy import (
+    can_change,
+    check_permitted_by_policy,
+    effective_would_add_or_update,
+    effective_would_strip,
+)
+from topmark.pipeline.hints import Cluster, Hint, select_headline_hint
 from topmark.pipeline.status import (
     ComparisonStatus,
     ContentStatus,
@@ -46,6 +55,7 @@ if TYPE_CHECKING:
     from topmark.config.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.views import DiffView
+    from topmark.rendering.colored_enum import Colorizer
 
     from .public_types import PublicDiagnostic
 
@@ -95,7 +105,7 @@ def to_file_result(r: ProcessingContext, *, apply: bool) -> FileResult:
     # Prefer a unified diff when available; otherwise None (human views may omit diffs).
     diff_view: DiffView | None = r.views.diff
     diff: str | None = diff_view.text if diff_view else None
-    message: str | None = r.summary or None
+    message: str | None = format_summary(r) or None
 
     # Compute CLI bucket for API visibility (key + human label)
     bucket: ResultBucket = map_bucket(r, apply=apply)
@@ -215,7 +225,7 @@ def map_bucket(r: ProcessingContext, *, apply: bool) -> ResultBucket:
     #     are treated as compliant (ignored by the compliance check).
     #     We still surface the "File is empty." warning for visibility, but
     #     they should not be marked as WOULD_INSERT / MUST_UPDATE.
-    if r.status.fs == FsStatus.EMPTY and not r.can_change:
+    if r.status.fs == FsStatus.EMPTY and not can_change(r):
         reason = dl("04e", "empty_file")
         return ResultBucket(outcome=Outcome.UNCHANGED, reason=reason)
 
@@ -224,11 +234,12 @@ def map_bucket(r: ProcessingContext, *, apply: bool) -> ResultBucket:
         return ResultBucket(outcome=Outcome.ERROR, reason=reason)
 
     # Policy
-    if r.check_permitted_by_policy is False:
+    permitted_by_policy: bool | None = check_permitted_by_policy(r)
+    if permitted_by_policy is False:
         reason = "skipped by policy"
         return ResultBucket(outcome=Outcome.SKIPPED, reason=reason)
 
-    logger.info("map_bucket: not forbidden by policy, permitted is %s", r.check_permitted_by_policy)
+    logger.info("map_bucket: not forbidden by policy, permitted is %s", permitted_by_policy)
 
     # 4) unchanged
     if r.status.comparison == ComparisonStatus.UNCHANGED:
@@ -287,13 +298,13 @@ def map_bucket(r: ProcessingContext, *, apply: bool) -> ResultBucket:
     # 3) dry-run; or effective intent without writes
     if not apply:
         if intent in (Intent.INSERT, Intent.UPDATE):
-            if r.effective_would_add_or_update:
+            if effective_would_add_or_update(r):
                 reason = dl("09", r.status.header.value)
                 return ResultBucket(outcome=outcome_if_changed, reason=reason)
             reason = dl("10", r.status.header.value)
             return ResultBucket(outcome=outcome_if_changed, reason=reason)
         if intent == Intent.STRIP:
-            if r.effective_would_strip:
+            if effective_would_strip(r):
                 reason = dl("11", r.status.header.value)
                 return ResultBucket(outcome=outcome_if_changed, reason=reason)
             if r.status.strip == StripStatus.NOT_NEEDED:
@@ -594,3 +605,123 @@ def finalize_run_result(
         diagnostic_totals=diagnostic_totals,
         diagnostic_totals_all=diagnostic_totals_all,
     )
+
+
+def format_summary(ctx: "ProcessingContext") -> str:
+    """Return a concise, human‑readable one‑liner for this file.
+
+    The summary is aligned with TopMark's pipeline phases and mirrors what
+    comparable tools (e.g., *ruff*, *black*, *prettier*) surface: a clear
+    primary outcome plus a few terse hints.
+
+    Rendering rules:
+        1. Primary bucket comes from the view-layer classification helper
+            `map_bucket()` in `topmark.api.view`. This ensures stable wording
+            across commands and pipelines.
+        2. If a write outcome is known (e.g., PREVIEWED/WRITTEN/INSERTED/REMOVED),
+            append it as a trailing hint.
+        3. If there is a diff but no write outcome (e.g., check/summary with
+            `--diff`), append a "diff" hint.
+        4. If diagnostics exist, append the diagnostic count as a hint.
+
+    Verbose per‑line diagnostics are emitted only when Config.verbosity_level >= 1
+    (treats None as 0).
+
+    Examples (colors omitted here):
+        path/to/file.py: python – would insert header - previewed
+        path/to/file.py: python – up-to-date
+        path/to/file.py: python – would strip header - diff - 2 issues
+
+    Args:
+        ctx (ProcessingContext): Processing context containing status and
+            configuration.
+
+    Returns:
+        str: Human-readable one-line summary, possibly followed by
+        additional lines for verbose diagnostics depending on the
+        configuration verbosity level.
+    """
+    # Local import to avoid import cycles at module import time
+
+    verbosity_level: int = ctx.config.verbosity_level or 0
+
+    parts: list[str] = [f"{ctx.path}:"]
+
+    # File type (dim), or <unknown> if resolution failed
+    if ctx.file_type is not None:
+        parts.append(chalk.dim(ctx.file_type.name))
+    else:
+        parts.append(chalk.dim("<unknown>"))
+
+    head: Hint | None = None
+    if not ctx.reason_hints:
+        key: str = "no_hint"
+        label: str = "No diagnostic hints"
+    else:
+        head = select_headline_hint(ctx.reason_hints)
+        if head is None:
+            key = "no_hint"
+            label = "No diagnostic hints"
+        else:
+            key = head.code
+            label = f"{head.axis.value.title()}: {head.message}"
+
+    # Color choice can still be simple or based on cluster:
+    cluster: str | None = head.cluster if head else None
+    # head.cluster now carries the cluster value (e.g. "changed") but
+    # enum_from_name(Cluster, cluster) looks up by enum name (e.g. "CHANGED").
+    # Hence we use case insensitive lookup:
+    cluster_elem: Cluster | None = enum_from_name(
+        Cluster,
+        cluster,
+        case_insensitive=True,
+    )
+    color_fn: Colorizer = cluster_elem.color if cluster_elem else chalk.red.italic
+
+    parts.append("-")
+    parts.append(color_fn(f"{key}: {label}"))
+
+    # Secondary hints: write status > diff marker > diagnostics
+
+    if ctx.status.has_write_outcome():
+        parts.append("-")
+        parts.append(ctx.status.write.color(ctx.status.write.value))
+    elif ctx.views.diff and ctx.views.diff.text:
+        parts.append("-")
+        parts.append(chalk.yellow("diff"))
+
+    diag_show_hint: str = ""
+    if ctx.diagnostics:
+        stats: DiagnosticStats = compute_diagnostic_stats(ctx.diagnostics)
+        n_info: int = stats.n_info
+        n_warn: int = stats.n_warning
+        n_err: int = stats.n_error
+        parts.append("-")
+        # Compose a compact triage summary like "1 error, 2 warnings"
+        triage: list[str] = []
+        if verbosity_level <= 0:
+            diag_show_hint = chalk.dim.italic(" (use '-v' to view)")
+        if n_err:
+            triage.append(chalk.red_bright(f"{n_err} error" + ("s" if n_err != 1 else "")))
+        if n_warn:
+            triage.append(chalk.yellow(f"{n_warn} warning" + ("s" if n_warn != 1 else "")))
+        if n_info and not (n_err or n_warn):
+            # Only show infos when there are no higher severities
+            triage.append(chalk.blue(f"{n_info} info" + ("s" if n_info != 1 else "")))
+        parts.append(", ".join(triage) if triage else chalk.blue("info"))
+
+    result: str = " ".join(parts) + diag_show_hint
+
+    # Optional verbose diagnostic listing (gated by verbosity level)
+    if ctx.diagnostics and verbosity_level > 0:
+        details: list[str] = []
+        for d in ctx.diagnostics:
+            prefix: str = {
+                DiagnosticLevel.ERROR: chalk.red_bright("error"),
+                DiagnosticLevel.WARNING: chalk.yellow("warning"),
+                DiagnosticLevel.INFO: chalk.blue("info"),
+            }[d.level]
+            details.append(f"  [{prefix}] {d.message}")
+        result += "\n" + "\n".join(details)
+
+    return result

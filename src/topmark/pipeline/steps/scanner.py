@@ -29,6 +29,7 @@ from itertools import islice
 from typing import TYPE_CHECKING
 
 from topmark.config.logging import get_logger
+from topmark.pipeline.context.policy import check_permitted_by_policy
 from topmark.pipeline.hints import Axis, Cluster, KnownCode, make_hint
 from topmark.pipeline.processors.types import BoundsKind, HeaderBounds
 from topmark.pipeline.status import (
@@ -271,8 +272,9 @@ class ScannerStep(BaseStep):
         st: HeaderStatus = ctx.status.header
 
         # May proceed to next step (always):
+        permitted_by_policy: bool | None = check_permitted_by_policy(ctx)
         if st == HeaderStatus.DETECTED:
-            if ctx.check_permitted_by_policy is False:
+            if permitted_by_policy is False:
                 ctx.stop_flow(reason="stopped by policy", at_step=self)
             pass  # detected; normal path
         elif st == HeaderStatus.MISSING:
@@ -284,7 +286,7 @@ class ScannerStep(BaseStep):
                     message="no TopMark header detected",
                 )
             )
-            if ctx.check_permitted_by_policy is False:
+            if permitted_by_policy is False:
                 ctx.stop_flow(reason="stopped by policy", at_step=self)
 
         elif st == HeaderStatus.EMPTY:
@@ -296,7 +298,7 @@ class ScannerStep(BaseStep):
                     message="empty TopMark header",
                 )
             )
-            if ctx.check_permitted_by_policy is False:
+            if permitted_by_policy is False:
                 ctx.stop_flow(reason="stopped by policy", at_step=self)
         # May proceed to next step (policy):
         elif st == HeaderStatus.MALFORMED_ALL_FIELDS:

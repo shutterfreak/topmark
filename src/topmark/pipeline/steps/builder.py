@@ -32,7 +32,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from topmark.config.logging import get_logger
-from topmark.pipeline.context.policy import allow_empty_by_policy
+from topmark.pipeline.context.policy import allow_empty_by_policy, check_permitted_by_policy
 from topmark.pipeline.hints import Axis, Cluster, KnownCode, make_hint
 from topmark.pipeline.status import ContentStatus, FsStatus, GenerationStatus
 from topmark.pipeline.steps.base import BaseStep
@@ -119,7 +119,7 @@ class BuilderStep(BaseStep):
 
         config: Config = ctx.config
 
-        if ctx.check_permitted_by_policy is False:
+        if check_permitted_by_policy(ctx) is False:
             ctx.status.generation = GenerationStatus.SKIPPED
             reason = "header field generation skipped by policy"
             logger.debug(reason)

@@ -219,6 +219,14 @@ class HeaderProcessingStatus:
             }
         return data
 
+    def has_write_outcome(self) -> bool:
+        """Return True if the write axis has reached a non-pending outcome.
+
+        Returns:
+            bool: True when the write status is anything other than PENDING.
+        """
+        return self.write is not WriteStatus.PENDING
+
 
 @dataclass
 class StepStatus:

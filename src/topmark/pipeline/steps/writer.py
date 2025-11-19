@@ -42,6 +42,7 @@ from typing import TYPE_CHECKING, Protocol
 from topmark.config.logging import get_logger
 from topmark.config.policy import effective_policy
 from topmark.config.types import FileWriteStrategy, OutputTarget
+from topmark.pipeline.context.policy import can_change, check_permitted_by_policy
 from topmark.pipeline.hints import Axis, Cluster, KnownCode, make_hint
 from topmark.pipeline.status import (
     PlanStatus,
@@ -415,7 +416,7 @@ class WriterStep(BaseStep):
           * The caller explicitly enabled applying changes (``config.apply_changes`` is True);
           * The updater selected a concrete write action (``INSERTED``/``REPLACED``/``REMOVED``);
           * We have an updated image to write and the engine deemed the change safe
-            (``ctx.views.updated.lines`` is present and ``ctx.can_change is True``).
+            (``ctx.views.updated.lines`` is present and ``can_change(ctx) is True``).
 
         Policy and intent have already been enforced by the updater. Re-checking
         header/comparison/strip intent here can drift from the authoritative
@@ -445,7 +446,7 @@ class WriterStep(BaseStep):
         if updated_view is None or updated_view.lines is None:
             return False
 
-        return ctx.can_change is True
+        return can_change(ctx) is True
 
     def run(self, ctx: ProcessingContext) -> None:
         """Writer step: commit updates to the selected sink.
@@ -493,11 +494,11 @@ class WriterStep(BaseStep):
         logger.debug(
             "writer gate: resolve=%s can_change=%s header=%s comparison=%s strip=%s policy=%s",
             ctx.status.resolve,
-            ctx.can_change,
+            can_change(ctx),
             ctx.status.header,
             ctx.status.comparison,
             ctx.status.strip,
-            ctx.check_permitted_by_policy,
+            check_permitted_by_policy(ctx),
         )
         logger.debug("ProcessingContext before writing: %s", ctx.to_dict())
         sink: WriteSink = _select_sink(ctx)
