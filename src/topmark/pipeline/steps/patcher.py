@@ -71,6 +71,7 @@ class PatcherStep(BaseStep):
     def __init__(self) -> None:
         super().__init__(
             name=self.__class__.__name__,
+            primary_axis=Axis.PATCH,
             axes_written=(
                 Axis.COMPARISON,  # For one edge case
                 Axis.PATCH,

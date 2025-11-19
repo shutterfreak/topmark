@@ -47,10 +47,12 @@ class BaseStep:
 
     Attributes:
         name (str): Fully qualified, stable step identifier for logs/tracing.
+        primary_axis (Axis | None): The axis this step “represents” in summaries
         axes_written (tuple[Axis, ...]): Status axes this step is allowed to write (e.g. ("fs",)).
     """
 
     name: str
+    primary_axis: Axis | None  # new: axis this step “represents” in summaries
     axes_written: tuple[Axis, ...] = ()
 
     def __call__(self, ctx: "ProcessingContext") -> "ProcessingContext":
@@ -67,7 +69,8 @@ class BaseStep:
              ProcessingContext: The same context instance after mutation/hints.
         """
         # unified bookkeeping
-        ctx.steps[self.name] = ctx.steps.get(self.name, 0) + 1
+        # ctx.steps[self.name] = ctx.steps.get(self.name, 0) + 1
+        ctx.steps.append(self)
         logger.info("BaseStep: Pipeline status before may_proceed(): : %s", ctx.steps)
 
         if self.may_proceed(ctx):
@@ -83,7 +86,7 @@ class BaseStep:
                 return ctx
 
         else:
-            logger.warning("BaseStep: ⚠️ Pipeline step %s may not proceed", self.name)
+            logger.info("BaseStep: ⚠️ Pipeline step %s may not proceed", self.name)
 
         self.hint(ctx)
         return ctx

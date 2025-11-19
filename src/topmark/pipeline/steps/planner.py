@@ -169,7 +169,11 @@ class PlannerStep(BaseStep):
     """
 
     def __init__(self) -> None:
-        super().__init__(name=self.__class__.__name__, axes_written=(Axis.PLAN,))
+        super().__init__(
+            name=self.__class__.__name__,
+            primary_axis=Axis.PLAN,
+            axes_written=(Axis.PLAN,),
+        )
 
     def may_proceed(self, ctx: ProcessingContext) -> bool:
         """Return True if the planner can compute an updated image.

@@ -61,7 +61,11 @@ class BuilderStep(BaseStep):
     """
 
     def __init__(self) -> None:
-        super().__init__(name=self.__class__.__name__, axes_written=(Axis.GENERATION,))
+        super().__init__(
+            name=self.__class__.__name__,
+            primary_axis=Axis.GENERATION,
+            axes_written=(Axis.GENERATION,),
+        )
 
     def may_proceed(self, ctx: ProcessingContext) -> bool:
         """Determine if processing can proceed to the build step.

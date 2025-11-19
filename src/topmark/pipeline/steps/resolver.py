@@ -215,7 +215,11 @@ class ResolverStep(BaseStep):
     """
 
     def __init__(self) -> None:
-        super().__init__(name=self.__class__.__name__, axes_written=(Axis.RESOLVE,))
+        super().__init__(
+            name=self.__class__.__name__,
+            primary_axis=Axis.RESOLVE,
+            axes_written=(Axis.RESOLVE,),
+        )
 
     def may_proceed(self, ctx: ProcessingContext) -> bool:
         """Return True (resolver is the first step and always runs).

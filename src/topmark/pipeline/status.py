@@ -33,7 +33,13 @@ from topmark.core.enum_mixins import EnumIntrospectionMixin
 from topmark.rendering.colored_enum import ColoredStrEnum
 
 
-class FsStatus(EnumIntrospectionMixin, ColoredStrEnum):
+class BaseStatus(EnumIntrospectionMixin, ColoredStrEnum):
+    """Represents the base status class of file system checks in the pipeline."""
+
+    pass
+
+
+class FsStatus(BaseStatus):
     """Represents the status of file system checks in the pipeline."""
 
     # Value format: (description: str, color_renderer: ChalkBuilder)
@@ -50,7 +56,7 @@ class FsStatus(EnumIntrospectionMixin, ColoredStrEnum):
     MIXED_LINE_ENDINGS = ("file contains mixed line endings", chalk.yellow)
 
 
-class ResolveStatus(EnumIntrospectionMixin, ColoredStrEnum):
+class ResolveStatus(BaseStatus):
     """Represents the status of file type resolution in the pipeline.
 
     Used to indicate whether the file type was successfully resolved or not.
@@ -63,7 +69,7 @@ class ResolveStatus(EnumIntrospectionMixin, ColoredStrEnum):
     UNSUPPORTED = ("unsupported file type", chalk.yellow)
 
 
-class ContentStatus(EnumIntrospectionMixin, ColoredStrEnum):
+class ContentStatus(BaseStatus):
     """Represents the status of file content checks in the pipeline.
 
     `SKIPPED_*` states are policy-aware potential non-terminal states.
@@ -78,7 +84,7 @@ class ContentStatus(EnumIntrospectionMixin, ColoredStrEnum):
     UNREADABLE = ("unreadable", chalk.red_bright)
 
 
-class HeaderStatus(EnumIntrospectionMixin, ColoredStrEnum):
+class HeaderStatus(BaseStatus):
     """Represents the status of header processing for a file in the pipeline.
 
     Used to indicate detection, parsing, and validation results for the file header.
@@ -93,7 +99,7 @@ class HeaderStatus(EnumIntrospectionMixin, ColoredStrEnum):
     EMPTY = ("header empty", chalk.yellow_bright)
 
 
-class GenerationStatus(EnumIntrospectionMixin, ColoredStrEnum):
+class GenerationStatus(BaseStatus):
     """Represents the status of header generation in the pipeline.
 
     Used to indicate whether a new header was generated, rendered,
@@ -107,7 +113,7 @@ class GenerationStatus(EnumIntrospectionMixin, ColoredStrEnum):
     # RENDERED = "header fields rendered", chalk.blue
 
 
-class RenderStatus(EnumIntrospectionMixin, ColoredStrEnum):
+class RenderStatus(BaseStatus):
     """Rendering status for expected header text.
 
     Indicates whether the renderer produced an in-memory textual representation of
@@ -124,7 +130,7 @@ class RenderStatus(EnumIntrospectionMixin, ColoredStrEnum):
     SKIPPED = ("header rendering skipped", chalk.yellow)
 
 
-class ComparisonStatus(EnumIntrospectionMixin, ColoredStrEnum):
+class ComparisonStatus(BaseStatus):
     """Represents the status of comparing the current and expected header in the pipeline.
 
     Used to indicate if the header has changed, is unchanged, or cannot be compared.
@@ -136,7 +142,7 @@ class ComparisonStatus(EnumIntrospectionMixin, ColoredStrEnum):
     SKIPPED = ("comparison skipped", chalk.yellow)
 
 
-class StripStatus(EnumIntrospectionMixin, ColoredStrEnum):
+class StripStatus(BaseStatus):
     """Represents the status of header stripping in the pipeline.
 
     This axis is orthogonal to scanner detection and write outcomes:
@@ -151,7 +157,7 @@ class StripStatus(EnumIntrospectionMixin, ColoredStrEnum):
     FAILED = ("stripping failed", chalk.red_bright)
 
 
-class PlanStatus(EnumIntrospectionMixin, ColoredStrEnum):
+class PlanStatus(BaseStatus):
     """Represents the status of the plan (pre-write) phase.
 
     Indicates the intended change (insert/replace/remove/skip) and whether a
@@ -167,7 +173,7 @@ class PlanStatus(EnumIntrospectionMixin, ColoredStrEnum):
     FAILED = ("update failed", chalk.red_bright)
 
 
-class PatchStatus(EnumIntrospectionMixin, ColoredStrEnum):
+class PatchStatus(BaseStatus):
     """Represents the status of patch (diff) generation in the pipeline.
 
     Indicates whether a unified diff was generated, skipped because content
@@ -180,7 +186,7 @@ class PatchStatus(EnumIntrospectionMixin, ColoredStrEnum):
     FAILED = ("patch failed", chalk.red_bright)
 
 
-class WriteStatus(EnumIntrospectionMixin, ColoredStrEnum):
+class WriteStatus(BaseStatus):
     """Represents the status of the header write operation in the pipeline.
 
     Used to indicate whether the header was written, previewed, skipped, or failed.

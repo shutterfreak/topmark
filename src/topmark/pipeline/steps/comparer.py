@@ -69,7 +69,11 @@ class ComparerStep(BaseStep):
     """
 
     def __init__(self) -> None:
-        super().__init__(name=self.__class__.__name__, axes_written=(Axis.COMPARISON,))
+        super().__init__(
+            name=self.__class__.__name__,
+            primary_axis=Axis.COMPARISON,
+            axes_written=(Axis.COMPARISON,),
+        )
 
     def may_proceed(self, ctx: ProcessingContext) -> bool:
         """Return True if comparison can run.

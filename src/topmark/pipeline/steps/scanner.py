@@ -66,7 +66,11 @@ class ScannerStep(BaseStep):
     """
 
     def __init__(self) -> None:
-        super().__init__(name=self.__class__.__name__, axes_written=(Axis.HEADER,))
+        super().__init__(
+            name=self.__class__.__name__,
+            primary_axis=Axis.HEADER,
+            axes_written=(Axis.HEADER,),
+        )
 
     def may_proceed(self, ctx: ProcessingContext) -> bool:
         """Determine if processing can proceed to the scan step.

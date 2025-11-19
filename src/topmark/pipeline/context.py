@@ -13,7 +13,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Iterable, Sequence
+from typing import TYPE_CHECKING, Iterable, Sequence, TypedDict
 
 from yachalk import chalk
 
@@ -27,10 +27,11 @@ from topmark.core.diagnostics import (
 )
 from topmark.core.enum_mixins import enum_from_name
 from topmark.filetypes.base import InsertCapability
-from topmark.pipeline.hints import Cluster, Hint, select_headline_hint
+from topmark.pipeline.hints import Axis, Cluster, Hint, select_headline_hint
 from topmark.pipeline.views import UpdatedView, Views
 
 from .status import (
+    BaseStatus,
     ComparisonStatus,
     ContentStatus,
     FsStatus,
@@ -320,6 +321,39 @@ class HeaderProcessingStatus:
     # Write changes
     write: WriteStatus = WriteStatus.PENDING  # Status of writing the header
 
+    def get(self, axis: Axis) -> BaseStatus:
+        """Get the status for a given Axis.
+
+        Args:
+            axis (Axis): The Axis we want to get the status for;
+
+        Returns:
+            BaseStatus: The status for the given Axis.
+        """
+        match axis:
+            case Axis.RESOLVE:
+                return self.resolve
+            case Axis.FS:
+                return self.fs
+            case Axis.CONTENT:
+                return self.content
+            case Axis.HEADER:
+                return self.header
+            case Axis.GENERATION:
+                return self.generation
+            case Axis.RENDER:
+                return self.render
+            case Axis.STRIP:
+                return self.strip
+            case Axis.COMPARISON:
+                return self.comparison
+            case Axis.PLAN:
+                return self.plan
+            case Axis.PATCH:
+                return self.patch
+            case Axis.WRITE:
+                return self.write
+
     def reset(self) -> None:
         """Set all status fields to PENDING."""
         self.resolve = ResolveStatus.PENDING
@@ -334,6 +368,37 @@ class HeaderProcessingStatus:
         self.patch = PatchStatus.PENDING
         self.write = WriteStatus.PENDING
 
+    def to_dict(self) -> dict[str, AxisStatusPayload]:
+        """Return axis → {axis, name, label} payload for all axes.
+
+        This mirrors AxisStatusPayload and is useful if you want *only one*
+        place where axis status data is defined for machine output.
+        """
+        data: dict[str, AxisStatusPayload] = {}
+        for axis in Axis:
+            attr_name: str = axis.value  # e.g. "resolve"
+            status: BaseStatus = getattr(self, attr_name)
+            label: str = status.value  # ColoredStrEnum: (label, color)
+            axis_name: str = axis.value
+            data[axis_name] = {
+                "axis": axis_name,
+                "name": status.name,
+                "label": label,
+            }
+        return data
+
+
+@dataclass
+class StepStatus:
+    step: str
+    status: BaseStatus
+
+
+class AxisStatusPayload(TypedDict):
+    axis: str
+    name: str
+    label: str
+
 
 @dataclass
 class ProcessingContext:
@@ -347,7 +412,7 @@ class ProcessingContext:
     Attributes:
         path (Path): The file path to process.
         config (Config): The configuration for processing.
-        steps (dict[str, int]): Keep track of the pipeline steps executed.
+        steps (list[Step]): Tracks the pipeline steps executed.
         file_type (FileType | None): The resolved file type, if applicable.
         status (HeaderProcessingStatus): Processing status for each pipeline phase.
         flow (FlowControl): If `True`, stop processing (reached a terminal state).
@@ -374,7 +439,7 @@ class ProcessingContext:
 
     path: Path  # The file path to process (absolute or relative to working directory)
     config: "Config"  # Active config at time of processing
-    steps: dict[str, int] = field(default_factory=lambda: {})  # Track the pipeline steps
+    steps: list[Step] = field(default_factory=lambda: [])
     file_type: "FileType | None" = None  # Resolved file type (e.g., PythonFileType)
     status: HeaderProcessingStatus = field(default_factory=HeaderProcessingStatus)
     flow: FlowControl = field(default_factory=FlowControl)
@@ -619,6 +684,24 @@ class ProcessingContext:
         # Policy doesn’t block strip; feasibility is in can_change
         return self.would_strip and self.can_change is True
 
+    @property
+    def step_axes(self) -> dict[str, list[str]]:
+        """Map each executed step to the axes it may write.
+
+        The keys are step names (e.g. "SnifferStep"), and the values are
+        lists of axis names (e.g. ["fs", "content"]). This is derived from
+        the `axes_written` contract of each step instance in `self.steps`.
+
+        Combined with `self.steps` (execution order) and `self.status.to_dict()`
+        (per-axis final status), this provides a complete view of the
+        step/axis/status relationship without duplicating status payloads.
+        """
+        result: dict[str, list[str]] = {}
+        for step in self.steps:
+            axes: list[str] = [axis.value for axis in step.axes_written]
+            result[step.name] = axes
+        return result
+
     def add_hint(self, hint: Hint) -> None:
         """TODO Google-style docstring with type annotations."""
         logger.info(
@@ -714,19 +797,9 @@ class ProcessingContext:
         return {
             "path": str(self.path),
             "file_type": (self.file_type.name if self.file_type else None),
-            "status": {
-                "resolve": self.status.resolve.name,
-                "fs": self.status.fs.name,
-                "content": self.status.content.name,
-                "header": self.status.header.name,
-                "generation": self.status.generation.name,
-                "render": self.status.render.name,
-                "comparison": self.status.comparison.name,
-                "strip": self.status.strip.name,
-                "plan": self.status.plan.name,
-                "patch": self.status.patch.name,
-                "write": self.status.write.name,
-            },
+            "steps": [s.name for s in self.steps],
+            "step_axes": self.step_axes,
+            "status": self.status.to_dict(),
             "views": views_summary,
             "diagnostics": [
                 {"level": d.level.value, "message": d.message} for d in self.diagnostics
@@ -808,8 +881,15 @@ class ProcessingContext:
 
         # Color choice can still be simple or based on cluster:
         cluster: str | None = head.cluster if head else None
-        cluster_elem: Cluster | None = enum_from_name(Cluster, cluster)
-        color_fn: Colorizer = cluster_elem.color if cluster_elem else chalk.red.dim.italic
+        # head.cluster now carries the cluster value (e.g. "changed") but
+        # enum_from_name(Cluster, cluster) looks up by enum name (e.g. "CHANGED").
+        # Hence we use case insensitive lookup:
+        cluster_elem: Cluster | None = enum_from_name(
+            Cluster,
+            cluster,
+            case_insensitive=True,
+        )
+        color_fn: Colorizer = cluster_elem.color if cluster_elem else chalk.red.italic
 
         parts.append("-")
         parts.append(color_fn(f"{key}: {label}"))

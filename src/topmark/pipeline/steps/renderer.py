@@ -59,7 +59,11 @@ class RendererStep(BaseStep):
     """
 
     def __init__(self) -> None:
-        super().__init__(name=self.__class__.__name__, axes_written=(Axis.RENDER,))
+        super().__init__(
+            name=self.__class__.__name__,
+            primary_axis=Axis.RENDER,
+            axes_written=(Axis.RENDER,),
+        )
 
     def may_proceed(self, ctx: ProcessingContext) -> bool:
         """Determine if processing can proceed to the render step.

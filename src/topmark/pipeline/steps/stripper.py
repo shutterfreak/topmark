@@ -85,7 +85,11 @@ class StripperStep(BaseStep):
     """
 
     def __init__(self) -> None:
-        super().__init__(name=self.__class__.__name__, axes_written=(Axis.STRIP,))
+        super().__init__(
+            name=self.__class__.__name__,
+            primary_axis=Axis.STRIP,
+            axes_written=(Axis.STRIP,),
+        )
 
     def may_proceed(self, ctx: ProcessingContext) -> bool:
         """Return True when content is processable and a processor is available.

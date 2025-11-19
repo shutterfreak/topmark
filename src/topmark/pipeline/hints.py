@@ -68,14 +68,16 @@ class Axis(EnumIntrospectionMixin, str, Enum):
         new axis.
     """
 
+    # NOTE: preserve the exact order and keep in sync with HeaderProcessingStatus
+
     RESOLVE = "resolve"
     FS = "fs"
     CONTENT = "content"
     HEADER = "header"
     GENERATION = "generation"
     RENDER = "render"
-    COMPARISON = "comparison"
     STRIP = "strip"
+    COMPARISON = "comparison"
     PLAN = "plan"
     PATCH = "patch"
     WRITE = "write"

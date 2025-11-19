@@ -48,6 +48,7 @@ class Step(Protocol):
     """
 
     name: str
+    primary_axis: Axis | None  # new: axis this step “represents” in summaries
     axes_written: tuple[Axis, ...]  # e.g. ("fs","content")
 
     def may_proceed(self, ctx: "ProcessingContext") -> bool:

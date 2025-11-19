@@ -401,7 +401,11 @@ class WriterStep(BaseStep):
     """
 
     def __init__(self) -> None:
-        super().__init__(name=self.__class__.__name__, axes_written=(Axis.WRITE,))
+        super().__init__(
+            name=self.__class__.__name__,
+            primary_axis=Axis.WRITE,
+            axes_written=(Axis.WRITE,),
+        )
 
     def may_proceed(self, ctx: ProcessingContext) -> bool:
         """Return True if the writer is allowed to commit changes.

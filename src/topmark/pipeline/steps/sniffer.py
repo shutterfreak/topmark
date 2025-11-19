@@ -150,7 +150,11 @@ class SnifferStep(BaseStep):
     """
 
     def __init__(self) -> None:
-        super().__init__(name=self.__class__.__name__, axes_written=(Axis.FS,))
+        super().__init__(
+            name=self.__class__.__name__,
+            primary_axis=Axis.FS,
+            axes_written=(Axis.FS,),
+        )
 
     def may_proceed(self, ctx: ProcessingContext) -> bool:
         """Determine if processing can proceed to the read step.
