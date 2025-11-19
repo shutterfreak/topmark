@@ -56,7 +56,7 @@ if TYPE_CHECKING:
     from topmark.config.logging import TopmarkLogger
     from topmark.filetypes.base import FileType
     from topmark.filetypes.policy import FileTypeHeaderPolicy
-    from topmark.pipeline.context import ProcessingContext
+    from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.views import HeaderView
 
 logger: TopmarkLogger = get_logger(__name__)

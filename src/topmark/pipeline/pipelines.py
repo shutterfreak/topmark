@@ -12,7 +12,7 @@
 
 This module exposes immutable, typed step tuples and a registry mapping names
 to pipelines. Pipelines are built from class-based steps that implement the
-[`Step`][topmark.pipeline.contracts.Step] protocol.
+[`Step`][topmark.pipeline.protocols.Step] protocol.
 
 Overview
 --------
@@ -55,7 +55,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Final, Tuple
 
-from topmark.pipeline.contracts import Step
+from topmark.pipeline.protocols import Step
 
 from .steps import (
     builder,
@@ -159,7 +159,7 @@ class Pipeline(Tuple[Step, ...], Enum):
 
         Returns:
             Tuple[Step, ...]: An immutable tuple of step *instances* that
-            implement the [`Step`][topmark.pipeline.contracts.Step] protocol. The
+            implement the [`Step`][topmark.pipeline.protocols.Step] protocol. The
             runner will invoke them as callables in order.
         """
         return self.value

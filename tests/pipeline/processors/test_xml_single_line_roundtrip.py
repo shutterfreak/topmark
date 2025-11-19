@@ -37,7 +37,7 @@ from topmark.pipeline.status import (
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.pipeline.context import ProcessingContext
+    from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.processors.base import HeaderProcessor
 
 

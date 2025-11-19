@@ -41,7 +41,7 @@ from topmark.utils.diff import render_patch
 
 if TYPE_CHECKING:
     from topmark.config.logging import TopmarkLogger
-    from topmark.pipeline.context import ProcessingContext
+    from topmark.pipeline.context.model import ProcessingContext
 
 
 logger: TopmarkLogger = get_logger(__name__)

@@ -24,7 +24,7 @@ from topmark.constants import TOPMARK_END_MARKER
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.pipeline.context import ProcessingContext
+    from topmark.pipeline.context.model import ProcessingContext
 
 
 # Reuse the helper from an existing test module to execute the insert pipeline.

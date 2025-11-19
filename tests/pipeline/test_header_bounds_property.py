@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 
     from _pytest.tmpdir import TempPathFactory
 
-    from topmark.pipeline.context import ProcessingContext
+    from topmark.pipeline.context.model import ProcessingContext
 
 # If resolve depends on path suffix, we’ll simulate by extension choice.
 EXTENSIONS: Sequence[str] = [".py", ".sh", ".js", ".ts", ".cpp", ".h", ".xml", ".html"]

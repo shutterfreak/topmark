@@ -1,19 +1,36 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : context.py
-#   file_relpath : src/topmark/pipeline/context.py
+#   file         : model.py
+#   file_relpath : src/topmark/pipeline/context/model.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""Context for header processing in the Topmark pipeline."""
+"""Processing context model for the TopMark pipeline.
+
+This module defines the core data structures used to represent the state of
+a single file as it flows through the TopMark pipeline. The central type is
+[`ProcessingContext`][topmark.pipeline.context.model.ProcessingContext], which
+carries configuration, status, diagnostics, and view data between steps.
+
+Sections:
+    ProcessingContext:
+        High-level container that represents the per-file processing state
+        and exposes convenience helpers for policy checks, feasibility
+        decisions, and view access.
+
+    FlowControl:
+        Small helper dataclass that allows steps to request early,
+        graceful termination of the pipeline for a given file.
+"""
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Iterable, Sequence, TypedDict
+from typing import TYPE_CHECKING, Iterable, Sequence
 
 from yachalk import chalk
 
@@ -27,19 +44,15 @@ from topmark.core.diagnostics import (
 )
 from topmark.core.enum_mixins import enum_from_name
 from topmark.filetypes.base import InsertCapability
-from topmark.pipeline.hints import Axis, Cluster, Hint, select_headline_hint
+from topmark.pipeline.context.policy import allow_empty_by_policy
+from topmark.pipeline.context.status import HeaderProcessingStatus
+from topmark.pipeline.hints import Cluster, Hint, select_headline_hint
 from topmark.pipeline.views import UpdatedView, Views
 
-from .status import (
-    BaseStatus,
+from ..status import (
     ComparisonStatus,
-    ContentStatus,
     FsStatus,
-    GenerationStatus,
     HeaderStatus,
-    PatchStatus,
-    PlanStatus,
-    RenderStatus,
     ResolveStatus,
     StripStatus,
     WriteStatus,
@@ -53,222 +66,17 @@ if TYPE_CHECKING:
     from topmark.config.logging import TopmarkLogger
     from topmark.config.policy import Policy
     from topmark.filetypes.base import FileType
-    from topmark.pipeline.contracts import Step
     from topmark.pipeline.processors.base import HeaderProcessor
+    from topmark.pipeline.protocols import Step
     from topmark.rendering.colored_enum import Colorizer
 
 
 logger: TopmarkLogger = get_logger(__name__)
 
 __all__: list[str] = [
-    "allow_empty_by_policy",
-    "allow_empty_header_by_policy",
-    "ReasonHint",
     "FlowControl",
-    "HeaderProcessingStatus",
     "ProcessingContext",
 ]
-
-
-def allow_empty_by_policy(ctx: "ProcessingContext") -> bool:
-    """Return True if the file is empty and the effective policy allows header insertions.
-
-    This checks the resolved per-type effective policy (global overlaid by per-type).
-    """
-    # If you expose a cached effective policy, use that; else compute via `effective_policy(...)`.
-    # Assuming `ctx.file_type` is set when resolve == RESOLVED.
-
-    eff: Policy | None = ctx.get_effective_policy()
-    if eff is None:
-        return False
-
-    return ctx.status.fs == FsStatus.EMPTY and eff.allow_header_in_empty_files is True
-
-
-def allow_empty_header_by_policy(ctx: "ProcessingContext") -> bool:
-    """Return True if the effective policy allows empty header insertions.
-
-    This checks the resolved per-type effective policy (global overlaid by per-type).
-    """
-    # If you expose a cached effective policy, use that; else compute via `effective_policy(...)`.
-    # Assuming `ctx.file_type` is set when resolve == RESOLVED.
-    eff: Policy | None = ctx.get_effective_policy()
-    if eff is None:
-        return False
-
-    return eff.render_empty_header_when_no_fields
-
-
-def allow_content_reflow_by_policy(ctx: "ProcessingContext") -> bool:
-    """Return True if the effective policy allows content reflow.
-
-    This checks the resolved per-type effective policy (global overlaid by per-type).
-    """
-    # If you expose a cached effective policy, use that; else compute via `effective_policy(...)`.
-    # Assuming `ctx.file_type` is set when resolve == RESOLVED.
-    eff: Policy | None = ctx.get_effective_policy()
-    if eff is None:
-        return False
-
-    return eff.allow_reflow
-
-
-def allows_mixed_line_endings_by_policy(ctx: "ProcessingContext") -> bool:
-    """Return True if policy allows proceeding despite soft FS violations.
-
-    This helper is used by early pipeline steps (e.g., ReaderStep) to continue
-    when Sniffer detected *soft* file-system issues that a project might choose
-    to tolerate. Hard errors (e.g., not found, unreadable, binary) must remain
-    terminal and are not bypassed here.
-
-    Soft violations considered:
-      - FsStatus.BOM_BEFORE_SHEBANG
-      - FsStatus.MIXED_LINE_ENDINGS
-
-    Policy fields:
-      - If the effective `Policy` defines `ignore_mixed_line_endings` and it is True,
-        we allow proceeding on `MIXED_LINE_ENDINGS`.
-
-    Notes:
-      - This function is forward-compatible: it uses `getattr(...)` so it returns
-        False for unknown fields on older Policy versions (safe default).
-      - We *always* allow when `FsStatus` is already OK/EMPTY; for EMPTY, your
-        existing `allow_empty_by_policy()` governs header insertion later.
-
-    Args:
-        ctx (ProcessingContext): Processing context containing fs status and config.
-
-    Returns:
-        bool: True if we may proceed despite a soft FS violation.
-    """
-    # Always OK to proceed if FS is healthy or empty (read can still run).
-    if ctx.status.fs in {FsStatus.OK, FsStatus.EMPTY}:
-        return True
-
-    eff: Policy | None = ctx.get_effective_policy()
-    if eff is None:
-        return False
-
-    if ctx.status.fs == FsStatus.MIXED_LINE_ENDINGS:
-        # Newer policies may provide this flag; default False if absent.
-        return bool(getattr(eff, "ignore_mixed_line_endings", False))
-
-    # All other FS states should not be skipped by policy here.
-    return False
-
-
-def allows_bom_before_shebang_by_policy(ctx: "ProcessingContext") -> bool:
-    """Return True if policy allows proceeding despite soft FS violations.
-
-    This helper is used by early pipeline steps (e.g., ReaderStep) to continue
-    when Sniffer detected *soft* file-system issues that a project might choose
-    to tolerate. Hard errors (e.g., not found, unreadable, binary) must remain
-    terminal and are not bypassed here.
-
-    Soft violations considered:
-      - FsStatus.BOM_BEFORE_SHEBANG
-
-    Policy fields:
-      - If the effective `Policy` defines `ignore_bom_before_shebang` and it is True,
-        we allow proceeding on `BOM_BEFORE_SHEBANG`.
-
-    Notes:
-      - This function is forward-compatible: it uses `getattr(...)` so it returns
-        False for unknown fields on older Policy versions (safe default).
-      - We *always* allow when `FsStatus` is already OK/EMPTY; for EMPTY, your
-        existing `allow_empty_by_policy()` governs header insertion later.
-
-    Args:
-        ctx (ProcessingContext): Processing context containing fs status and config.
-
-    Returns:
-        bool: True if we may proceed despite a soft FS violation.
-    """
-    # Always OK to proceed if FS is healthy or empty (read can still run).
-    if ctx.status.fs in {FsStatus.OK, FsStatus.EMPTY}:
-        return True
-
-    eff: Policy | None = ctx.get_effective_policy()
-    if eff is None:
-        return False
-
-    if ctx.status.fs == FsStatus.BOM_BEFORE_SHEBANG:
-        # Newer policies may provide this flag; default False if absent.
-        return bool(getattr(eff, "ignore_bom_before_shebang", False))
-
-    # All other FS states should not be skipped by policy here.
-    return False
-
-
-def policy_allows_fs_skip(ctx: "ProcessingContext") -> bool:
-    """Return True if policy allows proceeding despite soft FS violations.
-
-    This helper is used by early pipeline steps (e.g., ReaderStep) to continue
-    when Sniffer detected *soft* file-system issues that a project might choose
-    to tolerate. Hard errors (e.g., not found, unreadable, binary) must remain
-    terminal and are not bypassed here.
-
-    Soft violations considered:
-      - FsStatus.BOM_BEFORE_SHEBANG
-      - FsStatus.MIXED_LINE_ENDINGS
-
-    Policy fields:
-      - If the effective `Policy` defines `ignore_bom_before_shebang` and it is True,
-        we allow proceeding on `BOM_BEFORE_SHEBANG`.
-      - If the effective `Policy` defines `ignore_mixed_line_endings` and it is True,
-        we allow proceeding on `MIXED_LINE_ENDINGS`.
-
-    Notes:
-      - This function is forward-compatible: it uses `getattr(...)` so it returns
-        False for unknown fields on older Policy versions (safe default).
-      - We *always* allow when `FsStatus` is already OK/EMPTY; for EMPTY, your
-        existing `allow_empty_by_policy()` governs header insertion later.
-
-    Args:
-        ctx (ProcessingContext): Processing context containing fs status and config.
-
-    Returns:
-        bool: True if we may proceed despite a soft FS violation.
-    """
-    # Always OK to proceed if FS is healthy or empty (read can still run).
-    if ctx.status.fs in {FsStatus.OK, FsStatus.EMPTY}:
-        return True
-
-    eff: Policy | None = ctx.get_effective_policy()
-    if eff is None:
-        return False
-
-    if ctx.status.fs == FsStatus.BOM_BEFORE_SHEBANG:
-        # Newer policies may provide this flag; default False if absent.
-        return bool(getattr(eff, "ignore_bom_before_shebang", False))
-
-    if ctx.status.fs == FsStatus.MIXED_LINE_ENDINGS:
-        # Newer policies may provide this flag; default False if absent.
-        return bool(getattr(eff, "ignore_mixed_line_endings", False))
-
-    # All other FS states should not be skipped by policy here.
-    return False
-
-
-# --- Step gatekeeping ------------------------------------------------------
-
-
-@dataclass
-class ReasonHint:
-    """Lightweight advisory hint attached by steps.
-
-    Hints are non‑binding breadcrumbs to help explain *why* a step reached
-    a given state. They should never change classification/outcome directly.
-
-    Attributes:
-        axis (str): Logical axis the hint refers to (e.g., "fs", "content").
-        code (str): Short, machine‑friendly reason code (e.g., "no-read").
-        message (str): Human‑readable message explaining the reason succinctly.
-    """
-
-    axis: str
-    code: str
-    message: str
 
 
 @dataclass
@@ -281,160 +89,60 @@ class FlowControl:
 
 
 @dataclass
-class HeaderProcessingStatus:
-    """Tracks the status of each processing phase for a single file.
-
-    Fields correspond to each pipeline phase: file, header, generation, comparison, write.
-    """
-
-    # File type resolution status:
-    resolve: ResolveStatus = ResolveStatus.PENDING
-
-    # File system status (existence, permissions, binary):
-    fs: FsStatus = FsStatus.PENDING
-
-    # File content status (BOM, shebang, mixed newlines, readability):
-    content: ContentStatus = ContentStatus.PENDING
-
-    # Header-level axes: detect existing header
-    header: HeaderStatus = HeaderStatus.PENDING  # Status of header detection/parsing
-
-    # A. Check -- insert / update headers
-    # A.1 Generate updated header list and updated header value dict
-    generation: GenerationStatus = GenerationStatus.PENDING  # Status of header dict generation
-
-    # A.2 Render the updated header according to the file type and header processor
-    render: RenderStatus = RenderStatus.PENDING  # Status of header rendering
-
-    # B. Strip -- remove existing header
-    strip: StripStatus = StripStatus.PENDING  # Status of header stripping lifecycle
-
-    # Compare existing and updated file image
-    comparison: ComparisonStatus = ComparisonStatus.PENDING  # Status of header comparison
-
-    # Plan updates to the file
-    plan: PlanStatus = PlanStatus.PENDING  # Status of file update (prior to writing)
-
-    # Generate a patch for updated files
-    patch: PatchStatus = PatchStatus.PENDING  # Status of patch generation
-
-    # Write changes
-    write: WriteStatus = WriteStatus.PENDING  # Status of writing the header
-
-    def get(self, axis: Axis) -> BaseStatus:
-        """Get the status for a given Axis.
-
-        Args:
-            axis (Axis): The Axis we want to get the status for;
-
-        Returns:
-            BaseStatus: The status for the given Axis.
-        """
-        match axis:
-            case Axis.RESOLVE:
-                return self.resolve
-            case Axis.FS:
-                return self.fs
-            case Axis.CONTENT:
-                return self.content
-            case Axis.HEADER:
-                return self.header
-            case Axis.GENERATION:
-                return self.generation
-            case Axis.RENDER:
-                return self.render
-            case Axis.STRIP:
-                return self.strip
-            case Axis.COMPARISON:
-                return self.comparison
-            case Axis.PLAN:
-                return self.plan
-            case Axis.PATCH:
-                return self.patch
-            case Axis.WRITE:
-                return self.write
-
-    def reset(self) -> None:
-        """Set all status fields to PENDING."""
-        self.resolve = ResolveStatus.PENDING
-        self.fs = FsStatus.PENDING
-        self.content = ContentStatus.PENDING
-        self.header = HeaderStatus.PENDING
-        self.generation = GenerationStatus.PENDING
-        self.render = RenderStatus.PENDING
-        self.strip = StripStatus.PENDING
-        self.comparison = ComparisonStatus.PENDING
-        self.plan = PlanStatus.PENDING
-        self.patch = PatchStatus.PENDING
-        self.write = WriteStatus.PENDING
-
-    def to_dict(self) -> dict[str, AxisStatusPayload]:
-        """Return axis → {axis, name, label} payload for all axes.
-
-        This mirrors AxisStatusPayload and is useful if you want *only one*
-        place where axis status data is defined for machine output.
-        """
-        data: dict[str, AxisStatusPayload] = {}
-        for axis in Axis:
-            attr_name: str = axis.value  # e.g. "resolve"
-            status: BaseStatus = getattr(self, attr_name)
-            label: str = status.value  # ColoredStrEnum: (label, color)
-            axis_name: str = axis.value
-            data[axis_name] = {
-                "axis": axis_name,
-                "name": status.name,
-                "label": label,
-            }
-        return data
-
-
-@dataclass
-class StepStatus:
-    step: str
-    status: BaseStatus
-
-
-class AxisStatusPayload(TypedDict):
-    axis: str
-    name: str
-    label: str
-
-
-@dataclass
 class ProcessingContext:
-    """Context for header processing in the pipeline.
+    r"""Context for header processing in the TopMark pipeline.
 
-    This class holds all necessary information for processing a file's header,
-    including the file path, configuration, detected header state, and derived
-    header fields. It is used to pass data between different stages of the
-    header processing pipeline.
+    A ``ProcessingContext`` instance represents the complete, mutable state
+    for a single file as it flows through the pipeline. It holds configuration,
+    per-axis status, diagnostics, and view data, and it exposes helpers for
+    policy- and feasibility-related decisions.
 
     Attributes:
-        path (Path): The file path to process.
-        config (Config): The configuration for processing.
-        steps (list[Step]): Tracks the pipeline steps executed.
-        file_type (FileType | None): The resolved file type, if applicable.
-        status (HeaderProcessingStatus): Processing status for each pipeline phase.
-        flow (FlowControl): If `True`, stop processing (reached a terminal state).
-        header_processor (HeaderProcessor | None): The header processor instance for this file.
-        leading_bom (bool): True when the original file began with a UTF-8 BOM
-            ("\ufeff"). The reader sets this and strips the BOM from memory; the
-            updater re-attaches it to the final output.
-        has_shebang (bool): True if the first line starts with '#!' (post-BOM normalization).
-        newline_hist (dict[str, int]): Histogram of newline styles found in the file.
-        dominant_newline (str | None): Dominant newline style detected in the file.
-        dominance_ratio (float | None): Dominance ratio of the dominant newline style.
-        mixed_newlines (bool | None): True if mixed newline styles were found in the file.
-        newline_style (str): The newline style in the file (``LF``, ``CR``, ``CRLF``).
-        ends_with_newline (bool | None): True if the file ends with a newline.
-        pre_insert_capability (InsertCapability): Advisory from the sniffer about
-            pre-insert checks (e.g. spacers, empty body), defaults to UNEVALUATED.
-        pre_insert_reason (str | None): Reason why insertion may be problematic.
-        pre_insert_origin (str | None): Origin of the pre-insertion diagnostic.
-        diagnostics (list[Diagnostic]): Warnings or errors encountered during processing.
-        reason_hints (list[Hint]): Pre-outcome hints (non-binding).
-        views (Views): Bundle that carries image/header/build/render/updated/diff
-            views for this file. The runner may prune these after processing.
+        path (Path): The file path to process (absolute or relative to the
+            working directory).
+        config (Config): Effective configuration at the time of processing.
+        steps (list[Step]): Ordered list of pipeline steps that have been
+            executed for this context.
+        file_type (FileType | None): Resolved file type for the file (for
+            example, a Python or Markdown file type), if applicable.
+        status (HeaderProcessingStatus): Aggregated status for each pipeline
+            axis, kept as the single source of truth for per-axis outcomes.
+        flow (FlowControl): Flow control flags indicating whether processing
+            should halt and why.
+        header_processor (HeaderProcessor | None): Header processor instance
+            responsible for this file type, if any.
+        leading_bom (bool): True if the original file began with a UTF-8 BOM
+            (``"\\ufeff"``). The reader sets this flag and strips the BOM from
+            the in-memory image; the writer re-attaches it to the final output.
+        has_shebang (bool): True if the first logical line starts with ``"#!"
+            `` (post-BOM normalization).
+        newline_hist (dict[str, int]): Histogram of newline styles detected in
+            the file image.
+        dominant_newline (str | None): Dominant newline sequence detected in
+            the file (for example, ``"\\n"`` or ``"\\r\\n"``), if any.
+        dominance_ratio (float | None): Ratio of dominant newline occurrences
+            versus total newline occurrences.
+        mixed_newlines (bool | None): True if multiple newline styles were
+            detected, False if a single style was found, or None if not
+            evaluated yet.
+        newline_style (str): Normalized newline style used when writing
+            output; defaults to ``"\\n"``.
+        ends_with_newline (bool | None): True if the file ends with a newline
+            sequence, False if it does not, or None if unknown.
+        pre_insert_capability (InsertCapability): Advisory from the sniffer
+            about pre-insert checks (for example, spacers or empty body),
+            defaults to ``InsertCapability.UNEVALUATED``.
+        pre_insert_reason (str | None): Human-readable reason why insertion
+            may be problematic.
+        pre_insert_origin (str | None): Origin of the pre-insertion
+            diagnostic (typically a step or subsystem name).
+        diagnostics (list[Diagnostic]): Collected diagnostics (info, warning,
+            and error) produced during processing.
+        reason_hints (list[Hint]): Non-binding hints supplied by steps to
+            explain decisions; used primarily for summarization.
+        views (Views): Bundle that carries image/header/build/render/updated/
+            diff views for this file. The runner may prune heavy views after
+            processing.
     """
 
     path: Path  # The file path to process (absolute or relative to working directory)
@@ -477,10 +185,14 @@ class ProcessingContext:
     _eff_policy: Policy | None = None  # cached
 
     def get_effective_policy(self) -> Policy | None:
-        """Get the effective policy for the given processing context.
+        """Return the effective policy for this processing context.
 
-        Combines the effective processing context at Config level
-        with overrides for the given FileType instance.
+        The effective policy combines the global configuration with any
+        file-type-specific overrides for the current ``file_type``.
+
+        Returns:
+            Policy | None: The effective policy for this context, or ``None`` if
+            policy resolution fails.
         """
         if self._eff_policy is not None:
             return self._eff_policy
@@ -703,20 +415,32 @@ class ProcessingContext:
         return result
 
     def add_hint(self, hint: Hint) -> None:
-        """TODO Google-style docstring with type annotations."""
-        logger.info(
-            "Adding hint: axis: %s, code: %s, message: %s", hint.axis, hint.code, hint.message
-        )
+        """Attach a structured hint to the processing context.
+
+        Hints are non-binding diagnostics used to refine human-readable
+        summaries without affecting the core outcome classification.
+
+        Args:
+            hint (Hint): The hint instance to attach.
+
+        Returns:
+            None: The hint collection is updated in place.
+        """
         self.reason_hints.append(hint)
-        for h in self.reason_hints:
-            logger.info("hint -- axis: %s, code: %s, message: %s", h.axis, h.code, h.message)
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(
+                "added hint axis=%s code=%s message=%s", hint.axis, hint.code, hint.message
+            )
 
     def stop_flow(self, reason: str, at_step: Step) -> None:
         """Request a graceful, terminal stop for the rest of the pipeline.
 
         Args:
-            reason (str): Reason for halting the flow.
-            at_step (Step): the step requesting the halt.
+            reason (str): Short machine-friendly reason code for halting the flow.
+            at_step (Step): Step instance requesting the halt.
+
+        Returns:
+            None: The flow-control flags on this context are updated in place.
         """
         logger.info("Flow halted in %s: %s", at_step.name, reason)
         self.flow = FlowControl(halt=True, reason=reason, at_step=at_step.name)
@@ -769,7 +493,8 @@ class ProcessingContext:
         """Return the original file image as a materialized list of lines.
 
         Returns:
-            list[str]: List of logical lines from the current image view.
+            list[str]: List of logical lines from the current image view. An
+            empty list is returned if no image is available.
         """
         return list(self.iter_image_lines())
 
@@ -788,9 +513,15 @@ class ProcessingContext:
     def to_dict(self) -> dict[str, object]:
         """Return a machine-readable representation of this processing result.
 
-        The schema is stable for CLI/CI consumption and avoids color/formatting.
-        View details are provided by ``self.views.as_dict()`` to keep this method
-        small and consistent with the Views bundling.
+        The schema is intended for CLI/CI consumption and avoids color or
+        formatting concerns. View details are delegated to
+        ``self.views.as_dict()`` to keep this method small and consistent with
+        the ``Views`` bundling.
+
+        Returns:
+            dict[str, object]: A JSON-serializable mapping describing the
+            context, including path, file type, step statuses, views summary,
+            diagnostics, and high-level outcome flags.
         """
         views_summary: dict[str, object] = self.views.as_dict()
 
@@ -853,6 +584,11 @@ class ProcessingContext:
             path/to/file.py: python – would insert header - previewed
             path/to/file.py: python – up-to-date
             path/to/file.py: python – would strip header - diff - 2 issues
+
+        Returns:
+            str: Human-readable one-line summary, possibly followed by
+            additional lines for verbose diagnostics depending on the
+            configuration verbosity level.
         """
         # Local import to avoid import cycles at module import time
 
@@ -946,33 +682,47 @@ class ProcessingContext:
 
     @classmethod
     def bootstrap(cls, *, path: Path, config: Config) -> ProcessingContext:
-        """Create a fresh context with no derived state."""
+        """Create a fresh context with no derived state.
+
+        Args:
+            path (Path): File system path for the file to process.
+            config (Config): Effective configuration to attach to the context.
+
+        Returns:
+            ProcessingContext: Newly created context instance.
+        """
         return cls(path=path, config=config)
 
     # --- Convenience helpers -------------------------------------------------
     def add_info(self, message: str) -> None:
-        """Add an `info` diagnostic to the processing context.
+        """Add an ``info`` diagnostic to the processing context.
 
         Args:
             message (str): The diagnostic message.
+
+        Returns:
+            None: The diagnostic is appended to the context in place.
         """
         self.diagnostics.append(Diagnostic(DiagnosticLevel.INFO, message))
-        logger.info(message)
 
     def add_warning(self, message: str) -> None:
-        """Add an `warning` diagnostic to the processing context.
+        """Add a ``warning`` diagnostic to the processing context.
 
         Args:
             message (str): The diagnostic message.
+
+        Returns:
+            None: The diagnostic is appended to the context in place.
         """
         self.diagnostics.append(Diagnostic(DiagnosticLevel.WARNING, message))
-        logger.warning(message)
 
     def add_error(self, message: str) -> None:
-        """Add an `error` diagnostic to the processing context.
+        """Add an ``error`` diagnostic to the processing context.
 
         Args:
             message (str): The diagnostic message.
+
+        Returns:
+            None: The diagnostic is appended to the context in place.
         """
         self.diagnostics.append(Diagnostic(DiagnosticLevel.ERROR, message))
-        logger.error(message)

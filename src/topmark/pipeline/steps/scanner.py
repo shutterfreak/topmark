@@ -41,7 +41,7 @@ from topmark.pipeline.views import HeaderView
 
 if TYPE_CHECKING:
     from topmark.config.logging import TopmarkLogger
-    from topmark.pipeline.context import ProcessingContext
+    from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.processors.types import HeaderParseResult
 
 logger: TopmarkLogger = get_logger(__name__)

@@ -11,7 +11,7 @@
 """Adapters bridging between high-level ProcessingContext and lightweight view protocols.
 
 This module provides helper classes and functions that adapt a full
-[`topmark.pipeline.context.ProcessingContext`][] into protocol-compatible
+[`topmark.pipeline.context.model.ProcessingContext`][] into protocol-compatible
 view objects such as [`topmark.filetypes.base.PreInsertContextView`][].
 These adapters allow downstream components like InsertChecker or other
 file-type-specific validation utilities to operate without depending on the
@@ -33,7 +33,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
 
     from topmark.filetypes.base import FileType
-    from topmark.pipeline.context import ProcessingContext
+    from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.processors.base import HeaderProcessor
 
 

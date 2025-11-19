@@ -34,7 +34,7 @@ from topmark.api.view import collect_outcome_counts
 from topmark.config.model import Config
 from topmark.constants import TOPMARK_VERSION
 from topmark.core.diagnostics import DiagnosticStats, compute_diagnostic_stats
-from topmark.pipeline.context import ProcessingContext
+from topmark.pipeline.context.model import ProcessingContext
 
 if TYPE_CHECKING:
     from topmark.config.io import TomlTable

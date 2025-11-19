@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING
 from tests.pipeline.conftest import run_insert, run_steps
 from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
-from topmark.pipeline.context import ProcessingContext
+from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.status import ComparisonStatus, GenerationStatus, RenderStatus
 from topmark.pipeline.steps import builder, comparer, reader, resolver, scanner
 from topmark.pipeline.views import BuilderView, RenderView

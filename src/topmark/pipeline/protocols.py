@@ -1,8 +1,8 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : contracts.py
-#   file_relpath : src/topmark/pipeline/contracts.py
+#   file         : protocols.py
+#   file_relpath : src/topmark/pipeline/protocols.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -35,7 +35,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
-    from .context import ProcessingContext
+    from .context.model import ProcessingContext
     from .hints import Axis
 
 

@@ -31,7 +31,7 @@ from tests.pipeline.conftest import (
 )
 from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
-from topmark.pipeline.context import ProcessingContext
+from topmark.pipeline.context.model import ProcessingContext
 from topmark.utils.diff import render_patch
 
 if TYPE_CHECKING:

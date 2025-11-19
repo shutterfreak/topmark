@@ -32,7 +32,7 @@ from topmark.filetypes.base import (
     ContentGate,
     FileType,  # runtime import for typing/cast correctness
 )
-from topmark.pipeline.context import ProcessingContext
+from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.status import ResolveStatus
 
 if TYPE_CHECKING:

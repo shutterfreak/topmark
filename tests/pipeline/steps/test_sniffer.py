@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING
 
 from tests.pipeline.conftest import run_resolver, run_sniffer
 from topmark.config import Config, MutableConfig
-from topmark.pipeline.context import ProcessingContext
+from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.status import FsStatus
 
 if TYPE_CHECKING:

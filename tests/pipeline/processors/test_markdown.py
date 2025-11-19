@@ -28,7 +28,7 @@ from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_START_MARKER
 
 if TYPE_CHECKING:
-    from topmark.pipeline.context import ProcessingContext
+    from topmark.pipeline.context.model import ProcessingContext
 
 
 @mark_pipeline

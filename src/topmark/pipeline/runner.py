@@ -28,8 +28,8 @@ if TYPE_CHECKING:
 
     from topmark.config.logging import TopmarkLogger
 
-    from .context import ProcessingContext
-    from .contracts import Step
+    from .context.model import ProcessingContext
+    from .protocols import Step
 
 logger: TopmarkLogger = get_logger(__name__)
 

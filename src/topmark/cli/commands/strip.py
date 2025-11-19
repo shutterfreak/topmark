@@ -92,8 +92,8 @@ if TYPE_CHECKING:
     from topmark.cli_shared.console_api import ConsoleLike
     from topmark.config import Config, MutableConfig
     from topmark.config.logging import TopmarkLogger
-    from topmark.pipeline.context import ProcessingContext
-    from topmark.pipeline.contracts import Step
+    from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.protocols import Step
     from topmark.rendering.formats import HeaderOutputFormat
 
 logger: TopmarkLogger = get_logger(__name__)

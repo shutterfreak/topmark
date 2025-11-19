@@ -30,7 +30,7 @@ from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.pipeline.context import ProcessingContext
+    from topmark.pipeline.context.model import ProcessingContext
 
 
 def _is_crlf_lines(lines: list[str]) -> bool:

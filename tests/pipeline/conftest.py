@@ -31,7 +31,7 @@ from typing import TYPE_CHECKING, Iterable, Sequence
 from typing_extensions import NotRequired, Required, TypedDict
 
 from tests.conftest import fixture
-from topmark.pipeline.context import ProcessingContext
+from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.pipelines import CHECK_PATCH_PIPELINE, CHECK_SUMMMARY_PIPELINE
 from topmark.pipeline.processors import get_processor_for_file, register_all_processors
 from topmark.pipeline.processors.base import HeaderProcessor
@@ -51,8 +51,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.config import Config
-    from topmark.pipeline.contracts import Step
     from topmark.pipeline.processors.base import HeaderProcessor
+    from topmark.pipeline.protocols import Step
 
 
 def run_resolver(ctx: ProcessingContext) -> ProcessingContext:

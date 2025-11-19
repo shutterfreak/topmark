@@ -34,7 +34,7 @@ from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.filetypes.base import InsertCapability
 from topmark.pipeline import runner
-from topmark.pipeline.context import ProcessingContext
+from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.pipelines import Pipeline
 from topmark.pipeline.processors import get_processor_for_file
 from topmark.pipeline.processors.types import StripDiagKind, StripDiagnostic
@@ -50,8 +50,8 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-    from topmark.pipeline.contracts import Step
     from topmark.pipeline.processors.base import HeaderProcessor
+    from topmark.pipeline.protocols import Step
 
 logger: TopmarkLogger = get_logger(__name__)
 

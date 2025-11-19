@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING
 
 from topmark.config import Config
 from topmark.pipeline import runner
-from topmark.pipeline.context import ProcessingContext
+from topmark.pipeline.context.model import ProcessingContext
 from topmark.rendering.formats import HeaderOutputFormat
 
 from ..pipeline.pipelines import Pipeline
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.config import Config
-    from topmark.pipeline.contracts import Step
+    from topmark.pipeline.protocols import Step
     from topmark.pipeline.views import RenderView
 
 

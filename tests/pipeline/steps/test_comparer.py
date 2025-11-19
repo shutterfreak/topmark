@@ -25,7 +25,7 @@ from tests.pipeline.conftest import run_comparer, run_reader, run_resolver, run_
 from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.filetypes.base import FileType
-from topmark.pipeline.context import ProcessingContext
+from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.processors.base import HeaderProcessor
 from topmark.pipeline.status import (
     ComparisonStatus,

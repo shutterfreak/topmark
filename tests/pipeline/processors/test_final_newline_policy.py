@@ -25,14 +25,14 @@ from typing import TYPE_CHECKING
 from tests.pipeline.conftest import materialize_updated_lines, run_insert
 from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
-from topmark.pipeline.context import ProcessingContext
+from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.processors import get_processor_for_file
 from topmark.pipeline.processors.types import StripDiagKind, StripDiagnostic
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.pipeline.context import ProcessingContext
+    from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.processors.base import HeaderProcessor
 
 

@@ -25,7 +25,7 @@ from pathlib import Path
 
 from tests.pipeline.conftest import materialize_image_lines, run_steps
 from topmark.config import Config, MutableConfig
-from topmark.pipeline.context import ProcessingContext
+from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.status import (
     ContentStatus,
     PlanStatus,

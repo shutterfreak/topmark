@@ -55,7 +55,7 @@ if TYPE_CHECKING:
 
     from topmark.config.logging import TopmarkLogger
     from topmark.config.policy import Policy
-    from topmark.pipeline.context import ProcessingContext
+    from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.views import UpdatedView
 
 

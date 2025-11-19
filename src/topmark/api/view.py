@@ -44,7 +44,7 @@ from .types import DiagnosticTotals, FileResult, Outcome, RunResult
 if TYPE_CHECKING:
     from topmark.cli_shared.exit_codes import ExitCode
     from topmark.config.logging import TopmarkLogger
-    from topmark.pipeline.context import ProcessingContext
+    from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.views import DiffView
 
     from .public_types import PublicDiagnostic

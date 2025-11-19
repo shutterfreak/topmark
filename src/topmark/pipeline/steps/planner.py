@@ -47,7 +47,7 @@ from typing import TYPE_CHECKING, Iterable, Sequence
 from topmark.config.logging import get_logger
 from topmark.filetypes.base import InsertCapability
 from topmark.pipeline.adapters import PreInsertViewAdapter
-from topmark.pipeline.context import (
+from topmark.pipeline.context.policy import (
     allow_content_reflow_by_policy,
     allow_empty_by_policy,
 )
@@ -67,7 +67,7 @@ from topmark.pipeline.views import HeaderView, RenderView, UpdatedView
 if TYPE_CHECKING:
     from topmark.config.logging import TopmarkLogger
     from topmark.filetypes.base import FileType, InsertChecker, InsertCheckResult
-    from topmark.pipeline.context import ProcessingContext
+    from topmark.pipeline.context.model import ProcessingContext
 
 logger: TopmarkLogger = get_logger(__name__)
 

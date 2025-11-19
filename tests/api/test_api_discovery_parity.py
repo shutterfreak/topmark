@@ -35,8 +35,8 @@ if TYPE_CHECKING:
     import pytest
 
     from topmark.cli_shared.exit_codes import ExitCode
-    from topmark.pipeline.context import ProcessingContext
-    from topmark.pipeline.contracts import Step
+    from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.protocols import Step
 
 
 def _write(p: Path, s: str) -> None:
