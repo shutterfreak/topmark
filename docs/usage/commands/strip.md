@@ -76,6 +76,7 @@ When `--summary` is **not** set, `topmark strip` emits a single JSON object:
 
 ```jsonc
 {
+  "meta": { /* MetaPayload */ },
   "config": { /* ConfigPayload */ },
   "config_diagnostics": {
     "diagnostics": [ { "level": "warning", "message": "..." }, ... ],

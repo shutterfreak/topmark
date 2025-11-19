@@ -8,26 +8,46 @@
 #
 # topmark:header:end
 
-"""CLI utility helpers for TopMark.
+"""CLI rendering and machine-output helpers for TopMark.
 
-This module provides utility functions shared across CLI commands, including
-header defaults extraction, color handling, and summary rendering.
+This module contains helpers used by concrete CLI commands to render both
+human-readable and machine-readable output:
+
+- Human output:
+  - summary and per-file guidance lines,
+  - unified diffs,
+  - TOML blocks (for config commands),
+  - initial banners.
+
+- Machine output:
+  - emitters that write JSON and NDJSON payloads for config snapshots
+    and processing results, using structures built in
+    `topmark.cli_shared.machine_output`.
+
+All printing goes through `ConsoleLike` instances obtained via
+`topmark.cli.console_helpers.get_console_safely`. Data-shaping helpers
+(e.g. `build_config_payload`, `build_processing_results_payload`) live in
+`topmark.cli_shared.machine_output` to keep them Click-free and reusable.
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from enum import Enum
-from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterable, Sequence, TypedDict, cast
+from typing import TYPE_CHECKING, Any, Iterable, Sequence
 
 from topmark.api.view import collect_outcome_counts
 from topmark.cli.console_helpers import get_console_safely
 from topmark.cli_shared.console_api import ConsoleLike
+from topmark.cli_shared.machine_output import (
+    ConfigDiagnosticsPayload,
+    ConfigPayload,
+    build_config_diagnostics_payload,
+    build_config_payload,
+    build_meta_payload,
+    build_processing_results_payload,
+)
 from topmark.cli_shared.utils import OutputFormat
 from topmark.config.logging import get_logger
 from topmark.constants import TOML_BLOCK_END, TOML_BLOCK_START
-from topmark.core.diagnostics import DiagnosticStats, compute_diagnostic_stats
 from topmark.pipeline.hints import Cluster
 from topmark.utils.diff import render_patch
 
@@ -37,7 +57,6 @@ if TYPE_CHECKING:
     import click
 
     from topmark.cli_shared.console_api import ConsoleLike
-    from topmark.config.io import TomlTable
     from topmark.config.logging import TopmarkLogger
     from topmark.config.model import Config
     from topmark.pipeline.context import ProcessingContext
@@ -152,138 +171,14 @@ def emit_diffs(results: list[ProcessingContext], *, diff: bool, command: click.C
                 console.print(render_patch(diff_text))
 
 
-class ConfigDiagnosticEntry(TypedDict):
-    """Machine-readable diagnostic entry for config metadata."""
-
-    level: str
-    message: str
-
-
-class ConfigDiagnosticCounts(TypedDict):
-    """Aggregated per-level counts for config diagnostics."""
-
-    info: int
-    warning: int
-    error: int
-
-
-class ConfigPayload(TypedDict, total=False):
-    """JSON-friendly representation of the effective TopMark configuration.
-
-    The shape loosely mirrors ``Config.to_toml_dict(include_files=False)`` but
-    guarantees JSON-serializable values (paths/Enums normalized to strings).
-
-    Diagnostics are emitted separately via ConfigDiagnosticsPayload.
-    """
-
-    # loosely mirrors to_toml_dict structure with JSON-friendly types
-    fields: dict[str, str]
-    header: dict[str, list[str]]
-    formatting: dict[str, Any]
-    writer: dict[str, Any]
-    files: dict[str, Any]
-    policy: dict[str, Any]
-    policy_by_type: dict[str, Any]
-
-
-def _jsonify_config_value(value: Any) -> Any:
-    """Recursively convert config payload values into JSON-serializable forms.
-
-    This helper normalizes:
-      - pathlib.Path -> str
-      - Enum -> Enum.name
-      - Mapping -> dict with JSON-serializable values
-      - list/tuple/set/frozenset -> list with JSON-serializable values
-
-    It is intentionally conservative and only applies to the config payload
-    to avoid surprising transformations elsewhere.
-    """
-    if isinstance(value, Path):
-        return str(value)
-    if isinstance(value, Enum):
-        return value.name
-    if isinstance(value, Mapping):
-        # Safe: `value` is a Mapping after the isinstance check; we treat keys
-        # as generic objects and values as Any for JSONification purposes.
-        mapping: Mapping[object, Any] = cast("Mapping[object, Any]", value)
-        return {str(k): _jsonify_config_value(v) for k, v in mapping.items()}
-    if isinstance(value, (list, tuple, set, frozenset)):
-        # Safe: `value` is a collection after the isinstance check; iterate as objects.
-        seq: Iterable[object] = cast("Iterable[object]", value)
-        return [_jsonify_config_value(v) for v in seq]
-    return value
-
-
-def build_config_payload(config: Config) -> ConfigPayload:
-    """Build a JSON-friendly payload capturing a Config snapshot.
-
-    Args:
-        config (Config): Immutable runtime configuration instance.
-
-    Returns:
-        ConfigPayload: JSON-serializable representation of the Config, without
-            diagnostics.
-    """
-    base: TomlTable = config.to_toml_dict(include_files=False)  # TomlTable ~ dict[str, Any]
-
-    writer = base.get("writer", {})
-    # Make sure Enums become simple strings
-    target = config.output_target.name if config.output_target is not None else None
-    strategy = config.file_write_strategy.name if config.file_write_strategy is not None else None
-    writer = {**writer, "target": target, "strategy": strategy}
-    base["writer"] = writer
-
-    json_safe_base: Any = _jsonify_config_value(base)
-    return json_safe_base  # type: ignore[return-value]
-
-
-class ConfigDiagnosticsPayload(TypedDict, total=False):
-    """Machine-readable diagnostics collected while building the Config.
-
-    Structure:
-      - diagnostics: list of {level, message} entries.
-      - diagnostic_counts: aggregate per-level counts.
-    """
-
-    diagnostics: list[ConfigDiagnosticEntry]
-    diagnostic_counts: ConfigDiagnosticCounts
-
-
-def build_config_diagnostics_payload(config: Config) -> ConfigDiagnosticsPayload:
-    """Build a JSON-friendly diagnostics payload for a given Config.
-
-    Args:
-        config (Config): The Config instance.
-
-    Returns:
-        ConfigDiagnosticsPayload: JSON-serializable diagnostics metadata for
-            the given Config.
-    """
-    diag: ConfigDiagnosticsPayload = {}
-    diag_entries: list[ConfigDiagnosticEntry] = [
-        {"level": d.level.value, "message": d.message} for d in config.diagnostics
-    ]
-    stats: DiagnosticStats = compute_diagnostic_stats(config.diagnostics)
-    diag_counts: ConfigDiagnosticCounts = {
-        "info": stats.n_info,
-        "warning": stats.n_warning,
-        "error": stats.n_error,
-    }
-
-    diag["diagnostics"] = diag_entries
-    diag["diagnostic_counts"] = diag_counts
-
-    json_safe_diag: Any = _jsonify_config_value(diag)
-    return json_safe_diag  # type: ignore[return-value]
-
-
 def emit_config_machine(config: Config, *, fmt: OutputFormat) -> None:
     """Emit the effective Config snapshot in a machine-readable format.
 
     Shapes:
-        - JSON: a single object matching ConfigPayload.
+        - JSON: a single object matching ConfigPayload, wrapped as
+          {"meta": ..., "config": ...}.
         - NDJSON: a single line of the form
-          ``{"kind": "config", "config": <ConfigPayload>}``.
+          {"kind": "config", "meta": ..., "config": <ConfigPayload>}.
 
     Args:
         config (Config): Immutable runtime configuration to serialize.
@@ -292,14 +187,16 @@ def emit_config_machine(config: Config, *, fmt: OutputFormat) -> None:
     import json as _json
 
     console: ConsoleLike = get_console_safely()
+    meta = build_meta_payload()
     payload: ConfigPayload = build_config_payload(config)
     if fmt == OutputFormat.JSON:
-        console.print(_json.dumps(payload, indent=2))
+        console.print(_json.dumps({"meta": meta, "config": payload}, indent=2))
     elif fmt == OutputFormat.NDJSON:
         console.print(
             _json.dumps(
                 {
                     "kind": "config",
+                    "meta": meta,
                     "config": payload,
                 }
             )
@@ -310,9 +207,11 @@ def emit_config_diagnostics_machine(config: Config, *, fmt: OutputFormat) -> Non
     """Emit Config diagnostics in a machine-readable format.
 
     Shapes:
-        - JSON: a single object matching ConfigDiagnosticsPayload.
+        - JSON: a single object matching ConfigDiagnosticsPayload, wrapped as
+          {"meta": ..., "config_diagnostics": ...}.
         - NDJSON: a single line of the form
-          ``{"kind": "config_diagnostics", "config_diagnostics": <ConfigDiagnosticsPayload>}``.
+          {"kind": "config_diagnostics", "meta": ..., \
+            "config_diagnostics": <ConfigDiagnosticsPayload>}.
 
     Args:
         config (Config): Immutable runtime configuration providing diagnostics.
@@ -321,14 +220,24 @@ def emit_config_diagnostics_machine(config: Config, *, fmt: OutputFormat) -> Non
     import json as _json
 
     console: ConsoleLike = get_console_safely()
+    meta = build_meta_payload()
     payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
     if fmt == OutputFormat.JSON:
-        console.print(_json.dumps(payload, indent=2))
+        console.print(
+            _json.dumps(
+                {
+                    "meta": meta,
+                    "config_diagnostics": payload,
+                },
+                indent=2,
+            )
+        )
     elif fmt == OutputFormat.NDJSON:
         console.print(
             _json.dumps(
                 {
                     "kind": "config_diagnostics",
+                    "meta": meta,
                     "config_diagnostics": payload,
                 },
             )
@@ -344,8 +253,9 @@ def render_toml_block(
 ) -> None:
     """Render a TOML snippet with optional banner and BEGIN/END markers.
 
-    This is used by commands like `dump-config` and `show-defaults` in the
-    default (human) output format.
+    This is used by commands like `topmark config dump`,
+    `topmark config defaults`, and `topmark config init` in the default
+    (human) output format.
 
     Args:
         console (ConsoleLike): Console instance for printing styled output.
@@ -386,35 +296,6 @@ def render_toml_block(
         )
 
 
-class ProcessingSummaryEntry(TypedDict):
-    """Machine-readable summary entry for per-outcome counts."""
-
-    count: int
-    label: str
-
-
-def build_processing_results_payload(
-    results: list[ProcessingContext],
-    *,
-    summary_mode: bool,
-) -> dict[str, Any]:
-    """Build the machine-readable payload for processing results.
-
-    For JSON:
-      - summary_mode=False: this will be nested under "results".
-      - summary_mode=True: this will be nested under "summary".
-    """
-    if summary_mode:
-        counts = collect_outcome_counts(results)
-        summary: dict[str, ProcessingSummaryEntry] = {
-            key: {"count": cnt, "label": label} for key, (cnt, label, _color) in counts.items()
-        }
-        return {"summary": summary}
-    else:
-        details: list[dict[str, object]] = [r.to_dict() for r in results]
-        return {"results": details}
-
-
 def emit_processing_results_machine(
     config: Config,
     results: list[ProcessingContext],
@@ -432,6 +313,7 @@ def emit_processing_results_machine(
     JSON shapes:
         - detail mode (summary_mode=False):
           {
+            "meta": ...,
             "config": <ConfigPayload>,
             "config_diagnostics": <ConfigDiagnosticsPayload>,
             "results": [ <per-file result dict> ... ]
@@ -439,6 +321,7 @@ def emit_processing_results_machine(
 
         - summary mode (summary_mode=True):
           {
+            "meta": ...,
             "config": <ConfigPayload>,
             "config_diagnostics": <ConfigDiagnosticsPayload>,
             "summary": {
@@ -448,7 +331,7 @@ def emit_processing_results_machine(
           }
 
     NDJSON shapes:
-        - First line:  {"kind": "config", "config": <ConfigPayload>}
+        - First line:  {"kind": "config", "meta": ..., "config": <ConfigPayload>}
         - Second line: {"kind": "config_diagnostics",
                         "config_diagnostics": <ConfigDiagnosticsPayload>}
         - Remaining lines:
@@ -463,6 +346,8 @@ def emit_processing_results_machine(
 
     console: ConsoleLike = get_console_safely()
 
+    meta = build_meta_payload()
+
     # Prepare schema pieces once (display Config diagnostics when processing files)
     cfg_payload: ConfigPayload = build_config_payload(config)
     cfg_diag_payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
@@ -472,9 +357,11 @@ def emit_processing_results_machine(
     )
 
     if fmt == OutputFormat.JSON:
-        # Envelope: config + config diagnostics + results OR config + config diagnostics + summary
+        # Envelope: meta + config + config diagnostics + results
+        # OR meta + config + config diagnostics + summary
         # results_payload is {"results": [...]} or {"summary": {...}}
         envelope: dict[str, object] = {
+            "meta": meta,
             "config": cfg_payload,
             "config_diagnostics": cfg_diag_payload,
         }
@@ -487,6 +374,7 @@ def emit_processing_results_machine(
             _json.dumps(
                 {
                     "kind": "config",
+                    "meta": meta,
                     "config": cfg_payload,
                 }
             )

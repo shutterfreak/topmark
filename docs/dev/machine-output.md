@@ -38,6 +38,7 @@ two shapes depending on whether the CLI is in *detail* or *summary* mode.
 
 ```json
 {
+  "meta": { /* MetaPayload */ },
   "config": { /* ConfigPayload */ },
   "config_diagnostics": { /* ConfigDiagnosticsPayload */ },
   "results": [
@@ -46,17 +47,19 @@ two shapes depending on whether the CLI is in *detail* or *summary* mode.
 }
 ```
 
+- `meta`: small metadata block, including tool name and TopMark version.
 - `config`: snapshot of the effective config as emitted by
-  `build_config_payload` in `topmark.cli.utils`.
+  `build_config_payload` in `topmark.cli_shared.machine_output`.
 - `config_diagnostics`: aggregate counts plus individual diagnostics
   originating from config load/merge/sanitize steps.
 - `results`: one entry per processed file (see inline docs in
-  `topmark.cli.utils` for the exact per-file fields).
+  `topmark.cli_shared.machine_output` for the exact per-file fields).
 
 ### Summary mode (`summary_mode = true`)
 
 ```json
 {
+  "meta": { /* MetaPayload */ },
   "config": { /* ConfigPayload */ },
   "config_diagnostics": { /* ConfigDiagnosticsPayload */ },
   "summary": {
@@ -78,13 +81,13 @@ ______________________________________________________________________
 NDJSON output is a stream of records, each tagged with a `kind` field:
 
 ```json
-{"kind": "config", "config": { /* ConfigPayload */ }}
+{"kind": "config", "meta": { /* MetaPayload */ }, "config": { /* ConfigPayload */ }}
 {"kind": "config_diagnostics", "config_diagnostics": { /* ConfigDiagnosticsPayload */ }}
 {"kind": "result", "result": { /* per-file result */ }}
 {"kind": "summary", "summary": { /* aggregated counts */ }}
 ```
 
-- The `config` record is always emitted first.
+- The `config` record is always emitted first and includes the `meta` block.
 - The `config_diagnostics` record follows immediately afterwards.
 - Zero or more `result` records follow (one per processed file).
 - In summary mode, a final `summary` record is emitted.
@@ -97,7 +100,7 @@ ______________________________________________________________________
 ## ConfigPayload
 
 `ConfigPayload` is a JSON-safe representation of the effective `Config`,
-as produced by `build_config_payload` in `topmark.cli.utils`.
+as produced by `build_config_payload` in `topmark.cli_shared.machine_output`.
 
 High-level structure:
 
@@ -129,7 +132,7 @@ All values are normalized to JSON-safe types:
   and arrays.
 
 For the exact schema, see the implementation and type hints of
-`ConfigPayload` and `build_config_payload` in `topmark.cli.utils`.
+`ConfigPayload` and `build_config_payload` in `topmark.cli_shared.machine_output`.
 
 ______________________________________________________________________
 
@@ -161,7 +164,7 @@ High-level structure:
 The aggregated counts are meant to support quick triage; individual
 messages can be used to drive more detailed tooling behavior. See
 `ConfigDiagnosticsPayload` and `build_config_diagnostics_payload` in
-`topmark.cli.utils` for the current structure.
+`topmark.cli_shared.machine_output` for the current structure.
 
 ______________________________________________________________________
 
@@ -178,7 +181,7 @@ Exact fields may evolve, but typically include:
 - Any hints/diagnostics attached to the file.
 
 The canonical reference is the type and builder used by
-`build_processing_results_payload` in `topmark.cli.utils`.
+`build_processing_results_payload` in `topmark.cli_shared.machine_output`.
 
 ______________________________________________________________________
 
@@ -198,11 +201,14 @@ JSON output for config-only commands is just the `ConfigPayload`:
 
 ```json
 {
-  "fields": { /* ... */ },
-  "header": { /* ... */ },
-  "formatting": { /* ... */ },
-  "writer": { /* ... */ },
-  "files": { /* ... */ }
+  "meta": { /* MetaPayload */ },
+  "config": {
+    "fields": { /* ... */ },
+    "header": { /* ... */ },
+    "formatting": { /* ... */ },
+    "writer": { /* ... */ },
+    "files": { /* ... */ }
+  }
 }
 ```
 
@@ -214,7 +220,7 @@ because these commands do not run the processing pipeline.
 NDJSON output for config-only commands consists of a single record:
 
 ```json
-{"kind": "config", "config": { /* ConfigPayload */ }}
+{"kind": "config", "meta": { /* MetaPayload */ }, "config": { /* ConfigPayload */ }}
 ```
 
 No `config_diagnostics` record is emitted for these commands; they are

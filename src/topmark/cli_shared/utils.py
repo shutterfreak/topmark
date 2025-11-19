@@ -8,10 +8,19 @@
 #
 # topmark:header:end
 
-"""CLI utility helpers for TopMark.
+"""Click-independent CLI helpers for TopMark.
 
-This module provides utility functions shared across CLI commands, including
-header defaults extraction, color handling, and summary rendering.
+This module provides utility functions that are shared across CLI frontends
+but do not depend on Click or console instances, including:
+
+- OutputFormat and ColorMode enums.
+- Color-mode resolution based on CLI flags, environment, and output format.
+- File writing / unlinking helpers used by the pipeline.
+- Markdown table rendering for documentation-style output.
+- Human-friendly callable formatting.
+
+These helpers are deliberately kept Click-free so they can be reused from
+both command-line entry points and other potential frontends or tests.
 """
 
 from __future__ import annotations
@@ -40,14 +49,16 @@ class OutputFormat(str, Enum):
 
     Attributes:
         DEFAULT: Human-friendly text output; may include ANSI color if enabled.
-        JSON: A single JSON array of per-file objects (machine-readable).
+        JSON: A single JSON document (machine-readable). See the
+            `Machine output` developer docs for the schema.
         NDJSON: One JSON object per line (newline-delimited JSON; machine-readable).
         MARKDOWN: A Markdown document.
 
     Notes:
-        - Machine formats (``JSON`` and ``NDJSON``) must not include ANSI color or diffs.
-        - Use with [`topmark.cli.cli_types.EnumChoiceParam`][] to parse ``--output-format``
-          from Click.
+        - Machine formats (``JSON`` and ``NDJSON``) must not include ANSI color
+          or diffs.
+        - Use with [`topmark.cli.cli_types.EnumChoiceParam`][] to parse
+          ``--output-format`` from Click.
     """
 
     DEFAULT = "default"
