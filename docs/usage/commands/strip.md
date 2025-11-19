@@ -62,8 +62,12 @@ ______________________________________________________________________
 
 Use `--output-format json` or `--output-format ndjson` to emit output suitable for tooling:
 
-- **JSON**: pretty-printed array (or summary object when `--summary`).
+- **JSON**: single JSON document with `meta`, `config`, `config_diagnostics` and
+  either `results` (detail mode) or `summary` (summary mode).
 - **NDJSON**: one JSON object per line (or one summary line per outcome with `--summary`).
+
+For the canonical JSON/NDJSON schema, see
+[Machine output schema (JSON & NDJSON)](../../dev/machine-output.md).
 
 Notes:
 
@@ -78,20 +82,94 @@ When `--summary` is **not** set, `topmark strip` emits a single JSON object:
 {
   "meta": { /* MetaPayload */ },
   "config": { /* ConfigPayload */ },
-  "config_diagnostics": {
-    "diagnostics": [ { "level": "warning", "message": "..." }, ... ],
-    "diagnostic_counts": { "info": 0, "warning": 1, "error": 0 }
-  },
+  "config_diagnostics": { /* ConfigDiagnosticsPayload */ },
   "results": [
     {
-      "path": "src/foo.py",
-      "status": { "...": "..." },
-      "diagnostics": [ /* per-file diagnostics */ ],
-      "diagnostic_counts": { "...": 0 },
-      "outcome": { /* outcome summary */ }
-    },
-    ...
+      "path": "README.md",
+      "file_type": "markdown",
+      "steps": [
+        "ResolverStep",
+        "SnifferStep",
+        "ReaderStep",
+        "ScannerStep",
+        "StripperStep",
+        "ComparerStep"
+      ],
+      "step_axes": {
+        "ResolverStep": ["resolve"],
+        "SnifferStep": ["fs"],
+        "ReaderStep": ["content"],
+        "ScannerStep": ["header"],
+        "StripperStep": ["strip"],
+        "ComparerStep": ["comparison"]
+      },
+      "status": {
+        "resolve": { "axis": "resolve", "name": "RESOLVED", "label": "resolved" },
+        "fs":      { "axis": "fs",      "name": "OK",       "label": "ok" },
+        "content": { "axis": "content", "name": "OK",       "label": "ok" },
+        "header":  { "axis": "header",  "name": "DETECTED", "label": "header detected" },
+        "generation": { "axis": "generation", "name": "PENDING", "label": "header field generation pending" },
+        "render":     { "axis": "render",     "name": "PENDING", "label": "header field rendering pending" },
+        "strip":      { "axis": "strip",      "name": "READY",   "label": "ready for stripping" },
+        "comparison": { "axis": "comparison", "name": "CHANGED", "label": "changes found" }
+        /* plan/patch/write omitted for brevity */
+      },
+      "views": {
+        "image_lines": 382,
+        "header_range": [0, 10],
+        "header_fields": {
+          "project": "TopMark",
+          "file": "README.md",
+          "file_relpath": "README.md",
+          "license": "MIT",
+          "copyright": "(c) 2025 Olivier Biot"
+        },
+        "build_selected": null,
+        "render_line_count": 0,
+        "updated_has_lines": true,
+        "diff_present": false
+      },
+      "diagnostics": [],
+      "diagnostic_counts": { "info": 0, "warning": 0, "error": 0 },
+      "pre_insert_check": {
+        "capability": "UNEVALUATED",
+        "reason": null,
+        "origin": null
+      },
+      "outcome": {
+        "would_change": true,
+        "can_change": true,
+        "permitted_by_policy": null,
+        "check": {
+          "would_add_or_update": true,
+          "effective_would_add_or_update": true
+        },
+        "strip": {
+          "would_strip": true,
+          "effective_would_strip": true
+        }
+      }
+    }
   ]
+}
+```
+
+As with `check`, `status` is the axis → `{axis, name, label}` map,
+and `steps`/`step_axes` expose the pipeline trace for the `strip` intent.
+
+In summary mode (`--summary`), `results` is omitted and replaced by a
+`summary` object:
+
+```jsonc
+"summary": {
+  "would strip": {
+    "count": 30,
+    "label": "[08.1] header detected, ready for stripping"
+  },
+  "skipped": {
+    "count": 1,
+    "label": "[01] known file type, headers not supported"
+  }
 }
 ```
 

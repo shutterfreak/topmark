@@ -16,6 +16,11 @@ This document describes the JSON and NDJSON formats emitted by TopMark
 for commands such as `check` and `strip`. It is intended for integrators
 and tooling authors who consume TopMark programmatically.
 
+This document is the canonical reference for TopMark's JSON and NDJSON schemas. The
+usage guides for individual commands (for example, [`check`](../usage/commands/check.md)
+and [`strip`](../usage/commands/strip.md)) provide task-oriented examples that are
+consistent with this schema.
+
 ## Output formats
 
 TopMark exposes four `--output-format` values:
@@ -68,8 +73,16 @@ two shapes depending on whether the CLI is in *detail* or *summary* mode.
 }
 ```
 
-- `summary`: aggregated view of per-file results (for example, counts per
-  result bucket) in a compact structure.
+- `summary`: aggregated view of per-file results, keyed by bucket name
+  (for example `"unchanged"`, `"skipped"`, `"would strip"`). Each entry
+  is an object with `count` and `label`, for example:
+
+  ```jsonc
+  "summary": {
+    "unchanged": { "count": 30, "label": "[13] up-to-date" },
+    "skipped":   { "count": 1,  "label": "[01] known file type, headers not supported" }
+  }
+  ```
 
 The `config` and `config_diagnostics` envelopes are the same in both
 detail and summary modes.
@@ -83,14 +96,15 @@ NDJSON output is a stream of records, each tagged with a `kind` field:
 ```json
 {"kind": "config", "meta": { /* MetaPayload */ }, "config": { /* ConfigPayload */ }}
 {"kind": "config_diagnostics", "config_diagnostics": { /* ConfigDiagnosticsPayload */ }}
-{"kind": "result", "result": { /* per-file result */ }}
-{"kind": "summary", "summary": { /* aggregated counts */ }}
+{"kind": "result", "path": "README.md", "file_type": "markdown", /* per-file result fields */ }
+{"kind": "summary", "key": "unchanged", "count": 30, "label": "[13] up-to-date"}
+{"kind": "summary", "key": "skipped", "count": 1, "label": "[01] known file type, headers not supported"}
 ```
 
 - The `config` record is always emitted first and includes the `meta` block.
 - The `config_diagnostics` record follows immediately afterwards.
 - Zero or more `result` records follow (one per processed file).
-- In summary mode, a final `summary` record is emitted.
+- In summary mode, one `summary` record per bucket, each with `key`, `count`, and `label` (no nested summary object).
 
 Consumers are expected to switch on the `kind` field rather than relying
 on positional assumptions.
@@ -173,12 +187,85 @@ ______________________________________________________________________
 Each `result` record in NDJSON and each element of the `results` array
 in JSON represents a single processed file.
 
-Exact fields may evolve, but typically include:
+Exact fields may evolve, but currently include:
 
-- Path and file-type information.
-- Per-axis statuses (e.g. resolve, fs, content, header, generation).
-- Bucket/category classification used by the CLI.
-- Any hints/diagnostics attached to the file.
+- `path`: file path (relative to CWD as seen by the CLI).
+
+- `file_type`: resolved TopMark file type identifier (e.g., `"markdown"`, `"python"`).
+
+- `steps`: ordered list of executed step names (e.g., `"ResolverStep"`, `"SnifferStep"`, …).
+
+- `step_axes`: mapping from step name to the list of axes that step may write, e.g.:
+
+  ```jsonc
+  "step_axes": {
+    "ResolverStep": ["resolve"],
+    "SnifferStep": ["fs"],
+    "ReaderStep": ["content"],
+    "ScannerStep": ["header"],
+    "BuilderStep": ["generation"],
+    "RendererStep": ["render"],
+    "ComparerStep": ["comparison"]
+  }
+  ```
+
+- `step_axes`: mapping from step name to the list of axes that step may write, e.g.:
+
+  ```jsonc
+  "step_axes": {
+    "ResolverStep": ["resolve"],
+    "SnifferStep": ["fs"],
+    "ReaderStep": ["content"],
+    "ScannerStep": ["header"],
+    "BuilderStep": ["generation"],
+    "RendererStep": ["render"],
+    "ComparerStep": ["comparison"]
+  }
+  ```
+
+- `status`: mapping from axis name (`"resolve"`, `"fs"`, `"content"`, …) to an object of the
+  form `{ "axis", "name", "label" }` as produced by `HeaderProcessingStatus.to_dict()`, for example:
+
+  ```jsonc
+  "status": {
+    "resolve":   { "axis": "resolve",   "name": "RESOLVED", "label": "resolved" },
+    "fs":        { "axis": "fs",        "name": "OK",       "label": "ok" },
+    "content":   { "axis": "content",   "name": "OK",       "label": "ok" },
+    "header":    { "axis": "header",    "name": "DETECTED", "label": "header detected" },
+    "generation":{ "axis": "generation","name": "GENERATED","label": "header fields generated" },
+    "render":    { "axis": "render",    "name": "RENDERED", "label": "header fields rendered" },
+    "strip":     { "axis": "strip",     "name": "PENDING",  "label": "stripping pending" },
+    "comparison":{ "axis": "comparison","name": "UNCHANGED","label": "no changes found" },
+    "plan":      { "axis": "plan",      "name": "PENDING",  "label": "update pending" },
+    "patch":     { "axis": "patch",     "name": "PENDING",  "label": "patch pending" },
+    "write":     { "axis": "write",     "name": "PENDING",  "label": "write pending" }
+  }
+  ```
+
+- `views`: view-related fields, such as:
+
+  - `image_lines`
+  - `header_range`
+  - `header_fields`
+  - `build_selected`
+  - `render_line_count`
+  - `updated_has_lines`
+  - `diff_present`
+
+- `diagnostics`: list of per-file diagnostics (if any).
+
+- `diagnostic_counts`: summary counts per diagnostic level (`info`, `warning`, `error`).
+
+- `pre_insert_check`: capability assessment for header insertion/stripping with:
+
+  - `capability` (e.g., `"UNEVALUATED"`)
+  - `reason`
+  - `origin`
+
+- `outcome`: outcome summary, including:
+
+  - `would_change`, `can_change`, `permitted_by_policy`
+  - nested `check` and `strip` objects (e.g., `would_add_or_update`, `effective_would_strip`).
 
 The canonical reference is the type and builder used by
 `build_processing_results_payload` in `topmark.cli_shared.machine_output`.
