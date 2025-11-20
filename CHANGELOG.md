@@ -16,6 +16,32 @@ All notable changes to this project will be documented in this file. This projec
 [Semantic Versioning](https://semver.org/) and follows a Keep‑a‑Changelog–style structure with the
 sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
+## [0.10.1] – 2025-11-20
+
+This patch release republishes the intended `0.10.0` release with two commits that were accidentally omitted from the PyPI artifact.\
+There are **no functional code changes** relative to `0.10.0`; this release only corrects packaging and metadata.
+
+### Changed
+
+- **Tooling & dependency maintenance**
+
+  - Updated `.pre-commit-config.yaml` with the latest versions of:
+    - `mdformat` 1.0.0 (migrated to `mdformat-gfm`)
+    - `ruff-pre-commit` v0.14.x
+    - `pydoclint` 0.8.x
+    - `pyright-python` v1.1.407
+  - Tightened dependency ranges in `pyproject.toml` and regenerated `requirements*.txt` via pip-tools.
+
+- **Metadata**
+
+  - Added the `0.10.0` CHANGELOG entry that was missing in the PyPI package.
+  - Set the project version to `0.10.0` in `pyproject.toml` for the corrected build.
+
+### Notes
+
+This release contains **only packaging, metadata, and dependency housekeeping**.\
+All functionality, schemas, and breaking changes remain exactly as described in **0.10.0**.
+
 ## [0.10.0] – 2025-11-20
 
 This release introduces **major pipeline and CLI changes**, a full **machine-output schema redesign**, a refactored **ProcessingContext**, and multiple BREAKING CHANGES. It also includes substantial internal cleanup, dependency updates, and correctness fixes.
