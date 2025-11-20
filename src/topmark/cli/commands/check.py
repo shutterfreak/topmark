@@ -43,7 +43,7 @@ Examples:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 import click
 
@@ -87,6 +87,7 @@ from topmark.pipeline.status import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import Path
 
     from topmark.cli.io import InputPlan
@@ -377,9 +378,9 @@ def check_command(
                         return f"❌ Could not {intent.value} header: {r.status.write.value}"
 
                     return (
-                        "➕ Adding header for '{p}'".format(p=r.path)
+                        f"➕ Adding header for '{r.path}'"
                         if r.status.header == HeaderStatus.MISSING
-                        else "✏️  Updating header for '{p}'".format(p=r.path)
+                        else f"✏️  Updating header for '{r.path}'"
                     )
 
                 return f"🛠️  Run `topmark check --apply {r.path}` to update this file."

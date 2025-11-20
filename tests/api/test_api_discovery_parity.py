@@ -21,7 +21,7 @@ same discovery/precedence model as the CLI:
 from __future__ import annotations
 
 import textwrap
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 from topmark import api
 from topmark.config import MutableConfig
@@ -30,6 +30,7 @@ from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.pipelines import Pipeline
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import Path
 
     import pytest

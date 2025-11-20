@@ -26,7 +26,7 @@ Key utilities:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterable, Sequence
+from typing import TYPE_CHECKING
 
 from typing_extensions import NotRequired, Required, TypedDict
 
@@ -48,6 +48,7 @@ from topmark.pipeline.steps.stripper import StripperStep
 from topmark.pipeline.steps.writer import WriterStep
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
     from pathlib import Path
 
     from topmark.config import Config

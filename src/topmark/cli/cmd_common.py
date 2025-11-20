@@ -47,7 +47,7 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-def get_effective_verbosity(ctx: click.Context, config: "Config | None" = None) -> int:
+def get_effective_verbosity(ctx: click.Context, config: Config | None = None) -> int:
     """Return the effective program-output verbosity for this command.
 
     Resolution order (tri-state aware):

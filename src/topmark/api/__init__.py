@@ -63,7 +63,7 @@ run = api.check(
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Iterable, Mapping, Sequence
+from typing import TYPE_CHECKING, Any
 
 from topmark.api.runtime import run_pipeline, select_pipeline
 from topmark.api.view import finalize_run_result
@@ -76,7 +76,7 @@ from .public_types import PublicDiagnostic, PublicPolicy
 from .types import FileResult, FileTypeInfo, Outcome, ProcessorInfo, RunResult
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Iterable, Mapping, Sequence
     from pathlib import Path
 
     from topmark.config import Config

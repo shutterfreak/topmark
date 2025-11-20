@@ -16,7 +16,7 @@ and small utilities that are reused across tests under `tests/api/`.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Iterable, Iterator, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
@@ -29,7 +29,7 @@ from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterable, Iterator
     from pathlib import Path
 
     from topmark.filetypes.base import FileType
@@ -325,11 +325,11 @@ class _StubProcessor:
         # `file_type` is set by the registry upon registration
 
 
-def stub_ft(name: str, description: str = "") -> "FileType":
+def stub_ft(name: str, description: str = "") -> FileType:
     """Return a duck-typed FileType stub cast for strict API use in tests."""
     return cast("FileType", _StubFileType(name, description=description))
 
 
-def stub_proc_cls() -> type["HeaderProcessor"]:
+def stub_proc_cls() -> type[HeaderProcessor]:
     """Return a duck-typed HeaderProcessor class for registry tests."""
     return cast("type[HeaderProcessor]", _StubProcessor)

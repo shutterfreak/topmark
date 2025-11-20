@@ -50,12 +50,14 @@ Warning:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Iterator, Mapping
+from typing import TYPE_CHECKING
 
 from topmark.registry.filetypes import FileTypeMeta, FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry, ProcessorMeta
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator, Mapping
+
     from topmark.filetypes.base import FileType
     from topmark.pipeline.processors.base import HeaderProcessor
 
@@ -137,7 +139,7 @@ class Registry:
 
     @staticmethod
     def register_filetype(
-        ft_obj: "FileType", *, processor: type["HeaderProcessor"] | None = None
+        ft_obj: FileType, *, processor: type[HeaderProcessor] | None = None
     ) -> None:
         """Register a file type and optionally bind a processor (advanced).
 
@@ -153,7 +155,7 @@ class Registry:
         return FileTypeRegistry.unregister(name)
 
     @staticmethod
-    def register_processor(name: str, processor_class: type["HeaderProcessor"]) -> None:
+    def register_processor(name: str, processor_class: type[HeaderProcessor]) -> None:
         """Register a header processor under a file type name (advanced).
 
         Passthrough to

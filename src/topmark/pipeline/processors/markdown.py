@@ -39,7 +39,6 @@ from topmark.pipeline.processors.types import BoundsKind, HeaderBounds
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from re import Pattern
 
     from topmark.config.logging import TopmarkLogger
 
@@ -72,7 +71,7 @@ class MarkdownHeaderProcessor(BlockCommentMixin, HeaderProcessor):
         ``` or ~~~ (after optional leading whitespace). This is intentionally
         minimal but sufficient for avoiding TopMark markers in fenced blocks.
         """
-        fence_re: Pattern[str] = re.compile(r"^\s*(```|~~~)")
+        fence_re: re.Pattern[str] = re.compile(r"^\s*(```|~~~)")
         in_fence = False
         mask: list[bool] = []
         for ln in lines:
@@ -89,7 +88,7 @@ class MarkdownHeaderProcessor(BlockCommentMixin, HeaderProcessor):
         *,
         lines: Iterable[str],
         newline_style: str,
-    ) -> "HeaderBounds":
+    ) -> HeaderBounds:
         """Detect the TopMark header in Markdown, ignoring fenced code blocks.
 
         This override delegates to the base header-bounds logic after hiding any

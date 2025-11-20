@@ -20,8 +20,9 @@ materializing whole images, and rich blocks/mappings are grouped in small
 dataclasses per phase.
 """
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Iterable, Protocol, Sequence, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 
 @runtime_checkable

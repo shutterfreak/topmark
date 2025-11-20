@@ -198,6 +198,7 @@ select = [
   "I",  # isort-compatible import sorting
   "D",  # pydocstyle
   "TC", # type-checking (TCH001/2/3: move type-only imports under TYPE_CHECKING)
+  "UP", # pyupgrade: modern syntax, builtin/collections.abc generics
 ]
 ignore = [
   # Note: D212 and D213 cannot be enabled simultaneously

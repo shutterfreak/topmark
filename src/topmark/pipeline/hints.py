@@ -35,12 +35,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Iterable
+from typing import TYPE_CHECKING, Any
 
 from yachalk import chalk
 
 from topmark.core.enum_mixins import EnumIntrospectionMixin
 from topmark.rendering.colored_enum import ColoredStrEnum
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 
 class Axis(EnumIntrospectionMixin, str, Enum):

@@ -336,7 +336,7 @@ def load_defaults_dict() -> TomlTable:
     return data
 
 
-def load_toml_dict(path: "Path") -> TomlTable:
+def load_toml_dict(path: Path) -> TomlTable:
     """Load and parse a TOML file from the filesystem.
 
     Args:
@@ -352,7 +352,7 @@ def load_toml_dict(path: "Path") -> TomlTable:
     """
     try:
         val: TomlTable = toml.load(path)
-    except IOError as e:
+    except OSError as e:
         logger.error("Error loading TOML from %s: %s", path, e)
         val = {}
     except toml.TomlDecodeError as e:

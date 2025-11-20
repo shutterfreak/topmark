@@ -38,9 +38,11 @@ TOML mapping:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Mapping
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from topmark.config.model import Config
 
 
@@ -69,7 +71,7 @@ class Policy:
     render_empty_header_when_no_fields: bool = False
     allow_reflow: bool = False
 
-    def thaw(self) -> "MutablePolicy":
+    def thaw(self) -> MutablePolicy:
         """Return a mutable builder initialized from this frozen policy.
 
         Returns:
@@ -104,7 +106,7 @@ class MutablePolicy:
     render_empty_header_when_no_fields: bool | None = None
     allow_reflow: bool | None = None
 
-    def merge_with(self, other: "MutablePolicy") -> "MutablePolicy":
+    def merge_with(self, other: MutablePolicy) -> MutablePolicy:
         """Return a new MutablePolicy by applying ``other`` over ``self`` (last-wins).
 
         ``None`` fields in ``other`` do not override explicit values in ``self``.
@@ -165,7 +167,7 @@ class MutablePolicy:
         return self.resolve(Policy())
 
     @classmethod
-    def from_toml_table(cls, tbl: Mapping[str, Any] | None) -> "MutablePolicy":
+    def from_toml_table(cls, tbl: Mapping[str, Any] | None) -> MutablePolicy:
         """Create a MutablePolicy from a TOML table mapping.
 
         Unspecified keys become ``None`` (inherit from base at freeze time).

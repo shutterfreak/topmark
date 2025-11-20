@@ -16,7 +16,7 @@ Ensures that:
 - Each registered subcommand provides a working `--help` page.
 """
 
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING
 
 from click.testing import Result
 
@@ -25,7 +25,7 @@ from tests.cli.conftest import assert_SUCCESS, run_cli
 if TYPE_CHECKING:
     from click.testing import Result
 
-COMMANDS: list[Tuple[str, ...]] = [
+COMMANDS: list[tuple[str, ...]] = [
     ("check",),
     ("strip",),
     ("config",),

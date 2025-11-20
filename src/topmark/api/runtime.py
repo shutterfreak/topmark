@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterable, Literal, Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Literal
 
 from topmark.config import Config, MutableConfig
 from topmark.config.logging import get_logger
@@ -36,6 +36,8 @@ from topmark.pipeline.pipelines import Pipeline
 from topmark.registry import Registry
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping, Sequence
+
     from topmark.config.logging import TopmarkLogger
     from topmark.core.exit_codes import ExitCode
     from topmark.pipeline.context.model import ProcessingContext

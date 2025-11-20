@@ -12,7 +12,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Mapping
+from typing import TYPE_CHECKING, Any
 
 from topmark import api
 from topmark.api.public_types import PublicPolicy
@@ -20,6 +20,7 @@ from topmark.api.types import Outcome
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from pathlib import Path
 
     from topmark.pipeline.processors.base import HeaderProcessor

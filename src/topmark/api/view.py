@@ -18,10 +18,11 @@ duplication between `check()` and `strip()` and keeps the public surface tidy.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, Mapping, Sequence
+from typing import TYPE_CHECKING
 
 from yachalk import chalk
 
@@ -51,6 +52,8 @@ from topmark.pipeline.status import (
 from .types import DiagnosticTotals, FileResult, Outcome, RunResult
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+
     from topmark.config.logging import TopmarkLogger
     from topmark.core.exit_codes import ExitCode
     from topmark.pipeline.context.model import ProcessingContext
@@ -542,7 +545,7 @@ def finalize_run_result(
     skip_compliant: bool,
     skip_unsupported: bool,
     update_statuses: set[PlanStatus],
-    encountered_error_code: "ExitCode | None",
+    encountered_error_code: ExitCode | None,
 ) -> RunResult:
     """Assemble a `RunResult` from pipeline results with consistent view filtering.
 
@@ -607,7 +610,7 @@ def finalize_run_result(
     )
 
 
-def format_summary(ctx: "ProcessingContext") -> str:
+def format_summary(ctx: ProcessingContext) -> str:
     """Return a concise, human‑readable one‑liner for this file.
 
     The summary is aligned with TopMark's pipeline phases and mirrors what

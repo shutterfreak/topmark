@@ -27,7 +27,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Generic,
-    Iterable,
     NoReturn,
     Protocol,
     TypedDict,
@@ -38,6 +37,8 @@ from typing import (
 import click
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from click.shell_completion import CompletionItem as ClickCompletionItem
 
     from topmark.rendering.formats import HeaderOutputFormat
@@ -237,7 +238,7 @@ class EnumChoiceParam(ParamTypeBase, Generic[E]):
         ctx: click.Context,  # pylint: disable=unused-argument
         param: click.Parameter,  # pylint: disable=unused-argument
         incomplete: str,
-    ) -> list["ClickCompletionItem"]:
+    ) -> list[ClickCompletionItem]:
         """Tab completion for Click.
 
         Bash: `eval "$(_TOPMARK_COMPLETE=bash_source topmark)"`
@@ -249,7 +250,7 @@ class EnumChoiceParam(ParamTypeBase, Generic[E]):
         )  # Click 8.x
 
         prefix: str = (incomplete or "").lower()
-        items: list["ClickCompletionItem"] = []
+        items: list[ClickCompletionItem] = []
         for e in cast("Iterable[E]", self.enum_cls):
             val = str(getattr(e, "value", e))
             if val.lower().startswith(prefix):

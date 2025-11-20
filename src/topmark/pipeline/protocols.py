@@ -51,7 +51,7 @@ class Step(Protocol):
     primary_axis: Axis | None  # new: axis this step “represents” in summaries
     axes_written: tuple[Axis, ...]  # e.g. ("fs","content")
 
-    def may_proceed(self, ctx: "ProcessingContext") -> bool:
+    def may_proceed(self, ctx: ProcessingContext) -> bool:
         """Return whether the step should run given the current context.
 
         Args:
@@ -62,7 +62,7 @@ class Step(Protocol):
         """
         ...
 
-    def run(self, ctx: "ProcessingContext") -> None:
+    def run(self, ctx: ProcessingContext) -> None:
         """Execute the step, mutating the context in place.
 
         Implementations must **only** write to axes they own (as declared in
@@ -74,7 +74,7 @@ class Step(Protocol):
         """
         ...
 
-    def hint(self, ctx: "ProcessingContext") -> None:
+    def hint(self, ctx: ProcessingContext) -> None:
         """Attach non-binding hints/telemetry to the context.
 
         A step can add structured reason hints or metrics to aid later
@@ -86,7 +86,7 @@ class Step(Protocol):
         """
         ...
 
-    def __call__(self, ctx: "ProcessingContext") -> "ProcessingContext":
+    def __call__(self, ctx: ProcessingContext) -> ProcessingContext:
         """Run the step lifecycle: gate → run (optional) → hint.
 
         Args:

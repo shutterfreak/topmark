@@ -24,11 +24,13 @@ mixins to share well-tested logic and reduce duplication.
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Final, Sequence
+from typing import TYPE_CHECKING, Any, Final, cast
 
 from topmark.pipeline.policy_whitespace import is_pure_spacer
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from topmark.filetypes.policy import FileTypeHeaderPolicy
 
 _RE_SHEBANG: Final[re.Pattern[str]] = re.compile(r"^#!")
@@ -432,8 +434,6 @@ class XmlPositionalMixin:
         # If BlockCommentMixin is in the MRO, use its helper to ensure a final newline.
         ensure_block_padding = getattr(self, "ensure_block_padding", None)
         if callable(ensure_block_padding):
-            from typing import Any, cast
-
             out = cast("list[str]", cast("Any", ensure_block_padding)(out, newline=newline_style))
 
         return out

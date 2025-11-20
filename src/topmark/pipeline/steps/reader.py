@@ -318,7 +318,7 @@ class ReaderStep(BaseStep):
                     from topmark.filetypes.base import InsertCapability  # local to avoid cycles
 
                     view = PreInsertViewAdapter(ctx)
-                    res: "InsertCheckResult" = checker(view) or {}
+                    res: InsertCheckResult = checker(view) or {}
                     if res:
                         ctx.pre_insert_capability = res.get(
                             "capability", InsertCapability.UNEVALUATED

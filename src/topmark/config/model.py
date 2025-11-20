@@ -820,7 +820,7 @@ class MutableConfig:
         extra_config_files: Iterable[Path] | None = None,
         no_config: bool = False,
         file_types: Iterable[str] | None = None,
-    ) -> "MutableConfig":
+    ) -> MutableConfig:
         """Discover and merge configuration layers into a draft `MutableConfig`.
 
         Merge order (lowest → highest precedence):

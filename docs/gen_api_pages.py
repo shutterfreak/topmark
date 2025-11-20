@@ -27,14 +27,17 @@ sys.path.insert(0, os.path.abspath("src"))
 import importlib
 import pkgutil
 from collections import defaultdict
-from typing import Any, DefaultDict, Iterable
+from typing import TYPE_CHECKING, Any
 
 import mkdocs_gen_files
 
 import topmark
 
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
 # Map a package module name to the set of its immediate children (module or package names)
-packages: DefaultDict[str, set[str]] = defaultdict(set)
+packages: defaultdict[str, set[str]] = defaultdict(set)
 
 
 def _parent_package(modname: str) -> str | None:

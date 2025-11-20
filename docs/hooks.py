@@ -35,7 +35,8 @@ import logging
 import re
 from importlib.metadata import version as get_version
 from pathlib import Path
-from typing import Any, Match
+from re import Match
+from typing import Any
 
 import toml
 

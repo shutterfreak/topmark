@@ -118,6 +118,48 @@ make format          # auto-format all
 make docstring-links # enforce docstring link style
 ```
 
+### Linting policy
+
+TopMark treats Ruff, Pyright, and the supporting tools as the single source of truth
+for code style and typing rules:
+
+- **Ruff**:
+
+  - Enforces import style and modern syntax via the `UP` ruleset (pyupgrade), including:
+    - Using builtin generics (`list[...]`, `dict[...]`, `tuple[...]`) instead of
+      `typing.List` / `typing.Dict` / `typing.Tuple`.
+    - Importing abstract collections from `collections.abc` (e.g. `Iterable`, `Mapping`,
+      `Sequence`, `Callable`, `Iterator`) rather than from `typing`.
+  - Enforces moving type-only imports under `if TYPE_CHECKING:` via the `TC` rules.
+  - Acts as the primary linter for style, unused code, and import ordering.
+
+- **Typing imports**:
+
+  - Reserve `typing` imports for: `TYPE_CHECKING`, `Any`, `Final`, `Literal`, `Protocol`,
+    `TypedDict`, `TypeVar`, `ParamSpec`, `TypeGuard`, `NamedTuple`, `TextIO`, `IO`,
+    and `cast`.
+  - Import abstract collections from `collections.abc` (not from `typing`).
+  - Prefer PEP 604 unions (e.g. `X | None`) over `typing.Optional[X]`.
+
+- **Type checking**:
+
+  - Pyright runs in `strict` mode for `src/` and `tests/`.
+  - Public APIs must be fully annotated and pass Pyright without `# type: ignore`
+    (exceptions must be documented and justified in code comments).
+
+- **Docstrings**:
+
+  - Use Google-style docstrings with explicit `Args:`, `Returns:`, and `Raises:` sections
+    for public functions, methods, and classes.
+  - Keep docstrings import-safe: avoid heavy imports or side effects at module import time.
+
+- **Pre-commit**:
+
+  - Pre-commit hooks are optional but recommended and primarily run Ruff, Taplo, mdformat,
+    TopMark header checks, and related hygiene tools.
+  - We rely on Ruff (with `UP`/`TC` enabled) to enforce import/typing style; no additional
+    grep-based hooks for typing/collections imports are needed.
+
 ______________________________________________________________________
 
 ## 🧠 Type Checking

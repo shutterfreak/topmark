@@ -36,13 +36,13 @@ from __future__ import annotations
 from pathlib import Path
 
 # For runtime type checks, prefer collections.abc
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 from topmark.config.logging import get_logger
 from topmark.config.types import PatternSource
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Callable, Iterable
     from os import PathLike
 
     from topmark.config.logging import TopmarkLogger

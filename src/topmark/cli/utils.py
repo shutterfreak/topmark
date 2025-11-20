@@ -32,7 +32,7 @@ All printing goes through `ConsoleLike` instances obtained via
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Iterable, Sequence
+from typing import TYPE_CHECKING, Any
 
 from topmark.api.view import collect_outcome_counts, format_summary
 from topmark.cli.console_helpers import get_console_safely
@@ -52,7 +52,7 @@ from topmark.pipeline.hints import Cluster
 from topmark.utils.diff import render_patch
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterable, Sequence
 
     import click
 

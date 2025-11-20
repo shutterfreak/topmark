@@ -18,13 +18,15 @@ for logging and CLI display.
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 from yachalk import chalk
 
 from topmark.config.logging import get_logger
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from topmark.config.logging import TopmarkLogger
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -101,5 +103,5 @@ def write_patch(patch_content: str, output_path: str) -> None:
         print(f"Patch content successfully written to '{output_path}'")
     except FileNotFoundError:
         print(f"Error: The directory for '{output_path}' does not exist.")
-    except IOError as e:
+    except OSError as e:
         print(f"An I/O error occurred while writing the file: {e}")

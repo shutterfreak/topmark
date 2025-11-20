@@ -18,7 +18,7 @@ and other edge cases like dotfiles, globs, and duplicates.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 import topmark.file_resolver as file_resolver_mod
 
@@ -26,6 +26,8 @@ import topmark.file_resolver as file_resolver_mod
 from tests.conftest import make_config
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     import pytest
 
     from topmark.config import Config

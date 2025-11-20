@@ -55,7 +55,7 @@ class BaseStep:
     primary_axis: Axis | None  # new: axis this step “represents” in summaries
     axes_written: tuple[Axis, ...] = ()
 
-    def __call__(self, ctx: "ProcessingContext") -> "ProcessingContext":
+    def __call__(self, ctx: ProcessingContext) -> ProcessingContext:
         """Invoke the step lifecycle: gate → run (if allowed) → hint.
 
         This method centralizes per-step bookkeeping (e.g., invocation counts).
@@ -91,7 +91,7 @@ class BaseStep:
         self.hint(ctx)
         return ctx
 
-    def may_proceed(self, ctx: "ProcessingContext") -> bool:
+    def may_proceed(self, ctx: ProcessingContext) -> bool:
         """Return whether the step should run given the current context.
 
         Default: ``True`` (always run). Override in subclasses to respect
@@ -105,7 +105,7 @@ class BaseStep:
         """
         return True
 
-    def run(self, ctx: "ProcessingContext") -> None:
+    def run(self, ctx: ProcessingContext) -> None:
         """Perform the step's primary work, mutating ``ctx`` in place.
 
         Subclasses must implement this method and only write to declared axes.
@@ -115,7 +115,7 @@ class BaseStep:
         """
         pass
 
-    def hint(self, ctx: "ProcessingContext") -> None:
+    def hint(self, ctx: ProcessingContext) -> None:
         """Attach non-binding hints/telemetry to ``ctx`` (optional).
 
         This method should never influence the final outcome directly.

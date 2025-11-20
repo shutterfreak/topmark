@@ -23,7 +23,7 @@ fully deterministic and independent of the built-in definitions.
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, Callable, cast
+from typing import TYPE_CHECKING, cast
 
 import topmark.pipeline.steps.resolver as resolver_mod
 from tests.pipeline.conftest import run_resolver
@@ -36,6 +36,7 @@ from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.status import ResolveStatus
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
     import pytest
@@ -57,16 +58,16 @@ def _cm(fn: Callable[[Path], bool]) -> Callable[[Path], bool]:
 
 
 # Typed helper to satisfy Pyright when monkeypatching the processor registry
-def _empty_processor_registry() -> dict[str, "HeaderProcessor"]:
+def _empty_processor_registry() -> dict[str, HeaderProcessor]:
     return {}
 
 
-def _empty_filetype_registry() -> dict[str, "FileType"]:
+def _empty_filetype_registry() -> dict[str, FileType]:
     return {}
 
 
 # --- Helpers for typed processor registries ---
-def _one_processor_registry(name: str) -> dict[str, "HeaderProcessor"]:
+def _one_processor_registry(name: str) -> dict[str, HeaderProcessor]:
     return {name: cast("HeaderProcessor", object())}
 
 
@@ -119,7 +120,7 @@ def test_resolve_python_file_resolves_with_processor(
 
 
 def test_resolve_unknown_extension_marked_unsupported(
-    tmp_path: Path, monkeypatch: "pytest.MonkeyPatch"
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Files with no matching FileType must be marked SKIPPED_UNSUPPORTED."""
     f: Path = tmp_path / "mystery.weirdext"

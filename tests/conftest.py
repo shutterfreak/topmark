@@ -26,14 +26,17 @@ Notes:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Sequence, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 import pytest
 
 from topmark.config import MutableConfig, PatternSource, logging
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from topmark.config import Config
 
 F = TypeVar("F", bound=Callable[..., object])

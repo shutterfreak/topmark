@@ -32,9 +32,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from threading import RLock
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Iterator, Mapping
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator, Mapping
+
     from topmark.filetypes.base import FileType
     from topmark.pipeline.processors.base import HeaderProcessor
 
@@ -65,11 +67,11 @@ class FileTypeRegistry:
 
     # Local overlays; applied on top of the base (built-ins + plugins).
     # These *do not* mutate the base registry returned by instances.
-    _overrides: dict[str, "FileType"] = {}
+    _overrides: dict[str, FileType] = {}
     _removals: set[str] = set()
 
     @classmethod
-    def _compose(cls) -> dict[str, "FileType"]:
+    def _compose(cls) -> dict[str, FileType]:
         """Compose base registry with local overlays/removals."""
         from topmark.filetypes.instances import get_file_type_registry as _get_ft
 

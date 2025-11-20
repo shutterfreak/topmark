@@ -42,7 +42,7 @@ Behavior:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterable, Sequence
+from typing import TYPE_CHECKING
 
 from topmark.config.logging import get_logger
 from topmark.filetypes.base import InsertCapability
@@ -65,6 +65,8 @@ from topmark.pipeline.steps.base import BaseStep
 from topmark.pipeline.views import HeaderView, RenderView, UpdatedView
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
+
     from topmark.config.logging import TopmarkLogger
     from topmark.filetypes.base import FileType, InsertChecker, InsertCheckResult
     from topmark.pipeline.context.model import ProcessingContext
@@ -325,7 +327,7 @@ class PlannerStep(BaseStep):
             if ctx.pre_insert_capability == InsertCapability.UNEVALUATED:
                 try:
                     view = PreInsertViewAdapter(ctx)
-                    result: "InsertCheckResult" = checker(view) or {}
+                    result: InsertCheckResult = checker(view) or {}
                 except Exception as exc:
                     logger.exception(
                         "pre-insert checker failed for %s: %s", getattr(ft, "name", ft), exc

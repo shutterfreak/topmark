@@ -32,10 +32,10 @@ for the allowed values.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Protocol, Sequence, TypedDict
+from typing import TYPE_CHECKING, Literal, Protocol, TypedDict
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
     from pathlib import Path
 
 

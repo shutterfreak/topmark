@@ -24,7 +24,7 @@ import tempfile
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Iterable, Literal, NamedTuple
+from typing import TYPE_CHECKING, Literal, NamedTuple
 
 from topmark.cli.errors import TopmarkUsageError
 from topmark.cli.options import (
@@ -34,6 +34,8 @@ from topmark.cli.options import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     import click
 
 

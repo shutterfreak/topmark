@@ -35,7 +35,7 @@ otherwise it falls back to the line-based strategy using the computed anchor.
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Final, Pattern
+from typing import TYPE_CHECKING, Final
 
 from topmark.config.logging import get_logger
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
@@ -197,7 +197,7 @@ class HeaderProcessor:
             self.header_indent = header_indent
 
         # Cache for per-policy encoding regex to avoid recompilation
-        self._encoding_pattern: Pattern[str] | None = None
+        self._encoding_pattern: re.Pattern[str] | None = None
         self._encoding_pattern_src: str | None = None
 
     def parse_fields(self, context: ProcessingContext) -> HeaderParseResult:

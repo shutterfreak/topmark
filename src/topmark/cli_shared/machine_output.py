@@ -28,7 +28,7 @@ They are consumed by `topmark.cli.utils` to render JSON/NDJSON output for
 from collections.abc import Mapping
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterable, TypedDict, cast
+from typing import TYPE_CHECKING, Any, TypedDict, cast
 
 from topmark.api.view import collect_outcome_counts
 from topmark.config.model import Config
@@ -37,6 +37,8 @@ from topmark.core.diagnostics import DiagnosticStats, compute_diagnostic_stats
 from topmark.pipeline.context.model import ProcessingContext
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from topmark.config.io import TomlTable
 
 

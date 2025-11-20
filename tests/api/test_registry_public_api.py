@@ -18,7 +18,7 @@ so every test that registers a temporary entry must ensure cleanup.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Mapping
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -28,6 +28,8 @@ from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from topmark.filetypes.base import FileType
     from topmark.pipeline.processors.base import HeaderProcessor
 

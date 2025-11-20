@@ -21,7 +21,7 @@ import logging
 import os
 import sys
 from enum import Enum
-from typing import TYPE_CHECKING, Callable, ParamSpec, TypeVar
+from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
 import click
 from click.core import ParameterSource
@@ -32,7 +32,7 @@ from topmark.config.logging import get_logger
 from topmark.rendering.formats import HeaderOutputFormat
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Callable, Iterable
 
     from topmark.config.logging import TopmarkLogger
 

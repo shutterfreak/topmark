@@ -47,7 +47,6 @@ import ast
 import re
 import sys
 from pathlib import Path
-from typing import Pattern
 
 from yachalk import chalk
 
@@ -55,7 +54,7 @@ from yachalk import chalk
 #   1) Full reference form:            [Text][pkg.mod.Object]
 #   2) Code label + full ref:          [`pkg.mod.Object`][pkg.mod.Object]
 #   3) Shortcut reference link:        [`pkg.mod.Object`][]
-REF_LINK_RE: Pattern[str] = re.compile(
+REF_LINK_RE: re.Pattern[str] = re.compile(
     r"""
     \[
       (?:`?[\w\.\-]+`?|\S[^]]+?) # label: either code-ish or any text
@@ -68,7 +67,7 @@ REF_LINK_RE: Pattern[str] = re.compile(
 )
 
 # Internal FQNs that *look like* symbols (final segment capitalized). We avoid module-only names.
-INTERNAL_FQN_RE: Pattern[str] = re.compile(r"\btopmark(?:\.[A-Za-z_][\w]*)+\.[A-Z][\w]*\b")
+INTERNAL_FQN_RE: re.Pattern[str] = re.compile(r"\btopmark(?:\.[A-Za-z_][\w]*)+\.[A-Z][\w]*\b")
 
 # Any raw URL inside a docstring is flagged unless whitelisted in ALLOWED_URLS.
 # Allow literal URLs matching these patterns inside docstrings
@@ -78,13 +77,13 @@ ALLOWED_URLS: tuple[str, ...] = (
 )
 
 
-URL_RE: Pattern[str] = re.compile(r"https?://\S+")
+URL_RE: re.Pattern[str] = re.compile(r"https?://\S+")
 
 # We may ignore code regions when scanning text. For accurate index math (to compute line numbers),
 # code regions are masked with spaces (same length) rather than removed.
 # Regexes to ignore code segments in docstrings
-CODE_FENCE_RE: Pattern[str] = re.compile(r"```.*?```", re.DOTALL)  # fenced code blocks
-INLINE_CODE_RE: Pattern[str] = re.compile(r"`[^`]+`")  # inline code spans
+CODE_FENCE_RE: re.Pattern[str] = re.compile(r"```.*?```", re.DOTALL)  # fenced code blocks
+INLINE_CODE_RE: re.Pattern[str] = re.compile(r"`[^`]+`")  # inline code spans
 
 
 def _mask_code_regions(text: str, *, ignore_inline: bool = False) -> str:
@@ -230,7 +229,7 @@ def main(
     """
     errors: list[str] = []
 
-    allow_re: Pattern[str] | None = re.compile("|".join(ALLOWED_URLS)) if ALLOWED_URLS else None
+    allow_re: re.Pattern[str] | None = re.compile("|".join(ALLOWED_URLS)) if ALLOWED_URLS else None
 
     files_checked = 0
     docstrings_checked = 0

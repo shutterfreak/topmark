@@ -33,7 +33,7 @@ import os
 from dataclasses import dataclass
 from threading import RLock
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Final, Iterator, Mapping
+from typing import TYPE_CHECKING, Final
 
 from topmark.filetypes.base import FileType
 from topmark.filetypes.instances import get_file_type_registry
@@ -41,6 +41,8 @@ from topmark.pipeline.processors.base import NO_LINE_ANCHOR
 from topmark.pipeline.processors.xml import XmlHeaderProcessor
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator, Mapping
+
     from topmark.filetypes.base import FileType
     from topmark.pipeline.processors.base import HeaderProcessor
 
@@ -49,7 +51,7 @@ _validation_done: bool = False
 _VALIDATION_ENV: Final[str] = "TOPMARK_VALIDATE"
 
 
-def _dev_validate_processors(proc_map: Mapping[str, "HeaderProcessor"]) -> None:
+def _dev_validate_processors(proc_map: Mapping[str, HeaderProcessor]) -> None:
     """Run lightweight developer validations when TOPMARK_VALIDATE=1.
 
     Checks:
@@ -108,11 +110,11 @@ class HeaderProcessorRegistry:
     """
 
     _lock = RLock()
-    _overrides: dict[str, "HeaderProcessor"] = {}
+    _overrides: dict[str, HeaderProcessor] = {}
     _removals: set[str] = set()
 
     @classmethod
-    def _compose(cls) -> dict[str, "HeaderProcessor"]:
+    def _compose(cls) -> dict[str, HeaderProcessor]:
         """Compose base processor registry with local overrides/removals."""
         from topmark.filetypes.registry import get_header_processor_registry as _get
         from topmark.pipeline.processors import register_all_processors

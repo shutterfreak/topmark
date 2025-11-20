@@ -30,12 +30,12 @@ import sys
 from enum import Enum
 from inspect import getmodule
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Mapping, Sequence
+from typing import TYPE_CHECKING, Any
 
 from topmark.config.logging import get_logger
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Mapping, Sequence
 
     from topmark.config.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext

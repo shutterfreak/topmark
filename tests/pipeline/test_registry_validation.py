@@ -12,7 +12,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, Type
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -29,8 +29,8 @@ if TYPE_CHECKING:
 @mark_dev_validation
 def test_registered_processors_map_to_existing_filetypes() -> None:
     """Every registered processor references an existing FileType."""
-    ft_reg: Dict[str, FileType] = get_file_type_registry()
-    proc_reg: Dict[str, HeaderProcessor] = get_header_processor_registry()
+    ft_reg: dict[str, FileType] = get_file_type_registry()
+    proc_reg: dict[str, HeaderProcessor] = get_header_processor_registry()
 
     missing: list[str] = [name for name in proc_reg.keys() if name not in ft_reg]
     assert missing == [], f"Processors registered for unknown file types: {missing!r}"
@@ -39,17 +39,17 @@ def test_registered_processors_map_to_existing_filetypes() -> None:
 @mark_dev_validation
 def test_one_processor_per_filetype() -> None:
     """There is at most one processor registered per file type name."""
-    proc_reg: Dict[str, HeaderProcessor] = get_header_processor_registry()
+    proc_reg: dict[str, HeaderProcessor] = get_header_processor_registry()
 
     # Keys are type names; duplicates would be impossible by design,
     # but keep a guard that class names aren’t reused across different types.
 
-    class_by_type: Dict[str, type[HeaderProcessor]] = {
+    class_by_type: dict[str, type[HeaderProcessor]] = {
         ft_name: proc.__class__ for ft_name, proc in proc_reg.items()
     }
 
     # Inverse map: class -> [types]
-    by_class: Dict[Type[HeaderProcessor], list[str]] = {}
+    by_class: dict[type[HeaderProcessor], list[str]] = {}
     for ft_name, cls in class_by_type.items():
         by_class.setdefault(cls, []).append(ft_name)
 
@@ -75,7 +75,7 @@ def test_one_processor_per_filetype() -> None:
 @mark_dev_validation
 def test_xml_like_types_report_no_line_anchor(ft_name: str) -> None:
     """XML-like processors indicate char-offset placement via NO_LINE_ANCHOR."""
-    proc_reg: Dict[str, HeaderProcessor] = get_header_processor_registry()
+    proc_reg: dict[str, HeaderProcessor] = get_header_processor_registry()
 
     # Some of these types may not be present in every build; skip if unregistered.
     proc: HeaderProcessor | None = proc_reg.get(ft_name)

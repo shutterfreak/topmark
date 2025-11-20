@@ -20,7 +20,7 @@ matching TopMark's resolver contract that disallows absolute patterns.
 from __future__ import annotations
 
 import os
-from typing import IO, TYPE_CHECKING, Any, Sequence
+from typing import IO, TYPE_CHECKING, Any
 
 from click.testing import CliRunner, Result
 
@@ -28,6 +28,7 @@ from topmark.cli.main import cli
 from topmark.core.exit_codes import ExitCode
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import Path
 
 

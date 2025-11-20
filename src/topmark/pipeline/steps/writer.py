@@ -64,7 +64,7 @@ logger: TopmarkLogger = get_logger(__name__)
 
 
 # --- DRY helpers for writer sinks ---
-def _updated_lines(ctx: "ProcessingContext") -> list[str] | None:
+def _updated_lines(ctx: ProcessingContext) -> list[str] | None:
     """Materialize updated lines or return None if unavailable.
 
     Args:
@@ -79,7 +79,7 @@ def _updated_lines(ctx: "ProcessingContext") -> list[str] | None:
     return ctx.materialize_updated_lines()
 
 
-def _normalize_eof(text: str, ctx: "ProcessingContext") -> str:
+def _normalize_eof(text: str, ctx: ProcessingContext) -> str:
     """Normalize end-of-file newline according to the original file policy.
 
     If the original file did not end with a newline, remove a trailing newline
@@ -97,7 +97,7 @@ class WriteSink(Protocol):
     Implementations receive a ProcessingContext and return a WriteResult.
     """
 
-    def write(self, *, ctx: ProcessingContext) -> "WriteResult":
+    def write(self, *, ctx: ProcessingContext) -> WriteResult:
         """Write the updated content for ``ctx`` to the target sink.
 
         Implementations perform the final write operation for a processed file,

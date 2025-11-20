@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Iterable, Sequence
+from typing import TYPE_CHECKING
 
 from topmark.config.logging import get_logger
 from topmark.config.policy import effective_policy
@@ -53,7 +53,7 @@ from topmark.pipeline.hints import Hint
 from topmark.pipeline.views import UpdatedView, Views
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Sequence
     from pathlib import Path
 
     from topmark.config import Config
@@ -139,13 +139,13 @@ class ProcessingContext:
     """
 
     path: Path  # The file path to process (absolute or relative to working directory)
-    config: "Config"  # Active config at time of processing
+    config: Config  # Active config at time of processing
     steps: list[Step] = field(default_factory=lambda: [])
-    file_type: "FileType | None" = None  # Resolved file type (e.g., PythonFileType)
+    file_type: FileType | None = None  # Resolved file type (e.g., PythonFileType)
     status: HeaderProcessingStatus = field(default_factory=HeaderProcessingStatus)
     flow: FlowControl = field(default_factory=FlowControl)
 
-    header_processor: "HeaderProcessor | None" = (
+    header_processor: HeaderProcessor | None = (
         None  # HeaderProcessor instance for this file type, if applicable
     )
 

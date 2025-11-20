@@ -24,17 +24,18 @@ Notes:
 
 from __future__ import annotations
 
-from collections.abc import Iterable as IterABC
+from collections.abc import Iterable
 from functools import lru_cache
 from importlib import import_module
 from importlib.metadata import EntryPoints, entry_points
-from typing import TYPE_CHECKING, Any, Final, Iterable, Sequence, cast
+from typing import TYPE_CHECKING, Any, Final, cast
 
 from topmark.config.logging import get_logger
 
 from .base import FileType
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from types import ModuleType
 
     from topmark.config.logging import TopmarkLogger
@@ -87,14 +88,14 @@ def _iter_plugin_filetypes() -> Iterable[FileType]:
         try:
             provider: Any = ep.load()
             provided: Any = provider() if callable(provider) else provider
-            if not isinstance(provided, IterABC):
+            if not isinstance(provided, Iterable):
                 logger.warning(
                     "Entry point %s did not return an iterable of FileType objects: %r",
                     getattr(ep, "name", ep),
                     provided,
                 )
                 continue
-            for obj in cast("IterABC[object]", provided):
+            for obj in cast("Iterable[object]", provided):
                 if isinstance(obj, FileType):
                     yield obj
                 else:
