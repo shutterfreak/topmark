@@ -16,6 +16,139 @@ All notable changes to this project will be documented in this file. This projec
 [Semantic Versioning](https://semver.org/) and follows a Keep‑a‑Changelog–style structure with the
 sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
+## [0.10.0] – 2025-11-20
+
+This release introduces **major pipeline and CLI changes**, a full **machine-output schema redesign**, a refactored **ProcessingContext**, and multiple BREAKING CHANGES. It also includes substantial internal cleanup, dependency updates, and correctness fixes.
+
+______________________________________________________________________
+
+### ⚠️ BREAKING CHANGES
+
+#### Machine Output (JSON / NDJSON)
+
+- **Completely redesigned schema**:
+  - All records include a `kind` discriminator (`config`, `config_diagnostics`, `result`, `summary`).
+  - All records include a top-level `meta` block (version, intent, timestamps).
+  - File-level results now use a stable, explicit envelope (`file`, `statuses`, `hints`, `diagnostic_counts`, `outcome`).
+  - NDJSON encoding is now strictly one-record-per-line with unified keys.
+- **Old JSON/NDJSON formats from \<0.10.0 are no longer emitted.**
+- Downstream tools **must** update their parsers.
+
+#### CLI / Presentation Rendering
+
+- CLI output formatting has been fully rewritten:
+  - Bucketing semantics changed (mapping to new axes + unified policy signals).
+  - Summary footer replaced with new consistent reporting structure.
+  - Changed/unchanged/would-change groupings now computed via the new comparison axis.
+  - Hints are now grouped and severity-ordered; rendering is verbosity-dependent.
+- Legacy formatting and legacy summary behavior have been removed.
+
+#### Pipeline Architecture
+
+- `ProcessingContext` split into:
+  - `pipeline.context.model` (state + orchestration),
+  - `pipeline.context.policy` (pure policy + feasibility),
+  - `pipeline.context.status` (all axis statuses).
+- Legacy modules (`pipeline/context.py`, `pipeline/contracts.py`, etc.) removed.
+- Steps updated to use new context accessors and policy helpers.
+- Any consumer importing internal pipeline modules by path must update imports.
+
+#### Legacy CLI Commands
+
+- Several deprecated commands were **removed entirely**:
+  - Old compatibility shims for `topmark header …`
+  - Legacy updater/stripper debug modes.
+- These commands now fail fast with a clear error.
+
+______________________________________________________________________
+
+### Highlights
+
+- Clean separation of pipeline responsibilities (context, policy, status).
+- Unified machine-readable output schema supporting stable integrations.
+- Significantly clearer CLI output with accurate bucket, hint, and summary logic.
+- Simplified type system with uniform abstract collections (`collections.abc`) and Ruff `UP`/`TC` enforcement.
+- Full modernization of imports, dependency ranges, and development tooling.
+- Large suite of correctness fixes across header bounds, scanner, renderer, patcher, and writer.
+
+______________________________________________________________________
+
+### Added
+
+- New `pipeline/context/` package with:
+  - `model.py` (ProcessingContext core),
+  - `policy.py` (feasibility, effective policy checks, intent validation),
+  - `status.py` (HeaderProcessingStatus + axis enums).
+- New machine-output builder (`cli_shared.machine_output`) as the single source of truth.
+- New structured summary renderer (`topmark.api.view.format_summary`).
+- Linting policy section in `CONTRIBUTING.md`.
+- Support for GitHub-Flavored Markdown tables via `mdformat-gfm`.
+
+______________________________________________________________________
+
+### Changed
+
+- **ProcessingContext**
+
+  - No longer contains embedded policy decisions.
+  - Explicit release interfaces for summary, machine-output, and updated lines.
+  - Stronger invariants, better separation of concerns.
+
+- **Pipeline Steps**
+
+  - Updated to use new context fields and pure policy helpers.
+  - Comparison, plan, and patch steps rewritten for correctness and stability.
+
+- **Rendering**
+
+  - Summary: fully redesigned (cluster ordering, hint ranking, status grouping).
+  - Bucketing logic: aligned with new axes and comparison semantics.
+  - Writer output harmonized with patch/plan steps.
+
+- **Machine Output**
+
+  - Unified schema with predictable envelopes.
+  - NDJSON deterministic ordering.
+  - Config dump and diagnostics included in machine mode.
+
+- **Imports & Typing**
+
+  - `collections.abc` now used consistently.
+  - Ruff `UP` and `TC` rules enabled; repository-wide cleanup applied.
+
+- **Dependencies & Tooling**
+
+  - Dependency ranges tightened in `pyproject.toml`.
+  - All requirements files regenerated via pip-tools.
+  - Switched from `mdformat-tables` → `mdformat-gfm`.
+
+______________________________________________________________________
+
+### Removed
+
+- `ReasonHint` (unused).
+- Legacy updater header code paths.
+- Deprecated CLI commands and code paths for pre-0.9 behaviors.
+- Legacy summary and bucket rendering pipeline.
+
+______________________________________________________________________
+
+### Fixed
+
+- Correct final newline + BOM + shebang interactions.
+- Accurate indentation handling for Markdown/HTML/XML processors.
+- Numerous header bound edge cases (multi-header, malformed, block comment variants).
+- Writer stability in dry-run and apply modes.
+- Accurate tracking of “would change” vs “changed” under mixed policy conditions.
+- Corrected normalization for multi-line headers with mixed whitespace.
+- Better FileType detection for HTML/Markdown block-comments.
+
+______________________________________________________________________
+
+### Notes
+
+`topmark.api` remains *public and stable*, but all **machine-readable formats** and **internal pipeline interfaces** changed and require downstream updates. Integrators consuming NDJSON/JSON must migrate to the new envelopes and keys.
+
 ## [0.9.1] - 2025-10-07
 
 ### Highlights
@@ -85,7 +218,7 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
   - Use `make verify`, `make test`, `make pytest [PYTEST_PAR="-n auto"]`, `make docs-*`, `make api-snapshot*`, and the `lock-*` targets for daily work.
 
-**Breaking changes**: _None._\
+**Breaking changes**: *None.*\
 Public API remains stable; changes focus on tooling, CI reliability, and correctness fixes.
 
 ## [0.9.0] - 2025-10-06
@@ -158,7 +291,7 @@ Public API remains stable; changes focus on tooling, CI reliability, and correct
 - Bumped doc dependencies: `mkdocs>=1.6.0`, `mkdocs-material>=9.5.19`, `pymdown-extensions>=10.16`.
 - Removed obsolete `.mdformat.yml` and outdated constraints for `backrefs` and `markdown-it-py`.
 
-**Breaking changes**: _None_ (pre-1.0).\
+**Breaking changes**: *None* (pre-1.0).\
 All changes are backward-compatible with v0.8.x configurations and APIs.
 
 ______________________________________________________________________
@@ -203,7 +336,7 @@ TopMark 0.9.0 consolidates its configuration system, aligns CLI and API behavior
   `TOPMARK_VALIDATE=1`.
 - **Pre-commit**: bump `ruff-pre-commit` to `v0.13.2`.
 
-**Breaking changes**: _None._
+**Breaking changes**: *None.*
 
 ## [0.8.0] - 2025-09-24
 
@@ -258,7 +391,7 @@ TopMark 0.9.0 consolidates its configuration system, aligns CLI and API behavior
 - Add standard TopMark headers to files in `typings/`.
 - Dev tooling: keep pre-commit/hooks in sync (see commit history for exact bumps).
 
-**Breaking changes**: _None._
+**Breaking changes**: *None.*
 
 ## [0.7.0] - 2025-09-23
 
