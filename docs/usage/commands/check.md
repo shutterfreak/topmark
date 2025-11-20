@@ -161,7 +161,7 @@ When `--summary` is **not** set, `topmark check` emits a single JSON object:
 Here:
 
 - `status` is the axis → `{axis, name, label}` map produced by
-  `HeaderProcessingStatus.to_dict()`.
+  `ProcessingStatus.to_dict()`.
 - `steps` and `step_axes` expose the actual pipeline trace (which steps ran,
   and which axes each step may write).
 - `views` captures the header/image views used by the pipeline and CLI.

@@ -224,7 +224,7 @@ Exact fields may evolve, but currently include:
   ```
 
 - `status`: mapping from axis name (`"resolve"`, `"fs"`, `"content"`, …) to an object of the
-  form `{ "axis", "name", "label" }` as produced by `HeaderProcessingStatus.to_dict()`, for example:
+  form `{ "axis", "name", "label" }` as produced by `ProcessingStatus.to_dict()`, for example:
 
   ```jsonc
   "status": {

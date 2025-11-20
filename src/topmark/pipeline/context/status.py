@@ -14,7 +14,7 @@ This module defines the core dataclasses and typed payloads used to represent
 per-axis status within the TopMark processing pipeline. Each pipeline axis
 (resolve, fs, content, header, generation, render, strip, comparison, plan,
 patch, write) exposes its own status enum, and
-[HeaderProcessingStatus][topmark.pipeline.context.status.HeaderProcessingStatus]
+[ProcessingStatus][topmark.pipeline.context.status.ProcessingStatus]
 collects these into a single structure that serves as the authoritative source
 of truth for all status evaluation.
 
@@ -33,7 +33,7 @@ Sections:
     AxisStatusPayload:
         TypedDict describing the serializable payload for a single axis.
 
-    HeaderProcessingStatus:
+    ProcessingStatus:
         Aggregated structure holding the current status for all pipeline axes.
         Used by steps, the runner, and the CLI as the unified representation
         of pipeline progress and outcomes.
@@ -83,7 +83,7 @@ class AxisStatusPayload(TypedDict):
 
 
 @dataclass
-class HeaderProcessingStatus:
+class ProcessingStatus:
     """Tracks the status of each processing phase for a single file.
 
     Each attribute corresponds to a pipeline axis and is represented by a
@@ -179,7 +179,7 @@ class HeaderProcessingStatus:
         """Reset all status fields to ``PENDING``.
 
         This helper is mainly intended for tests or reuse of an existing
-        ``HeaderProcessingStatus`` instance.
+        ``ProcessingStatus`` instance.
 
         Returns:
             None: The instance is mutated in place.

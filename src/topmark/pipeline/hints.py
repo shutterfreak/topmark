@@ -71,7 +71,7 @@ class Axis(EnumIntrospectionMixin, str, Enum):
         new axis.
     """
 
-    # NOTE: preserve the exact order and keep in sync with HeaderProcessingStatus
+    # NOTE: preserve the exact order and keep in sync with ProcessingStatus
 
     RESOLVE = "resolve"
     FS = "fs"

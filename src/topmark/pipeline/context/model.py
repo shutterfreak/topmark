@@ -48,7 +48,7 @@ from topmark.pipeline.context.policy import (
     would_change,
     would_strip,
 )
-from topmark.pipeline.context.status import HeaderProcessingStatus
+from topmark.pipeline.context.status import ProcessingStatus
 from topmark.pipeline.hints import Hint
 from topmark.pipeline.views import UpdatedView, Views
 
@@ -98,7 +98,7 @@ class ProcessingContext:
             executed for this context.
         file_type (FileType | None): Resolved file type for the file (for
             example, a Python or Markdown file type), if applicable.
-        status (HeaderProcessingStatus): Aggregated status for each pipeline
+        status (ProcessingStatus): Aggregated status for each pipeline
             axis, kept as the single source of truth for per-axis outcomes.
         flow (FlowControl): Flow control flags indicating whether processing
             should halt and why.
@@ -142,7 +142,7 @@ class ProcessingContext:
     config: Config  # Active config at time of processing
     steps: list[Step] = field(default_factory=lambda: [])
     file_type: FileType | None = None  # Resolved file type (e.g., PythonFileType)
-    status: HeaderProcessingStatus = field(default_factory=HeaderProcessingStatus)
+    status: ProcessingStatus = field(default_factory=ProcessingStatus)
     flow: FlowControl = field(default_factory=FlowControl)
 
     header_processor: HeaderProcessor | None = (
