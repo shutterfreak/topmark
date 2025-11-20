@@ -29,7 +29,7 @@ from topmark.constants import VALUE_NOT_SET
 from topmark.filetypes.base import ContentGate, FileType
 from topmark.filetypes.instances import get_file_type_registry
 from topmark.filetypes.registry import get_header_processor_registry
-from topmark.pipeline.hints import Axis, Cluster, KnownCode, make_hint
+from topmark.pipeline.hints import Axis, Cluster, KnownCode
 from topmark.pipeline.status import ResolveStatus
 from topmark.pipeline.steps.base import BaseStep
 
@@ -308,8 +308,8 @@ class ResolverStep(BaseStep):
                     f"File type '{file_type.name}' recognized; "
                     "headers are not supported for this format."
                 )
-                ctx.add_info(reason)
-                ctx.stop_flow(reason=reason, at_step=self)
+                ctx.info(reason)
+                ctx.request_halt(reason=reason, at_step=self)
                 return
 
             # Matched a FileType, but no header processor is registered for it
@@ -322,8 +322,8 @@ class ResolverStep(BaseStep):
                 )
                 ctx.status.resolve = ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED
                 reason = f"No header processor registered for file type '{file_type.name}'."
-                ctx.add_info(reason)
-                ctx.stop_flow(reason=reason, at_step=self)
+                ctx.info(reason)
+                ctx.request_halt(reason=reason, at_step=self)
                 return
 
             # Success: attach the processor and mark the file as resolved
@@ -341,8 +341,8 @@ class ResolverStep(BaseStep):
         logger.info("Unsupported file type for '%s' (no matcher)", ctx.path)
         ctx.status.resolve = ResolveStatus.UNSUPPORTED
         reason = "No file type associated with this file."
-        ctx.add_info(reason)
-        ctx.stop_flow(reason=reason, at_step=self)
+        ctx.info(reason)
+        ctx.request_halt(reason=reason, at_step=self)
         return
 
     def hint(self, ctx: ProcessingContext) -> None:
@@ -359,35 +359,29 @@ class ResolverStep(BaseStep):
             pass  # healthy, no hint
         # Stop processing:
         elif st == ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.RESOLVE,
-                    code=KnownCode.DISCOVERY_NO_PROCESSOR,
-                    cluster=Cluster.SKIPPED,
-                    message="no header processor registered",
-                    terminal=True,
-                )
+            ctx.hint(
+                axis=Axis.RESOLVE,
+                code=KnownCode.DISCOVERY_NO_PROCESSOR,
+                cluster=Cluster.SKIPPED,
+                message="no header processor registered",
+                terminal=True,
             )
         elif st == ResolveStatus.TYPE_RESOLVED_HEADERS_UNSUPPORTED:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.RESOLVE,
-                    code=KnownCode.DISCOVERY_UNSUPPORTED,
-                    cluster=Cluster.SKIPPED,
-                    message="headers not supported for this type",
-                    terminal=True,
-                )
+            ctx.hint(
+                axis=Axis.RESOLVE,
+                code=KnownCode.DISCOVERY_UNSUPPORTED,
+                cluster=Cluster.SKIPPED,
+                message="headers not supported for this type",
+                terminal=True,
             )
         elif st == ResolveStatus.UNSUPPORTED:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.RESOLVE,
-                    code=KnownCode.DISCOVERY_UNSUPPORTED,
-                    cluster=Cluster.SKIPPED,
-                    message="file type is not supported",
-                    terminal=True,
-                )
+            ctx.hint(
+                axis=Axis.RESOLVE,
+                code=KnownCode.DISCOVERY_UNSUPPORTED,
+                cluster=Cluster.SKIPPED,
+                message="file type is not supported",
+                terminal=True,
             )
         elif st == ResolveStatus.PENDING:
             # resolver did not complete
-            ctx.stop_flow(reason=f"{self.__class__.__name__} did not set state.", at_step=self)
+            ctx.request_halt(reason=f"{self.__class__.__name__} did not set state.", at_step=self)

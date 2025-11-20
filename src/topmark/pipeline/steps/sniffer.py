@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING
 from topmark.config.logging import get_logger
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.context.policy import allow_empty_by_policy
-from topmark.pipeline.hints import Axis, Cluster, KnownCode, make_hint
+from topmark.pipeline.hints import Axis, Cluster, KnownCode
 from topmark.pipeline.status import FsStatus, ResolveStatus
 from topmark.pipeline.steps.base import BaseStep
 
@@ -121,7 +121,7 @@ def _apply_bom_shebang_policy(ctx: ProcessingContext, first_bytes: bytes) -> boo
     # If the file type supports shebang and BOM precedes shebang, skip
     policy: FileTypeHeaderPolicy | None = ctx.file_type.header_policy if ctx.file_type else None
     if shebang_after_bom and policy and getattr(policy, "supports_shebang", False):
-        ctx.add_error(
+        ctx.error(
             "UTF-8 BOM appears before the shebang; POSIX requires '#!' at byte 0. "
             "TopMark will not modify this file by default."
         )
@@ -178,7 +178,7 @@ class SnifferStep(BaseStep):
             bool: True if `ctx.status.resolve == RESOLVED`, `ctx.file_type` and
                 `ctx.header_processor` are set.
         """
-        if ctx.flow.halt:
+        if ctx.is_halted:
             return False
         return ctx.status.resolve == ResolveStatus.RESOLVED
 
@@ -208,21 +208,21 @@ class SnifferStep(BaseStep):
             logger.info("%s: File not found: %s", ctx.status.fs.value, ctx.path)
             ctx.status.fs = FsStatus.NOT_FOUND
             reason: str = f"File not found: {ctx.path}"
-            ctx.stop_flow(reason=reason, at_step=self)
+            ctx.request_halt(reason=reason, at_step=self)
             return
         except PermissionError as e:
             logger.error("sniffer: permission denied %s: %s", ctx.path, e)
             ctx.status.fs = FsStatus.NO_READ_PERMISSION
             reason = f"Permission denied: {e}"
-            ctx.add_error(reason)
-            ctx.stop_flow(reason=reason, at_step=self)
+            ctx.error(reason)
+            ctx.request_halt(reason=reason, at_step=self)
             return
 
         if apply is True:
             # Apply mode: check write permission upfront
             if not os.access(ctx.path, os.W_OK):
                 ctx.status.fs = FsStatus.NO_WRITE_PERMISSION
-                ctx.add_error("Permission denied: cannot write to file")
+                ctx.error("Permission denied: cannot write to file")
                 return
 
         if st.st_size == 0:
@@ -233,26 +233,24 @@ class SnifferStep(BaseStep):
             if ctx.file_type is not None and not allow_empty_by_policy(ctx):
                 file_type: FileType = ctx.file_type
                 table_name: str = f"policy_by_type.{file_type.name}"
-                ctx.add_hint(
-                    make_hint(
-                        axis=Axis.FS,
-                        code=KnownCode.FS_EMPTY,
-                        cluster=Cluster.BLOCKED_POLICY,
-                        message="Empty file skipped by default.",
-                        detail=(
-                            f"{file_type.description}:\n"
-                            "To allow headers in empty "
-                            f"{file_type.name} files, add the following "
-                            "to your TopMark configuration:\n"
-                            f"  [{table_name}]\n"
-                            "  allow_header_in_empty_files = true\n"
-                            f"(for pyproject.toml, use [tool.topmark.{table_name}])"
-                        ),
-                        terminal=False,
-                    )
+                ctx.hint(
+                    axis=Axis.FS,
+                    code=KnownCode.FS_EMPTY,
+                    cluster=Cluster.BLOCKED_POLICY,
+                    message="Empty file skipped by default.",
+                    detail=(
+                        f"{file_type.description}:\n"
+                        "To allow headers in empty "
+                        f"{file_type.name} files, add the following "
+                        "to your TopMark configuration:\n"
+                        f"  [{table_name}]\n"
+                        "  allow_header_in_empty_files = true\n"
+                        f"(for pyproject.toml, use [tool.topmark.{table_name}])"
+                    ),
+                    terminal=False,
                 )
             else:
-                ctx.add_info("File is empty.")
+                ctx.info("File is empty.")
 
             return
 
@@ -288,7 +286,7 @@ class SnifferStep(BaseStep):
                         decoder.decode(chunk)
                     except UnicodeDecodeError:
                         ctx.status.fs = FsStatus.UNICODE_DECODE_ERROR
-                        ctx.add_error(
+                        ctx.error(
                             "Invalid UTF-8 byte sequence detected; treating as non-text file."
                         )
                         return
@@ -314,9 +312,7 @@ class SnifferStep(BaseStep):
                     decoder.decode(b"", final=True)
                 except UnicodeDecodeError:
                     ctx.status.fs = FsStatus.UNICODE_DECODE_ERROR
-                    ctx.add_error(
-                        "Invalid UTF-8 sequence at end-of-file; treating as non-text file."
-                    )
+                    ctx.error("Invalid UTF-8 sequence at end-of-file; treating as non-text file.")
                     logger.warning("sniffer: invalid UTF-8 at EOF → skip: %s", ctx.path)
                     return
 
@@ -353,7 +349,7 @@ class SnifferStep(BaseStep):
                     crlf: int = hist.get("\r\n", 0)
                     cr: int = hist.get("\r", 0)
                     ctx.status.fs = FsStatus.MIXED_LINE_ENDINGS
-                    ctx.add_error(
+                    ctx.error(
                         "Mixed line endings detected during sniff "
                         f"(LF={lf}, CRLF={crlf}, CR={cr}). "
                         "Strict policy refuses to process files with mixed line endings."
@@ -364,22 +360,22 @@ class SnifferStep(BaseStep):
             ctx.status.fs = FsStatus.NOT_FOUND
             logger.warning("%s: File not found: %s", ctx.status.fs.value, ctx.path)
             reason = f"File not found: {ctx.path}"
-            ctx.add_error(reason)
-            ctx.stop_flow(reason=reason, at_step=self)
+            ctx.error(reason)
+            ctx.request_halt(reason=reason, at_step=self)
             return
         except PermissionError as e:
             logger.error("sniffer: permission denied %s: %s", ctx.path, e)
             ctx.status.fs = FsStatus.NO_READ_PERMISSION
             reason = f"Permission denied: {e}"
-            ctx.add_error(reason)
-            ctx.stop_flow(reason=reason, at_step=self)
+            ctx.error(reason)
+            ctx.request_halt(reason=reason, at_step=self)
             return
         except Exception as e:
             logger.error("sniffer: error sniffing %s: %s", ctx.path, e)
             ctx.status.fs = FsStatus.UNREADABLE
             reason = f"Error while sniffing: {e}"
-            ctx.add_error(reason)
-            ctx.stop_flow(reason=reason, at_step=self)
+            ctx.error(reason)
+            ctx.request_halt(reason=reason, at_step=self)
             return
 
         # Keep status RESOLVED so the reader proceeds.
@@ -408,95 +404,77 @@ class SnifferStep(BaseStep):
         # May proceed to next step (policy):
         elif st == FsStatus.EMPTY:
             # Implies ctx.status.resolve == ResolveStatus.RESOLVED
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.FS,
-                    code=KnownCode.CONTENT_EMPTY_FILE,
-                    cluster=Cluster.BLOCKED_POLICY,
-                    message="empty file",
-                )
+            ctx.hint(
+                axis=Axis.FS,
+                code=KnownCode.CONTENT_EMPTY_FILE,
+                cluster=Cluster.BLOCKED_POLICY,
+                message="empty file",
             )
         elif st == FsStatus.BOM_BEFORE_SHEBANG:
             # Implies ctx.status.resolve == ResolveStatus.RESOLVED
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.FS,
-                    code=KnownCode.FS_BOM_BEFORE_SHEBANG,
-                    cluster=Cluster.BLOCKED_POLICY,
-                    message="UTF-8 BOM before shebang",
-                )
+            ctx.hint(
+                axis=Axis.FS,
+                code=KnownCode.FS_BOM_BEFORE_SHEBANG,
+                cluster=Cluster.BLOCKED_POLICY,
+                message="UTF-8 BOM before shebang",
             )
         elif st == FsStatus.MIXED_LINE_ENDINGS:
             # Implies ctx.status.resolve == ResolveStatus.RESOLVED
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.FS,
-                    code=KnownCode.CONTENT_SKIPPED_MIXED,
-                    cluster=Cluster.BLOCKED_POLICY,
-                    message="mixed line endings",
-                )
+            ctx.hint(
+                axis=Axis.FS,
+                code=KnownCode.CONTENT_SKIPPED_MIXED,
+                cluster=Cluster.BLOCKED_POLICY,
+                message="mixed line endings",
             )
         # Stop processing:
         elif st == FsStatus.NOT_FOUND:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.FS,
-                    code=KnownCode.FS_NOT_FOUND,
-                    cluster=Cluster.SKIPPED,
-                    message="file not found",
-                    terminal=True,
-                )
+            ctx.hint(
+                axis=Axis.FS,
+                code=KnownCode.FS_NOT_FOUND,
+                cluster=Cluster.SKIPPED,
+                message="file not found",
+                terminal=True,
             )
         elif st == FsStatus.NO_READ_PERMISSION:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.FS,
-                    code=KnownCode.FS_UNREADABLE,
-                    cluster=Cluster.SKIPPED,
-                    message="permission denied",
-                    terminal=True,
-                )
+            ctx.hint(
+                axis=Axis.FS,
+                code=KnownCode.FS_UNREADABLE,
+                cluster=Cluster.SKIPPED,
+                message="permission denied",
+                terminal=True,
             )
         elif st == FsStatus.UNREADABLE:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.FS,
-                    code=KnownCode.FS_UNREADABLE,
-                    cluster=Cluster.SKIPPED,
-                    message="read error",
-                    terminal=True,
-                )
+            ctx.hint(
+                axis=Axis.FS,
+                code=KnownCode.FS_UNREADABLE,
+                cluster=Cluster.SKIPPED,
+                message="read error",
+                terminal=True,
             )
         elif st == FsStatus.NO_WRITE_PERMISSION:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.FS,
-                    code=KnownCode.FS_UNWRITABLE,
-                    cluster=Cluster.SKIPPED,
-                    message="no write permission",
-                    terminal=True,
-                )
+            ctx.hint(
+                axis=Axis.FS,
+                code=KnownCode.FS_UNWRITABLE,
+                cluster=Cluster.SKIPPED,
+                message="no write permission",
+                terminal=True,
             )
         elif st == FsStatus.BINARY:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.FS,
-                    code=KnownCode.CONTENT_NOT_SUPPORTED,
-                    cluster=Cluster.SKIPPED,
-                    message="binary file",
-                    terminal=True,
-                )
+            ctx.hint(
+                axis=Axis.FS,
+                code=KnownCode.CONTENT_NOT_SUPPORTED,
+                cluster=Cluster.SKIPPED,
+                message="binary file",
+                terminal=True,
             )
         elif st == FsStatus.UNICODE_DECODE_ERROR:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.FS,
-                    code=KnownCode.CONTENT_ENCODING_ERROR,
-                    cluster=Cluster.SKIPPED,
-                    message="Unicode decode error",
-                    terminal=True,
-                )
+            ctx.hint(
+                axis=Axis.FS,
+                code=KnownCode.CONTENT_ENCODING_ERROR,
+                cluster=Cluster.SKIPPED,
+                message="Unicode decode error",
+                terminal=True,
             )
         elif st == FsStatus.PENDING:
             # sniffer did not complete
-            ctx.stop_flow(reason=f"{self.__class__.__name__} did not set state.", at_step=self)
+            ctx.request_halt(reason=f"{self.__class__.__name__} did not set state.", at_step=self)

@@ -37,7 +37,7 @@ from topmark.pipeline.context.policy import (
     allows_bom_before_shebang_by_policy,
     allows_mixed_line_endings_by_policy,
 )
-from topmark.pipeline.hints import Axis, Cluster, KnownCode, make_hint
+from topmark.pipeline.hints import Axis, Cluster, KnownCode
 from topmark.pipeline.status import (
     ContentStatus,
     FsStatus,
@@ -117,7 +117,7 @@ class ReaderStep(BaseStep):
         Returns:
             bool: True if processing can proceed to the read step, False otherwise.
         """
-        if ctx.flow.halt:
+        if ctx.is_halted:
             # SnifferStep already flagged FsStatus statuses which halt processng
             return False
         # The remaining FsStatus states are either OK or controlled by policy
@@ -156,8 +156,8 @@ class ReaderStep(BaseStep):
             else:
                 ctx.status.content = ContentStatus.SKIPPED_POLICY_BOM_BEFORE_SHEBANG
                 reason: str = "BOM appears before shebang; policy forbids proceeding"
-                ctx.add_error(reason)
-                ctx.stop_flow(reason=reason, at_step=self)
+                ctx.error(reason)
+                ctx.request_halt(reason=reason, at_step=self)
                 return
 
         if ctx.status.fs == FsStatus.MIXED_LINE_ENDINGS:
@@ -169,8 +169,8 @@ class ReaderStep(BaseStep):
             else:
                 ctx.status.content = ContentStatus.SKIPPED_MIXED_LINE_ENDINGS
                 reason = "Mixed line endings refused by policy"
-                ctx.add_error(reason)
-                ctx.stop_flow(reason=reason, at_step=self)
+                ctx.error(reason)
+                ctx.request_halt(reason=reason, at_step=self)
                 return
 
         def _initialize_empty_file_content(ctx: ProcessingContext) -> None:
@@ -284,7 +284,7 @@ class ReaderStep(BaseStep):
                 lf: int = ctx.newline_hist.get("\n", 0)
                 crlf: int = ctx.newline_hist.get("\r\n", 0)
                 cr: int = ctx.newline_hist.get("\r", 0)
-                ctx.add_error(
+                ctx.error(
                     f"Mixed line endings detected (LF={lf}, CRLF={crlf}, CR={cr}). "
                     "Strict policy refuses to process mixed files."
                 )
@@ -336,13 +336,13 @@ class ReaderStep(BaseStep):
                                 f"Strict policy: {ctx.pre_insert_capability.value} "
                                 "- overridden (OK to proceed)"
                             )
-                            ctx.add_info(reason)
+                            ctx.info(reason)
                             return
                         else:
                             ctx.status.content = ContentStatus.SKIPPED_REFLOW
                             reason = f"Strict policy: {ctx.pre_insert_capability.value}"
-                            ctx.add_info(reason)
-                            ctx.stop_flow(reason=reason, at_step=self)
+                            ctx.info(reason)
+                            ctx.request_halt(reason=reason, at_step=self)
 
                 except Exception:
                     # Advisory-only; never fail the reader on checker issues.
@@ -356,8 +356,8 @@ class ReaderStep(BaseStep):
             logger.error("Error reading file %s: %s", ctx.path, e)
             ctx.status.content = ContentStatus.UNREADABLE
             reason = f"Error reading file file: {e}"
-            ctx.add_error(reason)
-            ctx.stop_flow(reason=reason, at_step=self)
+            ctx.error(reason)
+            ctx.request_halt(reason=reason, at_step=self)
             return
 
     def hint(self, ctx: ProcessingContext) -> None:
@@ -373,56 +373,46 @@ class ReaderStep(BaseStep):
             pass  # healthy, no hint
         # Stop processing (policy):
         elif st == ContentStatus.SKIPPED_MIXED_LINE_ENDINGS:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.CONTENT,
-                    code=KnownCode.CONTENT_SKIPPED_MIXED,
-                    cluster=Cluster.BLOCKED_POLICY,
-                    message="policy: mixed line endings",
-                    terminal=True,
-                )
+            ctx.hint(
+                axis=Axis.CONTENT,
+                code=KnownCode.CONTENT_SKIPPED_MIXED,
+                cluster=Cluster.BLOCKED_POLICY,
+                message="policy: mixed line endings",
+                terminal=True,
             )
         elif st == ContentStatus.SKIPPED_POLICY_BOM_BEFORE_SHEBANG:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.CONTENT,
-                    code=KnownCode.CONTENT_SKIPPED_BOM_SHEBANG,
-                    cluster=Cluster.BLOCKED_POLICY,
-                    message="policy: BOM before shebang",
-                    terminal=True,
-                )
+            ctx.hint(
+                axis=Axis.CONTENT,
+                code=KnownCode.CONTENT_SKIPPED_BOM_SHEBANG,
+                cluster=Cluster.BLOCKED_POLICY,
+                message="policy: BOM before shebang",
+                terminal=True,
             )
         elif st == ContentStatus.SKIPPED_REFLOW:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.CONTENT,
-                    code=KnownCode.CONTENT_SKIPPED_REFLOW,
-                    cluster=Cluster.BLOCKED_POLICY,
-                    message="policy: would reflow contet",
-                    terminal=True,
-                )
+            ctx.hint(
+                axis=Axis.CONTENT,
+                code=KnownCode.CONTENT_SKIPPED_REFLOW,
+                cluster=Cluster.BLOCKED_POLICY,
+                message="policy: would reflow contet",
+                terminal=True,
             )
         # Stop processing:
         elif st == ContentStatus.UNSUPPORTED:  # NOTE: Currently not used
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.CONTENT,
-                    code=KnownCode.CONTENT_NOT_SUPPORTED,
-                    cluster=Cluster.SKIPPED,
-                    message="unsupported content (binary/decode)",
-                    terminal=True,
-                )
+            ctx.hint(
+                axis=Axis.CONTENT,
+                code=KnownCode.CONTENT_NOT_SUPPORTED,
+                cluster=Cluster.SKIPPED,
+                message="unsupported content (binary/decode)",
+                terminal=True,
             )
         elif st == ContentStatus.UNREADABLE:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.CONTENT,
-                    code=KnownCode.CONTENT_UNREADABLE,
-                    cluster=Cluster.SKIPPED,
-                    message="cannot read content",
-                    terminal=True,
-                )
+            ctx.hint(
+                axis=Axis.CONTENT,
+                code=KnownCode.CONTENT_UNREADABLE,
+                cluster=Cluster.SKIPPED,
+                message="cannot read content",
+                terminal=True,
             )
         elif st == ContentStatus.PENDING:
             # reader did not complete
-            ctx.stop_flow(reason=f"{self.__class__.__name__} did not set state.", at_step=self)
+            ctx.request_halt(reason=f"{self.__class__.__name__} did not set state.", at_step=self)

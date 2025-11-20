@@ -43,7 +43,7 @@ from topmark.config.logging import get_logger
 from topmark.config.policy import effective_policy
 from topmark.config.types import FileWriteStrategy, OutputTarget
 from topmark.pipeline.context.policy import can_change, check_permitted_by_policy
-from topmark.pipeline.hints import Axis, Cluster, KnownCode, make_hint
+from topmark.pipeline.hints import Axis, Cluster, KnownCode
 from topmark.pipeline.status import (
     PlanStatus,
     WriteStatus,
@@ -266,7 +266,7 @@ class InplaceFileSink(WriteSink):
                     pass
             return WriteResult(status=WriteStatus.WRITTEN)
         except Exception as e:
-            ctx.add_error(f"In-place write failed: {e}")
+            ctx.error(f"In-place write failed: {e}")
             return WriteResult(status=WriteStatus.FAILED)
 
 
@@ -347,7 +347,7 @@ class AtomicFileSink(WriteSink):
                     tmp.unlink()
             except Exception:
                 pass
-            ctx.add_error(f"Atomic write failed: {e}")
+            ctx.error(f"Atomic write failed: {e}")
             return WriteResult(status=WriteStatus.FAILED)
 
 
@@ -428,7 +428,7 @@ class WriterStep(BaseStep):
         Returns:
             bool: True if processing can proceed to the build step, False otherwise.
         """
-        if ctx.flow.halt:
+        if ctx.is_halted:
             return False
         if not ctx.config.apply_changes:
             return False
@@ -474,20 +474,20 @@ class WriterStep(BaseStep):
         # Only gate insert/replace (check mode) — strip/removal is not governed by add/update.
         if ctx.status.plan == PlanStatus.INSERTED and pol.update_only:
             ctx.status.write = WriteStatus.SKIPPED
-            ctx.add_info("Skipped by policy: --update-only")
+            ctx.info("Skipped by policy: --update-only")
             logger.debug("Skipped by policy: --update-only")
             return
 
         if ctx.status.plan == PlanStatus.REPLACED and pol.add_only:
             ctx.status.write = WriteStatus.SKIPPED
-            ctx.add_info("Skipped by policy: --add-only")
+            ctx.info("Skipped by policy: --add-only")
             logger.debug("Skipped by policy: --add-only")
             return
 
         # Defensive: nothing to write if updater did not produce an updated image
         updated_view: UpdatedView | None = ctx.views.updated
         if updated_view is None or updated_view.lines is None:
-            ctx.add_info("File unchanged - nothing to write.")
+            ctx.info("File unchanged - nothing to write.")
             logger.debug("File unchanged - nothing to write")
             return
 
@@ -517,38 +517,32 @@ class WriterStep(BaseStep):
         st: WriteStatus = ctx.status.write
         # May proceed to next step (always):
         if st == WriteStatus.WRITTEN:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.WRITE,
-                    code=KnownCode.WRITE_WRITTEN,
-                    cluster=Cluster.CHANGED,
-                    message="changes written",
-                )
+            ctx.hint(
+                axis=Axis.WRITE,
+                code=KnownCode.WRITE_WRITTEN,
+                cluster=Cluster.CHANGED,
+                message="changes written",
             )
         elif st == WriteStatus.SKIPPED:
             if ctx.status.plan in {PlanStatus.INSERTED, PlanStatus.REPLACED}:
                 msg: str = "write skipped (policy)"
             else:
                 msg = "write skipped"
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.WRITE,
-                    code=KnownCode.WRITE_SKIPPED,
-                    cluster=Cluster.SKIPPED,
-                    message=msg,
-                )
+            ctx.hint(
+                axis=Axis.WRITE,
+                code=KnownCode.WRITE_SKIPPED,
+                cluster=Cluster.SKIPPED,
+                message=msg,
             )
         # Stop processing:
         elif st == WriteStatus.FAILED:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.WRITE,
-                    code=KnownCode.WRITE_FAILED,
-                    cluster=Cluster.ERROR,
-                    message="write failed",
-                    terminal=True,
-                )
+            ctx.hint(
+                axis=Axis.WRITE,
+                code=KnownCode.WRITE_FAILED,
+                cluster=Cluster.ERROR,
+                message="write failed",
+                terminal=True,
             )
         elif st == WriteStatus.PENDING:
             # writer did not complete
-            ctx.stop_flow(reason=f"{self.__class__.__name__} did not set state.", at_step=self)
+            ctx.request_halt(reason=f"{self.__class__.__name__} did not set state.", at_step=self)

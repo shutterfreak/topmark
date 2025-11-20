@@ -8,10 +8,23 @@
 #
 # topmark:header:end
 
-"""Diagnostics support."""
+"""Core diagnostic types and helpers for TopMark.
 
-from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+This module defines internal diagnostic primitives used throughout the
+project to report informational messages, warnings, and errors. These are
+intentionally separate from the public API schemas so that internal
+diagnostics can evolve without breaking external contracts.
+
+Sections:
+    * DiagnosticLevel: severity levels with associated terminal colors.
+    * Diagnostic: immutable structured diagnostic payload.
+    * DiagnosticStats: aggregated per-level counts.
+    * DiagnosticLog: mutable per-context collection with helpers for
+      adding and summarizing diagnostics.
+"""
+
+from collections.abc import Callable, Iterable, Iterator
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import cast
 
@@ -75,9 +88,120 @@ class DiagnosticStats:
         return self.n_info + self.n_warning + self.n_error
 
 
-def compute_diagnostic_stats(diags: Sequence[Diagnostic]) -> DiagnosticStats:
-    """Return per-level counts for a sequence of diagnostics."""
-    n_info: int = sum(1 for d in diags if d.level == DiagnosticLevel.INFO)
-    n_warn: int = sum(1 for d in diags if d.level == DiagnosticLevel.WARNING)
-    n_err: int = sum(1 for d in diags if d.level == DiagnosticLevel.ERROR)
+@dataclass
+class DiagnosticLog:
+    """Mutable, per-context collection of diagnostics.
+
+    This wrapper keeps track of all diagnostics emitted during processing
+    of a single context. It provides convenience helpers for adding
+    diagnostics at a given level and exposes simple aggregation helpers
+    (`stats`, `to_dict`) for reporting.
+    """
+
+    items: list[Diagnostic] = field(default_factory=lambda: [])
+
+    def _add(self, diagnostic: Diagnostic) -> None:
+        """Add a diagnostic to the diagnostic log.
+
+        Args:
+            diagnostic (Diagnostic): The diagnostic object.
+
+        Returns:
+            None: The diagnostic is appended to the context in place.
+        """
+        self.items.append(diagnostic)
+
+    def add_info(self, message: str) -> None:
+        """Add an ``info`` diagnostic to the diagnostic log.
+
+        Args:
+            message (str): The diagnostic message.
+
+        Returns:
+            None: The diagnostic is appended to the context in place.
+        """
+        self._add(Diagnostic(DiagnosticLevel.INFO, message))
+
+    def add_warning(self, message: str) -> None:
+        """Add a ``warning`` diagnostic to the diagnostic log.
+
+        Args:
+            message (str): The diagnostic message.
+
+        Returns:
+            None: The diagnostic is appended to the context in place.
+        """
+        self._add(Diagnostic(DiagnosticLevel.WARNING, message))
+
+    def add_error(self, message: str) -> None:
+        """Add an ``error`` diagnostic to the diagnostic log.
+
+        Args:
+            message (str): The diagnostic message.
+
+        Returns:
+            None: The diagnostic is appended to the context in place.
+        """
+        self._add(Diagnostic(DiagnosticLevel.ERROR, message))
+
+    def stats(self) -> DiagnosticStats:
+        """Return per-level counts for diagnostics in this log.
+
+        The returned `DiagnosticStats` object can be used both for human
+        summaries and for machine-readable reporting via `to_dict`.
+        """
+        return compute_diagnostic_stats(self.items)
+
+    def to_dict(self) -> dict[str, int]:
+        """Return a JSON-friendly mapping of counts by severity.
+
+        Returns:
+            dict[str, int]: Mapping with keys ``"info"``, ``"warning"``, and
+            ``"error"`` reflecting the number of diagnostics at each level.
+        """
+        return diagnostics_counts_to_dict(self.items)
+
+    def __iter__(self) -> Iterator[Diagnostic]:
+        """Iterate over all diagnostics stored in this log.
+
+        Returns:
+            Iterator[Diagnostic]: An iterator yielding diagnostics in
+            insertion order.
+        """
+        return iter(self.items)
+
+    def __len__(self) -> int:
+        """Return the number of diagnostics stored in this log.
+
+        Returns:
+            int: The number of diagnostic entries.
+        """
+        return len(self.items)
+
+
+def compute_diagnostic_stats(diagnostics: Iterable[Diagnostic]) -> DiagnosticStats:
+    """Return per-level counts for a sequence of diagnostics.
+
+    The returned `DiagnosticStats` object can be used both for human
+    summaries and for machine-readable reporting via `to_dict`.
+
+    Args:
+        diagnostics (Iterable[Diagnostic]): the diagnostic log.
+
+    Returns:
+        DiagnosticStats: per-level counts for diagnostics in this log.
+    """
+    n_info: int = sum(1 for d in diagnostics if d.level == DiagnosticLevel.INFO)
+    n_warn: int = sum(1 for d in diagnostics if d.level == DiagnosticLevel.WARNING)
+    n_err: int = sum(1 for d in diagnostics if d.level == DiagnosticLevel.ERROR)
     return DiagnosticStats(n_info=n_info, n_warning=n_warn, n_error=n_err)
+
+
+def diagnostics_counts_to_dict(diagnostics: Iterable[Diagnostic]) -> dict[str, int]:
+    """Return a JSON-friendly mapping of counts by severity for any iterable."""
+    stats: DiagnosticStats = compute_diagnostic_stats(diagnostics)
+    return {
+        "info": stats.n_info,
+        "warning": stats.n_warning,
+        "error": stats.n_error,
+    }

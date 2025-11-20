@@ -244,7 +244,7 @@ def test_xml_single_line_declaration(tmp_path: Path) -> None:
     assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.pre_insert_capability == InsertCapability.SKIP_IDEMPOTENCE_RISK
     assert ctx.status.content == ContentStatus.SKIPPED_REFLOW
-    assert ctx.flow.halt is True
+    assert ctx.is_halted is True
 
 
 def test_xml_prolog_and_body_on_same_line_blocked_by_policy(tmp_path: Path) -> None:
@@ -260,7 +260,7 @@ def test_xml_prolog_and_body_on_same_line_blocked_by_policy(tmp_path: Path) -> N
     assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.pre_insert_capability == InsertCapability.SKIP_IDEMPOTENCE_RISK
     assert ctx.status.content == ContentStatus.SKIPPED_REFLOW
-    assert ctx.flow.halt is True
+    assert ctx.is_halted is True
 
 
 def test_xml_prolog_and_body_on_same_line_alllowed_by_policy(tmp_path: Path) -> None:
@@ -321,7 +321,7 @@ def test_xml_single_line_decl_and_doctype(tmp_path: Path) -> None:
     assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.pre_insert_capability == InsertCapability.SKIP_IDEMPOTENCE_RISK
     assert ctx.status.content == ContentStatus.SKIPPED_REFLOW
-    assert ctx.flow.halt is True
+    assert ctx.is_halted is True
 
 
 @mark_pipeline

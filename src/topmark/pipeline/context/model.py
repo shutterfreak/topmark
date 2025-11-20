@@ -21,22 +21,20 @@ Sections:
         and exposes convenience helpers for policy checks, feasibility
         decisions, and view access.
 
-    FlowControl:
-        Small helper dataclass that allows steps to request early,
-        graceful termination of the pipeline for a given file.
+    HaltState:
+        Small helper dataclass that records why and where processing
+        was halted for a given file.
 """
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from topmark.config.logging import get_logger
 from topmark.config.policy import effective_policy
 from topmark.core.diagnostics import (
-    Diagnostic,
-    DiagnosticLevel,
+    DiagnosticLog,
 )
 from topmark.filetypes.base import InsertCapability
 from topmark.pipeline.context.policy import (
@@ -49,7 +47,7 @@ from topmark.pipeline.context.policy import (
     would_strip,
 )
 from topmark.pipeline.context.status import ProcessingStatus
-from topmark.pipeline.hints import Hint
+from topmark.pipeline.hints import Axis, Cluster, HintLog, KnownCode, make_hint
 from topmark.pipeline.views import UpdatedView, Views
 
 if TYPE_CHECKING:
@@ -67,18 +65,31 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 __all__: list[str] = [
-    "FlowControl",
+    "HaltState",
     "ProcessingContext",
 ]
 
 
-@dataclass
-class FlowControl:
-    """Execution flow control for the current file."""
+@dataclass(frozen=True)
+class HaltState:
+    """Information about a terminal halt for a single file.
 
-    halt: bool = False
-    reason: str = ""  # short code, e.g. "unsupported", "unchanged-summary"
-    at_step: str = ""  # step name that requested the halt
+    Instances of this dataclass describe why and where the pipeline
+    decided to stop processing a file. A non-empty ``step_name`` implies
+    that a step requested an early, graceful halt.
+
+    Attributes:
+        reason_code (str): Short machine-friendly reason code explaining
+            why processing was halted (for example, ``"unsupported"`` or
+            ``"unchanged-summary"``). Intended for internal use and
+            machine output.
+        step_name (str): Name of the pipeline step that requested the
+            halt. An empty string indicates that no explicit halt has
+            been recorded.
+    """
+
+    reason_code: str = ""  # short code, e.g. "unsupported", "unchanged-summary"
+    step_name: str = ""  # step name that requested the halt
 
 
 @dataclass
@@ -100,8 +111,9 @@ class ProcessingContext:
             example, a Python or Markdown file type), if applicable.
         status (ProcessingStatus): Aggregated status for each pipeline
             axis, kept as the single source of truth for per-axis outcomes.
-        flow (FlowControl): Flow control flags indicating whether processing
-            should halt and why.
+        halt_state (HaltState | None): Information about an early, terminal
+            halt for this file. ``None`` means processing has not been
+            halted.
         header_processor (HeaderProcessor | None): Header processor instance
             responsible for this file type, if any.
         leading_bom (bool): True if the original file began with a UTF-8 BOM
@@ -129,9 +141,9 @@ class ProcessingContext:
             may be problematic.
         pre_insert_origin (str | None): Origin of the pre-insertion
             diagnostic (typically a step or subsystem name).
-        diagnostics (list[Diagnostic]): Collected diagnostics (info, warning,
+        diagnostics (DiagnosticLog): Collected diagnostics (info, warning,
             and error) produced during processing.
-        reason_hints (list[Hint]): Non-binding hints supplied by steps to
+        diagnostic_hints (HintLog): Non-binding hints supplied by steps to
             explain decisions; used primarily for summarization.
         views (Views): Bundle that carries image/header/build/render/updated/
             diff views for this file. The runner may prune heavy views after
@@ -143,7 +155,7 @@ class ProcessingContext:
     steps: list[Step] = field(default_factory=lambda: [])
     file_type: FileType | None = None  # Resolved file type (e.g., PythonFileType)
     status: ProcessingStatus = field(default_factory=ProcessingStatus)
-    flow: FlowControl = field(default_factory=FlowControl)
+    halt_state: HaltState | None = None
 
     header_processor: HeaderProcessor | None = (
         None  # HeaderProcessor instance for this file type, if applicable
@@ -166,10 +178,10 @@ class ProcessingContext:
     pre_insert_origin: str | None = None
 
     # Processing diagnostics: warnings/errors collected during processing
-    diagnostics: list[Diagnostic] = field(default_factory=list[Diagnostic])
+    diagnostics: DiagnosticLog = field(default_factory=DiagnosticLog)
 
     # Pre-outcome hints (non-binding)
-    reason_hints: list[Hint] = field(default_factory=list[Hint])
+    diagnostic_hints: HintLog = field(default_factory=HintLog)
 
     # View-based properties
     views: Views = field(default_factory=Views)
@@ -217,36 +229,32 @@ class ProcessingContext:
             result[step.name] = axes
         return result
 
-    def add_hint(self, hint: Hint) -> None:
-        """Attach a structured hint to the processing context.
-
-        Hints are non-binding diagnostics used to refine human-readable
-        summaries without affecting the core outcome classification.
-
-        Args:
-            hint (Hint): The hint instance to attach.
-
-        Returns:
-            None: The hint collection is updated in place.
-        """
-        self.reason_hints.append(hint)
-        if logger.isEnabledFor(logging.DEBUG):
-            logger.debug(
-                "added hint axis=%s code=%s message=%s", hint.axis, hint.code, hint.message
-            )
-
-    def stop_flow(self, reason: str, at_step: Step) -> None:
+    def request_halt(self, reason: str, at_step: Step) -> None:
         """Request a graceful, terminal stop for the rest of the pipeline.
 
+        This method records a ``HaltState`` on the context so that subsequent
+        steps and the runner can avoid further processing for this file.
+
         Args:
-            reason (str): Short machine-friendly reason code for halting the flow.
+            reason (str): Short machine-friendly reason code for halting the
+                pipeline (for example, ``"unsupported"``).
             at_step (Step): Step instance requesting the halt.
 
         Returns:
-            None: The flow-control flags on this context are updated in place.
+            None: The context's ``halt_state`` field is updated in place.
         """
-        logger.info("Flow halted in %s: %s", at_step.name, reason)
-        self.flow = FlowControl(halt=True, reason=reason, at_step=at_step.name)
+        logger.info("🛑 Processing halted in %s: %s", at_step.name, reason)
+        self.halt_state = HaltState(reason_code=reason, step_name=at_step.name)
+
+    @property
+    def is_halted(self) -> bool:
+        """Return True if a step has requested an early halt for this file.
+
+        Returns:
+            bool: ``True`` when ``halt_state`` is not ``None``, meaning that
+            the pipeline should not execute any further steps for this file.
+        """
+        return self.halt_state is not None
 
     # TODO: decide to keep or always refer to FileImageViewiter_lines() instead.
     def iter_image_lines(self) -> Iterable[str]:
@@ -338,11 +346,7 @@ class ProcessingContext:
             "diagnostics": [
                 {"level": d.level.value, "message": d.message} for d in self.diagnostics
             ],
-            "diagnostic_counts": {
-                "info": sum(1 for d in self.diagnostics if d.level == DiagnosticLevel.INFO),
-                "warning": sum(1 for d in self.diagnostics if d.level == DiagnosticLevel.WARNING),
-                "error": sum(1 for d in self.diagnostics if d.level == DiagnosticLevel.ERROR),
-            },
+            "diagnostic_counts": self.diagnostics.to_dict(),
             "pre_insert_check": {
                 "capability": self.pre_insert_capability.name,
                 "reason": self.pre_insert_reason,
@@ -363,6 +367,68 @@ class ProcessingContext:
             },
         }
 
+    def info(self, message: str) -> None:
+        """Record an informational diagnostic for this context."""
+        self.diagnostics.add_info(message)
+
+    def warn(self, message: str) -> None:
+        """Record a warning diagnostic for this context."""
+        self.diagnostics.add_warning(message)
+
+    def error(self, message: str) -> None:
+        """Record an error diagnostic for this context."""
+        self.diagnostics.add_error(message)
+
+    def hint(
+        self,
+        *,
+        axis: Axis,
+        code: KnownCode | str,
+        message: str,
+        detail: str | None = None,
+        cluster: Cluster | str | None = None,
+        terminal: bool = False,
+        reason: str | None = None,
+        meta: dict[str, Any] | None = None,
+    ) -> None:
+        """Create and attach a normalized `Hint` to this context.
+
+        This is a convenience façade around `make_hint` and `HintLog.add`,
+        allowing pipeline steps to emit structured, non-binding diagnostics
+        without depending on the underlying `HintLog` representation.
+
+        Args:
+            axis (Axis): Axis emitting the hint.
+            code (KnownCode | str): Stable machine key for the condition.
+            message (str): Human-readable short summary line.
+            detail (str | None): Optional extended diagnostic text rendered at higher
+                verbosity (e.g., multi-line config snippets or rationale).
+            cluster (Cluster | str | None): Optional grouping key; defaults to ``code``.
+            terminal (bool): Whether this condition is terminal.
+            reason (str | None): Optional detail string.
+            meta (dict[str, Any] | None): Optional extensibility bag.
+
+        Returns:
+            None: The new hint is appended to this context's hint log.
+
+        Example:
+            ```python
+            ctx.hint(axis=Axis.PLAN, code=KnownCode.PLAN_INSERT, message="would insert header")
+            ```
+        """
+        self.diagnostic_hints.add(
+            make_hint(
+                axis=axis,
+                code=code,
+                message=message,
+                detail=detail,
+                cluster=cluster,
+                terminal=terminal,
+                reason=reason,
+                meta=meta,
+            )
+        )
+
     @classmethod
     def bootstrap(cls, *, path: Path, config: Config) -> ProcessingContext:
         """Create a fresh context with no derived state.
@@ -375,37 +441,3 @@ class ProcessingContext:
             ProcessingContext: Newly created context instance.
         """
         return cls(path=path, config=config)
-
-    # --- Convenience helpers -------------------------------------------------
-    def add_info(self, message: str) -> None:
-        """Add an ``info`` diagnostic to the processing context.
-
-        Args:
-            message (str): The diagnostic message.
-
-        Returns:
-            None: The diagnostic is appended to the context in place.
-        """
-        self.diagnostics.append(Diagnostic(DiagnosticLevel.INFO, message))
-
-    def add_warning(self, message: str) -> None:
-        """Add a ``warning`` diagnostic to the processing context.
-
-        Args:
-            message (str): The diagnostic message.
-
-        Returns:
-            None: The diagnostic is appended to the context in place.
-        """
-        self.diagnostics.append(Diagnostic(DiagnosticLevel.WARNING, message))
-
-    def add_error(self, message: str) -> None:
-        """Add an ``error`` diagnostic to the processing context.
-
-        Args:
-            message (str): The diagnostic message.
-
-        Returns:
-            None: The diagnostic is appended to the context in place.
-        """
-        self.diagnostics.append(Diagnostic(DiagnosticLevel.ERROR, message))

@@ -33,13 +33,14 @@ from typing import TYPE_CHECKING, Any, TypedDict, cast
 from topmark.api.view import collect_outcome_counts
 from topmark.config.model import Config
 from topmark.constants import TOPMARK_VERSION
-from topmark.core.diagnostics import DiagnosticStats, compute_diagnostic_stats
+from topmark.core.diagnostics import compute_diagnostic_stats
 from topmark.pipeline.context.model import ProcessingContext
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from topmark.config.io import TomlTable
+    from topmark.core.diagnostics import DiagnosticStats
 
 
 class MetaPayload(TypedDict):

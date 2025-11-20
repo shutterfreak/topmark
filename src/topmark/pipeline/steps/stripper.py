@@ -21,7 +21,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.config.logging import get_logger
-from topmark.pipeline.hints import Axis, Cluster, KnownCode, make_hint
+from topmark.pipeline.hints import Axis, Cluster, KnownCode
 from topmark.pipeline.processors.types import StripDiagKind, StripDiagnostic
 from topmark.pipeline.status import (
     ContentStatus,
@@ -105,7 +105,7 @@ class StripperStep(BaseStep):
         Returns:
             bool: True if processing can proceed to the build step, False otherwise.
         """
-        if ctx.flow.halt:
+        if ctx.is_halted:
             return False
         return (
             ctx.status.resolve == ResolveStatus.RESOLVED
@@ -145,13 +145,13 @@ class StripperStep(BaseStep):
             else:
                 logger.debug("Stripper: skipping (content status=%s)", ctx.status.content.value)
                 reason = f"Could not strip header from file (status: {ctx.status.content.value})."
-            ctx.add_info(reason)
+            ctx.info(reason)
             return
 
         if ctx.status.header is HeaderStatus.MISSING:
             ctx.status.strip = StripStatus.NOT_NEEDED
             reason = "No header to be stripped."
-            ctx.add_info(reason)
+            ctx.info(reason)
             return
         if ctx.status.header not in [HeaderStatus.EMPTY, HeaderStatus.DETECTED]:
             if ctx.status.header in {
@@ -161,14 +161,14 @@ class StripperStep(BaseStep):
                 # TODO: enable stripping based on future policy
                 ctx.status.strip = StripStatus.FAILED
                 reason = f"No header to be stripped: {ctx.status.header}"
-                ctx.add_info(reason)
-                ctx.stop_flow(reason=reason, at_step=self)
+                ctx.info(reason)
+                ctx.request_halt(reason=reason, at_step=self)
             else:
                 # No header to be stripped
                 ctx.status.strip = StripStatus.FAILED
                 reason = f"No header to be stripped: {ctx.status.header}"
-                ctx.add_info(reason)
-                ctx.stop_flow(reason=reason, at_step=self)
+                ctx.info(reason)
+                ctx.request_halt(reason=reason, at_step=self)
             return
 
         original_lines: list[str] = list(ctx.iter_image_lines())
@@ -176,7 +176,7 @@ class StripperStep(BaseStep):
             # Empty file
             ctx.status.strip = StripStatus.NOT_NEEDED
             reason = "Empty file, stripping not needed."
-            ctx.add_info(reason)
+            ctx.info(reason)
             return
 
         # Prefer the span detected by the scanner; fall back to processor logic otherwise.
@@ -194,33 +194,33 @@ class StripperStep(BaseStep):
 
         # Surface any additional diagnostic notes from the processor
         for note in getattr(diag, "notes", []) or []:
-            ctx.add_info(note)
+            ctx.info(note)
 
         # Handle diagnostic outcome explicitly before continuing.
         if diag.kind is StripDiagKind.NOT_FOUND:
             ctx.status.strip = StripStatus.NOT_NEEDED
             reason = diag.reason or "No header detected."
-            ctx.add_info(reason)
+            ctx.info(reason)
             return
 
         if diag.kind is StripDiagKind.NOOP_EMPTY:
             ctx.status.strip = StripStatus.NOT_NEEDED
             reason = diag.reason or "Empty file, nothing to strip."
-            ctx.add_info(reason)
+            ctx.info(reason)
             return
 
         if diag.kind is StripDiagKind.MALFORMED_REFUSED:
             ctx.status.strip = StripStatus.NOT_NEEDED
             reason = diag.reason or "Malformed header detected; removal refused by policy."
-            ctx.add_error(reason)
-            ctx.stop_flow(reason=reason, at_step=self)
+            ctx.error(reason)
+            ctx.request_halt(reason=reason, at_step=self)
             return
 
         if diag.kind is StripDiagKind.ERROR:
             ctx.status.strip = StripStatus.NOT_NEEDED
             reason = diag.reason or "Error while analyzing header for stripping."
-            ctx.add_error(reason)
-            ctx.stop_flow(reason=reason, at_step=self)
+            ctx.error(reason)
+            ctx.request_halt(reason=reason, at_step=self)
             return
 
         # For REMOVED or MALFORMED_REMOVED, proceed with post-removal normalization.
@@ -228,7 +228,7 @@ class StripperStep(BaseStep):
         if removed is None or new_lines == original_lines:
             ctx.status.strip = StripStatus.NOT_NEEDED
             reason = diag.reason or "Nothing to strip."
-            ctx.add_info(reason)
+            ctx.info(reason)
             return
 
         # Optionally remove a single trailing blank line that TopMark inserted after the header.
@@ -313,34 +313,28 @@ class StripperStep(BaseStep):
 
         # May proceed to next step (always):
         if st == StripStatus.READY:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.STRIP,
-                    code=KnownCode.STRIP_READY,
-                    cluster=Cluster.CHANGED if apply else Cluster.WOULD_CHANGE,
-                    message="header removal available",
-                )
+            ctx.hint(
+                axis=Axis.STRIP,
+                code=KnownCode.STRIP_READY,
+                cluster=Cluster.CHANGED if apply else Cluster.WOULD_CHANGE,
+                message="header removal available",
             )
         elif st == StripStatus.NOT_NEEDED:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.STRIP,
-                    code=KnownCode.STRIP_NONE,
-                    cluster=Cluster.UNCHANGED,
-                    message="no header to remove",
-                )
+            ctx.hint(
+                axis=Axis.STRIP,
+                code=KnownCode.STRIP_NONE,
+                cluster=Cluster.UNCHANGED,
+                message="no header to remove",
             )
         # Stop processing:
         elif st == StripStatus.FAILED:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.STRIP,
-                    code=KnownCode.STRIP_FAILED,
-                    cluster=Cluster.ERROR,
-                    message="failed to prepare header removal",
-                    terminal=True,
-                )
+            ctx.hint(
+                axis=Axis.STRIP,
+                code=KnownCode.STRIP_FAILED,
+                cluster=Cluster.ERROR,
+                message="failed to prepare header removal",
+                terminal=True,
             )
         elif st == StripStatus.PENDING:
             # stripper did not complete
-            ctx.stop_flow(reason=f"{self.__class__.__name__} did not set state.", at_step=self)
+            ctx.request_halt(reason=f"{self.__class__.__name__} did not set state.", at_step=self)

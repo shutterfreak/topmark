@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING
 
 from topmark.config.logging import get_logger
 from topmark.pipeline.context.policy import check_permitted_by_policy
-from topmark.pipeline.hints import Axis, Cluster, KnownCode, make_hint
+from topmark.pipeline.hints import Axis, Cluster, KnownCode
 from topmark.pipeline.processors.types import BoundsKind, HeaderBounds
 from topmark.pipeline.status import (
     ContentStatus,
@@ -87,7 +87,7 @@ class ScannerStep(BaseStep):
         Returns:
             bool: True if processing can proceed to the build step, False otherwise.
         """
-        if ctx.flow.halt:
+        if ctx.is_halted:
             return False
         return (
             ctx.header_processor is not None
@@ -167,17 +167,15 @@ class ScannerStep(BaseStep):
                 )
             ctx.status.header = HeaderStatus.MALFORMED
             reason: str = hb.reason or "Malformed header markers"
-            ctx.add_warning(reason)
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.HEADER,
-                    code=KnownCode.HEADER_MALFORMED,
-                    cluster=Cluster.ERROR,
-                    message=reason,
-                    terminal=True,
-                )
+            ctx.warn(reason)
+            ctx.hint(
+                axis=Axis.HEADER,
+                code=KnownCode.HEADER_MALFORMED,
+                cluster=Cluster.ERROR,
+                message=reason,
+                terminal=True,
             )
-            ctx.stop_flow(reason=f"scanner: {reason}", at_step=self)
+            ctx.request_halt(reason=f"scanner: {reason}", at_step=self)
             return
 
         # SPAN → slice, parse, classify
@@ -232,20 +230,18 @@ class ScannerStep(BaseStep):
             if header_view.success_count == 0:
                 # All header lines in the header block are malformed
                 ctx.status.header = HeaderStatus.MALFORMED_ALL_FIELDS
-                ctx.add_warning(f"{reason} - header contains no valid header lines.")
+                ctx.warn(f"{reason} - header contains no valid header lines.")
                 return
             else:
                 # At least one remaining valid header line
                 ctx.status.header = HeaderStatus.MALFORMED_SOME_FIELDS
-                ctx.add_warning(f"{reason} - header contains valid and invalid header lines.")
+                ctx.warn(f"{reason} - header contains valid and invalid header lines.")
                 return
 
         if not header_view.mapping:
             ctx.status.header = HeaderStatus.EMPTY
             logger.info("Header markers present but no fields in '%s'", ctx.path)
-            ctx.add_warning(
-                f"Header markers present at line {s_excl + 1} and {e_excl + 1} but no fields."
-            )
+            ctx.warn(f"Header markers present at line {s_excl + 1} and {e_excl + 1} but no fields.")
         else:
             ctx.status.header = HeaderStatus.DETECTED
 
@@ -275,61 +271,51 @@ class ScannerStep(BaseStep):
         permitted_by_policy: bool | None = check_permitted_by_policy(ctx)
         if st == HeaderStatus.DETECTED:
             if permitted_by_policy is False:
-                ctx.stop_flow(reason="stopped by policy", at_step=self)
+                ctx.request_halt(reason="stopped by policy", at_step=self)
             pass  # detected; normal path
         elif st == HeaderStatus.MISSING:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.HEADER,
-                    code=KnownCode.HEADER_MISSING,
-                    cluster=Cluster.PENDING,
-                    message="no TopMark header detected",
-                )
+            ctx.hint(
+                axis=Axis.HEADER,
+                code=KnownCode.HEADER_MISSING,
+                cluster=Cluster.PENDING,
+                message="no TopMark header detected",
             )
             if permitted_by_policy is False:
-                ctx.stop_flow(reason="stopped by policy", at_step=self)
+                ctx.request_halt(reason="stopped by policy", at_step=self)
 
         elif st == HeaderStatus.EMPTY:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.HEADER,
-                    code=KnownCode.HEADER_EMPTY,
-                    cluster=Cluster.PENDING,
-                    message="empty TopMark header",
-                )
+            ctx.hint(
+                axis=Axis.HEADER,
+                code=KnownCode.HEADER_EMPTY,
+                cluster=Cluster.PENDING,
+                message="empty TopMark header",
             )
             if permitted_by_policy is False:
-                ctx.stop_flow(reason="stopped by policy", at_step=self)
+                ctx.request_halt(reason="stopped by policy", at_step=self)
         # May proceed to next step (policy):
         elif st == HeaderStatus.MALFORMED_ALL_FIELDS:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.HEADER,
-                    code=KnownCode.HEADER_MALFORMED,
-                    cluster=Cluster.BLOCKED_POLICY,
-                    message="some header fields malformed",
-                )
+            ctx.hint(
+                axis=Axis.HEADER,
+                code=KnownCode.HEADER_MALFORMED,
+                cluster=Cluster.BLOCKED_POLICY,
+                message="some header fields malformed",
             )
         elif st == HeaderStatus.MALFORMED_SOME_FIELDS:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.HEADER,
-                    code=KnownCode.HEADER_MALFORMED,
-                    cluster=Cluster.BLOCKED_POLICY,
-                    message="all header fields malformed",
-                )
+            ctx.hint(
+                axis=Axis.HEADER,
+                code=KnownCode.HEADER_MALFORMED,
+                cluster=Cluster.BLOCKED_POLICY,
+                message="all header fields malformed",
             )
         # Stop processing:
         elif st == HeaderStatus.MALFORMED:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.HEADER,
-                    code=KnownCode.HEADER_MALFORMED,
-                    cluster=Cluster.SKIPPED,
-                    message="malformed TopMark header",
-                    terminal=True,
-                )
+            ctx.hint(
+                axis=Axis.HEADER,
+                code=KnownCode.HEADER_MALFORMED,
+                cluster=Cluster.SKIPPED,
+                message="malformed TopMark header",
+                terminal=True,
             )
         elif st == HeaderStatus.PENDING:
             # scanner did not complete
-            ctx.stop_flow(reason=f"{self.__class__.__name__} did not set state.", at_step=self)
+            ctx.request_halt(reason=f"{self.__class__.__name__} did not set state.", at_step=self)

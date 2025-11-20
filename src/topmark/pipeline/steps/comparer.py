@@ -37,7 +37,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.config.logging import get_logger
-from topmark.pipeline.hints import Axis, Cluster, KnownCode, make_hint
+from topmark.pipeline.hints import Axis, Cluster, KnownCode
 from topmark.pipeline.status import (
     ComparisonStatus,
     GenerationStatus,
@@ -91,7 +91,7 @@ class ComparerStep(BaseStep):
         Returns:
             bool: True if processing can proceed to the build step, False otherwise.
         """
-        if ctx.flow.halt:
+        if ctx.is_halted:
             outcome: bool = False
         else:
             # Check pipelines:
@@ -147,8 +147,8 @@ class ComparerStep(BaseStep):
         }:
             ctx.status.comparison = ComparisonStatus.SKIPPED
             reason = f"Skipped: {ctx.status.header.value}"
-            ctx.add_warning(reason)
-            ctx.stop_flow(reason=reason, at_step=self)
+            ctx.warn(reason)
+            ctx.request_halt(reason=reason, at_step=self)
             return
 
         logger.debug("OK to proceed, header Status: %s", ctx.status.header.value)
@@ -239,34 +239,28 @@ class ComparerStep(BaseStep):
 
         # May proceed to next step (always):
         if st == ComparisonStatus.CHANGED:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.COMPARISON,
-                    code=KnownCode.COMPARE_CHANGED,
-                    cluster=Cluster.CHANGED,
-                    message="differences detected",
-                )
+            ctx.hint(
+                axis=Axis.COMPARISON,
+                code=KnownCode.COMPARE_CHANGED,
+                cluster=Cluster.CHANGED,
+                message="differences detected",
             )
         elif st == ComparisonStatus.UNCHANGED:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.COMPARISON,
-                    code=KnownCode.COMPARE_UNCHANGED,
-                    cluster=Cluster.UNCHANGED,
-                    message="no differences detected",
-                )
+            ctx.hint(
+                axis=Axis.COMPARISON,
+                code=KnownCode.COMPARE_UNCHANGED,
+                cluster=Cluster.UNCHANGED,
+                message="no differences detected",
             )
         # Stop processing:
         elif st == ComparisonStatus.SKIPPED:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.COMPARISON,
-                    code=KnownCode.COMPARE_SKIPPED,
-                    cluster=Cluster.SKIPPED,
-                    message="comparison skipped",
-                    terminal=True,
-                )
+            ctx.hint(
+                axis=Axis.COMPARISON,
+                code=KnownCode.COMPARE_SKIPPED,
+                cluster=Cluster.SKIPPED,
+                message="comparison skipped",
+                terminal=True,
             )
         elif st == ComparisonStatus.PENDING:
             # comparer did not complete
-            ctx.stop_flow(reason=f"{self.__class__.__name__} did not set state.", at_step=self)
+            ctx.request_halt(reason=f"{self.__class__.__name__} did not set state.", at_step=self)

@@ -77,11 +77,8 @@ class BaseStep:
             logger.info("BaseStep:   Pipeline step %s - running", self.name)
             self.run(ctx)
             # Check flow status
-            if ctx.flow.halt is True:
-                logger.info(
-                    "BaseStep: ⚠️ Pipeline halted by %s: %s", ctx.flow.at_step, ctx.flow.reason
-                )
-                # still call hint() for consistent diagnostics
+            if ctx.is_halted:
+                # Call hint() for consistent diagnostics
                 self.hint(ctx)
                 return ctx
 

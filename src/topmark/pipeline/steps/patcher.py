@@ -33,7 +33,7 @@ from typing import TYPE_CHECKING
 from yachalk import chalk
 
 from topmark.config.logging import get_logger
-from topmark.pipeline.hints import Axis, Cluster, KnownCode, make_hint
+from topmark.pipeline.hints import Axis, Cluster, KnownCode
 from topmark.pipeline.status import ComparisonStatus, PatchStatus
 from topmark.pipeline.steps.base import BaseStep
 from topmark.pipeline.views import DiffView, UpdatedView
@@ -90,7 +90,7 @@ class PatcherStep(BaseStep):
         Returns:
             bool: True if processing can proceed to the patcher step, False otherwise.
         """
-        if ctx.flow.halt:
+        if ctx.is_halted:
             return False
         return ctx.status.comparison in {
             ComparisonStatus.CHANGED,
@@ -198,34 +198,28 @@ class PatcherStep(BaseStep):
 
         # May proceed to next step (always):
         if st == PatchStatus.GENERATED:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.PATCH,
-                    code=KnownCode.PATCH_GENERATED,
-                    cluster=Cluster.CHANGED if apply else Cluster.WOULD_CHANGE,
-                    message="patch generated",
-                )
+            ctx.hint(
+                axis=Axis.PATCH,
+                code=KnownCode.PATCH_GENERATED,
+                cluster=Cluster.CHANGED if apply else Cluster.WOULD_CHANGE,
+                message="patch generated",
             )
         elif st == PatchStatus.SKIPPED:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.PATCH,
-                    code=KnownCode.PATCH_SKIPPED,
-                    cluster=Cluster.UNCHANGED,
-                    message="no patch needed (unchanged)",
-                )
+            ctx.hint(
+                axis=Axis.PATCH,
+                code=KnownCode.PATCH_SKIPPED,
+                cluster=Cluster.UNCHANGED,
+                message="no patch needed (unchanged)",
             )
         # Stop processing:
         elif st == PatchStatus.FAILED:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.PATCH,
-                    code=KnownCode.PATCH_FAILED,
-                    cluster=Cluster.ERROR,
-                    message="change detected but patch generation failed",
-                    terminal=True,
-                )
+            ctx.hint(
+                axis=Axis.PATCH,
+                code=KnownCode.PATCH_FAILED,
+                cluster=Cluster.ERROR,
+                message="change detected but patch generation failed",
+                terminal=True,
             )
         elif st == PatchStatus.PENDING:
             # patcher did not complete
-            ctx.stop_flow(reason=f"{self.__class__.__name__} did not set state.", at_step=self)
+            ctx.request_halt(reason=f"{self.__class__.__name__} did not set state.", at_step=self)

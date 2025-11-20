@@ -15,7 +15,7 @@ per-file processing state:
 
 * [model][topmark.pipeline.context.model] provides the
   [ProcessingContext][topmark.pipeline.context.model.ProcessingContext], and
-  [FlowControl][topmark.pipeline.context.model.FlowControl] data structures.
+  [HaltState][topmark.pipeline.context.model.HaltState] data structures.
 * [status][topmark.pipeline.context.status] defines the aggregate
   ``ProcessingStatus`` used as the single source of truth for all
   pipeline axes.

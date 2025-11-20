@@ -77,7 +77,7 @@ class RendererStep(BaseStep):
         Returns:
             bool: True if processing can proceed to the render step, False otherwise.
         """
-        if ctx.flow.halt:
+        if ctx.is_halted:
             outcome: bool = False
         else:
             outcome = ctx.status.generation in {
@@ -195,7 +195,7 @@ class RendererStep(BaseStep):
         # Stop processing:
         elif st == RenderStatus.SKIPPED:
             # renderer skipped
-            ctx.stop_flow(reason=f"{self.__class__.__name__} skipped.", at_step=self)
+            ctx.request_halt(reason=f"{self.__class__.__name__} skipped.", at_step=self)
         elif st == RenderStatus.PENDING:
             # renderer did not complete
-            ctx.stop_flow(reason=f"{self.__class__.__name__} did not set state.", at_step=self)
+            ctx.request_halt(reason=f"{self.__class__.__name__} did not set state.", at_step=self)

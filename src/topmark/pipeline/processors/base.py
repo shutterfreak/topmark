@@ -244,7 +244,7 @@ class HeaderProcessor:
         start_rel, end_rel = self._find_inner_marker_indices(lines)
         if start_rel is None or end_rel is None or end_rel <= start_rel:
             # Keep scanner as the single authority for MALFORMED; just surface a diagnostic.
-            context.add_error("parse_fields(): could not locate a valid START/END marker pair.")
+            context.error("parse_fields(): could not locate a valid START/END marker pair.")
             return empty_result
 
         # 2) Extract payload (strictly between markers).
@@ -275,7 +275,7 @@ class HeaderProcessor:
                     abs_line_no,
                     raw,
                 )
-                context.add_error(
+                context.error(
                     f"Unrecognized header field name at line {abs_line_no}: '{raw.rstrip()}'"
                 )
                 cnt_header_error += 1
@@ -293,9 +293,7 @@ class HeaderProcessor:
                     abs_line_no,
                     raw,
                 )
-                context.add_error(
-                    f"Empty header field name at line {abs_line_no}: '{raw.rstrip()}'"
-                )
+                context.error(f"Empty header field name at line {abs_line_no}: '{raw.rstrip()}'")
                 cnt_header_error += 1
                 continue
 

@@ -51,7 +51,7 @@ from topmark.pipeline.context.policy import (
     allow_content_reflow_by_policy,
     allow_empty_by_policy,
 )
-from topmark.pipeline.hints import Axis, Cluster, KnownCode, make_hint
+from topmark.pipeline.hints import Axis, Cluster, KnownCode
 from topmark.pipeline.processors.base import NO_LINE_ANCHOR
 from topmark.pipeline.status import (
     ComparisonStatus,
@@ -139,7 +139,7 @@ def _prepend_bom_to_lines_if_needed(
     if ctx.has_shebang:
         # Do not re-add the BOM which was stripped in reader.read(); a valid shebang
         # must start at byte 0 on POSIX systems.
-        ctx.add_error(
+        ctx.error(
             "UTF-8 BOM appears before the shebang; POSIX requires '#!' at byte 0. "
             "TopMark will not modify this file by default. Consider removing the BOM "
             "or using a future '--fix-bom' option to resolve this conflict."
@@ -194,8 +194,7 @@ class PlannerStep(BaseStep):
         Returns:
             bool: ``True`` if the updater can proceed; otherwise ``False``.
         """
-        logger.info("planner() - ctx.flow.halt: %s", ctx.flow.halt)
-        if ctx.flow.halt:
+        if ctx.is_halted:
             outcome: bool = False
         else:
             outcome = (
@@ -244,8 +243,8 @@ class PlannerStep(BaseStep):
             logger.debug("planner: skipping (content status=%s)", ctx.status.content.value)
             ctx.status.plan = PlanStatus.SKIPPED
             reason: str = f"Could not update file (status: {ctx.status.content.value})."
-            ctx.add_info(reason)
-            ctx.stop_flow(reason=reason, at_step=self)
+            ctx.info(reason)
+            ctx.request_halt(reason=reason, at_step=self)
             return
 
         # TODO: enable updating based on future allow_XXX_by_policy() policy:
@@ -256,8 +255,8 @@ class PlannerStep(BaseStep):
             ctx.status.plan = PlanStatus.SKIPPED
             ctx.views.updated = UpdatedView(lines=original_lines)
             reason = "Existing header has malformed fields; TopMark will not update it."
-            ctx.add_warning(reason)
-            ctx.stop_flow(reason=reason, at_step=self)
+            ctx.warn(reason)
+            ctx.request_halt(reason=reason, at_step=self)
             return
 
         logger.debug("ctx: %s", ctx.to_dict())
@@ -278,7 +277,7 @@ class PlannerStep(BaseStep):
                 )
                 ctx.status.plan = PlanStatus.FAILED  # TODO FIXME
                 reason = "No updated file lines available for stripping."
-                ctx.stop_flow(reason=reason, at_step=self)
+                ctx.request_halt(reason=reason, at_step=self)
                 return
 
             # ✅ Preserve empty list as a valid updated image
@@ -305,8 +304,8 @@ class PlannerStep(BaseStep):
         if render_view is None or render_view.lines is None:
             ctx.status.plan = PlanStatus.FAILED
             reason = "Cannot update header: no rendered header available"
-            ctx.add_error(reason)
-            ctx.stop_flow(reason=reason, at_step=self)
+            ctx.error(reason)
+            ctx.request_halt(reason=reason, at_step=self)
             return
 
         rendered_expected_header_lines: list[str] = list(render_view.lines)
@@ -314,8 +313,8 @@ class PlannerStep(BaseStep):
         if ctx.header_processor is None:
             ctx.status.plan = PlanStatus.FAILED
             reason = "Cannot update header: no header processor assigned"
-            ctx.add_error(reason)
-            ctx.stop_flow(reason=reason, at_step=self)
+            ctx.error(reason)
+            ctx.request_halt(reason=reason, at_step=self)
             return
 
         ft: FileType | None = ctx.file_type
@@ -356,8 +355,8 @@ class PlannerStep(BaseStep):
                     ctx.views.updated = UpdatedView(lines=original_lines)
                     ctx.status.plan = PlanStatus.SKIPPED
                     reason = f"{pre_insert_reason} (origin: {origin})"
-                    ctx.add_warning(reason)
-                    ctx.stop_flow(reason=reason, at_step=self)
+                    ctx.warn(reason)
+                    ctx.request_halt(reason=reason, at_step=self)
                     return
 
             if ctx.pre_insert_capability == InsertCapability.SKIP_IDEMPOTENCE_RISK:
@@ -379,8 +378,8 @@ class PlannerStep(BaseStep):
                     ctx.views.updated = UpdatedView(lines=original_lines)
                     ctx.status.plan = PlanStatus.SKIPPED
                     reason = f"{pre_insert_reason} (origin: {origin})"
-                    ctx.add_warning(reason)
-                    ctx.stop_flow(reason=reason, at_step=self)
+                    ctx.warn(reason)
+                    ctx.request_halt(reason=reason, at_step=self)
                     return
 
             # --- Pre-insert capability gate (authoritative) ---------------------------
@@ -399,8 +398,8 @@ class PlannerStep(BaseStep):
                 ctx.views.updated = UpdatedView(lines=original_lines)
                 ctx.status.plan = PlanStatus.SKIPPED
                 reason = f"{pre_insert_reason} (origin: {origin})"
-                ctx.add_warning(reason)
-                ctx.stop_flow(reason=reason, at_step=self)
+                ctx.warn(reason)
+                ctx.request_halt(reason=reason, at_step=self)
                 return
 
         # --- Replace path (view-based) ---
@@ -491,8 +490,8 @@ class PlannerStep(BaseStep):
         if insert_index == NO_LINE_ANCHOR:
             ctx.status.plan = PlanStatus.FAILED
             reason = f"No line-based insertion anchor for file: {ctx.path}"
-            ctx.add_error(reason)
-            ctx.stop_flow(reason=reason, at_step=self)
+            ctx.error(reason)
+            ctx.request_halt(reason=reason, at_step=self)
             return
 
         # defensive clamp
@@ -560,31 +559,25 @@ class PlannerStep(BaseStep):
 
         # May proceed to next step (always):
         if st == PlanStatus.INSERTED:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.PLAN,
-                    code=KnownCode.PLAN_INSERT,
-                    cluster=Cluster.CHANGED if apply else Cluster.WOULD_CHANGE,
-                    message="header will be inserted" if apply else "header would be inserted",
-                )
+            ctx.hint(
+                axis=Axis.PLAN,
+                code=KnownCode.PLAN_INSERT,
+                cluster=Cluster.CHANGED if apply else Cluster.WOULD_CHANGE,
+                message="header will be inserted" if apply else "header would be inserted",
             )
         elif st == PlanStatus.REPLACED:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.PLAN,
-                    code=KnownCode.PLAN_UPDATE,
-                    cluster=Cluster.CHANGED if apply else Cluster.WOULD_CHANGE,
-                    message="header will be replaced" if apply else "header would be replaced",
-                )
+            ctx.hint(
+                axis=Axis.PLAN,
+                code=KnownCode.PLAN_UPDATE,
+                cluster=Cluster.CHANGED if apply else Cluster.WOULD_CHANGE,
+                message="header will be replaced" if apply else "header would be replaced",
             )
         elif st == PlanStatus.REMOVED:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.PLAN,
-                    code=KnownCode.PLAN_REMOVE,
-                    cluster=Cluster.CHANGED if apply else Cluster.WOULD_CHANGE,
-                    message="header will be removed" if apply else "header would be removed",
-                )
+            ctx.hint(
+                axis=Axis.PLAN,
+                code=KnownCode.PLAN_REMOVE,
+                cluster=Cluster.CHANGED if apply else Cluster.WOULD_CHANGE,
+                message="header will be removed" if apply else "header would be removed",
             )
         elif st == PlanStatus.SKIPPED:
             if ctx.status.content != ContentStatus.OK and not allow_empty_by_policy(ctx):
@@ -603,38 +596,32 @@ class PlannerStep(BaseStep):
                 msg = f"{pre_insert_reason} (origin: {origin})"
             else:
                 msg = "no update needed"
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.PLAN,
-                    code=KnownCode.PLAN_SKIP,
-                    cluster=Cluster.SKIPPED,
-                    message=msg,
-                    terminal=True,
-                )
+            ctx.hint(
+                axis=Axis.PLAN,
+                code=KnownCode.PLAN_SKIP,
+                cluster=Cluster.SKIPPED,
+                message=msg,
+                terminal=True,
             )
         # Stop processing:
         elif st == PlanStatus.PREVIEWED:
             # TODO: stop processing of proceed to next step?
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.PLAN,
-                    code="previewed",
-                    # code=KnownCode.,
-                    # cluster=Cluster,
-                    message="previewed changes",
-                    terminal=True,
-                )
+            ctx.hint(
+                axis=Axis.PLAN,
+                code="previewed",
+                # code=KnownCode.,
+                # cluster=Cluster,
+                message="previewed changes",
+                terminal=True,
             )
         elif st == PlanStatus.FAILED:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.PLAN,
-                    code=KnownCode.PLAN_FAILED,
-                    cluster=Cluster.SKIPPED,
-                    message="failed to compute update",
-                    terminal=True,
-                )
+            ctx.hint(
+                axis=Axis.PLAN,
+                code=KnownCode.PLAN_FAILED,
+                cluster=Cluster.SKIPPED,
+                message="failed to compute update",
+                terminal=True,
             )
         elif st == PlanStatus.PENDING:
             # updater did not complete
-            ctx.stop_flow(reason=f"{self.__class__.__name__} did not set state.", at_step=self)
+            ctx.request_halt(reason=f"{self.__class__.__name__} did not set state.", at_step=self)

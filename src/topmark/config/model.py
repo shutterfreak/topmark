@@ -67,7 +67,7 @@ from topmark.config.logging import get_logger
 from topmark.config.paths import abs_path_from, extend_ps, ps_from_cli, ps_from_config
 from topmark.config.policy import MutablePolicy, Policy
 from topmark.config.types import FileWriteStrategy, OutputTarget
-from topmark.core.diagnostics import Diagnostic, DiagnosticLevel
+from topmark.core.diagnostics import Diagnostic, DiagnosticLog
 from topmark.rendering.formats import HeaderOutputFormat
 
 if TYPE_CHECKING:
@@ -296,7 +296,7 @@ class Config:
             exclude_from=list(self.exclude_from),
             files_from=list(self.files_from),
             file_types=set(self.file_types),
-            diagnostics=list(self.diagnostics),
+            diagnostics=DiagnosticLog(items=list(self.diagnostics)),
         )
 
 
@@ -353,7 +353,7 @@ class MutableConfig:
         include_patterns (list[str]): Glob patterns to include.
         exclude_patterns (list[str]): Glob patterns to exclude.
         file_types (set[str]): File extensions or types to process.
-        diagnostics (list[Diagnostic]): Warnings or errors encountered while loading,
+        diagnostics (DiagnosticLog): Warnings or errors encountered while loading,
             merging or sanitizing config.
     """
 
@@ -405,7 +405,7 @@ class MutableConfig:
     file_types: set[str] = field(default_factory=lambda: set[str]())
 
     # Collected diagnostics while loading / merging / sanitizing config.
-    diagnostics: list[Diagnostic] = field(default_factory=list[Diagnostic])
+    diagnostics: DiagnosticLog = field(default_factory=DiagnosticLog)
 
     # ---------------------------- Build/freeze ----------------------------
     def freeze(self) -> Config:
@@ -1143,7 +1143,7 @@ class MutableConfig:
                         "include_patterns / exclude_patterns for globs)."
                     )
                     logger.warning(msg)
-                    self.diagnostics.append(Diagnostic(level=DiagnosticLevel.WARNING, message=msg))
+                    self.diagnostics.add_warning(msg)
                     continue
                 kept.append(ps)
 

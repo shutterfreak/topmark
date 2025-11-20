@@ -95,7 +95,7 @@ def render_per_file_guidance(
 
         verbosity: int = r.config.verbosity_level or 0
 
-        if verbosity > 0 and r.reason_hints:
+        if verbosity > 0 and r.diagnostic_hints:
             console.print(
                 console.styled(
                     "  Hints (newest first):",
@@ -104,7 +104,7 @@ def render_per_file_guidance(
                     bold=True,
                 )
             )
-            for h in reversed(r.reason_hints):
+            for h in reversed(r.diagnostic_hints.items):
                 if h.cluster == Cluster.UNCHANGED.value:
                     color: str = "green"
                 elif h.cluster in {Cluster.CHANGED.value, Cluster.WOULD_CHANGE.value}:

@@ -28,7 +28,7 @@ from yachalk import chalk
 
 from topmark.api.public_types import PublicDiagnostic
 from topmark.config.logging import get_logger
-from topmark.core.diagnostics import DiagnosticLevel, DiagnosticStats, compute_diagnostic_stats
+from topmark.core.diagnostics import DiagnosticLevel, DiagnosticStats
 from topmark.core.enum_mixins import enum_from_name
 from topmark.pipeline.context.policy import (
     can_change,
@@ -36,7 +36,7 @@ from topmark.pipeline.context.policy import (
     effective_would_add_or_update,
     effective_would_strip,
 )
-from topmark.pipeline.hints import Cluster, Hint, select_headline_hint
+from topmark.pipeline.hints import Cluster, Hint
 from topmark.pipeline.status import (
     ComparisonStatus,
     ContentStatus,
@@ -657,11 +657,11 @@ def format_summary(ctx: ProcessingContext) -> str:
         parts.append(chalk.dim("<unknown>"))
 
     head: Hint | None = None
-    if not ctx.reason_hints:
+    if not ctx.diagnostic_hints:
         key: str = "no_hint"
         label: str = "No diagnostic hints"
     else:
-        head = select_headline_hint(ctx.reason_hints)
+        head = ctx.diagnostic_hints.headline()
         if head is None:
             key = "no_hint"
             label = "No diagnostic hints"
@@ -695,7 +695,7 @@ def format_summary(ctx: ProcessingContext) -> str:
 
     diag_show_hint: str = ""
     if ctx.diagnostics:
-        stats: DiagnosticStats = compute_diagnostic_stats(ctx.diagnostics)
+        stats: DiagnosticStats = ctx.diagnostics.stats()
         n_info: int = stats.n_info
         n_warn: int = stats.n_warning
         n_err: int = stats.n_error

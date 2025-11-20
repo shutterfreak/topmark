@@ -11,8 +11,9 @@
 """Hint taxonomy and normalization utilities for the TopMark pipeline.
 
 This module defines the canonical vocabulary and structure for *diagnostic hints*
-emitted by pipeline steps. Hints are lightweight, non-binding messages that help
-explain intermediate conditions or advisory diagnostics (e.g., "would insert header",
+emitted by pipeline steps, as well as helpers for hint aggregation, ranking, and
+selection. Hints are lightweight, non-binding messages that help explain
+intermediate conditions or advisory diagnostics (e.g., "would insert header",
 "file contains mixed line endings"). They are used for telemetry, CLI feedback,
 and public API inspection but do not influence control flow directly.
 
@@ -21,6 +22,8 @@ Overview:
     • `KnownCode` — curated list of common, machine-friendly hint codes.
     • `Hint` — dataclass capturing a normalized hint payload.
     • `make_hint` — factory helper to create validated, consistent Hint objects.
+    • `HintLog` — mutable container for per-context hints with convenience helpers.
+    • `select_headline_hint` — ranking helper that selects the most relevant hint.
 
 Design principles:
     * Hints are **diagnostic only**; they never alter processing behavior.
@@ -29,21 +32,28 @@ Design principles:
       string codes are allowed.
     * `ProcessingContext.add_hint` stores normalized hints to simplify
       aggregation, ranking (headline selection), and coarse bucketing.
+    * `HintLog` and `select_headline_hint` centralize ranking and aggregation logic.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import logging
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from yachalk import chalk
 
+from topmark.config.logging import get_logger
 from topmark.core.enum_mixins import EnumIntrospectionMixin
 from topmark.rendering.colored_enum import ColoredStrEnum
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+
+    from topmark.config.logging import TopmarkLogger
+
+logger: TopmarkLogger = get_logger(__name__)
 
 
 class Axis(EnumIntrospectionMixin, str, Enum):
@@ -295,6 +305,7 @@ def make_hint(
         if cluster is not None
         else code_str
     )
+
     return Hint(
         axis=axis,
         code=code_str,
@@ -307,31 +318,75 @@ def make_hint(
     )
 
 
-def _score_cluster(cluster: str | None) -> int:
-    if not cluster:
-        return 0
-    return _CLUSTER_SCORE.get(cluster, 0)
+@dataclass
+class HintLog:
+    """Mutable, per-context collection of diagnostic hints.
 
-
-def select_headline_hint(hints: Iterable[Hint]) -> Hint | None:
-    """Return the single most relevant hint for a result, order-agnostically.
-
-    Ranking (descending): ERROR > BLOCKED_POLICY > SKIPPED/UNSUPPORTED > CHANGED
-    > WOULD_CHANGE > UNCHANGED > PENDING. Ties prefer ``terminal=True``.
-
-    Args:
-        hints (Iterable[Hint]): Collection of hints to rank.
-
-    Returns:
-        Hint | None: The top-ranked hint, or ``None`` if the iterable is empty.
-
-    Notes:
-        You can extend the tie-breaker with axis priority without changing callers.
+    This wrapper keeps hint aggregation and logging concerns local and
+    provides a small façade (`add`, `headline`) so that callers do not
+    depend on the concrete list representation.
     """
-    best: Hint | None = None
-    best_key: tuple[int, bool] = (-1, False)
-    for h in hints:
-        key: tuple[int, bool] = (_score_cluster(h.cluster), bool(h.terminal))
-        if key > best_key:
-            best, best_key = h, key
-    return best
+
+    items: list[Hint] = field(default_factory=lambda: [])
+
+    def add(self, hint: Hint) -> None:
+        """Attach a structured hint to the hint log.
+
+        Hints are non-binding diagnostics used to refine human-readable
+        summaries without affecting the core outcome classification.
+
+        Args:
+            hint (Hint): The hint instance to attach.
+
+        Returns:
+            None: The hint collection is updated in place.
+        """
+        self.items.append(hint)
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(
+                "added hint axis=%s code=%s message=%s", hint.axis, hint.code, hint.message
+            )
+
+    def headline(self) -> Hint | None:
+        """Return the single most relevant hint from a hint log, order-agnostically.
+
+        Ranking (descending): ERROR > BLOCKED_POLICY > SKIPPED/UNSUPPORTED > CHANGED
+        > WOULD_CHANGE > UNCHANGED > PENDING. Ties prefer ``terminal=True``.
+
+        Returns:
+            Hint | None: The top-ranked hint, or ``None`` if the log is empty.
+
+        Notes:
+            You can extend the tie-breaker with axis priority without changing callers.
+        """
+
+        def _score_cluster(cluster: str | None) -> int:
+            if not cluster:
+                return 0
+            return _CLUSTER_SCORE.get(cluster, 0)
+
+        best: Hint | None = None
+        best_key: tuple[int, bool] = (-1, False)
+        for h in self.items:
+            key: tuple[int, bool] = (_score_cluster(h.cluster), bool(h.terminal))
+            if key > best_key:
+                best = h
+                best_key = key
+        return best
+
+    def __iter__(self) -> Iterable[Hint]:
+        """Iterate over all hints stored in this log.
+
+        Returns:
+            Iterable[Hint]: An iterator yielding the collected hints in
+            insertion order.
+        """
+        return iter(self.items)
+
+    def __len__(self) -> int:
+        """Return the number of hints stored in this log.
+
+        Returns:
+            int: The number of hint entries.
+        """
+        return len(self.items)

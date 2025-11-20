@@ -33,7 +33,7 @@ from typing import TYPE_CHECKING
 
 from topmark.config.logging import get_logger
 from topmark.pipeline.context.policy import allow_empty_by_policy, check_permitted_by_policy
-from topmark.pipeline.hints import Axis, Cluster, KnownCode, make_hint
+from topmark.pipeline.hints import Axis, Cluster, KnownCode
 from topmark.pipeline.status import ContentStatus, FsStatus, GenerationStatus
 from topmark.pipeline.steps.base import BaseStep
 from topmark.pipeline.views import BuilderView
@@ -81,7 +81,7 @@ class BuilderStep(BaseStep):
         Returns:
             bool: True if processing can proceed to the build step, False otherwise.
         """
-        if ctx.flow.halt:
+        if ctx.is_halted:
             return False
 
         # Do not generate headers for empty files when policy forbids it.
@@ -123,8 +123,8 @@ class BuilderStep(BaseStep):
             ctx.status.generation = GenerationStatus.SKIPPED
             reason = "header field generation skipped by policy"
             logger.debug(reason)
-            ctx.add_info(reason)
-            ctx.stop_flow(reason=reason, at_step=self)
+            ctx.info(reason)
+            ctx.request_halt(reason=reason, at_step=self)
 
         if not config.header_fields:
             # No header fields specified in the configuration
@@ -170,7 +170,7 @@ class BuilderStep(BaseStep):
                     "Config.field_values contains keys that overlap with builtin fields: %s",
                     builtin_overlap_repr,
                 )
-                ctx.add_warning(f"Redefined built-in fields: {builtin_overlap_repr}")
+                ctx.warn(f"Redefined built-in fields: {builtin_overlap_repr}")
 
         # Merge built‑ins with configuration‑defined values; allow overrides; restrict
         # to header_fields.
@@ -183,7 +183,7 @@ class BuilderStep(BaseStep):
             value: str | None = all_fields.get(key)
             if value is None:
                 logger.warning("Unknown header field: %s", key)
-                ctx.add_error(f"Unknown header field: {key}")
+                ctx.error(f"Unknown header field: {key}")
             else:
                 result[key] = value
 
@@ -222,26 +222,22 @@ class BuilderStep(BaseStep):
             pass  # expected path; silent
         # May proceed to next step (render empty header):
         elif st == GenerationStatus.NO_FIELDS:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.GENERATION,
-                    code=KnownCode.GENERATION_NO_FIELDS,
-                    cluster=Cluster.BLOCKED_POLICY,
-                    message="no header fields configured",
-                    terminal=False,
-                )
+            ctx.hint(
+                axis=Axis.GENERATION,
+                code=KnownCode.GENERATION_NO_FIELDS,
+                cluster=Cluster.BLOCKED_POLICY,
+                message="no header fields configured",
+                terminal=False,
             )
         # Stop processing:
         elif st == GenerationStatus.SKIPPED:
-            ctx.add_hint(
-                make_hint(
-                    axis=Axis.GENERATION,
-                    code=KnownCode.PLAN_SKIP,
-                    cluster=Cluster.BLOCKED_POLICY,
-                    message="header field generation skipped",
-                    terminal=True,
-                )
+            ctx.hint(
+                axis=Axis.GENERATION,
+                code=KnownCode.PLAN_SKIP,
+                cluster=Cluster.BLOCKED_POLICY,
+                message="header field generation skipped",
+                terminal=True,
             )
         elif st == GenerationStatus.PENDING:
             # builder did not complete
-            ctx.stop_flow(reason=f"{self.__class__.__name__} did not set state.", at_step=self)
+            ctx.request_halt(reason=f"{self.__class__.__name__} did not set state.", at_step=self)

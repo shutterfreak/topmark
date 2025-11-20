@@ -34,7 +34,6 @@ from topmark.core.diagnostics import (
 from topmark.file_resolver import resolve_file_list
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
     from pathlib import Path
 
     from topmark.cli.io import InputPlan
@@ -143,7 +142,7 @@ def render_config_diagnostics(
       - At verbosity 0, emit a single triage line with a 'use -v' hint.
       - At verbosity >= 1, emit a summary and then one line per diagnostic.
     """
-    diags: Sequence[Diagnostic] = config.diagnostics
+    diags: tuple[Diagnostic, ...] = config.diagnostics
     if not diags:
         return
 
