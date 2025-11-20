@@ -17,15 +17,15 @@ license = "MIT"
 readme = "README.md"
 dependencies = [
   # Git-style pattern matching used for file inclusion/exclusion
-  "pathspec",
+  "pathspec>=0.12.1,<0.13.0",
   # Manipulate TOML configuration files:
-  "tomlkit",
+  "tomlkit>=0.13.3,<0.14.0",
   # Read/write TOML (used by CLI for dumps):
-  "toml",
+  "toml>=0.10.2,<0.11.0",
   # ANSI colored terminal output:
-  "yachalk",
+  "yachalk>=0.1.8,<0.2.0",
   # CLI framework
-  "click",
+  "click>=8.3.1,<9.0.0",
 ]
 requires-python = ">=3.10,<=3.14"
 classifiers = [
@@ -54,65 +54,65 @@ build-backend = "setuptools.build_meta"
 [project.optional-dependencies]
 dev = [
   # Python linter & formatter in one tool (we use it for both):
-  "ruff",
+  "ruff>=0.14.5,<0.15.0",
   # Python docstring linter:
-  "pydoclint",
+  "pydoclint>=0.8.1,<0.9.0",
   # Traditional Python linter with rich checks:
-  "pylint",
+  "pylint>=4.0.3,<5.0.0",
   # Static type checker with fast, strict CLI (our primary type checker):
-  "pyright",
+  "pyright>=1.1.407,<1.2.0",
   # Markdown formatter:
-  "mdformat",
-  # Markdown table formatting plugin for mdformat:
-  "mdformat-tables",
+  "mdformat>=1.0.0,<2.0.0",
+  # GitHub Flavored Markdown (including table support) for mdformat:
+  "mdformat-gfm>=1.0.0,<2.0.0",
   # TOML formatter (consistent with Taplo VS Code extension):
-  "taplo",
+  "taplo>=0.9.3,<0.10.0",
   # Dependency management / compile requirements (pip-compile, pip-sync):
-  "pip-tools>=7.4", # Installed with `make venv`
+  "pip-tools>=7.5.2,<8.0.0", # Installed with `make venv`
   # Pre-commit hook manager:
-  "pre-commit",
+  "pre-commit>=4.4.0,<5.0.0",
   # Run tests across multiple Python versions/environments:
-  "tox>=4.0",
+  "tox>=4.32.0,<5.0.0",
   # Build wheel/sdist artifacts:
-  "build",
+  "build>=1.3.0,<2.0.0",
   # Upload distributions to PyPI:
-  "twine",
+  "twine>=6.2.0,<7.0.0",
   # Add deprecation annotations:
-  "typing-extensions",
+  "typing-extensions>=4.15.0,<5.0.0",
 ]
 docs = [
   # Static site generator core:
-  "mkdocs>=1.6.0",
+  "mkdocs>=1.6.1,<2.0.0",
   # MkDocs theme with rich features:
-  "mkdocs-material>=9.5.19",
+  "mkdocs-material>=9.7.0,<10.0.0",
   # Auto API reference from docstrings/type hints:
-  "mkdocstrings[python]>=0.29.0",
+  "mkdocstrings[python]>=0.30.1,<0.31.0",
   # Enable symbol cross-refs in Markdown
-  "mkdocs-autorefs>=0.6.0",
+  "mkdocs-autorefs>=1.4.3,<2.0.0",
   # Content Inclusion: Processes {% include-markdown ... %} for external snippets
-  "mkdocs-include-markdown-plugin>=7.2.0",
+  "mkdocs-include-markdown-plugin>=7.2.0,<8.0.0",
   # Extra Markdown extensions (admonitions, superfences, etc.):
-  "pymdown-extensions>=10.16",
+  "pymdown-extensions>=10.17.1,<11.0.0",
   # Programmatically generate documentation pages during the build
-  "mkdocs-gen-files>=0.5,<0.7",
+  "mkdocs-gen-files>=0.5.0,<0.7.0",
   # Custom Logic: Runs your on_page_markdown hook for callout conversion
-  "mkdocs-simple-hooks>=0.1.5",
+  "mkdocs-simple-hooks>=0.1.5,<0.2.0",
   # Python linter & formatter in one tool (docs uses formatter only):
-  "ruff>=0.5.0",
+  "ruff>=0.14.5,<0.15.0",
   # Add deprecation annotations:
-  "typing-extensions",
+  "typing-extensions>=4.15.0,<5.0.0",
 ]
 test = [
   # Unit testing framework:
-  "pytest>=8.0",
+  "pytest>=9.0.1,<10.0.0",
   # Parallel test execution:
-  "pytest-xdist",
-  # property-based testing library
-  "hypothesis>=6.0",
+  "pytest-xdist>=3.8.0,<4.0.0",
+  # Property-based testing library:
+  "hypothesis>=6.148.2,<7.0.0",
 ]
 typing = [
   # Type stubs for the toml module:
-  "types-toml",
+  "types-toml>=0.10.8.20240310,<0.11.0",
 ]
 
 [tool.setuptools]
@@ -132,7 +132,6 @@ wrap = 100
 extensions = [
   "admonitions", # For !!! note syntax
   "gfm",         # For GFM features like tables
-  "tables",      # For tables
 ]
 # NOTE: exclude only supported in Python 3.13+
 

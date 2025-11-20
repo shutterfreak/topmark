@@ -162,6 +162,33 @@ for code style and typing rules:
 
 ______________________________________________________________________
 
+### Dependency versioning: ranges vs pins
+
+TopMark uses a two-layer dependency strategy:
+
+- **`pyproject.toml`** defines *compatibility ranges*:
+
+  - Runtime and extras are expressed as `>=` / `<` ranges (for example
+    `click>=8.3.1,<9.0.0`).
+  - This describes what TopMark is compatible with, without forcing users to
+    install our exact dev versions.
+
+- **`requirements*.txt`** (generated via `pip-tools`) hold *exact pins*:
+
+  - `requirements.txt` and `requirements-dev.txt` are compiled from
+    `pyproject.toml` and are used for local development, CI, and tox.
+  - They contain `==` pins and act as the reproducible snapshot of the
+    dependencies we actually test against.
+
+When updating dependencies:
+
+1. Adjust **ranges** in `pyproject.toml` if compatibility changes.
+1. Regenerate **pins** with `pip-compile` (see comments at the top of each
+   `requirements*.txt` file).
+1. Commit both the updated `pyproject.toml` and requirements files together.
+
+______________________________________________________________________
+
 ## 🧠 Type Checking
 
 Run strict **Pyright** type checks via tox:

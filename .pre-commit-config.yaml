@@ -24,12 +24,13 @@ repos:
       - id: taplo-format
 
   - repo: https://github.com/executablebooks/mdformat
-    rev: 0.7.22
+    rev: 1.0.0
     hooks:
       - id: mdformat
         exclude: ^docs/api/public\.md$
         additional_dependencies:
-          - mdformat-tables
+          - mdformat-gfm
+        args: ["--extensions", "tables"]
 
   - repo: local # Use local lychee setup to overcome the 'nightly' release tag problem in autoupdate
     hooks:
@@ -50,7 +51,7 @@ repos:
         pass_filenames: true
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.0
+    rev: v0.14.5
     hooks:
       - id: ruff-format
       - id: ruff-check
@@ -67,7 +68,7 @@ repos:
 
   # Docstring semantics
   - repo: https://github.com/jsh9/pydoclint
-    rev: 0.7.3
+    rev: 0.8.1
     hooks:
       - id: pydoclint
         args: ["-q"]
@@ -92,6 +93,6 @@ repos:
 
   # Type checker last
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.406
+    rev: v1.1.407
     hooks:
       - id: pyright
