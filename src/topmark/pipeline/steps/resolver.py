@@ -38,10 +38,13 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.config.logging import TopmarkLogger
+    from topmark.config.model import Config
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.processors.base import HeaderProcessor
 
 logger: TopmarkLogger = get_logger(__name__)
+
+Candidate = tuple[int, str, FileType]
 
 
 @dataclass(frozen=True)
@@ -199,6 +202,78 @@ def _score(
     return s
 
 
+def get_candidates_for_file_path(path: Path) -> list[Candidate]:
+    """Return candidate file types using name-based and optional content‑based matching.
+
+    This helper centralizes the resolution logic used by `ResolverStep`.
+    For each registered `FileType`, it computes name‑based match signals,
+    determines whether content probing is allowed via the file type’s
+    `ContentGate`, optionally calls the file type’s `content_matcher`, and
+    evaluates inclusion rules and scoring.
+
+    Args:
+        path (Path): Filesystem path of the file being resolved.
+
+    Returns:
+        list[Candidate]: A list of `(score, file_type_name, FileType)` tuples,
+        unsorted. The caller is responsible for selecting the best candidate.
+    """
+    base_name: str = path.name
+    path_str: str = path.as_posix()
+    candidates: list[Candidate] = []
+
+    # 1) Compute name signals -> 2) Gate content probe -> 3) Include? -> 4) Score
+    for ft in get_file_type_registry().values():
+        sig: MatchSignals = _compute_signals(ft, base_name, path_str)
+        should_probe: bool = _should_probe_content(ft, sig)
+
+        cm: Callable[[Path], bool] | None = ft.content_matcher or None
+        content_hit = False
+        if should_probe and callable(cm):
+            try:
+                content_hit = bool(cm(path))
+            except Exception:
+                content_hit = False
+
+        if not _include_candidate(ft, sig, content_hit):
+            continue
+
+        candidates.append(
+            (
+                _score(ft, sig, content_hit, base_name, path_str),
+                ft.name,
+                ft,
+            )
+        )
+    return candidates
+
+
+def resolve_file_type_for_path(path: Path, *, cfg: Config) -> FileType | None:
+    """Resolve the best `FileType` for a path, respecting configuration filters.
+
+    This function wraps `get_candidates_for_file_path()` and additionally
+    applies the user‑provided configuration constraint `cfg.file_types`, which
+    restricts the set of allowed file types. If no candidates remain after
+    filtering, `None` is returned.
+
+    Args:
+        path (Path): Filesystem path of the file being resolved.
+        cfg (Config): Active immutable configuration snapshot. Only
+            `cfg.file_types` is consulted here.
+
+    Returns:
+        FileType | None: The highest‑scoring candidate, or None if none match.
+    """
+    candidates: list[Candidate] = get_candidates_for_file_path(path)
+
+    # Filter by cfg.file_types if provided
+    allowed: set[str] = set(cfg.file_types or [])
+    if allowed:
+        candidates = [c for c in candidates if c[2].name in allowed]
+
+    return max(candidates, key=lambda c: c[0])[2] if candidates else None
+
+
 class ResolverStep(BaseStep):
     """Resolve file type and attach a header processor (no I/O).
 
@@ -258,34 +333,9 @@ class ResolverStep(BaseStep):
 
         # Attempt to match the path against each registered FileType,
         # then pick the most specific match.
-        candidates: list[tuple[int, str, FileType]] = []
+        candidates: list[Candidate] = []
 
-        base_name: str = ctx.path.name
-        path_str: str = ctx.path.as_posix()
-
-        # 1) Compute name signals -> 2) Gate content probe -> 3) Include? -> 4) Score
-        for ft in get_file_type_registry().values():
-            sig: MatchSignals = _compute_signals(ft, base_name, path_str)
-            should_probe: bool = _should_probe_content(ft, sig)
-
-            cm: Callable[[Path], bool] | None = ft.content_matcher or None
-            content_hit = False
-            if should_probe and callable(cm):
-                try:
-                    content_hit = bool(cm(ctx.path))
-                except Exception:
-                    content_hit = False
-
-            if not _include_candidate(ft, sig, content_hit):
-                continue
-
-            candidates.append(
-                (
-                    _score(ft, sig, content_hit, base_name, path_str),
-                    ft.name,
-                    ft,
-                )
-            )
+        candidates = get_candidates_for_file_path(ctx.path)
 
         if candidates:
             # Best by (score DESC, name ASC) for deterministic choice
