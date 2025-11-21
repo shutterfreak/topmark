@@ -469,7 +469,7 @@ class WriterStep(BaseStep):
         # --- Policy enforcement (centralized + FileType-specific (optional) -----
         pol: Policy = effective_policy(
             ctx.config,
-            (ctx.file_type.name if ctx.file_type else None) if ctx.file_type else None,
+            ctx.file_type.name if ctx.file_type else None,
         )
         # Only gate insert/replace (check mode) — strip/removal is not governed by add/update.
         if ctx.status.plan == PlanStatus.INSERTED and pol.update_only:
