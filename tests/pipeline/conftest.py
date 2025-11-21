@@ -35,6 +35,7 @@ from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.pipelines import CHECK_PATCH_PIPELINE, CHECK_SUMMMARY_PIPELINE
 from topmark.pipeline.processors import get_processor_for_file, register_all_processors
 from topmark.pipeline.processors.base import HeaderProcessor
+from topmark.pipeline.status import ContentStatus, FsStatus, ResolveStatus
 from topmark.pipeline.steps.builder import BuilderStep
 from topmark.pipeline.steps.comparer import ComparerStep
 from topmark.pipeline.steps.patcher import PatcherStep
@@ -46,6 +47,7 @@ from topmark.pipeline.steps.scanner import ScannerStep
 from topmark.pipeline.steps.sniffer import SnifferStep
 from topmark.pipeline.steps.stripper import StripperStep
 from topmark.pipeline.steps.writer import WriterStep
+from topmark.pipeline.views import ListFileImageView
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
@@ -109,6 +111,64 @@ def run_stripper(ctx: ProcessingContext) -> ProcessingContext:
 def run_writer(ctx: ProcessingContext) -> ProcessingContext:
     """Run the WriterStep."""
     return WriterStep()(ctx)
+
+
+def make_context_from_text(
+    text: str,
+    *,
+    cfg: Config,
+    path: Path,
+) -> ProcessingContext:
+    r"""Bootstrap a context in a post-reader state from in-memory text.
+
+    This helper is intended for pipeline tests that want to exercise the
+    scanner/builder/planner/renderer/comparer/patcher steps without going
+    through the full resolver/sniffer/reader chain on disk.
+
+    The helper:
+      * Creates a fresh ProcessingContext via ``ProcessingContext.bootstrap``.
+      * Resolves and attaches the appropriate ``HeaderProcessor`` using the
+        normal test-time registry helpers.
+      * Marks ``resolve/fs/content`` axes as successfully completed.
+      * Installs a ``ListFileImageView`` backed by ``text.splitlines(keepends=True)``.
+      * Sets a simple newline style (``"\\n"``) and ``ends_with_newline`` flag.
+
+    Notes:
+        This is a **test-only** utility. It deliberately skips real I/O and
+        does not attempt to mirror all side effects of SnifferStep/ReaderStep
+        (e.g. BOM-before-shebang and mixed-newline policies). Tests that care
+        about those details should continue to go through the real steps on
+        temporary files.
+
+    Args:
+        text (str): In-memory file contents to expose via ``ctx.views.image``.
+        cfg (Config): Frozen configuration snapshot used to bootstrap the context.
+        path (Path): Synthetic path used for the context and processor lookup.
+
+    Returns:
+        ProcessingContext: A context suitable for running post-reader steps.
+    """
+    ctx: ProcessingContext = ProcessingContext.bootstrap(path=path, config=cfg)
+
+    # Resolve and attach processor/file type using the normal registry helper.
+    proc: HeaderProcessor | None = get_processor_for_file(path=path)
+    assert proc is not None, f"Expected a registered HeaderProcessor for test path {path!s}"
+    ctx.header_processor = proc
+    ctx.file_type = proc.file_type
+    ctx.status.resolve = ResolveStatus.RESOLVED
+
+    # Simulate ReaderStep output: image view and basic newline metadata.
+    lines: list[str] = text.splitlines(keepends=True)
+    ctx.views.image = ListFileImageView(lines)
+
+    ctx.status.fs = FsStatus.OK
+    ctx.status.content = ContentStatus.OK
+
+    # Minimal newline metadata sufficient for most builder/render tests.
+    ctx.newline_style = "\n"
+    ctx.ends_with_newline = text.endswith("\n")
+
+    return ctx
 
 
 # --- Newline normalization helper for test output ---
