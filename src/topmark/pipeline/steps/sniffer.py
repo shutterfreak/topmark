@@ -10,12 +10,28 @@
 
 """Pre-read file sniffer.
 
-Performs existence/permission checks, fast binary/NUL sniff, strict UTF-8 validation,
-BOM+shebang policy, and raw newline histogram (LF/CRLF/CR, mixed).
+This module implements the `SnifferStep`, a lightweight pre-read pipeline step
+that inspects files between resolution and full text loading. It performs:
+
+* existence and permission checks
+* fast binary sniff using a NUL-byte heuristic
+* strict UTF-8 validation on small chunks
+* BOM + shebang ordering checks for shebang-aware file types
+* raw newline histogram construction (LF/CRLF/CR) with mixed-newline detection
+
+The main step entrypoint is [SnifferStep.run], which delegates to several
+helpers:
+
+* `_count_newlines` – counts LF/CRLF/CR sequences with CR/LF carry handling
+* `inspect_bom_shebang` – inspects the prefix for UTF-8 BOM and shebang ordering
+* `_commit_newline_stats` – populates newline histogram and derived stats on the context
+* `_sniff_stream` – orchestrates byte-level sniffing and returns an optional terminal
+  `FsStatus` that `SnifferStep.run` applies
 
 Sets:
   - `FsStatus` → {OK, EMPTY, NOT_FOUND, NO_READ_PERMISSION, UNREADABLE,
-                  BINARY, UNICODE_DECODE_ERROR, BOM_BEFORE_SHEBANG, MIXED_LINE_ENDINGS}
+                  NO_WRITE_PERMISSION, BINARY, UNICODE_DECODE_ERROR,
+                  BOM_BEFORE_SHEBANG, MIXED_LINE_ENDINGS}
 """
 
 from __future__ import annotations
@@ -97,42 +113,216 @@ def _count_newlines(buf: bytes, carry_cr: bool) -> tuple[_NLCounts, bool]:
     return _NLCounts(lf, crlf, cr), (n > 0 and buf[-1:] == b"\r")
 
 
-def _apply_bom_shebang_policy(ctx: ProcessingContext, first_bytes: bytes) -> bool:
-    """Apply BOM-before-shebang policy when relevant.
+def inspect_bom_shebang(first_bytes: bytes) -> tuple[bool, bool, bool]:
+    """Inspect the initial bytes for BOM and shebang ordering.
+
+    This helper performs a lightweight inspection of the first few bytes of
+    a file to determine:
+
+    * whether a UTF-8 BOM is present
+    * whether a shebang (``#!``) is present
+    * whether the shebang appears immediately after a BOM (i.e. at byte
+      offset 3), which is the problematic ordering for POSIX shebang
+      recognition.
+
+    It is intentionally pure and does not mutate the processing context or
+    apply any policy decisions. Callers are responsible for updating
+    ``ProcessingContext`` flags (``leading_bom``, ``has_shebang``) and
+    deciding whether a given BOM/shebang combination should be treated as a
+    policy violation for the current file type.
 
     Args:
-        ctx (ProcessingContext): Processing context to update.
         first_bytes (bytes): The first bytes of the file being inspected.
 
     Returns:
-        bool: True if a policy violation was detected and the context was updated to a
-            skipped status.
+        tuple[bool, bool, bool]: A tuple ``(has_bom, has_shebang,
+        shebang_after_bom)`` where:
+
+        * ``has_bom`` is True when a UTF-8 BOM is present at the start.
+        * ``has_shebang`` is True when a shebang is present either at byte 0
+          or immediately after the BOM.
+        * ``shebang_after_bom`` is True when the shebang starts at byte 3,
+          directly following the BOM.
     """
-    # Detect BOM and shebang ordering from the first few bytes
     has_bom: bool = first_bytes.startswith(b"\xef\xbb\xbf")
     starts_with_shebang: bool = first_bytes.startswith(b"#!")
     shebang_after_bom: bool = has_bom and first_bytes[3:5] == b"#!"
+    has_shebang: bool = starts_with_shebang or shebang_after_bom
+    return has_bom, has_shebang, shebang_after_bom
 
-    if has_bom:
-        ctx.leading_bom = True
-    if starts_with_shebang or shebang_after_bom:
-        ctx.has_shebang = True
 
-    # If the file type supports shebang and BOM precedes shebang, skip
-    policy: FileTypeHeaderPolicy | None = ctx.file_type.header_policy if ctx.file_type else None
-    if shebang_after_bom and policy and getattr(policy, "supports_shebang", False):
-        ctx.error(
-            "UTF-8 BOM appears before the shebang; POSIX requires '#!' at byte 0. "
-            "TopMark will not modify this file by default."
+def _commit_newline_stats(ctx: ProcessingContext, counts: _NLCounts) -> None:
+    r"""Populate newline histogram and derived stats on the context.
+
+    This helper converts raw newline counts into the derived attributes
+    used by later steps and the CLI:
+
+    * ``ctx.newline_hist``: mapping from newline sequence (``"\\n"``,
+      ``"\\r\\n"``, ``"\\r"``) to occurrence count.
+    * ``ctx.dominant_newline``: the most frequently occurring newline
+      sequence, or ``None`` if no terminators were observed.
+    * ``ctx.dominance_ratio``: the fraction of newline sequences that use
+      the dominant style, or ``None`` if no terminators were observed.
+    * ``ctx.newline_style``: the tentative newline style to use when
+      reading/writing the file. Defaults to ``"\\n"`` when no newline
+      terminators are seen during sniffing.
+    * ``ctx.mixed_newlines``: True when two or more newline styles are
+      present with a non-zero count.
+
+    Args:
+        ctx (ProcessingContext): Processing context to update.
+        counts (_NLCounts): Aggregate LF/CRLF/CR counts for the sniffed
+            portion of the file.
+    """
+    hist: dict[str, int] = {}
+    if counts.lf:
+        hist["\n"] = counts.lf
+    if counts.crlf:
+        hist["\r\n"] = counts.crlf
+    if counts.cr:
+        hist["\r"] = counts.cr
+    ctx.newline_hist = hist
+
+    total_terms: int = sum(hist.values())
+    if total_terms > 0:
+        dom_nl: str
+        dom_cnt: int
+        dom_nl, dom_cnt = max(hist.items(), key=lambda kv: kv[1])
+        ctx.dominant_newline = dom_nl
+        ctx.dominance_ratio = dom_cnt / total_terms if dom_cnt else 0.0
+        ctx.newline_style = dom_nl
+    else:
+        # No terminators seen in sniff → default to LF; reader can refine if needed.
+        ctx.newline_style = "\n"
+        ctx.dominant_newline = None
+        ctx.dominance_ratio = None
+
+    ctx.mixed_newlines = sum(1 for v in hist.values() if v > 0) >= 2
+
+
+def _sniff_stream(ctx: ProcessingContext) -> FsStatus | None:
+    """Sniff file bytes to classify text/binary, validate UTF-8, and compute newline stats.
+
+    This helper performs the core sniffing logic for `SnifferStep.run`:
+
+    * Binary detection via NUL-byte heuristic.
+    * Strict UTF-8 validation on a small prefix and limited subsequent chunks.
+    * BOM + shebang ordering policy for shebang-aware file types.
+    * Newline counting (LF / CRLF / CR) and mixed-newline detection.
+    * Population of newline histogram and derived stats via `_commit_newline_stats`.
+
+    It mutates the provided `ProcessingContext` and MAY set a terminal
+    `FsStatus` such as `BINARY`, `UNICODE_DECODE_ERROR`,
+    `BOM_BEFORE_SHEBANG`, or `MIXED_LINE_ENDINGS`, together with diagnostics.
+
+    Args:
+        ctx (ProcessingContext): ProcessingContext for the current file.
+
+    Returns:
+        FsStatus | None: A terminal FsStatus value (e.g. BINARY,
+        BOM_BEFORE_SHEBANG, UNICODE_DECODE_ERROR, MIXED_LINE_ENDINGS)
+        when sniffing has decided a final filesystem outcome and the caller
+        should stop further processing in run(). Returns None when no
+        terminal status was set and the caller may mark the filesystem as OK.
+    """
+    with ctx.path.open("rb") as bf:
+        prefix: bytes = bf.read(4096)
+        # Binary heuristic: NUL anywhere in prefix → not text
+        if b"\0" in prefix:
+            logger.warning("sniffer: binary (NUL) %s", ctx.path)
+            ctx.error("NUL byte detected; treating this as a binary file.")
+            return FsStatus.BINARY
+
+        # Initialize a strict UTF-8 incremental decoder to catch invalid sequences
+        decoder: codecs.BufferedIncrementalDecoder = codecs.getincrementaldecoder("utf-8")("strict")
+
+        # Inspect BOM and shebang ordering in the first bytes
+        has_bom, has_shebang, shebang_after_bom = inspect_bom_shebang(prefix)
+        ctx.leading_bom = has_bom
+        ctx.has_shebang = has_shebang
+
+        # If the file type supports shebang and BOM precedes shebang, treat as policy violation
+        policy: FileTypeHeaderPolicy | None = (
+            ctx.file_type.header_policy if ctx.file_type is not None else None
         )
-        ctx.status.fs = FsStatus.BOM_BEFORE_SHEBANG
-        logger.warning(
-            "sniffer: BOM precedes shebang; skipping per policy (file type: %s): %s",
-            ctx.file_type.name if ctx.file_type else "<unknown>",
-            ctx.path,
-        )
-        return True
-    return False
+        supports_shebang: bool = bool(policy and getattr(policy, "supports_shebang", False))
+        if shebang_after_bom and supports_shebang:
+            logger.warning(
+                "sniffer: BOM precedes shebang; skipping per policy (file type: %s): %s",
+                ctx.file_type.name if ctx.file_type else "<unknown>",
+                ctx.path,
+            )
+            ctx.error(
+                "UTF-8 BOM appears before the shebang; POSIX requires '#!' at byte 0. "
+                "TopMark will not modify this file by default."
+            )
+            return FsStatus.BOM_BEFORE_SHEBANG
+
+        # Newline counting on prefix and subsequent chunks (bounded),
+        # and strict UTF-8 decode
+        counts = _NLCounts()
+        carry_cr: bool = False
+        total_bytes: int = len(prefix)
+        chunk: bytes = prefix
+        while True:
+            try:
+                # Attempt to decode the current chunk strictly as UTF-8
+                decoder.decode(chunk)
+            except UnicodeDecodeError:
+                logger.warning("sniffer: invalid UTF-8 in chunk → skip: %s", ctx.path)
+                ctx.error("Invalid UTF-8 byte sequence detected; treating as non-text file.")
+                return FsStatus.UNICODE_DECODE_ERROR
+
+            # Proceed with newline counting on the raw bytes
+            c: _NLCounts
+            c, carry_cr = _count_newlines(chunk, carry_cr)
+            counts = _NLCounts(
+                lf=counts.lf + c.lf,
+                crlf=counts.crlf + c.crlf,
+                cr=counts.cr + c.cr,
+            )
+            # Limit total inspected bytes to ~64 KiB to stay lightweight
+            if total_bytes >= 64 * 1024:
+                break
+            chunk = bf.read(4096)
+            if not chunk:
+                break
+            total_bytes += len(chunk)
+
+        # After loop, flush the decoder to catch any incomplete trailing sequences
+        try:
+            decoder.decode(b"", final=True)
+        except UnicodeDecodeError:
+            logger.warning("sniffer: invalid UTF-8 at EOF → skip: %s", ctx.path)
+            ctx.error("Invalid UTF-8 sequence at end-of-file; treating as non-text file.")
+            return FsStatus.UNICODE_DECODE_ERROR
+
+        if carry_cr:
+            counts = _NLCounts(lf=counts.lf, crlf=counts.crlf, cr=counts.cr + 1)
+
+        # Commit newline histogram and derived stats to context
+        _commit_newline_stats(ctx, counts)
+
+        if ctx.mixed_newlines:
+            lf: int = ctx.newline_hist.get("\n", 0)
+            crlf: int = ctx.newline_hist.get("\r\n", 0)
+            cr: int = ctx.newline_hist.get("\r", 0)
+            logger.warning(
+                "sniffer: multiple line endings found (LF=%d, CRLF=%d, CR=%d) → skip: %s",
+                lf,
+                crlf,
+                cr,
+                ctx.path,
+            )
+            ctx.error(
+                "Mixed line endings detected during sniff "
+                f"(LF={lf}, CRLF={crlf}, CR={cr}). "
+                "Strict policy refuses to process files with mixed line endings."
+            )
+            return FsStatus.MIXED_LINE_ENDINGS
+
+        # No final state
+        return None
 
 
 class SnifferStep(BaseStep):
@@ -188,7 +378,7 @@ class SnifferStep(BaseStep):
         Responsibilities:
         - Confirm file exists and is readable.
         - Fast text-vs-binary sniff (NUL bytes, incremental UTF-8 decode of tiny chunks).
-        - Detect leading UTF-8 BOM and shebang ordering; enforce policy if BOM precedes shebang.
+        - BOM + shebang ordering check for shebang-aware file types.
         - Quick newline histogram (bytes-level) and strict mixed-newlines skip.
         - Establish a tentative newline_style (dominant or default to LF) without loading full text.
 
@@ -256,106 +446,11 @@ class SnifferStep(BaseStep):
 
         # Read a small prefix to check BOM/shebang and begin newline counting
         try:
-            with ctx.path.open("rb") as bf:
-                prefix: bytes = bf.read(4096)
-                # Binary heuristic: NUL anywhere in prefix → not text
-                if b"\0" in prefix:
-                    ctx.status.fs = FsStatus.BINARY
-                    logger.warning("%s: Binary (NUL byte): %s", ctx.status.content.value, ctx.path)
-                    return
-
-                # Initialize a strict UTF-8 incremental decoder to catch invalid sequences
-                decoder: codecs.BufferedIncrementalDecoder = codecs.getincrementaldecoder("utf-8")(
-                    "strict"
-                )
-
-                # Apply BOM/shebang policy based on the first bytes
-                if _apply_bom_shebang_policy(ctx, prefix):
-                    # already sets ctx.status.fs = FsStatus.BOM_BEFORE_SHEBANG
-                    return
-
-                # Newline counting on prefix and subsequent chunks (bounded),
-                # and strict UTF-8 decode
-                counts = _NLCounts()
-                carry_cr: bool = False
-                total_bytes: int = len(prefix)
-                chunk: bytes = prefix
-                while True:
-                    try:
-                        # Attempt to decode the current chunk strictly as UTF-8
-                        decoder.decode(chunk)
-                    except UnicodeDecodeError:
-                        ctx.status.fs = FsStatus.UNICODE_DECODE_ERROR
-                        ctx.error(
-                            "Invalid UTF-8 byte sequence detected; treating as non-text file."
-                        )
-                        return
-
-                    # Proceed with newline counting on the raw bytes
-                    c: _NLCounts
-                    c, carry_cr = _count_newlines(chunk, carry_cr)
-                    counts = _NLCounts(
-                        lf=counts.lf + c.lf,
-                        crlf=counts.crlf + c.crlf,
-                        cr=counts.cr + c.cr,
-                    )
-                    # Limit total inspected bytes to ~64 KiB to stay lightweight
-                    if total_bytes >= 64 * 1024:
-                        break
-                    chunk = bf.read(4096)
-                    if not chunk:
-                        break
-                    total_bytes += len(chunk)
-
-                # After loop, flush the decoder to catch any incomplete trailing sequences
-                try:
-                    decoder.decode(b"", final=True)
-                except UnicodeDecodeError:
-                    ctx.status.fs = FsStatus.UNICODE_DECODE_ERROR
-                    ctx.error("Invalid UTF-8 sequence at end-of-file; treating as non-text file.")
-                    logger.warning("sniffer: invalid UTF-8 at EOF → skip: %s", ctx.path)
-                    return
-
-                if carry_cr:
-                    counts = _NLCounts(lf=counts.lf, crlf=counts.crlf, cr=counts.cr + 1)
-
-                # Commit newline histogram to context
-                hist: dict[str, int] = {}
-                if counts.lf:
-                    hist["\n"] = counts.lf
-                if counts.crlf:
-                    hist["\r\n"] = counts.crlf
-                if counts.cr:
-                    hist["\r"] = counts.cr
-                ctx.newline_hist = hist
-
-                total_terms: int = sum(hist.values())
-                if total_terms > 0:
-                    dom_nl: str
-                    dom_cnt: int
-                    dom_nl, dom_cnt = max(hist.items(), key=lambda kv: kv[1])
-                    ctx.dominant_newline = dom_nl
-                    ctx.dominance_ratio = dom_cnt / total_terms if dom_cnt else 0.0
-                    ctx.newline_style = dom_nl
-                else:
-                    # No terminators seen in sniff → default to LF; reader can refine if needed
-                    ctx.newline_style = "\n"
-                    ctx.dominant_newline = None
-                    ctx.dominance_ratio = None
-
-                ctx.mixed_newlines = sum(1 for v in hist.values() if v > 0) >= 2
-                if ctx.mixed_newlines:
-                    lf: int = hist.get("\n", 0)
-                    crlf: int = hist.get("\r\n", 0)
-                    cr: int = hist.get("\r", 0)
-                    ctx.status.fs = FsStatus.MIXED_LINE_ENDINGS
-                    ctx.error(
-                        "Mixed line endings detected during sniff "
-                        f"(LF={lf}, CRLF={crlf}, CR={cr}). "
-                        "Strict policy refuses to process files with mixed line endings."
-                    )
-                    return
-
+            fs_status: FsStatus | None = _sniff_stream(ctx)
+            if fs_status is not None:
+                # Final state
+                ctx.status.fs = fs_status
+                return
         except FileNotFoundError:
             ctx.status.fs = FsStatus.NOT_FOUND
             logger.warning("%s: File not found: %s", ctx.status.fs.value, ctx.path)

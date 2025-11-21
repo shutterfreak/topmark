@@ -26,10 +26,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
+
 from tests.pipeline.conftest import run_resolver, run_sniffer
 from topmark.config import Config, MutableConfig
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.status import FsStatus
+from topmark.pipeline.steps.sniffer import inspect_bom_shebang
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -127,3 +130,29 @@ def test_sniff_strict_mixed_newlines(tmp_path: Path) -> None:
     assert ctx.file_type is not None
     ctx = run_sniffer(ctx)
     assert ctx.status.fs == FsStatus.MIXED_LINE_ENDINGS
+
+
+# --- Unit test for _inspect_bom_shebang ---
+@pytest.mark.parametrize(
+    "payload, expected",
+    [
+        # Shebang at byte 0, no BOM
+        (b"#!/usr/bin/env python\n", (False, True, False)),
+        # UTF-8 BOM followed by shebang at offset 3
+        (b"\xef\xbb\xbf#!/usr/bin/env python\n", (True, True, True)),
+        # BOM present but no shebang
+        (b"\xef\xbb\xbfprint('x')\n", (True, False, False)),
+        # Shebang not at byte 0 or directly after BOM → not treated as shebang
+        (b"  #!/usr/bin/env python\n", (False, False, False)),
+    ],
+)
+def test_inspect_bom_shebang_variants(
+    payload: bytes,
+    expected: tuple[bool, bool, bool],
+) -> None:
+    """_inspect_bom_shebang should classify BOM and shebang ordering correctly.
+
+    This focuses on the low-level bytes → flags behavior, independent of any
+    `ProcessingContext` mutation or policy decisions in `SnifferStep`.
+    """
+    assert inspect_bom_shebang(payload) == expected

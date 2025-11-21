@@ -139,6 +139,10 @@ class Config:
         Public/API overlays are applied to a mutable draft **after** discovery and
         before freezing to this immutable `Config`. Per-type policies override
         the global policy for matching file types.
+        All entries in ``policy_by_type`` are resolved against the global
+        ``policy`` during ``MutableConfig.freeze``; at runtime the pipeline
+        simply selects the appropriate `Policy` via
+        `topmark.config.policy.effective_policy` without further merging.
     """
 
     # Initialization timestamp for the config instance
@@ -882,46 +886,35 @@ class MutableConfig:
 
     # ------------------------------- Merging -------------------------------
     def merge_with(self, other: MutableConfig) -> MutableConfig:
-        """Return a new draft where values from ``other`` override this draft."""
+        """Return a new draft where values from ``other`` override this draft.
+
+        This method performs a last-wins merge across all fields. For the policy
+        layer, it delegates to ``MutablePolicy.merge_with`` so that tri-state
+        fields (``bool | None``) are combined without losing information.
+
+        Args:
+            other (MutableConfig): The config whose values override those of this draft.
+
+        Returns:
+            MutableConfig: A new mutable configuration representing the merged result.
+        """
         # --- merge global policy (tri-state) ---
-        # Create a new MutablePolicy that prefers `other`’s explicitly-set fields.
-        merged_global = MutablePolicy(
-            add_only=other.policy.add_only
-            if other.policy.add_only is not None
-            else self.policy.add_only,
-            update_only=other.policy.update_only
-            if other.policy.update_only is not None
-            else self.policy.update_only,
-            allow_header_in_empty_files=(
-                other.policy.allow_header_in_empty_files
-                if other.policy.allow_header_in_empty_files is not None
-                else self.policy.allow_header_in_empty_files
-            ),
-        )
+        # Prefer `other`'s explicitly-set policy fields over `self`'s.
+        merged_global: MutablePolicy = self.policy.merge_with(other.policy)
 
         # --- merge per-type policy (key-wise union; tri-state per field) ---
         merged_by_type: dict[str, MutablePolicy] = {}
         all_keys: set[str] = set(self.policy_by_type.keys()) | set(other.policy_by_type.keys())
-        for k in all_keys:
-            base: MutablePolicy | None = self.policy_by_type.get(k)
-            over: MutablePolicy | None = other.policy_by_type.get(k)
+        for key in all_keys:
+            base: MutablePolicy | None = self.policy_by_type.get(key)
+            override: MutablePolicy | None = other.policy_by_type.get(key)
             if base is None:
-                if over is not None:
-                    merged_by_type[k] = over  # take as-is
-            elif over is None:
-                merged_by_type[k] = base  # keep base
+                if override is not None:
+                    merged_by_type[key] = override  # take as-is
+            elif override is None:
+                merged_by_type[key] = base  # keep base
             else:
-                merged_by_type[k] = MutablePolicy(
-                    add_only=over.add_only if over.add_only is not None else base.add_only,
-                    update_only=over.update_only
-                    if over.update_only is not None
-                    else base.update_only,
-                    allow_header_in_empty_files=(
-                        over.allow_header_in_empty_files
-                        if over.allow_header_in_empty_files is not None
-                        else base.allow_header_in_empty_files
-                    ),
-                )
+                merged_by_type[key] = base.merge_with(override)
 
         merged = MutableConfig(
             timestamp=self.timestamp,

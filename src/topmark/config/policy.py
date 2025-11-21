@@ -26,13 +26,16 @@ TOML mapping:
 
 TOML mapping:
 
+    ```toml
     [policy]
     add_only = false
     update_only = false
     allow_header_in_empty_files = false
+    allow_content_probe = true  # allow resolver to inspect file contents when detecting types
 
     [policy_by_type.python]
     allow_header_in_empty_files = true
+    ```
 """
 
 from __future__ import annotations
@@ -59,10 +62,16 @@ class Policy:
             no fields are defined.
         allow_reflow (bool): If True, allow revlowing file content when inserting a header.
             This potentially breaks check/strip idempotence.
+        allow_content_probe (bool): Whether the resolver may consult file contents
+            during file-type detection. True allows content-based probes, False
+            forces name/extension-only resolution.
 
     Notes:
-        `Policy` holds plain booleans and is fully resolved at runtime (no tri-state).
-        Steps never branch on `None` here.
+    - `Policy` holds plain booleans and is fully resolved at runtime (no tri-state).
+      Steps never branch on `None` here.
+    - allow_content_probe controls only the resolver's type-detection behaviour. It does
+      not affect SnifferStep/ReaderStep, which may still read bytes or text to
+      enforce encoding, BOM/shebang, and newline policies.
     """
 
     add_only: bool = False
@@ -70,6 +79,8 @@ class Policy:
     allow_header_in_empty_files: bool = False
     render_empty_header_when_no_fields: bool = False
     allow_reflow: bool = False
+    # Whether resolver may perform content-based probes during file-type detection
+    allow_content_probe: bool = True
 
     def thaw(self) -> MutablePolicy:
         """Return a mutable builder initialized from this frozen policy.
@@ -83,6 +94,7 @@ class Policy:
             allow_header_in_empty_files=self.allow_header_in_empty_files,
             render_empty_header_when_no_fields=self.render_empty_header_when_no_fields,
             allow_reflow=self.allow_reflow,
+            allow_content_probe=self.allow_content_probe,
         )
 
 
@@ -98,6 +110,7 @@ class MutablePolicy:
         allow_header_in_empty_files (bool | None): See `Policy`. `None` means "inherit".
         render_empty_header_when_no_fields (bool | None): See `Policy`. `None` means "inherit".
         allow_reflow (bool | None): See `Policy`. `None` means "inherit".
+        allow_content_probe (bool | None): See `Policy`. `None` means "inherit".
     """
 
     add_only: bool | None = None
@@ -105,6 +118,7 @@ class MutablePolicy:
     allow_header_in_empty_files: bool | None = None
     render_empty_header_when_no_fields: bool | None = None
     allow_reflow: bool | None = None
+    allow_content_probe: bool | None = None
 
     def merge_with(self, other: MutablePolicy) -> MutablePolicy:
         """Return a new MutablePolicy by applying ``other`` over ``self`` (last-wins).
@@ -132,6 +146,9 @@ class MutablePolicy:
                 current=self.render_empty_header_when_no_fields,
             ),
             allow_reflow=pick(override=other.allow_reflow, current=self.allow_reflow),
+            allow_content_probe=pick(
+                override=other.allow_content_probe, current=self.allow_content_probe
+            ),
         )
 
     def resolve(self, base: Policy) -> Policy:
@@ -144,8 +161,8 @@ class MutablePolicy:
             Policy: A fully-resolved immutable policy with plain booleans.
         """
         return Policy(
-            add_only=base.add_only if self.add_only is None else self.add_only,
-            update_only=base.update_only if self.update_only is None else self.update_only,
+            add_only=(base.add_only if self.add_only is None else self.add_only),
+            update_only=(base.update_only if self.update_only is None else self.update_only),
             allow_header_in_empty_files=(
                 base.allow_header_in_empty_files
                 if self.allow_header_in_empty_files is None
@@ -157,6 +174,11 @@ class MutablePolicy:
                 else self.render_empty_header_when_no_fields
             ),
             allow_reflow=base.allow_reflow if self.allow_reflow is None else self.allow_reflow,
+            allow_content_probe=(
+                base.allow_content_probe
+                if self.allow_content_probe is None
+                else self.allow_content_probe
+            ),
         )
 
     def freeze(self) -> Policy:
@@ -190,6 +212,7 @@ class MutablePolicy:
             allow_header_in_empty_files=pick("allow_header_in_empty_files"),
             render_empty_header_when_no_fields=pick("render_empty_header_when_no_fields"),
             allow_reflow=pick("allow_reflow"),
+            allow_content_probe=pick("allow_content_probe"),
         )
 
     def to_toml_table(self) -> dict[str, Any]:
@@ -209,6 +232,8 @@ class MutablePolicy:
             out["render_empty_header_when_no_fields"] = self.render_empty_header_when_no_fields
         if self.allow_reflow is not None:
             out["allow_reflow"] = self.allow_reflow
+        if self.allow_content_probe is not None:
+            out["allow_content_probe"] = self.allow_content_probe
         return out
 
 
@@ -216,7 +241,14 @@ def effective_policy(cfg: Config, file_type_id: str | None) -> Policy:
     r"""Return the effective policy for a given file type.
 
     Per-type overrides take precedence over the global policy. If ``file_type_id``
-    is ``None`` or no per-type policy is present, return the global policy.
+    is ``None`` or no per-type policy is present for the given identifier, the
+    global policy is returned.
+
+    This helper assumes that both ``cfg.policy`` (global) and any entries in
+    ``cfg.policy_by_type`` are already fully resolved ``Policy`` instances
+    (no tri-state fields). In other words, inheritance of per-type overrides
+    against the global policy must happen at configuration freeze time via
+    ``MutablePolicy.resolve``.
 
     Args:
         cfg (Config): Frozen runtime configuration.
@@ -225,8 +257,10 @@ def effective_policy(cfg: Config, file_type_id: str | None) -> Policy:
     Returns:
         Policy: The effective policy to use for processing.
     """
-    if file_type_id:
-        p: Policy | None = cfg.policy_by_type.get(file_type_id)
-        if p is not None:
-            return p
+    if file_type_id is None:
+        return cfg.policy
+
+    override: Policy | None = cfg.policy_by_type.get(file_type_id)
+    if override is not None:
+        return override
     return cfg.policy
