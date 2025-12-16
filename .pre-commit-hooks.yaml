@@ -12,8 +12,8 @@
 
 - id: topmark-check
   name: topmark-check
-  description: "Validate file headers with TopMark; non-compliant or unsupported files are reported, exit non-zero if fixes are needed."
-  entry: topmark check --skip-compliant --skip-unsupported  # Only show non-compliant, supported entries
+  description: "Validate file headers with TopMark; exit non-zero if fixes are needed. Behavior is configurable via consumer repo args."
+  entry: topmark check
   language: python
   pass_filenames: true
   stages: [pre-commit, pre-push, manual]
@@ -23,8 +23,8 @@
 
 - id: topmark-apply
   name: topmark-apply
-  description:  "Insert or update headers with TopMark; intended for manual runs (may modify files)."
-  entry: topmark check --skip-compliant --skip-unsupported --apply
+  description: "Insert or update headers with TopMark; intended for manual runs (may modify files). Behavior is configurable via consumer repo args."
+  entry: topmark check --apply
   language: python
   pass_filenames: true
   stages: [manual]
