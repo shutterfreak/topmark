@@ -19,9 +19,7 @@
 astroid==4.0.2
     # via pylint
 build==1.3.0
-    # via
-    #   pip-tools
-    #   topmark
+    # via topmark
 cachetools==6.2.2
     # via tox
 certifi==2025.11.12
@@ -34,9 +32,9 @@ charset-normalizer==3.4.4
     # via requests
 click==8.3.1
     # via
-    #   pip-tools
     #   pydoclint
     #   topmark
+    #   typer
 colorama==0.4.6
     # via tox
 dill==0.4.0
@@ -81,6 +79,8 @@ markdown-it-py==4.0.0
     #   mdformat-gfm
     #   mdit-py-plugins
     #   rich
+mbake==1.4.3
+    # via topmark
 mccabe==0.7.0
     # via pylint
 mdformat==1.0.0
@@ -112,8 +112,6 @@ packaging==25.0
     #   twine
 pathspec==0.12.1
     # via topmark
-pip-tools==7.5.2
-    # via topmark
 platformdirs==4.5.0
     # via
     #   pylint
@@ -137,9 +135,7 @@ pylint==4.0.3
 pyproject-api==1.10.0
     # via tox
 pyproject-hooks==1.2.0
-    # via
-    #   build
-    #   pip-tools
+    # via build
 pyright==1.1.407
     # via topmark
 pytest==9.0.1
@@ -162,9 +158,14 @@ requests-toolbelt==1.0.0
 rfc3986==2.0.0
     # via twine
 rich==14.2.0
-    # via twine
+    # via
+    #   mbake
+    #   twine
+    #   typer
 ruff==0.14.5
     # via topmark
+shellingham==1.5.4
+    # via typer
 sortedcontainers==2.4.0
     # via hypothesis
 taplo==0.9.3
@@ -179,12 +180,15 @@ tox==4.32.0
     # via topmark
 twine==6.2.0
     # via topmark
+typer==0.20.0
+    # via mbake
 types-toml==0.10.8.20240310
     # via topmark
 typing-extensions==4.15.0
     # via
     #   pyright
     #   topmark
+    #   typer
 urllib3==2.5.0
     # via
     #   requests
@@ -195,11 +199,8 @@ virtualenv==20.35.4
     #   tox
 wcwidth==0.2.14
     # via mdformat-gfm
-wheel==0.45.1
-    # via pip-tools
 yachalk==0.1.8
     # via topmark
 
 # The following packages are considered to be unsafe in a requirements file:
-# pip
 # setuptools

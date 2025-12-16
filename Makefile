@@ -25,9 +25,9 @@
 
 .DEFAULT_GOAL := help
 TOX ?= tox
-TOX_PAR ?=            # e.g. set TOX_PAR="-p auto" or "-p 4"
+TOX_PAR ?= # e.g. set TOX_PAR="-p auto" or "-p 4"
 TOX_FLAGS ?= -q       # keep your quiet flag; CI can override
-PYTEST_PAR ?=         # e.g. set PYTEST_PAR="-n auto" or "-n 4"
+PYTEST_PAR ?= # e.g. set PYTEST_PAR="-n auto" or "-n 4"
 PY ?= python
 VENV := .venv
 VENV_BIN := $(VENV)/bin
@@ -48,10 +48,10 @@ help:
 	@echo "  test            Run the test suite (tox default envs)"
 	@echo "  pytest          Run tests with current interpreter (no tox); supports PYTEST_PAR=-n auto"
 	@echo "  verify          Run formatting checks, lint, and one typecheck env"
-	@echo "  lint            Run ruff + pydoclint"
+	@echo "  lint            Run ruff + pydoclint + mbake"
 	@echo "  lint-fixall     Run ruff with --fix (auto-fix lint issues)"
-	@echo "  format-check    Check code/markdown/toml formatting"
-	@echo "  format          Format code/markdown/toml (auto-fix)"
+	@echo "  format-check    Check code/markdown/toml/Makefile formatting"
+	@echo "  format          Format code/markdown/toml/Makefile (auto-fix)"
 	@echo "  docstring-links Enforce docstring link style (tools/check_docstring_links.py)"
 	@echo "  property-test   Run Hypothesis hardening tests (manual, opt-in)"
 	@echo ""
@@ -70,7 +70,7 @@ help:
 	@echo "  api-snapshot-ensure-clean  Fail if snapshot differs from Git index"
 	@echo ""
 	@echo "Local editor venv (optional, for Pyright/import resolution in IDE):"
-	@echo "  venv            Create .venv with pip-tools"
+	@echo "  venv            Create .venv with lock tooling (pip-tools)"
 	@echo "  venv-sync-dev   pip-sync requirements-dev.txt into .venv"
 	@echo "  venv-clean      Remove .venv"
 	@echo ""
@@ -171,12 +171,14 @@ api-snapshot-ensure-clean: check-venv
 	fi
 
 # ---- Optional local convenience venv for editor / pyright (tox still runs checks) ----
+
+# NOTE: Do NOT auto-upgrade pip here. New pip releases occasionally break pip-tools.
+# The lock toolchain is managed via the project's `.[lock]` extra instead.
 venv:
 	@test -d $(VENV) || ( \
 		echo "Creating $(VENV)..." && \
 		$(PY) -m venv $(VENV) && \
-		$(VENV_BIN)/pip install -U pip && \
-		$(VENV_BIN)/pip install pip-tools \
+		$(VENV_BIN)/pip install -e ".[lock]" \
 	)
 	@echo "Activate with: source $(VENV_BIN)/activate"
 
@@ -198,7 +200,6 @@ lock-compile-dev: venv
 lock-compile-docs: venv
 	$(VENV_BIN)/pip-compile -q -c constraints.txt --strip-extras requirements-docs.in
 
-
 # (Preview) dry-run upgrade helpers — show solver changes without writing files
 lock-dry-run-prod: venv
 	$(VENV_BIN)/pip-compile -U -c constraints.txt --strip-extras --dry-run requirements.in
@@ -218,4 +219,3 @@ lock-upgrade-dev: venv
 
 lock-upgrade-docs: venv
 	$(VENV_BIN)/pip-compile -U -c constraints.txt --strip-extras requirements-docs.in
-

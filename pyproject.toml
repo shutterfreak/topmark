@@ -27,7 +27,7 @@ dependencies = [
   # CLI framework
   "click>=8.3.1,<9.0.0",
 ]
-requires-python = ">=3.10,<=3.14"
+requires-python = ">=3.10,<3.15"
 classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
@@ -52,6 +52,10 @@ build-backend = "setuptools.build_meta"
 
 
 [project.optional-dependencies]
+lock = [
+  # Dependency management / compile requirements (pip-compile, pip-sync):
+  "pip-tools>=7.5.2,<8.0.0", # Installed with `make venv`
+]
 dev = [
   # Python linter & formatter in one tool (we use it for both):
   "ruff>=0.14.5,<0.15.0",
@@ -67,8 +71,6 @@ dev = [
   "mdformat-gfm>=1.0.0,<2.0.0",
   # TOML formatter (consistent with Taplo VS Code extension):
   "taplo>=0.9.3,<0.10.0",
-  # Dependency management / compile requirements (pip-compile, pip-sync):
-  "pip-tools>=7.5.2,<8.0.0", # Installed with `make venv`
   # Pre-commit hook manager:
   "pre-commit>=4.4.0,<5.0.0",
   # Run tests across multiple Python versions/environments:
@@ -79,6 +81,8 @@ dev = [
   "twine>=6.2.0,<7.0.0",
   # Add deprecation annotations:
   "typing-extensions>=4.15.0,<5.0.0",
+  # Formatting and linting for Makefile:
+  "mbake>=1.4.3,<2.0.0",
 ]
 docs = [
   # Static site generator core:

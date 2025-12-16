@@ -96,3 +96,20 @@ repos:
     rev: v1.1.407
     hooks:
       - id: pyright
+
+  # Makefile linting and formatting
+  - repo: local
+    hooks:
+      - id: mbake-format
+        name: mbake format (fixer)
+        entry: mbake format --config .bake.toml
+        language: system
+        # Matches Makefile, makefile, and *.mak
+        files: (^|/)(M|m)akefile$|GNUMakefile$|\.mak$
+
+      - id: mbake-validate
+        name: mbake validate (linter)
+        entry: mbake validate --config .bake.toml
+        language: system
+        # Matches Makefile, makefile, and *.mak
+        files: (^|/)(M|m)akefile$|GNUMakefile$|\.mak$
