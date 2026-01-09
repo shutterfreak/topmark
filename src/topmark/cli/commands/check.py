@@ -81,7 +81,6 @@ from topmark.core.exit_codes import ExitCode
 from topmark.pipeline.context.policy import effective_would_add_or_update
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.status import (
-    ComparisonStatus,
     HeaderStatus,
     WriteStatus,
 )
@@ -369,14 +368,17 @@ def check_command(
 
             def _check_msg(r: ProcessingContext, apply_changes: bool) -> str | None:
                 """Generate a per-file message for 'check' results."""
-                if r.status.comparison != ComparisonStatus.CHANGED:
+                if not effective_would_add_or_update(r):
                     return None
 
                 if apply_changes:
                     intent: Intent = determine_intent(r)
                     if r.status.write == WriteStatus.FAILED:
                         return f"❌ Could not {intent.value} header: {r.status.write.value}"
-
+                    if r.status.write == WriteStatus.SKIPPED:
+                        # Defensive: shouldn't happen when effective_would_add_or_update is True,
+                        # but keeps CLI honest if a later step halts.
+                        return f"⚠️  Could not {intent.value} header (write skipped)."
                     return (
                         f"➕ Adding header for '{r.path}'"
                         if r.status.header == HeaderStatus.MISSING

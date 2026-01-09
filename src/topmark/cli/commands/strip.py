@@ -81,8 +81,6 @@ from topmark.core.exit_codes import ExitCode
 from topmark.pipeline.context.policy import effective_would_strip
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.status import (
-    ComparisonStatus,
-    HeaderStatus,
     WriteStatus,
 )
 
@@ -350,16 +348,19 @@ def strip_command(
 
             def _strip_msg(r: ProcessingContext, apply_changes: bool) -> str | None:
                 """Generate a per-file message for 'strip' results."""
-                if r.status.comparison != ComparisonStatus.CHANGED:
+                if not effective_would_strip(r):
                     return None
 
                 if apply_changes:
                     intent: Intent = determine_intent(r)
                     if r.status.write == WriteStatus.FAILED:
                         return f"❌ Could not {intent.value} header: {r.status.write.value}"
+                    if r.status.write == WriteStatus.SKIPPED:
+                        # Defensive: should not happen when effective_would_strip is True,
+                        # but keeps CLI honest if a later step halts.
+                        return f"⚠️  Could not {intent.value} header (write skipped)."
 
-                    if r.status.header in (HeaderStatus.DETECTED, HeaderStatus.EMPTY):
-                        return f"🧹 Stripping header in '{r.path}'"
+                    return f"🧹 Stripping header in '{r.path}'"
 
                 return f"🛠️  Run `topmark strip --apply {r.path}` to update this file."
 
