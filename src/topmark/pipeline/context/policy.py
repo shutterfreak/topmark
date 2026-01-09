@@ -53,12 +53,7 @@ def allow_empty_by_policy(ctx: "ProcessingContext") -> bool:
         bool: True if the file is empty and policy permits inserting a header
         into empty files, False otherwise.
     """
-    # If you expose a cached effective policy, use that; else compute via `effective_policy(...)`.
-    # Assuming `ctx.file_type` is set when resolve == RESOLVED.
-
     eff: Policy | None = ctx.get_effective_policy()
-    if eff is None:
-        return False
 
     return ctx.status.fs == FsStatus.EMPTY and eff.allow_header_in_empty_files is True
 
@@ -78,11 +73,7 @@ def allow_empty_header_by_policy(ctx: "ProcessingContext") -> bool:
         bool: True if policy allows rendering an empty header when there are
         no fields, False otherwise.
     """
-    # If you expose a cached effective policy, use that; else compute via `effective_policy(...)`.
-    # Assuming `ctx.file_type` is set when resolve == RESOLVED.
     eff: Policy | None = ctx.get_effective_policy()
-    if eff is None:
-        return False
 
     return eff.render_empty_header_when_no_fields
 
@@ -101,11 +92,7 @@ def allow_content_reflow_by_policy(ctx: "ProcessingContext") -> bool:
         bool: True if policy allows reflowing content around the header,
         False otherwise.
     """
-    # If you expose a cached effective policy, use that; else compute via `effective_policy(...)`.
-    # Assuming `ctx.file_type` is set when resolve == RESOLVED.
     eff: Policy | None = ctx.get_effective_policy()
-    if eff is None:
-        return False
 
     return eff.allow_reflow
 
@@ -140,8 +127,6 @@ def allows_mixed_line_endings_by_policy(ctx: "ProcessingContext") -> bool:
         return True
 
     eff: Policy | None = ctx.get_effective_policy()
-    if eff is None:
-        return False
 
     if ctx.status.fs == FsStatus.MIXED_LINE_ENDINGS:
         # Newer policies may provide this flag; default False if absent.
@@ -181,8 +166,6 @@ def allows_bom_before_shebang_by_policy(ctx: "ProcessingContext") -> bool:
         return True
 
     eff: Policy | None = ctx.get_effective_policy()
-    if eff is None:
-        return False
 
     if ctx.status.fs == FsStatus.BOM_BEFORE_SHEBANG:
         # Newer policies may provide this flag; default False if absent.
@@ -229,8 +212,6 @@ def policy_allows_fs_skip(ctx: "ProcessingContext") -> bool:
         return True
 
     eff: Policy | None = ctx.get_effective_policy()
-    if eff is None:
-        return False
 
     if ctx.status.fs == FsStatus.BOM_BEFORE_SHEBANG:
         # Newer policies may provide this flag; default False if absent.

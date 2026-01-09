@@ -32,7 +32,6 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from topmark.config.logging import get_logger
-from topmark.config.policy import effective_policy
 from topmark.core.diagnostics import (
     DiagnosticLog,
 )
@@ -56,7 +55,7 @@ if TYPE_CHECKING:
 
     from topmark.config import Config
     from topmark.config.logging import TopmarkLogger
-    from topmark.config.policy import Policy
+    from topmark.config.policy import Policy, PolicyRegistry
     from topmark.filetypes.base import FileType
     from topmark.pipeline.processors.base import HeaderProcessor
     from topmark.pipeline.protocols import Step
@@ -105,6 +104,8 @@ class ProcessingContext:
         path (Path): The file path to process (absolute or relative to the
             working directory).
         config (Config): Effective configuration at the time of processing.
+        policy_registry (PolicyRegistry): The policy registry (global
+            + file type specific overrides).
         steps (list[Step]): Ordered list of pipeline steps that have been
             executed for this context.
         file_type (FileType | None): Resolved file type for the file (for
@@ -152,6 +153,7 @@ class ProcessingContext:
 
     path: Path  # The file path to process (absolute or relative to working directory)
     config: Config  # Active config at time of processing
+    policy_registry: PolicyRegistry
     steps: list[Step] = field(default_factory=lambda: [])
     file_type: FileType | None = None  # Resolved file type (e.g., PythonFileType)
     status: ProcessingStatus = field(default_factory=ProcessingStatus)
@@ -186,30 +188,19 @@ class ProcessingContext:
     # View-based properties
     views: Views = field(default_factory=Views)
 
-    # Cache per instance
-    _eff_policy: Policy | None = None  # cached
-
-    def get_effective_policy(self) -> Policy | None:
+    def get_effective_policy(self) -> Policy:
         """Return the effective policy for this processing context.
 
-        The effective policy combines the global configuration with any
-        file-type-specific overrides for the current ``file_type``.
+        The effective policy is derived from the global configuration and any
+        file-type-specific overrides via the shared PolicyRegistry. This method
+        does not perform any merging at runtime; all policies are resolved at
+        Config.freeze() time.
 
         Returns:
-            Policy | None: The effective policy for this context, or ``None`` if
-            policy resolution fails.
+            Policy: The effective policy for this context.
         """
-        if self._eff_policy is not None:
-            return self._eff_policy
-        try:
-            eff: Policy = effective_policy(
-                self.config, self.file_type.name if self.file_type else None
-            )
-        except Exception:
-            return None
-        # Cache per-context so policy_by_type lookups aren’t repeated.
-        self._eff_policy = eff
-        return eff
+        name: str | None = self.file_type.name if self.file_type is not None else None
+        return self.policy_registry.for_type(name)
 
     @property
     def step_axes(self) -> dict[str, list[str]]:
@@ -430,14 +421,22 @@ class ProcessingContext:
         )
 
     @classmethod
-    def bootstrap(cls, *, path: Path, config: Config) -> ProcessingContext:
+    def bootstrap(
+        cls,
+        *,
+        path: Path,
+        config: Config,
+        policy_registry: PolicyRegistry,
+    ) -> ProcessingContext:
         """Create a fresh context with no derived state.
 
         Args:
             path (Path): File system path for the file to process.
             config (Config): Effective configuration to attach to the context.
+            policy_registry (PolicyRegistry): Registry providing
+                precomputed effective policies per file type for this run.
 
         Returns:
             ProcessingContext: Newly created context instance.
         """
-        return cls(path=path, config=config)
+        return cls(path=path, config=config, policy_registry=policy_registry)

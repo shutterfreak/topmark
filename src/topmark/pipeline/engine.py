@@ -41,6 +41,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.config.logging import get_logger
+from topmark.config.policy import PolicyRegistry, make_policy_registry
 from topmark.core.exit_codes import ExitCode
 from topmark.pipeline import runner
 from topmark.pipeline.context.model import ProcessingContext
@@ -99,12 +100,17 @@ def run_steps_for_files(
     """
     results: list[ProcessingContext] = []
     encountered_error_code: ExitCode | None = None
+    policy_registry: PolicyRegistry = make_policy_registry(config)
 
     # Process each path independently; collect contexts and degrade gracefully
     # on non-fatal errors (recording the first encountered exit code).
     for path in file_list:
         try:
-            ctx_obj: ProcessingContext = ProcessingContext.bootstrap(path=path, config=config)
+            ctx_obj: ProcessingContext = ProcessingContext.bootstrap(
+                path=path,
+                config=config,
+                policy_registry=policy_registry,
+            )
             ctx_obj = runner.run(ctx_obj, pipeline, prune=prune)
             results.append(ctx_obj)
         except (FileNotFoundError, PermissionError, IsADirectoryError) as e:

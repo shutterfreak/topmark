@@ -21,6 +21,7 @@ from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from topmark.config import Config
+from topmark.config.policy import PolicyRegistry, make_policy_registry
 from topmark.pipeline import runner
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.rendering.formats import HeaderOutputFormat
@@ -93,8 +94,15 @@ def render_header_for_path(
     # Get the pipeline steps
     pipeline: Sequence[Step] = Pipeline.CHECK_RENDER.steps
 
+    # Construct the policy registry
+    policy_registry: PolicyRegistry = make_policy_registry(eff_config)
+
     # Bootstrap the context with the effective config
-    context: ProcessingContext = ProcessingContext.bootstrap(path=path, config=eff_config)
+    context: ProcessingContext = ProcessingContext.bootstrap(
+        path=path,
+        config=eff_config,
+        policy_registry=policy_registry,
+    )
     # Run the pipeline
     context = runner.run(context, pipeline)
     # Return the header

@@ -40,7 +40,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
 from topmark.config.logging import get_logger
-from topmark.config.policy import effective_policy
 from topmark.config.types import FileWriteStrategy, OutputTarget
 from topmark.pipeline.context.policy import can_change, check_permitted_by_policy
 from topmark.pipeline.hints import Axis, Cluster, KnownCode
@@ -467,10 +466,8 @@ class WriterStep(BaseStep):
             return
 
         # --- Policy enforcement (centralized + FileType-specific (optional) -----
-        pol: Policy = effective_policy(
-            ctx.config,
-            ctx.file_type.name if ctx.file_type else None,
-        )
+        pol: Policy = ctx.get_effective_policy()
+
         # Only gate insert/replace (check mode) — strip/removal is not governed by add/update.
         if ctx.status.plan == PlanStatus.INSERTED and pol.update_only:
             ctx.status.write = WriteStatus.SKIPPED

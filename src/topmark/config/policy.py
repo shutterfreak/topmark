@@ -237,6 +237,41 @@ class MutablePolicy:
         return out
 
 
+@dataclass(frozen=True, slots=True)
+class PolicyRegistry:
+    """Immutable registry of effective policies per file type.
+
+    Instances of this class are derived from a resolved Config and
+    provide constant-time lookup of the effective Policy to apply for
+    a given file type.
+    """
+
+    global_policy: Policy
+    by_type: Mapping[str, Policy]
+
+    def for_type(self, name: str | None) -> Policy:
+        """Return the effective policy for the given file-type name.
+
+        Args:
+            name (str | None): File type name, or None for the global/default case.
+
+        Returns:
+            Policy: The resolved per-type policy if present; otherwise
+            the global policy.
+        """
+        if name is None:
+            return self.global_policy
+        return self.by_type.get(name, self.global_policy)
+
+
+def make_policy_registry(config: Config) -> PolicyRegistry:
+    """Build a PolicyRegistry from a resolved Config."""
+    return PolicyRegistry(
+        global_policy=config.policy,
+        by_type=config.policy_by_type,
+    )
+
+
 def effective_policy(cfg: Config, file_type_id: str | None) -> Policy:
     r"""Return the effective policy for a given file type.
 

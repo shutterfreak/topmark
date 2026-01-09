@@ -119,9 +119,9 @@ def inspect_bom_shebang(first_bytes: bytes) -> tuple[bool, bool, bool]:
     This helper performs a lightweight inspection of the first few bytes of
     a file to determine:
 
-    * whether a UTF-8 BOM is present
-    * whether a shebang (``#!``) is present
-    * whether the shebang appears immediately after a BOM (i.e. at byte
+    - whether a UTF-8 BOM is present
+    - whether a shebang (``#!``) is present
+    - whether the shebang appears immediately after a BOM (i.e. at byte
       offset 3), which is the problematic ordering for POSIX shebang
       recognition.
 
@@ -138,11 +138,11 @@ def inspect_bom_shebang(first_bytes: bytes) -> tuple[bool, bool, bool]:
         tuple[bool, bool, bool]: A tuple ``(has_bom, has_shebang,
         shebang_after_bom)`` where:
 
-        * ``has_bom`` is True when a UTF-8 BOM is present at the start.
-        * ``has_shebang`` is True when a shebang is present either at byte 0
-          or immediately after the BOM.
-        * ``shebang_after_bom`` is True when the shebang starts at byte 3,
-          directly following the BOM.
+        - ``has_bom`` is True when a UTF-8 BOM is present at the start.
+        - ``has_shebang`` is True when a shebang is present either at byte 0
+            or immediately after the BOM.
+        - ``shebang_after_bom`` is True when the shebang starts at byte 3,
+            directly following the BOM.
     """
     has_bom: bool = first_bytes.startswith(b"\xef\xbb\xbf")
     starts_with_shebang: bool = first_bytes.startswith(b"#!")
@@ -157,16 +157,16 @@ def _commit_newline_stats(ctx: ProcessingContext, counts: _NLCounts) -> None:
     This helper converts raw newline counts into the derived attributes
     used by later steps and the CLI:
 
-    * ``ctx.newline_hist``: mapping from newline sequence (``"\\n"``,
+    - ``ctx.newline_hist``: mapping from newline sequence (``"\\n"``,
       ``"\\r\\n"``, ``"\\r"``) to occurrence count.
-    * ``ctx.dominant_newline``: the most frequently occurring newline
+    - ``ctx.dominant_newline``: the most frequently occurring newline
       sequence, or ``None`` if no terminators were observed.
-    * ``ctx.dominance_ratio``: the fraction of newline sequences that use
+    - ``ctx.dominance_ratio``: the fraction of newline sequences that use
       the dominant style, or ``None`` if no terminators were observed.
-    * ``ctx.newline_style``: the tentative newline style to use when
+    - ``ctx.newline_style``: the tentative newline style to use when
       reading/writing the file. Defaults to ``"\\n"`` when no newline
       terminators are seen during sniffing.
-    * ``ctx.mixed_newlines``: True when two or more newline styles are
+    - ``ctx.mixed_newlines``: True when two or more newline styles are
       present with a non-zero count.
 
     Args:
@@ -205,11 +205,11 @@ def _sniff_stream(ctx: ProcessingContext) -> FsStatus | None:
 
     This helper performs the core sniffing logic for `SnifferStep.run`:
 
-    * Binary detection via NUL-byte heuristic.
-    * Strict UTF-8 validation on a small prefix and limited subsequent chunks.
-    * BOM + shebang ordering policy for shebang-aware file types.
-    * Newline counting (LF / CRLF / CR) and mixed-newline detection.
-    * Population of newline histogram and derived stats via `_commit_newline_stats`.
+    - Binary detection via NUL-byte heuristic.
+    - Strict UTF-8 validation on a small prefix and limited subsequent chunks.
+    - BOM + shebang ordering policy for shebang-aware file types.
+    - Newline counting (LF / CRLF / CR) and mixed-newline detection.
+    - Population of newline histogram and derived stats via `_commit_newline_stats`.
 
     It mutates the provided `ProcessingContext` and MAY set a terminal
     `FsStatus` such as `BINARY`, `UNICODE_DECODE_ERROR`,
