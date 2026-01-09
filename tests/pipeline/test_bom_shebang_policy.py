@@ -22,9 +22,15 @@ These tests exercise two layers:
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from tests.pipeline.conftest import materialize_image_lines, run_steps
-from topmark.config import Config, MutableConfig
+import pytest
+
+from tests.pipeline.conftest import (
+    make_pipeline_context,
+    materialize_image_lines,
+    run_steps,
+)
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.status import (
     ContentStatus,
@@ -38,24 +44,48 @@ from topmark.pipeline.steps.resolver import ResolverStep
 from topmark.pipeline.steps.sniffer import SnifferStep
 from topmark.pipeline.views import UpdatedView
 
+if TYPE_CHECKING:
+    from topmark.config import Config
+    from topmark.pipeline.context.model import ProcessingContext
 
-def _ctx_for(path: Path) -> ProcessingContext:
-    """Build a minimal ProcessingContext for a single file path.
-
-    The resolver will populate `file_type` and `header_processor`.
-    """
-    cfg: Config = MutableConfig.from_defaults().freeze()
-    return ProcessingContext.bootstrap(path=path, config=cfg)
+# --- File fixtures ---------------------------------------------------------
 
 
-def test_reader_skips_when_bom_precedes_shebang_python(tmp_path: Path) -> None:
-    """BOM + shebang for a shebang-aware type must be skipped with diagnostic."""
-    p: Path = tmp_path / "bom_and_shebang.py"
-    # NOTE: BOM first, then shebang — invalid for POSIX shebang recognition
-    p.write_text("\ufeff#! /usr/bin/env python\nprint('x')\n", encoding="utf-8")
+def _write(tmp_path: Path, name: str, text: str) -> Path:
+    path: Path = tmp_path / name
+    path.write_text(text, encoding="utf-8")
+    return path
 
-    ctx: ProcessingContext = _ctx_for(p)
-    ctx = run_steps(
+
+@pytest.fixture
+def bom_and_shebang_file(tmp_path: Path) -> Path:
+    """Python file with a leading BOM followed by a shebang (invalid combo)."""
+    # NOTE: BOM first, then shebang — invalid for POSIX shebang recognition.
+    return _write(
+        tmp_path,
+        "bom_and_shebang.py",
+        "\ufeff#! /usr/bin/env python\nprint('x')\n",
+    )
+
+
+@pytest.fixture
+def shebang_only_file(tmp_path: Path) -> Path:
+    """Python file with a shebang but no BOM."""
+    return _write(
+        tmp_path,
+        "shebang_only.py",
+        "#! /usr/bin/env python\nprint('ok')\n",
+    )
+
+
+@pytest.fixture
+def bom_shebang_ctx(
+    bom_and_shebang_file: Path,
+    default_config: Config,
+) -> ProcessingContext:
+    """Context for a file where BOM precedes the shebang, after reader."""
+    ctx: ProcessingContext = make_pipeline_context(bom_and_shebang_file, default_config)
+    return run_steps(
         ctx,
         (
             ResolverStep(),
@@ -63,6 +93,16 @@ def test_reader_skips_when_bom_precedes_shebang_python(tmp_path: Path) -> None:
             ReaderStep(),
         ),
     )
+
+
+# --- Tests ---------------------------------------------------------
+
+
+def test_reader_skips_when_bom_precedes_shebang_python(
+    bom_shebang_ctx: ProcessingContext,
+) -> None:
+    """BOM + shebang for a shebang-aware type must be skipped with diagnostic."""
+    ctx: ProcessingContext = bom_shebang_ctx
 
     assert ctx.leading_bom is True
     assert ctx.has_shebang is True
@@ -73,12 +113,12 @@ def test_reader_skips_when_bom_precedes_shebang_python(tmp_path: Path) -> None:
     ), ctx.diagnostics
 
 
-def test_reader_allows_shebang_without_bom_python(tmp_path: Path) -> None:
+def test_reader_allows_shebang_without_bom_python(
+    shebang_only_file: Path,
+    default_config: Config,
+) -> None:
     """Shebang without BOM should proceed normally and not be skipped."""
-    p: Path = tmp_path / "shebang_only.py"
-    p.write_text("#! /usr/bin/env python\nprint('ok')\n", encoding="utf-8")
-
-    ctx: ProcessingContext = _ctx_for(p)
+    ctx: ProcessingContext = make_pipeline_context(shebang_only_file, default_config)
     ctx = run_steps(
         ctx,
         (
@@ -103,10 +143,12 @@ def test_reader_allows_shebang_without_bom_python(tmp_path: Path) -> None:
     )
 
 
-def test_updater_suppresses_bom_reprepend_in_strip_fastpath() -> None:
+def test_updater_suppresses_bom_reprepend_in_strip_fastpath(default_config: Config) -> None:
     """Updater must not re-prepend BOM when a shebang is present (fast path)."""
     # Construct a context hitting the strip fast-path in update():
-    ctx: ProcessingContext = _ctx_for(path=Path("dummy.py"))
+    file: Path = Path("dummy.py")
+    ctx: ProcessingContext = make_pipeline_context(file, default_config)
+
     ctx.leading_bom = True
     ctx.has_shebang = True
 

@@ -26,13 +26,12 @@ from types import SimpleNamespace
 from typing import TYPE_CHECKING, cast
 
 import topmark.pipeline.steps.resolver as resolver_mod
-from tests.pipeline.conftest import run_resolver
+from tests.pipeline.conftest import make_pipeline_context, run_resolver
 from topmark.config import Config, MutableConfig
 from topmark.filetypes.base import (
     ContentGate,
     FileType,  # runtime import for typing/cast correctness
 )
-from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.status import ResolveStatus
 
 if TYPE_CHECKING:
@@ -41,6 +40,7 @@ if TYPE_CHECKING:
 
     import pytest
 
+    from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.processors.base import HeaderProcessor
 
 
@@ -80,9 +80,9 @@ def test_resolve_python_file_resolves_with_processor(
 ) -> None:
     """A simple Python file should resolve to a supported file type with a processor."""
     content: str = "print('Hi!')\n"
-    f: Path = tmp_path / "x.py"
+    file: Path = tmp_path / "x.py"
     # Use newline="" so Python preserves the exact line endings we provide.
-    with f.open("w", encoding="utf-8", newline="") as fh:
+    with file.open("w", encoding="utf-8", newline="") as fh:
         fh.write(content)
 
     # Deterministic registries: one Python FileType and a dummy processor for it
@@ -103,7 +103,7 @@ def test_resolve_python_file_resolves_with_processor(
     monkeypatch.setattr(resolver_mod, "get_header_processor_registry", lambda: {"python": _P()})
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
 
     # Resolve the file type
     ctx = run_resolver(ctx)
@@ -123,14 +123,15 @@ def test_resolve_unknown_extension_marked_unsupported(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Files with no matching FileType must be marked SKIPPED_UNSUPPORTED."""
-    f: Path = tmp_path / "mystery.weirdext"
-    f.write_text("just text\n", encoding="utf-8")
+    file: Path = tmp_path / "mystery.weirdext"
+    file.write_text("just text\n", encoding="utf-8")
 
     monkeypatch.setattr(resolver_mod, "get_file_type_registry", _empty_filetype_registry)
     monkeypatch.setattr(resolver_mod, "get_header_processor_registry", _empty_processor_registry)
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
 
     assert ctx.status.resolve == ResolveStatus.UNSUPPORTED
@@ -145,8 +146,8 @@ def test_resolve_sets_skip_when_no_processor_registered(
 
     This relates to known file types which are not (yet) supported by a header processor.
     """
-    f: Path = tmp_path / "x.py"
-    f.write_text("print('hi')\n", encoding="utf-8")
+    file: Path = tmp_path / "x.py"
+    file.write_text("print('hi')\n", encoding="utf-8")
 
     # Monkeypatch the processor registry to be empty to force the no-processor path.
     py_ft: FileType = _ft(
@@ -163,7 +164,8 @@ def test_resolve_sets_skip_when_no_processor_registered(
     monkeypatch.setattr(resolver_mod, "get_header_processor_registry", _empty_processor_registry)
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
 
     # Should match a FileType (Python) but have no processor
@@ -177,8 +179,8 @@ def test_resolve_respects_skip_processing_filetype(
 ) -> None:
     """Resolver must set SKIPPED_KNOWN_NO_HEADERS when FileType.skip_processing is True."""
     # Create a contrived file that will match our custom FileType by extension.
-    f: Path = tmp_path / "readme.md"
-    f.write_text("# docs\n", encoding="utf-8")
+    file: Path = tmp_path / "readme.md"
+    file.write_text("# docs\n", encoding="utf-8")
 
     # Build a minimal duck-typed FileType with skip_processing=True
     ft: FileType = _ft(
@@ -196,7 +198,8 @@ def test_resolve_respects_skip_processing_filetype(
     monkeypatch.setattr(resolver_mod, "get_header_processor_registry", _empty_processor_registry)
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
 
     assert ctx.file_type is not None and ctx.file_type.name == "Docs"
@@ -208,8 +211,8 @@ def test_resolve_can_use_content_gate_when_allowed(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Resolver may select a FileType via content_matcher when ContentGate.ALWAYS is set."""
-    f: Path = tmp_path / "mystery.bin"
-    f.write_text("MAGIC_SIGNATURE\n", encoding="utf-8")
+    file: Path = tmp_path / "mystery.bin"
+    file.write_text("MAGIC_SIGNATURE\n", encoding="utf-8")
 
     def _content_hit(p: Path) -> bool:
         try:
@@ -232,7 +235,8 @@ def test_resolve_can_use_content_gate_when_allowed(
     monkeypatch.setattr(resolver_mod, "get_header_processor_registry", _empty_processor_registry)
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
 
     assert ctx.file_type is not None and ctx.file_type.name == "Magic"
@@ -244,8 +248,8 @@ def test_resolve_deterministic_name_tiebreak(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Two equal-score candidates must resolve deterministically by name (ASC)."""
-    f: Path = tmp_path / "x.foo"
-    f.write_text("data\n", encoding="utf-8")
+    file: Path = tmp_path / "x.foo"
+    file.write_text("data\n", encoding="utf-8")
 
     ftA: FileType = _ft(
         name="AJson",
@@ -277,7 +281,8 @@ def test_resolve_deterministic_name_tiebreak(
     monkeypatch.setattr(resolver_mod, "get_header_processor_registry", lambda: {"AJson": _P()})
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
 
     assert ctx.status.resolve == ResolveStatus.RESOLVED
@@ -289,8 +294,8 @@ def test_resolve_filename_tail_beats_extension(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Filename-tail match must outrank a pure extension match."""
-    f: Path = tmp_path / "app.conf.example"
-    f.write_text("cfg\n", encoding="utf-8")
+    file: Path = tmp_path / "app.conf.example"
+    file.write_text("cfg\n", encoding="utf-8")
 
     ft_ext: FileType = _ft(
         name="ByExt",
@@ -321,7 +326,8 @@ def test_resolve_filename_tail_beats_extension(
     monkeypatch.setattr(resolver_mod, "get_header_processor_registry", lambda: {"ByTail": _P()})
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
 
     assert ctx.status.resolve == ResolveStatus.RESOLVED
@@ -330,8 +336,8 @@ def test_resolve_filename_tail_beats_extension(
 
 def test_resolve_pattern_beats_extension(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Regex pattern must outrank a pure extension match."""
-    f: Path = tmp_path / "service.special.log"
-    f.write_text("lines\n", encoding="utf-8")
+    file: Path = tmp_path / "service.special.log"
+    file.write_text("lines\n", encoding="utf-8")
 
     ft_ext: FileType = _ft(
         name="ByExt",
@@ -362,7 +368,8 @@ def test_resolve_pattern_beats_extension(tmp_path: Path, monkeypatch: pytest.Mon
     monkeypatch.setattr(resolver_mod, "get_header_processor_registry", lambda: {"ByPat": _P()})
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
 
     assert ctx.status.resolve == ResolveStatus.RESOLVED
@@ -373,8 +380,8 @@ def test_resolve_content_upgrade_over_extension(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Content upgrade (e.g. JSONC) must outrank a plain extension match."""
-    f: Path = tmp_path / "x.json"
-    f.write_text('// comment\n{ "k": 1 }\n', encoding="utf-8")
+    file: Path = tmp_path / "x.json"
+    file.write_text('// comment\n{ "k": 1 }\n', encoding="utf-8")
 
     def hits_jsonc(p: Path) -> bool:
         return p.read_text(encoding="utf-8").lstrip().startswith("//")
@@ -408,7 +415,8 @@ def test_resolve_content_upgrade_over_extension(
     monkeypatch.setattr(resolver_mod, "get_header_processor_registry", lambda: {"JSONC": _P()})
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
 
     assert ctx.status.resolve == ResolveStatus.RESOLVED
@@ -419,8 +427,8 @@ def test_resolve_gating_if_extension_excludes_when_miss(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """IF_EXTENSION gate must exclude when content matcher misses."""
-    f: Path = tmp_path / "x.json"
-    f.write_text('{"k": 1}\n', encoding="utf-8")
+    file: Path = tmp_path / "x.json"
+    file.write_text('{"k": 1}\n', encoding="utf-8")
 
     ft_json: FileType = _ft(
         name="JSON",
@@ -455,7 +463,8 @@ def test_resolve_gating_if_extension_excludes_when_miss(
     monkeypatch.setattr(resolver_mod, "get_header_processor_registry", lambda: {"JSON": _P()})
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
 
     assert ctx.status.resolve == ResolveStatus.RESOLVED
@@ -466,8 +475,8 @@ def test_resolve_gating_if_any_requires_content_hit(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """IF_ANY_NAME_RULE must require a content hit to include the candidate."""
-    f: Path = tmp_path / "x.foo"
-    f.write_text("payload\n", encoding="utf-8")
+    file: Path = tmp_path / "x.foo"
+    file.write_text("payload\n", encoding="utf-8")
 
     def _miss(p: Path) -> bool:
         return False
@@ -502,7 +511,8 @@ def test_resolve_gating_if_any_requires_content_hit(
     monkeypatch.setattr(resolver_mod, "get_header_processor_registry", lambda: {"ByExt": _P()})
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
 
     assert ctx.status.resolve == ResolveStatus.RESOLVED
@@ -513,8 +523,8 @@ def test_resolve_gating_if_none_allows_pure_content_match(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """IF_NONE allows a pure content-based match with no name rules."""
-    f: Path = tmp_path / "mystery"
-    f.write_text("MAGIC\n", encoding="utf-8")
+    file: Path = tmp_path / "mystery"
+    file.write_text("MAGIC\n", encoding="utf-8")
 
     def _hit(p: Path) -> bool:
         return True
@@ -537,7 +547,8 @@ def test_resolve_gating_if_none_allows_pure_content_match(
     monkeypatch.setattr(resolver_mod, "get_header_processor_registry", lambda: {"Magic": _P()})
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
 
     assert ctx.status.resolve == ResolveStatus.RESOLVED
@@ -548,8 +559,8 @@ def test_resolve_content_matcher_exception_is_safe(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Exceptions in content_matcher must be treated as misses, not failures."""
-    f: Path = tmp_path / "x.foo"
-    f.write_text("x\n", encoding="utf-8")
+    file: Path = tmp_path / "x.foo"
+    file.write_text("x\n", encoding="utf-8")
 
     def boom(_: Path) -> bool:
         raise RuntimeError("boom")
@@ -583,7 +594,8 @@ def test_resolve_content_matcher_exception_is_safe(
     monkeypatch.setattr(resolver_mod, "get_header_processor_registry", lambda: {"Fallback": _P()})
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
 
     assert ctx.status.resolve == ResolveStatus.RESOLVED
@@ -595,10 +607,10 @@ def test_resolve_filename_tail_backslash_normalization(
 ) -> None:
     """Backslash tails must normalize to POSIX for filename-tail matching."""
     # Filename-tail rules use backslash->slash normalization; this test exercises that path.
-    d: Path = tmp_path / ".vscode"
-    d.mkdir()
-    f: Path = d / "settings.json"
-    f.write_text("{}\n", encoding="utf-8")
+    folder: Path = tmp_path / ".vscode"
+    folder.mkdir()
+    file: Path = folder / "settings.json"
+    file.write_text("{}\n", encoding="utf-8")
 
     ft: FileType = _ft(
         name="VSCode",
@@ -618,7 +630,8 @@ def test_resolve_filename_tail_backslash_normalization(
     monkeypatch.setattr(resolver_mod, "get_header_processor_registry", lambda: {"VSCode": _P()})
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
 
     assert ctx.status.resolve == ResolveStatus.RESOLVED
@@ -629,8 +642,8 @@ def test_resolve_multi_dot_extension_specificity(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """More specific multi-dot extension must outrank a shorter suffix."""
-    f: Path = tmp_path / "x.d.ts"
-    f.write_text("declare const x: number;\n", encoding="utf-8")
+    file: Path = tmp_path / "x.d.ts"
+    file.write_text("declare const x: number;\n", encoding="utf-8")
 
     ft_ts: FileType = _ft(
         name="TS",
@@ -661,7 +674,8 @@ def test_resolve_multi_dot_extension_specificity(
     monkeypatch.setattr(resolver_mod, "get_header_processor_registry", lambda: {"DTS": _P()})
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
 
     assert ctx.status.resolve == ResolveStatus.RESOLVED
@@ -672,8 +686,8 @@ def test_resolve_skip_processing_overrides_registered_processor(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """skip_processing=True must override even if a processor is registered."""
-    f: Path = tmp_path / "doc.md"
-    f.write_text("# md\n", encoding="utf-8")
+    file: Path = tmp_path / "doc.md"
+    file.write_text("# md\n", encoding="utf-8")
 
     ft: FileType = _ft(
         name="Docs",
@@ -691,7 +705,8 @@ def test_resolve_skip_processing_overrides_registered_processor(
     )
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
 
     assert ctx.status.resolve == ResolveStatus.TYPE_RESOLVED_HEADERS_UNSUPPORTED
@@ -702,14 +717,15 @@ def test_resolve_empty_registry_means_unsupported(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Empty file-type registry must yield SKIPPED_UNSUPPORTED."""
-    f: Path = tmp_path / "anything.ext"
-    f.write_text("x\n", encoding="utf-8")
+    file: Path = tmp_path / "anything.ext"
+    file.write_text("x\n", encoding="utf-8")
 
     monkeypatch.setattr(resolver_mod, "get_file_type_registry", _empty_filetype_registry)
     monkeypatch.setattr(resolver_mod, "get_header_processor_registry", _empty_processor_registry)
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
 
     assert ctx.status.resolve is ResolveStatus.UNSUPPORTED
@@ -724,9 +740,9 @@ def test_resolve_filename_tail_beats_pattern(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """When both filename-tail and pattern match, the filename-tail must win (higher score)."""
-    f: Path = tmp_path / "config" / "app.json"
-    f.parent.mkdir(parents=True, exist_ok=True)
-    f.write_text("{}\n", encoding="utf-8")
+    file: Path = tmp_path / "config" / "app.json"
+    file.parent.mkdir(parents=True, exist_ok=True)
+    file.write_text("{}\n", encoding="utf-8")
 
     ft_tail: FileType = _ft(
         name="ByTail",
@@ -755,7 +771,8 @@ def test_resolve_filename_tail_beats_pattern(
     )
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
     assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.file_type and ctx.file_type.name == "ByTail"
@@ -765,8 +782,8 @@ def test_resolve_extension_case_sensitivity_current_contract(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Extensions are currently case-sensitive: `.py` will not match `X.PY` (clarify contract)."""
-    f: Path = tmp_path / "X.PY"
-    f.write_text("print('hi')\n", encoding="utf-8")
+    file: Path = tmp_path / "X.PY"
+    file.write_text("print('hi')\n", encoding="utf-8")
 
     # Only a .py type is registered; uppercase filename should not match by extension.
     ft_py: FileType = _ft(
@@ -783,7 +800,8 @@ def test_resolve_extension_case_sensitivity_current_contract(
     monkeypatch.setattr(resolver_mod, "get_header_processor_registry", _empty_processor_registry)
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
     # With only the lowercase extension registered, expect unsupported or no-processor
     # on a different fallback.
@@ -800,10 +818,10 @@ def test_resolve_pattern_fullmatch_not_search(
 
     Example: `.*\.log` matches `file.log` but not `file.log.bak`.
     """
-    f1: Path = tmp_path / "file.log"
-    f1.write_text("log\n", encoding="utf-8")
-    f2: Path = tmp_path / "file.log.bak"
-    f2.write_text("bak\n", encoding="utf-8")
+    file1: Path = tmp_path / "file.log"
+    file1.write_text("log\n", encoding="utf-8")
+    file2: Path = tmp_path / "file.log.bak"
+    file2.write_text("bak\n", encoding="utf-8")
 
     ft_pat: FileType = _ft(
         name="ByPat",
@@ -832,7 +850,8 @@ def test_resolve_pattern_fullmatch_not_search(
     )
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx1: ProcessingContext = ProcessingContext.bootstrap(path=f1, config=cfg)
+    ctx1: ProcessingContext = make_pipeline_context(file1, cfg)
+
     ctx1 = run_resolver(ctx1)
     assert ctx1.status.resolve == ResolveStatus.RESOLVED
     assert ctx1.file_type and ctx1.file_type.name == "ByPat"
@@ -841,7 +860,10 @@ def test_resolve_pattern_fullmatch_not_search(
     monkeypatch.setattr(
         resolver_mod, "get_header_processor_registry", lambda: _one_processor_registry("ByBak")
     )
-    ctx2: ProcessingContext = ProcessingContext.bootstrap(path=f2, config=cfg)
+
+    # Reuse the policy registry
+    ctx2: ProcessingContext = make_pipeline_context(file2, cfg)
+
     ctx2 = run_resolver(ctx2)
     assert ctx2.status.resolve == ResolveStatus.RESOLVED
     assert ctx2.file_type and ctx2.file_type.name == "ByBak"
@@ -851,8 +873,8 @@ def test_resolve_gating_if_pattern_requires_content_hit(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """IF_PATTERN: when a regex pattern matches but content matcher misses, exclude candidate."""
-    f: Path = tmp_path / "metrics.prom"
-    f.write_text("# HELP\n# TYPE\n", encoding="utf-8")
+    file: Path = tmp_path / "metrics.prom"
+    file.write_text("# HELP\n# TYPE\n", encoding="utf-8")
 
     def _miss(_: Path) -> bool:
         return False
@@ -884,7 +906,8 @@ def test_resolve_gating_if_pattern_requires_content_hit(
     )
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
     assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.file_type and ctx.file_type.name == "Text"
@@ -894,9 +917,9 @@ def test_resolve_gating_if_filename_requires_content_hit(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """IF_FILENAME: when a filename-tail matches but content matcher misses, exclude candidate."""
-    f: Path = tmp_path / "configs" / "service.yaml"
-    f.parent.mkdir(parents=True, exist_ok=True)
-    f.write_text("k: v\n", encoding="utf-8")
+    file: Path = tmp_path / "configs" / "service.yaml"
+    file.parent.mkdir(parents=True, exist_ok=True)
+    file.write_text("k: v\n", encoding="utf-8")
 
     def _miss(_: Path) -> bool:
         return False
@@ -928,7 +951,8 @@ def test_resolve_gating_if_filename_requires_content_hit(
     )
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
     assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.file_type and ctx.file_type.name == "YAML"
@@ -938,8 +962,8 @@ def test_resolve_content_only_with_always_gate(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """ALWAYS gate: a type with no name rules can be selected solely by content matcher."""
-    f: Path = tmp_path / "mystery.bin"
-    f.write_text("MAGIC\n", encoding="utf-8")
+    file: Path = tmp_path / "mystery.bin"
+    file.write_text("MAGIC\n", encoding="utf-8")
 
     def _hit(_: Path) -> bool:
         return True
@@ -958,7 +982,8 @@ def test_resolve_content_only_with_always_gate(
     monkeypatch.setattr(resolver_mod, "get_header_processor_registry", _empty_processor_registry)
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
     assert ctx.file_type and ctx.file_type.name == "Magic"
     assert ctx.status.resolve == ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED
@@ -968,8 +993,8 @@ def test_resolve_tie_with_both_processors_uses_name_asc(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """With equal scores and processors for both, resolver picks lexicographically smaller name."""
-    f: Path = tmp_path / "x.data"
-    f.write_text("x\n", encoding="utf-8")
+    file: Path = tmp_path / "x.data"
+    file.write_text("x\n", encoding="utf-8")
 
     ftA: FileType = _ft(
         name="Alpha",
@@ -996,7 +1021,8 @@ def test_resolve_tie_with_both_processors_uses_name_asc(
     )
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
     assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.file_type and ctx.file_type.name == "Alpha"
@@ -1006,8 +1032,8 @@ def test_resolve_processor_registry_name_mismatch_leads_to_skip(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """If processor registry key differs from FileType.name, resolver must skip (no processor)."""
-    f: Path = tmp_path / "x.py"
-    f.write_text("print(1)\n", encoding="utf-8")
+    file: Path = tmp_path / "x.py"
+    file.write_text("print(1)\n", encoding="utf-8")
 
     ft_py: FileType = _ft(
         name="Python",
@@ -1026,7 +1052,8 @@ def test_resolve_processor_registry_name_mismatch_leads_to_skip(
     )
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
     assert ctx.status.resolve == ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED
     assert ctx.file_type and ctx.file_type.name == "Python"
@@ -1036,10 +1063,10 @@ def test_resolve_deep_filename_tail_normalization(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Filename-tail rules with nested paths must match after backslash->slash normalization."""
-    d: Path = tmp_path / "a" / "b" / ".config" / "tool"
-    d.mkdir(parents=True, exist_ok=True)
-    f: Path = d / "settings.json"
-    f.write_text("{}\n", encoding="utf-8")
+    folder: Path = tmp_path / "a" / "b" / ".config" / "tool"
+    folder.mkdir(parents=True, exist_ok=True)
+    file: Path = folder / "settings.json"
+    file.write_text("{}\n", encoding="utf-8")
 
     ft: FileType = _ft(
         name="ToolCfg",
@@ -1057,7 +1084,8 @@ def test_resolve_deep_filename_tail_normalization(
     )
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
     assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.file_type and ctx.file_type.name == "ToolCfg"

@@ -74,7 +74,7 @@ def test_xml_prolog_and_body_on_same_line_alllowed_by_policy(tmp_path: Path) -> 
 
     proc: HeaderProcessor | None = get_processor_for_file(f)
     assert proc is not None
-    lines: list[str] = after_insert.splitlines(keepends=True)
+    lines = after_insert.splitlines(keepends=True)
     stripped_lines: list[str] = []
     _span: tuple[int, int] | None = None
     diag: StripDiagnostic

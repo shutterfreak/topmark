@@ -21,16 +21,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests.pipeline.conftest import run_insert, run_steps
+from tests.pipeline.conftest import make_pipeline_context, run_insert, run_steps
 from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
-from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.status import ComparisonStatus, GenerationStatus, RenderStatus
 from topmark.pipeline.steps import builder, comparer, reader, resolver, scanner
 from topmark.pipeline.views import BuilderView, RenderView
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from topmark.pipeline.context.model import ProcessingContext
 
 
 def test_e2e_content_change_detected(tmp_path: Path) -> None:
@@ -39,8 +40,8 @@ def test_e2e_content_change_detected(tmp_path: Path) -> None:
     The file contains a hand-authored header with `license`/`project`, while the
     default config/builder expects `file`/`file_relpath`. Dicts differ → CHANGED.
     """
-    f: Path = tmp_path / "content_change.py"
-    f.write_text(
+    file: Path = tmp_path / "content_change.py"
+    file.write_text(
         f"# {TOPMARK_START_MARKER}\n"
         "# license: MIT\n"
         "# project: TopMark\n"
@@ -54,10 +55,11 @@ def test_e2e_content_change_detected(tmp_path: Path) -> None:
     draft.header_fields = ["file", "file_relpath"]
     draft.policy.render_empty_header_when_no_fields = True
     cfg: Config = draft.freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
 
     # Full e2e path (no synthesis): resolver → reader → scanner → builder → renderer → comparer
-    ctx = run_insert(f, cfg)
+    ctx = run_insert(file, cfg)
     assert ctx.status.comparison is ComparisonStatus.CHANGED, (
         "Builder produced different expected fields; comparer must flag CHANGED"
     )
@@ -79,8 +81,8 @@ def test_e2e_formatting_only_change_detected(tmp_path: Path) -> None:
     may not include these fields; instead we render canonically with a local config
     for comparison.
     """
-    f: Path = tmp_path / "formatting_only_e2e.py"
-    f.write_text(
+    file: Path = tmp_path / "formatting_only_e2e.py"
+    file.write_text(
         f"# {TOPMARK_START_MARKER}\n"
         "# project: TopMark\n"  # non-canonical order (project before license)
         "# license: MIT\n"
@@ -91,7 +93,7 @@ def test_e2e_formatting_only_change_detected(tmp_path: Path) -> None:
 
     cfg: Config = MutableConfig.from_defaults().freeze()
 
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
 
     # Run builder to keep the test end-to-end, but do not rely on its fields
     # (builder may filter fields not present in the configured schema).

@@ -36,6 +36,7 @@ from tests.pipeline.conftest import (
     run_insert,
 )
 from topmark.config import Config, MutableConfig
+from topmark.config.policy import PolicyRegistry, make_policy_registry
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline import runner
 from topmark.pipeline.context.model import ProcessingContext
@@ -54,13 +55,19 @@ if TYPE_CHECKING:
 @mark_pipeline
 def test_cblock_processor_basics(tmp_path: Path) -> None:
     """Basics: resolve to a C-block style processor and no pre-existing header."""
-    f: Path = tmp_path / "styles.css"
-    f.write_text("body { margin: 0; }\n")
+    path: Path = tmp_path / "styles.css"
+    path.write_text("body { margin: 0; }\n")
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     # Use the short insert helper which runs resolver+reader+scanner, but we only
     # need to assert the basics exposed by the scan results.
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    policy_registry: PolicyRegistry = make_policy_registry(cfg)
+    ctx: ProcessingContext = ProcessingContext.bootstrap(
+        path=path,
+        config=cfg,
+        policy_registry=policy_registry,
+    )
+
     pipeline: Sequence[Step] = Pipeline.CHECK.steps
     ctx = runner.run(ctx, pipeline)
 
@@ -87,14 +94,14 @@ def test_cblock_all_registrations_insert_and_trailing_blank(
     tmp_path: Path, ext: str, body: str
 ) -> None:
     """Insert a header at the top and ensure a trailing blank line follows."""
-    f: Path = tmp_path / f"sample{ext}"
-    f.write_text(body, encoding="utf-8")
+    file: Path = tmp_path / f"sample{ext}"
+    file.write_text(body, encoding="utf-8")
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = run_insert(f, cfg)
+    ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
-    sig: BlockSignatures = expected_block_lines_for(f)
+    sig: BlockSignatures = expected_block_lines_for(file)
 
     # Block-open should be first, start line second
     if "block_open" in sig:
@@ -109,8 +116,8 @@ def test_cblock_all_registrations_insert_and_trailing_blank(
 @mark_pipeline
 def test_cblock_detect_existing_header_with_star_prefix(tmp_path: Path) -> None:
     """Detect an existing C-block header that was produced by TopMark itself."""
-    f: Path = tmp_path / "existing.css"
-    f.write_text(
+    path: Path = tmp_path / "existing.css"
+    path.write_text(
         "body{color:#333}\n",
         encoding="utf-8",
     )  # No header yet
@@ -118,15 +125,21 @@ def test_cblock_detect_existing_header_with_star_prefix(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
 
     # 1) Insert a canonical header using the updater path
-    ctx_insert: ProcessingContext = run_insert(f, cfg)
+    ctx_insert: ProcessingContext = run_insert(path, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx_insert)
 
-    with f.open("w", encoding="utf-8", newline="") as fp:
+    with path.open("w", encoding="utf-8", newline="") as fp:
         fp.write("".join(lines))
 
     # 2) Re-run the 'check' pipeline to ensure the scanner detects the header
-    ctx_check: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    policy_registry: PolicyRegistry = make_policy_registry(cfg)
+    ctx_check: ProcessingContext = ProcessingContext.bootstrap(
+        path=path,
+        config=cfg,
+        policy_registry=policy_registry,
+    )
+
     pipeline: Sequence[Step] = Pipeline.CHECK.steps
     ctx_check = runner.run(
         ctx_check,
@@ -144,16 +157,17 @@ def test_cblock_detect_existing_header_with_star_prefix(tmp_path: Path) -> None:
 @mark_pipeline
 def test_cblock_detect_existing_header_without_star_on_directives(tmp_path: Path) -> None:
     """Scanner tolerates directives without '*' inside the block."""
-    f: Path = tmp_path / "nostar.css"
-    f.write_text(
+    path: Path = tmp_path / "nostar.css"
+    path.write_text(
         "p{margin:0}\n",
         encoding="utf-8",
     )
 
     cfg: Config = MutableConfig.from_defaults().freeze()
+    policy_registry: PolicyRegistry = make_policy_registry(cfg)
 
     # Generate a canonical header
-    ctx: ProcessingContext = run_insert(f, cfg)
+    ctx: ProcessingContext = run_insert(path, cfg)
     lines: list[str] = materialize_updated_lines(ctx)
 
     # Find directive lines and strip the leading '*' just on start/end lines
@@ -169,10 +183,14 @@ def test_cblock_detect_existing_header_without_star_on_directives(tmp_path: Path
                 ln = prefix + core
         new_lines.append(ln)
 
-    f.write_text("".join(new_lines), encoding="utf-8")
+    path.write_text("".join(new_lines), encoding="utf-8")
 
     # Now the scanner should still detect it
-    ctx2: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx2: ProcessingContext = ProcessingContext.bootstrap(
+        path=path,
+        config=cfg,
+        policy_registry=policy_registry,
+    )
     pipeline: Sequence[Step] = Pipeline.CHECK.steps
     ctx2 = runner.run(ctx2, pipeline)
     assert ctx2.views.header is not None
@@ -182,12 +200,12 @@ def test_cblock_detect_existing_header_without_star_on_directives(tmp_path: Path
 @mark_pipeline
 def test_cblock_crlf_preserves_newlines(tmp_path: Path) -> None:
     """Preserve CRLF newlines on Windows-style CSS inputs."""
-    f: Path = tmp_path / "win.less"
-    with f.open("w", encoding="utf-8", newline="\r\n") as fp:
+    file: Path = tmp_path / "win.less"
+    with file.open("w", encoding="utf-8", newline="\r\n") as fp:
         fp.write("/* palette */\n")
         fp.write("@c: #abc;\n")
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = run_insert(f, cfg)
+    ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
 
@@ -200,16 +218,16 @@ def test_cblock_strip_header_block_with_and_without_span(tmp_path: Path) -> None
     """`strip_header_block` removes the block with or without explicit bounds."""
     from topmark.pipeline.processors import get_processor_for_file
 
-    f: Path = tmp_path / "strip_me.css"
-    f.write_text(
+    file: Path = tmp_path / "strip_me.css"
+    file.write_text(
         f"/*\n * {TOPMARK_START_MARKER}\n * h\n * {TOPMARK_END_MARKER}\n */\nbody{{margin:0}}\n",
         encoding="utf-8",
     )
 
-    proc: HeaderProcessor | None = get_processor_for_file(f)
+    proc: HeaderProcessor | None = get_processor_for_file(file)
     assert proc is not None
 
-    lines: list[str] = f.read_text(encoding="utf-8").splitlines(keepends=True)
+    lines: list[str] = file.read_text(encoding="utf-8").splitlines(keepends=True)
 
     # Explicit span (block occupies lines 0..4)
     new1: list[str] = []
@@ -232,14 +250,14 @@ def test_cblock_strip_header_block_with_and_without_span(tmp_path: Path) -> None
 @mark_pipeline
 def test_cblock_banner_comment_after_header(tmp_path: Path) -> None:
     """Header must precede any pre-existing banner comment."""
-    f: Path = tmp_path / "banner.css"
-    f.write_text("/* existing:license banner */\nhtml{font-size:16px}\n")
+    file: Path = tmp_path / "banner.css"
+    file.write_text("/* existing:license banner */\nhtml{font-size:16px}\n")
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = run_insert(f, cfg)
+    ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
-    sig: BlockSignatures = expected_block_lines_for(f)
+    sig: BlockSignatures = expected_block_lines_for(file)
 
     # Header must start at very top
     if "block_open" in sig:
@@ -258,23 +276,25 @@ def test_cblock_strip_header_block_generated(tmp_path: Path) -> None:
     """strip_header_block removes a canonical TopMark C-block header."""
     from topmark.pipeline.processors import get_processor_for_file
 
-    f: Path = tmp_path / "strip_me.css"
-    f.write_text("html{font-size:16px}\n")
+    file: Path = tmp_path / "strip_me.css"
+    file.write_text("html{font-size:16px}\n")
     cfg: Config = MutableConfig.from_defaults().freeze()
 
     # Generate a canonical header
-    ctx: ProcessingContext = run_insert(f, cfg)
+    ctx: ProcessingContext = run_insert(file, cfg)
     lines: list[str] = materialize_updated_lines(ctx)
-    f.write_text("".join(lines), encoding="utf-8")
+    file.write_text("".join(lines), encoding="utf-8")
 
-    proc: HeaderProcessor | None = get_processor_for_file(f)
+    proc: HeaderProcessor | None = get_processor_for_file(file)
     assert proc is not None
 
     # Let processor auto-detect the span and strip
     new_lines: list[str]
     span: tuple[int, int] | None = None
     diag: StripDiagnostic
-    new_lines, span, diag = proc.strip_header_block(lines=f.read_text().splitlines(keepends=True))
+    new_lines, span, diag = proc.strip_header_block(
+        lines=file.read_text().splitlines(keepends=True)
+    )
     assert diag.kind == StripDiagKind.REMOVED
     assert span is not None
     assert "topmark:start" not in "".join(new_lines)
@@ -291,15 +311,15 @@ def test_cblock_not_at_top_insertion_single_leading_blank(tmp_path: Path) -> Non
     from topmark.pipeline.processors import get_processor_for_file
 
     # Use a non-CSS extension that still maps to the CBlockHeaderProcessor
-    f: Path = tmp_path / "not_top.sql"
+    file: Path = tmp_path / "not_top.sql"
     original: list[str] = [
         "/* PRELUDE: keep before header */\n",
         "SELECT 1;\n",
     ]
-    f.write_text("".join(original), encoding="utf-8")
+    file.write_text("".join(original), encoding="utf-8")
 
     # Resolve processor & basics
-    proc: HeaderProcessor | None = get_processor_for_file(f)
+    proc: HeaderProcessor | None = get_processor_for_file(file)
     assert proc is not None, "Processor must resolve for .sql"
     cfg: Config = MutableConfig.from_defaults().freeze()
 
@@ -322,7 +342,7 @@ def test_cblock_not_at_top_insertion_single_leading_blank(tmp_path: Path) -> Non
     out: list[str] = original[:1] + prepared + original[1:]
 
     # Expect: line 0 = prelude, line 1 = blank, line 2 = block_open, line 3 = start marker
-    sig: BlockSignatures = expected_block_lines_for(f, newline=newline)
+    sig: BlockSignatures = expected_block_lines_for(file, newline=newline)
 
     # 0) Prelude preserved
     assert out[0] == original[0]

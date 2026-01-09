@@ -28,7 +28,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Literal, TypeVar, cast
 
 import pytest
 
@@ -39,36 +39,37 @@ if TYPE_CHECKING:
 
     from topmark.config import Config
 
+AnyCallable = Callable[..., object]
+DecoratorType = Callable[[AnyCallable], AnyCallable]
+ScopeName = Literal["session", "package", "module", "class", "function"]
+
+# Typed fixture wrappers for pytest.fixture
 F = TypeVar("F", bound=Callable[..., object])
 
-# This defines the type for the decorator function itself:
-# It takes a Callable (F) and returns the same Callable (F).
-DecoratorType = Callable[[F], F]
 
-
-def as_typed_mark(mark: Any) -> DecoratorType[Any]:
+def as_typed_mark(mark: Any) -> DecoratorType:
     """Wrap a pytest mark so static type checkers preserve the function type.
 
     Args:
         mark (Any): A pytest mark decorator such as `pytest.mark.integration`.
 
     Returns:
-        DecoratorType[Any]: A decorator that preserves the wrapped function's type.
+        DecoratorType: A decorator that preserves the wrapped function's type.
     """
 
-    def _decorator(func: F) -> F:
-        return cast("F", mark(func))
+    def _decorator(func: AnyCallable) -> AnyCallable:
+        return cast("AnyCallable", mark(func))
 
     return _decorator
 
 
-mark_integration: DecoratorType[Any] = as_typed_mark(pytest.mark.integration)
-mark_pipeline: DecoratorType[Any] = as_typed_mark(pytest.mark.pipeline)
-mark_cli: DecoratorType[Any] = as_typed_mark(pytest.mark.cli)
-mark_dev_validation: DecoratorType[Any] = as_typed_mark(pytest.mark.dev_validation)
+mark_integration: DecoratorType = as_typed_mark(pytest.mark.integration)
+mark_pipeline: DecoratorType = as_typed_mark(pytest.mark.pipeline)
+mark_cli: DecoratorType = as_typed_mark(pytest.mark.cli)
+mark_dev_validation: DecoratorType = as_typed_mark(pytest.mark.dev_validation)
 
 
-def parametrize(*args: Any, **kwargs: Any) -> Callable[[F], F]:
+def parametrize(*args: Any, **kwargs: Any) -> DecoratorType:
     """Typed wrapper for `pytest.mark.parametrize`.
 
     Args:
@@ -76,13 +77,13 @@ def parametrize(*args: Any, **kwargs: Any) -> Callable[[F], F]:
         **kwargs (Any): Keyword arguments forwarded to `pytest.mark.parametrize`.
 
     Returns:
-        Callable[[F], F]: A decorator that preserves the wrapped function's type.
+        DecoratorType: A decorator that preserves the wrapped function's type.
     """
-    mark: pytest.MarkDecorator = pytest.mark.parametrize(*args, **kwargs)
+    mark = pytest.mark.parametrize(*args, **kwargs)
     return as_typed_mark(mark)
 
 
-def hookimpl(*args: Any, **kwargs: Any) -> Callable[[F], F]:
+def hookimpl(*args: Any, **kwargs: Any) -> DecoratorType:
     """Typed wrapper for `pytest.hookimpl`.
 
     Args:
@@ -90,22 +91,9 @@ def hookimpl(*args: Any, **kwargs: Any) -> Callable[[F], F]:
         **kwargs (Any): Keyword arguments forwarded to `pytest.hookimpl`.
 
     Returns:
-        Callable[[F], F]: A decorator that preserves the wrapped function's type.
+        DecoratorType: A decorator that preserves the wrapped function's type.
     """
     return as_typed_mark(pytest.hookimpl(*args, **kwargs))
-
-
-def fixture(*args: Any, **kwargs: Any) -> Callable[[F], F]:
-    """Typed wrapper for `pytest.fixture`.
-
-    Args:
-        *args (Any): Positional arguments forwarded to `pytest.fixture`.
-        **kwargs (Any): Keyword arguments forwarded to `pytest.fixture`.
-
-    Returns:
-        Callable[[F], F]: A decorator that preserves the wrapped function's type.
-    """
-    return as_typed_mark(pytest.fixture(*args, **kwargs))
 
 
 @pytest.fixture(autouse=True)
@@ -217,6 +205,10 @@ def make_mutable_config(**overrides: Any) -> MutableConfig:
     Use this in tests that exercise merge logic. For public API calls, prefer
     `make_config` or provide a mapping to the API directly.
 
+    For most tests, prefer the `default_config` fixture.
+    Use `make_mutable_config` only when deliberately testing config merge logic.
+
+
     Args:
         **overrides (Any): Keyword overrides to apply to the mutable builder.
             Keys `include_from`, `exclude_from`, and `files_from` may be sequences of
@@ -240,3 +232,9 @@ def make_mutable_config(**overrides: Any) -> MutableConfig:
         setattr(m, k, v)  # still allow direct overrides for convenience
 
     return m
+
+
+@pytest.fixture
+def default_config() -> Config:
+    """Per-test default Config built from defaults."""
+    return make_config()

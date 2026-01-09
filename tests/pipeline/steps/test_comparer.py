@@ -19,13 +19,19 @@ without requiring any header generation/rendering.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tests.pipeline.conftest import run_comparer, run_reader, run_resolver, run_scanner
+from tests.pipeline.conftest import (
+    make_pipeline_context,
+    run_comparer,
+    run_reader,
+    run_resolver,
+    run_scanner,
+)
 from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.filetypes.base import FileType
-from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.processors.base import HeaderProcessor
 from topmark.pipeline.status import (
     ComparisonStatus,
@@ -38,11 +44,14 @@ from topmark.pipeline.views import BuilderView, ListFileImageView, RenderView, U
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from topmark.pipeline.context.model import ProcessingContext
+
 
 def test_comparer_precomputed_lines_set_changed(tmp_path: Path) -> None:
     """Mark CHANGED when an updated view differs from the original image."""
+    file: Path = tmp_path / "x.py"
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=(tmp_path / "x.py"), config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
 
     # Provide original image and a precomputed updated image via views
 
@@ -66,8 +75,10 @@ def test_comparer_precomputed_lines_set_changed(tmp_path: Path) -> None:
 
 def test_comparer_precomputed_lines_set_unchanged(tmp_path: Path) -> None:
     """Mark UNCHANGED when `updated_file_lines` is identical to `file_lines`."""
+    file: Path = tmp_path / "y.py"
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=(tmp_path / "y.py"), config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     original: list[str] = ["same\n", "lines\n"]
 
     # Ensure the may_proceed_to_comparer() gating helper allows processing:
@@ -107,9 +118,9 @@ def test_formatting_only_changes_are_detected(tmp_path: Path) -> None:
     the dicts equal while the rendered block text differs, so the comparer
     correctly flags the change as `CHANGED` for formatting reasons only.
     """
-    f: Path = tmp_path / "formatting_only.py"
+    file: Path = tmp_path / "formatting_only.py"
     # Intentionally put fields in a non-canonical order (license before project)
-    f.write_text(
+    file.write_text(
         f"# {TOPMARK_START_MARKER}\n"
         "# license: MIT\n"
         "# project: TopMark\n"
@@ -121,7 +132,7 @@ def test_formatting_only_changes_are_detected(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
 
     # Bootstrap a context and run reader+scanner to populate existing header
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
 
     # Attach a processor (registry is set up by tests/pipeline/conftest.py)
     ctx = run_resolver(ctx)

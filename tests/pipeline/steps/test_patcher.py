@@ -20,6 +20,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from tests.pipeline.conftest import (
+    make_pipeline_context,
     run_builder,
     run_comparer,
     run_patcher,
@@ -31,16 +32,18 @@ from tests.pipeline.conftest import (
 )
 from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
-from topmark.pipeline.context.model import ProcessingContext
 from topmark.utils.diff import render_patch
 
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from topmark.pipeline.context.model import ProcessingContext
 
-def _run_to_patcher(path: Path, cfg: Config) -> ProcessingContext:
+
+def _run_to_patcher(file: Path, cfg: Config) -> ProcessingContext:
     """Drive the v2 pipeline up to `patcher.patch()` and return the ctx."""
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=path, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
     ctx = run_reader(ctx)
     ctx = run_scanner(ctx)
@@ -54,16 +57,16 @@ def _run_to_patcher(path: Path, cfg: Config) -> ProcessingContext:
 
 def test_patcher_diff_preserves_crlf_and_render_markers(tmp_path: Path) -> None:
     r"""CRLF-seeded file → diff lines use CRLF; render_patch shows \\r\\n markers."""
-    f: Path = tmp_path / "a.ts"
+    path: Path = tmp_path / "a.ts"
     # Ensure file content is CRLF-seeded.
-    with f.open("w", encoding="utf-8", newline="\r\n") as fp:
+    with path.open("w", encoding="utf-8", newline="\r\n") as fp:
         # Add a syntactically valid TopMark header field (key:value)
         fp.write(
             f"// {TOPMARK_START_MARKER}\n// test:header\n// {TOPMARK_END_MARKER}\nconsole.log(1)\n"
         )
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = _run_to_patcher(f, cfg)
+    ctx: ProcessingContext = _run_to_patcher(path, cfg)
 
     # We expect a change (strip/replace) to have produced a diff.
     diff_text: str = (ctx.views.diff.text if ctx.views.diff else "") or ""

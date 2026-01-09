@@ -18,12 +18,12 @@ minimal `ProcessingContext` without running the full pipeline.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tests.pipeline.conftest import materialize_updated_lines, run_stripper
+from tests.pipeline.conftest import make_pipeline_context, materialize_updated_lines, run_stripper
 from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
-from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.processors.base import HeaderProcessor
 from topmark.pipeline.status import ContentStatus, HeaderStatus, ResolveStatus
 from topmark.pipeline.views import HeaderView, ListFileImageView
@@ -31,9 +31,12 @@ from topmark.pipeline.views import HeaderView, ListFileImageView
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from topmark.pipeline.context.model import ProcessingContext
+
 
 def test_stripper_uses_span_and_trims_leading_blank(tmp_path: Path) -> None:
     """When span is provided, stripper should remove exactly that region and trim."""
+    file: Path = tmp_path / "x.py"
     lines: list[str] = [
         f"# {TOPMARK_START_MARKER}\n",
         "# h\n",
@@ -41,8 +44,10 @@ def test_stripper_uses_span_and_trims_leading_blank(tmp_path: Path) -> None:
         "\n",
         "code\n",
     ]
+
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=(tmp_path / "x.py"), config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx.views.image = ListFileImageView(lines)
 
     # Use the base processor; removal relies on span and generic bounds logic.

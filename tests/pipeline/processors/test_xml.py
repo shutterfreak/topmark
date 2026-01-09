@@ -26,6 +26,7 @@ from tests.pipeline.conftest import (
     BlockSignatures,
     expected_block_lines_for,
     find_line,
+    make_pipeline_context,
     materialize_updated_lines,
     run_insert,
 )
@@ -34,7 +35,6 @@ from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.filetypes.base import InsertCapability
 from topmark.pipeline import runner
-from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.pipelines import Pipeline
 from topmark.pipeline.processors import get_processor_for_file
 from topmark.pipeline.processors.types import StripDiagKind, StripDiagnostic
@@ -50,6 +50,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
+    from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.processors.base import HeaderProcessor
     from topmark.pipeline.protocols import Step
 
@@ -67,8 +68,9 @@ def test_xml_processor_basics(tmp_path: Path) -> None:
     file: Path = tmp_path / "sample.html"
     file.write_text("<html>\n<body><p>Hello.</p></body></html>")
 
-    config: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=file, config=config)
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     pipeline: Sequence[Step] = Pipeline.CHECK.steps
     ctx = runner.run(ctx, pipeline)
 
@@ -85,15 +87,15 @@ def test_html_top_of_file_with_trailing_blank(tmp_path: Path) -> None:
     Verifies that the block-open lands at index 0 and that a single blank line
     follows the closing marker for readability.
     """
-    f: Path = tmp_path / "index.html"
-    f.write_text("<!DOCTYPE html>\n<html></html>\n")
+    file: Path = tmp_path / "index.html"
+    file.write_text("<!DOCTYPE html>\n<html></html>\n")
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = run_insert(f, cfg)
+    ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
     logger.debug("ctx.updated_file_lines: %s", lines)
-    sig: BlockSignatures = expected_block_lines_for(f)
+    sig: BlockSignatures = expected_block_lines_for(file)
     if "block_open" in sig:
         open_idx: int = find_line(lines, sig["block_open"])
         assert open_idx == 0
@@ -111,14 +113,14 @@ def test_xml_with_declaration_only(tmp_path: Path) -> None:
     Ensures the XML declaration remains line 0 and the header follows after a
     single blank separator.
     """
-    f: Path = tmp_path / "doc.xml"
-    f.write_text('<?xml version="1.0"?>\n<root/>\n')
+    file: Path = tmp_path / "doc.xml"
+    file.write_text('<?xml version="1.0"?>\n<root/>\n')
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = run_insert(f, cfg)
+    ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
-    sig: BlockSignatures = expected_block_lines_for(f)
+    sig: BlockSignatures = expected_block_lines_for(file)
     assert lines[0].lstrip("\ufeff").startswith("<?xml")
     if "block_open" in sig:
         open_idx: int = find_line(lines, sig["block_open"])
@@ -137,14 +139,14 @@ def test_xml_with_declaration_and_doctype(tmp_path: Path) -> None:
     Asserts correct placement of the block-open/start after the prolog elements
     and a single blank line.
     """
-    f: Path = tmp_path / "doc2.xml"
-    f.write_text('<?xml version="1.0"?>\n<!DOCTYPE note SYSTEM "Note.dtd">\n<note/>\n')
+    file: Path = tmp_path / "doc2.xml"
+    file.write_text('<?xml version="1.0"?>\n<!DOCTYPE note SYSTEM "Note.dtd">\n<note/>\n')
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = run_insert(f, cfg)
+    ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
-    sig: BlockSignatures = expected_block_lines_for(f)
+    sig: BlockSignatures = expected_block_lines_for(file)
     assert lines[0].lstrip("\ufeff").startswith("<?xml")
     if "block_open" in sig:
         open_idx: int = find_line(lines, sig["block_open"])
@@ -162,17 +164,17 @@ def test_svg_with_declaration(tmp_path: Path) -> None:
 
     Mirrors the XML behavior for SVG files.
     """
-    f: Path = tmp_path / "icon.svg"
-    f.write_text(
+    file: Path = tmp_path / "icon.svg"
+    file.write_text(
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"></svg>\n'
     )
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = run_insert(f, cfg)
+    ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
-    sig: BlockSignatures = expected_block_lines_for(f)
+    sig: BlockSignatures = expected_block_lines_for(file)
     assert lines[0].lstrip("\ufeff").startswith("<?xml")
     if "block_open" in sig:
         open_idx: int = find_line(lines, sig["block_open"])
@@ -187,14 +189,14 @@ def test_vue_top_of_file(tmp_path: Path) -> None:
 
     Uses HTML-style comments for the header block.
     """
-    f: Path = tmp_path / "App.vue"
-    f.write_text("<template>\n  <div/>\n</template>\n")
+    file: Path = tmp_path / "App.vue"
+    file.write_text("<template>\n  <div/>\n</template>\n")
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = run_insert(f, cfg)
+    ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
-    sig: BlockSignatures = expected_block_lines_for(f)
+    sig: BlockSignatures = expected_block_lines_for(file)
     if "block_open" in sig:
         assert find_line(lines, sig["block_open"]) == 0
     assert find_line(lines, sig["start_line"]) == 1
@@ -209,14 +211,14 @@ def test_svelte_top_of_file(tmp_path: Path) -> None:
 
     Uses HTML-style comments for the header block.
     """
-    f: Path = tmp_path / "Widget.svelte"
-    f.write_text("<script>\n  let x = 1;\n</script>\n")
+    file: Path = tmp_path / "Widget.svelte"
+    file.write_text("<script>\n  let x = 1;\n</script>\n")
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = run_insert(f, cfg)
+    ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
-    sig: BlockSignatures = expected_block_lines_for(f)
+    sig: BlockSignatures = expected_block_lines_for(file)
     if "block_open" in sig:
         assert find_line(lines, sig["block_open"]) == 0
     assert find_line(lines, sig["start_line"]) == 1
@@ -233,12 +235,12 @@ def test_xml_single_line_declaration(tmp_path: Path) -> None:
     inserts a blank, then the header block. Don't write to file, compare the
     image lines and updated lines.
     """
-    f: Path = tmp_path / "singleline_decl.xml"
+    file: Path = tmp_path / "singleline_decl.xml"
     # No newline between declaration and root element
-    f.write_text('<?xml version="1.0"?><root/>\n')
+    file.write_text('<?xml version="1.0"?><root/>\n')
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = run_insert(f, cfg)
+    ctx: ProcessingContext = run_insert(file, cfg)
 
     # Strict XML InsertChecker flags this as unsupported due to reflow:
     assert ctx.status.resolve == ResolveStatus.RESOLVED
@@ -249,12 +251,12 @@ def test_xml_single_line_declaration(tmp_path: Path) -> None:
 
 def test_xml_prolog_and_body_on_same_line_blocked_by_policy(tmp_path: Path) -> None:
     """XML prolog and body on same line would reflow, blocked by policy."""
-    f: Path = tmp_path / "one.xml"
+    file: Path = tmp_path / "one.xml"
     original = '<?xml version="1.0"?><root/>'  # no trailing newline
-    f.write_text(original, encoding="utf-8")
+    file.write_text(original, encoding="utf-8")
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = run_insert(f, cfg)
+    ctx: ProcessingContext = run_insert(file, cfg)
 
     # Strict XML InsertChecker flags this as unsupported due to reflow:
     assert ctx.status.resolve == ResolveStatus.RESOLVED
@@ -265,14 +267,14 @@ def test_xml_prolog_and_body_on_same_line_blocked_by_policy(tmp_path: Path) -> N
 
 def test_xml_prolog_and_body_on_same_line_alllowed_by_policy(tmp_path: Path) -> None:
     """XML prolog and body on same line would reflow, allowed by policy."""
-    f: Path = tmp_path / "one.xml"
+    file: Path = tmp_path / "one.xml"
     original = '<?xml version="1.0"?><root/>'  # no trailing newline
-    f.write_text(original, encoding="utf-8")
+    file.write_text(original, encoding="utf-8")
 
     draft: MutableConfig = MutableConfig.from_defaults()
     draft.policy.allow_reflow = True
     cfg: Config = draft.freeze()
-    ctx: ProcessingContext = run_insert(f, cfg)
+    ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
     after_insert: str = "".join(lines)
@@ -281,9 +283,9 @@ def test_xml_prolog_and_body_on_same_line_alllowed_by_policy(tmp_path: Path) -> 
     assert ctx.status.comparison == ComparisonStatus.CHANGED
     assert any(TOPMARK_START_MARKER in line for line in lines)
 
-    proc: HeaderProcessor | None = get_processor_for_file(f)
+    proc: HeaderProcessor | None = get_processor_for_file(file)
     assert proc is not None
-    lines: list[str] = after_insert.splitlines(keepends=True)
+    lines = after_insert.splitlines(keepends=True)
     stripped_lines: list[str] = []
     _span: tuple[int, int] | None = None
     diag: StripDiagnostic
@@ -310,12 +312,12 @@ def test_xml_single_line_decl_and_doctype(tmp_path: Path) -> None:
     precede the root on the same physical line. Don't write to file, compare the
     image lines and updated lines.
     """
-    f: Path = tmp_path / "singleline_decl_doctype.xml"
+    file: Path = tmp_path / "singleline_decl_doctype.xml"
     # XML declaration, DOCTYPE, and root all on a single line
-    f.write_text('<?xml version="1.0"?><!DOCTYPE note SYSTEM "Note.dtd"><note/>\n')
+    file.write_text('<?xml version="1.0"?><!DOCTYPE note SYSTEM "Note.dtd"><note/>\n')
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = run_insert(f, cfg)
+    ctx: ProcessingContext = run_insert(file, cfg)
 
     # Strict XML InsertChecker flags this as unsupported due to reflow:
     assert ctx.status.resolve == ResolveStatus.RESOLVED
@@ -331,14 +333,14 @@ def test_html_with_existing_banner_comment(tmp_path: Path) -> None:
     Ensures the TopMark block is inserted first and the previous banner follows
     after the block close.
     """
-    f: Path = tmp_path / "banner.html"
-    f.write_text("<!-- existing:license banner -->\n<html></html>\n")
+    file: Path = tmp_path / "banner.html"
+    file.write_text("<!-- existing:license banner -->\n<html></html>\n")
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = run_insert(f, cfg)
+    ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
-    sig: BlockSignatures = expected_block_lines_for(f)
+    sig: BlockSignatures = expected_block_lines_for(file)
 
     # Header must start at very top
     if "block_open" in sig:
@@ -361,14 +363,14 @@ def test_xml_decl_then_existing_banner_comment(tmp_path: Path) -> None:
     Validates that the header is anchored after the XML declaration and precedes
     the existing banner comment.
     """
-    f: Path = tmp_path / "doc_with_banner.xml"
-    f.write_text('<?xml version="1.0"?>\n<!-- xml:banner -->\n<root/>\n')
+    file: Path = tmp_path / "doc_with_banner.xml"
+    file.write_text('<?xml version="1.0"?>\n<!-- xml:banner -->\n<root/>\n')
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = run_insert(f, cfg)
+    ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
-    sig: BlockSignatures = expected_block_lines_for(f)
+    sig: BlockSignatures = expected_block_lines_for(file)
 
     assert lines[0].lstrip("\ufeff").startswith("<?xml")
     if "block_open" in sig:
@@ -389,8 +391,8 @@ def test_xml_decl_doctype_then_existing_banner_comment(tmp_path: Path) -> None:
     Ensures the header is placed after the declaration and DOCTYPE but before the
     banner comment.
     """
-    f: Path = tmp_path / "doc_with_prolog_banner.xml"
-    f.write_text(
+    file: Path = tmp_path / "doc_with_prolog_banner.xml"
+    file.write_text(
         '<?xml version="1.0"?>\n'
         '<!DOCTYPE note SYSTEM "Note.dtd">\n'
         "<!-- xml:prolog-banner -->\n"
@@ -398,10 +400,10 @@ def test_xml_decl_doctype_then_existing_banner_comment(tmp_path: Path) -> None:
     )
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = run_insert(f, cfg)
+    ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
-    sig: BlockSignatures = expected_block_lines_for(f)
+    sig: BlockSignatures = expected_block_lines_for(file)
 
     assert lines[0].lstrip("\ufeff").startswith("<?xml")
     if "block_open" in sig:
@@ -424,8 +426,8 @@ def test_xml_strip_header_block_respects_declaration(tmp_path: Path) -> None:
     """
     from topmark.pipeline.processors import get_processor_for_file
 
-    f: Path = tmp_path / "strip_doc.xml"
-    f.write_text(
+    file: Path = tmp_path / "strip_doc.xml"
+    file.write_text(
         '<?xml version="1.0"?>\n'
         f"<!-- {TOPMARK_START_MARKER} -->\n"
         "<!-- h -->\n"
@@ -434,10 +436,10 @@ def test_xml_strip_header_block_respects_declaration(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    proc: HeaderProcessor | None = get_processor_for_file(f)
+    proc: HeaderProcessor | None = get_processor_for_file(file)
     assert proc is not None
 
-    lines: list[str] = f.read_text(encoding="utf-8").splitlines(keepends=True)
+    lines: list[str] = file.read_text(encoding="utf-8").splitlines(keepends=True)
 
     # 1) With explicit span for the HTML-style comment block
     new1: list[str] = []
@@ -468,16 +470,18 @@ def test_xml_doctype_with_internal_subset(tmp_path: Path) -> None:
     Confirms header insertion occurs after the declaration and the entirety of the
     multi-line DOCTYPE, followed by a single blank line.
     """
-    f: Path = tmp_path / "subset.xml"
-    f.write_text('<?xml version="1.0"?>\n<!DOCTYPE root [\n  <!ELEMENT root EMPTY>\n]>\n<root/>\n')
+    file: Path = tmp_path / "subset.xml"
+    file.write_text(
+        '<?xml version="1.0"?>\n<!DOCTYPE root [\n  <!ELEMENT root EMPTY>\n]>\n<root/>\n'
+    )
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = run_insert(f, cfg)
+    ctx: ProcessingContext = run_insert(file, cfg)
     lines: list[str] = materialize_updated_lines(ctx)
 
     assert lines[0].lstrip("\ufeff").startswith("<?xml")
 
     # header begins after declaration + doctype + one blank
-    sig: BlockSignatures = expected_block_lines_for(f)
+    sig: BlockSignatures = expected_block_lines_for(file)
     start_idx: int = find_line(lines, sig["start_line"])
 
     assert start_idx == 5  # decl(0) doctype(1..3) blank(4) start(5)
@@ -494,9 +498,9 @@ def test_xml_bom_preserved_text_insert(tmp_path: Path) -> None:
     Args:
         tmp_path (Path): Temporary directory provided by pytest.
     """
-    f: Path = tmp_path / "bom.xml"
-    f.write_bytes(b"\xef\xbb\xbf<?xml version='1.0'?>\n<root/>\n")
-    ctx: ProcessingContext = run_insert(f, MutableConfig.from_defaults().freeze())
+    file: Path = tmp_path / "bom.xml"
+    file.write_bytes(b"\xef\xbb\xbf<?xml version='1.0'?>\n<root/>\n")
+    ctx: ProcessingContext = run_insert(file, MutableConfig.from_defaults().freeze())
 
     updated_lines: list[str] = materialize_updated_lines(ctx)
 

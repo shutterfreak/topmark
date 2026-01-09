@@ -31,10 +31,15 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tests.conftest import parametrize
-from tests.pipeline.conftest import materialize_image_lines, run_reader, run_resolver, run_sniffer
+from tests.pipeline.conftest import (
+    make_pipeline_context,
+    materialize_image_lines,
+    run_reader,
+    run_resolver,
+    run_sniffer,
+)
 from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
-from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.status import (
     ContentStatus,
     FsStatus,
@@ -45,19 +50,20 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.core.diagnostics import Diagnostic
+    from topmark.pipeline.context.model import ProcessingContext
 
 
 def test_read_sets_skip_on_mixed_newlines_strict(tmp_path: Path) -> None:
     """Reader must set SKIPPED_MIXED_LINE_ENDINGS when a file mixes CRLF and LF."""
     # Mix CRLF (\r\n) and LF (\n) deliberately: header lines alternate CRLF/LF, then body uses LF.
     content: str = f"# {TOPMARK_START_MARKER}\r\n# h\n# {TOPMARK_END_MARKER}\r\nprint('Hi!')\n"
-    f: Path = tmp_path / "x.py"
+    file: Path = tmp_path / "x.py"
     # Use newline="" so Python preserves the exact line endings we provide.
-    with f.open("w", encoding="utf-8", newline="") as fh:
+    with file.open("w", encoding="utf-8", newline="") as fh:
         fh.write(content)
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
 
     # First resolve the file type
     ctx = run_resolver(ctx)
@@ -82,13 +88,13 @@ def test_read_detects_trailing_newline_presence_param(tmp_path: Path, line_end: 
     # Compose content with (or without) a trailing newline based on the parameter.
     content: str = f'print("Hi There"){line_end}'
     suf: str = line_end.replace("\r", "CR").replace("\n", "LF") or "none"
-    f: Path = tmp_path / f"x_ends_with_{suf}.py"
+    file: Path = tmp_path / f"x_ends_with_{suf}.py"
     # Use newline="" so Python preserves the exact line endings we provide.
-    with f.open("w", encoding="utf-8", newline="") as fh:
+    with file.open("w", encoding="utf-8", newline="") as fh:
         fh.write(content)
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
 
     # First resolve the file type
     ctx = run_resolver(ctx)
@@ -113,13 +119,14 @@ def test_read_detects_consistent_newline_style(
     """Reader must set ctx.newline_style to the actual line terminator in the file."""
     lines: list[str] = [f"print({i}){line_end}" for i in range(3)]
     content: str = "".join(lines)
-    f: Path = tmp_path / ("lf.py" if line_end == "\n" else "crlf.py")
+    file: Path = tmp_path / ("lf.py" if line_end == "\n" else "crlf.py")
     # Use newline="" so Python preserves the exact line endings we provide.
-    with f.open("w", encoding="utf-8", newline="") as fh:
+    with file.open("w", encoding="utf-8", newline="") as fh:
         fh.write(content)
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
     assert ctx.file_type is not None
 
@@ -136,12 +143,13 @@ def test_read_detects_consistent_newline_style(
 def test_read_defaults_to_lf_when_no_newline_observed(tmp_path: Path) -> None:
     """Reader should default to LF when the file has no newline terminator at all."""
     content: str = "print('one-line')"  # no trailing newline
-    f: Path = tmp_path / "single_line_no_nl.py"
-    with f.open("w", encoding="utf-8", newline="") as fh:
+    file: Path = tmp_path / "single_line_no_nl.py"
+    with file.open("w", encoding="utf-8", newline="") as fh:
         fh.write(content)
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
     assert ctx.file_type is not None
 
@@ -158,11 +166,12 @@ def test_read_detects_cr_only_newlines(tmp_path: Path) -> None:
     """Reader must support classic-Mac CR-only files without marking them mixed."""
     lines: list[str] = [f"print({i})\r" for i in range(3)]
     content: str = "".join(lines)
-    f: Path = tmp_path / "mac_cr.py"
-    with f.open("w", encoding="utf-8", newline="") as fh:
+    file: Path = tmp_path / "mac_cr.py"
+    with file.open("w", encoding="utf-8", newline="") as fh:
         fh.write(content)
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
 
     assert ctx.file_type is not None
@@ -183,11 +192,12 @@ def test_read_histogram_dominance_for_consistent_files(
     """Reader should report dominance_ratio == 1.0 for homogeneous files."""
     lines: list[str] = [f"print({i}){line_end}" for i in range(100)]
     content: str = "".join(lines)
-    f: Path = tmp_path / ("many_lf.py" if line_end == "\n" else "many_crlf.py")
-    with f.open("w", encoding="utf-8", newline="") as fh:
+    file: Path = tmp_path / ("many_lf.py" if line_end == "\n" else "many_crlf.py")
+    with file.open("w", encoding="utf-8", newline="") as fh:
         fh.write(content)
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
 
     assert ctx.file_type is not None
@@ -204,11 +214,12 @@ def test_read_histogram_dominance_for_consistent_files(
 def test_read_leading_bom_without_shebang(tmp_path: Path) -> None:
     """Reader should strip a leading UTF-8 BOM when there is no shebang, and proceed."""
     content: str = "\ufeffprint('hello')\n"
-    f: Path = tmp_path / "bom_no_shebang.py"
-    with f.open("w", encoding="utf-8", newline="") as fh:
+    file: Path = tmp_path / "bom_no_shebang.py"
+    with file.open("w", encoding="utf-8", newline="") as fh:
         fh.write(content)
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
 
     assert ctx.file_type is not None
@@ -227,11 +238,12 @@ def test_read_leading_bom_without_shebang(tmp_path: Path) -> None:
 def test_read_accepts_unicode_rich_text(tmp_path: Path) -> None:
     """Reader must accept valid Unicode content as text."""
     content = "π = 3.14159\nprice = '€5'\nrocket = '🚀'\n"
-    f: Path = tmp_path / "unicode_ok.py"
-    with f.open("w", encoding="utf-8", newline="") as fh:
+    file: Path = tmp_path / "unicode_ok.py"
+    with file.open("w", encoding="utf-8", newline="") as fh:
         fh.write(content)
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
 
     assert ctx.file_type is not None
@@ -246,11 +258,12 @@ def test_read_accepts_unicode_rich_text(tmp_path: Path) -> None:
 
 def test_read_bom_only_file_contract(tmp_path: Path) -> None:
     """Define/verify behavior when the file is only a BOM."""
-    f: Path = tmp_path / "bom_only.py"
-    with f.open("w", encoding="utf-8", newline="") as fh:
+    file: Path = tmp_path / "bom_only.py"
+    with file.open("w", encoding="utf-8", newline="") as fh:
         fh.write("\ufeff")
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
     assert ctx.file_type is not None
 
@@ -271,11 +284,12 @@ def test_read_bom_only_file_contract(tmp_path: Path) -> None:
 def test_read_mixed_newlines_even_if_dominant(tmp_path: Path) -> None:
     """Even with strong dominance, strict policy must skip mixed endings."""
     content: str = "".join([f"print({i})\r\n" for i in range(99)]) + "print(999)\n"
-    f: Path = tmp_path / "dominant_but_mixed.py"
-    with f.open("w", encoding="utf-8", newline="") as fh:
+    file: Path = tmp_path / "dominant_but_mixed.py"
+    with file.open("w", encoding="utf-8", newline="") as fh:
         fh.write(content)
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
 
     assert ctx.file_type is not None
@@ -290,11 +304,12 @@ def test_read_mixed_newlines_even_if_dominant(tmp_path: Path) -> None:
 def test_read_shebang_no_bom_is_ok(tmp_path: Path) -> None:
     """Shebang without BOM should not be skipped."""
     content: str = "#!/usr/bin/env python3\nprint('ok')\n"
-    f: Path = tmp_path / "shebang_ok.py"
-    with f.open("w", encoding="utf-8", newline="") as fh:
+    file: Path = tmp_path / "shebang_ok.py"
+    with file.open("w", encoding="utf-8", newline="") as fh:
         fh.write(content)
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
 
     assert ctx.file_type is not None
@@ -308,11 +323,12 @@ def test_read_shebang_no_bom_is_ok(tmp_path: Path) -> None:
 def test_read_non_bom_leading_char_before_shebang(tmp_path: Path) -> None:
     """A normal character before shebang must not trigger BOM/shebang skip."""
     content = " \n#!/usr/bin/env python3\nprint('ok')\n"  # leading space then newline
-    f: Path = tmp_path / "space_before_shebang.py"
-    with f.open("w", encoding="utf-8", newline="") as fh:
+    file: Path = tmp_path / "space_before_shebang.py"
+    with file.open("w", encoding="utf-8", newline="") as fh:
         fh.write(content)
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
 
     assert ctx.file_type is not None
@@ -325,10 +341,11 @@ def test_read_non_bom_leading_char_before_shebang(tmp_path: Path) -> None:
 
 def test_read_dominance_ratio_none_when_no_terminators(tmp_path: Path) -> None:
     """No line terminators ⇒ dominance_ratio should be None."""
-    f: Path = tmp_path / "single_line.py"
-    f.write_text("print('solo')", encoding="utf-8")
+    file: Path = tmp_path / "single_line.py"
+    file.write_text("print('solo')", encoding="utf-8")
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
 
     assert ctx.file_type is not None
@@ -352,11 +369,12 @@ def test_read_dominance_ratio_none_when_no_terminators(tmp_path: Path) -> None:
 def test_read_only_blank_lines(tmp_path: Path, line_end: str, expected: str) -> None:
     """Reader must resolve files that contain only blank lines with a consistent newline style."""
     content: str = f"{line_end}{line_end}{line_end}"  # three blank lines
-    f: Path = tmp_path / ("only_blank_lf.py" if line_end == "\n" else "only_blank_crlf.py")
-    with f.open("w", encoding="utf-8", newline="") as fh:
+    file: Path = tmp_path / ("only_blank_lf.py" if line_end == "\n" else "only_blank_crlf.py")
+    with file.open("w", encoding="utf-8", newline="") as fh:
         fh.write(content)
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
 
     assert ctx.file_type is not None
@@ -373,11 +391,12 @@ def test_read_only_blank_lines(tmp_path: Path, line_end: str, expected: str) -> 
 def test_read_cr_only_without_final_newline(tmp_path: Path) -> None:
     """Reader must support CR-only files even when the last line has no terminator."""
     content = "line1\rline2\rline3"  # last line has no CR
-    f: Path = tmp_path / "cr_only_no_final.py"
-    with f.open("w", encoding="utf-8", newline="") as fh:
+    file: Path = tmp_path / "cr_only_no_final.py"
+    with file.open("w", encoding="utf-8", newline="") as fh:
         fh.write(content)
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
 
     assert ctx.file_type is not None
@@ -395,12 +414,13 @@ def test_read_mixed_newlines_diagnostic_contains_histogram(tmp_path: Path) -> No
     """Reader diagnostics should include a histogram hint when mixed line endings are detected."""
     # 2x CRLF + 1x LF to create a clear histogram
     content = "a\r\nb\r\nc\n"
-    f: Path = tmp_path / "diag_histogram_mixed.py"
-    with f.open("w", encoding="utf-8", newline="") as fh:
+    file: Path = tmp_path / "diag_histogram_mixed.py"
+    with file.open("w", encoding="utf-8", newline="") as fh:
         fh.write(content)
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
 
     assert ctx.file_type is not None
@@ -428,12 +448,13 @@ def test_read_handles_very_large_single_line_no_newline(tmp_path: Path) -> None:
     # Construct a ~200KB single line without a newline
     chunk: str = "x" * 1000
     content: str = chunk * 200  # ~200k chars
-    f: Path = tmp_path / "very_large_single_line.py"
-    with f.open("w", encoding="utf-8", newline="") as fh:
+    file: Path = tmp_path / "very_large_single_line.py"
+    with file.open("w", encoding="utf-8", newline="") as fh:
         fh.write(content)
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
     ctx = run_resolver(ctx)
 
     assert ctx.file_type is not None

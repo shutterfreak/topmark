@@ -35,6 +35,7 @@ if TYPE_CHECKING:
 
     import pytest
 
+    from topmark.config.model import Config
     from topmark.core.exit_codes import ExitCode
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.protocols import Step
@@ -72,7 +73,7 @@ def _run_cli_like(
     draft.files = [str(anchor)]  # seed positional inputs
     if file_types:
         draft.file_types = set(file_types)
-    cfg: api.Config = draft.freeze()
+    cfg: Config = draft.freeze()
     files: list[Path] = resolve_file_list(cfg)
     results: list[ProcessingContext]
     _exit_code: ExitCode | None
@@ -186,8 +187,8 @@ def test_discovery_anchor_subdir_nearest_wins(tmp_path: Path) -> None:
 
 def test_root_true_stops_traversal(tmp_path: Path) -> None:
     """root=true in parent prevents overrides from ancestors."""
-    root: api.Path = tmp_path / "root"
-    sub: api.Path = root / "sub"
+    root: Path = tmp_path / "root"
+    sub: Path = root / "sub"
     _write(sub / "c.py", _mk_py_headerless())
 
     # Parent declares align_fields=false and root=true (stop traversal above this dir)
@@ -205,7 +206,7 @@ def test_root_true_stops_traversal(tmp_path: Path) -> None:
     )
 
     # Grandparent tries to flip to true (should be ignored due to root=true below)
-    grand: api.Path = tmp_path
+    grand: Path = tmp_path
     _write(
         grand / "topmark.toml",
         textwrap.dedent(

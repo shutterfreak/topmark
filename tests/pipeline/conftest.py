@@ -28,9 +28,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
 from typing_extensions import NotRequired, Required, TypedDict
 
-from tests.conftest import fixture
+from topmark.config.policy import PolicyRegistry, make_policy_registry
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.pipelines import CHECK_PATCH_PIPELINE, CHECK_SUMMMARY_PIPELINE
 from topmark.pipeline.processors import get_processor_for_file, register_all_processors
@@ -113,6 +114,16 @@ def run_writer(ctx: ProcessingContext) -> ProcessingContext:
     return WriterStep()(ctx)
 
 
+def make_pipeline_context(path: Path, cfg: Config) -> ProcessingContext:
+    """Return a ProcessingContext seeded with a PolicyRegistry for a given path."""
+    policy_registry: PolicyRegistry = make_policy_registry(cfg)
+    return ProcessingContext.bootstrap(
+        path=path,
+        config=cfg,
+        policy_registry=policy_registry,
+    )
+
+
 def make_context_from_text(
     text: str,
     *,
@@ -148,7 +159,7 @@ def make_context_from_text(
     Returns:
         ProcessingContext: A context suitable for running post-reader steps.
     """
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=path, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(path=path, cfg=cfg)
 
     # Resolve and attach processor/file type using the normal registry helper.
     proc: HeaderProcessor | None = get_processor_for_file(path=path)
@@ -210,7 +221,7 @@ def coerce_newlines(
     return out
 
 
-@fixture(scope="module", autouse=True)
+@pytest.fixture(scope="module", autouse=True)
 def register_processors_for_this_package() -> None:
     """Ensure all header processors are registered for processor tests.
 
@@ -290,8 +301,7 @@ def run_insert(path: Path, cfg: Config) -> ProcessingContext:
     Returns:
         ProcessingContext: The updated ``ProcessingContext`` with ``updated_file_lines`` set.
     """
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=path, config=cfg)
-
+    ctx: ProcessingContext = make_pipeline_context(path=path, cfg=cfg)
     run_steps(ctx, CHECK_SUMMMARY_PIPELINE + (PlannerStep(),))
 
     return ctx
@@ -311,8 +321,7 @@ def run_insert_diff(path: Path, cfg: Config) -> ProcessingContext:
     Returns:
         ProcessingContext: The updated ``ProcessingContext`` with ``updated_file_lines`` set.
     """
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=path, config=cfg)
-
+    ctx: ProcessingContext = make_pipeline_context(path=path, cfg=cfg)
     run_steps(ctx, CHECK_PATCH_PIPELINE + (PlannerStep(),))
 
     return ctx
@@ -329,15 +338,14 @@ def run_strip(path: Path, cfg: Config) -> ProcessingContext:
         ProcessingContext: The updated ``ProcessingContext`` with ``updated_file_lines`` set
         to the stripped content.
     """
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=path, config=cfg)
-
+    ctx: ProcessingContext = make_pipeline_context(path=path, cfg=cfg)
     run_steps(ctx, STRIP_STEPS)
     return ctx
 
 
 def run_scan(path: Path, cfg: Config) -> ProcessingContext:
     """Run just the discovery/scan steps to populate header and content views."""
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=path, config=cfg)
+    ctx: ProcessingContext = make_pipeline_context(path=path, cfg=cfg)
     run_steps(ctx, SCAN_STEPS)
     return ctx
 

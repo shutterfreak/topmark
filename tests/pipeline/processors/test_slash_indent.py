@@ -36,6 +36,7 @@ from tests.pipeline.conftest import (
     run_insert,
 )
 from topmark.config import Config, MutableConfig
+from topmark.config.policy import PolicyRegistry, make_policy_registry
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline import runner
 from topmark.pipeline.context.model import ProcessingContext
@@ -56,14 +57,14 @@ def test_jsonc_insert_at_top_with_no_pre_prefix_indent(tmp_path: Path) -> None:
     The header must be inserted before that line, starting at index 0, and
     header lines must begin with ``//`` (no leading spaces).
     """
-    f: Path = tmp_path / "settings.json"
-    f.write_text('// user note\n{\n  "a": 1\n}\n', encoding="utf-8")
+    file: Path = tmp_path / "settings.json"
+    file.write_text('// user note\n{\n  "a": 1\n}\n', encoding="utf-8")
 
     cfg: Config = MutableConfig.from_defaults().freeze()
-    ctx: ProcessingContext = run_insert(f, cfg)
+    ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
-    sig: BlockSignatures = expected_block_lines_for(f)
+    sig: BlockSignatures = expected_block_lines_for(file)
 
     # Header starts at the very top
     assert find_line(lines, sig["start_line"]) == 0
@@ -85,22 +86,29 @@ def test_jsonc_replace_preserves_pre_prefix_indent(tmp_path: Path) -> None:
     verify the replacement retains those four spaces, while using the processor's
     standard after-prefix spacing for the field lines.
     """
-    f: Path = tmp_path / "indented.json"
+    file_name: str = "indented.json"
+    file: Path = tmp_path / file_name
     indent = "    "  # four spaces before prefix
     seeded: str = (
         f"{indent}// {TOPMARK_START_MARKER}\n"
         f"{indent}//\n"
-        f"{indent}//   file        : indented.json\n"
+        f"{indent}//   file        : {file_name}\n"
         f"{indent}//   license     : MIT\n"
         f"{indent}//\n"
         f"{indent}// {TOPMARK_END_MARKER}\n"
         '{\n  "k": 1\n}\n'
     )
-    f.write_text(seeded, encoding="utf-8")
+    file.write_text(seeded, encoding="utf-8")
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     # Run the full check pipeline to exercise scan + replace
-    ctx: ProcessingContext = ProcessingContext.bootstrap(path=f, config=cfg)
+    policy_registry: PolicyRegistry = make_policy_registry(cfg)
+    ctx: ProcessingContext = ProcessingContext.bootstrap(
+        path=file,
+        config=cfg,
+        policy_registry=policy_registry,
+    )
+
     pipeline: Sequence[Step] = Pipeline.CHECK_APPLY.steps
     ctx = runner.run(ctx, pipeline, prune=False)
 
@@ -134,19 +142,20 @@ def test_jsonc_replace_preserves_pre_prefix_indent(tmp_path: Path) -> None:
 @mark_pipeline
 def test_jsonc_replace_keeps_crlf_and_indent(tmp_path: Path) -> None:
     """Replacement keeps CRLF line endings and preserved pre-prefix indent."""
-    f: Path = tmp_path / "crlf_indented.json"
+    file_name: str = "crlf_indented.json"
+    file: Path = tmp_path / file_name
     indent = "\t\t"  # tabs are allowed as pre-prefix indent
-    with f.open("w", encoding="utf-8", newline="\r\n") as fp:
+    with file.open("w", encoding="utf-8", newline="\r\n") as fp:
         fp.write(
             f"{indent}// {TOPMARK_START_MARKER}\n"
             f"{indent}//\n"
-            f"{indent}//   file: crlf_indented.json\n"
+            f"{indent}//   file: {file_name}\n"
             f"{indent}//\n"
             f"{indent}// {TOPMARK_END_MARKER}\n"
             '{\n  "x": 2\n}\n'
         )
 
-    ctx: ProcessingContext = run_insert(f, MutableConfig.from_defaults().freeze())
+    ctx: ProcessingContext = run_insert(file, MutableConfig.from_defaults().freeze())
     out: list[str] = materialize_updated_lines(ctx)
 
     # Preserve CRLF
