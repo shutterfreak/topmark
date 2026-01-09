@@ -136,6 +136,22 @@ class Intent(Enum):
 
 
 def determine_intent(r: ProcessingContext) -> Intent:
+    """Derive the high-level intent for bucketing from the current context.
+
+    Intent is inferred from statuses that indicate what the pipeline is trying
+    to do for this file:
+
+    - STRIP: the strip axis is non-pending (strip pipeline ran).
+    - INSERT: header axis indicates a missing header.
+    - UPDATE: header axis is decided (not PENDING) and not missing.
+    - NONE: insufficient information to infer an action (early termination).
+
+    Args:
+        r (ProcessingContext): The processing context.
+
+    Returns:
+        Intent: The inferred bucketing intent.
+    """
     if r.status.strip != StripStatus.PENDING:
         return Intent.STRIP
     if r.status.header == HeaderStatus.MISSING:
@@ -167,11 +183,29 @@ _OUTCOME_COLOR: dict[Outcome, FormatCallable] = {
 
 
 def outcome_color(o: Outcome) -> FormatCallable:
+    """Return the formatter used to colorize a given outcome."""
     return _OUTCOME_COLOR[o]
 
 
 @dataclass
 class ResultBucket:
+    """Outcome + human label used for CLI/API bucketing.
+
+    The bucket is a small value object that couples a public `Outcome` with an
+    optional human-facing label used in summaries.
+
+    Args:
+        outcome (Outcome | None): The classified outcome to set. If ``None``,
+            the default value is preserved.
+        reason (str | None): Human-facing bucket label (summary text). If
+            ``None``, the default value is preserved.
+
+    Attributes:
+        outcome (Outcome): The classified outcome.
+        reason (str | None): Human-facing bucket label (summary text). This is
+            intentionally independent of internal debug tracing.
+    """
+
     outcome: Outcome = Outcome.PENDING
     reason: str | None = None
 
@@ -188,68 +222,165 @@ class ResultBucket:
 
 
 def map_bucket(r: ProcessingContext, *, apply: bool) -> ResultBucket:
-    """Maps a bucket to an Outcome."""
-    _i: int = 0
+    """Map a file context to a public bucket (Outcome + label).
 
-    def dl(k: str, lbl: str) -> str:
-        return f"[{k}] {lbl}"
+    This function is precedence-ordered: the first matching rule wins. The ordering
+    matters because some axes may remain PENDING depending on the chosen pipeline
+    (for example, strip pipelines may omit comparison).
 
+    Precedence (high → low):
+        1) Hard skips/errors (resolve/fs/content fatal states).
+        2) Content-level soft skips (mixed newlines / BOM-before-shebang / reflow).
+        3) Empty-file default compliance: empty files are UNCHANGED unless policy allows
+           inserting headers into empty files.
+        4) Strip intent mapping based on the strip axis (READY/NOT_NEEDED/FAILED). This
+           must not depend on comparison.
+        5) Malformed headers that TopMark cannot safely interpret.
+        6) Policy veto (add-only / update-only).
+        7) Comparison/write outcomes (UNCHANGED/CHANGED and write WRITTEN/FAILED).
+        8) Dry-run previews and remaining fallbacks (NO_FIELDS, plan skipped).
+        9) Pending (no rule matched).
+
+    Args:
+        r (ProcessingContext): The per-file pipeline context.
+        apply (bool): Whether the run is in apply mode.
+
+    Returns:
+        ResultBucket: Bucket containing public Outcome and a human label.
+    """
     intent: Intent = determine_intent(r)
-    logger.info("intent: %s; apply: %s; status: %s", intent.value, apply, r.status)
+    logger.trace("intent: %s; apply: %s; status: %s", intent.value, apply, r.status)
 
-    # 1a) hard skips/errors first
+    def ret(tag: str, *, outcome: Outcome, reason: str | None) -> ResultBucket:
+        """Return a bucket while emitting a structured debug trace.
+
+        The `tag` is debug-only and is intended to make it easy to locate the
+        matching precedence branch in logs.
+
+        Args:
+            tag (str): Stable debug tag for the matching branch.
+            outcome (Outcome): Public outcome for CLI/API.
+            reason (str | None): Human-facing bucket label.
+
+        Returns:
+            ResultBucket: Constructed bucket.
+        """
+        logger.debug(
+            "bucket[%s] intent=%s apply=%s outcome=%s reason=%s",
+            tag,
+            intent.value,
+            apply,
+            outcome.value,
+            reason or NO_REASON_PROVIDED,
+        )
+        return ResultBucket(outcome=outcome, reason=reason)
+
+    # --- 1) Hard skips/errors (resolve/fs/content fatal states) ---
     if r.status.resolve != ResolveStatus.RESOLVED:
-        reason: str = dl("01", r.status.resolve.value)
-        return ResultBucket(outcome=Outcome.SKIPPED, reason=reason)
+        return ret(
+            "skip:resolve",
+            outcome=Outcome.SKIPPED,
+            reason=r.status.resolve.value,
+        )
     if r.status.fs in {FsStatus.NOT_FOUND, FsStatus.NO_READ_PERMISSION, FsStatus.UNREADABLE}:
-        reason = dl("02", r.status.fs.value)
-        return ResultBucket(outcome=Outcome.ERROR, reason=reason)
+        return ret(
+            "error:fs-read",
+            outcome=Outcome.ERROR,
+            reason=r.status.fs.value,
+        )
     if apply and r.status.fs == FsStatus.NO_WRITE_PERMISSION:
-        reason = dl("03", r.status.fs.value)
-        return ResultBucket(outcome=Outcome.ERROR, reason=reason)
+        return ret(
+            "error:fs-write",
+            outcome=Outcome.ERROR,
+            reason=r.status.fs.value,
+        )
     if r.status.content in {
         ContentStatus.PENDING,
         ContentStatus.UNSUPPORTED,
         ContentStatus.UNREADABLE,
     }:
-        reason = dl("04", r.status.content.value)
-        return ResultBucket(outcome=Outcome.SKIPPED, reason=reason)
+        return ret(
+            "skip:content",
+            outcome=Outcome.SKIPPED,
+            reason=r.status.content.value,
+        )
 
-    # 1b) The following entries may be overridden by policy (TODO):
+    # --- 2) Content-level soft skips (may be policy-overridable) ---
     if r.status.content in {
         ContentStatus.SKIPPED_MIXED_LINE_ENDINGS,
         ContentStatus.SKIPPED_POLICY_BOM_BEFORE_SHEBANG,
         ContentStatus.SKIPPED_REFLOW,
     }:
-        reason = dl("05", r.status.content.value)
-        return ResultBucket(outcome=Outcome.SKIPPED, reason=reason)
+        return ret(
+            "skip:content-soft",
+            outcome=Outcome.SKIPPED,
+            reason=r.status.content.value,
+        )
 
-    # 1c) Empty files without an "allow_header_in_empty_files" policy override
-    #     are treated as compliant (ignored by the compliance check).
-    #     We still surface the "File is empty." warning for visibility, but
-    #     they should not be marked as WOULD_INSERT / MUST_UPDATE.
+    # --- 3) Empty-file default compliance ---
+    # Empty files are compliant by default (not a non-compliance). If policy allows inserting
+    # into empties, `can_change(r)` will be True and we fall through to normal change bucketing.
     if r.status.fs == FsStatus.EMPTY and not can_change(r):
-        reason = dl("04e", "empty_file")
-        return ResultBucket(outcome=Outcome.UNCHANGED, reason=reason)
+        return ret(
+            "unchanged:empty-default",
+            outcome=Outcome.UNCHANGED,
+            reason="empty_file",
+        )
 
+    # --- 4) Strip mapping (strip pipelines may omit comparer; do not depend on comparison) ---
+    if intent == Intent.STRIP:
+        if r.status.strip == StripStatus.READY:
+            return ret(
+                "strip:ready",
+                outcome=Outcome.STRIPPED if apply else Outcome.WOULD_STRIP,
+                reason=r.status.strip.value,
+            )
+        if r.status.strip == StripStatus.NOT_NEEDED:
+            return ret(
+                "strip:not-needed",
+                outcome=Outcome.UNCHANGED,
+                reason=r.status.strip.value,
+            )
+        if r.status.strip == StripStatus.FAILED:
+            return ret(
+                "strip:failed",
+                outcome=Outcome.ERROR,
+                reason=r.status.strip.value,
+            )
+
+    # --- 5) Malformed header that TopMark cannot safely interpret ---
     if r.status.header == HeaderStatus.MALFORMED:
-        reason = dl("20", r.status.header.value)
-        return ResultBucket(outcome=Outcome.ERROR, reason=reason)
+        return ret(
+            "error:header-malformed",
+            outcome=Outcome.ERROR,
+            reason=r.status.header.value,
+        )
 
-    # Policy
+    # --- 6) Policy veto (add-only / update-only) ---
+    # Policy veto is tri-state: False means forbidden; True/None both mean “not vetoed”.
     permitted_by_policy: bool | None = check_permitted_by_policy(r)
     if permitted_by_policy is False:
-        reason = "skipped by policy"
-        return ResultBucket(outcome=Outcome.SKIPPED, reason=reason)
+        return ret(
+            "skip:policy",
+            outcome=Outcome.SKIPPED,
+            reason="skipped by policy",
+        )
 
-    logger.info("map_bucket: not forbidden by policy, permitted is %s", permitted_by_policy)
+    logger.debug("map_bucket: permitted_by_policy=%s", permitted_by_policy)
 
-    # 4) unchanged
+    header_lbl: str = r.status.header.value
+    comparison_lbl: str = r.status.comparison.value
+    strip_lbl: str = r.status.strip.value
+
+    # --- 7) Comparison/write outcomes ---
     if r.status.comparison == ComparisonStatus.UNCHANGED:
-        reason = dl("13", "up-to-date")
-        return ResultBucket(outcome=Outcome.UNCHANGED, reason=reason)
+        return ret(
+            "unchanged:up-to-date",
+            outcome=Outcome.UNCHANGED,
+            reason="up-to-date",
+        )
 
-    # Pre-compute the Outcome value for a change (makes only sense when change detected):
+    # Compute the Outcome value for a change (only meaningful when change is intended/detected).
     outcome_if_changed: Outcome
     if apply:
         if intent == Intent.STRIP:
@@ -270,74 +401,98 @@ def map_bucket(r: ProcessingContext, *, apply: bool) -> ResultBucket:
         else:
             outcome_if_changed = Outcome.WOULD_CHANGE
 
-    reason_if_changed: str = f"{r.status.header.value}, {r.status.comparison.value}"
+    reason_if_changed: str = f"{header_lbl}, {comparison_lbl}"
 
-    # 2) written (implies 'apply' path)
+    # Apply path: the writer has the final word.
     if r.status.write == WriteStatus.WRITTEN:
-        reason = dl("06", reason_if_changed)
-        return ResultBucket(
+        return ret(
+            "changed:written",
             outcome=outcome_if_changed,
-            reason=reason,
+            reason=reason_if_changed,
         )
     if r.status.write == WriteStatus.FAILED:
-        reason = dl("07", r.status.write.value)
-        return ResultBucket(
+        return ret(
+            "error:write",
             outcome=Outcome.ERROR,
-            reason=reason,
+            reason=r.status.write.value,
         )
 
+    # Changed comparison: map to the appropriate change outcome.
     if r.status.comparison == ComparisonStatus.CHANGED:
         if intent == Intent.STRIP:
-            reason = dl("08.1", f"{r.status.header.value}, {r.status.strip.value}")
+            return ret(
+                "changed:strip",
+                outcome=outcome_if_changed,
+                reason=f"{header_lbl}, {strip_lbl}",
+            )
         elif intent in (Intent.INSERT, Intent.UPDATE):
-            reason = dl("08.2", r.status.header.value)
+            return ret(
+                "changed:header",
+                outcome=outcome_if_changed,
+                reason=header_lbl,
+            )
         else:
-            reason = dl("08.3", reason_if_changed)
-        return ResultBucket(
-            outcome=outcome_if_changed,
-            reason=reason,
-        )
+            return ret(
+                "changed:generic",
+                outcome=outcome_if_changed,
+                reason=reason_if_changed,
+            )
 
-    # 3) dry-run; or effective intent without writes
+    # --- 8) Dry-run previews and remaining fallbacks ---
     if not apply:
         if intent in (Intent.INSERT, Intent.UPDATE):
             if effective_would_add_or_update(r):
-                reason = dl("09", r.status.header.value)
-                return ResultBucket(outcome=outcome_if_changed, reason=reason)
-            reason = dl("10", r.status.header.value)
-            return ResultBucket(outcome=outcome_if_changed, reason=reason)
+                return ret(
+                    "would-change:header",
+                    outcome=outcome_if_changed,
+                    reason=header_lbl,
+                )
+            return ret(
+                "would-change:header-fallthrough",
+                outcome=outcome_if_changed,
+                reason=header_lbl,
+            )
         if intent == Intent.STRIP:
             if effective_would_strip(r):
-                reason = dl("11", r.status.header.value)
-                return ResultBucket(outcome=outcome_if_changed, reason=reason)
+                # Prefer the strip axis label for summaries.
+                return ret(
+                    "would-strip",
+                    outcome=outcome_if_changed,
+                    reason=StripStatus.READY.value,
+                )
             if r.status.strip == StripStatus.NOT_NEEDED:
-                reason = r.status.strip.value
-                return ResultBucket(outcome=Outcome.UNCHANGED, reason=reason)
+                return ret(
+                    "unchanged:strip-not-needed",
+                    outcome=Outcome.UNCHANGED,
+                    reason=r.status.strip.value,
+                )
         if r.status.plan == PlanStatus.PREVIEWED:
-            reason = dl("12", reason_if_changed)
-            return ResultBucket(
+            return ret(
+                "preview:plan",
                 outcome=outcome_if_changed,
-                reason=reason,
+                reason=reason_if_changed,
             )
 
     if r.status.generation == GenerationStatus.NO_FIELDS:
-        reason = dl("14", r.status.generation.value)
-        return ResultBucket(outcome=Outcome.UNCHANGED, reason=reason)
+        return ret(
+            "unchanged:no-fields",
+            outcome=Outcome.UNCHANGED,
+            reason=r.status.generation.value,
+        )
 
     if r.status.plan in (
         PlanStatus.SKIPPED,
         PlanStatus.FAILED,
     ):
-        reason = dl("15", r.status.plan.value)
-        return ResultBucket(
+        return ret(
+            "skip:plan",
             outcome=Outcome.SKIPPED,
-            reason=reason,  # or other e.g. reason_if_changed?
+            reason=r.status.plan.value,  # or other e.g. reason_if_changed?
         )
 
-    # 5) pending (optional)
-    # If you prefer to collapse this to 'unchanged', return "unchanged" here instead.
-    reason = dl("16", NO_REASON_PROVIDED)
-    return ResultBucket(outcome=Outcome.PENDING, reason=reason)  # "pending"
+    # --- 9) Pending (optional) ---
+    # If you prefer to collapse this to UNCHANGED, return that here instead.
+    return ret("pending", outcome=Outcome.PENDING, reason=NO_REASON_PROVIDED)
 
 
 def collect_outcome_counts(

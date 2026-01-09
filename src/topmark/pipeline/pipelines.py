@@ -108,25 +108,24 @@ CHECK_APPLY_PATCH_PIPELINE: Final[tuple[Step, ...]] = CHECK_SUMMMARY_PIPELINE + 
     writer.WriterStep(),  # Write changes to file/stdout
 )
 
+# NOTE: we do not run ComparerStep in a strip pipeline
 STRIP_PIPELINE: Final[tuple[Step, ...]] = SCAN_PIPELINE + (
     stripper.StripperStep(),  # Strip the header from the file
 )
 
-STRIP_SUMMMARY_PIPELINE: Final[tuple[Step, ...]] = STRIP_PIPELINE + (
-    comparer.ComparerStep(),  # Compare existing header with rendered new header
-)
-
 # Only for generating unified diffs:
-STRIP_PATCH_PIPELINE: Final[tuple[Step, ...]] = STRIP_SUMMMARY_PIPELINE + (
+STRIP_PATCH_PIPELINE: Final[tuple[Step, ...]] = STRIP_PIPELINE + (
+    comparer.ComparerStep(),  # Compare existing header with rendered stripped header
     planner.PlannerStep(),  # Update the file
     patcher.PatcherStep(),  # Generate unified diff (needs comparer.compare)
 )
 
-STRIP_APPLY_PIPELINE: Final[tuple[Step, ...]] = STRIP_SUMMMARY_PIPELINE + (
+STRIP_APPLY_PIPELINE: Final[tuple[Step, ...]] = STRIP_PIPELINE + (
     planner.PlannerStep(),  # Update the file
     writer.WriterStep(),  # Write changes to file/stdout
 )
-STRIP_APPLY_PATCH_PIPELINE: Final[tuple[Step, ...]] = STRIP_SUMMMARY_PIPELINE + (
+STRIP_APPLY_PATCH_PIPELINE: Final[tuple[Step, ...]] = STRIP_PIPELINE + (
+    comparer.ComparerStep(),  # Compare existing header with rendered stripped header
     planner.PlannerStep(),  # Update the file
     patcher.PatcherStep(),  # Generate unified diff (needs comparer.compare)
     writer.WriterStep(),  # Write changes to file/stdout
@@ -148,7 +147,7 @@ class Pipeline(tuple[Step, ...], Enum):
     CHECK_PATCH = CHECK_PATCH_PIPELINE
 
     # "strip" maps to the summary pipeline in the current PIPELINES dict
-    STRIP = STRIP_SUMMMARY_PIPELINE
+    STRIP = STRIP_PIPELINE
     STRIP_APPLY = STRIP_APPLY_PIPELINE
     STRIP_APPLY_PATCH = STRIP_APPLY_PATCH_PIPELINE
     STRIP_PATCH = STRIP_PATCH_PIPELINE
