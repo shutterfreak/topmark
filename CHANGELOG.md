@@ -16,6 +16,99 @@ All notable changes to this project will be documented in this file. This projec
 [Semantic Versioning](https://semver.org/) and follows a Keep‑a‑Changelog–style structure with the
 sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
+## [0.11.0] – 2026-01-15
+
+This release introduces a set of **internal architectural improvements** that strengthen
+policy correctness, STDIN handling, and CLI/API parity. While user-facing behavior remains
+compatible with the 0.10.x series, there is an **intentional internal breaking change** for
+integrators relying on TopMark internals.
+
+______________________________________________________________________
+
+### ⚠️ BREAKING CHANGES (internal)
+
+- **PolicyRegistry is now mandatory at pipeline bootstrap time**
+
+  - `ProcessingContext.bootstrap()` now **requires a `PolicyRegistry` argument**.
+  - Internal callers must construct a `PolicyRegistry` from the resolved `Config` and pass it
+    explicitly when bootstrapping a context.
+  - This removes ad-hoc policy resolution, eliminates repeated per-context merging, and guarantees
+    deterministic effective policy selection across all pipeline steps.
+
+  > **Note:** This affects **internal and test code only**. The public API
+  > (`topmark.api.check`, `topmark.api.strip`, CLI commands) remains source-compatible.
+
+______________________________________________________________________
+
+### Changed
+
+- **Policy evaluation**
+
+  - Introduced `PolicyRegistry` to precompute effective policies (global + per-file-type) once per
+    run.
+  - Centralized all effective-policy lookups via `ctx.get_effective_policy()`.
+  - Removed per-context caching and `None`-guarded policy fallbacks.
+  - Ensured strip eligibility and guidance are based on the strip axis and effective policy,
+    independent of comparison status.
+
+- **Outcome bucketing**
+
+  - Refactored outcome bucketing into a **precedence-ordered classifier** with first-match-wins
+    semantics.
+  - Added stable debug tags (`bucket[...]`) for easier diagnosis of complex bucketing paths.
+  - Normalized bucket labels and reduced duplication across header/comparison/strip reasons.
+
+- **CLI / config / runtime alignment**
+
+  - Unified write-mode semantics across CLI, config, and writer:
+    - CLI `write_mode` now cleanly maps to `OutputTarget` + `FileWriteStrategy`.
+    - STDIN content mode consistently forces STDOUT output and clears file write strategies.
+    - Explicit diagnostics are emitted when config or CLI settings are overridden due to STDIN.
+  - Renamed `stdin` → `stdin_mode` throughout CLI, config, API, and runtime for clarity.
+  - Propagated `stdin_filename` so STDIN-backed runs participate correctly in config discovery,
+    policy evaluation, and file resolution.
+  - Centralized STDIN-related normalization in `MutableConfig.sanitize()` to enforce invariants
+    before freezing and avoid duplicated CLI-only logic.
+
+- **Enums & config parsing**
+
+  - Introduced a stable, machine-keyed enum pattern (`KeyedStrEnum`) for config-facing enums
+    (`OutputTarget`, `FileWriteStrategy`).
+  - Decoupled machine identifiers from human-readable labels and removed brittle
+    string/Literal-based parsing.
+  - Standardized `.parse()` helpers for config and CLI normalization.
+
+- **Writer behavior**
+
+  - Updated `WriterStep.may_proceed()` to respect apply intent, output target, and STDIN mode
+    consistently instead of relying on ad-hoc checks.
+  - Ensured writer eligibility rules are enforced uniformly across CLI and API runs.
+
+- **API runtime parity**
+
+  - Aligned API runtime behavior with CLI behavior by applying the same config discovery,
+    normalization, and policy overlays.
+
+### Fixed
+
+- **CLI guidance correctness**
+  - Made `check` and `strip` per-file guidance policy-aware and feasibility-aware.
+  - Prevented misleading “run --apply …” suggestions when policy or feasibility blocks changes,
+    especially for empty files and strip-only scenarios.
+
+### Tests
+
+- Updated pipeline and API tests to bootstrap contexts via `PolicyRegistry`.
+- Added shared helpers to keep test setup DRY and consistent across pipeline, API, and CLI tests.
+
+______________________________________________________________________
+
+### Notes
+
+- There are **no user-facing breaking changes** relative to 0.10.x.
+- The public API surface remains stable, but **internal consumers and test harnesses must be
+  updated** to construct and pass a `PolicyRegistry` when bootstrapping pipeline contexts.
+
 ## [0.10.1] – 2025-11-20
 
 This patch release republishes the intended `0.10.0` release with two commits that were accidentally omitted from the PyPI artifact.\
