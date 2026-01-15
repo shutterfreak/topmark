@@ -51,14 +51,14 @@ repos:
         pass_filenames: true
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.5
+    rev: v0.14.13
     hooks:
       - id: ruff-format
       - id: ruff-check
 
   # Project-specific header checker (after formatters)
   - repo: https://github.com/shutterfreak/topmark
-    rev: v0.10.1
+    rev: v0.11.0
     hooks:
       - id: topmark-check
         # files: '\.(py|md|toml|ya?ml|sh|Makefile)$'
@@ -68,7 +68,7 @@ repos:
 
   # Docstring semantics
   - repo: https://github.com/jsh9/pydoclint
-    rev: 0.8.1
+    rev: 0.8.3
     hooks:
       - id: pydoclint
         args: ["-q"]
@@ -93,13 +93,13 @@ repos:
 
   # Type checker last
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.407
+    rev: v1.1.408
     hooks:
       - id: pyright
 
   # Makefile linting and formatting
   - repo: https://github.com/EbodShojaei/bake
-    rev: v1.4.3
+    rev: v1.4.4
     hooks:
       - id: mbake-format
         # files: (^|/)(M|m)akefile$|GNUMakefile$|\.mak$
