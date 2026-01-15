@@ -354,9 +354,9 @@ def _select_sink(ctx: ProcessingContext) -> WriteSink:
     """Pick the appropriate sink for this write operation.
 
     Selection rules:
-      * If `ctx.config.output_target == OutputTarget.STDOUT` **or** `ctx.config.stdin` →
-        `StdoutSink` (emit updated content to standard output). This path ignores
-        `apply_changes` because it does not mutate the filesystem.
+      * If `ctx.config.output_target == OutputTarget.STDOUT` → `StdoutSink`
+        (emit updated content to standard output). This path ignores `apply_changes`
+        because it does not mutate the filesystem.
       * Else (target is file):
           - If `ctx.config.apply_changes` is falsy → `NullSink` (preview/no‑write).
           - Otherwise select the file sink by strategy:
@@ -364,11 +364,12 @@ def _select_sink(ctx: ProcessingContext) -> WriteSink:
               · `FileWriteStrategy.ATOMIC`    → `AtomicFileSink` (default)
 
     Notes:
+      * Output target is configured and set at config resolution.
       * The *destination* (stdout vs file) is orthogonal to the *write strategy*.
       * `apply_changes` only matters for file targets; it is ignored for stdout.
     """
     # Destination: stdout takes precedence and ignores apply_changes.
-    if ctx.config.output_target == OutputTarget.STDOUT or ctx.config.stdin is True:
+    if ctx.config.output_target == OutputTarget.STDOUT:
         logger.info("--> Writer selected StdoutSink")
         return StdoutSink()
 
@@ -378,7 +379,7 @@ def _select_sink(ctx: ProcessingContext) -> WriteSink:
         return NullSink()
 
     # Apply to file using the configured strategy (default: atomic).
-    if ctx.config.file_write_strategy == FileWriteStrategy.IN_PLACE:
+    if ctx.config.file_write_strategy == FileWriteStrategy.INPLACE:
         # In-place writer (faster)
         logger.info("--> Writer selected InplaceFileSink")
         return InplaceFileSink()
@@ -429,6 +430,25 @@ class WriterStep(BaseStep):
         """
         if ctx.is_halted:
             return False
+
+        # Require an updated image.
+        updated_view: UpdatedView | None = ctx.views.updated
+        updated_view_exists: bool = updated_view is not None and updated_view.lines is not None
+        if not updated_view_exists:
+            return False
+
+        # STDOUT target is non-mutating. Allow emitting updated content even when
+        # `apply_changes` is False (preview) and even when filesystem feasibility
+        # would block an on-disk write.
+        if ctx.config.output_target == OutputTarget.STDOUT:
+            return ctx.status.plan in {
+                PlanStatus.PREVIEWED,
+                PlanStatus.INSERTED,
+                PlanStatus.REPLACED,
+                PlanStatus.REMOVED,
+            }
+
+        # File target: only write when the caller explicitly enabled apply mode.
         if not ctx.config.apply_changes:
             return False
 
@@ -438,11 +458,6 @@ class WriterStep(BaseStep):
             PlanStatus.REPLACED,
             PlanStatus.REMOVED,
         }:
-            return False
-
-        # Require an updated image and an affirmative feasibility guard.
-        updated_view: UpdatedView | None = ctx.views.updated
-        if updated_view is None or updated_view.lines is None:
             return False
 
         return can_change(ctx) is True
@@ -461,7 +476,12 @@ class WriterStep(BaseStep):
         """
         logger.debug("ctx: %s", ctx)
 
-        if ctx.status.plan == PlanStatus.PREVIEWED:
+        # In preview mode we normally skip writes. However, when the configured
+        # destination is STDOUT, previewing means "emit the updated content".
+        if (
+            ctx.status.plan == PlanStatus.PREVIEWED
+            and ctx.config.output_target != OutputTarget.STDOUT
+        ):
             ctx.status.write = WriteStatus.SKIPPED
             return
 

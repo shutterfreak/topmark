@@ -196,7 +196,7 @@ def resolve_file_list(config: Config) -> list[Path]:
 
     files_from_sources: tuple[PatternSource, ...] = config.files_from
 
-    stdin_flag: bool = config.stdin or False
+    stdin_flag: bool = config.stdin_mode or False
 
     workspace_root: Path | None = config.relative_to
     # Defensive fallback only; in normal operation resolve_config_from_click() sets this.

@@ -44,7 +44,8 @@ def resolve_config_from_click(
     write_mode: str | None,
     files: list[str],
     files_from: list[str],
-    stdin: bool,
+    stdin_mode: bool,
+    stdin_filename: str | None,
     include_patterns: list[str],
     include_from: list[str],
     exclude_patterns: list[str],
@@ -85,7 +86,8 @@ def resolve_config_from_click(
             or writing to STDOUT (default: atomic writer).
         files (list[str]): File paths passed on the command line.
         files_from (list[str]): Paths to files that contain lists of file paths.
-        stdin (bool): Whether to read file paths from standard input.
+        stdin_mode (bool): Whether to read file contents from standard input.
+        stdin_filename (str | None): The filename to use when in STDIN mode.
         include_patterns (list[str]): Glob patterns of files to include.
         include_from (list[str]): Paths to files that contain include patterns.
         exclude_patterns (list[str]): Glob patterns of files to exclude.
@@ -107,7 +109,8 @@ def resolve_config_from_click(
         write_mode=write_mode,
         files=files,
         files_from=files_from,
-        stdin=stdin,
+        stdin_mode=stdin_mode,
+        stdin_filename=stdin_filename,
         include_patterns=include_patterns,
         include_from=include_from,
         exclude_patterns=exclude_patterns,
@@ -137,13 +140,26 @@ def resolve_config_from_click(
     if not args.get("no_config"):
         # Determine anchor directory. If a file path was provided, start from its parent.
         raw_files: list[str] = args.get("files") or []
-        anchor: Path = Path.cwd().resolve()  # Resolve symlinks and get absolute path
-        for f in raw_files:
-            # Skip STDIN marker "-" if present; use the first real path
-            if f and f != "-":
-                p: Path = Path(f)
-                anchor = (p.parent if p.is_file() else p).resolve()
-                break
+        cwd: Path = Path.cwd().resolve()  # Resolve symlinks and get absolute path
+        anchor: Path = cwd
+
+        # If we are reading a single file's *content* from STDIN (PATH='-'),
+        # allow `--stdin-filename` to influence config discovery when it contains
+        # a directory component (e.g. "app/pkg/__init__.py"). Otherwise default to CWD.
+        if args.get("stdin_mode") is True:
+            stdin_filename_from_args: str | None = args.get("stdin_filename")
+            if stdin_filename_from_args:
+                sf: Path = Path(stdin_filename_from_args)
+                # Only treat it as an anchor hint when it includes a parent dir.
+                if sf.parent != Path("."):
+                    anchor = (sf.parent if sf.is_absolute() else (cwd / sf.parent)).resolve()
+        else:
+            for f in raw_files:
+                # Skip STDIN marker "-" if present; use the first real path
+                if f and f != "-":
+                    p: Path = Path(f)
+                    anchor = (p.parent if p.is_file() else p).resolve()
+                    break
         logger.debug("Config discovery anchor: %s", anchor)
 
         discovered_paths: list[Path] = MutableConfig.discover_local_config_files(anchor)

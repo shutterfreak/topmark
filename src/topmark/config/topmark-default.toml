@@ -118,7 +118,7 @@ align_fields = true
 #   "inplace" → Overwrite files in place (faster, less safe).
 #
 # This can be controlled from the CLI via `--write-mode atomic` or `--write-mode inplace`.
-file_write_strategy = "atomic"
+strategy = "atomic"
 
 # ======================
 # Policy configuration

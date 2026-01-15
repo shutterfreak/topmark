@@ -74,7 +74,8 @@ class ArgsNamespace(TypedDict, total=False):
         config_files (list[str] | None): List of extra config file paths.
         files (list[str]): List of file paths to process.
         files_from (list[str]): List of files containing newline-delimited paths.
-        stdin (bool | None): Whether to read file paths from stdin.
+        stdin_mode (bool | None): Whether to read file paths from stdin.
+        stdin_filename (str | None): The filename to use when in STDIN mode.
         include_patterns (list[str] | None): Glob patterns of files to include.
         include_from (list[str] | None): Files containing include patterns.
         exclude_patterns (list[str] | None): Glob patterns of files to exclude.
@@ -104,7 +105,8 @@ class ArgsNamespace(TypedDict, total=False):
     files_from: list[str]
 
     # Command options: common_file_and_filtering_options
-    stdin: bool | None
+    stdin_mode: bool | None
+    stdin_filename: str | None
     include_patterns: list[str] | None
     include_from: list[str] | None
     exclude_patterns: list[str] | None
@@ -126,7 +128,8 @@ def build_args_namespace(
     config_files: list[str] | None = None,
     files: list[str] | None = None,
     files_from: list[str] | None = None,
-    stdin: bool | None = None,
+    stdin_mode: bool | None = None,
+    stdin_filename: str | None = None,
     include_patterns: list[str] | None = None,
     include_from: list[str] | None = None,
     exclude_patterns: list[str] | None = None,
@@ -147,7 +150,8 @@ def build_args_namespace(
         config_files (list[str] | None): List of extra config file paths.
         files (list[str] | None): List of file paths to process.
         files_from (list[str] | None): List of files containing newline-delimited paths.
-        stdin (bool | None): Whether to read file paths from stdin.
+        stdin_mode (bool | None): Whether to read file paths from stdin.
+        stdin_filename (str | None): The filename to use when in STDIN mode.
         include_patterns (list[str] | None): Glob patterns of files to include.
         include_from (list[str] | None): Files containing include patterns.
         exclude_patterns (list[str] | None): Glob patterns of files to exclude.
@@ -168,7 +172,8 @@ def build_args_namespace(
         "config_files": config_files,
         "files": files if files is not None else [],
         "files_from": files_from if files_from is not None else [],
-        "stdin": stdin,
+        "stdin_mode": stdin_mode,
+        "stdin_filename": stdin_filename,
         "include_patterns": include_patterns,
         "include_from": include_from,
         "exclude_patterns": exclude_patterns,

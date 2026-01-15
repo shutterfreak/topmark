@@ -97,7 +97,7 @@ def ensure_mutable_config(
             header_format=config.header_format,
             relative_to_raw=config.relative_to_raw,
             relative_to=config.relative_to,
-            stdin=config.stdin,
+            stdin_mode=config.stdin_mode,
             files=list(config.files),
             include_patterns=list(config.include_patterns),
             include_from=list(config.include_from),

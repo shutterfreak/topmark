@@ -43,9 +43,13 @@ from __future__ import annotations
 
 from enum import Enum
 from functools import cached_property
-from typing import Any, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar, cast
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 _E = TypeVar("_E", bound=Enum)
+_KS = TypeVar("_KS", bound="KeyedStrEnum")
 
 
 def enum_from_name(
@@ -100,3 +104,81 @@ class EnumIntrospectionMixin:
         """
         # Pyright doesn't know 'self' is an Enum member; runtime guarantees it.
         return max(len(member.value) for member in type(self))  # type: ignore[attr-defined]
+
+
+def _norm_token(s: str) -> str:
+    """Normalize an identifier-like string to match config keys and aliases."""
+    return s.strip().lower().replace("-", "_").replace(" ", "_")
+
+
+class KeyedStrEnum(str, Enum):
+    """Enum where `.value` is a stable machine key; metadata lives on attributes.
+
+    Use this when you want:
+      - a stable, serialization-friendly key (`.value` / `.key`)
+      - a human label (`.label`) and optional aliases for parsing
+
+    Attributes:
+        label (str): Human-readable label for the member.
+        aliases (tuple[str, ...]): Alternative tokens accepted by `parse()`.
+
+    Example:
+        class OutputTarget(KeyedStrEnum):
+            FILE = ("file", "Write to file")
+            STDOUT = ("stdout", "Write to STDOUT")
+    """
+
+    label: str
+    aliases: tuple[str, ...]
+
+    def __new__(
+        cls: type[_KS],
+        key: str,
+        label: str,
+        aliases: Iterable[str] = (),
+    ) -> _KS:
+        """Create a new KeyedStrEnum member with key, label, and optional aliases.
+
+        Args:
+            key (str): The stable machine key (stored as `.value`).
+            label (str): The human-readable label for the enum member.
+            aliases (Iterable[str]): Optional aliases for parsing. Defaults to empty.
+
+        Returns:
+            _KS: The newly created enum member.
+        """
+        obj: _KS = str.__new__(cls, key)
+        obj._value_ = key  # stable machine value
+        obj.label = label
+        obj.aliases = tuple(aliases)
+        return obj
+
+    @property
+    def key(self) -> str:
+        """Stable machine key (same as `.value`)."""
+        return str(self)
+
+    @classmethod
+    def parse(cls: type[_KS], raw: str | None) -> _KS | None:
+        """Parse a token into an enum member.
+
+        Matches against:
+          - the stable key (`.value`)
+          - the member name (`.name`)
+          - any configured aliases
+
+        Matching is case-insensitive and normalizes '-', ' ' to '_' via `_norm_token()`.
+        """
+        if raw is None:
+            return None
+        token: str = _norm_token(raw)
+
+        for m in cls:
+            if token == _norm_token(m.value):
+                return m
+            if token == _norm_token(m.name):
+                return m
+            for a in m.aliases:
+                if token == _norm_token(a):
+                    return m
+        return None

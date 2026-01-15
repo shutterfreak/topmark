@@ -180,6 +180,7 @@ class InputPlan:
 
     Attributes:
         stdin_mode (bool): True when reading a single file’s *content* from STDIN via "-".
+        stdin_filename (str | None): The filename to use when in STDIN mode.
         temp_path (Path | None): Temporary file path used in content-on-STDIN mode; None otherwise.
         paths (list[str]): Positional PATH arguments after normalization
             (and/or from --files-from -).
@@ -192,6 +193,8 @@ class InputPlan:
     """
 
     stdin_mode: bool  # True if reading a single file’s content from STDIN ("-")
+    stdin_filename: str | None
+
     temp_path: Path | None  # Temp file path for STDIN content mode, or None
     paths: list[str]  # Positional PATH arguments (normalized)
     include_patterns: list[str]  # Include glob patterns (after merging CLI/include-from)
@@ -306,6 +309,7 @@ def plan_cli_inputs(
 
     return InputPlan(
         stdin_mode=stdin_mode,
+        stdin_filename=stdin_filename,
         temp_path=temp_path,
         paths=paths,
         include_patterns=inc,

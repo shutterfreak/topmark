@@ -123,7 +123,7 @@ class Config:
         relative_to (Path | None): Base path used only for header metadata (e.g., file_relpath).
             Note: Glob expansion and filtering are resolved relative to their declaring source
             (config file dir or CWD for CLI), not relative_to.
-        stdin (bool | None): Whether to read from stdin; requires explicit True to activate.
+        stdin_mode (bool | None): Whether to read from stdin; requires explicit True to activate.
         files (tuple[str, ...]): List of files to process.
         include_from (tuple[PatternSource, ...]): Files containing include patterns.
         exclude_from (tuple[PatternSource, ...]): Files containing exclude patterns.
@@ -178,7 +178,7 @@ class Config:
     relative_to: Path | None
 
     # File processing options
-    stdin: bool | None
+    stdin_mode: bool | None
     files: tuple[str, ...]
 
     include_from: tuple[PatternSource, ...]
@@ -292,7 +292,7 @@ class Config:
             header_format=self.header_format,
             relative_to_raw=self.relative_to_raw,
             relative_to=self.relative_to,
-            stdin=self.stdin,
+            stdin_mode=self.stdin_mode,
             files=list(self.files),
             include_patterns=list(self.include_patterns),
             include_from=list(self.include_from),
@@ -348,7 +348,7 @@ class MutableConfig:
             (file type aware, plain, or json).
         relative_to_raw (str | None): Original string from config or CLI
         relative_to (Path | None): Base path for relative file references, from [files].
-        stdin (bool | None): Whether to read from stdin; requires explicit True to activate.
+        stdin_mode (bool | None): Whether to read from stdin; requires explicit True to activate.
         files (list[str]): List of files to process.
         include_from (list[PatternSource]): Files containing include patterns.
         exclude_from (list[PatternSource]): Files containing exclude patterns.
@@ -395,7 +395,7 @@ class MutableConfig:
     relative_to: Path | None = None  # resolved version (used at runtime)
 
     # File processing options
-    stdin: bool | None = None  # Explicit True required to enable reading from stdin
+    stdin_mode: bool | None = None  # Explicit True required to enable reading from stdin
     files: list[str] = field(default_factory=lambda: [])
 
     include_from: list[PatternSource] = field(default_factory=lambda: [])
@@ -453,7 +453,7 @@ class MutableConfig:
             header_format=self.header_format,
             relative_to_raw=self.relative_to_raw,
             relative_to=self.relative_to,
-            stdin=self.stdin,
+            stdin_mode=self.stdin_mode,
             files=tuple(self.files),
             include_from=tuple(self.include_from),
             exclude_from=tuple(self.exclude_from),
@@ -692,13 +692,13 @@ class MutableConfig:
         draft.config_files = [str(p) for p in config_files[0]] if config_files[0] else []
 
         # ----- Writer mode: atomic (True) vs in-place (False) -----
-        draft.output_target = OutputTarget.from_name(
+        draft.output_target = OutputTarget.parse(
             get_string_value_or_none(
                 writer_tbl,
                 "target",
             )
         )
-        draft.file_write_strategy = FileWriteStrategy.from_name(
+        draft.file_write_strategy = FileWriteStrategy.parse(
             get_string_value_or_none(
                 writer_tbl,
                 "strategy",
@@ -812,7 +812,9 @@ class MutableConfig:
         if file_types and len(file_types) != len(draft.file_types):
             logger.warning("Duplicate file types found in config: %s", ", ".join(file_types))
 
-        draft.stdin = False  # Default to False unless explicitly set later -- TODO: False or None?
+        draft.stdin_mode = (
+            False  # Default to False unless explicitly set later -- TODO: False or None?
+        )
 
         return draft
 
@@ -927,7 +929,7 @@ class MutableConfig:
             header_format=other.header_format
             if other.header_format is not None
             else self.header_format,
-            stdin=other.stdin if other.stdin is not None else self.stdin,
+            stdin_mode=other.stdin_mode if other.stdin_mode is not None else self.stdin_mode,
             files=other.files or self.files,
             include_patterns=other.include_patterns or self.include_patterns,
             include_from=other.include_from or self.include_from,
@@ -1005,7 +1007,7 @@ class MutableConfig:
             self.files = list(args["files"]) if args["files"] else []
             # If explicit files are given, force stdin to False (files take precedence)
             if self.files:
-                self.stdin = False
+                self.stdin_mode = False
 
         # Glob arrays from CLI: keep as strings (evaluated later vs relative_to)
         if "include_patterns" in args:
@@ -1058,8 +1060,9 @@ class MutableConfig:
             self.file_types = set(args["file_types"])
 
         # Apply CLI flags that require explicit True to activate or to explicitly disable
-        if "stdin" in args:
-            self.stdin = bool(args["stdin"])  # honor False explicitly
+        if "stdin_mode" in args:
+            stdin_mode: bool = bool(args["stdin_mode"])  # honor False explicitly
+            self.stdin_mode = stdin_mode
 
         if "header_format" in args and args["header_format"] is not None:
             self.header_format = args["header_format"]
@@ -1087,18 +1090,32 @@ class MutableConfig:
             self.apply_changes = bool(args["apply_changes"])
 
         if "write_mode" in args and args["write_mode"] is not None:
-            logger.error("CLI ARGS: write_mode: {%s}", args["write_mode"])
-            write_mode: str = args["write_mode"].upper()
-            self.file_write_strategy: FileWriteStrategy | None = FileWriteStrategy.from_name(
-                write_mode  # ATOMIC or  IN_PLACE
-            )
-            self.output_target: OutputTarget | None = OutputTarget.from_name(
-                write_mode,
-            )  # STDOUT (or FILE - not provided from CLI)
+            # CLI uses "write_mode" as a convenience selector:
+            #   - "stdout" -> output to STDOUT (no file strategy)
+            #   - "atomic"/"inplace" -> output to FILE + set strategy
+            logger.debug("CLI ARGS: write_mode=%r", args["write_mode"])
+            write_mode: str = str(args["write_mode"]).lower()
+
+            if write_mode == "stdout":
+                self.output_target = OutputTarget.STDOUT
+                self.file_write_strategy = None
+            else:
+                self.output_target = OutputTarget.FILE
+
+                file_write_strategy: FileWriteStrategy | None = FileWriteStrategy.parse(write_mode)
+                if file_write_strategy is None:
+                    logger.warning(
+                        "Invalid 'write_mode' value specified in the CLI: %r - "
+                        "using defaults: output to file, atomic file write strategy.",
+                        args["write_mode"],
+                    )
+                    file_write_strategy = FileWriteStrategy.ATOMIC
+
+                self.file_write_strategy = file_write_strategy
 
         logger.debug("Patched MutableConfig: %s", self)
         logger.info("Applied CLI overrides to MutableConfig")
-        logger.debug("apply_cli_args(): finalized stdin=%s files=%s", self.stdin, self.files)
+        logger.debug("apply_cli_args(): finalized _mode=%s files=%s", self.stdin_mode, self.files)
 
         return self
 
@@ -1153,3 +1170,36 @@ class MutableConfig:
         _sanitize_sources("include_from", self.include_from)
         _sanitize_sources("exclude_from", self.exclude_from)
         _sanitize_sources("files_from", self.files_from)
+
+        # STDIN content mode: force stdout destination.
+        # We treat content-on-STDIN as "emit updated content"; file strategies are irrelevant.
+        if self.stdin_mode is True:
+            if self.output_target is None:
+                logger.debug("STDIN mode forces output_target=STDOUT (was not set)")
+                self.diagnostics.add_info(
+                    f"STDIN mode: Setting output_target to {OutputTarget.STDOUT.label}"
+                )
+            elif self.output_target != OutputTarget.STDOUT:
+                logger.debug(
+                    "STDIN mode forces output_target=STDOUT (was: %s)",
+                    self.output_target,
+                )
+                self.diagnostics.add_warning(
+                    "STDIN mode: Setting output_target "
+                    f"from {self.output_target.key} ({self.output_target.label}) "
+                    f"to {OutputTarget.STDOUT.key} ({OutputTarget.STDOUT.label})"
+                )
+
+            self.output_target = OutputTarget.STDOUT
+
+            if self.file_write_strategy is not None:
+                logger.debug(
+                    "STDIN mode clears file_write_strategy (was %s)",
+                    self.file_write_strategy,
+                )
+                self.diagnostics.add_warning(
+                    "STDIN mode: Clearing file_write_strategy "
+                    f"(was: {self.file_write_strategy.key} ({self.file_write_strategy.label}))"
+                )
+
+            self.file_write_strategy = None
