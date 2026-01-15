@@ -16,13 +16,13 @@
 #
 -e .
     # via -
-astroid==4.0.2
+astroid==4.0.3
     # via pylint
-build==1.3.0
+build==1.4.0
     # via topmark
-cachetools==6.2.2
+cachetools==6.2.4
     # via tox
-certifi==2025.11.12
+certifi==2026.1.4
     # via requests
 cfgv==3.5.0
     # via pre-commit
@@ -43,19 +43,19 @@ distlib==0.4.0
     # via virtualenv
 docstring-parser-fork==0.0.14
     # via pydoclint
-docutils==0.22.3
+docutils==0.22.4
     # via readme-renderer
 execnet==2.1.2
     # via pytest-xdist
-filelock==3.20.0
+filelock==3.20.3
     # via
     #   tox
     #   virtualenv
-hypothesis==6.148.2
+hypothesis==6.150.2
     # via topmark
 id==1.5.0
     # via twine
-identify==2.6.15
+identify==2.6.16
     # via pre-commit
 idna==3.11
     # via requests
@@ -67,9 +67,9 @@ isort==7.0.0
     # via pylint
 jaraco-classes==3.4.0
     # via keyring
-jaraco-context==6.0.1
+jaraco-context==6.1.0
     # via keyring
-jaraco-functools==4.3.0
+jaraco-functools==4.4.0
     # via keyring
 keyring==25.7.0
     # via twine
@@ -79,7 +79,7 @@ markdown-it-py==4.0.0
     #   mdformat-gfm
     #   mdit-py-plugins
     #   rich
-mbake==1.4.3
+mbake==1.4.4
     # via topmark
 mccabe==0.7.0
     # via pylint
@@ -99,7 +99,7 @@ more-itertools==10.8.0
     #   jaraco-functools
 nh3==0.3.2
     # via readme-renderer
-nodeenv==1.9.1
+nodeenv==1.10.0
     # via
     #   pre-commit
     #   pyright
@@ -112,7 +112,7 @@ packaging==25.0
     #   twine
 pathspec==0.12.1
     # via topmark
-platformdirs==4.5.0
+platformdirs==4.5.1
     # via
     #   pylint
     #   tox
@@ -121,24 +121,24 @@ pluggy==1.6.0
     # via
     #   pytest
     #   tox
-pre-commit==4.4.0
+pre-commit==4.5.1
     # via topmark
-pydoclint==0.8.1
+pydoclint==0.8.3
     # via topmark
 pygments==2.19.2
     # via
     #   pytest
     #   readme-renderer
     #   rich
-pylint==4.0.3
+pylint==4.0.4
     # via topmark
 pyproject-api==1.10.0
     # via tox
 pyproject-hooks==1.2.0
     # via build
-pyright==1.1.407
+pyright==1.1.408
     # via topmark
-pytest==9.0.1
+pytest==9.0.2
     # via
     #   pytest-xdist
     #   topmark
@@ -162,7 +162,7 @@ rich==14.2.0
     #   mbake
     #   twine
     #   typer
-ruff==0.14.5
+ruff==0.14.13
     # via topmark
 shellingham==1.5.4
     # via typer
@@ -176,11 +176,11 @@ tomlkit==0.13.3
     # via
     #   pylint
     #   topmark
-tox==4.32.0
+tox==4.34.1
     # via topmark
 twine==6.2.0
     # via topmark
-typer==0.20.0
+typer==0.21.1
     # via mbake
 types-toml==0.10.8.20240310
     # via topmark
@@ -189,11 +189,11 @@ typing-extensions==4.15.0
     #   pyright
     #   topmark
     #   typer
-urllib3==2.5.0
+urllib3==2.6.3
     # via
     #   requests
     #   twine
-virtualenv==20.35.4
+virtualenv==20.36.1
     # via
     #   pre-commit
     #   tox
