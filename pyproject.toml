@@ -10,7 +10,7 @@
 
 [project]
 name = "topmark"
-version = "0.11.1" # PEP 440: "X.Y.Z.devN", "X.Y.ZrcN", or "X.Y.Z"
+version = "0.11.2.dev0" # PEP 440: "X.Y.Z.devN", "X.Y.ZrcN", or "X.Y.Z"
 description = "A Python CLI to inspect, validate, and manage license and copyright headers."
 authors = [{ name = "Olivier Biot", email = "olivier.biot@gmail.com" }]
 license = "MIT"
