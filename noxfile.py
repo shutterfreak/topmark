@@ -63,9 +63,17 @@ if sys.version_info >= (3, 11):
 
     _toml_loads = cast("Callable[[str], dict[str, Any]]", tomllib.loads)  # type: ignore[assignment]
 else:
-    import toml
+    # Python < 3.11: no stdlib `tomllib`.
+    #
+    # This noxfile is imported by the *host interpreter* running `nox` (outside any session venv).
+    # `tomli` is a dependency of nox itself, so it is available in CI and in any environment where
+    # nox is installed. Some editors may still flag this import if their selected interpreter
+    # doesn’t have nox installed, so we silence Pyright for this line.
+    #
+    # This is not a TopMark runtime dependency, it’s a tooling/bootstrap dependency.
+    import tomli  # pyright: ignore[reportMissingImports]
 
-    _toml_loads = cast("Callable[[str], dict[str, Any]]", toml.loads)  # type: ignore[assignment]
+    _toml_loads = cast("Callable[[str], dict[str, Any]]", tomli.loads)  # type: ignore[assignment]
 
 CURRENT_PYTHON_VERSION: str = f"{sys.version_info[0]}.{sys.version_info[1]}"
 
