@@ -16,6 +16,58 @@ All notable changes to this project will be documented in this file. This projec
 [Semantic Versioning](https://semver.org/) and follows a Keep‑a‑Changelog–style structure with the
 sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
+## [0.11.1] – 2026-01-18
+
+This patch release focuses exclusively on **developer tooling, CI reliability, and release automation**.
+There are **no user-facing or runtime behavior changes** relative to 0.11.0.
+
+### Changed
+
+- **CI / developer automation migrated from tox to nox (uv-backed)**
+
+  - Removed `tox` support entirely and dropped `tox.ini`.
+  - Introduced a first-class `noxfile.py` defining all project automation:
+    - Formatting and linting gates
+    - Test + Pyright QA sessions
+    - API snapshot validation
+    - Documentation builds and link checking
+    - Packaging sanity checks
+    - Deterministic and full release gates
+  - Switched all GitHub Actions workflows to bootstrap and run **Nox** instead of tox.
+  - Enabled **uv-backed virtualenv creation and syncing** for faster CI and local runs.
+  - Centralized Python version resolution in `noxfile.py`, derived from `pyproject.toml`.
+
+- **Makefile streamlined to delegate orchestration to nox**
+
+  - Updated targets (`verify`, `test`, `qa`, `qa-api`, `links`, `package-check`,
+    `release-check`, `release-full`) to call nox sessions directly.
+  - Added support for parallel per-Python release QA via `make -j`.
+
+- **Release workflow hardening**
+
+  - Release gates now reuse the same nox sessions as CI for consistency.
+  - Packaging, docs, and QA checks are enforced uniformly for both release candidates
+    and final releases.
+  - Pre-releases (`-rc`, `-a`, `-b`) automatically publish to **TestPyPI**; finals publish to **PyPI**.
+
+### Fixed
+
+- **Nox bootstrap robustness on Python < 3.11**
+
+  - Ensured `noxfile.py` can be imported on Python 3.10 by:
+    - Using stdlib `tomllib` on Python 3.11+
+    - Falling back to `tomli` on older interpreters (as provided by nox itself)
+  - Prevented CI failures caused by missing TOML parsers during nox bootstrap.
+  - Clarified via inline comments that TOML parsing in `noxfile.py`:
+    - Happens at **nox import/bootstrap time**
+    - Relies only on tooling dependencies, not TopMark runtime dependencies
+
+### Notes
+
+- This release **does not change TopMark’s runtime behavior, public API, or CLI output**.
+- The migration affects **developers and CI only**.
+- Existing users upgrading from 0.11.0 require no action.
+
 ## [0.11.0] – 2026-01-15
 
 This release introduces a set of **internal architectural improvements** that strengthen
