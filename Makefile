@@ -21,12 +21,12 @@
 	venv venv-sync-dev venv-clean \
 	lock-compile-prod lock-compile-dev lock-compile-docs \
 	lock-dry-run-prod lock-dry-run-dev lock-dry-run-docs \
-	lock-upgrade-prod lock-upgrade-dev lock-upgrade-docs
+	lock-upgrade-prod lock-upgrade-dev lock-upgrade-docs \
+	package-check release-check release-full release-qa-api-%
 
 .DEFAULT_GOAL := help
-TOX ?= tox
-TOX_PAR ?= # e.g. set TOX_PAR="-p auto" or "-p 4"
-TOX_FLAGS ?= -q       # keep your quiet flag; CI can override
+NOX ?= nox
+NOX_FLAGS ?= --no-verbose       # keep quiet by default; CI can override
 PYTEST_PAR ?= # e.g. set PYTEST_PAR="-n auto" or "-n 4"
 PY ?= python
 VENV := .venv
@@ -36,7 +36,7 @@ PUBLIC_API_JSON := tests/api/public_api_snapshot.json
 
 # Simple tool presence checks
 check-venv:
-	@command -v $(TOX) >/dev/null 2>&1 || (echo "❌ tox not found. Install with: pipx install tox" && exit 1)
+	@command -v $(NOX) >/dev/null 2>&1 || (echo "❌ nox not found. Install with: pipx install nox" && exit 1)
 
 check-lychee:
 	@command -v lychee >/dev/null 2>&1 || (echo "❌ lychee not found. Install with: brew install lychee" && exit 1)
@@ -45,8 +45,8 @@ help:
 	@echo "Usage: make <target>"
 	@echo ""
 	@echo "Core:"
-	@echo "  test            Run the test suite (tox default envs)"
-	@echo "  pytest          Run tests with current interpreter (no tox); supports PYTEST_PAR=-n auto"
+	@echo "  test            Run the test suite (nox: qa)"
+	@echo "  pytest          Run tests with current interpreter (no nox); supports PYTEST_PAR=-n auto"
 	@echo "  verify          Run formatting checks, lint, and one typecheck env"
 	@echo "  lint            Run ruff + pydoclint + mbake"
 	@echo "  lint-fixall     Run ruff with --fix (auto-fix lint issues)"
@@ -55,17 +55,22 @@ help:
 	@echo "  docstring-links Enforce docstring link style (tools/check_docstring_links.py)"
 	@echo "  property-test   Run Hypothesis hardening tests (manual, opt-in)"
 	@echo ""
+	@echo "  release-check   Run the deterministic pre-release gate (nox: release_check)"
+	@echo "  release-full    Run the full release gate incl. links + packaging + Python matrix"
+	@echo ""
+	@echo "  package-check   Run package sanity checks (nox: package_check)"
+	@echo ""
 	@echo "Docs:"
-	@echo "  docs-build      Build docs strictly (tox: docs)"
-	@echo "  docs-serve      Serve docs locally (tox: docs-serve)"
+	@echo "  docs-build      Build docs strictly (nox: docs)"
+	@echo "  docs-serve      Serve docs locally (nox: docs_serve)"
 	@echo "  docs-clean      Remove MkDocs build output (site/)"
 	@echo ""
 	@echo "Misc:"
-	@echo "  links           Check links in docs/ and *.md (tox: links)"
-	@echo "  links-src       Check links found in Python docstrings under src/ (tox: links-src)"
-	@echo "  links-all       Check links in docs/, *.md, and Python docstrings (tox: links-all)"
+	@echo "  links           Check links in docs/ and tracked Markdown (nox: links)"
+	@echo "  links-src       Check links found in Python docstrings under src/ (nox: links_src)"
+	@echo "  links-all       Check links in docs/, tracked Markdown, and Python docstrings (nox: links_all)"
 	@echo "  api-snapshot-dev         Check API snapshot with current interpreter (fast local)"
-	@echo "  api-snapshot             Check API snapshot across all supported Pythons (tox label)"
+	@echo "  api-snapshot             Check API snapshot across all supported Pythons (nox: api_snapshot)"
 	@echo "  api-snapshot-update      Regenerate tests/api/public_api_snapshot.json (interactive)"
 	@echo "  api-snapshot-ensure-clean  Fail if snapshot differs from Git index"
 	@echo ""
@@ -88,57 +93,86 @@ help:
 	@echo "  lock-upgrade-docs     Upgrade pins in requirements-docs.txt"
 
 test: check-venv
-	@echo "Running tests via tox..."
-	$(TOX) $(TOX_PAR) $(TOX_FLAGS)
+	@echo "Running tests via nox..."
+	# We pass -- followed by the variable.
+	# If PYTEST_PAR is empty, it does nothing; if it has "-n auto", pytest receives it.
+	$(NOX) $(NOX_FLAGS) -s qa -- $(PYTEST_PAR)
 
-verify:
-	@echo "Running non-destructive checks via tox..."
-	$(TOX) $(TOX_PAR) $(TOX_FLAGS) -e format-check -e lint -e links -e docs
+verify: check-venv
+	@echo "Running non-destructive checks via nox..."
+	$(NOX) $(NOX_FLAGS) -s format_check -s lint -s docstring_links -s links -s docs
 	@echo "All quality checks passed!"
 
+release-check: check-venv
+	@echo "Running release gate (deterministic) via nox..."
+	$(NOX) $(NOX_FLAGS) -s release_check
+
+package-check: check-venv
+	@echo "Running packaging sanity checks via nox..."
+	$(NOX) $(NOX_FLAGS) -s package_check
+
+# Number of parallel jobs for matrix-style targets (used by release-full).
+# Override at invocation time, e.g. `make release-full JOBS=5`.
+JOBS ?= 5
+
+# We can find the versions by asking Nox (which now knows them from the TOML)
+# This keeps the Makefile clean.
+RELEASE_PYTHONS := $(shell $(NOX) -l | awk '{print $$1}' | grep '^qa_api-' | cut -d'-' -f2 | sort -V)
+
+release-full: check-venv check-lychee
+	@echo "Running full release gate for versions: $(RELEASE_PYTHONS) (serial gates + parallel Python matrix)..."
+	# Serial, non-matrix gates first:
+	$(NOX) $(NOX_FLAGS) -s format_check -s lint -s docstring_links -s docs -s links_all -s package_check
+	# Parallelize the per-Python QA+snapshot+typecheck gate across versions:
+	$(MAKE) -j $(JOBS) $(addprefix release-qa-api-,$(RELEASE_PYTHONS))
+
+# Per-Python release gate that reuses one env for: pytest + api snapshot + pyright
+release-qa-api-%: check-venv
+	@echo "QA+API snapshot (one env) for Python $*"
+	$(NOX) $(NOX_FLAGS) -s qa_api -p $* -- $(PYTEST_PAR)
+
 lint: check-venv
-	$(TOX) $(TOX_PAR) $(TOX_FLAGS) -e lint
+	$(NOX) $(NOX_FLAGS) -s lint
 
 lint-fixall: check-venv
-	$(TOX) $(TOX_PAR) $(TOX_FLAGS) -e lint-fixall
+	$(NOX) $(NOX_FLAGS) -s lint_fixall
 
 format-check: check-venv
-	$(TOX) $(TOX_PAR) $(TOX_FLAGS) -e format-check
+	$(NOX) $(NOX_FLAGS) -s format_check
 
 format: check-venv
-	$(TOX) $(TOX_PAR) $(TOX_FLAGS) -e format
+	$(NOX) $(NOX_FLAGS) -s format
 
 docstring-links: check-venv
-	$(TOX) $(TOX_PAR) $(TOX_FLAGS) -e docstring-links
+	$(NOX) $(NOX_FLAGS) -s docstring_links
 
-# Run pytest directly (no tox) with the current interpreter
+# Run pytest directly (no nox) with the current interpreter
 pytest:
 	pytest $(PYTEST_PAR) -q
 
-property-test:
-	$(TOX) $(TOX_PAR) $(TOX_FLAGS) -e property-test
+property-test: check-venv
+	$(NOX) $(NOX_FLAGS) -s property_test
 
-docs-build:
-	$(TOX) -e docs
+docs-build: check-venv
+	$(NOX) $(NOX_FLAGS) -s docs
 
-docs-serve:
-	$(TOX) -e docs-serve
+docs-serve: check-venv
+	$(NOX) $(NOX_FLAGS) -s docs_serve
 
 docs-clean:
 	rm -rf site
 
 links: check-lychee
-	$(TOX) $(TOX_PAR) $(TOX_FLAGS) -e links
+	$(NOX) $(NOX_FLAGS) -s links
 
 links-src: check-lychee
-	$(TOX) $(TOX_PAR) $(TOX_FLAGS) -e links-src
+	$(NOX) $(NOX_FLAGS) -s links_src
 
-links-all: check-lychee links
-	$(TOX) $(TOX_PAR) $(TOX_FLAGS) -e links-all
+links-all: check-lychee
+	$(NOX) $(NOX_FLAGS) -s links_all
 
-# Matrix (all supported Pythons via tox label)
-api-snapshot:
-	$(TOX) -m api-check
+api-snapshot: check-venv
+	$(NOX) $(NOX_FLAGS) -s api_snapshot
 
 # Local fast check (current interpreter only)
 api-snapshot-dev: check-venv
@@ -170,7 +204,7 @@ api-snapshot-ensure-clean: check-venv
 		exit 1; \
 	fi
 
-# ---- Optional local convenience venv for editor / pyright (tox still runs checks) ----
+# ---- Optional local convenience venv for editor / pyright (nox still runs checks) ----
 
 # NOTE: Do NOT auto-upgrade pip here. New pip releases occasionally break pip-tools.
 # The lock toolchain is managed via the project's `.[lock]` extra instead.
@@ -179,7 +213,7 @@ venv:
 		echo "Creating $(VENV)..." && \
 		$(PY) -m venv $(VENV) && \
 		$(VENV_BIN)/pip install -e ".[lock]" \
-	)
+		)
 	@echo "Activate with: source $(VENV_BIN)/activate"
 
 venv-sync-dev: venv
@@ -190,7 +224,7 @@ venv-clean:
 	@rm -rf $(VENV)
 	@echo "Removed $(VENV)."
 
-# ---- Lock management (pins). These do NOT affect tox; tox uses the compiled locks. ----
+# ---- Lock management (pins). These do NOT affect nox; nox uses the compiled locks. ----
 lock-compile-prod: venv
 	$(VENV_BIN)/pip-compile -q -c constraints.txt --strip-extras requirements.in
 

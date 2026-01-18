@@ -59,24 +59,24 @@ jobs:
                   cache-dependency-path: |
                       requirements-*.txt
                       constraints.txt
-            - name: Cache pip & tox
+            - name: Cache pip & nox
               uses: actions/cache@v4
               with:
                   path: |
                       ~/.cache/pip
-                      .tox
-                  key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('tox.ini', 'pyproject.toml', 'requirements-*.txt', 'constraints.txt') }}
+                      ~/.cache/uv
+                  key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('noxfile.py', 'pyproject.toml', 'requirements-*.txt', 'constraints.txt') }}
                   restore-keys: |
                       ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-
-            - name: Bootstrap tox
+            - name: Bootstrap nox
               run: |
                   python -m pip install -U pip
-                  pip install tox
-            - name: Lint & type-check via tox
+                  pip install nox nox-uv uv
+            - name: Lint & type-check via nox
               run: |
-                  tox -e format-check
-                  tox -e lint
-                  tox -e docstring-links
+                  nox -s format_check
+                  nox -s lint
+                  nox -s docstring_links
 
     pre-commit:
         runs-on: ubuntu-latest
@@ -121,21 +121,22 @@ jobs:
                   cache-dependency-path: |
                       requirements-*.txt
                       constraints.txt
-            - name: Cache pip & tox
+            - name: Cache pip & nox
               uses: actions/cache@v4
               with:
                   path: |
                       ~/.cache/pip
-                      .tox
-                  key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('tox.ini', 'pyproject.toml', 'requirements-*.txt', 'constraints.txt') }}
+                      ~/.cache/uv
+                  key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('noxfile.py', 'pyproject.toml', 'requirements-*.txt', 'constraints.txt') }}
                   restore-keys: |
                       ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-
-            - name: Bootstrap tox
+            - name: Bootstrap nox
               run: |
                   python -m pip install -U pip
-                  pip install tox
-            - name: Build docs (strict via tox)
-              run: tox -e docs
+                  pip install nox nox-uv uv
+            - name: Build docs (strict via nox)
+              run: |
+                  nox -s docs
 
     tests:
         runs-on: ubuntu-latest
@@ -154,28 +155,22 @@ jobs:
                   cache-dependency-path: |
                       requirements-*.txt
                       constraints.txt
-            - name: Cache pip & tox
+            - name: Cache pip & nox
               uses: actions/cache@v4
               with:
                   path: |
                       ~/.cache/pip
-                      .tox
-                  key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('tox.ini', 'pyproject.toml', 'requirements-*.txt', 'constraints.txt') }}
+                      ~/.cache/uv
+                  key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('noxfile.py', 'pyproject.toml', 'requirements-*.txt', 'constraints.txt') }}
                   restore-keys: |
                       ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-
-            - name: Bootstrap tox
+            - name: Bootstrap nox
               run: |
                   python -m pip install -U pip
-                  pip install tox
-            - name: Run tox tests for ${{ matrix.python-version }}
+                  pip install nox nox-uv uv
+            - name: Run nox QA for ${{ matrix.python-version }}
               run: |
-                  case "${{ matrix.python-version }}" in
-                    "3.10") tox -e py310 ;;
-                    "3.11") tox -e py311 ;;
-                    "3.12") tox -e py312 ;;
-                    "3.13") tox -e py313 ;;
-                    "3.14") tox -e py314 ;;
-                  esac
+                  nox -s qa -p ${{ matrix.python-version }}
 
     api-snapshot:
         name: API Snapshot
@@ -194,21 +189,22 @@ jobs:
                   cache-dependency-path: |
                       requirements-*.txt
                       constraints.txt
-            - name: Cache pip & tox
+            - name: Cache pip & nox
               uses: actions/cache@v4
               with:
                   path: |
                       ~/.cache/pip
-                      .tox
-                  key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('tox.ini', 'pyproject.toml', 'requirements-*.txt', 'constraints.txt') }}
+                      ~/.cache/uv
+                  key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('noxfile.py', 'pyproject.toml', 'requirements-*.txt', 'constraints.txt') }}
                   restore-keys: |
                       ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-
-            - name: Bootstrap tox
+            - name: Bootstrap nox
               run: |
                   python -m pip install -U pip
-                  pip install tox
+                  pip install nox nox-uv uv
             - name: Run API snapshot check (py313)
-              run: tox -e py313-api
+              run: |
+                  nox -s api_snapshot -p 3.13
 
     links:
         # Use official lychee Action; no cargo needed
