@@ -66,13 +66,17 @@ def _contains_unaligned_fields(diff: str) -> bool:
 
 
 def _run_cli_like(
-    anchor: Path, file_types: tuple[str, ...] = ()
+    anchor: Path,
+    include_file_types: tuple[str, ...] = (),
+    exclude_file_types: tuple[str, ...] = (),
 ) -> tuple[MutableConfig, list[Path], list[ProcessingContext]]:
     """Build config via authoritative loader to model CLI behavior."""
     draft: MutableConfig = MutableConfig.load_merged(input_paths=(anchor,))
     draft.files = [str(anchor)]  # seed positional inputs
-    if file_types:
-        draft.file_types = set(file_types)
+    if include_file_types:
+        draft.include_file_types = set(include_file_types)
+    if exclude_file_types:
+        draft.exclude_file_types = set(exclude_file_types)
     cfg: Config = draft.freeze()
     files: list[Path] = resolve_file_list(cfg)
     results: list[ProcessingContext]
@@ -120,7 +124,11 @@ def test_same_dir_precedence_topmark_over_pyproject(
 
     # API run (anchor = project dir)
     rr: api.RunResult = api.check(
-        [str(proj)], apply=False, diff=True, prune=False, file_types=("python",)
+        [str(proj)],
+        apply=False,
+        diff=True,
+        prune=False,
+        include_file_types=("python",),
     )
     assert rr.files, "API produced no files to check"
     api_diff: str = rr.files[0].diff or ""
@@ -129,7 +137,7 @@ def test_same_dir_precedence_topmark_over_pyproject(
     _draft: MutableConfig
     files: list[Path]
     results: list[ProcessingContext]
-    _draft, files, results = _run_cli_like(proj, file_types=("python",))
+    _draft, files, results = _run_cli_like(proj, include_file_types=("python",))
     assert files, "CLI-like resolver produced no files"
 
     # The aligned form must be present (topmark.toml overrides pyproject.toml)
@@ -169,7 +177,11 @@ def test_discovery_anchor_subdir_nearest_wins(tmp_path: Path) -> None:
 
     # API run with anchor at child dir
     rr: api.RunResult = api.check(
-        [str(child)], apply=False, diff=True, prune=False, file_types=("python",)
+        [str(child)],
+        apply=False,
+        diff=True,
+        prune=False,
+        include_file_types=("python",),
     )
     assert rr.files
     api_diff: str = rr.files[0].diff or ""
@@ -179,7 +191,7 @@ def test_discovery_anchor_subdir_nearest_wins(tmp_path: Path) -> None:
     _draft: MutableConfig
     files: list[Path]
     results: list[ProcessingContext]
-    _draft, files, results = _run_cli_like(child, file_types=("python",))
+    _draft, files, results = _run_cli_like(child, include_file_types=("python",))
     assert files
     cli_diff: str = results[0].views.diff.text or "" if results[0].views.diff else ""
     assert _contains_aligned_fields(cli_diff), "CLI-like did not honor nearest (child) config"
@@ -219,7 +231,12 @@ def test_root_true_stops_traversal(tmp_path: Path) -> None:
     )
 
     # API run anchored at sub (should stop at root because of root=true)
-    rr: api.RunResult = api.check([str(sub)], apply=False, diff=True, file_types=("python",))
+    rr: api.RunResult = api.check(
+        [str(sub)],
+        apply=False,
+        diff=True,
+        include_file_types=("python",),
+    )
     assert rr.files
     api_diff: str = rr.files[0].diff or ""
     assert _contains_unaligned_fields(api_diff), "API did not stop at root=true boundary"
@@ -228,7 +245,7 @@ def test_root_true_stops_traversal(tmp_path: Path) -> None:
     _draft: MutableConfig
     files: list[Path]
     results: list[ProcessingContext]
-    _draft, files, results = _run_cli_like(sub, file_types=("python",))
+    _draft, files, results = _run_cli_like(sub, include_file_types=("python",))
     assert files
     cli_diff: str = results[0].views.diff.text or "" if results[0].views.diff else ""
     assert _contains_unaligned_fields(cli_diff), "CLI-like did not stop at root=true boundary"

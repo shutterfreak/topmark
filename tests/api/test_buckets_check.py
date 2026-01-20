@@ -35,7 +35,9 @@ def test_bucket_insert_missing_header_dry_run(repo_py_with_and_without_header: P
     """When header is missing and fields are configured, we should see `insert`."""
     root: Path = repo_py_with_and_without_header
     r: api.RunResult = api.check(
-        [root / "src" / "without_header.py"], apply=False, file_types=["python"]
+        [root / "src" / "without_header.py"],
+        apply=False,
+        include_file_types=["python"],
     )
     keys: set[str] = _summary_keys(r)
     assert Outcome.WOULD_INSERT.value in keys
@@ -45,7 +47,9 @@ def test_bucket_ok_up_to_date(repo_py_with_header: Path) -> None:
     """Compliant file should land in `ok`."""
     root: Path = repo_py_with_header
     r: api.RunResult = api.check(
-        [root / "src" / "with_header.py"], apply=False, file_types=["python"]
+        [root / "src" / "with_header.py"],
+        apply=False,
+        include_file_types=["python"],
     )
     keys: set[str] = _summary_keys(r)
     assert Outcome.UNCHANGED.value in keys
@@ -58,7 +62,12 @@ def test_bucket_no_fields_when_header_fields_empty(tmp_path: Path) -> None:
 
     # Minimal TOML config that results in GenerationStatus.NO_FIELDS
     cfg: Mapping[str, Any] = {"header": {"fields": []}}
-    r: api.RunResult = api.check([f], apply=False, file_types=["python"], config=cfg)
+    r: api.RunResult = api.check(
+        [f],
+        apply=False,
+        include_file_types=["python"],
+        config=cfg,
+    )
     keys: set[str] = _summary_keys(r)
     assert Outcome.WOULD_INSERT.value in keys
 
@@ -72,7 +81,11 @@ def test_bucket_header_empty_detected(tmp_path: Path, proc_py: HeaderProcessor) 
         f"# {TOPMARK_START_MARKER}\n#\n# {TOPMARK_END_MARKER}\nprint('x')\n",
         encoding="utf-8",
     )
-    r: api.RunResult = api.check([f], apply=False, file_types=["python"])
+    r: api.RunResult = api.check(
+        [f],
+        apply=False,
+        include_file_types=["python"],
+    )
     keys: set[str] = _summary_keys(r)
     # assert "header:empty" in keys
     assert Outcome.WOULD_UPDATE.value in keys
@@ -85,7 +98,11 @@ def test_bucket_header_malformed_detected(tmp_path: Path) -> None:
         f"# {TOPMARK_START_MARKER}\n# some : field\nprint('x')\n",  # no end marker
         encoding="utf-8",
     )
-    r: api.RunResult = api.check([f], apply=False, file_types=["python"])
+    r: api.RunResult = api.check(
+        [f],
+        apply=False,
+        include_file_types=["python"],
+    )
     keys: set[str] = _summary_keys(r)
     assert Outcome.ERROR.value in keys
 
@@ -95,7 +112,12 @@ def test_bucket_blocked_policy_update_only_blocks_insert(tmp_path: Path) -> None
     f: Path = tmp_path / "no_header.py"
     f.write_text("print('x')\n", encoding="utf-8")
     policy = PublicPolicy(add_only=False, update_only=True)
-    r: api.RunResult = api.check([f], apply=False, file_types=["python"], policy=policy)
+    r: api.RunResult = api.check(
+        [f],
+        apply=False,
+        include_file_types=["python"],
+        policy=policy,
+    )
     keys: set[str] = _summary_keys(r)
     # assert "blocked:policy" in keys
     assert Outcome.SKIPPED.value in keys

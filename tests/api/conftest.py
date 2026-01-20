@@ -24,9 +24,8 @@ from topmark import api
 from topmark.api.public_types import PublicPolicy
 from topmark.filetypes.base import FileType
 from topmark.pipeline.processors.base import HeaderProcessor
-from topmark.pipeline.processors.types import BoundsKind
-from topmark.registry.filetypes import FileTypeRegistry
-from topmark.registry.processors import HeaderProcessorRegistry
+from topmark.pipeline.processors.types import BoundsKind, HeaderBounds
+from topmark.registry import FileTypeRegistry, HeaderProcessorRegistry
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
@@ -45,7 +44,7 @@ def cfg(**overrides: Any) -> dict[str, Any]:
     constructed [`Config`][topmark.config.Config].
 
     Notes:
-        * Only a tiny base is provided (``files.file_types = ["python"]``) so tests
+        * Only a tiny base is provided (``files.include_file_types = ["python"]``) so tests
           are explicit about what is enabled. Merging of ``overrides`` is **shallow**
           at the top level for convenience.
         * No defaults, no layered discovery, no path normalization, and no
@@ -63,7 +62,7 @@ def cfg(**overrides: Any) -> dict[str, Any]:
     base: dict[str, Any] = {
         "files": {
             # When provided, discovery should consider only these types
-            "file_types": ["python"],
+            "include_file_types": ["python"],
         },
     }
     for k, v in overrides.items():
@@ -126,7 +125,7 @@ def repo_py_with_and_without_header(tmp_path: Path) -> Path:
         [with_header],
         apply=True,
         config=None,
-        file_types=["python"],
+        include_file_types=["python"],
         policy=PublicPolicy(
             add_only=True
         ),  # ensure header is inserted/normalized if missing/drifting
@@ -153,7 +152,7 @@ def repo_py_with_header(tmp_path: Path) -> Path:
         [with_header],
         apply=True,
         config=None,
-        file_types=["python"],
+        include_file_types=["python"],
         policy=PublicPolicy(
             add_only=True,  # ensure header is inserted/normalized if missing/drifting
         ),
@@ -181,7 +180,7 @@ def repo_py_with_header_and_xyz(tmp_path: Path) -> Path:
         [with_header],
         apply=True,
         config=None,
-        file_types=["python"],
+        include_file_types=["python"],
         policy=PublicPolicy(
             add_only=True,  # ensure header is inserted/normalized if missing/drifting
         ),
@@ -229,7 +228,7 @@ def has_header(text: str, processor: HeaderProcessor, newline_style: str) -> boo
     `BoundsKind.SPAN` with a non-empty, exclusive-end range. Malformed shapes
     (e.g., only end marker) are **not** treated as a present header.
     """
-    bounds = processor.get_header_bounds(
+    bounds: HeaderBounds = processor.get_header_bounds(
         lines=text.splitlines(keepends=True),
         newline_style=newline_style,
     )
@@ -258,7 +257,8 @@ def api_check_dir(
     policy: PublicPolicy | None = None,
     skip_compliant: bool = False,
     skip_unsupported: bool = False,
-    file_types: Iterable[str] | None = ("python",),
+    include_file_types: Iterable[str] | None = ("python",),
+    exclude_file_types: Iterable[str] | None = ("python",),
     prune: bool = False,
 ) -> api.RunResult:
     """Run [`topmark.api.check`][topmark.api.check] against `root / 'src'` with common defaults."""
@@ -267,7 +267,8 @@ def api_check_dir(
         paths,
         apply=apply,
         config=None,  # let API load topmark.toml from repo root
-        file_types=list(file_types) if file_types else None,
+        include_file_types=list(include_file_types) if include_file_types else None,
+        exclude_file_types=list(exclude_file_types) if exclude_file_types else None,
         policy=policy,
         skip_compliant=skip_compliant,
         skip_unsupported=skip_unsupported,
@@ -282,7 +283,8 @@ def api_strip_dir(
     policy: PublicPolicy | None = None,
     skip_compliant: bool = False,
     skip_unsupported: bool = False,
-    file_types: Iterable[str] | None = ("python",),
+    include_file_types: Iterable[str] | None = ("python",),
+    exclude_file_types: Iterable[str] | None = ("python",),
     prune: bool = False,
 ) -> api.RunResult:
     """Run [`topmark.api.strip`][topmark.api.strip] against `root / 'src'` with common defaults."""
@@ -291,7 +293,8 @@ def api_strip_dir(
         paths,
         apply=apply,
         config=None,
-        file_types=list(file_types) if file_types else None,
+        include_file_types=list(include_file_types) if include_file_types else None,
+        exclude_file_types=list(exclude_file_types) if exclude_file_types else None,
         policy=policy,
         skip_compliant=skip_compliant,
         skip_unsupported=skip_unsupported,

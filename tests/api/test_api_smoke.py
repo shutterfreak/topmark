@@ -43,7 +43,11 @@ def test_list_processors_is_nonempty() -> None:
 
 def test_strip_dry_run_reports_would_strip(repo_py_with_header: Path) -> None:
     """api.strip() reports 'WOULD_STRIP' on supported file without header."""
-    r: api.RunResult = api.strip([repo_py_with_header / "src"], apply=False, file_types=["python"])
+    r: api.RunResult = api.strip(
+        [repo_py_with_header / "src"],
+        apply=False,
+        include_file_types=["python"],
+    )
     # At least one file (with_header.py) should be reported as would_change
     assert Outcome.WOULD_STRIP in r.summary.keys()
     assert r.written == 0 and r.failed == 0
@@ -54,13 +58,21 @@ def test_strip_apply_then_check_is_unchanged(repo_py_with_header: Path) -> None:
     src_dir: Path = repo_py_with_header / "src"
 
     # Apply strip: remove headers
-    r_strip: api.RunResult = api.strip([src_dir], apply=True, file_types=["python"])
+    r_strip: api.RunResult = api.strip(
+        [src_dir],
+        apply=True,
+        include_file_types=["python"],
+    )
     assert r_strip.had_errors is False
     assert r_strip.written >= 1  # header removed
 
     # Now a dry-run check should say the file would change (header missing),
     # unless the configured policy for missing headers marks it unchanged.
-    r_check: api.RunResult = api.check([src_dir], apply=False, file_types=["python"])
+    r_check: api.RunResult = api.check(
+        [src_dir],
+        apply=False,
+        include_file_types=["python"],
+    )
 
     # Accept either: would_change (header would be re-inserted) or unchanged
     # depending on project defaults. Assert at least one bucket is present.

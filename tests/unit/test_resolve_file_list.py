@@ -23,7 +23,8 @@ from typing import TYPE_CHECKING
 import topmark.file_resolver as file_resolver_mod
 
 # Import the module under test
-from tests.conftest import make_config
+from tests.conftest import make_config, make_file_type
+from topmark.registry import FileTypeRegistry
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -31,6 +32,7 @@ if TYPE_CHECKING:
     import pytest
 
     from topmark.config import Config
+    from topmark.filetypes.base import FileType
 
 
 class DummyType:
@@ -138,7 +140,10 @@ def test_include_intersection_filters_candidates(
 
     with monkeypatch.context() as m:
         m.chdir(tmp_path)
-        cfg: Config = make_config(files=["."], include_patterns=["**/*.py"])
+        cfg: Config = make_config(
+            files=["."],
+            include_patterns=["**/*.py"],
+        )
         files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
         rel: list[str] = sorted(p.as_posix() for p in files)
 
@@ -155,7 +160,10 @@ def test_exclude_subtraction_filters_candidates(
 
     with monkeypatch.context() as m:
         m.chdir(tmp_path)
-        cfg: Config = make_config(files=["."], exclude_patterns=["**/*.md"])
+        cfg: Config = make_config(
+            files=["."],
+            exclude_patterns=["**/*.md"],
+        )
         files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
         rel: list[str] = sorted(p.as_posix() for p in files)
 
@@ -177,7 +185,11 @@ def test_include_from_and_exclude_from_files(
 
     with monkeypatch.context() as m:
         m.chdir(tmp_path)
-        cfg: Config = make_config(files=["."], include_from=[str(inc)], exclude_from=[str(exc)])
+        cfg: Config = make_config(
+            files=["."],
+            include_from=[str(inc)],
+            exclude_from=[str(exc)],
+        )
         files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
         rel: list[str] = sorted(p.as_posix() for p in files)
 
@@ -185,25 +197,45 @@ def test_include_from_and_exclude_from_files(
 
 
 def test_file_types_filtering(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Filter final results by configured file_types using the registry."""
+    """Filter final results by configured include_file_types: tuple[str, ...] = () with registry."""
     write(tmp_path / "a.py", "x")
     write(tmp_path / "b.txt", "x")
 
-    # Monkeypatch the registry used by the module
-    def fake_registry() -> dict[str, DummyType]:
-        return {
-            "py": DummyType("py", lambda p: p.suffix == ".py"),
-            "text": DummyType("text", lambda p: p.suffix in {".txt", ".md"}),
-        }
-
     with monkeypatch.context() as m:
         m.chdir(tmp_path)
-        m.setattr(file_resolver_mod, "get_file_type_registry", lambda: fake_registry())
-        cfg: Config = make_config(files=["."], file_types=["py"])
-        files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
-        rel: list[str] = sorted(p.as_posix() for p in files)
 
-        assert rel == ["a.py"]
+        def _py_content_matcher(p: Path) -> bool:
+            """Typed content matcher (Pyright)."""
+            return p.suffix == ".py"
+
+        ft_py: FileType = make_file_type(
+            name="py",
+            content_matcher=_py_content_matcher,
+        )
+        FileTypeRegistry.register(ft_py)
+
+        def _text_content_matcher(p: Path) -> bool:
+            """Typed content matcher (Pyright)."""
+            return p.suffix in {".txt", ".md"}
+
+        ft_text: FileType = make_file_type(
+            name="text",
+            content_matcher=_text_content_matcher,
+        )
+        FileTypeRegistry.register(ft_text)
+
+        try:
+            cfg: Config = make_config(
+                files=["."],
+                include_file_types=set(["py"]),
+            )
+            files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+            rel: list[str] = sorted(p.as_posix() for p in files)
+
+            assert rel == ["a.py"]
+        finally:
+            FileTypeRegistry.unregister("py")
+            FileTypeRegistry.unregister("text")
 
 
 def test_returns_sorted_and_files_only(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -348,18 +380,28 @@ def test_file_type_unknown_is_ignored(
     (tmp_path / "a.py").write_text("x")
     monkeypatch.chdir(tmp_path)
 
-    def fake_registry() -> dict[str, DummyType]:
-        return {"py": DummyType("py", lambda p: p.suffix == ".py")}
+    def _py_content_matcher(p: Path) -> bool:
+        """Typed content matcher (Pyright)."""
+        return p.suffix == ".py"
 
-    monkeypatch.setattr(file_resolver_mod, "get_file_type_registry", lambda: fake_registry())
-    caplog.set_level("WARNING")
-    cfg: Config = make_config(
-        files=["."],
-        file_types=["py", "unknown"],
+    ft_py: FileType = make_file_type(
+        name="py",
+        content_matcher=_py_content_matcher,
     )
-    files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
-    assert [p.as_posix() for p in files] == ["a.py"]
-    assert any("Unknown file types specified" in r.message for r in caplog.records)
+    FileTypeRegistry.register(ft_py)
+
+    try:
+        caplog.set_level("WARNING")
+        include_file_types: set[str] = set(["py", "unknown"])
+        cfg: Config = make_config(
+            files=["."],
+            include_file_types=include_file_types,
+        )
+        files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+        assert [p.as_posix() for p in files] == ["a.py"]
+        assert any("Unknown file types specified" in r.message for r in caplog.records)
+    finally:
+        FileTypeRegistry.unregister("py")
 
 
 def test_config_files_respected_by_filters(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -442,7 +484,10 @@ def test_config_declared_globs_match_under_config_dir_even_if_cwd_diff(
     cfg_file.write_text("[tool.topmark]\n", encoding="utf-8")
 
     monkeypatch.chdir(tmp_path / "elsewhere")
-    cfg: Config = make_config(config_files=[str(cfg_file)], include_patterns=["src/**/*.py"])
+    cfg: Config = make_config(
+        config_files=[str(cfg_file)],
+        include_patterns=["src/**/*.py"],
+    )
     files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
     # Normalize relative to tmp_path for stability
     rel: list[str] = sorted(
@@ -467,7 +512,10 @@ def test_pattern_file_base_outside_cwd(tmp_path: Path, monkeypatch: pytest.Monke
     inc.write_text("pkg/**/*.py\n", encoding="utf-8")
 
     monkeypatch.chdir(root)
-    cfg: Config = make_config(files=["."], include_from=[str(inc)])
+    cfg: Config = make_config(
+        files=["."],
+        include_from=[str(inc)],
+    )
     files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
     assert [p.as_posix() for p in files] == ["pkg/a.py"]
 
@@ -545,23 +593,32 @@ def test_multiple_unknown_file_types_warn_once(
     (tmp_path / "a.py").write_text("x", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
 
-    # Minimal registry with just 'py'
-    def fake_registry() -> dict[str, DummyType]:
-        return {"py": DummyType("py", lambda p: p.suffix == ".py")}
+    def _py_content_matcher(p: Path) -> bool:
+        """Typed content matcher (Pyright)."""
+        return p.suffix == ".py"
 
-    monkeypatch.setattr(file_resolver_mod, "get_file_type_registry", lambda: fake_registry())
-    caplog.set_level("WARNING")
-    cfg: Config = make_config(
-        files=["."],
-        file_types=["unknown1", "py", "unknown2"],
+    ft_py: FileType = make_file_type(
+        name="py",
+        content_matcher=_py_content_matcher,
     )
-    files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
-    assert [p.as_posix() for p in files] == ["a.py"]
-    msgs: list[str] = [
-        r.message for r in caplog.records if "Unknown file types specified" in r.message
-    ]
-    assert len(msgs) == 1
-    assert "unknown1" in msgs[0] and "unknown2" in msgs[0]
+    FileTypeRegistry.register(ft_py)
+
+    try:
+        caplog.set_level("WARNING")
+        include_file_types: set[str] = set(["unknown1", "py", "unknown2"])
+        cfg: Config = make_config(
+            files=["."],
+            include_file_types=include_file_types,
+        )
+        files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+        assert [p.as_posix() for p in files] == ["a.py"]
+        msgs: list[str] = [
+            r.message for r in caplog.records if "Unknown file types specified" in r.message
+        ]
+        assert len(msgs) == 1
+        assert "unknown1" in msgs[0] and "unknown2" in msgs[0]
+    finally:
+        FileTypeRegistry.unregister("py")
 
 
 def test_pattern_files_trim_whitespace_and_trailing_spaces(

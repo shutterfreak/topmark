@@ -13,12 +13,15 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 from topmark.filetypes.base import FileType
-from topmark.filetypes.instances import get_file_type_registry
+from topmark.filetypes.instances import get_base_file_type_registry
+from topmark.registry import FileTypeRegistry
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     import pytest
 
 
@@ -48,7 +51,15 @@ def test_plugins_are_discovered(monkeypatch: pytest.MonkeyPatch) -> None:
         "topmark.filetypes.instances.entry_points",
         lambda: SimpleNamespace(select=_select),
     )
-    # clear cache
-    get_file_type_registry.cache_clear()
-    reg: dict[str, FileType] = get_file_type_registry()
-    assert "pluggy" in reg
+
+    get_base_file_type_registry.cache_clear()
+
+    # Also clear the composed/effective registry cache so it re-composes from the
+    # freshly patched entry_points() provider.
+    #
+    # Silence Pyright regarding use of private members:
+    ft_reg = cast("Any", FileTypeRegistry)
+    ft_reg._clear_cache()
+
+    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
+    assert "pluggy" in ft_registry

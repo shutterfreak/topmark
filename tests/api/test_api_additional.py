@@ -44,14 +44,14 @@ def test_check_mutually_exclusive_add_update_raises(repo_py_toml_xyz_no_header: 
 def test_check_with_explicit_config_restricts_file_types(repo_py_toml_xyz_no_header: Path) -> None:
     """Explicit config should restrict discovery to the given file types.
 
-    We pass a config mapping that limits `files.file_types` to ["python"]. The API
+    We pass a config mapping that limits `files.include_file_types` to ["python"]. The API
     should honor this mapping without merging project config and only return Python files.
     """
     r: api.RunResult = api.check(
         [repo_py_toml_xyz_no_header / "src"],
         apply=False,
-        config=cfg(files={"file_types": ["python"]}),
-        file_types=None,  # rely solely on config mapping here
+        config=cfg(files={"include_file_types": ["python"]}),
+        include_file_types=None,  # rely solely on config mapping here
     )
 
     paths: set[Path] = {fr.path for fr in r.files}

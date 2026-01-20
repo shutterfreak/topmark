@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING
 from topmark.registry import Registry
 
 if TYPE_CHECKING:
-    from topmark.registry.registry import Binding
+    from topmark.registry import Binding
 
 
 def test_bindings_shape() -> None:
