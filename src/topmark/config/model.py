@@ -74,6 +74,7 @@ if TYPE_CHECKING:
     from topmark.config.io import TomlTable, TomlTableMap
     from topmark.config.logging import TopmarkLogger
     from topmark.config.types import PatternSource
+    from topmark.filetypes.base import FileType
 
 # ArgsLike: generic mapping accepted by config loaders (works for CLI namespaces and API dicts).
 ArgsLike = Mapping[str, Any]
@@ -131,7 +132,10 @@ class Config:
             file paths to add before filtering.
         include_patterns (tuple[str, ...]): Glob patterns to include.
         exclude_patterns (tuple[str, ...]): Glob patterns to exclude.
-        file_types (frozenset[str]): File extensions or types to process.
+        include_file_types (frozenset[str]): Whitelist of file type identifiers to restrict
+            file discovery.
+        exclude_file_types (frozenset[str]): Blacklist of file type identifiers to exclude from
+            file discovery.
         diagnostics (tuple[Diagnostic, ...]): Warnings or errors encountered while loading,
             merging or sanitizing config.
 
@@ -189,7 +193,8 @@ class Config:
     exclude_patterns: tuple[str, ...]
 
     # File types (linked to file extensions) to process (filter)
-    file_types: frozenset[str]
+    include_file_types: frozenset[str]
+    exclude_file_types: frozenset[str]
 
     # Collected diagnostics while loading / merging / sanitizing config.
     diagnostics: tuple[Diagnostic, ...]
@@ -232,7 +237,8 @@ class Config:
                 "strategy": writer_strategy,
             },
             "files": {
-                "file_types": list(self.file_types),
+                "include_file_types": list(self.include_file_types),
+                "exclude_file_types": list(self.exclude_file_types),
                 "files_from": [str(ps.path) for ps in self.files_from],
                 "include_from": [str(ps.path) for ps in self.include_from],
                 "exclude_from": [str(ps.path) for ps in self.exclude_from],
@@ -299,7 +305,8 @@ class Config:
             exclude_patterns=list(self.exclude_patterns),
             exclude_from=list(self.exclude_from),
             files_from=list(self.files_from),
-            file_types=set(self.file_types),
+            include_file_types=set(self.include_file_types),
+            exclude_file_types=set(self.exclude_file_types),
             diagnostics=DiagnosticLog(items=list(self.diagnostics)),
         )
 
@@ -356,7 +363,8 @@ class MutableConfig:
             candidate file paths to add before filtering.
         include_patterns (list[str]): Glob patterns to include.
         exclude_patterns (list[str]): Glob patterns to exclude.
-        file_types (set[str]): File extensions or types to process.
+        include_file_types (set[str]): file type identifiers to process.
+        exclude_file_types (set[str]): file type identifiers to exclude.
         diagnostics (DiagnosticLog): Warnings or errors encountered while loading,
             merging or sanitizing config.
     """
@@ -406,7 +414,8 @@ class MutableConfig:
     exclude_patterns: list[str] = field(default_factory=lambda: [])
 
     # File types filter
-    file_types: set[str] = field(default_factory=lambda: set[str]())
+    include_file_types: set[str] = field(default_factory=lambda: set[str]())
+    exclude_file_types: set[str] = field(default_factory=lambda: set[str]())
 
     # Collected diagnostics while loading / merging / sanitizing config.
     diagnostics: DiagnosticLog = field(default_factory=DiagnosticLog)
@@ -460,7 +469,8 @@ class MutableConfig:
             files_from=tuple(self.files_from),
             include_patterns=tuple(self.include_patterns),
             exclude_patterns=tuple(self.exclude_patterns),
-            file_types=frozenset(self.file_types),
+            include_file_types=frozenset(self.include_file_types),
+            exclude_file_types=frozenset(self.exclude_file_types),
             diagnostics=tuple(self.diagnostics),
         )
 
@@ -807,10 +817,20 @@ class MutableConfig:
             # choose your default; this keeps behavior predictable
             draft.header_format = None
 
-        file_types: list[str] = get_list_value(files_tbl, "file_types")
-        draft.file_types = set(file_types) if file_types else set()
-        if file_types and len(file_types) != len(draft.file_types):
-            logger.warning("Duplicate file types found in config: %s", ", ".join(file_types))
+        include_file_types: list[str] = get_list_value(files_tbl, "include_file_types")
+        draft.include_file_types = set(include_file_types) if include_file_types else set()
+        if include_file_types and len(include_file_types) != len(draft.include_file_types):
+            logger.warning(
+                "Duplicate included file types found in config: %s",
+                ", ".join(include_file_types),
+            )
+        exclude_file_types: list[str] = get_list_value(files_tbl, "exclude_file_types")
+        draft.exclude_file_types = set(exclude_file_types) if exclude_file_types else set()
+        if exclude_file_types and len(exclude_file_types) != len(draft.exclude_file_types):
+            logger.warning(
+                "Duplicate excluded file types found in config: %s",
+                ", ".join(exclude_file_types),
+            )
 
         draft.stdin_mode = (
             False  # Default to False unless explicitly set later -- TODO: False or None?
@@ -825,7 +845,8 @@ class MutableConfig:
         input_paths: Iterable[Path] | None = None,
         extra_config_files: Iterable[Path] | None = None,
         no_config: bool = False,
-        file_types: Iterable[str] | None = None,
+        include_file_types: Iterable[str] | None = None,
+        exclude_file_types: Iterable[str] | None = None,
     ) -> MutableConfig:
         """Discover and merge configuration layers into a draft `MutableConfig`.
 
@@ -843,7 +864,9 @@ class MutableConfig:
             extra_config_files (Iterable[Path] | None):
                 Explicit additional config files to merge **after** discovery (their given order).
             no_config (bool): If True, skip user and project discovery.
-            file_types (Iterable[str] | None): Optional filter to seed the draft for parity
+            include_file_types (Iterable[str] | None): Optional filter to seed the draft for parity
+                with CLI.
+            exclude_file_types (Iterable[str] | None): Optional filter to seed the draft for parity
                 with CLI.
 
         Returns:
@@ -857,9 +880,12 @@ class MutableConfig:
         if anchor.is_file():
             anchor = anchor.parent
 
-        # Optionally seed file_types for parity with CLI flags
-        if file_types:
-            draft.file_types = set(x for x in file_types)
+        # Optionally seed include_file_types for parity with CLI flags
+        if include_file_types:
+            draft.include_file_types = set(x for x in include_file_types)
+        # Optionally seed iexlude_file_types for parity with CLI flags
+        if exclude_file_types:
+            draft.exclude_file_types = set(x for x in exclude_file_types)
 
         if not no_config:
             # 2) Merge user config (if present)
@@ -940,7 +966,8 @@ class MutableConfig:
             if other.relative_to_raw is not None
             else self.relative_to_raw,
             relative_to=other.relative_to if other.relative_to is not None else self.relative_to,
-            file_types=other.file_types or self.file_types,
+            include_file_types=other.include_file_types or self.include_file_types,
+            exclude_file_types=other.exclude_file_types or self.exclude_file_types,
             verbosity_level=other.verbosity_level
             if other.verbosity_level is not None
             else self.verbosity_level,
@@ -1055,9 +1082,13 @@ class MutableConfig:
             self.relative_to = Path(args["relative_to"]).resolve()
         # If key not present or value is None, **keep** whatever came from discovery/TOML.
 
-        # Override file_types filter if specified
-        if "file_types" in args:
-            self.file_types = set(args["file_types"])
+        # Override include_file_types filter if specified
+        if "include_file_types" in args:
+            self.include_file_types = set(args["include_file_types"])
+
+        # Override exclude_file_types filter if specified
+        if "exclude_file_types" in args:
+            self.exclude_file_types = set(args["exclude_file_types"])
 
         # Apply CLI flags that require explicit True to activate or to explicitly disable
         if "stdin_mode" in args:
@@ -1170,6 +1201,68 @@ class MutableConfig:
         _sanitize_sources("include_from", self.include_from)
         _sanitize_sources("exclude_from", self.exclude_from)
         _sanitize_sources("files_from", self.files_from)
+
+        def _sanitize_file_type_ids(
+            name: str,
+            ids: set[str],
+            *,
+            is_exclusion: bool,
+        ) -> None:
+            """Validate file type identifiers against the registry.
+
+            Unknown identifiers are ignored (dropped) and recorded as config diagnostics.
+
+            Args:
+                name (str): Human-readable name for diagnostics (e.g. "include_file_types").
+                ids (set[str]): The mutable set of identifiers to validate in-place.
+                is_exclusion (bool): Whether this selector is an exclusion filter.
+            """
+            if not ids:
+                return
+
+            # Local import to keep config import-safe and avoid incidental cycles.
+            from topmark.registry import FileTypeRegistry
+
+            # Validate against the effective file type registry:
+            ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
+
+            unknown: list[str] = sorted(t for t in ids if t not in ft_registry)
+            if not unknown:
+                return
+
+            unknown_str: str = ", ".join(unknown)
+            if is_exclusion:
+                msg: str = f"Unknown excluded file types specified (ignored): {unknown_str}"
+            else:
+                msg = f"Unknown included file types specified (ignored): {unknown_str}"
+
+            logger.warning(msg)
+            self.diagnostics.add_warning(msg)
+            ids.difference_update(unknown)
+
+        _sanitize_file_type_ids(
+            "include_file_types",
+            self.include_file_types,
+            is_exclusion=False,
+        )
+        _sanitize_file_type_ids(
+            "exclude_file_types",
+            self.exclude_file_types,
+            is_exclusion=True,
+        )
+
+        # If a type appears in both include and exclude, prefer exclusion.
+        overlap: set[str] = self.include_file_types & self.exclude_file_types
+        if overlap:
+            overlap_str: str = ", ".join(sorted(overlap))
+            msg: str = (
+                "File types specified in both include and exclude filters; "
+                f"exclusion wins (removed from include): {overlap_str}"
+            )
+            logger.warning(msg)
+            self.diagnostics.add_warning(msg)
+            # Remove overlaps (blacklisted wins from whitelisted):
+            self.include_file_types.difference_update(overlap)
 
         # STDIN content mode: force stdout destination.
         # We treat content-on-STDIN as "emit updated content"; file strategies are irrelevant.

@@ -277,9 +277,21 @@ class FileType:
         # Track which name rule (if any) matched; used for content gating.
         matched_by: str | None = None
 
-        # 1) Extension match (simple suffix)
-        if self.extensions and path.suffix in self.extensions:
-            matched_by = "extension"
+        # 1) Extension match
+        if self.extensions:
+            suffix: str = path.suffix
+            name: str = path.name
+            for ext in self.extensions:
+                if ext.count(".") > 1:
+                    # Multiple-dot suffix (e.g., `.tar.gz`)
+                    if name.endswith(ext):
+                        matched_by = "extension"
+                        break
+                else:
+                    # Single-dot suffix
+                    if suffix == ext:
+                        matched_by = "extension"
+                        break
         else:
             # 2) Filenames: support exact basename or tail subpath matches
             #    - "settings.json" matches only if basename == "settings.json"

@@ -29,10 +29,13 @@ Notes:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from threading import RLock
 from types import MappingProxyType
 from typing import TYPE_CHECKING
+
+from topmark.filetypes.base import FileType
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
@@ -63,26 +66,42 @@ class FileTypeRegistry:
           most integrations should use metadata views only.
     """
 
-    _lock = RLock()
+    _lock: RLock = RLock()
 
     # Local overlays; applied on top of the base (built-ins + plugins).
     # These *do not* mutate the base registry returned by instances.
     _overrides: dict[str, FileType] = {}
     _removals: set[str] = set()
+    _cache: Mapping[str, FileType] | None = None
+
+    @classmethod
+    def _clear_cache(cls) -> None:
+        """Clear any cached composed views.
+
+        This is primarily used by tests and by mutation helpers to ensure that
+        subsequent `as_mapping()` calls see updated overlays or base registry changes.
+        """
+        cls._cache = None
 
     @classmethod
     def _compose(cls) -> dict[str, FileType]:
         """Compose base registry with local overlays/removals."""
-        from topmark.filetypes.instances import get_file_type_registry as _get_ft
+        cached: Mapping[str, FileType] | None = cls._cache
+        if cached is not None:
+            return dict(cached)
 
-        # Start from a shallow copy of the base mapping
+        from topmark.filetypes.instances import get_base_file_type_registry as _get_ft
+
+        # Start from a shallow copy of the base mapping (built-ins + entry points)
         base: dict[str, FileType] = dict(_get_ft())
         # Apply overrides (late wins)
         base.update(cls._overrides)
         # Drop removals
         for name in cls._removals:
             base.pop(name, None)
-        return base
+
+        cls._cache = MappingProxyType(base)
+        return dict(base)
 
     @classmethod
     def names(cls) -> tuple[str, ...]:
@@ -97,7 +116,7 @@ class FileTypeRegistry:
     @classmethod
     def supported_names(cls) -> tuple[str, ...]:
         """Return file type names that have a registered processor."""
-        from topmark.registry.processors import HeaderProcessorRegistry as _HPReg
+        from topmark.registry import HeaderProcessorRegistry as _HPReg
 
         with cls._lock:
             proc_names: set[str] = set(_HPReg.as_mapping().keys())
@@ -106,7 +125,7 @@ class FileTypeRegistry:
     @classmethod
     def unsupported_names(cls) -> tuple[str, ...]:
         """Return file type names that are recognized but unsupported."""
-        from topmark.registry.processors import HeaderProcessorRegistry as _HPReg
+        from topmark.registry import HeaderProcessorRegistry as _HPReg
 
         with cls._lock:
             all_names: set[str] = set(cls._compose().keys())
@@ -137,7 +156,16 @@ class FileTypeRegistry:
             The returned mapping is a `MappingProxyType` and must not be mutated.
         """
         with cls._lock:
-            return MappingProxyType(cls._compose())
+            cached: Mapping[str, FileType] | None = cls._cache
+            if cached is not None:
+                return cached
+
+            # Compose a fresh view and cache it.
+            # NOTE: tests may monkeypatch `_compose()`; do not rely on `_compose()`
+            # to populate `_cache`.
+            composed: dict[str, FileType] = cls._compose()
+            cls._cache = MappingProxyType(composed)
+            return cls._cache
 
     @classmethod
     def iter_meta(cls) -> Iterator[FileTypeMeta]:
@@ -186,7 +214,7 @@ class FileTypeRegistry:
             - Thread safe via RLock; process-global state; do not mutate in long-lived
               multi-tenant processes.
         """
-        from topmark.registry.processors import HeaderProcessorRegistry
+        from topmark.registry import HeaderProcessorRegistry
 
         with cls._lock:
             name: str = ft_obj.name or ""
@@ -197,6 +225,9 @@ class FileTypeRegistry:
                 raise ValueError(f"Duplicate FileType name: {name}")
             # Record override locally (no base mutation)
             cls._overrides[name] = ft_obj
+            # If this name was previously removed, allow re-registration.
+            cls._removals.discard(name)
+            cls._clear_cache()
             if processor is not None:
                 # Chain to HeaderProcessorRegistry for linkage; raises on conflict
                 HeaderProcessorRegistry.register(name, processor)
@@ -226,4 +257,5 @@ class FileTypeRegistry:
             if name in cls._compose():
                 existed = True
                 cls._removals.add(name)
+            cls._clear_cache()
             return existed

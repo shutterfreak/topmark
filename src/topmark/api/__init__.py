@@ -55,7 +55,7 @@ run = api.check(
         "fields": {"project": "TopMark", "license": "MIT"},
         "header": {"fields": ["file", "project", "license"]},
         "formatting": {"align_fields": True},
-        "files": {"file_types": ["python"], "exclude_patterns": [".venv"]},
+        "files": {"include_file_types": ["python"], "exclude_patterns": [".venv"]},
     },
 )
 ```
@@ -83,6 +83,7 @@ if TYPE_CHECKING:
     from topmark.config.logging import TopmarkLogger
     from topmark.core.exit_codes import ExitCode
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.processors.base import HeaderProcessor
     from topmark.pipeline.protocols import Step
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -112,7 +113,8 @@ def check(
     config: Mapping[str, Any] | None = None,
     policy: PublicPolicy | None = None,
     policy_by_type: Mapping[str, PublicPolicy] | None = None,
-    file_types: Sequence[str] | None = None,
+    include_file_types: Sequence[str] | None = None,
+    exclude_file_types: Sequence[str] | None = None,
     skip_compliant: bool = False,
     skip_unsupported: bool = False,
     prune: bool = False,
@@ -135,8 +137,10 @@ def check(
             These are merged after discovery using the standard policy resolution.
         policy_by_type (Mapping[str, PublicPolicy] | None): Optional per-type policy
             overrides (public shape) merged after discovery.
-        file_types (Sequence[str] | None): Optional whitelist of TopMark file type
-            identifiers to narrow discovery.
+        include_file_types (Sequence[str] | None): Optional whitelist of file type identifiers
+            to restrict discovery.
+        exclude_file_types (Sequence[str] | None): Optional blacklist of file type identifiers
+            to exclude from discovery.
         skip_compliant (bool): Exclude already-compliant files from the returned view.
         skip_unsupported (bool): Exclude unsupported files from the returned view.
         prune (bool): If `True`, trim heavy views after the run (keeps summaries).
@@ -162,7 +166,8 @@ def check(
         pipeline=pipeline,
         paths=paths,
         base_config=config,  # `None` preserves discovery; mapping/Config is honored
-        file_types=file_types,
+        include_file_types=include_file_types,
+        exclude_file_types=exclude_file_types,
         apply_changes=apply,
         policy=policy,
         policy_by_type=policy_by_type,
@@ -194,7 +199,8 @@ def strip(
     config: Mapping[str, Any] | None = None,
     policy: PublicPolicy | None = None,
     policy_by_type: Mapping[str, PublicPolicy] | None = None,
-    file_types: Sequence[str] | None = None,
+    include_file_types: Sequence[str] | None = None,
+    exclude_file_types: Sequence[str] | None = None,
     skip_compliant: bool = False,
     skip_unsupported: bool = False,
     prune: bool = False,
@@ -217,7 +223,10 @@ def strip(
             compatibility.
         policy_by_type (Mapping[str, PublicPolicy] | None): Optional per-type policy
             overrides (public shape).
-        file_types (Sequence[str] | None): Optional whitelist of TopMark file type identifiers.
+        include_file_types (Sequence[str] | None): Optional whitelist of file type identifiers
+            to restrict discovery.
+        exclude_file_types (Sequence[str] | None): Optional blacklist of file type identifiers
+            to exclude from discovery.
         skip_compliant (bool): Exclude already-compliant files from the returned view.
         skip_unsupported (bool): Exclude unsupported files from the returned view.
         prune (bool): If `True`, trim heavy views after the run (keeps summaries).
@@ -241,7 +250,8 @@ def strip(
         pipeline=pipeline,
         paths=paths,
         base_config=config,  # `None` preserves discovery; mapping/Config is honored
-        file_types=file_types,
+        include_file_types=include_file_types,
+        exclude_file_types=exclude_file_types,
         apply_changes=apply,
         policy=policy,
         policy_by_type=policy_by_type,
@@ -280,7 +290,7 @@ def get_filetype_info(long: bool = False) -> list[FileTypeInfo]:
 
     items: list[FileTypeInfo] = []
     for name, ft in Registry.filetypes().items():
-        processor = proc_reg.get(name, None) if proc_reg else None
+        processor: HeaderProcessor | None = proc_reg.get(name, None) if proc_reg else None
         supported = bool(processor)
         processor_name: str | None = processor.__class__.__name__ if processor else None
         info: FileTypeInfo = {

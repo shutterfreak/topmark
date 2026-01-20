@@ -50,7 +50,8 @@ def resolve_config_from_click(
     include_from: list[str],
     exclude_patterns: list[str],
     exclude_from: list[str],
-    file_types: list[str],
+    include_file_types: list[str],
+    exclude_file_types: list[str],
     relative_to: str | None,
     no_config: bool,
     config_paths: list[str],
@@ -92,7 +93,8 @@ def resolve_config_from_click(
         include_from (list[str]): Paths to files that contain include patterns.
         exclude_patterns (list[str]): Glob patterns of files to exclude.
         exclude_from (list[str]): Paths to files that contain exclude patterns.
-        file_types (list[str]): File type identifiers to restrict processing to.
+        include_file_types (list[str]): File type identifiers to restrict processing to.
+        exclude_file_types (list[str]): File type identifiers to exclude processing for.
         relative_to (str | None): Root directory used to compute relative paths.
         no_config (bool): If True, ignore local project config files.
         config_paths (list[str]): Extra config TOML file paths to merge.
@@ -117,7 +119,8 @@ def resolve_config_from_click(
         exclude_from=exclude_from,
         no_config=no_config,
         config_files=config_paths,
-        file_types=file_types,
+        include_file_types=include_file_types,
+        exclude_file_types=exclude_file_types,
         relative_to=relative_to,
         align_fields=align_fields,
         header_format=header_format,

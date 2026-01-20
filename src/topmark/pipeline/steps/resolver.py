@@ -27,14 +27,14 @@ from typing import TYPE_CHECKING
 from topmark.config.logging import get_logger
 from topmark.constants import VALUE_NOT_SET
 from topmark.filetypes.base import ContentGate, FileType
-from topmark.filetypes.instances import get_file_type_registry
-from topmark.filetypes.registry import get_header_processor_registry
 from topmark.pipeline.hints import Axis, Cluster, KnownCode
+from topmark.pipeline.processors.base import HeaderProcessor
 from topmark.pipeline.status import ResolveStatus
 from topmark.pipeline.steps.base import BaseStep
+from topmark.registry import FileTypeRegistry, HeaderProcessorRegistry
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Mapping
     from pathlib import Path
 
     from topmark.config.logging import TopmarkLogger
@@ -44,7 +44,30 @@ if TYPE_CHECKING:
 
 logger: TopmarkLogger = get_logger(__name__)
 
+
 Candidate = tuple[int, str, FileType]
+
+
+def _candidate_order_key(candidate: Candidate) -> tuple[int, str]:
+    """Return the ordering key for a file type resolution candidate.
+
+    Candidates are ordered by:
+      1) score (descending)
+      2) file type name (ascending)
+
+    This key is intended to be used with `min()`:
+        min(candidates, key=_candidate_order_key)
+    so that the best candidate is selected deterministically without
+    sorting the entire list.
+
+    Args:
+        candidate (Candidate): A `(score, name, FileType)` tuple.
+
+    Returns:
+        tuple[int, str]: The composite ordering key.
+    """
+    score, name, _ = candidate
+    return (-score, name)
 
 
 @dataclass(frozen=True)
@@ -222,8 +245,11 @@ def get_candidates_for_file_path(path: Path) -> list[Candidate]:
     path_str: str = path.as_posix()
     candidates: list[Candidate] = []
 
+    # Validate against the effective file type registry:
+    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
+
     # 1) Compute name signals -> 2) Gate content probe -> 3) Include? -> 4) Score
-    for ft in get_file_type_registry().values():
+    for ft in ft_registry.values():
         sig: MatchSignals = _compute_signals(ft, base_name, path_str)
         should_probe: bool = _should_probe_content(ft, sig)
 
@@ -252,26 +278,45 @@ def resolve_file_type_for_path(path: Path, *, cfg: Config) -> FileType | None:
     """Resolve the best `FileType` for a path, respecting configuration filters.
 
     This function wraps `get_candidates_for_file_path()` and additionally
-    applies the user‑provided configuration constraint `cfg.file_types`, which
-    restricts the set of allowed file types. If no candidates remain after
-    filtering, `None` is returned.
+    applies the user-provided configuration constraint `cfg.include_file_types` (whitelist)
+    and `cfg.exclude_file_types` (blacklist), which restrict the set of allowed
+    file type identifiers.
+
+    If no candidates remain after filtering, `None` is returned.
 
     Args:
         path (Path): Filesystem path of the file being resolved.
         cfg (Config): Active immutable configuration snapshot. Only
-            `cfg.file_types` is consulted here.
+            `cfg.include_file_types` and `cfg.exclude_file_types` are consulted here.
 
     Returns:
         FileType | None: The highest‑scoring candidate, or None if none match.
     """
     candidates: list[Candidate] = get_candidates_for_file_path(path)
 
-    # Filter by cfg.file_types if provided
-    allowed: set[str] = set(cfg.file_types or [])
-    if allowed:
-        candidates = [c for c in candidates if c[2].name in allowed]
+    # Filter by cfg.include_file_types if provided (whitelist)
+    included: frozenset[str] = cfg.include_file_types
+    if included:
+        candidates = [c for c in candidates if c[2].name in included]
 
-    return max(candidates, key=lambda c: c[0])[2] if candidates else None
+    # Filter by cfg.exclude_file_types if provided (blacklist)
+    excluded: frozenset[str] = cfg.exclude_file_types
+    if excluded:
+        candidates = [c for c in candidates if c[2].name not in excluded]
+
+    if not candidates:
+        return None
+
+    # Deterministic best candidate selection.
+    #
+    # We want the highest score to win, with a stable tie-break on file type name
+    # (ascending) to ensure deterministic behavior across runs.
+    #
+    # Using `min()` with a composite key avoids sorting the full list:
+    #   key = (-score, name)
+    # so the "best" candidate becomes the smallest by this ordering.
+    best: Candidate = min(candidates, key=_candidate_order_key)
+    return best[2]
 
 
 class ResolverStep(BaseStep):
@@ -339,7 +384,7 @@ class ResolverStep(BaseStep):
 
         if candidates:
             # Best by (score DESC, name ASC) for deterministic choice
-            candidates.sort(key=lambda x: (-x[0], x[1]))
+            candidates.sort(key=_candidate_order_key)
             file_type: FileType
             _, _, file_type = candidates[0]
 
@@ -363,7 +408,8 @@ class ResolverStep(BaseStep):
                 return
 
             # Matched a FileType, but no header processor is registered for it
-            processor: HeaderProcessor | None = get_header_processor_registry().get(file_type.name)
+            hp_registry: Mapping[str, HeaderProcessor] = HeaderProcessorRegistry.as_mapping()
+            processor: HeaderProcessor | None = hp_registry.get(file_type.name)
             if processor is None:
                 logger.info(
                     "No header processor registered for file type '%s' (file '%s')",

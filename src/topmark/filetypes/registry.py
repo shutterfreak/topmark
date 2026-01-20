@@ -14,6 +14,12 @@ This module provides a decorator to register HeaderProcessor implementations
 for specific file types, using the centralized file_type_registry.
 
 Each HeaderProcessor is associated with a FileType by name.
+
+Notes:
+    This module maintains the *base* processor registry populated by
+    decorators during import/discovery. For the effective, user-facing
+    composed view (base + overlays − removals), use
+    [`topmark.registry.processors.HeaderProcessorRegistry.as_mapping`][].
 """
 
 from __future__ import annotations
@@ -21,10 +27,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.config.logging import get_logger
-from topmark.filetypes.instances import get_file_type_registry
+from topmark.filetypes.base import FileType
+from topmark.pipeline.processors.base import HeaderProcessor
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Mapping
 
     from topmark.config.logging import TopmarkLogger
     from topmark.filetypes.base import FileType
@@ -41,7 +48,7 @@ def register_filetype(
     """Class decorator to register a HeaderProcessor for a specific file type.
 
     Args:
-        name (str): Name of the file type as defined in file_type_registry.
+        name (str): File type identifier under which the processor is registered.
 
     Returns:
         Callable[[type[HeaderProcessor]], type[HeaderProcessor]]: A decorator that
@@ -50,11 +57,14 @@ def register_filetype(
     Raises:
         ValueError: If the file type name is unknown or already registered.
     """
-    file_type_registry: dict[str, FileType] = get_file_type_registry()
-    if name not in file_type_registry:
+    # Validate against the *effective* registry (composed base + overlays).
+    from topmark.registry import FileTypeRegistry
+
+    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
+    if name not in ft_registry:
         raise ValueError(f"Unknown file type: {name}")
 
-    file_type: FileType = file_type_registry[name]
+    file_type: FileType = ft_registry[name]
 
     def decorator(cls: type[HeaderProcessor]) -> type[HeaderProcessor]:
         """Decorator function that registers the processor class with the given extension.
@@ -71,12 +81,12 @@ def register_filetype(
             ValueError: If a `FileType` is already registered to a `HeaderProcessor`.
 
         Returns:
-            type[HeaderProcessor]: The decorated HeaderProcessor instance.
+            type[HeaderProcessor]: The decorated HeaderProcessor class.
         """
         logger.debug("Registering processor %s for file type: %s", cls.__name__, file_type.name)
         if file_type.name in _registry:
             raise ValueError(f"File type '{file_type.name}' already has a registered processor.")
-        instance = cls()
+        instance: HeaderProcessor = cls()
         instance.file_type = file_type
         _registry[file_type.name] = instance
         return cls
@@ -84,6 +94,11 @@ def register_filetype(
     return decorator
 
 
-def get_header_processor_registry() -> dict[str, HeaderProcessor]:
-    """Return the registry of file type names to HeaderProcessor instances."""
+def get_base_header_processor_registry() -> dict[str, HeaderProcessor]:
+    """Return the base mapping of file type names to HeaderProcessor instances.
+
+    Notes:
+        For the effective, user-facing composed view (including overlays), use
+        [`topmark.registry.processors.HeaderProcessorRegistry.as_mapping`][].
+    """
     return _registry

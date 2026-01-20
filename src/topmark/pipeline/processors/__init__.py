@@ -21,6 +21,8 @@ from topmark.config.logging import get_logger
 from topmark.filetypes.base import FileType
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from topmark.config.logging import TopmarkLogger
     from topmark.filetypes.base import FileType
     from topmark.pipeline.processors.base import HeaderProcessor
@@ -39,35 +41,34 @@ def get_processor_for_file(path: Path) -> HeaderProcessor | None:
             matching processor is found, or None if no processor is registered
             for the file's extension.
     """
-    from topmark.filetypes.instances import get_file_type_registry
-    from topmark.filetypes.registry import get_header_processor_registry
+    from topmark.registry import FileTypeRegistry, HeaderProcessorRegistry
 
-    file_type_registry: dict[str, FileType] = get_file_type_registry()
-    header_processor_registry: dict[str, HeaderProcessor] = get_header_processor_registry()
+    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
+    hp_registry: Mapping[str, HeaderProcessor] = HeaderProcessorRegistry.as_mapping()
 
     logger.debug("Looking up file type for file '%s'", path)
     logger.debug(
         "  %3d registered file types: %s",
-        len(file_type_registry),
-        ", ".join(sorted(file_type_registry.keys())),
+        len(ft_registry),
+        ", ".join(sorted(ft_registry.keys())),
     )
     header_processor_list: list[str] = sorted(
-        set(processor.__class__.__name__ for processor in header_processor_registry.values()),
+        set(processor.__class__.__name__ for processor in hp_registry.values()),
     )
     logger.debug(
         "  %3d registered header processors: %s",
         len(header_processor_list),
         ", ".join(header_processor_list),
     )
-    logger.trace("header_processor_registry: %s", header_processor_registry)
+    logger.trace("header_processor_registry: %s", hp_registry)
 
     # Get the file type based on file name
     file_type: FileType | None = None
 
     # Look up the
-    for file_type_name, processor in header_processor_registry.items():
+    for file_type_name, processor in hp_registry.items():
         logger.trace("Resolving '%s' type to '%s'", path, file_type_name)
-        file_type = file_type_registry.get(file_type_name)
+        file_type = ft_registry.get(file_type_name)
         if not file_type:
             logger.warning(
                 "No FileType found for registered processor '%s'",
@@ -95,7 +96,7 @@ def get_processor_for_file(path: Path) -> HeaderProcessor | None:
 # Dynamically import all modules in the processors/ directory
 def register_all_processors() -> None:
     """Import all processor modules in the current package."""
-    package_dir = Path(__file__).parent
+    package_dir: Path = Path(__file__).parent
     for module_info in pkgutil.iter_modules([str(package_dir)]):
         if not module_info.ispkg:
             # Import the module to ensure it registers its processor

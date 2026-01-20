@@ -104,7 +104,8 @@ def ensure_mutable_config(
             exclude_patterns=list(config.exclude_patterns),
             exclude_from=list(config.exclude_from),
             files_from=list(config.files_from),
-            file_types=set(config.file_types),
+            include_file_types=set(config.include_file_types),
+            exclude_file_types=set(config.exclude_file_types),
         )
     # Accept plain dict-like, normalize to internal MutableConfig via TOML-like dict
     logger.debug("Supplied config is TOML Mapping - returning MutableConfig.from_toml_dict(config)")
@@ -115,7 +116,8 @@ def build_cfg_and_files_via_cli_helpers(
     paths: Iterable[Path | str],
     *,
     base_config: Mapping[str, Any] | Config | None,
-    file_types: Sequence[str] | None,
+    include_file_types: Sequence[str] | None,
+    exclude_file_types: Sequence[str] | None,
 ) -> tuple[Config, list[Path]]:
     """Build a frozen `Config` and resolve files using the same rules as the CLI.
 
@@ -141,7 +143,9 @@ def build_cfg_and_files_via_cli_helpers(
         base_config (Mapping[str, Any] | Config | None): Optional mapping or frozen
             `Config` to seed from. When provided, discovery is skipped and only the
             provided configuration is honored.
-        file_types (Sequence[str] | None): Optional whitelist of file type identifiers
+        include_file_types (Sequence[str] | None): Optional whitelist of file type identifiers
+            to seed the draft for parity with CLI behavior.
+        exclude_file_types (Sequence[str] | None): Optional blacklist of file type identifiers
             to seed the draft for parity with CLI behavior.
 
     Returns:
@@ -172,8 +176,12 @@ def build_cfg_and_files_via_cli_helpers(
         # Assign normalized paths to draft.files for consistency
         draft.files = list(paths_str)
         logger.debug("Found %d input paths", len(draft.files))
-        if file_types:
-            draft.file_types = set(file_types)
+
+        if include_file_types:
+            draft.include_file_types = set(include_file_types)
+        if exclude_file_types:
+            draft.exclude_file_types = set(exclude_file_types)
+
         # Freeze the config before resolving files,
         # as resolve_file_list expects an immutable Config.
         cfg: Config = draft.freeze()
@@ -192,8 +200,12 @@ def build_cfg_and_files_via_cli_helpers(
 
     # Assign normalized paths to draft.files for CLI-like override semantics.
     draft.files = list(paths_str)
-    if file_types:
-        draft.file_types = set(file_types)
+
+    if include_file_types:
+        draft.include_file_types = set(include_file_types)
+    if exclude_file_types:
+        draft.exclude_file_types = set(exclude_file_types)
+
     # Freeze the config before resolving files, as resolve_file_list expects an immutable Config.
     cfg = draft.freeze()
     file_list = resolve_file_list(cfg)
@@ -241,7 +253,8 @@ def run_pipeline(
     pipeline: Sequence[Step],
     paths: Iterable[Path | str],
     base_config: Mapping[str, Any] | Config | None,
-    file_types: Sequence[str] | None,
+    include_file_types: Sequence[str] | None,
+    exclude_file_types: Sequence[str] | None,
     apply_changes: bool,
     prune: bool = False,
     # public-policy overlays (None = no override)
@@ -264,7 +277,8 @@ def run_pipeline(
         paths (Iterable[Path | str]): Files and/or directories to process.
         base_config (Mapping[str, Any] | Config | None): `None` for discovery; a mapping
             or `Config` to seed the run directly.
-        file_types (Sequence[str] | None): Optional whitelist of file type identifiers.
+        include_file_types (Sequence[str] | None): Optional whitelist of file type identifiers.
+        exclude_file_types (Sequence[str] | None): Optional blacklist of file type identifiers.
         apply_changes (bool): When `True`, run in apply mode; otherwise dry run.
         prune (bool): If `True`, trim heavy views after the run (keeps summaries).
         policy (PublicPolicy | None): Optional global policy overlays (public shape)
@@ -286,7 +300,10 @@ def run_pipeline(
     cfg: Config
     file_list: list[Path]
     cfg, file_list = build_cfg_and_files_via_cli_helpers(
-        paths, base_config=base_config, file_types=file_types
+        paths,
+        base_config=base_config,
+        include_file_types=include_file_types,
+        exclude_file_types=exclude_file_types,
     )
     logger.debug("cfg for run (1 - after build_cfg_and_files_via_cli_helpers): %s", cfg)
 

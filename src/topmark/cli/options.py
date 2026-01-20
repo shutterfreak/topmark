@@ -49,7 +49,43 @@ LOG_LEVELS: dict[str, int] = {
     "CRITICAL": logging.CRITICAL,
 }
 
+
 logger: TopmarkLogger = get_logger(__name__)
+
+
+# Helper: allow comma-separated multi-value options
+def _split_csv_multi_option(
+    ctx: click.Context,  # noqa: ARG001
+    param: click.Parameter,  # noqa: ARG001
+    value: tuple[str, ...],
+) -> tuple[str, ...]:
+    """Allow comma-separated lists for `multiple=True` options.
+
+    This callback supports both:
+      - repeating the option: `--file-type py --file-type toml`
+      - comma-separated values: `--file-type py,toml`
+
+    It is intentionally strict/simple:
+      - strips whitespace around tokens
+      - ignores empty tokens (e.g., trailing commas)
+
+    Args:
+        ctx (click.Context): Click context (unused).
+        param (click.Parameter): Click parameter (unused).
+        value (tuple[str, ...]): Collected option values (one entry per occurrence).
+
+    Returns:
+        tuple[str, ...]: A flattened tuple of tokens.
+    """
+    out: list[str] = []
+    for raw in value:
+        # Split each occurrence on commas; allow users to mix styles.
+        for part in raw.split(","):
+            token: str = part.strip()
+            if not token:
+                continue
+            out.append(token)
+    return tuple(out)
 
 
 def resolve_verbosity(verbose_count: int, quiet_count: int) -> int:
@@ -135,6 +171,7 @@ def common_file_and_filtering_options(f: Callable[P, R]) -> Callable[P, R]:
             "Required when '-' is provided as a PATH."
         ),
     )(f)
+
     # Option for reading candidate file paths from files
     f = click.option(
         "--files-from",
@@ -148,6 +185,7 @@ def common_file_and_filtering_options(f: Callable[P, R]) -> Callable[P, R]:
         ),
     )(f)
     f = underscored_trap_option("--files_from")(f)
+
     f = click.option(
         "--include",
         "-i",
@@ -155,6 +193,7 @@ def common_file_and_filtering_options(f: Callable[P, R]) -> Callable[P, R]:
         multiple=True,
         help="Filter: keep only files matching these glob patterns (intersection).",
     )(f)
+
     f = click.option(
         "--include-from",
         type=str,  # Ensure '-' passes through untouched
@@ -162,6 +201,7 @@ def common_file_and_filtering_options(f: Callable[P, R]) -> Callable[P, R]:
         help="Filter: read include glob patterns from file(s) (use '-' for STDIN).",
     )(f)
     f = underscored_trap_option("--include_from")(f)
+
     f = click.option(
         "--exclude",
         "-e",
@@ -169,6 +209,7 @@ def common_file_and_filtering_options(f: Callable[P, R]) -> Callable[P, R]:
         multiple=True,
         help="Filter: remove files matching these glob patterns (subtraction).",
     )(f)
+
     f = click.option(
         "--exclude-from",
         type=str,  # Ensure '-' passes through untouched
@@ -176,14 +217,37 @@ def common_file_and_filtering_options(f: Callable[P, R]) -> Callable[P, R]:
         help="Filter: read exclude glob patterns from file(s) (use '-' for STDIN).",
     )(f)
     f = underscored_trap_option("--exclude_from")(f)
+
     f = click.option(
-        "--file-type",
-        "file_types",
+        "--include-file-types",
+        "--include-file-type",
+        "-t",
+        "include_file_types",
         multiple=True,
-        help="Filter: restrict to given file types (after include/exclude).",
+        callback=_split_csv_multi_option,
+        help=(
+            "Filter: restrict to given file types. Applied after path include/exclude filtering. "
+            "May be repeated and/or given as a comma-separated list."
+        ),
     )(f)
-    f = underscored_trap_option("--file_type")(f)
+    f = underscored_trap_option("--include_file_types", "--include_file_type")(f)
+
+    f = click.option(
+        "--exclude-file-types",
+        "--exclude-file-type",
+        "-T",
+        "exclude_file_types",
+        multiple=True,
+        callback=_split_csv_multi_option,
+        help=(
+            "Filter: exclude given file types. Applied after path include/exclude filtering. "
+            "May be repeated and/or given as a comma-separated list."
+        ),
+    )(f)
+    f = underscored_trap_option("--exclude_file_types", "--exclude_file_type")(f)
+
     # TODO: consider adding --extension filter, add a force-handle-file-as-XXX option
+
     f = click.option(
         "--relative-to",
         help="Reporting: compute relative paths from this directory.",

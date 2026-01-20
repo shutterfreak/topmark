@@ -157,8 +157,11 @@ allow_header_in_empty_files = false
 
 [files]
 
-# Specify (filter) file types:
-# file_types = "markdown"
+# Optional whitelist of file type identifiers to process:
+# include_file_types = "markdown"
+#
+# Optional blacklist of file type identifiers to exclude:
+# exclude_file_types = "html"
 
 
 # ============================

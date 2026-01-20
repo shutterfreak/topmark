@@ -8,7 +8,7 @@
 #
 # topmark:header:end
 
-"""File type instances and registry for TopMark.
+"""File type instances and *base* registry for TopMark.
 
 Builds the runtime registry of [`topmark.filetypes.base.FileType`][] objects
 from built-in groups and optionally from plugin entry points. The registry is
@@ -18,8 +18,11 @@ Notes:
     * Built-ins are imported lazily from topical modules.
     * Plugins are discovered via the ``topmark.filetypes`` entry point group.
     * The returned mapping is a plain ``dict`` but should be treated as
-      immutable by callers. Overlay mutations must go through
-      ``topmark.registry``.
+      immutable by callers.
+    * This is the **base** registry (built-ins + entry points). For the
+      effective, user-facing composed view (base + overlays − removals), use
+      [`topmark.registry.filetypes.FileTypeRegistry.as_mapping`][].
+    * Overlay mutations must go through ``topmark.registry``.
 """
 
 from __future__ import annotations
@@ -141,8 +144,13 @@ def _generate_registry(filetypes: Iterable[FileType]) -> dict[str, FileType]:
 
 
 @lru_cache(maxsize=1)
-def get_file_type_registry() -> dict[str, FileType]:
-    """Return (and cache) the FileType registry (lazy; import-time light)."""
+def get_base_file_type_registry() -> dict[str, FileType]:
+    """Return (and cache) the base FileType registry (built-ins + entry points).
+
+    Notes:
+        For the effective, user-facing composed registry (including test/plugin
+        overlays), use [`topmark.registry.filetypes.FileTypeRegistry.as_mapping`][].
+    """
     all_types: list[FileType] = _aggregate_all_filetypes()
     registry: dict[str, FileType] = _generate_registry(all_types)
     logger.debug("Loaded %d file types", len(registry))

@@ -80,7 +80,8 @@ class ArgsNamespace(TypedDict, total=False):
         include_from (list[str] | None): Files containing include patterns.
         exclude_patterns (list[str] | None): Glob patterns of files to exclude.
         exclude_from (list[str] | None): Files containing exclude patterns.
-        file_types (list[str] | None): Restrict to given file types.
+        include_file_types (list[str] | None): Restrict to given file types.
+        exclude_file_types (list[str] | None): Exclude given file types.
         relative_to (str | None): Root directory for relative paths.
         align_fields (bool | None): Align header fields with colons.
         header_format (HeaderOutputFormat | None): Header output format
@@ -111,7 +112,8 @@ class ArgsNamespace(TypedDict, total=False):
     include_from: list[str] | None
     exclude_patterns: list[str] | None
     exclude_from: list[str] | None
-    file_types: list[str] | None
+    include_file_types: list[str] | None
+    exclude_file_types: list[str] | None
     relative_to: str | None
 
     # Command options: formatting
@@ -134,7 +136,8 @@ def build_args_namespace(
     include_from: list[str] | None = None,
     exclude_patterns: list[str] | None = None,
     exclude_from: list[str] | None = None,
-    file_types: list[str] | None = None,
+    include_file_types: list[str] | None = None,
+    exclude_file_types: list[str] | None = None,
     relative_to: str | None = None,
     align_fields: bool | None = None,
     header_format: HeaderOutputFormat | None = None,
@@ -156,7 +159,8 @@ def build_args_namespace(
         include_from (list[str] | None): Files containing include patterns.
         exclude_patterns (list[str] | None): Glob patterns of files to exclude.
         exclude_from (list[str] | None): Files containing exclude patterns.
-        file_types (list[str] | None): Restrict to given file types.
+        include_file_types (list[str] | None): Restrict to given file types.
+        exclude_file_types (list[str] | None): Exclude processing for given File types.
         relative_to (str | None): Root directory for relative paths.
         align_fields (bool | None): Align header fields with colons.
         header_format (HeaderOutputFormat | None): Header output format (native, plain, or json).
@@ -178,7 +182,8 @@ def build_args_namespace(
         "include_from": include_from,
         "exclude_patterns": exclude_patterns,
         "exclude_from": exclude_from,
-        "file_types": file_types,
+        "include_file_types": include_file_types,
+        "exclude_file_types": exclude_file_types,
         "relative_to": relative_to,
         "align_fields": align_fields,
         "header_format": header_format,

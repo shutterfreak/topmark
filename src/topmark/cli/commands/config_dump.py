@@ -96,7 +96,8 @@ def config_dump_command(
     include_from: list[str],
     exclude_patterns: list[str],
     exclude_from: list[str],
-    file_types: list[str],
+    include_file_types: list[str],
+    exclude_file_types: list[str],
     relative_to: str | None,
     stdin_filename: str | None,
     # Command options: config
@@ -127,7 +128,8 @@ def config_dump_command(
         exclude_patterns (list[str]): Glob patterns to *exclude* (subtraction).
         exclude_from (list[str]): Files that contain exclude glob patterns (one per line).
             Use ``-`` to read patterns from STDIN.
-        file_types (list[str]): Restrict processing to the given TopMark file type identifiers.
+        include_file_types (list[str]): Restrict processing to the given file type identifiers.
+        exclude_file_types (list[str]): Exclude processing for the given file type identifiers.
         relative_to (str | None): Base directory used to compute relative paths in outputs.
         stdin_filename (str | None): Assumed filename when  reading content from STDIN).
         no_config (bool): If True, skip loading project/user configuration files.
@@ -179,7 +181,8 @@ def config_dump_command(
         plan=plan,
         no_config=no_config,
         config_paths=config_paths,
-        file_types=file_types,
+        include_file_types=include_file_types,
+        exclude_file_types=exclude_file_types,
         relative_to=relative_to,
         align_fields=align_fields,
         header_format=header_format,

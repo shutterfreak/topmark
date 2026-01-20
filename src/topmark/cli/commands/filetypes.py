@@ -27,9 +27,11 @@ from topmark.cli.cmd_common import get_effective_verbosity
 from topmark.cli_shared.utils import OutputFormat, format_callable_pretty, render_markdown_table
 from topmark.constants import TOPMARK_VERSION
 from topmark.filetypes.base import FileType
-from topmark.filetypes.instances import get_file_type_registry
+from topmark.registry import FileTypeRegistry
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from topmark.cli_shared.console_api import ConsoleLike
     from topmark.filetypes.base import FileType
 
@@ -93,7 +95,7 @@ def filetypes_command(
     ctx.ensure_object(dict)
     console: ConsoleLike = ctx.obj["console"]
 
-    file_types: dict[str, FileType] = get_file_type_registry()
+    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
     fmt: OutputFormat = output_format or OutputFormat.DEFAULT
 
     # Determine effective program-output verbosity for gating extra details
@@ -119,15 +121,16 @@ def filetypes_command(
 
         if fmt == OutputFormat.JSON:
             payload = (
-                [_serialize_details(v) for _k, v in sorted(file_types.items())]
+                [_serialize_details(v) for _k, v in sorted(ft_registry.items())]
                 if show_details
                 else [
-                    {"name": k, "description": v.description} for k, v in sorted(file_types.items())
+                    {"name": k, "description": v.description}
+                    for k, v in sorted(ft_registry.items())
                 ]
             )
             console.print(json.dumps(payload, indent=2))
         else:  # NDJSON
-            for k, v in sorted(file_types.items()):
+            for k, v in sorted(ft_registry.items()):
                 obj = (
                     _serialize_details(v)
                     if show_details
@@ -139,7 +142,7 @@ def filetypes_command(
     if fmt == OutputFormat.MARKDOWN:
         console.print(f"""
 # Supported File Types
-                   
+
 TopMark version **{TOPMARK_VERSION}** supports the following file types:
 
 """)
@@ -183,7 +186,7 @@ matching rules and policy details._
                 max_widths[i] = len(header)
 
             # Collect data and calculate max width for each column
-            for k, v in sorted(file_types.items()):
+            for k, v in sorted(ft_registry.items()):
                 exts: str = ", ".join(v.extensions) if v.extensions else ""
                 names: str = ", ".join(v.filenames) if v.filenames else ""
                 pats: str = ", ".join(v.patterns) if v.patterns else ""
@@ -220,7 +223,7 @@ matching rules and policy details._
             for i, header in enumerate(headers):
                 max_widths[i] = len(header)
 
-            for k, v in sorted(file_types.items()):
+            for k, v in sorted(ft_registry.items()):
                 row = [f"`{k}`", v.description]
                 rows.append(row)
                 for i, col_data in enumerate(row):
@@ -250,11 +253,11 @@ matching rules and policy details._
         if vlevel > 0:
             console.print(console.styled("Supported file types:\n", bold=True, underline=True))
 
-        total: int = len(file_types)
+        total: int = len(ft_registry)
         num_width: int = len(str(total))
         idx: int = 0
-        k_len: int = max(1, max(len(k) for k in file_types.keys()))
-        for k, v in sorted(file_types.items()):
+        k_len: int = max(1, max(len(k) for k in ft_registry.keys()))
+        for k, v in sorted(ft_registry.items()):
             idx += 1
             if show_details:
                 exts = ", ".join(v.extensions) if v.extensions else ""

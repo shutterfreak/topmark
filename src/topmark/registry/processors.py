@@ -36,9 +36,9 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
 from topmark.filetypes.base import FileType
-from topmark.filetypes.instances import get_file_type_registry
 from topmark.pipeline.processors.base import NO_LINE_ANCHOR
 from topmark.pipeline.processors.xml import XmlHeaderProcessor
+from topmark.registry import FileTypeRegistry
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
@@ -69,10 +69,10 @@ def _dev_validate_processors(proc_map: Mapping[str, HeaderProcessor]) -> None:
     if os.getenv(_VALIDATION_ENV, "").lower() not in {"1", "true", "yes"}:
         return
 
-    ft_reg: dict[str, FileType] = get_file_type_registry()
+    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
 
     # 1) All processors refer to existing file types
-    missing: list[str] = [name for name in proc_map.keys() if name not in ft_reg]
+    missing: list[str] = [name for name in proc_map.keys() if name not in ft_registry]
     if missing:
         raise RuntimeError(f"Processors registered for unknown file types: {missing!r}")
 
@@ -109,23 +109,40 @@ class HeaderProcessorRegistry:
           most integrations should use metadata views only.
     """
 
-    _lock = RLock()
+    _lock: RLock = RLock()
     _overrides: dict[str, HeaderProcessor] = {}
     _removals: set[str] = set()
+    _cache: Mapping[str, HeaderProcessor] | None = None
+
+    @classmethod
+    def _clear_cache(cls) -> None:
+        """Clear any cached composed views.
+
+        Primarily used by tests and by mutation helpers so subsequent `as_mapping()`
+        calls reflect updated overlays/removals or base registry state.
+        """
+        cls._cache = None
 
     @classmethod
     def _compose(cls) -> dict[str, HeaderProcessor]:
         """Compose base processor registry with local overrides/removals."""
-        from topmark.filetypes.registry import get_header_processor_registry as _get
+        cached: Mapping[str, HeaderProcessor] | None = cls._cache
+        if cached is not None:
+            return dict(cached)
+
+        from topmark.filetypes.registry import get_base_header_processor_registry as _get
         from topmark.pipeline.processors import register_all_processors
 
         register_all_processors()
+        # _get() returns the base decorator-populated processor registry.
         base: dict[str, HeaderProcessor] = dict(_get())
         base.update(cls._overrides)
         for name in cls._removals:
             base.pop(name, None)
         _dev_validate_processors(base)
-        return base
+
+        cls._cache = MappingProxyType(base)
+        return dict(base)
 
     @classmethod
     def names(cls) -> tuple[str, ...]:
@@ -167,7 +184,16 @@ class HeaderProcessorRegistry:
             The returned mapping is a `MappingProxyType` and must not be mutated.
         """
         with cls._lock:
-            return MappingProxyType(cls._compose())
+            cached: Mapping[str, HeaderProcessor] | None = cls._cache
+            if cached is not None:
+                return cached
+
+            # Compose a fresh view and cache it.
+            # NOTE: tests may monkeypatch `_compose()`; do not rely on `_compose()`
+            # to populate `_cache`.
+            composed: dict[str, HeaderProcessor] = cls._compose()
+            cls._cache = MappingProxyType(composed)
+            return cls._cache
 
     @classmethod
     def iter_meta(cls) -> Iterator[ProcessorMeta]:
@@ -211,7 +237,7 @@ class HeaderProcessorRegistry:
         """
         with cls._lock:
             # Resolve FileType from the composed registry (includes local overrides).
-            from topmark.registry.filetypes import FileTypeRegistry as _FTReg
+            from topmark.registry import FileTypeRegistry as _FTReg
 
             ft_obj: FileType | None = _FTReg.get(name)
             if ft_obj is None:
@@ -222,12 +248,15 @@ class HeaderProcessorRegistry:
                 raise ValueError(f"File type '{name}' already has a registered processor.")
 
             # Instantiate if a class is provided
-            proc_obj = processor_class()
+            proc_obj: HeaderProcessor = processor_class()
 
             # Bind the processor to the FileType (mirror decorator behavior).
             proc_obj.file_type = ft_obj
 
+            # If this name was previously removed, allow re-registration.
+            cls._removals.discard(name)
             cls._overrides[name] = proc_obj
+            cls._clear_cache()
 
     @classmethod
     def unregister(cls, name: str) -> bool:
@@ -249,7 +278,9 @@ class HeaderProcessorRegistry:
             if name in cls._overrides:
                 cls._overrides.pop(name, None)
                 existed = True
+            # Mark for removal from the composed view (including base entries).
             if name in cls._compose():
                 cls._removals.add(name)
                 existed = True
+            cls._clear_cache()
             return existed

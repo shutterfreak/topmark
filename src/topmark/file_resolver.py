@@ -32,9 +32,11 @@ from pathspec.patterns.gitwildmatch import GitWildMatchPattern
 from topmark.config import PatternSource  # runtime use
 from topmark.config.logging import get_logger
 from topmark.filetypes.base import FileType
-from topmark.filetypes.instances import get_file_type_registry
+from topmark.registry import FileTypeRegistry
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from topmark.config import Config, PatternSource
     from topmark.config.logging import TopmarkLogger
     from topmark.filetypes.base import FileType
@@ -168,8 +170,8 @@ def resolve_file_list(config: Config) -> list[Path]:
       4. **Exclude subtraction**: If any exclude patterns
          (from `exclude_patterns` or `exclude_from` files)
          are given, remove any files matching the exclusion patterns from the set.
-      5. **File type filter**: If `file_types` is specified, further restrict to files
-         matching those types.
+      5. **File type filter**: If `include_file_types` or `exclude_file_types` are specified,
+         further restrict to files matching those types.
       6. Returns a **sorted** list of Path objects for deterministic output.
 
     Args:
@@ -192,7 +194,8 @@ def resolve_file_list(config: Config) -> list[Path]:
     # TODO: keep raw + implement as PatternSource in config?
     config_files: tuple[Path | str, ...] = config.config_files
 
-    file_types: frozenset[str] = frozenset(config.file_types)
+    include_file_types: frozenset[str] = frozenset(config.include_file_types)
+    exclude_file_types: frozenset[str] = frozenset(config.exclude_file_types)
 
     files_from_sources: tuple[PatternSource, ...] = config.files_from
 
@@ -213,7 +216,8 @@ def resolve_file_list(config: Config) -> list[Path]:
     exclude_patterns: %s
     exclude_sources: %s
     config_files: %s
-    file_type_list: %s
+    include_file_type_list: %s
+    exclude_file_type_list: %s
     files_from_sources: %s
     workspace_root: %s
     stdin_flag: %s
@@ -225,7 +229,8 @@ def resolve_file_list(config: Config) -> list[Path]:
         exclude_patterns,
         exclude_sources,
         config_files,
-        file_types,
+        include_file_types,
+        exclude_file_types,
         files_from_sources,
         workspace_root,
         stdin_flag,
@@ -480,20 +485,50 @@ def resolve_file_list(config: Config) -> list[Path]:
     filtered_files: set[Path] = candidate_set
 
     # Step 5: Filter files by configured file types if specified
-    if file_types:
-        registry: dict[str, FileType] = get_file_type_registry()
-        # Warn about unknown file type names in config
-        unknown: list[str] = sorted(t for t in file_types if t not in registry)
+
+    # Validate against the effective file type registry:
+    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
+
+    # 5.1: whitelisted file types
+    # Invalid entries are handled and reported as Config diagnostic in MutableConfig.sanitize()
+    if include_file_types:
+        # Warn about unknown file type names in config (ignored)
+        unknown: list[str] = sorted(t for t in include_file_types if t not in ft_registry)
         if unknown:
-            logger.warning("Unknown file types specified: %s", ", ".join(unknown))
+            logger.warning(
+                "Unknown file types specified (ignored): %s",
+                ", ".join(unknown),
+            )
 
         # Build the set of selected FileType instances from the registry
-        selected_types: list[FileType] = [registry[t] for t in file_types if t in registry]
+        selected_types: list[FileType] = [
+            ft_registry[t] for t in include_file_types if t in ft_registry
+        ]
 
         def _matches_selected_types(path: Path) -> bool:
             return any(ft.matches(path) for ft in selected_types)
 
+        # Whitelisting:
         filtered_files = {f for f in filtered_files if _matches_selected_types(f)}
+
+    # 5.2: blacklisted file types
+    if exclude_file_types:
+        # Warn about unknown excluded file type names in config (ignored)
+        unknown: list[str] = sorted(t for t in exclude_file_types if t not in ft_registry)
+        if unknown:
+            logger.warning(
+                "Unknown excluded file types specified (ignored): %s",
+                ", ".join(unknown),
+            )
+
+        # Build the set of selected FileType instances from the registry
+        selected_types = [ft_registry[t] for t in exclude_file_types if t in ft_registry]
+
+        def _matches_selected_types(path: Path) -> bool:
+            return any(ft.matches(path) for ft in selected_types)
+
+        # Blacklisting:
+        filtered_files = {f for f in filtered_files if not _matches_selected_types(f)}
 
     # Step 6 (Finalize): dedupe by real path, prefer CWD-relative presentation
     out_by_real: dict[Path, Path] = {}
@@ -518,6 +553,8 @@ def resolve_file_types(path: Path) -> list[FileType]:
     Attempts to match the path against all registered file type matchers and returns
     a list of matching FileType instances. Logs a warning if multiple matches are found.
 
+    Note: currently unused; kept for potential future diagnostics API.
+
     Args:
         path (Path): Path to test.
 
@@ -525,7 +562,10 @@ def resolve_file_types(path: Path) -> list[FileType]:
         list[FileType]: Matching file types (may be empty). Logs a warning when
             multiple types match the same path.
     """
-    matches: list[FileType] = [ft for ft in get_file_type_registry().values() if ft.matches(path)]
+    # Validate against the effective file type registry:
+    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
+
+    matches: list[FileType] = [ft for ft in ft_registry.values() if ft.matches(path)]
     if len(matches) > 1:
         logger.warning(
             "Ambiguous file type match for: %s (%s)",

@@ -26,10 +26,11 @@ from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cmd_common import get_effective_verbosity
 from topmark.cli_shared.utils import OutputFormat, render_markdown_table
 from topmark.constants import TOPMARK_VERSION
-from topmark.filetypes.instances import get_file_type_registry
-from topmark.filetypes.registry import get_header_processor_registry
+from topmark.registry import FileTypeRegistry, HeaderProcessorRegistry
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from topmark.cli_shared.console_api import ConsoleLike
     from topmark.filetypes.base import FileType
     from topmark.pipeline.processors.base import HeaderProcessor
@@ -76,8 +77,8 @@ def processors_command(
     ctx.ensure_object(dict)
     console: ConsoleLike = ctx.obj["console"]
 
-    file_types: dict[str, FileType] = get_file_type_registry()
-    header_processors: dict[str, HeaderProcessor] = get_header_processor_registry()
+    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
+    hp_registry: Mapping[str, HeaderProcessor] = HeaderProcessorRegistry.as_mapping()
     fmt: OutputFormat = output_format or OutputFormat.DEFAULT
 
     # Determine effective program-output verbosity for gating extra details
@@ -85,14 +86,12 @@ def processors_command(
 
     # Invert mapping: proc class -> [filetype names]
     groups: dict[tuple[str, str], list[str]] = defaultdict(list)
-    for name, proc in header_processors.items():
+    for name, proc in hp_registry.items():
         key: tuple[str, str] = (proc.__class__.__module__, proc.__class__.__name__)
         groups[key].append(name)
 
     # Find unbound file types
-    unbound: list[str] = sorted(
-        [name for name in file_types.keys() if name not in header_processors]
-    )
+    unbound: list[str] = sorted([name for name in ft_registry.keys() if name not in hp_registry])
 
     # Build a unified payload for all formats
     payload_data: dict[str, Any] = {
@@ -107,14 +106,14 @@ def processors_command(
         }
         if show_details:
             processor_entry["filetypes"] = [
-                {"name": n, "description": file_types[n].description} for n in sorted(names)
+                {"name": n, "description": ft_registry[n].description} for n in sorted(names)
             ]
         payload_data["processors"].append(processor_entry)
 
     for name in unbound:
         if show_details:
             payload_data["unbound_filetypes"].append(
-                {"name": name, "description": file_types[name].description}
+                {"name": name, "description": ft_registry[name].description}
             )
         else:
             payload_data["unbound_filetypes"].append(name)
@@ -217,7 +216,7 @@ per‑processor file type listings into separate tables._
         num_proc_width: int = len(str(total_proc))
         proc_idx: int = 0
 
-        total_ft: int = len(file_types)
+        total_ft: int = len(ft_registry)
         num_ft_width: int = len(str(total_ft))
 
         for proc in payload_data["processors"]:

@@ -6,12 +6,12 @@
   "PublicDiagnostic": "<class>",
   "Registry": "<class>",
   "Registry.bindings": "() -> 'tuple[Binding, ...]'",
-  "Registry.filetypes": "() -> 'Mapping[str, object]'",
-  "Registry.processors": "() -> 'Mapping[str, object]'",
+  "Registry.filetypes": "() -> 'Mapping[str, FileType]'",
+  "Registry.processors": "() -> 'Mapping[str, HeaderProcessor]'",
   "RunResult": "<class>",
-  "check": "(paths: 'Iterable[Path | str]', *, apply: 'bool' = False, diff: 'bool' = False, config: 'Mapping[str, Any] | None' = None, policy: 'PublicPolicy | None' = None, policy_by_type: 'Mapping[str, PublicPolicy] | None' = None, file_types: 'Sequence[str] | None' = None, skip_compliant: 'bool' = False, skip_unsupported: 'bool' = False, prune: 'bool' = False) -> 'RunResult'",
+  "check": "(paths: 'Iterable[Path | str]', *, apply: 'bool' = False, diff: 'bool' = False, config: 'Mapping[str, Any] | None' = None, policy: 'PublicPolicy | None' = None, policy_by_type: 'Mapping[str, PublicPolicy] | None' = None, include_file_types: 'Sequence[str] | None' = None, exclude_file_types: 'Sequence[str] | None' = None, skip_compliant: 'bool' = False, skip_unsupported: 'bool' = False, prune: 'bool' = False) -> 'RunResult'",
   "get_filetype_info": "(long: 'bool' = False) -> 'list[FileTypeInfo]'",
   "get_processor_info": "(long: 'bool' = False) -> 'list[ProcessorInfo]'",
-  "strip": "(paths: 'Iterable[Path | str]', *, apply: 'bool' = False, diff: 'bool' = False, config: 'Mapping[str, Any] | None' = None, policy: 'PublicPolicy | None' = None, policy_by_type: 'Mapping[str, PublicPolicy] | None' = None, file_types: 'Sequence[str] | None' = None, skip_compliant: 'bool' = False, skip_unsupported: 'bool' = False, prune: 'bool' = False) -> 'RunResult'",
+  "strip": "(paths: 'Iterable[Path | str]', *, apply: 'bool' = False, diff: 'bool' = False, config: 'Mapping[str, Any] | None' = None, policy: 'PublicPolicy | None' = None, policy_by_type: 'Mapping[str, PublicPolicy] | None' = None, include_file_types: 'Sequence[str] | None' = None, exclude_file_types: 'Sequence[str] | None' = None, skip_compliant: 'bool' = False, skip_unsupported: 'bool' = False, prune: 'bool' = False) -> 'RunResult'",
   "version": "() -> 'str'"
 }

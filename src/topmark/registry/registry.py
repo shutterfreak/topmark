@@ -52,8 +52,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from topmark.registry.filetypes import FileTypeMeta, FileTypeRegistry
-from topmark.registry.processors import HeaderProcessorRegistry, ProcessorMeta
+from topmark.registry import FileTypeMeta, FileTypeRegistry, HeaderProcessorRegistry, ProcessorMeta
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
@@ -91,8 +90,8 @@ def iter_bindings() -> Iterator[Binding]:
 class Registry:
     """Stable facade for read-only registry operations.
 
-    It holds no state and composes the underlying registries; all real
-    mutations occur in the concrete registries it delegates to.
+    It holds no state and composes the underlying registries into an effective, read-only view;
+    all real mutations occur in the concrete registries it delegates to.
     """
 
     @staticmethod
@@ -108,7 +107,7 @@ class Registry:
         return tuple(iter_bindings())
 
     @staticmethod
-    def filetypes() -> Mapping[str, object]:
+    def filetypes() -> Mapping[str, FileType]:
         """Return a **read-only** mapping of registered file types.
 
         The mapping is a ``MappingProxyType`` (mutations are not allowed).
@@ -117,7 +116,7 @@ class Registry:
         return FileTypeRegistry.as_mapping()
 
     @staticmethod
-    def processors() -> Mapping[str, object]:
+    def processors() -> Mapping[str, HeaderProcessor]:
         """Return a **read-only** mapping of registered header processors.
 
         The mapping is a ``MappingProxyType`` (mutations are not allowed).
