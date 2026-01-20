@@ -22,11 +22,14 @@ ______________________________________________________________________
 The snapshot captures public-facing API symbols and their structure, including:
 
 - `from topmark import api`: all entries defined in `api.__all__`
-- `Registry.filetypes`, `Registry.processors`, and `Registry.bindings` method signatures
+- `Registry.filetypes`, `Registry.processors`, and `Registry.bindings` method signatures (stable registry facade)
+- `FileTypeRegistry` / `HeaderProcessorRegistry` symbols and signatures when exported via `topmark.registry` (advanced, but still snapshot-tracked)
 - Enum and class structure normalization for cross-version consistency:
   - Enums → `"<enum>"`
   - Classes → `"<class>"`
   - Functions → real signatures are preserved
+
+Overlay state is intentionally excluded from the snapshot; only symbols and signatures are tracked.
 
 The comparison is deterministic across Python versions by normalizing class representations and ordering.
 
@@ -125,6 +128,9 @@ ______________________________________________________________________
   1. **Intentional change:** regenerate the snapshot (`make api-snapshot-update`), commit the new snapshot, and **bump the version** in `pyproject.toml`.\
      Also add a corresponding entry to the `CHANGELOG.md`.
 
+**Registry note:**
+Registry access for integrations is expected to go through `topmark.registry.Registry` (read-only facade). The advanced registries (`FileTypeRegistry`, `HeaderProcessorRegistry`) are supported for tests and plugins via overlay registration, but changes to their public signatures are still tracked by the snapshot.
+
 - **Supported Python range:** 3.10–3.14 (tox matrix).\
   Future minor Python releases will be added once supported by CI.
 
@@ -138,6 +144,9 @@ ______________________________________________________________________
 - The snapshot test is implemented in `tests/api/test_public_api_snapshot.py`.
 - The generator logic lives in `tools/api_snapshot.py`.
 - Normalization ensures consistent diffing across OSes and Python builds.
+- The snapshot intentionally treats `topmark.registry.Registry` as the stable entry point for registry introspection; internal base registries under `topmark.filetypes.*` are not part of the public surface.
+- Advanced registries are snapshot-tracked for signatures, not behavior.
+- Internal helpers such as `get_base_file_type_registry()` and `get_base_header_processor_registry()` are not part of the public API and may change without notice
 
 ______________________________________________________________________
 

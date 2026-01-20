@@ -51,7 +51,7 @@ The starter config provides a well‑commented TOML scaffold with the most commo
 - `[fields]` – default header fields (`project`, `license`, …)
 - `[header]` – order of fields to render in the header
 - `[formatting]` – layout options (e.g., `align_fields`)
-- `[files]` – file discovery knobs (`file_types`, `relative_to`, include/exclude lists)
+- `[files]` – file discovery knobs (`include_file_types`, `exclude_file_types`, `relative_to`, include/exclude lists)
 
 You can safely edit the generated file to match your project’s needs.
 

@@ -122,6 +122,7 @@ nav:
       - "topmark.registry": api/reference/topmark.registry.md
       - "Internals": api/internals.md
   - Development:
+      - "Architecture": dev/architecture.md
       - "API Stability": dev/api-stability.md
       - "Machine output": dev/machine-output.md
 watch:

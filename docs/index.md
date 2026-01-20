@@ -115,7 +115,8 @@ fields = ["file", "file_relpath", "project", "license"]
 align_fields = true
 
 [files]
-file_types = ["python", "markdown", "env"]
+include_file_types = ["python", "markdown", "env"]
+exclude_file_types = ["html"]
 relative_to = "."
 ```
 

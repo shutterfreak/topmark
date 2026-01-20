@@ -135,7 +135,8 @@ High-level structure:
   - `files_from`
   - `include_patterns`
   - `exclude_patterns`
-  - `file_types`
+  - `include_file_types`
+  - `exclude_file_types`
   - `relative_to`
 
 All values are normalized to JSON-safe types:

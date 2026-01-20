@@ -45,7 +45,7 @@ result = api.check(
         "fields": {"project": "TopMark", "license": "MIT"},
         "header": {"fields": ["file", "project", "license"]},
         "formatting": {"align_fields": True},
-        "files": {"file_types": ["python"], "exclude_patterns": [".venv"]},
+        "files": {"include_file_types": ["python"], "exclude_patterns": [".venv"]},
     },
 )
 ```
@@ -53,26 +53,33 @@ result = api.check(
 This design keeps the public surface small and semver-stable while allowing flexible per-call
 configuration.
 
-### Registries and extensibility (read‑only by default)
+### Registries and extensibility (read-only by default)
 
-The public API exposes **read‑only** registries for file types and header processors. They are
-returned as `Mapping` views (backed by `MappingProxyType`) to enforce immutability:
+TopMark exposes **read-only** registries for file types and header processors via the stable
+facade in `topmark.registry.Registry`. These registries represent the **effective composed
+view** (base built-ins + entry points + overlays − removals) and are returned as immutable
+`Mapping` views (backed by `MappingProxyType`).
 
-- `api.get_file_type_registry() -> Mapping[str, FileType]`
-- `api.get_header_processor_registry() -> Mapping[str, HeaderProcessor]`
+Most users should interact with registries through this facade and treat them as
+**introspection-only**.
 
-If you need dynamic extensions in plugins or tests, use the **advanced** registries in
-`topmark.registry`:
+If you need dynamic extensions at runtime (typically in plugins or tests), use the
+**advanced registries** in `topmark.registry` directly:
 
-- `topmark.registry.FileTypeRegistry.register(ft, processor=...)`
+- `topmark.registry.FileTypeRegistry.register(ft, processor=processor_class)`
 - `topmark.registry.FileTypeRegistry.unregister(name)`
-- `topmark.registry.HeaderProcessorRegistry.register(name, processor_cls)`
+- `topmark.registry.HeaderProcessorRegistry.register(name, processor_class)`
 - `topmark.registry.HeaderProcessorRegistry.unregister(name)`
 
-These mutation helpers apply **overlay-only changes**: they do not mutate the internal base mappings
-(built‑ins + entry points). Overlays are process‑local, thread‑safe (via an internal lock), and can
-be removed with `unregister(...)`. For long‑term or redistributable extensions, prefer publishing a
-plugin with an entry point group `topmark.filetypes`.
+These mutation helpers apply **overlay-only changes**: they do not mutate the internal base
+registries (built-ins + entry points). Overlays are process-local and thread-safe (via an
+internal lock). In tests, prefer wrapping mutations in `try/finally` to ensure cleanup.
+
+Overlay mutations automatically invalidate composed registry caches;
+callers do not need to manage cache lifetimes explicitly.
+
+For long-term or redistributable extensions, prefer publishing a plugin using the
+`topmark.filetypes` entry point group.
 
 See the generated API reference:
 
@@ -82,4 +89,4 @@ See the generated API reference:
 ______________________________________________________________________
 
 **Stability note:** See [API Stability](../dev/api-stability.md) for how we guard the public surface
-with a JSON snapshot across Python 3.10–3.13.
+with a JSON snapshot across supported Python versions.

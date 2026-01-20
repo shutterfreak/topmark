@@ -241,7 +241,8 @@ align_fields = true
 raw_header = false
 
 [files]
-file_types = ["python", "markdown", "env"]
+include_file_types = ["python", "markdown", "env"]
+exclude_file_types = ["html"]
 exclude_from = [".gitignore"]
 relative_to = "."
 ```
