@@ -52,6 +52,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from topmark.cli.keys import ArgKey, CliOpt
 from topmark.config.io import (
     clean_toml,
     get_bool_value_or_none,
@@ -63,6 +64,7 @@ from topmark.config.io import (
     load_toml_dict,
     to_toml,
 )
+from topmark.config.keys import Toml
 from topmark.config.logging import get_logger
 from topmark.config.paths import abs_path_from, extend_ps, ps_from_cli, ps_from_config
 from topmark.config.policy import MutablePolicy, Policy
@@ -224,52 +226,52 @@ class Config:
             writer_strategy = self.file_write_strategy.name.lower()
 
         toml_dict: TomlTable = {
-            "fields": dict(self.field_values),
-            "header": {"fields": list(self.header_fields)},
-            "formatting": {
-                "align_fields": self.align_fields,
-                "header_format": (
+            Toml.SECTION_FIELDS: dict(self.field_values),
+            Toml.SECTION_HEADER: {Toml.KEY_FIELDS: list(self.header_fields)},
+            Toml.SECTION_FORMATTING: {
+                Toml.KEY_ALIGN_FIELDS: self.align_fields,
+                Toml.KEY_HEADER_FORMAT: (
                     self.header_format.value if self.header_format is not None else None
                 ),
             },
-            "writer": {
-                "target": self.output_target,
-                "strategy": writer_strategy,
+            Toml.SECTION_WRITER: {
+                Toml.KEY_TARGET: self.output_target,
+                Toml.KEY_STRATEGY: writer_strategy,
             },
-            "files": {
-                "include_file_types": list(self.include_file_types),
-                "exclude_file_types": list(self.exclude_file_types),
-                "files_from": [str(ps.path) for ps in self.files_from],
-                "include_from": [str(ps.path) for ps in self.include_from],
-                "exclude_from": [str(ps.path) for ps in self.exclude_from],
-                "include_patterns": list(self.include_patterns),
-                "exclude_patterns": list(self.exclude_patterns),
-                "relative_to": self.relative_to_raw,
-                "config_files": [
+            Toml.SECTION_FILES: {
+                Toml.KEY_INCLUDE_FILE_TYPES: list(self.include_file_types),
+                Toml.KEY_EXCLUDE_FILE_TYPES: list(self.exclude_file_types),
+                Toml.KEY_FILES_FROM: [str(ps.path) for ps in self.files_from],
+                Toml.KEY_INCLUDE_FROM: [str(ps.path) for ps in self.include_from],
+                Toml.KEY_EXCLUDE_FROM: [str(ps.path) for ps in self.exclude_from],
+                Toml.KEY_INCLUDE_PATTERNS: list(self.include_patterns),
+                Toml.KEY_EXCLUDE_PATTERNS: list(self.exclude_patterns),
+                Toml.KEY_RELATIVE_TO: self.relative_to_raw,
+                Toml.KEY_CONFIG_FILES: [
                     str(p) if isinstance(p, Path) else str(p) for p in self.config_files
                 ],
             },
         }
 
         # Policy serialization (global and per-type)
-        toml_dict["policy"] = {
-            "add_only": self.policy.add_only,
-            "update_only": self.policy.update_only,
-            "allow_header_in_empty_files": self.policy.allow_header_in_empty_files,
+        toml_dict[Toml.SECTION_POLICY] = {
+            Toml.KEY_POLICY_CHECK_ADD_ONLY: self.policy.add_only,
+            Toml.KEY_POLICY_CHECK_UPDATE_ONLY: self.policy.update_only,
+            Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES: self.policy.allow_header_in_empty_files,
         }
         if self.policy_by_type:
-            toml_dict["policy_by_type"] = {
+            toml_dict[Toml.SECTION_POLICY_BY_TYPE] = {
                 ft: {
-                    "add_only": p.add_only,
-                    "update_only": p.update_only,
-                    "allow_header_in_empty_files": p.allow_header_in_empty_files,
+                    Toml.KEY_POLICY_CHECK_ADD_ONLY: p.add_only,
+                    Toml.KEY_POLICY_CHECK_UPDATE_ONLY: p.update_only,
+                    Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES: p.allow_header_in_empty_files,
                 }
                 for ft, p in self.policy_by_type.items()
             }
 
         # Include files in TOML export
         if include_files and self.files:
-            toml_dict["files"]["files"] = list(self.files)
+            toml_dict[Toml.SECTION_FILES][Toml.KEY_FILES] = list(self.files)
 
         return toml_dict
 
@@ -434,7 +436,11 @@ class MutableConfig:
 
         # Validate mutual exclusivity on resolved global policy
         if global_policy_frozen.add_only and global_policy_frozen.update_only:
-            raise ValueError("Policy invalid: `add_only` and `update_only` cannot both be True.")
+            raise ValueError(
+                "Policy invalid: "
+                f"`{ArgKey.POLICY_CHECK_ADD_ONLY}` and `{ArgKey.POLICY_CHECK_UPDATE_ONLY}` "
+                "cannot both be True."
+            )
 
         # Resolve per-type policies against the resolved global policy
         frozen_by_type: dict[str, Policy] = {}
@@ -443,7 +449,8 @@ class MutableConfig:
             if resolved.add_only and resolved.update_only:
                 raise ValueError(
                     f"Policy invalid for type '{ft}': "
-                    "`add_only` and `update_only` cannot both be True."
+                    f"`{ArgKey.POLICY_CHECK_ADD_ONLY}` and `{ArgKey.POLICY_CHECK_UPDATE_ONLY}` "
+                    "cannot both be True."
                 )
             frozen_by_type[ft] = resolved
 
@@ -601,10 +608,10 @@ class MutableConfig:
                         if name == "pyproject.toml":
                             tool: TomlTable = data.get("tool", {})
                             topmark_tbl: TomlTable = tool.get("topmark", {})
-                            if bool(topmark_tbl.get("root", False)):
+                            if bool(topmark_tbl.get(Toml.KEY_ROOT, False)):
                                 root_stop_here = True
                         else:  # topmark.toml
-                            if bool(data.get("root", False)):
+                            if bool(data.get(Toml.KEY_ROOT, False)):
                                 root_stop_here = True
                     except Exception as e:
                         # Best-effort discovery; ignore parse errors here.
@@ -618,7 +625,11 @@ class MutableConfig:
             if parent == cur:
                 break
             if root_stop_here:
-                logger.debug("Stopping upward config discovery at %s due to root=true", cur)
+                logger.debug(
+                    "Stopping upward config discovery at %s due to %s=true",
+                    cur,
+                    Toml.KEY_ROOT,
+                )
                 break
             cur = parent
 
@@ -670,25 +681,25 @@ class MutableConfig:
         tool_tbl: TomlTable = data  # top-level tool configuration dictionary
 
         # Extract sub-tables for specific config sections; fallback to empty dicts
-        field_tbl: TomlTable = get_table_value(tool_tbl, "fields")
+        field_tbl: TomlTable = get_table_value(tool_tbl, Toml.SECTION_FIELDS)
         logger.trace("TOML [fields]: %s", field_tbl)
 
-        header_tbl: TomlTable = get_table_value(tool_tbl, "header")
+        header_tbl: TomlTable = get_table_value(tool_tbl, Toml.SECTION_HEADER)
         logger.trace("TOML [header]: %s", header_tbl)
 
-        formatting_tbl: TomlTable = get_table_value(tool_tbl, "formatting")
+        formatting_tbl: TomlTable = get_table_value(tool_tbl, Toml.SECTION_FORMATTING)
         logger.trace("TOML [formatting]: %s", formatting_tbl)
 
-        files_tbl: TomlTable = get_table_value(tool_tbl, "files")
+        files_tbl: TomlTable = get_table_value(tool_tbl, Toml.SECTION_FILES)
         logger.trace("TOML [files]: %s", files_tbl)
 
-        policy_tbl: TomlTable = get_table_value(tool_tbl, "policy")
+        policy_tbl: TomlTable = get_table_value(tool_tbl, Toml.SECTION_POLICY)
         logger.trace("TOML [policy]: %s", policy_tbl)
 
-        policy_by_type_tbl: TomlTableMap = get_table_value(tool_tbl, "policy_by_type")
+        policy_by_type_tbl: TomlTableMap = get_table_value(tool_tbl, Toml.SECTION_POLICY_BY_TYPE)
         logger.trace("TOML [policy_by_type]: %s", policy_by_type_tbl)
 
-        writer_tbl: TomlTable = get_table_value(tool_tbl, "writer")
+        writer_tbl: TomlTable = get_table_value(tool_tbl, Toml.SECTION_WRITER)
         logger.trace("TOML [writer]: %s", writer_tbl)
 
         # Start from a fresh draft with current timestamp
@@ -705,13 +716,13 @@ class MutableConfig:
         draft.output_target = OutputTarget.parse(
             get_string_value_or_none(
                 writer_tbl,
-                "target",
+                Toml.KEY_TARGET,
             )
         )
         draft.file_write_strategy = FileWriteStrategy.parse(
             get_string_value_or_none(
                 writer_tbl,
-                "strategy",
+                Toml.KEY_STRATEGY,
             )
         )
 
@@ -724,7 +735,9 @@ class MutableConfig:
         }
 
         # ----- files: normalize to absolute strings against the config file dir -----
-        raw_files: list[str] = list(files_tbl.get("files", [])) if "files" in files_tbl else []
+        raw_files: list[str] = (
+            list(files_tbl.get(Toml.KEY_FILES, [])) if Toml.KEY_FILES in files_tbl else []
+        )
         if raw_files:
             if cfg_dir is not None:
                 for f in raw_files:
@@ -751,12 +764,12 @@ class MutableConfig:
                     Path.cwd().resolve(),
                 )
 
-        for _k in ("include_from", "exclude_from", "files_from"):
+        for _k in (Toml.KEY_INCLUDE_FROM, Toml.KEY_EXCLUDE_FROM, Toml.KEY_FILES_FROM):
             _normalize_sources(_k)
 
         # ----- glob arrays remain raw strings (evaluated later vs relative_to) -----
-        draft.include_patterns.extend(list(files_tbl.get("include_patterns", [])))
-        draft.exclude_patterns.extend(list(files_tbl.get("exclude_patterns", [])))
+        draft.include_patterns.extend(list(files_tbl.get(Toml.KEY_INCLUDE_PATTERNS, [])))
+        draft.exclude_patterns.extend(list(files_tbl.get(Toml.KEY_EXCLUDE_PATTERNS, [])))
 
         # Coerce field values to strings, ignoring unsupported types with a warning
         field_values: dict[str, str] = {}
@@ -765,10 +778,11 @@ class MutableConfig:
                 field_values[k] = str(v)
             else:
                 logger.warning("Ignoring unsupported field value for '%s': %r", k, v)
+                draft.diagnostics.add_warning(f"Ignoring unsupported field value for '{k}': {v}")
         draft.field_values = field_values
 
         # Header fields: list of strings
-        header_fields: list[str] = get_list_value(header_tbl, "fields")
+        header_fields: list[str] = get_list_value(header_tbl, Toml.KEY_FIELDS)
         draft.header_fields = header_fields or []
 
         # # Fallback: if no explicit header field order is provided, use the keys of
@@ -778,7 +792,7 @@ class MutableConfig:
         #     header_fields = list(field_values.keys())
 
         # Parse relative_to path if present, resolve to absolute path
-        draft.relative_to_raw = get_string_value(files_tbl, "relative_to")
+        draft.relative_to_raw = get_string_value(files_tbl, Toml.KEY_RELATIVE_TO)
         if draft.relative_to_raw:
             p = Path(draft.relative_to_raw)
             if p.is_absolute():
@@ -796,11 +810,11 @@ class MutableConfig:
 
         # align_fields = get_bool_value(formatting_cfg, "align_fields", True)
         draft.align_fields = get_bool_value_or_none(
-            formatting_tbl, "align_fields"
+            formatting_tbl, Toml.KEY_ALIGN_FIELDS
         )  # NOTE: do not set a default value if not set
 
         raw_header_format: str | None = get_string_value_or_none(
-            formatting_tbl, "header_format"
+            formatting_tbl, Toml.KEY_HEADER_FORMAT
         )  # NOTE: do not set a default value if not set
         if raw_header_format:
             try:
@@ -812,23 +826,39 @@ class MutableConfig:
                     raw_header_format,
                     valid_values,
                 )
+                draft.diagnostics.add_error(
+                    f"Invalid header format specifier found: {raw_header_format} "
+                    f"(allowed values: {valid_values})"
+                )
                 draft.header_format = None
         else:
             # choose your default; this keeps behavior predictable
             draft.header_format = None
 
-        include_file_types: list[str] = get_list_value(files_tbl, "include_file_types")
+        include_file_types: list[str] = get_list_value(files_tbl, Toml.KEY_INCLUDE_FILE_TYPES)
         draft.include_file_types = set(include_file_types) if include_file_types else set()
         if include_file_types and len(include_file_types) != len(draft.include_file_types):
             logger.warning(
-                "Duplicate included file types found in config: %s",
+                "Duplicate included file types found in config (key: %s): %s",
+                Toml.KEY_INCLUDE_FILE_TYPES,
                 ", ".join(include_file_types),
             )
-        exclude_file_types: list[str] = get_list_value(files_tbl, "exclude_file_types")
+            draft.diagnostics.add_warning(
+                "Duplicate included file types found in config "
+                f"(key: {Toml.KEY_INCLUDE_FILE_TYPES}): "
+                ", ".join(include_file_types),
+            )
+        exclude_file_types: list[str] = get_list_value(files_tbl, Toml.KEY_EXCLUDE_FILE_TYPES)
         draft.exclude_file_types = set(exclude_file_types) if exclude_file_types else set()
         if exclude_file_types and len(exclude_file_types) != len(draft.exclude_file_types):
             logger.warning(
-                "Duplicate excluded file types found in config: %s",
+                "Duplicate excluded file types found in config (key: %s): %s",
+                Toml.KEY_EXCLUDE_FILE_TYPES,
+                ", ".join(exclude_file_types),
+            )
+            draft.diagnostics.add_warning(
+                "Duplicate excluded file types found in config "
+                f"(key: {Toml.KEY_EXCLUDE_FILE_TYPES}): "
                 ", ".join(exclude_file_types),
             )
 
@@ -1019,113 +1049,117 @@ class MutableConfig:
             self.config_files = [CLI_OVERRIDE_STR]
 
         # Merge CLI config_files (config paths) if provided
-        if "config_files" in args:
-            self.config_files.extend(args["config_files"])
+        if ArgKey.CONFIG_FILES in args:
+            self.config_files.extend(args[ArgKey.CONFIG_FILES])
 
         # Merge add_only and update_only in policy
-        if "add_only" in args:
-            self.policy.add_only = args["add_only"]  # set only if passed
-        if "update_only" in args:
-            self.policy.update_only = args["update_only"]
+        if ArgKey.POLICY_CHECK_ADD_ONLY in args:
+            self.policy.add_only = args[ArgKey.POLICY_CHECK_ADD_ONLY]  # set only if passed
+        if ArgKey.POLICY_CHECK_UPDATE_ONLY in args:
+            self.policy.update_only = args[ArgKey.POLICY_CHECK_UPDATE_ONLY]
         # ... but do not zero-out policy_by_type when CLI says nothing
 
         # Override files to process if specified
-        if "files" in args:
-            self.files = list(args["files"]) if args["files"] else []
+        if ArgKey.FILES in args:
+            self.files = list(args[ArgKey.FILES]) if args[ArgKey.FILES] else []
             # If explicit files are given, force stdin to False (files take precedence)
             if self.files:
                 self.stdin_mode = False
 
         # Glob arrays from CLI: keep as strings (evaluated later vs relative_to)
-        if "include_patterns" in args:
-            # self.include_patterns = list(args["include_patterns"])
-            self.include_patterns.extend(list(args.get("include_patterns") or []))
-        if "exclude_patterns" in args:
-            # self.exclude_patterns = list(args["exclude_patterns"])
-            self.exclude_patterns.extend(list(args.get("exclude_patterns") or []))
+        if ArgKey.INCLUDE_PATTERNS in args:
+            # self.include_patterns = list(args[Cli.PARAM_INCLUDE_PATTERNS])
+            self.include_patterns.extend(list(args.get(ArgKey.INCLUDE_PATTERNS) or []))
+        if ArgKey.EXCLUDE_PATTERNS in args:
+            # self.exclude_patterns = list(args[Cli.PARAM_EXCLUDE_PATTERNS])
+            self.exclude_patterns.extend(list(args.get(ArgKey.EXCLUDE_PATTERNS) or []))
 
         # Override include/exclude patterns and files if specified
         cwd: Path = Path.cwd().resolve()
 
         # Normalize CLI path-to-file options from the invocation CWD
-        if "include_from" in args:
-            # self.include_from = list(args["include_from"])
+        if ArgKey.INCLUDE_FROM in args:
+            # self.include_from = list(args[Cli.PARAM_INCLUDE_FROM])
             extend_ps(
                 self.include_from,
-                args.get("include_from") or [],
+                args.get(ArgKey.INCLUDE_FROM) or [],
                 ps_from_cli,
-                "CLI --include-from",
+                f"CLI {CliOpt.INCLUDE_FROM}",
                 cwd,
             )
-        if "exclude_from" in args:
-            # self.exclude_from = list(args["exclude_from"])
+        if ArgKey.INCLUDE_FROM in args:
+            # self.exclude_from = list(args[ArgKey.PARAM_INCLUDE_FROM])
             extend_ps(
                 self.exclude_from,
-                args.get("exclude_from") or [],
+                args.get(ArgKey.EXCLUDE_FROM) or [],
                 ps_from_cli,
-                "CLI --exclude-from",
+                f"CLI {CliOpt.EXCLUDE_FROM}",
                 cwd,
             )
-        if "files_from" in args:
-            # self.files_from = list(args["files_from"])
+        if ArgKey.FILES_FROM in args:
+            # self.files_from = list(args[ArgKey.PARAM_FILES_FROM])
             extend_ps(
                 self.files_from,
-                args.get("files_from") or [],
+                args.get(ArgKey.FILES_FROM) or [],
                 ps_from_cli,
-                "CLI --files-from",
+                f"CLI {CliOpt.FILES_FROM}",
                 cwd,
             )
 
         # Override relative_to path if specified, resolving to absolute path
-        if "relative_to" in args and args["relative_to"] not in (None, ""):
-            self.relative_to_raw = args["relative_to"]
-            self.relative_to = Path(args["relative_to"]).resolve()
+        if ArgKey.RELATIVE_TO in args and args[ArgKey.RELATIVE_TO] not in (None, ""):
+            self.relative_to_raw = args[ArgKey.RELATIVE_TO]
+            self.relative_to = Path(args[ArgKey.RELATIVE_TO]).resolve()
         # If key not present or value is None, **keep** whatever came from discovery/TOML.
 
         # Override include_file_types filter if specified
-        if "include_file_types" in args:
-            self.include_file_types = set(args["include_file_types"])
+        if ArgKey.INCLUDE_FILE_TYPES in args:
+            self.include_file_types = set(args[ArgKey.INCLUDE_FILE_TYPES])
 
         # Override exclude_file_types filter if specified
-        if "exclude_file_types" in args:
-            self.exclude_file_types = set(args["exclude_file_types"])
+        if ArgKey.EXCLUDE_FILE_TYPES in args:
+            self.exclude_file_types = set(args[ArgKey.EXCLUDE_FILE_TYPES])
 
         # Apply CLI flags that require explicit True to activate or to explicitly disable
-        if "stdin_mode" in args:
-            stdin_mode: bool = bool(args["stdin_mode"])  # honor False explicitly
+        if ArgKey.STDIN_MODE in args:
+            stdin_mode: bool = bool(args[ArgKey.STDIN_MODE])  # honor False explicitly
             self.stdin_mode = stdin_mode
 
-        if "header_format" in args and args["header_format"] is not None:
-            self.header_format = args["header_format"]
+        if ArgKey.HEADER_FORMAT in args and args[ArgKey.HEADER_FORMAT] is not None:
+            self.header_format = args[ArgKey.HEADER_FORMAT]
         # else:
         #     logger.warning(
         #         "No header format specified, using default (%s)", HeaderOutputFormat.DEFAULT.value
         #     )
         #     self.header_format = HeaderOutputFormat.DEFAULT
 
-        if "align_fields" in args and args["align_fields"] is not None:
+        if ArgKey.ALIGN_FIELDS in args and args[ArgKey.ALIGN_FIELDS] is not None:
             # Only override if align_fields was passed via CLI
-            self.align_fields = args["align_fields"]
+            self.align_fields = args[ArgKey.ALIGN_FIELDS]
 
-        if "verbosity_level" in args and args["verbosity_level"] is not None:
+        if ArgKey.VERBOSITY_LEVEL in args and args[ArgKey.VERBOSITY_LEVEL] is not None:
             try:
-                self.verbosity_level = int(args["verbosity_level"])
+                self.verbosity_level = int(args[ArgKey.VERBOSITY_LEVEL])
             except (TypeError, ValueError):
                 logger.warning(
                     "Invalid verbosity_level=%r (expected int); keeping %r",
-                    args["verbosity_level"],
+                    args[ArgKey.VERBOSITY_LEVEL],
                     self.verbosity_level,
                 )
+                self.diagnostics.add_warning(
+                    f"Invalid verbosity_level={args[ArgKey.VERBOSITY_LEVEL]} (expected int); "
+                    f"keeping {self.verbosity_level}",
+                )
 
-        if "apply_changes" in args and args["apply_changes"] is not None:
-            self.apply_changes = bool(args["apply_changes"])
+        if ArgKey.APPLY_CHANGES in args and args[ArgKey.APPLY_CHANGES] is not None:
+            self.apply_changes = bool(args[ArgKey.APPLY_CHANGES])
 
-        if "write_mode" in args and args["write_mode"] is not None:
-            # CLI uses "write_mode" as a convenience selector:
+        if ArgKey.WRITE_MODE in args and args[ArgKey.WRITE_MODE] is not None:
+            # CLI uses ArgKey.PARAM_WRITE_MODE as a convenience selector:
             #   - "stdout" -> output to STDOUT (no file strategy)
             #   - "atomic"/"inplace" -> output to FILE + set strategy
-            logger.debug("CLI ARGS: write_mode=%r", args["write_mode"])
-            write_mode: str = str(args["write_mode"]).lower()
+            logger.debug("CLI ARGS: write_mode=%r", args[ArgKey.WRITE_MODE])
+            write_mode: str = str(args[ArgKey.WRITE_MODE]).lower()
 
             if write_mode == "stdout":
                 self.output_target = OutputTarget.STDOUT
@@ -1136,9 +1170,14 @@ class MutableConfig:
                 file_write_strategy: FileWriteStrategy | None = FileWriteStrategy.parse(write_mode)
                 if file_write_strategy is None:
                     logger.warning(
-                        "Invalid 'write_mode' value specified in the CLI: %r - "
+                        f"Invalid '{ArgKey.WRITE_MODE}' value specified in the CLI: %r - "
                         "using defaults: output to file, atomic file write strategy.",
-                        args["write_mode"],
+                        args[ArgKey.WRITE_MODE],
+                    )
+                    self.diagnostics.add_warning(
+                        f"Invalid '{ArgKey.WRITE_MODE}' value specified in the CLI: "
+                        f"{args[ArgKey.WRITE_MODE]} - "
+                        "using defaults: output to file, atomic file write strategy."
                     )
                     file_write_strategy = FileWriteStrategy.ATOMIC
 
@@ -1189,18 +1228,18 @@ class MutableConfig:
                 kept.append(ps)
 
             if len(kept) != len(sources):
-                logger.debug(
-                    "Sanitized %s: kept %d source(s), dropped %d invalid source(s)",
-                    name,
-                    len(kept),
-                    len(sources) - len(kept),
+                msg = (
+                    f"Sanitized {name}: kept {len(kept)} source(s), "
+                    f"dropped {len(sources) - len(kept)} invalid source(s)"
                 )
+                logger.warning(msg)
+                self.diagnostics.add_warning(msg)
 
             sources[:] = kept
 
-        _sanitize_sources("include_from", self.include_from)
-        _sanitize_sources("exclude_from", self.exclude_from)
-        _sanitize_sources("files_from", self.files_from)
+        _sanitize_sources(Toml.KEY_INCLUDE_FROM, self.include_from)
+        _sanitize_sources(Toml.KEY_EXCLUDE_FROM, self.exclude_from)
+        _sanitize_sources(Toml.KEY_FILES_FROM, self.files_from)
 
         def _sanitize_file_type_ids(
             name: str,
@@ -1241,12 +1280,12 @@ class MutableConfig:
             ids.difference_update(unknown)
 
         _sanitize_file_type_ids(
-            "include_file_types",
+            Toml.KEY_INCLUDE_FILE_TYPES,
             self.include_file_types,
             is_exclusion=False,
         )
         _sanitize_file_type_ids(
-            "exclude_file_types",
+            Toml.KEY_EXCLUDE_FILE_TYPES,
             self.exclude_file_types,
             is_exclusion=True,
         )
@@ -1268,31 +1307,29 @@ class MutableConfig:
         # We treat content-on-STDIN as "emit updated content"; file strategies are irrelevant.
         if self.stdin_mode is True:
             if self.output_target is None:
-                logger.debug("STDIN mode forces output_target=STDOUT (was not set)")
-                self.diagnostics.add_info(
-                    f"STDIN mode: Setting output_target to {OutputTarget.STDOUT.label}"
+                msg = (
+                    f"STDIN mode: Setting {Toml.KEY_TARGET} to {OutputTarget.STDOUT.label} "
+                    "(was not set)"
                 )
+                logger.info(msg)
+                self.diagnostics.add_info(msg)
             elif self.output_target != OutputTarget.STDOUT:
-                logger.debug(
-                    "STDIN mode forces output_target=STDOUT (was: %s)",
-                    self.output_target,
-                )
-                self.diagnostics.add_warning(
-                    "STDIN mode: Setting output_target "
+                msg = (
+                    f"STDIN mode: Setting {Toml.KEY_TARGET} "
                     f"from {self.output_target.key} ({self.output_target.label}) "
                     f"to {OutputTarget.STDOUT.key} ({OutputTarget.STDOUT.label})"
                 )
+                logger.debug(msg)
+                self.diagnostics.add_warning(msg)
 
             self.output_target = OutputTarget.STDOUT
 
             if self.file_write_strategy is not None:
-                logger.debug(
-                    "STDIN mode clears file_write_strategy (was %s)",
-                    self.file_write_strategy,
-                )
-                self.diagnostics.add_warning(
-                    "STDIN mode: Clearing file_write_strategy "
+                msg = (
+                    f"STDIN mode: Clearing file_write_strategy "
                     f"(was: {self.file_write_strategy.key} ({self.file_write_strategy.label}))"
                 )
+                logger.debug(msg)
+                self.diagnostics.add_warning(msg)
 
             self.file_write_strategy = None

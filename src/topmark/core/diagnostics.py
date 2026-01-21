@@ -23,12 +23,16 @@ Sections:
       adding and summarizing diagnostics.
 """
 
-from collections.abc import Callable, Iterable, Iterator
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from yachalk import chalk
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable, Iterator
 
 
 class DiagnosticLevel(Enum):

@@ -105,19 +105,23 @@ align_fields = true
 
 [writer]
 # Writer options.
+
+# Where to emit results:
+#   "file"   → write updates to the original files (default)
+#   "stdout" → write updated content to stdout (no file writes)
 #
-# Output destination for processed files. Possible values:
-#   "file"   → Write results to files (default).
-#   "stdout" → Emit updated content to standard output (no file writes).
+# CLI equivalent:
+#   --write-mode file
+#   --write-mode stdout
+target = "file"
+
+# Strategy used when writing to files (ignored when target="stdout"):
+#   "atomic"  → write to a temporary file and replace the original (safe, default)
+#   "inplace" → overwrite the original file in place (faster, less safe)
 #
-# When using the CLI, this can be set via `--write-mode stdout`.
-# output_target = "file"
-#
-# Strategy used when writing to files (ignored for stdout). Possible values:
-#   "atomic"  → Write to a temporary file and replace the original (safe, default).
-#   "inplace" → Overwrite files in place (faster, less safe).
-#
-# This can be controlled from the CLI via `--write-mode atomic` or `--write-mode inplace`.
+# CLI equivalent:
+#   --write-mode atomic
+#   --write-mode inplace
 strategy = "atomic"
 
 # ======================
@@ -157,11 +161,39 @@ allow_header_in_empty_files = false
 
 [files]
 
-# Optional whitelist of file type identifiers to process:
-# include_file_types = "markdown"
+# File discovery and filtering.
 #
-# Optional blacklist of file type identifiers to exclude:
-# exclude_file_types = "html"
+# Filtering order:
+#   1. Path-based include/exclude (patterns, *_from, files_from)
+#   2. File type include/exclude (include_file_types / exclude_file_types)
+#   3. Per-file eligibility (supported vs unsupported)
+#
+# Include/exclude glob patterns.
+# Patterns in config files are evaluated relative to the config file's directory.
+# include_patterns = ["src/**", "tests/**"]
+# exclude_patterns = [".venv/**", "**/__pycache__/**"]
+
+# Load include/exclude patterns from files (one pattern per line; supports comments).
+# These paths are resolved relative to the config file's directory.
+# include_from = ["include.txt"]
+# exclude_from = ["exclude.txt"]
+
+# Provide the explicit file list from files (one path per line; supports comments).
+# These paths are resolved relative to the config file's directory.
+# files_from = ["files.txt"]
+
+# Optional whitelist of file type identifiers to process (after include/exclude patterns):
+# include_file_types = ["python", "markdown"]
+
+# Optional blacklist of file type identifiers to exclude (after include/exclude patterns):
+# exclude_file_types = ["html"]
+
+# Optional list of input paths (files/directories) to scan.
+# These are typically specified via CLI.
+# files = ["src", "tests", "README.md"]
+
+# Affects header metadata (e.g., file_relpath) only, not discovery.
+# relative_to = "."
 
 
 # ============================

@@ -32,6 +32,8 @@ Path resolution policy (summary):
 * ``relative_to`` is used only for header metadata (e.g. ``file_relpath``).
 """
 
+from __future__ import annotations
+
 from .model import Config, MutableConfig, sanitize_config
 from .types import ArgsLike, PatternSource
 
