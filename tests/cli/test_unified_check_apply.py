@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING
 from click.testing import Result
 
 from tests.cli.conftest import assert_SUCCESS, assert_WOULD_CHANGE, run_cli
+from topmark.cli.keys import CliCmd, CliOpt
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -39,7 +40,7 @@ def test_check_mode_exits_2_when_changes_needed(tmp_path: Path) -> None:
     f: Path = tmp_path / "a.py"
     f.write_text("print('x')\n", encoding="utf-8")
 
-    result: Result = run_cli(["check", str(f)])
+    result: Result = run_cli([CliCmd.CHECK, str(f)])
 
     assert_WOULD_CHANGE(result)
 
@@ -53,7 +54,7 @@ def test_apply_writes_and_exits_0(tmp_path: Path) -> None:
     before = "print('y')\n"
     f.write_text(before, encoding="utf-8")
 
-    result: Result = run_cli(["check", "--apply", str(f)])
+    result: Result = run_cli([CliCmd.CHECK, CliOpt.APPLY_CHANGES, str(f)])
 
     assert_SUCCESS(result)
 

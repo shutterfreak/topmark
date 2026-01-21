@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING
 
 from topmark import api
 from topmark.config import MutableConfig
+from topmark.config.keys import Toml
 from topmark.file_resolver import resolve_file_list
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.pipelines import Pipeline
@@ -103,10 +104,10 @@ def test_same_dir_precedence_topmark_over_pyproject(
     _write(
         proj / "pyproject.toml",
         textwrap.dedent(
-            """
+            f"""
             [tool.topmark]
-            [tool.topmark.formatting]
-            align_fields = false
+            [tool.topmark.{Toml.SECTION_FORMATTING}]
+            {Toml.KEY_ALIGN_FIELDS} = false
             """
         ).strip()
         + "\n",
@@ -114,9 +115,9 @@ def test_same_dir_precedence_topmark_over_pyproject(
     _write(
         proj / "topmark.toml",
         textwrap.dedent(
-            """
-            [formatting]
-            align_fields = true
+            f"""
+            [{Toml.SECTION_FORMATTING}]
+            {Toml.KEY_ALIGN_FIELDS} = true
             """
         ).strip()
         + "\n",
@@ -156,10 +157,10 @@ def test_discovery_anchor_subdir_nearest_wins(tmp_path: Path) -> None:
     _write(
         proj / "pyproject.toml",
         textwrap.dedent(
-            """
+            f"""
             [tool.topmark]
-            [tool.topmark.formatting]
-            align_fields = false
+            [tool.topmark.{Toml.SECTION_FORMATTING}]
+            {Toml.KEY_ALIGN_FIELDS} = false
             """
         ).strip()
         + "\n",
@@ -167,9 +168,9 @@ def test_discovery_anchor_subdir_nearest_wins(tmp_path: Path) -> None:
     _write(
         child / "topmark.toml",
         textwrap.dedent(
-            """
-            [formatting]
-            align_fields = true
+            f"""
+            [{Toml.SECTION_FORMATTING}]
+            {Toml.KEY_ALIGN_FIELDS} = true
             """
         ).strip()
         + "\n",
@@ -207,11 +208,11 @@ def test_root_true_stops_traversal(tmp_path: Path) -> None:
     _write(
         root / "pyproject.toml",
         textwrap.dedent(
-            """
+            f"""
             [tool.topmark]
-            root = true
-            [tool.topmark.formatting]
-            align_fields = false
+            {Toml.KEY_ROOT} = true
+            [tool.topmark.{Toml.SECTION_FORMATTING}]
+            {Toml.KEY_ALIGN_FIELDS} = false
             """
         ).strip()
         + "\n",
@@ -222,9 +223,9 @@ def test_root_true_stops_traversal(tmp_path: Path) -> None:
     _write(
         grand / "topmark.toml",
         textwrap.dedent(
-            """
-            [formatting]
-            align_fields = true
+            f"""
+            [{Toml.SECTION_FORMATTING}]
+            {Toml.KEY_ALIGN_FIELDS} = true
             """
         ).strip()
         + "\n",

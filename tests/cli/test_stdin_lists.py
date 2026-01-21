@@ -19,6 +19,7 @@ import pytest
 from click.testing import Result
 
 from tests.cli.conftest import assert_SUCCESS, assert_WOULD_CHANGE, run_cli_in
+from topmark.cli.keys import CliCmd, CliOpt
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -29,15 +30,19 @@ if TYPE_CHECKING:
 @pytest.mark.parametrize(
     "command,expect",
     [
-        ("check", "WOULD_CHANGE"),
-        ("strip", "SUCCESS"),
+        (CliCmd.CHECK, "WOULD_CHANGE"),
+        (CliCmd.STRIP, "SUCCESS"),
     ],
 )
 def test_files_from_stdin_list_basic(tmp_path: Path, command: str, expect: str) -> None:
     """--files-from - reads newline-delimited paths from STDIN."""
     f: Path = tmp_path / "t.py"
     f.write_text("print('y')\n", "utf-8")
-    result: Result = run_cli_in(tmp_path, [command, "--files-from", "-"], input_text=f.name + "\n")
+    result: Result = run_cli_in(
+        tmp_path,
+        [command, CliOpt.FILES_FROM, "-"],
+        input_text=f.name + "\n",
+    )
     if expect == "WOULD_CHANGE":
         assert_WOULD_CHANGE(result)
     else:
@@ -53,7 +58,7 @@ def test_include_from_stdin_filters_candidates(tmp_path: Path) -> None:
     # Provide a superset as PATHS; include-from - narrows to *.py
     result: Result = run_cli_in(
         tmp_path,
-        ["check", "--include-from", "-", "a.py", "b.txt"],
+        [CliCmd.CHECK, CliOpt.INCLUDE_FROM, "-", "a.py", "b.txt"],
         input_text="*.py\n",
     )
     # Only a.py is considered → WOULD_CHANGE (header would be added)
@@ -69,13 +74,13 @@ def test_exclude_from_stdin_filters_candidates(tmp_path: Path) -> None:
     # Exclude b.py from the candidate set; only a.py remains → WOULD_CHANGE
     result: Result = run_cli_in(
         tmp_path,
-        ["check", "--exclude-from", "-", "a.py", "b.py"],
+        [CliCmd.CHECK, CliOpt.EXCLUDE_FROM, "-", "a.py", "b.py"],
         input_text="b.py\n",
     )
     assert_WOULD_CHANGE(result)
 
 
-@pytest.mark.parametrize("opt", ["--files-from", "--include-from", "--exclude-from"])
+@pytest.mark.parametrize("opt", [CliOpt.FILES_FROM, CliOpt.INCLUDE_FROM, CliOpt.EXCLUDE_FROM])
 def test_from_stdin_empty_is_noop(tmp_path: Path, opt: str) -> None:
     """Empty STDIN with …-from - yields empty additions and should not crash."""
     # No paths → no effect. The CLI should treat as nothing added/filtered.
@@ -83,6 +88,10 @@ def test_from_stdin_empty_is_noop(tmp_path: Path, opt: str) -> None:
     # Here we give a benign PATH so the command runs.
     f: Path = tmp_path / "x.py"
     f.write_text("print()\n", "utf-8")
-    result: Result = run_cli_in(tmp_path, ["check", opt, "-", f.name], input_text="")
+    result: Result = run_cli_in(
+        tmp_path,
+        [CliCmd.CHECK, opt, "-", f.name],
+        input_text="",
+    )
     # With only x.py left, we expect WOULD_CHANGE
     assert_WOULD_CHANGE(result)

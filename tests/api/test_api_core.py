@@ -25,6 +25,7 @@ from tests.api.conftest import has_header
 from topmark import api
 from topmark.api.public_types import PublicPolicy
 from topmark.api.types import Outcome
+from topmark.config.keys import Toml
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -126,7 +127,9 @@ def test_config_mapping_limits_discovery(tmp_path: Path) -> None:
     """Explicit config mapping narrows discovery to requested file types."""
     (tmp_path / "a.py").write_text("print('a')\n", encoding="utf-8")
     (tmp_path / "b.txt").write_text("hello\n", encoding="utf-8")
-    cfg: dict[str, dict[str, list[str]]] = {"files": {"include_file_types": ["python"]}}
+    cfg: dict[str, dict[str, list[str]]] = {
+        Toml.SECTION_FILES: {Toml.KEY_INCLUDE_FILE_TYPES: ["python"]},
+    }
     r: api.RunResult = api.check(
         [tmp_path / "a.py", tmp_path / "b.txt"],
         apply=False,

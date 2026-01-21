@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING
 from click.testing import Result
 
 from tests.cli.conftest import assert_SUCCESS, run_cli_in
+from topmark.cli.keys import CliCmd, CliOpt
 from topmark.core.exit_codes import ExitCode
 
 if TYPE_CHECKING:
@@ -42,7 +43,8 @@ def test_local_topmark_toml_overrides_defaults(tmp_path: Path) -> None:
 
     # Run from inside that directory so the local topmark.toml is picked up.
     result: Result = run_cli_in(
-        tmp_path, ["check", "--apply", file_name]
+        tmp_path,
+        [CliCmd.CHECK, CliOpt.APPLY_CHANGES, file_name],
     )  # use relative path in tmp_path
     assert_SUCCESS(result)
 
@@ -54,7 +56,10 @@ def test_invalid_topmark_toml_yields_clean_error(tmp_path: Path) -> None:
     f: Path = tmp_path / file_name
     f.write_text("print('ok')\n", "utf-8")
 
-    result: Result = run_cli_in(tmp_path, ["check", str(f)])
+    result: Result = run_cli_in(
+        tmp_path,
+        [CliCmd.CHECK, str(f)],
+    )
 
     # Expect a controlled error with non-zero exit -- TODO: specific code?
     assert result.exit_code != ExitCode.SUCCESS, result.output

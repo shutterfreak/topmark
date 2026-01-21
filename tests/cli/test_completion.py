@@ -33,6 +33,7 @@ from click.shell_completion import CompletionItem
 
 from tests.conftest import mark_cli, parametrize
 from topmark.cli.cli_types import EnumChoiceParam
+from topmark.cli.keys import CliOpt
 from topmark.cli.main import cli
 from topmark.rendering.formats import HeaderOutputFormat
 
@@ -56,7 +57,7 @@ def _complete(incomplete: str = "") -> list[CompletionItem]:
     """
     enum_type: EnumChoiceParam[HeaderOutputFormat] = EnumChoiceParam(HeaderOutputFormat)
     # Minimal Click option and context
-    opt = click.Option(("--header-format",), type=enum_type)
+    opt = click.Option((CliOpt.HEADER_FORMAT,), type=enum_type)
     ctx = click.Context(cli)
     items: list[CompletionItem] = enum_type.shell_complete(ctx, opt, incomplete)
     if items:

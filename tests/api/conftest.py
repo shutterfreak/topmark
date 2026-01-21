@@ -22,6 +22,7 @@ import pytest
 
 from topmark import api
 from topmark.api.public_types import PublicPolicy
+from topmark.config.keys import Toml
 from topmark.filetypes.base import FileType
 from topmark.pipeline.processors.base import HeaderProcessor
 from topmark.pipeline.processors.types import BoundsKind, HeaderBounds
@@ -60,9 +61,9 @@ def cfg(**overrides: Any) -> dict[str, Any]:
         dict[str, Any]: A TOML-shaped mapping suitable for ``api.check(..., config=...)``.
     """
     base: dict[str, Any] = {
-        "files": {
+        Toml.SECTION_FILES: {
             # When provided, discovery should consider only these types
-            "include_file_types": ["python"],
+            Toml.KEY_INCLUDE_FILE_TYPES: ["python"],
         },
     }
     for k, v in overrides.items():
@@ -257,11 +258,14 @@ def api_check_dir(
     policy: PublicPolicy | None = None,
     skip_compliant: bool = False,
     skip_unsupported: bool = False,
-    include_file_types: Iterable[str] | None = ("python",),
-    exclude_file_types: Iterable[str] | None = ("python",),
+    include_file_types: Iterable[str] | None = None,
+    exclude_file_types: Iterable[str] | None = None,
     prune: bool = False,
 ) -> api.RunResult:
-    """Run [`topmark.api.check`][topmark.api.check] against `root / 'src'` with common defaults."""
+    """Run [`topmark.api.check`][topmark.api.check] against `root / 'src'` with common defaults.
+
+    By default, does not exclude any file types (no blacklist).
+    """
     paths: list[Path] = [root / "src"]
     return api.check(
         paths,
@@ -283,11 +287,14 @@ def api_strip_dir(
     policy: PublicPolicy | None = None,
     skip_compliant: bool = False,
     skip_unsupported: bool = False,
-    include_file_types: Iterable[str] | None = ("python",),
-    exclude_file_types: Iterable[str] | None = ("python",),
+    include_file_types: Iterable[str] | None = None,
+    exclude_file_types: Iterable[str] | None = None,
     prune: bool = False,
 ) -> api.RunResult:
-    """Run [`topmark.api.strip`][topmark.api.strip] against `root / 'src'` with common defaults."""
+    """Run [`topmark.api.strip`][topmark.api.strip] against `root / 'src'` with common defaults.
+
+    By default, does not exclude any file types (no blacklist).
+    """
     paths: list[Path] = [root / "src"]
     return api.strip(
         paths,

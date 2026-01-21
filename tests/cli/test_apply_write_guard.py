@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tests.cli.conftest import assert_SUCCESS, run_cli_in
+from topmark.cli.keys import CliCmd, CliOpt
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 
 if TYPE_CHECKING:
@@ -52,7 +53,10 @@ def test_apply_does_not_write_skipped_known_no_headers(tmp_path: Path) -> None:
     lic.write_text(original, "utf-8")
 
     # 2) Apply: should not write (guarded by WriteStatus != INSERTED/REPLACED/REMOVED)
-    result: Result = run_cli_in(tmp_path, ["check", "--apply", "LICENSE"])
+    result: Result = run_cli_in(
+        tmp_path,
+        [CliCmd.CHECK, CliOpt.APPLY_CHANGES, "LICENSE"],
+    )
 
     # 3) Assertions
     assert_SUCCESS(result)
@@ -78,7 +82,10 @@ def test_apply_writes_only_on_insert_and_is_idempotent(tmp_path: Path) -> None:
     f.write_text("print('ok')\n", "utf-8")
 
     # First apply: header should be inserted.
-    result_1: Result = run_cli_in(tmp_path, ["check", "--apply", "x.py"])
+    result_1: Result = run_cli_in(
+        tmp_path,
+        [CliCmd.CHECK, CliOpt.APPLY_CHANGES, "x.py"],
+    )
 
     assert_SUCCESS(result_1)
 
@@ -87,7 +94,10 @@ def test_apply_writes_only_on_insert_and_is_idempotent(tmp_path: Path) -> None:
     assert TOPMARK_START_MARKER in after_first
 
     # Second apply: should be a no-op; content identical.
-    result_2: Result = run_cli_in(tmp_path, ["check", "--apply", "x.py"])
+    result_2: Result = run_cli_in(
+        tmp_path,
+        [CliCmd.CHECK, CliOpt.APPLY_CHANGES, "x.py"],
+    )
 
     assert_SUCCESS(result_2)
 
@@ -113,7 +123,10 @@ def test_strip_apply_writes_only_on_removed_and_preserves_body(tmp_path: Path) -
     )
 
     # 2) Apply strip
-    result_1: Result = run_cli_in(tmp_path, ["strip", "--apply", "h.py"])
+    result_1: Result = run_cli_in(
+        tmp_path,
+        [CliCmd.STRIP, CliOpt.APPLY_CHANGES, "h.py"],
+    )
 
     assert_SUCCESS(result_1)
 
@@ -123,7 +136,10 @@ def test_strip_apply_writes_only_on_removed_and_preserves_body(tmp_path: Path) -
     assert "print('body')" in after1
 
     # 4) Second run: should be a no-op
-    result_2: Result = run_cli_in(tmp_path, ["strip", "--apply", "h.py"])
+    result_2: Result = run_cli_in(
+        tmp_path,
+        [CliCmd.STRIP, CliOpt.APPLY_CHANGES, "h.py"],
+    )
 
     assert_SUCCESS(result_2)
 
@@ -145,7 +161,10 @@ def test_apply_write_guard_respects_relative_patterns(tmp_path: Path) -> None:
     lic.write_text(original, "utf-8")
 
     # Use relative glob; absolute globs are unsupported by the resolver
-    result: Result = run_cli_in(tmp_path, ["check", "--apply", "*.py", "LICENSE"])
+    result: Result = run_cli_in(
+        tmp_path,
+        [CliCmd.CHECK, CliOpt.APPLY_CHANGES, "*.py", "LICENSE"],
+    )
 
     assert_SUCCESS(result)
 
@@ -164,7 +183,10 @@ def test_apply_does_not_write_binary_like_file(tmp_path: Path) -> None:
     data = b"\x00\x01\x02ICO"
     ico.write_bytes(data)
 
-    result: Result = run_cli_in(tmp_path, ["check", "--apply", "favicon.ico"])
+    result: Result = run_cli_in(
+        tmp_path,
+        [CliCmd.CHECK, CliOpt.APPLY_CHANGES, "favicon.ico"],
+    )
 
     assert_SUCCESS(result)
 
@@ -179,7 +201,10 @@ def test_apply_guard_mixed_changed_and_skipped(tmp_path: Path) -> None:
     typed: Path = tmp_path / "py.typed"
     typed.write_text("typed\n", "utf-8")
 
-    result: Result = run_cli_in(tmp_path, ["check", "--apply", "*.py", "LICENSE", "py.typed"])
+    result: Result = run_cli_in(
+        tmp_path,
+        [CliCmd.CHECK, CliOpt.APPLY_CHANGES, "*.py", "LICENSE", "py.typed"],
+    )
 
     assert_SUCCESS(result)
 
@@ -194,13 +219,19 @@ def test_apply_with_diff_respects_write_guard(tmp_path: Path) -> None:
     py.write_text("print('a')\n", "utf-8")
     lic: Path = tmp_path / "LICENSE"
     lic.write_text("MIT\n", "utf-8")
-    result_1: Result = run_cli_in(tmp_path, ["check", "--apply", "--diff", "x.py"])
+    result_1: Result = run_cli_in(
+        tmp_path,
+        [CliCmd.CHECK, CliOpt.APPLY_CHANGES, CliOpt.RENDER_DIFF, "x.py"],
+    )
 
     assert_SUCCESS(result_1)
 
     assert "--- " in result_1.output
 
-    result_2: Result = run_cli_in(tmp_path, ["check", "--apply", "--diff", "LICENSE"])
+    result_2: Result = run_cli_in(
+        tmp_path,
+        [CliCmd.CHECK, CliOpt.APPLY_CHANGES, CliOpt.RENDER_DIFF, "LICENSE"],
+    )
 
     assert_SUCCESS(result_2)
 
@@ -213,11 +244,17 @@ def test_strip_apply_no_header_is_noop(tmp_path: Path) -> None:
     f.write_text("print('ok')\n", "utf-8")
     before: str = f.read_text("utf-8")
 
-    result_1: Result = run_cli_in(tmp_path, ["strip", "--apply", "no_header.py"])
+    result_1: Result = run_cli_in(
+        tmp_path,
+        [CliCmd.STRIP, CliOpt.APPLY_CHANGES, "no_header.py"],
+    )
 
     assert_SUCCESS(result_1)
 
-    result_2: Result = run_cli_in(tmp_path, ["strip", "--apply", "no_header.py"])
+    result_2: Result = run_cli_in(
+        tmp_path,
+        [CliCmd.STRIP, CliOpt.APPLY_CHANGES, "no_header.py"],
+    )
 
     assert_SUCCESS(result_2)
 
@@ -231,7 +268,9 @@ def test_apply_write_guard_with_stdin(tmp_path: Path) -> None:
     input_list = "x.py\nLICENSE\n"
 
     result: Result = run_cli_in(
-        tmp_path, ["check", "--apply", "--files-from", "-"], input_text=input_list
+        tmp_path,
+        [CliCmd.CHECK, CliOpt.APPLY_CHANGES, CliOpt.FILES_FROM, "-"],
+        input_text=input_list,
     )
 
     assert_SUCCESS(result)

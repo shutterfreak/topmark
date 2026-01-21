@@ -36,6 +36,7 @@ from tests.cli.conftest import (
     run_cli,
     run_cli_in,
 )
+from topmark.cli.keys import CliCmd, CliOpt
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.status import HeaderStatus, StripStatus
 
@@ -56,7 +57,9 @@ def test_strip_dry_run_exits_2(tmp_path: Path) -> None:
         f"# {TOPMARK_START_MARKER}\n# test:header\n# {TOPMARK_END_MARKER}\nprint('ok')\n", "utf-8"
     )
 
-    result: Result = run_cli(["strip", str(f)])
+    result: Result = run_cli(
+        [CliCmd.STRIP, str(f)],
+    )
 
     # Exit 2 means "changes would be made" (pre-commit friendly).
     assert_WOULD_CHANGE(result)
@@ -70,7 +73,9 @@ def test_strip_dry_run_exit_0_when_no_header(tmp_path: Path) -> None:
     f: Path = tmp_path / "x.py"
     f.write_text("print('ok')\n", "utf-8")
 
-    result: Result = run_cli(["strip", str(f)])
+    result: Result = run_cli(
+        [CliCmd.STRIP, str(f)],
+    )
 
     # No header → nothing to do → exit 0
     assert_SUCCESS(result)
@@ -87,7 +92,9 @@ def test_strip_apply_removes_and_is_idempotent(tmp_path: Path) -> None:
     f.write_text(before, "utf-8")
 
     # First application removes the header.
-    result_strip_1: Result = run_cli(["strip", "--apply", str(f)])
+    result_strip_1: Result = run_cli(
+        [CliCmd.STRIP, CliOpt.APPLY_CHANGES, str(f)],
+    )
 
     assert_SUCCESS(result_strip_1)
 
@@ -95,7 +102,9 @@ def test_strip_apply_removes_and_is_idempotent(tmp_path: Path) -> None:
     assert TOPMARK_START_MARKER not in after_strip_1 and "print('x')" in after_strip_1
 
     # Second application should be a no-op and still succeed.
-    result_strip_2: Result = run_cli(["strip", "--apply", str(f)])
+    result_strip_2: Result = run_cli(
+        [CliCmd.STRIP, CliOpt.APPLY_CHANGES, str(f)],
+    )
 
     assert_SUCCESS(result_strip_2)
 
@@ -112,7 +121,9 @@ def test_strip_diff_shows_patch(tmp_path: Path) -> None:
         f"# {TOPMARK_START_MARKER}\n# test:header\n# {TOPMARK_END_MARKER}\nprint()\n", "utf-8"
     )
 
-    result: Result = run_cli(["strip", "--diff", str(f)])
+    result: Result = run_cli(
+        [CliCmd.STRIP, CliOpt.RENDER_DIFF, str(f)],
+    )
 
     # With a removable header, diff-only should exit 2 (would change).
     assert_WOULD_CHANGE(result)
@@ -141,8 +152,8 @@ def test_strip_summary_buckets(tmp_path: Path) -> None:
 
     result: Result = run_cli(
         [
-            "strip",
-            "--summary",
+            CliCmd.STRIP,
+            CliOpt.RESULTS_SUMMARY_MODE,
             str(has),  # file with good header: "would strip header"
             str(clean),  # file without header: "up-to-date"
             str(bad),  # file with malformed header: "up-to-date"
@@ -172,7 +183,9 @@ def test_strip_accepts_positional_paths(tmp_path: Path) -> None:
     p: Path = tmp_path / "a.md"
     p.write_text(f"<!-- {TOPMARK_START_MARKER} -->\n<!-- {TOPMARK_END_MARKER} -->\n", "utf-8")
 
-    result: Result = run_cli(["strip", str(p)])
+    result: Result = run_cli(
+        [CliCmd.STRIP, str(p)],
+    )
 
     # Header present → dry-run 'would change' = 2; tolerate 0 in edge runners.
     assert_SUCCESS_or_WOULD_CHANGE(result)
@@ -182,7 +195,9 @@ def test_strip_accepts_positional_paths(tmp_path: Path) -> None:
         # Use a relative glob; absolute patterns are intentionally unsupported by the resolver.
         os.chdir(tmp_path)  # make the glob relative
 
-        result = run_cli(["strip", "*.md"])
+        result = run_cli(
+            [CliCmd.STRIP, "*.md"],
+        )
     finally:
         os.chdir(cwd)
 
@@ -203,7 +218,9 @@ def test_strip_ignores_missing_end_marker(tmp_path: Path) -> None:
     f: Path = tmp_path / "bad.py"
     f.write_text(f"# {TOPMARK_START_MARKER}\n# x\nprint()\n", "utf-8")
 
-    result: Result = run_cli(["strip", "--apply", str(f)])
+    result: Result = run_cli(
+        [CliCmd.STRIP, CliOpt.APPLY_CHANGES, str(f)],
+    )
 
     assert_SUCCESS(result)
 
@@ -238,12 +255,12 @@ def test_strip_include_from_exclude_from(tmp_path: Path) -> None:
     result: Result = run_cli_in(
         tmp_path,
         [
-            "strip",
-            "--include-from",
+            CliCmd.STRIP,
+            CliOpt.INCLUDE_FROM,
             str(incf),
-            "--exclude-from",
+            CliOpt.EXCLUDE_FROM,
             str(exf),
-            "--apply",
+            CliOpt.APPLY_CHANGES,
             a.name,
             b.name,
         ],

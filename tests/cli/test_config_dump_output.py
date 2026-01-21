@@ -1,8 +1,8 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : test_dump_config_output.py
-#   file_relpath : tests/cli/test_dump_config_output.py
+#   file         : test_config_dump_output.py
+#   file_relpath : tests/cli/test_config_dump_output.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -25,6 +25,7 @@ import pytest
 import toml
 
 from tests.cli.conftest import assert_SUCCESS, run_cli
+from topmark.cli.keys import CliCmd, CliOpt
 from topmark.constants import TOML_BLOCK_END, TOML_BLOCK_START
 
 if TYPE_CHECKING:
@@ -35,10 +36,10 @@ def test_dump_config_outputs_valid_toml() -> None:
     """It should emit valid TOML wrapped in BEGIN/END markers and parse successfully."""
     result: Result = run_cli(
         [
-            "--no-color",  # Strip ANSI formatting to allow parsing the generated TOML
-            "-v",  # Render the BEGIN and END markers
-            "config",
-            "dump",
+            CliOpt.NO_COLOR_MODE,  # Strip ANSI formatting to allow parsing the generated TOML
+            CliOpt.VERBOSE,  # Render the BEGIN and END markers
+            CliCmd.CONFIG,
+            CliCmd.CONFIG_DUMP,
         ]
     )
 

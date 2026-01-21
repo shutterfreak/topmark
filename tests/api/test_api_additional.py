@@ -23,6 +23,7 @@ import pytest
 from tests.api.conftest import cfg
 from topmark import api
 from topmark.api.public_types import PublicPolicy
+from topmark.config.keys import Toml
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -50,7 +51,7 @@ def test_check_with_explicit_config_restricts_file_types(repo_py_toml_xyz_no_hea
     r: api.RunResult = api.check(
         [repo_py_toml_xyz_no_header / "src"],
         apply=False,
-        config=cfg(files={"include_file_types": ["python"]}),
+        config=cfg(files={Toml.KEY_INCLUDE_FILE_TYPES: ["python"]}),
         include_file_types=None,  # rely solely on config mapping here
     )
 

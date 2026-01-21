@@ -19,6 +19,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from tests.cli.conftest import assert_SUCCESS, run_cli
+from topmark.cli.keys import CliCmd, CliOpt
 from topmark.constants import TOPMARK_VERSION
 
 if TYPE_CHECKING:
@@ -27,7 +28,7 @@ if TYPE_CHECKING:
 
 def test_cli_entry() -> None:
     """It should show usage information and exit code SUCCESS when `--help` is passed."""
-    result: Result = run_cli(["--help"])
+    result: Result = run_cli([CliOpt.HELP])
 
     assert_SUCCESS(result)
 
@@ -36,7 +37,7 @@ def test_cli_entry() -> None:
 
 def test_version() -> None:
     """It should show version information containing 'topmark' and exit code SUCCESS."""
-    result: Result = run_cli(["version"])
+    result: Result = run_cli([CliCmd.VERSION])
 
     assert_SUCCESS(result)
 

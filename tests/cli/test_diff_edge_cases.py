@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tests.cli.conftest import assert_WOULD_CHANGE, run_cli_in
+from topmark.cli.keys import CliCmd, CliOpt
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 
 if TYPE_CHECKING:
@@ -36,7 +37,10 @@ def test_diff_on_no_final_newline_default(tmp_path: Path) -> None:
     # No final newline on purpose.
     f.write_text("print('x')", "utf-8")
 
-    result: Result = run_cli_in(tmp_path, ["check", "--diff", str(f)])
+    result: Result = run_cli_in(
+        tmp_path,
+        [CliCmd.CHECK, CliOpt.RENDER_DIFF, str(f)],
+    )
 
     # Would insert → exit 2, and a non-empty patch must be shown.
     assert_WOULD_CHANGE(result)
@@ -54,7 +58,10 @@ def test_diff_preserves_crlf_strip(tmp_path: Path) -> None:
             f"// {TOPMARK_START_MARKER}\n// test:header\n// {TOPMARK_END_MARKER}\nconsole.log(1)\n"
         )
 
-    result: Result = run_cli_in(tmp_path, ["strip", "--diff", str(f)])
+    result: Result = run_cli_in(
+        tmp_path,
+        [CliCmd.STRIP, CliOpt.RENDER_DIFF, str(f)],
+    )
 
     assert_WOULD_CHANGE(result)
 

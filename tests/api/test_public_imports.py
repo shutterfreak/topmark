@@ -21,7 +21,13 @@ def test_api_all_contains_expected_symbols() -> None:
 
     # At minimum these should be present; the full list is allowed to grow.
 
-    expected: set[str] = {"check", "strip", "get_filetype_info", "get_processor_info", "version"}
+    expected: set[str] = {
+        "check",
+        "strip",
+        "get_filetype_info",
+        "get_processor_info",
+        "version",
+    }
     exported: set[str] = set(api.__all__)
     missing: set[str] = expected - exported
     assert not missing, f"Missing from api.__all__: {sorted(missing)}; have: {sorted(exported)}"

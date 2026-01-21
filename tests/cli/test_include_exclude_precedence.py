@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tests.cli.conftest import assert_SUCCESS, run_cli_in
+from topmark.cli.keys import CliCmd, CliOpt
 from topmark.constants import TOPMARK_START_MARKER
 
 if TYPE_CHECKING:
@@ -45,12 +46,12 @@ def test_exclude_wins_over_include(tmp_path: Path) -> None:
     result: Result = run_cli_in(
         tmp_path,
         [
-            "check",
-            "--include-from",
+            CliCmd.CHECK,
+            CliOpt.INCLUDE_FROM,
             str(incf.name),
-            "--exclude-from",
+            CliOpt.EXCLUDE_FROM,
             str(excf.name),
-            "--apply",
+            CliOpt.APPLY_CHANGES,
             ".",
         ],
     )

@@ -47,6 +47,7 @@ from tests.cli.conftest import (
     run_cli,
     run_cli_in,
 )
+from topmark.cli.keys import CliCmd, CliOpt
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -63,7 +64,9 @@ def test_config_dump_json_includes_meta() -> None:
     top-level JSON object must contain a `meta` block with `tool` and
     `version`, plus a `config` snapshot.
     """
-    result: Result = run_cli(["config", "dump", "--output-format", "json"])
+    result: Result = run_cli(
+        [CliCmd.CONFIG, CliCmd.CONFIG_DUMP, CliOpt.OUTPUT_FORMAT, "json"],
+    )
     assert_SUCCESS(result)
 
     payload: dict[str, Any] = json.loads(result.output)
@@ -86,7 +89,7 @@ def test_config_dump_json_includes_meta() -> None:
     assert version_obj != ""
 
 
-@pytest.mark.parametrize("command", ["check", "strip"])
+@pytest.mark.parametrize("command", [CliCmd.CHECK, CliCmd.STRIP])
 def test_processing_json_includes_meta(tmp_path: Path, command: str) -> None:
     """Ensure JSON machine output for `check` / `strip` includes meta/tool/version.
 
@@ -103,7 +106,7 @@ def test_processing_json_includes_meta(tmp_path: Path, command: str) -> None:
 
     result: Result = run_cli_in(
         tmp_path,
-        [command, "--output-format", "json", "."],
+        [command, CliOpt.OUTPUT_FORMAT, "json", "."],
     )
     assert_SUCCESS_or_WOULD_CHANGE(result)
 
@@ -123,7 +126,7 @@ def test_processing_json_includes_meta(tmp_path: Path, command: str) -> None:
     assert version_obj != ""
 
 
-@pytest.mark.parametrize("command", ["check", "strip"])
+@pytest.mark.parametrize("command", [CliCmd.CHECK, CliCmd.STRIP])
 def test_processing_json_detail_shape(tmp_path: Path, command: str) -> None:
     """Check JSON detail-mode shape for `check` / `strip` with `--output-format json`.
 
@@ -139,7 +142,7 @@ def test_processing_json_detail_shape(tmp_path: Path, command: str) -> None:
 
     result: Result = run_cli_in(
         tmp_path,
-        [command, "--output-format", "json", "."],
+        [command, CliOpt.OUTPUT_FORMAT, "json", "."],
     )
     assert_SUCCESS_or_WOULD_CHANGE(result)
 
@@ -210,7 +213,7 @@ def test_processing_json_detail_shape(tmp_path: Path, command: str) -> None:
     assert isinstance(outcome_obj, dict)
 
 
-@pytest.mark.parametrize("command", ["check", "strip"])
+@pytest.mark.parametrize("command", [CliCmd.CHECK, CliCmd.STRIP])
 def test_processing_json_summary_shape(tmp_path: Path, command: str) -> None:
     """Check JSON summary-mode shape for `check` / `strip` with `--summary`.
 
@@ -226,7 +229,7 @@ def test_processing_json_summary_shape(tmp_path: Path, command: str) -> None:
 
     result: Result = run_cli_in(
         tmp_path,
-        [command, "--output-format", "json", "--summary", "."],
+        [command, CliOpt.OUTPUT_FORMAT, "json", CliOpt.RESULTS_SUMMARY_MODE, "."],
     )
     assert_SUCCESS_or_WOULD_CHANGE(result)
 
@@ -265,7 +268,9 @@ def test_config_dump_ndjson_kinds() -> None:
     `config_diagnostics` record may be added in the future, but is not required
     at present.
     """
-    result: Result = run_cli(["config", "dump", "--output-format", "ndjson"])
+    result: Result = run_cli(
+        [CliCmd.CONFIG, CliCmd.CONFIG_DUMP, CliOpt.OUTPUT_FORMAT, "ndjson"],
+    )
     assert_SUCCESS(result)
 
     lines: list[str] = [line for line in result.output.splitlines() if line.strip()]
@@ -286,7 +291,7 @@ def test_config_dump_ndjson_kinds() -> None:
     assert kinds <= {"config", "config_diagnostics"}
 
 
-@pytest.mark.parametrize("command", ["check", "strip"])
+@pytest.mark.parametrize("command", [CliCmd.CHECK, CliCmd.STRIP])
 def test_processing_ndjson_kinds_with_summary(tmp_path: Path, command: str) -> None:
     """Ensure NDJSON `--summary` output for `check` / `strip` emits config and summary records.
 
@@ -304,7 +309,7 @@ def test_processing_ndjson_kinds_with_summary(tmp_path: Path, command: str) -> N
 
     result: Result = run_cli_in(
         tmp_path,
-        [command, "--output-format", "ndjson", "--summary", "."],
+        [command, CliOpt.OUTPUT_FORMAT, "ndjson", CliOpt.RESULTS_SUMMARY_MODE, "."],
     )
     assert_SUCCESS_or_WOULD_CHANGE(result)
 

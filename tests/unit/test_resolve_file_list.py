@@ -399,7 +399,11 @@ def test_file_type_unknown_is_ignored(
         )
         files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
         assert [p.as_posix() for p in files] == ["a.py"]
-        assert any("Unknown file types specified" in r.message for r in caplog.records)
+        assert any(
+            "Unknown included file types specified" in r.message
+            # NOTE: see src/topmark/file_resolver.py
+            for r in caplog.records
+        )
     finally:
         FileTypeRegistry.unregister("py")
 
@@ -613,7 +617,10 @@ def test_multiple_unknown_file_types_warn_once(
         files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
         assert [p.as_posix() for p in files] == ["a.py"]
         msgs: list[str] = [
-            r.message for r in caplog.records if "Unknown file types specified" in r.message
+            r.message
+            for r in caplog.records
+            if "Unknown included file types specified" in r.message
+            # NOTE: see src/topmark/file_resolver.py
         ]
         assert len(msgs) == 1
         assert "unknown1" in msgs[0] and "unknown2" in msgs[0]

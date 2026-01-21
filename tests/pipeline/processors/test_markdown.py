@@ -13,7 +13,8 @@
 Exercises placement rules for Markdown (HTML comments).
 """
 
-from pathlib import Path
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from tests.conftest import mark_pipeline
@@ -28,6 +29,8 @@ from topmark.config import Config, MutableConfig
 from topmark.constants import TOPMARK_START_MARKER
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from topmark.pipeline.context.model import ProcessingContext
 
 

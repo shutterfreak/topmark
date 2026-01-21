@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tests.cli.conftest import assert_SUCCESS, assert_SUCCESS_or_WOULD_CHANGE, run_cli
+from topmark.cli.keys import CliCmd, CliOpt
 from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.status import ResolveStatus, StripStatus
 
@@ -44,7 +45,7 @@ def test_file_type_filter_limits_processing_default(tmp_path: Path) -> None:
 
     # Only act on python files
     result: Result = run_cli(
-        ["check", "--file-type", "python", "--apply", str(tmp_path)],
+        [CliCmd.CHECK, CliOpt.INCLUDE_FILE_TYPES, "python", CliOpt.APPLY_CHANGES, str(tmp_path)],
     )
 
     assert_SUCCESS(result)
@@ -71,7 +72,7 @@ def test_file_type_filter_limits_processing_strip(tmp_path: Path) -> None:
 
     # Strip only for python → TS header remains
     result: Result = run_cli(
-        ["strip", "--file-type", "python", "--apply", str(tmp_path)],
+        [CliCmd.STRIP, CliOpt.INCLUDE_FILE_TYPES, "python", CliOpt.APPLY_CHANGES, str(tmp_path)],
     )
 
     assert_SUCCESS(result)
@@ -92,7 +93,7 @@ def test_skip_compliant_hides_clean_files(tmp_path: Path) -> None:
 
     # In summary mode, ensure the compliant bucket isn't shown when skip-compliant is set.
     result: Result = run_cli(
-        ["strip", "--summary", "--skip-compliant", str(tmp_path)],
+        [CliCmd.STRIP, CliOpt.RESULTS_SUMMARY_MODE, CliOpt.SKIP_COMPLIANT, str(tmp_path)],
     )
 
     assert_SUCCESS_or_WOULD_CHANGE(result)
@@ -110,7 +111,7 @@ def test_skip_unsupported_hides_unknown(tmp_path: Path) -> None:
 
     # Normal mode
     result_normal: Result = run_cli(
-        ["check", "--skip-unsupported", str(unk)],
+        [CliCmd.CHECK, CliOpt.SKIP_UNSUPPORTED, str(unk)],
     )
 
     # nothing to do, and unknown is skipped from output
@@ -118,7 +119,7 @@ def test_skip_unsupported_hides_unknown(tmp_path: Path) -> None:
 
     # Summary mode: the "unsupported" bucket should not be present now.
     result_summary: Result = run_cli(
-        ["check", "--summary", "--skip-unsupported", str(unk)],
+        [CliCmd.CHECK, CliOpt.RESULTS_SUMMARY_MODE, CliOpt.SKIP_UNSUPPORTED, str(unk)],
     )
 
     assert_SUCCESS(result_summary)

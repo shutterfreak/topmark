@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING
 from click.testing import Result
 
 from tests.cli.conftest import assert_USAGE_ERROR, run_cli_in
+from topmark.cli.keys import CliCmd, CliOpt
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -35,7 +36,11 @@ def test_default_rejects_stdin_with_file(tmp_path: Path) -> None:
     (tmp_path / "x.py").write_text("print('x')\n", "utf-8")
 
     # Content-on-STDIN ("-") mixed with an explicit path must error
-    result: Result = run_cli_in(tmp_path, ["check", "-", "x.py"], input_text="print('x')\n")
+    result: Result = run_cli_in(
+        tmp_path,
+        [CliCmd.CHECK, "-", "x.py"],
+        input_text="print('x')\n",
+    )
 
     assert_USAGE_ERROR(result)
     # Message should mention '-' / STDIN and path mixing
@@ -48,7 +53,7 @@ def test_strip_rejects_stdin_with_file(tmp_path: Path) -> None:
 
     result: Result = run_cli_in(
         tmp_path,
-        ["strip", "-", "h.py"],
+        [CliCmd.STRIP, "-", "h.py"],
         input_text="# topmark:header:start\n# h\n# topmark:header:end\n",
     )
 
@@ -61,7 +66,11 @@ def test_default_rejects_stdin_with_directory(tmp_path: Path) -> None:
     (tmp_path / "pkg").mkdir()
     (tmp_path / "pkg" / "y.py").write_text("print('y')\n", "utf-8")
 
-    result: Result = run_cli_in(tmp_path, ["check", "-", "pkg"], input_text="print('y')\n")
+    result: Result = run_cli_in(
+        tmp_path,
+        [CliCmd.CHECK, "-", "pkg"],
+        input_text="print('y')\n",
+    )
 
     assert_USAGE_ERROR(result)
     assert "-" in result.output or "STDIN" in result.output
@@ -72,7 +81,9 @@ def test_strip_rejects_stdin_with_directory(tmp_path: Path) -> None:
     (tmp_path / "docs").mkdir()
     (tmp_path / "docs" / "index.md").write_text("<!-- topmark:header:start -->\n", "utf-8")
     result: Result = run_cli_in(
-        tmp_path, ["strip", "-", "docs"], input_text="<!-- topmark:header:start -->\n"
+        tmp_path,
+        [CliCmd.STRIP, "-", "docs"],
+        input_text="<!-- topmark:header:start -->\n",
     )
     assert_USAGE_ERROR(result)
     assert "-" in result.output or "STDIN" in result.output
@@ -84,7 +95,7 @@ def test_only_one_from_option_may_consume_stdin(tmp_path: Path) -> None:
     # Both include-from and files-from try to read '-' → usage error
     result: Result = run_cli_in(
         tmp_path,
-        ["check", "--include-from", "-", "--files-from", "-", "a.py"],
+        [CliCmd.CHECK, CliOpt.INCLUDE_FROM, "-", CliOpt.FILES_FROM, "-", "a.py"],
         input_text="*.py\n",
     )
 

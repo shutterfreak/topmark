@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tests.cli.conftest import assert_WOULD_CHANGE, run_cli_in
+from topmark.cli.keys import CliCmd
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -34,7 +35,7 @@ def test_check_exit_code_with_missing_header(tmp_path: Path) -> None:
     f: Path = tmp_path / file_name
     f.write_text("print('hi')\n")
 
-    result: Result = run_cli_in(tmp_path, ["check", file_name])
+    result: Result = run_cli_in(tmp_path, [CliCmd.CHECK, file_name])
 
     # When a header is missing, the default command should report WOULD_CHANGE (2).
     assert_WOULD_CHANGE(result)

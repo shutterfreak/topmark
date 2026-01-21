@@ -16,40 +16,45 @@ Ensures that:
 - Each registered subcommand provides a working `--help` page.
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from click.testing import Result
 
 from tests.cli.conftest import assert_SUCCESS, run_cli
+from topmark.cli.keys import CliCmd, CliOpt
 
 if TYPE_CHECKING:
     from click.testing import Result
 
 COMMANDS: list[tuple[str, ...]] = [
-    ("check",),
-    ("strip",),
-    ("config",),
+    (CliCmd.CHECK,),
+    (CliCmd.STRIP,),
+    (CliCmd.CONFIG,),
     (
-        "config",
-        "init",
+        CliCmd.CONFIG,
+        CliCmd.CONFIG_INIT,
     ),
     (
-        "config",
-        "defaults",
+        CliCmd.CONFIG,
+        CliCmd.CONFIG_DEFAULTS,
     ),
     (
-        "config",
-        "dump",
+        CliCmd.CONFIG,
+        CliCmd.CONFIG_DUMP,
     ),
-    ("filetypes",),
-    ("processors",),
-    ("version",),
+    (CliCmd.FILETYPES,),
+    (CliCmd.PROCESSORS,),
+    (CliCmd.VERSION,),
 ]
 
 
 def test_group_help() -> None:
     """It should exit successfully (0) when running `topmark --help`."""
-    result: Result = run_cli(["--help"])
+    result: Result = run_cli(
+        [CliOpt.HELP],
+    )
 
     assert_SUCCESS(result)
 
@@ -57,6 +62,8 @@ def test_group_help() -> None:
 def test_each_command_has_help() -> None:
     """It should provide a `--help` page for each known subcommand."""
     for cmd in COMMANDS:
-        result: Result = run_cli(cmd + ("--help",))
+        result: Result = run_cli(
+            cmd + (CliOpt.HELP,),
+        )
 
         assert_SUCCESS(result)
