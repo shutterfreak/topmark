@@ -25,6 +25,7 @@ import click
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cmd_common import get_effective_verbosity
 from topmark.cli.errors import TopmarkUsageError
+from topmark.cli.keys import ArgKey, CliOpt
 from topmark.cli.utils import emit_config_machine, render_toml_block
 from topmark.cli_shared.utils import OutputFormat
 from topmark.config import MutableConfig
@@ -56,15 +57,15 @@ logger: TopmarkLogger = get_logger(__name__)
     help="Display an initial TopMark configuration file.",
 )
 @click.option(
-    "--output-format",
-    "output_format",
+    CliOpt.OUTPUT_FORMAT,
+    ArgKey.OUTPUT_FORMAT,
     type=EnumChoiceParam(OutputFormat),
     default=None,
     help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
 )
 @click.option(
-    "--pyproject",
-    "pyproject",
+    CliOpt.CONFIG_FOR_PYPROJECT,
+    ArgKey.CONFIG_FOR_PYPROJECT,
     is_flag=True,
     help="Generate config for inclusion in pyproject.toml.",
 )
@@ -100,7 +101,7 @@ def config_init_command(
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         if pyproject:
             raise TopmarkUsageError(
-                f"{ctx.command.name}: --pyproject is not supported "
+                f"{ctx.command.name}: {CliOpt.CONFIG_FOR_PYPROJECT} is not supported "
                 "with machine-readable output formats."
             )
 

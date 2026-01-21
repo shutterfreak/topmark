@@ -36,6 +36,7 @@ from topmark.cli.cmd_common import (
     render_config_diagnostics,
 )
 from topmark.cli.io import plan_cli_inputs
+from topmark.cli.keys import ArgKey, CliCmd, CliOpt
 from topmark.cli.options import (
     CONTEXT_SETTINGS,
     common_config_options,
@@ -63,14 +64,16 @@ logger: TopmarkLogger = get_logger(__name__)
     name="dump-config",
     help=(
         "Dump the final merged TopMark configuration as TOML. "
-        "This command is file‑agnostic: positional PATHS and --files-from are ignored. "
-        "Filter flags are honored (e.g., --include/--exclude and --include-from/--exclude-from). "
-        "Use --include-from - / --exclude-from - to read patterns from STDIN; "
-        "'-' as a PATH (content on STDIN) is ignored for dump-config."
+        f"This command is file‑agnostic: positional PATHS and {CliOpt.FILES_FROM} are ignored. "
+        f"Filter flags are honored (e.g., {CliOpt.INCLUDE_PATTERNS}/{CliOpt.EXCLUDE_PATTERNS} "
+        f"and {CliOpt.INCLUDE_FROM}/{CliOpt.EXCLUDE_FROM}). "
+        f"Use {CliOpt.INCLUDE_FROM} - / {CliOpt.EXCLUDE_FROM} - to read patterns from STDIN; "
+        f"'-' as a PATH (content on STDIN) is ignored for {CliCmd.CONFIG} {CliCmd.CONFIG_DUMP}."
     ),
     epilog=(
         "Notes:\n"
-        "  • File lists are inputs, not configuration; they are ignored by dump-config.\n"
+        "  • File lists are inputs, not configuration; they are ignored by "
+        f"{CliCmd.CONFIG} {CliCmd.CONFIG_DUMP}.\n"
         "  • Pattern sources are part of configuration and are included in the dump.\n"
         "  • In the default (human) format, output is wrapped between "
         f"'{TOML_BLOCK_START}' and '{TOML_BLOCK_END}' markers."
@@ -81,8 +84,8 @@ logger: TopmarkLogger = get_logger(__name__)
 @common_file_and_filtering_options
 @common_header_formatting_options
 @click.option(
-    "--output-format",
-    "output_format",
+    CliOpt.OUTPUT_FORMAT,
+    ArgKey.OUTPUT_FORMAT,
     type=EnumChoiceParam(OutputFormat),
     default=None,
     help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
@@ -145,7 +148,7 @@ def config_dump_command(
     """
     ctx: click.Context = click.get_current_context()
     ctx.ensure_object(dict)
-    console: ConsoleLike = ctx.obj["console"]
+    console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
 
     fmt: OutputFormat = output_format or OutputFormat.DEFAULT
 
@@ -154,13 +157,17 @@ def config_dump_command(
     if original_args:
         if "-" in original_args:
             console.warn(
-                "Note: dump-config is file-agnostic; '-' (content from STDIN) is ignored.",
+                f"Note: {CliCmd.CONFIG} {CliCmd.CONFIG_DUMP} is file-agnostic; "
+                "'-' (content from STDIN) is ignored.",
             )
-        console.warn("Note: dump-config is file-agnostic; positional paths are ignored.")
+        console.warn(
+            f"Note: {CliCmd.CONFIG} {CliCmd.CONFIG_DUMP} is file-agnostic; "
+            "positional paths are ignored.",
+        )
         ctx.args = []
     if files_from:
         console.warn(
-            "Note: dump-config ignores --files-from "
+            f"Note: {CliCmd.CONFIG} {CliCmd.CONFIG_DUMP} ignores {CliOpt.FILES_FROM} "
             "(file lists are not part of the configuration).",
         )
         files_from = []

@@ -40,6 +40,7 @@ from topmark.cli_shared.console_api import ConsoleLike
 from topmark.cli_shared.machine_output import (
     ConfigDiagnosticsPayload,
     ConfigPayload,
+    MetaPayload,
     build_config_diagnostics_payload,
     build_config_payload,
     build_meta_payload,
@@ -187,7 +188,7 @@ def emit_config_machine(config: Config, *, fmt: OutputFormat) -> None:
     import json as _json
 
     console: ConsoleLike = get_console_safely()
-    meta = build_meta_payload()
+    meta: MetaPayload = build_meta_payload()
     payload: ConfigPayload = build_config_payload(config)
     if fmt == OutputFormat.JSON:
         console.print(_json.dumps({"meta": meta, "config": payload}, indent=2))
@@ -220,7 +221,7 @@ def emit_config_diagnostics_machine(config: Config, *, fmt: OutputFormat) -> Non
     import json as _json
 
     console: ConsoleLike = get_console_safely()
-    meta = build_meta_payload()
+    meta: MetaPayload = build_meta_payload()
     payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
     if fmt == OutputFormat.JSON:
         console.print(
@@ -346,7 +347,7 @@ def emit_processing_results_machine(
 
     console: ConsoleLike = get_console_safely()
 
-    meta = build_meta_payload()
+    meta: MetaPayload = build_meta_payload()
 
     # Prepare schema pieces once (display Config diagnostics when processing files)
     cfg_payload: ConfigPayload = build_config_payload(config)

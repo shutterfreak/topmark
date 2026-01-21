@@ -36,6 +36,8 @@ from typing import (
 
 import click
 
+from topmark.cli.keys import ArgKey
+
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
@@ -168,26 +170,29 @@ def build_args_namespace(
     Returns:
         ArgsNamespace: Dictionary of CLI argument values for use throughout the CLI.
     """
-    return {
-        "verbosity_level": verbosity_level,
-        "apply_changes": apply_changes,
-        "write_mode": write_mode,
-        "no_config": no_config,
-        "config_files": config_files,
-        "files": files if files is not None else [],
-        "files_from": files_from if files_from is not None else [],
-        "stdin_mode": stdin_mode,
-        "stdin_filename": stdin_filename,
-        "include_patterns": include_patterns,
-        "include_from": include_from,
-        "exclude_patterns": exclude_patterns,
-        "exclude_from": exclude_from,
-        "include_file_types": include_file_types,
-        "exclude_file_types": exclude_file_types,
-        "relative_to": relative_to,
-        "align_fields": align_fields,
-        "header_format": header_format,
-    }
+    return cast(
+        "ArgsNamespace",
+        {
+            ArgKey.VERBOSITY_LEVEL: verbosity_level,
+            ArgKey.APPLY_CHANGES: apply_changes,
+            ArgKey.WRITE_MODE: write_mode,
+            ArgKey.NO_CONFIG: no_config,
+            ArgKey.CONFIG_FILES: config_files,
+            ArgKey.FILES: files if files is not None else [],
+            ArgKey.FILES_FROM: files_from if files_from is not None else [],
+            ArgKey.STDIN_MODE: stdin_mode,
+            ArgKey.STDIN_FILENAME: stdin_filename,
+            ArgKey.INCLUDE_PATTERNS: include_patterns,
+            ArgKey.INCLUDE_FROM: include_from,
+            ArgKey.EXCLUDE_PATTERNS: exclude_patterns,
+            ArgKey.EXCLUDE_FROM: exclude_from,
+            ArgKey.INCLUDE_FILE_TYPES: include_file_types,
+            ArgKey.EXCLUDE_FILE_TYPES: exclude_file_types,
+            ArgKey.RELATIVE_TO: relative_to,
+            ArgKey.ALIGN_FIELDS: align_fields,
+            ArgKey.HEADER_FORMAT: header_format,
+        },
+    )
 
 
 # --- Custom Click parameter types and validators for TopMark CLI ---

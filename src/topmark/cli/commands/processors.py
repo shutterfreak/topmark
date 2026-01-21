@@ -24,6 +24,7 @@ import click
 
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cmd_common import get_effective_verbosity
+from topmark.cli.keys import ArgKey, CliCmd, CliOpt
 from topmark.cli_shared.utils import OutputFormat, render_markdown_table
 from topmark.constants import TOPMARK_VERSION
 from topmark.registry import FileTypeRegistry, HeaderProcessorRegistry
@@ -37,22 +38,22 @@ if TYPE_CHECKING:
 
 
 @click.command(
-    name="processors",
+    name=CliCmd.PROCESSORS,
     help="List registered header processors.",
     epilog="""
 Lists all header processors currently registered in TopMark, along with the file types they handle.
 Use this command to see which processors are available and which file types they support.""",
 )
 @click.option(
-    "--output-format",
-    "output_format",
+    CliOpt.OUTPUT_FORMAT,
+    ArgKey.OUTPUT_FORMAT,
     type=EnumChoiceParam(OutputFormat),
     default=None,
     help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
 )
 @click.option(
-    "--long",
-    "show_details",
+    CliOpt.SHOW_DETAILS,
+    ArgKey.SHOW_DETAILS,
     is_flag=True,
     help="Show extended information (file types and their description).",
 )

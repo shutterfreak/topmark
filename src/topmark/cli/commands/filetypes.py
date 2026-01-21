@@ -24,6 +24,7 @@ import click
 
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cmd_common import get_effective_verbosity
+from topmark.cli.keys import ArgKey, CliCmd, CliOpt
 from topmark.cli_shared.utils import OutputFormat, format_callable_pretty, render_markdown_table
 from topmark.constants import TOPMARK_VERSION
 from topmark.filetypes.base import FileType
@@ -54,7 +55,7 @@ def _policy_name(obj: object | None) -> str:
 
 
 @click.command(
-    name="filetypes",
+    name=CliCmd.FILETYPES,
     help="List all supported file types.",
     epilog="""
 Lists all file types currently supported by TopMark, along with a brief description of each.
@@ -62,15 +63,15 @@ Use this command to see which file types can be processed and referenced in conf
 """,
 )
 @click.option(
-    "--output-format",
-    "output_format",
+    CliOpt.OUTPUT_FORMAT,
+    ArgKey.OUTPUT_FORMAT,
     type=EnumChoiceParam(OutputFormat),
     default=None,
     help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
 )
 @click.option(
-    "--long",
-    "show_details",
+    CliOpt.SHOW_DETAILS,
+    ArgKey.SHOW_DETAILS,
     is_flag=True,
     help="Show extended information (extensions, filenames, patterns, skip policy, header policy).",
 )

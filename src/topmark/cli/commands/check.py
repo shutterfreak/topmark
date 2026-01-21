@@ -60,6 +60,7 @@ from topmark.cli.cmd_common import (
 )
 from topmark.cli.errors import TopmarkIOError, TopmarkUsageError
 from topmark.cli.io import plan_cli_inputs
+from topmark.cli.keys import ArgKey, CliCmd, CliOpt
 from topmark.cli.options import (
     CONTEXT_SETTINGS,
     common_config_options,
@@ -101,29 +102,32 @@ logger: TopmarkLogger = get_logger(__name__)
 
 
 @click.command(
-    name="check",
+    name=CliCmd.CHECK,
     help="Validate headers (dry-run). Use --apply to add or update.",
     context_settings=CONTEXT_SETTINGS,
-    epilog="""\
-Adds or updates TopMark header blocks in files (in-place with --apply).
+    epilog=f"""\
+Adds or updates TopMark header blocks in files (in-place with {CliOpt.APPLY_CHANGES}).
 Examples:
 
   # Preview which files would change (dry-run)
-  topmark check src
+  topmark {CliCmd.CHECK} src
 
   # Apply: remove headers in-place
-  topmark check --apply .
+  topmark {CliCmd.CHECK} {CliOpt.APPLY_CHANGES} .
 """,
 )
 @common_config_options
 @common_file_and_filtering_options
 @common_header_formatting_options
 @click.option(
-    "--apply", "apply_changes", is_flag=True, help="Write changes to files (off by default)."
+    CliOpt.APPLY_CHANGES,
+    ArgKey.APPLY_CHANGES,
+    is_flag=True,
+    help="Write changes to files (off by default).",
 )
 @click.option(
-    "--write-mode",
-    "write_mode",
+    CliOpt.WRITE_MODE,
+    ArgKey.WRITE_MODE,
     type=click.Choice(["atomic", "inplace", "stdout"], case_sensitive=False),
     help=(
         "Select write strategy: 'atomic' (safe, default), "
@@ -131,38 +135,46 @@ Examples:
     ),
 )
 @click.option(
-    "--add-only", "add_only", is_flag=True, help="Only add headers where missing (no updates)."
+    CliOpt.POLICY_CHECK_ADD_ONLY,
+    ArgKey.POLICY_CHECK_ADD_ONLY,
+    is_flag=True,
+    help="Only add headers where missing (no updates).",
 )
 @click.option(
-    "--update-only",
-    "update_only",
+    CliOpt.POLICY_CHECK_UPDATE_ONLY,
+    ArgKey.POLICY_CHECK_UPDATE_ONLY,
     is_flag=True,
     help="Only update existing non-compliant headers (no additions).",
 )
-@click.option("--diff", is_flag=True, help="Show unified diffs (human output only).")
 @click.option(
-    "--summary",
-    "summary_mode",
+    CliOpt.RENDER_DIFF,
+    ArgKey.RENDER_DIFF,
+    is_flag=True,
+    help="Show unified diffs (human output only).",
+)
+@click.option(
+    CliOpt.RESULTS_SUMMARY_MODE,
+    ArgKey.RESULTS_SUMMARY_MODE,
     is_flag=True,
     help="Show outcome counts instead of per-file details.",
 )
 @click.option(
-    "--skip-compliant",
-    "skip_compliant",
+    CliOpt.SKIP_COMPLIANT,
+    ArgKey.SKIP_COMPLIANT,
     is_flag=True,
     help="Hide files that are already up-to-date.",
 )
 @underscored_trap_option("--skip_compliant")
 @click.option(
-    "--skip-unsupported",
-    "skip_unsupported",
+    CliOpt.SKIP_UNSUPPORTED,
+    ArgKey.SKIP_UNSUPPORTED,
     is_flag=True,
     help="Hide unsupported file types.",
 )
 @underscored_trap_option("--skip_unsupported")
 @click.option(
-    "--output-format",
-    "output_format",
+    CliOpt.OUTPUT_FORMAT,
+    ArgKey.OUTPUT_FORMAT,
     type=EnumChoiceParam(OutputFormat),
     default=None,
     help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
@@ -263,19 +275,21 @@ def check_command(
     prune: bool = bool(prune_override) if prune_override else False
 
     # Add apply_changes and write_mode to Click context
-    ctx.obj["apply_changes"] = apply_changes
-    ctx.obj["write_mode"] = write_mode
+    ctx.obj[ArgKey.APPLY_CHANGES] = apply_changes
+    ctx.obj[ArgKey.WRITE_MODE] = write_mode
 
     fmt: OutputFormat = output_format or OutputFormat.DEFAULT
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         if diff:
             raise TopmarkUsageError(
-                f"{ctx.command.name}: --diff is not supported with machine-readable output formats."
+                f"{ctx.command.name}: {CliOpt.RENDER_DIFF} "
+                "is not supported with machine-readable output formats."
             )
 
     if add_only and update_only:
         raise TopmarkUsageError(
-            f"{ctx.command.name}: Options --add-only and --update-only are mutually exclusive."
+            f"{ctx.command.name}: Options {CliOpt.POLICY_CHECK_ADD_ONLY} and "
+            f"{CliOpt.POLICY_CHECK_UPDATE_ONLY} are mutually exclusive."
         )
 
     # === Build Config (layered discovery) and file list ===
@@ -379,7 +393,7 @@ def check_command(
                     if r.status.write == WriteStatus.FAILED:
                         return f"❌ Could not {intent.value} header: {r.status.write.value}"
                     if r.status.write == WriteStatus.SKIPPED:
-                        # Defensive: shouldn't happen when effective_would_add_or_update is True,
+                        # Defensive: should not happen when effective_would_add_or_update is True,
                         # but keeps CLI honest if a later step halts.
                         return f"⚠️  Could not {intent.value} header (write skipped)."
                     return (
@@ -388,7 +402,10 @@ def check_command(
                         else f"✏️  Updating header for '{r.path}'"
                     )
 
-                return f"🛠️  Run `topmark check --apply {r.path}` to update this file."
+                return (
+                    f"🛠️  Run `topmark {CliCmd.CHECK} {CliOpt.APPLY_CHANGES} {r.path}` "
+                    "to update this file."
+                )
 
             # Per-file guidance (only in non-summary human mode)
             if fmt == OutputFormat.DEFAULT and not summary_mode:

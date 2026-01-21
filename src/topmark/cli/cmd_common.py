@@ -23,6 +23,7 @@ import click
 
 from topmark.cli.config_resolver import resolve_config_from_click
 from topmark.cli.console_helpers import get_console_safely
+from topmark.cli.keys import ArgKey
 from topmark.cli_shared.console_api import ConsoleLike
 from topmark.config.logging import get_logger
 from topmark.config.model import MutableConfig
@@ -58,7 +59,7 @@ def get_effective_verbosity(ctx: click.Context, config: Config | None = None) ->
     cfg_level: int | None = config.verbosity_level if config else None
     if cfg_level is not None:
         return int(cfg_level)
-    return int(ctx.obj.get("verbosity_level", 0))
+    return int(ctx.obj.get(ArgKey.VERBOSITY_LEVEL, 0))
 
 
 def build_file_list(config: Config, *, stdin_mode: bool, temp_path: Path | None) -> list[Path]:
@@ -113,9 +114,9 @@ def build_config_common(
     """
     draft: MutableConfig = resolve_config_from_click(
         ctx=ctx,
-        verbosity_level=ctx.obj.get("verbosity_level"),  # Global context
-        apply_changes=ctx.obj.get("apply_changes"),  # Command context for check, strip
-        write_mode=ctx.obj.get("write_mode"),  # Command context for check, strip
+        verbosity_level=ctx.obj.get(ArgKey.VERBOSITY_LEVEL),  # Global context
+        apply_changes=ctx.obj.get(ArgKey.APPLY_CHANGES),  # Command context for check, strip
+        write_mode=ctx.obj.get(ArgKey.WRITE_MODE),  # Command context for check, strip
         files=plan.paths,
         files_from=plan.files_from,
         stdin_mode=plan.stdin_mode,
@@ -152,7 +153,7 @@ def render_config_diagnostics(
     if not diags:
         return
 
-    console: ConsoleLike = ctx.obj["console"]
+    console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
     verbosity: int = get_effective_verbosity(ctx, config)
 
     # Count per level

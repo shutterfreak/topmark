@@ -28,6 +28,7 @@ from click.core import ParameterSource
 
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.errors import TopmarkUsageError
+from topmark.cli.keys import ArgKey, CliOpt
 from topmark.config.logging import get_logger
 from topmark.rendering.formats import HeaderOutputFormat
 
@@ -114,7 +115,7 @@ def resolve_verbosity(verbose_count: int, quiet_count: int) -> int:
 
 #: Click context settings to allow Black-style extra args and unknown options.
 CONTEXT_SETTINGS: dict[str, list[str] | bool] = {
-    "help_option_names": ["-h", "--help"],
+    "help_option_names": ["-h", CliOpt.HELP],
     "ignore_unknown_options": True,
     "allow_extra_args": True,
 }
@@ -134,14 +135,14 @@ def common_verbose_options(f: Callable[P, R]) -> Callable[P, R]:
             These options are mutually exclusive and control logging verbosity.
     """
     f = click.option(
+        CliOpt.VERBOSE,
         "-v",
-        "--verbose",
         count=True,
         help="Increase verbosity. Specify up to twice for more detail.",
     )(f)
     f = click.option(
+        CliOpt.QUIET,
         "-q",
-        "--quiet",
         count=True,
         help="Suppress output. Specify up to twice for even less.",
     )(f)
@@ -162,8 +163,8 @@ def common_file_and_filtering_options(f: Callable[P, R]) -> Callable[P, R]:
     """
     # Option for STDIN content mode (inserted before --files-from)
     f = click.option(
-        "--stdin-filename",
-        "stdin_filename",
+        CliOpt.STDIN_FILENAME,
+        ArgKey.STDIN_FILENAME,
         type=str,
         default=None,
         help=(
@@ -174,8 +175,8 @@ def common_file_and_filtering_options(f: Callable[P, R]) -> Callable[P, R]:
 
     # Option for reading candidate file paths from files
     f = click.option(
-        "--files-from",
-        "files_from",
+        CliOpt.FILES_FROM,
+        ArgKey.FILES_FROM,
         type=str,  # Ensure '-' passes through untouched
         multiple=True,
         help=(
@@ -187,15 +188,16 @@ def common_file_and_filtering_options(f: Callable[P, R]) -> Callable[P, R]:
     f = underscored_trap_option("--files_from")(f)
 
     f = click.option(
-        "--include",
+        CliOpt.INCLUDE_PATTERNS,
         "-i",
-        "include_patterns",
+        ArgKey.INCLUDE_PATTERNS,
         multiple=True,
         help="Filter: keep only files matching these glob patterns (intersection).",
     )(f)
 
     f = click.option(
-        "--include-from",
+        CliOpt.INCLUDE_FROM,
+        ArgKey.INCLUDE_FROM,
         type=str,  # Ensure '-' passes through untouched
         multiple=True,
         help="Filter: read include glob patterns from file(s) (use '-' for STDIN).",
@@ -203,15 +205,16 @@ def common_file_and_filtering_options(f: Callable[P, R]) -> Callable[P, R]:
     f = underscored_trap_option("--include_from")(f)
 
     f = click.option(
-        "--exclude",
+        CliOpt.EXCLUDE_PATTERNS,
         "-e",
-        "exclude_patterns",
+        ArgKey.EXCLUDE_PATTERNS,
         multiple=True,
         help="Filter: remove files matching these glob patterns (subtraction).",
     )(f)
 
     f = click.option(
-        "--exclude-from",
+        CliOpt.EXCLUDE_FROM,
+        ArgKey.EXCLUDE_FROM,
         type=str,  # Ensure '-' passes through untouched
         multiple=True,
         help="Filter: read exclude glob patterns from file(s) (use '-' for STDIN).",
@@ -219,10 +222,10 @@ def common_file_and_filtering_options(f: Callable[P, R]) -> Callable[P, R]:
     f = underscored_trap_option("--exclude_from")(f)
 
     f = click.option(
-        "--include-file-types",
-        "--include-file-type",
+        CliOpt.INCLUDE_FILE_TYPES,
+        CliOpt.INCLUDE_FILE_TYPE,
         "-t",
-        "include_file_types",
+        ArgKey.INCLUDE_FILE_TYPES,
         multiple=True,
         callback=_split_csv_multi_option,
         help=(
@@ -233,10 +236,10 @@ def common_file_and_filtering_options(f: Callable[P, R]) -> Callable[P, R]:
     f = underscored_trap_option("--include_file_types", "--include_file_type")(f)
 
     f = click.option(
-        "--exclude-file-types",
-        "--exclude-file-type",
+        CliOpt.EXCLUDE_FILE_TYPES,
+        CliOpt.EXCLUDE_FILE_TYPE,
         "-T",
-        "exclude_file_types",
+        ArgKey.EXCLUDE_FILE_TYPES,
         multiple=True,
         callback=_split_csv_multi_option,
         help=(
@@ -249,7 +252,8 @@ def common_file_and_filtering_options(f: Callable[P, R]) -> Callable[P, R]:
     # TODO: consider adding --extension filter, add a force-handle-file-as-XXX option
 
     f = click.option(
-        "--relative-to",
+        CliOpt.RELATIVE_TO,
+        ArgKey.RELATIVE_TO,
         help="Reporting: compute relative paths from this directory.",
     )(f)
     f = underscored_trap_option("--relative_to")(f)
@@ -308,8 +312,8 @@ def extract_stdin_for_from_options(
 
     if len(wants) > 1:
         raise TopmarkUsageError(
-            f"Only one of --files-from/--include-from/--exclude-from may read from STDIN ('-'). "
-            f"Requested: {', '.join(wants)}"
+            f"Only one of {CliOpt.FILES_FROM} / {CliOpt.INCLUDE_FROM} / {CliOpt.EXCLUDE_FROM} "
+            f"may read from STDIN ('-'). Requested: {', '.join(wants)}"
         )
 
     text_files: str | None = None
@@ -438,17 +442,17 @@ def common_color_options(f: Callable[P, R]) -> Callable[P, R]:
         These options control colorized terminal output.
     """
     f = click.option(
-        "--color",
-        "color_mode",
+        CliOpt.COLOR_MODE,
+        ArgKey.COLOR_MODE,
         type=click.Choice([m.value for m in ColorMode]),
         default=None,
         help="Color output: auto (default), always, or never.",
     )(f)
     f = click.option(
-        "--no-color",
-        "no_color",
+        CliOpt.NO_COLOR_MODE,
+        ArgKey.NO_COLOR_MODE,
         is_flag=True,
-        help="Disable color output (equivalent to --color=never).",
+        help=f"Disable color output (equivalent to {CliOpt.COLOR_MODE}=never).",
     )(f)
     return f
 
@@ -527,15 +531,17 @@ def common_logging_options(f: Callable[P, R]) -> Callable[P, R]:
         Callable[P, R]: The decorated function.
     """
     f = click.option(
-        "--verbose",
+        CliOpt.VERBOSE,
         "-v",
+        ArgKey.VERBOSE,
         type=int,
         count=True,
         help="Increase log verbosity (can be repeated)",
     )(f)
     f = click.option(
+        CliOpt.QUIET,
         "-q",
-        "--quiet",
+        ArgKey.QUIET,
         type=int,
         count=True,
         help="Decrease log verbosity (can be repeated)",
@@ -556,15 +562,15 @@ def common_config_options(f: Callable[P, R]) -> Callable[P, R]:
         Callable[P, R]: The decorated function.
     """
     f = click.option(
-        "--no-config",
-        "no_config",
+        CliOpt.NO_CONFIG,
+        ArgKey.NO_CONFIG,
         is_flag=True,
         help="Ignore local project config files (only use defaults).",
     )(f)
     f = underscored_trap_option("--no_config")(f)
     f = click.option(
-        "--config",
-        "config_paths",
+        CliOpt.CONFIG_PATHS,
+        ArgKey.CONFIG_PATHS,
         multiple=True,
         metavar="FILE",
         type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
@@ -586,7 +592,8 @@ def common_header_formatting_options(f: Callable[P, R]) -> Callable[P, R]:
         Callable[P, R]: The decorated function.
     """
     f = click.option(
-        "--align-fields/--no-align-fields",
+        f"{CliOpt.ALIGN_FIELDS}/{CliOpt.NO_ALIGN_FIELDS}",
+        ArgKey.ALIGN_FIELDS,
         is_flag=True,
         default=None,
         help="Align header fields with colons.",
@@ -594,8 +601,8 @@ def common_header_formatting_options(f: Callable[P, R]) -> Callable[P, R]:
     f = underscored_trap_option("--align_fields")(f)
     f = underscored_trap_option("--no_align_fields")(f)
     f = click.option(
-        "--header-format",
-        "header_format",
+        CliOpt.HEADER_FORMAT,
+        ArgKey.HEADER_FORMAT,
         type=EnumChoiceParam(HeaderOutputFormat),
         help=f"Select the header format ({', '.join(e.value for e in HeaderOutputFormat)}).",
     )(f)

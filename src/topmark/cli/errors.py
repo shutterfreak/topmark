@@ -25,6 +25,7 @@ from typing import IO, Any
 
 import click
 
+from topmark.cli.keys import ArgKey
 from topmark.core.exit_codes import ExitCode
 
 
@@ -52,7 +53,7 @@ class TopmarkError(click.ClickException):
         try:
             ctx: click.Context | None = click.get_current_context(silent=True)
             if ctx is not None and isinstance(getattr(ctx, "obj", None), dict):
-                console = ctx.obj.get("console")
+                console = ctx.obj.get(ArgKey.CONSOLE)
                 if console is not None:
                     # Use console for user-facing error output with bright red style
                     console.error(console.styled(self.format_message(), fg="bright_red"))

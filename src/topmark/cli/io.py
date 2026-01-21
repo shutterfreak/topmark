@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal, NamedTuple
 
 from topmark.cli.errors import TopmarkUsageError
+from topmark.cli.keys import CliOpt
 from topmark.cli.options import (
     extract_stdin_for_from_options,
     split_nonempty_lines,
@@ -259,7 +260,7 @@ def plan_cli_inputs(
     ):
         raise TopmarkUsageError(
             "Cannot combine '-' (content on STDIN) with "
-            "--files-from - / --include-from - / --exclude-from -."
+            f"{CliOpt.FILES_FROM} - / {CliOpt.INCLUDE_FROM} - / {CliOpt.EXCLUDE_FROM} -."
         )
 
     paths: list[str] = []
@@ -270,7 +271,7 @@ def plan_cli_inputs(
     if stdin_mode:
         if not stdin_filename:
             raise TopmarkUsageError(
-                "--stdin-filename is required when using '-' to read from STDIN."
+                f"{CliOpt.STDIN_FILENAME} is required when using '-' to read from STDIN."
             )
         res: StdinResult = consume_stdin(expect="content", stdin_filename=stdin_filename)
         if res.mode != "content" or not res.paths:
@@ -289,7 +290,7 @@ def plan_cli_inputs(
             if "-" in raw_args:
                 raise TopmarkUsageError(
                     "'-' is only valid as the sole PATH to read content from STDIN. "
-                    "Use --files-from - to read a list of paths from STDIN."
+                    f"Use {CliOpt.FILES_FROM} - to read a list of paths from STDIN."
                 )
             paths.extend(raw_args)
 

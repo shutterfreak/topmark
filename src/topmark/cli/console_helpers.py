@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING
 import click
 
 from topmark.cli.console_std import StdConsole
+from topmark.cli.keys import ArgKey
 
 if TYPE_CHECKING:
     from topmark.cli_shared.console_api import ConsoleLike
@@ -38,7 +39,11 @@ def get_console_safely() -> ConsoleLike:
     library is used programmatically (e.g., via pytest).
     """
     ctx: click.Context | None = click.get_current_context(silent=True)
-    if ctx is not None and isinstance(getattr(ctx, "obj", None), dict) and "console" in ctx.obj:
-        console: ConsoleLike = ctx.obj["console"]
+    if (
+        ctx is not None
+        and isinstance(getattr(ctx, "obj", None), dict)
+        and ArgKey.CONSOLE in ctx.obj
+    ):
+        console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
         return console
     return StdConsole()

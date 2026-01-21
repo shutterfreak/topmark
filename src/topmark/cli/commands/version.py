@@ -21,6 +21,7 @@ import click
 
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cmd_common import get_effective_verbosity
+from topmark.cli.keys import ArgKey, CliCmd, CliOpt
 from topmark.cli_shared.utils import OutputFormat
 from topmark.constants import TOPMARK_VERSION
 from topmark.utils.version import pep440_to_semver
@@ -30,18 +31,19 @@ if TYPE_CHECKING:
 
 
 @click.command(
-    name="version",
+    name=CliCmd.VERSION,
     help="Show the current version of TopMark.",
 )
 @click.option(
-    "--semver",
+    CliOpt.SEMVER_VERSION,
+    ArgKey.SEMVER_VERSION,
     is_flag=True,
     default=False,
     help="Render the version as SemVer instead of PEP 440 (maps rc→-rc.N, dev→-dev.N).",
 )
 @click.option(
-    "--output-format",
-    "output_format",
+    CliOpt.OUTPUT_FORMAT,
+    ArgKey.OUTPUT_FORMAT,
     type=EnumChoiceParam(OutputFormat),
     default=None,
     help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",

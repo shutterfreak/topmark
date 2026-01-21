@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from topmark.cli.cli_types import build_args_namespace
+from topmark.cli.keys import ArgKey
 from topmark.config import MutableConfig
 from topmark.config.logging import get_logger
 
@@ -140,17 +141,17 @@ def resolve_config_from_click(
             draft = draft.merge_with(user_cfg)
 
     # (3) layered discovery from anchor (first file path’s directory, else CWD)
-    if not args.get("no_config"):
+    if not args.get(ArgKey.NO_CONFIG):
         # Determine anchor directory. If a file path was provided, start from its parent.
-        raw_files: list[str] = args.get("files") or []
+        raw_files: list[str] = args.get(ArgKey.FILES) or []
         cwd: Path = Path.cwd().resolve()  # Resolve symlinks and get absolute path
         anchor: Path = cwd
 
         # If we are reading a single file's *content* from STDIN (PATH='-'),
         # allow `--stdin-filename` to influence config discovery when it contains
         # a directory component (e.g. "app/pkg/__init__.py"). Otherwise default to CWD.
-        if args.get("stdin_mode") is True:
-            stdin_filename_from_args: str | None = args.get("stdin_filename")
+        if args.get(ArgKey.STDIN_MODE) is True:
+            stdin_filename_from_args: str | None = args.get(ArgKey.STDIN_FILENAME)
             if stdin_filename_from_args:
                 sf: Path = Path(stdin_filename_from_args)
                 # Only treat it as an anchor hint when it includes a parent dir.
@@ -176,7 +177,8 @@ def resolve_config_from_click(
                 logger.warning("Ignoring discovered config without [tool.topmark]: %s", cfg_path)
 
     # (4) explicit config files
-    for entry in args.get("config_files") or []:
+    raw_config_files: list[str] = args.get(ArgKey.CONFIG_FILES) or []
+    for entry in raw_config_files:
         p = Path(entry)
         if not p.exists():
             logger.warning("Config file not found: %s", p)

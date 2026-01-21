@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import click
 
+from topmark.cli.keys import CliCmd
 from topmark.cli.options import CONTEXT_SETTINGS
 from topmark.config.logging import TopmarkLogger, get_logger
 
@@ -33,7 +34,7 @@ logger: TopmarkLogger = get_logger(__name__)
 
 
 @click.group(
-    name="config",
+    name=CliCmd.CONFIG,
     help="Inspect and scaffold TopMark configuration.",
     context_settings=CONTEXT_SETTINGS,
 )
@@ -50,6 +51,6 @@ def config_command() -> None:
 
 
 # Attach existing commands as subcommands of `topmark config`
-config_command.add_command(config_dump_command, name="dump")
-config_command.add_command(config_defaults_command, name="defaults")
-config_command.add_command(config_init_command, name="init")
+config_command.add_command(config_dump_command, name=CliCmd.CONFIG_DUMP)
+config_command.add_command(config_defaults_command, name=CliCmd.CONFIG_DEFAULTS)
+config_command.add_command(config_init_command, name=CliCmd.CONFIG_INIT)
