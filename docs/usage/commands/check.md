@@ -59,6 +59,42 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
+## Filtering
+
+TopMark determines which files to process using a combination of
+path-based filters and file-type filters.
+
+### File type filters
+
+- `--include-file-types / -t`
+  Restrict processing to the given file type identifiers.
+  May be repeated and/or provided as a comma-separated list.
+
+- `--exclude-file-types / -T`
+  Exclude the given file type identifiers.
+  May be repeated and/or provided as a comma-separated list.
+
+Exclude rules take precedence over include rules.
+
+### Path-based filters
+
+- `--include`, `--exclude`
+  Include or exclude glob patterns.
+
+- `--include-from`, `--exclude-from`
+  Load patterns from files (one per line).
+
+- `--files-from`
+  Provide an explicit list of files to process.
+
+Notes:
+
+- Path-based filters are evaluated **before** file-type filters.
+- Exclude rules win over include rules when both match a path.
+- File-type filters are applied after path-based include/exclude filtering.
+
+______________________________________________________________________
+
 ## Machine-readable output
 
 Use `--output-format json` or `--output-format ndjson` to emit output suitable for tooling:

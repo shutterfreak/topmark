@@ -173,7 +173,7 @@ PYTHONS: list[str] = get_supported_pythons()
 
 # Global options
 # Keep defaults fast; run QA (multi-Python) explicitly or in CI.
-nox.options.sessions = ["lint", "format_check", "docs"]
+nox.options.sessions = ["lint", "format_check", "docs", "test_entrypoints"]
 nox.options.default_venv_backend = "uv"
 
 MAKEFILE_PATTERNS = (
@@ -228,7 +228,8 @@ def package_check(session: nox.Session) -> None:
     session.run(
         "python",
         "-c",
-        "import shutil; shutil.rmtree('dist', ignore_errors=True)",
+        "import shutil; [shutil.rmtree(p, ignore_errors=True) "
+        "for p in ['build', 'dist', 'src/topmark.egg-info']]",
     )
 
     session.run("python", "-m", "build", "--sdist", "--wheel")
@@ -323,6 +324,31 @@ def qa_api(session: nox.Session) -> None:
         raise RuntimeError(f"Unexpected session.python value: {py_ver!r}")
 
     session.run("pyright", "--pythonversion", py_ver)
+
+
+@nox.session(python=PYTHONS)
+def test_entrypoints(session: nox.Session) -> None:
+    """Verify that both 'topmark' and 'python -m topmark' are functional."""
+    # Install the current project so the 'topmark' command is created
+    session.install(".")
+
+    # Define the environment variables for tracing
+    debug_env: dict[str, str] = {"TOPMARK_LOG_LEVEL": "DEBUG"}
+
+    # Print the sys.path of the Nox venv
+    session.run("python", "-c", "import sys; print('\\n'.join(sys.path))")
+
+    # Print the location of the installed topmark package
+    session.run("python", "-c", "import topmark; print(topmark.__file__)")
+
+    # 1. Test the console script entry point defined in pyproject.toml
+    session.run("topmark", "version", external=True, env=debug_env)
+
+    # 2. Test the module entry point defined in src/topmark/__main__.py
+    session.run("python", "-m", "topmark", "version", env=debug_env)
+
+    # 3. Test a subcommand to ensure Click context/registry initialized correctly
+    session.run("topmark", "filetypes", env=debug_env)
 
 
 @nox.session
@@ -498,6 +524,8 @@ def release_check(session: nox.Session) -> None:
 
     # Tests
     session.run("pytest", "-q", "tests", "-m", "not slow and not hypothesis_slow", *session.posargs)
+    # Entry point check -- We call it as a function to reuse the current session environment
+    test_entrypoints(session)
 
     # Pyright
     py_ver = session.python
@@ -536,6 +564,9 @@ def release_full(session: nox.Session) -> None:
     session.run("nox", "-s", "docstring_links", external=True)
     session.run("nox", "-s", "docs", external=True)
     session.run("nox", "-s", "links_all", external=True)
+
+    # Verify CLI entrypoints across the matrix
+    session.run("nox", "-s", "test_entrypoints", external=True)
 
     session.run("nox", "-s", "package_check", external=True)
 

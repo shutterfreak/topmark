@@ -50,6 +50,9 @@ The current registry architecture was introduced to satisfy these goals:
    - Built-ins and plugins should be discovered once and cached.
 1. **Test isolation**
    - Registry mutations must be easy to reset between tests.
+1. **Single source of truth for reference docs**
+   - Generated docs should reflect the *actual* registries and wiring used by the running
+     TopMark version.
 
 ### Registry System Architecture
 
@@ -135,6 +138,11 @@ is considered advanced and may evolve.
 Overlay mutations are intentionally cheap: they only update overlay state and clear the
 composed-view cache. The next call to `as_mapping()` recomposes the effective view on demand.
 
+Separately, TopMark’s documentation site generates “Supported file types” and
+“Registered processors” pages by running the CLI in Markdown mode during the MkDocs
+build. This keeps reference tables aligned with the effective registries of the
+current version.
+
 ```mermaid
 sequenceDiagram
     autonumber
@@ -199,6 +207,18 @@ The registry system is **not** designed to:
 - Provide transactional or scoped registry mutation in production code
 - Guarantee overlay behavior as a stable public contract
 - Allow silent mutation of built-ins or plugin-provided entries
+
+### Keys and schema stability
+
+TopMark defines centralized constants for:
+
+- **CLI spellings** (e.g. `--include-file-types`)
+- **CLI destination keys** (the `dest` names Click stores in its parsed namespace)
+- **TOML keys** used by the config model and default configuration
+
+This reduces accidental drift between CLI help text, config parsing, and runtime logic.
+Validation should occur at “seams” (CLI parsing and TOML loading) so internal code can
+rely on canonical keys.
 
 ### Practical Implications for Contributors
 

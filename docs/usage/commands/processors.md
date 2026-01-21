@@ -32,6 +32,16 @@ topmark processors --output-format json | jq
 
 ______________________________________________________________________
 
+### See also
+
+For the canonical, version-accurate list (used for the docs), see:
+
+- [Supported header processors (generated)](../generated-processors.md)
+
+(This page is generated via `topmark processors --long --output-format markdown`.)
+
+______________________________________________________________________
+
 ## Output formats
 
 Use `--output-format` to pick the output format:

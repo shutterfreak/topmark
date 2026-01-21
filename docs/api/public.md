@@ -20,7 +20,8 @@ The API reference complements the higher‑level usage guides:
 - [Installation](../install.md)
 - [Pre‑commit integration](../usage/pre-commit.md)
 - [Header placement rules](../usage/header-placement.md)
-- [Supported file types](../usage/filetypes.md)
+- [Supported file types](../usage/generated-filetypes.md)
+- [Supported header processors](../usage/generated-processors.md)
 
 Use this section if you need details on functions, classes, or constants available in TopMark.
 
@@ -52,6 +53,16 @@ result = api.check(
 
 This design keeps the public surface small and semver-stable while allowing flexible per-call
 configuration.
+
+### Recognized vs supported file types
+
+- File types are identified by their **file type indentifier**.
+- A file type is **recognized** if its *file type indentifier* exists in `FileTypeRegistry`.
+- A file type is **supported** if it is recognized **and** has a registered `HeaderProcessor` in `HeaderProcessorRegistry`.
+- A file may be *recognized* but not *supported*. In that case:
+  - it participates in discovery and filtering
+  - it may appear in results (unless `skip_unsupported=True`)
+  - no header insertion or removal is attempted
 
 ### Registries and extensibility (read-only by default)
 

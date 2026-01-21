@@ -79,8 +79,8 @@ two shapes depending on whether the CLI is in *detail* or *summary* mode.
 
   ```jsonc
   "summary": {
-    "unchanged": { "count": 30, "label": "[13] up-to-date" },
-    "skipped":   { "count": 1,  "label": "[01] known file type, headers not supported" }
+    "unchanged": { "count": 30, "label": "up-to-date" },
+    "skipped":   { "count": 1,  "label": "known file type, headers not supported" }
   }
   ```
 
@@ -97,8 +97,8 @@ NDJSON output is a stream of records, each tagged with a `kind` field:
 {"kind": "config", "meta": { /* MetaPayload */ }, "config": { /* ConfigPayload */ }}
 {"kind": "config_diagnostics", "config_diagnostics": { /* ConfigDiagnosticsPayload */ }}
 {"kind": "result", "path": "README.md", "file_type": "markdown", /* per-file result fields */ }
-{"kind": "summary", "key": "unchanged", "count": 30, "label": "[13] up-to-date"}
-{"kind": "summary", "key": "skipped", "count": 1, "label": "[01] known file type, headers not supported"}
+{"kind": "summary", "key": "unchanged", "count": 30, "label": "up-to-date"}
+{"kind": "summary", "key": "skipped", "count": 1, "label": "known file type, headers not supported"}
 ```
 
 - The `config` record is always emitted first and includes the `meta` block.
@@ -127,7 +127,7 @@ High-level structure:
 - `formatting`: options that affect formatting behavior.
 - `writer`: file write strategy and related options:
   - `strategy` (e.g. `"ATOMIC"`), serialized as a string.
-  - `output_target` (if present).
+  - `target` (if present).
 - `files`: file resolution and filtering configuration:
   - `files`
   - `include_from`

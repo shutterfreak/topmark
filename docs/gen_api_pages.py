@@ -20,6 +20,7 @@ import, so mkdocstrings won't fail collecting them.
 from __future__ import annotations
 
 import os
+import subprocess
 import sys
 
 sys.path.insert(0, os.path.abspath("src"))
@@ -35,6 +36,79 @@ import topmark
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+
+
+def _run_topmark_markdown(*args: str) -> str:
+    """Run TopMark via `python -m topmark ...` and return stdout.
+
+    We intentionally execute TopMark as a module to avoid relying on an
+    installed console-script entry point when building docs.
+
+    Args:
+        *args (str): CLI arguments passed to `python -m topmark`.
+
+    Returns:
+        str: The command's stdout.
+
+    Raises:
+        RuntimeError: If the command exits non-zero.
+    """
+    cmd: list[str] = [sys.executable, "-m", "topmark", *args]
+    proc: subprocess.CompletedProcess[str] = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if proc.returncode != 0:
+        # Fail hard so 'strict: true' builds don’t silently publish stale docs.
+        joined: str = " ".join(cmd)
+        raise RuntimeError(
+            f"Command failed: {joined}\n\nSTDOUT:\n{proc.stdout}\n\nSTDERR:\n{proc.stderr}"
+        )
+    return proc.stdout
+
+
+def generate_cli_reference_pages() -> None:
+    """Generate version-accurate reference pages from TopMark CLI output."""
+    filetypes_md: str = _run_topmark_markdown(
+        "filetypes",
+        "--long",
+        "--output-format",
+        "markdown",
+    )
+    processors_md: str = _run_topmark_markdown(
+        "processors",
+        "--long",
+        "--output-format",
+        "markdown",
+    )
+
+    def _write_generated_page(dest: str, title: str, body: str) -> None:
+        """Write a standalone generated Markdown page under `docs/`.
+
+        Args:
+            dest (str): Docs-relative output path (e.g. `usage/generated-filetypes.md`).
+            title (str): Page title to render at the top.
+            body (str): Pre-rendered Markdown emitted by `topmark ... --output-format markdown`.
+        """
+        with mkdocs_gen_files.open(dest, "w") as f:
+            f.write(f"# {title}\n\n")
+            f.write("<!-- This page is generated. Do not edit manually. -->\n\n")
+            # `body` is already Markdown; write verbatim.
+            f.write(body)
+
+    _write_generated_page(
+        "usage/generated-filetypes.md",
+        "Supported file types (generated)",
+        filetypes_md,
+    )
+    _write_generated_page(
+        "usage/generated-processors.md",
+        "Registered processors (generated)",
+        processors_md,
+    )
+
 
 # Map a package module name to the set of its immediate children (module or package names)
 packages: defaultdict[str, set[str]] = defaultdict(set)
@@ -309,6 +383,7 @@ for pkg, children in sorted(packages.items()):
                 fd.write(f"- [{child_full}]({link})\n")
         fd.write("\n")
 
+generate_cli_reference_pages()
 
 # --- Summary (printed only if TOPMARK_DOCS_DEBUG is set) ---
 print(

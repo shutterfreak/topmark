@@ -105,9 +105,11 @@ nav:
           - "processors": usage/commands/processors.md
           - "version": usage/commands/version.md
       - Guides:
-          - "Pre-commit": usage/pre-commit.md
+          - "Supported file types (generated)": usage/generated-filetypes.md
+          - "Supported header processors (generated)": usage/generated-processors.md
+          - "Filtering recipes": usage/filtering.md
           - "Header placement": usage/header-placement.md
-          - "Supported file types": usage/filetypes.md
+          - "Pre-commit": usage/pre-commit.md
   - Configuration:
       - Overview: configuration/index.md
       - Discovery & Precedence: configuration/discovery.md
@@ -123,6 +125,7 @@ nav:
       - "Internals": api/internals.md
   - Development:
       - "Architecture": dev/architecture.md
+      - "Config schema": dev/config-schema.md
       - "API Stability": dev/api-stability.md
       - "Machine output": dev/machine-output.md
 watch:

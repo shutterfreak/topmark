@@ -54,7 +54,7 @@ ______________________________________________________________________
 
 ## 🧱 Example headers
 
-TopMark adapts headers to the comment syntax of each file type.
+TopMark adapts headers to the comment syntax of each supported file type.
 
 ### Bash / Shell
 
@@ -168,16 +168,16 @@ topmark [COMMAND] [OPTIONS] [PATHS]...
 
 ### Subcommands
 
-| Command         | Description                               |
-| --------------- | ----------------------------------------- |
-| `check`         | Add or update TopMark headers             |
-| `strip`         | Remove TopMark headers                    |
-| `dump-config`   | Show resolved configuration (merged TOML) |
-| `filetypes`     | List supported file types                 |
-| `processors`    | List header processors and mappings       |
-| `show-defaults` | Show built-in defaults without merging    |
-| `init-config`   | Output a starter configuration            |
-| `version`       | Print version (PEP 440 or SemVer)         |
+| Command           | Description                                                           |
+| ----------------- | --------------------------------------------------------------------- |
+| `check`           | Add or update TopMark headers                                         |
+| `strip`           | Remove TopMark headers                                                |
+| `config defaults` | Show built-in defaults without merging                                |
+| `config dump`     | Show resolved configuration (merged TOML)                             |
+| `config init`     | Output a starter configuration (TOML with documentation in commments) |
+| `filetypes`       | List supported file types                                             |
+| `processors`      | List header processors and mappings                                   |
+| `version`         | Print version (PEP 440 or SemVer)                                     |
 
 ### Examples
 
@@ -358,15 +358,17 @@ ______________________________________________________________________
 To test across all supported Python versions:
 
 ```bash
-make test              # tox default envs
-tox -m api-check       # API stability across all Python versions
+make test              # nox -e qa
+nox -e api_snapshot    # API stability across all Python versions
 ```
 
 For faster iteration:
 
 ```bash
 make pytest            # run tests in current interpreter
+make format            # formatting
 make lint              # static linting
+make docs-build        # build the docs
 make verify            # formatting, linting, docs, links
 ```
 
