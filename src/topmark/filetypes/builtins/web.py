@@ -25,10 +25,9 @@ Notes:
 
 from __future__ import annotations
 
+from topmark.filetypes.base import FileType
 from topmark.filetypes.checks.xml import xml_can_insert
 from topmark.filetypes.policy import FileTypeHeaderPolicy
-
-from ..base import FileType
 
 FILETYPES: list[FileType] = [
     FileType(

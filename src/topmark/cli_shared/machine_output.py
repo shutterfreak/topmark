@@ -25,22 +25,24 @@ They are consumed by `topmark.cli.utils` to render JSON/NDJSON output for
 `--output-format json` and `--output-format ndjson`.
 """
 
+from __future__ import annotations
+
 from collections.abc import Mapping
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, TypedDict, cast
 
 from topmark.api.view import collect_outcome_counts
-from topmark.config.model import Config
 from topmark.constants import TOPMARK_VERSION
 from topmark.core.diagnostics import compute_diagnostic_stats
-from topmark.pipeline.context.model import ProcessingContext
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from topmark.config.io import TomlTable
+    from topmark.config.model import Config
     from topmark.core.diagnostics import DiagnosticStats
+    from topmark.pipeline.context.model import ProcessingContext
 
 
 class MetaPayload(TypedDict):
@@ -58,7 +60,7 @@ def build_meta_payload() -> MetaPayload:
     is set to "unknown".
     """
     tool_name: str = "topmark"
-    ver = TOPMARK_VERSION
+    ver: str = TOPMARK_VERSION
     return {"tool": tool_name, "version": ver}
 
 

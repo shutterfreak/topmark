@@ -39,6 +39,7 @@ if TYPE_CHECKING:
 
     from topmark.config.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.views import UpdatedView
 
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -180,7 +181,7 @@ def write_updates(
     failed: int = 0
     for r in results:
         try:
-            updated_view = r.views.updated
+            updated_view: UpdatedView | None = r.views.updated
             if should_write(r) and updated_view is not None and updated_view.lines:
                 # Write exactly what the pipeline produced:
                 #  - `updated_file_lines` are keepends=True lines with the desired newline style

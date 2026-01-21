@@ -24,6 +24,8 @@ Helpers
   without consuming control characters such as form-feed unless the policy opts in.
 """
 
+from __future__ import annotations
+
 from topmark.filetypes.policy import (
     BlankCollapseMode,
     FileTypeHeaderPolicy,

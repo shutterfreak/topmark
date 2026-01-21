@@ -115,7 +115,7 @@ class PublicPolicyByType(TypedDict, total=False):
         Keys must match registered file type identifiers.
     """
 
-    # keys are file type ids (e.g., "python"); values are PublicPolicy
+    # keys are file type identifiers (e.g., "python"); values are PublicPolicy
     # e.g. {"python": {"allow_header_in_empty_files": True}}
     ...
 

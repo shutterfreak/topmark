@@ -47,6 +47,8 @@ file-type processors. It is intentionally pure and side-effect-free so that
 status evaluation remains predictable, testable, and import-safe.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import TypedDict
 

@@ -24,9 +24,8 @@ from topmark.config import Config
 from topmark.config.policy import PolicyRegistry, make_policy_registry
 from topmark.pipeline import runner
 from topmark.pipeline.context.model import ProcessingContext
+from topmark.pipeline.pipelines import Pipeline
 from topmark.rendering.formats import HeaderOutputFormat
-
-from ..pipeline.pipelines import Pipeline
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

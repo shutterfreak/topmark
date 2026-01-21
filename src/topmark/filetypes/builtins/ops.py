@@ -26,9 +26,8 @@ Notes:
 
 from __future__ import annotations
 
+from topmark.filetypes.base import FileType
 from topmark.filetypes.policy import FileTypeHeaderPolicy
-
-from ..base import FileType
 
 FILETYPES: list[FileType] = [
     FileType(

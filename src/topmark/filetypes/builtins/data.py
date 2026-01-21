@@ -29,11 +29,10 @@ Notes:
 
 from __future__ import annotations
 
+from topmark.filetypes.base import ContentGate, FileType
 from topmark.filetypes.checks.json_like import json_like_can_insert
 from topmark.filetypes.detectors.jsonc import looks_like_jsonc
 from topmark.filetypes.policy import FileTypeHeaderPolicy
-
-from ..base import ContentGate, FileType
 
 FILETYPES: list[FileType] = [
     FileType(

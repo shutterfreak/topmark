@@ -26,3 +26,5 @@ Higher-level engine and runner modules depend on this package but should not
 need to reach into individual implementation details beyond the documented
 public attributes and methods.
 """
+
+from __future__ import annotations

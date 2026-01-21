@@ -140,15 +140,15 @@ def _iter_config_base_dirs(config_files: tuple[str | Path, ...]) -> list[Path]:
         list[Path]: Unique parent directories of real config files, resolved to absolute paths.
     """
     bases: list[Path] = []
-    for cf in config_files:
+    for config_file in config_files:
         try:
-            p = Path(cf)
+            p = Path(config_file)
         except TypeError:
             continue
         if p.exists() and p.is_file():
-            b = p.resolve().parent
-            if b not in bases:
-                bases.append(b)
+            base: Path = p.resolve().parent
+            if base not in bases:
+                bases.append(base)
     return bases
 
 
@@ -496,7 +496,7 @@ def resolve_file_list(config: Config) -> list[Path]:
         unknown: list[str] = sorted(t for t in include_file_types if t not in ft_registry)
         if unknown:
             logger.warning(
-                "Unknown file types specified (ignored): %s",
+                "Unknown included file types specified (ignored): %s",
                 ", ".join(unknown),
             )
 
@@ -513,11 +513,11 @@ def resolve_file_list(config: Config) -> list[Path]:
 
     # 5.2: blacklisted file types
     if exclude_file_types:
-        # Warn about unknown excluded file type names in config (ignored)
+        # Warn about unknown excluded file type identifiers in config (ignored)
         unknown: list[str] = sorted(t for t in exclude_file_types if t not in ft_registry)
         if unknown:
             logger.warning(
-                "Unknown excluded file types specified (ignored): %s",
+                "Unknown excluded file type identifiers specified (ignored): %s",
                 ", ".join(unknown),
             )
 

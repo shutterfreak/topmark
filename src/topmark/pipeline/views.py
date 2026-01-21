@@ -20,9 +20,13 @@ materializing whole images, and rich blocks/mappings are grouped in small
 dataclasses per phase.
 """
 
-from collections.abc import Iterable, Sequence
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
 
 
 @runtime_checkable

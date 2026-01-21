@@ -15,6 +15,9 @@ file (including JSONC) is advisable. It ensures that plain JSON files without
 comments are not promoted to JSONC unless explicitly allowed.
 """
 
+from __future__ import annotations
+
+from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.filetypes.base import InsertCapability, InsertCheckResult, PreInsertContextView
 
 
@@ -54,7 +57,7 @@ def json_like_can_insert(
 
     text: str = "".join(ctx.lines or [])
     has_non_topmark_comment: bool = ("//" in text or "/*" in text) and (
-        "topmark:header" not in text
+        TOPMARK_START_MARKER not in text and TOPMARK_END_MARKER not in text
     )
 
     if has_non_topmark_comment or allow_promote:

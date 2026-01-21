@@ -10,7 +10,7 @@
 
 [project]
 name = "topmark"
-version = "0.12.0.dev0" # PEP 440: "X.Y.Z.devN", "X.Y.ZrcN", or "X.Y.Z"
+version = "0.12.0.dev1" # PEP 440: "X.Y.Z.devN", "X.Y.ZrcN", or "X.Y.Z"
 description = "A Python CLI to inspect, validate, and manage license and copyright headers."
 authors = [{ name = "Olivier Biot", email = "olivier.biot@gmail.com" }]
 license = "MIT"
@@ -199,13 +199,14 @@ line-length = 100
 [tool.ruff.lint]
 exclude = [".git", ".venv", "venv", "build", "dist", "migrations"]
 select = [
-  "E",  # pycodestyle errors
-  "F",  # pyflakes
-  "B",  # bugbear
-  "I",  # isort-compatible import sorting
-  "D",  # pydocstyle
-  "TC", # type-checking (TCH001/2/3: move type-only imports under TYPE_CHECKING)
-  "UP", # pyupgrade: modern syntax, builtin/collections.abc generics
+  "E",   # pycodestyle errors
+  "F",   # pyflakes
+  "B",   # bugbear
+  "I",   # isort-compatible import sorting
+  "D",   # pydocstyle
+  "TC",  # type-checking (TCH001/2/3: move type-only imports under TYPE_CHECKING)
+  "UP",  # pyupgrade: modern syntax, builtin/collections.abc generics
+  "TID", # Tidy imports
 ]
 ignore = [
   # Note: D212 and D213 cannot be enabled simultaneously
@@ -224,6 +225,8 @@ ignore = [
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
+[tool.ruff.lint.isort]
+required-imports = ["from __future__ import annotations"]
 
 [tool.pydoclint]
 style = "google"

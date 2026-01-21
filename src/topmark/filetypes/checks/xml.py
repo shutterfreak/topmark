@@ -14,6 +14,8 @@ Provides a function to determine whether it is safe to insert headers into XML f
 ensuring the presence of a body beyond declarations or doctypes.
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from topmark.filetypes.base import (

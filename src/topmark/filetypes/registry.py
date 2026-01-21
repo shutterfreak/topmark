@@ -85,7 +85,22 @@ def register_filetype(
         """
         logger.debug("Registering processor %s for file type: %s", cls.__name__, file_type.name)
         if file_type.name in _registry:
-            raise ValueError(f"File type '{file_type.name}' already has a registered processor.")
+            existing: HeaderProcessor = _registry[file_type.name]
+            # If it's already an instance of this exact class, skip silently
+            if isinstance(existing, cls):
+                logger.info(
+                    "Skipping duplicate registration of %s to %s.",
+                    file_type.name,
+                    cls.__name__,
+                )
+                return cls
+
+            # If it's a DIFFERENT class, then we have a genuine conflict
+            raise ValueError(
+                f"File type '{file_type.name}' already has a registered processor "
+                f"({type(existing).__name__}). Cannot overwrite with {cls.__name__}."
+            )
+
         instance: HeaderProcessor = cls()
         instance.file_type = file_type
         _registry[file_type.name] = instance

@@ -277,7 +277,7 @@ class FileType:
         # Track which name rule (if any) matched; used for content gating.
         matched_by: str | None = None
 
-        # 1) Extension match
+        # 1) Try mattching by file extension (if present)
         if self.extensions:
             suffix: str = path.suffix
             name: str = path.name
@@ -292,25 +292,28 @@ class FileType:
                     if suffix == ext:
                         matched_by = "extension"
                         break
-        else:
-            # 2) Filenames: support exact basename or tail subpath matches
+
+        # 2) if still not matched, try filenames
+        if matched_by is None and self.filenames:
+            # Filenames: support exact basename or tail subpath matches
             #    - "settings.json" matches only if basename == "settings.json"
             #    - ".vscode/settings.json" matches
             #      if path.as_posix().endswith(".vscode/settings.json")
-            if self.filenames:
-                basename: str = path.name
-                posix: str = path.as_posix()
-                for fname in self.filenames:
-                    if "/" in fname or "\\" in fname:
-                        if posix.endswith(fname):
-                            matched_by = "filename"
-                            break
-                    else:
-                        if basename == fname:
-                            matched_by = "filename"
-                            break
+            basename: str = path.name
+            posix: str = path.as_posix()
+            for fname in self.filenames:
+                if "/" in fname or "\\" in fname:
+                    if posix.endswith(fname):
+                        matched_by = "filename"
+                        break
+                else:
+                    if basename == fname:
+                        matched_by = "filename"
+                        break
 
-            # 3) Regex patterns against basename (cached)
+        # 3) if still not matched, try patterns
+        if matched_by is None and self.patterns:
+            # Regex patterns against basename (cached)
             if matched_by is None and self.patterns:
                 if self._compiled_patterns is None:
                     try:
@@ -322,13 +325,12 @@ class FileType:
                         matched_by = "pattern"
                         break
 
-        # If any name rule matched and no content matcher is defined, we're done.
-        if matched_by is not None and self.content_matcher is None:
-            return True
-
-        # If no name rule matched and no content matcher is defined, no match.
-        if matched_by is None and self.content_matcher is None:
-            return False
+        # 4) if still not matched, try content matcher (if present)
+        if self.content_matcher is None:
+            # Shortcut if no content matcher is defined:
+            #    - If no name rule matched: False
+            #    - If any name rule matched: True
+            return False if matched_by is None else True
 
         # Evaluate whether the content matcher is *allowed* to run, based on the gate.
         gate: Final[ContentGate] = self.content_gate

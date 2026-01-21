@@ -93,11 +93,20 @@ def get_processor_for_file(path: Path) -> HeaderProcessor | None:
     return None
 
 
+_PROCESSORS_LOADED = False  # Module-level flag
+
+
 # Dynamically import all modules in the processors/ directory
 def register_all_processors() -> None:
-    """Import all processor modules in the current package."""
+    """Import all processor modules in the current package (Idempotent)."""
+    global _PROCESSORS_LOADED
+
+    if _PROCESSORS_LOADED:
+        return
+
     package_dir: Path = Path(__file__).parent
     for module_info in pkgutil.iter_modules([str(package_dir)]):
         if not module_info.ispkg:
             # Import the module to ensure it registers its processor
+            logger.debug("Loading %s.%s", __name__, module_info.name)
             importlib.import_module(f"{__name__}.{module_info.name}")
