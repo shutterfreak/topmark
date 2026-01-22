@@ -65,14 +65,14 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 __all__: list[str] = [
-    "classify_outcome",
-    "to_file_result",
     "apply_view_filter",
-    "summarize",
-    "collect_diagnostics",
+    "classify_outcome",
     "collect_diagnostic_totals",
+    "collect_diagnostics",
     "count_writes",
     "finalize_run_result",
+    "summarize",
+    "to_file_result",
 ]
 
 

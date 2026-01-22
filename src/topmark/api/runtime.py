@@ -48,10 +48,10 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 __all__: list[str] = [
-    "ensure_mutable_config",
     "build_cfg_and_files_via_cli_helpers",
-    "select_pipeline",
+    "ensure_mutable_config",
     "run_pipeline",
+    "select_pipeline",
 ]
 
 

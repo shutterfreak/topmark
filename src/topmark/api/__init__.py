@@ -90,18 +90,18 @@ logger: TopmarkLogger = get_logger(__name__)
 
 
 __all__: list[str] = [
-    "Outcome",
     "FileResult",
-    "RunResult",
     "FileTypeInfo",
+    "Outcome",
     "ProcessorInfo",
+    "PublicDiagnostic",
+    "Registry",
+    "RunResult",
     "check",
-    "strip",
-    "version",
     "get_filetype_info",
     "get_processor_info",
-    "Registry",
-    "PublicDiagnostic",
+    "strip",
+    "version",
 ]
 
 

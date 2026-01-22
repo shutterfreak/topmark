@@ -41,13 +41,11 @@ from .processors import HeaderProcessorRegistry, ProcessorMeta
 from .registry import Binding, Registry, iter_bindings
 
 __all__: list[str] = [
-    # Stable facade
-    "Registry",
     "Binding",
-    "iter_bindings",
-    # Advanced registries & meta (no stability guarantee)
+    "FileTypeMeta",
     "FileTypeRegistry",
     "HeaderProcessorRegistry",
-    "FileTypeMeta",
     "ProcessorMeta",
+    "Registry",
+    "iter_bindings",
 ]

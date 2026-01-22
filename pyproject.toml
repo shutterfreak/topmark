@@ -199,14 +199,17 @@ line-length = 100
 [tool.ruff.lint]
 exclude = [".git", ".venv", "venv", "build", "dist", "migrations"]
 select = [
-  "E",   # pycodestyle errors
-  "F",   # pyflakes
-  "B",   # bugbear
-  "I",   # isort-compatible import sorting
-  "D",   # pydocstyle
-  "TC",  # type-checking (TCH001/2/3: move type-only imports under TYPE_CHECKING)
-  "UP",  # pyupgrade: modern syntax, builtin/collections.abc generics
-  "TID", # Tidy imports
+  "E",      # pycodestyle errors
+  "F",      # pyflakes
+  "B",      # bugbear
+  "I",      # isort-compatible import sorting
+  "D",      # pydocstyle
+  "TC",     # type-checking (TCH001/2/3: move type-only imports under TYPE_CHECKING)
+  "UP",     # pyupgrade: modern syntax, builtin/collections.abc generics
+  "TID",    # Tidy imports
+  "RUF010", # changes f"{str(user)}" → f"{user!s}" and f"{repr(user)}" → f"{user!r}"
+  "RUF022", # checks if the items in __all__ are sorted alphabetically
+  "RUF023", # checks if the __slots__ in classes are sorted alphabetically
 ]
 ignore = [
   # Note: D212 and D213 cannot be enabled simultaneously

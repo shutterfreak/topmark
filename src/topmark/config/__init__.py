@@ -38,9 +38,9 @@ from .model import Config, MutableConfig, sanitize_config
 from .types import ArgsLike, PatternSource
 
 __all__: list[str] = [
-    "PatternSource",
     "ArgsLike",
     "Config",
     "MutableConfig",
+    "PatternSource",
     "sanitize_config",
 ]
