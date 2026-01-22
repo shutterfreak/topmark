@@ -57,6 +57,8 @@ if TYPE_CHECKING:
 
     from tomlkit.container import Container
 
+    from topmark.core.diagnostics import DiagnosticLog
+
     if sys.version_info >= (3, 14):
         # Python 3.14+: Traversable moved here
         from importlib.resources.abc import Traversable
@@ -84,17 +86,18 @@ __all__: list[str] = [
     "TomlTableMap",
     "as_toml_table",
     "as_toml_table_map",
-    "is_toml_table",
-    "is_any_list",
-    "get_table_value",
-    "get_string_value",
-    "get_string_value_or_none",
+    "clean_toml",
     "get_bool_value",
     "get_bool_value_or_none",
     "get_list_value",
+    "get_string_list_value",
+    "get_string_value",
+    "get_string_value_or_none",
+    "get_table_value",
+    "is_any_list",
+    "is_toml_table",
     "load_defaults_dict",
     "load_toml_dict",
-    "clean_toml",
     "to_toml",
 ]
 
@@ -230,7 +233,11 @@ def get_string_value_or_none(table: TomlTable, key: str) -> str | None:
     return None
 
 
-def get_bool_value(table: TomlTable, key: str, default: bool = False) -> bool:
+def get_bool_value(
+    table: TomlTable,
+    key: str,
+    default: bool = False,
+) -> bool:
     """Extract a boolean value from a TOML table.
 
     If the value is a ``bool``, it is returned as is. If the value is an integer,
@@ -280,7 +287,11 @@ def get_bool_value_or_none(table: TomlTable, key: str) -> bool | None:
     return None
 
 
-def get_list_value(table: TomlTable, key: str, default: list[Any] | None = None) -> list[Any]:
+def get_list_value(
+    table: TomlTable,
+    key: str,
+    default: list[Any] | None = None,
+) -> list[Any]:
     """Extract a list value from a TOML table.
 
     If the key is present and the value is a list, it is returned (shallow copy;
@@ -300,6 +311,52 @@ def get_list_value(table: TomlTable, key: str, default: list[Any] | None = None)
     if is_any_list(value):
         return value
     return default or []
+
+
+def get_string_list_value(
+    table: TomlTable,
+    key: str,
+    *,
+    where: str,
+    diagnostics: DiagnosticLog,
+    logger: TopmarkLogger,
+) -> list[str]:
+    """Extract a list of strings from a TOML table.
+
+    By using `get_string_list_value()` we enforce "list of strings" for header field
+    selection in TOML, drop non-strings with a warning + diagnostic, and give uniform,
+    stable warning locations like: "Ignoring non-string entry in [header].fields: ..."
+
+    Behavior:
+        - If the key is missing or not a list, returns [].
+        - If the list contains non-string items, they are ignored.
+        - Each ignored entry emits a warning and a diagnostic with TOML location.
+
+    Args:
+        table (TomlTable): TOML table to query.
+        key (str): Key to extract.
+        where (str): TOML location prefix (e.g. "[files]").
+        diagnostics (DiagnosticLog): DiagnosticLog to record warnings.
+        logger (TopmarkLogger): Logger for emitting warnings.
+
+    Returns:
+        list[str]: Filtered list containing only string entries.
+    """
+    vals_any: list[Any] = get_list_value(table, key)
+    if not vals_any:
+        return []
+
+    loc: str = f"{where}.{key}"
+    out: list[str] = []
+
+    for v in vals_any:
+        if isinstance(v, str):
+            out.append(v)
+        else:
+            logger.warning("Ignoring non-string entry in %s: %r", loc, v)
+            diagnostics.add_warning(f"Ignoring non-string entry in {loc}: {v}")
+
+    return out
 
 
 def load_defaults_dict() -> TomlTable:

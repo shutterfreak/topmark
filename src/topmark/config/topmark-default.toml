@@ -60,12 +60,24 @@
 [header]
 # Configuration for header fields and metadata to include in generated headers
 
-# List of fields to include in the header.
-# Available fields include 'file', 'file_relpath', 'author', 'date', 'license', etc.
-# You can define your own fields as well.
-
-# TODO: review the fields: builtin field types and custom fields
-
+# Ordered list of field names to render in the TopMark header.
+#
+# A field name may refer to:
+#   1) a **built-in** field (computed from the filesystem), or
+#   2) a **custom** field defined under the `[fields]` table below.
+#
+# Built-in field names (computed in `topmark.pipeline.steps.builder.BuilderStep`):
+#   - file         : base file name (no path)
+#   - file_relpath : file path relative to `files.relative_to` (or CWD if `files.relative_to` is unset)
+#   - file_abspath : absolute file path
+#   - relpath      : parent directory of `file_relpath`
+#   - abspath      : parent directory of `file_abspath`
+#
+# Notes:
+#   - The `[fields]` table may contain additional key/value pairs that are *not* listed here.
+#     Only the names in `header.fields` are rendered in the header.
+#   - If a custom field name overlaps with a built-in field name, TopMark will warn and the
+#     custom value will override the built-in value *for rendering*.
 fields = ["file", "file_relpath"]
 
 
@@ -74,6 +86,10 @@ fields = ["file", "file_relpath"]
 # ========================
 
 [fields]
+# Definition of field names (keys) and values
+#
+# Note: keys defined here do not have to be rendered. Only keys listed in `header.fields`
+# are included in generated headers.
 
 # Project name to include in the header
 # project = "TopMark"

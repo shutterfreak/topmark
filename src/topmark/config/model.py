@@ -50,13 +50,15 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from topmark.cli.keys import ArgKey, CliOpt
 from topmark.config.io import (
+    as_toml_table_map,
     clean_toml,
     get_bool_value_or_none,
     get_list_value,
+    get_string_list_value,
     get_string_value,
     get_string_value_or_none,
     get_table_value,
@@ -66,7 +68,12 @@ from topmark.config.io import (
 )
 from topmark.config.keys import Toml
 from topmark.config.logging import get_logger
-from topmark.config.paths import abs_path_from, extend_ps, ps_from_cli, ps_from_config
+from topmark.config.paths import (
+    abs_path_from,
+    extend_pattern_sources,
+    ps_from_cli,
+    ps_from_config,
+)
 from topmark.config.policy import MutablePolicy, Policy
 from topmark.config.types import FileWriteStrategy, OutputTarget
 from topmark.core.diagnostics import Diagnostic, DiagnosticLog
@@ -669,6 +676,8 @@ class MutableConfig:
         - Path-to-file entries declared in the config are normalized to absolute paths
           using the *config file's* directory (config-local base).
         - Glob strings are kept as-is (evaluated later against `relative_to`).
+        - `[fields]` is a free-form mapping of field_name -> field_value; only names listed
+          in `[header].fields` are rendered later by `BuilderStep`.
 
         Args:
             data (TomlTable): The parsed TOML data as a dictionary.
@@ -680,39 +689,98 @@ class MutableConfig:
         """
         tool_tbl: TomlTable = data  # top-level tool configuration dictionary
 
-        # Extract sub-tables for specific config sections; fallback to empty dicts
-        field_tbl: TomlTable = get_table_value(tool_tbl, Toml.SECTION_FIELDS)
-        logger.trace("TOML [fields]: %s", field_tbl)
-
-        header_tbl: TomlTable = get_table_value(tool_tbl, Toml.SECTION_HEADER)
-        logger.trace("TOML [header]: %s", header_tbl)
-
-        formatting_tbl: TomlTable = get_table_value(tool_tbl, Toml.SECTION_FORMATTING)
-        logger.trace("TOML [formatting]: %s", formatting_tbl)
-
-        files_tbl: TomlTable = get_table_value(tool_tbl, Toml.SECTION_FILES)
-        logger.trace("TOML [files]: %s", files_tbl)
-
-        policy_tbl: TomlTable = get_table_value(tool_tbl, Toml.SECTION_POLICY)
-        logger.trace("TOML [policy]: %s", policy_tbl)
-
-        policy_by_type_tbl: TomlTableMap = get_table_value(tool_tbl, Toml.SECTION_POLICY_BY_TYPE)
-        logger.trace("TOML [policy_by_type]: %s", policy_by_type_tbl)
-
-        writer_tbl: TomlTable = get_table_value(tool_tbl, Toml.SECTION_WRITER)
-        logger.trace("TOML [writer]: %s", writer_tbl)
-
-        # Start from a fresh draft with current timestamp
+        # Start from a fresh draft with current timestamp early so we can attach diagnostics
+        # while parsing.
         draft: MutableConfig = cls(timestamp=datetime.now().isoformat())
 
         # Config file's directory for relative path resolution
         cfg_dir: Path | None = config_file.parent.resolve() if config_file else None
 
+        # ------------------------- Unknown key validation -------------------------
+        def _warn_unknown(where: str, keys: set[str]) -> None:
+            if not keys:
+                return
+            msg: str = f"Unknown TOML key(s) in {where} (ignored): " + ", ".join(sorted(keys))
+            logger.warning(msg)
+            draft.diagnostics.add_warning(msg)
+
+        # Validate top-level keys
+        _warn_unknown(
+            "top-level",
+            set(tool_tbl.keys()) - set(Toml.ALLOWED_TOP_LEVEL_KEYS),
+        )
+
+        # Validate known sections (tables)
+        for section_name, allowed_keys in Toml.ALLOWED_SECTION_KEYS.items():
+            if section_name not in tool_tbl:
+                continue
+            section_val: Any = tool_tbl.get(section_name)
+            if not isinstance(section_val, dict):
+                msg: str = (
+                    f"TOML section [{section_name}] must be a table; "
+                    f"got {type(section_val).__name__} (ignored)."
+                )
+                logger.warning(msg)
+                draft.diagnostics.add_warning(msg)
+                continue
+
+            section_tbl: TomlTable = cast("TomlTable", section_val)
+            _warn_unknown(f"[{section_name}]", set(section_tbl.keys()) - set(allowed_keys))
+
+        # Validate [policy_by_type.<filetype>] subtables (their keys are fixed)
+        pbt_val: Any = tool_tbl.get(Toml.SECTION_POLICY_BY_TYPE)
+        if isinstance(pbt_val, dict):
+            pbt_tbl: TomlTable = cast("TomlTable", pbt_val)
+            for ft_name, ft_tbl_any in pbt_tbl.items():
+                ft: str = str(ft_name)
+                if not isinstance(ft_tbl_any, dict):
+                    msg = (
+                        f"TOML section [{Toml.SECTION_POLICY_BY_TYPE}.{ft}] "
+                        f"must be a table; got {type(ft_tbl_any).__name__} (ignored)."
+                    )
+                    logger.warning(msg)
+                    draft.diagnostics.add_warning(msg)
+                    continue
+
+                ft_tbl: TomlTable = cast("TomlTable", ft_tbl_any)
+                _warn_unknown(
+                    f"[{Toml.SECTION_POLICY_BY_TYPE}.{ft}]",
+                    set(ft_tbl.keys()) - set(Toml.ALLOWED_POLICY_KEYS),
+                )
+
+        # Extract sub-tables for specific config sections; fallback to empty dicts.
+        #
+        # NOTE: `[fields]` is an *arbitrary* user-defined mapping of name -> value.
+        #       It may contain keys that are not rendered. The rendered/ordered subset
+        #       is controlled by `[header].fields` and applied later by
+        #       `topmark.pipeline.steps.builder.BuilderStep`.
+        field_tbl: TomlTable = get_table_value(tool_tbl, Toml.SECTION_FIELDS)
+        logger.trace("TOML [%s]: %s", Toml.SECTION_FIELDS, field_tbl)
+
+        header_tbl: TomlTable = get_table_value(tool_tbl, Toml.SECTION_HEADER)
+        logger.trace("TOML [%s]: %s", Toml.SECTION_HEADER, header_tbl)
+
+        formatting_tbl: TomlTable = get_table_value(tool_tbl, Toml.SECTION_FORMATTING)
+        logger.trace("TOML [%s]: %s", Toml.SECTION_FORMATTING, formatting_tbl)
+
+        files_tbl: TomlTable = get_table_value(tool_tbl, Toml.SECTION_FILES)
+        logger.trace("TOML [%s]: %s", Toml.SECTION_FILES, files_tbl)
+
+        policy_tbl: TomlTable = get_table_value(tool_tbl, Toml.SECTION_POLICY)
+        logger.trace("TOML [%s]: %s", Toml.SECTION_POLICY, policy_tbl)
+
+        policy_by_type_raw: TomlTable = get_table_value(tool_tbl, Toml.SECTION_POLICY_BY_TYPE)
+        policy_by_type_tbl: TomlTableMap = as_toml_table_map(policy_by_type_raw)
+        logger.trace("TOML [%s]: %s", Toml.SECTION_POLICY_BY_TYPE, policy_by_type_tbl)
+
+        writer_tbl: TomlTable = get_table_value(tool_tbl, Toml.SECTION_WRITER)
+        logger.trace("TOML [%s]: %s", Toml.SECTION_WRITER, writer_tbl)
+
         # ----- config_files: normalize to absolute paths if possible -----
         config_files: tuple[list[Path]] = ([config_file] if config_file else [],)
         draft.config_files = [str(p) for p in config_files[0]] if config_files[0] else []
 
-        # ----- Writer mode: atomic (True) vs in-place (False) -----
+        # ----- Writer settings -----
         draft.output_target = OutputTarget.parse(
             get_string_value_or_none(
                 writer_tbl,
@@ -734,7 +802,7 @@ class MutableConfig:
             str(ft): MutablePolicy.from_toml_table(tbl) for ft, tbl in policy_by_type_tbl.items()
         }
 
-        # ----- files: normalize to absolute strings against the config file dir -----
+        # ----- files: normalize to absolute paths against the config file dir (when known) -----
         raw_files: list[str] = (
             list(files_tbl.get(Toml.KEY_FILES, [])) if Toml.KEY_FILES in files_tbl else []
         )
@@ -749,18 +817,32 @@ class MutableConfig:
 
         # ----- include_from / exclude_from / files_from: convert to PatternSource now -----
         def _normalize_sources(key: str) -> None:
-            vals: list[str] = list(files_tbl.get(key, [])) if key in files_tbl else []
+            # List-valued keys under [files] (include_from/exclude_from/files_from) should be
+            # a list of strings. Wrong types are treated as empty; mixed types drop non-strings.
+            loc: str = f"[{Toml.SECTION_FILES}].{key}"
+            # Enforce "list of strings" for field selection in TOML:
+            vals: list[str] = get_string_list_value(
+                files_tbl, key, where=loc, diagnostics=draft.diagnostics, logger=logger
+            )
+
             if not vals:
                 return
+
             if cfg_dir is not None:
-                extend_ps(getattr(draft, key), vals, ps_from_config, f"config {key}", cfg_dir)
+                extend_pattern_sources(
+                    getattr(draft, key),
+                    vals,
+                    ps_from_config,
+                    f"config {loc}.{key}",
+                    cfg_dir,
+                )
             else:
                 # Rare fallback: without a config file path, use CWD to avoid losing info
-                extend_ps(
+                extend_pattern_sources(
                     getattr(draft, key),
                     vals,
                     ps_from_cli,
-                    f"config {key}",
+                    f"config {loc}.{key}",
                     Path.cwd().resolve(),
                 )
 
@@ -768,22 +850,49 @@ class MutableConfig:
             _normalize_sources(_k)
 
         # ----- glob arrays remain raw strings (evaluated later vs relative_to) -----
-        draft.include_patterns.extend(list(files_tbl.get(Toml.KEY_INCLUDE_PATTERNS, [])))
-        draft.exclude_patterns.extend(list(files_tbl.get(Toml.KEY_EXCLUDE_PATTERNS, [])))
+        # List-valued glob keys under [files] should contain strings. Wrong types are treated
+        # as empty; mixed types drop non-strings with a warning + diagnostic.
+        def _extend_glob_list(attr: str, key: str) -> None:
+            loc: str = f"[{Toml.SECTION_FILES}].{key}"
+            # Enforce "list of strings" for field selection in TOML:
+            vals: list[str] = get_string_list_value(
+                files_tbl, key, where=loc, diagnostics=draft.diagnostics, logger=logger
+            )
 
-        # Coerce field values to strings, ignoring unsupported types with a warning
+            if vals:
+                getattr(draft, attr).extend(vals)
+
+        _extend_glob_list("include_patterns", Toml.KEY_INCLUDE_PATTERNS)
+        _extend_glob_list("exclude_patterns", Toml.KEY_EXCLUDE_PATTERNS)
+
+        # Coerce `[fields]` values to strings (the table is user-defined and may include
+        # unused keys). Unsupported types are ignored with a warning.
         field_values: dict[str, str] = {}
         for k, v in field_tbl.items():
             if isinstance(v, (str, int, float, bool)):
                 field_values[k] = str(v)
             else:
-                logger.warning("Ignoring unsupported field value for '%s': %r", k, v)
-                draft.diagnostics.add_warning(f"Ignoring unsupported field value for '{k}': {v}")
+                # [fields] is a free-form table; include the TOML location for consistency.
+                loc: str = f"[{Toml.SECTION_FIELDS}].{k}"
+                logger.warning(
+                    "Ignoring unsupported field value for %s: %r",
+                    loc,
+                    v,
+                )
+                draft.diagnostics.add_warning(f"Ignoring unsupported field value for {loc}: {v}")
         draft.field_values = field_values
 
-        # Header fields: list of strings
-        header_fields: list[str] = get_list_value(header_tbl, Toml.KEY_FIELDS)
-        draft.header_fields = header_fields or []
+        # `[header].fields`: ordered list of field names to render (built-ins and/or
+        # keys from `[fields]`).
+        #
+        # Enforce "list of strings" for header field selection in TOML:
+        draft.header_fields = get_string_list_value(
+            header_tbl,
+            Toml.KEY_FIELDS,
+            where=f"[{Toml.SECTION_HEADER}]",
+            diagnostics=draft.diagnostics,
+            logger=logger,
+        )
 
         # # Fallback: if no explicit header field order is provided, use the keys of
         # # the field_values table in their declared order. This preserves intuitive
@@ -1080,7 +1189,7 @@ class MutableConfig:
         # Normalize CLI path-to-file options from the invocation CWD
         if ArgKey.INCLUDE_FROM in args:
             # self.include_from = list(args[Cli.PARAM_INCLUDE_FROM])
-            extend_ps(
+            extend_pattern_sources(
                 self.include_from,
                 args.get(ArgKey.INCLUDE_FROM) or [],
                 ps_from_cli,
@@ -1089,7 +1198,7 @@ class MutableConfig:
             )
         if ArgKey.INCLUDE_FROM in args:
             # self.exclude_from = list(args[ArgKey.PARAM_INCLUDE_FROM])
-            extend_ps(
+            extend_pattern_sources(
                 self.exclude_from,
                 args.get(ArgKey.EXCLUDE_FROM) or [],
                 ps_from_cli,
@@ -1098,7 +1207,7 @@ class MutableConfig:
             )
         if ArgKey.FILES_FROM in args:
             # self.files_from = list(args[ArgKey.PARAM_FILES_FROM])
-            extend_ps(
+            extend_pattern_sources(
                 self.files_from,
                 args.get(ArgKey.FILES_FROM) or [],
                 ps_from_cli,

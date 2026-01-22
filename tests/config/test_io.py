@@ -17,11 +17,16 @@ comments and valid structure.
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import toml
 
-from topmark.config.io import nest_toml_under_section
+from topmark.config.io import get_string_list_value, nest_toml_under_section
+from topmark.config.logging import TopmarkLogger, get_logger
+from topmark.core.diagnostics import DiagnosticLog
+
+if TYPE_CHECKING:
+    import pytest
 
 
 def test_nest_toml_under_section_basic() -> None:
@@ -97,6 +102,33 @@ def test_nest_toml_under_section_preserves_postamble() -> None:
 
     # Optional: sanity check that the table header is present and the comment
     # comes after it somewhere.
-    header_index = wrapped.index("[tool.topmark]")
-    comment_index = wrapped.index("# trailing comment")
+    header_index: int = wrapped.index("[tool.topmark]")
+    comment_index: int = wrapped.index("# trailing comment")
     assert comment_index > header_index
+
+
+def test_get_string_list_value_filters_and_records_warnings(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Non-string items are dropped and recorded as warnings with location."""
+    caplog.set_level("WARNING")
+    diagnostics = DiagnosticLog()
+    logger: TopmarkLogger = get_logger(__name__)
+
+    table = {"k": ["a", 1, True, "b"]}
+    out: list[str] = get_string_list_value(
+        table,
+        "k",
+        where="[files]",
+        diagnostics=diagnostics,
+        logger=logger,
+    )
+
+    assert out == ["a", "b"]
+
+    # Two non-string entries: 1 and True
+    assert any("Ignoring non-string entry in [files].k" in r.message for r in caplog.records)
+    assert (
+        sum(1 for r in caplog.records if "Ignoring non-string entry in [files].k" in r.message) == 2
+    )
+    assert sum(1 for d in diagnostics if "Ignoring non-string entry in [files].k" in d.message) == 2

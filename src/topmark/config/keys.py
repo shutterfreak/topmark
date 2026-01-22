@@ -93,3 +93,74 @@ class Toml:
     KEY_RELATIVE_TO: Final[str] = "relative_to"
     KEY_CONFIG_FILES: Final[str] = "config_files"
     KEY_FILES: Final[str] = "files"
+
+    # ---------------------------- Schema helpers ----------------------------
+
+    # Allowed top-level keys under [tool.topmark] / topmark.toml.
+    # Used for validation and friendly diagnostics.
+    ALLOWED_TOP_LEVEL_KEYS: Final[frozenset[str]] = frozenset(
+        {
+            KEY_ROOT,
+            SECTION_HEADER,
+            SECTION_FIELDS,
+            SECTION_FORMATTING,
+            SECTION_WRITER,
+            SECTION_POLICY,
+            SECTION_POLICY_BY_TYPE,
+            SECTION_FILES,
+        }
+    )
+
+    # Allowed keys per section. Only includes sections that are TOML tables.
+    # Note: [fields] is intentionally omitted (arbitrary user-defined keys).
+    ALLOWED_SECTION_KEYS: Final[dict[str, frozenset[str]]] = {
+        SECTION_HEADER: frozenset(
+            {
+                KEY_FIELDS,
+            }
+        ),
+        SECTION_FORMATTING: frozenset(
+            {
+                KEY_ALIGN_FIELDS,
+                KEY_HEADER_FORMAT,
+            }
+        ),
+        SECTION_WRITER: frozenset(
+            {
+                KEY_TARGET,
+                KEY_STRATEGY,
+            }
+        ),
+        SECTION_POLICY: frozenset(
+            {
+                KEY_POLICY_CHECK_ADD_ONLY,
+                KEY_POLICY_CHECK_UPDATE_ONLY,
+                KEY_POLICY_ALLOW_HEADER_IN_EMPTIES,
+            }
+        ),
+        # [policy_by_type] contains arbitrary file type keys -> policy tables.
+        # Validation for those subtables is handled separately.
+        SECTION_FILES: frozenset(
+            {
+                KEY_INCLUDE_FILE_TYPES,
+                KEY_EXCLUDE_FILE_TYPES,
+                KEY_INCLUDE_FROM,
+                KEY_EXCLUDE_FROM,
+                KEY_INCLUDE_PATTERNS,
+                KEY_EXCLUDE_PATTERNS,
+                KEY_FILES_FROM,
+                KEY_RELATIVE_TO,
+                KEY_CONFIG_FILES,
+                KEY_FILES,
+            }
+        ),
+    }
+
+    # Allowed keys inside each [policy_by_type.<filetype>] table.
+    ALLOWED_POLICY_KEYS: Final[frozenset[str]] = frozenset(
+        {
+            KEY_POLICY_CHECK_ADD_ONLY,
+            KEY_POLICY_CHECK_UPDATE_ONLY,
+            KEY_POLICY_ALLOW_HEADER_IN_EMPTIES,
+        }
+    )

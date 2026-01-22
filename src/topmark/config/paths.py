@@ -22,7 +22,7 @@ Key behaviors:
       path declared *inside a config file*, anchoring to that file's directory.
     - ``ps_from_cli(raw, cwd)``: same, but for CLI-declared paths, anchoring to
       the invocation CWD.
-    - ``extend_ps(dst, items, mk, kind, base)``: batch-normalize a sequence of
+    - ``extend_pattern_sources(dst, items, mk, kind, base)``: batch-normalize a sequence of
       raw entries into ``dst`` using the provided factory.
 
 Policy recap:
@@ -70,7 +70,7 @@ def ps_from_cli(raw: str, cwd: Path) -> PatternSource:
     return PatternSource(path=p, base=p.parent)
 
 
-def extend_ps(
+def extend_pattern_sources(
     dst: list[PatternSource],
     items: Iterable[str],
     mk: Callable[[str, Path], PatternSource],
