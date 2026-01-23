@@ -191,6 +191,6 @@ def resolve_config_from_click(
             logger.warning("Ignoring config without [tool.topmark]: %s", p)
 
     # (5) CLI overrides last
-    draft = draft.apply_cli_args(args)
+    draft = draft.apply_args(args)
 
     return draft

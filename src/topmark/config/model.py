@@ -46,21 +46,26 @@ import functools
 import os
 
 # For runtime type checks, prefer collections.abc
-from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Final, cast
 
 from topmark.cli.keys import ArgKey, CliOpt
+from topmark.config.args_io import (
+    get_arg_bool_or_none_checked,
+    get_arg_enum_checked,
+    get_arg_int_or_none_checked,
+    get_arg_string_list_checked,
+    get_arg_string_or_none_checked,
+)
 from topmark.config.io import (
     as_toml_table_map,
     clean_toml,
-    get_bool_value_or_none,
-    get_list_value,
-    get_string_list_value,
-    get_string_value,
-    get_string_value_or_none,
+    get_bool_value_or_none_checked,
+    get_string_list_value_checked,
+    get_string_value_checked,
+    get_string_value_or_none_checked,
     get_table_value,
     load_defaults_dict,
     load_toml_dict,
@@ -75,22 +80,24 @@ from topmark.config.paths import (
     ps_from_config,
 )
 from topmark.config.policy import MutablePolicy, Policy
-from topmark.config.types import FileWriteStrategy, OutputTarget
-from topmark.core.diagnostics import Diagnostic, DiagnosticLog
+from topmark.config.types import ArgsLike, FileWriteStrategy, OutputTarget
+from topmark.constants import CLI_OVERRIDE_STR
+from topmark.core.diagnostics import (
+    Diagnostic,
+    DiagnosticLog,
+    DiagnosticStats,
+    compute_diagnostic_stats,
+)
 from topmark.rendering.formats import HeaderOutputFormat
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
+
     from topmark.config.io import TomlTable, TomlTableMap
     from topmark.config.logging import TopmarkLogger
     from topmark.config.types import PatternSource
     from topmark.filetypes.base import FileType
 
-# ArgsLike: generic mapping accepted by config loaders (works for CLI namespaces and API dicts).
-ArgsLike = Mapping[str, Any]
-# We use ArgsLike (Mapping[str, Any]) instead of a CLI-specific namespace to
-# keep the config layer decoupled from the CLI. The implementation uses .get()
-# and key lookups, so Mapping is the right structural type. This allows the
-# CLI to pass its namespace and the API/tests to pass plain dicts.
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -123,6 +130,8 @@ class Config:
         policy_by_type (Mapping[str, Policy]): Per-file-type resolved policy overrides
             (plain booleans), applied after discovery.
         config_files (tuple[Path | str, ...]): List of paths or identifiers for config sources used.
+        strict_config_checking (bool): If True, enforce strict config checking
+            (fail on warnings and errors).
         header_fields (tuple[str, ...]): List of header fields from the [header] section.
         field_values (Mapping[str, str]): Mapping of field names to their string values
             from [fields].
@@ -178,6 +187,9 @@ class Config:
     # Provenance
     config_files: tuple[Path | str, ...]
 
+    # TOML config checking
+    strict_config_checking: bool
+
     # Header configuration
     header_fields: tuple[str, ...]
     field_values: Mapping[str, str]
@@ -207,6 +219,29 @@ class Config:
 
     # Collected diagnostics while loading / merging / sanitizing config.
     diagnostics: tuple[Diagnostic, ...]
+
+    @property
+    def should_proceed(self) -> bool:
+        """Return True if processing should proceed based on config diagnostics.
+
+        Analyzes `self.diagnostics` and `compute_diagnostic_stats` to decide whether
+        to proceed.
+
+        A similar helper exists in `MutableConfig`.
+
+        Returns:
+            bool: False if errors occurred, or if warnings detected in strict config processing
+                mode, True otherwise.
+        """
+        stats: DiagnosticStats = compute_diagnostic_stats(self.diagnostics)
+        if stats.n_error > 0:
+            # Can't proceed with errors
+            return False
+        if self.strict_config_checking is True and stats.n_warning > 0:
+            # Can't proceed with warnings in strict mode
+            return False
+        # Okay to proceed
+        return True
 
     def to_toml_dict(self, *, include_files: bool = False) -> TomlTable:
         """Convert this immutable Config into a TOML-serializable dict.
@@ -242,7 +277,8 @@ class Config:
                 ),
             },
             Toml.SECTION_WRITER: {
-                Toml.KEY_TARGET: self.output_target,
+                # self.output_target is an Enum type
+                Toml.KEY_TARGET: self.output_target.value if self.output_target else None,
                 Toml.KEY_STRATEGY: writer_strategy,
             },
             Toml.SECTION_FILES: {
@@ -301,6 +337,7 @@ class Config:
             policy=self.policy.thaw(),
             policy_by_type={k: v.thaw() for k, v in self.policy_by_type.items()},
             config_files=list(self.config_files),
+            strict_config_checking=self.strict_config_checking,
             header_fields=list(self.header_fields),
             field_values=dict(self.field_values),
             align_fields=self.align_fields,
@@ -357,6 +394,8 @@ class MutableConfig:
         policy (MutablePolicy): Optional global policy overrides (public shape).
         policy_by_type (dict[str, MutablePolicy]): Optional per-type policy.
         config_files (list[Path | str]): List of paths or identifiers for config sources used.
+        strict_config_checking (bool | None): If True, enforce strict config checking
+            (fail on warnings and errors).
         header_fields (list[str]): List of header fields from the [header] section.
         field_values (dict[str, str]): Mapping of field names to their string values from [fields].
         align_fields (bool | None): Whether to align fields, from [formatting].
@@ -399,6 +438,9 @@ class MutableConfig:
     # Provenance
     config_files: list[Path | str] = field(default_factory=lambda: [])
 
+    # TOML config checking
+    strict_config_checking: bool | None = None
+
     # Header configuration
     header_fields: list[str] = field(default_factory=lambda: [])
     field_values: dict[str, str] = field(default_factory=lambda: {})
@@ -428,6 +470,29 @@ class MutableConfig:
 
     # Collected diagnostics while loading / merging / sanitizing config.
     diagnostics: DiagnosticLog = field(default_factory=DiagnosticLog)
+
+    @property
+    def should_proceed(self) -> bool:
+        """Return True if processing should proceed based on config diagnostics.
+
+        Analyzes `self.diagnostics` and `compute_diagnostic_stats` to decide whether
+        to proceed.
+
+        A similar helper exists in `Config`.
+
+        Returns:
+            bool: False if errors occurred, or if warnings detected in strict config processing
+                mode, True otherwise.
+        """
+        stats: DiagnosticStats = compute_diagnostic_stats(self.diagnostics)
+        if stats.n_error > 0:
+            # Can't proceed with errors
+            return False
+        if self.strict_config_checking is True and stats.n_warning > 0:
+            # Can't proceed with warnings in strict mode
+            return False
+        # Okay to proceed
+        return True
 
     # ---------------------------- Build/freeze ----------------------------
     def freeze(self) -> Config:
@@ -461,6 +526,9 @@ class MutableConfig:
                 )
             frozen_by_type[ft] = resolved
 
+        # Set strict_config_checking to True only if self.strict_config_checking === True
+        strict_config_checking = bool(self.strict_config_checking)
+
         return Config(
             timestamp=self.timestamp,
             verbosity_level=self.verbosity_level,
@@ -470,6 +538,7 @@ class MutableConfig:
             policy=global_policy_frozen,
             policy_by_type=frozen_by_type,
             config_files=tuple(self.config_files),
+            strict_config_checking=strict_config_checking,
             header_fields=tuple(self.header_fields),
             field_values=dict(self.field_values),
             align_fields=self.align_fields,
@@ -781,30 +850,90 @@ class MutableConfig:
         draft.config_files = [str(p) for p in config_files[0]] if config_files[0] else []
 
         # ----- Writer settings -----
-        draft.output_target = OutputTarget.parse(
-            get_string_value_or_none(
-                writer_tbl,
-                Toml.KEY_TARGET,
-            )
+        where_writer: Final[str] = f"[{Toml.SECTION_WRITER}]"
+
+        # target
+        raw_target: str | None = get_string_value_or_none_checked(
+            writer_tbl,
+            Toml.KEY_TARGET,
+            where=where_writer,
+            diagnostics=draft.diagnostics,
+            logger=logger,
         )
-        draft.file_write_strategy = FileWriteStrategy.parse(
-            get_string_value_or_none(
-                writer_tbl,
-                Toml.KEY_STRATEGY,
-            )
+        if raw_target is not None:
+            parsed_target: OutputTarget | None = OutputTarget.parse(raw_target)
+            if parsed_target is None:
+                allowed_targets = ", ".join(t.value for t in OutputTarget)
+                msg = (
+                    f"Invalid value for {where_writer}.{Toml.KEY_TARGET}: "
+                    f"{raw_target!r} (allowed: {allowed_targets})"
+                )
+                logger.warning(msg)
+                draft.diagnostics.add_warning(msg)
+            else:
+                draft.output_target = parsed_target
+
+        # strategy
+        raw_strategy: str | None = get_string_value_or_none_checked(
+            writer_tbl,
+            Toml.KEY_STRATEGY,
+            where=where_writer,
+            diagnostics=draft.diagnostics,
+            logger=logger,
         )
+        if raw_strategy is not None:
+            parsed_strategy: FileWriteStrategy | None = FileWriteStrategy.parse(raw_strategy)
+            if parsed_strategy is None:
+                allowed_strategies = ", ".join(s.value for s in FileWriteStrategy)
+                msg = (
+                    f"Invalid value for {where_writer}.{Toml.KEY_STRATEGY}: "
+                    f"{raw_strategy!r} (allowed: {allowed_strategies})"
+                )
+                logger.warning(msg)
+                draft.diagnostics.add_warning(msg)
+            else:
+                draft.file_write_strategy = parsed_strategy
 
         # ----- Global policy -----
+        where_policy: Final[str] = f"[{Toml.SECTION_POLICY}]"
+        for key in Toml.ALLOWED_POLICY_KEYS:
+            # Pre-validate the shapes before calling MutablePolicy.from_toml_table()
+            # to add diagnostics for wrong policy types
+            _ = get_bool_value_or_none_checked(
+                policy_tbl,
+                key,
+                where=where_policy,
+                diagnostics=draft.diagnostics,
+                logger=logger,
+            )
         draft.policy = MutablePolicy.from_toml_table(policy_tbl)
 
         # ----- Policy by FileType -----
+
+        for ft, tbl in policy_by_type_tbl.items():
+            where: str = f"[{Toml.SECTION_POLICY_BY_TYPE}.{ft}]"
+            for key in Toml.ALLOWED_POLICY_KEYS:
+                # Pre-validate the shapes before calling MutablePolicy.from_toml_table()
+                # to add diagnostics for wrong policy types
+                _ = get_bool_value_or_none_checked(
+                    tbl,
+                    key,
+                    where=where,
+                    diagnostics=draft.diagnostics,
+                    logger=logger,
+                )
         draft.policy_by_type = {
             str(ft): MutablePolicy.from_toml_table(tbl) for ft, tbl in policy_by_type_tbl.items()
         }
 
         # ----- files: normalize to absolute paths against the config file dir (when known) -----
-        raw_files: list[str] = (
-            list(files_tbl.get(Toml.KEY_FILES, [])) if Toml.KEY_FILES in files_tbl else []
+        where_files: Final[str] = f"[{Toml.SECTION_FILES}]"
+        raw_files: list[str] = get_string_list_value_checked(
+            files_tbl,
+            Toml.KEY_FILES,
+            where=where_files,
+            diagnostics=draft.diagnostics,
+            logger=logger,
         )
         if raw_files:
             if cfg_dir is not None:
@@ -819,10 +948,13 @@ class MutableConfig:
         def _normalize_sources(key: str) -> None:
             # List-valued keys under [files] (include_from/exclude_from/files_from) should be
             # a list of strings. Wrong types are treated as empty; mixed types drop non-strings.
-            loc: str = f"[{Toml.SECTION_FILES}].{key}"
             # Enforce "list of strings" for field selection in TOML:
-            vals: list[str] = get_string_list_value(
-                files_tbl, key, where=loc, diagnostics=draft.diagnostics, logger=logger
+            vals: list[str] = get_string_list_value_checked(
+                files_tbl,
+                key,
+                where=where_files,
+                diagnostics=draft.diagnostics,
+                logger=logger,
             )
 
             if not vals:
@@ -833,7 +965,7 @@ class MutableConfig:
                     getattr(draft, key),
                     vals,
                     ps_from_config,
-                    f"config {loc}.{key}",
+                    f"config {where_files}.{key}",
                     cfg_dir,
                 )
             else:
@@ -842,7 +974,7 @@ class MutableConfig:
                     getattr(draft, key),
                     vals,
                     ps_from_cli,
-                    f"config {loc}.{key}",
+                    f"config {where_files}.{key}",
                     Path.cwd().resolve(),
                 )
 
@@ -853,10 +985,9 @@ class MutableConfig:
         # List-valued glob keys under [files] should contain strings. Wrong types are treated
         # as empty; mixed types drop non-strings with a warning + diagnostic.
         def _extend_glob_list(attr: str, key: str) -> None:
-            loc: str = f"[{Toml.SECTION_FILES}].{key}"
             # Enforce "list of strings" for field selection in TOML:
-            vals: list[str] = get_string_list_value(
-                files_tbl, key, where=loc, diagnostics=draft.diagnostics, logger=logger
+            vals: list[str] = get_string_list_value_checked(
+                files_tbl, key, where=where_files, diagnostics=draft.diagnostics, logger=logger
             )
 
             if vals:
@@ -886,7 +1017,7 @@ class MutableConfig:
         # keys from `[fields]`).
         #
         # Enforce "list of strings" for header field selection in TOML:
-        draft.header_fields = get_string_list_value(
+        draft.header_fields = get_string_list_value_checked(
             header_tbl,
             Toml.KEY_FIELDS,
             where=f"[{Toml.SECTION_HEADER}]",
@@ -901,7 +1032,14 @@ class MutableConfig:
         #     header_fields = list(field_values.keys())
 
         # Parse relative_to path if present, resolve to absolute path
-        draft.relative_to_raw = get_string_value(files_tbl, Toml.KEY_RELATIVE_TO)
+        draft.relative_to_raw = get_string_value_checked(
+            files_tbl,
+            Toml.KEY_RELATIVE_TO,
+            where=where_files,
+            diagnostics=draft.diagnostics,
+            logger=logger,
+            default="",
+        )
         if draft.relative_to_raw:
             p = Path(draft.relative_to_raw)
             if p.is_absolute():
@@ -917,14 +1055,25 @@ class MutableConfig:
         else:
             draft.relative_to = None
 
-        # align_fields = get_bool_value(formatting_cfg, "align_fields", True)
-        draft.align_fields = get_bool_value_or_none(
-            formatting_tbl, Toml.KEY_ALIGN_FIELDS
-        )  # NOTE: do not set a default value if not set
+        where_fmt: Final[str] = f"[{Toml.SECTION_FORMATTING}]"
+        # align_fields --  NOTE: do not set a default value if not set
+        draft.align_fields = get_bool_value_or_none_checked(
+            formatting_tbl,
+            Toml.KEY_ALIGN_FIELDS,
+            where=where_fmt,
+            diagnostics=draft.diagnostics,
+            logger=logger,
+        )
 
-        raw_header_format: str | None = get_string_value_or_none(
-            formatting_tbl, Toml.KEY_HEADER_FORMAT
-        )  # NOTE: do not set a default value if not set
+        # raw_header_format --  NOTE: do not set a default value if not set
+        raw_header_format: str | None = get_string_value_or_none_checked(
+            formatting_tbl,
+            Toml.KEY_HEADER_FORMAT,
+            where=where_fmt,
+            diagnostics=draft.diagnostics,
+            logger=logger,
+        )
+
         if raw_header_format:
             try:
                 draft.header_format = HeaderOutputFormat(raw_header_format)
@@ -944,8 +1093,18 @@ class MutableConfig:
             # choose your default; this keeps behavior predictable
             draft.header_format = None
 
-        include_file_types: list[str] = get_list_value(files_tbl, Toml.KEY_INCLUDE_FILE_TYPES)
-        draft.include_file_types = set(include_file_types) if include_file_types else set()
+        # File-related settings
+
+        # include_file_types
+        include_file_types: list[str] = get_string_list_value_checked(
+            files_tbl,
+            Toml.KEY_INCLUDE_FILE_TYPES,
+            where=where_files,
+            diagnostics=draft.diagnostics,
+            logger=logger,
+        )
+        draft.include_file_types = set(include_file_types)
+
         if include_file_types and len(include_file_types) != len(draft.include_file_types):
             logger.warning(
                 "Duplicate included file types found in config (key: %s): %s",
@@ -957,8 +1116,17 @@ class MutableConfig:
                 f"(key: {Toml.KEY_INCLUDE_FILE_TYPES}): "
                 ", ".join(include_file_types),
             )
-        exclude_file_types: list[str] = get_list_value(files_tbl, Toml.KEY_EXCLUDE_FILE_TYPES)
-        draft.exclude_file_types = set(exclude_file_types) if exclude_file_types else set()
+
+        # exclude_file_types
+        exclude_file_types: list[str] = get_string_list_value_checked(
+            files_tbl,
+            Toml.KEY_EXCLUDE_FILE_TYPES,
+            where=where_files,
+            diagnostics=draft.diagnostics,
+            logger=logger,
+        )
+        draft.exclude_file_types = set(exclude_file_types)
+
         if exclude_file_types and len(exclude_file_types) != len(draft.exclude_file_types):
             logger.warning(
                 "Duplicate excluded file types found in config (key: %s): %s",
@@ -971,6 +1139,7 @@ class MutableConfig:
                 ", ".join(exclude_file_types),
             )
 
+        # stdin_mode
         draft.stdin_mode = (
             False  # Default to False unless explicitly set later -- TODO: False or None?
         )
@@ -983,6 +1152,7 @@ class MutableConfig:
         *,
         input_paths: Iterable[Path] | None = None,
         extra_config_files: Iterable[Path] | None = None,
+        strict_config_checking: bool | None = None,
         no_config: bool = False,
         include_file_types: Iterable[str] | None = None,
         exclude_file_types: Iterable[str] | None = None,
@@ -1002,6 +1172,8 @@ class MutableConfig:
                 directory for upward discovery. If it is a file, its parent directory is used.
             extra_config_files (Iterable[Path] | None):
                 Explicit additional config files to merge **after** discovery (their given order).
+            strict_config_checking (bool | None): If True, enforce strict TOML config checking
+                (fail on errors).
             no_config (bool): If True, skip user and project discovery.
             include_file_types (Iterable[str] | None): Optional filter to seed the draft for parity
                 with CLI.
@@ -1022,9 +1194,13 @@ class MutableConfig:
         # Optionally seed include_file_types for parity with CLI flags
         if include_file_types:
             draft.include_file_types = set(x for x in include_file_types)
-        # Optionally seed iexlude_file_types for parity with CLI flags
+        # Optionally seed exlude_file_types for parity with CLI flags
         if exclude_file_types:
             draft.exclude_file_types = set(x for x in exclude_file_types)
+
+        # Only set strict config checking if not None
+        if strict_config_checking is not None:
+            draft.strict_config_checking = strict_config_checking
 
         if not no_config:
             # 2) Merge user config (if present)
@@ -1083,9 +1259,30 @@ class MutableConfig:
             else:
                 merged_by_type[key] = base.merge_with(override)
 
+        # --- Merge diagnostics ---
+        merged_diags: DiagnosticLog = DiagnosticLog(
+            items=[*self.diagnostics.items, *other.diagnostics.items]
+        )
+
+        logger.info(
+            "Adding %r to self.config_files = %r",
+            other.config_files,
+            self.config_files,
+        )
+
         merged = MutableConfig(
             timestamp=self.timestamp,
+            # Append config files
             config_files=self.config_files + other.config_files,
+            # strict_config_checking: preserve tri-state strict flag
+            strict_config_checking=(
+                other.strict_config_checking
+                if other.strict_config_checking is not None
+                else self.strict_config_checking
+            ),
+            # diagnostics must be carried forward:
+            diagnostics=merged_diags,
+            # Default " last wins" merge strategy:
             field_values=other.field_values or self.field_values,
             header_fields=other.header_fields or self.header_fields,
             align_fields=other.align_fields
@@ -1127,8 +1324,15 @@ class MutableConfig:
 
         return merged
 
-    def apply_cli_args(self, args: ArgsLike) -> MutableConfig:
+    def apply_args(
+        self,
+        args: ArgsLike,
+        *,
+        config_only: bool = False,
+    ) -> MutableConfig:
         """Update Config fields based on an arguments mapping (CLI or API).
+
+        Accepts CLI or API-provided argument mappings and applies validated overrides.
 
         This method applies overrides from a parsed arguments mapping to the current
         MutableConfig instance. It does not handle flags that influence config file
@@ -1136,6 +1340,8 @@ class MutableConfig:
 
         Args:
             args (ArgsLike): Parsed arguments mapping (from CLI or API).
+            config_only (bool): If True, only process config-related CLI inputs (disregard
+                all other CLI inputs)
 
         Returns:
             MutableConfig: The updated MutableConfig instance with CLI overrides applied.
@@ -1146,110 +1352,244 @@ class MutableConfig:
             directory** (invocation site). Glob arrays remain as strings and
             are later evaluated relative to ``relative_to``.
         """
-        logger.debug("Applying CLI arguments to MutableConfig: %s", args)
+        # NOTE: ArgsLike is not typed as strictly as ArgsNamespace so we should check type
+        # when reading from args
 
-        # Use a special marker to indicate CLI overrides in config_files list
-        CLI_OVERRIDE_STR = "<CLI overrides>"
+        logger.debug("Applying ArgsLike arguments to MutableConfig: %s", args)
 
-        # Append or initialize config_files list with CLI override marker
+        # strict_config_checking
+        strict: bool | None = get_arg_bool_or_none_checked(
+            args,
+            ArgKey.STRICT_CONFIG_CHECKING,
+            diagnostics=self.diagnostics,
+            logger=logger,
+        )
+        if strict is not None:
+            self.strict_config_checking = strict
+
+        # Append or initialize config_files list with CLI override marker;
+        # use a special marker to indicate CLI overrides in config_files list
         if self.config_files:
             self.config_files.append(CLI_OVERRIDE_STR)
         else:
             self.config_files = [CLI_OVERRIDE_STR]
 
-        # Merge CLI config_files (config paths) if provided
-        if ArgKey.CONFIG_FILES in args:
-            self.config_files.extend(args[ArgKey.CONFIG_FILES])
+        # Note: CLI config paths are already merged elsewhere
+        # so we don't extend self.config_files here.
 
-        # Merge add_only and update_only in policy
-        if ArgKey.POLICY_CHECK_ADD_ONLY in args:
-            self.policy.add_only = args[ArgKey.POLICY_CHECK_ADD_ONLY]  # set only if passed
-        if ArgKey.POLICY_CHECK_UPDATE_ONLY in args:
-            self.policy.update_only = args[ArgKey.POLICY_CHECK_UPDATE_ONLY]
-        # ... but do not zero-out policy_by_type when CLI says nothing
+        # Policy flags (add_only, update_only)
+        add_only: bool | None = get_arg_bool_or_none_checked(
+            args,
+            ArgKey.POLICY_CHECK_ADD_ONLY,
+            diagnostics=self.diagnostics,
+            logger=logger,
+        )
+        if add_only is not None:
+            self.policy.add_only = add_only
 
-        # Override files to process if specified
+        update_only: bool | None = get_arg_bool_or_none_checked(
+            args,
+            ArgKey.POLICY_CHECK_UPDATE_ONLY,
+            diagnostics=self.diagnostics,
+            logger=logger,
+        )
+        if update_only is not None:
+            self.policy.update_only = update_only
+        # ... but do not zero-out policy_by_type when ArgsLike says nothing
+
+        # Files to process (enforce list[str])
         if ArgKey.FILES in args:
-            self.files = list(args[ArgKey.FILES]) if args[ArgKey.FILES] else []
-            # If explicit files are given, force stdin to False (files take precedence)
+            self.files = get_arg_string_list_checked(
+                args,
+                ArgKey.FILES,
+                diagnostics=self.diagnostics,
+                logger=logger,
+            )
+            if any(not s for s in self.files):
+                empties: list[str] = [s for s in self.files if not s]
+                logger.warning("Ignoring empty string entries in %s: %r", ArgKey.FILES, empties)
+                self.diagnostics.add_warning(
+                    f"Ignoring empty string entries in {ArgKey.FILES}: {empties!r}"
+                )
+                self.files = [s for s in self.files if s]
             if self.files:
                 self.stdin_mode = False
 
-        # Glob arrays from CLI: keep as strings (evaluated later vs relative_to)
+        # Glob patterns: include_patterns / exclude_patterns (extend)
         if ArgKey.INCLUDE_PATTERNS in args:
-            # self.include_patterns = list(args[Cli.PARAM_INCLUDE_PATTERNS])
-            self.include_patterns.extend(list(args.get(ArgKey.INCLUDE_PATTERNS) or []))
+            vals = get_arg_string_list_checked(
+                args,
+                ArgKey.INCLUDE_PATTERNS,
+                diagnostics=self.diagnostics,
+                logger=logger,
+            )
+            vals = [s for s in vals if s]
+            if vals:
+                self.include_patterns.extend(vals)
         if ArgKey.EXCLUDE_PATTERNS in args:
-            # self.exclude_patterns = list(args[Cli.PARAM_EXCLUDE_PATTERNS])
-            self.exclude_patterns.extend(list(args.get(ArgKey.EXCLUDE_PATTERNS) or []))
+            vals = get_arg_string_list_checked(
+                args,
+                ArgKey.EXCLUDE_PATTERNS,
+                diagnostics=self.diagnostics,
+                logger=logger,
+            )
+            vals = [s for s in vals if s]
+            if vals:
+                self.exclude_patterns.extend(vals)
 
         # Override include/exclude patterns and files if specified
         cwd: Path = Path.cwd().resolve()
 
-        # Normalize CLI path-to-file options from the invocation CWD
+        # Path-to-file options: include_from, exclude_from, files_from (validate list[str])
         if ArgKey.INCLUDE_FROM in args:
-            # self.include_from = list(args[Cli.PARAM_INCLUDE_FROM])
+            vals: list[str] = get_arg_string_list_checked(
+                args,
+                ArgKey.INCLUDE_FROM,
+                diagnostics=self.diagnostics,
+                logger=logger,
+            )
+            vals = [s for s in vals if s]
             extend_pattern_sources(
                 self.include_from,
-                args.get(ArgKey.INCLUDE_FROM) or [],
+                vals,
                 ps_from_cli,
                 f"CLI {CliOpt.INCLUDE_FROM}",
                 cwd,
             )
-        if ArgKey.INCLUDE_FROM in args:
-            # self.exclude_from = list(args[ArgKey.PARAM_INCLUDE_FROM])
+        if ArgKey.EXCLUDE_FROM in args:
+            vals = get_arg_string_list_checked(
+                args,
+                ArgKey.EXCLUDE_FROM,
+                diagnostics=self.diagnostics,
+                logger=logger,
+            )
+            vals = [s for s in vals if s]
             extend_pattern_sources(
                 self.exclude_from,
-                args.get(ArgKey.EXCLUDE_FROM) or [],
+                vals,
                 ps_from_cli,
                 f"CLI {CliOpt.EXCLUDE_FROM}",
                 cwd,
             )
         if ArgKey.FILES_FROM in args:
-            # self.files_from = list(args[ArgKey.PARAM_FILES_FROM])
+            vals = get_arg_string_list_checked(
+                args,
+                ArgKey.FILES_FROM,
+                diagnostics=self.diagnostics,
+                logger=logger,
+            )
+            vals = [s for s in vals if s]
             extend_pattern_sources(
                 self.files_from,
-                args.get(ArgKey.FILES_FROM) or [],
+                vals,
                 ps_from_cli,
                 f"CLI {CliOpt.FILES_FROM}",
                 cwd,
             )
 
-        # Override relative_to path if specified, resolving to absolute path
-        if ArgKey.RELATIVE_TO in args and args[ArgKey.RELATIVE_TO] not in (None, ""):
-            self.relative_to_raw = args[ArgKey.RELATIVE_TO]
-            self.relative_to = Path(args[ArgKey.RELATIVE_TO]).resolve()
+        # relative_to: string or None, only override if non-empty string (not just whitespace)
+        if ArgKey.RELATIVE_TO in args:
+            rel: str | None = get_arg_string_or_none_checked(
+                args,
+                ArgKey.RELATIVE_TO,
+                diagnostics=self.diagnostics,
+                logger=logger,
+            )
+            if rel is not None and rel.strip() != "":
+                rel_str: str = rel.strip()
+                self.relative_to_raw = rel_str
+                self.relative_to = Path(rel_str).resolve()
+
         # If key not present or value is None, **keep** whatever came from discovery/TOML.
 
-        # Override include_file_types filter if specified
-        if ArgKey.INCLUDE_FILE_TYPES in args:
-            self.include_file_types = set(args[ArgKey.INCLUDE_FILE_TYPES])
+        # include_file_types / exclude_file_types: set of strings, only override if present
+        raw: Any | None = args.get(ArgKey.INCLUDE_FILE_TYPES)
+        if raw not in (None, ()):
+            # Only override when the user actually passes a value
+            # TODO decide whether `()` clears the property or whether we always extend the set
+            vals = get_arg_string_list_checked(
+                args,
+                ArgKey.INCLUDE_FILE_TYPES,
+                diagnostics=self.diagnostics,
+                logger=logger,
+            )
+            filtered: list[str] = [s for s in vals if s]  # drop empty strings
+            deduped: set[str] = set(filtered)
+            self.include_file_types = deduped
+            dup_count: int = len(filtered) - len(deduped)
+            if dup_count:
+                self.diagnostics.add_info(
+                    f"Ignored {dup_count} duplicate values for {ArgKey.INCLUDE_FILE_TYPES}"
+                )
 
-        # Override exclude_file_types filter if specified
-        if ArgKey.EXCLUDE_FILE_TYPES in args:
-            self.exclude_file_types = set(args[ArgKey.EXCLUDE_FILE_TYPES])
+        raw: Any | None = args.get(ArgKey.EXCLUDE_FILE_TYPES)
+        if raw not in (None, ()):
+            # Only override when the user actually passes a value
+            # TODO decide whether `()` clears the property or whether we always extend the set
+            vals = get_arg_string_list_checked(
+                args,
+                ArgKey.EXCLUDE_FILE_TYPES,
+                diagnostics=self.diagnostics,
+                logger=logger,
+            )
+            filtered: list[str] = [s for s in vals if s]  # drop empty strings
+            deduped: set[str] = set(filtered)
+            self.exclude_file_types = deduped
+            dup_count: int = len(filtered) - len(deduped)
+            if dup_count:
+                self.diagnostics.add_info(
+                    f"Ignored {dup_count} duplicate values for {ArgKey.EXCLUDE_FILE_TYPES}"
+                )
 
         # Apply CLI flags that require explicit True to activate or to explicitly disable
-        if ArgKey.STDIN_MODE in args:
-            stdin_mode: bool = bool(args[ArgKey.STDIN_MODE])  # honor False explicitly
+
+        # stdin_mode: checked bool
+
+        # Apply CLI flags that require explicit True to activate or to explicitly disable
+        stdin_mode: bool | None = get_arg_bool_or_none_checked(
+            args,
+            ArgKey.STDIN_MODE,
+            diagnostics=self.diagnostics,
+            logger=logger,
+        )
+        if stdin_mode is not None:
+            # honor False explicitly
             self.stdin_mode = stdin_mode
 
-        if ArgKey.HEADER_FORMAT in args and args[ArgKey.HEADER_FORMAT] is not None:
-            self.header_format = args[ArgKey.HEADER_FORMAT]
-        # else:
-        #     logger.warning(
-        #         "No header format specified, using default (%s)", HeaderOutputFormat.DEFAULT.value
-        #     )
-        #     self.header_format = HeaderOutputFormat.DEFAULT
+        # header_format: parse enum
+        if ArgKey.HEADER_FORMAT in args:
+            fmt: HeaderOutputFormat | None = get_arg_enum_checked(
+                args,
+                ArgKey.HEADER_FORMAT,
+                HeaderOutputFormat,
+                diagnostics=self.diagnostics,
+                logger=logger,
+            )
+            if fmt is not None:
+                self.header_format = fmt
 
-        if ArgKey.ALIGN_FIELDS in args and args[ArgKey.ALIGN_FIELDS] is not None:
-            # Only override if align_fields was passed via CLI
-            self.align_fields = args[ArgKey.ALIGN_FIELDS]
+        # align_fields: checked bool
+        if ArgKey.ALIGN_FIELDS in args:
+            af: bool | None = get_arg_bool_or_none_checked(
+                args,
+                ArgKey.ALIGN_FIELDS,
+                diagnostics=self.diagnostics,
+                logger=logger,
+            )
+            if af is not None:
+                self.align_fields = af
 
-        if ArgKey.VERBOSITY_LEVEL in args and args[ArgKey.VERBOSITY_LEVEL] is not None:
-            try:
-                self.verbosity_level = int(args[ArgKey.VERBOSITY_LEVEL])
-            except (TypeError, ValueError):
+        # verbosity_level: checked int
+        if ArgKey.VERBOSITY_LEVEL in args:
+            v: int | None = get_arg_int_or_none_checked(
+                args,
+                ArgKey.VERBOSITY_LEVEL,
+                diagnostics=self.diagnostics,
+                logger=logger,
+            )
+            if v is not None:
+                self.verbosity_level = v
+            else:
                 logger.warning(
                     "Invalid verbosity_level=%r (expected int); keeping %r",
                     args[ArgKey.VERBOSITY_LEVEL],
@@ -1263,40 +1603,74 @@ class MutableConfig:
         if ArgKey.APPLY_CHANGES in args and args[ArgKey.APPLY_CHANGES] is not None:
             self.apply_changes = bool(args[ArgKey.APPLY_CHANGES])
 
-        if ArgKey.WRITE_MODE in args and args[ArgKey.WRITE_MODE] is not None:
-            # CLI uses ArgKey.PARAM_WRITE_MODE as a convenience selector:
+        # write_mode: checked string, then parse
+        if ArgKey.WRITE_MODE in args:
+            # CLI uses ArgKey.WRITE_MODE as a convenience selector:
             #   - "stdout" -> output to STDOUT (no file strategy)
             #   - "atomic"/"inplace" -> output to FILE + set strategy
             logger.debug("CLI ARGS: write_mode=%r", args[ArgKey.WRITE_MODE])
             write_mode: str = str(args[ArgKey.WRITE_MODE]).lower()
 
-            if write_mode == "stdout":
-                self.output_target = OutputTarget.STDOUT
-                self.file_write_strategy = None
-            else:
-                self.output_target = OutputTarget.FILE
-
-                file_write_strategy: FileWriteStrategy | None = FileWriteStrategy.parse(write_mode)
-                if file_write_strategy is None:
-                    logger.warning(
-                        f"Invalid '{ArgKey.WRITE_MODE}' value specified in the CLI: %r - "
-                        "using defaults: output to file, atomic file write strategy.",
-                        args[ArgKey.WRITE_MODE],
+            raw_write_mode: str | None = get_arg_string_or_none_checked(
+                args,
+                ArgKey.WRITE_MODE,
+                diagnostics=self.diagnostics,
+                logger=logger,
+            )
+            if raw_write_mode is None:
+                # present but wrong type already diagnosed; do not override
+                raw_write_mode = ""
+            write_mode: str = raw_write_mode.lower()
+            if write_mode:
+                if write_mode == "stdout":
+                    self.output_target = OutputTarget.STDOUT
+                    self.file_write_strategy = None
+                else:
+                    self.output_target = OutputTarget.FILE
+                    file_write_strategy: FileWriteStrategy | None = FileWriteStrategy.parse(
+                        write_mode
                     )
-                    self.diagnostics.add_warning(
-                        f"Invalid '{ArgKey.WRITE_MODE}' value specified in the CLI: "
-                        f"{args[ArgKey.WRITE_MODE]} - "
-                        "using defaults: output to file, atomic file write strategy."
-                    )
-                    file_write_strategy = FileWriteStrategy.ATOMIC
-
-                self.file_write_strategy = file_write_strategy
+                    if file_write_strategy is None:
+                        logger.warning(
+                            f"Invalid '{ArgKey.WRITE_MODE}' value specified in the arguments: %r - "
+                            "using defaults: output to file, atomic file write strategy.",
+                            raw_write_mode,
+                        )
+                        self.diagnostics.add_warning(
+                            f"Invalid '{ArgKey.WRITE_MODE}' value specified in the arguments: "
+                            f"{raw_write_mode} - "
+                            "using defaults: output to file, atomic file write strategy."
+                        )
+                        file_write_strategy = FileWriteStrategy.ATOMIC
+                    self.file_write_strategy = file_write_strategy
 
         logger.debug("Patched MutableConfig: %s", self)
-        logger.info("Applied CLI overrides to MutableConfig")
-        logger.debug("apply_cli_args(): finalized _mode=%s files=%s", self.stdin_mode, self.files)
-
+        logger.info("Applied argument mapping overrides to MutableConfig")
+        logger.debug("apply_args(): finalized _mode=%s files=%s", self.stdin_mode, self.files)
         return self
+
+    def _validate_policy_flags(self) -> None:
+        """Schema-level validation for mutually exclusive policy flags.
+
+        Records an error diagnostic when `add_only` and `update_only` are both True.
+        """
+
+        def _check(where: str, add_only: bool | None, update_only: bool | None) -> None:
+            if add_only is True and update_only is True:
+                msg = (
+                    f"Invalid policy in {where}: "
+                    f"{Toml.KEY_POLICY_CHECK_ADD_ONLY}=true and "
+                    f"{Toml.KEY_POLICY_CHECK_UPDATE_ONLY}=true cannot both be set."
+                )
+                logger.error(msg)
+                self.diagnostics.add_error(msg)
+
+        # Global policy
+        _check(f"[{Toml.SECTION_POLICY}]", self.policy.add_only, self.policy.update_only)
+
+        # Per-type policy
+        for ft, p in self.policy_by_type.items():
+            _check(f"[{Toml.SECTION_POLICY_BY_TYPE}.{ft}]", p.add_only, p.update_only)
 
     def sanitize(self) -> None:
         """Normalize and validate draft config in-place.
@@ -1442,3 +1816,6 @@ class MutableConfig:
                 self.diagnostics.add_warning(msg)
 
             self.file_write_strategy = None
+
+        # Validate the policy flags
+        self._validate_policy_flags()

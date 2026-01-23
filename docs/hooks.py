@@ -36,9 +36,17 @@ import re
 from importlib.metadata import version as get_version
 from pathlib import Path
 from re import Match
-from typing import Any
+from typing import Any, Final
 
-import toml
+import tomlkit
+
+# NOTE: This hook intentionally depends on TopMark internals so that
+# documentation reflects the exact config semantics used by the tool.
+from topmark.config.io import (
+    as_toml_table,
+    get_string_value_or_none,
+    get_table_value,
+)
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -47,20 +55,38 @@ logger: logging.Logger = logging.getLogger(__name__)
 # Module-level variable to store the version, accessible by all functions in this module.
 topmark_version_id: str = "dev"
 
+VERSION_NOT_FOUND: Final[str] = "(version not found in pyproject.toml)"
+
 
 def get_version_from_toml() -> str:
-    """Reads the version directly from the static pyproject.toml entry."""
+    """Read the TopMark version directly from the repository's pyproject.toml.
+
+    This is used by documentation builds when the package version cannot be
+    determined from the installed distribution metadata.
+
+    NOTE: if dropping support for Python 3.10, we can use `tomllib` directly.
+    """
     # Assumes pyproject.toml is in the project root relative to where the script is run
     toml_path: Path = Path(__file__).resolve().parents[3] / "pyproject.toml"
 
-    # You are using tomlkit and toml in your dependencies, so use one of those:
-    # Requires 'toml' package
-    data: dict[str, Any] = toml.load(toml_path)
+    # tomlkit.parse expects TOML text, not a Path
+    toml_text: str = toml_path.read_text(encoding="utf-8")
+    data: tomlkit.TOMLDocument = tomlkit.parse(toml_text)
+    data_any: dict[str, Any] = data.unwrap()
+    data_tbl: dict[str, Any] | None = as_toml_table(data_any)
 
-    ver: str = data["project"]["version"] + " hi there!"
+    if not data_tbl:
+        return VERSION_NOT_FOUND
 
-    logger.info("Version: %s", ver)
+    project_table: dict[str, Any] = get_table_value(data_tbl, "project")
+    if not project_table:
+        return VERSION_NOT_FOUND
 
+    ver: str | None = get_string_value_or_none(project_table, "version")
+    if not ver:
+        return VERSION_NOT_FOUND
+
+    logger.info("Version from pyproject.toml: %s", ver)
     return ver
 
 

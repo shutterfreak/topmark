@@ -22,8 +22,6 @@ importlib-resources==6.5.2
     # via yachalk
 pathspec==0.12.1
     # via topmark
-toml==0.10.2
-    # via topmark
 tomlkit==0.13.3
     # via topmark
 yachalk==0.1.8

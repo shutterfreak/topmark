@@ -15,7 +15,7 @@
 #    pip-compile --constraint=constraints.txt --strip-extras requirements-docs.in
 #
 -e .
-    # via -
+    # via -r requirements.in
 babel==2.17.0
     # via mkdocs-material
 backrefs==6.1
@@ -129,8 +129,6 @@ ruff==0.14.13
     # via topmark
 six==1.17.0
     # via python-dateutil
-toml==0.10.2
-    # via topmark
 tomlkit==0.13.3
     # via topmark
 typing-extensions==4.15.0

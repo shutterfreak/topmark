@@ -37,10 +37,11 @@ Notes:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from enum import Enum
 from importlib.resources import files
-from typing import TYPE_CHECKING, Any, TypeGuard, cast
+from typing import TYPE_CHECKING, Any, Final, TypeGuard, TypeVar, cast
 
-import toml
 import tomlkit
 from tomlkit.exceptions import ParseError as TomlkitParseError
 from tomlkit.items import Item, Key, Table
@@ -70,8 +71,10 @@ if TYPE_CHECKING:
 
     from topmark.config.logging import TopmarkLogger
 
+
 logger: TopmarkLogger = get_logger(__name__)
 
+E = TypeVar("E", bound=Enum)
 TomlTable = dict[str, Any]
 TomlTableMap = dict[str, TomlTable]
 
@@ -88,11 +91,17 @@ __all__: list[str] = [
     "as_toml_table_map",
     "clean_toml",
     "get_bool_value",
+    "get_bool_value_checked",
     "get_bool_value_or_none",
+    "get_bool_value_or_none_checked",
+    "get_enum_value_checked",
+    "get_int_value_or_none_checked",
     "get_list_value",
-    "get_string_list_value",
+    "get_string_list_value_checked",
     "get_string_value",
+    "get_string_value_checked",
     "get_string_value_or_none",
+    "get_string_value_or_none_checked",
     "get_table_value",
     "is_any_list",
     "is_toml_table",
@@ -114,7 +123,11 @@ def as_toml_table(obj: object) -> TomlTable | None:
         TomlTable | None: ``obj`` cast to ``TomlTable`` when it is a ``dict``,
         otherwise ``None``.
     """
-    return obj if is_toml_table(obj) else None
+    if is_toml_table(obj):
+        return obj
+
+    logger.debug("Not a TOML table: %r", obj)
+    return None
 
 
 def as_toml_table_map(obj: object) -> TomlTableMap:
@@ -136,6 +149,8 @@ def as_toml_table_map(obj: object) -> TomlTableMap:
         for k, v in obj_dict.items():
             if isinstance(v, dict):
                 out[k] = v
+            else:
+                logger.debug("Ignoring non-dict entry for key %s: %r", k, v)
     return out
 
 
@@ -204,6 +219,11 @@ def get_string_value(table: TomlTable, key: str, default: str = "") -> str:
         return value
     if isinstance(value, (int, float, bool)):
         return str(value)
+    logger.debug(
+        "Cannot coerce %r to string, returning default (%s)",
+        value,
+        default,
+    )
     return default
 
 
@@ -230,6 +250,10 @@ def get_string_value_or_none(table: TomlTable, key: str) -> str | None:
         return value
     if isinstance(value, (int, float, bool)):
         return str(value)
+    logger.debug(
+        "Cannot coerce %r to string, returning None",
+        value,
+    )
     return None
 
 
@@ -258,6 +282,11 @@ def get_bool_value(
         return value
     if isinstance(value, int):
         return bool(value)
+    logger.debug(
+        "Cannot coerce %r to bool, returning default (%r)",
+        value,
+        default,
+    )
     return default
 
 
@@ -284,6 +313,10 @@ def get_bool_value_or_none(table: TomlTable, key: str) -> bool | None:
         return value
     if isinstance(value, int):
         return bool(value)
+    logger.debug(
+        "Cannot coerce %r to bool, returning None",
+        value,
+    )
     return None
 
 
@@ -310,10 +343,119 @@ def get_list_value(
     value: Any | None = table.get(key)
     if is_any_list(value):
         return value
+    logger.debug(
+        "Expected list for key %s, got %r; using default (%r)",
+        key,
+        value,
+        default or [],
+    )
     return default or []
 
 
-def get_string_list_value(
+# --- Explicit *checked* helpers for schema/shape validation ---
+
+
+def get_bool_value_checked(
+    table: TomlTable,
+    key: str,
+    *,
+    where: str,
+    diagnostics: DiagnosticLog,
+    logger: TopmarkLogger,
+    default: bool = False,
+) -> bool:
+    """Return a boolean value, recording a warning when the type is not `bool`.
+
+    Unlike `get_bool_value()`, this helper does **not** coerce integers.
+    If the key is missing, `default` is returned.
+    """
+    value: Any | None = table.get(key)
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+
+    loc: Final[str] = f"{where}.{key}"
+    logger.warning("Expected bool in %s, got %s: %r", loc, type(value).__name__, value)
+    diagnostics.add_warning(f"Expected bool in {loc}, got {type(value).__name__}: {value}")
+    return default
+
+
+def get_bool_value_or_none_checked(
+    table: TomlTable,
+    key: str,
+    *,
+    where: str,
+    diagnostics: DiagnosticLog,
+    logger: TopmarkLogger,
+) -> bool | None:
+    """Return an optional boolean value, warning when present but not `bool`.
+
+    Mirrors [`topmark.config.args_io.get_arg_bool_or_none_checked`][].
+    """
+    value: Any | None = table.get(key)
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+
+    loc: Final[str] = f"{where}.{key}"
+    logger.warning("Expected bool in %s, got %s: %r", loc, type(value).__name__, value)
+    diagnostics.add_warning(f"Expected bool in {loc}, got {type(value).__name__}: {value}")
+    return None
+
+
+def get_string_value_checked(
+    table: TomlTable,
+    key: str,
+    *,
+    where: str,
+    diagnostics: DiagnosticLog,
+    logger: TopmarkLogger,
+    default: str = "",
+) -> str:
+    """Return a string value, recording a warning when the type is not `str`.
+
+    Unlike `get_string_value()`, this helper does **not** coerce ints/bools/floats
+    to strings. If the key is missing, `default` is returned.
+    """
+    value: Any | None = table.get(key)
+    if value is None:
+        return default
+    if isinstance(value, str):
+        return value
+
+    loc: Final[str] = f"{where}.{key}"
+    logger.warning("Expected string in %s, got %s: %r", loc, type(value).__name__, value)
+    diagnostics.add_warning(f"Expected string in {loc}, got {type(value).__name__}: {value}")
+    return default
+
+
+def get_string_value_or_none_checked(
+    table: TomlTable,
+    key: str,
+    *,
+    where: str,
+    diagnostics: DiagnosticLog,
+    logger: TopmarkLogger,
+) -> str | None:
+    """Return an optional string value, warning when present but not `str`.
+
+    Mirrors [`topmark.config.args_io.get_arg_string_or_none_checked`][].
+    """
+    value: Any | None = table.get(key)
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+
+    loc: Final[str] = f"{where}.{key}"
+    logger.warning("Expected string in %s, got %s: %r", loc, type(value).__name__, value)
+    diagnostics.add_warning(f"Expected string in {loc}, got {type(value).__name__}: {value}")
+    return None
+
+
+def get_string_list_value_checked(
     table: TomlTable,
     key: str,
     *,
@@ -321,7 +463,9 @@ def get_string_list_value(
     diagnostics: DiagnosticLog,
     logger: TopmarkLogger,
 ) -> list[str]:
-    """Extract a list of strings from a TOML table.
+    """Extract a list of strings from a TOML table, recording a warning when the type is incorrect.
+
+    Mirrors [`topmark.config.args_io.get_arg_string_list_checked`][].
 
     By using `get_string_list_value()` we enforce "list of strings" for header field
     selection in TOML, drop non-strings with a warning + diagnostic, and give uniform,
@@ -346,7 +490,8 @@ def get_string_list_value(
     if not vals_any:
         return []
 
-    loc: str = f"{where}.{key}"
+    loc: Final[str] = f"{where}.{key}"
+
     out: list[str] = []
 
     for v in vals_any:
@@ -354,9 +499,92 @@ def get_string_list_value(
             out.append(v)
         else:
             logger.warning("Ignoring non-string entry in %s: %r", loc, v)
-            diagnostics.add_warning(f"Ignoring non-string entry in {loc}: {v}")
+            diagnostics.add_warning(f"Ignoring non-string entry in {loc}: {v!r}")
 
     return out
+
+
+def get_int_value_or_none_checked(
+    table: TomlTable,
+    key: str,
+    *,
+    where: str,
+    diagnostics: DiagnosticLog,
+    logger: TopmarkLogger,
+) -> int | None:
+    """Return an optional int value, warning when present but not `int`.
+
+    Mirrors [`topmark.config.args_io.get_arg_int_or_none_checked`][].
+
+    Notes:
+        - Missing key / None -> None
+        - `bool` is rejected (since `bool` is a subclass of `int`).
+    """
+    value: Any | None = table.get(key)
+    if value is None:
+        return None
+
+    loc: Final[str] = f"{where}.{key}"
+
+    # Note: bool is a subclass of int; exclude it.
+    if isinstance(value, bool):
+        logger.warning("Expected int in %s, got bool: %r", loc, value)
+        diagnostics.add_warning(f"Expected int in {loc}, got bool: {value!r}")
+        return None
+
+    if isinstance(value, int):
+        return value
+
+    logger.warning("Expected int in %s, got %s: %r", loc, type(value).__name__, value)
+    diagnostics.add_warning(f"Expected int in {loc}, got {type(value).__name__}: {value!r}")
+    return None
+
+
+def get_enum_value_checked(
+    table: TomlTable,
+    key: str,
+    enum_cls: type[E],
+    *,
+    where: str,
+    diagnostics: DiagnosticLog,
+    logger: TopmarkLogger,
+) -> E | None:
+    """Parse an enum value from TOML.
+
+    Mirrors [`topmark.config.args_io.get_arg_enum_checked`][].
+
+    Expected input is a `str` matching one of the Enum values.
+
+    - Missing key -> None
+    - Wrong type -> warning + None
+    - Unknown enum value -> error + None
+
+    This is intended for schema-level validation (e.g. `[writer].target`).
+    """
+    raw: Any | None = table.get(key)
+    if raw is None:
+        return None
+
+    loc: Final[str] = f"{where}.{key}"
+    if not isinstance(raw, str):
+        logger.warning(
+            "Expected string enum value in %s, got %s: %r",
+            loc,
+            type(raw).__name__,
+            raw,
+        )
+        diagnostics.add_warning(
+            f"Expected string enum value in {loc}, got {type(raw).__name__}: {raw!r}"
+        )
+        return None
+
+    try:
+        return enum_cls(raw)
+    except ValueError:
+        allowed: str = ", ".join(str(e.value) for e in enum_cls)  # type: ignore[attr-defined]
+        logger.warning("Invalid value for %s: %r (allowed: %s)", loc, raw, allowed)
+        diagnostics.add_warning(f"Invalid value for {loc}: {raw!r} (allowed: {allowed})")
+        return None
 
 
 def load_defaults_dict() -> TomlTable:
@@ -383,14 +611,19 @@ def load_defaults_dict() -> TomlTable:
         ) from exc
 
     try:
-        data: TomlTable = toml.loads(text)
-    except toml.TomlDecodeError as exc:
+        doc: tomlkit.TOMLDocument = tomlkit.parse(text)
+        data_any: Any = doc.unwrap()
+        if not isinstance(data_any, dict):
+            raise RuntimeError(
+                f"Bundled default config {DEFAULT_TOML_CONFIG_PACKAGE!r}/"
+                f"{DEFAULT_TOML_CONFIG_NAME!r} did not parse to a table."
+            )
+        return cast("TomlTable", data_any)
+    except TomlkitParseError as exc:
         raise RuntimeError(
             f"Bundled default config {DEFAULT_TOML_CONFIG_PACKAGE!r}/"
             f"{DEFAULT_TOML_CONFIG_NAME!r} is invalid TOML: {exc}"
         ) from exc
-
-    return data
 
 
 def load_toml_dict(path: Path) -> TomlTable:
@@ -405,38 +638,83 @@ def load_toml_dict(path: Path) -> TomlTable:
 
     Notes:
         - Errors are logged and an empty dict is returned on failure.
-        - Encoding is assumed to be UTF‑8.
+        - Encoding is assumed to be UTF-8.
     """
     try:
-        val: TomlTable = toml.load(path)
+        text: str = path.read_text(encoding="utf-8")
+        doc: tomlkit.TOMLDocument = tomlkit.parse(text)
+        data_any: Any = doc.unwrap()
+        return cast("TomlTable", data_any) if isinstance(data_any, dict) else {}
     except OSError as e:
         logger.error("Error loading TOML from %s: %s", path, e)
-        val = {}
-    except toml.TomlDecodeError as e:
+        return {}
+    except TomlkitParseError as e:
         logger.error("Error decoding TOML from %s: %s", path, e)
-        val = {}
+        return {}
     except Exception as e:
         logger.error("Unknown error while reading TOML from %s: %s", path, e)
-        val = {}
-    return val
+        return {}
+
+
+def _strip_none_for_toml(value: object) -> object:
+    """Remove TOML-incompatible `None` from mappings/lists.
+
+    TOML has no `null`. For config dumps we omit keys with None values and drop
+    None items from lists.
+
+    Notes:
+        - The input is typed as `object` (not `Any`) so Pyright does not treat
+          mapping/list iterators as `Unknown`.
+        - We defensively normalize mapping keys to strings, since TOML tables
+          are string-keyed.
+    """
+    if isinstance(value, Mapping):
+        out: dict[str, object] = {}
+        m: Mapping[object, object] = cast("Mapping[object, object]", value)
+        for k_any, v_any in m.items():
+            if v_any is None:
+                logger.debug("Ignoring `None` entry in Mapping for key %s", k_any)
+                continue
+            k: str = k_any if isinstance(k_any, str) else str(k_any)
+            out[k] = _strip_none_for_toml(v_any)
+        return out
+
+    if isinstance(value, list):
+        out_list: list[object] = []
+        seq: list[object] = cast("list[object]", value)
+        for v_any in seq:
+            if v_any is None:
+                logger.debug("Ignoring `None` entry in list")
+                continue
+            out_list.append(_strip_none_for_toml(v_any))
+        return out_list
+
+    return value
+
+
+def _tomlkit_dumps(data: TomlTable) -> str:
+    """Typed wrapper around tomlkit.dumps() for strict type checking."""
+    cleaned: Any = _strip_none_for_toml(data)
+    # tomlkit expects a Mapping; tomlkit itself is treated as untyped here.
+    return cast("str", cast("Any", tomlkit).dumps(cast("Mapping[str, Any]", cleaned)))
 
 
 def clean_toml(text: str) -> str:
     """Normalize a TOML document, removing comments and formatting noise.
 
-    This function round-trips the input through the ``toml`` parser and dumper,
-    dropping comments and normalizing formatting. Useful for presenting a canonicalized
-    view (e.g., ``topmark dump-config``) or for snapshotting.
+    This function round-trips the input through the TOML parser and dumper,
+    dropping comments and normalizing formatting.
 
     Args:
         text (str): Raw TOML content.
 
     Returns:
-        str: A normalized TOML string produced by round-tripping through the
-            TOML parser and dumper.
+        str: A normalized TOML string produced by round-tripping.
     """
-    # Parse the default config TOML and re-dump it to normalize formatting
-    return toml.dumps(toml.loads(text))
+    doc: tomlkit.TOMLDocument = tomlkit.parse(text)
+    data_any: Any = doc.unwrap()
+    data: TomlTable = cast("TomlTable", data_any) if isinstance(data_any, dict) else {}
+    return _tomlkit_dumps(data)
 
 
 def to_toml(toml_dict: TomlTable) -> str:
@@ -448,7 +726,7 @@ def to_toml(toml_dict: TomlTable) -> str:
     Returns:
         str: The rendered TOML document as a string.
     """
-    return toml.dumps(toml_dict)
+    return _tomlkit_dumps(toml_dict)
 
 
 def nest_toml_under_section(toml_doc: str, section_keys: str) -> str:

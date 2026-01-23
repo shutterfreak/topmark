@@ -17,11 +17,11 @@ comments and valid structure.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
-import toml
+import tomlkit
 
-from topmark.config.io import get_string_list_value, nest_toml_under_section
+from topmark.config.io import get_string_list_value_checked, nest_toml_under_section
 from topmark.config.logging import TopmarkLogger, get_logger
 from topmark.core.diagnostics import DiagnosticLog
 
@@ -43,15 +43,15 @@ def test_nest_toml_under_section_basic() -> None:
     wrapped: str = nest_toml_under_section(source, "tool.topmark")
 
     # 1) The wrapped document should still be valid TOML
-    parsed: dict[str, Any] = toml.loads(wrapped)
+    parsed: Any = tomlkit.parse(wrapped)
 
     assert "tool" in parsed
-    assert isinstance(parsed["tool"], dict)
+    assert hasattr(parsed["tool"], "keys")
     assert "topmark" in parsed["tool"]
-    assert isinstance(parsed["tool"]["topmark"], dict)
+    assert hasattr(parsed["tool"]["topmark"], "keys")
 
-    tool_tbl: dict[str, Any] = cast("dict[str, Any]", parsed["tool"])
-    topmark_tbl: dict[str, Any] = tool_tbl["topmark"]
+    tool_tbl: Any = parsed["tool"]
+    topmark_tbl: Any = tool_tbl["topmark"]
     assert topmark_tbl["answer"] == 42
 
     # 2) Comments/whitespace should be preserved in the text form
@@ -86,15 +86,15 @@ def test_nest_toml_under_section_preserves_postamble() -> None:
     wrapped: str = nest_toml_under_section(source, "tool.topmark")
 
     # 1) The wrapped document should still be valid TOML
-    parsed: dict[str, Any] = toml.loads(wrapped)
+    parsed: Any = tomlkit.parse(wrapped)
 
     assert "tool" in parsed
-    assert isinstance(parsed["tool"], dict)
+    assert hasattr(parsed["tool"], "keys")
     assert "topmark" in parsed["tool"]
-    assert isinstance(parsed["tool"]["topmark"], dict)
+    assert hasattr(parsed["tool"]["topmark"], "keys")
 
-    tool_tbl: dict[str, Any] = cast("dict[str, Any]", parsed["tool"])
-    topmark_tbl: dict[str, Any] = tool_tbl["topmark"]
+    tool_tbl: Any = parsed["tool"]
+    topmark_tbl: Any = tool_tbl["topmark"]
     assert topmark_tbl["answer"] == 42
 
     # 2) The trailing comment should still be present in the text form
@@ -116,7 +116,7 @@ def test_get_string_list_value_filters_and_records_warnings(
     logger: TopmarkLogger = get_logger(__name__)
 
     table = {"k": ["a", 1, True, "b"]}
-    out: list[str] = get_string_list_value(
+    out: list[str] = get_string_list_value_checked(
         table,
         "k",
         where="[files]",

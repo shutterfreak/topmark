@@ -47,7 +47,7 @@ from topmark.api.runtime import select_pipeline
 from topmark.api.view import Intent, determine_intent, filter_view_results
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cmd_common import (
-    build_config_common,
+    build_config_for_plan,
     build_file_list,
     exit_if_no_files,
     get_effective_verbosity,
@@ -279,7 +279,7 @@ def strip_command(
         stdin_filename=stdin_filename,
     )
 
-    draft_config: MutableConfig = build_config_common(
+    draft_config: MutableConfig = build_config_for_plan(
         ctx=ctx,
         plan=plan,
         no_config=no_config,

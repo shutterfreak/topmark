@@ -19,10 +19,11 @@ Ensures that running `topmark dump-config`:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pytest
-import toml
+import tomlkit
+from tomlkit.exceptions import ParseError as TomlkitParseError
 
 from tests.cli.conftest import assert_SUCCESS, run_cli
 from topmark.cli.keys import CliCmd, CliOpt
@@ -53,13 +54,13 @@ def test_dump_config_outputs_valid_toml() -> None:
     end: int = result.output.find(TOML_BLOCK_END)
     toml_text: list[str] = result.output[start:end].splitlines()[1:]  # drop marker line
     try:
-        parsed: dict[str, Any] = toml.loads("\n".join(toml_text))
+        parsed: tomlkit.TOMLDocument = tomlkit.loads("\n".join(toml_text))
         assert "fields" in parsed
         assert "header" in parsed
     except TypeError as e:
         # If an exception is caught, use pytest.fail() to fail the test explicitly.
         # You can include the exception details in the message for better debugging.
         pytest.fail(f"TypeError during TOML parsing: {e}")
-    except toml.TomlDecodeError as e:
+    except TomlkitParseError as e:
         # Fail the test if the TOML decoding fails.
         pytest.fail(f"TomlDecodeError: {e}")

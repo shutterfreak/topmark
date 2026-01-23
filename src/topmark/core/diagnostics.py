@@ -31,8 +31,15 @@ from typing import TYPE_CHECKING, cast
 
 from yachalk import chalk
 
+from topmark.config.logging import get_logger
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
+
+    from topmark.config.logging import TopmarkLogger
+
+
+logger: TopmarkLogger = get_logger(__name__)
 
 
 class DiagnosticLevel(Enum):
@@ -114,6 +121,7 @@ class DiagnosticLog:
             None: The diagnostic is appended to the context in place.
         """
         self.items.append(diagnostic)
+        logger.trace("Adding [%s]: %r", diagnostic.level.value, diagnostic.message)
 
     def add_info(self, message: str) -> None:
         """Add an ``info`` diagnostic to the diagnostic log.
@@ -155,6 +163,18 @@ class DiagnosticLog:
         summaries and for machine-readable reporting via `to_dict`.
         """
         return compute_diagnostic_stats(self.items)
+
+    def has_info(self) -> bool:
+        """Return True if the DiagnosticLog contains info diagnostics."""
+        return any(d.level == DiagnosticLevel.INFO for d in self.items)
+
+    def has_warning(self) -> bool:
+        """Return True if the DiagnosticLog contains warning diagonstics."""
+        return any(d.level == DiagnosticLevel.WARNING for d in self.items)
+
+    def has_error(self) -> bool:
+        """Return True if the DiagnosticLog contains error diagnostics."""
+        return any(d.level == DiagnosticLevel.ERROR for d in self.items)
 
     def to_dict(self) -> dict[str, int]:
         """Return a JSON-friendly mapping of counts by severity.

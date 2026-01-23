@@ -41,14 +41,14 @@ if TYPE_CHECKING:
 
     from topmark.config.logging import TopmarkLogger
 
+logger: TopmarkLogger = get_logger(__name__)
+
 # ArgsLike: generic mapping accepted by config loaders (works for CLI namespaces and API dicts).
 ArgsLike = Mapping[str, Any]
 # We use ArgsLike (Mapping[str, Any]) instead of a CLI-specific namespace to
 # keep the config layer decoupled from the CLI. The implementation uses .get()
 # and key lookups, so Mapping is the right structural type. This allows the
 # CLI to pass its namespace and the API/tests to pass plain dicts.
-
-logger: TopmarkLogger = get_logger(__name__)
 
 
 # ------------------ Pattern source reference ------------------

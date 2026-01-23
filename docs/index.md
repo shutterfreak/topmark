@@ -82,10 +82,11 @@ topmark:header:end
 
 ## Commands
 
-`topmark [SUBCOMMAND] [OPTIONS] [PATHS]...`
+`topmark [COMMAND] ([SUBCOMMAND]) [OPTIONS] [PATHS]...`
 
-Core subcommands: `check`, `strip`, `dump-config`, `show-defaults`, `init-config`, `filetypes`,
-`version`.
+Core commands: `check`, `strip`, `config`, `filetypes`, `processors`, `version`.
+
+The `check` command has the following subcommands: `check`, `defaults`, `dump`, `init`.
 
 Read lists from STDIN with `--files-from -` (or `--include-from -` / `--exclude-from -`). To process
 a *single* file’s **content** from STDIN, pass `-` as the sole PATH and provide

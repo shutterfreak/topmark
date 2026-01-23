@@ -158,7 +158,7 @@ def test_cli_path_options_resolve_from_cwd(tmp_path: Path, monkeypatch: pytest.M
     gi.write_text("*.log\n", encoding="utf-8")
 
     draft: MutableConfig = MutableConfig.from_defaults()
-    draft.apply_cli_args({"include_from": [".gitignore"]})
+    draft.apply_args({"include_from": [".gitignore"]})
 
     assert draft.include_from, "CLI include_from should be normalized"
     ps: PatternSource = draft.include_from[0]
@@ -300,7 +300,7 @@ def test_cli_overrides_merge_last(tmp_path: Path) -> None:
 
     draft: MutableConfig = MutableConfig.load_merged(input_paths=[proj])
     # Simulate CLI override
-    draft.apply_cli_args({"align_fields": True})
+    draft.apply_args({"align_fields": True})
     assert draft.align_fields is True
 
 

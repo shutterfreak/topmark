@@ -20,18 +20,18 @@ Input modes:
   * This command is file-agnostic: positional PATHS and --files-from are ignored
     (with a warning if present).
   * --include-from - and --exclude-from - are honored for config resolution.
-  * '-' as a PATH (content-on-STDIN) is ignored in dump-config.
+  * '-' as a PATH (content-on-STDIN) is ignored in `topmark config dump`.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import click
 
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cmd_common import (
-    build_config_common,
+    build_config_for_plan,
     get_effective_verbosity,
     render_config_diagnostics,
 )
@@ -45,6 +45,7 @@ from topmark.cli.options import (
 )
 from topmark.cli.utils import emit_config_machine, render_toml_block
 from topmark.cli_shared.utils import OutputFormat, safe_unlink
+from topmark.config.io import to_toml
 from topmark.config.logging import get_logger
 from topmark.constants import TOML_BLOCK_END, TOML_BLOCK_START
 
@@ -61,7 +62,7 @@ logger: TopmarkLogger = get_logger(__name__)
 
 
 @click.command(
-    name="dump-config",
+    name=f"{CliCmd.CONFIG}-{CliCmd.CONFIG_DUMP}",
     help=(
         "Dump the final merged TopMark configuration as TOML. "
         f"This command is file‑agnostic: positional PATHS and {CliOpt.FILES_FROM} are ignored. "
@@ -152,7 +153,7 @@ def config_dump_command(
 
     fmt: OutputFormat = output_format or OutputFormat.DEFAULT
 
-    # dump-config is file-agnostic: ignore positional PATHS and --files-from
+    # config_dump_command() is file-agnostic: ignore positional PATHS and --files-from
     original_args: list[str] = list(ctx.args)
     if original_args:
         if "-" in original_args:
@@ -183,7 +184,7 @@ def config_dump_command(
         allow_empty_paths=True,
     )
 
-    draft_config: MutableConfig = build_config_common(
+    draft_config: MutableConfig = build_config_for_plan(
         ctx=ctx,
         plan=plan,
         no_config=no_config,
@@ -210,9 +211,15 @@ def config_dump_command(
     # We don't actually care about the file list here; just dump the config
 
     if fmt == OutputFormat.DEFAULT:
-        import toml
+        config_toml_dict: dict[str, Any] = config.to_toml_dict()
+        merged_config: str = to_toml(config_toml_dict)
 
-        merged_config: str = toml.dumps(config.to_toml_dict())
+        if vlevel > 0:
+            # Render the list of config files
+            click.echo(f"Config files processed: {len(config.config_files)}")
+            for i, c in enumerate(config.config_files, start=1):
+                click.echo(f"Loaded config {i}: {c}")
+
         render_toml_block(
             console=console,
             title="TopMark Config Dump (TOML):",
@@ -225,9 +232,7 @@ def config_dump_command(
         emit_config_machine(config, fmt=fmt)
 
     elif fmt == OutputFormat.MARKDOWN:
-        import toml
-
-        merged_config: str = toml.dumps(config.to_toml_dict())
+        merged_config: str = to_toml(config.to_toml_dict())
 
         # Markdown: heading plus fenced TOML block, no ANSI styling.
         console.print("# TopMark Config Dump (TOML)")

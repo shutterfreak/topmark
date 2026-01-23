@@ -40,6 +40,7 @@ class CliCmd:
     CHECK: Final[str] = "check"
     STRIP: Final[str] = "strip"
     CONFIG: Final[str] = "config"
+    CONFIG_CHECK: Final[str] = "check"
     CONFIG_DUMP: Final[str] = "dump"
     CONFIG_DEFAULTS: Final[str] = "defaults"
     CONFIG_INIT: Final[str] = "init"
@@ -105,6 +106,10 @@ class CliOpt:
     CONFIG_FOR_PYPROJECT: Final[str] = "--pyproject"
     SEMVER_VERSION: Final[str] = "--semver"
 
+    # Config checking
+    STRICT_CONFIG_CHECKING: Final[str] = "--strict"
+    NO_STRICT_CONFIG_CHECKING: Final[str] = "--no-strict"
+
 
 class ArgKey:
     """Canonical argument keys used by the TopMark CLI.
@@ -165,3 +170,6 @@ class ArgKey:
     STDIN_MODE: Final[str] = "stdin_mode"
     STDIN_FILENAME: Final[str] = "stdin_filename"
     SEMVER_VERSION: Final[str] = "semver"
+
+    # Config checking
+    STRICT_CONFIG_CHECKING: Final[str] = "strict_config_checking"

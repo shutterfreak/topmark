@@ -10,7 +10,7 @@
 
 [project]
 name = "topmark"
-version = "0.12.0.dev1" # PEP 440: "X.Y.Z.devN", "X.Y.ZrcN", or "X.Y.Z"
+version = "0.12.0.dev2" # PEP 440: "X.Y.Z.devN", "X.Y.ZrcN", or "X.Y.Z"
 description = "A Python CLI to inspect, validate, and manage license and copyright headers."
 authors = [{ name = "Olivier Biot", email = "olivier.biot@gmail.com" }]
 license = "MIT"
@@ -20,8 +20,6 @@ dependencies = [
   "pathspec>=0.12.1,<0.13.0",
   # Manipulate TOML configuration files:
   "tomlkit>=0.13.3,<0.14.0",
-  # Read/write TOML (used by CLI for dumps):
-  "toml>=0.10.2,<0.11.0",
   # ANSI colored terminal output:
   "yachalk>=0.1.8,<0.2.0",
   # CLI framework
@@ -118,10 +116,7 @@ test = [
   # Property-based testing library:
   "hypothesis>=6.148.2,<7.0.0",
 ]
-typing = [
-  # Type stubs for the toml module:
-  "types-toml>=0.10.8.20240310,<0.11.0",
-]
+typing = []
 
 [tool.setuptools]
 package-dir = { "" = "src" }

@@ -72,6 +72,8 @@ class ArgsNamespace(TypedDict, total=False):
         apply_changes (bool | None): Whether to apply the changed (dry-run if not set ot False).
         write_mode (str | None): Whether to use safe atomic writing, faster in-place writing
             or writing to STDOUT (default: atomic writer).
+        strict_config_checking (bool | None): If True, enforce strict TOML config checking
+            (fail on errors).
         no_config (bool | None): Whether to ignore local config files.
         config_files (list[str] | None): List of extra config file paths.
         files (list[str]): List of file paths to process.
@@ -100,6 +102,7 @@ class ArgsNamespace(TypedDict, total=False):
     write_mode: str | None
 
     # Command options: config
+    strict_config_checking: bool | None
     no_config: bool | None
     config_files: list[str] | None
 
@@ -130,6 +133,7 @@ def build_args_namespace(
     write_mode: str | None = None,
     no_config: bool | None = None,
     config_files: list[str] | None = None,
+    strict_config_checking: bool | None = None,
     files: list[str] | None = None,
     files_from: list[str] | None = None,
     stdin_mode: bool | None = None,
@@ -153,6 +157,8 @@ def build_args_namespace(
             or writing to STDOUT (default: atomic writer).
         no_config (bool | None): Whether to ignore local config files.
         config_files (list[str] | None): List of extra config file paths.
+        strict_config_checking (bool | None): If True, enforce strict TOML config checking
+            (fail on errors).
         files (list[str] | None): List of file paths to process.
         files_from (list[str] | None): List of files containing newline-delimited paths.
         stdin_mode (bool | None): Whether to read file paths from stdin.
@@ -178,6 +184,7 @@ def build_args_namespace(
             ArgKey.WRITE_MODE: write_mode,
             ArgKey.NO_CONFIG: no_config,
             ArgKey.CONFIG_FILES: config_files,
+            ArgKey.STRICT_CONFIG_CHECKING: strict_config_checking,
             ArgKey.FILES: files if files is not None else [],
             ArgKey.FILES_FROM: files_from if files_from is not None else [],
             ArgKey.STDIN_MODE: stdin_mode,

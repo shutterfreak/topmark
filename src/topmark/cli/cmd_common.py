@@ -93,7 +93,7 @@ def maybe_exit_on_error(*, code: ExitCode | None, temp_path: Path | None) -> Non
         click.get_current_context().exit(code)
 
 
-def build_config_common(
+def build_config_for_plan(
     *,
     ctx: click.Context,
     plan: InputPlan,
