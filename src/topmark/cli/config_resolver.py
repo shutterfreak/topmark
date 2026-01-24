@@ -22,9 +22,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from topmark.cli.cli_types import build_args_namespace
-from topmark.cli.keys import ArgKey
 from topmark.config import MutableConfig
 from topmark.config.logging import get_logger
+from topmark.core.keys import ArgKey
 
 if TYPE_CHECKING:
     import click

@@ -25,8 +25,8 @@ from typing import IO, Any
 
 import click
 
-from topmark.cli.keys import ArgKey
 from topmark.core.exit_codes import ExitCode
+from topmark.core.keys import ArgKey
 
 
 class TopmarkError(click.ClickException):

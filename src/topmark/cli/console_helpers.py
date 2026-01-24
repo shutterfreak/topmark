@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 import click
 
 from topmark.cli.console_std import StdConsole
-from topmark.cli.keys import ArgKey
+from topmark.core.keys import ArgKey
 
 if TYPE_CHECKING:
     from topmark.cli_shared.console_api import ConsoleLike

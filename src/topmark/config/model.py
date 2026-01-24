@@ -51,7 +51,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final, cast
 
-from topmark.cli.keys import ArgKey, CliOpt
+from topmark.cli.keys import CliOpt
 from topmark.config.args_io import (
     get_arg_bool_or_none_checked,
     get_arg_enum_checked,
@@ -88,6 +88,7 @@ from topmark.core.diagnostics import (
     DiagnosticStats,
     compute_diagnostic_stats,
 )
+from topmark.core.keys import ArgKey
 from topmark.rendering.formats import HeaderOutputFormat
 
 if TYPE_CHECKING:

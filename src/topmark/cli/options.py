@@ -28,8 +28,9 @@ from click.core import ParameterSource
 
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.errors import TopmarkUsageError
-from topmark.cli.keys import ArgKey, CliOpt
+from topmark.cli.keys import CliOpt
 from topmark.config.logging import get_logger
+from topmark.core.keys import ArgKey
 from topmark.rendering.formats import HeaderOutputFormat
 
 if TYPE_CHECKING:
@@ -56,8 +57,8 @@ logger: TopmarkLogger = get_logger(__name__)
 
 # Helper: allow comma-separated multi-value options
 def _split_csv_multi_option(
-    ctx: click.Context,  # noqa: ARG001
-    param: click.Parameter,  # noqa: ARG001
+    _ctx: click.Context,
+    _param: click.Parameter,
     value: tuple[str, ...],
 ) -> tuple[str, ...]:
     """Allow comma-separated lists for `multiple=True` options.
@@ -71,8 +72,8 @@ def _split_csv_multi_option(
       - ignores empty tokens (e.g., trailing commas)
 
     Args:
-        ctx (click.Context): Click context (unused).
-        param (click.Parameter): Click parameter (unused).
+        _ctx (click.Context): Click context (unused).
+        _param (click.Parameter): Click parameter (unused).
         value (tuple[str, ...]): Collected option values (one entry per occurrence).
 
     Returns:

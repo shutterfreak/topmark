@@ -56,7 +56,7 @@ from topmark.cli.cmd_common import (
 )
 from topmark.cli.errors import TopmarkIOError, TopmarkUsageError
 from topmark.cli.io import plan_cli_inputs
-from topmark.cli.keys import ArgKey, CliCmd, CliOpt
+from topmark.cli.keys import CliCmd, CliOpt
 from topmark.cli.options import (
     CONTEXT_SETTINGS,
     common_config_options,
@@ -79,6 +79,7 @@ from topmark.cli_shared.utils import (
 )
 from topmark.config.logging import get_logger
 from topmark.core.exit_codes import ExitCode
+from topmark.core.keys import ArgKey
 from topmark.pipeline.context.policy import effective_would_strip
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.status import (

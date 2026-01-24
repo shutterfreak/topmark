@@ -30,7 +30,7 @@ from topmark.cli.commands.processors import processors_command
 from topmark.cli.commands.strip import strip_command
 from topmark.cli.commands.version import version_command
 from topmark.cli.console import ClickConsole
-from topmark.cli.keys import ArgKey, CliCmd, CliOpt
+from topmark.cli.keys import CliCmd, CliOpt
 
 # --- We use a module import here instead of relative import
 from topmark.cli.options import (
@@ -41,6 +41,7 @@ from topmark.cli.options import (
     resolve_verbosity,
 )
 from topmark.config.logging import get_logger, resolve_env_log_level, setup_logging
+from topmark.core.keys import ArgKey
 from topmark.pipeline.processors import register_all_processors
 
 if TYPE_CHECKING:

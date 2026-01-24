@@ -23,7 +23,6 @@ import click
 
 from topmark.cli.config_resolver import resolve_config_from_click
 from topmark.cli.console_helpers import get_console_safely
-from topmark.cli.keys import ArgKey
 from topmark.cli_shared.console_api import ConsoleLike
 from topmark.config.logging import get_logger
 from topmark.config.model import MutableConfig
@@ -33,6 +32,7 @@ from topmark.core.diagnostics import (
     DiagnosticStats,
     compute_diagnostic_stats,
 )
+from topmark.core.keys import ArgKey
 from topmark.file_resolver import resolve_file_list
 
 if TYPE_CHECKING:

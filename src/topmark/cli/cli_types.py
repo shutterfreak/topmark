@@ -36,7 +36,7 @@ from typing import (
 
 import click
 
-from topmark.cli.keys import ArgKey
+from topmark.core.keys import ArgKey
 
 if TYPE_CHECKING:
     from collections.abc import Iterable

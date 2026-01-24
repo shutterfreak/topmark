@@ -36,7 +36,7 @@ from topmark.cli.cmd_common import (
     render_config_diagnostics,
 )
 from topmark.cli.io import plan_cli_inputs
-from topmark.cli.keys import ArgKey, CliCmd, CliOpt
+from topmark.cli.keys import CliCmd, CliOpt
 from topmark.cli.options import (
     CONTEXT_SETTINGS,
     common_config_options,
@@ -48,6 +48,7 @@ from topmark.cli_shared.utils import OutputFormat, safe_unlink
 from topmark.config.io import to_toml
 from topmark.config.logging import get_logger
 from topmark.constants import TOML_BLOCK_END, TOML_BLOCK_START
+from topmark.core.keys import ArgKey
 
 if TYPE_CHECKING:
     from pathlib import Path

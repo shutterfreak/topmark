@@ -33,6 +33,8 @@ from topmark.file_resolver import resolve_file_list
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from topmark.config.model import Config
+
 
 def _write(path: Path, content: str) -> None:
     """Write a small TOML snippet to `path`, creating parent directories."""
@@ -948,3 +950,85 @@ def test_duplicate_exclude_file_types_warns_and_is_recorded(
         needle=f"Duplicate excluded file types found in config "
         f"(key: {Toml.KEY_EXCLUDE_FILE_TYPES})",
     )
+
+
+@pytest.mark.pipeline
+def test_should_proceed_false_on_errors_even_when_not_strict() -> None:
+    """Errors always prevent proceeding, regardless of strict mode."""
+    draft: MutableConfig = MutableConfig.from_defaults()
+    draft.strict_config_checking = False
+    draft.diagnostics.add_error("boom")
+    assert draft.should_proceed is False
+
+    c: Config = draft.freeze()
+    assert c.should_proceed is False
+
+
+@pytest.mark.pipeline
+def test_should_proceed_true_on_warnings_when_not_strict() -> None:
+    """Warnings do not block proceeding when strict mode is disabled."""
+    draft: MutableConfig = MutableConfig.from_defaults()
+    draft.strict_config_checking = False
+    draft.diagnostics.add_warning("warn")
+    assert draft.should_proceed is True
+
+    c: Config = draft.freeze()
+    assert c.should_proceed is True
+
+
+@pytest.mark.pipeline
+def test_should_proceed_false_on_warnings_when_strict() -> None:
+    """Warnings block proceeding when strict mode is enabled."""
+    draft: MutableConfig = MutableConfig.from_defaults()
+    draft.strict_config_checking = True
+    draft.diagnostics.add_warning("warn")
+    assert draft.should_proceed is False
+
+    c: Config = draft.freeze()
+    assert c.strict_config_checking is True
+    assert c.should_proceed is False
+
+
+@pytest.mark.pipeline
+def test_writer_target_invalid_enum_warns_and_keeps_default(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Invalid writer.target enum value is warned about and does not override defaults."""
+    caplog.set_level("WARNING")
+    draft: MutableConfig = MutableConfig.from_toml_dict(
+        {Toml.SECTION_WRITER: {Toml.KEY_TARGET: "nope"}},
+    )
+
+    # Should NOT crash; should warn; output_target should remain unset (None) at draft level
+    # or inherit defaults later (depending on your defaults layering design).
+    assert draft.output_target is None
+
+    assert_warned_and_diagnosed(
+        caplog=caplog,
+        draft=draft,
+        needle=f"Invalid value for [{Toml.SECTION_WRITER}].{Toml.KEY_TARGET}",
+        min_count=1,
+    )
+
+
+@pytest.mark.pipeline
+def test_freeze_preserves_diagnostics() -> None:
+    """freeze() must preserve diagnostics when producing an immutable Config."""
+    draft: MutableConfig = MutableConfig.from_defaults()
+    draft.diagnostics.add_warning("hello")
+    c: Config = draft.freeze()
+    assert len(c.diagnostics) == 1
+    assert c.diagnostics[0].message == "hello"
+
+
+@pytest.mark.pipeline
+@pytest.mark.parametrize("val,expected", [(None, False), (False, False), (True, True)])
+def test_strict_config_checking_freeze_bool_semantics(val: object, expected: bool) -> None:
+    """freeze() normalizes strict_config_checking to a concrete bool.
+
+    strict_config_checking defaults to False when not explicitly True.
+    """
+    draft: MutableConfig = MutableConfig.from_defaults()
+    draft.strict_config_checking = val  # type: ignore[assignment]
+    c: Config = draft.freeze()
+    assert c.strict_config_checking is expected

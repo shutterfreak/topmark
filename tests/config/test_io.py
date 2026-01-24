@@ -132,3 +132,41 @@ def test_get_string_list_value_filters_and_records_warnings(
         sum(1 for r in caplog.records if "Ignoring non-string entry in [files].k" in r.message) == 2
     )
     assert sum(1 for d in diagnostics if "Ignoring non-string entry in [files].k" in d.message) == 2
+
+
+def test_nest_toml_under_section_is_idempotent() -> None:
+    """nest_toml_under_section idempotency when already nested."""
+    source: str = """
+    [tool.topmark]
+    answer = 42
+    """.lstrip()
+
+    wrapped1: str = nest_toml_under_section(source, "tool.topmark")
+    wrapped2: str = nest_toml_under_section(wrapped1, "tool.topmark")
+
+    # still valid TOML and still one nested answer
+    parsed_doc: tomlkit.TOMLDocument = tomlkit.parse(wrapped2)
+    parsed: Any = parsed_doc
+    assert parsed["tool"]["topmark"]["answer"] == 42
+
+
+def test_get_string_list_value_wrong_type_returns_empty_and_records_warning(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """get_string_list_value_checked wrong-type is treated as empty but warns."""
+    caplog.set_level("WARNING")
+    diagnostics = DiagnosticLog()
+    logger: TopmarkLogger = get_logger(__name__)
+
+    table: dict[str, Any] = {"k": True}  # wrong shape
+    out: list[str] = get_string_list_value_checked(
+        table,
+        "k",
+        where="[files]",
+        diagnostics=diagnostics,
+        logger=logger,
+    )
+    assert out == []
+
+    assert any("Expected list" in r.message for r in caplog.records)
+    assert any("Expected list" in d.message for d in diagnostics)

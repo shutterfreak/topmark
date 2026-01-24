@@ -24,9 +24,10 @@ import click
 
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cmd_common import get_effective_verbosity
-from topmark.cli.keys import ArgKey, CliCmd, CliOpt
+from topmark.cli.keys import CliCmd, CliOpt
 from topmark.cli_shared.utils import OutputFormat, format_callable_pretty, render_markdown_table
 from topmark.constants import TOPMARK_VERSION
+from topmark.core.keys import ArgKey
 from topmark.filetypes.base import FileType
 from topmark.registry import FileTypeRegistry
 

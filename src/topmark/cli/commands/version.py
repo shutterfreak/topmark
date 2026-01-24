@@ -21,9 +21,10 @@ import click
 
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cmd_common import get_effective_verbosity
-from topmark.cli.keys import ArgKey, CliCmd, CliOpt
+from topmark.cli.keys import CliCmd, CliOpt
 from topmark.cli_shared.utils import OutputFormat
 from topmark.constants import TOPMARK_VERSION
+from topmark.core.keys import ArgKey
 from topmark.utils.version import pep440_to_semver
 
 if TYPE_CHECKING:

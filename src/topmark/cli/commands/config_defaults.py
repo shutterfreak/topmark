@@ -23,10 +23,11 @@ import click
 
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cmd_common import get_effective_verbosity
-from topmark.cli.keys import ArgKey, CliOpt
+from topmark.cli.keys import CliOpt
 from topmark.cli.utils import emit_config_machine, render_toml_block
 from topmark.cli_shared.utils import OutputFormat
 from topmark.config import MutableConfig
+from topmark.core.keys import ArgKey
 
 if TYPE_CHECKING:
     from topmark.cli_shared.console_api import ConsoleLike
