@@ -96,6 +96,9 @@ class RendererStep(BaseStep):
                 * ``build.selected`` – expected fields (for ``GENERATED``);
                 * ``image`` – file image view (for indentation preservation and newline style).
 
+        Raises:
+            RuntimeError: If header processor is not defined.
+
         Mutations:
             ProcessingContext: The same context with ``ctx.views.render`` populated depending on
             the generation status:
@@ -110,7 +113,8 @@ class RendererStep(BaseStep):
         """
         logger.debug("ctx: %s", ctx)
 
-        assert ctx.header_processor  # static type check
+        if ctx.header_processor is None:
+            raise RuntimeError("Header processor not defined")
 
         # Nothing to render when no fields were generated; short-circuit safely.
         if ctx.status.generation == GenerationStatus.NO_FIELDS:

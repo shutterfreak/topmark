@@ -193,7 +193,7 @@ def test_resolve_can_use_content_gate_when_allowed(
     def _content_hit(p: Path) -> bool:
         try:
             return "MAGIC_SIGNATURE" in p.read_text(encoding="utf-8")
-        except Exception:
+        except (OSError, UnicodeError):
             return False
 
     ft: FileType = make_file_type(

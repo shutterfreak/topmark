@@ -257,10 +257,8 @@ matching rules and policy details._
 
         total: int = len(ft_registry)
         num_width: int = len(str(total))
-        idx: int = 0
-        k_len: int = max(1, max(len(k) for k in ft_registry.keys()))
-        for k, v in sorted(ft_registry.items()):
-            idx += 1
+        k_len: int = max(1, max(len(k) for k in ft_registry))
+        for idx, (k, v) in enumerate(sorted(ft_registry.items()), start=1):
             if show_details:
                 exts = ", ".join(v.extensions) if v.extensions else ""
                 names = ", ".join(v.filenames) if v.filenames else ""
@@ -280,7 +278,6 @@ matching rules and policy details._
                 if skip:
                     console.print("      skip processing: yes")
                 if matcher:
-                    assert v.content_matcher is not None
                     content_matcher_name: str = console.styled(
                         format_callable_pretty(v.content_matcher), dim=True
                     )

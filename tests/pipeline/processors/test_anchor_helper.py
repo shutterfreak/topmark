@@ -18,14 +18,14 @@ from topmark.pipeline.processors.base import NO_LINE_ANCHOR, HeaderProcessor
 class _FakeLine(HeaderProcessor):
     """Stub that returns a fixed line index from get_header_insertion_index."""
 
-    def get_header_insertion_index(self, file_lines: list[str]) -> int:  # noqa: D401
+    def get_header_insertion_index(self, file_lines: list[str]) -> int:
         return 3
 
 
 class _FakeNoLine(HeaderProcessor):
     """Stub that signals char-offset insertion via NO_LINE_ANCHOR."""
 
-    def get_header_insertion_index(self, file_lines: list[str]) -> int:  # noqa: D401
+    def get_header_insertion_index(self, file_lines: list[str]) -> int:
         return NO_LINE_ANCHOR
 
 

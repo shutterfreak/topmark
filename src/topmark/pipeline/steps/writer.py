@@ -32,11 +32,11 @@ tri-state intent/feasibility via `ProcessingContext.would_change` and `can_chang
 
 from __future__ import annotations
 
+import contextlib
 import os
 import secrets
 import stat
 from dataclasses import dataclass
-from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
 from topmark.config.logging import get_logger
@@ -197,7 +197,7 @@ class FileSystemSink:
         text = _normalize_eof(text, ctx)
 
         try:
-            with open(ctx.path, "w", encoding="utf-8", newline="") as f:
+            with ctx.path.open("w", encoding="utf-8", newline="") as f:
                 f.write(text)
 
             bytes_written: int = len(text.encode("utf-8"))
@@ -246,25 +246,23 @@ class InplaceFileSink(WriteSink):
         try:
             # Preserve mode; other metadata handled best-effort.
             try:
-                st: os.stat_result | None = os.stat(path)
-                mode: int | None = stat.S_IMODE(st.st_mode) if st else None
-            except Exception:
-                st = None
+                st_mode: int = path.stat().st_mode
+                mode: int | None = stat.S_IMODE(st_mode)
+            except OSError:
                 mode = None
 
-            with open(path, "wb") as f:
+            with path.open("wb") as f:
                 # Prefer streaming via the iterator (good for memory)
                 for line in ctx.iter_updated_lines():
                     f.write(line.encode("utf-8"))
                 f.flush()
                 os.fsync(f.fileno())
             if mode is not None:
-                try:
-                    os.chmod(path, mode)
-                except Exception:
-                    pass
+                # Best-effort: preserve original permissions.
+                with contextlib.suppress(OSError):
+                    path.chmod(mode)
             return WriteResult(status=WriteStatus.WRITTEN)
-        except Exception as e:
+        except (OSError, UnicodeError) as e:
             ctx.error(f"In-place write failed: {e}")
             return WriteResult(status=WriteStatus.FAILED)
 
@@ -304,29 +302,30 @@ class AtomicFileSink(WriteSink):
         try:
             # Read original metadata for later re-apply (best-effort)
             try:
-                st: os.stat_result | None = os.stat(path)
+                st: os.stat_result | None = path.stat()
                 mode: int | None = stat.S_IMODE(st.st_mode) if st else None
-            except Exception:
+            except OSError:
                 st = None
                 mode = None
 
-            with open(tmp, "wb") as f:
+            with tmp.open("wb") as f:
                 # Apply permissions early to reduce race windows.
                 if mode is not None:
                     try:
+                        # Try to apply permissions to the open file descriptor (fchmod).
+                        # This is ideal: no race window, applies before rename.
                         os.fchmod(f.fileno(), mode)
-                    except Exception:
-                        try:
-                            os.chmod(tmp, mode)
-                        except Exception:
-                            pass
+                    except OSError:
+                        # Fallback behavior: Only if fchmod raises any exception, try chmod(tmp).
+                        with contextlib.suppress(OSError):
+                            tmp.chmod(mode)
                 # Prefer streaming via the iterator (good for memory)
                 for line in ctx.iter_updated_lines():
                     f.write(line.encode("utf-8"))
                 f.flush()
                 os.fsync(f.fileno())
 
-            os.replace(tmp, path)
+            tmp.replace(path)
 
             # Try to fsync the directory for durability (POSIX only)
             try:
@@ -335,17 +334,18 @@ class AtomicFileSink(WriteSink):
                     os.fsync(dir_fd)
                 finally:
                     os.close(dir_fd)
-            except Exception:
-                pass
+            except OSError:
+                # Best-effort durability; ignore on platforms/filesystems that don't support it.
+                logger.debug("AtomicFileSink: directory fsync not supported", exc_info=True)
 
             return WriteResult(status=WriteStatus.WRITTEN)
-        except Exception as e:
+        except (OSError, UnicodeError) as e:
             # Best-effort cleanup of the temp file
             try:
                 if tmp.exists():
                     tmp.unlink()
-            except Exception:
-                pass
+            except OSError:
+                logger.debug("AtomicFileSink: failed to clean up temp file %s", tmp, exc_info=True)
             ctx.error(f"Atomic write failed: {e}")
             return WriteResult(status=WriteStatus.FAILED)
 

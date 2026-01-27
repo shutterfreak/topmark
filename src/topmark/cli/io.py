@@ -117,13 +117,21 @@ def consume_stdin(
             if stdin_filename and "." in stdin_filename:
                 suffix = "." + stdin_filename.rsplit(".", 1)[-1]
 
-            tmp = tempfile.NamedTemporaryFile(prefix="topmark-stdin-", suffix=suffix, delete=False)
-            temp_path = Path(tmp.name)
-            with tmp:
+            with tempfile.NamedTemporaryFile(
+                prefix="topmark-stdin-",
+                suffix=suffix,
+                delete=False,
+            ) as tmp:
+                temp_path = Path(tmp.name)
                 tmp.write(data.encode(encoding))
+
             return StdinResult(
-                mode=StdinMode.CONTENT, paths=[temp_path], temp_path=temp_path, errors=[]
+                mode=StdinMode.CONTENT,
+                paths=[temp_path],
+                temp_path=temp_path,
+                errors=[],
             )
+
         except OSError as exc:
             return StdinResult(
                 mode=StdinMode.NONE,

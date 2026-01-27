@@ -423,7 +423,7 @@ def resolve_color_mode(
     if stdout_isatty is None:
         try:
             stdout_isatty = sys.stdout.isatty()
-        except Exception:
+        except OSError:
             stdout_isatty = False
     return bool(stdout_isatty)
 
@@ -468,7 +468,7 @@ def trap_underscored_option(ctx: click.Context, param: click.Option, _value: obj
     name: str | None = param.name or None
     try:
         src: ParameterSource | None = ctx.get_parameter_source(name) if name else None
-    except Exception:
+    except (AttributeError, RuntimeError, click.ClickException):
         src = None
     if src is not ParameterSource.COMMANDLINE:
         return

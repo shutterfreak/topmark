@@ -20,6 +20,7 @@ matching TopMark's resolver contract that disallows absolute patterns.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import IO, TYPE_CHECKING, Any
 
 from click.testing import CliRunner, Result
@@ -29,7 +30,6 @@ from topmark.core.exit_codes import ExitCode
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-    from pathlib import Path
 
 
 def run_cli_in(
@@ -65,7 +65,7 @@ def run_cli_in(
         ```
     """
     runner = CliRunner()
-    cwd: str = os.getcwd()
+    cwd: Path = Path.cwd()
     try:
         os.chdir(tmp_path)
         return runner.invoke(

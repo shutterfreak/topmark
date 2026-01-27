@@ -17,7 +17,6 @@ for logging and CLI display.
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING
 
 from yachalk import chalk
@@ -79,29 +78,3 @@ def render_patch(patch: Sequence[str] | str, show_line_numbers: bool = False) ->
     else:
         result = chalk.gray("".join(f"{process_line(line)}\n" for line in lines))
     return result
-
-
-def write_patch(patch_content: str, output_path: str) -> None:
-    """Write patch content to a file with overwrite protection.
-
-    Prompts if the destination already exists and refuses to overwrite unless
-    confirmed by the user.
-
-    Args:
-        patch_content (str): The full diff text to write.
-        output_path (str): Destination path for the patch file.
-    """
-    if os.path.exists(output_path):
-        response: str = input(f"File '{output_path}' already exists. Overwrite? (y/n): ")
-        if response.lower() not in ["y", "yes"]:
-            print("Operation canceled: file was not overwritten.")
-            return
-
-    try:
-        with open(output_path, "w", encoding="utf-8") as patch_file:
-            patch_file.write(patch_content)
-        print(f"Patch content successfully written to '{output_path}'")
-    except FileNotFoundError:
-        print(f"Error: The directory for '{output_path}' does not exist.")
-    except OSError as e:
-        print(f"An I/O error occurred while writing the file: {e}")

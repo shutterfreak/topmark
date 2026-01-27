@@ -149,7 +149,7 @@ def resolve_color_mode(
     if stdout_isatty is None:
         try:
             stdout_isatty = sys.stdout.isatty()
-        except Exception:
+        except OSError:
             stdout_isatty = False
     return bool(stdout_isatty)
 
@@ -190,7 +190,7 @@ def write_updates(
                 with Path(r.path).open("w", encoding="utf-8", newline="") as fh:
                     fh.write(data)
                 written += 1
-        except Exception as e:
+        except (OSError, UnicodeError) as e:
             logger.error("Failed to write %s: %s", r.path, e)
             failed += 1
 
@@ -209,7 +209,7 @@ def safe_unlink(path: Path | None) -> None:
     if path and path.exists():
         try:
             path.unlink()
-        except Exception as e:
+        except OSError as e:
             logger.error("Failed to delete %s: %s", path, e)
 
 

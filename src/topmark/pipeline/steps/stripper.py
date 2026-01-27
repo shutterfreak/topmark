@@ -125,6 +125,9 @@ class StripperStep(BaseStep):
             ctx (ProcessingContext): Pipeline context. Must contain a file image, the
                 active header processor, and (optionally) the scanner‑detected header span.
 
+        Raises:
+            RuntimeError: If header processor is not defined.
+
         Mutations:
             ProcessingContext: The same context, with ``ctx.views.updated`` populated when a
                 removal occurs and ``StripStatus`` updated to reflect the outcome.
@@ -134,7 +137,9 @@ class StripperStep(BaseStep):
         - Trims a single leading blank line when the header starts at the top of the file
             (handled inside the processor).
         """
-        assert ctx.header_processor is not None  # For static code analysis
+        if ctx.header_processor is None:
+            # For static code analysis
+            raise RuntimeError("ctx.header_processor not defined")
 
         if ctx.status.content != ContentStatus.OK:
             # Respect content policy: do not attempt to strip when content was refused

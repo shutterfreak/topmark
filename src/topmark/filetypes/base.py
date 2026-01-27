@@ -314,23 +314,22 @@ class FileType:
         # 3) if still not matched, try patterns
         if matched_by is None and self.patterns:
             # Regex patterns against basename (cached)
-            if matched_by is None and self.patterns:
-                if self._compiled_patterns is None:
-                    try:
-                        self._compiled_patterns = [re.compile(p) for p in self.patterns]
-                    except re.error:
-                        self._compiled_patterns = []
-                for regex in self._compiled_patterns:
-                    if regex.fullmatch(path.name):
-                        matched_by = "pattern"
-                        break
+            if self._compiled_patterns is None:
+                try:
+                    self._compiled_patterns = [re.compile(p) for p in self.patterns]
+                except re.error:
+                    self._compiled_patterns = []
+            for regex in self._compiled_patterns:
+                if regex.fullmatch(path.name):
+                    matched_by = "pattern"
+                    break
 
         # 4) if still not matched, try content matcher (if present)
         if self.content_matcher is None:
             # Shortcut if no content matcher is defined:
             #    - If no name rule matched: False
             #    - If any name rule matched: True
-            return False if matched_by is None else True
+            return matched_by is not None
 
         # Evaluate whether the content matcher is *allowed* to run, based on the gate.
         gate: Final[ContentGate] = self.content_gate
@@ -359,6 +358,6 @@ class FileType:
 
         # Gate allows probing: consult the content matcher.
         try:
-            return bool(self.content_matcher(path))  # type: ignore[misc]
-        except Exception:
+            return bool(self.content_matcher(path))
+        except Exception:  # noqa: BLE001 - user-provided matcher must not crash detection
             return False

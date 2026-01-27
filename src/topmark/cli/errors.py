@@ -21,12 +21,18 @@ Styling:
 
 from __future__ import annotations
 
-from typing import IO, Any
+from typing import IO, TYPE_CHECKING, Any
 
 import click
 
+from topmark.config.logging import get_logger
 from topmark.core.exit_codes import ExitCode
 from topmark.core.keys import ArgKey
+
+if TYPE_CHECKING:
+    from topmark.config.logging import TopmarkLogger
+
+logger: TopmarkLogger = get_logger(__name__)
 
 
 class TopmarkError(click.ClickException):
@@ -58,8 +64,9 @@ class TopmarkError(click.ClickException):
                     # Use console for user-facing error output with bright red style
                     console.error(console.styled(self.format_message(), fg="bright_red"))
                     return
-        except Exception:
-            pass
+        except Exception:  # noqa: BLE001 - never let error rendering crash the CLI
+            # Never let error rendering crash the CLI; best-effort debug trace only.
+            logger.debug("Failed to render TopMark error via console", exc_info=True)
         # Fallback to Click's default behavior (includes its own styling)
         super().show(file)
 

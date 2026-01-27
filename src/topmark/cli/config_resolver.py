@@ -155,7 +155,7 @@ def resolve_config_from_click(
             if stdin_filename_from_args:
                 sf: Path = Path(stdin_filename_from_args)
                 # Only treat it as an anchor hint when it includes a parent dir.
-                if sf.parent != Path("."):
+                if sf.parent != Path():
                     anchor = (sf.parent if sf.is_absolute() else (cwd / sf.parent)).resolve()
         else:
             for f in raw_files:

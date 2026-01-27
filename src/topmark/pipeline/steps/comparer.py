@@ -212,13 +212,12 @@ class ComparerStep(BaseStep):
             and header_view.block is not None
             and render_view
             and render_view.block is not None
-        ):
-            if header_view.block != render_view.block:
-                logger.debug(
-                    "Header dicts equal but block text differs for %s → formatting change",
-                    ctx.path,
-                )
-                ctx.status.comparison = ComparisonStatus.CHANGED
+        ) and header_view.block != render_view.block:
+            logger.debug(
+                "Header dicts equal but block text differs for %s → formatting change",
+                ctx.path,
+            )
+            ctx.status.comparison = ComparisonStatus.CHANGED
 
         logger.debug(
             "Comparer: %s – header status=%s, comparison=%s",

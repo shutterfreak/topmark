@@ -47,7 +47,7 @@ import os
 
 # For runtime type checks, prefer collections.abc
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final, cast
 
@@ -238,11 +238,8 @@ class Config:
         if stats.n_error > 0:
             # Can't proceed with errors
             return False
-        if self.strict_config_checking is True and stats.n_warning > 0:
-            # Can't proceed with warnings in strict mode
-            return False
-        # Okay to proceed
-        return True
+        # Can't proceed with warnings in strict mode
+        return not (self.strict_config_checking is True and stats.n_warning > 0)
 
     def to_toml_dict(self, *, include_files: bool = False) -> TomlTable:
         """Convert this immutable Config into a TOML-serializable dict.
@@ -419,7 +416,7 @@ class MutableConfig:
     """
 
     # Initialization timestamp for the draft instance
-    timestamp: str = datetime.now().isoformat()
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     # Verbosity level ()
     verbosity_level: int | None = None
@@ -489,11 +486,8 @@ class MutableConfig:
         if stats.n_error > 0:
             # Can't proceed with errors
             return False
-        if self.strict_config_checking is True and stats.n_warning > 0:
-            # Can't proceed with warnings in strict mode
-            return False
-        # Okay to proceed
-        return True
+        # Can't proceed with warnings in strict mode
+        return not (self.strict_config_checking is True and stats.n_warning > 0)
 
     # ---------------------------- Build/freeze ----------------------------
     def freeze(self) -> Config:
@@ -622,7 +616,7 @@ class MutableConfig:
             # Extract [tool.topmark] subsection from pyproject.toml
             tool_section: TomlTable = toml_data.get("tool", {}).get("topmark", {})
             if not tool_section:
-                logger.error(f"[tool.topmark] section missing or malformed in {path}")
+                logger.error("[tool.topmark] section missing or malformed in %s", path)
                 return None
             else:
                 toml_data = tool_section
@@ -680,8 +674,9 @@ class MutableConfig:
                     seen.add(p)
                     logger.debug("Discovered config file: %s", p)
                     # Check for `root = true` to stop traversal after this dir
-                    try:
-                        data: TomlTable = load_toml_dict(p)
+                    data: TomlTable = load_toml_dict(p)
+                    # load_toml_dict() does a best-effort discovery; it returns {} on errors.
+                    if data:
                         if name == "pyproject.toml":
                             tool: TomlTable = data.get("tool", {})
                             topmark_tbl: TomlTable = tool.get("topmark", {})
@@ -690,9 +685,9 @@ class MutableConfig:
                         else:  # topmark.toml
                             if bool(data.get(Toml.KEY_ROOT, False)):
                                 root_stop_here = True
-                    except Exception as e:
+                    else:
                         # Best-effort discovery; ignore parse errors here.
-                        logger.debug("Ignoring parse error in %s: %s", p, e)
+                        logger.debug("Ignoring empty TOML dict from reading %s", p)
 
             if dir_entries:
                 # Keep entries grouped per directory: [pyproject, topmark]
@@ -761,7 +756,7 @@ class MutableConfig:
 
         # Start from a fresh draft with current timestamp early so we can attach diagnostics
         # while parsing.
-        draft: MutableConfig = cls(timestamp=datetime.now().isoformat())
+        draft: MutableConfig = cls(timestamp=datetime.now(timezone.utc).isoformat())
 
         # Config file's directory for relative path resolution
         cfg_dir: Path | None = config_file.parent.resolve() if config_file else None
@@ -1194,10 +1189,10 @@ class MutableConfig:
 
         # Optionally seed include_file_types for parity with CLI flags
         if include_file_types:
-            draft.include_file_types = set(x for x in include_file_types)
+            draft.include_file_types = set(include_file_types)
         # Optionally seed exlude_file_types for parity with CLI flags
         if exclude_file_types:
-            draft.exclude_file_types = set(x for x in exclude_file_types)
+            draft.exclude_file_types = set(exclude_file_types)
 
         # Only set strict config checking if not None
         if strict_config_checking is not None:
@@ -1633,8 +1628,9 @@ class MutableConfig:
                     )
                     if file_write_strategy is None:
                         logger.warning(
-                            f"Invalid '{ArgKey.WRITE_MODE}' value specified in the arguments: %r - "
+                            "Invalid '%s' value specified in the arguments: %r - "
                             "using defaults: output to file, atomic file write strategy.",
+                            ArgKey.WRITE_MODE,
                             raw_write_mode,
                         )
                         self.diagnostics.add_warning(

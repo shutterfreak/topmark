@@ -72,19 +72,21 @@ def _dev_validate_processors(proc_map: Mapping[str, HeaderProcessor]) -> None:
     ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
 
     # 1) All processors refer to existing file types
-    missing: list[str] = [name for name in proc_map.keys() if name not in ft_registry]
+    missing: list[str] = [name for name in proc_map if name not in ft_registry]
     if missing:
         raise RuntimeError(f"Processors registered for unknown file types: {missing!r}")
 
     # 2) Xml-like processors use NO_LINE_ANCHOR for line-based index
     for name, proc in proc_map.items():
-        if isinstance(proc, XmlHeaderProcessor):
-            if proc.get_header_insertion_index(["<root/>"]) != NO_LINE_ANCHOR:
-                raise RuntimeError(
-                    "XmlHeaderProcessor must return NO_LINE_ANCHOR from "
-                    "get_header_insertion_index(); offending type: "
-                    f"{name!r}"
-                )
+        if (
+            isinstance(proc, XmlHeaderProcessor)
+            and proc.get_header_insertion_index(["<root/>"]) != NO_LINE_ANCHOR
+        ):
+            raise RuntimeError(
+                "XmlHeaderProcessor must return NO_LINE_ANCHOR from "
+                "get_header_insertion_index(); offending type: "
+                f"{name!r}"
+            )
 
     _validation_done = True
 

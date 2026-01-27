@@ -69,6 +69,8 @@ def nest_toml_under_section(toml_doc: str, section_keys: str) -> str:
         ValueError: If ``section_keys`` is empty or only contains dots.
         RuntimeError: If the TOML document cannot be parsed or if an existing
             key along the path is not a table, making nesting impossible.
+        TypeError: If trying to nest a table in a non-table element.
+
     """
     try:
         # 1. Parse the existing document losslessly
@@ -137,7 +139,8 @@ def nest_toml_under_section(toml_doc: str, section_keys: str) -> str:
             already_nested = False
             break
         nxt: Item | Container = cur[k]
-        assert isinstance(nxt, Table)
+        if not isinstance(nxt, Table):
+            raise TypeError(f"Expected '{k}' to be a TOML table while checking nesting")
         cur = nxt
 
     if already_nested:
@@ -165,7 +168,7 @@ def nest_toml_under_section(toml_doc: str, section_keys: str) -> str:
         # Descend into the nested table; validate the type for Pyright and correctness
         next_level: Item | Container = current_level[key]
         if not isinstance(next_level, Table):
-            raise RuntimeError(
+            raise TypeError(
                 f"Cannot nest configuration under [{section_keys}]: "
                 f"intermediate key [{key}] is not a table."
             )
@@ -173,7 +176,8 @@ def nest_toml_under_section(toml_doc: str, section_keys: str) -> str:
 
     # 5. Attach the original document's content inside the final table
     # At this point, current_level is the Table for the last key in section_keys.
-    assert isinstance(current_level, Table)
+    if not isinstance(current_level, Table):
+        raise TypeError("Expected final nesting target to be a TOML table")
 
     # doc.items() extracts only the key-value pairs (the actual content),
     # preserving item-level trivia (inline comments, etc.).

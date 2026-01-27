@@ -83,9 +83,7 @@ class CBlockHeaderProcessor(BlockCommentMixin, HeaderProcessor):
             if candidate == directive:
                 return True
         # Case 2: "<directive>" (no per-line prefix)
-        if s == directive:
-            return True
-        return False
+        return s == directive
 
     def prepare_header_for_insertion(
         self,

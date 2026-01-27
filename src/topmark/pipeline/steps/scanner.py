@@ -113,6 +113,10 @@ class ScannerStep(BaseStep):
         Args:
             ctx (ProcessingContext): Processing context with the file image and a header processor.
 
+        Raises:
+            RuntimeError: If header processor or file type are not defined, or if the exclusive
+                start and end indexes are undefined or invalid.
+
         Mutations:
             ProcessingContext: The same context updated with:
             - ``ctx.header``: a ``HeaderView`` containing range/lines/block/mapping
@@ -125,7 +129,8 @@ class ScannerStep(BaseStep):
         )
         logger.debug("ctx: %s", ctx)
 
-        assert ctx.header_processor  # Satisfy static code analysis
+        if ctx.header_processor is None:
+            raise RuntimeError("Header processor not defined")
 
         if ctx.status.fs == FsStatus.EMPTY:
             # An empty file is considered to have no header, but we can still proceed
@@ -181,7 +186,14 @@ class ScannerStep(BaseStep):
         # SPAN → slice, parse, classify
         s_excl: int | None = hb.start
         e_excl: int | None = hb.end  # exclusive
-        assert s_excl is not None and e_excl is not None and s_excl < e_excl
+        if s_excl is None or e_excl is None:
+            raise RuntimeError(
+                f"Exclusive start ({s_excl!r}) and end ({e_excl!r}) indexes must be defined",
+            )
+        if s_excl >= e_excl:
+            raise RuntimeError(
+                f"Exclusive start ({s_excl!r}) index > end index ({e_excl!r}) index",
+            )
 
         # Header found and valid: ensure we have inclusive indices
         # Slice via iterator to avoid materializing the full file

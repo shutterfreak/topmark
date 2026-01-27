@@ -45,7 +45,7 @@ def test_filetype_register_unregister_roundtrip(dummy_name: str) -> None:
         FileTypeRegistry.register(ft)
         # Visible via names() and as_mapping()
         assert dummy_name in FileTypeRegistry.names()
-        assert dummy_name in FileTypeRegistry.as_mapping().keys()
+        assert dummy_name in FileTypeRegistry.as_mapping()
         # Visible via iter_meta()
         names: set[str] = {m.name for m in FileTypeRegistry.iter_meta()}
         assert dummy_name in names
@@ -79,7 +79,7 @@ def test_processor_register_unregister_roundtrip(proc_name: str) -> None:
     try:
         HeaderProcessorRegistry.register(proc_name, proc_cls)
         assert proc_name in HeaderProcessorRegistry.names()
-        assert proc_name in HeaderProcessorRegistry.as_mapping().keys()
+        assert proc_name in HeaderProcessorRegistry.as_mapping()
         # Iter meta should include it
         names: set[str] = {m.name for m in HeaderProcessorRegistry.iter_meta()}
         assert proc_name in names

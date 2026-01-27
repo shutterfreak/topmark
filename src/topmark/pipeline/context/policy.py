@@ -396,10 +396,7 @@ def can_change(ctx: ProcessingContext) -> bool:
     # - EMPTY files: allowed if per-type policy permits insertion into empty files
     if ctx.status.fs == FsStatus.OK:
         return True
-    if ctx.status.fs == FsStatus.EMPTY and allow_empty_by_policy(ctx):
-        return True
-
-    return False
+    return bool(ctx.status.fs == FsStatus.EMPTY and allow_empty_by_policy(ctx))
 
 
 def would_add_or_update(ctx: ProcessingContext) -> bool:

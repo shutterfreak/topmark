@@ -227,7 +227,7 @@ def test_file_types_filtering(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
         try:
             cfg: Config = make_config(
                 files=["."],
-                include_file_types=set(["py"]),
+                include_file_types={"py"},
             )
             files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
             rel: list[str] = sorted(p.as_posix() for p in files)
@@ -392,7 +392,7 @@ def test_file_type_unknown_is_ignored(
 
     try:
         caplog.set_level("WARNING")
-        include_file_types: set[str] = set(["py", "unknown"])
+        include_file_types: set[str] = {"py", "unknown"}
         cfg: Config = make_config(
             files=["."],
             include_file_types=include_file_types,
@@ -609,7 +609,7 @@ def test_multiple_unknown_file_types_warn_once(
 
     try:
         caplog.set_level("WARNING")
-        include_file_types: set[str] = set(["unknown1", "py", "unknown2"])
+        include_file_types: set[str] = {"unknown1", "py", "unknown2"}
         cfg: Config = make_config(
             files=["."],
             include_file_types=include_file_types,
@@ -702,7 +702,7 @@ def test_positional_glob_matches_path_rglob(
         m.chdir(tmp_path)
 
         # Expected behavior from Path('.').rglob(pattern)
-        expected: list[Path] = sorted(p for p in Path(".").rglob(pattern) if p.is_file())
+        expected: list[Path] = sorted(p for p in Path().rglob(pattern) if p.is_file())
 
         # TopMark resolver using the same positional glob
         cfg: Config = make_config(files=[pattern])

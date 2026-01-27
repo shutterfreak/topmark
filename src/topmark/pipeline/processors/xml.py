@@ -257,10 +257,7 @@ class XmlHeaderProcessor(XmlPositionalMixin, BlockCommentMixin, HeaderProcessor)
             # If we are splitting a single physical line (prolog + root on one line),
             # we need two newlines: one to end the prolog line and one blank line.
             # If the prolog already ended with an EOL, we only need one blank line.
-            if not prev_char_is_eol:
-                block = (newline_style * 2) + block
-            else:
-                block = newline_style + block
+            block = newline_style * 2 + block if not prev_char_is_eol else newline_style + block
 
         # --- Trailing padding (policy-aware, idempotent) --------------------
         # Add a single blank line *only* when body content follows and the next slice

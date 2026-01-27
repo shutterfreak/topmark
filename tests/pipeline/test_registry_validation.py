@@ -32,7 +32,7 @@ def test_registered_processors_map_to_existing_filetypes() -> None:
     ft_registry: dict[str, FileType] = get_base_file_type_registry()
     hp_registry: dict[str, HeaderProcessor] = get_base_header_processor_registry()
 
-    missing: list[str] = [name for name in hp_registry.keys() if name not in ft_registry]
+    missing: list[str] = [name for name in hp_registry if name not in ft_registry]
     assert missing == [], f"Processors registered for unknown file types: {missing!r}"
 
 

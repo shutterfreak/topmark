@@ -117,7 +117,7 @@ class ReaderStep(BaseStep):
         Returns:
             bool: True if processing can proceed to the read step, False otherwise.
         """
-        if ctx.is_halted:
+        if ctx.is_halted:  # noqa: SIM103
             # SnifferStep already flagged FsStatus statuses which halt processng
             return False
         # The remaining FsStatus states are either OK or controlled by policy
@@ -133,6 +133,9 @@ class ReaderStep(BaseStep):
         Args:
             ctx (ProcessingContext): The processing context for the current file.
 
+        Raises:
+            RuntimeError: If header processor or file type are not defined.
+
         Notes:
             - Assumes `sniffer.sniff()` has already handled existence, permissions,
             binary detection, BOM/shebang ordering policy, and mixed-newlines policy.
@@ -144,8 +147,10 @@ class ReaderStep(BaseStep):
         logger.debug("ctx: %s", ctx)
 
         # Safeguard: header_processor and file_type have been set in resolver.resolve()
-        assert ctx.header_processor, "context.header_processor not defined"
-        assert ctx.file_type, "context.file_type not defined"
+        if ctx.header_processor is None:
+            raise RuntimeError("Header processor not defined")
+        if ctx.file_type is None:
+            raise RuntimeError("File type not defined")
 
         if ctx.status.fs == FsStatus.BOM_BEFORE_SHEBANG:
             # Strict default: refuse unless policy says otherwise
@@ -344,18 +349,18 @@ class ReaderStep(BaseStep):
                             ctx.info(reason)
                             ctx.request_halt(reason=reason, at_step=self)
 
-                except Exception:
+                except (ValueError, TypeError, AttributeError, OSError, UnicodeError) as e:
                     # Advisory-only; never fail the reader on checker issues.
                     logger.debug(
-                        "reader advisory pre-insert checker failed; ignoring", exc_info=True
+                        "reader advisory pre-insert checker failed (%s); ignoring",
+                        type(e).__name__,
+                        exc_info=True,
                     )
 
-            return
-
-        except Exception as e:  # Log and attach diagnostic; continue without raising
+        except (OSError, UnicodeError) as e:  # Log and attach diagnostic; continue without raising
             logger.error("Error reading file %s: %s", ctx.path, e)
             ctx.status.content = ContentStatus.UNREADABLE
-            reason = f"Error reading file file: {e}"
+            reason = f"Error reading file: {e}"
             ctx.error(reason)
             ctx.request_halt(reason=reason, at_step=self)
             return

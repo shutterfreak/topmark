@@ -393,16 +393,13 @@ def make_file_type(
         if content_matcher is not None:
             try:
                 return bool(content_matcher(p))
-            except Exception:
+            except (OSError, UnicodeError, ValueError, TypeError):
                 return False
 
         return False
 
     matcher: Callable[[Path], bool]
-    if matches is not None:
-        matcher = matches
-    else:
-        matcher = _default_matches
+    matcher = matches if matches is not None else _default_matches
 
     obj = SimpleNamespace(
         name=name,

@@ -53,7 +53,7 @@ def get_processor_for_file(path: Path) -> HeaderProcessor | None:
         ", ".join(sorted(ft_registry.keys())),
     )
     header_processor_list: list[str] = sorted(
-        set(processor.__class__.__name__ for processor in hp_registry.values()),
+        {processor.__class__.__name__ for processor in hp_registry.values()},
     )
     logger.debug(
         "  %3d registered header processors: %s",

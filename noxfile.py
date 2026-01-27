@@ -97,8 +97,9 @@ def _parse_pyproject_toml() -> dict[str, Any]:
 
     # Handle TOML parsing based on Python version or available libraries
     try:
-        parsed = _toml_loads(data)
-    except Exception:
+        parsed: dict[str, Any] = _toml_loads(data)
+    except ValueError:
+        # tomllib.loads raises TOMLDecodeError, which is a subclass of ValueError
         return {}
 
     return parsed

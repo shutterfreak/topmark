@@ -280,12 +280,11 @@ def check_command(
     ctx.obj[ArgKey.WRITE_MODE] = write_mode
 
     fmt: OutputFormat = output_format or OutputFormat.DEFAULT
-    if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
-        if diff:
-            raise TopmarkUsageError(
-                f"{ctx.command.name}: {CliOpt.RENDER_DIFF} "
-                "is not supported with machine-readable output formats."
-            )
+    if fmt in (OutputFormat.JSON, OutputFormat.NDJSON) and diff:
+        raise TopmarkUsageError(
+            f"{ctx.command.name}: {CliOpt.RENDER_DIFF} "
+            "is not supported with machine-readable output formats."
+        )
 
     if add_only and update_only:
         raise TopmarkUsageError(
@@ -409,11 +408,10 @@ def check_command(
                 )
 
             # Per-file guidance (only in non-summary human mode)
-            if fmt == OutputFormat.DEFAULT and not summary_mode:
-                if vlevel >= 0:
-                    render_per_file_guidance(
-                        view_results, make_message=_check_msg, apply_changes=apply_changes
-                    )
+            if fmt == OutputFormat.DEFAULT and not summary_mode and vlevel >= 0:
+                render_per_file_guidance(
+                    view_results, make_message=_check_msg, apply_changes=apply_changes
+                )
 
         # Diff output
         emit_diffs(results=view_results, diff=diff, command=ctx.command)

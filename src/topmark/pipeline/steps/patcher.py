@@ -183,7 +183,6 @@ class PatcherStep(BaseStep):
                 "\n===DIFF START ===\n%s=== DIFF END ===",
                 chalk.yellow_bright.bg_blue(ctx.views.diff.text or ""),
             )
-            # write_patch(context.header_diff, context.path.as_posix() + ".diff")
 
         return
 

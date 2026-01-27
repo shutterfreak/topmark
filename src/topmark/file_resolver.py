@@ -101,10 +101,7 @@ def _read_paths_from_source(source: PatternSource) -> list[Path]:
         if not s or s.startswith("#"):
             continue
         p: Path = Path(s)
-        if not p.is_absolute():
-            p = (source.base / p).resolve()
-        else:
-            p = p.resolve()
+        p = (source.base / p).resolve() if not p.is_absolute() else p.resolve()
         out.append(p)
     logger.debug("Loaded %d path(s) from %s (base=%s)", len(out), source.path, source.base)
     return out
@@ -123,7 +120,7 @@ def _rel_for_match(path: Path, base: Path) -> str:
     try:
         rel: Path = path.resolve().relative_to(base.resolve())
         return rel.as_posix()
-    except Exception:
+    except (OSError, ValueError):
         return path.as_posix()
 
 
@@ -329,7 +326,7 @@ def resolve_file_list(config: Config) -> list[Path]:
         # Keep this branch exactly as before to preserve Path.rglob semantics.
         if "*" in str(p):
             logger.debug("Processing glob pattern: %s", p)
-            return list(Path(".").rglob(str(p)))
+            return list(Path().rglob(str(p)))
         # If the path is a directory, recursively include all files and subdirectories,
         # but prune directories that are already excluded by config.
         if p.is_dir():
@@ -537,7 +534,7 @@ def resolve_file_list(config: Config) -> list[Path]:
         try:
             rel_to_cwd: Path = real.relative_to(cwd.resolve())
             rep: Path = rel_to_cwd
-        except Exception:
+        except (OSError, ValueError):
             rep = real  # keep absolute if not within CWD
         if real not in out_by_real:
             out_by_real[real] = rep

@@ -93,7 +93,7 @@ def processors_command(
         groups[key].append(name)
 
     # Find unbound file types
-    unbound: list[str] = sorted([name for name in ft_registry.keys() if name not in hp_registry])
+    unbound: list[str] = sorted([name for name in ft_registry if name not in hp_registry])
 
     # Build a unified payload for all formats
     payload_data: dict[str, Any] = {
@@ -221,18 +221,14 @@ per‑processor file type listings into separate tables._
         total_ft: int = len(ft_registry)
         num_ft_width: int = len(str(total_ft))
 
-        for proc in payload_data["processors"]:
-            proc_idx += 1
-
+        for proc_idx, proc in enumerate(payload_data["processors"], start=1):
             module: str = console.styled("(" + proc["module"] + ")", dim=True)
             if show_details:
                 console.print(
                     f"{proc_idx:>{num_proc_width}}. {console.styled(proc['class'], bold=True)} "
                     + module
                 )
-                ft_idx = 0
-                for ft in proc["filetypes"]:
-                    ft_idx += 1
+                for ft_idx, ft in enumerate(proc["filetypes"], start=1):
                     descr: str = console.styled(ft["description"], dim=True)
 
                     console.print(f"    {ft_idx:>{num_ft_width}}. {ft['name']} - {descr}")
@@ -255,11 +251,9 @@ per‑processor file type listings into separate tables._
             )
             if show_details:
                 console.print(hdr_no_processor)
-                ft_idx = 0
-                for unbound_ft in payload_data["unbound_filetypes"]:
-                    ft_idx += 1
+                for uft_idx, unbound_ft in enumerate(payload_data["unbound_filetypes"], start=1):
                     console.print(
-                        f"    {ft_idx:>{num_ft_width}}. {unbound_ft['name']} - "
+                        f"    {uft_idx:>{num_ft_width}}. {unbound_ft['name']} - "
                         f"{console.styled(unbound_ft['description'], dim=True)}"
                     )
             else:

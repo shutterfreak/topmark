@@ -286,7 +286,7 @@ class ProcessingContext:
             return iter(())
         seq_or_it: Sequence[str] | Iterable[str] = uv.lines
         # If it's already a concrete sequence, avoid copying:
-        if isinstance(seq_or_it, list) or isinstance(seq_or_it, tuple):
+        if isinstance(seq_or_it, (list, tuple)):
             return iter(seq_or_it)
         # Fallback: it's an arbitrary iterable (possibly a generator)
         return iter(seq_or_it)

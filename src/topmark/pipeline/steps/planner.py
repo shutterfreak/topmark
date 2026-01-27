@@ -445,7 +445,7 @@ class PlannerStep(BaseStep):
                             rendered_header_text=header_text,
                             newline_style=ctx.newline_style or "\n",
                         )
-                    except Exception as e:
+                    except (ValueError, TypeError, AttributeError) as e:
                         logger.warning(
                             "prepare_header_for_insertion_text failed for %s: %s", ctx.path, e
                         )
@@ -482,7 +482,7 @@ class PlannerStep(BaseStep):
                 ctx.views.updated = UpdatedView(lines=new_text.splitlines(keepends=True))
                 ctx.status.plan = PlanStatus.INSERTED if apply else PlanStatus.PREVIEWED
                 return
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError) as e:
             logger.warning("text-based insertion failed for %s: %s", ctx.path, e)
 
         # --- Insert: line-based fallback ---
@@ -508,7 +508,7 @@ class PlannerStep(BaseStep):
                 rendered_header_lines=rendered_expected_header_lines,
                 newline_style=ctx.newline_style or "\n",
             )
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError) as e:
             logger.warning("prepare_header_for_insertion failed for %s: %s", ctx.path, e)
             header_lines = rendered_expected_header_lines
 

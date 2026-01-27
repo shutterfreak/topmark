@@ -123,10 +123,11 @@ def xml_can_insert(ctx: PreInsertContextView) -> InsertCheckResult:
 
     try:
         offset: int | None = proc.get_header_insertion_char_offset(text)
-    except Exception:
+    except Exception as e:  # noqa: BLE001 - a content checker should never crash TopMark
+        # Defensive: malformed XML/prolog content produced an invalid offset computation.
         return {
             "capability": InsertCapability.SKIP_OTHER,
-            "reason": "xml offset error",
+            "reason": f"xml offset error: {type(e).__name__}",
             "origin": origin,
         }
 

@@ -99,12 +99,11 @@ def config_init_command(
     console: ConsoleLike = ctx.obj["console"]
 
     fmt: OutputFormat = output_format or OutputFormat.DEFAULT
-    if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
-        if pyproject:
-            raise TopmarkUsageError(
-                f"{ctx.command.name}: {CliOpt.CONFIG_FOR_PYPROJECT} is not supported "
-                "with machine-readable output formats."
-            )
+    if fmt in (OutputFormat.JSON, OutputFormat.NDJSON) and pyproject:
+        raise TopmarkUsageError(
+            f"{ctx.command.name}: {CliOpt.CONFIG_FOR_PYPROJECT} is not supported "
+            "with machine-readable output formats."
+        )
 
     # Determine effective program-output verbosity for gating extra details
     vlevel: int = get_effective_verbosity(ctx)

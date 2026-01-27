@@ -37,11 +37,9 @@ def _is_crlf_lines(lines: list[str]) -> bool:
     """Return True if all lines (except possibly the last) end with CRLF."""
     if not lines:
         return True
-    for ln in lines[:-1]:
-        if not ln.endswith("\r\n"):
-            return False
+
     # Last line may or may not end with newline depending on source.
-    return True
+    return all(ln.endswith("\r\n") for ln in lines[:-1])
 
 
 def _ends_with_newline(text: str) -> bool:

@@ -68,6 +68,9 @@
     // Show diagnostics for the entire workspace (not just open files).
     "python.analysis.diagnosticMode": "workspace",
 
+    // Docstring
+    "autoDocstring.docstringFormat": "google",
+
     // Keep the helpful type hints you already enabled:
 
     // Note: Type checking mode is configured in `pyproject.toml` under [tool.pyright].

@@ -324,7 +324,7 @@ def test_cblock_not_at_top_insertion_single_leading_blank(tmp_path: Path) -> Non
     cfg: Config = MutableConfig.from_defaults().freeze()
 
     # Render canonical header lines (no fields needed for structure check)
-    header_values: dict[str, str] = {field: "" for field in cfg.header_fields}
+    header_values: dict[str, str] = dict.fromkeys(cfg.header_fields, "")
     newline = "\n"
     rendered_header: list[str] = proc.render_header_lines(
         header_values, cfg, newline, header_indent_override=None

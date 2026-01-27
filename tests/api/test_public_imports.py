@@ -33,10 +33,10 @@ def test_api_all_contains_expected_symbols() -> None:
     assert not missing, f"Missing from api.__all__: {sorted(missing)}; have: {sorted(exported)}"
 
 
-def test_public_imports() -> None:  # noqa: F811
+def test_public_imports() -> None:
     """Public modules import cleanly without raising."""
-    from topmark import api  # noqa: F401
-    from topmark.registry import Registry  # noqa: F401
+    from topmark import api
+    from topmark.registry import Registry
 
     # Mark as used so static analyzers don't complain:
     assert api is not None

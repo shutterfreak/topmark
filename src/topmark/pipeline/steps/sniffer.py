@@ -408,12 +408,11 @@ class SnifferStep(BaseStep):
             ctx.request_halt(reason=reason, at_step=self)
             return
 
-        if apply is True:
-            # Apply mode: check write permission upfront
-            if not os.access(ctx.path, os.W_OK):
-                ctx.status.fs = FsStatus.NO_WRITE_PERMISSION
-                ctx.error("Permission denied: cannot write to file")
-                return
+        # Apply mode: check write permission upfront
+        if apply is True and not os.access(ctx.path, os.W_OK):
+            ctx.status.fs = FsStatus.NO_WRITE_PERMISSION
+            ctx.error("Permission denied: cannot write to file")
+            return
 
         if st.st_size == 0:
             ctx.status.fs = FsStatus.EMPTY
@@ -465,7 +464,7 @@ class SnifferStep(BaseStep):
             ctx.error(reason)
             ctx.request_halt(reason=reason, at_step=self)
             return
-        except Exception as e:
+        except (OSError, UnicodeError, ValueError) as e:
             logger.error("sniffer: error sniffing %s: %s", ctx.path, e)
             ctx.status.fs = FsStatus.UNREADABLE
             reason = f"Error while sniffing: {e}"

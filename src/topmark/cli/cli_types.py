@@ -321,7 +321,14 @@ def GlobParam(
 ) -> list[Path]:
     """Validator: Expand a glob pattern CLI argument to a list of file paths.
 
-    Expands the given glob pattern string into a list of Path objects matching the pattern.
+    Expands the given glob pattern string into a list of `Path` objects matching the
+    pattern.
+
+    - Relative patterns are expanded via `Path.glob()`.
+    - Absolute patterns are expanded via `glob.glob(..., recursive=True)` because
+      `Path.glob()` does not support absolute patterns.
+
+    Both approaches support `**` for recursive matches.
 
     Args:
         ctx (click.Context): Click context.
@@ -329,10 +336,19 @@ def GlobParam(
         value (Any): The glob pattern string.
 
     Returns:
-        list[Path]: List of Path objects matching the glob pattern, or an empty list
-            if value is None.
+        list[Path]: Paths matching the glob pattern, or an empty list if `value` is None.
     """
     if value is None:
         return []
-    # Use glob.glob for shell-style wildcards; return as Path objects.
-    return [Path(p) for p in glob.glob(value, recursive=True)]
+
+    pattern: str = str(value)
+
+    # Re-enable support for absolute glob patterns.
+    # `Path.glob()` does not support absolute patterns, so we use stdlib `glob.glob()`
+    # for those while keeping `Path.glob()` for relative patterns.
+    if Path(pattern).is_absolute():
+        # Note: `glob.glob` supports `**` when `recursive=True`.
+        return [Path(p) for p in glob.glob(pattern, recursive=True)]  # noqa: PTH207
+
+    # Relative patterns: use Path.glob (supports `**` for recursive patterns).
+    return list(Path().glob(pattern))

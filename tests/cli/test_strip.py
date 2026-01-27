@@ -41,8 +41,6 @@ from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
 from topmark.pipeline.status import HeaderStatus, StripStatus
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from click.testing import Result
 
 
@@ -190,7 +188,7 @@ def test_strip_accepts_positional_paths(tmp_path: Path) -> None:
     # Header present → dry-run 'would change' = 2; tolerate 0 in edge runners.
     assert_SUCCESS_or_WOULD_CHANGE(result)
 
-    cwd: str = os.getcwd()
+    cwd: Path = Path.cwd()
     try:
         # Use a relative glob; absolute patterns are intentionally unsupported by the resolver.
         os.chdir(tmp_path)  # make the glob relative

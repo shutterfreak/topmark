@@ -438,7 +438,7 @@ def get_enum_value_checked(
     try:
         return enum_cls(raw)
     except ValueError:
-        allowed: str = ", ".join(str(e.value) for e in enum_cls)  # type: ignore[attr-defined]
+        allowed: str = ", ".join(str(e.value) for e in enum_cls)
         logger.warning("Invalid value for %s: %r (allowed: %s)", loc, raw, allowed)
         diagnostics.add_warning(f"Invalid value for {loc}: {raw!r} (allowed: {allowed})")
         return None

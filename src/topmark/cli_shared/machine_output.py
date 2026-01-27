@@ -146,7 +146,7 @@ def build_config_payload(config: Config) -> ConfigPayload:
     base["writer"] = writer
 
     json_safe_base: Any = jsonify_config_value(base)
-    return json_safe_base  # type: ignore[return-value]
+    return json_safe_base
 
 
 class ConfigDiagnosticsPayload(TypedDict, total=False):
@@ -186,7 +186,7 @@ def build_config_diagnostics_payload(config: Config) -> ConfigDiagnosticsPayload
     diag["diagnostic_counts"] = diag_counts
 
     json_safe_diag: Any = jsonify_config_value(diag)
-    return json_safe_diag  # type: ignore[return-value]
+    return json_safe_diag
 
 
 class ProcessingSummaryEntry(TypedDict):

@@ -19,9 +19,9 @@ from __future__ import annotations
 import enum
 import inspect
 import json
-import os
 import typing
 from argparse import Namespace
+from pathlib import Path
 
 from topmark import api
 from topmark.registry import Registry
@@ -110,8 +110,9 @@ def write_snapshot(path: str) -> None:
         path (str): Destination file path for the JSON snapshot.
     """
     snapshot: typing.Mapping[str, str] = collect_snapshot()
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
+    out_path = Path(path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with out_path.open("w", encoding="utf-8") as f:
         json.dump(snapshot, f, indent=2, sort_keys=True)
 
 

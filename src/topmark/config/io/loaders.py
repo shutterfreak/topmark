@@ -60,6 +60,7 @@ def load_defaults_dict() -> TomlTable:
     Raises:
         RuntimeError: If the bundled default config resource cannot be read or
             parsed as TOML.
+        TypeError: If the bundled default config did not parse to a TOML table.
     """
     resource: Traversable = files(DEFAULT_TOML_CONFIG_PACKAGE).joinpath(DEFAULT_TOML_CONFIG_NAME)
     logger.debug("Loading defaults from package resource: %s", resource)
@@ -75,7 +76,7 @@ def load_defaults_dict() -> TomlTable:
         doc: tomlkit.TOMLDocument = tomlkit.parse(text)
         data_any: Any = doc.unwrap()
         if not isinstance(data_any, dict):
-            raise RuntimeError(
+            raise TypeError(
                 f"Bundled default config {DEFAULT_TOML_CONFIG_PACKAGE!r}/"
                 f"{DEFAULT_TOML_CONFIG_NAME!r} did not parse to a table."
             )
@@ -112,6 +113,6 @@ def load_toml_dict(path: Path) -> TomlTable:
     except TomlkitParseError as e:
         logger.error("Error decoding TOML from %s: %s", path, e)
         return {}
-    except Exception as e:
+    except (TypeError, ValueError) as e:
         logger.error("Unknown error while reading TOML from %s: %s", path, e)
         return {}

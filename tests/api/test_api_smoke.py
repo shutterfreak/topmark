@@ -49,7 +49,7 @@ def test_strip_dry_run_reports_would_strip(repo_py_with_header: Path) -> None:
         include_file_types=["python"],
     )
     # At least one file (with_header.py) should be reported as would_change
-    assert Outcome.WOULD_STRIP in r.summary.keys()
+    assert Outcome.WOULD_STRIP in r.summary
     assert r.written == 0 and r.failed == 0
 
 
@@ -76,4 +76,4 @@ def test_strip_apply_then_check_is_unchanged(repo_py_with_header: Path) -> None:
 
     # Accept either: would_change (header would be re-inserted) or unchanged
     # depending on project defaults. Assert at least one bucket is present.
-    assert Outcome.WOULD_INSERT in r_check.summary.keys()
+    assert Outcome.WOULD_INSERT in r_check.summary

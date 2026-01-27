@@ -70,7 +70,8 @@ def build_file_list(config: Config, *, stdin_mode: bool, temp_path: Path | None)
       `files_from`, include/exclude patterns, and file types.
     """
     if stdin_mode:
-        assert temp_path is not None
+        if temp_path is None:
+            raise RuntimeError("temp_path should not be undefined in stdin_mode")
         return [temp_path]
     return resolve_file_list(config)
 

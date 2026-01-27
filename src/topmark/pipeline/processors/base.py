@@ -566,11 +566,15 @@ class HeaderProcessor:
         Returns:
             list[str]: Rendered header lines ending with ``newline_style``.
 
+        Raises:
+            RuntimeError: If `config` is undefined.
+
         Notes:
             - If ``config.header_format`` is ``HeaderOutputFormat.PLAIN``, the method emits
               a raw/plain header (no prefixes/suffixes/indentation) unless overrides are given.
         """
-        assert config, "Config is undefined"
+        if not config:
+            raise RuntimeError("Config is undefined")
 
         logger.info(
             "%s: rendering header fields: %s",
@@ -990,6 +994,10 @@ class HeaderProcessor:
                 - The (start, end) line indices (inclusive) of the removed block
                   in the original input.
                 - The diagnostic describing the outcome.
+
+        Raises:
+            RuntimeError: If policy-aware bounds detection reports a SPAN but omits
+                start/end indices.
         """
         # 1) Resolve bounds: prefer explicit span, else policy-aware detection.
         if span is None:
@@ -999,7 +1007,8 @@ class HeaderProcessor:
             bounds: HeaderBounds = self.get_header_bounds(lines=lines, newline_style=newline_style)
             if bounds.kind is BoundsKind.SPAN:
                 # convert exclusive end to inclusive span expected by this method
-                assert bounds.start is not None and bounds.end is not None
+                if bounds.start is None or bounds.end is None:
+                    raise RuntimeError("Start and end bounds must be defined.")
                 span = (bounds.start, bounds.end - 1)
 
             elif bounds.kind is BoundsKind.MALFORMED:

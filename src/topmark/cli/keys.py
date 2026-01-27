@@ -18,7 +18,7 @@ definitions, and makes refactors (renames, aliases, deprecations) explicit and a
 
 Design notes:
     - CLI option spellings (``CliOpt``) are user-facing and should be changed with care.
-    - Parsed argument destination keys are defined in [`topmark.core.keys.ArgKey`][].
+    - Parsed argument destination keys are defined in [topmark.core.keys.ArgKey][].
     - This module is intentionally behavior-free; it is a pure namespace of constants.
 """
 

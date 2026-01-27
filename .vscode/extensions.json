@@ -10,12 +10,13 @@
 
 {
     "recommendations": [
-        "ms-python.vscode-pylance",
-        "ms-python.python",
-        "ms-python.vscode-python-envs",
         "charliermarsh.ruff",
-        "ms-pyright.pyright",
         "esbenp.prettier-vscode",
+        "ms-pyright.pyright",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.vscode-python-envs",
+        "njpwerner.autodocstring",
         "redhat.vscode-yaml",
         "tamasfe.even-better-toml"
     ]

@@ -202,9 +202,24 @@ select = [
   "TC",     # type-checking (TCH001/2/3: move type-only imports under TYPE_CHECKING)
   "UP",     # pyupgrade: modern syntax, builtin/collections.abc generics
   "TID",    # Tidy imports
+  "T20",    # Enable print linting globally
   "RUF010", # changes f"{str(user)}" → f"{user!s}" and f"{repr(user)}" → f"{user!r}"
   "RUF022", # checks if the items in __all__ are sorted alphabetically
   "RUF023", # checks if the __slots__ in classes are sorted alphabetically
+  "RUF100", # Checks for unused `noqa` directives
+  "SIM",    # Reduce complex conditionals that hide logic bugs
+  "ERA",    # Flags commented-out code (often forgotten debug code).
+  "BLE",    # (flake8-blind-except) — catches except Exception: without re-raising or logging context.
+  "TRY",    # (tryceratops) — encourages structured exception handling (raise from, avoid empty handlers).
+  "B904",   # (raise-without-from inside except) — this improves tracebacks a lot.
+  "B905",   # (zip without strict) — optional; Python 3.10+ supports strict=....
+  "FA",     # (flake8-future-annotations) if you want to enforce future annotations consistently (you already enforce required-imports in isort).
+  "C4",     # (flake8-comprehensions): catches inefficient/odd list/set/dict constructs.
+  # "C90",  # (mccabe) Comlexity
+  "G",   # catches logging formatting mistakes and encourages lazy formatting
+  "DTZ", # (flake8-datetimez): catches naive timezone bugs if you ever handle datetimes (you do timestamps in config).
+  "PTH", # pathlib
+  "S",   # (bandit) selectively: can be noisy; but in a tool that writes files, it can catch risky patterns. Often you enable it and then ignore a handful of specific codes.
 ]
 ignore = [
   # Note: D212 and D213 cannot be enabled simultaneously
@@ -218,7 +233,20 @@ ignore = [
   # "D406", "D407", "D408", "D409",
   # If you don't want to enforce a blank line after the last section in the docstring
   # "D413",
+  "ERA001", # TopMark headers trigger false positives
+  "TRY003",
+  # "TRY004",
+  "TRY400",
+  "TRY401",
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"docs/**/*.py" = ["T201", "S101"]
+"tests/**/*.py" = ["ERA", "S101"]
+"tools/**/*.py" = ["T201", "S101"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 15
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -264,8 +292,11 @@ exclude = [".venv", "venv", "build", "dist", "**/__pycache__"]
 venvPath = "."
 venv = ".venv"
 reportMissingImports = true
-reportMissingTypeStubs = false # Set to true if you want to be strict about missing type stubs
-reportImportCycles = false     # Prevent erroring on type-only circular cependencies
+reportMissingTypeStubs = false            # Set to true if you want to be strict about missing type stubs
+reportImportCycles = false                # Prevent erroring on type-only circular cependencies
+reportUnnecessaryTypeIgnoreComment = true # Remove unnecessary `type: ignore` comments
+reportUnusedImport = true
+reportUnusedVariable = true
 
 [tool.pytest.ini_options]
 markers = [

@@ -28,7 +28,7 @@ Commit the updated file together with a version bump and CHANGELOG entry.
 from __future__ import annotations
 
 import json
-import os
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -39,8 +39,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
 BASELINE_JSON = "public_api_snapshot.json"
-here: str = os.path.dirname(__file__)
-baseline_path: str = os.path.join(here, BASELINE_JSON)
+baseline_path: Path = Path(__file__).parent / BASELINE_JSON
 
 
 def _collect() -> Mapping[str, str]:
@@ -48,12 +47,12 @@ def _collect() -> Mapping[str, str]:
 
 
 @pytest.mark.skipif(
-    not os.path.exists(baseline_path),
+    not baseline_path.exists(),
     reason="No baseline snapshot file found",
 )
 def test_public_api_snapshot() -> None:
     """Current public API signatures match the committed baseline JSON."""
-    with open(baseline_path, encoding="utf-8") as f:
+    with baseline_path.open(encoding="utf-8") as f:
         baseline = json.load(f)
     assert _collect() == baseline, (
         "Public API changed. Run: make api-snapshot-update, then review, "

@@ -258,7 +258,9 @@ def get_candidates_for_file_path(path: Path) -> list[Candidate]:
         if should_probe and callable(cm):
             try:
                 content_hit = bool(cm(path))
-            except Exception:
+            except (OSError, UnicodeError, ValueError, TypeError) as e:
+                # Content matchers are user/extensible; keep resolver resilient.
+                logger.debug("content matcher failed (%s); treating as no-hit", type(e).__name__)
                 content_hit = False
 
         if not _include_candidate(ft, sig, content_hit):

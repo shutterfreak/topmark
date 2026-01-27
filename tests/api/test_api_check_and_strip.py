@@ -84,7 +84,7 @@ def test_check_apply_update_only_does_not_add_new_headers(
     )
     # Should not create a header in a.py because update_only=True
     assert r.bucket_summary is not None
-    assert Outcome.UPDATED.value not in r.bucket_summary.keys()
+    assert Outcome.UPDATED.value not in r.bucket_summary
     assert r.had_errors is False
     assert has_header(read_text(a), proc_py, "\n") is False
 
@@ -108,7 +108,7 @@ def test_strip_dry_run_reports_would_change_on_files_with_headers(
     r: RunResult = api_strip_dir(repo_py_with_and_without_header, apply=False)
     # At least b.py has a header; strip would remove it
     # assert r.summary.get("would_change", 0) >= 1
-    assert Outcome.WOULD_STRIP in r.summary.keys()
+    assert Outcome.WOULD_STRIP in r.summary
 
 
 def test_strip_apply_removes_headers(
