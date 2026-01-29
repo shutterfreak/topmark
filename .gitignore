@@ -21,8 +21,13 @@ dist/
 # Archives
 archives/
 
-# Documentation
+# Documentation (source)
+docs/_drafts/
+docs/**/_drafts/
+
+# Documentation (built)
 site/
+
 
 # Virtual environments
 .venv/

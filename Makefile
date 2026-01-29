@@ -18,7 +18,7 @@
 	docs-build docs-serve docs-clean \
 	links links-src links-all \
 	api-snapshot api-snapshot-dev api-snapshot-update api-snapshot-ensure-clean \
-	venv venv-sync-dev venv-clean \
+	venv venv-sync-dev venv-sync-dev-docs venv-sync-docs venv-clean \
 	lock-compile-prod lock-compile-dev lock-compile-docs \
 	lock-dry-run-prod lock-dry-run-dev lock-dry-run-docs \
 	lock-upgrade-prod lock-upgrade-dev lock-upgrade-docs \
@@ -77,6 +77,8 @@ help:
 	@echo "Local editor venv (optional, for Pyright/import resolution in IDE):"
 	@echo "  venv            Create .venv with lock tooling (pip-tools)"
 	@echo "  venv-sync-dev   pip-sync requirements-dev.txt into .venv"
+	@echo "  venv-sync-dev-docs   pip-sync requirements-dev.txt and requirements-docs.txt into .venv"
+	@echo "  venv-sync-docs  pip-sync requirements-docs.txt into .venv (removes DEV-only packages from .venv)"
 	@echo "  venv-clean      Remove .venv"
 	@echo ""
 	@echo "Lock management (pip-compile; run manually when you choose to refresh pins):"
@@ -219,6 +221,19 @@ venv:
 venv-sync-dev: venv
 	$(VENV_BIN)/pip-sync requirements-dev.txt
 	@echo "Synced dev deps into $(VENV)."
+
+# Sync docs-only deps into the shared venv.
+# NOTE: pip-sync enforces an exact set of packages; running this will remove dev-only tools
+# not present in requirements-docs.txt. Prefer venv-sync-dev-docs for a combined environment.
+venv-sync-docs: venv
+	$(VENV_BIN)/pip-sync requirements-docs.txt
+	@echo "Synced docs deps into $(VENV)."
+
+# Sync the UNION of dev + docs deps into the shared venv.
+# This is the recommended target for local MkDocs development and VS Code import resolution.
+venv-sync-dev-docs: venv
+	$(VENV_BIN)/pip-sync requirements-dev.txt requirements-docs.txt
+	@echo "Synced dev+docs deps into $(VENV)."
 
 venv-clean:
 	@rm -rf $(VENV)

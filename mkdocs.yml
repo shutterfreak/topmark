@@ -22,6 +22,11 @@ site_url: https://topmark.readthedocs.io/
 repo_name: shutterfreak/topmark
 repo_url: https://github.com/shutterfreak/topmark
 edit_uri: edit/main/docs/
+exclude_docs: |
+  _snippets/*
+  _snippets/**
+draft_docs: |
+  _drafts/
 theme:
   name: material
   language: en
@@ -52,22 +57,16 @@ markdown_extensions:
           format: pymdownx.superfences.fence_code_format
   - pymdownx.highlight
 plugins:
-  # 3. gen-files, being a generator, can safely remain last.
+  # 1) Generate pages first so other plugins can process them.
   - gen-files:
       scripts:
-        - docs/gen_api_pages.py
-  # 1. Include-markdown runs here, inserting the snippet content.
+        - tools/docs/gen_api_pages.py
+
+  # 2) include-markdown expands snippets into the page Markdown.
   - include-markdown:
       rewrite_relative_urls: true
-  # 2. Your custom hook runs LAST, guaranteeing it sees all text (main page + snippets).
-  #    This overrides the non-functional native conversion.
-  - mkdocs-simple-hooks:
-      hooks:
-        # Ensure the version is loaded before the build starts:
-        on_pre_build: "docs.hooks:pre_build"
-        # Process on-page markdown:
-        on_page_markdown: "docs.hooks:on_page_markdown"
 
+  # 3) mkdocstrings expands ::: blocks (docstrings)
   - mkdocstrings:
       default_handler: python
       handlers:
@@ -86,6 +85,15 @@ plugins:
             filters:
               - "!^_" # hide “private” members
               - "!^__" # hide dunder members like __init__
+
+  # 4) Custom Markdown normalization after mkdocstrings (so it can fix docstring output too)
+  - mkdocs-simple-hooks:
+      hooks:
+        # Ensure the version is loaded before the build starts:
+        on_pre_build: "tools.docs.hooks:pre_build"
+        # Process on-page markdown:
+        on_page_markdown: "tools.docs.hooks:on_page_markdown"
+        on_post_build: "tools.docs.hooks:post_build"
 
   - autorefs
   - search
@@ -128,6 +136,7 @@ nav:
       - "Config schema": dev/config-schema.md
       - "API Stability": dev/api-stability.md
       - "Machine output": dev/machine-output.md
+      - "Documentation Pipeline & Reference Hygiene": dev/documentation-pipeline.md
 watch:
   - src
   - docs

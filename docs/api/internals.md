@@ -18,8 +18,14 @@ topmark:header:end
 > They are **not** covered by the semver stability guarantees. Prefer the stable public API
 > documented in **API → Public API**.
 
+For details on how these pages are generated and validated, see
+[Development → Documentation Pipeline & Reference Hygiene](../dev/documentation-pipeline.md).
+
 This section provides per‑module reference pages generated during the docs build (see
-`docs/gen_api_pages.py`). They are not added to the navigation to keep the sidebar compact. Use the
+`tools/docs/gen_api_pages.py`). They are not added individually to the navigation to keep the sidebar compact. Use the
 search box to find symbols, or browse the generated paths under `/api/internals/topmark/...`.
 
-Browse the generated index: [/api/internals/topmark/index/](../api/internals/topmark/index.md)
+These pages are generated automatically during the MkDocs build and should not be edited
+manually. Any changes should be made in the corresponding Python source files under `src/`.
+
+Browse the generated internals index: [`topmark` internals](../api/internals/topmark/index.md)

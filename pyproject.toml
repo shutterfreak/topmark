@@ -204,8 +204,8 @@ select = [
   "TID",    # Tidy imports
   "T20",    # Enable print linting globally
   "RUF010", # changes f"{str(user)}" → f"{user!s}" and f"{repr(user)}" → f"{user!r}"
-  "RUF022", # checks if the items in __all__ are sorted alphabetically
-  "RUF023", # checks if the __slots__ in classes are sorted alphabetically
+  "RUF022", # checks if the items in __all__ are sorted alphabetically and unique
+  "RUF023", # checks if the __slots__ in classes are sorted alphabetically and unique
   "RUF100", # Checks for unused `noqa` directives
   "SIM",    # Reduce complex conditionals that hide logic bugs
   "ERA",    # Flags commented-out code (often forgotten debug code).
