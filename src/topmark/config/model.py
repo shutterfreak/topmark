@@ -21,7 +21,7 @@ Scope:
     - *Out of scope*: filesystem discovery and TOML I/O. Those belong in
       dedicated modules (e.g., ``discovery.py`` and ``loader.py``) to keep this
       model import-light and avoid cycles. The project may re-export such helpers
-      from `topmark.config` for a stable public API.
+      from [`topmark.config`][topmark.config] for a stable public API.
 
 Immutability:
     - `Config` stores tuples/frozensets and is ``frozen=True`` to prevent

@@ -146,7 +146,7 @@ ______________________________________________________________________
 
 ## Gatekeeping & Pipeline
 
-Each pipeline step (reader, builder, renderer, comparer, updater, writer) is protected by **gating helpers** such as `may_proceed_to_writer(ctx)`.\
+Each pipeline step (`ResolverStep`, `SnifferStep`, `ReaderStep`, `ScannerStep`, `BuilderStep`, `RendererStep`, `ComparerStep`, `StripperStep`, `PatcherStep`,`PlannerStep`, `WriterStep`) is protected by a `may_proceed(ctx)` **gating helper**.\
 These consider:
 
 - File system status
@@ -186,5 +186,7 @@ ______________________________________________________________________
 ## See also
 
 - Default configuration: `src/topmark/config/topmark-default.toml`
-- Implementation: `MutableConfig.load_merged()` and `effective_policy()` in `topmark.config.model`
+- Implementation: \[`MutableConfig.load_merged()`\][topmark.config.MutableConfig.load_merged]
+  and \[`effective_policy()`\][topmark.config.policy.effective_policy]
+  in \[`topmark.config.model`\][topmark.config.model]
 - Related doc: `README.md`

@@ -94,7 +94,7 @@ graph TD
 
 #### Stable Facade (Public API)
 
-- `topmark.registry.Registry`
+- \[`topmark.registry.Registry`\][topmark.registry.Registry]
 
 This facade exposes **read-only views** of the *effective* registries and is the
 recommended integration point for tooling and downstream consumers.
@@ -107,8 +107,8 @@ Characteristics:
 
 #### Advanced Registries (Internal / Power-User API)
 
-- `topmark.registry.FileTypeRegistry`
-- `topmark.registry.HeaderProcessorRegistry`
+- \[`topmark.registry.FileTypeRegistry`\][topmark.registry.FileTypeRegistry]
+- \[`topmark.registry.HeaderProcessorRegistry`\][topmark.registry.HeaderProcessorRegistry]
 
 These classes provide **overlay mutation helpers**:
 

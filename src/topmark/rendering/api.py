@@ -13,6 +13,9 @@
 This module provides functions to render TopMark headers for given file paths
 using the configured processing pipelines. It serves as the high-level
 interface for converting configuration and overrides into a formatted header string.
+
+Notes:
+    - This is a convenience API around the pipeline, and may raise if pipeline steps raise.
 """
 
 from __future__ import annotations
@@ -40,7 +43,7 @@ def render_header_for_path(
     config: Config,
     path: Path,
     header_overrides: dict[str, str] | None = None,
-    header_fields_overrides: list[str] | None = None,
+    field_order_override: list[str] | None = None,
     format_override: HeaderOutputFormat | None = None,
     # newline: str = "\n",
 ) -> str:
@@ -55,13 +58,14 @@ def render_header_for_path(
         path (Path): Target file path whose file type determines the processor.
         header_overrides (dict[str, str] | None): Optional mapping of field overrides
             to inject into the header.
-        header_fields_overrides (list[str] | None): Optional explicit field order
+        field_order_override (list[str] | None): Optional explicit field order
             to render instead of the default.
         format_override (HeaderOutputFormat | None): Optional explicit header output
             format to use. Defaults to ``HeaderOutputFormat.NATIVE``.
 
     Returns:
         str: The rendered header as a single string (joined lines).
+            Returns an empty string if the render view is absent.
     """
     # Prepare effective values without mutating the original Config (it's frozen)
 
@@ -72,9 +76,7 @@ def render_header_for_path(
 
     # Compute effective field order (override > config)
     effective_fields: tuple[str, ...] = (
-        tuple(header_fields_overrides)
-        if header_fields_overrides is not None
-        else config.header_fields
+        tuple(field_order_override) if field_order_override is not None else config.header_fields
     )
 
     # Merge values (config → overrides) in the chosen field order
@@ -106,7 +108,7 @@ def render_header_for_path(
     context = runner.run(context, pipeline)
     # Return the header
 
-    rennder_view: RenderView | None = context.views.render
-    if rennder_view:
-        return rennder_view.block or ""
+    render_view: RenderView | None = context.views.render
+    if render_view:
+        return render_view.block or ""
     return ""

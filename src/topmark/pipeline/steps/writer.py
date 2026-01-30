@@ -26,8 +26,10 @@ Sinks
 - StdoutSink: writes the updated content to stdout (stdin-content mode).
 - NullSink: no-op (dry-run).
 
-The step respects `topmark.pipeline.context.may_proceed_to_writer` and the
-tri-state intent/feasibility via `ProcessingContext.would_change` and `can_change`.
+The step respects
+[`WriterStep.may_proceed()`][topmark.pipeline.steps.writer.WriterStep.may_proceed]
+and the tri-state intent/feasibility via `ProcessingContext.would_change`
+and `ProcessingContext.can_change`.
 """
 
 from __future__ import annotations
@@ -465,14 +467,14 @@ class WriterStep(BaseStep):
     def run(self, ctx: ProcessingContext) -> None:
         """Writer step: commit updates to the selected sink.
 
-        This step executes only when `may_proceed_to_writer` returns ``True``.
+        This step executes only when `may_proceed()` returns `True`.
         Otherwise it converts a preview status to a non-mutating terminal status.
 
         Args:
             ctx (ProcessingContext): The processing context with update intent.
 
         Mutations:
-            ProcessingContext: The same context, with ``status.write`` finalized.
+            ProcessingContext: The same context, with `status.write` finalized.
         """
         logger.debug("ctx: %s", ctx)
 

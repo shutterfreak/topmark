@@ -63,6 +63,7 @@ from tools.docs.docs_utils import (
     format_repo_path,
     public_ref_doc_for_symbol,
     rel_href,
+    unescape_reference_link_text,
     wrap_actions_blocks_with_raw,
 )
 
@@ -355,10 +356,19 @@ def on_page_markdown(
 
     markdown = GH_CALLOUT_RE.sub(_replace, markdown)
 
-    # 3) Fix reference labels that accidentally include backticks.
+    # 3) Unescape reference-style links that mdformat renders as literal text.
+    #
+    # mdformat may escape the outer link brackets like:
+    #   \\[`sym`\\][topmark.sym]
+    # which renders as literal text and prevents mkdocs-autorefs from resolving.
+    # We normalize these back to real reference-style links before any further
+    # reference hygiene steps.
+    markdown = apply_outside_fenced_blocks(markdown, unescape_reference_link_text)
+
+    # 4) Fix reference labels that accidentally include backticks.
     markdown = apply_outside_fenced_blocks(markdown, fix_backticked_reference_links)
 
-    # 4) Debug and/or strict: report or fail on backticked symbols that aren't linked.
+    # 5) Debug and/or strict: report or fail on backticked symbols that aren't linked.
     if TOPMARK_DOCS_DEBUG is True or TOPMARK_DOCS_STRICT_REFS is True:
         findings_by_symbol: dict[str, set[int]] = find_unlinked_backticked_symbols_with_locations(
             markdown
@@ -443,7 +453,7 @@ def on_page_markdown(
 
 
 def post_build(config: dict[str, Any], **kwargs: Any) -> dict[str, Any] | None:
-    """Fail the build after processing all pages if strict ref hygiene is enabled.
+    """Fail the build after processing all pages when strict ref hygiene is enabled.
 
     When `TOPMARK_DOCS_STRICT_REFS` is set, `on_page_markdown` records any pages that
     contain unlinked backticked symbol references. This hook aggregates those
@@ -460,7 +470,7 @@ def post_build(config: dict[str, Any], **kwargs: Any) -> dict[str, Any] | None:
     Raises:
         Abort: If strict refs are enabled and any pages contained unlinked backticked
             symbol references.
-        RuntimeError: Fallback if Abort cannot be imported.
+        RuntimeError: If `Abort` cannot be imported.
     """
     if TOPMARK_DOCS_STRICT_REFS is not True:
         return config

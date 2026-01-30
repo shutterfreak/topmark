@@ -16,13 +16,14 @@ constructed lazily on first access and cached thereafter.
 
 Notes:
     * Built-ins are imported lazily from topical modules.
-    * Plugins are discovered via the ``topmark.filetypes`` entry point group.
+    * Plugins are discovered via the [`topmark.filetypes`][topmark.filetypes]
+      entry point group.
     * The returned mapping is a plain ``dict`` but should be treated as
       immutable by callers.
     * This is the **base** registry (built-ins + entry points). For the
-      effective, user-facing composed view (base + overlays − removals), use
-      [`topmark.registry.filetypes.FileTypeRegistry.as_mapping`][].
-    * Overlay mutations must go through ``topmark.registry``.
+      effective, user-facing composed view (base + overlays - removals), use
+      [`topmark.registry.filetypes.FileTypeRegistry.as_mapping`][topmark.registry.filetypes.FileTypeRegistry.as_mapping].
+    * Overlay mutations must go through [`topmark.registry`][topmark.registry].
 """
 
 from __future__ import annotations

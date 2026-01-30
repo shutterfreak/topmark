@@ -20,8 +20,9 @@ Notes:
       registry (base built-ins + entry points + local overlays − removals) and are
       returned as `MappingProxyType` to prevent accidental mutation.
     * `register()` / `unregister()` perform **overlay-only** changes. They do not mutate
-      the internal base registry built by `topmark.filetypes.instances`. Overlays are
-      process-local and guarded by an `RLock`.
+      the internal base registry built by
+      [`topmark.filetypes.instances`][topmark.filetypes.instances].
+      Overlays are process-local and guarded by an `RLock`.
     * `supported_names()` / `unsupported_names()` compute support against the **composed**
       header processor registry to reflect overlay registrations made via
       `HeaderProcessorRegistry`.

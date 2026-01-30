@@ -15,7 +15,7 @@ This module centralizes small, deterministic helpers used by:
 - `tools/docs/gen_api_pages.py` (mkdocs-gen-files script)
 
 It intentionally contains small utilities only:
-- Markdown link/reference hygiene helpers
+- Markdown link/reference hygiene helpers (including mdformat bracket unescape)
 - Inline-code symbol scanning helpers
 - Environment flag parsing
 - Repo-path formatting helpers
@@ -69,6 +69,19 @@ _BACKTICKED_REF_LABEL_RE: re.Pattern[str] = re.compile(
 # Heuristic for Python-like fully-qualified symbol paths.
 # We only use this for debug warnings; we don't auto-rewrite these.
 _SYMBOL_PATH_RE: re.Pattern[str] = re.compile(r"^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+$")
+
+# mdformat sometimes escapes the *outer* brackets of reference-style links so that
+# the construct is rendered as literal text, e.g.:
+#   \\[`topmark.registry`\\][topmark.registry]
+# This breaks mkdocs-autorefs resolution. We normalize these back into real links.
+_ESCAPED_REF_LINK_RE: re.Pattern[str] = re.compile(
+    r"""
+    \\\[(?P<text>[^\]]+?)\\\]    # escaped first bracket pair: \[...\]
+    \[(?P<label>[^\]]*?)\]          # reference label: [...]
+    """,
+    re.VERBOSE,
+)
+
 
 # By default we only enforce links for TopMark's own symbols.
 # This avoids false positives like `pyproject.toml`, `README.md`, `tool.topmark`, etc.
@@ -274,6 +287,38 @@ def fix_backticked_reference_links(markdown: str) -> str:
     markdown = _BACKTICKED_EMPTY_REF_RE.sub(_repl_empty, markdown)
     markdown = _BACKTICKED_REF_LABEL_RE.sub(_repl_label, markdown)
     return markdown
+
+
+def unescape_reference_link_text(markdown: str) -> str:
+    r"""Unescape mdformat-escaped reference-style links.
+
+    mdformat can escape the outer bracket pair of a reference-style link (the link text)
+    which turns it into literal text and prevents Markdown from forming a link.
+
+    Example (broken):
+        \\[`topmark.registry`\\][topmark.registry]
+
+    Normalized (working):
+        [`topmark.registry`][topmark.registry]
+
+    This function only targets the specific pattern where the *outer* brackets are
+    escaped (``\\[`` and ``\\]``). It does not touch fenced code blocks; callers
+    should apply it via `apply_outside_fenced_blocks`.
+
+    Args:
+        markdown (str): Markdown fragment (not including fenced code blocks).
+
+    Returns:
+        str: Updated Markdown fragment with unescaped reference-style link text.
+    """
+
+    def _repl(m: Match[str]) -> str:
+        text: str = m.group("text")
+        label: str = m.group("label")
+        # Preserve empty labels: ``[... ][]``.
+        return f"[{text}][{label}]" if label else f"[{text}][]"
+
+    return _ESCAPED_REF_LINK_RE.sub(_repl, markdown)
 
 
 def find_unlinked_backticked_symbols_with_locations(
@@ -568,5 +613,6 @@ __all__ = [
     "rel_href",
     "should_enforce_link",
     "strip_repo_prefix",
+    "unescape_reference_link_text",
     "wrap_actions_blocks_with_raw",
 ]

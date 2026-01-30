@@ -54,11 +54,11 @@ two shapes depending on whether the CLI is in *detail* or *summary* mode.
 
 - `meta`: small metadata block, including tool name and TopMark version.
 - `config`: snapshot of the effective config as emitted by
-  `build_config_payload` in `topmark.cli_shared.machine_output`.
+  `build_config_payload` in \[`topmark.cli_shared.machine_output`\][topmark.cli_shared.machine_output].
 - `config_diagnostics`: aggregate counts plus individual diagnostics
   originating from config load/merge/sanitize steps.
 - `results`: one entry per processed file (see inline docs in
-  `topmark.cli_shared.machine_output` for the exact per-file fields).
+  \[`topmark.cli_shared.machine_output`\][topmark.cli_shared.machine_output] for the exact per-file fields).
 
 ### Summary mode (`summary_mode = true`)
 
@@ -114,7 +114,7 @@ ______________________________________________________________________
 ## ConfigPayload
 
 `ConfigPayload` is a JSON-safe representation of the effective `Config`,
-as produced by `build_config_payload` in `topmark.cli_shared.machine_output`.
+as produced by `build_config_payload` in \[`topmark.cli_shared.machine_output`\][topmark.cli_shared.machine_output].
 
 High-level structure:
 
@@ -147,7 +147,7 @@ All values are normalized to JSON-safe types:
   and arrays.
 
 For the exact schema, see the implementation and type hints of
-`ConfigPayload` and `build_config_payload` in `topmark.cli_shared.machine_output`.
+`ConfigPayload` and `build_config_payload` in \[`topmark.cli_shared.machine_output`\][topmark.cli_shared.machine_output].
 
 ______________________________________________________________________
 
@@ -179,7 +179,7 @@ High-level structure:
 The aggregated counts are meant to support quick triage; individual
 messages can be used to drive more detailed tooling behavior. See
 `ConfigDiagnosticsPayload` and `build_config_diagnostics_payload` in
-`topmark.cli_shared.machine_output` for the current structure.
+\[`topmark.cli_shared.machine_output`\][topmark.cli_shared.machine_output] for the current structure.
 
 ______________________________________________________________________
 
@@ -269,7 +269,7 @@ Exact fields may evolve, but currently include:
   - nested `check` and `strip` objects (e.g., `would_add_or_update`, `effective_would_strip`).
 
 The canonical reference is the type and builder used by
-`build_processing_results_payload` in `topmark.cli_shared.machine_output`.
+`build_processing_results_payload` in \[`topmark.cli_shared.machine_output`\][topmark.cli_shared.machine_output].
 
 ### Additional diagnostic fields
 

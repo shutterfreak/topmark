@@ -16,9 +16,13 @@ render, strip, comparison, update, write). Steps **must only** write to the
 axes listed in their ``axes_written`` contract.
 
 Conventions:
-  * All enums inherit from `EnumIntrospectionMixin` (from `topmark.core.enum_mixins`)
-    and `ColoredStrEnum` (from `topmark.rendering.colored_enum`) for shared utilities
-    and colors.
+  * All enums inherit from
+    [`EnumIntrospectionMixin`][topmark.core.enum_mixins.EnumIntrospectionMixin]
+    (from [`topmark.core.enum_mixins`][topmark.core.enum_mixins]).
+    and
+    [`ColoredStrEnum`][topmark.rendering.colored_enum.ColoredStrEnum]
+    (from [`topmark.rendering.colored_enum`][topmark.rendering.colored_enum])
+    for shared utilities and colors.
   * Values are human‑readable strings used in CLI/diagnostics; do not rely on
     identity (`is`) checks—prefer equality (`==`).
   * Only the view/API layer synthesizes public outcomes; steps should not

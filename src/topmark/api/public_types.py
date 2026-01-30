@@ -150,8 +150,8 @@ class PublicHeaderProcessor(Protocol):
     file_type: PublicFileType
 
 
-"""Allowed diagnostic severity levels in the public API."""
 DiagnosticLevelLiteral = Literal["info", "warning", "error"]
+"""Allowed diagnostic severity levels in the public API."""
 
 
 class PublicDiagnostic(TypedDict):

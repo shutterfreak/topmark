@@ -22,12 +22,13 @@ human-readable and machine-readable output:
 - Machine output:
   - emitters that write JSON and NDJSON payloads for config snapshots
     and processing results, using structures built in
-    `topmark.cli_shared.machine_output`.
+    [`topmark.cli_shared.machine_output`][topmark.cli_shared.machine_output].
 
 All printing goes through `ConsoleLike` instances obtained via
-`topmark.cli.console_helpers.get_console_safely`. Data-shaping helpers
-(e.g. `build_config_payload`, `build_processing_results_payload`) live in
-`topmark.cli_shared.machine_output` to keep them Click-free and reusable.
+[`topmark.cli.console_helpers.get_console_safely`][topmark.cli.console_helpers.get_console_safely].
+Data-shaping helpers (e.g. `build_config_payload`, `build_processing_results_payload`) live in
+[`topmark.cli_shared.machine_output`][topmark.cli_shared.machine_output]
+to keep them Click-free and reusable.
 """
 
 from __future__ import annotations

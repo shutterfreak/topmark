@@ -12,12 +12,12 @@
 
 This module contains **typed**, non-underscored helpers that orchestrate
 configuration discovery/normalization and pipeline execution. Keeping these
-helpers outside `topmark.api.__init__` maintains a clean public surface while
-remaining importable under strict typing.
+helpers outside [`topmark.api.__init__`][topmark.api] maintains a
+clean public surface while remaining importable under strict typing.
 
 The functions here are considered **internal API** for the package; they are
-not re-exported from `topmark.api` and may change in minor versions. Public
-consumers should call `topmark.api.check()` / `topmark.api.strip()` instead.
+not re-exported from [`topmark.api`][topmark.api] and may change in minor versions.
+Public consumers should call `topmark.api.check()` / `topmark.api.strip()` instead.
 """
 
 from __future__ import annotations

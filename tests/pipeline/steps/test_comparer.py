@@ -55,7 +55,7 @@ def test_comparer_precomputed_lines_set_changed(tmp_path: Path) -> None:
 
     # Provide original image and a precomputed updated image via views
 
-    # Ensure the may_proceed_to_comparer() gating helper allows processing:
+    # Ensure the ComparerStep.may_proceed() gating helper allows processing:
     ctx.views.image = ListFileImageView(lines=["a\n", "b\n"])  # original
     ctx.views.updated = UpdatedView(lines=["a\n"])  # precomputed change
     ctx.file_type = FileType(
@@ -81,7 +81,7 @@ def test_comparer_precomputed_lines_set_unchanged(tmp_path: Path) -> None:
 
     original: list[str] = ["same\n", "lines\n"]
 
-    # Ensure the may_proceed_to_comparer() gating helper allows processing:
+    # Ensure the ComparerStep.may_proceed() gating helper allows processing:
     ctx.views.image = ListFileImageView(lines=original)
     ctx.views.updated = UpdatedView(lines=list(original))  # identical copy
     ctx.file_type = FileType(

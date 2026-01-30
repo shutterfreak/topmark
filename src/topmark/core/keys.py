@@ -18,7 +18,7 @@ policy evaluation, and runtime execution).
 Notes:
     - Values are Python identifiers (snake_case), not CLI spellings.
     - The CLI spellings (e.g. ``--include-file-types``) live in
-      ``topmark.cli.keys``.
+      [`topmark.cli.keys`][topmark.cli.keys].
     - Keep this module behavior-free; it should remain a pure namespace for
       constants so it can be imported from anywhere without causing cycles.
 """

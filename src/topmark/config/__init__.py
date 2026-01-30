@@ -13,11 +13,12 @@
 This package defines the configuration model and the utilities to normalize and
 resolve paths and pattern sources. The implementation is split for clarity:
 
-- `topmark.config.model`  – immutable `Config` and mutable builder
+- [`topmark.config.model`][topmark.config.model] - immutable `Config` and mutable builder
   `MutableConfig`, including merge policy and freeze/thaw.
-- `topmark.config.types`  – small value objects and aliases
+- [`topmark.config.types`][topmark.config.types] - small value objects and aliases
   (`PatternSource`, `ArgsLike`).
-- `topmark.config.paths`  – pure path normalization helpers used by loaders/CLI.
+- [`topmark.config.paths`][topmark.config.paths] - pure path normalization helpers
+  used by loaders/CLI.
 
 Higher-level concerns (file discovery, TOML parsing/serialization, multi-layer
 load/merge) may live in dedicated modules (``loader.py``, ``discovery.py``)

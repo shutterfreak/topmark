@@ -14,18 +14,18 @@ This module defines the core dataclasses and typed payloads used to represent
 per-axis status within the TopMark processing pipeline. Each pipeline axis
 (resolve, fs, content, header, generation, render, strip, comparison, plan,
 patch, write) exposes its own status enum, and
-[ProcessingStatus][topmark.pipeline.context.status.ProcessingStatus]
+[`ProcessingStatus`][topmark.pipeline.context.status.ProcessingStatus]
 collects these into a single structure that serves as the authoritative source
 of truth for all status evaluation.
 
 The supporting
-[AxisStatusPayload][topmark.pipeline.context.status.AxisStatusPayload] provides
+[`AxisStatusPayload`][topmark.pipeline.context.status.AxisStatusPayload] provides
 a stable, JSON-serializable representation used in machine output
 (`--json` / NDJSON), ensuring that external tools can reliably consume pipeline
 results without depending on internal enum details.
 
 A small
-[StepStatus][topmark.pipeline.context.status.StepStatus] value object is also
+[`StepStatus`][topmark.pipeline.context.status.StepStatus] value object is also
 provided for step-level diagnostics, enabling the runner and CLI to report
 per-step outcomes without exposing internal step implementation details.
 

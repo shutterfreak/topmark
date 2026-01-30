@@ -19,8 +19,8 @@ Design:
 - Enum parsing -> emit WARNING for wrong type, WARNING for invalid value
   (caller decides whether strict mode stops).
 
-This mirrors the TOML `*_checked` helpers in `topmark.config.io`, but the
-location string is simply the argument key.
+This mirrors the TOML `*_checked` helpers in [`topmark.config.io`][topmark.config.io],
+but the location string is simply the argument key.
 """
 
 from __future__ import annotations

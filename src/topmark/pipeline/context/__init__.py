@@ -10,8 +10,8 @@
 
 """Context layer for the TopMark pipeline.
 
-The ``topmark.pipeline.context`` package groups the core types that describe
-per-file processing state:
+The [`topmark.pipeline.context`][topmark.pipeline.context] package groups
+the core types that describe per-file processing state:
 
 * [model][topmark.pipeline.context.model] provides the
   [ProcessingContext][topmark.pipeline.context.model.ProcessingContext], and

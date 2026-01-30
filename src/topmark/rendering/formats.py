@@ -8,10 +8,10 @@
 #
 # topmark:header:end
 
-"""Defines available header rendering formats for the TopMark tool.
+"""Header rendering formats for TopMark.
 
-This module provides an enumeration of the different formats
-that can be used for rendering headers in TopMark.
+This module defines `HeaderOutputFormat`, which controls how rendered headers are serialized
+(native comment style, plain text, JSON, etc.).
 """
 
 from __future__ import annotations

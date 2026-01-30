@@ -12,7 +12,8 @@
 
 This module provides helpers that add lightweight *introspection* to Enum types
 without binding callers to UI/CLI concerns (like color). Keep rendering-specific
-concepts in ``topmark.rendering`` and reuse these mixins/utilities anywhere else.
+concepts in [`topmark.rendering`][topmark.rendering] and reuse these mixins/utilities
+anywhere else.
 
 Provided:
     - ``enum_from_name(enum_cls, name, *, case_insensitive=False)``:

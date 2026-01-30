@@ -68,5 +68,5 @@ users.
 
 - Validation is **lightweight** and only performs simple mapping/strategy checks.
 - It does not parse files or run the pipeline; it inspects the composed registry during import time
-  for `topmark.registry.processors`.
+  for \[`topmark.registry.processors`\][topmark.registry.processors].
 - No runtime overhead for end users unless `TOPMARK_VALIDATE` is set.

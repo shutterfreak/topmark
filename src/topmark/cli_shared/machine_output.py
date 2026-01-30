@@ -21,7 +21,8 @@ used to build machine-readable data structures for TopMark's CLI:
   for per-file results and aggregated outcome counts.
 
 These helpers are deliberately Click-free and do not perform any I/O.
-They are consumed by `topmark.cli.utils` to render JSON/NDJSON output for
+They are consumed by [`topmark.cli.utils`][topmark.cli.utils]
+to render JSON/NDJSON output for
 `--output-format json` and `--output-format ndjson`.
 """
 

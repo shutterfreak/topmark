@@ -10,8 +10,8 @@
 
 """Core, UI-agnostic primitives shared across TopMark.
 
-The ``topmark.core`` package provides small, reusable building blocks that are
-safe to import from anywhere in the codebase (CLI, config, pipeline, tests)
+The [`topmark.core`][topmark.core] package provides small, reusable building blocks
+that are safe to import from anywhere in the codebase (CLI, config, pipeline, tests)
 without pulling in rendering or user-interface concerns.
 
 Included modules:

@@ -156,7 +156,7 @@ def test_updater_suppresses_bom_reprepend_in_strip_fastpath(default_config: Conf
     updated_file_lines: list[str] = ["#! /usr/bin/env python\n", "print('x')\n"]
     ctx.views.updated = UpdatedView(lines=updated_file_lines)  # precomputed change
 
-    # Ensure the may_proceed_to_updater() gating helper allows processing:
+    # Ensure the UpdateerStep.may_proceed() gating helper allows processing:
     ctx.status.resolve = ResolveStatus.RESOLVED
     ctx.status.content = ContentStatus.OK
     ctx.status.strip = StripStatus.READY
