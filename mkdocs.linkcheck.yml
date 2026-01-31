@@ -1,0 +1,14 @@
+# topmark:header:start
+#
+#   project      : TopMark
+#   file         : mkdocs.linkcheck.yml
+#   file_relpath : mkdocs.linkcheck.yml
+#   license      : MIT
+#   copyright    : (c) 2025 Olivier Biot
+#
+# topmark:header:end
+
+INHERIT: mkdocs.yml
+# For `nox -e links_site` we want to check links locally;
+# unset `site_url` to allow local resolution (relative URLs): 
+site_url: ""

@@ -16,7 +16,7 @@
 	pytest \
 	property-test \
 	docs-build docs-serve docs-clean \
-	links links-src links-all \
+	links links-all links-site links-src \
 	api-snapshot api-snapshot-dev api-snapshot-update api-snapshot-ensure-clean \
 	venv venv-sync-dev venv-sync-dev-docs venv-sync-docs venv-clean \
 	lock-compile-prod lock-compile-dev lock-compile-docs \
@@ -69,6 +69,8 @@ help:
 	@echo "  links           Check links in docs/ and tracked Markdown (nox: links)"
 	@echo "  links-src       Check links found in Python docstrings under src/ (nox: links_src)"
 	@echo "  links-all       Check links in docs/, tracked Markdown, and Python docstrings (nox: links_all)"
+	@echo "  links-site      Check links in the built MkDocs site (includes generated pages)"
+	@echo ""
 	@echo "  api-snapshot-dev         Check API snapshot with current interpreter (fast local)"
 	@echo "  api-snapshot             Check API snapshot across all supported Pythons (nox: api_snapshot)"
 	@echo "  api-snapshot-update      Regenerate tests/api/public_api_snapshot.json (interactive)"
@@ -172,6 +174,9 @@ links-src: check-lychee
 
 links-all: check-lychee
 	$(NOX) $(NOX_FLAGS) -s links_all
+
+links-site: check-lychee
+	$(NOX) $(NOX_FLAGS) -s links_site
 
 api-snapshot: check-venv
 	$(NOX) $(NOX_FLAGS) -s api_snapshot

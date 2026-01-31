@@ -42,6 +42,14 @@ repos:
         files: ^(README\.md|docs/).*\.(md|MD)$
         pass_filenames: true
 
+      - id: lychee-site
+        name: lychee (MkDocs site, incl. generated pages)
+        entry: make
+        language: system
+        args: ["links-site"]
+        pass_filenames: false
+        stages: [manual]
+
       - id: lychee-src
         name: lychee (changed Python docstrings)
         entry: lychee
