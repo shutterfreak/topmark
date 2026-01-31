@@ -134,6 +134,8 @@ nav:
   - Development:
       - "Architecture": dev/architecture.md
       - "Config schema": dev/config-schema.md
+      - "Pipelines (concepts)": dev/pipelines.md
+      - "Pipelines (reference hub)": dev/pipelines-reference.md
       - "API Stability": dev/api-stability.md
       - "Machine output": dev/machine-output.md
       - "Documentation Pipeline & Reference Hygiene": dev/documentation-pipeline.md
