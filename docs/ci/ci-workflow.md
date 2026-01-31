@@ -31,47 +31,48 @@ ______________________________________________________________________
 
 ## Jobs Summary
 
-| Job              | Purpose                                                         | Tools                                                          |
-| ---------------- | --------------------------------------------------------------- | -------------------------------------------------------------- |
-| **changes**      | Detect if `src/**` changed to gate PR jobs                      | `dorny/paths-filter`                                           |
-| **lint**         | Run formatting, linting, type checks, and docstring link checks | `tox -e format-check`, `tox -e lint`, `tox -e docstring-links` |
-| **pre-commit**   | Validate all configured `pre-commit` hooks                      | `pre-commit`                                                   |
-| **docs**         | Build documentation strictly (warnings = errors)                | `tox -e docs`                                                  |
-| **tests**        | Run test matrix across Python 3.10–3.14                         | `tox -e py310..py314`                                          |
-| **api-snapshot** | Verify public API stability for PRs                             | `tox -e py313-api`                                             |
-| **links**        | Validate all Markdown links (docs + root files)                 | `lycheeverse/lychee-action`                                    |
+| Job              | Purpose                                                      | Tools                                                          |
+| ---------------- | ------------------------------------------------------------ | -------------------------------------------------------------- |
+| **changes**      | Detect what changed so we can gate PR-only jobs              | `dorny/paths-filter`                                           |
+| **lint**         | Formatting, linting, type checks, and docstring link checks  | `nox -s format_check`, `nox -s lint`, `nox -s docstring_links` |
+| **pre-commit**   | Validate configured pre-commit hooks                         | `pre-commit`                                                   |
+| **docs**         | Build documentation strictly (warnings = errors)             | `nox -s docs`                                                  |
+| **tests**        | Run test matrix across Python 3.10–3.14                      | `nox -s qa -p py3xx`                                           |
+| **api-snapshot** | Verify public API stability (PR-only; when `src` changed)    | `nox -s api_snapshot -p 3.13`                                  |
+| **links**        | Validate links in source Markdown (docs + top-level)         | `lycheeverse/lychee-action` + `lychee.toml`                    |
+| **links-site**   | Validate links in the built MkDocs site (includes generated) | `mkdocs` + `lycheeverse/lychee-action` + `--root-dir`          |
 
 ______________________________________________________________________
 
 ## Key Features
 
-### 🧱 Tox-Centric Execution
+### 🧱 Nox-Centric Execution
 
-All heavy lifting is delegated to **tox environments**:
+Most heavy lifting is delegated to **nox sessions**:
 
 - Ensures local runs and CI behave identically
-- Simplifies Makefile and workflow logic
-- Uses per-job caching for `~/.cache/pip` and `.tox`
+- Keeps workflow logic thin
+- Centralizes environment configuration in `noxfile.py`
 
 ```yaml
-- name: Bootstrap tox
+- name: Bootstrap nox
   run: |
       python -m pip install -U pip
-      pip install tox
+      pip install nox nox-uv uv
 ```
 
 ### ⚡ Caching
 
-Each job caches both pip and tox environments for speed:
+Each job caches both pip and uv caches for speed:
 
 ```yaml
-- name: Cache pip & tox
+- name: Cache pip & nox
   uses: actions/cache@v4
   with:
       path: |
           ~/.cache/pip
-          .tox
-      key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('tox.ini', 'pyproject.toml', 'requirements-*.txt', 'constraints.txt') }}
+          ~/.cache/uv
+      key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('noxfile.py', 'pyproject.toml', 'requirements-*.txt', 'constraints.txt') }}
 ```
 
 ### ✅ Pre-commit Validation
@@ -82,6 +83,18 @@ Runs all hooks defined in `.pre-commit-config.yaml`:
 - name: Run pre-commit hooks
   run: pre-commit run --all-files --show-diff-on-failure
 ```
+
+In CI we skip a small set of slower hooks (notably lychee and pyright) because dedicated jobs cover them.
+
+### 📚 Docs integrity
+
+Documentation integrity is validated at multiple levels:
+
+- **Strict MkDocs build** (`docs` job): ensures all pages build without warnings or errors. This includes pages generated at build time (e.g. API reference pages).
+- **Source link checking** (`links` job): validates links in handwritten Markdown files (e.g. `docs/**`, `README.md`).
+- **Built-site link checking** (`links-site` job): validates links in the rendered HTML output, including theme navigation and **generated API pages**.
+
+**Important:** generated API pages are only validated by the built-site link check (`links-site`). Source-only checks cannot see these pages.
 
 ### 🔍 API Stability Check
 
@@ -94,15 +107,18 @@ ______________________________________________________________________
 Run equivalent checks locally with:
 
 ```bash
-make verify     # runs all lint/format/docs checks
-make test       # runs tox matrix
-make pytest     # run pytest in current interpreter
+nox -s lint -s format_check
+nox -s docs
+nox -s qa -p 3.13
+
+# Link checking
+nox -s links_all        # source Markdown + docstrings
+nox -s links_site       # built site (includes generated pages)
 ```
 
 ______________________________________________________________________
 
 ## Future Improvements
 
-- Optionally switch `api-snapshot` job to use `tox -m api-check` (runs across all Python versions)
-- Enable coverage reporting and artifact upload
-- Integrate performance regressions or profiling gates
+- Optionally expand the API snapshot check beyond Python 3.14 if needed
+- Upload coverage and/or docs build artifacts for easier debugging
