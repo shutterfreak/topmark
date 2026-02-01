@@ -255,10 +255,21 @@ class StripperStep(BaseStep):
 
         # If the body after header removal consists only of *exact* blank lines that
         # match the file's newline style (e.g., "\n" or "\r\n"), collapse them.
+        #
+        # IMPORTANT: preserve final-newline (FNL) semantics. If the original file ended
+        # with a newline, keep exactly one newline-style blank line. Otherwise collapse
+        # to truly empty.
+        #
         # Do NOT collapse whitespace-only lines like " \n" — those belong to the user's body.
         if new_lines and all(ln == ctx.newline_style for ln in new_lines):
-            logger.debug("stripper: body is only exact blank lines; collapsing to empty.")
-            new_lines = []
+            if ctx.ends_with_newline is True:
+                logger.debug(
+                    "stripper: body is only exact blank lines; preserving one blank line for FNL."
+                )
+                new_lines = [ctx.newline_style]
+            else:
+                logger.debug("stripper: body is only exact blank lines; collapsing to empty.")
+                new_lines = []
 
         logger.info("Updated file lines: %s", new_lines[:15])
         updated_lines: list[str] = _reapply_bom_after_strip(new_lines, ctx)
@@ -275,30 +286,48 @@ class StripperStep(BaseStep):
             elif last.endswith("\n") or last.endswith("\r"):
                 updated_lines[-1] = last[:-1]
 
-        # Normalize trailing blanks conservatively. If we have BOM-only, keep it.
+        # Normalize trailing blanks conservatively.
+        # IMPORTANT: Never *add* a newline to a BOM-only image here.
+        # `_reapply_bom_after_strip()` is the single place that may represent
+        # a BOM-only file as BOM+NL when (and only when) the original file ended
+        # with a newline. Keeping this invariant is required for insert→strip→insert
+        # idempotence on BOM-only inputs.
         if updated_lines:
+            # Case 1: BOM-only image — keep as-is for round-trip fidelity.
             if len(updated_lines) == 1 and updated_lines[0] == "\ufeff":
-                # Case 1: BOM-only image — keep as-is for round-trip fidelity.
                 pass
             else:
-                # Case 2: If first is BOM and the rest are *exact* blanks, collapse to BOM-only.
+                # Case 2: If first is BOM-only (possibly with newline), and the rest are *exact*
+                #         blanks, collapse to BOM-only.
                 # Case 3: If the stripped image contains only *exact* blank lines (and no BOM),
                 #         collapse to truly empty.
+                first_no_bom: str = updated_lines[0].lstrip("\ufeff")
                 if (
                     updated_lines[0].startswith("\ufeff")
                     and len(updated_lines) > 1
+                    # Only collapse when the first line is truly BOM-only (possibly with a newline)
+                    and (first_no_bom == "" or first_no_bom == ctx.newline_style)
+                    # and everything after is an exact blank line
+                    and all(s == ctx.newline_style for s in updated_lines[1:])
                     # TODO - dedicated strip WS policy:
                     # and all(is_pure_spacer(s, policy) for s in updated_lines[1:]
-                    and all(s == ctx.newline_style for s in updated_lines[1:])
                 ):
                     # First line is BOM-only, there is at least one trailing line,
                     # and everything after is blank: collapse to BOM-only.
-                    updated_lines = ["\ufeff"]
+                    # Preserve original final-newline semantics.
+                    if ctx.ends_with_newline is True:
+                        updated_lines = ["\ufeff" + ctx.newline_style]
+                    else:
+                        updated_lines = ["\ufeff"]
                 # elif all(is_pure_spacer(s, policy) for s in updated_lines):
                 # (TODO - dedicated strip WS policy - see commented-out previous line)
                 elif all(s == ctx.newline_style for s in updated_lines):
-                    # Case 4: If *all* lines are blank-like and no BOM, collapse to empty.
-                    updated_lines = []
+                    # Preserve original final-newline semantics.
+                    if ctx.ends_with_newline is True:  # noqa: SIM108
+                        updated_lines = [ctx.newline_style]
+                    else:
+                        # Case 4: If *all* lines are blank-like and no BOM, collapse to empty.
+                        updated_lines = []
                 # Case 4: Otherwise, leave as-is (body has non-blank content).
         ctx.views.updated = UpdatedView(lines=updated_lines)
 

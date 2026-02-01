@@ -28,6 +28,7 @@ from hypothesis import HealthCheck, assume, given, settings
 from tests.pipeline.conftest import materialize_updated_lines, run_insert, run_strip
 from tests.strategies_topmark import s_source_envelope_for_ext
 from topmark.config import Config, MutableConfig
+from topmark.constants import TOPMARK_START_MARKER
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -96,7 +97,7 @@ def test_insert_strip_idempotent_roundtrip(
     assume(ctx1.views.updated is not None and ctx1.views.updated.lines is not None)
     updated1: str = "".join(materialize_updated_lines(ctx1))
     # Ensure that the header was actually inserted in the first pass.
-    assume("topmark:header:start" in updated1)
+    assume(TOPMARK_START_MARKER in updated1)
 
     # f.write_text(updated1, encoding="utf-8")
     # Preserve line endings
@@ -110,7 +111,7 @@ def test_insert_strip_idempotent_roundtrip(
     stripped: str = "".join(materialize_updated_lines(ctx_strip))
 
     # Ensure the header markers are actually gone in the updated image.
-    assume("topmark:header:start" not in stripped)
+    assume(TOPMARK_START_MARKER not in stripped)
 
     # f.write_text(stripped, encoding="utf-8")
     # Preserve line endings
@@ -120,6 +121,12 @@ def test_insert_strip_idempotent_roundtrip(
     # 3) Insert again
     ctx2: ProcessingContext = run_insert(f, cfg)
     updated2: str = "".join(materialize_updated_lines(ctx2))
+
+    # DEBUG -- allows identification of failing test scenario
+    print(f"# content: {content!r}")  # noqa: T201
+    print(f"# stripped: {stripped!r}")  # noqa: T201
+    print(f"# updated1[-20-]: {updated1[-20:]!r}")  # noqa: T201
+    print(f"# updated2[-20-]: {updated2[-20:]!r}")  # noqa: T201
 
     # Idempotence: applying insert→strip→insert yields stable output
     assert updated1 == updated2
