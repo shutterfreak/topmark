@@ -215,7 +215,7 @@ class ResultBucket:
         if reason is not None:
             self.reason = reason
 
-        logger.debug("ResultBucket: %s", self.__repr__())
+        logger.debug("ResultBucket: '%s'", self.__repr__())
 
     def __repr__(self) -> str:
         return f"{self.outcome.value}: {self.reason or NO_REASON_PROVIDED}"
@@ -266,7 +266,7 @@ def map_bucket(r: ProcessingContext, *, apply: bool) -> ResultBucket:
             ResultBucket: Constructed bucket.
         """
         logger.debug(
-            "bucket[%s] intent=%s apply=%s outcome=%s reason=%s",
+            "bucket[%s] intent='%s' apply='%s' outcome='%s' reason='%s'",
             tag,
             intent.value,
             apply,
@@ -402,6 +402,11 @@ def map_bucket(r: ProcessingContext, *, apply: bool) -> ResultBucket:
             outcome_if_changed = Outcome.WOULD_CHANGE
 
     reason_if_changed: str = f"{header_lbl}, {comparison_lbl}"
+    logger.debug(
+        "Outcome if changed: '%s', reason if changed: '%s'",
+        outcome_if_changed.value,
+        reason_if_changed,
+    )
 
     # Apply path: the writer has the final word.
     if r.status.write == WriteStatus.WRITTEN:
@@ -429,7 +434,7 @@ def map_bucket(r: ProcessingContext, *, apply: bool) -> ResultBucket:
             return ret(
                 "changed:header",
                 outcome=outcome_if_changed,
-                reason=header_lbl,
+                reason=reason_if_changed,
             )
         else:
             return ret(
@@ -823,6 +828,7 @@ def format_summary(ctx: ProcessingContext) -> str:
         else:
             key = head.code
             label = f"{head.axis.value.title()}: {head.message}"
+            logger.debug("Key: '%s', label: '%s'", key, label)
 
     # Color choice can still be simple or based on cluster:
     cluster: str | None = head.cluster if head else None
