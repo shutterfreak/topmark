@@ -54,7 +54,7 @@ two shapes depending on whether the CLI is in *detail* or *summary* mode.
 
 - `meta`: small metadata block, including tool name and TopMark version.
 - `config`: snapshot of the effective config as emitted by
-  `build_config_payload` in \[`topmark.cli_shared.machine_output`\][topmark.cli_shared.machine_output].
+  `build_config_payload` in \[`topmark.config.machine.payloads`\][topmark.config.machine.payloads].
 - `config_diagnostics`: aggregate counts plus individual diagnostics
   originating from config load/merge/sanitize steps.
 - `results`: one entry per processed file (see inline docs in
@@ -85,26 +85,30 @@ two shapes depending on whether the CLI is in *detail* or *summary* mode.
   ```
 
 The `config` and `config_diagnostics` envelopes are the same in both
-detail and summary modes.
+detail and summary modes. In JSON mode, `config_diagnostics` includes both
+diagnostic counts and the full list of diagnostics.
 
 ______________________________________________________________________
 
 ## NDJSON schema for processing commands
 
-NDJSON output is a stream of records, each tagged with a `kind` field:
+NDJSON output is a stream of records, each tagged with a `kind` field and always including a `meta` block:
 
 ```json
 {"kind": "config", "meta": { /* MetaPayload */ }, "config": { /* ConfigPayload */ }}
-{"kind": "config_diagnostics", "config_diagnostics": { /* ConfigDiagnosticsPayload */ }}
-{"kind": "result", "path": "README.md", "file_type": "markdown", /* per-file result fields */ }
-{"kind": "summary", "key": "unchanged", "count": 30, "label": "up-to-date"}
-{"kind": "summary", "key": "skipped", "count": 1, "label": "known file type, headers not supported"}
+{"kind": "config_diagnostics", "meta": { /* MetaPayload */ }, "config_diagnostics": {"diagnostic_counts": {"info": 0, "warning": 1, "error": 0}}}
+{"kind": "diagnostic", "meta": { /* MetaPayload */ }, "diagnostic": {"domain": "config", "level": "warning", "message": "..."}}
+{"kind": "result", "meta": { /* MetaPayload */ }, "result": {"path": "README.md", "file_type": "markdown" /* ... */}}
+{"kind": "summary", "meta": { /* MetaPayload */ }, "summary": {"key": "unchanged", "count": 30, "label": "up-to-date"}}
+{"kind": "summary", "meta": { /* MetaPayload */ }, "summary": {"key": "skipped", "count": 1, "label": "known file type, headers not supported"}}
 ```
 
+- **Every NDJSON record includes `meta`** as a top-level field.
 - The `config` record is always emitted first and includes the `meta` block.
-- The `config_diagnostics` record follows immediately afterwards.
-- Zero or more `result` records follow (one per processed file).
-- In summary mode, one `summary` record per bucket, each with `key`, `count`, and `label` (no nested summary object).
+- The `config_diagnostics` record follows immediately afterwards, and in NDJSON is **counts-only** (just `diagnostic_counts`). Each individual config diagnostic is emitted as a separate `diagnostic` record with `domain="config"`.
+- Zero or more `result` records follow (one per processed file), each under the `result` container key.
+- In summary mode, one `summary` record per bucket, each with a `summary` object containing `key`, `count`, and `label`.
+- For all NDJSON records, the payload is stored under a container key that matches the `kind` (e.g., `config`, `config_diagnostics`, `result`, `summary`, etc.).
 
 Consumers are expected to switch on the `kind` field rather than relying
 on positional assumptions.
@@ -114,7 +118,7 @@ ______________________________________________________________________
 ## ConfigPayload
 
 `ConfigPayload` is a JSON-safe representation of the effective `Config`,
-as produced by `build_config_payload` in \[`topmark.cli_shared.machine_output`\][topmark.cli_shared.machine_output].
+as produced by `build_config_payload` in \[`topmark.config.machine.payloads`\][topmark.config.machine.payloads].
 
 High-level structure:
 
@@ -147,7 +151,7 @@ All values are normalized to JSON-safe types:
   and arrays.
 
 For the exact schema, see the implementation and type hints of
-`ConfigPayload` and `build_config_payload` in \[`topmark.cli_shared.machine_output`\][topmark.cli_shared.machine_output].
+`ConfigPayload` and `build_config_payload` in \[`topmark.config.machine.payloads`\][topmark.config.machine.payloads].
 
 ______________________________________________________________________
 
@@ -158,28 +162,33 @@ were collected during config discovery, merge, and sanitization.
 
 High-level structure:
 
-- `level_counts`: a mapping from diagnostic level to integer count, for
-  example:
+- `diagnostic_counts`: a mapping from diagnostic level (`info`, `warning`, `error`) to integer count, for example:
 
   ```json
   {
-    "INFO": 1,
-    "WARNING": 2,
-    "ERROR": 0
+    "diagnostic_counts": {
+      "info": 1,
+      "warning": 2,
+      "error": 0
+    },
+    "diagnostics": [
+      { "level": "warning", "message": "..." },
+      { "level": "info", "message": "..." }
+    ]
   }
   ```
 
-- `messages` (optional, depending on implementation and verbosity):
-  a list of individual diagnostics, each typically containing:
+- `diagnostics`: a list of individual diagnostics, each with:
 
-  - `level` (e.g. `"WARNING"`)
+  - `level` (e.g. `"warning"`)
   - `message`
   - optional metadata (e.g. codes, paths)
 
-The aggregated counts are meant to support quick triage; individual
-messages can be used to drive more detailed tooling behavior. See
-`ConfigDiagnosticsPayload` and `build_config_diagnostics_payload` in
-\[`topmark.cli_shared.machine_output`\][topmark.cli_shared.machine_output] for the current structure.
+The aggregated counts support quick triage; individual messages can be used to drive more detailed tooling behavior.
+
+> [!NOTE] **NDJSON note:**
+>
+> In NDJSON, only `diagnostic_counts` is emitted under the `config_diagnostics` record. Each config diagnostic is emitted as a separate `diagnostic` record with `domain="config"`. See `ConfigDiagnosticsPayload` and `build_config_diagnostics_payload` in \[`topmark.config.machine.payloads`\][topmark.config.machine.payloads] for the current structure.
 
 ______________________________________________________________________
 
@@ -195,20 +204,6 @@ Exact fields may evolve, but currently include:
 - `file_type`: resolved TopMark file type identifier (e.g., `"markdown"`, `"python"`).
 
 - `steps`: ordered list of executed step names (e.g., `"ResolverStep"`, `"SnifferStep"`, …).
-
-- `step_axes`: mapping from step name to the list of axes that step may write, e.g.:
-
-  ```jsonc
-  "step_axes": {
-    "ResolverStep": ["resolve"],
-    "SnifferStep": ["fs"],
-    "ReaderStep": ["content"],
-    "ScannerStep": ["header"],
-    "BuilderStep": ["generation"],
-    "RendererStep": ["render"],
-    "ComparerStep": ["comparison"]
-  }
-  ```
 
 - `step_axes`: mapping from step name to the list of axes that step may write, e.g.:
 
@@ -268,8 +263,7 @@ Exact fields may evolve, but currently include:
   - `would_change`, `can_change`, `permitted_by_policy`
   - nested `check` and `strip` objects (e.g., `would_add_or_update`, `effective_would_strip`).
 
-The canonical reference is the type and builder used by
-`build_processing_results_payload` in \[`topmark.cli_shared.machine_output`\][topmark.cli_shared.machine_output].
+The canonical reference is the type and builder used by `build_processing_results_payload` in \[`topmark.cli_shared.machine_output`\][topmark.cli_shared.machine_output]. JSON/NDJSON envelope and serialization helpers live in \[`topmark.core.machine`\][topmark.core.machine].
 
 ### Additional diagnostic fields
 
@@ -369,8 +363,8 @@ NDJSON output for config-only commands consists of a single record:
 {"kind": "config", "meta": { /* MetaPayload */ }, "config": { /* ConfigPayload */ }}
 ```
 
-No `config_diagnostics` record is emitted for these commands; they are
-intended for static config snapshots rather than full pipeline runs.
+Every NDJSON line always includes a `meta` field. No `config_diagnostics` record is emitted for these commands; they are
+intended for static config snapshots rather than full pipeline runs. The payload is always stored under a container key that matches the `kind` (here: `config`).
 
 ______________________________________________________________________
 

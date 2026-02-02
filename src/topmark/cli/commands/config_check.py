@@ -21,7 +21,6 @@ Input modes:
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -33,26 +32,31 @@ from topmark.cli.keys import CliCmd, CliOpt
 from topmark.cli.options import (
     common_config_options,
 )
-from topmark.cli.utils import render_toml_block
+from topmark.cli.utils import (
+    emit_config_check_machine,
+    render_config_check_markdown,
+    render_toml_block,
+)
 from topmark.cli_shared.utils import OutputFormat
 from topmark.config import Config, MutableConfig
 from topmark.config.io import to_toml
 from topmark.config.logging import get_logger
+from topmark.config.machine.payloads import (
+    build_config_diagnostics_payload,
+)
 from topmark.core.exit_codes import ExitCode
 from topmark.core.keys import ArgKey
 
 if TYPE_CHECKING:
     from topmark.cli_shared.console_api import ConsoleLike
     from topmark.config.logging import TopmarkLogger
-    from topmark.core.diagnostics import Diagnostic
+    from topmark.config.machine.schemas import (
+        ConfigDiagnosticCounts,
+        ConfigDiagnosticEntry,
+        ConfigDiagnosticsPayload,
+    )
 
 logger: TopmarkLogger = get_logger(__name__)
-
-
-def _count_levels(diags: list[Diagnostic]) -> tuple[int, int]:
-    n_warn = sum(1 for d in diags if d.level.value == "warning")
-    n_err = sum(1 for d in diags if d.level.value == "error")
-    return n_warn, n_err
 
 
 @click.command(
@@ -130,9 +134,13 @@ def config_check_command(
     # Freeze ensures sanitize + schema validation runs (and produces diagnostics)
     config: Config = draft_config.freeze()
 
-    diags: list[Diagnostic] = list(config.diagnostics)
-    n_warn, n_err = _count_levels(diags)
-
+    # Diagnostics payload;
+    diag_payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
+    diags: list[ConfigDiagnosticEntry] = diag_payload.diagnostics
+    counts: ConfigDiagnosticCounts = diag_payload.diagnostic_counts
+    n_info: int = counts.info
+    n_warn: int = counts.warning
+    n_err: int = counts.error
     fail: bool = (n_err > 0) or (strict_config_checking and n_warn > 0)
 
     # Determine effective program-output verbosity for gating extra details
@@ -141,30 +149,43 @@ def config_check_command(
     logger.trace("Config after merging CLI and discovered config: %s", draft_config)
 
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
-        # Minimal JSON payload (can be upgraded to reuse cli_shared payloads later)
-        payload = {
-            "ok": not fail,
-            "strict": strict_config_checking,
-            "counts": {"warning": n_warn, "error": n_err},
-            "diagnostics": [{"level": d.level.value, "message": d.message} for d in diags],
-            "config_files": [str(p) for p in config.config_files],
-        }
-        # Emit JSON/NDJSON as machine-readable output.
-        click.echo(json.dumps(payload))
+        emit_config_check_machine(
+            config,
+            strict=strict_config_checking,
+            ok=not fail,
+            fmt=fmt,
+        )
+
+    elif fmt == OutputFormat.MARKDOWN:
+        md: str = render_config_check_markdown(
+            ok=not fail,
+            strict=strict_config_checking,
+            counts=counts,
+            diagnostics=diags,
+            config_files=[str(p) for p in config.config_files],
+            verbosity_level=vlevel,
+        )
+        click.echo(md, nl=False)
+
     elif fmt == OutputFormat.DEFAULT:
         # Human-readable output.
         if not diags:
             click.echo("✅ Config OK (no diagnostics).")
         else:
-            click.echo(f"Config diagnostics: {n_err} error(s), {n_warn} warning(s)")
+            click.echo(
+                "Config diagnostics: "
+                f"{n_err} error(s), {n_warn} warning(s), {n_info} information(s)"
+            )
             if vlevel > 0:
                 for d in diags:
-                    click.echo(f"- {d.level.value}: {d.message}")
+                    click.echo(f"- {d.level}: {d.message}")
+
         if vlevel > 0:
             # Render the list of config files
             click.echo(f"Config files processed: {len(config.config_files)}")
             for i, c in enumerate(config.config_files, start=1):
                 click.echo(f"Loaded config {i}: {c}")
+
         if vlevel > 1:
             config_toml_dict: dict[str, Any] = config.to_toml_dict()
             merged_config: str = to_toml(config_toml_dict)

@@ -37,19 +37,23 @@ from typing import TYPE_CHECKING, Any
 
 from topmark.api.view import collect_outcome_counts, format_summary
 from topmark.cli.console_helpers import get_console_safely
+from topmark.cli.keys import CliCmd
 from topmark.cli_shared.console_api import ConsoleLike
 from topmark.cli_shared.machine_output import (
-    ConfigDiagnosticsPayload,
-    ConfigPayload,
-    MetaPayload,
-    build_config_diagnostics_payload,
-    build_config_payload,
-    build_meta_payload,
     build_processing_results_payload,
 )
 from topmark.cli_shared.utils import OutputFormat
 from topmark.config.logging import get_logger
+from topmark.config.machine.payloads import build_config_diagnostics_payload, build_config_payload
 from topmark.constants import TOML_BLOCK_END, TOML_BLOCK_START
+from topmark.core.machine.emitters import iter_ndjson_strings, serialize_json_envelope
+from topmark.core.machine.formats import (
+    MachineKey,
+    MachineKind,
+    MetaPayload,
+    build_meta_payload,
+    build_ndjson_record,
+)
 from topmark.pipeline.hints import Cluster
 from topmark.utils.diff import render_patch
 
@@ -60,6 +64,12 @@ if TYPE_CHECKING:
 
     from topmark.cli_shared.console_api import ConsoleLike
     from topmark.config.logging import TopmarkLogger
+    from topmark.config.machine.schemas import (
+        ConfigDiagnosticCounts,
+        ConfigDiagnosticEntry,
+        ConfigDiagnosticsPayload,
+        ConfigPayload,
+    )
     from topmark.config.model import Config
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.views import DiffView, UpdatedView
@@ -173,6 +183,19 @@ def emit_diffs(results: list[ProcessingContext], *, diff: bool, command: click.C
                 console.print(render_patch(diff_text))
 
 
+def ensure_machine_format(fmt: OutputFormat) -> None:
+    """Ensure the OutputFormat represents a machine format.
+
+    Args:
+        fmt (OutputFormat): the output format to be checked.
+
+    Raises:
+        ValueError: if the format provided is not a machine format.
+    """
+    if fmt not in {OutputFormat.JSON, OutputFormat.NDJSON}:
+        raise ValueError(f"Unsupported machine output format: {fmt!r}")
+
+
 def emit_config_machine(config: Config, *, fmt: OutputFormat) -> None:
     """Emit the effective Config snapshot in a machine-readable format.
 
@@ -186,23 +209,23 @@ def emit_config_machine(config: Config, *, fmt: OutputFormat) -> None:
         config (Config): Immutable runtime configuration to serialize.
         fmt (OutputFormat): Target machine format (JSON or NDJSON).
     """
-    import json as _json
+    ensure_machine_format(fmt)
 
     console: ConsoleLike = get_console_safely()
     meta: MetaPayload = build_meta_payload()
     payload: ConfigPayload = build_config_payload(config)
     if fmt == OutputFormat.JSON:
-        console.print(_json.dumps({"meta": meta, "config": payload}, indent=2))
-    elif fmt == OutputFormat.NDJSON:
         console.print(
-            _json.dumps(
-                {
-                    "kind": "config",
-                    "meta": meta,
-                    "config": payload,
-                }
-            )
+            serialize_json_envelope(meta=meta, config=payload),
         )
+    elif fmt == OutputFormat.NDJSON:
+        record: dict[str, object] = build_ndjson_record(
+            kind=MachineKind.CONFIG,
+            meta=meta,
+            payload=payload,
+        )
+        for line in iter_ndjson_strings([record]):
+            console.print(line)
 
 
 def emit_config_diagnostics_machine(config: Config, *, fmt: OutputFormat) -> None:
@@ -219,31 +242,178 @@ def emit_config_diagnostics_machine(config: Config, *, fmt: OutputFormat) -> Non
         config (Config): Immutable runtime configuration providing diagnostics.
         fmt (OutputFormat): Target machine format (JSON or NDJSON).
     """
-    import json as _json
+    ensure_machine_format(fmt)
 
     console: ConsoleLike = get_console_safely()
     meta: MetaPayload = build_meta_payload()
     payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
+
     if fmt == OutputFormat.JSON:
         console.print(
-            _json.dumps(
-                {
-                    "meta": meta,
-                    "config_diagnostics": payload,
-                },
-                indent=2,
-            )
+            serialize_json_envelope(meta=meta, config_diagnostics=payload),
         )
+        return
     elif fmt == OutputFormat.NDJSON:
-        console.print(
-            _json.dumps(
-                {
-                    "kind": "config_diagnostics",
-                    "meta": meta,
-                    "config_diagnostics": payload,
+        # NDJSON counts-only + streamed diagnostics
+        diagnostics: list[ConfigDiagnosticEntry] = payload.diagnostics
+        counts: ConfigDiagnosticCounts = payload.diagnostic_counts
+
+        def records() -> Iterable[dict[str, object]]:
+            yield build_ndjson_record(
+                kind=MachineKind.CONFIG_DIAGNOSTICS,
+                meta=meta,
+                payload={
+                    MachineKey.DIAGNOSTIC_COUNTS: counts.to_dict(),
                 },
             )
+            for d in diagnostics:
+                yield build_ndjson_record(
+                    kind=MachineKind.DIAGNOSTIC,
+                    meta=meta,
+                    payload={
+                        MachineKey.DOMAIN: "config",
+                        MachineKey.LEVEL: d.level,
+                        MachineKey.MESSAGE: d.message,
+                    },
+                )
+
+        for line in iter_ndjson_strings(records()):
+            console.print(line)
+        return
+
+
+def emit_config_check_machine(
+    config: Config,
+    *,
+    strict: bool,
+    ok: bool,
+    fmt: OutputFormat,
+) -> None:
+    """Emit `topmark config check` results in a machine-readable format.
+
+    JSON:
+      - One envelope: meta, config, config_diagnostics (full), summary.
+
+    NDJSON (Pattern A + Pattern B):
+      1) config
+      2) config_diagnostics (counts-only)
+      3) summary (command=config, subcommand=check)
+      4+) diagnostic (domain=config) one per diagnostic
+    """
+    ensure_machine_format(fmt)
+
+    console: ConsoleLike = get_console_safely()
+    meta: MetaPayload = build_meta_payload()
+
+    cfg_diag_payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
+
+    if fmt == OutputFormat.JSON:
+        cfg_payload: ConfigPayload = build_config_payload(config)
+
+        # Reuse counts from the diagnostics payload
+        counts_only: ConfigDiagnosticCounts = cfg_diag_payload.diagnostic_counts
+
+        summary: dict[str, object] = {
+            MachineKey.COMMAND: CliCmd.CONFIG,
+            MachineKey.SUBCOMMAND: CliCmd.CONFIG_CHECK,
+            MachineKey.OK: ok,
+            MachineKey.STRICT: strict,
+            MachineKey.DIAGNOSTIC_COUNTS: counts_only.to_dict(),
+            MachineKey.CONFIG_FILES: [str(p) for p in config.config_files],
+        }
+
+        console.print(
+            serialize_json_envelope(
+                meta=meta,
+                config=cfg_payload,
+                config_diagnostics=cfg_diag_payload,
+                summary=summary,
+            )
         )
+        return
+
+    elif fmt == OutputFormat.NDJSON:
+        # Reuse existing emitters for shared records
+        emit_config_machine(config, fmt=OutputFormat.NDJSON)
+
+        # Config diagnostics stats (counts per severity level)
+        # Reuse counts from the diagnostics payload
+        counts_only: ConfigDiagnosticCounts = cfg_diag_payload.diagnostic_counts
+
+        summary: dict[str, object] = {
+            MachineKey.COMMAND: CliCmd.CONFIG,
+            MachineKey.SUBCOMMAND: CliCmd.CONFIG_CHECK,
+            MachineKey.OK: ok,
+            MachineKey.STRICT: strict,
+            MachineKey.DIAGNOSTIC_COUNTS: counts_only.to_dict(),
+            MachineKey.CONFIG_FILES: [str(p) for p in config.config_files],
+        }
+
+        def records() -> Iterable[dict[str, object]]:
+            # Config check summary
+            yield build_ndjson_record(
+                kind=MachineKind.CONFIG_DIAGNOSTICS,
+                meta=meta,
+                payload={MachineKey.DIAGNOSTIC_COUNTS: counts_only.to_dict()},
+            )
+            yield build_ndjson_record(
+                kind=MachineKind.SUMMARY,
+                meta=meta,
+                payload=summary,
+            )
+
+            # One diagnostic per line
+            for d in config.diagnostics:
+                yield build_ndjson_record(
+                    kind=MachineKind.DIAGNOSTIC,
+                    meta=meta,
+                    payload={
+                        MachineKey.DOMAIN: "config",
+                        MachineKey.LEVEL: d.level.value,
+                        MachineKey.MESSAGE: d.message,
+                    },
+                )
+
+        for line in iter_ndjson_strings(records()):
+            console.print(line)
+
+
+def render_config_check_markdown(
+    *,
+    ok: bool,
+    strict: bool,
+    counts: ConfigDiagnosticCounts,
+    diagnostics: list[ConfigDiagnosticEntry],
+    config_files: list[str],
+    verbosity_level: int,
+) -> str:
+    """Render `topmark config check` output as Markdown."""
+    lines: list[str] = []
+    lines.append("## topmark config check\n")
+    status = "OK" if ok else "FAILED"
+
+    # Summary
+    lines.append("### Summary\n")
+    lines.append(f"- **Status:** {status}")
+    lines.append(f"- **Strict:** {str(strict).lower()}")
+    lines.append(f"- **Errors:** {counts.error}")
+    lines.append(f"- **Warnings:** {counts.warning}\n")
+
+    # Diagnostics
+    if diagnostics:
+        lines.append("### Diagnostics\n")
+        for d in diagnostics:
+            lines.append(f"- **{d.level}**: {d.message}")
+        lines.append("")
+
+    # Config files
+    if verbosity_level > 0:
+        lines.append(f"### Config files processed ({len(config_files)})\n")
+        for i, p in enumerate(config_files, start=1):
+            lines.append(f"{i}. {p}")
+        lines.append("")
+
+    return "\n".join(lines).rstrip() + "\n"
 
 
 def render_toml_block(
@@ -344,7 +514,7 @@ def emit_processing_results_machine(
         - This function never prints ANSI color or diffs.
         - Diffs (`--diff`) are strictly human-only.
     """
-    import json as _json
+    ensure_machine_format(fmt)
 
     console: ConsoleLike = get_console_safely()
 
@@ -362,58 +532,67 @@ def emit_processing_results_machine(
         # Envelope: meta + config + config diagnostics + results
         # OR meta + config + config diagnostics + summary
         # results_payload is {"results": [...]} or {"summary": {...}}
-        envelope: dict[str, object] = {
-            "meta": meta,
-            "config": cfg_payload,
-            "config_diagnostics": cfg_diag_payload,
-        }
-        envelope.update(results_payload)
-        console.print(_json.dumps(envelope, indent=2))
+        console.print(
+            serialize_json_envelope(
+                meta=meta,
+                config=cfg_payload,
+                config_diagnostics=cfg_diag_payload,
+                **results_payload,
+            ),
+        )
 
     elif fmt == OutputFormat.NDJSON:
         # First: config metadata record (excluding diagnostics and counts)
-        console.print(
-            _json.dumps(
-                {
-                    "kind": "config",
-                    "meta": meta,
-                    "config": cfg_payload,
-                }
-            )
-        )
-        # Second: config diagnostics diagnostics and counts:
-        console.print(
-            _json.dumps(
-                {
-                    "kind": "config_diagnostics",
-                    "config_diagnostics": cfg_diag_payload,
-                }
-            )
-        )
+        counts_only: ConfigDiagnosticCounts = cfg_diag_payload.diagnostic_counts
 
-        if summary_mode:
-            counts = collect_outcome_counts(results)
-            for key, (n, label, _color) in counts.items():
-                console.print(
-                    _json.dumps(
-                        {
-                            "kind": "summary",
+        def records() -> Iterable[dict[str, object]]:
+            # Config record
+            yield build_ndjson_record(
+                kind=MachineKind.CONFIG,
+                meta=meta,
+                payload=cfg_payload,
+            )
+            # Config diagnostics counts-only
+            yield build_ndjson_record(
+                kind=MachineKind.CONFIG_DIAGNOSTICS,
+                meta=meta,
+                payload={
+                    MachineKey.DIAGNOSTIC_COUNTS: counts_only.to_dict(),
+                },
+            )
+            # One diagnostic per line
+            for d in config.diagnostics:
+                yield build_ndjson_record(
+                    kind=MachineKind.DIAGNOSTIC,
+                    meta=meta,
+                    payload={
+                        MachineKey.DOMAIN: "config",
+                        MachineKey.LEVEL: d.level.value,
+                        MachineKey.MESSAGE: d.message,
+                    },
+                )
+            if summary_mode:
+                counts = collect_outcome_counts(results)
+                for key, (n, label, _color) in counts.items():
+                    yield build_ndjson_record(
+                        kind=MachineKind.SUMMARY,
+                        meta=meta,
+                        payload={
                             "key": key,
                             "count": n,
                             "label": label,
-                        }
+                        },
                     )
-                )
-        else:
-            for r in results:
-                console.print(
-                    _json.dumps(
-                        {
-                            "kind": "result",
-                            **r.to_dict(),
-                        }
+            else:
+                for r in results:
+                    yield build_ndjson_record(
+                        kind=MachineKind.RESULT,
+                        meta=meta,
+                        payload=r.to_dict(),
                     )
-                )
+
+        for line in iter_ndjson_strings(records()):
+            console.print(line)
 
 
 def emit_updated_content_to_stdout(results: list[ProcessingContext]) -> None:

@@ -326,9 +326,13 @@ def test_processing_ndjson_kinds_with_summary(tmp_path: Path, command: str) -> N
         kinds.append(kind_obj)
 
         if kind_obj == "summary":
-            key_obj = record.get("key")
-            count_obj = record.get("count")
-            label_obj = record.get("label")
+            summary_obj = record.get("summary")
+            assert isinstance(summary_obj, dict)
+            summary: dict[str, Any] = cast("dict[str, Any]", summary_obj)
+
+            key_obj = summary.get("key")
+            count_obj = summary.get("count")
+            label_obj = summary.get("label")
             assert isinstance(key_obj, str)
             assert isinstance(count_obj, int)
             assert isinstance(label_obj, str)
