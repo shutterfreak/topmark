@@ -25,7 +25,7 @@ import click
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cmd_common import get_effective_verbosity
 from topmark.cli.errors import TopmarkUsageError
-from topmark.cli.keys import CliOpt
+from topmark.cli.keys import CliCmd, CliOpt
 from topmark.cli.utils import emit_config_machine, render_toml_block
 from topmark.cli_shared.utils import OutputFormat
 from topmark.config import MutableConfig
@@ -54,7 +54,7 @@ logger: TopmarkLogger = get_logger(__name__)
 
 
 @click.command(
-    name="init-config",
+    name=CliCmd.CONFIG_INIT,
     help="Display an initial TopMark configuration file.",
 )
 @click.option(

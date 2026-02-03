@@ -8,6 +8,6 @@
 #
 # topmark:header:end
 
-"""TopMark CLI commands."""
+"""TopMark CLI commands and subcommands."""
 
 from __future__ import annotations

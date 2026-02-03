@@ -60,7 +60,7 @@ logger: TopmarkLogger = get_logger(__name__)
 
 
 @click.command(
-    name=f"{CliCmd.CONFIG}-{CliCmd.CONFIG_CHECK}",
+    name=CliCmd.CONFIG_CHECK,
     help="Validate merged configuration and report any diagnostics.",
 )
 @common_config_options

@@ -63,7 +63,7 @@ logger: TopmarkLogger = get_logger(__name__)
 
 
 @click.command(
-    name=f"{CliCmd.CONFIG}-{CliCmd.CONFIG_DUMP}",
+    name=CliCmd.CONFIG_DUMP,
     help=(
         "Dump the final merged TopMark configuration as TOML. "
         f"This command is file‑agnostic: positional PATHS and {CliOpt.FILES_FROM} are ignored. "
