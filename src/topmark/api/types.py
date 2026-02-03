@@ -21,11 +21,15 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, TypedDict
 
+from topmark.config.logging import TopmarkLogger, get_logger
+
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
     from pathlib import Path
 
     from .public_types import PublicDiagnostic
+
+logger: TopmarkLogger = get_logger(__name__)
 
 
 class DiagnosticTotals(TypedDict):
@@ -56,17 +60,21 @@ class Outcome(str, Enum):
     """
 
     PENDING = "pending"
+    ERROR = "error"
+    # File skipped (not processed)
     SKIPPED = "skipped"
+    # File already complies
     UNCHANGED = "unchanged"
+    # A change was detected but not applied
     WOULD_CHANGE = "would change"
     WOULD_INSERT = "would insert"
     WOULD_UPDATE = "would update"
     WOULD_STRIP = "would strip"
+    # Changes have been applied
     CHANGED = "changed"
     INSERTED = "inserted"
     UPDATED = "updated"
     STRIPPED = "stripped"
-    ERROR = "error"
 
 
 @dataclass(frozen=True)

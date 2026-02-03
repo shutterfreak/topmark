@@ -35,13 +35,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from topmark.api.view import collect_outcome_counts, format_summary
+from topmark.api.view import format_summary
 from topmark.cli.console_helpers import get_console_safely
 from topmark.cli.keys import CliCmd
 from topmark.cli_shared.console_api import ConsoleLike
 from topmark.cli_shared.machine_output import (
     build_processing_results_payload,
 )
+from topmark.cli_shared.outcomes import collect_outcome_counts_colored
 from topmark.cli_shared.utils import OutputFormat
 from topmark.config.logging import get_logger
 from topmark.config.machine.payloads import build_config_diagnostics_payload, build_config_payload
@@ -55,6 +56,7 @@ from topmark.core.machine.formats import (
     build_ndjson_record,
 )
 from topmark.pipeline.hints import Cluster
+from topmark.pipeline.outcomes import collect_outcome_counts
 from topmark.utils.diff import render_patch
 
 if TYPE_CHECKING:
@@ -84,7 +86,9 @@ def render_summary_counts(view_results: list[ProcessingContext], *, total: int) 
     console.print()
     console.print(console.styled("Summary by outcome:", bold=True, underline=True))
 
-    counts: dict[str, tuple[int, str, Callable[[str], str]]] = collect_outcome_counts(view_results)
+    counts: dict[str, tuple[int, str, Callable[[str], str]]] = collect_outcome_counts_colored(
+        view_results
+    )
     label_width: int = max((len(v[1]) for v in counts.values()), default=0) + 1
     num_width: int = len(str(total))
     for _key, (n, label, color) in counts.items():
@@ -572,8 +576,8 @@ def emit_processing_results_machine(
                     },
                 )
             if summary_mode:
-                counts = collect_outcome_counts(results)
-                for key, (n, label, _color) in counts.items():
+                counts: dict[str, tuple[int, str]] = collect_outcome_counts(results)
+                for key, (n, label) in counts.items():
                     yield build_ndjson_record(
                         kind=MachineKind.SUMMARY,
                         meta=meta,

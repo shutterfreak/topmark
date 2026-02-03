@@ -30,7 +30,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, TypedDict
 
-from topmark.api.view import collect_outcome_counts
+from topmark.pipeline.outcomes import collect_outcome_counts
 
 if TYPE_CHECKING:
     from topmark.pipeline.context.model import ProcessingContext
@@ -55,9 +55,9 @@ def build_processing_results_payload(
       - summary_mode=True: this will be nested under "summary".
     """
     if summary_mode:
-        counts = collect_outcome_counts(results)
+        counts: dict[str, tuple[int, str]] = collect_outcome_counts(results)
         summary: dict[str, ProcessingSummaryEntry] = {
-            key: {"count": cnt, "label": label} for key, (cnt, label, _color) in counts.items()
+            key: {"count": cnt, "label": label} for key, (cnt, label) in counts.items()
         }
         return {"summary": summary}
     else:

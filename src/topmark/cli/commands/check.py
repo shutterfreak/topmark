@@ -48,7 +48,7 @@ from typing import TYPE_CHECKING
 import click
 
 from topmark.api.runtime import select_pipeline
-from topmark.api.view import Intent, determine_intent, filter_view_results
+from topmark.api.view import filter_view_results
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cmd_common import (
     build_config_for_plan,
@@ -82,6 +82,7 @@ from topmark.core.exit_codes import ExitCode
 from topmark.core.keys import ArgKey
 from topmark.pipeline.context.policy import effective_would_add_or_update
 from topmark.pipeline.engine import run_steps_for_files
+from topmark.pipeline.outcomes import Intent, determine_intent
 from topmark.pipeline.status import (
     HeaderStatus,
     WriteStatus,
