@@ -13,7 +13,7 @@
 	help \
 	test verify lint lint-fixall \
 	format-check format docstring-links \
-	pytest \
+	pytest pytest-full \
 	property-test \
 	docs-build docs-serve docs-clean \
 	links links-all links-site links-src \
@@ -46,7 +46,8 @@ help:
 	@echo ""
 	@echo "Core:"
 	@echo "  test            Run the test suite (nox: qa)"
-	@echo "  pytest          Run tests with current interpreter (no nox); supports PYTEST_PAR=-n auto"
+	@echo "  pytest          Run tests with current interpreter (no nox), skipping slow tests; supports PYTEST_PAR=-n auto"
+	@echo "  pytest-full     Run all tests with current interpreter (no nox); supports PYTEST_PAR=-n auto"
 	@echo "  verify          Run formatting checks, lint, and one typecheck env"
 	@echo "  lint            Run ruff + pydoclint + mbake"
 	@echo "  lint-fixall     Run ruff with --fix (auto-fix lint issues)"
@@ -152,6 +153,11 @@ docstring-links: check-venv
 
 # Run pytest directly (no nox) with the current interpreter
 pytest:
+	@echo "Running pytest locally -- skipping slow tests
+	pytest $(PYTEST_PAR) -m "not slow and not hypothesis_slow" -q
+
+pytest-full:
+	@echo "Running all pytest locally -- including slow tests
 	pytest $(PYTEST_PAR) -q
 
 property-test: check-venv
