@@ -15,8 +15,8 @@
 #    pip-compile --constraint=constraints.txt --strip-extras requirements-docs.in
 #
 -e .
-    # via -r requirements.in
-babel==2.17.0
+    # via -
+babel==2.18.0
     # via mkdocs-material
 backrefs==6.1
     # via mkdocs-material
@@ -82,7 +82,7 @@ mkdocs-gen-files==0.6.0
     # via topmark
 mkdocs-get-deps==0.2.0
     # via mkdocs
-mkdocs-include-markdown-plugin==7.2.0
+mkdocs-include-markdown-plugin==7.2.1
     # via topmark
 mkdocs-material==9.7.1
     # via topmark
@@ -108,7 +108,7 @@ platformdirs==4.5.1
     # via mkdocs-get-deps
 pygments==2.19.2
     # via mkdocs-material
-pymdown-extensions==10.20
+pymdown-extensions==10.20.1
     # via
     #   mkdocs-material
     #   mkdocstrings
@@ -125,7 +125,7 @@ pyyaml-env-tag==1.1
     # via mkdocs
 requests==2.32.5
     # via mkdocs-material
-ruff==0.14.14
+ruff==0.15.0
     # via topmark
 six==1.17.0
     # via python-dateutil

@@ -53,9 +53,9 @@ filelock==3.20.3
     # via virtualenv
 humanize==4.15.0
     # via nox
-hypothesis==6.150.3
+hypothesis==6.151.5
     # via topmark
-id==1.5.0
+id==1.6.1
     # via twine
 identify==2.6.16
     # via pre-commit
@@ -81,7 +81,7 @@ markdown-it-py==4.0.0
     #   mdformat-gfm
     #   mdit-py-plugins
     #   rich
-mbake==1.4.4
+mbake==1.4.5
     # via topmark
 mccabe==0.7.0
     # via pylint
@@ -109,7 +109,7 @@ nox==2025.11.12
     # via
     #   nox-uv
     #   topmark
-nox-uv==0.7.0
+nox-uv==0.7.1
     # via topmark
 packaging==26.0
     # via
@@ -153,19 +153,18 @@ readme-renderer==44.0
     # via twine
 requests==2.32.5
     # via
-    #   id
     #   requests-toolbelt
     #   twine
 requests-toolbelt==1.0.0
     # via twine
 rfc3986==2.0.0
     # via twine
-rich==14.2.0
+rich==14.3.2
     # via
     #   mbake
     #   twine
     #   typer
-ruff==0.14.14
+ruff==0.15.0
     # via topmark
 shellingham==1.5.4
     # via typer
@@ -188,6 +187,7 @@ typing-extensions==4.15.0
     #   typer
 urllib3==2.6.3
     # via
+    #   id
     #   requests
     #   twine
 uv==0.5.31
@@ -196,7 +196,7 @@ virtualenv==20.36.1
     # via
     #   nox
     #   pre-commit
-wcwidth==0.3.2
+wcwidth==0.5.3
     # via mdformat-gfm
 yachalk==0.1.8
     # via topmark

@@ -21,3 +21,8 @@ trim_trailing_whitespace = true
 # This section applies to Python files.
 indent_style = space
 indent_size = 4
+
+[*.toml]
+# This section applies to TOML files.
+indent_style = space
+indent_size = 2

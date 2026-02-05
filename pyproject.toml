@@ -10,7 +10,7 @@
 
 [project]
 name = "topmark"
-version = "0.12.0.dev3" # PEP 440: "X.Y.Z.devN", "X.Y.ZrcN", or "X.Y.Z"
+version = "0.12.0.dev4" # PEP 440: "X.Y.Z.devN", "X.Y.ZrcN", or "X.Y.Z"
 description = "A Python CLI to inspect, validate, and manage license and copyright headers."
 authors = [{ name = "Olivier Biot", email = "olivier.biot@gmail.com" }]
 license = "MIT"
@@ -56,7 +56,7 @@ lock = [
 ]
 dev = [
   # Python linter & formatter in one tool (we use it for both):
-  "ruff>=0.14.5,<0.15.0",
+  "ruff>=0.14.5,<0.16.0",
   # Python docstring linter:
   "pydoclint>=0.8.1,<0.9.0",
   # Traditional Python linter with rich checks:
@@ -104,7 +104,7 @@ docs = [
   # Custom Logic: Runs your on_page_markdown hook for callout conversion
   "mkdocs-simple-hooks>=0.1.5,<0.2.0",
   # Python linter & formatter in one tool (docs uses formatter only):
-  "ruff>=0.14.5,<0.15.0",
+  "ruff>=0.14.5,<0.16.0",
   # Add deprecation annotations:
   "typing-extensions>=4.15.0,<5.0.0",
 ]
@@ -141,6 +141,7 @@ extensions = [
 
 # TOML formatting
 [tool.taplo.format]
+# TOML files are indented with 2 spaces (mirrored in .editorconfig)
 indent_tables = true
 align_entries = true
 reorder_keys = true
@@ -192,7 +193,7 @@ load-plugins = "pylint.extensions.typing"
 line-length = 100
 
 [tool.ruff.lint]
-exclude = [".git", ".venv", "venv", "build", "dist", "migrations"]
+exclude = [".git", ".vscode", ".venv", "venv", "build", "dist", "migrations"]
 select = [
   "E",      # pycodestyle errors
   "F",      # pyflakes
@@ -282,7 +283,17 @@ typeCheckingMode = "strict"
 stubPath = "typings"
 pythonVersion = "3.10"
 include = ["src", "tests"]
-exclude = [".venv", "venv", "build", "dist", "**/__pycache__"]
+exclude = [
+  ".git",
+  ".vscode",
+  ".venv",
+  "venv",
+  "build",
+  "dist",
+  "migrations",
+  "**/__pycache__",
+]
+
 # Editor-only integration:
 # The settings below help your **editor** (VS Code Pyright extension) resolve imports
 # from a local convenience environment (e.g. `.venv`). They are **not** used by CI,
@@ -309,6 +320,7 @@ markers = [
 testpaths = ["tests"]
 norecursedirs = [
   ".git",
+  ".vscode",
   ".hypothesis",
   ".tox",
   ".venv",

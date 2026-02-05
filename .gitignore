@@ -76,8 +76,9 @@ dist/
 # lychee cache file
 .lycheecache
 
-# tox
+# Testing anvironments
+.nox/
 .tox/
 
-# hypothesis
+# Property tests (hypothesis)
 .hypothesis/
