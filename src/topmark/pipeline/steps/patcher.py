@@ -85,10 +85,10 @@ class PatcherStep(BaseStep):
         - The comparison step was performed (ctx.status.comparison is CHANGED or UNCHANGED)
 
         Args:
-            ctx (ProcessingContext): The processing context for the current file.
+            ctx: The processing context for the current file.
 
         Returns:
-            bool: True if processing can proceed to the patcher step, False otherwise.
+            True if processing can proceed to the patcher step, False otherwise.
         """
         if ctx.is_halted:
             return False
@@ -104,7 +104,7 @@ class PatcherStep(BaseStep):
         ``UNCHANGED`` or if no updated image is present, the diff is omitted.
 
         Args:
-            ctx (ProcessingContext): The processing context holding original/updated images
+            ctx: The processing context holding original/updated images
                 and statuses.
 
         Mutations:
@@ -170,7 +170,13 @@ class PatcherStep(BaseStep):
             logger.debug("File header unchanged: %s", ctx.path)
             return
 
-        logger.info("Patch (rendered):\n%s", render_patch(patch_lines))
+        logger.info(
+            "Patch (rendered):\n%s",
+            render_patch(
+                patch=patch_lines,
+                color=False,
+            ),
+        )
 
         # Join exactly as produced by difflib. Do not introduce CRLF conversions.
         ctx.views.diff = DiffView(text="".join(patch_lines))
@@ -190,7 +196,7 @@ class PatcherStep(BaseStep):
         """Attach diff hints (non-binding).
 
         Args:
-            ctx (ProcessingContext): The processing context.
+            ctx: The processing context.
         """
         apply: bool = ctx.config.apply_changes is True
         st: PatchStatus = ctx.status.patch

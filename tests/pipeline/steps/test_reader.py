@@ -49,7 +49,7 @@ from topmark.pipeline.status import (
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.core.diagnostics import Diagnostic
+    from topmark.diagnostic.model import Diagnostic
     from topmark.pipeline.context.model import ProcessingContext
 
 

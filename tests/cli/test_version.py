@@ -22,7 +22,7 @@ from packaging.version import InvalidVersion, Version
 from tests.cli.conftest import assert_SUCCESS, run_cli
 from topmark.cli.keys import CliCmd, CliOpt
 from topmark.constants import TOPMARK_VERSION
-from topmark.utils.version import pep440_to_semver
+from topmark.utils.version import convert_pep440_to_semver
 
 if TYPE_CHECKING:
     from click.testing import Result
@@ -67,7 +67,7 @@ def test_version_with_semver_flag_outputs_semver() -> None:
     assert_SUCCESS(result)
 
     out: str = result.output.strip()
-    expected: str = pep440_to_semver(TOPMARK_VERSION)
+    expected: str = convert_pep440_to_semver(TOPMARK_VERSION)
 
     # 1) Exact mapping check: CLI output should equal our conversion helper
     assert out == expected
@@ -96,15 +96,26 @@ def test_version_json_format(use_semver: bool) -> None:
         raise AssertionError(f"Output is not valid JSON: {exc}\nRAW:\n{result.output}") from exc
 
     assert isinstance(payload, dict), "JSON payload must be an object"
-    assert "version" in payload, "JSON payload must contain a 'version' field"
-    out: str = cast("str", payload["version"]).strip()
+
+    # Envelope shape: {"meta": {...}, "version_info": {"version": ..., "version_format": ...}}
+    assert "meta" in payload and isinstance(payload["meta"], dict)
+    assert "version_info" in payload and isinstance(payload["version_info"], dict)
+
+    version_info = cast("dict[str, object]", payload["version_info"])
+    assert "version" in version_info, "JSON payload must contain version_info.version"
+    assert "version_format" in version_info, "JSON payload must contain version_info.version_format"
+
+    out: str = cast("str", version_info["version"]).strip()
+    out_fmt: str = cast("str", version_info["version_format"]).strip().lower()
 
     if use_semver:
-        expected: str = pep440_to_semver(TOPMARK_VERSION)
+        expected: str = convert_pep440_to_semver(TOPMARK_VERSION)
         assert out == expected
+        assert out_fmt == "semver"
         assert re.fullmatch(_SEMVER_RE, out) is not None
     else:
         assert out == TOPMARK_VERSION
+        assert out_fmt == "pep440"
         # Validate PEP 440
         try:
             Version(out)
@@ -126,7 +137,7 @@ def test_version_markdown_format(use_semver: bool) -> None:
     assert out, "Markdown output must not be empty"
 
     if use_semver:
-        expected: str = pep440_to_semver(TOPMARK_VERSION)
+        expected: str = convert_pep440_to_semver(TOPMARK_VERSION)
         assert expected in out  # don’t over-specify formatting around the value
         # Validate the version token itself (not the whole markdown block)
         assert re.fullmatch(_SEMVER_RE, expected) is not None

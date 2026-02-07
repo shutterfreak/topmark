@@ -74,12 +74,13 @@ repos:
       - id: topmark-apply
         # files: '\.(py|md|toml|ya?ml|sh|Makefile)$'
 
-  # Docstring semantics
+  # Docstring semantics - Limited to source and tools
   - repo: https://github.com/jsh9/pydoclint
     rev: 0.8.3
     hooks:
       - id: pydoclint
         args: ["-q"]
+        files: ^(src|tools)/.*\.py$
 
   # Links in docstrings (code)
   - repo: local

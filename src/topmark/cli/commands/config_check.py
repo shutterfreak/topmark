@@ -28,16 +28,16 @@ import click
 
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cmd_common import get_effective_verbosity
+from topmark.cli.emitters import emit_toml_block
 from topmark.cli.keys import CliCmd, CliOpt
+from topmark.cli.machine_emitters import emit_config_check_machine
 from topmark.cli.options import (
     common_config_options,
+    underscored_trap_option,
 )
-from topmark.cli.utils import (
-    emit_config_check_machine,
+from topmark.cli_shared.markdown_rendering import (
     render_config_check_markdown,
-    render_toml_block,
 )
-from topmark.cli_shared.utils import OutputFormat
 from topmark.config import Config, MutableConfig
 from topmark.config.io import to_toml
 from topmark.config.logging import get_logger
@@ -45,15 +45,19 @@ from topmark.config.machine.payloads import (
     build_config_diagnostics_payload,
 )
 from topmark.core.exit_codes import ExitCode
+from topmark.core.formats import OutputFormat, is_machine_format
 from topmark.core.keys import ArgKey
 
 if TYPE_CHECKING:
     from topmark.cli_shared.console_api import ConsoleLike
     from topmark.config.logging import TopmarkLogger
     from topmark.config.machine.schemas import (
-        ConfigDiagnosticCounts,
-        ConfigDiagnosticEntry,
         ConfigDiagnosticsPayload,
+    )
+    from topmark.core.machine.schemas import MetaPayload
+    from topmark.diagnostic.machine.schemas import (
+        MachineDiagnosticCounts,
+        MachineDiagnosticEntry,
     )
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -78,6 +82,7 @@ logger: TopmarkLogger = get_logger(__name__)
     default=None,
     help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
 )
+@underscored_trap_option("--output_format")
 def config_check_command(
     *,
     # Command options: config
@@ -95,10 +100,10 @@ def config_check_command(
     that need to consume the resolved configuration.
 
     Args:
-        strict_config_checking (bool): if True, report warnings as errors.
-        no_config (bool): If True, skip loading project/user configuration files.
-        config_paths (list[str]): Additional configuration file paths to load and merge.
-        output_format (OutputFormat | None): Output format to use
+        strict_config_checking: if True, report warnings as errors.
+        no_config: If True, skip loading project/user configuration files.
+        config_paths: Additional configuration file paths to load and merge.
+        output_format: Output format to use
             (``default``, ``markdown``, ``json``, or ``ndjson``).
 
     Raises:
@@ -106,6 +111,14 @@ def config_check_command(
     """
     ctx: click.Context = click.get_current_context()
     ctx.ensure_object(dict)
+
+    # Machine metadata
+    meta: MetaPayload = ctx.obj[ArgKey.META]
+
+    if output_format and is_machine_format(output_format):
+        # Disable color mode for machine formats
+        ctx.obj[ArgKey.COLOR_ENABLED] = False
+
     console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
 
     fmt: OutputFormat = output_format or OutputFormat.DEFAULT
@@ -136,8 +149,8 @@ def config_check_command(
 
     # Diagnostics payload;
     diag_payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
-    diags: list[ConfigDiagnosticEntry] = diag_payload.diagnostics
-    counts: ConfigDiagnosticCounts = diag_payload.diagnostic_counts
+    diags: list[MachineDiagnosticEntry] = diag_payload.diagnostics
+    counts: MachineDiagnosticCounts = diag_payload.diagnostic_counts
     n_info: int = counts.info
     n_warn: int = counts.warning
     n_err: int = counts.error
@@ -150,7 +163,8 @@ def config_check_command(
 
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         emit_config_check_machine(
-            config,
+            meta=meta,
+            config=config,
             strict=strict_config_checking,
             ok=not fail,
             fmt=fmt,
@@ -189,7 +203,7 @@ def config_check_command(
         if vlevel > 1:
             config_toml_dict: dict[str, Any] = config.to_toml_dict()
             merged_config: str = to_toml(config_toml_dict)
-            render_toml_block(
+            emit_toml_block(
                 console=console,
                 title="TopMark Config (TOML):",
                 toml_text=merged_config,

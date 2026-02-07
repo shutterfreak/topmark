@@ -1,8 +1,8 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : colored_enum.py
-#   file_relpath : src/topmark/rendering/colored_enum.py
+#   file         : presentation.py
+#   file_relpath : src/topmark/core/presentation.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -64,12 +64,12 @@ class Colorizer(Protocol):
         and may include color, bolding, or other markup.
 
         Args:
-            *args (object): One or more objects to render, typically strings.
-            sep (str): Separator between arguments when multiple values
+            *args: One or more objects to render, typically strings.
+            sep: Separator between arguments when multiple values
                 are provided. Defaults to a single space.
 
         Returns:
-            str: The colorized and concatenated output string.
+            The colorized and concatenated output string.
         """
         ...
 
@@ -88,11 +88,11 @@ class ColoredStrEnum(str, Enum):
         """Construct a colored enum member.
 
         Args:
-            text (str): The textual value for the enum member (stored in `_value_`).
-            color (Colorizer): A callable used to colorize text for display.
+            text: The textual value for the enum member (stored in `_value_`).
+            color: A callable used to colorize text for display.
 
         Returns:
-            ColoredStrEnum: The newly constructed enum member.
+            The newly constructed enum member.
 
         Notes:
             Stores the textual value in `_value_` and the colorizer in `_color` to preserve
@@ -109,7 +109,7 @@ class ColoredStrEnum(str, Enum):
         """Return the textual value of the enum member.
 
         Returns:
-            str: The string value associated with this member.
+            The string value associated with this member.
         """
         # `_value_` is assigned in __new__; Enum guarantees it exists on members.
         return self._value_
@@ -119,6 +119,6 @@ class ColoredStrEnum(str, Enum):
         """Return the colorizer associated with this member.
 
         Returns:
-            Colorizer: A callable that decorates strings for display.
+            A callable that decorates strings for display.
         """
         return self._color

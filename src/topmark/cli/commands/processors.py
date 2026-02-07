@@ -25,8 +25,11 @@ import click
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cmd_common import get_effective_verbosity
 from topmark.cli.keys import CliCmd, CliOpt
-from topmark.cli_shared.utils import OutputFormat, render_markdown_table
+from topmark.cli.machine_emitters import emit_processors_machine
+from topmark.cli.options import underscored_trap_option
+from topmark.cli_shared.markdown import render_markdown_table
 from topmark.constants import TOPMARK_VERSION
+from topmark.core.formats import OutputFormat, is_machine_format
 from topmark.core.keys import ArgKey
 from topmark.registry import FileTypeRegistry, HeaderProcessorRegistry
 
@@ -34,6 +37,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from topmark.cli_shared.console_api import ConsoleLike
+    from topmark.core.machine.schemas import MetaPayload
     from topmark.filetypes.base import FileType
     from topmark.pipeline.processors.base import HeaderProcessor
 
@@ -52,6 +56,7 @@ Use this command to see which processors are available and which file types they
     default=None,
     help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
 )
+@underscored_trap_option("--output_format")
 @click.option(
     CliOpt.SHOW_DETAILS,
     ArgKey.SHOW_DETAILS,
@@ -69,15 +74,23 @@ def processors_command(
     Useful for reference when configuring file type filters.
 
     Args:
-        show_details (bool): If True, shows extended information about each processor,
+        show_details: If True, shows extended information about each processor,
             including associated file types and their descriptions.
-        output_format (OutputFormat | None): Output format to use
+        output_format: Output format to use
             (``default``, ``json``, ``ndjson``, or ``markdown``).
             If ``None``, uses the default human-readable format.
     """
     ctx: click.Context = click.get_current_context()
     ctx.ensure_object(dict)
-    console: ConsoleLike = ctx.obj["console"]
+
+    # Machine metadata
+    meta: MetaPayload = ctx.obj[ArgKey.META]
+
+    if output_format and is_machine_format(output_format):
+        # Disable color mode for machine formats
+        ctx.obj[ArgKey.COLOR_ENABLED] = False
+
+    console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
 
     ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
     hp_registry: Mapping[str, HeaderProcessor] = HeaderProcessorRegistry.as_mapping()
@@ -85,6 +98,15 @@ def processors_command(
 
     # Determine effective program-output verbosity for gating extra details
     vlevel: int = get_effective_verbosity(ctx)
+
+    # Machine formats
+    if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
+        emit_processors_machine(
+            meta=meta,
+            fmt=fmt,
+            show_details=show_details,
+        )
+        return
 
     # Invert mapping: proc class -> [filetype names]
     groups: dict[tuple[str, str], list[str]] = defaultdict(list)
@@ -120,23 +142,6 @@ def processors_command(
         else:
             payload_data["unbound_filetypes"].append(name)
 
-    if fmt == OutputFormat.JSON:
-        import json
-
-        console.print(json.dumps(payload_data, indent=2))
-        return
-
-    if fmt == OutputFormat.NDJSON:
-        import json
-
-        # Output processors
-        for proc in payload_data["processors"]:
-            console.print(json.dumps({"processor": proc}))
-        # Output unbound file types
-        for unbound_ft in payload_data["unbound_filetypes"]:
-            console.print(json.dumps({"unbound_filetype": unbound_ft}))
-        return
-
     if fmt == OutputFormat.MARKDOWN:
         console.print(f"""
 # Supported Header Processors
@@ -146,24 +151,24 @@ TopMark version **{TOPMARK_VERSION}** supports the following header processors:
 """)
         if show_details:
             console.print("""
-**Legend**
+## Legend
 
 - This section groups file types by the **header processor** class handling them.
 - See `topmark filetypes --output-format=markdown --long` for per‑type matching rules,
   content matchers, insert checkers, and policy details.
-            """)
+""")
         else:
             console.print("""
 _This table lists header processors and the file types they handle. Use `--long` to expand
 per‑processor file type listings into separate tables._
-            """)
+""")
         rows: list[list[str]]
         if show_details:
             for proc in payload_data["processors"]:
                 headers: list[str] = ["File Types", "Description"]
                 rows = []
                 console.print(f"\n## **{proc['class']}** _({proc['module']})_\n")
-                console.print("File types handled by this processor:")
+                console.print("File types handled by this processor:\n")
                 # console.print("| File Types | Description |")
                 # console.print("|---|---|")
                 ft: dict[str, str]
@@ -192,7 +197,7 @@ per‑processor file type listings into separate tables._
             console.print("\n## File types without a registered processor\n")
             console.print(
                 "These file types are recognized by TopMark but currently have "
-                "no header processor bound. They will be listed, but not processed."
+                "no header processor bound. They will be listed, but not processed.\n"
             )
             headers = ["File Types", "Description"]
             rows = []
@@ -201,6 +206,9 @@ per‑processor file type listings into separate tables._
                     rows.append([f"`{unbound_ft['name']}`", f"`{unbound_ft['description']}`"])
                 else:
                     console.print(f"  - `{unbound_ft}`")
+            if show_details:
+                table = render_markdown_table(headers, rows)
+                console.print(table)
         console.print()
         # Footer for documentation friendliness
         console.print("\n---\n")

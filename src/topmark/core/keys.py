@@ -90,3 +90,6 @@ class ArgKey:
 
     # Config checking
     STRICT_CONFIG_CHECKING: Final[str] = "strict_config_checking"
+
+    # Machine metadata payload
+    META: Final[str] = "meta_payload"

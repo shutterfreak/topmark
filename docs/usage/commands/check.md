@@ -99,12 +99,15 @@ ______________________________________________________________________
 
 Use `--output-format json` or `--output-format ndjson` to emit output suitable for tooling:
 
-- **JSON**: single JSON document with `meta`, `config`, `config_diagnostics` and
-  either `results` (detail mode) or `summary` (summary mode).
-- **NDJSON**: one JSON object per line (or one summary line per outcome with `--summary`).
+- **JSON**: a single JSON document containing `meta`, `config`, `config_diagnostics`, and then either
+  `results` (detail mode) or `summary` (summary mode).
+- **NDJSON**: one record (JSON object) per line. Every record includes `kind` and `meta`, and the
+  payload is stored under a container key that matches `kind`.
 
-For the canonical JSON/NDJSON schema, see
-[Machine output schema (JSON & NDJSON)](../../dev/machine-output.md).
+For the canonical schema and stable `kind` values, see:
+
+- [Machine output schema (JSON & NDJSON)](../../dev/machine-output.md)
+- [Machine formats](../../dev/machine-formats.md)
 
 Notes:
 
@@ -121,113 +124,49 @@ When `--summary` is **not** set, `topmark check` emits a single JSON object:
   "config": { /* ConfigPayload */ },
   "config_diagnostics": { /* ConfigDiagnosticsPayload */ },
   "results": [
-    {
-      "path": "README.md",
-      "file_type": "markdown",
-      "steps": [
-        "ResolverStep",
-        "SnifferStep",
-        "ReaderStep",
-        "ScannerStep",
-        "BuilderStep",
-        "RendererStep",
-        "ComparerStep"
-      ],
-      "step_axes": {
-        "ResolverStep": ["resolve"],
-        "SnifferStep": ["fs"],
-        "ReaderStep": ["content"],
-        "ScannerStep": ["header"],
-        "BuilderStep": ["generation"],
-        "RendererStep": ["render"],
-        "ComparerStep": ["comparison"]
-      },
-      "status": {
-        "resolve": { "axis": "resolve", "name": "RESOLVED", "label": "resolved" },
-        "fs":      { "axis": "fs",      "name": "OK",       "label": "ok" },
-        "content": { "axis": "content", "name": "OK",       "label": "ok" }
-        /* other axes elided for brevity */
-      },
-      "views": {
-        "image_lines": 382,
-        "header_range": [0, 10],
-        "header_fields": {
-          "project": "TopMark",
-          "file": "README.md",
-          "file_relpath": "README.md",
-          "license": "MIT",
-          "copyright": "(c) 2025 Olivier Biot"
-        },
-        "build_selected": {
-          "project": "TopMark",
-          "file": "README.md",
-          "file_relpath": "README.md",
-          "license": "MIT",
-          "copyright": "(c) 2025 Olivier Biot"
-        },
-        "render_line_count": 11,
-        "updated_has_lines": false,
-        "diff_present": false
-      },
-      "diagnostics": [],
-      "diagnostic_counts": { "info": 0, "warning": 0, "error": 0 },
-      "pre_insert_check": {
-        "capability": "UNEVALUATED",
-        "reason": null,
-        "origin": null
-      },
-      "outcome": {
-        "would_change": false,
-        "can_change": true,
-        "permitted_by_policy": true,
-        "check": {
-          "would_add_or_update": false,
-          "effective_would_add_or_update": false
-        },
-        "strip": {
-          "would_strip": false,
-          "effective_would_strip": false
-        }
-      }
-    }
+    { /* per-file result payload */ }
   ]
 }
 ```
-
-Here:
-
-- `status` is the axis → `{axis, name, label}` map produced by
-  `ProcessingStatus.to_dict()`.
-- `steps` and `step_axes` expose the actual pipeline trace (which steps ran,
-  and which axes each step may write).
-- `views` captures the header/image views used by the pipeline and CLI.
-
-> [!NOTE] **Config diagnostics**
->
-> The `config_diagnostics` block only appears in machine-readable output for
-> commands that actually *run* a pipeline (`check`, `strip`). It summarises any
-> issues discovered while loading and merging configuration (e.g. invalid keys,
-> deprecated options, or conflicting settings).
->
-> Pure config commands (`topmark config ...`) emit only the `config` snapshot in
-> JSON/NDJSON and omit `config_diagnostics`.
 
 ### JSON schema (summary mode)
 
 In summary mode (`--summary`), `results` is omitted and replaced by a `summary` object:
 
 ```jsonc
-"summary": {
-  "unchanged": {
-    "count": 30,
-    "label": "[13] up-to-date"
-  },
-  "skipped": {
-    "count": 1,
-    "label": "[01] known file type, headers not supported"
+{
+  "meta": { /* MetaPayload */ },
+  "config": { /* ConfigPayload */ },
+  "config_diagnostics": { /* ConfigDiagnosticsPayload */ },
+  "summary": {
+    "unchanged":    { "count": 30, "label": "up-to-date" },
+    "would insert": { "count":  1, "label": "header missing, changes found" }
   }
 }
 ```
+
+### NDJSON schema (detail vs summary)
+
+NDJSON is a stream with a stable prefix followed by either per-file `result` records (detail mode)
+or per-bucket `summary` records (summary mode):
+
+- Prefix records:
+  1. `kind="config"` (effective config snapshot)
+  1. `kind="config_diagnostics"` (**counts-only**)
+  1. zero or more `kind="diagnostic"` records (each with `domain="config"`)
+- Then:
+  - detail mode (no `--summary`): one `kind="result"` record per file
+  - summary mode (`--summary`): one `kind="summary"` record per outcome bucket
+
+Example (summary mode):
+
+```jsonc
+{"kind":"config","meta":{...},"config":{...}}
+{"kind":"config_diagnostics","meta":{...},"config_diagnostics":{"diagnostic_counts":{"info":0,"warning":0,"error":0}}}
+{"kind":"summary","meta":{...},"summary":{"key":"would insert","count":1,"label":"header missing, changes found"}}
+```
+
+______________________________________________________________________
 
 ## Verbosity & logging
 
@@ -340,6 +279,8 @@ git ls-files -m -o --exclude-standard | topmark check --files-from - --diff
 # Print summary only. Exit 2 signals “would change” to fail the job.
 topmark check --summary
 ```
+
+______________________________________________________________________
 
 ## Pre‑commit integration
 

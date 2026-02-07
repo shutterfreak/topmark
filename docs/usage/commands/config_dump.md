@@ -92,6 +92,48 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
+## Machine-readable output
+
+Use `--output-format json` or `--output-format ndjson` to emit output suitable for tools.
+
+The canonical schema, stable `kind` values, and shared conventions are documented here:
+
+- [Machine output schema (JSON & NDJSON)](../../dev/machine-output.md)
+- [Machine formats](../../dev/machine-formats.md)
+
+Notes:
+
+- `config dump` is **file-agnostic** and emits the effective configuration after applying
+  defaults → discovered config → `--config` files → CLI overrides.
+- Diagnostics are not emitted for this command; it is an inspection view of the merged config.
+
+### JSON schema
+
+A single JSON document is emitted:
+
+```jsonc
+{
+  "meta": { /* MetaPayload */ },
+  "config": { /* ConfigPayload (effective merged) */ }
+}
+```
+
+### NDJSON schema
+
+NDJSON is a stream where each line is a JSON object. Every record includes `kind` and `meta`.
+
+Stream:
+
+1. `kind="config"` (effective merged config snapshot)
+
+Example:
+
+```jsonc
+{"kind":"config","meta":{...},"config":{...}}
+```
+
+______________________________________________________________________
+
 ## Verbosity
 
 `config dump` prints configuration; it does not render program output with per‑file diagnostics. The

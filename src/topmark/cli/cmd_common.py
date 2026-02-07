@@ -26,13 +26,13 @@ from topmark.cli.console_helpers import get_console_safely
 from topmark.cli_shared.console_api import ConsoleLike
 from topmark.config.logging import get_logger
 from topmark.config.model import MutableConfig
-from topmark.core.diagnostics import (
-    Diagnostic,
+from topmark.core.keys import ArgKey
+from topmark.diagnostic.model import (
     DiagnosticLevel,
     DiagnosticStats,
+    FrozenDiagnosticLog,
     compute_diagnostic_stats,
 )
-from topmark.core.keys import ArgKey
 from topmark.file_resolver import resolve_file_list
 
 if TYPE_CHECKING:
@@ -88,7 +88,7 @@ def exit_if_no_files(file_list: list[Path]) -> bool:
 def maybe_exit_on_error(*, code: ExitCode | None, temp_path: Path | None) -> None:
     """If an error code was encountered, cleanup and exit with it."""
     if code is not None:
-        from topmark.cli_shared.utils import safe_unlink
+        from topmark.utils.file import safe_unlink
 
         safe_unlink(temp_path)
         click.get_current_context().exit(code)
@@ -150,7 +150,7 @@ def render_config_diagnostics(
       - At verbosity 0, emit a single triage line with a 'use -v' hint.
       - At verbosity >= 1, emit a summary and then one line per diagnostic.
     """
-    diags: tuple[Diagnostic, ...] = config.diagnostics
+    diags: FrozenDiagnosticLog = config.diagnostics
     if not diags:
         return
 

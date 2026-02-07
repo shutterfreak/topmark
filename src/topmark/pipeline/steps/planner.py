@@ -86,12 +86,12 @@ def _drop_trailing_blank_if_header_at_eof(
     before body text, while keeping insert→strip→insert idempotent for empty bodies.
 
     Args:
-        lines (list[str]): The file content as a list of lines (each with its own newline).
-        insert_index (int): The line index where the header was inserted.
-        header_len (int): The number of lines in the inserted header.
+        lines: The file content as a list of lines (each with its own newline).
+        insert_index: The line index where the header was inserted.
+        header_len: The number of lines in the inserted header.
 
     Returns:
-        list[str]: The (possibly) modified list of lines. Never ``None``.
+        The (possibly) modified list of lines. Never ``None``.
     """
     if not lines:
         return lines
@@ -122,12 +122,12 @@ def _prepend_bom_to_lines_if_needed(
         * Otherwise, prepend a BOM to the first line if it is not already present.
 
     Args:
-        lines (list[str]): The updated file content as a list of lines (each with its own newline).
-        ctx (ProcessingContext): The pipeline processing context
+        lines: The updated file content as a list of lines (each with its own newline).
+        ctx: The pipeline processing context
             (provides ``leading_bom`` and ``has_shebang``).
 
     Returns:
-        list[str]: The (possibly) modified list of lines. Never ``None``.
+        The (possibly) modified list of lines. Never ``None``.
     """
     if not lines:
         return lines
@@ -189,10 +189,10 @@ class PlannerStep(BaseStep):
                   rendered header is present via ``RenderView.lines``).
 
         Args:
-            ctx (ProcessingContext): The processing context.
+            ctx: The processing context.
 
         Returns:
-            bool: ``True`` if the updater can proceed; otherwise ``False``.
+            ``True`` if the updater can proceed; otherwise ``False``.
         """
         if ctx.is_halted:
             outcome: bool = False
@@ -211,25 +211,28 @@ class PlannerStep(BaseStep):
         """Plan insert/replace/remove of the TopMark header for the current file (view-based).
 
         Behavior by case:
-        * **Strip fast-path**: When ``status.strip == READY``, keep the precomputed
+        - **Strip fast-path**: When ``status.strip == READY``, keep the precomputed
             ``ctx.views.updated.lines``, reattach a BOM if the reader saw one, and mark
             ``write=REMOVED`` (or ``PREVIEWED`` when not applying).
-        * **Already up-to-date**: When ``status.comparison == UNCHANGED``, do nothing,
+        - **Already up-to-date**: When ``status.comparison == UNCHANGED``, do nothing,
             set ``write=SKIPPED``, and mirror the original image into ``ctx.views.updated``.
-        * **Replace**: If a header range is known (``ctx.views.header.range``), splice
+        - **Replace**: If a header range is known (``ctx.views.header.range``), splice
             the rendered header lines (``ctx.views.render.lines``) over that range; reattach BOM
             if needed; if the result equals the original, set ``write=SKIPPED``; otherwise
             ``write=REPLACED`` (or ``PREVIEWED``).
-        * **Insert (text-based)**: If the processor provides a character offset, insert
+        - **Insert (text-based)**: If the processor provides a character offset, insert
             the rendered header text there (after optional ``prepare_header_for_insertion_text``),
             reattach BOM if needed; if identical to original, ``SKIPPED``; else ``INSERTED``.
-        * **Insert (line-based fallback)**: Use ``compute_insertion_anchor`` (line index),
+        - **Insert (line-based fallback)**: Use ``compute_insertion_anchor`` (line index),
             optionally adjust whitespace via ``prepare_header_for_insertion``, reattach BOM
             if needed; set ``INSERTED`` unless the result is identical, in which case ``SKIPPED``.
 
+        Args:
+            ctx: The processing context.
+
         Notes:
-        This function performs no I/O; it only populates ``ctx.views.updated`` and
-        ``ctx.status.write`` for downstream patch/apply steps.
+            This function performs no I/O; it only populates ``ctx.views.updated`` and
+            ``ctx.status.write`` for downstream patch/apply steps.
         """
         logger.debug("ctx: %s", ctx)
         logger.debug("ctx.config.apply_changes = %s", ctx.config.apply_changes)
@@ -331,7 +334,7 @@ class PlannerStep(BaseStep):
                     logger.exception(
                         "pre-insert checker failed for %s: %s", getattr(ft, "name", ft), exc
                     )
-                    from topmark.cli_shared.utils import format_callable_pretty
+                    from topmark.utils.introspection import format_callable_pretty
 
                     result = {
                         "capability": InsertCapability.SKIP_OTHER,
@@ -550,7 +553,7 @@ class PlannerStep(BaseStep):
         """Attach update hints (non-binding).
 
         Args:
-            ctx (ProcessingContext): The processing context.
+            ctx: The processing context.
         """
         apply: bool = ctx.config.apply_changes is True
         ft: FileType | None = ctx.file_type

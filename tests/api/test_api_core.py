@@ -8,7 +8,7 @@
 #
 # topmark:header:end
 
-"""Core end-to-end tests for `topmark.api`.
+"""Core end-to-end tests for [`topmark.api`][topmark.api].
 
 These tests exercise discovery, view filtering, conflict validation, and write
 behavior (`apply=True`) for `check()` and `strip()`. Registry-specific tests

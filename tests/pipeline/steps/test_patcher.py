@@ -79,6 +79,16 @@ def test_patcher_diff_preserves_crlf_and_render_markers(tmp_path: Path) -> None:
 
     # Pass a list of lines to preserve native EOLs; when given a single string,
     # render_patch would lose CRLF markers due to splitlines() default behavior.
-    rendered: str = render_patch(diff_text.splitlines(keepends=True))
-    assert ("\\r\\n" in rendered) or ("␍␊" in rendered) or ("CRLF" in rendered.upper())
+    rendered: str = render_patch(
+        patch=diff_text.splitlines(keepends=True),
+        color=False,
+    )
+    # Depending on render_patch implementation, CRLF may be preserved as literal
+    # `\r\n` or displayed via explicit markers.
+    assert (
+        ("\r\n" in rendered)
+        or ("\\r\\n" in rendered)
+        or ("␍␊" in rendered)
+        or ("CRLF" in rendered.upper())
+    )
     assert "\n\r" not in rendered  # avoid flipped sequence

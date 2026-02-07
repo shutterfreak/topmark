@@ -9,59 +9,33 @@
 # topmark:header:end
 
 
-"""Machine-readable schema objects for config-related output (JSON/NDJSON)."""
+"""Schema objects for config-related machine output.
+
+This module defines small dataclasses used as the *typed payload layer* for
+config-related JSON/NDJSON output. Instances are designed to be trivially
+JSON-serializable via `to_dict()`.
+
+Shape construction and serialization are handled by:
+  - [`topmark.config.machine.payloads`][topmark.config.machine.payloads] (payload builders)
+  - [`topmark.config.machine.shapes`][topmark.config.machine.shapes] (envelope/record builders)
+  - [`topmark.config.machine.serializers`][topmark.config.machine.serializers]
+    (JSON/NDJSON string rendering)
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from topmark.core.machine.formats import MachineKey
+from topmark.core.machine.schemas import MachineKey
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-
-@dataclass(slots=True)
-class ConfigDiagnosticEntry:
-    """Machine-readable diagnostic entry for config metadata."""
-
-    level: str
-    message: str
-
-    def to_dict(self) -> dict[str, str]:
-        """Return a JSON-friendly dict of the `ConfigDiagnosticEntry` instance.
-
-        Returns:
-            dict[str, str]: dict with keys ``"level"`` and ``"message"``,
-                representing the `ConfigDiagnosticEntry` instance.
-        """
-        return {
-            "level": self.level,
-            "message": self.message,
-        }
-
-
-@dataclass(slots=True)
-class ConfigDiagnosticCounts:
-    """Aggregated per-level counts for config diagnostics."""
-
-    info: int
-    warning: int
-    error: int
-
-    def to_dict(self) -> dict[str, int]:
-        """Return a JSON-friendly dict of the `ConfigDiagnosticCounts` instance.
-
-        Returns:
-            dict[str, int]: counts-only payload with keys `info`, `warning`,
-                and `error`.
-        """
-        return {
-            "info": self.info,
-            "warning": self.warning,
-            "error": self.error,
-        }
+    from topmark.diagnostic.machine.schemas import (
+        MachineDiagnosticCounts,
+        MachineDiagnosticEntry,
+    )
 
 
 @dataclass(slots=True)
@@ -70,19 +44,19 @@ class ConfigPayload:
 
     The shape loosely mirrors
     [`Config.to_toml_dict(include_files=False)`][topmark.config.model.Config.to_toml_dict]
-    but guarantees JSON-serializable values (paths/Enums normalized to strings).
+    but guarantees JSON-serializable values (paths/enums normalized to strings).
 
     Diagnostics are emitted separately via `ConfigDiagnosticsPayload`.
 
     Attributes:
-        fields (dict[str, str]): TODO.
-        header (dict[str, list[str]]): TODO.
-        formatting (dict[str, Any]): TODO.
-        writer (dict[str, Any]): TODO.
-        files (dict[str, Any]): List of files to process.
-        policy (dict[str, Any]): Global, resolved, immutable runtime policy (plain booleans),
+        fields: Available header fields.
+        header: TODO.
+        formatting: TODO.
+        writer: TODO.
+        files: List of files to process.
+        policy: Global, resolved, immutable runtime policy (plain booleans),
             applied after discovery.
-        policy_by_type (dict[str, Any]): Per-file-type resolved policy overrides
+        policy_by_type: Per-file-type resolved policy overrides
             (plain booleans), applied after discovery.
     """
 
@@ -116,24 +90,24 @@ class ConfigDiagnosticsPayload:
     as the diagnostics (list) and stats (counts per severity level).
 
     Attributes:
-        diagnostics (list[ConfigDiagnosticEntry]): list of {level, message} entries.
-        diagnostic_counts (ConfigDiagnosticCounts): aggregate per-level counts.
+        diagnostics: list of {level, message} entries.
+        diagnostic_counts: aggregate per-level counts.
     """
 
-    diagnostics: list[ConfigDiagnosticEntry]
-    diagnostic_counts: ConfigDiagnosticCounts
+    diagnostics: list[MachineDiagnosticEntry]
+    diagnostic_counts: MachineDiagnosticCounts
 
     def to_dict(self) -> Mapping[str, object]:
-        """Return a JSON-friendly mapping of the `ConfigDiagnosticsPayload` instance.
+        """Return a JSON-friendly mapping of diagnostics and diagnostic counts.
 
         Returns:
-            Mapping[str, object]: Mapping with keys `"diagnostics"` and `"diagnostic_counts"`,
-                representing config diagnostics ()`list[ConfigDiagnosticEntry]`) and the
-                config diagnostic counts per diagnostic severity level.
+            Mapping with keys `"diagnostics"` and `"diagnostic_counts"`,
+            representing config diagnostics (`list[MachineDiagnosticEntry]`) and the
+            config diagnostic counts per severity level (`MachineDiagnosticCounts`).
         """
         return {
-            "diagnostics": [d.to_dict() for d in self.diagnostics],
-            "diagnostic_counts": self.diagnostic_counts.to_dict(),
+            MachineKey.DIAGNOSTICS: [d.to_dict() for d in self.diagnostics],
+            MachineKey.DIAGNOSTIC_COUNTS: self.diagnostic_counts.to_dict(),
         }
 
 
@@ -150,26 +124,26 @@ class ConfigCheckSummary:
     - NDJSON: `kind="summary"` record (payload container `summary`).
 
     Attributes:
-        command (str): Top-level command name (typically "config").
-        subcommand (str): Subcommand name (typically "check").
-        ok (bool): True when validation succeeded under the selected strictness.
-        strict (bool): True when warnings are treated as failures.
-        diagnostic_counts (ConfigDiagnosticCounts): Counts per diagnostic level.
-        config_files (list[str]): Resolved list of loaded config file paths.
+        command: Top-level command name (typically "config").
+        subcommand: Subcommand name (typically "check").
+        ok: True when validation succeeded under the selected strictness.
+        strict: True when warnings are treated as failures.
+        diagnostic_counts: Counts per diagnostic level.
+        config_files: Resolved list of loaded config file paths.
     """
 
     command: str  # "config"
     subcommand: str  # "check"
     ok: bool
     strict: bool
-    diagnostic_counts: ConfigDiagnosticCounts
+    diagnostic_counts: MachineDiagnosticCounts
     config_files: list[str]
 
     def to_dict(self) -> dict[str, object]:
         """Return a JSON-friendly dict of the `ConfigCheckSummary` instance.
 
         Returns:
-            dict[str, object]: JSON-friendly dict representing the `ConfigCheckSummary` instance.
+            JSON-friendly dict representing the `ConfigCheckSummary` instance.
         """
         return {
             MachineKey.COMMAND: self.command,

@@ -41,3 +41,12 @@ class ConsoleLike(Protocol):
     def styled(self, text: str, **style_kwargs: object) -> str:
         """Return a styled string (no-op if styling is disabled)."""
         ...
+
+    def get_line_width(self, default: int = 80, max_width: int = 100) -> int:
+        """Return the line width of the console."""
+        import shutil
+
+        # Get terminal size
+        columns, _ = shutil.get_terminal_size(fallback=(default, 24))
+        # Return the smaller of the terminal width or your preferred max
+        return min(columns, max_width)

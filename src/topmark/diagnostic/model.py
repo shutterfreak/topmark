@@ -1,8 +1,8 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : diagnostics.py
-#   file_relpath : src/topmark/core/diagnostics.py
+#   file         : model.py
+#   file_relpath : src/topmark/diagnostic/model.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -17,14 +17,16 @@ diagnostics can evolve without breaking external contracts.
 
 Sections:
     * DiagnosticLevel: severity levels with associated terminal colors.
-    * Diagnostic: immutable structured diagnostic payload.
+    * Diagnostic: immutable structured diagnostic payload (level + message).
     * DiagnosticStats: aggregated per-level counts.
     * DiagnosticLog: mutable per-context collection with helpers for
       adding and summarizing diagnostics.
+    * FrozenDiagnosticLog: immutable snapshot container for frozen contexts.
 """
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, cast
@@ -111,14 +113,29 @@ class DiagnosticLog:
 
     items: list[Diagnostic] = field(default_factory=lambda: [])
 
+    @classmethod
+    def from_iterable(cls, diagnostics: Iterable[Diagnostic]) -> DiagnosticLog:
+        """Create a DiagnosticLog from an iterable of diagnostics.
+
+        Args:
+            diagnostics: Existing diagnostics (e.g., from a frozen snapshot).
+
+        Returns:
+            A new DiagnosticLog containing the provided diagnostics.
+        """
+        return cls(items=list(diagnostics))
+
+    def freeze(self) -> FrozenDiagnosticLog:
+        """Return an immutable snapshot of this log's diagnostics."""
+        return FrozenDiagnosticLog(items=tuple(self.items))
+
     def _add(self, diagnostic: Diagnostic) -> None:
         """Add a diagnostic to the diagnostic log.
 
-        Args:
-            diagnostic (Diagnostic): The diagnostic object.
+        The diagnostic is appended to the context in place.
 
-        Returns:
-            None: The diagnostic is appended to the context in place.
+        Args:
+            diagnostic: The diagnostic object.
         """
         self.items.append(diagnostic)
         logger.trace("Adding [%s]: %r", diagnostic.level.value, diagnostic.message)
@@ -126,11 +143,11 @@ class DiagnosticLog:
     def add_info(self, message: str) -> None:
         """Add an ``info`` diagnostic to the diagnostic log.
 
-        Args:
-            message (str): The diagnostic message.
+        The diagnostic is appended to the context in place.
 
-        Returns:
-            None: The diagnostic is appended to the context in place.
+        Args:
+            message: The diagnostic message.
+
         """
         self._add(Diagnostic(DiagnosticLevel.INFO, message))
 
@@ -138,21 +155,17 @@ class DiagnosticLog:
         """Add a ``warning`` diagnostic to the diagnostic log.
 
         Args:
-            message (str): The diagnostic message.
-
-        Returns:
-            None: The diagnostic is appended to the context in place.
+            message: The diagnostic message.
         """
         self._add(Diagnostic(DiagnosticLevel.WARNING, message))
 
     def add_error(self, message: str) -> None:
         """Add an ``error`` diagnostic to the diagnostic log.
 
-        Args:
-            message (str): The diagnostic message.
+        The diagnostic is appended to the context in place.
 
-        Returns:
-            None: The diagnostic is appended to the context in place.
+        Args:
+            message: The diagnostic message.
         """
         self._add(Diagnostic(DiagnosticLevel.ERROR, message))
 
@@ -169,7 +182,7 @@ class DiagnosticLog:
         return any(d.level == DiagnosticLevel.INFO for d in self.items)
 
     def has_warning(self) -> bool:
-        """Return True if the DiagnosticLog contains warning diagonstics."""
+        """Return True if the DiagnosticLog contains warning diagnostics."""
         return any(d.level == DiagnosticLevel.WARNING for d in self.items)
 
     def has_error(self) -> bool:
@@ -180,8 +193,8 @@ class DiagnosticLog:
         """Return a JSON-friendly mapping of counts by severity.
 
         Returns:
-            dict[str, int]: Mapping with keys ``"info"``, ``"warning"``, and
-            ``"error"`` reflecting the number of diagnostics at each level.
+            Mapping with keys ``"info"``, ``"warning"``, and ``"error"``
+            reflecting the number of diagnostics at each level.
         """
         return diagnostics_counts_to_dict(self.items)
 
@@ -189,8 +202,7 @@ class DiagnosticLog:
         """Iterate over all diagnostics stored in this log.
 
         Returns:
-            Iterator[Diagnostic]: An iterator yielding diagnostics in
-            insertion order.
+            An iterator yielding diagnostics in insertion order.
         """
         return iter(self.items)
 
@@ -198,9 +210,33 @@ class DiagnosticLog:
         """Return the number of diagnostics stored in this log.
 
         Returns:
-            int: The number of diagnostic entries.
+            The number of diagnostic entries.
         """
         return len(self.items)
+
+
+@dataclass(frozen=True, slots=True)
+class FrozenDiagnosticLog:
+    """Immutable, per-context diagnostic container.
+
+    `FrozenDiagnosticLog` is the immutable counterpart to `DiagnosticLog`. It is
+    intended for storing diagnostics on frozen snapshots (e.g., `Config`) where
+    mutation is not permitted.
+    """
+
+    items: tuple[Diagnostic, ...]
+
+    def __iter__(self) -> Iterator[Diagnostic]:
+        """Iterate over contained diagnostics in insertion order."""
+        return iter(self.items)
+
+    def stats(self) -> DiagnosticStats:
+        """Return aggregated per-level counts for the contained diagnostics."""
+        return compute_diagnostic_stats(self.items)
+
+    def to_dict(self) -> dict[str, int]:
+        """Return a JSON-friendly mapping of counts by severity."""
+        return diagnostics_counts_to_dict(self.items)
 
 
 def compute_diagnostic_stats(diagnostics: Iterable[Diagnostic]) -> DiagnosticStats:
@@ -210,10 +246,10 @@ def compute_diagnostic_stats(diagnostics: Iterable[Diagnostic]) -> DiagnosticSta
     summaries and for machine-readable reporting via `to_dict`.
 
     Args:
-        diagnostics (Iterable[Diagnostic]): the diagnostic log.
+        diagnostics: the diagnostic log.
 
     Returns:
-        DiagnosticStats: per-level counts for diagnostics in this log.
+        Per-level counts for diagnostics in this log.
     """
     n_info: int = sum(1 for d in diagnostics if d.level == DiagnosticLevel.INFO)
     n_warn: int = sum(1 for d in diagnostics if d.level == DiagnosticLevel.WARNING)

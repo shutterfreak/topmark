@@ -8,7 +8,7 @@
 #
 # topmark:header:end
 
-"""Unit tests for `resolve_file_list` in `topmark.click_test.options`.
+"""Unit tests for `resolve_file_list` in [`topmark.file_resolver`][topmark.file_resolver].
 
 These tests verify candidate expansion from positional args and config files,
 as well as include/exclude filtering, pattern file handling, file type filtering,

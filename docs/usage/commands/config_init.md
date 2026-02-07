@@ -79,6 +79,48 @@ any environment‑specific flags that may be available in your build.
 
 ______________________________________________________________________
 
+## Machine-readable output
+
+Use `--output-format json` or `--output-format ndjson` to emit output suitable for tools.
+
+The canonical schema, stable `kind` values, and shared conventions are documented here:
+
+- [Machine output schema (JSON & NDJSON)](../../dev/machine-output.md)
+- [Machine formats](../../dev/machine-formats.md)
+
+Notes:
+
+- In machine formats, `config init` emits the same defaults-derived configuration snapshot as
+  [`topmark config defaults`](config_defaults.md).
+- No diagnostics are emitted for this command.
+
+### JSON schema
+
+A single JSON document is emitted:
+
+```jsonc
+{
+  "meta": { /* MetaPayload */ },
+  "config": { /* ConfigPayload (defaults-derived) */ }
+}
+```
+
+### NDJSON schema
+
+NDJSON is a stream where each line is a JSON object. Every record includes `kind` and `meta`.
+
+Stream:
+
+1. `kind="config"` (defaults-derived config snapshot)
+
+Example:
+
+```jsonc
+{"kind":"config","meta":{...},"config":{...}}
+```
+
+______________________________________________________________________
+
 ## Notes
 
 - Use `topmark show-defaults` to view the **built‑in defaults** without a scaffold.

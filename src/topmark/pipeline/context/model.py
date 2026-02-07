@@ -32,7 +32,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from topmark.config.logging import get_logger
-from topmark.core.diagnostics import (
+from topmark.diagnostic.model import (
     DiagnosticLog,
 )
 from topmark.filetypes.base import InsertCapability
@@ -46,8 +46,17 @@ from topmark.pipeline.context.policy import (
     would_strip,
 )
 from topmark.pipeline.context.status import ProcessingStatus
-from topmark.pipeline.hints import Axis, Cluster, HintLog, KnownCode, make_hint
-from topmark.pipeline.views import UpdatedView, Views
+from topmark.pipeline.hints import (
+    Axis,
+    Cluster,
+    HintLog,
+    KnownCode,
+    make_hint,
+)
+from topmark.pipeline.views import (
+    UpdatedView,
+    Views,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
@@ -197,7 +206,7 @@ class ProcessingContext:
         Config.freeze() time.
 
         Returns:
-            Policy: The effective policy for this context.
+            The effective policy for this context.
         """
         name: str | None = self.file_type.name if self.file_type is not None else None
         return self.policy_registry.for_type(name)
@@ -226,13 +235,12 @@ class ProcessingContext:
         This method records a ``HaltState`` on the context so that subsequent
         steps and the runner can avoid further processing for this file.
 
-        Args:
-            reason (str): Short machine-friendly reason code for halting the
-                pipeline (for example, ``"unsupported"``).
-            at_step (Step): Step instance requesting the halt.
+        The context's ``halt_state`` field is updated in place.
 
-        Returns:
-            None: The context's ``halt_state`` field is updated in place.
+        Args:
+            reason: Short machine-friendly reason code for halting the
+                pipeline (for example, ``"unsupported"``).
+            at_step: Step instance requesting the halt.
         """
         logger.info("🛑 Processing halted in %s: %s", at_step.name, reason)
         self.halt_state = HaltState(reason_code=reason, step_name=at_step.name)
@@ -242,7 +250,7 @@ class ProcessingContext:
         """Return True if a step has requested an early halt for this file.
 
         Returns:
-            bool: ``True`` when ``halt_state`` is not ``None``, meaning that
+            ``True`` when ``halt_state`` is not ``None``, meaning that
             the pipeline should not execute any further steps for this file.
         """
         return self.halt_state is not None
@@ -256,7 +264,7 @@ class ProcessingContext:
         newline sequences preserved.
 
         Returns:
-            Iterable[str]: An iterator over the file's lines. If no image is present,
+            An iterator over the file's lines. If no image is present,
             an empty iterator is returned.
         """
         if self.views.image is not None:
@@ -267,8 +275,7 @@ class ProcessingContext:
         """Return the number of logical lines without materializing.
 
         Returns:
-            int: Total number of lines in the current image, or ``0`` if no image
-            is present.
+            Total number of lines in the current image, or ``0`` if no image is present.
         """
         if self.views.image is not None:
             return self.views.image.line_count()
@@ -278,8 +285,8 @@ class ProcessingContext:
         """Iterate the updated file image lines, if present.
 
         Returns:
-            Iterable[str]: Iterator over updated lines. If no updated image is
-            available (no planner/strip output), returns an empty iterator.
+            Iterator over updated lines. If no updated image is available (no planner/strip output),
+            returns an empty iterator.
         """
         uv: UpdatedView | None = self.views.updated
         if not uv or uv.lines is None:
@@ -295,8 +302,8 @@ class ProcessingContext:
         """Return the original file image as a materialized list of lines.
 
         Returns:
-            list[str]: List of logical lines from the current image view. An
-            empty list is returned if no image is available.
+            List of logical lines from the current image view. An empty list is returned if no image
+            is available.
         """
         return list(self.iter_image_lines())
 
@@ -304,7 +311,7 @@ class ProcessingContext:
         """Return the updated file image as a materialized list of lines.
 
         Returns:
-            list[str]: List of updated lines if present, otherwise an empty list.
+            List of updated lines if present, otherwise an empty list.
         """
         uv: UpdatedView | None = self.views.updated
         if not uv or uv.lines is None:
@@ -321,9 +328,8 @@ class ProcessingContext:
         the ``Views`` bundling.
 
         Returns:
-            dict[str, object]: A JSON-serializable mapping describing the
-            context, including path, file type, step statuses, views summary,
-            diagnostics, and high-level outcome flags.
+            A JSON-serializable mapping describing the context, including path, file type,
+            step statuses, views summary, diagnostics, and high-level outcome flags.
         """
         views_summary: dict[str, object] = self.views.as_dict()
 
@@ -388,19 +394,18 @@ class ProcessingContext:
         allowing pipeline steps to emit structured, non-binding diagnostics
         without depending on the underlying `HintLog` representation.
 
-        Args:
-            axis (Axis): Axis emitting the hint.
-            code (KnownCode | str): Stable machine key for the condition.
-            message (str): Human-readable short summary line.
-            detail (str | None): Optional extended diagnostic text rendered at higher
-                verbosity (e.g., multi-line config snippets or rationale).
-            cluster (Cluster | str | None): Optional grouping key; defaults to ``code``.
-            terminal (bool): Whether this condition is terminal.
-            reason (str | None): Optional detail string.
-            meta (dict[str, Any] | None): Optional extensibility bag.
+        The new hint is appended to this context's hint log.
 
-        Returns:
-            None: The new hint is appended to this context's hint log.
+        Args:
+            axis: Axis emitting the hint.
+            code: Stable machine key for the condition.
+            message: Human-readable short summary line.
+            detail: Optional extended diagnostic text rendered at higher verbosity
+                (e.g., multi-line config snippets or rationale).
+            cluster: Optional grouping key; defaults to ``code``.
+            terminal: Whether this condition is terminal.
+            reason: Optional detail string.
+            meta: Optional extensibility bag.
 
         Example:
             ```python
@@ -431,12 +436,12 @@ class ProcessingContext:
         """Create a fresh context with no derived state.
 
         Args:
-            path (Path): File system path for the file to process.
-            config (Config): Effective configuration to attach to the context.
-            policy_registry (PolicyRegistry): Registry providing
-                precomputed effective policies per file type for this run.
+            path: File system path for the file to process.
+            config: Effective configuration to attach to the context.
+            policy_registry: Registry providing precomputed effective policies per file type
+                for this run.
 
         Returns:
-            ProcessingContext: Newly created context instance.
+            Newly created context instance.
         """
         return cls(path=path, config=config, policy_registry=policy_registry)

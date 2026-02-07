@@ -18,23 +18,27 @@ configuring headers.
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import click
 
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cmd_common import get_effective_verbosity
 from topmark.cli.keys import CliCmd, CliOpt
-from topmark.cli_shared.utils import OutputFormat, format_callable_pretty, render_markdown_table
+from topmark.cli.machine_emitters import emit_filetypes_machine
+from topmark.cli.options import underscored_trap_option
+from topmark.cli_shared.markdown import render_markdown_table
 from topmark.constants import TOPMARK_VERSION
+from topmark.core.formats import OutputFormat, is_machine_format
 from topmark.core.keys import ArgKey
-from topmark.filetypes.base import FileType
 from topmark.registry import FileTypeRegistry
+from topmark.utils.introspection import format_callable_pretty
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from topmark.cli_shared.console_api import ConsoleLike
+    from topmark.core.machine.schemas import MetaPayload
     from topmark.filetypes.base import FileType
 
 
@@ -42,10 +46,10 @@ def _policy_name(obj: object | None) -> str:
     """Get the name of a policy object.
 
     Args:
-        obj (object | None): The policy object.
+        obj: The policy object.
 
     Returns:
-        str: The name of the policy, or the class name if no name attribute exists.
+        The name of the policy, or the class name if no name attribute exists.
     """
     if obj is None:
         return ""
@@ -70,6 +74,7 @@ Use this command to see which file types can be processed and referenced in conf
     default=None,
     help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
 )
+@underscored_trap_option("--output_format")
 @click.option(
     CliOpt.SHOW_DETAILS,
     ArgKey.SHOW_DETAILS,
@@ -87,15 +92,23 @@ def filetypes_command(
     Useful for reference when configuring file type filters.
 
     Args:
-        show_details (bool): If True, shows extended information about each file type,
+        show_details: If True, shows extended information about each file type,
             including associated extensions, filenames, patterns, skip policy, and header policy.
-        output_format (OutputFormat | None): Output format to use
+        output_format: Output format to use
             (``default``, ``json``, or ``ndjson``).
             If ``None``, uses the default human-readable format.
     """
     ctx: click.Context = click.get_current_context()
     ctx.ensure_object(dict)
-    console: ConsoleLike = ctx.obj["console"]
+
+    # Machine metadata
+    meta: MetaPayload = ctx.obj[ArgKey.META]
+
+    if output_format and is_machine_format(output_format):
+        # Disable color mode for machine formats
+        ctx.obj[ArgKey.COLOR_ENABLED] = False
+
+    console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
 
     ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
     fmt: OutputFormat = output_format or OutputFormat.DEFAULT
@@ -103,42 +116,12 @@ def filetypes_command(
     # Determine effective program-output verbosity for gating extra details
     vlevel: int = get_effective_verbosity(ctx)
 
-    def _serialize_details(ft: FileType) -> dict[str, Any]:
-        """Serialize detailed information about a file type."""
-        policy_name: str = _policy_name(ft.header_policy)
-        return {
-            "name": ft.name,
-            "description": ft.description,
-            "extensions": list(ft.extensions or []),
-            "filenames": list(ft.filenames or []),
-            "patterns": list(ft.patterns or []),
-            "skip_processing": bool(ft.skip_processing),
-            "has_content_matcher": ft.content_matcher is not None,
-            "has_insert_checker": ft.pre_insert_checker is not None,
-            "header_policy": policy_name,
-        }
-
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
-        import json
-
-        if fmt == OutputFormat.JSON:
-            payload = (
-                [_serialize_details(v) for _k, v in sorted(ft_registry.items())]
-                if show_details
-                else [
-                    {"name": k, "description": v.description}
-                    for k, v in sorted(ft_registry.items())
-                ]
-            )
-            console.print(json.dumps(payload, indent=2))
-        else:  # NDJSON
-            for k, v in sorted(ft_registry.items()):
-                obj = (
-                    _serialize_details(v)
-                    if show_details
-                    else {"name": k, "description": v.description}
-                )
-                console.print(json.dumps(obj))
+        emit_filetypes_machine(
+            meta=meta,
+            fmt=fmt,
+            show_details=show_details,
+        )
         return
 
     if fmt == OutputFormat.MARKDOWN:
@@ -150,7 +133,7 @@ TopMark version **{TOPMARK_VERSION}** supports the following file types:
 """)
         if show_details:
             console.print("""
-**Legend**
+## Legend
 
 - **Identifier**: File type key used in configuration.
 - **Extensions/Filenames/Patterns**: How files are matched on disk.

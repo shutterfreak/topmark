@@ -1017,8 +1017,8 @@ def test_freeze_preserves_diagnostics() -> None:
     draft: MutableConfig = MutableConfig.from_defaults()
     draft.diagnostics.add_warning("hello")
     c: Config = draft.freeze()
-    assert len(c.diagnostics) == 1
-    assert c.diagnostics[0].message == "hello"
+    assert len(c.diagnostics.items) == 1
+    assert c.diagnostics.items[0].message == "hello"
 
 
 @pytest.mark.pipeline

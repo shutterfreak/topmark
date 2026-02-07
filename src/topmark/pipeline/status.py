@@ -20,8 +20,8 @@ Conventions:
     [`EnumIntrospectionMixin`][topmark.core.enum_mixins.EnumIntrospectionMixin]
     (from [`topmark.core.enum_mixins`][topmark.core.enum_mixins]).
     and
-    [`ColoredStrEnum`][topmark.rendering.colored_enum.ColoredStrEnum]
-    (from [`topmark.rendering.colored_enum`][topmark.rendering.colored_enum])
+    [`ColoredStrEnum`][topmark.core.presentation.ColoredStrEnum]
+    (from [`topmark.core.presentation`][topmark.core.presentation])
     for shared utilities and colors.
   * Values are human‑readable strings used in CLI/diagnostics; do not rely on
     identity (`is`) checks—prefer equality (`==`).
@@ -34,7 +34,7 @@ from __future__ import annotations
 from yachalk import chalk
 
 from topmark.core.enum_mixins import EnumIntrospectionMixin
-from topmark.rendering.colored_enum import ColoredStrEnum
+from topmark.core.presentation import ColoredStrEnum
 
 
 class BaseStatus(EnumIntrospectionMixin, ColoredStrEnum):

@@ -32,7 +32,7 @@ from .guards import is_any_list
 
 if TYPE_CHECKING:
     from topmark.config.logging import TopmarkLogger
-    from topmark.core.diagnostics import DiagnosticLog
+    from topmark.diagnostic.model import DiagnosticLog
 
     from .types import TomlTable
 
@@ -49,12 +49,12 @@ def get_string_value(table: TomlTable, key: str, default: str = "") -> str:
     When the key is missing or the value is not coercible, ``default`` is returned.
 
     Args:
-        table (TomlTable): Table to query.
-        key (str): Key to extract.
-        default (str): Default value if the key is not found or not coercible.
+        table: Table to query.
+        key: Key to extract.
+        default: Default value if the key is not found or not coercible.
 
     Returns:
-        str: The extracted or coerced string value, or ``default``.
+        The extracted or coerced string value, or ``default``.
     """
     # Coerce various types to string if possible; fallback to default
     value: Any | None = table.get(key)
@@ -79,11 +79,11 @@ def get_string_value_or_none(table: TomlTable, key: str) -> str | None:
     the value is not coercible, ``None`` is returned.
 
     Args:
-        table (TomlTable): Table to query.
-        key (str): Key to extract.
+        table: Table to query.
+        key: Key to extract.
 
     Returns:
-        str | None: The extracted or coerced string value, or ``None`` when absent or not coercible.
+        The extracted or coerced string value, or ``None`` when absent or not coercible.
     """
     # Coerce various types to string if possible
     value: Any | None = table.get(key)
@@ -112,12 +112,12 @@ def get_bool_value(
     coercible, ``default`` is returned.
 
     Args:
-        table (TomlTable): Table to query.
-        key (str): Key to extract.
-        default (bool): Default value if the key is not found or not coercible.
+        table: Table to query.
+        key: Key to extract.
+        default: Default value if the key is not found or not coercible.
 
     Returns:
-        bool: The extracted or coerced boolean value, or ``default``.
+        The extracted or coerced boolean value, or ``default``.
     """
     # Extract boolean value, coercing int to bool if needed; fallback to default
     value: Any | None = table.get(key)
@@ -141,12 +141,11 @@ def get_bool_value_or_none(table: TomlTable, key: str) -> bool | None:
     If the key is present but not coercible, ``None`` is returned.
 
     Args:
-        table (TomlTable): Table to query.
-        key (str): Key to extract.
+        table: Table to query.
+        key: Key to extract.
 
     Returns:
-        bool | None: The extracted or coerced boolean value, or ``None``
-            when absent or not coercible.
+        The extracted or coerced boolean value, or ``None`` when absent or not coercible.
     """
     # Extract boolean value, coercing int to bool if needed
     value: Any | None = table.get(key)
@@ -175,12 +174,12 @@ def get_list_value(
     Otherwise, ``default`` is returned (or ``[]`` when ``default`` is ``None``).
 
     Args:
-        table (TomlTable): Table to query.
-        key (str): Key to extract.
-        default (list[Any] | None): Default list when the key is missing or not a list.
+        table: Table to query.
+        key: Key to extract.
+        default: Default list when the key is missing or not a list.
 
     Returns:
-        list[Any]: The list value, ``default``, or an empty list.
+        The list value, ``default``, or an empty list.
     """
     # Extract list value, ensure list type or fallback to default
     value: Any | None = table.get(key)
@@ -359,14 +358,14 @@ def get_string_list_value_checked(
         - Each ignored entry emits a warning and a diagnostic with TOML location.
 
     Args:
-        table (TomlTable): TOML table to query.
-        key (str): Key to extract.
-        where (str): TOML location prefix (e.g. "[files]").
-        diagnostics (DiagnosticLog): DiagnosticLog to record warnings.
-        logger (TopmarkLogger): Logger for emitting warnings.
+        table: TOML table to query.
+        key: Key to extract.
+        where: TOML location prefix (e.g. "[files]").
+        diagnostics: DiagnosticLog to record warnings.
+        logger: Logger for emitting warnings.
 
     Returns:
-        list[str]: Filtered list containing only string entries.
+        Filtered list containing only string entries.
     """
     value: Any | None = table.get(key)
     if value is None:

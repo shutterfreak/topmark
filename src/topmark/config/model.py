@@ -79,16 +79,23 @@ from topmark.config.paths import (
     ps_from_cli,
     ps_from_config,
 )
-from topmark.config.policy import MutablePolicy, Policy
-from topmark.config.types import ArgsLike, FileWriteStrategy, OutputTarget
+from topmark.config.policy import (
+    MutablePolicy,
+    Policy,
+)
+from topmark.config.types import (
+    ArgsLike,
+    FileWriteStrategy,
+    OutputTarget,
+)
 from topmark.constants import CLI_OVERRIDE_STR
-from topmark.core.diagnostics import (
-    Diagnostic,
+from topmark.core.keys import ArgKey
+from topmark.diagnostic.model import (
     DiagnosticLog,
     DiagnosticStats,
+    FrozenDiagnosticLog,
     compute_diagnostic_stats,
 )
-from topmark.core.keys import ArgKey
 from topmark.rendering.formats import HeaderOutputFormat
 
 if TYPE_CHECKING:
@@ -119,53 +126,54 @@ class Config:
     Layered merging with clear precedence is provided by `MutableConfig.load_merged()`.
 
     Attributes:
-        timestamp (str): ISO-formatted timestamp when the Config instance was created.
-        verbosity_level (int | None): None = inherit, 0 = terse, 1 = verbose diagnostics.
-        apply_changes (bool | None): Runtime intent: whether to actually write changes (apply)
+        timestamp: ISO-formatted timestamp when the Config instance was created.
+        verbosity_level: None = inherit, 0 = terse, 1 = verbose diagnostics.
+        apply_changes: Runtime intent: whether to actually write changes (apply)
             or preview only. None = inherit/unspecified, False = dry-run/preview, True = apply.
-        output_target (OutputTarget | None): Where to send output: `"file"` or `"stdout"`.
-        file_write_strategy (FileWriteStrategy | None): How to write when `output_target == "file"`:
+        output_target: Where to send output: `"file"` or `"stdout"`.
+        file_write_strategy: How to write when `output_target == "file"`:
             `"atomic"` (safe default) or `"inplace"` (fast, less safe).
-        policy (Policy): Global, resolved, immutable runtime policy (plain booleans),
+        policy: Global, resolved, immutable runtime policy (plain booleans),
             applied after discovery.
-        policy_by_type (Mapping[str, Policy]): Per-file-type resolved policy overrides
+        policy_by_type: Per-file-type resolved policy overrides
             (plain booleans), applied after discovery.
-        config_files (tuple[Path | str, ...]): List of paths or identifiers for config sources used.
-        strict_config_checking (bool): If True, enforce strict config checking
+        config_files: List of paths or identifiers for config sources used.
+        strict_config_checking: If True, enforce strict config checking
             (fail on warnings and errors).
-        header_fields (tuple[str, ...]): List of header fields from the [header] section.
-        field_values (Mapping[str, str]): Mapping of field names to their string values
+        header_fields: List of header fields from the [header] section.
+        field_values: Mapping of field names to their string values
             from [fields].
-        align_fields (bool | None): Whether to align fields, from [formatting].
-        header_format (HeaderOutputFormat | None): Header output format
+        align_fields: Whether to align fields, from [formatting].
+        header_format: Header output format
             (file type aware, plain, or json).
-        relative_to_raw (str | None): Original string from config or CLI
-        relative_to (Path | None): Base path used only for header metadata (e.g., file_relpath).
+        relative_to_raw: Original string from config or CLI
+        relative_to: Base path used only for header metadata (e.g., file_relpath).
             Note: Glob expansion and filtering are resolved relative to their declaring source
             (config file dir or CWD for CLI), not relative_to.
-        stdin_mode (bool | None): Whether to read from stdin; requires explicit True to activate.
-        files (tuple[str, ...]): List of files to process.
-        include_from (tuple[PatternSource, ...]): Files containing include patterns.
-        exclude_from (tuple[PatternSource, ...]): Files containing exclude patterns.
-        files_from (tuple[PatternSource, ...]): Paths to files that list newline-delimited candidate
+        stdin_mode: Whether to read from stdin; requires explicit True to activate.
+        files: List of files to process.
+        include_from: Files containing include patterns.
+        exclude_from: Files containing exclude patterns.
+        files_from: Paths to files that list newline-delimited candidate
             file paths to add before filtering.
-        include_patterns (tuple[str, ...]): Glob patterns to include.
-        exclude_patterns (tuple[str, ...]): Glob patterns to exclude.
-        include_file_types (frozenset[str]): Whitelist of file type identifiers to restrict
+        include_patterns: Glob patterns to include.
+        exclude_patterns: Glob patterns to exclude.
+        include_file_types: Whitelist of file type identifiers to restrict
             file discovery.
-        exclude_file_types (frozenset[str]): Blacklist of file type identifiers to exclude from
+        exclude_file_types: Blacklist of file type identifiers to exclude from
             file discovery.
-        diagnostics (tuple[Diagnostic, ...]): Warnings or errors encountered while loading,
+        diagnostics: Warnings or errors encountered while loading,
             merging or sanitizing config.
 
     Policy resolution:
-        Public/API overlays are applied to a mutable draft **after** discovery and
-        before freezing to this immutable `Config`. Per-type policies override
-        the global policy for matching file types.
-        All entries in ``policy_by_type`` are resolved against the global
-        ``policy`` during ``MutableConfig.freeze``; at runtime the pipeline
-        simply selects the appropriate `Policy` via
-        `topmark.config.policy.effective_policy` without further merging.
+        - Public/API overlays are applied to a mutable draft **after** discovery and before
+            freezing to this immutable `Config`. Per-type policies override the global policy
+            for matching file types.
+        - All entries in ``policy_by_type`` are resolved against the global ``policy`` during
+            ``MutableConfig.freeze``; at runtime the pipeline simply selects the appropriate
+            `Policy` via
+            [`topmark.config.policy.effective_policy`][topmark.config.policy.effective_policy]
+            without further merging.
     """
 
     # Initialization timestamp for the config instance
@@ -219,7 +227,7 @@ class Config:
     exclude_file_types: frozenset[str]
 
     # Collected diagnostics while loading / merging / sanitizing config.
-    diagnostics: tuple[Diagnostic, ...]
+    diagnostics: FrozenDiagnosticLog
 
     @property
     def should_proceed(self) -> bool:
@@ -231,8 +239,8 @@ class Config:
         A similar helper exists in `MutableConfig`.
 
         Returns:
-            bool: False if errors occurred, or if warnings detected in strict config processing
-                mode, True otherwise.
+            False if errors occurred, or if warnings detected in strict config processing mode,
+            True otherwise.
         """
         stats: DiagnosticStats = compute_diagnostic_stats(self.diagnostics)
         if stats.n_error > 0:
@@ -245,17 +253,17 @@ class Config:
         """Convert this immutable Config into a TOML-serializable dict.
 
         Args:
-            include_files (bool): Whether to include the `files` list in the output.
+            include_files: Whether to include the `files` list in the output.
                 Defaults to False to avoid spamming the output with potentially
                 large file lists. Set to True for full export.
 
         Returns:
-            TomlTable: the TOML-serializable dict representing the Config
+            The TOML-serializable dict representing the Config
 
         Note:
             Export-only convenience for documentation/snapshots. Parsing and
             loading live on the **mutable** side (see `MutableConfig` and
-            `topmark.config.io`).
+            [`topmark.config.io`][topmark.config.io]).
         """
         # Normalize writer strategy for TOML (map enum to a stable, config-friendly token)
         if self.file_write_strategy is None:
@@ -324,7 +332,7 @@ class Config:
             than mutating a runtime `Config`.
 
         Returns:
-            MutableConfig: A mutable builder initialized from this snapshot.
+            A mutable builder initialized from this snapshot.
         """
         return MutableConfig(
             timestamp=self.timestamp,
@@ -351,7 +359,7 @@ class Config:
             files_from=list(self.files_from),
             include_file_types=set(self.include_file_types),
             exclude_file_types=set(self.exclude_file_types),
-            diagnostics=DiagnosticLog(items=list(self.diagnostics)),
+            diagnostics=DiagnosticLog.from_iterable(self.diagnostics),
         )
 
 
@@ -361,10 +369,10 @@ def sanitize_config(config: Config) -> Config:
     Thaws the Config into a MutableConfig, sanitizes and freezes again.
 
     Args:
-        config (Config): The Config to sanitize.
+        config: The Config to sanitize.
 
     Returns:
-        Config: The sanitized Config instance.
+        The sanitized Config instance.
     """
     m: MutableConfig = config.thaw()
     m.sanitize()
@@ -379,39 +387,39 @@ class MutableConfig:
     This builder collects config from defaults, project files, extra files, and CLI
     overrides. It remains convenient to mutate (``list``/``set``), then produces
     an immutable `Config` via `freeze`. TOML I/O is delegated to
-    `topmark.config.io` to keep this class focused on merge policy.
+    [`topmark.config.io`][topmark.config.io] to keep this class focused on merge policy.
 
     Attributes:
-        timestamp (str): ISO-formatted timestamp when the Config instance was created.
-        verbosity_level (int | None): None = inherit, 0 = terse, 1 = verbose diagnostics.
-        apply_changes (bool | None): Runtime intent: whether to actually write changes (apply)
+        timestamp: ISO-formatted timestamp when the Config instance was created.
+        verbosity_level: None = inherit, 0 = terse, 1 = verbose diagnostics.
+        apply_changes: Runtime intent: whether to actually write changes (apply)
             or preview only. None = inherit/unspecified, False = dry-run/preview, True = apply.
-        output_target (OutputTarget | None): Where to send output: `"file"` or `"stdout"`.
-        file_write_strategy (FileWriteStrategy | None): How to write when `output_target == "file"`:
+        output_target: Where to send output: `"file"` or `"stdout"`.
+        file_write_strategy: How to write when `output_target == "file"`:
             `"atomic"` (safe default) or `"inplace"` (fast, less safe).
-        policy (MutablePolicy): Optional global policy overrides (public shape).
-        policy_by_type (dict[str, MutablePolicy]): Optional per-type policy.
-        config_files (list[Path | str]): List of paths or identifiers for config sources used.
-        strict_config_checking (bool | None): If True, enforce strict config checking
+        policy: Optional global policy overrides (public shape).
+        policy_by_type: Optional per-type policy.
+        config_files: List of paths or identifiers for config sources used.
+        strict_config_checking: If True, enforce strict config checking
             (fail on warnings and errors).
-        header_fields (list[str]): List of header fields from the [header] section.
-        field_values (dict[str, str]): Mapping of field names to their string values from [fields].
-        align_fields (bool | None): Whether to align fields, from [formatting].
-        header_format (HeaderOutputFormat | None): Header output format
+        header_fields: List of header fields from the [header] section.
+        field_values: Mapping of field names to their string values from [fields].
+        align_fields: Whether to align fields, from [formatting].
+        header_format: Header output format
             (file type aware, plain, or json).
-        relative_to_raw (str | None): Original string from config or CLI
-        relative_to (Path | None): Base path for relative file references, from [files].
-        stdin_mode (bool | None): Whether to read from stdin; requires explicit True to activate.
-        files (list[str]): List of files to process.
-        include_from (list[PatternSource]): Files containing include patterns.
-        exclude_from (list[PatternSource]): Files containing exclude patterns.
-        files_from (list[PatternSource]): Paths to files that list newline-delimited
+        relative_to_raw: Original string from config or CLI
+        relative_to: Base path for relative file references, from [files].
+        stdin_mode: Whether to read from stdin; requires explicit True to activate.
+        files: List of files to process.
+        include_from: Files containing include patterns.
+        exclude_from: Files containing exclude patterns.
+        files_from: Paths to files that list newline-delimited
             candidate file paths to add before filtering.
-        include_patterns (list[str]): Glob patterns to include.
-        exclude_patterns (list[str]): Glob patterns to exclude.
-        include_file_types (set[str]): file type identifiers to process.
-        exclude_file_types (set[str]): file type identifiers to exclude.
-        diagnostics (DiagnosticLog): Warnings or errors encountered while loading,
+        include_patterns: Glob patterns to include.
+        exclude_patterns: Glob patterns to exclude.
+        include_file_types: file type identifiers to process.
+        exclude_file_types: file type identifiers to exclude.
+        diagnostics: Warnings or errors encountered while loading,
             merging or sanitizing config.
     """
 
@@ -479,7 +487,7 @@ class MutableConfig:
         A similar helper exists in `Config`.
 
         Returns:
-            bool: False if errors occurred, or if warnings detected in strict config processing
+            False if errors occurred, or if warnings detected in strict config processing
                 mode, True otherwise.
         """
         stats: DiagnosticStats = compute_diagnostic_stats(self.diagnostics)
@@ -549,7 +557,7 @@ class MutableConfig:
             exclude_patterns=tuple(self.exclude_patterns),
             include_file_types=frozenset(self.include_file_types),
             exclude_file_types=frozenset(self.exclude_file_types),
-            diagnostics=tuple(self.diagnostics),
+            diagnostics=self.diagnostics.freeze(),
         )
 
     # --------------------------- Loaders/parsers --------------------------
@@ -559,7 +567,7 @@ class MutableConfig:
         """Retrieve the default configuration as a raw TOML string.
 
         Returns:
-            str: The contents of the default TOML configuration file.
+            The contents of the default TOML configuration file.
         """
         toml_data: TomlTable = load_defaults_dict()
         return to_toml(toml_data)
@@ -569,10 +577,10 @@ class MutableConfig:
         """Return a cleaned TOML string with comments and extraneous whitespace removed.
 
         Args:
-            toml_doc (str): The raw TOML document string.
+            toml_doc: The raw TOML document string.
 
         Returns:
-            str: The cleaned TOML string.
+            The cleaned TOML string.
         """
         return clean_toml(toml_doc)
 
@@ -581,7 +589,7 @@ class MutableConfig:
         """Load the default configuration from the bundled topmark-default.toml file.
 
         Returns:
-            MutableConfig: A `MutableConfig` instance populated with default values.
+            A `MutableConfig` instance populated with default values.
         """
         default_toml_data: TomlTable = load_defaults_dict()
 
@@ -602,11 +610,10 @@ class MutableConfig:
         extracting the [tool.topmark] section from pyproject.toml.
 
         Args:
-            path (Path): Path to the TOML file.
+            path: Path to the TOML file.
 
         Returns:
-            MutableConfig | None: The Config instance if successful;
-                None if required sections are missing.
+            The Config instance if successful; None if required sections are missing.
         """
         logger.debug("Creating MutableConfig from TOML config: %s", path)
 
@@ -646,10 +653,10 @@ class MutableConfig:
             files.
 
         Args:
-            start (Path): The Path instance where discovery starts.
+            start: The Path instance where discovery starts.
 
         Returns:
-            list[Path]: Discovered config file paths ordered for stable merging
+            Discovered config file paths ordered for stable merging
             (root-most first, nearest last; within a directory: pyproject → topmark).
         """
         # Collect per-directory entries preserving same-dir precedence (pyproject → topmark)
@@ -745,12 +752,12 @@ class MutableConfig:
           in `[header].fields` are rendered later by `BuilderStep`.
 
         Args:
-            data (TomlTable): The parsed TOML data as a dictionary.
-            config_file (Path | None): Optional path to the source TOML file.
-            use_defaults (bool): Whether to treat this data as default config (affects behavior).
+            data: The parsed TOML data as a dictionary.
+            config_file: Optional path to the source TOML file.
+            use_defaults: Whether to treat this data as default config (affects behavior).
 
         Returns:
-            MutableConfig: The resulting MutableConfig instance.
+            The resulting MutableConfig instance.
         """
         tool_tbl: TomlTable = data  # top-level tool configuration dictionary
 
@@ -1163,21 +1170,18 @@ class MutableConfig:
             4) Extra config files passed explicitly via ``--config`` (in the order provided)
 
         Args:
-            input_paths (Iterable[Path] | None):
-                Discovery anchor(s). The first path (or CWD if none) is used as the starting
-                directory for upward discovery. If it is a file, its parent directory is used.
-            extra_config_files (Iterable[Path] | None):
-                Explicit additional config files to merge **after** discovery (their given order).
-            strict_config_checking (bool | None): If True, enforce strict TOML config checking
-                (fail on errors).
-            no_config (bool): If True, skip user and project discovery.
-            include_file_types (Iterable[str] | None): Optional filter to seed the draft for parity
-                with CLI.
-            exclude_file_types (Iterable[str] | None): Optional filter to seed the draft for parity
-                with CLI.
+            input_paths: Discovery anchor(s). The first path (or CWD if none) is used as
+                the starting directory for upward discovery. If it is a file, its parent directory
+                is used.
+            extra_config_files: Explicit additional config files to merge **after** discovery
+                (their given order).
+            strict_config_checking: If True, enforce strict TOML config checking (fail on errors).
+            no_config: If True, skip user and project discovery.
+            include_file_types: Optional filter to seed the draft for parity with CLI.
+            exclude_file_types: Optional filter to seed the draft for parity with CLI.
 
         Returns:
-            MutableConfig: A mutable configuration draft ready to be frozen or further edited.
+            A mutable configuration draft ready to be frozen or further edited.
         """
         # 1) Start from defaults
         draft: MutableConfig = cls.from_defaults()
@@ -1232,10 +1236,10 @@ class MutableConfig:
         fields (``bool | None``) are combined without losing information.
 
         Args:
-            other (MutableConfig): The config whose values override those of this draft.
+            other: The config whose values override those of this draft.
 
         Returns:
-            MutableConfig: A new mutable configuration representing the merged result.
+            A new mutable configuration representing the merged result.
         """
         # --- merge global policy (tri-state) ---
         # Prefer `other`'s explicitly-set policy fields over `self`'s.
@@ -1335,12 +1339,12 @@ class MutableConfig:
         discovery (e.g., --no-config, --config).
 
         Args:
-            args (ArgsLike): Parsed arguments mapping (from CLI or API).
-            config_only (bool): If True, only process config-related CLI inputs (disregard
-                all other CLI inputs)
+            args: Parsed arguments mapping (from CLI or API).
+            config_only: If True, only process config-related CLI inputs (disregard all other
+                CLI inputs)
 
         Returns:
-            MutableConfig: The updated MutableConfig instance with CLI overrides applied.
+            The updated MutableConfig instance with CLI overrides applied.
 
         Note:
             CLI path-to-file options (``--include-from``, ``--exclude-from``,
@@ -1732,9 +1736,9 @@ class MutableConfig:
             Unknown identifiers are ignored (dropped) and recorded as config diagnostics.
 
             Args:
-                name (str): Human-readable name for diagnostics (e.g. "include_file_types").
-                ids (set[str]): The mutable set of identifiers to validate in-place.
-                is_exclusion (bool): Whether this selector is an exclusion filter.
+                name: Human-readable name for diagnostics (e.g. "include_file_types").
+                ids: The mutable set of identifiers to validate in-place.
+                is_exclusion: Whether this selector is an exclusion filter.
             """
             if not ids:
                 return

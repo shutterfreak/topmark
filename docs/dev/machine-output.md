@@ -12,14 +12,18 @@ topmark:header:end
 
 # Machine output schema (JSON & NDJSON)
 
-This document describes the JSON and NDJSON formats emitted by TopMark
-for commands such as `check` and `strip`. It is intended for integrators
-and tooling authors who consume TopMark programmatically.
+This document describes the **machine-stable** JSON and NDJSON formats emitted by TopMark.
 
-This document is the canonical reference for TopMark's JSON and NDJSON schemas. The
-usage guides for individual commands (for example, [`check`](../usage/commands/check.md)
-and [`strip`](../usage/commands/strip.md)) provide task-oriented examples that are
-consistent with this schema.
+It is intended for integrators and tooling authors who consume TopMark programmatically.
+
+Covered command groups:
+
+- **Processing commands**: `check`, `strip`
+- **Registry commands**: `filetypes`, `processors`
+- **Configuration commands**: `config check`, `config init`, `config defaults`, `config dump`
+- **Version reporting**: `version`
+
+This page is the canonical reference for TopMark’s machine output shapes. Usage guides for individual commands (for example, [`check`](../usage/commands/check.md) and [`strip`](../usage/commands/strip.md)) provide task-oriented examples consistent with this schema.
 
 ## Output formats
 
@@ -27,356 +31,449 @@ TopMark exposes four `--output-format` values:
 
 - `default`: human-oriented text (not machine-stable).
 - `markdown`: human-oriented Markdown (not machine-stable).
-- `json`: single JSON document per invocation.
-- `ndjson`: newline-delimited JSON stream.
+- `json`: a single JSON document per invocation.
+- `ndjson`: a newline-delimited JSON stream.
 
-The schemas below only apply to `json` and `ndjson`.
+The schemas below only apply to **`json`** and **`ndjson`**.
 
 ______________________________________________________________________
 
-## JSON schema for processing commands
+## Shared concepts
 
-For processing commands (`check`, `strip`), JSON output follows one of
-two shapes depending on whether the CLI is in *detail* or *summary* mode.
+### MetaPayload
 
-### Detail mode (`summary_mode = false`)
+All machine outputs include a small metadata block, either:
+
+- as the top-level `meta` key in JSON, or
+- as the top-level `meta` key in every NDJSON record.
+
+Shape:
+
+```jsonc
+{
+  "meta": {
+    "tool": "topmark",
+    "version": "0.12.0.dev2",
+    "platform": "darwin" // optional; may be omitted by older versions
+  }
+}
+```
+
+Notes:
+
+- `platform` is a short runtime identifier (e.g., from `sys.platform`).
+
+Canonical keys are defined in \[`topmark.core.machine.schemas`\][topmark.core.machine.schemas].
+
+### NDJSON record contract
+
+NDJSON output is a stream of JSON objects (“records”). Each record:
+
+- MUST include:
+  - `kind` (string)
+  - `meta` (MetaPayload)
+- MUST store its payload under a **container key that matches** `kind`.
+
+Example:
 
 ```json
+{"kind":"config","meta":{...},"config":{...}}
+```
+
+Consumers should switch on the `kind` field rather than relying on ordering, though TopMark does emit a stable prefix for some command families (see below).
+
+Record construction and serialization helpers live under \[`topmark.core.machine`\][topmark.core.machine].
+
+Canonical `kind` strings are defined in \[`topmark.core.machine.schemas.MachineKind`\][topmark.core.machine.schemas.MachineKind].
+
+______________________________________________________________________
+
+## Processing commands (`check`, `strip`)
+
+Processing commands produce either **detail** output (per-file results) or **summary** output (bucket counts), depending on whether the CLI is in `--summary` mode.
+
+### JSON schema (detail mode)
+
+Detail mode corresponds to `summary_mode = false`.
+
+```jsonc
 {
   "meta": { /* MetaPayload */ },
   "config": { /* ConfigPayload */ },
   "config_diagnostics": { /* ConfigDiagnosticsPayload */ },
   "results": [
-    { /* per-file result entries */ }
+    { /* per-file result payload */ }
   ]
 }
 ```
 
 - `meta`: small metadata block, including tool name and TopMark version.
 - `config`: snapshot of the effective config as emitted by
-  `build_config_payload` in \[`topmark.config.machine.payloads`\][topmark.config.machine.payloads].
-- `config_diagnostics`: aggregate counts plus individual diagnostics
-  originating from config load/merge/sanitize steps.
-- `results`: one entry per processed file (see inline docs in
-  \[`topmark.cli_shared.machine_output`\][topmark.cli_shared.machine_output] for the exact per-file fields).
+  \[`topmark.config.machine.payloads.build_config_payload`\][topmark.config.machine.payloads.build_config_payload].
+- `config_diagnostics`: full diagnostics payload including counts and the list of config diagnostics as emitted by
+  \[`topmark.config.machine.payloads.build_config_diagnostics_payload`\][topmark.config.machine.payloads.build_config_diagnostics_payload].
+- `results`: one entry per processed file (see **Per-file result payload** below).
 
-### Summary mode (`summary_mode = true`)
+### JSON schema (summary mode)
 
-```json
+Summary mode corresponds to `summary_mode = true`.
+
+```jsonc
 {
   "meta": { /* MetaPayload */ },
   "config": { /* ConfigPayload */ },
   "config_diagnostics": { /* ConfigDiagnosticsPayload */ },
   "summary": {
-    /* aggregated counts per result bucket, etc. */
+    /* aggregated counts per outcome bucket */
   }
 }
 ```
 
-- `summary`: aggregated view of per-file results, keyed by bucket name
-  (for example `"unchanged"`, `"skipped"`, `"would strip"`). Each entry
-  is an object with `count` and `label`, for example:
+- `summary`: mapping of bucket key → `{count, label}`:
 
   ```jsonc
   "summary": {
-    "unchanged": { "count": 30, "label": "up-to-date" },
-    "skipped":   { "count": 1,  "label": "known file type, headers not supported" }
+    "unchanged":    { "count": 30, "label": "up-to-date" },
+    "would insert": { "count":  1, "label": "header missing, changes found" }
   }
   ```
 
-The `config` and `config_diagnostics` envelopes are the same in both
-detail and summary modes. In JSON mode, `config_diagnostics` includes both
-diagnostic counts and the full list of diagnostics.
+The JSON envelopes and summary payload shapes are built in:
 
-______________________________________________________________________
+- \[`topmark.pipeline.machine.shapes.build_processing_results_json_envelope`\][topmark.pipeline.machine.shapes.build_processing_results_json_envelope]
+- \[`topmark.pipeline.machine.payloads`\][topmark.pipeline.machine.payloads] (summary payload helpers)
 
-## NDJSON schema for processing commands
+### NDJSON schema (detail and summary)
 
-NDJSON output is a stream of records, each tagged with a `kind` field and always including a `meta` block:
+NDJSON output is a stream with a stable prefix and then either result records (detail) or summary records (summary).
 
-```json
+Example stream:
+
+```jsonc
 {"kind": "config", "meta": { /* MetaPayload */ }, "config": { /* ConfigPayload */ }}
-{"kind": "config_diagnostics", "meta": { /* MetaPayload */ }, "config_diagnostics": {"diagnostic_counts": {"info": 0, "warning": 1, "error": 0}}}
-{"kind": "diagnostic", "meta": { /* MetaPayload */ }, "diagnostic": {"domain": "config", "level": "warning", "message": "..."}}
-{"kind": "result", "meta": { /* MetaPayload */ }, "result": {"path": "README.md", "file_type": "markdown" /* ... */}}
+
+{"kind": "config_diagnostics",
+ "meta": { /* MetaPayload */ },
+ "config_diagnostics": { "diagnostic_counts": {"info": 0, "warning": 1, "error": 0} } }
+
+{"kind": "diagnostic",
+ "meta": { /* MetaPayload */ },
+ "diagnostic": { "domain": "config", "level": "warning", "message": "..." } }
+
+{"kind": "result",
+ "meta": { /* MetaPayload */ },
+ "result": { /* per-file result payload */ } }
+```
+
+In summary mode, per-file `result` records are replaced by one `summary` record per bucket:
+
+```jsonc
 {"kind": "summary", "meta": { /* MetaPayload */ }, "summary": {"key": "unchanged", "count": 30, "label": "up-to-date"}}
 {"kind": "summary", "meta": { /* MetaPayload */ }, "summary": {"key": "skipped", "count": 1, "label": "known file type, headers not supported"}}
 ```
 
-- **Every NDJSON record includes `meta`** as a top-level field.
-- The `config` record is always emitted first and includes the `meta` block.
-- The `config_diagnostics` record follows immediately afterwards, and in NDJSON is **counts-only** (just `diagnostic_counts`). Each individual config diagnostic is emitted as a separate `diagnostic` record with `domain="config"`.
-- Zero or more `result` records follow (one per processed file), each under the `result` container key.
-- In summary mode, one `summary` record per bucket, each with a `summary` object containing `key`, `count`, and `label`.
-- For all NDJSON records, the payload is stored under a container key that matches the `kind` (e.g., `config`, `config_diagnostics`, `result`, `summary`, etc.).
+NDJSON rules for processing commands:
 
-Consumers are expected to switch on the `kind` field rather than relying
-on positional assumptions.
+- Every record includes `kind` and `meta`.
+- Payload container key matches `kind`.
+- The stream begins with:
+  1. `config`
+  1. `config_diagnostics` (**counts-only**)
+  1. zero or more `diagnostic` records (each with `domain="config"`)
+- Then either:
+  - detail mode: one `result` record per file
+  - summary mode: one `summary` record per bucket
+
+The NDJSON record stream is produced by:
+
+- \[`topmark.pipeline.machine.shapes.iter_processing_results_ndjson_records`\][topmark.pipeline.machine.shapes.iter_processing_results_ndjson_records]
+- serialization helpers in \[`topmark.pipeline.machine.serializers`\][topmark.pipeline.machine.serializers]
+
+______________________________________________________________________
+
+## Per-file result payload
+
+Each element of the JSON `results` array (detail mode) and each NDJSON `result` record contains a **per-file processing result payload**.
+
+The exact field set can evolve over time, but the payload is intended to be:
+
+- JSON-safe (no ANSI / terminal formatting),
+- stable enough for CI/tooling integration,
+- tolerant of additive changes.
+
+The canonical builders and typing live under:
+
+- \[`topmark.pipeline.machine.schemas`\][topmark.pipeline.machine.schemas] (TypedDict schemas / payload shapes)
+- \[`topmark.pipeline.machine.payloads`\][topmark.pipeline.machine.payloads] (payload builders)
+- \[`topmark.pipeline.machine.serializers`\][topmark.pipeline.machine.serializers] (JSON/NDJSON serialization)
+
+At a high level, per-file results include:
+
+- identity:
+  - `path`
+  - `file_type` (resolved TopMark file type key)
+- pipeline execution:
+  - executed step names
+  - per-axis status objects (`axis`, `name`, `label`)
+- derived intent/outcome helpers:
+  - change intent / feasibility booleans
+  - strip/insert/update intent summaries
+- optional diagnostics (per-file):
+  - list of diagnostics (when requested / enabled)
+  - pre-computed diagnostic counts
+
+> [!NOTE]
+> Diffs (`--diff`) and any ANSI coloring are **human-only** and are not included in machine payloads.
 
 ______________________________________________________________________
 
 ## ConfigPayload
 
 `ConfigPayload` is a JSON-safe representation of the effective `Config`,
-as produced by `build_config_payload` in \[`topmark.config.machine.payloads`\][topmark.config.machine.payloads].
+as produced by \[`topmark.config.machine.payloads.build_config_payload`\][topmark.config.machine.payloads.build_config_payload].
 
-High-level structure:
+High-level structure (keys may be extended over time):
 
-- `fields`: header fields and their values.
-- `header`: header-specific config such as:
-  - `header_fields`
-  - `field_values`
-  - `align_fields`
-  - `header_format`
-- `formatting`: options that affect formatting behavior.
-- `writer`: file write strategy and related options:
-  - `strategy` (e.g. `"ATOMIC"`), serialized as a string.
-  - `target` (if present).
-- `files`: file resolution and filtering configuration:
-  - `files`
-  - `include_from`
-  - `exclude_from`
-  - `files_from`
-  - `include_patterns`
-  - `exclude_patterns`
-  - `include_file_types`
-  - `exclude_file_types`
-  - `relative_to`
+- `fields`: header fields and their effective values.
+- `header`: header-related configuration.
+- `formatting`: formatting-related configuration.
+- `writer`: write strategy and related options (enums serialized to strings).
+- `files`: file resolution/filtering options (paths serialized to strings).
+- `policy`: global resolved policy flags (booleans).
+- `policy_by_type`: per-file-type resolved policy overrides.
 
-All values are normalized to JSON-safe types:
+Normalization rules:
 
-- `Path` values are rendered as strings.
-- Enum values are rendered as their `.name` or equivalent string token.
-- Nested mappings and lists are represented using standard JSON objects
-  and arrays.
+- `Path` → string
+- `Enum` → string token (typically `.name`)
+- nested mappings/sequences → standard JSON objects/arrays
 
-For the exact schema, see the implementation and type hints of
-`ConfigPayload` and `build_config_payload` in \[`topmark.config.machine.payloads`\][topmark.config.machine.payloads].
+For the current exact fields, see:
+
+- \[`topmark.config.machine.schemas.ConfigPayload`\][topmark.config.machine.schemas.ConfigPayload]
+- \[`topmark.config.machine.payloads.build_config_payload`\][topmark.config.machine.payloads.build_config_payload]
 
 ______________________________________________________________________
 
 ## ConfigDiagnosticsPayload
 
-`ConfigDiagnosticsPayload` summarizes configuration diagnostics that
-were collected during config discovery, merge, and sanitization.
+`ConfigDiagnosticsPayload` summarizes configuration diagnostics collected during config discovery/merge/sanitization.
 
-High-level structure:
-
-- `diagnostic_counts`: a mapping from diagnostic level (`info`, `warning`, `error`) to integer count, for example:
-
-  ```json
-  {
-    "diagnostic_counts": {
-      "info": 1,
-      "warning": 2,
-      "error": 0
-    },
-    "diagnostics": [
-      { "level": "warning", "message": "..." },
-      { "level": "info", "message": "..." }
-    ]
-  }
-  ```
-
-- `diagnostics`: a list of individual diagnostics, each with:
-
-  - `level` (e.g. `"warning"`)
-  - `message`
-  - optional metadata (e.g. codes, paths)
-
-The aggregated counts support quick triage; individual messages can be used to drive more detailed tooling behavior.
-
-> [!NOTE] **NDJSON note:**
->
-> In NDJSON, only `diagnostic_counts` is emitted under the `config_diagnostics` record. Each config diagnostic is emitted as a separate `diagnostic` record with `domain="config"`. See `ConfigDiagnosticsPayload` and `build_config_diagnostics_payload` in \[`topmark.config.machine.payloads`\][topmark.config.machine.payloads] for the current structure.
-
-______________________________________________________________________
-
-## Per-file result entries
-
-Each `result` record in NDJSON and each element of the `results` array
-in JSON represents a single processed file.
-
-Exact fields may evolve, but currently include:
-
-- `path`: file path (relative to CWD as seen by the CLI).
-
-- `file_type`: resolved TopMark file type identifier (e.g., `"markdown"`, `"python"`).
-
-- `steps`: ordered list of executed step names (e.g., `"ResolverStep"`, `"SnifferStep"`, …).
-
-- `step_axes`: mapping from step name to the list of axes that step may write, e.g.:
-
-  ```jsonc
-  "step_axes": {
-    "ResolverStep": ["resolve"],
-    "SnifferStep": ["fs"],
-    "ReaderStep": ["content"],
-    "ScannerStep": ["header"],
-    "BuilderStep": ["generation"],
-    "RendererStep": ["render"],
-    "ComparerStep": ["comparison"]
-  }
-  ```
-
-- `status`: mapping from axis name (`"resolve"`, `"fs"`, `"content"`, …) to an object of the
-  form `{ "axis", "name", "label" }` as produced by `ProcessingStatus.to_dict()`, for example:
-
-  ```jsonc
-  "status": {
-    "resolve":   { "axis": "resolve",   "name": "RESOLVED", "label": "resolved" },
-    "fs":        { "axis": "fs",        "name": "OK",       "label": "ok" },
-    "content":   { "axis": "content",   "name": "OK",       "label": "ok" },
-    "header":    { "axis": "header",    "name": "DETECTED", "label": "header detected" },
-    "generation":{ "axis": "generation","name": "GENERATED","label": "header fields generated" },
-    "render":    { "axis": "render",    "name": "RENDERED", "label": "header fields rendered" },
-    "strip":     { "axis": "strip",     "name": "PENDING",  "label": "stripping pending" },
-    "comparison":{ "axis": "comparison","name": "UNCHANGED","label": "no changes found" },
-    "plan":      { "axis": "plan",      "name": "PENDING",  "label": "update pending" },
-    "patch":     { "axis": "patch",     "name": "PENDING",  "label": "patch pending" },
-    "write":     { "axis": "write",     "name": "PENDING",  "label": "write pending" }
-  }
-  ```
-
-- `views`: view-related fields, such as:
-
-  - `image_lines`
-  - `header_range`
-  - `header_fields`
-  - `build_selected`
-  - `render_line_count`
-  - `updated_has_lines`
-  - `diff_present`
-
-- `diagnostics`: list of per-file diagnostics (if any).
-
-- `diagnostic_counts`: summary counts per diagnostic level (`info`, `warning`, `error`).
-
-- `pre_insert_check`: capability assessment for header insertion/stripping with:
-
-  - `capability` (e.g., `"UNEVALUATED"`)
-  - `reason`
-  - `origin`
-
-- `outcome`: outcome summary, including:
-
-  - `would_change`, `can_change`, `permitted_by_policy`
-  - nested `check` and `strip` objects (e.g., `would_add_or_update`, `effective_would_strip`).
-
-The canonical reference is the type and builder used by `build_processing_results_payload` in \[`topmark.cli_shared.machine_output`\][topmark.cli_shared.machine_output]. JSON/NDJSON envelope and serialization helpers live in \[`topmark.core.machine`\][topmark.core.machine].
-
-### Additional diagnostic fields
-
-Recent versions of TopMark enrich the per-file result with a few
-diagnostic helpers intended to make CI and tooling integration easier.
+JSON shape:
 
 ```jsonc
 {
-  "diagnostic_counts": {
-    "info": 0,
-    "warning": 2,
-    "error": 1
-  },
-  "pre_insert_check": {
-    "capability": "UNSUPPORTED", // InsertCapability enum name
-    "reason": "header insertion is not supported for this file type",
-    "origin": "SnifferStep"
-  },
-  "outcome": {
-    "would_change": true,
-    "can_change": true,
-    "permitted_by_policy": true,
-    "check": {
-      "would_add_or_update": true,
-      "effective_would_add_or_update": true
-    },
-    "strip": {
-      "would_strip": false,
-      "effective_would_strip": false
-    }
-  }
+  "diagnostic_counts": { "info": 1, "warning": 2, "error": 0 },
+  "diagnostics": [
+    { "level": "warning", "message": "..." },
+    { "level": "info", "message": "..." }
+  ]
 }
 ```
 
-- `diagnostic_counts`: pre-computed counts of diagnostics by level. This
-  mirrors the `diagnostics` list but makes it trivial to gate builds on
-  “no errors” or “no warnings” without having to reduce the list yourself.
+- `diagnostic_counts`: counts per level (`info`, `warning`, `error`)
+- `diagnostics`: list of individual diagnostics (stable `{level, message}` entries; see \[`topmark.diagnostic.machine.schemas`\][topmark.diagnostic.machine.schemas])
 
-- `pre_insert_check`: summarizes the pre-insertion capabilities derived
-  from the sniffer and file-type policies:
+> [!NOTE] NDJSON difference
+>
+> In NDJSON, `config_diagnostics` is **counts-only** and each individual config diagnostic is emitted as a separate `diagnostic` record with `domain="config"` (one record per diagnostic).
 
-  - `capability`: enum name from `InsertCapability` (for example
-    `"UNSUPPORTED"`, `"OK"`, `"NEEDS_SPACER"`).
-  - `reason`: short, human-readable explanation (may be `null`).
-  - `origin`: source of the diagnostic (typically a step name).
+See:
 
-- `outcome`: high-level intent and feasibility flags derived from
-  the pipeline status and the effective policy:
-
-  - `would_change`: `true` if the pipeline intends to change the file
-    (insert/update/strip a header), `false` if definitely no change,
-    `null` when indeterminate.
-  - `can_change`: `true` if a change is structurally and operationally
-    safe given the current statuses (resolve/fs/strip/header).
-  - `permitted_by_policy`: tri-state flag indicating whether the
-    intended change is allowed by policy (`true`/`false`/`null`).
-  - `check.*`: intent and feasibility for insert/update operations.
-  - `strip.*`: intent and feasibility for strip operations.
+- \[`topmark.config.machine.schemas.ConfigDiagnosticsPayload`\][topmark.config.machine.schemas.ConfigDiagnosticsPayload]
+- \[`topmark.config.machine.payloads.build_config_diagnostics_payload`\][topmark.config.machine.payloads.build_config_diagnostics_payload]
 
 ______________________________________________________________________
 
-## Config-only commands
+## Config-only commands (`config dump`, `config defaults`, `config init`)
 
-For config-only commands:
+These commands produce a config snapshot without running the processing pipeline.
 
-- `topmark config dump`
-- `topmark config defaults`
-- `topmark config init`
+### JSON shape
 
-the JSON/NDJSON output is intentionally simpler.
-
-### JSON
-
-JSON output for config-only commands is just the `ConfigPayload`:
-
-```json
+```jsonc
 {
   "meta": { /* MetaPayload */ },
-  "config": {
-    "fields": { /* ... */ },
-    "header": { /* ... */ },
-    "formatting": { /* ... */ },
-    "writer": { /* ... */ },
-    "files": { /* ... */ }
+  "config": { /* ConfigPayload */ }
+}
+```
+
+### NDJSON shape
+
+A single record:
+
+```jsonc
+{"kind": "config", "meta": { /* MetaPayload */ }, "config": { /* ConfigPayload */ }}
+```
+
+______________________________________________________________________
+
+## `topmark config check`
+
+This command validates configuration and emits diagnostics plus a summary.
+
+### JSON shape
+
+```jsonc
+{
+  "meta": { /* MetaPayload */ },
+  "config": { /* ConfigPayload */ },
+  "config_diagnostics": { /* ConfigDiagnosticsPayload */ },
+  "config_check": {
+    "ok": true,
+    "strict": false,
+    "diagnostic_counts": { "info": 0, "warning": 1, "error": 0 },
+    "config_files": ["..."]
   }
 }
 ```
 
-No `config_diagnostics`, `results`, or `summary` fields are included,
-because these commands do not run the processing pipeline.
+### NDJSON shape
 
-### NDJSON
+Stream prefix:
 
-NDJSON output for config-only commands consists of a single record:
-
-```json
-{"kind": "config", "meta": { /* MetaPayload */ }, "config": { /* ConfigPayload */ }}
+```jsonc
+{"kind":"config","meta":{...},"config":{...}}
+{"kind":"config_diagnostics","meta":{...},"config_diagnostics":{"diagnostic_counts":{...}}}
+{"kind":"diagnostic","meta":{...},"diagnostic":{"domain":"config","level":"warning","message":"..."}}
+{"kind":"config_check","meta":{...},"config_check":{...}}
 ```
 
-Every NDJSON line always includes a `meta` field. No `config_diagnostics` record is emitted for these commands; they are
-intended for static config snapshots rather than full pipeline runs. The payload is always stored under a container key that matches the `kind` (here: `config`).
+Notes:
+
+- NDJSON follows the same **counts-only + one diagnostic per line** model for config diagnostics.
+
+(See `topmark.config.machine.*` for canonical builders/serializers.)
+
+______________________________________________________________________
+
+## `topmark version`
+
+### JSON shape
+
+```jsonc
+{
+  "meta": { /* MetaPayload */ },
+  "version_info": {
+    "version": "0.12.0.dev2",
+    "version_format": "pep440"
+  }
+}
+```
+
+### NDJSON shape
+
+```jsonc
+{"kind":"version","meta":{ /* MetaPayload */ },"version_info":{ "version":"...", "version_format":"pep440" }}
+```
+
+Notes:
+
+- `version_format` may be `"pep440"` or `"semver"` depending on `--semver`.
+- If SemVer conversion is requested and fails, TopMark falls back to PEP 440 output.
+
+______________________________________________________________________
+
+## Registry commands
+
+### `topmark filetypes`
+
+JSON envelope:
+
+```jsonc
+{
+  "meta": { /* MetaPayload */ },
+  "filetypes": [ /* FileTypeEntry ... */ ]
+}
+```
+
+Brief entry (default):
+
+```json
+{ "name": "python", "description": "Python source file" }
+```
+
+Detailed entry (`--show-details`):
+
+```jsonc
+{
+  "name": "python",
+  "description": "Python source file",
+  "extensions": [".py"],
+  "filenames": [],
+  "patterns": [],
+  "skip_processing": false,
+  "has_content_matcher": false,
+  "has_insert_checker": false,
+  "header_policy": "DefaultHeaderPolicy"
+}
+```
+
+NDJSON emits one record per file type:
+
+```jsonc
+{"kind":"filetype","meta":{...},"filetype":{ /* FileTypeEntry */ }}
+```
+
+Canonical schemas/builders live in `topmark.registry.machine.*`.
+
+### `topmark processors`
+
+JSON envelope:
+
+```jsonc
+{
+  "meta": { /* MetaPayload */ },
+  "processors": {
+    "processors": [ /* ProcessorEntry ... */ ],
+    "unbound_filetypes": [ /* FileTypeRef ... */ ]
+  }
+}
+```
+
+Processor entry (brief):
+
+```jsonc
+{
+  "module": "topmark.pipeline.processors.python",
+  "class_name": "PythonHeaderProcessor",
+  "filetypes": ["python", "python-script"]
+}
+```
+
+Processor entry (detailed, `--show-details`):
+
+```jsonc
+{
+  "module": "topmark.pipeline.processors.python",
+  "class_name": "PythonHeaderProcessor",
+  "filetypes": [
+    { "name": "python", "description": "Python source file" },
+    { "name": "python-script", "description": "Python executable script" }
+  ]
+}
+```
+
+NDJSON emits one record per processor and per unbound file type:
+
+```jsonc
+{"kind":"processor","meta":{...},"processor":{ /* ProcessorEntry */ }}
+{"kind":"unbound_filetype","meta":{...},"unbound_filetype":{ /* FileTypeRef */ }}
+```
+
+Canonical schemas/builders live in `topmark.registry.machine.*`.
 
 ______________________________________________________________________
 
 ## Backwards compatibility and evolution
 
-The machine-output schema described here is considered part of TopMark’s
-integration surface and may change between pre-1.0 releases. When
-breaking changes are introduced, they are announced via Conventional
-Commits (using the `!` marker) and documented in the changelog.
+TopMark’s machine-output schema is part of its integration surface and may change between pre-1.0 releases.
 
 Consumers should:
 
-- Rely on the `kind` field for NDJSON decoding.
-- Treat unknown fields as optional / ignorable.
-- Prefer robust JSON parsing over strict string matching of text output.
+- Rely on `kind` for NDJSON.
+- Treat unknown fields as optional/ignorable.
+- Prefer parsing and schema-tolerant logic over strict string matching.
+- Assume additive fields may appear over time.
+
+Breaking changes should be signaled via Conventional Commits (using the `!` marker) and documented in the changelog.

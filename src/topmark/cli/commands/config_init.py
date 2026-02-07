@@ -24,10 +24,11 @@ import click
 
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cmd_common import get_effective_verbosity
+from topmark.cli.emitters import emit_toml_block
 from topmark.cli.errors import TopmarkUsageError
 from topmark.cli.keys import CliCmd, CliOpt
-from topmark.cli.utils import emit_config_machine, render_toml_block
-from topmark.cli_shared.utils import OutputFormat
+from topmark.cli.machine_emitters import emit_config_machine
+from topmark.cli.options import underscored_trap_option
 from topmark.config import MutableConfig
 from topmark.config.io import nest_toml_under_section
 from topmark.config.logging import get_logger
@@ -35,10 +36,13 @@ from topmark.constants import (
     DEFAULT_TOML_CONFIG_NAME,
     DEFAULT_TOML_CONFIG_PACKAGE,
 )
+from topmark.core.formats import OutputFormat, is_machine_format
 from topmark.core.keys import ArgKey
 
 if TYPE_CHECKING:
     import sys
+
+    from topmark.core.machine.schemas import MetaPayload
 
     if sys.version_info >= (3, 14):
         # Python 3.14+: Traversable moved here
@@ -64,6 +68,7 @@ logger: TopmarkLogger = get_logger(__name__)
     default=None,
     help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
 )
+@underscored_trap_option("--output_format")
 @click.option(
     CliOpt.CONFIG_FOR_PYPROJECT,
     ArgKey.CONFIG_FOR_PYPROJECT,
@@ -84,9 +89,9 @@ def config_init_command(
           (no diagnostics).
 
     Args:
-        output_format (OutputFormat | None): Output format to use
+        output_format: Output format to use
             (``default``, ``markdown``, ``json``, or ``ndjson``).
-        pyproject (bool): If True, render as subtable under `[tool.topmark]`
+        pyproject: If True, render as subtable under `[tool.topmark]`
             (default: False: plain topmark.toml TOML config format).
 
     Raises:
@@ -96,7 +101,15 @@ def config_init_command(
     """
     ctx: click.Context = click.get_current_context()
     ctx.ensure_object(dict)
-    console: ConsoleLike = ctx.obj["console"]
+
+    # Machine metadata
+    meta: MetaPayload = ctx.obj[ArgKey.META]
+
+    if output_format and is_machine_format(output_format):
+        # Disable color mode for machine formats
+        ctx.obj[ArgKey.COLOR_ENABLED] = False
+
+    console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
 
     fmt: OutputFormat = output_format or OutputFormat.DEFAULT
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON) and pyproject:
@@ -126,7 +139,7 @@ def config_init_command(
 
             toml_text = nest_toml_under_section(toml_text, target_section)
 
-        render_toml_block(
+        emit_toml_block(
             console=console,
             title="Initial TopMark Configuration (TOML):",
             toml_text=toml_text,
@@ -144,7 +157,11 @@ def config_init_command(
     elif fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         # Machine-readable formats: emit JSON/NDJSON without human banners
         mutable_config: MutableConfig = MutableConfig.from_defaults()
-        emit_config_machine(mutable_config.freeze(), fmt=fmt)
+        emit_config_machine(
+            meta=meta,
+            config=mutable_config.freeze(),
+            fmt=fmt,
+        )
 
     else:
         # Defensive guard in case OutputFormat gains new members

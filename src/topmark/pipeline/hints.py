@@ -46,7 +46,7 @@ from yachalk import chalk
 
 from topmark.config.logging import get_logger
 from topmark.core.enum_mixins import EnumIntrospectionMixin
-from topmark.rendering.colored_enum import ColoredStrEnum
+from topmark.core.presentation import ColoredStrEnum
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -227,17 +227,17 @@ class Hint:
     """Normalized hint payload attached to a `ProcessingContext`.
 
     Attributes:
-        axis (Axis): Pipeline axis emitting the hint (e.g., `Axis.FS`).
-        code (str): Stable machine key (e.g., 'fs:mixed_newlines', 'plan:insert').
+        axis: Pipeline axis emitting the hint (e.g., `Axis.FS`).
+        code: Stable machine key (e.g., 'fs:mixed_newlines', 'plan:insert').
             Accepts any string; prefer `KnownCode` members when available.
-        message (str): Short, summary line suitable for single-line CLI output.
-        detail (str | None): Optional extended diagnostic text (possibly multi-line)
+        message: Short, summary line suitable for single-line CLI output.
+        detail: Optional extended diagnostic text (possibly multi-line)
             that callers may render only at higher verbosity levels.
-        cluster (str | None): Optional broader grouping key for bucketing/analytics.
+        cluster: Optional broader grouping key for bucketing/analytics.
             Defaults to ``code`` when omitted.
-        terminal (bool): Whether the condition represents a terminal/stop state.
-        reason (str | None): Optional additional detail (status value, policy id).
-        meta (dict[str, Any] | None): Optional extensibility bag (free-form).
+        terminal: Whether the condition represents a terminal/stop state.
+        reason: Optional additional detail (status value, policy id).
+        meta: Optional extensibility bag (free-form).
 
     Example:
         ```python
@@ -281,18 +281,18 @@ def make_hint(
     a `Cluster` is supplied for ``cluster``, its string value is used.
 
     Args:
-        axis (Axis): Axis emitting the hint.
-        code (KnownCode | str): Stable machine key for the condition.
-        message (str): Human-readable short summary line.
-        detail (str | None): Optional extended diagnostic text rendered at higher
+        axis: Axis emitting the hint.
+        code: Stable machine key for the condition.
+        message: Human-readable short summary line.
+        detail: Optional extended diagnostic text rendered at higher
             verbosity (e.g., multi-line config snippets or rationale).
-        cluster (Cluster | str | None): Optional grouping key; defaults to ``code``.
-        terminal (bool): Whether this condition is terminal.
-        reason (str | None): Optional detail string.
-        meta (dict[str, Any] | None): Optional extensibility bag.
+        cluster: Optional grouping key; defaults to ``code``.
+        terminal: Whether this condition is terminal.
+        reason: Optional detail string.
+        meta: Optional extensibility bag.
 
     Returns:
-        Hint: Frozen, normalized hint object.
+        Frozen, normalized hint object.
 
     Example:
         ```python
@@ -335,11 +335,10 @@ class HintLog:
         Hints are non-binding diagnostics used to refine human-readable
         summaries without affecting the core outcome classification.
 
-        Args:
-            hint (Hint): The hint instance to attach.
+        The hint collection is updated in place.
 
-        Returns:
-            None: The hint collection is updated in place.
+        Args:
+            hint: The hint instance to attach.
         """
         self.items.append(hint)
         if logger.isEnabledFor(logging.DEBUG):
@@ -354,7 +353,7 @@ class HintLog:
         > WOULD_CHANGE > UNCHANGED > PENDING. Ties prefer ``terminal=True``.
 
         Returns:
-            Hint | None: The top-ranked hint, or ``None`` if the log is empty.
+            The top-ranked hint, or ``None`` if the log is empty.
 
         Notes:
             You can extend the tie-breaker with axis priority without changing callers.
@@ -378,8 +377,7 @@ class HintLog:
         """Iterate over all hints stored in this log.
 
         Returns:
-            Iterable[Hint]: An iterator yielding the collected hints in
-            insertion order.
+            An iterator yielding the collected hints in insertion order.
         """
         return iter(self.items)
 
@@ -387,6 +385,6 @@ class HintLog:
         """Return the number of hints stored in this log.
 
         Returns:
-            int: The number of hint entries.
+            The number of hint entries.
         """
         return len(self.items)

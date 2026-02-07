@@ -19,8 +19,8 @@ It generates:
 - CLI-derived reference pages under `usage/`
 
 To avoid mkdocs-autorefs duplicate-anchor warnings, it skips generating internals pages for the
-*exact* public surfaces listed in `PUBLIC_API_PREFIXES` (e.g. `topmark.api`, `topmark.registry`),
-while still generating pages for their submodules.
+*exact* public surfaces listed in `PUBLIC_API_PREFIXES` (e.g. [`topmark.api`][topmark.api],
+[`topmark.registry`][topmark.registry]), while still generating pages for their submodules.
 
 In debug/strict modes it also scans *module docstrings* in `src/` for unlinked backticked
 `topmark.*` symbol references and reports actionable `src/...` locations.
@@ -95,10 +95,10 @@ def _run_topmark_markdown(*args: str) -> str:
     installed console-script entry point when building docs.
 
     Args:
-        *args (str): CLI arguments passed to `python -m topmark`.
+        *args: CLI arguments passed to `python -m topmark`.
 
     Returns:
-        str: The command's stdout.
+        The command's stdout.
 
     Raises:
         RuntimeError: If the command exits non-zero.
@@ -141,9 +141,9 @@ def generate_cli_reference_pages() -> None:
         """Write a standalone generated Markdown page under `docs/`.
 
         Args:
-            dest (str): Docs-relative output path (e.g. `usage/generated-filetypes.md`).
-            title (str): Page title to render at the top.
-            body (str): Pre-rendered Markdown emitted by `topmark ... --output-format markdown`.
+            dest: Docs-relative output path (e.g. `usage/generated-filetypes.md`).
+            title: Page title to render at the top.
+            body: Pre-rendered Markdown emitted by `topmark ... --output-format markdown`.
         """
         with mkdocs_gen_files.open(dest, "w") as f:
             f.write(f"# {title}\n\n")
@@ -176,10 +176,10 @@ def _parent_package(modname: str) -> str | None:
         topmark -> None
 
     Args:
-        modname (str): The module name.
+        modname: The module name.
 
     Returns:
-        str | None: the parent package name for the module or None for top-level.
+        The parent package name for the module or None for top-level.
     """
     if "." not in modname:
         return None
@@ -391,7 +391,7 @@ def _should_skip(modname: str) -> bool:
 
     We skip only the *exact* public-facing surfaces (to avoid duplicate anchors),
     but we still generate pages for their submodules so mkdocs-autorefs can resolve
-    links like `topmark.registry.processors`.
+    links like [`topmark.registry.processors`][topmark.registry.processors].
     """
     # Skip exact public modules (but allow their submodules).
     if modname in PUBLIC_API_PREFIXES:

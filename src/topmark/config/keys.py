@@ -45,7 +45,7 @@ class Toml:
     Notes:
         - Values must match user-facing TOML keys exactly.
         - Renaming or removing a key is a breaking change.
-        - CLI keys are defined separately in `topmark.cli.keys`.
+        - CLI keys are defined separately in [`topmark.cli.keys`][topmark.cli.keys].
     """
 
     # Root / discovery

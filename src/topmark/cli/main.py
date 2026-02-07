@@ -37,12 +37,18 @@ from topmark.cli.options import (
     ColorMode,
     common_color_options,
     common_verbose_options,
-    resolve_color_mode,
     resolve_verbosity,
 )
-from topmark.config.logging import get_logger, resolve_env_log_level, setup_logging
+from topmark.cli_shared.color import resolve_color_mode
+from topmark.config.logging import (
+    get_logger,
+    resolve_env_log_level,
+    setup_logging,
+)
 from topmark.core.keys import ArgKey
+from topmark.core.machine.payloads import build_meta_payload
 from topmark.pipeline.processors import register_all_processors
+from topmark.utils.version import check_python_version
 
 if TYPE_CHECKING:
     from topmark.cli_shared.console_api import ConsoleLike
@@ -64,11 +70,11 @@ def init_common_state(
     """Initialize shared state (verbosity & color) on the Click context.
 
     Args:
-        ctx (click.Context): Current Click context; will have ``obj`` and ``color`` set.
-        verbose (int): Count of ``-v`` flags (0..2).
-        quiet (int): Count of ``-q`` flags (0..2).
-        color_mode (ColorMode | None): Explicit color mode from ``--color`` (or ``None``).
-        no_color (bool): Whether ``--no-color`` was passed; forces color off.
+        ctx: Current Click context; will have ``obj`` and ``color`` set.
+        verbose: Count of ``-v`` flags (0..2).
+        quiet: Count of ``-q`` flags (0..2).
+        color_mode: Explicit color mode from ``--color`` (or ``None``).
+        no_color: Whether ``--no-color`` was passed; forces color off.
     """
     ctx.obj = ctx.obj or {}
 
@@ -84,12 +90,18 @@ def init_common_state(
     effective_color_mode: ColorMode = (
         ColorMode.NEVER if no_color else (color_mode or ColorMode.AUTO)
     )
-    enable_color: bool = resolve_color_mode(cli_mode=effective_color_mode, output_format=None)
+    enable_color: bool = resolve_color_mode(
+        color_mode_override=effective_color_mode,
+        output_format=None,  # Only available from specific (sub) commands
+    )
     ctx.obj[ArgKey.COLOR_ENABLED] = enable_color
     ctx.color = enable_color
 
     console = ClickConsole(enable_color=not no_color)
     ctx.obj[ArgKey.CONSOLE] = console
+
+    # Machine metadata payload
+    ctx.obj[ArgKey.META] = build_meta_payload()
 
 
 @click.group(
@@ -109,6 +121,9 @@ def cli(
     no_color: bool,
 ) -> None:
     """Entry point for the TopMark CLI."""
+    # Check the Python version (may exit)
+    check_python_version()
+
     # Initialize verbosity and color state once for all subcommands
     init_common_state(
         ctx,

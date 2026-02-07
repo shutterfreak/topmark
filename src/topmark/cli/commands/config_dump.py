@@ -35,20 +35,23 @@ from topmark.cli.cmd_common import (
     get_effective_verbosity,
     render_config_diagnostics,
 )
+from topmark.cli.emitters import emit_toml_block
 from topmark.cli.io import plan_cli_inputs
 from topmark.cli.keys import CliCmd, CliOpt
+from topmark.cli.machine_emitters import emit_config_machine
 from topmark.cli.options import (
     CONTEXT_SETTINGS,
     common_config_options,
     common_file_and_filtering_options,
     common_header_formatting_options,
+    underscored_trap_option,
 )
-from topmark.cli.utils import emit_config_machine, render_toml_block
-from topmark.cli_shared.utils import OutputFormat, safe_unlink
 from topmark.config.io import to_toml
 from topmark.config.logging import get_logger
 from topmark.constants import TOML_BLOCK_END, TOML_BLOCK_START
+from topmark.core.formats import OutputFormat, is_machine_format
 from topmark.core.keys import ArgKey
+from topmark.utils.file import safe_unlink
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -57,6 +60,7 @@ if TYPE_CHECKING:
     from topmark.cli_shared.console_api import ConsoleLike
     from topmark.config import Config, MutableConfig
     from topmark.config.logging import TopmarkLogger
+    from topmark.core.machine.schemas import MetaPayload
     from topmark.rendering.formats import HeaderOutputFormat
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -92,6 +96,7 @@ logger: TopmarkLogger = get_logger(__name__)
     default=None,
     help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
 )
+@underscored_trap_option("--output_format")
 def config_dump_command(
     # Command arguments
     *,
@@ -125,24 +130,24 @@ def config_dump_command(
           (no diagnostics).
 
     Args:
-        files_from (list[str] | None): Files that contain newline‑delimited *paths* to add to the
+        files_from: Files that contain newline‑delimited *paths* to add to the
             candidate set before filtering. Use ``-`` to read from STDIN.
-        include_patterns (list[str]): Glob patterns to *include* (intersection).
-        include_from (list[str]): Files that contain include glob patterns (one per line).
+        include_patterns: Glob patterns to *include* (intersection).
+        include_from: Files that contain include glob patterns (one per line).
             Use ``-`` to read patterns from STDIN.
-        exclude_patterns (list[str]): Glob patterns to *exclude* (subtraction).
-        exclude_from (list[str]): Files that contain exclude glob patterns (one per line).
+        exclude_patterns: Glob patterns to *exclude* (subtraction).
+        exclude_from: Files that contain exclude glob patterns (one per line).
             Use ``-`` to read patterns from STDIN.
-        include_file_types (list[str]): Restrict processing to the given file type identifiers.
-        exclude_file_types (list[str]): Exclude processing for the given file type identifiers.
-        relative_to (str | None): Base directory used to compute relative paths in outputs.
-        stdin_filename (str | None): Assumed filename when  reading content from STDIN).
-        no_config (bool): If True, skip loading project/user configuration files.
-        config_paths (list[str]): Additional configuration file paths to load and merge.
-        align_fields (bool): Whether to align header fields when rendering (captured in config).
-        header_format (HeaderOutputFormat | None): Optional output format override for header
+        include_file_types: Restrict processing to the given file type identifiers.
+        exclude_file_types: Exclude processing for the given file type identifiers.
+        relative_to: Base directory used to compute relative paths in outputs.
+        stdin_filename: Assumed filename when  reading content from STDIN).
+        no_config: If True, skip loading project/user configuration files.
+        config_paths: Additional configuration file paths to load and merge.
+        align_fields: Whether to align header fields when rendering (captured in config).
+        header_format: Optional output format override for header
             rendering (captured in config).
-        output_format (OutputFormat | None): Output format to use
+        output_format: Output format to use
             (``default``, ``markdown``, ``json``, or ``ndjson``).
 
     Raises:
@@ -150,6 +155,14 @@ def config_dump_command(
     """
     ctx: click.Context = click.get_current_context()
     ctx.ensure_object(dict)
+
+    # Machine metadata
+    meta: MetaPayload = ctx.obj[ArgKey.META]
+
+    if output_format and is_machine_format(output_format):
+        # Disable color mode for machine formats
+        ctx.obj[ArgKey.COLOR_ENABLED] = False
+
     console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
 
     fmt: OutputFormat = output_format or OutputFormat.DEFAULT
@@ -221,7 +234,7 @@ def config_dump_command(
             for i, c in enumerate(config.config_files, start=1):
                 click.echo(f"Loaded config {i}: {c}")
 
-        render_toml_block(
+        emit_toml_block(
             console=console,
             title="TopMark Config Dump (TOML):",
             toml_text=merged_config,
@@ -230,7 +243,11 @@ def config_dump_command(
 
     elif fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         # Machine-readable formats: emit JSON/NDJSON without human banners
-        emit_config_machine(config, fmt=fmt)
+        emit_config_machine(
+            meta=meta,
+            config=config,
+            fmt=fmt,
+        )
 
     elif fmt == OutputFormat.MARKDOWN:
         merged_config: str = to_toml(config.to_toml_dict())

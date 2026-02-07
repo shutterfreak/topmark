@@ -31,16 +31,22 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-def render_patch(patch: Sequence[str] | str, show_line_numbers: bool = False) -> str:
+def render_patch(
+    *,
+    patch: Sequence[str] | str,
+    color: bool,
+    show_line_numbers: bool = False,
+) -> str:
     """Render a colorized preview of a unified diff.
 
     Args:
-        patch (Sequence[str] | str): A unified diff as **either** a list/sequence of lines
+        patch: A unified diff as **either** a list/sequence of lines
             **or** a single multiline string.
-        show_line_numbers (bool): Whether to prefix output with line numbers.
+        color: If True, render in color, if False in plain text.
+        show_line_numbers: Whether to prefix output with line numbers.
 
     Returns:
-        str: The formatted, colorized diff preview.
+        The formatted, colorized diff preview.
     """
     # Normalize input to a list of lines
     if isinstance(patch, str):
@@ -72,9 +78,15 @@ def render_patch(patch: Sequence[str] | str, show_line_numbers: bool = False) ->
 
     # Optionally prefix each rendered line with a 4-digit line number.
     if show_line_numbers is True:
-        result: str = chalk.gray(
-            "".join(f"{i:04d}|{process_line(line)}\n" for i, line in enumerate(lines, 1))
-        )
+        if color:
+            result: str = chalk.gray(
+                "".join(f"{i:04d}|{process_line(line)}\n" for i, line in enumerate(lines, 1))
+            )
+        else:
+            result: str = "".join(f"{i:04d}|{line}\n" for i, line in enumerate(lines, 1))
     else:
-        result = chalk.gray("".join(f"{process_line(line)}\n" for line in lines))
+        if color:
+            result = chalk.gray("".join(f"{process_line(line)}\n" for line in lines))
+        else:
+            result = "".join(f"{line}\n" for line in lines)
     return result

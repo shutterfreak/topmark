@@ -26,8 +26,7 @@ The tests serve as high-level contract checks to ensure that:
 
 These tests intentionally avoid checking full schema content
 (e.g. all config fields), focusing instead on structural stability and
-the presence of required top-level keys. Detailed schema validation is
-covered by lower-level tests in `topmark.cli_shared.machine_output`.
+the presence of required top-level keys.
 
 All CLI invocations are executed via Click’s `CliRunner`, using the
 helpers in `tests.cli.conftest` to control the working directory and

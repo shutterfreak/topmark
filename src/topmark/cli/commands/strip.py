@@ -54,9 +54,17 @@ from topmark.cli.cmd_common import (
     maybe_exit_on_error,
     render_config_diagnostics,
 )
+from topmark.cli.emitters import (
+    emit_banner,
+    emit_diffs,
+    emit_per_file_guidance,
+    emit_summary_counts,
+    emit_updated_content_to_stdout,
+)
 from topmark.cli.errors import TopmarkIOError, TopmarkUsageError
 from topmark.cli.io import plan_cli_inputs
 from topmark.cli.keys import CliCmd, CliOpt
+from topmark.cli.machine_emitters import emit_processing_results_machine
 from topmark.cli.options import (
     CONTEXT_SETTINGS,
     common_config_options,
@@ -64,21 +72,13 @@ from topmark.cli.options import (
     common_header_formatting_options,
     underscored_trap_option,
 )
-from topmark.cli.utils import (
-    emit_diffs,
-    emit_processing_results_machine,
-    emit_updated_content_to_stdout,
-    render_banner,
-    render_per_file_guidance,
-    render_summary_counts,
-)
 from topmark.cli_shared.console_api import ConsoleLike
-from topmark.cli_shared.utils import (
-    OutputFormat,
-    safe_unlink,
-)
 from topmark.config.logging import get_logger
 from topmark.core.exit_codes import ExitCode
+from topmark.core.formats import (
+    OutputFormat,
+    is_machine_format,
+)
 from topmark.core.keys import ArgKey
 from topmark.pipeline.context.policy import effective_would_strip
 from topmark.pipeline.engine import run_steps_for_files
@@ -86,6 +86,7 @@ from topmark.pipeline.outcomes import Intent, determine_intent
 from topmark.pipeline.status import (
     WriteStatus,
 )
+from topmark.utils.file import safe_unlink
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -95,6 +96,7 @@ if TYPE_CHECKING:
     from topmark.cli_shared.console_api import ConsoleLike
     from topmark.config import Config, MutableConfig
     from topmark.config.logging import TopmarkLogger
+    from topmark.core.machine.schemas import MetaPayload
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.protocols import Step
     from topmark.rendering.formats import HeaderOutputFormat
@@ -169,6 +171,7 @@ Examples:
     default=None,
     help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
 )
+@underscored_trap_option("--output_format")
 def strip_command(
     *,
     # Command options: common_file_filtering_options
@@ -208,51 +211,63 @@ def strip_command(
        ``--include-from -``, or ``--exclude-from -`` (exactly one may consume STDIN).
 
     Args:
-        files_from (list[str]): Files that contain newline‑delimited *paths* to add to the
+        files_from: Files that contain newline‑delimited *paths* to add to the
             candidate set before filtering. Use ``-`` to read from STDIN.
-        include_patterns (list[str]): Glob patterns to *include* (intersection).
-        include_from (list[str]): Files that contain include glob patterns (one per line).
+        include_patterns: Glob patterns to *include* (intersection).
+        include_from: Files that contain include glob patterns (one per line).
             Use ``-`` to read patterns from STDIN.
-        exclude_patterns (list[str]): Glob patterns to *exclude* (subtraction).
-        exclude_from (list[str]): Files that contain exclude glob patterns (one per line).
+        exclude_patterns: Glob patterns to *exclude* (subtraction).
+        exclude_from: Files that contain exclude glob patterns (one per line).
             Use ``-`` to read patterns from STDIN.
-        include_file_types (list[str]): Restrict processing to the given file type identifiers.
-        exclude_file_types (list[str]): Exclude processing for the given file type identifiers.
-        relative_to (str | None): Base directory used to compute relative paths in outputs.
-        stdin_filename (str | None): Assumed filename when  reading content from STDIN).
-        no_config (bool): If True, skip loading project/user configuration files.
-        config_paths (list[str]): Additional configuration file paths to load and merge.
-        align_fields (bool): Whether to align header fields when rendering (captured in config).
-        header_format (HeaderOutputFormat | None): Optional output format override for header
+        include_file_types: Restrict processing to the given file type identifiers.
+        exclude_file_types: Exclude processing for the given file type identifiers.
+        relative_to: Base directory used to compute relative paths in outputs.
+        stdin_filename: Assumed filename when  reading content from STDIN).
+        no_config: If True, skip loading project/user configuration files.
+        config_paths: Additional configuration file paths to load and merge.
+        align_fields: Whether to align header fields when rendering (captured in config).
+        header_format: Optional output format override for header
             rendering (captured in config).
-        apply_changes (bool): Write changes to files; otherwise perform a dry run.
-        write_mode (str | None): Whether to use safe atomic writing, faster in-place writing
+        apply_changes: Write changes to files; otherwise perform a dry run.
+        write_mode: Whether to use safe atomic writing, faster in-place writing
             or writing to STDOUT (default: atomic writer).
-        diff (bool): Show unified diffs of header removals (human output only).
-        summary_mode (bool): Show outcome counts instead of per‑file details.
-        skip_compliant (bool): Suppress files whose comparison status is UNCHANGED.
-        skip_unsupported (bool): Suppress unsupported file types.
-        output_format (OutputFormat | None): Output format to use
+        diff: Show unified diffs of header removals (human output only).
+        summary_mode: Show outcome counts instead of per‑file details.
+        skip_compliant: Suppress files whose comparison status is UNCHANGED.
+        skip_unsupported: Suppress unsupported file types.
+        output_format: Output format to use
             (``default``, ``json``, or ``ndjson``).
 
     Raises:
-      TopmarkUsageError: If no input is provided, or if mutually exclusive STDIN modes are combined.
-      TopmarkIOError: If an I/O error occurred (read/write).
+        TopmarkUsageError: If no input is provided, or if mutually exclusive STDIN modes
+            are combined.
+        TopmarkIOError: If an I/O error occurred (read/write).
 
     Exit Status:
-      SUCCESS (0): No changes required or all requested changes were written.
-      WOULD_CHANGE (2): Dry‑run detected files that would change with ``--apply``.
-      USAGE_ERROR (64): Invalid invocation (e.g., mixing ``-`` with ``--files-from -``).
-      FILE_NOT_FOUND (66): One or more specified files or directories could not be found.
-      PERMISSION_DENIED (77): Insufficient permissions to read or write a file.
-      ENCODING_ERROR (65): A file could not be decoded or encoded with the expected encoding.
-      IO_ERROR (74): An unexpected I/O failure occurred while writing changes.
-      PIPELINE_ERROR (70): An internal processing step failed.
-      UNEXPECTED_ERROR (255): An unhandled error occurred.
+        SUCCESS (0): No changes required or all requested changes were written.
+        WOULD_CHANGE (2): Dry‑run detected files that would change with ``--apply``.
+        USAGE_ERROR (64): Invalid invocation (e.g., mixing ``-`` with ``--files-from -``).
+        FILE_NOT_FOUND (66): One or more specified files or directories could not be found.
+        PERMISSION_DENIED (77): Insufficient permissions to read or write a file.
+        ENCODING_ERROR (65): A file could not be decoded or encoded with the expected encoding.
+        IO_ERROR (74): An unexpected I/O failure occurred while writing changes.
+        PIPELINE_ERROR (70): An internal processing step failed.
+        UNEXPECTED_ERROR (255): An unhandled error occurred.
     """
     ctx: click.Context = click.get_current_context()
     ctx.ensure_object(dict)
-    console: ConsoleLike = ctx.obj["console"]
+
+    # Machine metadata
+    meta: MetaPayload = ctx.obj[ArgKey.META]
+
+    if output_format and is_machine_format(output_format):
+        # Disable color mode for machine formats
+        ctx.obj[ArgKey.COLOR_ENABLED] = False
+
+    console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
+
+    enable_color: bool = ctx.obj[ArgKey.COLOR_ENABLED]
+
     prune_override: bool | None = ctx.obj.get(
         "prune"
     )  # injected by tests via CliRunner.invoke(..., obj=...)
@@ -323,7 +338,7 @@ def strip_command(
 
     # Banner
     if vlevel > 0:
-        render_banner(ctx, n_files=len(file_list))
+        emit_banner(cmd=CliCmd.STRIP, n_files=len(file_list))
 
     # Choose the concrete pipeline variant
     pipeline: Sequence[Step] = select_pipeline("strip", apply=apply_changes, diff=diff)
@@ -348,6 +363,7 @@ def strip_command(
     # Machine formats first
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         emit_processing_results_machine(
+            meta=meta,
             config=config,
             results=view_results,
             fmt=fmt,
@@ -356,7 +372,15 @@ def strip_command(
     else:
         # Human output
         if summary_mode:
-            render_summary_counts(view_results, total=len(file_list))
+            # Diff output first
+            if diff is True:
+                emit_diffs(results=view_results, color=enable_color)
+
+            # Summary mode
+            emit_summary_counts(
+                view_results=view_results,
+                total=len(file_list),
+            )
 
         else:
 
@@ -383,41 +407,45 @@ def strip_command(
 
             # Per-file guidance (only in non-summary human mode)
             if fmt == OutputFormat.DEFAULT and not summary_mode and vlevel >= 0:
-                render_per_file_guidance(
-                    view_results, make_message=_strip_msg, apply_changes=apply_changes
+                emit_per_file_guidance(
+                    view_results=view_results,
+                    make_message=_strip_msg,
+                    apply_changes=apply_changes,
+                    show_diffs=diff,
                 )
 
-        # Diff output
-        emit_diffs(results=view_results, diff=diff, command=ctx.command)
-
-    # Writes (only when --apply is set)
-    if stdin_mode and apply_changes:
-        # For STDIN content mode, emit the modified file content to stdout.
-        emit_updated_content_to_stdout(view_results)
-        # Cleanup temp file
-        safe_unlink(temp_path)
-        return
-
     if apply_changes:
-        # Count outcomes after the pipeline writer step finalized statuses.
-        written: int = sum(1 for r in results if r.status.write == WriteStatus.WRITTEN)
-        failed: int = sum(1 for r in results if r.status.write == WriteStatus.FAILED)
+        # Writes (only when --apply is set)
+        if stdin_mode:
+            # For STDIN content mode, emit the modified file content to stdout.
+            emit_updated_content_to_stdout(results=view_results)
+            # Cleanup temp file
+            safe_unlink(temp_path)
+            return
+        else:
+            # Count outcomes after the pipeline writer step finalized statuses.
+            written: int = sum(1 for r in results if r.status.write == WriteStatus.WRITTEN)
+            failed: int = sum(1 for r in results if r.status.write == WriteStatus.FAILED)
 
-        if fmt == OutputFormat.DEFAULT:
-            msg: str = (
-                f"\n✅ Removed headers in {written} file(s)."
-                if written
-                else "\n✅ No changes to apply."
-            )
-            console.print(console.styled(msg, fg="green", bold=True))
-        if failed:
-            raise TopmarkIOError(f"Failed to write {failed} file(s). See log for details.")
-
-    if not apply_changes and any(effective_would_strip(r) for r in results):
-        ctx.exit(ExitCode.WOULD_CHANGE)
+            if fmt == OutputFormat.DEFAULT:
+                msg: str = (
+                    f"\n✅ Removed headers in {written} file(s)."
+                    if written
+                    else "\n✅ No changes to apply."
+                )
+                console.print(console.styled(msg, fg="green", bold=True))
+            if failed:
+                raise TopmarkIOError(f"Failed to write {failed} file(s). See log for details.")
+    else:
+        # Dry-run: determine exit code
+        if any(effective_would_strip(r) for r in results):
+            ctx.exit(ExitCode.WOULD_CHANGE)
 
     # Exit on any error encountered during processing
-    maybe_exit_on_error(code=encountered_error_code, temp_path=temp_path)
+    maybe_exit_on_error(
+        code=encountered_error_code,
+        temp_path=temp_path,
+    )
 
     # Cleanup temp file if any (shouldn't be needed except on errors)
     if temp_path and temp_path.exists():

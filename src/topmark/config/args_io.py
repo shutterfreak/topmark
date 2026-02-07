@@ -33,7 +33,7 @@ from topmark.config.logging import get_logger
 if TYPE_CHECKING:
     from topmark.config.logging import TopmarkLogger
     from topmark.config.types import ArgsLike
-    from topmark.core.diagnostics import DiagnosticLog
+    from topmark.diagnostic.model import DiagnosticLog
 
 E = TypeVar("E", bound=Enum)
 
@@ -132,13 +132,13 @@ def get_arg_string_list_checked(
         - Mixed list -> drop non-strings with warning per dropped item
 
     Args:
-        args (ArgsLike): TOML table to query.
-        key (str): Key to extract.
-        diagnostics (DiagnosticLog): DiagnosticLog to record warnings.
-        logger (TopmarkLogger): Logger for emitting warnings.
+        args: TOML table to query.
+        key: Key to extract.
+        diagnostics: DiagnosticLog to record warnings.
+        logger: Logger for emitting warnings.
 
     Returns:
-        list[str]: Filtered list containing only string entries.
+        Filtered list containing only string entries.
     """
     vals_any: object | None = args.get(key)
     if vals_any is None:

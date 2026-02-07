@@ -23,7 +23,7 @@ import tomlkit
 
 from topmark.config.io import get_string_list_value_checked, nest_toml_under_section
 from topmark.config.logging import TopmarkLogger, get_logger
-from topmark.core.diagnostics import DiagnosticLog
+from topmark.diagnostic.model import DiagnosticLog
 
 if TYPE_CHECKING:
     import pytest

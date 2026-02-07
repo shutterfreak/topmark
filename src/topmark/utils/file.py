@@ -8,7 +8,7 @@
 #
 # topmark:header:end
 
-"""Header manager utilities for TopMark."""
+"""File utilities for TopMark."""
 
 from __future__ import annotations
 
@@ -24,11 +24,11 @@ def compute_relpath(file_path: Path, root_path: Path) -> Path:
     """Compute the relative path from root_path to file_path.
 
     Args:
-        file_path (Path): The file path to compute the relative path for.
-        root_path (Path): The root path to compute the relative path from.
+        file_path: The file path to compute the relative path for.
+        root_path: The root path to compute the relative path from.
 
     Returns:
-        Path: The relative path from root_path to file_path.
+        The relative path from root_path to file_path.
     """
     # Ensure the file_path is resolved to its absolute path
     resolved_path: Path = file_path.resolve()
@@ -42,3 +42,19 @@ def compute_relpath(file_path: Path, root_path: Path) -> Path:
     except ValueError:
         # Not a direct subpath — safe fallback using os.path.relpath
         return Path(os.path.relpath(resolved_path, start=resolved_root))
+
+
+def safe_unlink(path: Path | None) -> None:
+    """Attempt to delete a file, ignoring any errors.
+
+    Args:
+        path: Path to delete, or None (no-op).
+
+    Notes:
+        - Any errors during deletion are logged and ignored.
+    """
+    if path and path.exists():
+        try:
+            path.unlink()
+        except OSError as e:
+            logger.error("Failed to delete %s: %s", path, e)

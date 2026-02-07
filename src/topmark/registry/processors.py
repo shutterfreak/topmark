@@ -151,7 +151,7 @@ class HeaderProcessorRegistry:
         """Return all registered header processor names (sorted).
 
         Returns:
-            tuple[str, ...]: Sorted processor names.
+            Sorted processor names.
         """
         with cls._lock:
             return tuple(sorted(cls._compose().keys()))
@@ -167,10 +167,10 @@ class HeaderProcessorRegistry:
         """Return a header processor by name.
 
         Args:
-            name (str): Registered processor name.
+            name: Registered processor name.
 
         Returns:
-            HeaderProcessor | None: The processor if found, else None.
+            The processor if found, else None.
         """
         with cls._lock:
             return cls._compose().get(name)
@@ -180,7 +180,7 @@ class HeaderProcessorRegistry:
         """Return a read-only mapping of header processors.
 
         Returns:
-            Mapping[str, HeaderProcessor]: Name -> HeaderProcessor mapping.
+            MApping of name to `HeaderProcessor`.
 
         Notes:
             The returned mapping is a `MappingProxyType` and must not be mutated.
@@ -202,7 +202,7 @@ class HeaderProcessorRegistry:
         """Iterate over stable metadata for registered processors.
 
         Yields:
-            ProcessorMeta: Serializable metadata about each processor.
+            Serializable `ProcessorMeta` metadata about each processor.
         """
         with cls._lock:
             for name, proc in cls._compose().items():
@@ -225,8 +225,8 @@ class HeaderProcessorRegistry:
         """Register a header processor under a file type name.
 
         Args:
-            name (str): File type name under which the processor appears in the registry.
-            processor_class (type[HeaderProcessor]): A `HeaderProcessor` class. It will be
+            name: File type name under which the processor appears in the registry.
+            processor_class: A `HeaderProcessor` class. It will be
                 instantiated with no arguments and bound to the file type.
 
         Raises:
@@ -265,10 +265,10 @@ class HeaderProcessorRegistry:
         """Unregister a header processor by name.
 
         Args:
-            name (str): Registered processor name.
+            name: Registered processor name.
 
         Returns:
-            bool: True if removed, else False.
+            True if removed, else False.
 
         Notes:
             - This mutates global registry state.

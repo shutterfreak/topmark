@@ -9,10 +9,10 @@
 # topmark:header:end
 
 .PHONY: \
-	check-venv check-lychee \
+	check-venv check-lychee check-uv \
 	help \
 	test verify lint lint-fixall \
-	format-check format docstring-links \
+	format-check format format-docstrings docstring-links \
 	pytest pytest-full \
 	property-test \
 	docs-build docs-serve docs-clean \
@@ -31,6 +31,7 @@ PYTEST_PAR ?= # e.g. set PYTEST_PAR="-n auto" or "-n 4"
 PY ?= python
 VENV := .venv
 VENV_BIN := $(VENV)/bin
+UV := $(VENV_BIN)/uv
 
 PUBLIC_API_JSON := tests/api/public_api_snapshot.json
 
@@ -40,6 +41,9 @@ check-venv:
 
 check-lychee:
 	@command -v lychee >/dev/null 2>&1 || (echo "❌ lychee not found. Install with: brew install lychee" && exit 1)
+
+check-uv:
+	@test -f $(UV) || (echo "❌ uv not found in venv. Run 'make venv' first." && exit 1)
 
 help:
 	@echo "Usage: make <target>"
@@ -53,6 +57,7 @@ help:
 	@echo "  lint-fixall     Run ruff with --fix (auto-fix lint issues)"
 	@echo "  format-check    Check code/markdown/toml/Makefile formatting"
 	@echo "  format          Format code/markdown/toml/Makefile (auto-fix)"
+	@echo "  format-docstrings  Auto-format docstrings using pydocstringformatter"
 	@echo "  docstring-links Enforce docstring link style (tools/check_docstring_links.py)"
 	@echo "  property-test   Run Hypothesis hardening tests (manual, opt-in)"
 	@echo ""
@@ -78,13 +83,13 @@ help:
 	@echo "  api-snapshot-ensure-clean  Fail if snapshot differs from Git index"
 	@echo ""
 	@echo "Local editor venv (optional, for Pyright/import resolution in IDE):"
-	@echo "  venv            Create .venv with lock tooling (pip-tools)"
-	@echo "  venv-sync-dev   pip-sync requirements-dev.txt into .venv"
-	@echo "  venv-sync-dev-docs   pip-sync requirements-dev.txt and requirements-docs.txt into .venv"
-	@echo "  venv-sync-docs  pip-sync requirements-docs.txt into .venv (removes DEV-only packages from .venv)"
+	@echo "  venv            Create .venv with lock tooling (uv)"
+	@echo "  venv-sync-dev   Sync requirements-dev.txt into .venv"
+	@echo "  venv-sync-dev-docs   Sync requirements-dev.txt and requirements-docs.txt into .venv"
+	@echo "  venv-sync-docs  Sync requirements-docs.txt into .venv (removes DEV-only packages from .venv)"
 	@echo "  venv-clean      Remove .venv"
 	@echo ""
-	@echo "Lock management (pip-compile; run manually when you choose to refresh pins):"
+	@echo "Lock management (uv pip compile; run manually when you choose to refresh pins):"
 	@echo "  lock-compile-prod     requirements.in  -> requirements.txt"
 	@echo "  lock-compile-dev      requirements-dev.in -> requirements-dev.txt"
 	@echo "  lock-compile-docs     requirements-docs.in -> requirements-docs.txt"
@@ -148,16 +153,20 @@ format-check: check-venv
 format: check-venv
 	$(NOX) $(NOX_FLAGS) -s format
 
+format-docstrings: check-uv
+	@echo "Auto-formatting docstrings (settings from pyproject.toml)..."
+	$(VENV_BIN)/pydocstringformatter --write src/topmark/ tools/
+
 docstring-links: check-venv
 	$(NOX) $(NOX_FLAGS) -s docstring_links
 
 # Run pytest directly (no nox) with the current interpreter
 pytest:
-	@echo "Running pytest locally -- skipping slow tests
+	@echo "Running pytest locally -- skipping slow tests"
 	pytest $(PYTEST_PAR) -m "not slow and not hypothesis_slow" -q
 
 pytest-full:
-	@echo "Running all pytest locally -- including slow tests
+	@echo "Running all pytest locally -- including slow tests"
 	pytest $(PYTEST_PAR) -q
 
 property-test: check-venv
@@ -219,63 +228,63 @@ api-snapshot-ensure-clean: check-venv
 
 # ---- Optional local convenience venv for editor / pyright (nox still runs checks) ----
 
-# NOTE: Do NOT auto-upgrade pip here. New pip releases occasionally break pip-tools.
-# The lock toolchain is managed via the project's `.[lock]` extra instead.
+# We use uv for everything now as it is immune to pip internal breakages.
 venv:
 	@test -d $(VENV) || ( \
 		echo "Creating $(VENV)..." && \
 		$(PY) -m venv $(VENV) && \
-		$(VENV_BIN)/pip install -e ".[lock]" \
+		$(VENV_BIN)/pip install uv && \
+		$(UV) pip install -e ".[lock]" \
 		)
 	@echo "Activate with: source $(VENV_BIN)/activate"
 
 venv-sync-dev: venv
-	$(VENV_BIN)/pip-sync requirements-dev.txt
+	$(UV) pip sync requirements-dev.txt
 	@echo "Synced dev deps into $(VENV)."
 
 # Sync docs-only deps into the shared venv.
-# NOTE: pip-sync enforces an exact set of packages; running this will remove dev-only tools
-# not present in requirements-docs.txt. Prefer venv-sync-dev-docs for a combined environment.
+# NOTE:running this will remove dev-only tools which are not present in requirements-docs.txt.
+# Prefer venv-sync-dev-docs for a combined environment.
 venv-sync-docs: venv
-	$(VENV_BIN)/pip-sync requirements-docs.txt
+	$(UV) pip sync requirements-docs.txt
 	@echo "Synced docs deps into $(VENV)."
 
 # Sync the UNION of dev + docs deps into the shared venv.
 # This is the recommended target for local MkDocs development and VS Code import resolution.
 venv-sync-dev-docs: venv
-	$(VENV_BIN)/pip-sync requirements-dev.txt requirements-docs.txt
+	$(UV) pip sync requirements-dev.txt requirements-docs.txt
 	@echo "Synced dev+docs deps into $(VENV)."
 
 venv-clean:
 	@rm -rf $(VENV)
 	@echo "Removed $(VENV)."
 
-# ---- Lock management (pins). These do NOT affect nox; nox uses the compiled locks. ----
-lock-compile-prod: venv
-	$(VENV_BIN)/pip-compile -q -c constraints.txt --strip-extras requirements.in
+# ---- Lock management (pins) using UV. These do NOT affect nox; nox uses the compiled locks. ----
+lock-compile-prod: check-uv
+	$(UV) pip compile -q -c constraints.txt requirements.in -o requirements.txt
 
-lock-compile-dev: venv
-	$(VENV_BIN)/pip-compile -q -c constraints.txt --strip-extras requirements-dev.in
+lock-compile-dev: check-uv
+	$(UV) pip compile -q -c constraints.txt requirements-dev.in -o requirements-dev.txt
 
-lock-compile-docs: venv
-	$(VENV_BIN)/pip-compile -q -c constraints.txt --strip-extras requirements-docs.in
+lock-compile-docs: check-uv
+	$(UV) pip compile -q -c constraints.txt requirements-docs.in -o requirements-docs.txt
 
 # (Preview) dry-run upgrade helpers — show solver changes without writing files
-lock-dry-run-prod: venv
-	$(VENV_BIN)/pip-compile -U -c constraints.txt --strip-extras --dry-run requirements.in
+lock-dry-run-prod: check-uv
+	$(UV) pip compile -U -c constraints.txt requirements.in --dry-run
 
-lock-dry-run-dev: venv
-	$(VENV_BIN)/pip-compile -U -c constraints.txt --strip-extras --dry-run requirements-dev.in
+lock-dry-run-dev: check-uv
+	$(UV) pip compile -U -c constraints.txt requirements-dev.in --dry-run
 
-lock-dry-run-docs: venv
-	$(VENV_BIN)/pip-compile -U -c constraints.txt --strip-extras --dry-run requirements-docs.in
+lock-dry-run-docs: check-uv
+	$(UV) pip compile -U -c constraints.txt requirements-docs.in --dry-run
 
 # Upgrade helpers — write solver changes to files:
-lock-upgrade-prod: venv
-	$(VENV_BIN)/pip-compile -U -c constraints.txt --strip-extras requirements.in
+lock-upgrade-prod: check-uv
+	$(UV) pip compile -U -c constraints.txt requirements.in -o requirements.txt
 
-lock-upgrade-dev: venv
-	$(VENV_BIN)/pip-compile -U -c constraints.txt --strip-extras requirements-dev.in
+lock-upgrade-dev: check-uv
+	$(UV) pip compile -U -c constraints.txt requirements-dev.in -o requirements-dev.txt
 
-lock-upgrade-docs: venv
-	$(VENV_BIN)/pip-compile -U -c constraints.txt --strip-extras requirements-docs.in
+lock-upgrade-docs: check-uv
+	$(UV) pip compile -U -c constraints.txt requirements-docs.in -o requirements-docs.txt

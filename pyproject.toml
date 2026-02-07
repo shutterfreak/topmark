@@ -13,7 +13,7 @@ name = "topmark"
 version = "0.12.0.dev4" # PEP 440: "X.Y.Z.devN", "X.Y.ZrcN", or "X.Y.Z"
 description = "A Python CLI to inspect, validate, and manage license and copyright headers."
 authors = [{ name = "Olivier Biot", email = "olivier.biot@gmail.com" }]
-license = "MIT"
+license = { text = "MIT" }
 readme = "README.md"
 dependencies = [
   # Git-style pattern matching used for file inclusion/exclusion
@@ -85,6 +85,8 @@ dev = [
   "typing-extensions>=4.15.0,<5.0.0",
   # Formatting and linting for Makefile:
   "mbake>=1.4.3,<2.0.0",
+  # Formatter for docstrings (handles content-specific formatting):
+  "pydocstringformatter>=0.7.3,<1.0.0",
 ]
 docs = [
   # Static site generator core:
@@ -107,6 +109,8 @@ docs = [
   "ruff>=0.14.5,<0.16.0",
   # Add deprecation annotations:
   "typing-extensions>=4.15.0,<5.0.0",
+  # Formatter for docstrings (handles content-specific formatting):
+  "pydocstringformatter>=0.7.3,<1.0.0",
 ]
 test = [
   # Unit testing framework:
@@ -258,17 +262,33 @@ required-imports = ["from __future__ import annotations"]
 [tool.pydoclint]
 style = "google"
 
-# Additional semantic checks (tune to your needs)
-arg-type-hints-in-docstring = true
+exclude = '\.venv|tests|build|dist' # Regex for paths to skip
+
+# Be pedantic about the style
+allow-init-docstring = false
+
+# Types are already present in method signatures so don't re-add them in docstrings
+arg-type-hints-in-docstring = false
+check-return-types = false
+check-yield-types = false
+
 check-arg-order = true
+
 check-raises = true
-check-return-types = true
 require-return-section = true
 require-yields-section = false
 
 # You can also disable whole families of rules if needed
 # ignore = ["DOC501", "DOC502"]  # example
 
+[tool.pydocstringformatter]
+style = "pep257"
+exclude = ["tests/**"]
+# Specific fixers to ensure internal consistency
+beginning-quotes = true
+closing-quotes = true
+capitalize-first-letter = true
+final-period = true
 
 # Pre-commit configuration
 # Coordinates with VS Code settings to ensure consistent formatting and linting across environments

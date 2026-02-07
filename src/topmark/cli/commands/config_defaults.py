@@ -23,14 +23,17 @@ import click
 
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cmd_common import get_effective_verbosity
+from topmark.cli.emitters import emit_toml_block
 from topmark.cli.keys import CliCmd, CliOpt
-from topmark.cli.utils import emit_config_machine, render_toml_block
-from topmark.cli_shared.utils import OutputFormat
+from topmark.cli.machine_emitters import emit_config_machine
+from topmark.cli.options import underscored_trap_option
 from topmark.config import MutableConfig
+from topmark.core.formats import OutputFormat, is_machine_format
 from topmark.core.keys import ArgKey
 
 if TYPE_CHECKING:
     from topmark.cli_shared.console_api import ConsoleLike
+    from topmark.core.machine.schemas import MetaPayload
 
 
 @click.command(
@@ -44,6 +47,7 @@ if TYPE_CHECKING:
     default=None,
     help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
 )
+@underscored_trap_option("--output_format")
 def config_defaults_command(
     output_format: OutputFormat | None,
 ) -> None:
@@ -57,7 +61,7 @@ def config_defaults_command(
           (no diagnostics).
 
     Args:
-        output_format (OutputFormat | None): Output format to use
+        output_format: Output format to use
             (``default``, ``markdown``, ``json``, or ``ndjson``).
 
     Raises:
@@ -65,7 +69,15 @@ def config_defaults_command(
     """
     ctx: click.Context = click.get_current_context()
     ctx.ensure_object(dict)
-    console: ConsoleLike = ctx.obj["console"]
+
+    # Machine metadata
+    meta: MetaPayload = ctx.obj[ArgKey.META]
+
+    if output_format and is_machine_format(output_format):
+        # Disable color mode for machine formats
+        ctx.obj[ArgKey.COLOR_ENABLED] = False
+
+    console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
 
     fmt: OutputFormat = output_format or OutputFormat.DEFAULT
 
@@ -75,7 +87,7 @@ def config_defaults_command(
     toml_text: str = MutableConfig.to_cleaned_toml(MutableConfig.get_default_config_toml())
 
     if fmt == OutputFormat.DEFAULT:
-        render_toml_block(
+        emit_toml_block(
             console=console,
             title="Default TopMark Configuration (TOML):",
             toml_text=toml_text,
@@ -92,7 +104,11 @@ def config_defaults_command(
 
     elif fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         # Machine-readable formats: emit JSON/NDJSON without human banners
-        emit_config_machine(MutableConfig.from_defaults().freeze(), fmt=fmt)
+        emit_config_machine(
+            meta=meta,
+            config=MutableConfig.from_defaults().freeze(),
+            fmt=fmt,
+        )
 
     else:
         # Defensive guard in case OutputFormat gains new members

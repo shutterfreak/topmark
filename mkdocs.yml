@@ -8,12 +8,19 @@
 #
 # topmark:header:end
 
-# Make broken internal links fail the build
+# --- Build Behavior ---
+
+# Force the build to fail if there are any broken internal links or configuration errors.
+# Essential for CI/CD to ensure documentation quality.
 strict: true
 validation:
   links:
-    # Treat absolute links to docs pages as relative to the docs root
+    # Ensures absolute links (starting with /) are treated as relative to the docs root,
+    # preventing broken links when hosted on subpaths like ReadTheDocs.
     absolute_links: relative_to_docs
+
+# --- Project Metadata ---
+
 site_name: TopMark
 site_description: A tool to inspect, validate, and manage file headers in codebases.
 site_author: Olivier Biot
@@ -22,51 +29,87 @@ site_url: https://topmark.readthedocs.io/
 repo_name: shutterfreak/topmark
 repo_url: https://github.com/shutterfreak/topmark
 edit_uri: edit/main/docs/
+
+# --- Content Filtering ---
+
+# Snippets are partial files included via 'include-markdown'; they shouldn't be rendered as standalone pages.
 exclude_docs: |
   _snippets/*
   _snippets/**
+
+# Folders for content still under construction.
 draft_docs: |
   _drafts/
+
+# --- Theme Configuration ---
+
 theme:
   name: material
   language: en
   logo: assets/topmark-logo.png
   favicon: assets/favicon.ico
   features:
+    # Loads pages via AJAX for a smoother, faster experience:
     - navigation.instant
+    # Groups navigation items into sections for better hierarchy:
     - navigation.sections
+    # Adds a 'copy to clipboard' button to all code blocks:
     - content.code.copy
+    # Shows completion suggestions in the search bar:
     - search.suggest
+    # Highlights search terms on the target page:
     - search.highlight
+    # Adds a 'back to top' button:
     - navigation.top
+    # Updates the URL fragment as the user scrolls:
     - navigation.tracking
+
+# --- Markdown Extensions ---
+
 markdown_extensions:
-  # Allow Markdown inside raw HTML (needed for <div markdown="1"> wrappers)
+  # Enables Markdown processing inside raw HTML blocks (e.g. <div markdown="1">).
   - md_in_html
-  # TOC & classic admonitions (kept for !!! note/... syntax)
+
+  # Table of Contents configuration.
   - toc:
-      permalink: true
+      permalink: true # Adds clickable anchor links next to every header
+
+  # Support for !!! note "Title" style callouts.
   - admonition
+
+  # Support for collapsible content blocks (details/summary).
   - pymdownx.details
   - pymdownx.blocks.details
+
+  # High-level control over code blocks and diagrams.
   - pymdownx.superfences:
       custom_fences:
+        # Mermaid.js integration: intercepts ```mermaid blocks and renders diagrams.
+        - name: mermaid
+          class: mermaid
+          format: pymdownx.superfences.fence_mermaid_format
+
+        # Generic flow diagram support (styled like standard code blocks).
         - name: flow
           class: highlight
-          # The function reference must be aligned with 'name' and 'class'
           format: pymdownx.superfences.fence_code_format
+
+  # Advanced syntax highlighting.
   - pymdownx.highlight
+
+# --- Plugins ---
+
 plugins:
-  # 1) Generate pages first so other plugins can process them.
+  # 1) Programmatic page generation (e.g. API reference from source code).
   - gen-files:
       scripts:
         - tools/docs/gen_api_pages.py
 
-  # 2) include-markdown expands snippets into the page Markdown.
+  # 2) Allows including external Markdown files into pages.
   - include-markdown:
       rewrite_relative_urls: true
 
-  # 3) mkdocstrings expands ::: blocks (docstrings)
+  # 3) Automatic API documentation from Python docstrings.
   - mkdocstrings:
       default_handler: python
       handlers:
@@ -83,20 +126,28 @@ plugins:
             show_if_no_docstring: false
             merge_init_into_class: true
             filters:
-              - "!^_" # hide “private” members
-              - "!^__" # hide dunder members like __init__
+              # hide “private” members
+              - "!^_"
+              # hide dunder members like __init__
+              - "!^__"
 
-  # 4) Custom Markdown normalization after mkdocstrings (so it can fix docstring output too)
+  # 4) Provides lifecycle hooks to run custom Python logic during the build.
   - mkdocs-simple-hooks:
       hooks:
-        # Ensure the version is loaded before the build starts:
+        # Setup tasks (e.g. version loading):
         on_pre_build: "tools.docs.hooks:pre_build"
-        # Process on-page markdown:
+        # Regex/text replacements on pages:
         on_page_markdown: "tools.docs.hooks:on_page_markdown"
+        # Cleanup or reporting:
         on_post_build: "tools.docs.hooks:post_build"
 
+  # Enables cross-referencing between different documentation sets.
   - autorefs
+
+  # Search engine plugin.
   - search
+
+# --- Site Navigation ---
 
 nav:
   - Home: index.md
@@ -106,6 +157,7 @@ nav:
           - "check": usage/commands/check.md
           - "strip": usage/commands/strip.md
           - "config": usage/commands/config.md
+          - "config check": usage/commands/config_check.md
           - "config dump": usage/commands/config_dump.md
           - "config defaults": usage/commands/config_defaults.md
           - "config init": usage/commands/config_init.md
@@ -138,9 +190,16 @@ nav:
       - "Pipelines (reference hub)": dev/pipelines-reference.md
       - "API Stability": dev/api-stability.md
       - "Machine output": dev/machine-output.md
+      - "Machine formats": dev/machine-formats.md
       - "Documentation Pipeline & Reference Hygiene": dev/documentation-pipeline.md
+
+# --- Development Server ---
+
+# Directories to monitor for live-reloading during 'mkdocs serve'.
 watch:
   - src
   - docs
+
+# Custom JS to inject into the footer (e.g. for dynamic banners).
 extra_javascript:
   - assets/version-warning.js

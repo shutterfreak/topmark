@@ -11,7 +11,7 @@
 """CLI-oriented outcome helpers.
 
 This module layers terminal presentation concerns (ANSI coloring) on top of the
-pure bucketing logic in `topmark.pipeline.outcomes`.
+pure bucketing logic in [`topmark.pipeline.outcomes`][topmark.pipeline.outcomes].
 
 It is Click-free by design, so it can be reused from tests and other frontends.
 """
@@ -55,10 +55,10 @@ def _outcome_color(outcome: Outcome) -> FormatCallable:
     """Return the formatter used to colorize a given outcome.
 
     Args:
-        outcome (Outcome): The Outcome.
+        outcome: The Outcome.
 
     Returns:
-        FormatCallable: The matching `FormatCallable` for the given `Outcome`.
+        The matching `FormatCallable` for the given `Outcome`.
     """
     return _OUTCOME_COLOR[outcome]
 
@@ -67,10 +67,10 @@ def _outcome_from_value(value: str) -> Outcome | None:
     """Return the matching Outcome member, or None if not found.
 
     Args:
-        value (str): The Outome value to look for.
+        value: The Outome value to look for.
 
     Returns:
-        Outcome | None: The matching `Outcome` or `None` if no match.
+        The matching `Outcome` or `None` if no match.
     """
     try:
         result = Outcome(value)
@@ -89,11 +89,10 @@ def collect_outcome_counts_colored(
     Keeps the first-seen label and color for each key.
 
     Args:
-        results (list[ProcessingContext]): Processing contexts to classify and count.
+        results: Processing contexts to classify and count.
 
     Returns:
-        dict[str, tuple[int, str, Callable[[str], str]]]: Mapping from classification
-            key to ``(count, label, color_fn)``.
+        Mapping from classification key to ``(count, label, color_fn)``.
     """
     counts: dict[str, tuple[int, str]] = collect_outcome_counts(results)
     colored_counts: dict[str, tuple[int, str, Callable[[str], str]]] = {

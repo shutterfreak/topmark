@@ -138,10 +138,10 @@ class FileTypeRegistry:
         """Return a file type by name.
 
         Args:
-            name (str): Registered file type name.
+            name: Registered file type name.
 
         Returns:
-            FileType | None: The `FileType` object if found, else None.
+            The `FileType` object if found, else None.
         """
         with cls._lock:
             return cls._compose().get(name)
@@ -173,7 +173,7 @@ class FileTypeRegistry:
         """Iterate over stable metadata for registered file types.
 
         Yields:
-            FileTypeMeta: Serializable metadata about each file type.
+            Serializable `FileTypeMeta` metadata about each file type.
         """
         with cls._lock:
             for name, ft in cls._compose().items():
@@ -199,8 +199,8 @@ class FileTypeRegistry:
         """Register a new file type, and optionally attach a header processor.
 
         Args:
-            ft_obj (FileType): A `FileType` with a unique, non-empty `.name`.
-            processor (type[HeaderProcessor] | None): Optional `HeaderProcessor` instance or class
+            ft_obj: A `FileType` with a unique, non-empty `.name`.
+            processor: Optional `HeaderProcessor` instance or class
                 to register for this file type. If provided, the processor will be registered and
                 bound to this file type.
 
@@ -238,10 +238,10 @@ class FileTypeRegistry:
         """Unregister a file type by name.
 
         Args:
-            name (str): Registered file type name.
+            name: Registered file type name.
 
         Returns:
-            bool: `True` if the entry existed and was removed, else `False`.
+            `True` if the entry existed and was removed, else `False`.
 
         Notes:
             - This mutates global registry state.
