@@ -64,8 +64,8 @@ def test_insert_strip_idempotent_roundtrip(
     within reasonable bounds of the original content size.
 
     Args:
-        tmp_path_factory (TempPathFactory): Factory to create temporary directories for testing.
-        sample (tuple[str, object, str, str]): A tuple containing:
+        tmp_path_factory: Factory to create temporary directories for testing.
+        sample: A tuple containing:
             - The original file content as a string.
             - The style object (not used in this test).
             - The line ending style as a string (e.g., "\n", "\r\n").

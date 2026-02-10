@@ -14,9 +14,8 @@ Includes markup, stylesheets, vector graphics, and browser/Node-oriented
 languages and frameworks.
 
 Exports:
-    FILETYPES (list[FileType]): Concrete definitions for HTML, XML, XHTML,
-        XSL/XSLT, SVG, JavaScript, TypeScript, CSS, Less, SCSS, Stylus, Vue,
-        and Svelte.
+    FILETYPES: Concrete definitions for HTML, XML, XHTML, XSL/XSLT, SVG, JavaScript, TypeScript,
+        CSS, Less, SCSS, Stylus, Vue, and Svelte.
 
 Notes:
     - JavaScript/TypeScript allow shebangs for Node.js executables (``#!/usr/bin/env node``).

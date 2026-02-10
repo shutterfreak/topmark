@@ -112,10 +112,10 @@ class ReaderStep(BaseStep):
             permissions, binary/text, etc).
 
         Args:
-            ctx (ProcessingContext): The processing context for the current file.
+            ctx: The processing context for the current file.
 
         Returns:
-            bool: True if processing can proceed to the read step, False otherwise.
+            True if processing can proceed to the read step, False otherwise.
         """
         if ctx.is_halted:  # noqa: SIM103
             # SnifferStep already flagged FsStatus statuses which halt processng
@@ -131,18 +131,18 @@ class ReaderStep(BaseStep):
         permission, binary, BOM/shebang, and mixed-newlines policy checks.
 
         Args:
-            ctx (ProcessingContext): The processing context for the current file.
+            ctx: The processing context for the current file.
 
         Raises:
             RuntimeError: If header processor or file type are not defined.
 
         Notes:
             - Assumes `sniffer.sniff()` has already handled existence, permissions,
-            binary detection, BOM/shebang ordering policy, and mixed-newlines policy.
+              binary detection, BOM/shebang ordering policy, and mixed-newlines policy.
             - Sets `ctx.views.image = ListFileImageView(lines)` (preserving original line endings),
-            provides streaming access through `ctx.iter_file_lines()`, and records
-            `ctx.ends_with_newline`, a precise newline histogram in `ctx.newline_hist`,
-            and the dominant newline style in `ctx.newline_style`.
+              provides streaming access through `ctx.iter_file_lines()`, and records
+              `ctx.ends_with_newline`, a precise newline histogram in `ctx.newline_hist`,
+              and the dominant newline style in `ctx.newline_style`.
         """
         logger.debug("ctx: %s", ctx)
 
@@ -369,7 +369,7 @@ class ReaderStep(BaseStep):
         """Attach content outcome hints (non-binding).
 
         Args:
-            ctx (ProcessingContext): The processing context.
+            ctx: The processing context.
         """
         st: ContentStatus = ctx.status.content
 

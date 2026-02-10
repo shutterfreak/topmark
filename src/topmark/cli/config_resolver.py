@@ -80,31 +80,31 @@ def resolve_config_from_click(
       5. **CLI overrides** (flags/args), applied last.
 
     Args:
-        ctx (click.Context): Click context that provides the resolved log level.
-        verbosity_level (int | None): Program-output verbosity (0=terse, 1=verbose);
+        ctx: Click context that provides the resolved log level.
+        verbosity_level: Program-output verbosity (0=terse, 1=verbose);
             None = inherit from parent context.
-        apply_changes (bool | None): Whether to apply the changes (dry-run if not set or False).
-        write_mode (str | None): Whether to use safe atomic writing, faster in-place writing
+        apply_changes: Whether to apply the changes (dry-run if not set or False).
+        write_mode: Whether to use safe atomic writing, faster in-place writing
             or writing to STDOUT (default: atomic writer).
-        files (list[str]): File paths passed on the command line.
-        files_from (list[str]): Paths to files that contain lists of file paths.
-        stdin_mode (bool): Whether to read file contents from standard input.
-        stdin_filename (str | None): The filename to use when in STDIN mode.
-        include_patterns (list[str]): Glob patterns of files to include.
-        include_from (list[str]): Paths to files that contain include patterns.
-        exclude_patterns (list[str]): Glob patterns of files to exclude.
-        exclude_from (list[str]): Paths to files that contain exclude patterns.
-        include_file_types (list[str]): File type identifiers to restrict processing to.
-        exclude_file_types (list[str]): File type identifiers to exclude processing for.
-        relative_to (str | None): Root directory used to compute relative paths.
-        no_config (bool): If True, ignore local project config files.
-        config_paths (list[str]): Extra config TOML file paths to merge.
-        align_fields (bool | None): Whether to align header fields with colons.
-        header_format (HeaderOutputFormat | None): Selected header output format.
+        files: File paths passed on the command line.
+        files_from: Paths to files that contain lists of file paths.
+        stdin_mode: Whether to read file contents from standard input.
+        stdin_filename: The filename to use when in STDIN mode.
+        include_patterns: Glob patterns of files to include.
+        include_from: Paths to files that contain include patterns.
+        exclude_patterns: Glob patterns of files to exclude.
+        exclude_from: Paths to files that contain exclude patterns.
+        include_file_types: File type identifiers to restrict processing to.
+        exclude_file_types: File type identifiers to exclude processing for.
+        relative_to: Root directory used to compute relative paths.
+        no_config: If True, ignore local project config files.
+        config_paths: Extra config TOML file paths to merge.
+        align_fields: Whether to align header fields with colons.
+        header_format: Selected header output format.
 
     Returns:
-        MutableConfig: The merged configuration (mutable draft). Call `.freeze()`
-            to obtain the immutable `Config` snapshot used by the pipeline.
+        The merged configuration (mutable draft). Call `.freeze()` to obtain the immutable `Config`
+            snapshot used by the pipeline.
     """
     args: ArgsNamespace = build_args_namespace(
         verbosity_level=verbosity_level,

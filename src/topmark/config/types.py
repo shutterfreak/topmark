@@ -61,9 +61,9 @@ class PatternSource:
     contains relative patterns (e.g., a gitignore-style file).
 
     Attributes:
-        path (Path): Absolute path to the referenced file (e.g., ".gitignore").
-        base (Path): Absolute directory used as the matching base for the file's
-            patterns. Typically equals ``path.parent``.
+        path: Absolute path to the referenced file (e.g., ".gitignore").
+        base: Absolute directory used as the matching base for the file's patterns. Typically
+            equals ``path.parent``.
     """
 
     path: Path

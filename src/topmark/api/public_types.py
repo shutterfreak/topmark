@@ -84,11 +84,11 @@ class PublicPolicy(TypedDict, total=False):
     are optional; unspecified options inherit from project/default config.
 
     Keys:
-        add_only (bool): When `True`, allow only **insertion** of missing headers.
+        add_only: When `True`, allow only **insertion** of missing headers.
             Updates to existing headers are blocked.
-        update_only (bool): When `True`, allow only **updates** to existing headers.
+        update_only: When `True`, allow only **updates** to existing headers.
             Insertion of missing headers is blocked.
-        allow_header_in_empty_files (bool): Permit inserting a header in an otherwise
+        allow_header_in_empty_files: Permit inserting a header in an otherwise
             empty file (e.g., `__init__.py`).
 
     Notes:

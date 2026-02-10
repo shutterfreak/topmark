@@ -55,13 +55,13 @@ class StdinResult(NamedTuple):
     """Result of consuming STDIN for CLI commands that support it.
 
     Attributes:
-        mode (StdinMode): How STDIN was interpreted:
+        mode: How STDIN was interpreted:
               - "none": no STDIN was consumed (stdin is a TTY or empty)
               - "list": STDIN contained a list of paths (one per line)
               - "content": STDIN contained file content (written to a temp file)
-        paths (list[Path]): In "list" mode, the parsed paths. In "content", a single temp path.
-        temp_path (Path | None): The temp file created for "content" mode; otherwise None.
-        errors (list[str]): Non-fatal errors/warnings (strings) collected during processing.
+        paths: In "list" mode, the parsed paths. In "content", a single temp path.
+        temp_path: The temp file created for "content" mode; otherwise None.
+        errors: Non-fatal errors/warnings (strings) collected during processing.
     """
 
     mode: StdinMode
@@ -88,14 +88,13 @@ def consume_stdin(
     If STDIN is a TTY or empty, returns `mode == "none"`.
 
     Args:
-        expect (Literal["auto", "list", "content"]): Force interpretation of STDIN
-            ("list" or "content"), or "auto".
-        stdin_filename (str | None): Target filename to use when interpreting STDIN as file
-            content. If omitted in content mode, a default name is used.
-        encoding (str): Text encoding for reading and writing.
+        expect: Force interpretation of STDIN ("list" or "content"), or "auto".
+        stdin_filename: Target filename to use when interpreting STDIN as file content. If omitted
+            in content mode, a default name is used.
+        encoding: Text encoding for reading and writing.
 
     Returns:
-        StdinResult: struct describing what (if anything) was consumed.
+        A struct describing what (if anything) was consumed.
     """
     # If no data is piped, do nothing.
     if not sys.stdin or sys.stdin.isatty():
@@ -160,11 +159,11 @@ def merge_cli_paths_with_stdin(
     This keeps command bodies small and avoids subtle drift across subcommands.
 
     Args:
-        cli_paths (Iterable[str]): list of CLI-provided paths
-        stdin_result (StdinResult): result of consuming STDIN
+        cli_paths: list of CLI-provided paths
+        stdin_result: result of consuming STDIN
 
     Returns:
-        list[Path]: List of paths (merged with STDIN input)
+        List of paths (merged with STDIN input)
 
     Note:
         Do not use this to feed data for --files-from -, --include-from -, or --exclude-from -;
@@ -188,17 +187,17 @@ class InputPlan:
     """Normalized inputs for building a Config and file list.
 
     Attributes:
-        stdin_mode (bool): True when reading a single file’s *content* from STDIN via "-".
-        stdin_filename (str | None): The filename to use when in STDIN mode.
-        temp_path (Path | None): Temporary file path used in content-on-STDIN mode; None otherwise.
-        paths (list[str]): Positional PATH arguments after normalization
+        stdin_mode: True when reading a single file’s *content* from STDIN via "-".
+        stdin_filename: The filename to use when in STDIN mode.
+        temp_path: Temporary file path used in content-on-STDIN mode; None otherwise.
+        paths: Positional PATH arguments after normalization
             (and/or from --files-from -).
-        include_patterns (list[str]): Include glob patterns after merging CLI and include-from.
-        exclude_patterns (list[str]): Exclude glob patterns after merging CLI and exclude-from.
-        files_from (list[str]): File paths to read additional candidate paths from
+        include_patterns: Include glob patterns after merging CLI and include-from.
+        exclude_patterns: Exclude glob patterns after merging CLI and exclude-from.
+        files_from: File paths to read additional candidate paths from
             (no '-' sentinels).
-        include_from (list[str]): File paths to read include patterns from (no '-' sentinels).
-        exclude_from (list[str]): File paths to read exclude patterns from (no '-' sentinels).
+        include_from: File paths to read include patterns from (no '-' sentinels).
+        exclude_from: File paths to read exclude patterns from (no '-' sentinels).
     """
 
     stdin_mode: bool  # True if reading a single file’s content from STDIN ("-")
@@ -227,17 +226,14 @@ def plan_cli_inputs(
     """Normalize CLI args and STDIN into a plan, with strict guards.
 
     Args:
-        ctx (click.Context): Click context.
-        files_from (Iterable[str]): Iterable of files to read candidate paths from
-            (may include '-').
-        include_from (Iterable[str]): Iterable of files to read include patterns from
-            (may include '-').
-        exclude_from (Iterable[str]): Iterable of files to read exclude patterns from
-            (may include '-').
-        include_patterns (Iterable[str]): Iterable of include glob patterns.
-        exclude_patterns (Iterable[str]): Iterable of exclude glob patterns.
-        stdin_filename (str | None): Optional assumed filename when reading content from STDIN.
-        allow_empty_paths (bool): If True, do not raise an error if no paths are provided.
+        ctx: Click context.
+        files_from: Iterable of files to read candidate paths from (may include '-').
+        include_from: Iterable of files to read include patterns from (may include '-').
+        exclude_from: Iterable of files to read exclude patterns from (may include '-').
+        include_patterns: Iterable of include glob patterns.
+        exclude_patterns: Iterable of exclude glob patterns.
+        stdin_filename: Optional assumed filename when reading content from STDIN.
+        allow_empty_paths: If True, do not raise an error if no paths are provided.
             (Used for commands like dump-config that are file-agnostic.)
 
     Raises:
@@ -247,7 +243,7 @@ def plan_cli_inputs(
             - no input is provided (unless allow_empty_paths is True).
 
     Returns:
-        InputPlan: The normalized input plan for config and file discovery.
+        The normalized input plan for config and file discovery.
     """
     raw_args: list[str] = list(ctx.args)
 

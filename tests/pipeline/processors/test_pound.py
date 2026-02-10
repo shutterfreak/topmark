@@ -88,7 +88,7 @@ def test_pound_processor_detects_existing_header(tmp_path: Path) -> None:
     - The parsed header fields include the expected key-value pairs
 
     Args:
-        tmp_path (Path): pytest-provided temporary directory for test file creation.
+        tmp_path: pytest-provided temporary directory for test file creation.
     """
     file: Path = tmp_path / "example.py"
     file.write_text(
@@ -135,7 +135,7 @@ def test_pound_processor_missing_header(tmp_path: Path) -> None:
     set header range or fields.
 
     Args:
-        tmp_path (Path): Temporary path provided by pytest for test file creation.
+        tmp_path: Temporary path provided by pytest for test file creation.
     """
     path: Path = tmp_path / "no_header.py"
     path.write_text("#!/usr/bin/env python3\n\nprint('no header here')\n")
@@ -185,9 +185,9 @@ def test_pound_malformed_header_fields(
     it is not parsed and header status reflects the malformed state.
 
     Args:
-        tmp_path (Path): Temporary path provided by pytest for test file creation.
-        header_fields (str): Header fields for the test
-        expected_status (HeaderStatus): expected HeaderStatus value for the test
+        tmp_path: Temporary path provided by pytest for test file creation.
+        header_fields: Header fields for the test
+        expected_status: expected HeaderStatus value for the test
     """
     path: Path = tmp_path / "malformed.py"
     path.write_text(

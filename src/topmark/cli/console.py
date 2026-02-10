@@ -44,17 +44,15 @@ class ClickConsole(ConsoleLike):
     """Program-output console, independent from the logger.
 
     Args:
-        enable_color (bool): If True, enables ANSI color codes in the output.
-            Otherwise, all output is plain text.
-        out (TextIO | None): The text stream to use for standard output.
-            Defaults to `sys.stdout`.
-        err (TextIO | None): The text stream to use for error output.
-            Defaults to `sys.stderr`.
+        enable_color: If True, enables ANSI color codes in the output. Otherwise, all output is
+            plain text.
+        out: The text stream to use for standard output. Defaults to `sys.stdout`.
+        err: The text stream to use for error output. Defaults to `sys.stderr`.
 
     Attributes:
-        enable_color (bool): Whether to emit ANSI color codes.
-        out (TextIO | None): Stream for standard output (defaults to sys.stdout).
-        err (TextIO | None): Stream for error output (defaults to sys.stderr).
+        enable_color: Whether to emit ANSI color codes.
+        out: Stream for standard output (defaults to sys.stdout).
+        err: Stream for error output (defaults to sys.stderr).
     """
 
     enable_color: bool
@@ -76,8 +74,8 @@ class ClickConsole(ConsoleLike):
         """Write a message to stdout.
 
         Args:
-            text (str): Message text.
-            nl (bool): If True, append a newline.
+            text: Message text.
+            nl: If True, append a newline.
         """
         click.echo(text, nl=nl, file=self.out, color=self.enable_color)
 
@@ -85,8 +83,8 @@ class ClickConsole(ConsoleLike):
         """Write a warning message to stderr.
 
         Args:
-            text (str): Warning text.
-            nl (bool): If True, append a newline.
+            text: Warning text.
+            nl: If True, append a newline.
         """
         click.secho(text, nl=nl, file=self.err, color=self.enable_color, fg="yellow")
 
@@ -94,8 +92,8 @@ class ClickConsole(ConsoleLike):
         """Write an error message to stderr.
 
         Args:
-            text (str): Error text.
-            nl (bool): If True, append a newline.
+            text: Error text.
+            nl: If True, append a newline.
         """
         click.secho(text, nl=nl, file=self.err, color=self.enable_color, fg="bright_red")
 
@@ -103,12 +101,12 @@ class ClickConsole(ConsoleLike):
         """Return a styled string using click.style.
 
         Args:
-            text (str): Text to style.
-            **style_kwargs (Any): Subset of keyword arguments supported by click.style.
+            text: Text to style.
+            **style_kwargs: Subset of keyword arguments supported by click.style.
                 Expected keys are defined in the StyleKwargs TypedDict.
 
         Returns:
-            str: The styled text (or plain text if color is disabled).
+            The styled text (or plain text if color is disabled).
         """
         if not self.enable_color:
             return text

@@ -42,11 +42,11 @@ def is_pure_spacer(line: str, policy: FileTypeHeaderPolicy | None) -> bool:
     `blank_collapse_extra` may list extra chars to treat as blank in addition.
 
     Args:
-        line (str): The line to check.
-        policy (FileTypeHeaderPolicy | None): The policy to use, or None for defaults
+        line: The line to check.
+        policy: The policy to use, or None for defaults
 
     Returns:
-        bool: True if the line is blank per policy, else False.
+        True if the line is blank per policy, else False.
     """
     if line == "" or line in ("\n", "\r\n", "\r"):
         return True
@@ -88,16 +88,15 @@ def is_effectively_empty_body(
 ) -> bool:
     r"""Return True if the given ``lines`` are *effectively empty* per policy.
 
-    The body is considered empty when, after removing BOMs and line terminators,
-    all remaining characters are ignorable under the policy:
+    The body is considered empty when, after removing BOMs and line terminators, all remaining
+    characters are ignorable under the policy:
 
-      - STRICT (default): only spaces and tabs are ignorable; control characters
-        such as form-feed (\\x0c) are preserved.
+      - STRICT (default): only spaces and tabs are ignorable; control characters such as form-feed
+        (\\x0c) are preserved.
       - UNICODE: any Unicode whitespace is ignorable (akin to ``str.strip()``).
       - NONE: never treat non-empty content as empty.
 
-    ``blank_collapse_extra`` extends the ignorable set with project-specific
-    characters.
+    ``blank_collapse_extra`` extends the ignorable set with project-specific characters.
     """
     mode: BlankCollapseMode = (
         policy.blank_collapse_mode if policy is not None else BlankCollapseMode.STRICT

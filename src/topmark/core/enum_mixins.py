@@ -62,12 +62,12 @@ def enum_from_name(
     """Return the enum member for ``key_name`` from ``enum_cls.__members__``.
 
     Args:
-        enum_cls (type[_E]): The Enum class to search.
-        key_name (str | None): The member name (e.g., ``'OK'``). If ``None``, returns ``None``.
-        case_insensitive (bool): If True, lookup is performed with ``key_name.upper()``.
+        enum_cls: The Enum class to search.
+        key_name: The member name (e.g., ``'OK'``). If ``None``, returns ``None``.
+        case_insensitive: If True, lookup is performed with ``key_name.upper()``.
 
     Returns:
-        _E | None: The matching enum member, or ``None`` if not found.
+        The matching enum member, or ``None`` if not found.
 
     Notes:
         - This is a *name* lookup. If you want to match against values as well,
@@ -100,8 +100,8 @@ class EnumIntrospectionMixin:
         """Maximum length of the enum's ``.value`` strings.
 
         Returns:
-            int: The maximum length among all member ``.value`` strings of the
-            enum class that this member belongs to.
+            The maximum length among all member ``.value`` strings of the enum class that this
+            member belongs to.
         """
         # Pyright doesn't know 'self' is an Enum member; runtime guarantees it.
         return max(len(member.value) for member in type(self))  # type: ignore[attr-defined]
@@ -120,8 +120,8 @@ class KeyedStrEnum(str, Enum):
       - a human label (`.label`) and optional aliases for parsing
 
     Attributes:
-        label (str): Human-readable label for the member.
-        aliases (tuple[str, ...]): Alternative tokens accepted by `parse()`.
+        label: Human-readable label for the member.
+        aliases: Alternative tokens accepted by `parse()`.
 
     Example:
         class OutputTarget(KeyedStrEnum):
@@ -141,12 +141,12 @@ class KeyedStrEnum(str, Enum):
         """Create a new KeyedStrEnum member with key, label, and optional aliases.
 
         Args:
-            key (str): The stable machine key (stored as `.value`).
-            label (str): The human-readable label for the enum member.
-            aliases (Iterable[str]): Optional aliases for parsing. Defaults to empty.
+            key: The stable machine key (stored as `.value`).
+            label: The human-readable label for the enum member.
+            aliases: Optional aliases for parsing. Defaults to empty.
 
         Returns:
-            _KS: The newly created enum member.
+            The newly created enum member.
         """
         obj: _KS = str.__new__(cls, key)
         obj._value_ = key  # stable machine value

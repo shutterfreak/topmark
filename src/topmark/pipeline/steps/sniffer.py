@@ -70,13 +70,12 @@ def _count_newlines(buf: bytes, carry_cr: bool) -> tuple[_NLCounts, bool]:
     """Count newline sequences in a bytes buffer.
 
     Args:
-        buf (bytes): Byte chunk to inspect.
-        carry_cr (bool): Whether a CR from the previous chunk should be paired with the first LF.
+        buf: Byte chunk to inspect.
+        carry_cr: Whether a CR from the previous chunk should be paired with the first LF.
 
     Returns:
-        tuple[_NLCounts, bool]: A tuple of (_NLCounts, new_carry_cr) where new_carry_cr
-            indicates whether the last byte in this chunk was an unmatched CR that may pair
-            with an LF in the next chunk.
+        A tuple of (_NLCounts, new_carry_cr) where new_carry_cr indicates whether the last byte in
+        this chunk was an unmatched CR that may pair with an LF in the next chunk.
     """
     lf: int = 0
     crlf: int = 0
@@ -132,11 +131,10 @@ def inspect_bom_shebang(first_bytes: bytes) -> tuple[bool, bool, bool]:
     policy violation for the current file type.
 
     Args:
-        first_bytes (bytes): The first bytes of the file being inspected.
+        first_bytes: The first bytes of the file being inspected.
 
     Returns:
-        tuple[bool, bool, bool]: A tuple ``(has_bom, has_shebang,
-        shebang_after_bom)`` where:
+        A tuple ``(has_bom, has_shebang, shebang_after_bom)`` where:
 
         - ``has_bom`` is True when a UTF-8 BOM is present at the start.
         - ``has_shebang`` is True when a shebang is present either at byte 0
@@ -170,9 +168,8 @@ def _commit_newline_stats(ctx: ProcessingContext, counts: _NLCounts) -> None:
       present with a non-zero count.
 
     Args:
-        ctx (ProcessingContext): Processing context to update.
-        counts (_NLCounts): Aggregate LF/CRLF/CR counts for the sniffed
-            portion of the file.
+        ctx: Processing context to update.
+        counts: Aggregate LF/CRLF/CR counts for the sniffed portion of the file.
     """
     hist: dict[str, int] = {}
     if counts.lf:
@@ -216,14 +213,13 @@ def _sniff_stream(ctx: ProcessingContext) -> FsStatus | None:
     `BOM_BEFORE_SHEBANG`, or `MIXED_LINE_ENDINGS`, together with diagnostics.
 
     Args:
-        ctx (ProcessingContext): ProcessingContext for the current file.
+        ctx: ProcessingContext for the current file.
 
     Returns:
-        FsStatus | None: A terminal FsStatus value (e.g. BINARY,
-        BOM_BEFORE_SHEBANG, UNICODE_DECODE_ERROR, MIXED_LINE_ENDINGS)
-        when sniffing has decided a final filesystem outcome and the caller
-        should stop further processing in run(). Returns None when no
-        terminal status was set and the caller may mark the filesystem as OK.
+        A terminal FsStatus value (e.g. BINARY, BOM_BEFORE_SHEBANG, UNICODE_DECODE_ERROR,
+        MIXED_LINE_ENDINGS) when sniffing has decided a final filesystem outcome and the caller
+        should stop further processing in run(). Returns None when no terminal status was set and
+        the caller may mark the filesystem as OK.
     """
     with ctx.path.open("rb") as bf:
         prefix: bytes = bf.read(4096)
@@ -362,11 +358,11 @@ class SnifferStep(BaseStep):
             permissions, binary/text, etc).
 
         Args:
-            ctx (ProcessingContext): The processing context for the current file.
+            ctx: The processing context for the current file.
 
         Returns:
-            bool: True if `ctx.status.resolve == RESOLVED`, `ctx.file_type` and
-                `ctx.header_processor` are set.
+            True if `ctx.status.resolve == RESOLVED`, `ctx.file_type` and `ctx.header_processor`
+            are set.
         """
         if ctx.is_halted:
             return False
@@ -487,7 +483,7 @@ class SnifferStep(BaseStep):
         """Attach sniff outcome hints (non-binding).
 
         Args:
-            ctx (ProcessingContext): The processing context.
+            ctx: The processing context.
         """
         st: FsStatus = ctx.status.fs
 

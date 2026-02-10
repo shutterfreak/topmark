@@ -14,12 +14,11 @@ Groups classic C-family and similar languages that typically use ``//`` and
 ``/* ... */`` comments and do not require shebang handling.
 
 Exports:
-    FILETYPES (list[FileType]): Concrete definitions for C, C++, C#, Go, Java,
-        Kotlin, Rust, Solidity, and Swift.
+    FILETYPES: Concrete definitions for C, C++, C#, Go, Java, Kotlin, Rust, Solidity, and Swift.
 
 Notes:
-    Header policies in this module generally disable shebang support and enforce
-    a blank line after inserted headers to keep code visually separated.
+    Header policies in this module generally disable shebang support and enforce a blank line after
+    inserted headers to keep code visually separated.
 """
 
 from __future__ import annotations

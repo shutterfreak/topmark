@@ -109,13 +109,13 @@ def _page_location(page: Any) -> tuple[str, str | None]:
           than overloading the page location.
 
     Args:
-        page (Any): MkDocs page object.
+        page: MkDocs page object.
 
     Returns:
-        tuple[str, str | None]: (local_docs_path, edit_url) where:
-            - local_docs_path is the local docs path (e.g. "docs/dev/api-stability.md")
+        Tuple `(local_docs_path, edit_url)` where:
+            - `local_docs_path` is the local docs path (e.g. "docs/dev/api-stability.md")
               or "<unknown>".
-            - edit_url is the resolved edit link if MkDocs provides it, else None.
+            - `edit_url` is the resolved edit link if MkDocs provides it, else None.
     """
     page_path: str | None = getattr(getattr(page, "file", None), "src_path", None)
     local_path: str = format_repo_path(page_path, root="docs")
@@ -179,17 +179,15 @@ def pre_build(config: dict[str, Any], **kwargs: Any) -> dict[str, Any] | None:
     substituted in all pages via the `on_page_markdown` hook.
 
     Args:
-        config (dict[str, Any]): The MkDocs config dictionary. While this hook
-            function doesn't modify the config directly to store the version (it
-            uses a global variable instead), it must be passed by the MkDocs hook
-            system.
-        **kwargs (Any): Additional keyword arguments passed by the MkDocs hook system
-            (e.g., ``files``, ``site_dir``, etc.). Currently unused.
+        config: The MkDocs config dictionary. While this hook function doesn't modify the config
+            directly to store the version (it uses a global variable instead), it must be passed
+            by the MkDocs hook system.
+        **kwargs: Additional keyword arguments passed by the MkDocs hook system (e.g., ``files``,
+            ``site_dir``, etc.). Currently unused.
 
     Returns:
-        dict[str, Any] | None: The modified config dictionary. We return the original
-        ``config`` object to satisfy the MkDocs hook API, although it has not been
-        modified within this function.
+        The modified config dictionary. We return the original ``config`` object to satisfy the
+        MkDocs hook API, although it has not been modified within this function.
     """
     global topmark_version_id  # MUST declare global intent to WRITE
 
@@ -220,10 +218,10 @@ def _strip_blockquote_prefix(text: str) -> list[str]:
     """Remove a single leading ``>`` (and an optional following space) from lines.
 
     Args:
-        text (str): Blockquoted text (each line may begin with ``>``).
+        text: Blockquoted text (each line may begin with ``>``).
 
     Returns:
-        list[str]: Lines with one leading blockquote marker removed where present.
+        Lines with one leading blockquote marker removed where present.
     """
     out: list[str] = []
     ln: str
@@ -245,14 +243,14 @@ def _extract_title(lines: list[str], inline_title: str | None, kind: str) -> tup
     a humanized version of ``kind`` is returned.
 
     Args:
-        lines (list[str]): Body lines (already stripped from ``>``).
-        inline_title (str | None): Optional inline title text.
-        kind (str): Callout kind: ``NOTE``, ``TIP``, ``IMPORTANT``, ``WARNING``, ``CAUTION``.
+        lines: Body lines (already stripped from ``>``).
+        inline_title: Optional inline title text.
+        kind: Callout kind: ``NOTE``, ``TIP``, ``IMPORTANT``, ``WARNING``, ``CAUTION``.
 
     Returns:
-        tuple[str, list[str]]: A pair ``(title, remaining_lines)`` where the title is
-        plain text (no surrounding bold markers) and ``remaining_lines`` contains the
-        body lines without the consumed title line (if any).
+        A pair ``(title, remaining_lines)`` where the title is plain text (no surrounding bold
+        markers) and ``remaining_lines`` contains the body lines without the consumed title line
+        (if any).
     """
 
     def _clean_title(raw: str) -> str:
@@ -284,12 +282,12 @@ def _render_admonition(kind: str, title: str, inner_markdown: str) -> str:
     """Render a Material admonition block as raw HTML with nested Markdown support.
 
     Args:
-        kind (str): Callout type; used as CSS class (lowercased).
-        title (str): Title text (plain; the theme already bolds it).
-        inner_markdown (str): Body content to be parsed as Markdown.
+        kind: Callout type; used as CSS class (lowercased).
+        title: Title text (plain; the theme already bolds it).
+        inner_markdown: Body content to be parsed as Markdown.
 
     Returns:
-        str: HTML string representing the admonition block.
+        HTML string representing the admonition block.
     """
     return (
         f'<div class="admonition {kind.lower()}" markdown="1">\n'
@@ -327,13 +325,13 @@ def on_page_markdown(
     5. (Debug only) Log unlinked backticked symbol references
 
     Args:
-        markdown (str): Page Markdown text.
-        page (Any): MkDocs page object (unused).
-        config (dict[str, Any]): MkDocs config; ``extra.topmark_version`` may be read.
-        files (Any): MkDocs files collection (unused).
+        markdown: Page Markdown text.
+        page: MkDocs page object (unused).
+        config: MkDocs config; ``extra.topmark_version`` may be read.
+        files: MkDocs files collection (unused).
 
     Returns:
-        str: The transformed Markdown string.
+        The transformed Markdown string.
     """
     # 0) Replace version tokens
     global topmark_version_id  # MUST declare global intent to READ
@@ -461,11 +459,11 @@ def post_build(config: dict[str, Any], **kwargs: Any) -> dict[str, Any] | None:
     list instead of stopping at the first page.
 
     Args:
-        config (dict[str, Any]): The MkDocs config dictionary.
-        **kwargs (Any): Additional keyword arguments passed by the MkDocs hook system.
+        config: The MkDocs config dictionary.
+        **kwargs: Additional keyword arguments passed by the MkDocs hook system.
 
     Returns:
-        dict[str, Any] | None: The config dictionary (unchanged).
+        The config dictionary (unchanged).
 
     Raises:
         Abort: If strict refs are enabled and any pages contained unlinked backticked

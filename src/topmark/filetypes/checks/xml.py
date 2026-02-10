@@ -76,11 +76,11 @@ def xml_can_insert(ctx: PreInsertContextView) -> InsertCheckResult:
     XML declaration and/or doctype, insertion is deemed unsupported.
 
     Args:
-        ctx (PreInsertContextView): A minimal view of the processing context,
-            including `file_type`, `file_lines`, and `header_processor`.
+        ctx: A minimal view of the processing context, including `file_type`, `file_lines`, and
+            `header_processor`.
 
     Returns:
-        InsertCheckResult: A dictionary with:
+        A dictionary with:
             * `capability` (InsertCapability): Advisory on whether insertion is OK
                 or should be skipped (and why).
             * `reason` (str, optional): Human-readable explanation for the advisory.

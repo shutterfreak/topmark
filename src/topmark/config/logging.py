@@ -47,9 +47,9 @@ class TopmarkLogger(logging.Logger):
         This method logs a message with the custom TRACE level, which is lower than DEBUG.
 
         Args:
-            msg (object): The message to be logged.
-            *args (object): Variable length argument list for the message.
-            extra (Mapping[str, object] | None): Optional dictionary of extra information to pass
+            msg: The message to be logged.
+            *args: Variable length argument list for the message.
+            extra: Optional dictionary of extra information to pass
                 to the logger.
         """
         if self.isEnabledFor(TRACE_LEVEL):
@@ -79,10 +79,10 @@ class ChalkFormatter(logging.Formatter):
         """Format the specified record with colors based on log level.
 
         Args:
-            record (logging.LogRecord): The LogRecord to be formatted.
+            record: The LogRecord to be formatted.
 
         Returns:
-            str: The colorized formatted log message as a string.
+            The colorized formatted log message as a string.
         """
         level: int = record.levelno
         message: str = super().format(record)
@@ -173,10 +173,10 @@ def get_logger(name: str) -> TopmarkLogger:
     """Retrieve a TopmarkLogger instance with the specified name.
 
     Args:
-        name (str): The name of the logger.
+        name: The name of the logger.
 
     Returns:
-        TopmarkLogger: A TopmarkLogger instance.
+        A TopmarkLogger instance.
     """
     logger: logging.Logger = logging.getLogger(name)
     return cast("TopmarkLogger", logger)

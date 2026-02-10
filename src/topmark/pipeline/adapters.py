@@ -46,14 +46,13 @@ class PreInsertViewAdapter:
     presents them through lightweight, read-only attributes.
 
     Attributes:
-        lines (Iterable[str]): Streaming access to the file lines as provided
-            by the ProcessingContext image view.
-        newline_style (str): Detected newline style ("LF", "CR", "CRLF").
-        header_processor (HeaderProcessor | None): The file-type-specific HeaderProcessor instance.
-        file_type (FileType | None): The resolved FileType instance or ``None`` if unresolved.
+        lines: Streaming access to the file lines as provided by the ProcessingContext image view.
+        newline_style: Detected newline style ("LF", "CR", "CRLF").
+        header_processor: The file-type-specific HeaderProcessor instance.
+        file_type: The resolved FileType instance or ``None`` if unresolved.
 
     Args:
-        ctx (ProcessingContext): The processing context to wrap.
+        ctx: The processing context to wrap.
 
     """
 
@@ -89,8 +88,7 @@ def as_sequence(lines: Sequence[str] | Iterable[str] | None) -> list[str]:
     already-list inputs without unnecessary copying.
 
     Args:
-        lines (Sequence[str] | Iterable[str] | None): The source of line
-            strings, which may be a list, tuple, generator, or ``None``.
+        lines: The source of line strings, which may be a list, tuple, generator, or ``None``.
 
     Returns:
         list[str]: A list of line strings. Returns an empty list when

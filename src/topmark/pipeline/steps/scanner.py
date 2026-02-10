@@ -82,10 +82,10 @@ class ScannerStep(BaseStep):
         - A header processor is available (ctx.header_processor is not None)
 
         Args:
-            ctx (ProcessingContext): The processing context for the current file.
+            ctx: The processing context for the current file.
 
         Returns:
-            bool: True if processing can proceed to the build step, False otherwise.
+            True if processing can proceed to the build step, False otherwise.
         """
         if ctx.is_halted:
             return False
@@ -111,7 +111,7 @@ class ScannerStep(BaseStep):
               one of ``{DETECTED, EMPTY, MALFORMED_SOME_FIELDS, MALFORMED_ALL_FIELDS}``.
 
         Args:
-            ctx (ProcessingContext): Processing context with the file image and a header processor.
+            ctx: Processing context with the file image and a header processor.
 
         Raises:
             RuntimeError: If header processor or file type are not defined, or if the exclusive
@@ -275,7 +275,7 @@ class ScannerStep(BaseStep):
         """Attach header detection hints (non-binding).
 
         Args:
-            ctx (ProcessingContext): The processing context.
+            ctx: The processing context.
         """
         st: HeaderStatus = ctx.status.header
 

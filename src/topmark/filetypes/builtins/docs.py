@@ -14,8 +14,8 @@ Contains non-code files commonly found in repositories where either headers are
 not appropriate (license text) or lightweight (Markdown).
 
 Exports:
-    FILETYPES (list[FileType]): Concrete definitions for license text files
-        (kept verbatim; not processed) and Markdown sources.
+    FILETYPES: Concrete definitions for license text files (kept verbatim; not processed) and
+        Markdown sources.
 
 Notes:
     Markdown does not require shebang handling and typically embeds headers as

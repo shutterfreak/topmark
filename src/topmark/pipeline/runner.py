@@ -51,14 +51,12 @@ def run(
     """Execute the pipeline sequentially.
 
     Args:
-        ctx (ProcessingContext): Mutable processing context.
-        steps (Sequence[Step]): Ordered sequence of pipeline steps.
-            Each step takes and returns a context.
-        prune (bool): Trim the views at the end of a run to reduce memory usage
-            (default: `True`).
+        ctx: Mutable processing context.
+        steps: Ordered sequence of pipeline steps. Each step takes and returns a context.
+        prune: Trim the views at the end of a run to reduce memory usage (default: `True`).
 
     Returns:
-        ProcessingContext: The final processing context after all steps have run.
+        The final processing context after all steps have run.
     """
     logger.info(
         "header_format: %s",

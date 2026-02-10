@@ -61,10 +61,10 @@ def _candidate_order_key(candidate: Candidate) -> tuple[int, str]:
     sorting the entire list.
 
     Args:
-        candidate (Candidate): A `(score, name, FileType)` tuple.
+        candidate: A `(score, name, FileType)` tuple.
 
     Returns:
-        tuple[int, str]: The composite ordering key.
+        The composite ordering key.
     """
     score, name, _ = candidate
     return (-score, name)
@@ -88,12 +88,12 @@ def _compute_signals(ft: FileType, base_name: str, path_str: str) -> MatchSignal
     """Compute name-based match signals for a file type.
 
     Args:
-        ft (FileType): File type whose rules are evaluated.
-        base_name (str): Basename of the path (e.g., "settings.json").
-        path_str (str): POSIX path string (used for tail matches like ".vscode/settings.json").
+        ft: File type whose rules are evaluated.
+        base_name: Basename of the path (e.g., "settings.json").
+        path_str: POSIX path string (used for tail matches like ".vscode/settings.json").
 
     Returns:
-        MatchSignals: Booleans indicating extension, filename/tail, and pattern matches.
+        Booleans indicating extension, filename/tail, and pattern matches.
     """
     exts: list[str] = ft.extensions or []
     fnames: list[str] = ft.filenames or []
@@ -124,11 +124,11 @@ def _should_probe_content(ft: FileType, sig: MatchSignals) -> bool:
     files (e.g., Markdown accidentally containing `//`).
 
     Args:
-        ft (FileType): File type whose gate is evaluated.
-        sig (MatchSignals): Name-based match signals for the current path.
+        ft: File type whose gate is evaluated.
+        sig: Name-based match signals for the current path.
 
     Returns:
-        bool: True if calling `content_matcher` is allowed.
+        True if calling `content_matcher` is allowed.
     """
     gate: ContentGate = ft.content_gate or ContentGate.NEVER
     if gate is ContentGate.NEVER:
@@ -155,12 +155,12 @@ def _include_candidate(ft: FileType, sig: MatchSignals, content_hit: bool) -> bo
     this requires a positive content hit when only the gated name signal matched.
 
     Args:
-        ft (FileType): File type considered as candidate.
-        sig (MatchSignals): Name-based match signals for the current path.
-        content_hit (bool): Result of calling the content matcher (if probed).
+        ft: File type considered as candidate.
+        sig: Name-based match signals for the current path.
+        content_hit: Result of calling the content matcher (if probed).
 
     Returns:
-        bool: True if the candidate should be considered.
+        True if the candidate should be considered.
     """
     cm: Callable[[Path], bool] | None = ft.content_matcher or None
     include: bool = sig.any
@@ -190,18 +190,18 @@ def _score(
 ) -> int:
     """Score a candidate for tie-breaking.
 
-    Precedence (desc): explicit filename/tail > content-based (upgrade over ext)
+    Precedence: explicit filename/tail > content-based (upgrade over ext)
     > pattern > extension. Headerable types get +1 on ties.
 
     Args:
-        ft (FileType): File type under evaluation.
-        sig (MatchSignals): Name-based match signals for the current path.
-        content_hit (bool): Whether content-based refinement matched.
-        base_name (str): Basename of the path.
-        path_str (str): POSIX path string of the path.
+        ft: File type under evaluation.
+        sig: Name-based match signals for the current path.
+        content_hit: Whether content-based refinement matched.
+        base_name: Basename of the path.
+        path_str: POSIX path string of the path.
 
     Returns:
-        int: A score where higher is better.
+        A score where higher is better.
     """
     s: int = 0
     if sig.fname:
@@ -235,11 +235,11 @@ def get_candidates_for_file_path(path: Path) -> list[Candidate]:
     evaluates inclusion rules and scoring.
 
     Args:
-        path (Path): Filesystem path of the file being resolved.
+        path: Filesystem path of the file being resolved.
 
     Returns:
-        list[Candidate]: A list of `(score, file_type_name, FileType)` tuples,
-        unsorted. The caller is responsible for selecting the best candidate.
+        A list of `(score, file_type_name, FileType)` tuples, unsorted. The caller is responsible
+        for selecting the best candidate.
     """
     base_name: str = path.name
     path_str: str = path.as_posix()
@@ -294,12 +294,12 @@ def resolve_file_type_for_path(path: Path, *, cfg: Config) -> FileType | None:
     If no candidates remain after filtering, `None` is returned.
 
     Args:
-        path (Path): Filesystem path of the file being resolved.
-        cfg (Config): Active immutable configuration snapshot. Only
-            `cfg.include_file_types` and `cfg.exclude_file_types` are consulted here.
+        path: Filesystem path of the file being resolved.
+        cfg: Active immutable configuration snapshot. Only `cfg.include_file_types` and
+            `cfg.exclude_file_types` are consulted here.
 
     Returns:
-        FileType | None: The highest‑scoring candidate, or None if none match.
+        The highest-scoring candidate, or None if none match.
     """
     candidates: list[Candidate] = get_candidates_for_file_path(path)
 
@@ -354,10 +354,10 @@ class ResolverStep(BaseStep):
         """Return True (resolver is the first step and always runs).
 
         Args:
-            ctx (ProcessingContext): The processing context for the current file.
+            ctx: The processing context for the current file.
 
         Returns:
-            bool: True if processing can proceed to the build step, False otherwise.
+            True if processing can proceed to the build step, False otherwise.
         """
         return True
 
@@ -369,7 +369,7 @@ class ResolverStep(BaseStep):
         human-readable diagnostic and sets an appropriate resolve status.
 
         Args:
-            ctx (ProcessingContext): Processing context representing the file being handled.
+            ctx: Processing context representing the file being handled.
 
         Side effects:
             Sets `ctx.file_type`, `ctx.header_processor`, and `ctx.status.resolve`.
@@ -454,7 +454,7 @@ class ResolverStep(BaseStep):
         """Advise about resolution outcome (non-binding).
 
         Args:
-            ctx (ProcessingContext): The processing context.
+            ctx: The processing context.
         """
         st: ResolveStatus = ctx.status.resolve
 

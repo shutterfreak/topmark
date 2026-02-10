@@ -46,9 +46,9 @@ class BaseStep:
     you need custom lifecycle behavior.
 
     Attributes:
-        name (str): Fully qualified, stable step identifier for logs/tracing.
-        primary_axis (Axis | None): The axis this step “represents” in summaries
-        axes_written (tuple[Axis, ...]): Status axes this step is allowed to write (e.g. ("fs",)).
+        name: Fully qualified, stable step identifier for logs/tracing.
+        primary_axis: The axis this step “represents” in summaries
+        axes_written: Status axes this step is allowed to write (e.g. ("fs",)).
     """
 
     name: str
@@ -63,10 +63,10 @@ class BaseStep:
         additional, step-specific details.
 
         Args:
-            ctx (ProcessingContext): The mutable processing context for the current file.
+            ctx: The mutable processing context for the current file.
 
         Returns:
-             ProcessingContext: The same context instance after mutation/hints.
+             The same context instance after mutation/hints.
         """
         # unified bookkeeping
         # ctx.steps[self.name] = ctx.steps.get(self.name, 0) + 1
@@ -95,10 +95,10 @@ class BaseStep:
         pipeline gates.
 
         Args:
-            ctx (ProcessingContext): The mutable processing context.
+            ctx: The mutable processing context.
 
         Returns:
-            bool: True to run ``run()``, False to skip.
+            True to run ``run()``, False to skip.
         """
         return True
 
@@ -108,7 +108,7 @@ class BaseStep:
         Subclasses must implement this method and only write to declared axes.
 
         Args:
-            ctx (ProcessingContext): The mutable processing context.
+            ctx: The mutable processing context.
         """
         pass
 
@@ -118,6 +118,6 @@ class BaseStep:
         This method should never influence the final outcome directly.
 
         Args:
-            ctx (ProcessingContext): The mutable processing context.
+            ctx: The mutable processing context.
         """
         pass

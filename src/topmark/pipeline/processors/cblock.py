@@ -69,12 +69,12 @@ class CBlockHeaderProcessor(BlockCommentMixin, HeaderProcessor):
         Subclasses may override this method for more flexible or format-specific matching.
 
         Args:
-            line (str): The line of text to check (whitespace is trimmed internally).
-            directive (str): The directive string to look for.
+            line: The line of text to check (whitespace is trimmed internally).
+            directive: The directive string to look for.
 
         Returns:
-            bool: ``True`` if the line contains the directive with the configured
-                prefix/suffix, otherwise ``False``.
+            ``True`` if the line contains the directive with the configured prefix/suffix,
+            otherwise ``False``.
         """
         s: str = line.strip()
         # Case 1: "* <directive>"
@@ -99,13 +99,13 @@ class CBlockHeaderProcessor(BlockCommentMixin, HeaderProcessor):
         - After preceding content: ensure exactly one leading blank; ensure >=1 trailing blank.
 
         Args:
-            original_lines (list[str]): The original file lines.
-            insert_index (int): Line index at which the header will be inserted.
-            rendered_header_lines (list[str]): The header lines to insert.
-            newline_style (str): Newline style (``LF``, ``CR``, ``CRLF``).
+            original_lines: The original file lines.
+            insert_index: Line index at which the header will be inserted.
+            rendered_header_lines: The header lines to insert.
+            newline_style: Newline style (``LF``, ``CR``, ``CRLF``).
 
         Returns:
-            list[str]: Possibly modified header lines to insert at ``insert_index``.
+            Possibly modified header lines to insert at ``insert_index``.
         """
         out: list[str] = list(rendered_header_lines)
 

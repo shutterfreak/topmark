@@ -52,10 +52,10 @@ def load_patterns_from_file(source: PatternSource) -> list[str]:
     relative to the pattern file's own base directory (``source.base``).
 
     Args:
-        source (PatternSource): Reference to the pattern file and its base.
+        source: Reference to the pattern file and its base.
 
     Returns:
-        list[str]: A list of patterns as strings.
+        A list of patterns as strings.
     """
     try:
         text: str = source.path.read_text(encoding="utf-8")
@@ -82,10 +82,10 @@ def _read_paths_from_source(source: PatternSource) -> list[Path]:
     (``source.base``).
 
     Args:
-        source (PatternSource): List file reference and its resolution base.
+        source: List file reference and its resolution base.
 
     Returns:
-        list[Path]: Absolute paths read from the file (comments/blank lines ignored).
+        Absolute paths read from the file (comments/blank lines ignored).
     """
     try:
         text: str = source.path.read_text(encoding="utf-8")
@@ -111,8 +111,8 @@ def _rel_for_match(path: Path, base: Path) -> str:
     """Return a POSIX-style relative path (or absolute as fallback) for PathSpec matching.
 
     Args:
-        path (Path): Absolute or relative file path to test.
-        base (Path): Base directory against which the path is relativized for matching.
+        path: Absolute or relative file path to test.
+        base: Base directory against which the path is relativized for matching.
 
     Returns:
         str: POSIX-style relative path for matching (or absolute POSIX path if not under base).
@@ -130,11 +130,11 @@ def _iter_config_base_dirs(config_files: tuple[str | Path, ...]) -> list[Path]:
     Skips non-files (e.g., markers like "<CLI overrides>") and resolves to absolute paths.
 
     Args:
-        config_files (tuple[str | Path, ...]): Sequence of config source identifiers
-            (paths or markers like "<CLI overrides>").
+        config_files: Sequence of config source identifiers (paths or markers like
+            "<CLI overrides>").
 
     Returns:
-        list[Path]: Unique parent directories of real config files, resolved to absolute paths.
+        Unique parent directories of real config files, resolved to absolute paths.
     """
     bases: list[Path] = []
     for config_file in config_files:
@@ -172,10 +172,10 @@ def resolve_file_list(config: Config) -> list[Path]:
       6. Returns a **sorted** list of Path objects for deterministic output.
 
     Args:
-        config (Config): Configuration values influencing path collection and filters.
+        config: Configuration values influencing path collection and filters.
 
     Returns:
-        list[Path]: Sorted list of files selected for processing.
+        Sorted list of files selected for processing.
     """
     logger.debug("resolve_file_list(): config: %s", config)
 
@@ -289,10 +289,10 @@ def resolve_file_list(config: Config) -> list[Path]:
         Globs are expanded relative to the current working directory.
 
         Args:
-            p (Path): Base path to expand.
+            p: Base path to expand.
 
         Returns:
-            list[Path]: List of expanded paths (files and directories).
+            List of expanded paths (files and directories).
         """
 
         def _walk_dir(root: Path) -> list[Path]:
@@ -553,11 +553,10 @@ def resolve_file_types(path: Path) -> list[FileType]:
     Note: currently unused; kept for potential future diagnostics API.
 
     Args:
-        path (Path): Path to test.
+        path: Path to test.
 
     Returns:
-        list[FileType]: Matching file types (may be empty). Logs a warning when
-            multiple types match the same path.
+        Matching file types (may be empty). Logs a warning when multiple types match the same path.
     """
     # Validate against the effective file type registry:
     ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
@@ -580,10 +579,10 @@ def detect_newline(lines: list[str]) -> str:
     newline can be inferred (e.g., single line without terminator).
 
     Args:
-        lines (list[str]): Lines from a file, each potentially ending with a newline.
+        lines: Lines from a file, each potentially ending with a newline.
 
     Returns:
-        str: One of ``\"\\r\\n\"``, ``\"\\n\"``, or ``\"\\r\"``.
+        One of ``\"\\r\\n\"``, ``\"\\n\"``, or ``\"\\r\"``.
     """
     for ln in lines:
         if ln.endswith("\r\n"):

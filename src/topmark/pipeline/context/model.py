@@ -88,11 +88,11 @@ class HaltState:
     that a step requested an early, graceful halt.
 
     Attributes:
-        reason_code (str): Short machine-friendly reason code explaining
+        reason_code: Short machine-friendly reason code explaining
             why processing was halted (for example, ``"unsupported"`` or
             ``"unchanged-summary"``). Intended for internal use and
             machine output.
-        step_name (str): Name of the pipeline step that requested the
+        step_name: Name of the pipeline step that requested the
             halt. An empty string indicates that no explicit halt has
             been recorded.
     """
@@ -111,54 +111,40 @@ class ProcessingContext:
     policy- and feasibility-related decisions.
 
     Attributes:
-        path (Path): The file path to process (absolute or relative to the
-            working directory).
-        config (Config): Effective configuration at the time of processing.
-        policy_registry (PolicyRegistry): The policy registry (global
-            + file type specific overrides).
-        steps (list[Step]): Ordered list of pipeline steps that have been
-            executed for this context.
-        file_type (FileType | None): Resolved file type for the file (for
-            example, a Python or Markdown file type), if applicable.
-        status (ProcessingStatus): Aggregated status for each pipeline
-            axis, kept as the single source of truth for per-axis outcomes.
-        halt_state (HaltState | None): Information about an early, terminal
-            halt for this file. ``None`` means processing has not been
-            halted.
-        header_processor (HeaderProcessor | None): Header processor instance
-            responsible for this file type, if any.
-        leading_bom (bool): True if the original file began with a UTF-8 BOM
-            (``"\\ufeff"``). The reader sets this flag and strips the BOM from
-            the in-memory image; the writer re-attaches it to the final output.
-        has_shebang (bool): True if the first logical line starts with ``"#!"
-            `` (post-BOM normalization).
-        newline_hist (dict[str, int]): Histogram of newline styles detected in
-            the file image.
-        dominant_newline (str | None): Dominant newline sequence detected in
-            the file (for example, ``"\\n"`` or ``"\\r\\n"``), if any.
-        dominance_ratio (float | None): Ratio of dominant newline occurrences
-            versus total newline occurrences.
-        mixed_newlines (bool | None): True if multiple newline styles were
-            detected, False if a single style was found, or None if not
-            evaluated yet.
-        newline_style (str): Normalized newline style used when writing
-            output; defaults to ``"\\n"``.
-        ends_with_newline (bool | None): True if the file ends with a newline
-            sequence, False if it does not, or None if unknown.
-        pre_insert_capability (InsertCapability): Advisory from the sniffer
-            about pre-insert checks (for example, spacers or empty body),
-            defaults to ``InsertCapability.UNEVALUATED``.
-        pre_insert_reason (str | None): Human-readable reason why insertion
-            may be problematic.
-        pre_insert_origin (str | None): Origin of the pre-insertion
-            diagnostic (typically a step or subsystem name).
-        diagnostics (DiagnosticLog): Collected diagnostics (info, warning,
-            and error) produced during processing.
-        diagnostic_hints (HintLog): Non-binding hints supplied by steps to
-            explain decisions; used primarily for summarization.
-        views (Views): Bundle that carries image/header/build/render/updated/
-            diff views for this file. The runner may prune heavy views after
-            processing.
+        path: The file path to process (absolute or relative to the working directory).
+        config: Effective configuration at the time of processing.
+        policy_registry: The policy registry (global + file type specific overrides).
+        steps: Ordered list of pipeline steps that have been executed for this context.
+        file_type: Resolved file type for the file (for example, a Python or Markdown file type),
+            if applicable.
+        status: Aggregated status for each pipeline axis, kept as the single source of truth for
+            per-axis outcomes.
+        halt_state: Information about an early, terminal halt for this file. ``None`` means
+            processing has not been halted.
+        header_processor: Header processor instance responsible for this file type, if any.
+        leading_bom: True if the original file began with a UTF-8 BOM (``"\\ufeff"``). The reader
+            sets this flag and strips the BOM from the in-memory image; the writer re-attaches it
+            to the final output.
+        has_shebang: True if the first logical line starts with ``"#!" `` (post-BOM normalization).
+        newline_hist: Histogram of newline styles detected in the file image.
+        dominant_newline: Dominant newline sequence detected in the file (for example, ``"\\n"``
+            or ``"\\r\\n"``), if any.
+        dominance_ratio: Ratio of dominant newline occurrences versus total newline occurrences.
+        mixed_newlines: True if multiple newline styles were detected, False if a single style was
+            found, or None if not evaluated yet.
+        newline_style: Normalized newline style used when writing output; defaults to ``"\\n"``.
+        ends_with_newline: True if the file ends with a newline sequence, False if it does not, or
+            None if unknown.
+        pre_insert_capability: Advisory from the sniffer about pre-insert checks (for example,
+            spacers or empty body), defaults to ``InsertCapability.UNEVALUATED``.
+        pre_insert_reason: Human-readable reason why insertion may be problematic.
+        pre_insert_origin: Origin of the pre-insertion diagnostic (typically a step or subsystem
+            name).
+        diagnostics: Collected diagnostics (info, warning, and error) produced during processing.
+        diagnostic_hints: Non-binding hints supplied by steps to explain decisions; used primarily
+            for summarization.
+        views: Bundle that carries image/header/build/render/updated/ diff views for this file. The
+            runner may prune heavy views after processing.
     """
 
     path: Path  # The file path to process (absolute or relative to working directory)

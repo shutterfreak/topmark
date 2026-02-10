@@ -200,11 +200,11 @@ def get_git_files(session: nox.Session, *specs: str) -> list[str]:
     """Return tracked files matching the given git pathspecs.
 
     Args:
-        session (nox.Session): Current nox session.
-        *specs (str): One or more git pathspecs (e.g. `:(glob)docs/**/*.md`).
+        session: Current nox session.
+        *specs: One or more git pathspecs (e.g. `:(glob)docs/**/*.md`).
 
     Returns:
-        list[str]: Tracked file paths, one per line.
+        Tracked file paths, one per line.
     """
     out = session.run(
         "git",
@@ -253,12 +253,12 @@ def run_lychee(
     lychee in chunks.
 
     Args:
-        session (nox.Session): Current nox session.
-        targets (list[str]): Target paths to scan.
-        verbose (bool): Control `lychee` verbosity (default: `True`).
-        root_dir (str | None): If set, pass `--root-dir` to lychee (useful for checking
+        session: Current nox session.
+        targets: Target paths to scan.
+        verbose: Control `lychee` verbosity (default: `True`).
+        root_dir: If set, pass `--root-dir` to lychee (useful for checking
             built sites with root-relative links).
-        chunk_size (int): Maximum number of paths per lychee invocation.
+        chunk_size: Maximum number of paths per lychee invocation.
 
     Raises:
         ValueError: If `chunk_size` is <= 0.

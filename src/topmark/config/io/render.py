@@ -80,10 +80,10 @@ def to_toml(toml_dict: TomlTable) -> str:
     """Serialize a TOML mapping to a string.
 
     Args:
-        toml_dict (TomlTable): TOML mapping to render.
+        toml_dict: TOML mapping to render.
 
     Returns:
-        str: The rendered TOML document as a string.
+        The rendered TOML document as a string.
     """
     return _tomlkit_dumps(toml_dict)
 
@@ -91,14 +91,14 @@ def to_toml(toml_dict: TomlTable) -> str:
 def clean_toml(text: str) -> str:
     """Normalize a TOML document, removing comments and formatting noise.
 
-    This function round-trips the input through the TOML parser and dumper,
-    dropping comments and normalizing formatting.
+    This function round-trips the input through the TOML parser and dumper, dropping comments and
+    normalizing formatting.
 
     Args:
-        text (str): Raw TOML content.
+        text: Raw TOML content.
 
     Returns:
-        str: A normalized TOML string produced by round-tripping.
+        A normalized TOML string produced by round-tripping.
     """
     doc: tomlkit.TOMLDocument = tomlkit.parse(text)
     data_any: Any = doc.unwrap()

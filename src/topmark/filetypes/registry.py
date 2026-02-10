@@ -48,11 +48,10 @@ def register_filetype(
     """Class decorator to register a HeaderProcessor for a specific file type.
 
     Args:
-        name (str): File type identifier under which the processor is registered.
+        name: File type identifier under which the processor is registered.
 
     Returns:
-        Callable[[type[HeaderProcessor]], type[HeaderProcessor]]: A decorator that
-            registers the class as a HeaderProcessor.
+        A decorator that registers the class as a HeaderProcessor.
 
     Raises:
         ValueError: If the file type name is unknown or already registered.
@@ -75,13 +74,13 @@ def register_filetype(
         See also resolver.py for where this linkage is relied upon.
 
         Args:
-            cls (type[HeaderProcessor]): The class to register as a header processor.
+            cls: The class to register as a header processor.
 
         Raises:
             ValueError: If a `FileType` is already registered to a `HeaderProcessor`.
 
         Returns:
-            type[HeaderProcessor]: The decorated HeaderProcessor class.
+            The decorated HeaderProcessor class.
         """
         logger.debug("Registering processor %s for file type: %s", cls.__name__, file_type.name)
         if file_type.name in _registry:

@@ -349,7 +349,7 @@ class HintLog:
     def headline(self) -> Hint | None:
         """Return the single most relevant hint from a hint log, order-agnostically.
 
-        Ranking (descending): ERROR > BLOCKED_POLICY > SKIPPED/UNSUPPORTED > CHANGED
+        Ranking: ERROR > BLOCKED_POLICY > SKIPPED/UNSUPPORTED > CHANGED
         > WOULD_CHANGE > UNCHANGED > PENDING. Ties prefer ``terminal=True``.
 
         Returns:

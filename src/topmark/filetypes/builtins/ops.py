@@ -14,9 +14,8 @@ Covers operational artifacts such as Dockerfiles, environment files, Git
 metadata, and SQL scripts.
 
 Exports:
-    FILETYPES (list[FileType]): Concrete definitions for Dockerfile, ``.env``
-        files (and variants), Git metadata (``.gitignore``, ``.gitattributes``),
-        and SQL scripts.
+    FILETYPES: Concrete definitions for Dockerfile, ``.env`` files (and variants),
+        Git metadata (``.gitignore``, ``.gitattributes``), and SQL scripts.
 
 Notes:
     - ``.env`` files are treated like shell-style key/value lists. Shebang is

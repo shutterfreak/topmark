@@ -80,12 +80,12 @@ def test_strip_bounds_are_inclusive(
     file must contain only the body and the returned span must match exactly.
 
     Args:
-        tmp_path (Path): Temporary directory provided by pytest.
-        ext (str): Extension that maps to the target processor.
-        header_open (str): Start directive line including newline.
-        header_line (str): A single payload line including newline.
-        header_close (str): End directive line including newline.
-        body (str): A single body line including newline.
+        tmp_path: Temporary directory provided by pytest.
+        ext: Extension that maps to the target processor.
+        header_open: Start directive line including newline.
+        header_line: A single payload line including newline.
+        header_close: End directive line including newline.
+        body: A single body line including newline.
     """
     f: Path = tmp_path / f"x{ext}"
     content: str = header_open + header_line + header_close + body

@@ -54,17 +54,16 @@ class Policy:
     """Immutable, runtime policy used by processing steps.
 
     Attributes:
-        add_only (bool): Only add missing headers; do not update existing ones.
-        update_only (bool): Only update existing headers; do not add new ones.
-        allow_header_in_empty_files (bool): Allow inserting headers in empty files
-            (e.g., `__init__.py`).
-        render_empty_header_when_no_fields (bool): Allow inserting empty headers when
-            no fields are defined.
-        allow_reflow (bool): If True, allow revlowing file content when inserting a header.
-            This potentially breaks check/strip idempotence.
-        allow_content_probe (bool): Whether the resolver may consult file contents
-            during file-type detection. True allows content-based probes, False
-            forces name/extension-only resolution.
+        add_only: Only add missing headers; do not update existing ones.
+        update_only: Only update existing headers; do not add new ones.
+        allow_header_in_empty_files: Allow inserting headers in empty files (e.g., `__init__.py`).
+        render_empty_header_when_no_fields: Allow inserting empty headers when no fields are
+            defined.
+        allow_reflow: If True, allow revlowing file content when inserting a header. This
+            potentially breaks check/strip idempotence.
+        allow_content_probe: Whether the resolver may consult file contents during file-type
+            detection. True allows content-based probes, False forces name/extension-only
+            resolution.
 
     Notes:
     - `Policy` holds plain booleans and is fully resolved at runtime (no tri-state).
@@ -86,7 +85,7 @@ class Policy:
         """Return a mutable builder initialized from this frozen policy.
 
         Returns:
-            MutablePolicy: A tri-state mutable policy.
+            A tri-state mutable policy.
         """
         return MutablePolicy(
             add_only=self.add_only,
@@ -105,12 +104,12 @@ class MutablePolicy:
     This class is merged in a **last-wins** manner when reading multiple config files.
 
     Attributes:
-        add_only (bool | None): See `Policy`. `None` means "inherit".
-        update_only (bool | None): See `Policy`. `None` means "inherit".
-        allow_header_in_empty_files (bool | None): See `Policy`. `None` means "inherit".
-        render_empty_header_when_no_fields (bool | None): See `Policy`. `None` means "inherit".
-        allow_reflow (bool | None): See `Policy`. `None` means "inherit".
-        allow_content_probe (bool | None): See `Policy`. `None` means "inherit".
+        add_only: See `Policy`. `None` means "inherit".
+        update_only: See `Policy`. `None` means "inherit".
+        allow_header_in_empty_files: See `Policy`. `None` means "inherit".
+        render_empty_header_when_no_fields: See `Policy`. `None` means "inherit".
+        allow_reflow: See `Policy`. `None` means "inherit".
+        allow_content_probe: See `Policy`. `None` means "inherit".
     """
 
     add_only: bool | None = None
@@ -126,10 +125,10 @@ class MutablePolicy:
         ``None`` fields in ``other`` do not override explicit values in ``self``.
 
         Args:
-            other (MutablePolicy): The policy whose values override current ones.
+            other: The policy whose values override current ones.
 
         Returns:
-            MutablePolicy: Merged policy.
+            Merged policy.
         """
 
         def pick(*, current: bool | None, override: bool | None) -> bool | None:
@@ -155,10 +154,10 @@ class MutablePolicy:
         """Resolve tri-state fields against a base frozen policy.
 
         Args:
-            base (Policy): Base policy that provides defaults for unset fields.
+            base: Base policy that provides defaults for unset fields.
 
         Returns:
-            Policy: A fully-resolved immutable policy with plain booleans.
+            A fully-resolved immutable policy with plain booleans.
         """
         return Policy(
             add_only=(base.add_only if self.add_only is None else self.add_only),
@@ -195,10 +194,10 @@ class MutablePolicy:
         Unspecified keys become ``None`` (inherit from base at freeze time).
 
         Args:
-            tbl (Mapping[str, Any] | None): Table with keys matching the attributes.
+            tbl: Table with keys matching the attributes.
 
         Returns:
-            MutablePolicy: Parsed policy.
+            Parsed policy.
         """
         if not tbl:
             return cls()
@@ -219,7 +218,7 @@ class MutablePolicy:
         """Serialize only explicitly set keys to a TOML-friendly dict.
 
         Returns:
-            dict[str, Any]: Table with primitive types only.
+            Table with primitive types only.
         """
         out: dict[str, Any] = {}
         if self.add_only is not None:
@@ -241,9 +240,8 @@ class MutablePolicy:
 class PolicyRegistry:
     """Immutable registry of effective policies per file type.
 
-    Instances of this class are derived from a resolved Config and
-    provide constant-time lookup of the effective Policy to apply for
-    a given file type.
+    Instances of this class are derived from a resolved Config and provide constant-time lookup of
+    the effective Policy to apply for a given file type.
     """
 
     global_policy: Policy
@@ -253,11 +251,10 @@ class PolicyRegistry:
         """Return the effective policy for the given file-type name.
 
         Args:
-            name (str | None): File type name, or None for the global/default case.
+            name: File type name, or None for the global/default case.
 
         Returns:
-            Policy: The resolved per-type policy if present; otherwise
-            the global policy.
+            The resolved per-type policy if present; otherwise the global policy.
         """
         if name is None:
             return self.global_policy
@@ -286,11 +283,11 @@ def effective_policy(cfg: Config, file_type_id: str | None) -> Policy:
     ``MutablePolicy.resolve``.
 
     Args:
-        cfg (Config): Frozen runtime configuration.
-        file_type_id (str | None): File type identifier (e.g., ``"python"``).
+        cfg: Frozen runtime configuration.
+        file_type_id: File type identifier (e.g., ``"python"``).
 
     Returns:
-        Policy: The effective policy to use for processing.
+        The effective policy to use for processing.
     """
     if file_type_id is None:
         return cfg.policy

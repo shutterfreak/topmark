@@ -46,10 +46,10 @@ def _assert_policy_fields(
     """Helper to assert core Policy fields used in these tests.
 
     Args:
-        pol (Policy): Resolved policy instance to inspect.
-        add_only (bool): Expected add-only flag.
-        update_only (bool): Expected update-only flag.
-        allow_content_probe (bool): Expected allow-content-probe flag.
+        pol: Resolved policy instance to inspect.
+        add_only: Expected add-only flag.
+        update_only: Expected update-only flag.
+        allow_content_probe: Expected allow-content-probe flag.
     """
     assert pol.add_only is add_only
     assert pol.update_only is update_only

@@ -32,12 +32,12 @@ class HeaderParseResult:
     to be passed by keyword.
 
     Attributes:
-        fields (dict[str, str]): Mapping of all successfully parsed header fields
-            (key → value). Defaults to an empty dictionary.
-        success_count (int): The number of header lines that were successfully
-            parsed and added to the ``fields`` dictionary. Defaults to 0.
-        error_count (int): The number of header lines that were malformed (e.g.,
-            missing a colon, or having an empty field name). Defaults to 0.
+        fields: Mapping of all successfully parsed header fields (key → value). Defaults to an
+            empty dictionary.
+        success_count: The number of header lines that were successfully parsed and added to the
+            ``fields`` dictionary. Defaults to 0.
+        error_count: The number of header lines that were malformed (e.g., missing a colon,
+            or having an empty field name). Defaults to 0.
     """
 
     fields: dict[str, str] = field(default_factory=lambda: {})
@@ -78,10 +78,10 @@ class HeaderBounds:
         - No markers were detected; ``start``/``end``/``reason`` are ``None``.
 
     Attributes:
-        kind (BoundsKind): Discriminant of the result.
-        start (int | None): Start line index (inclusive) when a span is available.
-        end (int | None): End line index (exclusive) when a span is available.
-        reason (str | None): Human-readable reason when ``kind`` is ``MALFORMED``.
+        kind: Discriminant of the result.
+        start: Start line index (inclusive) when a span is available.
+        end: End line index (exclusive) when a span is available.
+        reason: Human-readable reason when ``kind`` is ``MALFORMED``.
     """
 
     kind: BoundsKind
@@ -115,12 +115,11 @@ class StripDiagnostic:
     """Diagnostic payload describing a strip attempt.
 
     Attributes:
-        kind (StripDiagKind): High-level outcome classification.
-        reason (str | None): Optional human-readable explanation (e.g., policy gate or
-            malformed reason).
-        removed_span (tuple[int, int] | None): Inclusive (start, end) span of the removed header
-            in the original input; present only when a header was actually removed.
-        notes (list[str]): Additional details for logging or user-facing hints.
+        kind: High-level outcome classification.
+        reason: Optional human-readable explanation (e.g., policy gate or malformed reason).
+        removed_span: Inclusive (start, end) span of the removed header in the original input;
+            present only when a header was actually removed.
+        notes: Additional details for logging or user-facing hints.
     """
 
     kind: StripDiagKind

@@ -34,12 +34,11 @@ def get_processor_for_file(path: Path) -> HeaderProcessor | None:
     """Retrieve the appropriate header processor for a given file based on its extension.
 
     Args:
-        path (Path): The path to the file for which to find a processor.
+        path: The path to the file for which to find a processor.
 
     Returns:
-        HeaderProcessor | None: An instance of a registered HeaderProcessor if a
-            matching processor is found, or None if no processor is registered
-            for the file's extension.
+       An instance of a registered HeaderProcessor if a matching processor is found, or `None` if
+       no processor is registered for the file's extension.
     """
     from topmark.registry import FileTypeRegistry, HeaderProcessorRegistry
 

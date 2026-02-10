@@ -405,10 +405,10 @@ def assert_warned_and_diagnosed(
     """Assert a warning substring appears in logs and `draft.diagnostics`.
 
     Args:
-        caplog (pytest.LogCaptureFixture): Pytest log capture fixture.
-        draft (MutableConfig): Parsed draft config with diagnostics attached.
-        needle (str): Substring expected to appear in warning messages.
-        min_count (int): Minimum number of matching messages expected in *each*
+        caplog: Pytest log capture fixture.
+        draft: Parsed draft config with diagnostics attached.
+        needle: Substring expected to appear in warning messages.
+        min_count: Minimum number of matching messages expected in *each*
             sink (logs and diagnostics). Defaults to 1.
     """
     caplog_msgs: list[str] = _caplog_messages(caplog)

@@ -152,12 +152,12 @@ def make_context_from_text(
         temporary files.
 
     Args:
-        text (str): In-memory file contents to expose via ``ctx.views.image``.
-        cfg (Config): Frozen configuration snapshot used to bootstrap the context.
-        path (Path): Synthetic path used for the context and processor lookup.
+        text: In-memory file contents to expose via ``ctx.views.image``.
+        cfg: Frozen configuration snapshot used to bootstrap the context.
+        path: Synthetic path used for the context and processor lookup.
 
     Returns:
-        ProcessingContext: A context suitable for running post-reader steps.
+        A context suitable for running post-reader steps.
     """
     ctx: ProcessingContext = make_pipeline_context(path=path, cfg=cfg)
 
@@ -259,9 +259,8 @@ def materialize_updated_lines(ctx: ProcessingContext) -> list[str]:
 def run_steps(ctx: ProcessingContext, steps: list[Step] | tuple[Step, ...]) -> ProcessingContext:
     """Run a list of class-based steps against a context and return it.
 
-    This helper mirrors the engine's simple sequential execution. It does not
-    short-circuit on `may_proceed()`—each step enforces its own gating, as
-    in production.
+    This helper mirrors the engine's simple sequential execution. It does not     short-circuit on
+    `may_proceed()`—each step enforces its own gating, as in production.
     """
     for step in steps:
         step(ctx)
@@ -295,11 +294,11 @@ def run_insert(path: Path, cfg: Config) -> ProcessingContext:
     chain in their own modules.
 
     Args:
-        path (Path): File to modify.
-        cfg (Config): TopMark configuration used for rendering.
+        path: File to modify.
+        cfg: TopMark configuration used for rendering.
 
     Returns:
-        ProcessingContext: The updated ``ProcessingContext`` with ``updated_file_lines`` set.
+        The updated ``ProcessingContext`` with ``updated_file_lines`` set.
     """
     ctx: ProcessingContext = make_pipeline_context(path=path, cfg=cfg)
     run_steps(ctx, CHECK_SUMMMARY_PIPELINE + (PlannerStep(),))
@@ -315,11 +314,11 @@ def run_insert_diff(path: Path, cfg: Config) -> ProcessingContext:
     chain in their own modules.
 
     Args:
-        path (Path): File to modify.
-        cfg (Config): TopMark configuration used for rendering.
+        path: File to modify.
+        cfg: TopMark configuration used for rendering.
 
     Returns:
-        ProcessingContext: The updated ``ProcessingContext`` with ``updated_file_lines`` set.
+        The updated ``ProcessingContext`` with ``updated_file_lines`` set.
     """
     ctx: ProcessingContext = make_pipeline_context(path=path, cfg=cfg)
     run_steps(ctx, CHECK_PATCH_PIPELINE + (PlannerStep(),))
@@ -331,12 +330,11 @@ def run_strip(path: Path, cfg: Config) -> ProcessingContext:
     """Run a strip flow (resolve → sniff → read → scan → strip → update).
 
     Args:
-        path (Path): File to modify.
-        cfg (Config): TopMark configuration (not used for stripping, but kept for symmetry).
+        path: File to modify.
+        cfg: TopMark configuration (not used for stripping, but kept for symmetry).
 
     Returns:
-        ProcessingContext: The updated ``ProcessingContext`` with ``updated_file_lines`` set
-        to the stripped content.
+        The updated ``ProcessingContext`` with ``updated_file_lines`` set to the stripped content.
     """
     ctx: ProcessingContext = make_pipeline_context(path=path, cfg=cfg)
     run_steps(ctx, STRIP_STEPS)
@@ -356,11 +354,11 @@ def find_line(lines: list[str], needle: str) -> int:
     Comparison strips trailing newline characters to be newline-style agnostic.
 
     Args:
-        lines (list[str]): Sequence of lines (each typically ending with a newline).
-        needle (str): The exact content to match (no trailing newline).
+        lines: Sequence of lines (each typically ending with a newline).
+        needle: The exact content to match (no trailing newline).
 
     Returns:
-        int: Zero-based index of the first matching line.
+        Zero-based index of the first matching line.
 
     Raises:
         AssertionError: If ``needle`` is not found.
@@ -399,11 +397,11 @@ def expected_block_lines_for(path: Path, newline: str = "\n") -> BlockSignatures
     ``rstrip()``.
 
     Args:
-        path (Path): Path to the file under test; used to resolve the processor.
-        newline (str): Newline style to use when rendering test expectations.
+        path: Path to the file under test; used to resolve the processor.
+        newline: Newline style to use when rendering test expectations.
 
     Returns:
-        BlockSignatures: A dict with canonical single-line strings suitable for assertions.
+        A dict with canonical single-line strings suitable for assertions.
     """
     # Ensure processors are registered and resolve the appropriate one
     proc: HeaderProcessor | None = get_processor_for_file(path)

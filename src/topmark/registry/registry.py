@@ -66,8 +66,8 @@ class Binding:
     """Joined view of a file type and its (optional) processor.
 
     Attributes:
-        filetype (FileTypeMeta): Serializable metadata for the file type.
-        processor (ProcessorMeta | None): Serializable metadata for the bound processor,
+        filetype: Serializable metadata for the file type.
+        processor: Serializable metadata for the bound processor,
             or ``None`` if the file type is recognized but currently unsupported.
     """
 
@@ -102,7 +102,7 @@ class Registry:
         processor metadata (``None`` means recognized but unsupported).
 
         Returns:
-            tuple[Binding, ...]: Immutable sequence of bindings.
+            Immutable sequence of bindings.
         """
         return tuple(iter_bindings())
 
@@ -129,10 +129,10 @@ class Registry:
         """Return True if a processor is registered for the given file type name.
 
         Args:
-            name (str): File type identifier to query.
+            name: File type identifier to query.
 
         Returns:
-            bool: ``True`` if the file type has a registered processor; otherwise ``False``.
+            ``True`` if the file type has a registered processor; otherwise ``False``.
         """
         return HeaderProcessorRegistry.is_registered(name)
 
@@ -158,7 +158,7 @@ class Registry:
         """Register a header processor under a file type name (advanced).
 
         Passthrough to
-            [`HeaderProcessorRegistry.register`][topmark.registry.HeaderProcessorRegistry.register].
+        [`HeaderProcessorRegistry.register`][topmark.registry.HeaderProcessorRegistry.register].
         """
         return HeaderProcessorRegistry.register(name, processor_class)
 

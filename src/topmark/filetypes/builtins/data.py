@@ -15,7 +15,7 @@ headerable (e.g., JSONC, INI, TOML, YAML); others are intentionally skipped
 (e.g., plain JSON, PEP 561 marker).
 
 Exports:
-    FILETYPES (list[FileType]): Concrete definitions for INI, JSON, JSONC,
+    FILETYPES: Concrete definitions for INI, JSON, JSONC,
         Python requirements/constraints, PEP 561 marker (``py.typed``), TOML,
         VS Code JSONC files, and YAML.
 

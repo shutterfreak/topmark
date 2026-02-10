@@ -80,10 +80,10 @@ class ContentMatcher(Protocol):
         """Check if the file at `path` matches the expected type.
 
         Args:
-            path (Path): The path to the file to check.
+            path: The path to the file to check.
 
         Returns:
-            bool: True if the file matches the expected type, False otherwise.
+            True if the file matches the expected type, False otherwise.
 
         """
         ...
@@ -123,10 +123,9 @@ class InsertCheckResult(TypedDict, total=False):
     """Result of a pre-insert check.
 
     Attributes:
-        capability (InsertCapability): Advisory on whether insertion is OK
-            or should be skipped (and why).
-        reason (str, optional): Human-readable explanation for the advisory.
-        origin (str): Origin of the result
+        capability: Advisory on whether insertion is OK or should be skipped (and why).
+        reason: Human-readable explanation for the advisory.
+        origin: Origin of the result
     """
 
     capability: InsertCapability
@@ -165,10 +164,10 @@ class InsertChecker(Protocol):
         """Check if insertion is advisable in the given context.
 
         Args:
-            ctx (PreInsertContextView): The current minimal processing context.
+            ctx: The current minimal processing context.
 
         Returns:
-            InsertCheckResult: A dictionary with:
+            A dictionary with:
                 * `capability` (InsertCapability): Advisory on whether insertion is OK
                   or should be skipped (and why).
                 * `reason` (str, optional): Human-readable explanation for the advisory.
@@ -186,34 +185,34 @@ class FileType:
     `content_matcher`.
 
     Attributes:
-        name (str): Internal identifier of the file type (e.g. ``"python"``).
-        extensions (list[str]): List of filename extensions associated with this type. Values
+        name: Internal identifier of the file type (e.g. ``"python"``).
+        extensions: List of filename extensions associated with this type. Values
             should include the leading dot (e.g. ``.py``) or be consistent with the
             matcher used elsewhere in TopMark.
-        filenames (list[str]): Exact filenames or tail subpaths to match. If a value contains a
+        filenames: Exact filenames or tail subpaths to match. If a value contains a
             path separator (``/`` or ``\\``), it is matched against the *tail* of the
             path (e.g. ``".vscode/settings.json"``). Otherwise, it must equal the
             basename exactly (e.g. ``"Makefile"``).
-        patterns (list[str]): Regular expressions evaluated against the basename (see
+        patterns: Regular expressions evaluated against the basename (see
             `re.fullmatch`). Useful for families of files that don't share a
             simple extension.
-        description (str): Human‑readable description of the file type.
-        skip_processing (bool): When ``True``, the pipeline **recognizes** files of this
+        description: Human‑readable description of the file type.
+        skip_processing: When ``True``, the pipeline **recognizes** files of this
             type but intentionally **skips header processing** (e.g. JSON without
             comments, LICENSE files). This lets discovery work while keeping writes
             disabled by design.
-        content_matcher (ContentMatcher | None): Optional content matcher
+        content_matcher: Optional content matcher
             that performs *content-based* recognition when name-based heuristics are
             ambiguous. TopMark calls this **last** in `matches` after
             testing extensions, filenames, and patterns. The callable should be
             fast, side‑effect free, and return ``True`` if the file is of this
             type. It must **not** raise; exceptions are caught and treated as
             non‑matches.
-        content_gate (ContentGate): Gate that controls when the content matcher is consulted.
-        header_policy (FileTypeHeaderPolicy | None): Optional `FileTypeHeaderPolicy`
+        content_gate: Gate that controls when the content matcher is consulted.
+        header_policy: Optional `FileTypeHeaderPolicy`
             that tunes placement (e.g., shebang handling) and scanning windows around the
             expected insertion anchor.
-        pre_insert_checker (InsertChecker | None): Optional pre-insert checker:
+        pre_insert_checker: Optional pre-insert checker:
             “may we add a TopMark header here?”
 
     Content‑based recognition (example)
@@ -269,10 +268,10 @@ class FileType:
         This method must be implemented by subclasses to define matching logic.
 
         Args:
-            path (Path): The path to the file to check.
+            path: The path to the file to check.
 
         Returns:
-            bool: True if the file matches this file type, False otherwise.
+            True if the file matches this file type, False otherwise.
         """
         # Track which name rule (if any) matched; used for content gating.
         matched_by: str | None = None

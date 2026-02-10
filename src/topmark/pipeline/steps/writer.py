@@ -69,10 +69,10 @@ def _updated_lines(ctx: ProcessingContext) -> list[str] | None:
     """Materialize updated lines or return None if unavailable.
 
     Args:
-        ctx (ProcessingContext): Processing context.
+        ctx: Processing context.
 
     Returns:
-        list[str] | None: Updated lines as a list, or None if no updated image exists.
+        Updated lines as a list, or None if no updated image exists.
     """
     uv: UpdatedView | None = ctx.views.updated
     if not uv or uv.lines is None:
@@ -106,11 +106,11 @@ class WriteSink(Protocol):
         in dry-run mode.
 
         Args:
-            ctx (ProcessingContext): Context that holds updated content and write status.
+            ctx: Context that holds updated content and write status.
 
         Returns:
-            WriteResult: Structured result indicating the write status and the number
-            of bytes written (if applicable).
+            Structured result indicating the write status and the number of bytes written
+            (if applicable).
         """
         ...
 
@@ -130,10 +130,10 @@ class NullSink:
         """No-op write for dry-run mode.
 
         Args:
-            ctx (ProcessingContext): Processing context for the current file.
+            ctx: Processing context for the current file.
 
         Returns:
-            WriteResult: The input ``ctx.status.write`` echoed back with zero bytes written.
+            The input ``ctx.status.write`` echoed back with zero bytes written.
         """
         return WriteResult(status=ctx.status.write, bytes_written=0)
 
@@ -148,11 +148,11 @@ class StdoutSink:
         content from STDIN and emit the updated result to STDOUT.
 
         Args:
-            ctx (ProcessingContext): Processing context containing the updated lines.
+            ctx: Processing context containing the updated lines.
 
         Returns:
-            WriteResult: ``WRITTEN`` with the number of UTF-8 bytes printed when
-            content is available; otherwise ``SKIPPED`` with zero bytes written.
+            ``WRITTEN`` with the number of UTF-8 bytes printed when content is available;
+            otherwise ``SKIPPED`` with zero bytes written.
         """
         lines: list[str] | None = _updated_lines(ctx)
         if lines is None:
@@ -179,11 +179,11 @@ class FileSystemSink:
         style for joins (``ctx.newline_style``).
 
         Args:
-            ctx (ProcessingContext): Processing context containing the updated lines.
+            ctx: Processing context containing the updated lines.
 
         Returns:
-            WriteResult: ``WRITTEN`` with the number of UTF-8 bytes written when
-            content is available; otherwise ``SKIPPED`` with zero bytes written.
+            ``WRITTEN`` with the number of UTF-8 bytes written when content is available;
+            otherwise ``SKIPPED`` with zero bytes written.
         """
         lines: list[str] | None = _updated_lines(ctx)
         if lines is None:
@@ -237,12 +237,12 @@ class InplaceFileSink(WriteSink):
         but may leave a truncated file if the process is interrupted mid-write.
 
         Args:
-            ctx (ProcessingContext): The active processing context, expected to
-                contain `ctx.views.updated.lines` with UTF-8-encoded text to write.
+            ctx: The active processing context, expected to contain `ctx.views.updated.lines`
+                with UTF-8-encoded text to write.
 
         Returns:
-            WriteResult: Result containing `WriteStatus.WRITTEN` on success,
-            or `WriteStatus.FAILED` with diagnostic info on error.
+            WriteResult: Result containing `WriteStatus.WRITTEN` on success, or
+            `WriteStatus.FAILED` with diagnostic info on error.
         """
         path: Path = ctx.path
         try:
@@ -290,12 +290,12 @@ class AtomicFileSink(WriteSink):
         either see the old file or the complete new file, never a partial write.
 
         Args:
-            ctx (ProcessingContext): The active processing context, expected to
+            ctx: The active processing context, expected to
                 contain `ctx.views.updated.lines` with UTF-8-encoded text to write.
 
         Returns:
-            WriteResult: Result with `WriteStatus.WRITTEN` on success,
-            or `WriteStatus.FAILED` if the operation fails.
+            Result with `WriteStatus.WRITTEN` on success, or `WriteStatus.FAILED` if the operation
+            fails.
         """
         path: Path = ctx.path
         dirpath: Path = path.parent
@@ -425,10 +425,10 @@ class WriterStep(BaseStep):
         ``UpdateStatus`` and cause double-gating, so we avoid it.
 
         Args:
-            ctx (ProcessingContext): The processing context for the current file.
+            ctx: The processing context for the current file.
 
         Returns:
-            bool: True if processing can proceed to the build step, False otherwise.
+            True if processing can proceed to the build step, False otherwise.
         """
         if ctx.is_halted:
             return False
@@ -471,10 +471,10 @@ class WriterStep(BaseStep):
         Otherwise it converts a preview status to a non-mutating terminal status.
 
         Args:
-            ctx (ProcessingContext): The processing context with update intent.
+            ctx: The processing context with update intent.
 
         Mutations:
-            ProcessingContext: The same context, with `status.write` finalized.
+            The same context, with `status.write` finalized.
         """
         logger.debug("ctx: %s", ctx)
 
@@ -531,7 +531,7 @@ class WriterStep(BaseStep):
         """Attach write hints (non-binding).
 
         Args:
-            ctx (ProcessingContext): The processing context.
+            ctx: The processing context.
         """
         st: WriteStatus = ctx.status.write
         # May proceed to next step (always):

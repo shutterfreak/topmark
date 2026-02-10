@@ -59,10 +59,10 @@ def as_typed_mark(mark: Any) -> DecoratorType:
     """Wrap a pytest mark so static type checkers preserve the function type.
 
     Args:
-        mark (Any): A pytest mark decorator such as `pytest.mark.integration`.
+        mark: A pytest mark decorator such as `pytest.mark.integration`.
 
     Returns:
-        DecoratorType: A decorator that preserves the wrapped function's type.
+        A decorator that preserves the wrapped function's type.
     """
 
     def _decorator(func: AnyCallable) -> AnyCallable:
@@ -81,11 +81,11 @@ def parametrize(*args: Any, **kwargs: Any) -> DecoratorType:
     """Typed wrapper for `pytest.mark.parametrize`.
 
     Args:
-        *args (Any): Positional arguments forwarded to `pytest.mark.parametrize`.
-        **kwargs (Any): Keyword arguments forwarded to `pytest.mark.parametrize`.
+        *args: Positional arguments forwarded to `pytest.mark.parametrize`.
+        **kwargs: Keyword arguments forwarded to `pytest.mark.parametrize`.
 
     Returns:
-        DecoratorType: A decorator that preserves the wrapped function's type.
+        A decorator that preserves the wrapped function's type.
     """
     mark: pytest.MarkDecorator = pytest.mark.parametrize(*args, **kwargs)
     return as_typed_mark(mark)
@@ -95,11 +95,11 @@ def hookimpl(*args: Any, **kwargs: Any) -> DecoratorType:
     """Typed wrapper for `pytest.hookimpl`.
 
     Args:
-        *args (Any): Positional arguments forwarded to `pytest.hookimpl`.
-        **kwargs (Any): Keyword arguments forwarded to `pytest.hookimpl`.
+        *args: Positional arguments forwarded to `pytest.hookimpl`.
+        **kwargs: Keyword arguments forwarded to `pytest.hookimpl`.
 
     Returns:
-        DecoratorType: A decorator that preserves the wrapped function's type.
+        A decorator that preserves the wrapped function's type.
     """
     return as_typed_mark(pytest.hookimpl(*args, **kwargs))
 
@@ -116,8 +116,7 @@ def silence_topmark_logging(monkeypatch: pytest.MonkeyPatch) -> None:
     via `pytest_configure` or `caplog`.
 
     Args:
-        monkeypatch (pytest.MonkeyPatch): Pytest monkeypatch fixture used to manipulate
-            environment variables.
+        monkeypatch: Pytest monkeypatch fixture used to manipulate environment variables.
     """
     # Ensure environment never forces DEBUG during test runs
     monkeypatch.delenv("TOPMARK_LOG_LEVEL", raising=False)
@@ -172,9 +171,8 @@ def pytest_configure(config: pytest.Config) -> None:  # pylint: disable=unused-a
     ensuring detailed output is captured during test execution.
 
     Args:
-        config (pytest.Config): The pytest configuration object. This object
-            is used internally by pytest and typically holds command line options
-            and configuration data.
+        config: The pytest configuration object. This object is used internally by pytest and
+            typically holds command line options and configuration data.
     """
     logging.setup_logging(level=logging.TRACE_LEVEL)
     # Less noisy, supported by default logging module (logging.logging):
@@ -189,14 +187,13 @@ def isolation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     scanning the repository when the test invokes commands with paths like ".".
 
     Args:
-        tmp_path (Path): The pytest-provided temporary directory for the test.
-        monkeypatch (pytest.MonkeyPatch): Fixture to change the working directory and environment.
+        tmp_path: The pytest-provided temporary directory for the test.
+        monkeypatch: Fixture to change the working directory and environment.
 
     Returns:
-        Path: The path to the isolated temporary working directory created
-            for the test. This directory serves as the simulated project root
-            for CLI commands and contains a minimal `src/dummy.py` file to
-            satisfy discovery logic.
+        The path to the isolated temporary working directory created for the test. This directory
+        serves as the simulated project root for CLI commands and contains a minimal `src/dummy.py`
+        file to satisfy discovery logic.
     """
     cwd: Path = tmp_path / "proj"
     cwd.mkdir()
@@ -221,10 +218,10 @@ def to_pattern_sources(values: Sequence[str | Path | PatternSource]) -> list[Pat
     instances are returned unchanged.
 
     Args:
-        values (Sequence[str | Path | PatternSource]): Items to coerce.
+        values: Items to coerce.
 
     Returns:
-        list[PatternSource]: Coerced list of `PatternSource` instances.
+        Coerced list of `PatternSource` instances.
     """
     if not values:
         return []
@@ -245,10 +242,10 @@ def make_config(**overrides: Any) -> Config:
     builder and then frozen for use by the pipeline.
 
     Args:
-        **overrides (Any): Keyword overrides applied to the mutable builder before freezing.
+        **overrides: Keyword overrides applied to the mutable builder before freezing.
 
     Returns:
-        Config: An immutable configuration snapshot for use in tests.
+        An immutable configuration snapshot for use in tests.
     """
     m: MutableConfig = make_mutable_config(**overrides)
     return m.freeze()
@@ -264,12 +261,12 @@ def make_mutable_config(**overrides: Any) -> MutableConfig:
     Use `make_mutable_config` only when deliberately testing config merge logic.
 
     Args:
-        **overrides (Any): Keyword overrides to apply to the mutable builder.
+        **overrides: Keyword overrides to apply to the mutable builder.
             Keys `include_from`, `exclude_from`, and `files_from` may be sequences of
             strings, `Path`, or `PatternSource`; these are coerced to `PatternSource`.
 
     Returns:
-        MutableConfig: A mutable configuration object ready to be frozen or further edited.
+        A mutable configuration object ready to be frozen or further edited.
     """
     m: MutableConfig = MutableConfig.from_defaults()
 
@@ -324,21 +321,19 @@ def make_file_type(
           is provided. Extension matching is suffix-based, so `.tar.gz` rules work.
 
     Args:
-        name (str): File type identifier.
-        extensions (Sequence[str] | None): Extension rules (including leading dots, e.g. `.py`).
-        filenames (Sequence[str] | None): Filename-tail rules (relative path tails).
-        patterns (Sequence[str] | None): Regex patterns (strings) evaluated via fullmatch
-            in the resolver.
-        content_gate (ContentGate): Content gating mode.
-        content_matcher (Callable[[Path], bool] | None): Optional content matcher callable.
-        matches (Callable[[Path], bool] | None): Optional matcher used by file discovery
-            and file-type filtering. If not provided, `matches` defaults to a small matcher
-            that checks extensions, filename tails, regex patterns (fullmatch),
-            then falls back to content_matcher.
-        skip_processing (bool): Whether this file type is known but has no headers.
+        name: File type identifier.
+        extensions: Extension rules (including leading dots, e.g. `.py`).
+        filenames: Filename-tail rules (relative path tails).
+        patterns: Regex patterns (strings) evaluated via fullmatch in the resolver.
+        content_gate: Content gating mode.
+        content_matcher: Optional content matcher callable.
+        matches: Optional matcher used by file discovery and file-type filtering. If not provided,
+            `matches` defaults to a small matcher that checks extensions, filename tails, regex
+            patterns (fullmatch), then falls back to content_matcher.
+        skip_processing: Whether this file type is known but has no headers.
 
     Returns:
-        FileType: A duck-typed `FileType` instance.
+        A duck-typed `FileType` instance.
     """
     # `resolve_file_list()` expects FileType.matches(Path) -> bool.
     # The real FileType implementation can match on extensions, filename tails,
@@ -436,14 +431,12 @@ def patched_effective_registries(
         - Cache is cleared before patch, after patch, and again on restore.
 
     Args:
-        filetypes (Mapping[str, FileType]): Effective file type registry
-            to expose for the duration of the context.
-        processors (Mapping[str, HeaderProcessor]): Effective header processor registry
-            to expose for the duration of the context.
+        filetypes: Effective file type registry to expose for the duration of the context.
+        processors: Effective header processor registry to expose for the duration of the context.
 
     Yields:
         None: This context manager yields control to the caller while the effective
-            registries are patched.
+        registries are patched.
     """
     from topmark.registry import FileTypeRegistry, HeaderProcessorRegistry
 
@@ -493,8 +486,8 @@ def effective_registries() -> EffectiveRegistries:
         ```
 
     Returns:
-        EffectiveRegistries: Callable that takes `(filetypes, processors)` mappings and
-            returns a context manager applying those registries.
+        Callable that takes `(filetypes, processors)` mappings and returns a context manager
+        applying those registries.
     """
 
     def _override(

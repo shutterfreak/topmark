@@ -157,12 +157,11 @@ def s_source_envelope_for_ext(
     """Generate content consistent with the chosen file extension.
 
     Args:
-        draw (Draw): Hypothesis draw function.
-        exts (Sequence[str] | None): Optional list of file extensions to choose from.
+        draw: Hypothesis draw function.
+        exts: Optional list of file extensions to choose from.
 
     Returns:
-        tuple[str, CommentStyle, str, str]: Generated content, comment style, line ending,
-            and file extension.
+        Generated content, comment style, line ending, and file extension.
 
     Note: content may be empty or contain no header block.
     """

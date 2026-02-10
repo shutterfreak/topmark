@@ -42,10 +42,10 @@ def is_toml_table(obj: object) -> TypeGuard[TomlTable]:
     """Type guard for a TOML table‑like mapping.
 
     Args:
-        obj (object): Value to test.
+        obj: Value to test.
 
     Returns:
-        TypeGuard[TomlTable]: ``True`` if ``obj`` is a ``dict[str, Any]``.
+        ``True`` if ``obj`` is a ``dict[str, Any]``.
     """
     return isinstance(obj, dict)
 
@@ -56,10 +56,10 @@ def is_any_list(obj: object) -> TypeGuard[list[Any]]:
     Checks only that the value is a ``list``; does not validate item types.
 
     Args:
-        obj (object): Value to test.
+        obj: Value to test.
 
     Returns:
-        TypeGuard[list[Any]]: True if obj is a list.
+        True if obj is a list.
     """
     return isinstance(obj, list)
 
@@ -70,10 +70,10 @@ def is_str_list(obj: object) -> TypeGuard[list[str]]:
     Checks that the value is a ``list[str]``.
 
     Args:
-        obj (object): Value to test.
+        obj: Value to test.
 
     Returns:
-        TypeGuard[list[str]]: True if obj is a list[str].
+        True if obj is a list[str].
     """
     return is_any_list(obj) and all(isinstance(x, str) for x in obj)
 
@@ -84,10 +84,10 @@ def is_mapping(obj: object) -> TypeGuard[Mapping[object, object]]:
     Checks only that the value is a ``Mapping``; does not validate item types.
 
     Args:
-        obj (object): Value to test.
+        obj: Value to test.
 
     Returns:
-        TypeGuard[Mapping[object, object]]: True if obj is a Mapping.
+        True if obj is a Mapping.
     """
     return isinstance(obj, Mapping)
 
@@ -99,10 +99,10 @@ def is_tomlkit_table(obj: object) -> TypeGuard[Table]:
     """Type guard for a `tomlkit.items.Table`.
 
     Args:
-        obj (object): Value to test.
+        obj: Value to test.
 
     Returns:
-        TypeGuard[Table]: ``True`` if ``obj`` is a ``tomlkit.items.Table``.
+        ``True`` if ``obj`` is a ``tomlkit.items.Table``.
     """
     return isinstance(obj, Table)
 
@@ -116,11 +116,11 @@ def get_table_value(table: TomlTable, key: str) -> TomlTable:
     Returns a new empty dict if the sub-table is missing or not a mapping.
 
     Args:
-        table (TomlTable): Parent table mapping.
-        key (str): Sub-table key.
+        table: Parent table mapping.
+        key: Sub-table key.
 
     Returns:
-        TomlTable: The sub-table if present and a mapping, otherwise an empty dict.
+        The sub-table if present and a mapping, otherwise an empty dict.
     """
     # Safely extract a sub-table (dict) from the TOML data
     value: Any | None = table.get(key)
@@ -136,11 +136,10 @@ def as_toml_table(obj: object) -> TomlTable | None:
     A TOML table is represented as ``dict[str, Any]`` in this module.
 
     Args:
-        obj (object): Arbitrary object obtained from parsed TOML.
+        obj: Arbitrary object obtained from parsed TOML.
 
     Returns:
-        TomlTable | None: ``obj`` cast to ``TomlTable`` when it is a ``dict``,
-        otherwise ``None``.
+        ``obj`` cast to ``TomlTable`` when it is a ``dict``, otherwise ``None``.
     """
     if is_toml_table(obj):
         return obj
@@ -156,11 +155,10 @@ def as_toml_table_map(obj: object) -> TomlTableMap:
     where each value must itself be a TOML table.
 
     Args:
-        obj (object): Arbitrary object obtained from parsed TOML.
+        obj: Arbitrary object obtained from parsed TOML.
 
     Returns:
-        TomlTableMap: A mapping with only ``str -> TomlTable`` entries. Non‑matching
-        items are silently dropped.
+        A mapping with only ``str -> TomlTable`` entries. Non-matching items are silently dropped.
     """
     out: TomlTableMap = {}
     if isinstance(obj, dict):

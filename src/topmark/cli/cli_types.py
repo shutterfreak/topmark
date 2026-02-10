@@ -68,28 +68,26 @@ class ArgsNamespace(TypedDict, total=False):
 
 
     Attributes:
-        verbosity_level (int | None): Program-output verbosity (0=terse, 1=verbose).
-        apply_changes (bool | None): Whether to apply the changed (dry-run if not set ot False).
-        write_mode (str | None): Whether to use safe atomic writing, faster in-place writing
-            or writing to STDOUT (default: atomic writer).
-        strict_config_checking (bool | None): If True, enforce strict TOML config checking
-            (fail on errors).
-        no_config (bool | None): Whether to ignore local config files.
-        config_files (list[str] | None): List of extra config file paths.
-        files (list[str]): List of file paths to process.
-        files_from (list[str]): List of files containing newline-delimited paths.
-        stdin_mode (bool | None): Whether to read file paths from stdin.
-        stdin_filename (str | None): The filename to use when in STDIN mode.
-        include_patterns (list[str] | None): Glob patterns of files to include.
-        include_from (list[str] | None): Files containing include patterns.
-        exclude_patterns (list[str] | None): Glob patterns of files to exclude.
-        exclude_from (list[str] | None): Files containing exclude patterns.
-        include_file_types (list[str] | None): Restrict to given file types.
-        exclude_file_types (list[str] | None): Exclude given file types.
-        relative_to (str | None): Root directory for relative paths.
-        align_fields (bool | None): Align header fields with colons.
-        header_format (HeaderOutputFormat | None): Header output format
-            (file type aware, plain, or json).
+        verbosity_level: Program-output verbosity (0=terse, 1=verbose).
+        apply_changes: Whether to apply the changed (dry-run if not set ot False).
+        write_mode: Whether to use safe atomic writing, faster in-place writing or writing to
+            STDOUT (default: atomic writer).
+        strict_config_checking: If True, enforce strict TOML config checking (fail on errors).
+        no_config: Whether to ignore local config files.
+        config_files: List of extra config file paths.
+        files: List of file paths to process.
+        files_from: List of files containing newline-delimited paths.
+        stdin_mode: Whether to read file paths from stdin.
+        stdin_filename: The filename to use when in STDIN mode.
+        include_patterns: Glob patterns of files to include.
+        include_from: Files containing include patterns.
+        exclude_patterns: Glob patterns of files to exclude.
+        exclude_from: Files containing exclude patterns.
+        include_file_types: Restrict to given file types.
+        exclude_file_types: Exclude given file types.
+        relative_to: Root directory for relative paths.
+        align_fields: Align header fields with colons.
+        header_format: Header output format (file type aware, plain, or json).
     """
 
     # Global options: retrieve from ctx.obj
@@ -151,30 +149,29 @@ def build_args_namespace(
     """Build an ArgsNamespace dictionary for CLI argument passing.
 
     Args:
-        verbosity_level (int | None): Program-output verbosity (0=terse, 1=verbose).
-        apply_changes (bool | None): Whether to apply the changed (dry-run if not set ot False).
-        write_mode (str | None): Whether to use safe atomic writing, faster in-place writing
-            or writing to STDOUT (default: atomic writer).
-        no_config (bool | None): Whether to ignore local config files.
-        config_files (list[str] | None): List of extra config file paths.
-        strict_config_checking (bool | None): If True, enforce strict TOML config checking
-            (fail on errors).
-        files (list[str] | None): List of file paths to process.
-        files_from (list[str] | None): List of files containing newline-delimited paths.
-        stdin_mode (bool | None): Whether to read file paths from stdin.
-        stdin_filename (str | None): The filename to use when in STDIN mode.
-        include_patterns (list[str] | None): Glob patterns of files to include.
-        include_from (list[str] | None): Files containing include patterns.
-        exclude_patterns (list[str] | None): Glob patterns of files to exclude.
-        exclude_from (list[str] | None): Files containing exclude patterns.
-        include_file_types (list[str] | None): Restrict to given file types.
-        exclude_file_types (list[str] | None): Exclude processing for given File types.
-        relative_to (str | None): Root directory for relative paths.
-        align_fields (bool | None): Align header fields with colons.
-        header_format (HeaderOutputFormat | None): Header output format (native, plain, or json).
+        verbosity_level: Program-output verbosity (0=terse, 1=verbose).
+        apply_changes: Whether to apply the changed (dry-run if not set ot False).
+        write_mode: Whether to use safe atomic writing, faster in-place writing or writing to
+            STDOUT (default: atomic writer).
+        no_config: Whether to ignore local config files.
+        config_files: List of extra config file paths.
+        strict_config_checking: If True, enforce strict TOML config checking (fail on errors).
+        files: List of file paths to process.
+        files_from: List of files containing newline-delimited paths.
+        stdin_mode: Whether to read file paths from stdin.
+        stdin_filename: The filename to use when in STDIN mode.
+        include_patterns: Glob patterns of files to include.
+        include_from: Files containing include patterns.
+        exclude_patterns: Glob patterns of files to exclude.
+        exclude_from: Files containing exclude patterns.
+        include_file_types: Restrict to given file types.
+        exclude_file_types: Exclude processing for given File types.
+        relative_to: Root directory for relative paths.
+        align_fields: Align header fields with colons.
+        header_format: Header output format (native, plain, or json).
 
     Returns:
-        ArgsNamespace: Dictionary of CLI argument values for use throughout the CLI.
+        Dictionary of CLI argument values for use throughout the CLI.
     """
     return cast(
         "ArgsNamespace",
@@ -295,12 +292,12 @@ def FileTypeParam(
     or is not a file.
 
     Args:
-        ctx (click.Context): Click context.
-        param (click.Parameter): The Click parameter.
-        value (Any): The CLI argument value to validate.
+        ctx: Click context.
+        param: The Click parameter.
+        value: The CLI argument value to validate.
 
     Returns:
-        Path | None: The validated file path, or None if value is None.
+        The validated file path, or None if value is None.
 
     Raises:
         click.BadParameter: If the file does not exist or is not a file.
@@ -331,12 +328,12 @@ def GlobParam(
     Both approaches support `**` for recursive matches.
 
     Args:
-        ctx (click.Context): Click context.
-        param (click.Parameter): The Click parameter.
-        value (Any): The glob pattern string.
+        ctx: Click context.
+        param: The Click parameter.
+        value: The glob pattern string.
 
     Returns:
-        list[Path]: Paths matching the glob pattern, or an empty list if `value` is None.
+        Paths matching the glob pattern, or an empty list if `value` is None.
     """
     if value is None:
         return []

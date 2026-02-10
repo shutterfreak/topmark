@@ -31,11 +31,11 @@ def _sig(obj: typing.Any) -> str:
     """Return a stable textual signature for a callable-like object.
 
     Args:
-        obj (typing.Any): Object that may be a callable or class.
+        obj: Object that may be a callable or class.
 
     Returns:
-        str: A compact string representing the call signature, or ``"<?>"`` if
-            the signature cannot be determined.
+        A compact string representing the call signature, or ``"<?>"`` if the signature cannot be
+        determined.
     """
     # Normalize typing.Any consistently across Python versions (3.10 differs)
     # In 3.10, Any is not a class and inspect.signature(Any) yields '(*args, **kwds)'.
@@ -61,11 +61,11 @@ def _normalize(obj: typing.Any) -> str:
     Python-version-specific constructor diffs.
 
     Args:
-        obj (typing.Any): Object to normalize.
+        obj: Object to normalize.
 
     Returns:
-        str: ``"<enum>"`` for ``Enum`` subclasses, ``"<class>"`` for other classes,
-            otherwise the object's call signature string.
+        ``"<enum>"`` for ``Enum`` subclasses, ``"<class>"`` for other classes, otherwise the
+        object's call signature string.
     """
     # Prefer isinstance(obj, type) instead of inspect.isclass to satisfy type checkers
     if isinstance(obj, type) and issubclass(obj, enum.Enum):
@@ -79,10 +79,10 @@ def collect_snapshot() -> dict[str, str]:
     """Collect the current public API snapshot data.
 
     Returns:
-        dict[str, str]: A mapping (as a plain ``dict``) from exported symbol name
-        to a normalized signature token. Only symbols explicitly exported by ``topmark.api``
-        (via ``__all__``) are included, plus a curated subset of facade methods
-        on ``Registry`` to keep the snapshot narrowly focused and stable.
+        A mapping (as a plain ``dict``) from exported symbol name to a normalized signature token.
+        Only symbols explicitly exported by ``topmark.api`` (via ``__all__``) are included, plus a
+        curated subset of facade methods on ``Registry`` to keep the snapshot narrowly focused and
+        stable.
     """
     snapshot: dict[str, str] = {}
 
@@ -107,7 +107,7 @@ def write_snapshot(path: str) -> None:
     """Write the public API snapshot JSON to ``path``.
 
     Args:
-        path (str): Destination file path for the JSON snapshot.
+        path: Destination file path for the JSON snapshot.
     """
     snapshot: typing.Mapping[str, str] = collect_snapshot()
     out_path = Path(path)

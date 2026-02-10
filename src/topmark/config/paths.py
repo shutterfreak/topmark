@@ -80,12 +80,11 @@ def extend_pattern_sources(
     """Append pattern sources created from ``items`` to ``dst``.
 
     Args:
-        dst (list[PatternSource]): Destination list to extend in-place.
-        items (Iterable[str]): Raw pattern declarations to normalize; skipped if falsy.
-        mk (Callable[[str, Path], PatternSource]): Factory that materializes a
-            ``PatternSource`` given the raw entry and resolution base.
-        kind (str): Human-readable label used for debug logging.
-        base (Path): Directory against which relative entries are resolved.
+        dst: Destination list to extend in-place.
+        items: Raw pattern declarations to normalize; skipped if falsy.
+        mk: Factory that materializes a ``PatternSource`` given the raw entry and resolution base.
+        kind: Human-readable label used for debug logging.
+        base: Directory against which relative entries are resolved.
     """
     for raw in items or []:
         ps: PatternSource = mk(raw, base)

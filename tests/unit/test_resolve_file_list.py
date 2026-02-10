@@ -39,9 +39,8 @@ class DummyType:
     """Minimal dummy file type for testing.
 
     Args:
-        name (str): The identifier of the file type.
-        predicate (Callable[[Path], bool]): A callable that returns True
-            if a path matches this type.
+        name: The identifier of the file type.
+        predicate: A callable that returns True if a path matches this type.
     """
 
     def __init__(self, name: str, predicate: Callable[[Path], bool]) -> None:
@@ -52,10 +51,10 @@ class DummyType:
         """Check if a given path matches this dummy file type.
 
         Args:
-            path (Path): Path to test.
+            path: Path to test.
 
         Returns:
-            bool: True if the path matches, False otherwise.
+            True if the path matches, False otherwise.
         """
         return self._pred(path)
 
@@ -64,11 +63,11 @@ def write(p: Path, text: str = "") -> Path:
     """Write text to a file, creating parent directories if needed.
 
     Args:
-        p (Path): Path of the file to create.
-        text (str): Content to write.
+        p: Path of the file to create.
+        text: Content to write.
 
     Returns:
-        Path: The created file path.
+        The created file path.
     """
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(text, encoding="utf-8")
@@ -81,8 +80,8 @@ def test_candidates_from_positional_and_globs(
     """Expand candidate files from positional args and glob patterns.
 
     Args:
-        tmp_path (Path): Pytest temporary directory fixture.
-        monkeypatch (pytest.MonkeyPatch): Pytest monkeypatch fixture.
+        tmp_path: Pytest temporary directory fixture.
+        monkeypatch: Pytest monkeypatch fixture.
     """
     # Create files
     write(tmp_path / "a.txt", "x")
@@ -373,9 +372,9 @@ def test_file_type_unknown_is_ignored(
     """Warn and ignore unknown file types.
 
     Args:
-        tmp_path (Path): Pytest temporary directory fixture.
-        monkeypatch (pytest.MonkeyPatch): Pytest monkeypatch fixture.
-        caplog (pytest.LogCaptureFixture): Pytest fixture to capture log records.
+        tmp_path: Pytest temporary directory fixture.
+        monkeypatch: Pytest monkeypatch fixture.
+        caplog: Pytest fixture to capture log records.
     """
     (tmp_path / "a.py").write_text("x")
     monkeypatch.chdir(tmp_path)

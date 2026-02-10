@@ -93,21 +93,17 @@ class ProcessingStatus:
     per-axis status in the pipeline.
 
     Attributes:
-        resolve (ResolveStatus): Status of file-type resolution.
-        fs (FsStatus): File system status (existence, permissions, binary guard).
-        content (ContentStatus): Status of content-level checks (BOM, shebang,
-            mixed newlines, readability).
-        header (HeaderStatus): Status of header detection and parsing.
-        generation (GenerationStatus): Status of header field/value generation.
-        render (RenderStatus): Status of header rendering for the active file
-            type.
-        strip (StripStatus): Status of header stripping preparation and
-            execution.
-        comparison (ComparisonStatus): Status of comparing original vs. updated
-            content.
-        plan (PlanStatus): Status of planning updates prior to writing.
-        patch (PatchStatus): Status of patch generation.
-        write (WriteStatus): Status of writing changes back to the file system.
+        resolve: Status of file-type resolution.
+        fs: File system status (existence, permissions, binary guard).
+        content: Status of content-level checks (BOM, shebang, mixed newlines, readability).
+        header: Status of header detection and parsing.
+        generation: Status of header field/value generation.
+        render: Status of header rendering for the active file type.
+        strip: Status of header stripping preparation and execution.
+        comparison: Status of comparing original vs. updated content.
+        plan: Status of planning updates prior to writing.
+        patch: Status of patch generation.
+        write: Status of writing changes back to the file system.
     """
 
     # File type resolution status:
@@ -148,10 +144,10 @@ class ProcessingStatus:
         """Get the status for a given Axis.
 
         Args:
-            axis (Axis): The Axis we want to get the status for;
+            axis: The Axis we want to get the status for;
 
         Returns:
-            BaseStatus: The status for the given Axis.
+            The status for the given Axis.
         """
         match axis:
             case Axis.RESOLVE:
@@ -205,8 +201,7 @@ class ProcessingStatus:
         centralized representation of axis status data for machine output.
 
         Returns:
-            dict[str, AxisStatusPayload]: Mapping from axis name to its status
-            payload.
+            Mapping from axis name to its status payload.
         """
         data: dict[str, AxisStatusPayload] = {}
         for axis in Axis:
@@ -225,7 +220,7 @@ class ProcessingStatus:
         """Return True if the write axis has reached a non-pending outcome.
 
         Returns:
-            bool: True when the write status is anything other than PENDING.
+            `True` when the write status is anything other than `PENDING`.
         """
         return self.write is not WriteStatus.PENDING
 
@@ -238,9 +233,8 @@ class StepStatus:
     to report per-step outcomes.
 
     Attributes:
-        step (str): Name of the pipeline step.
-        status (BaseStatus): Coarse status for the step, typically derived
-            from its primary axis.
+        step: Name of the pipeline step.
+        status: Coarse status for the step, typically derived from its primary axis.
     """
 
     step: str

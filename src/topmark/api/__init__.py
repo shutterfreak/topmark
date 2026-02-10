@@ -126,33 +126,29 @@ def check(
     policy overlays that are applied after discovery, before the pipeline runs.
 
     Args:
-        paths (Iterable[Path | str]): Files and/or directories to process. Globs are
-            allowed by the caller; TopMark will recurse and filter internally.
-        apply (bool): If `True`, write changes in-place; otherwise perform a dry run.
-        diff (bool): If `True`, include unified diffs for changes where applicable.
-        config (Mapping[str, Any] | None): Optional plain mapping or frozen `Config`
-            to seed configuration. When `None`, project discovery and layered merge
-            are performed (defaults → project config → overrides).
-        policy (PublicPolicy | None): Optional global policy overrides (public shape).
-            These are merged after discovery using the standard policy resolution.
-        policy_by_type (Mapping[str, PublicPolicy] | None): Optional per-type policy
-            overrides (public shape) merged after discovery.
-        include_file_types (Sequence[str] | None): Optional whitelist of file type identifiers
-            to restrict discovery.
-        exclude_file_types (Sequence[str] | None): Optional blacklist of file type identifiers
-            to exclude from discovery.
-        skip_compliant (bool): Exclude already-compliant files from the returned view.
-        skip_unsupported (bool): Exclude unsupported files from the returned view.
-        prune (bool): If `True`, trim heavy views after the run (keeps summaries).
+        paths: Files and/or directories to process. Globs are allowed by the caller; TopMark will
+            recurse and filter internally.
+        apply: If `True`, write changes in-place; otherwise perform a dry run.
+        diff: If `True`, include unified diffs for changes where applicable.
+        config: Optional plain mapping or frozen `Config` to seed configuration. When `None`,
+            project discovery and layered merge are performed (defaults → project config
+            → overrides).
+        policy: Optional global policy overrides (public shape). These are merged after discovery
+            using the standard policy resolution.
+        policy_by_type: Optional per-type policy overrides (public shape) merged after discovery.
+        include_file_types: Optional whitelist of file type identifiers to restrict discovery.
+        exclude_file_types: Optional blacklist of file type identifiers to exclude from discovery.
+        skip_compliant: Exclude already-compliant files from the returned view.
+        skip_unsupported: Exclude unsupported files from the returned view.
+        prune: If `True`, trim heavy views after the run (keeps summaries).
 
     Returns:
-        RunResult: Filtered per-file outcomes, counts, diagnostics, and write stats.
+        Filtered per-file outcomes, counts, diagnostics, and write stats.
 
     Notes:
-        The `skip_compliant` and `skip_unsupported` flags affect only the
-        **returned view** (which files appear and how counts are summarized).
-        They do not change which files are *eligible* to be written when
-        `apply=True`.
+        The `skip_compliant` and `skip_unsupported` flags affect only the **returned view** (which
+        files appear and how counts are summarized). They do not change which files are *eligible*
+        to be written when `apply=True`.
     """
     # Choose the concrete pipeline variant
     pipeline: Sequence[Step] = select_pipeline("check", apply=apply, diff=diff)
@@ -212,27 +208,23 @@ def strip(
     applies optional policy overlays before running the pipeline.
 
     Args:
-        paths (Iterable[Path | str]): Files and/or directories to process. Globs are allowed.
-        apply (bool): If `True`, write changes in-place; otherwise perform a dry run.
-        diff (bool): If `True`, include unified diffs for changes where applicable.
-        config (Mapping[str, Any] | None): Optional plain mapping or frozen `Config`
-            to seed configuration. When `None`, project discovery and layered merge
-            are performed (defaults → project config → overrides).
-        policy (PublicPolicy | None): Optional global policy overrides (public shape).
-            Currently strip flows are policy-agnostic, but this is accepted for forward
-            compatibility.
-        policy_by_type (Mapping[str, PublicPolicy] | None): Optional per-type policy
-            overrides (public shape).
-        include_file_types (Sequence[str] | None): Optional whitelist of file type identifiers
-            to restrict discovery.
-        exclude_file_types (Sequence[str] | None): Optional blacklist of file type identifiers
-            to exclude from discovery.
-        skip_compliant (bool): Exclude already-compliant files from the returned view.
-        skip_unsupported (bool): Exclude unsupported files from the returned view.
-        prune (bool): If `True`, trim heavy views after the run (keeps summaries).
+        paths: Files and/or directories to process. Globs are allowed.
+        apply: If `True`, write changes in-place; otherwise perform a dry run.
+        diff: If `True`, include unified diffs for changes where applicable.
+        config: Optional plain mapping or frozen `Config` to seed configuration. When `None`,
+            project discovery and layered merge are performed (defaults → project config
+            → overrides).
+        policy: Optional global policy overrides (public shape). Currently strip flows are
+            policy-agnostic, but this is accepted for forward compatibility.
+        policy_by_type: Optional per-type policy overrides (public shape).
+        include_file_types: Optional whitelist of file type identifiers to restrict discovery.
+        exclude_file_types: Optional blacklist of file type identifiers to exclude from discovery.
+        skip_compliant: Exclude already-compliant files from the returned view.
+        skip_unsupported: Exclude unsupported files from the returned view.
+        prune: If `True`, trim heavy views after the run (keeps summaries).
 
     Returns:
-        RunResult: Filtered per-file outcomes, counts, diagnostics, and write stats.
+        Filtered per-file outcomes, counts, diagnostics, and write stats.
 
     Notes:
         The `skip_*` flags affect only the **returned view** and do not modify
@@ -277,10 +269,10 @@ def get_filetype_info(long: bool = False) -> list[FileTypeInfo]:
     """Return metadata about registered file types.
 
     Args:
-        long (bool): If `True`, include extended metadata such as patterns and policy.
+        long: If `True`, include extended metadata such as patterns and policy.
 
     Returns:
-        list[FileTypeInfo]: A list of `FileTypeInfo` dicts (stable, serializable metadata).
+        A list of `FileTypeInfo` dicts (stable, serializable metadata).
 
     Notes:
         For object-level access, prefer `FileTypeRegistry` from
@@ -318,10 +310,10 @@ def get_processor_info(long: bool = False) -> list[ProcessorInfo]:
     """Return metadata about registered header processors.
 
     Args:
-        long (bool): If True, include extended details for line/block delimiters.
+        long: If True, include extended details for line/block delimiters.
 
     Returns:
-        list[ProcessorInfo]: A list of `ProcessorInfo` dicts (stable, serializable metadata).
+        A list of `ProcessorInfo` dicts (stable, serializable metadata).
 
     Notes:
         For object-level access, prefer `HeaderProcessorRegistry` from

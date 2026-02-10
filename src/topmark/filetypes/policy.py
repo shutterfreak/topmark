@@ -91,21 +91,21 @@ class FileTypeHeaderPolicy:
     user-authored whitespace while keeping round-trips stable.
 
     Attributes:
-        supports_shebang (bool): Whether this file type commonly starts with a POSIX
+        supports_shebang: Whether this file type commonly starts with a POSIX
             shebang (e.g., ``#!/usr/bin/env bash``). When ``True``, processors may
             skip a leading shebang during placement.
-        encoding_line_regex (str | None): Optional regex (string) that matches an
+        encoding_line_regex: Optional regex (string) that matches an
             encoding declaration line *immediately after* a shebang (e.g., Python
             PEP 263). When provided and a shebang was skipped, a matching line is
             also skipped for placement.
-        pre_header_blank_after_block (int): Number of blank lines to place between a
+        pre_header_blank_after_block: Number of blank lines to place between a
             preamble block (shebang/encoding or similar) and the header. Typically 1.
-        ensure_blank_after_header (bool): Ensure exactly one blank line follows the
+        ensure_blank_after_header: Ensure exactly one blank line follows the
             header when body content follows. No extra blank is added at EOF.
-        blank_collapse_mode (BlankCollapseMode): How to identify and collapse *blank*
+        blank_collapse_mode: How to identify and collapse *blank*
             lines around the header during insert/strip repairs. See
             `BlankCollapseMode` for semantics. Defaults to ``STRICT``.
-        blank_collapse_extra (str): Additional characters to treat as blank **in
+        blank_collapse_extra: Additional characters to treat as blank **in
             addition** to those covered by ``blank_collapse_mode``. For example,
             set to ``\"\\x0c\"`` to consider form-feed collapsible for a given type.
     """

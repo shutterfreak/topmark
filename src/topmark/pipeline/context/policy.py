@@ -47,12 +47,11 @@ def allow_empty_by_policy(ctx: ProcessingContext) -> bool:
     filesystem status of the context.
 
     Args:
-        ctx (ProcessingContext): Processing context containing status and
-            configuration.
+        ctx: Processing context containing status and configuration.
 
     Returns:
-        bool: True if the file is empty and policy permits inserting a header
-        into empty files, False otherwise.
+        `True` if the file is empty and policy permits inserting a header into empty files,
+        `False` otherwise.
     """
     eff: Policy | None = ctx.get_effective_policy()
 
@@ -67,12 +66,11 @@ def allow_empty_header_by_policy(ctx: ProcessingContext) -> bool:
     header is considered acceptable.
 
     Args:
-        ctx (ProcessingContext): Processing context containing status and
-            configuration.
+        ctx: Processing context containing status and configuration.
 
     Returns:
-        bool: True if policy allows rendering an empty header when there are
-        no fields, False otherwise.
+        `True` if policy allows rendering an empty header when there are no fields,
+        `False` otherwise.
     """
     eff: Policy | None = ctx.get_effective_policy()
 
@@ -86,8 +84,7 @@ def allow_content_reflow_by_policy(ctx: ProcessingContext) -> bool:
     the header region and are controlled by the ``allow_reflow`` flag.
 
     Args:
-        ctx (ProcessingContext): Processing context containing status and
-            configuration.
+        ctx: Processing context containing status and configuration.
 
     Returns:
         bool: True if policy allows reflowing content around the header,
@@ -116,12 +113,11 @@ def allows_mixed_line_endings_by_policy(ctx: ProcessingContext) -> bool:
         existing `allow_empty_by_policy()` governs header insertion later.
 
     Args:
-        ctx (ProcessingContext): Processing context containing filesystem
-            status and configuration.
+        ctx: Processing context containing filesystem status and configuration.
 
     Returns:
-        bool: True if we may proceed despite mixed line endings, False
-        otherwise.
+        `True` if we may proceed despite mixed line endings,
+        `False` otherwise.
     """
     # Always OK to proceed if FS is healthy or empty (read can still run).
     if ctx.status.fs in {FsStatus.OK, FsStatus.EMPTY}:
@@ -155,12 +151,11 @@ def allows_bom_before_shebang_by_policy(ctx: ProcessingContext) -> bool:
         existing `allow_empty_by_policy()` governs header insertion later.
 
     Args:
-        ctx (ProcessingContext): Processing context containing filesystem
-            status and configuration.
+        ctx: Processing context containing filesystem status and configuration.
 
     Returns:
-        bool: True if we may proceed despite a BOM before the shebang, False
-        otherwise.
+        `True` if we may proceed despite a BOM before the shebang,
+        `False` otherwise.
     """
     # Always OK to proceed if FS is healthy or empty (read can still run).
     if ctx.status.fs in {FsStatus.OK, FsStatus.EMPTY}:
@@ -201,12 +196,11 @@ def policy_allows_fs_skip(ctx: ProcessingContext) -> bool:
         existing `allow_empty_by_policy()` governs header insertion later.
 
     Args:
-        ctx (ProcessingContext): Processing context containing filesystem
-            status and configuration.
+        ctx: Processing context containing filesystem status and configuration.
 
     Returns:
-        bool: True if we may proceed despite a soft filesystem violation,
-        False otherwise.
+        `True` if we may proceed despite a soft filesystem violation,
+        `False` otherwise.
     """
     # Always OK to proceed if FS is healthy or empty (read can still run).
     if ctx.status.fs in {FsStatus.OK, FsStatus.EMPTY}:
@@ -230,13 +224,12 @@ def check_permitted_by_policy(ctx: ProcessingContext) -> bool | None:
     """Whether policy allows the intended type of change (tri-state).
 
     Args:
-        ctx (ProcessingContext): Processing context for the current file.
+        ctx: Processing context for the current file.
 
     Returns:
-        bool | None:
-            - True  : policy allows the intended change (insert/replace)
-            - False : policy forbids it (e.g., add_only forbids replace)
-            - None  : indeterminate (no clear intent yet)
+        - True  : policy allows the intended change (insert/replace)
+        - False : policy forbids it (e.g., add_only forbids replace)
+        - None  : indeterminate (no clear intent yet)
     """
     pol: Policy | None = ctx.get_effective_policy()
     pol_check_add_only: bool = pol.add_only if pol else False
@@ -333,14 +326,13 @@ def would_change(ctx: ProcessingContext) -> bool | None:
     """Return whether a change *would* occur (tri-state).
 
     Args:
-        ctx (ProcessingContext): Processing context for the current file.
+        ctx: Processing context for the current file.
 
     Returns:
-        bool | None: ``True`` if a change is intended (e.g., comparison is
-            CHANGED, a header is missing, or the strip step prepared/attempted
-            a removal), ``False`` if definitively no change (e.g., UNCHANGED or
-            strip NOT_NEEDED), and ``None`` when indeterminate because the
-            comparison was skipped/pending and the strip step did not run.
+        ``True`` if a change is intended (e.g., comparison is CHANGED, a header is missing,
+        or the strip step prepared/attempted a removal), ``False`` if definitively no change
+        (e.g., UNCHANGED or strip NOT_NEEDED), and ``None`` when indeterminate because the
+        comparison was skipped/pending and the strip step did not run.
     """
     # Strip intent takes precedence: READY means we intend to remove, and
     # FAILED still represents an intent (feasibility is handled by can_change).
@@ -368,11 +360,11 @@ def can_change(ctx: ProcessingContext) -> bool:
     into empty files.
 
     Args:
-        ctx (ProcessingContext): Processing context for the current file.
+        ctx: Processing context for the current file.
 
     Returns:
-        bool: True if a change is structurally and operationally safe, False
-        otherwise.
+        `True` if a change is structurally and operationally safe,
+        `False` otherwise.
     """
     # baseline feasibility + structural safety
     feasible: bool = (
@@ -403,11 +395,11 @@ def would_add_or_update(ctx: ProcessingContext) -> bool:
     """Intent for check/apply: True if we'd insert or replace a header.
 
     Args:
-        ctx (ProcessingContext): Processing context for the current file.
+        ctx: Processing context for the current file.
 
     Returns:
-        bool: True if a change is structurally and operationally safe, False
-        otherwise.
+        `True` if a change is structurally and operationally safe,
+        `False` otherwise.
     """
     return (
         ctx.status.header == HeaderStatus.MISSING
@@ -419,11 +411,11 @@ def effective_would_add_or_update(ctx: ProcessingContext) -> bool:
     """True iff add/update is intended, feasible, and allowed by policy.
 
     Args:
-        ctx (ProcessingContext): Processing context for the current file.
+        ctx: Processing context for the current file.
 
     Returns:
-        bool: True if a change is structurally and operationally safe, False
-        otherwise.
+        `True` if a change is structurally and operationally safe,
+        `False` otherwise.
     """
     return (
         would_add_or_update(ctx)
@@ -436,11 +428,11 @@ def would_strip(ctx: ProcessingContext) -> bool:
     """Intent for strip: True if a removal would occur.
 
     Args:
-        ctx (ProcessingContext): Processing context for the current file.
+        ctx: Processing context for the current file.
 
     Returns:
-        bool: True if a change is structurally and operationally safe, False
-        otherwise.
+        `True` if a change is structurally and operationally safe,
+        `False` otherwise.
     """
     return ctx.status.strip == StripStatus.READY
 
@@ -449,11 +441,11 @@ def effective_would_strip(ctx: ProcessingContext) -> bool:
     """True iff a strip is intended and feasible.
 
     Args:
-        ctx (ProcessingContext): Processing context for the current file.
+        ctx: Processing context for the current file.
 
     Returns:
-        bool: True if a change is structurally and operationally safe, False
-        otherwise.
+        `True` if a change is structurally and operationally safe,
+        `False` otherwise.
     """
     # Policy doesn’t block strip; feasibility is in can_change
     return would_strip(ctx) and can_change(ctx) is True

@@ -133,25 +133,25 @@ class HeaderProcessor:
         integrations.
 
     Args:
-        block_prefix (str | None): The prefix string for block-style header start.
-        block_suffix (str | None): The suffix string for block-style header end.
-        line_prefix (str | None): The prefix string for each line within the header block.
-        line_suffix (str | None): The suffix string for each line within the header block.
-        line_indent (str | None): The indentation applied to *header field lines* **after**
+        block_prefix: The prefix string for block-style header start.
+        block_suffix: The suffix string for block-style header end.
+        line_prefix: The prefix string for each line within the header block.
+        line_suffix: The suffix string for each line within the header block.
+        line_indent: The indentation applied to *header field lines* **after**
             the comment prefix (e.g., spaces after `//`).
-        header_indent (str | None): The indentation applied *before* the comment prefix; used
+        header_indent: The indentation applied *before* the comment prefix; used
             to preserve existing leading indentation when replacing an indented
             header block inside a document (e.g., nested JSONC).
 
     Attributes:
-        file_type (FileType | None): The `FileType` registered to the header processor.
-        block_prefix (str): The prefix string for block-style header start.
-        block_suffix (str): The suffix string for block-style header end.
-        line_prefix (str): The prefix string for each line within the header block.
-        line_suffix (str): The suffix string for each line within the header block.
-        line_indent (str): The indentation applied to *header field lines* **after**
+        file_type: The `FileType` registered to the header processor.
+        block_prefix: The prefix string for block-style header start.
+        block_suffix: The suffix string for block-style header end.
+        line_prefix: The prefix string for each line within the header block.
+        line_suffix: The suffix string for each line within the header block.
+        line_indent: The indentation applied to *header field lines* **after**
             the comment prefix (e.g., spaces after `//`).
-        header_indent (str): The indentation applied *before* the comment prefix; used
+        header_indent: The indentation applied *before* the comment prefix; used
             to preserve existing leading indentation when replacing an indented
             header block inside a document (e.g., nested JSONC).
 
@@ -209,11 +209,11 @@ class HeaderProcessor:
         marker, then parses only the payload lines between them.
 
         Args:
-            context (ProcessingContext): Pipeline context where ``header`` has been
-                set to a [`topmark.pipeline.views.HeaderView`][] (range/lines/block/mapping).
+            context: Pipeline context where ``header`` has been set to a
+                [`topmark.pipeline.views.HeaderView`][] (range/lines/block/mapping).
 
         Returns:
-            HeaderParseResult: Parsed mapping and per-line success/error counters.
+            Parsed mapping and per-line success/error counters.
 
         Notes:
             - Comment affixes (``line_prefix`` / ``line_suffix``) are stripped per line.
@@ -310,11 +310,11 @@ class HeaderProcessor:
         """Find START and END marker indices relative to the given slice.
 
         Args:
-            lines (list[str]): The lines in which to search for the START and END markers.
+            lines: The lines in which to search for the START and END markers.
 
         Returns:
-            tuple[int | None, int | None]: (start_rel, end_rel) where both are relative indices
-                into `lines`. Any of them may be None if not found.
+            Tuple `(start_rel, end_rel)` where both are relative indices into `lines`.
+            Any of them may be `None` if not found.
         """
         start_rel: int | None = None
         end_rel: int | None = None
@@ -341,10 +341,10 @@ class HeaderProcessor:
         Then strip surrounding whitespace.
 
         Args:
-            line (str): The line to be stripped of its line prefix/suffix.
+            line: The line to be stripped of its line prefix/suffix.
 
         Returns:
-            str: The stripped line.
+            The stripped line.
         """
         cleaned: str = line.rstrip("\r\n")
         if self.line_prefix and cleaned.lstrip().startswith(self.line_prefix):
@@ -375,16 +375,16 @@ class HeaderProcessor:
         """Wrap a single content line using line prefix/suffix, then append a newline.
 
         Args:
-            content (str): Inner text for the line (without prefixes/suffixes or newline).
-            newline_style (str): Newline characters to append (``LF``, ``CR``, ``CRLF``).
-            line_prefix (str | None): Optional override for the line prefix; defaults to
+            content: Inner text for the line (without prefixes/suffixes or newline).
+            newline_style: Newline characters to append (``LF``, ``CR``, ``CRLF``).
+            line_prefix: Optional override for the line prefix; defaults to
                 the instance's ``line_prefix`` when ``None``.
-            line_suffix (str | None): Optional override for the line suffix; defaults to
+            line_suffix: Optional override for the line suffix; defaults to
                 the instance's ``line_suffix`` when ``None``.
-            header_indent (str): The indentation applied *before* the comment prefix; used
+            header_indent: The indentation applied *before* the comment prefix; used
                 to preserve existing leading indentation when replacing an indented
                 header block inside a document (e.g., nested JSONC).
-            after_prefix_indent (str | None): Indentation to apply after the line prefix
+            after_prefix_indent: Indentation to apply after the line prefix
                 (overrides the instance's ``line_indent`` for this line).
 
         Returns:
@@ -429,20 +429,19 @@ class HeaderProcessor:
           3) an intentional blank line following the start marker.
 
         Args:
-            newline_style (str): Newline characters to append to each rendered line.
-            block_prefix (str | None): Optional override for the block prefix; defaults to
+            newline_style: Newline characters to append to each rendered line.
+            block_prefix: Optional override for the block prefix; defaults to
                 the instance's ``block_prefix`` when ``None``.
-            line_prefix (str | None): Optional override for the line prefix; defaults to
+            line_prefix: Optional override for the line prefix; defaults to
                 the instance's ``line_prefix`` when ``None``.
-            line_suffix (str | None): Optional override for the line suffix; defaults to
+            line_suffix: Optional override for the line suffix; defaults to
                 the instance's ``line_suffix`` when ``None``.
-            header_indent (str): The indentation applied *before* the comment prefix; used
+            header_indent: The indentation applied *before* the comment prefix; used
                 to preserve existing leading indentation when replacing an indented
                 header block inside a document (e.g., nested JSONC).
 
         Returns:
-            list[str]: Preamble lines (each ending with ``newline_style``) that precede
-                the header fields.
+            Preamble lines (each ending with ``newline_style``) that precede the header fields.
         """
         bp: str = self.block_prefix if block_prefix is None else block_prefix
         lines: list[str] = []
@@ -488,20 +487,19 @@ class HeaderProcessor:
           3) the block comment closer (when configured).
 
         Args:
-            newline_style (str): Newline characters to append to each rendered line.
-            block_suffix (str | None): Optional override for the block suffix; defaults to
+            newline_style: Newline characters to append to each rendered line.
+            block_suffix: Optional override for the block suffix; defaults to
                 the instance's ``block_suffix`` when ``None``.
-            line_prefix (str | None): Optional override for the line prefix; defaults to
+            line_prefix: Optional override for the line prefix; defaults to
                 the instance's ``line_prefix`` when ``None``.
-            line_suffix (str | None): Optional override for the line suffix; defaults to
+            line_suffix: Optional override for the line suffix; defaults to
                 the instance's ``line_suffix`` when ``None``.
-            header_indent (str): The indentation applied *before* the comment prefix; used
+            header_indent: The indentation applied *before* the comment prefix; used
                 to preserve existing leading indentation when replacing an indented
                 header block inside a document (e.g., nested JSONC).
 
         Returns:
-            list[str]: Postamble lines (each ending with ``newline_style``) that follow
-                the header fields.
+            Postamble lines (each ending with ``newline_style``) that follow the header fields.
         """
         bs: str = self.block_suffix if block_suffix is None else block_suffix
         lines: list[str] = []
@@ -549,22 +547,22 @@ class HeaderProcessor:
         alignment and raw_header settings from the configuration to format the output.
 
         Args:
-            header_values (dict[str, str]): Mapping of header fields to render.
-            config (Config): TopMark configuration (defines header fields and options).
-            newline_style (str): Newline style (``LF``, ``CR``, ``CRLF``).
-            block_prefix_override (str | None): Optional block prefix override.
-            block_suffix_override (str | None): Optional block suffix override.
-            line_prefix_override (str | None): Optional line prefix override.
-            line_suffix_override (str | None): Optional line suffix override.
-            line_indent_override (str | None): Optional indentation override *after*
+            header_values: Mapping of header fields to render.
+            config: TopMark configuration (defines header fields and options).
+            newline_style: Newline style (``LF``, ``CR``, ``CRLF``).
+            block_prefix_override: Optional block prefix override.
+            block_suffix_override: Optional block suffix override.
+            line_prefix_override: Optional line prefix override.
+            line_suffix_override: Optional line suffix override.
+            line_indent_override: Optional indentation override *after*
                 the comment prefix, applied to header field lines (defaults to the
                 processor's `line_indent`).
-            header_indent_override (str | None): Optional indentation override *before*
+            header_indent_override: Optional indentation override *before*
                 the comment prefix, applied to complete header lines (used to preserve
                 existing leading indentation on replace).
 
         Returns:
-            list[str]: Rendered header lines ending with ``newline_style``.
+            Rendered header lines ending with ``newline_style``.
 
         Raises:
             RuntimeError: If `config` is undefined.
@@ -676,11 +674,11 @@ class HeaderProcessor:
         `NO_LINE_ANCHOR`, which this method will propagate unchanged.
 
         Args:
-            lines (list[str]): Full file content split into lines.
+            lines: Full file content split into lines.
 
         Returns:
-            int: A 0-based line index where a header would be inserted, or
-                `NO_LINE_ANCHOR` when line-based anchoring is not used.
+            A 0-based line index where a header would be inserted, or `NO_LINE_ANCHOR` when
+            line-based anchoring is not used.
         """
         return self.get_header_insertion_index(lines)
 
@@ -699,11 +697,11 @@ class HeaderProcessor:
         Subclasses may override this when a format imposes different placement rules.
 
         Args:
-            file_lines (list[str]): Lines from the file being processed.
+            file_lines: Lines from the file being processed.
 
         Returns:
-            int: Index at which to insert the TopMark header, or ``NO_LINE_ANCHOR`` if
-                no insertion index can be found.
+            Index at which to insert the TopMark header, or ``NO_LINE_ANCHOR`` if no insertion
+            index can be found.
         """
         index = 0
         shebang_present = False
@@ -745,12 +743,12 @@ class HeaderProcessor:
         Subclasses may override this method for more flexible or format-specific matching.
 
         Args:
-            line (str): The line of text to check (whitespace is trimmed internally).
-            directive (str): The directive string to look for.
+            line: The line of text to check (whitespace is trimmed internally).
+            directive: The directive string to look for.
 
         Returns:
-            bool: ``True`` if the line contains the directive with the configured
-                prefix/suffix, otherwise ``False``.
+            ``True`` if the line contains the directive with the configured prefix/suffix,
+            otherwise ``False``.
         """
         # This method matches directives with configured affixes; policy-based blank
         # collapsing does not apply here. Normalize incidental whitespace for affix matching.
@@ -791,14 +789,14 @@ class HeaderProcessor:
         Subclasses may override this to enforce format-specific constraints.
 
         Args:
-            lines (list[str]): Full file content split into lines.
-            header_start_idx (int): 0-based index of the candidate header's first line.
-            header_end_idx (int): 0-based index of the candidate header's last line (inclusive).
-            anchor_idx (int): 0-based index where a header would be inserted per policy.
+            lines: Full file content split into lines.
+            header_start_idx: 0-based index of the candidate header's first line.
+            header_end_idx: 0-based index of the candidate header's last line (inclusive).
+            anchor_idx: 0-based index where a header would be inserted per policy.
 
         Returns:
-            bool: ``True`` if the candidate lies within the configured proximity window,
-                otherwise ``False``.
+            ``True`` if the candidate lies within the configured proximity window,
+            otherwise ``False``.
 
         Notes:
             The proximity window can be tuned per file type by defining
@@ -829,13 +827,13 @@ class HeaderProcessor:
         a valid span when present.
 
         Args:
-            lines (Iterable[str]): Logical file lines (``keepends=True``). The iterable
+            lines: Logical file lines (``keepends=True``). The iterable
                 may be list-backed or lazy (e.g., a generator).
-            newline_style (str): Dominant newline style (``LF``, ``CR``, ``CRLF``);
+            newline_style: Dominant newline style (``LF``, ``CR``, ``CRLF``);
                 unused by the default scanner but kept for parity with callers.
 
         Returns:
-            HeaderBounds: A discriminated result:
+            A discriminated result:
                 - ``BoundsKind.SPAN`` with ``start`` (inclusive) and ``end`` (exclusive)
                   when a valid header can be used.
                 - ``BoundsKind.MALFORMED`` with a best-effort range and ``reason`` when
@@ -979,17 +977,16 @@ class HeaderProcessor:
         removal to avoid introducing an extra gap.
 
         Args:
-            lines (list[str]): Full file content split into lines (each typically ending
-                with a newline).
-            span (tuple[int, int] | None): Optional inclusive ``(start, end)`` line index tuple,
+            lines: Full file content split into lines (each typically ending with a newline).
+            span: Optional inclusive ``(start, end)`` line index tuple,
                 normally provided by the scanner via ``ctx.existing_header_range``.
                 When set, no scanning is performed.
-            newline_style (str): Newline style (``LF``, ``CR``, ``CRLF``).
-            ends_with_newline (bool | None): If known, whether the original file
-                ended with a newline. If ``None``, this information is not available.
+            newline_style: Newline style (``LF``, ``CR``, ``CRLF``).
+            ends_with_newline: If known, whether the original file ended with a newline.
+                If ``None``, this information is not available.
 
         Returns:
-            tuple[list[str], tuple[int, int] | None, StripDiagnostic]: A tuple containing:
+            A tuple containing:
                 - The updated list of file lines with the header removed.
                 - The (start, end) line indices (inclusive) of the removed block
                   in the original input.
@@ -1192,12 +1189,11 @@ class HeaderProcessor:
         helper does no placement validation; callers should apply policy checks.
 
         Args:
-            lines (list[str]): Full file content split into lines.
+            lines: Full file content split into lines.
 
         Returns:
-            tuple[int | None, int | None]: A tuple ``(start_index, end_index)`` where both
-            are 0-based line indices of the directive lines (inclusive), or ``(None, None)``
-            when no pair is found.
+            A tuple ``(start_index, end_index)`` where both are 0-based line indices of the
+            directive lines (inclusive), or ``(None, None)`` when no pair is found.
         """
         start_index: int | None = None
         end_index: int | None = None
@@ -1221,11 +1217,11 @@ class HeaderProcessor:
         """Identify the bounds of a block-comment-wrapped header (e.g. HTML, XML, Markdown).
 
         Args:
-            lines (list[str]): The lines in which a comment block is to be found.
+            lines: The lines in which a comment block is to be found.
 
         Returns:
-            tuple[int | None, int | None]: A tuple (start_index, end_index) representing the lines
-            to include (inclusive), or (None, None) if not found or malformed.
+            A tuple `(start_index, end_index)` representing the lines to include (inclusive),
+            or `(None, None)` if not found or malformed.
         """
         block_prefix_index: int | None = None
         header_start_index: int | None = None
@@ -1274,13 +1270,13 @@ class HeaderProcessor:
         depending on surrounding context.
 
         Args:
-            original_lines (list[str]): The original file lines.
-            insert_index (int): Line index at which the header will be inserted.
-            rendered_header_lines (list[str]): The header lines to insert.
-            newline_style (str): Newline style (``LF``, ``CR``, ``CRLF``).
+            original_lines: The original file lines.
+            insert_index: Line index at which the header will be inserted.
+            rendered_header_lines: The header lines to insert.
+            newline_style: Newline style (``LF``, ``CR``, ``CRLF``).
 
         Returns:
-            list[str]: Possibly modified header lines to insert at ``insert_index``.
+            Possibly modified header lines to insert at ``insert_index``.
         """
         return rendered_header_lines
 
@@ -1293,11 +1289,11 @@ class HeaderProcessor:
         back to the standard line-based insertion path.
 
         Args:
-            original_text (str): Full file content as a single string.
+            original_text: Full file content as a single string.
 
         Returns:
-            int | None: 0-based character offset at which to insert, or ``None`` to
-                use the line-based insertion strategy.
+            0-based character offset at which to insert, or ``None`` to use the line-based
+            insertion strategy.
         """
         return None
 
@@ -1315,13 +1311,13 @@ class HeaderProcessor:
         block sits on its own lines when performing text-based insertion.
 
         Args:
-            original_text (str): Full file content as a single string.
-            insert_offset (int): 0-based character offset where the header will be inserted.
-            rendered_header_text (str): The header block as a single string.
-            newline_style (str): Newline style (``LF``, ``CR``, ``CRLF``).
+            original_text: Full file content as a single string.
+            insert_offset: 0-based character offset where the header will be inserted.
+            rendered_header_text: The header block as a single string.
+            newline_style: Newline style (``LF``, ``CR``, ``CRLF``).
 
         Returns:
-            str: The (possibly modified) header text to splice into ``original_text`` at
-                ``insert_offset``.
+            The (possibly modified) header text to splice into ``original_text`` at
+            ``insert_offset``.
         """
         return rendered_header_text

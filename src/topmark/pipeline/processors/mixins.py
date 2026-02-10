@@ -169,10 +169,10 @@ class LineCommentMixin(ShebangAwareMixin):
             not already an exact blank. Never add a spacer at EOF.
 
         Args:
-            original_lines (list[str]): Original file lines (keepends=True).
-            insert_index (int): Line index where the header will be inserted.
-            rendered_header_lines (list[str]): Header lines to insert (keepends=True).
-            newline_style (str): Newline style (``LF``, ``CR``, ``CRLF``).
+            original_lines: Original file lines (keepends=True).
+            insert_index: Line index where the header will be inserted.
+            rendered_header_lines: Header lines to insert (keepends=True).
+            newline_style: Newline style (``LF``, ``CR``, ``CRLF``).
 
         Returns:
             list[str]: Possibly modified header lines including any added padding.
@@ -248,10 +248,10 @@ class BlockCommentMixin:
         which should remain significant for affix equality.
 
         Args:
-            line (str): The line to check.
+            line: The line to check.
 
         Returns:
-            bool: True if `line` equals the configured block prefix, else False.
+            True if `line` equals the configured block prefix, else False.
         """
         return _equals_affix_ignoring_space_tab(line, self.block_prefix or "")
 
@@ -267,10 +267,10 @@ class BlockCommentMixin:
         which should remain significant for affix equality.
 
         Args:
-            line (str): The line to check.
+            line: The line to check.
 
         Returns:
-            bool: True if `line` equals the configured block suffix, else False.
+            True if `line` equals the configured block suffix, else False.
         """
         return _equals_affix_ignoring_space_tab(line, self.block_suffix or "")
 
@@ -282,11 +282,11 @@ class BlockCommentMixin:
         r"""Ensure the block text ends with a newline.
 
         Args:
-            rendered_lines (list[str]): Lines that compose the block (including delimiters).
-            newline (str): Newline string to enforce at the end ("\n" or "\r\n").
+            rendered_lines: Lines that compose the block (including delimiters).
+            newline: Newline string to enforce at the end ("\n" or "\r\n").
 
         Returns:
-            list[str]: Possibly adjusted copy with a trailing newline present.
+            Possibly adjusted copy with a trailing newline present.
         """
         out: list[str] = list(rendered_lines)
         if not out:
@@ -358,13 +358,13 @@ class XmlPositionalMixin:
           ``is_pure_spacer`` on the slice).
 
         Args:
-            original_text (str): Full file content as a single string.
-            insert_offset (int): 0-based character offset where the header will be inserted.
-            rendered_header_text (str): Header block text (may already include newlines).
-            newline_style (str): Newline style (``LF``, ``CR``, ``CRLF``).
+            original_text: Full file content as a single string.
+            insert_offset: 0-based character offset where the header will be inserted.
+            rendered_header_text: Header block text (may already include newlines).
+            newline_style: Newline style (``LF``, ``CR``, ``CRLF``).
 
         Returns:
-            str: Possibly modified header text to splice at ``insert_offset``.
+            Possibly modified header text to splice at ``insert_offset``.
         """
         policy: FileTypeHeaderPolicy | None = getattr(
             getattr(self, "file_type", None), "header_policy", None
@@ -420,13 +420,13 @@ class XmlPositionalMixin:
             Blank detection is policy-aware (STRICT/UNICODE/NONE) via `is_pure_spacer`.
 
         Args:
-            original_lines (list[str]): Original file lines.
-            insert_index (int): Line index where the header will be inserted.
-            rendered_header_lines (list[str]): Header lines to insert.
-            newline_style (str): Newline style (``LF``, ``CR``, ``CRLF``).
+            original_lines: Original file lines.
+            insert_index: Line index where the header will be inserted.
+            rendered_header_lines: Header lines to insert.
+            newline_style: Newline style (``LF``, ``CR``, ``CRLF``).
 
         Returns:
-            list[str]: Possibly modified header lines including any added padding.
+            Possibly modified header lines including any added padding.
         """
         # Detect the dominant newline from existing lines, default to "\n"
         out: list[str] = list(rendered_header_lines)

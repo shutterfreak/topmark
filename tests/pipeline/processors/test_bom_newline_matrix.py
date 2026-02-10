@@ -66,11 +66,11 @@ def test_insert_preserves_newline_style(
     original newline sequence.
 
     Args:
-        tmp_path (Path): Temporary directory.
-        ext (str): File extension mapping to processor.
-        pre (str): Comment prefix used inside the test for clarity.
-        post (str): Comment suffix for block comments (HTML), or ``\n`` otherwise.
-        newline (str): The intended newline sequence for the file under test.
+        tmp_path: Temporary directory.
+        ext: File extension mapping to processor.
+        pre: Comment prefix used inside the test for clarity.
+        post: Comment suffix for block comments (HTML), or ``\n`` otherwise.
+        newline: The intended newline sequence for the file under test.
     """
     f: Path = tmp_path / f"nstyle{ext}"
     with f.open("w", encoding="utf-8", newline=newline) as fp:
@@ -120,13 +120,13 @@ def test_strip_preserves_newline_style(
     verifies the remaining lines still use the same newline sequence.
 
     Args:
-        tmp_path (Path): Temporary directory.
-        ext (str): Processor extension.
-        header_open (str): Start marker line (with ``\n``).
-        header_line (str): Payload line (with ``\n``).
-        header_close (str): End marker line (with ``\n``).
-        body (str): Body line (with ``\n``).
-        newline (str): Newline sequence to enforce on disk.
+        tmp_path: Temporary directory.
+        ext: Processor extension.
+        header_open: Start marker line (with ``\n``).
+        header_line: Payload line (with ``\n``).
+        header_close: End marker line (with ``\n``).
+        body: Body line (with ``\n``).
+        newline: Newline sequence to enforce on disk.
     """
     # Build the content replacing internal newlines by the chosen style
     content: str = (header_open + header_line + header_close + body).replace("\n", newline)

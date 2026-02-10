@@ -67,10 +67,10 @@ class XmlHeaderProcessor(XmlPositionalMixin, BlockCommentMixin, HeaderProcessor)
         Rely solely on get_header_insertion_char_offset().
 
         Args:
-            file_lines (list[str]): File content split into lines (unused).
+            file_lines: File content split into lines (unused).
 
         Returns:
-            int: ``NO_LINE_ANCHOR`` to signal char-offset insertion.
+            ``NO_LINE_ANCHOR`` to signal char-offset insertion.
         """
         from .base import NO_LINE_ANCHOR
 
@@ -84,11 +84,10 @@ class XmlHeaderProcessor(XmlPositionalMixin, BlockCommentMixin, HeaderProcessor)
         even when the root element follows on the same line.
 
         Args:
-            original_text (str): Full file content as a single string.
+            original_text: Full file content as a single string.
 
         Returns:
-            int | None: Character offset suitable for insertion, or ``None`` to use the
-                line-based strategy.
+            Character offset suitable for insertion, or ``None`` to use the line-based strategy.
         """
         text: str = original_text
         logger.debug(
@@ -162,13 +161,13 @@ class XmlHeaderProcessor(XmlPositionalMixin, BlockCommentMixin, HeaderProcessor)
         via policy.ensure_blank_after_header = False.
 
         Args:
-            original_text (str): Full file content as a single string.
-            insert_offset (int): 0-based character offset where the header will be inserted.
-            rendered_header_text (str): Header block text (may already include newlines).
-            newline_style (str): Newline style (``LF``, ``CR``, ``CRLF``).
+            original_text: Full file content as a single string.
+            insert_offset: 0-based character offset where the header will be inserted.
+            rendered_header_text: Header block text (may already include newlines).
+            newline_style: Newline style (``LF``, ``CR``, ``CRLF``).
 
         Returns:
-            str: Possibly modified header text to splice at ``insert_offset``.
+            Possibly modified header text to splice at ``insert_offset``.
         """
         logger.debug(
             "xml.insert.char.pad: offset=%d; before_tail=%r after_head=%r",
@@ -297,13 +296,13 @@ class XmlHeaderProcessor(XmlPositionalMixin, BlockCommentMixin, HeaderProcessor)
           (by checking the previous line), and ensure at least one trailing blank.
 
         Args:
-            original_lines (list[str]): Original file lines.
-            insert_index (int): Line index where the header will be inserted.
-            rendered_header_lines (list[str]): Header lines to insert.
-            newline_style (str): Newline style (``LF``, ``CR``, ``CRLF``).
+            original_lines: Original file lines.
+            insert_index: Line index where the header will be inserted.
+            rendered_header_lines: Header lines to insert.
+            newline_style: Newline style (``LF``, ``CR``, ``CRLF``).
 
         Returns:
-            list[str]: Possibly modified header lines including any added padding.
+            Possibly modified header lines including any added padding.
         """
         out: list[str] = list(rendered_header_lines)
 
@@ -379,13 +378,13 @@ class XmlHeaderProcessor(XmlPositionalMixin, BlockCommentMixin, HeaderProcessor)
         fenced code blocks are handled by `MarkdownHeaderProcessor`.
 
         Args:
-            lines (list[str]): Full file content split into lines.
-            header_start_idx (int): 0-based index of the candidate header's first line.
-            header_end_idx (int): 0-based index of the candidate header's last line (inclusive).
-            anchor_idx (int): 0-based expected insertion line index.
+            lines: Full file content split into lines.
+            header_start_idx: 0-based index of the candidate header's first line.
+            header_end_idx: 0-based index of the candidate header's last line (inclusive).
+            anchor_idx: 0-based expected insertion line index.
 
         Returns:
-            bool: ``True`` if the candidate is acceptable; ``False`` otherwise.
+            ``True`` if the candidate is acceptable; ``False`` otherwise.
         """
         # First apply the base proximity rule
         return super().validate_header_location(
@@ -417,16 +416,15 @@ class XmlHeaderProcessor(XmlPositionalMixin, BlockCommentMixin, HeaderProcessor)
           **at most one** such spacer line to restore the pre-header adjacency.
 
         Args:
-            lines (list[str]): Full file content split into lines (keepends=True).
-            span (tuple[int, int] | None): Optional (start, end) indices of the
-                header block to remove; if ``None``, the base class attempts auto-detect.
-            newline_style (str): Newline style (``LF``, ``CR``, ``CRLF``).
-            ends_with_newline (bool | None): Whether the original file ended with a
-                newline; not used by this simplified implementation but kept for
-                signature compatibility.
+            lines: Full file content split into lines (keepends=True).
+            span: Optional (start, end) indices of the header block to remove; if ``None``,
+                the base class attempts auto-detect.
+            newline_style: Newline style (``LF``, ``CR``, ``CRLF``).
+            ends_with_newline: Whether the original file ended with a newline; not used by this
+                simplified implementation but kept for signature compatibility.
 
         Returns:
-            tuple[list[str], tuple[int, int] | None, StripDiagnostic]: A tuple containing:
+            A tuple containing:
                 - The updated list of file lines with the header removed.
                 - The (start, end) line indices (inclusive) of the removed block
                   in the original input.

@@ -86,10 +86,10 @@ class ComparerStep(BaseStep):
             - An updated image is already present (strip/update fast path).
 
         Args:
-            ctx (ProcessingContext): The processing context for the current file.
+            ctx: The processing context for the current file.
 
         Returns:
-            bool: True if processing can proceed to the build step, False otherwise.
+            True if processing can proceed to the build step, False otherwise.
         """
         if ctx.is_halted:
             outcome: bool = False
@@ -128,12 +128,11 @@ class ComparerStep(BaseStep):
             alignment, spacing, affixes, newline style), set `CHANGED`; otherwise `UNCHANGED`.
 
         Args:
-            ctx (ProcessingContext): The processing context carrying file state, statuses,
-                and dictionaries.
+            ctx: The processing context carrying file state, statuses, and dictionaries.
 
         Mutations:
-            ProcessingContext: The same context, with `status.comparison` updated to
-                ``CHANGED`` or ``UNCHANGED`` when applicable.
+            ProcessingContext: The same context, with `status.comparison` updated to ``CHANGED``
+                or ``UNCHANGED`` when applicable.
         """
         logger.debug("ctx: %s", ctx)
 
@@ -232,7 +231,7 @@ class ComparerStep(BaseStep):
         """Attach comparison hints (non-binding).
 
         Args:
-            ctx (ProcessingContext): The processing context.
+            ctx: The processing context.
         """
         st: ComparisonStatus = ctx.status.comparison
 

@@ -93,12 +93,12 @@ def _mask_code_regions(text: str, *, ignore_inline: bool = False) -> str:
     back to absolute line numbers in the original source file.
 
     Args:
-        text (str): The original docstring text.
-        ignore_inline (bool): If True, mask both fenced code blocks and inline code spans; otherwise
+        text: The original docstring text.
+        ignore_inline: If True, mask both fenced code blocks and inline code spans; otherwise
             mask only fenced code blocks, and still check inline code for style violations.
 
     Returns:
-        str: The masked string.
+        The masked string.
     """
 
     def repl(m: re.Match[str]) -> str:
@@ -119,10 +119,10 @@ def iter_python_files(paths: list[str]) -> list[Path]:
     If *paths* is empty, defaults to scanning ``["src"]``.
 
     Args:
-        paths (list[str]): File or directory paths to scan.
+        paths: File or directory paths to scan.
 
     Returns:
-        list[Path]: A list of ``Path`` objects pointing to Python source files.
+        A list of ``Path`` objects pointing to Python source files.
     """
     todo: list[Path] = []
     use_paths: list[str] = paths or ["src"]
@@ -150,10 +150,10 @@ def extract_docstrings(py_path: Path) -> list[tuple[int, int, str]]:
     from the AST nodes that contain the docstring expressions.
 
     Args:
-        py_path (Path): Path to a Python source file.
+        py_path: Path to a Python source file.
 
     Returns:
-        list[tuple[int, int, str]]: A list of tuples ``(start_lineno, end_lineno, docstring_text)``.
+        A list of tuples ``(start_lineno, end_lineno, docstring_text)``.
     """
     text: str = py_path.read_text(encoding="utf-8")
     try:
@@ -216,16 +216,16 @@ def main(
     """Validate docstring link style across the given files or directories.
 
     Args:
-        paths (list[str] | None): File or directory paths to check. If None or empty,
+        paths: File or directory paths to check. If None or empty,
             defaults to ``["src"]``.
-        stats (bool): If True, print a summary of files/docstrings examined and errors found.
-        ignore_inline_code (bool): If True, ignore inline code spans (mask them) when scanning;
+        stats: If True, print a summary of files/docstrings examined and errors found.
+        ignore_inline_code: If True, ignore inline code spans (mask them) when scanning;
             by default, inline code is checked so that backticked FQNs still require
             reference links.
 
     Returns:
-        int: 0 if no violations were found; 1 otherwise. All violations are printed to stdout in a
-            grep-friendly ``path:lineno: message`` format.
+        0 if no violations were found; 1 otherwise. All violations are printed to stdout in a
+        grep-friendly ``path:lineno: message`` format.
     """
     errors: list[str] = []
 

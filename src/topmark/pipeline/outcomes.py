@@ -70,8 +70,7 @@ class Intent(Enum):
 def determine_intent(ctx: ProcessingContext) -> Intent:
     """Derive the high-level intent for bucketing from the current context.
 
-    Intent is inferred from statuses that indicate what the pipeline is trying
-    to do for this file:
+    Intent is inferred from statuses that indicate what the pipeline is trying to do for this file:
 
     - STRIP: the strip axis is non-pending (strip pipeline ran).
     - INSERT: header axis indicates a missing header.
@@ -79,10 +78,10 @@ def determine_intent(ctx: ProcessingContext) -> Intent:
     - NONE: insufficient information to infer an action (early termination).
 
     Args:
-        ctx (ProcessingContext): The processing context.
+        ctx: The processing context.
 
     Returns:
-        Intent: The inferred bucketing intent.
+        The inferred bucketing intent.
     """
     if ctx.status.strip != StripStatus.PENDING:
         return Intent.STRIP
@@ -97,19 +96,18 @@ def determine_intent(ctx: ProcessingContext) -> Intent:
 class ResultBucket:
     """Outcome + optional human label used for bucketing.
 
-    The bucket is a small value object that couples a public `Outcome` with an
-    optional human-facing label used in summaries.
+    The bucket is a small value object that couples a public `Outcome` with an optional human-facing
+    label used in summaries.
 
     Args:
-        outcome (Outcome | None): The classified outcome to set. If ``None``,
-            the default value is preserved.
-        reason (str | None): Human-facing bucket label (summary text). If
-            ``None``, the default value is preserved.
+        outcome: The classified outcome to set. If ``None``, the default value is preserved.
+        reason: Human-facing bucket label (summary text). If ``None``, the default value is
+            preserved.
 
     Attributes:
-        outcome (Outcome): The classified outcome.
-        reason (str | None): Human-facing bucket label (summary text). This is
-            intentionally independent of internal debug tracing.
+        outcome: The classified outcome.
+        reason: Human-facing bucket label (summary text). This is intentionally independent of
+            internal debug tracing.
     """
 
     outcome: Outcome = Outcome.PENDING
@@ -127,7 +125,7 @@ class ResultBucket:
         """Return a `str` representation of a `ResultBucket` instance.
 
         Returns:
-            str: The `str` representation of the `ResultBucket` instance.
+            The `str` representation of the `ResultBucket` instance.
         """
         return f"{self.outcome.value}: {self.reason or NO_REASON_PROVIDED}"
 
@@ -153,11 +151,11 @@ def map_bucket(ctx: ProcessingContext, *, apply: bool) -> ResultBucket:
         9) Pending (no rule matched).
 
     Args:
-        ctx (ProcessingContext): The per-file pipeline context.
-        apply (bool): Whether the run is in apply mode.
+        ctx: The per-file pipeline context.
+        apply: Whether the run is in apply mode.
 
     Returns:
-        ResultBucket: Bucket containing public Outcome and a human label.
+        Bucket containing public Outcome and a human label.
     """
     intent: Intent = determine_intent(ctx)
     logger.trace("intent: %s; apply: %s; status: %s", intent.value, apply, ctx.status)
@@ -170,16 +168,16 @@ def map_bucket(ctx: ProcessingContext, *, apply: bool) -> ResultBucket:
     ) -> ResultBucket:
         """Return a bucket while emitting a structured debug trace.
 
-        The `tag` is debug-only and is intended to make it easy to locate the
-        matching precedence branch in logs.
+        The `tag` is debug-only and is intended to make it easy to locate the matching precedence
+        branch in logs.
 
         Args:
-            debug_tag (str): Stable debug tag for the matching branch.
-            outcome (Outcome): Public outcome for CLI/API.
-            reason (str | None): Human-facing bucket label.
+            debug_tag: Stable debug tag for the matching branch.
+            outcome: Public outcome for CLI/API.
+            reason: Human-facing bucket label.
 
         Returns:
-            ResultBucket: Constructed bucket.
+            Constructed bucket.
         """
         logger.debug(
             "bucket[%s] intent='%s' apply='%s' outcome='%s' reason='%s'",
@@ -426,11 +424,11 @@ def classify_outcome(ctx: ProcessingContext, *, apply: bool) -> Outcome:
     """Translate a `ProcessingContext` status into a public `Outcome`.
 
     Args:
-        ctx (ProcessingContext): The processing context to classify.
-        apply (bool): Whether the run is in apply mode; influences CHANGED/Would-change.
+        ctx: The processing context to classify.
+        apply: Whether the run is in apply mode; influences CHANGED/Would-change.
 
     Returns:
-        Outcome: The public outcome classification.
+        The public outcome classification.
 
     Notes:
         - Non-resolved *skipped* statuses (e.g., unsupported or known-no-headers)
@@ -450,10 +448,10 @@ def collect_outcome_counts(
     is the first-seen human-facing bucket label (reason).
 
     Args:
-        results (list[ProcessingContext]): Processing contexts to bucket and count.
+        results: Processing contexts to bucket and count.
 
     Returns:
-        dict[str, tuple[int, str]]: Mapping from classification key to ``(count, label)``.
+        Mapping from classification key to ``(count, label)``.
     """
     counts: dict[str, tuple[int, str]] = {}
     for r in results:

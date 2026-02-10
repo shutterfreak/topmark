@@ -100,10 +100,10 @@ class StripperStep(BaseStep):
           - `content not in {PENDING, UNSUPPORTED, UNREADABLE}`
 
         Args:
-            ctx (ProcessingContext): The processing context for the current file.
+            ctx: The processing context for the current file.
 
         Returns:
-            bool: True if processing can proceed to the build step, False otherwise.
+            True if processing can proceed to the build step, False otherwise.
         """
         if ctx.is_halted:
             return False
@@ -122,8 +122,8 @@ class StripperStep(BaseStep):
         """Remove the TopMark header using the processor and known span if available (view‑based).
 
         Args:
-            ctx (ProcessingContext): Pipeline context. Must contain a file image, the
-                active header processor, and (optionally) the scanner‑detected header span.
+            ctx: Pipeline context. Must contain a file image, the active header processor, and
+                (optionally) the scanner‑detected header span.
 
         Raises:
             RuntimeError: If header processor is not defined.
@@ -340,7 +340,7 @@ class StripperStep(BaseStep):
         """Attach strip hints (non-binding).
 
         Args:
-            ctx (ProcessingContext): The processing context.
+            ctx: The processing context.
         """
         apply: bool = ctx.config.apply_changes is True
         st: StripStatus = ctx.status.strip

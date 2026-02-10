@@ -72,10 +72,10 @@ class RendererStep(BaseStep):
         - The header was successfully generated (ctx.status.generation is RENDERED or GENERATED)
 
         Args:
-            ctx (ProcessingContext): The processing context for the current file.
+            ctx: The processing context for the current file.
 
         Returns:
-            bool: True if processing can proceed to the render step, False otherwise.
+            True if processing can proceed to the render step, False otherwise.
         """
         if ctx.is_halted:
             outcome: bool = False
@@ -91,7 +91,7 @@ class RendererStep(BaseStep):
         """Render the expected header text from ``ctx.views.build.selected``.
 
         Args:
-            ctx (ProcessingContext): Mutable context with:
+            ctx: Mutable context with:
                 * ``header_processor`` – strategy providing ``render_header_lines()``;
                 * ``build.selected`` – expected fields (for ``GENERATED``);
                 * ``image`` – file image view (for indentation preservation and newline style).
@@ -189,7 +189,7 @@ class RendererStep(BaseStep):
         """Attach render hints (non-binding).
 
         Args:
-            ctx (ProcessingContext): The processing context.
+            ctx: The processing context.
         """
         st: RenderStatus = ctx.status.render
 

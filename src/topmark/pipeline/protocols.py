@@ -55,10 +55,10 @@ class Step(Protocol):
         """Return whether the step should run given the current context.
 
         Args:
-            ctx (ProcessingContext): The mutable processing context.
+            ctx: The mutable processing context.
 
         Returns:
-            bool: True if the step may run; False to skip this step.
+            True if the step may run; False to skip this step.
         """
         ...
 
@@ -70,7 +70,7 @@ class Step(Protocol):
         parser errors should update the appropriate status axis and diagnostics.
 
         Args:
-            ctx (ProcessingContext): The mutable processing context.
+            ctx: The mutable processing context.
         """
         ...
 
@@ -82,7 +82,7 @@ class Step(Protocol):
         classification.
 
         Args:
-            ctx (ProcessingContext): The mutable processing context.
+            ctx: The mutable processing context.
         """
         ...
 
@@ -90,9 +90,9 @@ class Step(Protocol):
         """Run the step lifecycle: gate → run (optional) → hint.
 
         Args:
-            ctx (ProcessingContext): The mutable processing context.
+            ctx: The mutable processing context.
 
         Returns:
-            ProcessingContext: The same context object, for chaining.
+            The same context object, for chaining.
         """
         ...

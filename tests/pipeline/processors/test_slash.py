@@ -173,9 +173,9 @@ def test_slash_malformed_header_fields(
     map and sets a non-OK header status (``MALFORMED`` or ``EMPTY``).
 
     Args:
-        tmp_path (Path): Temporary path provided by pytest for test file creation.
-        header_fields (str): Header fields for the test
-        expected_status (HeaderStatus): expected HeaderStatus value for the test
+        tmp_path: Temporary path provided by pytest for test file creation.
+        header_fields: Header fields for the test
+        expected_status: expected HeaderStatus value for the test
     """
     file: Path = tmp_path / "bad.ts"
     file.write_text(
@@ -281,7 +281,7 @@ def test_slash_replace_preserves_crlf(tmp_path: Path) -> None:
     the replacement header should maintain CRLF endings across all lines.
 
     Args:
-        tmp_path (Path): Pytest fixture temporary directory.
+        tmp_path: Pytest fixture temporary directory.
     """
     file: Path = tmp_path / "r.cpp"
     with file.open("w", newline="\r\n") as fp:

@@ -53,12 +53,12 @@ def cfg(**overrides: Any) -> dict[str, Any]:
           using `tests.conftest.make_config` / `tests.conftest.make_mutable_config`.
 
     Args:
-        **overrides (Any): Arbitrary keyword arguments collected into a
-            ``dict[str, Any]``. Keys correspond to top-level TOML tables
-            (e.g., ``files``), and values may be nested mappings.
+        **overrides: Arbitrary keyword arguments collected into a ``dict[str, Any]``. Keys
+            correspond to top-level TOML tables (e.g., ``files``), and values may be nested
+            mappings.
 
     Returns:
-        dict[str, Any]: A TOML-shaped mapping suitable for ``api.check(..., config=...)``.
+        A TOML-shaped mapping suitable for ``api.check(..., config=...)``.
     """
     base: dict[str, Any] = {
         Toml.SECTION_FILES: {

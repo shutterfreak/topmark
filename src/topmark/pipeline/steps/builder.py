@@ -76,10 +76,10 @@ class BuilderStep(BaseStep):
         - The file image is available (via `ctx.views.image`).
 
         Args:
-            ctx (ProcessingContext): The processing context for the current file.
+            ctx: The processing context for the current file.
 
         Returns:
-            bool: True if processing can proceed to the build step, False otherwise.
+            True if processing can proceed to the build step, False otherwise.
         """
         if ctx.is_halted:
             return False
@@ -103,7 +103,7 @@ class BuilderStep(BaseStep):
         * the final field mapping to be rendered (subset/overrides as per config).
 
         Args:
-            ctx (ProcessingContext): The current processing context containing file info,
+            ctx: The current processing context containing file info,
                 configuration, and status.
 
         Mutations:
@@ -213,7 +213,7 @@ class BuilderStep(BaseStep):
         """Attach generation hints (non-binding).
 
         Args:
-            ctx (ProcessingContext): The processing context.
+            ctx: The processing context.
         """
         st: GenerationStatus = ctx.status.generation
 

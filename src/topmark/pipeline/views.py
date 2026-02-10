@@ -89,8 +89,8 @@ class ListFileImageView:
     iteration yields an empty sequence.
 
     Args:
-        lines (list[str]): Source lines to expose. The list is not copied; the
-            caller retains ownership and must not mutate it while the view is used.
+        lines: Source lines to expose. The list is not copied; the caller retains ownership and
+            must not mutate it while the view is used.
     """
 
     _lines: list[str] | None  # use a leading underscore to signal “internal”
@@ -125,18 +125,16 @@ class HeaderView(Releasable):
     """Structured view of the *existing* header detected by the scanner.
 
     Attributes:
-        range (tuple[int, int] | None): Inclusive ``(start, end)`` line indices
-            of the detected header block within the file, or ``None`` when absent.
-        lines (Sequence[str] | None): Header lines exactly as found (keepends), or
-            ``None`` when not captured.
-        block (str | None): Concatenated header text (``"".join(lines)``), or
-            ``None`` when not captured.
-        mapping (dict[str, str] | None): Parsed field dictionary extracted from
-            the header, or ``None`` when parsing was not performed.
-        success_count (int): The number of header lines that were successfully
-            parsed and added to the ``mapping`` dictionary. Defaults to 0.
-        error_count (int): The number of header lines that were malformed (e.g.,
-            missing a colon, or having an empty field name). Defaults to 0.
+        range: Inclusive ``(start, end)`` line indices of the detected header block within the
+            file, or ``None`` when absent.
+        lines: Header lines exactly as found (keepends), or ``None`` when not captured.
+        block: Concatenated header text (``"".join(lines)``), or ``None`` when not captured.
+        mapping: Parsed field dictionary extracted from the header, or ``None`` when parsing was
+            not performed.
+        success_count: The number of header lines that were successfully parsed and added to the
+            ``mapping`` dictionary. Defaults to 0.
+        error_count: The number of header lines that were malformed (e.g., missing a colon, or
+            having an empty field name). Defaults to 0.
     """
 
     range: tuple[int, int] | None
@@ -158,13 +156,12 @@ class BuilderView(Releasable):
     """Structured view of field dictionaries produced by the builder step.
 
     Attributes:
-        builtins (dict[str, str] | None): Derived built-in fields (e.g., file, relpath).
-        selected (dict[str, str] | None): The subset (and overrides) selected for rendering,
-            aligned with the configuration's ``header_fields`` order.
+        builtins: Derived built-in fields (e.g., file, relpath).
+        selected: The subset (and overrides) selected for rendering, aligned with the
+            configuration's ``header_fields`` order.
 
     Notes:
-        This view is intentionally lightweight and does not implement
-        `Releasable`.
+        This view is intentionally lightweight and does not implement `Releasable`.
     """
 
     builtins: dict[str, str] | None
@@ -181,9 +178,8 @@ class RenderView(Releasable):
     """Structured view of the *expected* header produced by the renderer.
 
     Attributes:
-        lines (Sequence[str] | None): Rendered header lines (keepends), or
-            ``None`` when not rendered.
-        block (str | None): Concatenated rendered header text, or ``None``.
+        lines: Rendered header lines (keepends), or ``None`` when not rendered.
+        block: Concatenated rendered header text, or ``None``.
 
     Notes:
         Large buffers may be pruned by the runner by setting ``lines``/``block`` to ``None``
@@ -208,9 +204,8 @@ class UpdatedView(Releasable):
     large buffers up-front.
 
     Attributes:
-        lines (Sequence[str] | Iterable[str] | None): Updated file image as
-            a sequence or iterable of lines, or ``None`` when no update was
-            produced.
+        lines: Updated file image as a sequence or iterable of lines, or ``None`` when no update
+            was produced.
 
     Notes:
         Pruning is handled by the runner, which may set ``lines`` to ``None`` to save memory.
@@ -229,8 +224,7 @@ class DiffView(Releasable):
     """Unified diff view for CLI/CI consumption.
 
     Attributes:
-        text (str | None): Unified diff as a single string, or ``None`` when
-            no diff was generated.
+        text: Unified diff as a single string, or ``None`` when no diff was generated.
 
     Notes:
         Pruning is done by calling ``release()``, which nulls ``text`` to free memory.

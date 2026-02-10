@@ -13,8 +13,8 @@
 Groups languages that commonly use shebangs and may include encoding pragmas.
 
 Exports:
-    FILETYPES (list[FileType]): Concrete definitions for Julia, Makefile,
-        Perl, Python (and stubs), R, Ruby, and POSIX/Bash/Zsh shell scripts.
+    FILETYPES: Concrete definitions for Julia, Makefile, Perl, Python (and stubs), R, Ruby,
+        and POSIX/Bash/Zsh shell scripts.
 
 Notes:
     - Python recognizes ``# coding: ...`` pragmas and preserves shebangs.

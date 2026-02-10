@@ -22,10 +22,10 @@ class StdConsole(ConsoleLike):
     """Simple console without colors.
 
     Args:
-        enable_color (bool): Ignored for this implementation. Present only to keep
-            the signature compatible with other ConsoleLike implementations.
-        out (TextIO | None): Stream for normal output. Defaults to sys.stdout.
-        err (TextIO | None): Stream for error/warning output. Defaults to sys.stderr.
+        enable_color: Ignored for this implementation. Present only to keep the signature compatible
+            with other ConsoleLike implementations.
+        out: Stream for normal output. Defaults to sys.stdout.
+        err: Stream for error/warning output. Defaults to sys.stderr.
     """
 
     def __init__(

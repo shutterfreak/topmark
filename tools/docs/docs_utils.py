@@ -110,11 +110,11 @@ def env_flag(name: str, default: bool = False) -> bool:
     These values are falsy: "0", "false", "no", "off", "".
 
     Args:
-        name (str): Environment variable name.
-        default (bool): Value used when the variable is not set.
+        name: Environment variable name.
+        default: Value used when the variable is not set.
 
     Returns:
-        bool: Parsed boolean.
+        Parsed boolean.
     """
     raw: str | None = os.environ.get(name)
     if raw is None:
@@ -134,10 +134,10 @@ def load_nonlinked_symbols(env: Mapping[str, str] | None = None) -> frozenset[st
     The value is read from `TOPMARK_DOCS_NONLINKED_SYMBOLS` as a comma-separated list.
 
     Args:
-        env (Mapping[str, str] | None): Optional environment mapping. Defaults to `os.environ`.
+        env: Optional environment mapping. Defaults to `os.environ`.
 
     Returns:
-        frozenset[str]: Exact symbol strings that are allowed to remain backticked without linking.
+        Exact symbol strings that are allowed to remain backticked without linking.
     """
     if env is None:
         env = os.environ
@@ -167,12 +167,12 @@ def format_inline_symbols(
     "(+N more)" when applicable.
 
     Args:
-        symbols (list[str]): Sorted list of symbol strings.
-        debug (bool): When True, do not truncate.
-        max_inline (int): Maximum symbols to show inline when `debug` is False.
+        symbols: Sorted list of symbol strings.
+        debug: When True, do not truncate.
+        max_inline: Maximum symbols to show inline when `debug` is False.
 
     Returns:
-        str: Comma-separated symbols suitable for logging.
+        Comma-separated symbols suitable for logging.
     """
     if not symbols:
         return ""
@@ -211,10 +211,10 @@ def wrap_actions_blocks_with_raw(markdown: str) -> str:
     in practice. Kept for clarity and parity with earlier macro-based builds.
 
     Args:
-        markdown (str): Page Markdown as a raw string.
+        markdown: Page Markdown as a raw string.
 
     Returns:
-        str: The input Markdown, unchanged except for potential guard wrapping.
+        The input Markdown, unchanged except for potential guard wrapping.
     """
 
     def _repl(m: Match[str]) -> str:
@@ -237,10 +237,10 @@ def should_enforce_link(candidate: str) -> bool:
     - Must not look like a filename/artifact (suffix in `_NON_SYMBOL_SUFFIXES`).
 
     Args:
-        candidate (str): Inline-code candidate string.
+        candidate: Inline-code candidate string.
 
     Returns:
-        bool: True when link enforcement should apply.
+        True when link enforcement should apply.
     """
     if not candidate:
         return False
@@ -270,10 +270,10 @@ def fix_backticked_reference_links(markdown: str) -> str:
     use a plain reference label ``X``.
 
     Args:
-        markdown (str): Markdown fragment (not including fenced code blocks).
+        markdown: Markdown fragment (not including fenced code blocks).
 
     Returns:
-        str: Updated Markdown fragment.
+        Updated Markdown fragment.
     """
 
     def _repl_empty(m: Match[str]) -> str:
@@ -306,10 +306,10 @@ def unescape_reference_link_text(markdown: str) -> str:
     should apply it via `apply_outside_fenced_blocks`.
 
     Args:
-        markdown (str): Markdown fragment (not including fenced code blocks).
+        markdown: Markdown fragment (not including fenced code blocks).
 
     Returns:
-        str: Updated Markdown fragment with unescaped reference-style link text.
+        Updated Markdown fragment with unescaped reference-style link text.
     """
 
     def _repl(m: Match[str]) -> str:
@@ -331,10 +331,10 @@ def find_unlinked_backticked_symbols_with_locations(
     paths and start with one of `_STRICT_SYMBOL_PREFIXES`.
 
     Args:
-        markdown (str): Markdown fragment (not including fenced code blocks).
+        markdown: Markdown fragment (not including fenced code blocks).
 
     Returns:
-        dict[str, set[int]]: Mapping from symbol string to a set of 1-based line numbers.
+        Mapping from symbol string to a set of 1-based line numbers.
 
     """
     findings: dict[str, set[int]] = {}
@@ -416,12 +416,12 @@ def _is_linked_inline_code(markdown: str, code_start: int, code_end: int) -> boo
       - [`sym`](url)
 
     Args:
-        markdown (str): Full Markdown string.
-        code_start (int): Absolute start index of the backtick (`) opening the code span.
-        code_end (int): Absolute end index (exclusive) of the closing backtick.
+        markdown: Full Markdown string.
+        code_start: Absolute start index of the backtick (`) opening the code span.
+        code_end: Absolute end index (exclusive) of the closing backtick.
 
     Returns:
-        bool: True if the code span participates in link syntax.
+        True if the code span participates in link syntax.
     """
     # Must be immediately preceded by '[' (optionally with whitespace before '['
     # already handled by caller).
@@ -449,11 +449,11 @@ def apply_outside_fenced_blocks(markdown: str, fn: Callable[[str], str]) -> str:
     content that might look like Markdown).
 
     Args:
-        markdown (str): Full page Markdown.
-        fn (Callable[[str], str]): Transformation applied to non-fenced fragments.
+        markdown: Full page Markdown.
+        fn: Transformation applied to non-fenced fragments.
 
     Returns:
-        str: The transformed Markdown.
+        The transformed Markdown.
     """
     parts: list[str] = []
     last_end: int = 0
@@ -472,11 +472,11 @@ def format_line_numbers(lines: set[int] | list[int] | tuple[int, ...]) -> str:
     """Format 1-based line numbers for logging.
 
     Args:
-        lines (set[int] | list[int] | tuple[int, ...]): Collection of 1-based line numbers.
+        lines: Collection of 1-based line numbers.
 
     Returns:
-        str: "line 71" for a single line, "lines 57, 61, 117" for multiple.
-            Returns "(unknown line)" if empty.
+        "line 71" for a single line, "lines 57, 61, 117" for multiple.
+        Returns "(unknown line)" if empty.
     """
     if not lines:
         return "(unknown line)"
@@ -491,11 +491,11 @@ def strip_repo_prefix(path: str, root: Literal["docs", "src"]) -> str:
     """Remove a leading `{root}/` prefix from `path` if present.
 
     Args:
-        path (str): A repo-relative path that may already include a `docs/` or `src/` prefix.
-        root (Literal["docs", "src"]): The expected prefix root.
+        path: A repo-relative path that may already include a `docs/` or `src/` prefix.
+        root: The expected prefix root.
 
     Returns:
-        str: The path without the prefix.
+        The path without the prefix.
     """
     prefix = f"{root}/"
     return path[len(prefix) :] if path.startswith(prefix) else path
@@ -505,13 +505,13 @@ def format_repo_path(rel_path: str | None, *, root: Literal["docs", "src"]) -> s
     """Format a stable local repo path for logging.
 
     Args:
-        rel_path (str | None): Path relative to the repo root (e.g. `dev/api-stability.md` or
+        rel_path: Path relative to the repo root (e.g. `dev/api-stability.md` or
             `topmark/api/public_types.py`). If None/empty, returns `<unknown>`.
-        root (Literal["docs", "src"]): The repo folder prefix to apply.
+        root: The repo folder prefix to apply.
 
     Returns:
-        str: A normalized local path like `docs/dev/api-stability.md` or
-            `src/topmark/api/public_types.py`.
+        A normalized local path like `docs/dev/api-stability.md`
+        or `src/topmark/api/public_types.py`.
 
     Notes:
         If `rel_path` is already prefixed with `{root}/`, it is returned as-is.
@@ -537,14 +537,13 @@ def context_lines(
     Callers can log these lines (typically at INFO level) when debugging.
 
     Args:
-        edit_url (str | None): Optional edit URL MkDocs provides.
-        rendered_on (str | None): Optional docs-relative path indicating where something
-            is rendered.
-        source_file (str | None): Optional local repo path to the originating file (e.g.
+        edit_url: Optional edit URL MkDocs provides.
+        rendered_on: Optional docs-relative path indicating where something is rendered.
+        source_file: Optional local repo path to the originating file (e.g.
             `src/topmark/api/public_types.py`).
 
     Returns:
-        list[str]: A list of human-readable context lines.
+        A list of human-readable context lines.
     """
     out: list[str] = []
     if edit_url:
@@ -563,11 +562,11 @@ def rel_href(from_doc: str, to_doc: str) -> str:
     """Compute a POSIX relative href from one docs file to another.
 
     Args:
-        from_doc (str): Docs-relative source path (e.g. `dev/architecture.md`).
-        to_doc (str): Docs-relative target path.
+        from_doc: Docs-relative source path (e.g. `dev/architecture.md`).
+        to_doc: Docs-relative target path.
 
     Returns:
-        str: A POSIX-style relative href (slashes), suitable for Markdown links.
+        A POSIX-style relative href (slashes), suitable for Markdown links.
     """
     from_dir: str = str(Path(from_doc).parent) or "."
     rel: str = os.path.relpath(to_doc, start=from_dir)
@@ -581,11 +580,10 @@ def public_ref_doc_for_symbol(sym: str) -> str | None:
     `api/reference/<module>.md`.
 
     Args:
-        sym (str): Fully-qualified symbol name.
+        sym: Fully-qualified symbol name.
 
     Returns:
-        str | None: Docs-relative reference page path when the symbol is under a public
-            surface; otherwise None.
+        Docs-relative reference page path when the symbol is under a public surface; otherwise None.
     """
     for prefix in PUBLIC_API_PREFIXES:
         if sym == prefix or sym.startswith(prefix + "."):
