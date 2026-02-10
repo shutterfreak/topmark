@@ -22,30 +22,36 @@ Input modes:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import click
 
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cmd_common import get_effective_verbosity
-from topmark.cli.emitters import emit_toml_block
+from topmark.cli.emitters.default.config import emit_config_check_default
 from topmark.cli.keys import CliCmd, CliOpt
 from topmark.cli.machine_emitters import emit_config_check_machine
 from topmark.cli.options import (
     common_config_options,
     underscored_trap_option,
 )
-from topmark.cli_shared.markdown_rendering import (
-    render_config_check_markdown,
+from topmark.cli_shared.emitters.markdown.config import (
+    emit_config_check_markdown,
+)
+from topmark.cli_shared.emitters.shared.config import (
+    ConfigCheckPrepared,
+    prepare_config_check,
 )
 from topmark.config import Config, MutableConfig
-from topmark.config.io import to_toml
 from topmark.config.logging import get_logger
 from topmark.config.machine.payloads import (
     build_config_diagnostics_payload,
 )
 from topmark.core.exit_codes import ExitCode
-from topmark.core.formats import OutputFormat, is_machine_format
+from topmark.core.formats import (
+    OutputFormat,
+    is_machine_format,
+)
 from topmark.core.keys import ArgKey
 
 if TYPE_CHECKING:
@@ -57,7 +63,6 @@ if TYPE_CHECKING:
     from topmark.core.machine.schemas import MetaPayload
     from topmark.diagnostic.machine.schemas import (
         MachineDiagnosticCounts,
-        MachineDiagnosticEntry,
     )
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -149,9 +154,7 @@ def config_check_command(
 
     # Diagnostics payload;
     diag_payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
-    diags: list[MachineDiagnosticEntry] = diag_payload.diagnostics
     counts: MachineDiagnosticCounts = diag_payload.diagnostic_counts
-    n_info: int = counts.info
     n_warn: int = counts.warning
     n_err: int = counts.error
     fail: bool = (n_err > 0) or (strict_config_checking and n_warn > 0)
@@ -161,6 +164,10 @@ def config_check_command(
 
     logger.trace("Config after merging CLI and discovered config: %s", draft_config)
 
+    def _exit(ctx: click.Context, *, fail: bool) -> None:
+        """Select exit code depending on outcome."""
+        ctx.exit(ExitCode.FAILURE if fail else 0)
+
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         emit_config_check_machine(
             meta=meta,
@@ -169,50 +176,33 @@ def config_check_command(
             ok=not fail,
             fmt=fmt,
         )
+        _exit(ctx, fail=fail)
 
-    elif fmt == OutputFormat.MARKDOWN:
-        md: str = render_config_check_markdown(
+    # Human formats: prepare shared data once for DEFAULT/MARKDOWN emitters.
+    prepared: ConfigCheckPrepared = prepare_config_check(
+        config=config,
+        verbosity_level=vlevel,
+    )
+
+    if fmt == OutputFormat.MARKDOWN:
+        md: str = emit_config_check_markdown(
             ok=not fail,
             strict=strict_config_checking,
-            counts=counts,
-            diagnostics=diags,
-            config_files=[str(p) for p in config.config_files],
+            prepared=prepared,
             verbosity_level=vlevel,
         )
-        click.echo(md, nl=False)
+        console.print(md, nl=False)
+        _exit(ctx, fail=fail)
 
-    elif fmt == OutputFormat.DEFAULT:
-        # Human-readable output.
-        if not diags:
-            click.echo("✅ Config OK (no diagnostics).")
-        else:
-            click.echo(
-                "Config diagnostics: "
-                f"{n_err} error(s), {n_warn} warning(s), {n_info} information(s)"
-            )
-            if vlevel > 0:
-                for d in diags:
-                    click.echo(f"- {d.level}: {d.message}")
+    if fmt == OutputFormat.DEFAULT:
+        emit_config_check_default(
+            console=console,
+            ok=not fail,
+            strict=strict_config_checking,
+            prepared=prepared,
+            verbosity_level=vlevel,
+        )
+        _exit(ctx, fail=fail)
 
-        if vlevel > 0:
-            # Render the list of config files
-            click.echo(f"Config files processed: {len(config.config_files)}")
-            for i, c in enumerate(config.config_files, start=1):
-                click.echo(f"Loaded config {i}: {c}")
-
-        if vlevel > 1:
-            config_toml_dict: dict[str, Any] = config.to_toml_dict()
-            merged_config: str = to_toml(config_toml_dict)
-            emit_toml_block(
-                console=console,
-                title="TopMark Config (TOML):",
-                toml_text=merged_config,
-                verbosity_level=vlevel,
-            )
-
-        click.echo("✅ OK" if not fail else "❌ FAILED")
-    else:
-        # Defensive guard in case OutputFormat gains new members
-        raise NotImplementedError(f"Unsupported output format: {fmt!r}")
-
-    ctx.exit(ExitCode.FAILURE if fail else 0)
+    # Defensive guard in case OutputFormat gains new members
+    raise NotImplementedError(f"Unsupported output format: {fmt!r}")

@@ -1,27 +1,32 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : markdown.py
-#   file_relpath : src/topmark/cli_shared/markdown.py
+#   file         : utils.py
+#   file_relpath : src/topmark/cli_shared/emitters/markdown/utils.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""Markdown utilities for TopMark."""
+"""Markdown rendering utilities shared by CLI emitters.
+
+This module provides Click-free helpers to render Markdown fragments that are
+used by TopMark's human-facing output formats (e.g. ``OutputFormat.MARKDOWN``).
+
+Scope:
+- Pure string rendering only (no I/O, no Click/Rich console usage).
+- Safe to import from any frontend (CLI, API tests, etc.).
+
+The helpers here are intentionally small and composable; command-specific
+formatting belongs in the command's emitter module.
+"""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.config.logging import TopmarkLogger, get_logger
-
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
-
-logger: TopmarkLogger = get_logger(__name__)
-
-# --- Markdown rendering helpers ---------------------------------------------
 
 
 def render_markdown_table(
@@ -30,25 +35,24 @@ def render_markdown_table(
     *,
     align: Mapping[int, str] | None = None,
 ) -> str:
-    """Render a GitHub‑flavoured Markdown table with padded columns.
+    """Render a GitHub-flavoured Markdown table with padded columns.
 
     Args:
         headers: Column headers.
-        rows: A sequence of row sequences (each row same length
-            as ``headers``).
-        align: Optional mapping of column index to alignment:
-            ``"left"`` (default), ``"right"``, or ``"center"``.
+        rows: Table rows. Each row must have the same number of columns as ``headers``.
+        align: Optional mapping of column index to alignment: ``"left"`` (default),
+            ``"right"``, or ``"center"``.
 
     Returns:
-        The Markdown table as a single string (ending with a newline).
+        The Markdown table as a single string, ending with a newline.
 
     Notes:
         - Widths are computed from the visible string lengths of headers and cells.
         - Alignment uses Markdown syntax: ``:---`` (left), ``:---:`` (center), ``---:`` (right).
-        - This function is Click‑free and suitable for reuse in any frontend.
+        - This function is pure string rendering and suitable for reuse in any frontend.
 
     Raises:
-        ValueError: If any row length differs from the number of headers.
+        ValueError: If any row has a different number of columns than ``headers``.
     """
     if not headers:
         return ""
@@ -97,3 +101,22 @@ def render_markdown_table(
         + "\n".join("| " + line + " |" for line in data_lines)
         + "\n"
     )
+
+
+def render_toml_markdown(*, heading: str, toml_text: str) -> str:
+    """Render a Markdown H1 heading followed by a fenced TOML code block.
+
+    Args:
+        heading: Heading text without the leading ``#``.
+        toml_text: TOML content to place inside the fenced code block.
+
+    Returns:
+        A Markdown string ending with a newline.
+    """
+    lines: list[str] = []
+    lines.append(f"# {heading}")
+    lines.append("")
+    lines.append("```toml")
+    lines.append(toml_text.rstrip("\n"))
+    lines.append("```")
+    return "\n".join(lines).rstrip() + "\n"

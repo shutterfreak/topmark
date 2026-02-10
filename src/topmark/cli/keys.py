@@ -105,3 +105,6 @@ class CliOpt:
     # Config checking
     STRICT_CONFIG_CHECKING: Final[str] = "--strict"
     NO_STRICT_CONFIG_CHECKING: Final[str] = "--no-strict"
+
+    # Config root
+    CONFIG_ROOT: Final[str] = "--root"

@@ -67,7 +67,7 @@ def test_pound_processor_basics(tmp_path: Path) -> None:
     ctx: ProcessingContext = ProcessingContext.bootstrap(
         path=file,
         config=cfg,
-        policy_registry=policy_registry,
+        policy_registry_override=policy_registry,
     )
     pipeline: Sequence[Step] = Pipeline.CHECK.steps
     ctx = runner.run(ctx, pipeline)
@@ -107,7 +107,7 @@ def test_pound_processor_detects_existing_header(tmp_path: Path) -> None:
     ctx: ProcessingContext = ProcessingContext.bootstrap(
         path=file,
         config=cfg,
-        policy_registry=policy_registry,
+        policy_registry_override=policy_registry,
     )
 
     pipeline: Sequence[Step] = Pipeline.CHECK.steps
@@ -145,7 +145,7 @@ def test_pound_processor_missing_header(tmp_path: Path) -> None:
     ctx: ProcessingContext = ProcessingContext.bootstrap(
         path=path,
         config=cfg,
-        policy_registry=policy_registry,
+        policy_registry_override=policy_registry,
     )
 
     pipeline: Sequence[Step] = Pipeline.CHECK.steps
@@ -199,7 +199,7 @@ def test_pound_malformed_header_fields(
     ctx: ProcessingContext = ProcessingContext.bootstrap(
         path=path,
         config=cfg,
-        policy_registry=policy_registry,
+        policy_registry_override=policy_registry,
     )
 
     pipeline: Sequence[Step] = Pipeline.CHECK.steps

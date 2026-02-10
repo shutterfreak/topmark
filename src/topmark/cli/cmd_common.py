@@ -27,12 +27,6 @@ from topmark.cli_shared.console_api import ConsoleLike
 from topmark.config.logging import get_logger
 from topmark.config.model import MutableConfig
 from topmark.core.keys import ArgKey
-from topmark.diagnostic.model import (
-    DiagnosticLevel,
-    DiagnosticStats,
-    FrozenDiagnosticLog,
-    compute_diagnostic_stats,
-)
 from topmark.file_resolver import resolve_file_list
 
 if TYPE_CHECKING:
@@ -136,72 +130,3 @@ def build_config_for_plan(
     )
 
     return draft
-
-
-def render_config_diagnostics(
-    *,
-    ctx: click.Context,
-    config: Config,
-) -> None:
-    """Render any config-level diagnostics to the console (human output only).
-
-    Behavior:
-      - If there are no diagnostics, do nothing.
-      - At verbosity 0, emit a single triage line with a 'use -v' hint.
-      - At verbosity >= 1, emit a summary and then one line per diagnostic.
-    """
-    diags: FrozenDiagnosticLog = config.diagnostics
-    if not diags:
-        return
-
-    console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
-    verbosity: int = get_effective_verbosity(ctx, config)
-
-    # Count per level
-    stats: DiagnosticStats = compute_diagnostic_stats(diags)
-    n_info: int = stats.n_info
-    n_warn: int = stats.n_warning
-    n_err: int = stats.n_error
-
-    # Compact triage summary like "1 error, 2 warnings"
-    parts: list[str] = []
-    if n_err:
-        parts.append(f"{n_err} error" + ("s" if n_err != 1 else ""))
-    if n_warn:
-        parts.append(f"{n_warn} warning" + ("s" if n_warn != 1 else ""))
-    if n_info and not (n_err or n_warn):
-        parts.append(f"{n_info} info" + ("s" if n_info != 1 else ""))
-
-    triage: str = ", ".join(parts) if parts else "info"
-
-    if verbosity <= 0:
-        console.print(
-            console.styled(
-                f"ℹ️  Config diagnostics: {triage} (use '-v' to view details)",
-                fg="blue",
-            )
-        )
-        return
-
-    # Verbose mode: show all messages
-    console.print(
-        console.styled(
-            f"ℹ️  Config diagnostics: {triage}",
-            fg="blue",
-            bold=True,
-        )
-    )
-    for d in diags:
-        fg: str
-        if d.level == DiagnosticLevel.ERROR:
-            fg = "red"
-        elif d.level == DiagnosticLevel.WARNING:
-            fg = "yellow"
-        else:
-            fg = "blue"
-        console.print(
-            console.styled(
-                f"  [{d.level.value}] {d.message}",
-                fg=fg,
-            )
-        )

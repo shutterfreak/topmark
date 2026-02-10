@@ -69,10 +69,10 @@ def run_steps_for_files(
     Catches common filesystem/encoding errors so command bodies don’t duplicate try/except.
 
     Args:
-        file_list (list[Path]): List of file Path instances to be processed in the run.
-        pipeline (Sequence[Step]): The pipeline steps to execute for the run.
-        config (Config): The TopMark configuration for the run.
-        prune (bool): If `True`, trim heavy views after the run (keeps summaries). Default: `True`.
+        file_list: List of file Path instances to be processed in the run.
+        pipeline: The pipeline steps to execute for the run.
+        config: The TopMark configuration for the run.
+        prune: If `True`, trim heavy views after the run (keeps summaries). Default: `True`.
 
     Returns:
         tuple[list[ProcessingContext], ExitCode | None]: A pair ``(results, error_code)`` where:
@@ -109,7 +109,7 @@ def run_steps_for_files(
             ctx_obj: ProcessingContext = ProcessingContext.bootstrap(
                 path=path,
                 config=config,
-                policy_registry=policy_registry,
+                policy_registry_override=policy_registry,
             )
             ctx_obj = runner.run(ctx_obj, pipeline, prune=prune)
             results.append(ctx_obj)

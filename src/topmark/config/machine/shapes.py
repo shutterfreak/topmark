@@ -51,6 +51,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from topmark.config.machine.schemas import (
+        ConfigCheckSummary,
         ConfigDiagnosticsPayload,
         ConfigPayload,
     )
@@ -145,7 +146,9 @@ def iter_config_diagnostics_ndjson_records(
         meta: Machine-output metadata (tool/version).
 
     Yields:
-        TODO update - An iterable of NDJSON record mappings (not yet serialized).
+        NDJSON record mappings (not yet serialized), in this order:
+        1) one `config_diagnostics` record containing *counts only*
+        2+) one `diagnostic` record per diagnostic entry (domain=`MachineDomain.CONFIG`).
     """
     payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
 
@@ -191,7 +194,7 @@ def build_config_check_json_envelope(
     cfg_diag_payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
     cfg_payload: ConfigPayload = build_config_payload(config)
 
-    summary: dict[str, object] = build_config_check_summary_payload(
+    summary: ConfigCheckSummary = build_config_check_summary_payload(
         config=config,
         cfg_diag_payload=cfg_diag_payload,
         strict=strict,
@@ -279,10 +282,14 @@ def iter_config_check_ndjson_records(
         ok: Whether the config passed validation.
 
     Yields:
-        TODO UPDATE - An iterable of NDJSON record mappings (not yet serialized).
+        NDJSON record mappings (not yet serialized), in this order:
+        1) `config`
+        2) `config_diagnostics` (counts only)
+        3) `summary`
+        4+) `diagnostic` records (domain=`MachineDomain.CONFIG`), one per diagnostic entry.
     """
     cfg_diag_payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
-    summary: dict[str, object] = build_config_check_summary_payload(
+    summary: ConfigCheckSummary = build_config_check_summary_payload(
         config=config,
         cfg_diag_payload=cfg_diag_payload,
         strict=strict,

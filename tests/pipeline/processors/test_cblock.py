@@ -65,7 +65,7 @@ def test_cblock_processor_basics(tmp_path: Path) -> None:
     ctx: ProcessingContext = ProcessingContext.bootstrap(
         path=path,
         config=cfg,
-        policy_registry=policy_registry,
+        policy_registry_override=policy_registry,
     )
 
     pipeline: Sequence[Step] = Pipeline.CHECK.steps
@@ -137,7 +137,7 @@ def test_cblock_detect_existing_header_with_star_prefix(tmp_path: Path) -> None:
     ctx_check: ProcessingContext = ProcessingContext.bootstrap(
         path=path,
         config=cfg,
-        policy_registry=policy_registry,
+        policy_registry_override=policy_registry,
     )
 
     pipeline: Sequence[Step] = Pipeline.CHECK.steps
@@ -189,7 +189,7 @@ def test_cblock_detect_existing_header_without_star_on_directives(tmp_path: Path
     ctx2: ProcessingContext = ProcessingContext.bootstrap(
         path=path,
         config=cfg,
-        policy_registry=policy_registry,
+        policy_registry_override=policy_registry,
     )
     pipeline: Sequence[Step] = Pipeline.CHECK.steps
     ctx2 = runner.run(ctx2, pipeline)

@@ -91,5 +91,8 @@ class ArgKey:
     # Config checking
     STRICT_CONFIG_CHECKING: Final[str] = "strict_config_checking"
 
+    # Config root
+    CONFIG_ROOT: Final[str] = "config_root"
+
     # Machine metadata payload
     META: Final[str] = "meta_payload"

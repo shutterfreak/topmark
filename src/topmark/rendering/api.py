@@ -54,18 +54,16 @@ def render_header_for_path(
     the header text for the specified file.
 
     Args:
-        config (Config): Effective TopMark configuration to use.
-        path (Path): Target file path whose file type determines the processor.
-        header_overrides (dict[str, str] | None): Optional mapping of field overrides
-            to inject into the header.
-        field_order_override (list[str] | None): Optional explicit field order
-            to render instead of the default.
-        format_override (HeaderOutputFormat | None): Optional explicit header output
-            format to use. Defaults to ``HeaderOutputFormat.NATIVE``.
+        config: Effective TopMark configuration to use.
+        path: Target file path whose file type determines the processor.
+        header_overrides: Optional mapping of field overrides to inject into the header.
+        field_order_override: Optional explicit field order to render instead of the default.
+        format_override: Optional explicit header output format to use. Defaults to
+            ``HeaderOutputFormat.NATIVE``.
 
     Returns:
-        str: The rendered header as a single string (joined lines).
-            Returns an empty string if the render view is absent.
+        The rendered header as a single string (joined lines).
+        Returns an empty string if the render view is absent.
     """
     # Prepare effective values without mutating the original Config (it's frozen)
 
@@ -102,7 +100,7 @@ def render_header_for_path(
     context: ProcessingContext = ProcessingContext.bootstrap(
         path=path,
         config=eff_config,
-        policy_registry=policy_registry,
+        policy_registry_override=policy_registry,
     )
     # Run the pipeline
     context = runner.run(context, pipeline)

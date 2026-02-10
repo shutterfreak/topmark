@@ -120,7 +120,7 @@ def make_pipeline_context(path: Path, cfg: Config) -> ProcessingContext:
     return ProcessingContext.bootstrap(
         path=path,
         config=cfg,
-        policy_registry=policy_registry,
+        policy_registry_override=policy_registry,
     )
 
 

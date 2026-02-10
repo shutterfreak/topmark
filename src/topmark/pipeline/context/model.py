@@ -32,6 +32,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from topmark.config.logging import get_logger
+from topmark.config.policy import make_policy_registry
 from topmark.diagnostic.model import (
     DiagnosticLog,
 )
@@ -431,17 +432,22 @@ class ProcessingContext:
         *,
         path: Path,
         config: Config,
-        policy_registry: PolicyRegistry,
+        policy_registry_override: PolicyRegistry | None = None,
     ) -> ProcessingContext:
         """Create a fresh context with no derived state.
 
         Args:
             path: File system path for the file to process.
             config: Effective configuration to attach to the context.
-            policy_registry: Registry providing precomputed effective policies per file type
-                for this run.
+            policy_registry_override: Optional policy registry override providing precomputed
+                effective policies per file type for this run. If not set, then the policy
+                registry
 
         Returns:
             Newly created context instance.
         """
-        return cls(path=path, config=config, policy_registry=policy_registry)
+        if policy_registry_override is None:
+            reg: PolicyRegistry = make_policy_registry(config)
+        else:
+            reg = policy_registry_override
+        return cls(path=path, config=config, policy_registry=reg)

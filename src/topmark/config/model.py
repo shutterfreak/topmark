@@ -69,8 +69,8 @@ from topmark.config.io import (
     get_table_value,
     load_defaults_dict,
     load_toml_dict,
-    to_toml,
 )
+from topmark.config.io.loaders import render_runtime_defaults_toml_text
 from topmark.config.keys import Toml
 from topmark.config.logging import get_logger
 from topmark.config.paths import (
@@ -563,14 +563,13 @@ class MutableConfig:
     # --------------------------- Loaders/parsers --------------------------
     @classmethod
     @functools.cache
-    def get_default_config_toml(cls) -> str:
-        """Retrieve the default configuration as a raw TOML string.
-
-        Returns:
-            The contents of the default TOML configuration file.
-        """
-        toml_data: TomlTable = load_defaults_dict()
-        return to_toml(toml_data)
+    def get_default_config_toml(
+        cls,
+        *,
+        for_pyproject: bool,
+    ) -> str:
+        """Return TopMark runtime defaults as TOML (I/O-free)."""
+        return render_runtime_defaults_toml_text(for_pyproject=for_pyproject)
 
     @classmethod
     def to_cleaned_toml(cls, toml_doc: str) -> str:
@@ -586,7 +585,7 @@ class MutableConfig:
 
     @classmethod
     def from_defaults(cls) -> MutableConfig:
-        """Load the default configuration from the bundled topmark-default.toml file.
+        """Load the default configuration from TopMark's runtime defaults.
 
         Returns:
             A `MutableConfig` instance populated with default values.

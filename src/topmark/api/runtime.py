@@ -47,13 +47,6 @@ if TYPE_CHECKING:
 
 logger: TopmarkLogger = get_logger(__name__)
 
-__all__: list[str] = [
-    "build_cfg_and_files_via_cli_helpers",
-    "ensure_mutable_config",
-    "run_pipeline",
-    "select_pipeline",
-]
-
 
 def ensure_mutable_config(
     config: Mapping[str, Any] | MutableConfig | Config | None,
@@ -64,11 +57,10 @@ def ensure_mutable_config(
     to a **mutable** builder for merging and final ``freeze()`` before pipeline execution.
 
     Args:
-        config (Mapping[str, Any] | MutableConfig | Config | None): Optional (TOML) mapping,
-            draft, or frozen config instance.
+        config: Optional (TOML) mapping, draft, or frozen config instance.
 
     Returns:
-        MutableConfig: A mutable draft configuration.
+        A mutable draft configuration.
 
     Note:
         Public API functions accept **mappings** or **frozen** configs. Passing a
@@ -137,20 +129,19 @@ def build_cfg_and_files_via_cli_helpers(
         - Evaluate globs declared in discovered configs relative to each config file's directory.
 
     Args:
-        paths (Iterable[Path | str]): Files and/or directories to process. Items are
-            normalized to strings early for stability and logging. Empty input falls
-            back to CWD as the discovery anchor in discovery mode.
-        base_config (Mapping[str, Any] | Config | None): Optional mapping or frozen
-            `Config` to seed from. When provided, discovery is skipped and only the
-            provided configuration is honored.
-        include_file_types (Sequence[str] | None): Optional whitelist of file type identifiers
-            to seed the draft for parity with CLI behavior.
-        exclude_file_types (Sequence[str] | None): Optional blacklist of file type identifiers
-            to seed the draft for parity with CLI behavior.
+        paths: Files and/or directories to process. Items are normalized to strings early for
+            stability and logging. Empty input falls back to CWD as the discovery anchor in
+            discovery mode.
+        base_config: Optional mapping or frozen `Config` to seed from. When provided, discovery
+            is skipped and only the provided configuration is honored.
+        include_file_types: Optional whitelist of file type identifiers to seed the draft
+            for parity with CLI behavior.
+        exclude_file_types: Optional blacklist of file type identifiers to seed the draft
+            for parity with CLI behavior.
 
     Returns:
-        tuple[Config, list[Path]]: A 2-tuple `(cfg, files)` where `cfg` is the frozen
-        configuration used to resolve files and `files` is the resolved/filtered list.
+        A 2-tuple `(cfg, files)` where `cfg` is the frozen configuration used to resolve files
+        and `files` is the resolved/filtered list.
 
     Notes:
         * In both modes, input `paths` are normalized to strings, assigned to the draft's
@@ -213,13 +204,18 @@ def build_cfg_and_files_via_cli_helpers(
     return cfg, file_list
 
 
-def select_pipeline(kind: Literal["check", "strip"], *, apply: bool, diff: bool) -> Sequence[Step]:
+def select_pipeline(
+    kind: Literal["check", "strip"],
+    *,
+    apply: bool,
+    diff: bool,
+) -> Sequence[Step]:
     """Return the concrete pipeline steps for the requested kind and intent.
 
     Args:
-        kind (Literal["check","strip"]): The pipeline family to use.
-        apply (bool): If `True`, choose an *_APPLY* variant.
-        diff (bool): If `True`, choose a *PATCH* variant (includes unified diffs).
+        kind: The pipeline family to use.
+        apply: If `True`, choose an *_APPLY* variant.
+        diff: If `True`, choose a *PATCH* variant (includes unified diffs).
 
     Returns:
         Sequence[Step]: The ordered list of steps to execute.
@@ -253,8 +249,8 @@ def run_pipeline(
     pipeline: Sequence[Step],
     paths: Iterable[Path | str],
     base_config: Mapping[str, Any] | Config | None,
-    include_file_types: Sequence[str] | None,
-    exclude_file_types: Sequence[str] | None,
+    include_file_types: Sequence[str] | None = None,
+    exclude_file_types: Sequence[str] | None = None,
     apply_changes: bool,
     prune: bool = False,
     # public-policy overlays (None = no override)
@@ -273,21 +269,20 @@ def run_pipeline(
         * Ensures processors are registered before running the steps.
 
     Args:
-        pipeline (Sequence[Step]): The pipeline (steps) to apply.
-        paths (Iterable[Path | str]): Files and/or directories to process.
-        base_config (Mapping[str, Any] | Config | None): `None` for discovery; a mapping
-            or `Config` to seed the run directly.
-        include_file_types (Sequence[str] | None): Optional whitelist of file type identifiers.
-        exclude_file_types (Sequence[str] | None): Optional blacklist of file type identifiers.
-        apply_changes (bool): When `True`, run in apply mode; otherwise dry run.
-        prune (bool): If `True`, trim heavy views after the run (keeps summaries).
-        policy (PublicPolicy | None): Optional global policy overlays (public shape)
-            applied **after** discovery and before freezing.
-        policy_by_type (Mapping[str, PublicPolicy] | None): Optional per-type policy
-            overlays (public shape) applied **after** discovery and before freezing.
+        pipeline: The pipeline (steps) to apply.
+        paths: Files and/or directories to process.
+        base_config: `None` for discovery; a mapping or `Config` to seed the run directly.
+        include_file_types: Optional whitelist of file type identifiers.
+        exclude_file_types: Optional blacklist of file type identifiers.
+        apply_changes: When `True`, run in apply mode; otherwise dry run.
+        prune: If `True`, trim heavy views after the run (keeps summaries).
+        policy: Optional global policy overlays (public shape) applied **after** discovery
+            and before freezing.
+        policy_by_type: Optional per-type policy overlays (public shape) applied **after**
+            discovery and before freezing.
 
     Returns:
-        tuple[Config, list[Path], list[ProcessingContext], ExitCode | None]: A tuple:
+        A tuple:
             * `Config`: The final (frozen) config used for the run.
             * `list[Path]`: Resolved/filtered file list.
             * `list[ProcessingContext]`: Pipeline results.
@@ -355,3 +350,13 @@ def run_pipeline(
     logger.info("Processing %d files with TopMark %s", len(file_list), TOPMARK_VERSION)
 
     return cfg, file_list, results, encountered_error_code
+
+
+# --- Exported symbols ---
+
+__all__: list[str] = [
+    "build_cfg_and_files_via_cli_helpers",
+    "ensure_mutable_config",
+    "run_pipeline",
+    "select_pipeline",
+]

@@ -28,12 +28,12 @@ from typing import TYPE_CHECKING, Any, cast
 
 from topmark.cli.keys import CliCmd
 from topmark.config.machine.schemas import (
+    ConfigCheckSummary,
     ConfigDiagnosticsPayload,
     ConfigPayload,
 )
 from topmark.config.model import Config
 from topmark.core.machine.schemas import (
-    MachineKey,
     normalize_payload,
 )
 from topmark.diagnostic.machine.schemas import (
@@ -138,7 +138,7 @@ def build_config_check_summary_payload(
     cfg_diag_payload: ConfigDiagnosticsPayload | None = None,
     strict: bool,
     ok: bool,
-) -> dict[str, object]:
+) -> ConfigCheckSummary:
     """Build the `summary` payload for `topmark config check`.
 
     The summary is embedded differently depending on format:
@@ -162,12 +162,13 @@ def build_config_check_summary_payload(
 
     counts_only: MachineDiagnosticCounts = diag_payload.diagnostic_counts
 
-    summary: dict[str, object] = {
-        MachineKey.COMMAND: CliCmd.CONFIG,
-        MachineKey.SUBCOMMAND: CliCmd.CONFIG_CHECK,
-        MachineKey.OK: ok,
-        MachineKey.STRICT: strict,
-        MachineKey.DIAGNOSTIC_COUNTS: counts_only.to_dict(),
-        MachineKey.CONFIG_FILES: [str(p) for p in config.config_files],
-    }
+    summary = ConfigCheckSummary(
+        command=CliCmd.CONFIG,
+        subcommand=CliCmd.CONFIG_CHECK,
+        ok=ok,
+        strict=strict,
+        diagnostic_counts=counts_only,
+        config_files=[str(p) for p in config.config_files],
+    )
+
     return summary

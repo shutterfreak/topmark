@@ -20,7 +20,7 @@ Responsibilities:
   - Delegate JSON/NDJSON string rendering to
     [`topmark.core.machine.serializers`][topmark.core.machine.serializers].
 
-This module is intentionally I/O-free: it returns strings (JSON) or iterables of
+This module is intentionally I/O-free: it returns strings (JSON) or iterators of
 strings (NDJSON lines) for the CLI layer to print.
 """
 
@@ -67,7 +67,8 @@ def serialize_config(
         fmt: Target machine format (JSON or NDJSON).
 
     Returns:
-        A NDJSON string or pretty-printed JSON string depending on `fmt` (no trailing newline).
+        A pretty-printed JSON string, or an iterator of NDJSON lines, depending on `fmt`
+        (no trailing newline).
 
     Raises:
         ValueError: If `fmt` is not a supported machine format.
@@ -130,7 +131,7 @@ def serialize_config_ndjson(
         config: Immutable runtime configuration to serialize.
 
     Returns:
-        Iterator of NDJSON string (no trailing newline).
+        Iterator of NDJSON lines (no trailing newline).
     """
     iter_records: Iterator[dict[str, object]] = iter_config_ndjson_records(
         config=config,
@@ -257,7 +258,7 @@ def serialize_config_check(
         fmt: Target machine format (JSON or NDJSON).
 
     Returns:
-        Rendered JSON string oor iterable of NDJSON lines (no trailing newline).
+        Rendered JSON string or iterator of NDJSON lines (no trailing newline).
 
     Raises:
         ValueError: If `fmt` is not a supported machine format.

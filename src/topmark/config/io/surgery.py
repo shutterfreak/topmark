@@ -8,13 +8,21 @@
 #
 # topmark:header:end
 
-"""Lossless TOML AST surgery helpers.
+"""Lossless TOML edits using tomlkit.
 
-The helpers in this module manipulate `tomlkit`'s parsed document tree in a
-structure-preserving way, so comments and whitespace are retained.
+This module provides helpers that operate on a TOML *AST* (via tomlkit) to
+preserve formatting and comments as much as possible.
 
-Currently this is used to nest a TOML document under a dotted section path
-(e.g. `tool.topmark`) when generating snippets for `pyproject.toml`.
+Use cases:
+- Wrapping an existing TOML document under a dotted section path  (e.g. nesting under
+  ``tool.topmark`` for ``pyproject.toml``).
+- Setting/removing the ``root`` discovery flag structurally.
+
+Notes:
+- These helpers are intended for structural manipulation.
+- For the annotated config template used by `topmark config init`, prefer the text-based helpers in
+  [`topmark.config.io.template_surgery`][topmark.config.io.template_surgery] to preserve the
+  template's documentation layout.
 """
 
 from __future__ import annotations
@@ -23,7 +31,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 import tomlkit
 from tomlkit.exceptions import ParseError as TomlkitParseError
-from tomlkit.items import Item, Key, Table
+from tomlkit.items import Comment, Item, Key, Table
 
 if TYPE_CHECKING:
     from _collections_abc import dict_items
@@ -39,31 +47,128 @@ _TomlkitBodyItem = tuple[Key | None, Item]
 # --- Lossless TOML AST surgery (tomlkit structure-preserving) ---
 
 
-def nest_toml_under_section(toml_doc: str, section_keys: str) -> str:
+def set_root_flag(toml_text: str, *, for_pyproject: bool, root: bool) -> str:
+    """Set or remove the `root` flag in a TOML document.
+
+    - For topmark.toml: top-level `root = true` (or remove when false).
+    - For pyproject.toml: sets `tool.topmark.root`.
+
+    Args:
+        toml_text: TOML document text.
+        for_pyproject: Whether the document is (or will be) a pyproject-style document (i.e. root
+            lives at ``tool.topmark.root``).
+        root: Whether to enable the root flag.
+
+    Returns:
+        Updated TOML document text.
+
+    Raises:
+        RuntimeError: If the TOML document cannot be parsed.
+        TypeError: If an existing `tool` or `tool.topmark` key exists but is not a table.
+    """
+    try:
+        doc: tomlkit.TOMLDocument = tomlkit.parse(toml_text)
+    except TomlkitParseError as exc:
+        raise RuntimeError(f"Error parsing TOML document: {exc}") from exc
+
+    if for_pyproject:
+        tool_item: Item | None
+        if "tool" in doc:  # noqa: SIM108
+            tool_item = cast("Item", doc["tool"])
+        else:
+            tool_item = None
+
+        if tool_item is None:
+            tool_tbl: Table = tomlkit.table()
+            doc["tool"] = tool_tbl
+        elif isinstance(tool_item, Table):
+            tool_tbl = tool_item
+        else:
+            raise TypeError("Cannot set tool.topmark.root: 'tool' exists but is not a TOML table")
+
+        topmark_item: Item | None
+        if "topmark" in tool_tbl:  # noqa: SIM108
+            topmark_item = tool_tbl["topmark"]
+        else:
+            topmark_item = None
+
+        if topmark_item is None:
+            topmark_tbl: Table = tomlkit.table()
+            tool_tbl["topmark"] = topmark_tbl
+        elif isinstance(topmark_item, Table):
+            topmark_tbl = topmark_item
+        else:
+            raise TypeError(
+                "Cannot set tool.topmark.root: 'tool.topmark' exists but is not a TOML table"
+            )
+
+        if root:
+            topmark_tbl["root"] = True
+        else:
+            # tomlkit Table supports `in` / del.
+            if "root" in topmark_tbl:
+                del topmark_tbl["root"]
+    else:
+        # Non-pyproject.toml case (topmark.toml)
+        if root:
+            # Attempt a nicer placement when the input document resembles the annotated template.
+            # If we can find a comment item that mentions "# root = true", insert immediately
+            # after that comment. Otherwise, fall back to a normal assignment (which places the
+            # key according to tomlkit's default ordering rules).
+            if "root" in doc:
+                doc["root"] = True
+            else:
+                insert_at: int | None = None
+                for i, (k, item) in enumerate(doc.body):
+                    if k is None and isinstance(item, Comment):
+                        txt: str = str(item)
+                        if "# root = true" in txt:
+                            insert_at = i + 1
+                            break
+
+                if insert_at is None:
+                    # Fallback: append at end if the banner cannot be found.
+                    doc["root"] = True
+                else:
+                    # Insert the key/value pair plus a blank line after it.
+                    doc.body.insert(insert_at, (tomlkit.key("root"), tomlkit.boolean("true")))
+                    doc.body.insert(insert_at + 1, (None, tomlkit.nl()))
+        else:
+            if "root" in doc:
+                del doc["root"]
+
+    # Prefer the document serializer to avoid tomlkit.dumps typing issues.
+    return doc.as_string()
+
+
+def nest_toml_under_section(
+    toml_doc: str,
+    section_keys: str,
+) -> str:
     r"""Return a new TOML document nested under a dotted section path.
 
     This helper uses tomlkit to *losslessly* wrap an existing TOML document
     under a nested section, for example:
 
-        nest_toml_under_section("a = 1\\n", "tool.topmark")
+        nest_toml_under_section("a = 1\n", "tool.topmark")
 
     yields a document equivalent to:
 
         [tool.topmark]
         a = 1
 
-    Comments and whitespace from the original document are preserved because
-    tomlkit nodes are re-used when constructing the nested table. This version
-    preserves both leading preamble and trailing postamble content.
+    Comments/whitespace are preserved by re-using tomlkit nodes. Leading preamble
+    (comments/blank lines before the first keyed entry) and trailing postamble are
+    also preserved.
 
     Args:
-        toml_doc (str): Original TOML document to nest.
-        section_keys (str): Dotted section path such as ``"tool.topmark"``.
+        toml_doc: Original TOML document to nest.
+        section_keys: Dotted section path such as ``"tool.topmark"``.
             Empty segments (e.g., ``"tool..topmark"``) are not allowed.
 
     Returns:
-        str: A new TOML document where the original content lives under the
-        final section table (e.g., ``[tool.topmark]``).
+        A new TOML document where the original keyed content lives under the final
+        section table (e.g., ``[tool.topmark]``).
 
     Raises:
         ValueError: If ``section_keys`` is empty or only contains dots.
@@ -111,8 +216,8 @@ def nest_toml_under_section(toml_doc: str, section_keys: str) -> str:
     if not keys:
         raise ValueError("section_keys must contain at least one non-empty component")
 
-    # Idempotency guard: if the document is already *exactly* nested under the
-    # requested dotted section path (e.g. it already is a `[tool.topmark]` doc),
+    # Idempotency guard: if the document already represents exactly the requested wrapper
+    # (e.g. it already represents exactly the requested wrapper),
     # do not wrap again.
     #
     # We consider it "already nested" only when each level along the path is the

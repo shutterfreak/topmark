@@ -21,9 +21,11 @@ import click
 
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cmd_common import get_effective_verbosity
+from topmark.cli.emitters.default.version import emit_version_default
 from topmark.cli.keys import CliCmd, CliOpt
 from topmark.cli.machine_emitters import emit_machine
 from topmark.cli.options import underscored_trap_option
+from topmark.cli_shared.emitters.markdown.version import emit_version_markdown
 from topmark.core.formats import (
     OutputFormat,
     is_machine_format,
@@ -68,8 +70,11 @@ def version_command(
     Prints the TopMark version as installed in the current Python environment.
 
     Args:
-        output_format: Optional output format (plain text or markdown).
-        semver: Return version identifier in `semver` if True, PEP440 (default) if False.
+        output_format: Optional output format (default, markdown, json, ndjson).
+        semver: If True, attempt to render the version as SemVer; otherwise use PEP 440.
+
+    Raises:
+        ValueError: If an unsupported output format is requested.
     """
     ctx: click.Context = click.get_current_context()
     ctx.ensure_object(dict)
@@ -97,22 +102,28 @@ def version_command(
         # Do not emit trailing newline for JSON
         nl: bool = fmt != OutputFormat.JSON
         emit_machine(serialized, nl=nl)
-    else:
-        version_text, version_format, _err = compute_version_text(semver=semver)
-        # TODO: decide how to render the error
+        return
 
-        if fmt == OutputFormat.MARKDOWN:
-            console.print("# TopMark Version\n")
-            console.print(f"**TopMark version ({version_format}): {version_text}**")
-        else:  # Plain text (default)
-            if vlevel > 0:
-                console.print(
-                    console.styled(
-                        f"TopMark version ({version_format}):\n", bold=True, underline=True
-                    )
-                )
-                console.print(f"    {console.styled(version_text, bold=True)}")
-            else:
-                console.print(console.styled(version_text, bold=True))
+    version_text, version_format, err = compute_version_text(semver=semver)
 
-    # No explicit return needed for Click commands.
+    if fmt == OutputFormat.DEFAULT:
+        emit_version_default(
+            console=console,
+            version_text=version_text,
+            version_format=version_format,
+            verbosity_level=vlevel,
+            error=err,
+        )
+        return
+
+    if fmt == OutputFormat.MARKDOWN:
+        md: str = emit_version_markdown(
+            version_text=version_text,
+            version_format=version_format,
+            error=err,
+        )
+        click.echo(md, nl=False)
+        return
+
+    # Defensive guard
+    raise ValueError(f"Unsupported output format: {fmt!r}")

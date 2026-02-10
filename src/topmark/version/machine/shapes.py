@@ -122,7 +122,7 @@ def iter_version_ndjson_records(
         semver: Whether to attempt SemVer conversion of the tool version.
 
     Yields:
-        TODO update docstring - Iterator of shaped NDJSON record mappings.
+        Shaped NDJSON record mappings.
     """
     payload, err = build_version_payload(semver=semver)
 

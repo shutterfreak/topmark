@@ -41,10 +41,7 @@ Machine output includes a `meta` object with at least:
 - `version`: the package version string
 - `platform`: a short platform identifier
 
-Canonical keys, kinds, and helper builders for machine output live under
-\[`topmark.core.machine`\][topmark.core.machine]. Domain packages (for example
-`topmark.config.machine` and `topmark.pipeline.machine`) build on these shared
-primitives.
+Canonical keys, kinds, and helper builders for machine output live under \[`topmark.core.machine`\][topmark.core.machine]. Domain packages (for example \[`topmark.config.machine`\]\[`topmark.config.machine`\] and \[`topmark.pipeline.machine`\][topmark.pipeline.machine]) build on these shared primitives.
 
 ### NDJSON envelope
 

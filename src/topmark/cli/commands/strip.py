@@ -52,9 +52,9 @@ from topmark.cli.cmd_common import (
     exit_if_no_files,
     get_effective_verbosity,
     maybe_exit_on_error,
-    render_config_diagnostics,
 )
-from topmark.cli.emitters import (
+from topmark.cli.emitters.default.diagnostic import render_config_diagnostics
+from topmark.cli.emitters.default.pipeline import (
     emit_banner,
     emit_diffs,
     emit_per_file_guidance,

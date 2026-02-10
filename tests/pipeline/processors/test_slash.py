@@ -128,7 +128,7 @@ def test_slash_detect_existing_header(tmp_path: Path) -> None:
     ctx: ProcessingContext = ProcessingContext.bootstrap(
         path=file,
         config=cfg,
-        policy_registry=policy_registry,
+        policy_registry_override=policy_registry,
     )
 
     pipeline: Sequence[Step] = Pipeline.CHECK.steps
@@ -186,7 +186,7 @@ def test_slash_malformed_header_fields(
     ctx: ProcessingContext = ProcessingContext.bootstrap(
         path=file,
         config=cfg,
-        policy_registry=policy_registry,
+        policy_registry_override=policy_registry,
     )
 
     pipeline: Sequence[Step] = Pipeline.CHECK.steps

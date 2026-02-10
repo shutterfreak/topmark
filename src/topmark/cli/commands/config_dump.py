@@ -25,7 +25,7 @@ Input modes:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import click
 
@@ -33,9 +33,9 @@ from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cmd_common import (
     build_config_for_plan,
     get_effective_verbosity,
-    render_config_diagnostics,
 )
-from topmark.cli.emitters import emit_toml_block
+from topmark.cli.emitters.default.config import emit_config_dump_default
+from topmark.cli.emitters.default.diagnostic import render_config_diagnostics
 from topmark.cli.io import plan_cli_inputs
 from topmark.cli.keys import CliCmd, CliOpt
 from topmark.cli.machine_emitters import emit_config_machine
@@ -46,9 +46,11 @@ from topmark.cli.options import (
     common_header_formatting_options,
     underscored_trap_option,
 )
-from topmark.config.io import to_toml
+from topmark.cli_shared.emitters.markdown.config import emit_config_dump_markdown
+from topmark.cli_shared.emitters.shared.config import ConfigDumpPrepared, prepare_config_dump
 from topmark.config.logging import get_logger
 from topmark.constants import TOML_BLOCK_END, TOML_BLOCK_START
+from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat, is_machine_format
 from topmark.core.keys import ArgKey
 from topmark.utils.file import safe_unlink
@@ -222,49 +224,41 @@ def config_dump_command(
 
     logger.trace("Config after merging CLI and discovered config: %s", draft_config)
 
+    def _exit() -> None:
+        # Cleanup any temp file created by content-on-STDIN mode (defensive)
+        if temp_path and temp_path.exists():
+            safe_unlink(temp_path)
+        ctx.exit(ExitCode.SUCCESS)
+
     # We don't actually care about the file list here; just dump the config
 
-    if fmt == OutputFormat.DEFAULT:
-        config_toml_dict: dict[str, Any] = config.to_toml_dict()
-        merged_config: str = to_toml(config_toml_dict)
-
-        if vlevel > 0:
-            # Render the list of config files
-            click.echo(f"Config files processed: {len(config.config_files)}")
-            for i, c in enumerate(config.config_files, start=1):
-                click.echo(f"Loaded config {i}: {c}")
-
-        emit_toml_block(
-            console=console,
-            title="TopMark Config Dump (TOML):",
-            toml_text=merged_config,
-            verbosity_level=vlevel,
-        )
-
-    elif fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
+    if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         # Machine-readable formats: emit JSON/NDJSON without human banners
         emit_config_machine(
             meta=meta,
             config=config,
             fmt=fmt,
         )
+        _exit()
 
-    elif fmt == OutputFormat.MARKDOWN:
-        merged_config: str = to_toml(config.to_toml_dict())
+    # Human formats
+    prepared: ConfigDumpPrepared = prepare_config_dump(config=config)
 
-        # Markdown: heading plus fenced TOML block, no ANSI styling.
-        console.print("# TopMark Config Dump (TOML)")
-        console.print()
-        console.print("```toml")
-        console.print(merged_config.rstrip("\n"))
-        console.print("```")
+    if fmt == OutputFormat.MARKDOWN:
+        md: str = emit_config_dump_markdown(
+            prepared=prepared,
+            verbosity_level=vlevel,
+        )
+        console.print(md, nl=False)
+        _exit()
 
-    else:
-        # Defensive guard in case OutputFormat gains new members
-        raise NotImplementedError(f"Unsupported output format: {fmt!r}")
+    if fmt == OutputFormat.DEFAULT:
+        emit_config_dump_default(
+            console=console,
+            prepared=prepared,
+            verbosity_level=vlevel,
+        )
+        _exit()
 
-    # Cleanup any temp file created by content-on-STDIN mode (defensive)
-    if temp_path and temp_path.exists():
-        safe_unlink(temp_path)
-
-    # No explicit return needed for Click commands.
+    # Defensive guard in case OutputFormat gains new members
+    raise NotImplementedError(f"Unsupported output format: {fmt!r}")

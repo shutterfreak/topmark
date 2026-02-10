@@ -106,7 +106,7 @@ def test_jsonc_replace_preserves_pre_prefix_indent(tmp_path: Path) -> None:
     ctx: ProcessingContext = ProcessingContext.bootstrap(
         path=file,
         config=cfg,
-        policy_registry=policy_registry,
+        policy_registry_override=policy_registry,
     )
 
     pipeline: Sequence[Step] = Pipeline.CHECK_APPLY.steps

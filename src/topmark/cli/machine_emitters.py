@@ -18,7 +18,6 @@ All shaping and serialization lives in [`topmark.core.machine`][topmark.core.mac
 
 from __future__ import annotations
 
-from collections.abc import Iterable
 from typing import TYPE_CHECKING
 
 from topmark.cli.console_helpers import get_console_safely
@@ -40,7 +39,7 @@ from topmark.registry.machine import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Iterator
 
     from topmark.cli_shared.console_api import ConsoleLike
     from topmark.config.model import Config
@@ -94,7 +93,7 @@ def emit_processing_results_machine(
     if not is_machine_format(fmt):
         raise ValueError(f"Unsupported machine output format: {fmt!r}")
 
-    serialized: str | Iterable[str] = serialize_processing_results(
+    serialized: str | Iterator[str] = serialize_processing_results(
         meta=meta,
         config=config,
         results=results,
@@ -132,7 +131,7 @@ def emit_config_machine(
     if not is_machine_format(fmt):
         raise ValueError(f"Unsupported machine output format: {fmt!r}")
 
-    serialized = serialize_config(
+    serialized: str | Iterator[str] = serialize_config(
         meta=meta,
         config=config,
         fmt=fmt,
@@ -169,7 +168,7 @@ def emit_config_diagnostics_machine(
     if not is_machine_format(fmt):
         raise ValueError(f"Unsupported machine output format: {fmt!r}")
 
-    serialized = serialize_config_diagnostics(
+    serialized: str | Iterator[str] = serialize_config_diagnostics(
         meta=meta,
         config=config,
         fmt=fmt,
@@ -213,7 +212,7 @@ def emit_config_check_machine(
     if not is_machine_format(fmt):
         raise ValueError(f"Unsupported machine output format: {fmt!r}")
 
-    serialized = serialize_config_check(
+    serialized: str | Iterator[str] = serialize_config_check(
         meta=meta,
         config=config,
         strict=strict,
@@ -239,7 +238,7 @@ def emit_filetypes_machine(
         fmt: The output format.
         show_details: If True, show additional details.
     """
-    serialized = serialize_filetypes(
+    serialized: str | Iterator[str] = serialize_filetypes(
         meta=meta,
         fmt=fmt,
         show_details=show_details,
@@ -263,7 +262,7 @@ def emit_processors_machine(
         fmt: The output format.
         show_details: If True, show additional details.
     """
-    serialized = serialize_processors(
+    serialized: str | Iterator[str] = serialize_processors(
         meta=meta,
         fmt=fmt,
         show_details=show_details,
