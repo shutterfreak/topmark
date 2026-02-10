@@ -87,9 +87,7 @@ markdown_extensions:
         # Mermaid.js integration: intercepts ```mermaid blocks and renders diagrams.
         - name: mermaid
           class: mermaid
-          format: pymdownx.superfences.fence_mermaid_format
 
-        # Generic flow diagram support (styled like standard code blocks).
         - name: flow
           class: highlight
           format: pymdownx.superfences.fence_code_format
