@@ -36,8 +36,8 @@ def test_version_outputs_pep440_version() -> None:
     """It should output the PEP 440 version string (exact match)."""
     result: Result = run_cli(
         [
-            CliOpt.NO_COLOR_MODE,  # Disable color mode for RE pattern matching
             CliCmd.VERSION,
+            CliOpt.NO_COLOR_MODE,  # Disable color mode for RE pattern matching
         ]
     )
 
@@ -58,8 +58,8 @@ def test_version_with_semver_flag_outputs_semver() -> None:
     """It should output the SemVer-rendered version string with --semver."""
     result: Result = run_cli(
         [
-            CliOpt.NO_COLOR_MODE,  # Disable color mode for RE pattern matching
             CliCmd.VERSION,
+            CliOpt.NO_COLOR_MODE,  # Disable color mode for RE pattern matching
             CliOpt.SEMVER_VERSION,
         ]
     )
@@ -82,7 +82,12 @@ def test_version_with_semver_flag_outputs_semver() -> None:
 @pytest.mark.parametrize("use_semver", [False, True])
 def test_version_json_format(use_semver: bool) -> None:
     """`version --output-format json` returns parseable JSON with a correct version value."""
-    args: list[str] = [CliOpt.NO_COLOR_MODE, CliCmd.VERSION, CliOpt.OUTPUT_FORMAT, "json"]
+    args: list[str] = [
+        CliCmd.VERSION,
+        CliOpt.NO_COLOR_MODE,
+        CliOpt.OUTPUT_FORMAT,
+        "json",
+    ]
     if use_semver:
         args.append(CliOpt.SEMVER_VERSION)
 
@@ -126,7 +131,12 @@ def test_version_json_format(use_semver: bool) -> None:
 @pytest.mark.parametrize("use_semver", [False, True])
 def test_version_markdown_format(use_semver: bool) -> None:
     """`version --output-format markdown` prints a readable line with the correct version."""
-    args: list[str] = [CliOpt.NO_COLOR_MODE, CliCmd.VERSION, CliOpt.OUTPUT_FORMAT, "markdown"]
+    args: list[str] = [
+        CliCmd.VERSION,
+        CliOpt.NO_COLOR_MODE,
+        CliOpt.OUTPUT_FORMAT,
+        "markdown",
+    ]
     if use_semver:
         args.append(CliOpt.SEMVER_VERSION)
 

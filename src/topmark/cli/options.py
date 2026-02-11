@@ -29,6 +29,7 @@ from topmark.cli.errors import TopmarkUsageError
 from topmark.cli.keys import CliOpt
 from topmark.cli_shared.color import ColorMode
 from topmark.config.logging import TRACE_LEVEL, get_logger
+from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
 from topmark.rendering.formats import HeaderOutputFormat
 
@@ -146,6 +147,79 @@ def common_verbose_options(f: Callable[P, R]) -> Callable[P, R]:
         count=True,
         help="Suppress output. Specify up to twice for even less.",
     )(f)
+    return f
+
+
+def common_color_options(f: Callable[P, R]) -> Callable[P, R]:
+    """Adds --color and --no-color options to a command.
+
+    Args:
+        f: The Click command function to decorate.
+
+    Returns:
+        The decorated function with color options added.
+
+    Behavior:
+        Adds --color with choices (auto, always, never).
+        Adds --no-color flag that disables color output.
+        These options control colorized terminal output.
+    """
+    f = click.option(
+        CliOpt.COLOR_MODE,
+        ArgKey.COLOR_MODE,
+        type=click.Choice([m.value for m in ColorMode]),
+        default=None,
+        help="Color output: auto (default), always, or never.",
+    )(f)
+    f = click.option(
+        CliOpt.NO_COLOR_MODE,
+        ArgKey.NO_COLOR_MODE,
+        is_flag=True,
+        help=f"Disable color output (equivalent to {CliOpt.COLOR_MODE}=never).",
+    )(f)
+    return f
+
+
+def common_ui_options(f: Callable[P, R]) -> Callable[P, R]:
+    """Convenience decorator (verbosity + color mode).
+
+    Args:
+        f: The Click command function to decorate.
+
+    Returns:
+        The decorated function with color options added.
+
+    Behavior:
+        Adds --verbose and --quiet options (mutually exclusive).
+        Adds --color with choices (auto, always, never).
+        Adds --no-color flag that disables color output.
+    """
+    f = common_verbose_options(f)
+    f = common_color_options(f)
+    return f
+
+
+def common_output_format_options(f: Callable[P, R]) -> Callable[P, R]:
+    """Apply common output format options.
+
+    Adds the ``--output-format`` option which accepts OutputFormat values for human use (``text``,
+    ``markdown``) and machine  formats (``json``, ``ndjson``). If not set, it will be resolved to
+    ``text`` (ANSI-capable).
+
+    Args:
+        f: The Click command function to decorate.
+
+    Returns:
+        The decorated function.
+    """
+    f = click.option(
+        CliOpt.OUTPUT_FORMAT,
+        ArgKey.OUTPUT_FORMAT,
+        type=EnumChoiceParam(OutputFormat),
+        default=None,
+        help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
+    )(f)
+    f = underscored_trap_option("--output_format")(f)
     return f
 
 
@@ -375,36 +449,6 @@ def split_nonempty_lines(text: str | None) -> list[str]:
             continue
         out.append(s)
     return out
-
-
-def common_color_options(f: Callable[P, R]) -> Callable[P, R]:
-    """Adds --color and --no-color options to a command.
-
-    Args:
-        f: The Click command function to decorate.
-
-    Returns:
-        The decorated function with color options added.
-
-    Behavior:
-        Adds --color with choices (auto, always, never).
-        Adds --no-color flag that disables color output.
-        These options control colorized terminal output.
-    """
-    f = click.option(
-        CliOpt.COLOR_MODE,
-        ArgKey.COLOR_MODE,
-        type=click.Choice([m.value for m in ColorMode]),
-        default=None,
-        help="Color output: auto (default), always, or never.",
-    )(f)
-    f = click.option(
-        CliOpt.NO_COLOR_MODE,
-        ArgKey.NO_COLOR_MODE,
-        is_flag=True,
-        help=f"Disable color output (equivalent to {CliOpt.COLOR_MODE}=never).",
-    )(f)
-    return f
 
 
 def trap_underscored_option(ctx: click.Context, param: click.Option, _value: object) -> None:

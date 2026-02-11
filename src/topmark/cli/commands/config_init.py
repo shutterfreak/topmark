@@ -20,40 +20,47 @@ from typing import TYPE_CHECKING
 
 import click
 
-from topmark.cli.cli_types import EnumChoiceParam
-from topmark.cli.cmd_common import get_effective_verbosity
-from topmark.cli.emitters.default.config import emit_config_init_default
-from topmark.cli.errors import TopmarkUsageError
+from topmark.cli.cmd_common import (
+    get_effective_verbosity,
+    init_common_state,
+)
+from topmark.cli.emitters.text.config import emit_config_init_text
 from topmark.cli.keys import CliCmd, CliOpt
 from topmark.cli.machine_emitters import emit_config_machine
-from topmark.cli.options import underscored_trap_option
+from topmark.cli.options import (
+    common_config_options,
+    common_output_format_options,
+    common_ui_options,
+)
+from topmark.cli.validators import (
+    apply_color_policy_for_output_format,
+    apply_ignore_positional_paths_policy,
+    validate_human_only_config_flags_for_machine_format,
+)
 from topmark.cli_shared.emitters.markdown.config import emit_config_init_markdown
-from topmark.cli_shared.emitters.shared.config import ConfigInitPrepared, prepare_config_init
+from topmark.cli_shared.emitters.shared.config import (
+    ConfigInitPrepared,
+    prepare_config_init,
+)
 from topmark.config import MutableConfig
-from topmark.config.logging import get_logger
-from topmark.core.formats import OutputFormat, is_machine_format
+from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
 
 if TYPE_CHECKING:
+    from topmark.cli_shared.color import ColorMode
     from topmark.cli_shared.console_api import ConsoleLike
-    from topmark.config.logging import TopmarkLogger
     from topmark.core.machine.schemas import MetaPayload
-
-logger: TopmarkLogger = get_logger(__name__)
 
 
 @click.command(
     name=CliCmd.CONFIG_INIT,
     help="Display an initial TopMark configuration file.",
 )
-@click.option(
-    CliOpt.OUTPUT_FORMAT,
-    ArgKey.OUTPUT_FORMAT,
-    type=EnumChoiceParam(OutputFormat),
-    default=None,
-    help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
-)
-@underscored_trap_option("--output_format")
+# Common option decorators
+@common_ui_options
+@common_config_options
+@common_output_format_options
+# Command-specific option decorators
 @click.option(
     CliOpt.CONFIG_FOR_PYPROJECT,
     ArgKey.CONFIG_FOR_PYPROJECT,
@@ -67,8 +74,16 @@ logger: TopmarkLogger = get_logger(__name__)
     help="Set generated config as root.",
 )
 def config_init_command(
+    *,
+    # Command options: common options (verbosity, color)
+    verbose: int,
+    quiet: int,
+    color_mode: ColorMode | None,
+    no_color: bool,
+    # Command options: output format
     output_format: OutputFormat | None,
-    pyproject: bool,
+    # Command-specific options:
+    for_pyproject: bool,
     config_root: bool,
 ) -> None:
     """Print a starter config file to stdout.
@@ -81,35 +96,48 @@ def config_init_command(
           (no diagnostics).
 
     Args:
+        verbose: Incements the verbosity level,
+        quiet: Decrements  the verbosity level,
+        color_mode: Set the color mode (derfault: autp),
+        no_color: bool: If set, disable color mode.
         output_format: Output format to use
-            (``default``, ``markdown``, ``json``, or ``ndjson``).
-        pyproject: If True, render as subtable under `[tool.topmark]`
+            (``text``, ``markdown``, ``json``, or ``ndjson``).
+        for_pyproject: If True, render as subtable under `[tool.topmark]`
             (default: False: plain topmark.toml TOML config format).
-        config_root: If True, set config as root (stops further config resoution)
+        config_root: If True, set config as root (stops further config resoution).
 
     Raises:
         NotImplementedError: When providing an unsupported OutputType.
-        TopmarkUsageError: When --root or --pyproject is specified in combination
-            with a machine format
     """
     ctx: click.Context = click.get_current_context()
     ctx.ensure_object(dict)
 
+    # Initialize the common state (verbosity, color mode) and initialize console
+    init_common_state(
+        ctx,
+        verbose=verbose,
+        quiet=quiet,
+        color_mode=color_mode,
+        no_color=no_color,
+    )
+
+    # Select the console
+    console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
+
     # Machine metadata
     meta: MetaPayload = ctx.obj[ArgKey.META]
 
-    fmt: OutputFormat = output_format or OutputFormat.DEFAULT
+    # Output format
+    fmt: OutputFormat = output_format or OutputFormat.TEXT
 
-    if is_machine_format(fmt):
-        # Disable color mode for machine formats
-        ctx.obj[ArgKey.COLOR_ENABLED] = False
-        if config_root or pyproject:
-            raise TopmarkUsageError(
-                f"{ctx.command.name}: {CliOpt.CONFIG_ROOT} and {CliOpt.CONFIG_FOR_PYPROJECT} "
-                "are not supported with machine-readable output formats."
-            )
+    apply_color_policy_for_output_format(ctx, fmt=fmt)
 
-    console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
+    # config_check_command() is file-agnostic: ignore positional PATHS
+    apply_ignore_positional_paths_policy(ctx, warn_stdin_dash=True)
+
+    validate_human_only_config_flags_for_machine_format(
+        ctx, fmt=fmt, config_root=config_root, for_pyproject=for_pyproject
+    )
 
     # Determine effective program-output verbosity for gating extra details
     vlevel: int = get_effective_verbosity(ctx)
@@ -126,7 +154,7 @@ def config_init_command(
 
     # Human formats: use the full annotated default configuration template
     prepared: ConfigInitPrepared = prepare_config_init(
-        for_pyproject=pyproject,
+        for_pyproject=for_pyproject,
         root=config_root,
     )
 
@@ -138,8 +166,8 @@ def config_init_command(
         console.print(md, nl=False)
         return
 
-    if fmt == OutputFormat.DEFAULT:
-        emit_config_init_default(
+    if fmt == OutputFormat.TEXT:
+        emit_config_init_text(
             console=console,
             prepared=prepared,
             verbosity_level=vlevel,

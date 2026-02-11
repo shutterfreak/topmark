@@ -12,7 +12,7 @@
 
 This module contains Click-free helpers and small data shapes that convert
 internal diagnostic objects into a presentation-friendly form for human output
-formats (DEFAULT / MARKDOWN).
+formats (TEXT / MARKDOWN).
 
 Scope:
     - Prepare stable, minimal "human" diagnostics (counts + rendered lines).
@@ -21,7 +21,7 @@ Scope:
 
 Design:
     - The resulting shapes (`HumanDiagnosticCounts`, `HumanDiagnosticLine`) are
-      used by both ANSI (DEFAULT) and Markdown emitters.
+      used by both ANSI (TEXT) and Markdown emitters.
     - Helpers here do not print or perform Click I/O. They may normalize text,
       map levels, and count diagnostics.
 
@@ -45,7 +45,7 @@ if TYPE_CHECKING:
 class HumanDiagnosticLine:
     """A human-facing diagnostic line (Click-free).
 
-    This is intentionally *not* a machine schema type. It exists so DEFAULT and
+    This is intentionally *not* a machine schema type. It exists so TEXT and
     MARKDOWN output can share a stable presentation model without depending on
     machine-format payload schemas.
 

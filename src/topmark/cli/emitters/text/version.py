@@ -2,13 +2,13 @@
 #
 #   project      : TopMark
 #   file         : version.py
-#   file_relpath : src/topmark/cli/emitters/default/version.py
+#   file_relpath : src/topmark/cli/emitters/text/version.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""DEFAULT (ANSI-styled) emitters for the `topmark version` command.
+"""TEXT (ANSI-styled) emitters for the `topmark version` command.
 
 These helpers are Click-free: they do not call Click APIs and instead write via
 `ConsoleLike`.
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from topmark.cli_shared.console_api import ConsoleLike
 
 
-def emit_version_default(
+def emit_version_text(
     *,
     console: ConsoleLike,
     version_text: str,
@@ -34,7 +34,7 @@ def emit_version_default(
     verbosity_level: int,
     error: Exception | None,
 ) -> None:
-    """Emit `topmark version` output in the DEFAULT (ANSI-styled) format.
+    """Emit `topmark version` output in the TEXT (ANSI-styled) format.
 
     Args:
         console: Console abstraction used by the CLI for styled output.

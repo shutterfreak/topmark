@@ -2,16 +2,16 @@
 #
 #   project      : TopMark
 #   file         : diagnostic.py
-#   file_relpath : src/topmark/cli/emitters/default/diagnostic.py
+#   file_relpath : src/topmark/cli/emitters/text/diagnostic.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""ANSI (DEFAULT) diagnostic rendering helpers for CLI commands.
+"""ANSI (TEXT) diagnostic rendering helpers for CLI commands.
 
 This module contains Click-dependent helpers that render diagnostics for
-human-facing output formats (primarily `OutputFormat.DEFAULT`). These helpers
+human-facing output formats (primarily `OutputFormat.TEXT`). These helpers
 are intentionally kept out of machine-format code paths.
 
 Notes:
@@ -42,14 +42,14 @@ if TYPE_CHECKING:
     from topmark.config import Config
 
 
-def render_human_diagnostics_default(
+def render_human_diagnostics_text(
     *,
     console: ConsoleLike,
     counts: object,
     diagnostics: list[HumanDiagnosticLine],
     verbosity_level: int,
 ) -> None:
-    """Render prepared human diagnostics to ConsoleLike (DEFAULT).
+    """Render prepared human diagnostics to ConsoleLike (TEXT).
 
     Args:
         console: ConsoleLike for output.
@@ -70,7 +70,7 @@ def render_human_diagnostics_default(
             console.print(f"- {level}: {message}")
 
 
-def render_config_diagnostics(
+def render_config_diagnostics_text(
     *,
     ctx: click.Context,
     config: Config,
@@ -79,7 +79,7 @@ def render_config_diagnostics(
 
     This helper prints configuration resolution/validation diagnostics that were
     accumulated while building the effective `Config`. It is intended for
-    human-facing output only (DEFAULT/ANSI), not for machine formats.
+    human-facing output only (TEXT/ANSI), not for machine formats.
 
     Behavior:
         - If there are no diagnostics, do nothing.

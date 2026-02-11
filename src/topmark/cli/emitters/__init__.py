@@ -15,7 +15,7 @@ both human-readable and machine-readable, to a `ConsoleLike` instance.
 
 Responsibilities are intentionally split as follows:
 
-Human-oriented output (DEFAULT format):
+Human-oriented output (TEXT format):
 - banners and section headers,
 - per-file summary lines and guidance,
 - colored diagnostics and hints,

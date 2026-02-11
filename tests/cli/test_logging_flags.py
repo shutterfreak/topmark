@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests.cli.conftest import assert_SUCCESS, run_cli
+from tests.cli.conftest import assert_SUCCESS, assert_USAGE_ERROR, run_cli
 from topmark.cli.keys import CliCmd
 
 if TYPE_CHECKING:
@@ -28,11 +28,24 @@ if TYPE_CHECKING:
 def test_verbose_and_quiet_flags_parse() -> None:
     """It should accept verbosity and quietness flags and exit with code 0."""
     for args in (
-        ["-v", CliCmd.VERSION],
-        ["-vvv", CliCmd.VERSION],
-        ["-q", CliCmd.VERSION],
-        ["-qq", CliCmd.VERSION],
+        [CliCmd.VERSION, "-v"],
+        [CliCmd.VERSION, "-vv"],
+        [CliCmd.VERSION, "-vvv"],
+        [CliCmd.VERSION, "-q"],
+        [CliCmd.VERSION, "-qq"],
+        [CliCmd.VERSION, "-qqq"],
     ):
         result: Result = run_cli(args)
 
         assert_SUCCESS(result)
+
+
+def test_verbose_and_quiet_flags_mutex_parse() -> None:
+    """It should fail when verbosity and quietness flags are used and exit with code 0."""
+    for args in (
+        [CliCmd.VERSION, "-v", "-q"],
+        [CliCmd.VERSION, "-q", "-v"],
+    ):
+        result: Result = run_cli(args)
+
+        assert_USAGE_ERROR(result)

@@ -23,30 +23,20 @@ from typing import TYPE_CHECKING
 
 import click
 
+from topmark.cli.cmd_common import init_common_state
 from topmark.cli.commands.check import check_command
 from topmark.cli.commands.config import config_command
 from topmark.cli.commands.filetypes import filetypes_command
 from topmark.cli.commands.processors import processors_command
 from topmark.cli.commands.strip import strip_command
 from topmark.cli.commands.version import version_command
-from topmark.cli.console import ClickConsole
 from topmark.cli.keys import CliCmd, CliOpt
 
 # --- We use a module import here instead of relative import
-from topmark.cli.options import (
-    ColorMode,
-    common_color_options,
-    common_verbose_options,
-    resolve_verbosity,
-)
-from topmark.cli_shared.color import resolve_color_mode
 from topmark.config.logging import (
     get_logger,
-    resolve_env_log_level,
-    setup_logging,
 )
 from topmark.core.keys import ArgKey
-from topmark.core.machine.payloads import build_meta_payload
 from topmark.pipeline.processors import register_all_processors
 from topmark.utils.version import check_python_version
 
@@ -59,79 +49,35 @@ logger: TopmarkLogger = get_logger(__name__)
 register_all_processors()
 
 
-def init_common_state(
-    ctx: click.Context,
-    *,
-    verbose: int,
-    quiet: int,
-    color_mode: ColorMode | None,
-    no_color: bool,
-) -> None:
-    """Initialize shared state (verbosity & color) on the Click context.
-
-    Args:
-        ctx: Current Click context; will have ``obj`` and ``color`` set.
-        verbose: Count of ``-v`` flags (0..2).
-        quiet: Count of ``-q`` flags (0..2).
-        color_mode: Explicit color mode from ``--color`` (or ``None``).
-        no_color: Whether ``--no-color`` was passed; forces color off.
-    """
-    ctx.obj = ctx.obj or {}
-
-    # Configure program-output verbosity:
-    level_cli: int = resolve_verbosity(verbose, quiet)
-    ctx.obj[ArgKey.VERBOSITY_LEVEL] = level_cli
-
-    # Configure internal logging via env:
-    level_env: int | None = resolve_env_log_level()
-    ctx.obj[ArgKey.LOG_LEVEL] = level_env
-    setup_logging(level=level_env)
-
-    effective_color_mode: ColorMode = (
-        ColorMode.NEVER if no_color else (color_mode or ColorMode.AUTO)
-    )
-    enable_color: bool = resolve_color_mode(
-        color_mode_override=effective_color_mode,
-        output_format=None,  # Only available from specific (sub) commands
-    )
-    ctx.obj[ArgKey.COLOR_ENABLED] = enable_color
-    ctx.color = enable_color
-
-    console = ClickConsole(enable_color=not no_color)
-    ctx.obj[ArgKey.CONSOLE] = console
-
-    # Machine metadata payload
-    ctx.obj[ArgKey.META] = build_meta_payload()
-
-
 @click.group(
     cls=click.Group,
     context_settings={"help_option_names": ["-h", CliOpt.HELP]},
     invoke_without_command=True,  # Aalways invoke the cli() function
     help="TopMark CLI",
 )
-@common_verbose_options
-@common_color_options
 @click.pass_context
 def cli(
     ctx: click.Context,
-    verbose: int,
-    quiet: int,
-    color_mode: ColorMode | None,
-    no_color: bool,
+    # verbose: int,
+    # quiet: int,
+    # color_mode: ColorMode | None,
+    # no_color: bool,
 ) -> None:
     """Entry point for the TopMark CLI."""
     # Check the Python version (may exit)
     check_python_version()
 
-    # Initialize verbosity and color state once for all subcommands
-    init_common_state(
-        ctx,
-        verbose=verbose,
-        quiet=quiet,
-        color_mode=color_mode,
-        no_color=no_color,
-    )
+    # Subcommands now own verbosity/color options and call init_common_state().
+    # Ensure we still have a console for the root group help output.
+    ctx.ensure_object(dict)
+    if ArgKey.CONSOLE not in ctx.obj:
+        init_common_state(
+            ctx,
+            verbose=0,
+            quiet=0,
+            color_mode=None,
+            no_color=False,
+        )
     console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
 
     if ctx.invoked_subcommand is None:

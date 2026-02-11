@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : config.py
-#   file_relpath : src/topmark/cli/emitters/default/config.py
+#   file_relpath : src/topmark/cli/emitters/text/config.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -11,7 +11,7 @@
 """Default (ANSI-styled) emitters for TopMark config commands.
 
 This module is reserved for Click-free helpers that render human-facing config
-output in `OutputFormat.DEFAULT`, using `ConsoleLike` for styling.
+output in `OutputFormat.TEXT`, using `ConsoleLike` for styling.
 
 Notes:
     Config commands currently rely on shared helpers such as `emit_toml_block`.
@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.cli.emitters.default.diagnostic import render_human_diagnostics_default
+from topmark.cli.emitters.text.diagnostic import render_human_diagnostics_text
 from topmark.cli.emitters.utils import emit_toml_block
 
 if TYPE_CHECKING:
@@ -41,13 +41,13 @@ if TYPE_CHECKING:
 # --- Generate initial / default Config ---
 
 
-def emit_config_init_default(
+def emit_config_init_text(
     *,
     console: ConsoleLike,
     prepared: ConfigInitPrepared,
     verbosity_level: int,
 ) -> None:
-    """Emit `topmark config init` output in the DEFAULT (ANSI-styled) format.
+    """Emit `topmark config init` output in the TEXT (ANSI-styled) format.
 
     This helper is Click-free: it performs no Click-specific I/O and instead
     writes via the provided `ConsoleLike`.
@@ -73,13 +73,13 @@ def emit_config_init_default(
     )
 
 
-def emit_config_defaults_default(
+def emit_config_defaults_text(
     *,
     console: ConsoleLike,
     prepared: ConfigDefaultsPrepared,
     verbosity_level: int,
 ) -> None:
-    """Emit `topmark config defaults` output in the DEFAULT (ANSI-styled) format.
+    """Emit `topmark config defaults` output in the TEXT (ANSI-styled) format.
 
     This helper is Click-free: it performs no Click-specific I/O and instead
     writes via the provided `ConsoleLike`.
@@ -100,7 +100,7 @@ def emit_config_defaults_default(
 # --- Check a resolved Config
 
 
-def emit_config_check_default(
+def emit_config_check_text(
     *,
     console: ConsoleLike,
     ok: bool,
@@ -108,7 +108,7 @@ def emit_config_check_default(
     prepared: ConfigCheckPrepared,
     verbosity_level: int,
 ) -> None:
-    """Emit `topmark config check` output in the DEFAULT (ANSI-styled) format.
+    """Emit `topmark config check` output in the TEXT (ANSI-styled) format.
 
     Args:
         console: Console abstraction used by the CLI for styled output.
@@ -128,7 +128,7 @@ def emit_config_check_default(
     if not diags:
         console.print(f"{status_icon} Config OK (no diagnostics). [strict: {strict_str}]")
     else:
-        render_human_diagnostics_default(
+        render_human_diagnostics_text(
             console=console,
             counts=counts,
             diagnostics=diags,
@@ -154,13 +154,13 @@ def emit_config_check_default(
 # --- Dump a resolved Config
 
 
-def emit_config_dump_default(
+def emit_config_dump_text(
     *,
     console: ConsoleLike,
     prepared: ConfigDumpPrepared,
     verbosity_level: int,
 ) -> None:
-    """Emit `topmark config dump` output in the DEFAULT (ANSI-styled) format.
+    """Emit `topmark config dump` output in the TEXT (ANSI-styled) format.
 
     This helper is Click-free: it performs no Click-specific I/O and instead
     writes via the provided `ConsoleLike`.

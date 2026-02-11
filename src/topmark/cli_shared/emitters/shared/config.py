@@ -11,7 +11,7 @@
 """Shared data preparation for config CLI emitters.
 
 This module contains Click-free helpers that *prepare* domain data for human-facing emitters
-(DEFAULT / MARKDOWN).
+(TEXT / MARKDOWN).
 
 It intentionally sits between:
 

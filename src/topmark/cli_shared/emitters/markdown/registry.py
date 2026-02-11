@@ -14,7 +14,7 @@ This module contains Click-free Markdown renderers used by CLI commands to produ
 documentation-friendly output. Rendering is pure: functions return a string and perform no I/O.
 
 Notes:
-    These renderers use shared Click-free "human report" preparers to ensure DEFAULT and MARKDOWN
+    These renderers use shared Click-free "human report" preparers to ensure TEXT and MARKDOWN
     outputs remain equivalent by construction.
 
 See Also:

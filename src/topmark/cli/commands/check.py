@@ -49,23 +49,18 @@ import click
 
 from topmark.api.runtime import select_pipeline
 from topmark.api.view import filter_view_results
-from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cmd_common import (
     build_config_for_plan,
     build_file_list,
     exit_if_no_files,
     get_effective_verbosity,
+    init_common_state,
     maybe_exit_on_error,
 )
-from topmark.cli.emitters.default.diagnostic import render_config_diagnostics
-from topmark.cli.emitters.default.pipeline import (
-    emit_banner,
-    emit_diffs,
-    emit_per_file_guidance,
-    emit_summary_counts,
-    emit_updated_content_to_stdout,
-)
-from topmark.cli.errors import TopmarkIOError, TopmarkUsageError
+from topmark.cli.emitters.text.diagnostic import render_config_diagnostics_text
+from topmark.cli.emitters.text.pipeline import emit_updated_content_to_stdout
+from topmark.cli.emitters.utils import emit_pipeline_human_output
+from topmark.cli.errors import TopmarkIOError
 from topmark.cli.io import plan_cli_inputs
 from topmark.cli.keys import CliCmd, CliOpt
 from topmark.cli.machine_emitters import emit_processing_results_machine
@@ -74,19 +69,23 @@ from topmark.cli.options import (
     common_config_options,
     common_file_and_filtering_options,
     common_header_formatting_options,
+    common_output_format_options,
+    common_ui_options,
     underscored_trap_option,
 )
+from topmark.cli.validators import (
+    apply_color_policy_for_output_format,
+    validate_check_add_update_policy_exclusivity,
+    validate_diff_policy_for_output_format,
+)
+from topmark.cli_shared.emitters.shared.pipeline import check_msg
 from topmark.config.logging import get_logger
 from topmark.core.exit_codes import ExitCode
-from topmark.core.formats import OutputFormat, is_machine_format
+from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
 from topmark.pipeline.context.policy import effective_would_add_or_update
 from topmark.pipeline.engine import run_steps_for_files
-from topmark.pipeline.outcomes import Intent, determine_intent
-from topmark.pipeline.status import (
-    HeaderStatus,
-    WriteStatus,
-)
+from topmark.pipeline.status import WriteStatus
 from topmark.utils.file import safe_unlink
 
 if TYPE_CHECKING:
@@ -94,6 +93,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.cli.io import InputPlan
+    from topmark.cli_shared.color import ColorMode
     from topmark.cli_shared.console_api import ConsoleLike
     from topmark.config import Config, MutableConfig
     from topmark.config.logging import TopmarkLogger
@@ -120,7 +120,11 @@ Examples:
   topmark {CliCmd.CHECK} {CliOpt.APPLY_CHANGES} .
 """,
 )
+# Common option decorators
+@common_ui_options
 @common_config_options
+@common_output_format_options
+# Command-specific option decorators
 @common_file_and_filtering_options
 @common_header_formatting_options
 @click.option(
@@ -176,16 +180,15 @@ Examples:
     help="Hide unsupported file types.",
 )
 @underscored_trap_option("--skip_unsupported")
-@click.option(
-    CliOpt.OUTPUT_FORMAT,
-    ArgKey.OUTPUT_FORMAT,
-    type=EnumChoiceParam(OutputFormat),
-    default=None,
-    help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
-)
-@underscored_trap_option("--output_format")
 def check_command(
     *,
+    # Command options: common options (verbosity, color)
+    verbose: int,
+    quiet: int,
+    color_mode: ColorMode | None,
+    no_color: bool,
+    # Command options: output format
+    output_format: OutputFormat | None,
     # Command options: common_file_filtering_options
     files_from: list[str],
     include_patterns: list[str],
@@ -209,7 +212,6 @@ def check_command(
     summary_mode: bool,
     skip_compliant: bool,
     skip_unsupported: bool,
-    output_format: OutputFormat | None,
     # Command options: check
     add_only: bool,
     update_only: bool,
@@ -226,6 +228,12 @@ def check_command(
        ``--include-from -``, or ``--exclude-from -`` (exactly one may consume STDIN).
 
     Args:
+        verbose: Incements the verbosity level,
+        quiet: Decrements  the verbosity level,
+        color_mode: Set the color mode (derfault: autp),
+        no_color: bool: If set, disable color mode.
+        output_format: Output format to use
+            (``text``, ``markdown``, ``json``, or ``ndjson``).
         files_from: Files that contain newline‑delimited *paths* to add to the
             candidate set before filtering. Use ``-`` to read from STDIN.
         include_patterns: Glob patterns to *include* (intersection).
@@ -250,14 +258,10 @@ def check_command(
         summary_mode: Show outcome counts instead of per‑file details.
         skip_compliant: Suppress files whose comparison status is UNCHANGED.
         skip_unsupported: Suppress unsupported file types.
-        output_format: Output format to use
-            (``default``, ``json``, or ``ndjson``).
         add_only: Only add headers where missing (no updates).
         update_only: Only update existing non‑compliant headers (no additions).
 
     Raises:
-        TopmarkUsageError: If no input is provided, or if mutually exclusive STDIN modes
-            are combined.
         TopmarkIOError: If an I/O error occurred (read/write).
 
     Exit Status:
@@ -274,16 +278,30 @@ def check_command(
     ctx: click.Context = click.get_current_context()
     ctx.ensure_object(dict)
 
+    # Initialize the common state (verbosity, color mode) and initialize console
+    init_common_state(
+        ctx,
+        verbose=verbose,
+        quiet=quiet,
+        color_mode=color_mode,
+        no_color=no_color,
+    )
+
+    # Select the console
+    console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
+
     # Machine metadata
     meta: MetaPayload = ctx.obj[ArgKey.META]
 
-    if output_format and is_machine_format(output_format):
-        # Disable color mode for machine formats
-        ctx.obj[ArgKey.COLOR_ENABLED] = False
+    # Output format
+    fmt: OutputFormat = output_format or OutputFormat.TEXT
 
-    console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
-
+    apply_color_policy_for_output_format(ctx, fmt=fmt)
     enable_color: bool = ctx.obj[ArgKey.COLOR_ENABLED]
+
+    validate_diff_policy_for_output_format(ctx, diff=diff, fmt=fmt)
+
+    validate_check_add_update_policy_exclusivity(ctx, add_only=add_only, update_only=update_only)
 
     prune_override: bool | None = ctx.obj.get(
         "prune"
@@ -293,19 +311,6 @@ def check_command(
     # Add apply_changes and write_mode to Click context
     ctx.obj[ArgKey.APPLY_CHANGES] = apply_changes
     ctx.obj[ArgKey.WRITE_MODE] = write_mode
-
-    fmt: OutputFormat = output_format or OutputFormat.DEFAULT
-    if fmt in (OutputFormat.JSON, OutputFormat.NDJSON) and diff:
-        raise TopmarkUsageError(
-            f"{ctx.command.name}: {CliOpt.RENDER_DIFF} "
-            "is not supported with machine-readable output formats."
-        )
-
-    if add_only and update_only:
-        raise TopmarkUsageError(
-            f"{ctx.command.name}: Options {CliOpt.POLICY_CHECK_ADD_ONLY} and "
-            f"{CliOpt.POLICY_CHECK_UPDATE_ONLY} are mutually exclusive."
-        )
 
     # === Build Config (layered discovery) and file list ===
     plan: InputPlan = plan_cli_inputs(
@@ -335,9 +340,14 @@ def check_command(
 
     config: Config = draft_config.freeze()
 
+    # Determine effective program-output verbosity for gating extra details
+    vlevel: int = get_effective_verbosity(ctx, config)
+
+    logger.trace("Config after merging args and resolving file list: %s", config)
+
     # Display Config diagnostics before resolving files
-    if fmt == OutputFormat.DEFAULT:
-        render_config_diagnostics(ctx=ctx, config=config)
+    if fmt == OutputFormat.TEXT and vlevel > 0:
+        render_config_diagnostics_text(ctx=ctx, config=config)
 
     temp_path: Path | None = plan.temp_path  # for cleanup/STDIN-apply branch
     stdin_mode: bool = plan.stdin_mode
@@ -347,21 +357,12 @@ def check_command(
         temp_path=temp_path,
     )
 
-    # Determine effective program-output verbosity for gating extra details
-    vlevel: int = get_effective_verbosity(ctx, config)
-
-    logger.trace("Config after merging args and resolving file list: %s", config)
-
     # Use Click's text stream for stdin so CliRunner/invoke input is read reliably
     # stdin_stream = click.get_text_stream("stdin") if stdin_text else None
 
     if exit_if_no_files(file_list):
         # Nothing to do
         return
-
-    # Banner
-    if vlevel > 0:
-        emit_banner(cmd=CliCmd.CHECK, n_files=len(file_list))
 
     # Choose the concrete pipeline variant
     pipeline: Sequence[Step] = select_pipeline("check", apply=apply_changes, diff=diff)
@@ -394,52 +395,19 @@ def check_command(
         )
     else:
         # Human output
-        if summary_mode:
-            # Diff output first
-            if diff is True:
-                emit_diffs(results=view_results, color=enable_color)
-
-            # Summary mode
-            emit_summary_counts(
-                view_results=view_results,
-                total=len(file_list),
-            )
-
-        else:
-
-            def _check_msg(r: ProcessingContext, apply_changes: bool) -> str | None:
-                """Generate a per-file message for 'check' results."""
-                if not effective_would_add_or_update(r):
-                    return None
-
-                if apply_changes:
-                    intent: Intent = determine_intent(r)
-                    if r.status.write == WriteStatus.FAILED:
-                        return f"❌ Could not {intent.value} header: {r.status.write.value}"
-                    if r.status.write == WriteStatus.SKIPPED:
-                        # Defensive: should not happen when effective_would_add_or_update is True,
-                        # but keeps CLI honest if a later step halts.
-                        return f"⚠️  Could not {intent.value} header (write skipped)."
-
-                    return (
-                        f"➕ Adding header in '{r.path}'"
-                        if r.status.header == HeaderStatus.MISSING
-                        else f"✏️  Updating header in '{r.path}'"
-                    )
-
-                return (
-                    f"🛠️  Run `topmark {CliCmd.CHECK} {CliOpt.APPLY_CHANGES} {r.path}` "
-                    "to update this file."
-                )
-
-            # Per-file guidance (only in non-summary human mode)
-            if fmt == OutputFormat.DEFAULT and not summary_mode and vlevel >= 0:
-                emit_per_file_guidance(
-                    view_results=view_results,
-                    make_message=_check_msg,
-                    apply_changes=apply_changes,
-                    show_diffs=diff,
-                )
+        emit_pipeline_human_output(
+            console=console,
+            cmd=CliCmd.CHECK,
+            file_list_total=len(file_list),
+            view_results=view_results,
+            fmt=fmt,
+            verbosity_level=vlevel,
+            summary_mode=summary_mode,
+            show_diffs=diff,
+            make_message=check_msg,
+            apply_changes=apply_changes,
+            enable_color=enable_color,
+        )
 
     if apply_changes:
         # Writes (only when --apply is set)
@@ -454,7 +422,7 @@ def check_command(
             written: int = sum(1 for r in results if r.status.write == WriteStatus.WRITTEN)
             failed: int = sum(1 for r in results if r.status.write == WriteStatus.FAILED)
 
-            if fmt == OutputFormat.DEFAULT:
+            if fmt == OutputFormat.TEXT:
                 msg: str = (
                     f"\n✅ Applied changes to {written} file(s)."
                     if written

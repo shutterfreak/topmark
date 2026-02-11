@@ -21,24 +21,31 @@ from typing import TYPE_CHECKING
 
 import click
 
-from topmark.cli.cli_types import EnumChoiceParam
-from topmark.cli.cmd_common import get_effective_verbosity
-from topmark.cli.emitters.default.registry import emit_processors_default
+from topmark.cli.cmd_common import (
+    get_effective_verbosity,
+    init_common_state,
+)
+from topmark.cli.emitters.text.registry import emit_processors_text
 from topmark.cli.keys import CliCmd, CliOpt
 from topmark.cli.machine_emitters import emit_processors_machine
-from topmark.cli.options import underscored_trap_option
+from topmark.cli.options import (
+    common_output_format_options,
+    common_ui_options,
+)
+from topmark.cli.validators import (
+    apply_color_policy_for_output_format,
+    apply_ignore_positional_paths_policy,
+)
 from topmark.cli_shared.emitters.markdown.registry import render_processors_markdown
 from topmark.cli_shared.emitters.shared.registry import (
     ProcessorsHumanReport,
     build_processors_human_report,
 )
-from topmark.core.formats import (
-    OutputFormat,
-    is_machine_format,
-)
+from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
 
 if TYPE_CHECKING:
+    from topmark.cli_shared.color import ColorMode
     from topmark.cli_shared.console_api import ConsoleLike
     from topmark.core.machine.schemas import MetaPayload
 
@@ -50,14 +57,10 @@ if TYPE_CHECKING:
 Lists all header processors currently registered in TopMark, along with the file types they handle.
 Use this command to see which processors are available and which file types they support.""",
 )
-@click.option(
-    CliOpt.OUTPUT_FORMAT,
-    ArgKey.OUTPUT_FORMAT,
-    type=EnumChoiceParam(OutputFormat),
-    default=None,
-    help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
-)
-@underscored_trap_option("--output_format")
+# Common option decorators
+@common_ui_options
+@common_output_format_options
+# Command-specific option decorators
 @click.option(
     CliOpt.SHOW_DETAILS,
     ArgKey.SHOW_DETAILS,
@@ -66,8 +69,15 @@ Use this command to see which processors are available and which file types they
 )
 def processors_command(
     *,
+    # Command options: common options (verbosity, color)
+    verbose: int,
+    quiet: int,
+    color_mode: ColorMode | None,
+    no_color: bool,
+    # Command options: output format
+    output_format: OutputFormat | None,
+    # Command-specific options:
     show_details: bool = False,
-    output_format: OutputFormat | None = None,
 ) -> None:
     """List registered header processors.
 
@@ -75,11 +85,14 @@ def processors_command(
     Useful for reference when configuring file type filters.
 
     Args:
+        verbose: Incements the verbosity level,
+        quiet: Decrements  the verbosity level,
+        color_mode: Set the color mode (derfault: autp),
+        no_color: bool: If set, disable color mode.
+        output_format: Output format to use
+            (``text``, ``markdown``, ``json``, or ``ndjson``).
         show_details: If True, shows extended information about each processor,
             including associated file types and their descriptions.
-        output_format: Output format to use
-            (``default``, ``json``, ``ndjson``, or ``markdown``).
-            If ``None``, uses the default human-readable format.
 
     Raises:
         ValueError: If an unsupported output format is requested.
@@ -87,16 +100,28 @@ def processors_command(
     ctx: click.Context = click.get_current_context()
     ctx.ensure_object(dict)
 
+    # Initialize the common state (verbosity, color mode) and initialize console
+    init_common_state(
+        ctx,
+        verbose=verbose,
+        quiet=quiet,
+        color_mode=color_mode,
+        no_color=no_color,
+    )
+
+    # Select the console
+    console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
+
     # Machine metadata
     meta: MetaPayload = ctx.obj[ArgKey.META]
 
-    if output_format and is_machine_format(output_format):
-        # Disable color mode for machine formats
-        ctx.obj[ArgKey.COLOR_ENABLED] = False
+    # Output format
+    fmt: OutputFormat = output_format or OutputFormat.TEXT
 
-    console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
+    apply_color_policy_for_output_format(ctx, fmt=fmt)
 
-    fmt: OutputFormat = output_format or OutputFormat.DEFAULT
+    # config_check_command() is file-agnostic: ignore positional PATHS
+    apply_ignore_positional_paths_policy(ctx, warn_stdin_dash=True)
 
     # Determine effective program-output verbosity for gating extra details
     vlevel: int = get_effective_verbosity(ctx)
@@ -120,8 +145,8 @@ def processors_command(
         console.print(render_processors_markdown(report=report))
         return
 
-    if fmt == OutputFormat.DEFAULT:
-        emit_processors_default(console=console, report=report)
+    if fmt == OutputFormat.TEXT:
+        emit_processors_text(console=console, report=report)
         return
 
     # Defensive guard

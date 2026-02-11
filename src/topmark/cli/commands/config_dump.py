@@ -29,13 +29,13 @@ from typing import TYPE_CHECKING
 
 import click
 
-from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cmd_common import (
     build_config_for_plan,
     get_effective_verbosity,
+    init_common_state,
 )
-from topmark.cli.emitters.default.config import emit_config_dump_default
-from topmark.cli.emitters.default.diagnostic import render_config_diagnostics
+from topmark.cli.emitters.text.config import emit_config_dump_text
+from topmark.cli.emitters.text.diagnostic import render_config_diagnostics_text
 from topmark.cli.io import plan_cli_inputs
 from topmark.cli.keys import CliCmd, CliOpt
 from topmark.cli.machine_emitters import emit_config_machine
@@ -44,14 +44,25 @@ from topmark.cli.options import (
     common_config_options,
     common_file_and_filtering_options,
     common_header_formatting_options,
-    underscored_trap_option,
+    common_output_format_options,
+    common_ui_options,
 )
-from topmark.cli_shared.emitters.markdown.config import emit_config_dump_markdown
-from topmark.cli_shared.emitters.shared.config import ConfigDumpPrepared, prepare_config_dump
+from topmark.cli.validators import (
+    apply_color_policy_for_output_format,
+    apply_ignore_files_from_policy,
+    apply_ignore_positional_paths_policy,
+)
+from topmark.cli_shared.emitters.markdown.config import (
+    emit_config_dump_markdown,
+)
+from topmark.cli_shared.emitters.shared.config import (
+    ConfigDumpPrepared,
+    prepare_config_dump,
+)
 from topmark.config.logging import get_logger
 from topmark.constants import TOML_BLOCK_END, TOML_BLOCK_START
 from topmark.core.exit_codes import ExitCode
-from topmark.core.formats import OutputFormat, is_machine_format
+from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
 from topmark.utils.file import safe_unlink
 
@@ -59,6 +70,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.cli.io import InputPlan
+    from topmark.cli_shared.color import ColorMode
     from topmark.cli_shared.console_api import ConsoleLike
     from topmark.config import Config, MutableConfig
     from topmark.config.logging import TopmarkLogger
@@ -88,20 +100,22 @@ logger: TopmarkLogger = get_logger(__name__)
     ),
     context_settings=CONTEXT_SETTINGS,
 )
+# Common option decorators
+@common_ui_options
 @common_config_options
+@common_output_format_options
+# Command-specific option decorators
 @common_file_and_filtering_options
 @common_header_formatting_options
-@click.option(
-    CliOpt.OUTPUT_FORMAT,
-    ArgKey.OUTPUT_FORMAT,
-    type=EnumChoiceParam(OutputFormat),
-    default=None,
-    help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
-)
-@underscored_trap_option("--output_format")
 def config_dump_command(
-    # Command arguments
     *,
+    # Command options: common options (verbosity, color)
+    verbose: int,
+    quiet: int,
+    color_mode: ColorMode | None,
+    no_color: bool,
+    # Command options: output format
+    output_format: OutputFormat | None,
     # Command options: common_file_filtering_options
     files_from: list[str] | None = None,
     include_patterns: list[str],
@@ -118,7 +132,6 @@ def config_dump_command(
     # Command options: formatting
     align_fields: bool,
     header_format: HeaderOutputFormat | None,
-    output_format: OutputFormat | None,
 ) -> None:
     """Dump the final merged configuration as TOML.
 
@@ -132,6 +145,12 @@ def config_dump_command(
           (no diagnostics).
 
     Args:
+        verbose: Incements the verbosity level,
+        quiet: Decrements  the verbosity level,
+        color_mode: Set the color mode (derfault: autp),
+        no_color: bool: If set, disable color mode.
+        output_format: Output format to use
+            (``text``, ``markdown``, ``json``, or ``ndjson``).
         files_from: Files that contain newline‑delimited *paths* to add to the
             candidate set before filtering. Use ``-`` to read from STDIN.
         include_patterns: Glob patterns to *include* (intersection).
@@ -149,8 +168,6 @@ def config_dump_command(
         align_fields: Whether to align header fields when rendering (captured in config).
         header_format: Optional output format override for header
             rendering (captured in config).
-        output_format: Output format to use
-            (``default``, ``markdown``, ``json``, or ``ndjson``).
 
     Raises:
         NotImplementedError: When providing an unsupported OutputType.
@@ -158,36 +175,32 @@ def config_dump_command(
     ctx: click.Context = click.get_current_context()
     ctx.ensure_object(dict)
 
+    # Initialize the common state (verbosity, color mode) and initialize console
+    init_common_state(
+        ctx,
+        verbose=verbose,
+        quiet=quiet,
+        color_mode=color_mode,
+        no_color=no_color,
+    )
+
+    # Select the console
+    console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
+
     # Machine metadata
     meta: MetaPayload = ctx.obj[ArgKey.META]
 
-    if output_format and is_machine_format(output_format):
-        # Disable color mode for machine formats
-        ctx.obj[ArgKey.COLOR_ENABLED] = False
+    # Output format
+    fmt: OutputFormat = output_format or OutputFormat.TEXT
 
-    console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
-
-    fmt: OutputFormat = output_format or OutputFormat.DEFAULT
+    apply_color_policy_for_output_format(ctx, fmt=fmt)
 
     # config_dump_command() is file-agnostic: ignore positional PATHS and --files-from
-    original_args: list[str] = list(ctx.args)
-    if original_args:
-        if "-" in original_args:
-            console.warn(
-                f"Note: {CliCmd.CONFIG} {CliCmd.CONFIG_DUMP} is file-agnostic; "
-                "'-' (content from STDIN) is ignored.",
-            )
-        console.warn(
-            f"Note: {CliCmd.CONFIG} {CliCmd.CONFIG_DUMP} is file-agnostic; "
-            "positional paths are ignored.",
-        )
-        ctx.args = []
-    if files_from:
-        console.warn(
-            f"Note: {CliCmd.CONFIG} {CliCmd.CONFIG_DUMP} ignores {CliOpt.FILES_FROM} "
-            "(file lists are not part of the configuration).",
-        )
-        files_from = []
+    apply_ignore_positional_paths_policy(ctx, warn_stdin_dash=True)
+    files_from = apply_ignore_files_from_policy(
+        ctx,
+        files_from=files_from,
+    )
 
     plan: InputPlan = plan_cli_inputs(
         ctx=ctx,
@@ -215,8 +228,8 @@ def config_dump_command(
     config: Config = draft_config.freeze()
 
     # Display Config diagnostics before resolving files
-    if fmt == OutputFormat.DEFAULT:
-        render_config_diagnostics(ctx=ctx, config=config)
+    if fmt == OutputFormat.TEXT:
+        render_config_diagnostics_text(ctx=ctx, config=config)
 
     temp_path: Path | None = plan.temp_path  # for cleanup/STDIN-apply branch
     # Determine effective program-output verbosity for gating extra details
@@ -252,8 +265,8 @@ def config_dump_command(
         console.print(md, nl=False)
         _exit()
 
-    if fmt == OutputFormat.DEFAULT:
-        emit_config_dump_default(
+    if fmt == OutputFormat.TEXT:
+        emit_config_dump_text(
             console=console,
             prepared=prepared,
             verbosity_level=vlevel,

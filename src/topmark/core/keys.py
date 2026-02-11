@@ -53,7 +53,7 @@ class ArgKey:
     CONFIG_PATHS: Final[str] = "config_paths"
     CONFIG_FILES: Final[str] = "config_files"
     NO_CONFIG: Final[str] = "no_config"
-    CONFIG_FOR_PYPROJECT: Final[str] = "pyproject"
+    CONFIG_FOR_PYPROJECT: Final[str] = "for_pyproject"
 
     # Header rendering
     HEADER_FORMAT: Final[str] = "header_format"

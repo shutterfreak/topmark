@@ -19,17 +19,23 @@ from typing import TYPE_CHECKING
 
 import click
 
-from topmark.cli.cli_types import EnumChoiceParam
-from topmark.cli.cmd_common import get_effective_verbosity
-from topmark.cli.emitters.default.version import emit_version_default
+from topmark.cli.cmd_common import (
+    get_effective_verbosity,
+    init_common_state,
+)
+from topmark.cli.emitters.text.version import emit_version_text
 from topmark.cli.keys import CliCmd, CliOpt
 from topmark.cli.machine_emitters import emit_machine
-from topmark.cli.options import underscored_trap_option
-from topmark.cli_shared.emitters.markdown.version import emit_version_markdown
-from topmark.core.formats import (
-    OutputFormat,
-    is_machine_format,
+from topmark.cli.options import (
+    common_output_format_options,
+    common_ui_options,
 )
+from topmark.cli.validators import (
+    apply_color_policy_for_output_format,
+    apply_ignore_positional_paths_policy,
+)
+from topmark.cli_shared.emitters.markdown.version import emit_version_markdown
+from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
 from topmark.utils.version import compute_version_text
 from topmark.version.machine import serialize_version
@@ -37,6 +43,7 @@ from topmark.version.machine import serialize_version
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
+    from topmark.cli_shared.color import ColorMode
     from topmark.cli_shared.console_api import ConsoleLike
     from topmark.core.machine.schemas import MetaPayload
 
@@ -45,6 +52,10 @@ if TYPE_CHECKING:
     name=CliCmd.VERSION,
     help="Show the current version of TopMark.",
 )
+# Common option decorators
+@common_ui_options
+@common_output_format_options
+# Command-specific option decorators
 @click.option(
     CliOpt.SEMVER_VERSION,
     ArgKey.SEMVER_VERSION,
@@ -52,17 +63,16 @@ if TYPE_CHECKING:
     default=False,
     help="Render the version as SemVer instead of PEP 440 (maps rc→-rc.N, dev→-dev.N).",
 )
-@click.option(
-    CliOpt.OUTPUT_FORMAT,
-    ArgKey.OUTPUT_FORMAT,
-    type=EnumChoiceParam(OutputFormat),
-    default=None,
-    help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
-)
-@underscored_trap_option("--output_format")
 def version_command(
     *,
-    output_format: OutputFormat | None = None,
+    # Command options: common options (verbosity, color)
+    verbose: int,
+    quiet: int,
+    color_mode: ColorMode | None,
+    no_color: bool,
+    # Command options: output format
+    output_format: OutputFormat | None,
+    # Command-specific options:
     semver: bool = False,
 ) -> None:
     """Show the current version of TopMark.
@@ -70,7 +80,12 @@ def version_command(
     Prints the TopMark version as installed in the current Python environment.
 
     Args:
-        output_format: Optional output format (default, markdown, json, ndjson).
+        verbose: Incements the verbosity level,
+        quiet: Decrements  the verbosity level,
+        color_mode: Set the color mode (derfault: autp),
+        no_color: bool: If set, disable color mode.
+        output_format: Output format to use
+            (``text``, ``markdown``, ``json``, or ``ndjson``).
         semver: If True, attempt to render the version as SemVer; otherwise use PEP 440.
 
     Raises:
@@ -79,20 +94,33 @@ def version_command(
     ctx: click.Context = click.get_current_context()
     ctx.ensure_object(dict)
 
+    # Initialize the common state (verbosity, color mode) and initialize console
+    init_common_state(
+        ctx,
+        verbose=verbose,
+        quiet=quiet,
+        color_mode=color_mode,
+        no_color=no_color,
+    )
+
+    # Select the console
+    console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
+
     # Machine metadata
     meta: MetaPayload = ctx.obj[ArgKey.META]
 
-    if output_format and is_machine_format(output_format):
-        # Disable color mode for machine formats
-        ctx.obj[ArgKey.COLOR_ENABLED] = False
+    # Output format
+    fmt: OutputFormat = output_format or OutputFormat.TEXT
 
-    console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
+    apply_color_policy_for_output_format(ctx, fmt=fmt)
+
+    # config_check_command() is file-agnostic: ignore positional PATHS
+    apply_ignore_positional_paths_policy(ctx, warn_stdin_dash=True)
 
     # Determine effective program-output verbosity for gating extra details
     vlevel: int = get_effective_verbosity(ctx)
 
-    fmt: OutputFormat = output_format or OutputFormat.DEFAULT
-
+    # Machine formats
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         serialized: str | Iterable[str] = serialize_version(
             meta=meta,
@@ -106,8 +134,8 @@ def version_command(
 
     version_text, version_format, err = compute_version_text(semver=semver)
 
-    if fmt == OutputFormat.DEFAULT:
-        emit_version_default(
+    if fmt == OutputFormat.TEXT:
+        emit_version_text(
             console=console,
             version_text=version_text,
             version_format=version_format,
@@ -122,7 +150,7 @@ def version_command(
             version_format=version_format,
             error=err,
         )
-        click.echo(md, nl=False)
+        console.print(md, nl=False)
         return
 
     # Defensive guard

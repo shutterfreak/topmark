@@ -2,20 +2,22 @@
 #
 #   project      : TopMark
 #   file         : pipeline.py
-#   file_relpath : src/topmark/cli/emitters/default/pipeline.py
+#   file_relpath : src/topmark/cli/emitters/text/pipeline.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""Default (ANSI) pipeline emitters for TopMark CLI.
+"""Text (ANSI-capable) pipeline emitters for the TopMark CLI.
 
-This module contains Click-dependent / console-styled helpers used to *emit*
-human-facing (DEFAULT) output for pipeline-oriented commands (e.g. `check`, `strip`).
+This module contains console-styled helpers used to *emit* human-facing TEXT output for
+pipeline-oriented commands (for example, `check` and `strip`).
 
 Notes:
     - These helpers print to the active `ConsoleLike` obtained via
       [`get_console_safely()`][topmark.cli.console_helpers.get_console_safely].
+    - ANSI styling primitives (for example, conditional colorization) live in
+      [`topmark.cli.emitters.text.utils`][topmark.cli.emitters.text.utils].
     - Machine formats (JSON/NDJSON) are handled elsewhere.
     - Markdown output is implemented in the Click-free package
       [`topmark.cli_shared.emitters.markdown`][topmark.cli_shared.emitters.markdown].
@@ -28,13 +30,15 @@ from typing import TYPE_CHECKING, Final
 from yachalk import chalk
 
 from topmark.cli.console_helpers import get_console_safely
+from topmark.cli.emitters.text.utils import maybe_colorize
 from topmark.cli_shared.console_api import ConsoleLike
+from topmark.cli_shared.emitters.shared.pipeline import render_diff
 from topmark.cli_shared.outcomes import collect_outcome_counts_colored
 from topmark.config.logging import get_logger
 from topmark.core.enum_mixins import enum_from_name
 from topmark.diagnostic.model import DiagnosticLevel, DiagnosticStats
+from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.hints import Cluster, Hint
-from topmark.utils.diff import render_patch
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Sequence
@@ -43,157 +47,36 @@ if TYPE_CHECKING:
     from topmark.config.logging import TopmarkLogger
     from topmark.core.presentation import Colorizer
     from topmark.pipeline.context.model import ProcessingContext
-    from topmark.pipeline.views import DiffView, UpdatedView
+    from topmark.pipeline.views import UpdatedView
 
 logger: TopmarkLogger = get_logger(__name__)
 
 
-def emit_banner(
+# High-level emitters
+
+
+def emit_pipeline_banner_text(
     *,
     cmd: str,
     n_files: int,
 ) -> None:
-    """Emit the initial banner for a pipeline command.
+    """Emit the initial banner for a pipeline command (TEXT format).
 
     Args:
-      cmd: Command name.
-      n_files: Number of files to be processed.
+        cmd: Command name.
+        n_files: Number of files to be processed.
     """
     console: ConsoleLike = get_console_safely()
     console.print(console.styled(f"\n🔍 Processing {n_files} file(s):\n", fg="blue"))
     console.print(console.styled(f"📋 TopMark {cmd} Results:", bold=True, underline=True))
 
 
-def render_file_summary_line(
-    *,
-    ctx: ProcessingContext,
-    color: bool = True,
-) -> str:
-    """Return a concise, human-readable one-liner for this file.
-
-    The summary is aligned with TopMark's pipeline phases and mirrors what
-    comparable tools (e.g., *ruff*, *black*, *prettier*) surface: a clear
-    primary outcome plus a few terse hints.
-
-    Rendering rules:
-        1. Primary bucket comes from the view-layer classification helper
-            `map_bucket()` in [`topmark.pipeline.outcomes`][topmark.pipeline.outcomes].
-            This ensures stable wording
-            across commands and pipelines.
-        2. If a write outcome is known (e.g., `PREVIEWED`, `WRITTEN`, `INSERTED`, `REMOVED`),
-            append it as a trailing hint.
-        3. If there is a diff but no write outcome (e.g., check/summary with
-            `--diff`), append a "diff" hint.
-        4. If diagnostics exist, append the diagnostic count as a hint.
-
-    Verbose per-line diagnostics are emitted only when `Config.verbosity_level >= 1`
-    (treats `None` as `0`).
-
-    Examples (colors omitted here):
-        path/to/file.py: python - would insert header - previewed
-        path/to/file.py: python - up-to-date
-        path/to/file.py: python - would strip header - diff - 2 issues
-
-    Args:
-        ctx: Processing context containing status and configuration.
-        color: Render in color if `True`, else as plain text.
-
-    Returns:
-        Human-readable one-line summary, possibly followed by additional lines for
-        verbose diagnostics depending on the configuration verbosity level.
-    """
-    verbosity_level: int = ctx.config.verbosity_level or 0
-
-    parts: list[str] = [f"{ctx.path}:"]
-
-    # File type (dim), or <unknown> if resolution failed
-    if ctx.file_type is not None:
-        parts.append(chalk.dim(ctx.file_type.name))
-    else:
-        parts.append(chalk.dim("<unknown>"))
-
-    head: Hint | None = None
-    if not ctx.diagnostic_hints:
-        key: str = "no_hint"
-        label: str = "No diagnostic hints"
-    else:
-        head = ctx.diagnostic_hints.headline()
-        if head is None:
-            key = "no_hint"
-            label = "No diagnostic hints"
-        else:
-            key = head.code
-            label = f"{head.axis.value.title()}: {head.message}"
-            logger.debug("Key: '%s', label: '%s'", key, label)
-
-    # Color choice can still be simple or based on cluster:
-    cluster: str | None = head.cluster if head else None
-    # head.cluster now carries the cluster value (e.g. "changed") but
-    # enum_from_name(Cluster, cluster) looks up by enum name (e.g. "CHANGED").
-    # Hence we use case insensitive lookup:
-    cluster_elem: Cluster | None = enum_from_name(
-        Cluster,
-        cluster,
-        case_insensitive=True,
-    )
-    color_fn: Colorizer = cluster_elem.color if cluster_elem else chalk.red.italic
-
-    parts.append("-")
-    parts.append(color_fn(f"{key}: {label}"))
-
-    # Secondary hints: write status > diff marker > diagnostics
-
-    if ctx.status.has_write_outcome():
-        parts.append("-")
-        parts.append(ctx.status.write.color(ctx.status.write.value))
-    elif ctx.views.diff and ctx.views.diff.text:
-        parts.append("-")
-        parts.append(chalk.yellow("diff"))
-
-    diag_show_hint: str = ""
-    if ctx.diagnostics:
-        stats: DiagnosticStats = ctx.diagnostics.stats()
-        n_info: int = stats.n_info
-        n_warn: int = stats.n_warning
-        n_err: int = stats.n_error
-
-        parts.append("-")
-        # Compose a compact triage summary like "1 error, 2 warnings"
-        triage: list[str] = []
-        if verbosity_level <= 0:
-            diag_show_hint = chalk.dim.italic(" (use '-v' to view)")
-        if n_err:
-            triage.append(chalk.red_bright(f"{n_err} error" + ("s" if n_err != 1 else "")))
-        if n_warn:
-            triage.append(chalk.yellow(f"{n_warn} warning" + ("s" if n_warn != 1 else "")))
-        if n_info and not (n_err or n_warn):
-            # Only show infos when there are no higher severities
-            triage.append(chalk.blue(f"{n_info} info" + ("s" if n_info != 1 else "")))
-        parts.append(", ".join(triage) if triage else chalk.blue("info"))
-
-    result: str = " ".join(parts) + diag_show_hint
-
-    # Optional verbose diagnostic listing (gated by verbosity level)
-    if ctx.diagnostics and verbosity_level > 0:
-        details: list[str] = []
-        for d in ctx.diagnostics:
-            prefix: str = {
-                DiagnosticLevel.ERROR: chalk.red_bright("error"),
-                DiagnosticLevel.WARNING: chalk.yellow("warning"),
-                DiagnosticLevel.INFO: chalk.blue("info"),
-            }[d.level]
-            details.append(f"  [{prefix}] {d.message}")
-        result += "\n" + "\n".join(details)
-
-    return result
-
-
-def emit_summary_counts(
+def emit_pipeline_summary_counts_text(
     *,
     view_results: list[ProcessingContext],
     total: int,
 ) -> None:
-    """Emit outcome counts summary (DEFAULT format)."""
+    """Emit outcome counts summary (TEXT format)."""
     console: ConsoleLike = get_console_safely()
     console.print()
     console.print(console.styled("Summary by outcome:", bold=True, underline=True))
@@ -205,14 +88,14 @@ def emit_summary_counts(
         console.print(color(f"  {label:<{label_width}}: {n:>{num_width}}"))
 
 
-def emit_per_file_guidance(
+def emit_pipeline_per_file_guidance_text(
     *,
     view_results: list[ProcessingContext],
     make_message: Callable[[ProcessingContext, bool], str | None],
     apply_changes: bool,
     show_diffs: bool,
 ) -> None:
-    """Emit per-file detailed guidance (DEFAULT format)."""
+    """Emit per-file detailed guidance (TEXT format)."""
     console: ConsoleLike = get_console_safely()
     line_width: Final[int] = console.get_line_width()
 
@@ -222,11 +105,15 @@ def emit_per_file_guidance(
 
     for r in view_results:
         console.print(render_file_summary_line(ctx=r))
-        msg: str | None = make_message(r, apply_changes)
-        if msg:
-            console.print(console.styled(f"   {msg}", fg="yellow"))
 
         verbosity: int = r.config.verbosity_level or 0
+
+        # At verbosity 0, keep output minimal: one summary line per file.
+        # At verbosity >= 1, include extra guidance and hint summaries.
+        if verbosity > 0:
+            msg: str | None = make_message(r, apply_changes)
+            if msg:
+                console.print(console.styled(f"   {msg}", fg="yellow"))
 
         if verbosity > 0 and r.diagnostic_hints:
             console.print(
@@ -284,7 +171,7 @@ def emit_per_file_guidance(
 
         # Optional diff
         if show_diffs:
-            diff = render_diff(
+            diff: str | None = render_diff(
                 result=r,
                 color=True,  # TODO: improve color handling in CLI
             )
@@ -309,44 +196,13 @@ def emit_per_file_guidance(
         console.print()
 
 
-def render_diff(
-    *,
-    result: ProcessingContext,
-    color: bool,
-    show_line_numbers: bool = False,
-) -> str | None:
-    """Render a unified diff (DEFAULT format).
-
-    Args:
-        result: List of processing contexts to inspect.
-        color: Render in color if True, as plain text otherwise.
-        show_line_numbers: Prepend line numbers if True, render patch only (default).
-
-    Returns:
-        The rendered diff or None if no changes / diff in view.
-
-    Notes:
-        - Diffs should only be printed in human (DEFAULT) output mode.
-        - Files with no changes do not emit a diff.
-    """
-    diff_view: DiffView | None = result.views.diff
-    diff_text: str | None = diff_view.text if diff_view else None
-    if diff_text:
-        return render_patch(
-            patch=diff_text,
-            color=color,
-            show_line_numbers=show_line_numbers,
-        )
-    return None
-
-
-def emit_diffs(
+def emit_pipeline_diffs_text(
     *,
     results: list[ProcessingContext],
     color: bool,
     show_line_numbers: bool = False,
 ) -> None:
-    """Print unified diffs for changed files (DEFAULT format).
+    """Print unified diffs for changed files (TEXT format).
 
     Args:
         results: List of processing contexts to inspect.
@@ -354,7 +210,7 @@ def emit_diffs(
         show_line_numbers: Prepend line numbers if True, render patch only (default).
 
     Notes:
-        - Diffs are only printed in human (DEFAULT) output mode.
+        - Diffs are only printed in human (TEXT) output mode.
         - Files with no changes do not emit a diff.
     """
     console: ConsoleLike = get_console_safely()
@@ -388,6 +244,145 @@ def emit_diffs(
             dim=True,
         )
     )
+
+
+# Rendering helpers
+
+
+def render_file_summary_line(
+    *,
+    ctx: ProcessingContext,
+    color: bool = True,
+) -> str:
+    """Return a concise, human-readable one-liner for this file.
+
+    The summary is aligned with TopMark's pipeline phases and mirrors what
+    comparable tools (e.g., *ruff*, *black*, *prettier*) surface: a clear primary
+    outcome plus a few terse hints.
+
+    Rendering rules:
+        1. Primary bucket comes from the view-layer classification helper
+            `map_bucket()` in [`topmark.pipeline.outcomes`][topmark.pipeline.outcomes].
+            This ensures stable wording across commands and pipelines.
+        2. If a write outcome is known (e.g., `PREVIEWED`, `WRITTEN`, `INSERTED`, or `REMOVED`),
+            append it as a trailing hint.
+        3. If there is a diff but no write outcome (e.g., check/summary with
+            `--diff`), append a "diff" hint.
+        4. If diagnostics exist, append the diagnostic count as a hint.
+
+    Verbose per-line diagnostics are emitted only when `Config.verbosity_level >= 1`
+    (treats `None` as `0`).
+
+    Examples (colors omitted here):
+        path/to/file.py: python - would insert header - previewed
+        path/to/file.py: python - up-to-date
+        path/to/file.py: python - would strip header - diff - 2 issues
+
+    Args:
+        ctx: Processing context containing status and configuration.
+        color: Render in color if `True`, else as plain text.
+
+    Returns:
+        Human-readable one-line summary (may include embedded newlines for verbose diagnostics).
+    """
+    verbosity_level: int = ctx.config.verbosity_level or 0
+
+    parts: list[str] = [f"{ctx.path}:"]
+
+    # File type (dim), or <unknown> if resolution failed
+    if ctx.file_type is not None:
+        parts.append(maybe_colorize(chalk.dim, ctx.file_type.name, enabled=color))
+    else:
+        parts.append(maybe_colorize(chalk.dim, "<unknown>", enabled=color))
+
+    head: Hint | None = None
+    if not ctx.diagnostic_hints:
+        key: str = "no_hint"
+        label: str = "No diagnostic hints"
+    else:
+        head = ctx.diagnostic_hints.headline()
+        if head is None:
+            key = "no_hint"
+            label = "No diagnostic hints"
+        else:
+            key = head.code
+            label = f"{head.axis.value.title()}: {head.message}"
+            logger.debug("Key: '%s', label: '%s'", key, label)
+
+    # Color choice can still be simple or based on cluster:
+    cluster: str | None = head.cluster if head else None
+    # head.cluster now carries the cluster value (e.g. "changed") but
+    # enum_from_name(Cluster, cluster) looks up by enum name (e.g. "CHANGED").
+    # Hence we use case insensitive lookup:
+    cluster_elem: Cluster | None = enum_from_name(
+        Cluster,
+        cluster,
+        case_insensitive=True,
+    )
+    color_fn: Colorizer = cluster_elem.color if cluster_elem else chalk.red.italic
+
+    parts.append("-")
+    parts.append(maybe_colorize(color_fn, f"{key}: {label}", enabled=color))
+
+    # Secondary hints: write status > diff marker > diagnostics
+
+    if ctx.status.has_write_outcome():
+        parts.append("-")
+        parts.append(maybe_colorize(ctx.status.write.color, ctx.status.write.value, enabled=color))
+    elif ctx.views.diff and ctx.views.diff.text:
+        parts.append("-")
+        parts.append(maybe_colorize(chalk.yellow, "diff", enabled=color))
+
+    diag_show_hint: str = ""
+    if ctx.diagnostics:
+        stats: DiagnosticStats = ctx.diagnostics.stats()
+        n_info: int = stats.n_info
+        n_warn: int = stats.n_warning
+        n_err: int = stats.n_error
+
+        parts.append("-")
+        # Compose a compact triage summary like "1 error, 2 warnings"
+        triage: list[str] = []
+        if verbosity_level <= 0:
+            diag_show_hint = maybe_colorize(chalk.dim.italic, " (use '-v' to view)", enabled=color)
+        if n_err:
+            triage.append(
+                maybe_colorize(
+                    chalk.red_bright, f"{n_err} error" + ("s" if n_err != 1 else ""), enabled=color
+                )
+            )
+        if n_warn:
+            triage.append(
+                maybe_colorize(
+                    chalk.yellow, f"{n_warn} warning" + ("s" if n_warn != 1 else ""), enabled=color
+                )
+            )
+        if n_info and not (n_err or n_warn):
+            # Only show infos when there are no higher severities
+            triage.append(
+                maybe_colorize(
+                    chalk.blue, f"{n_info} info" + ("s" if n_info != 1 else ""), enabled=color
+                )
+            )
+        parts.append(
+            ", ".join(triage) if triage else maybe_colorize(chalk.blue, "info", enabled=color)
+        )
+
+    result: str = " ".join(parts) + diag_show_hint
+
+    # Optional verbose diagnostic listing (gated by verbosity level)
+    if ctx.diagnostics and verbosity_level > 0:
+        details: list[str] = []
+        for d in ctx.diagnostics:
+            prefix: str = {
+                DiagnosticLevel.ERROR: maybe_colorize(chalk.red_bright, "error", enabled=color),
+                DiagnosticLevel.WARNING: maybe_colorize(chalk.yellow, "warning", enabled=color),
+                DiagnosticLevel.INFO: maybe_colorize(chalk.blue, "info", enabled=color),
+            }[d.level]
+            details.append(f"  [{prefix}] {d.message}")
+        result += "\n" + "\n".join(details)
+
+    return result
 
 
 def emit_updated_content_to_stdout(

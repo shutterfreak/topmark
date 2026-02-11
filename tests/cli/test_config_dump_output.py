@@ -37,10 +37,10 @@ def test_dump_config_outputs_valid_toml() -> None:
     """It should emit valid TOML wrapped in BEGIN/END markers and parse successfully."""
     result: Result = run_cli(
         [
-            CliOpt.NO_COLOR_MODE,  # Strip ANSI formatting to allow parsing the generated TOML
-            CliOpt.VERBOSE,  # Render the BEGIN and END markers
             CliCmd.CONFIG,
             CliCmd.CONFIG_DUMP,
+            CliOpt.NO_COLOR_MODE,  # Strip ANSI formatting to allow parsing the generated TOML
+            CliOpt.VERBOSE,  # Render the BEGIN and END markers
         ]
     )
 

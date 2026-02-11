@@ -65,7 +65,7 @@ class ColorMode(str, Enum):
 def resolve_color_mode(
     *,
     color_mode_override: ColorMode | None,
-    output_format: str | None,  # "default" | "json" | "ndjson" | None
+    output_format: str | None,  # "text" | "json" | "ndjson" | None
     stdout_isatty: bool | None = None,
 ) -> bool:
     """Determine whether color output should be enabled.
@@ -96,8 +96,8 @@ def resolve_color_mode(
         >>> resolve_color_mode(cli_mode=None, output_format=None, stdout_isatty=True)
         True
     """
-    # 1) Machine formats never use color
-    if output_format and output_format.lower() in {"json", "ndjson"}:
+    # 1) Machine formats and MarkDown never use color
+    if output_format and output_format.lower() in {"json", "ndjson", "markdown"}:
         return False
 
     # 2) CLI overrides

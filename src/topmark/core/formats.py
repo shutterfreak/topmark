@@ -26,11 +26,11 @@ class OutputFormat(str, Enum):
     """Output format for CLI rendering.
 
     Attributes:
-        DEFAULT: Human-friendly text output; may include ANSI color if enabled.
+        TEXT: Human-friendly text output; may include ANSI color if enabled.
+        MARKDOWN: A Markdown document.
         JSON: A single JSON document (machine-readable). See the
             `Machine output` developer docs for the schema.
         NDJSON: One JSON object per line (newline-delimited JSON; machine-readable).
-        MARKDOWN: A Markdown document.
 
     Notes:
         - Machine formats (``JSON`` and ``NDJSON``) must not include ANSI color
@@ -39,10 +39,13 @@ class OutputFormat(str, Enum):
           ``--output-format`` from Click.
     """
 
-    DEFAULT = "default"
+    # Human formats:
+    TEXT = "text"
+    MARKDOWN = "markdown"
+
+    # Machine formats:
     JSON = "json"
     NDJSON = "ndjson"
-    MARKDOWN = "markdown"
 
 
 def is_machine_format(fmt: OutputFormat | None) -> bool:

@@ -11,7 +11,7 @@
 """Shared, Click-free helpers for human-facing CLI emitters.
 
 This package contains *output-preparation* helpers that are reused by multiple human-facing CLI
-formats, primarily **DEFAULT** (ANSI / console) and **MARKDOWN** outputs.
+formats, primarily **TEXT** (ANSI / console) and **MARKDOWN** outputs.
 
 The helpers in this package are responsible for:
 - Preparing structured, presentation-ready data from core domain objects   (e.g. `Config`,
@@ -33,7 +33,7 @@ Design principles:
 Typical usage:
 - CLI commands call a `prepare_*` helper from this package.
 - The returned prepared object is then rendered by:
-  - `topmark.cli.emitters.default.*` (ANSI / console), or
+  - `topmark.cli.emitters.text.*` (ANSI / console), or
   - `topmark.cli_shared.emitters.markdown.*` (Markdown).
 
 This package intentionally mirrors the domain structure (config, registry, diagnostics, pipeline, …)

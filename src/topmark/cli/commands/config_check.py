@@ -26,14 +26,21 @@ from typing import TYPE_CHECKING
 
 import click
 
-from topmark.cli.cli_types import EnumChoiceParam
-from topmark.cli.cmd_common import get_effective_verbosity
-from topmark.cli.emitters.default.config import emit_config_check_default
+from topmark.cli.cmd_common import (
+    get_effective_verbosity,
+    init_common_state,
+)
+from topmark.cli.emitters.text.config import emit_config_check_text
 from topmark.cli.keys import CliCmd, CliOpt
 from topmark.cli.machine_emitters import emit_config_check_machine
 from topmark.cli.options import (
     common_config_options,
-    underscored_trap_option,
+    common_output_format_options,
+    common_ui_options,
+)
+from topmark.cli.validators import (
+    apply_color_policy_for_output_format,
+    apply_ignore_positional_paths_policy,
 )
 from topmark.cli_shared.emitters.markdown.config import (
     emit_config_check_markdown,
@@ -50,11 +57,11 @@ from topmark.config.machine.payloads import (
 from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import (
     OutputFormat,
-    is_machine_format,
 )
 from topmark.core.keys import ArgKey
 
 if TYPE_CHECKING:
+    from topmark.cli_shared.color import ColorMode
     from topmark.cli_shared.console_api import ConsoleLike
     from topmark.config.logging import TopmarkLogger
     from topmark.config.machine.schemas import (
@@ -72,7 +79,11 @@ logger: TopmarkLogger = get_logger(__name__)
     name=CliCmd.CONFIG_CHECK,
     help="Validate merged configuration and report any diagnostics.",
 )
+# Common option decorators
+@common_ui_options
 @common_config_options
+@common_output_format_options
+# Command-specific option decorators
 @click.option(
     f"{CliOpt.STRICT_CONFIG_CHECKING}/{CliOpt.NO_STRICT_CONFIG_CHECKING}",
     ArgKey.STRICT_CONFIG_CHECKING,
@@ -80,22 +91,19 @@ logger: TopmarkLogger = get_logger(__name__)
     show_default=True,
     help="Fail if any warnings are present (in addition to errors).",
 )
-@click.option(
-    CliOpt.OUTPUT_FORMAT,
-    ArgKey.OUTPUT_FORMAT,
-    type=EnumChoiceParam(OutputFormat),
-    default=None,
-    help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
-)
-@underscored_trap_option("--output_format")
 def config_check_command(
     *,
+    # Command options: common options (verbosity, color)
+    verbose: int,
+    quiet: int,
+    color_mode: ColorMode | None,
+    no_color: bool,
+    # Command options: output format
+    output_format: OutputFormat | None,
     # Command options: config
-    strict_config_checking: bool,
     no_config: bool,
     config_paths: list[str],
-    # Ouptut format
-    output_format: OutputFormat | None,
+    strict_config_checking: bool,
 ) -> None:
     """Validates and verifies the final merged configuration.
 
@@ -105,11 +113,15 @@ def config_check_command(
     that need to consume the resolved configuration.
 
     Args:
-        strict_config_checking: if True, report warnings as errors.
+        verbose: Incements the verbosity level,
+        quiet: Decrements  the verbosity level,
+        color_mode: Set the color mode (derfault: autp),
+        no_color: bool: If set, disable color mode.
+        output_format: Output format to use
+            (``text``, ``markdown``, ``json``, or ``ndjson``).
         no_config: If True, skip loading project/user configuration files.
         config_paths: Additional configuration file paths to load and merge.
-        output_format: Output format to use
-            (``default``, ``markdown``, ``json``, or ``ndjson``).
+        strict_config_checking: if True, report warnings as errors.
 
     Raises:
         NotImplementedError: When providing an unsupported OutputType.
@@ -117,30 +129,28 @@ def config_check_command(
     ctx: click.Context = click.get_current_context()
     ctx.ensure_object(dict)
 
+    # Initialize the common state (verbosity, color mode) and initialize console
+    init_common_state(
+        ctx,
+        verbose=verbose,
+        quiet=quiet,
+        color_mode=color_mode,
+        no_color=no_color,
+    )
+
+    # Select the console
+    console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
+
     # Machine metadata
     meta: MetaPayload = ctx.obj[ArgKey.META]
 
-    if output_format and is_machine_format(output_format):
-        # Disable color mode for machine formats
-        ctx.obj[ArgKey.COLOR_ENABLED] = False
+    # Output format
+    fmt: OutputFormat = output_format or OutputFormat.TEXT
 
-    console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
-
-    fmt: OutputFormat = output_format or OutputFormat.DEFAULT
+    apply_color_policy_for_output_format(ctx, fmt=fmt)
 
     # config_check_command() is file-agnostic: ignore positional PATHS
-    original_args: list[str] = list(ctx.args)
-    if original_args:
-        if "-" in original_args:
-            console.warn(
-                f"Note: {CliCmd.CONFIG} {CliCmd.CONFIG_CHECK} is file-agnostic; "
-                "'-' (content from STDIN) is ignored.",
-            )
-        console.warn(
-            f"Note: {CliCmd.CONFIG} {CliCmd.CONFIG_CHECK} is file-agnostic; "
-            "positional paths are ignored.",
-        )
-        ctx.args = []
+    apply_ignore_positional_paths_policy(ctx, warn_stdin_dash=True)
 
     # Build a merged draft config (we do not need an InputPlan since we're not processing files)
     draft_config: MutableConfig = MutableConfig.load_merged(
@@ -178,7 +188,7 @@ def config_check_command(
         )
         _exit(ctx, fail=fail)
 
-    # Human formats: prepare shared data once for DEFAULT/MARKDOWN emitters.
+    # Human formats: prepare shared data once for TEXT/MARKDOWN emitters.
     prepared: ConfigCheckPrepared = prepare_config_check(
         config=config,
         verbosity_level=vlevel,
@@ -194,8 +204,8 @@ def config_check_command(
         console.print(md, nl=False)
         _exit(ctx, fail=fail)
 
-    if fmt == OutputFormat.DEFAULT:
-        emit_config_check_default(
+    if fmt == OutputFormat.TEXT:
+        emit_config_check_text(
             console=console,
             ok=not fail,
             strict=strict_config_checking,

@@ -13,7 +13,7 @@
 This module prepares typed, human-facing report models for registry-related CLI commands. The
 prepared data is intentionally presentation-agnostic and reused by:
 
-- DEFAULT output emitters under [`topmark.cli.emitters.default`][topmark.cli.emitters.default]
+- TEXT output emitters under [`topmark.cli.emitters.text`][topmark.cli.emitters.text]
   (ANSI/console styling), and
 - Markdown renderers under
   [`topmark.cli_shared.emitters.markdown`][topmark.cli_shared.emitters.markdown]
@@ -115,7 +115,7 @@ class ProcessorsHumanReport:
 def build_filetypes_human_report(
     *, show_details: bool, verbosity_level: int
 ) -> FileTypesHumanReport:
-    """Build a Click-free report used by DEFAULT and MARKDOWN.
+    """Build a Click-free report used by TEXT and MARKDOWN.
 
     Args:
         show_details: Whether consumers intend to display extended details.
@@ -162,7 +162,7 @@ def build_processors_human_report(
     show_details: bool,
     verbosity_level: int,
 ) -> ProcessorsHumanReport:
-    """Build a Click-free report used by DEFAULT and MARKDOWN for `processors`.
+    """Build a Click-free report used by TEXT and MARKDOWN for `processors`.
 
     Args:
         show_details: Whether consumers intend to display extended details.

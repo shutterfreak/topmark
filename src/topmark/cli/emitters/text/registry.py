@@ -2,21 +2,21 @@
 #
 #   project      : TopMark
 #   file         : registry.py
-#   file_relpath : src/topmark/cli/emitters/default/registry.py
+#   file_relpath : src/topmark/cli/emitters/text/registry.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""DEFAULT (human) emitters and models for registry-related commands.
+"""TEXT (human) emitters and models for registry-related commands.
 
 This module contains:
 - Click/console-dependent emitters that print those models with ANSI styling.
 
 Notes:
-    The DEFAULT format is currently considered a CLI concern because it relies on
+    The TEXT format is currently considered a CLI concern because it relies on
     console styling. When a fully Click-free rendering layer is introduced for
-    DEFAULT output, the report builders can move to
+    TEXT output, the report builders can move to
     [`topmark.cli_shared.emitters`][topmark.cli_shared.emitters].
 
 See Also:
@@ -42,8 +42,8 @@ if TYPE_CHECKING:
     )
 
 
-def emit_filetypes_default(*, console: ConsoleLike, report: FileTypesHumanReport) -> None:
-    """Emit DEFAULT output for `topmark filetypes`.
+def emit_filetypes_text(*, console: ConsoleLike, report: FileTypesHumanReport) -> None:
+    """Emit TEXT output for `topmark filetypes`.
 
     Args:
         console: Console abstraction (Click-owned).
@@ -88,8 +88,8 @@ def emit_filetypes_default(*, console: ConsoleLike, report: FileTypesHumanReport
             console.print(f"{idx:>{num_width}}. {it.name:<{k_len}} {descr}")
 
 
-def emit_processors_default(*, console: ConsoleLike, report: ProcessorsHumanReport) -> None:
-    """Emit DEFAULT output for `topmark processors`.
+def emit_processors_text(*, console: ConsoleLike, report: ProcessorsHumanReport) -> None:
+    """Emit TEXT output for `topmark processors`.
 
     Args:
         console: Console abstraction (Click-owned).
