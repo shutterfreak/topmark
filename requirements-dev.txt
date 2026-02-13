@@ -12,9 +12,11 @@
 #    uv pip compile -c constraints.txt requirements-dev.in -o requirements-dev.txt
 -e .
     # via -r requirements-dev.in
+annotated-doc==0.0.4
+    # via typer
 argcomplete==3.6.3
     # via nox
-astroid==4.0.3
+astroid==4.0.4
     # via pylint
 attrs==25.4.0
     # via nox
@@ -45,11 +47,11 @@ docutils==0.22.4
     # via readme-renderer
 execnet==2.1.2
     # via pytest-xdist
-filelock==3.20.3
+filelock==3.21.0
     # via virtualenv
 humanize==4.15.0
     # via nox
-hypothesis==6.151.5
+hypothesis==6.151.6
     # via topmark
 id==1.6.1
     # via twine
@@ -116,7 +118,7 @@ packaging==26.0
     #   twine
 pathspec==0.12.1
     # via topmark
-platformdirs==4.5.1
+platformdirs==4.6.0
     # via
     #   pylint
     #   virtualenv
@@ -164,7 +166,7 @@ rich==14.3.2
     #   typer
 ruff==0.15.0
     # via topmark
-setuptools==80.10.2
+setuptools==82.0.0
     # via yachalk
 shellingham==1.5.4
     # via typer
@@ -178,13 +180,12 @@ tomlkit==0.13.3
     #   topmark
 twine==6.2.0
     # via topmark
-typer==0.21.1
+typer==0.23.0
     # via mbake
 typing-extensions==4.15.0
     # via
     #   pyright
     #   topmark
-    #   typer
 urllib3==2.6.3
     # via
     #   id
@@ -196,7 +197,7 @@ virtualenv==20.36.1
     # via
     #   nox
     #   pre-commit
-wcwidth==0.5.3
+wcwidth==0.6.0
     # via mdformat-gfm
 yachalk==0.1.8
     # via topmark

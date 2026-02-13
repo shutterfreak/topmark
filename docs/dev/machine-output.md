@@ -29,12 +29,20 @@ This page is the canonical reference for TopMark’s machine output shapes. Usag
 
 TopMark exposes four `--output-format` values:
 
-- `default`: human-oriented text (not machine-stable).
-- `markdown`: human-oriented Markdown (not machine-stable).
-- `json`: a single JSON document per invocation.
-- `ndjson`: a newline-delimited JSON stream.
+- human-oriented formats (not machine-stable):
+  - `text`: default human-oriented text.
+  - `markdown`: human-oriented Markdown.
+- machine formats (schema described in this document):
+  - `json`: a single JSON document per invocation.
+  - `ndjson`: a newline-delimited JSON stream.
 
 The schemas below only apply to **`json`** and **`ndjson`**.
+
+Notes:
+
+- Machine formats never include ANSI color codes and are **not affected** by `--color`.
+- Verbosity flags may change *which records are emitted* (e.g. detail vs summary),
+  but they do not change the schema shape of a given record type (`kind`).
 
 ______________________________________________________________________
 
@@ -53,14 +61,15 @@ Shape:
 {
   "meta": {
     "tool": "topmark",
-    "version": "0.12.0.dev2",
-    "platform": "darwin" // optional; may be omitted by older versions
+    "version": "<package version>",
+    "platform": "darwin" // optional
   }
 }
 ```
 
 Notes:
 
+- `version` reflects the installed TopMark package version (PEP 440). Examples are illustrative only.
 - `platform` is a short runtime identifier (e.g., from `sys.platform`).
 
 Canonical keys are defined in \[`topmark.core.machine.schemas`\][topmark.core.machine.schemas].
@@ -274,7 +283,8 @@ JSON shape:
 - `diagnostic_counts`: counts per level (`info`, `warning`, `error`)
 - `diagnostics`: list of individual diagnostics (stable `{level, message}` entries; see \[`topmark.diagnostic.machine.schemas`\][topmark.diagnostic.machine.schemas])
 
-> [!NOTE] NDJSON difference
+> [!NOTE]
+> **NDJSON difference**
 >
 > In NDJSON, `config_diagnostics` is **counts-only** and each individual config diagnostic is emitted as a separate `diagnostic` record with `domain="config"` (one record per diagnostic).
 
@@ -355,7 +365,7 @@ ______________________________________________________________________
 {
   "meta": { /* MetaPayload */ },
   "version_info": {
-    "version": "0.12.0.dev2",
+    "version": "<package version>",
     "version_format": "pep440"
   }
 }
@@ -364,7 +374,7 @@ ______________________________________________________________________
 ### NDJSON shape
 
 ```jsonc
-{"kind":"version","meta":{ /* MetaPayload */ },"version_info":{ "version":"...", "version_format":"pep440" }}
+{"kind":"version","meta":{ /* MetaPayload */ },"version_info":{ "version":"<package version>", "version_format":"pep440" }}
 ```
 
 Notes:

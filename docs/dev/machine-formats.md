@@ -14,39 +14,63 @@ topmark:header:end
 
 This page documents TopMark’s **machine-readable output conventions** across commands.
 
-For the full schema reference (keys, kinds, and envelope/record shapes), see:
+______________________________________________________________________
+
+## Output formats
+
+TopMark exposes four `--output-format` values:
+
+- human-oriented formats (not machine-stable):
+  - `text`: default human-oriented text.
+  - `markdown`: human-oriented Markdown.
+- machine formats:
+  - `json`: a single JSON document per invocation.
+  - `ndjson`: a newline-delimited JSON stream.
+
+This page describes the **conventions** shared across machine formats.
+For the canonical field-level schema reference, see:
 
 - [Machine output schema (JSON & NDJSON)](machine-output.md)
 
 ______________________________________________________________________
 
-## Output formats
+## Machine-stable guarantees
 
-TopMark supports two machine-readable output formats:
+The `json` and `ndjson` formats are designed for CI and programmatic use.
 
-- **JSON** (`--output-format json`): emits one JSON document (single object).
-- **NDJSON** (`--output-format ndjson`): emits a stream of JSON objects, one per line.
+Stability guarantees:
 
-Both formats are intended to be stable and easy to consume from CI tooling.
+- Machine payloads contain no ANSI color codes.
+- Payload shapes are JSON-safe (no Python-specific objects).
+- New fields may be added over time (additive evolution).
+- Existing fields are not removed or renamed without a breaking-change signal.
+
+Consumers should:
+
+- Switch on `kind` (NDJSON) rather than relying on ordering.
+- Tolerate unknown fields.
+- Avoid string matching against formatted output.
 
 ______________________________________________________________________
 
-## Common conventions
+## Meta block
 
-### Meta block
+All machine output includes a `meta` object:
 
-Machine output includes a `meta` object with at least:
+- `tool`: the tool name (always `"topmark"`)
+- `version`: the TopMark package version (PEP 440)
+- `platform`: short runtime identifier (e.g. `sys.platform`)
 
-- `tool`: the tool name (e.g. `"topmark"`)
-- `version`: the package version string
-- `platform`: a short platform identifier
+In JSON, `meta` appears once at the top level.
+
+In NDJSON, `meta` appears in **every record**.
 
 Canonical keys, kinds, and helper builders for machine output live under \[`topmark.core.machine`\][topmark.core.machine].
 Domain packages (for example \[`topmark.config.machine`\][topmark.config.machine] and \[`topmark.pipeline.machine`\][topmark.pipeline.machine]) build on these shared primitives.
 
-### NDJSON envelope
+## NDJSON envelope contract
 
-Each NDJSON line is a JSON object with the stable envelope:
+Each NDJSON line is a JSON object with a stable envelope:
 
 ```jsonc
 {"kind": "<kind>", "meta": { ... }, "<kind>": { ... } }

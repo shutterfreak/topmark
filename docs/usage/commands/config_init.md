@@ -12,6 +12,8 @@ topmark:header:end
 
 # TopMark `config init` Command Guide
 
+**Purpose:** Render a fully documented example config.
+
 The `config init` subcommand (part of the TopMark [`config` Command Family](config.md))
 prints the **annotated default template** that ships with TopMark.
 This file is heavily commented and is intended as a scaffold for a new config file.

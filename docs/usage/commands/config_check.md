@@ -12,6 +12,8 @@ topmark:header:end
 
 # TopMark `config check` Command Guide
 
+**Purpose:** Check the config for errors.
+
 The `config check` subcommand (part of the TopMark [`config` Command Family](config.md))
 validates the **effective merged configuration** and reports any configuration diagnostics.
 

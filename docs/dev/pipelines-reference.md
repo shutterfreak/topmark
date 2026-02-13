@@ -15,7 +15,8 @@ topmark:header:end
 This page is a **curated entry point** into the generated internal API reference for
 TopMark’s pipeline system.
 
-> [!NOTE] **Curated list**
+> [!NOTE]
+> **Curated list**
 >
 > This page contains **no** `::: ...` directives on purpose.
 > `mdformat` cannot preserve mkdocstrings annotations reliably, so all mkdocstrings

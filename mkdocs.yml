@@ -41,8 +41,6 @@ exclude_docs: |
 draft_docs: |
   _drafts/
 
-# --- Theme Configuration ---
-
 theme:
   name: material
   language: en
@@ -64,8 +62,6 @@ theme:
     # Updates the URL fragment as the user scrolls:
     - navigation.tracking
 
-# --- Markdown Extensions ---
-
 markdown_extensions:
   # Enables Markdown processing inside raw HTML blocks (e.g. <div markdown="1">).
   - md_in_html
@@ -74,12 +70,17 @@ markdown_extensions:
   - toc:
       permalink: true # Adds clickable anchor links next to every header
 
-  # Support for !!! note "Title" style callouts.
+  # Standard Admonitions (!!! note)
   - admonition
 
-  # Support for collapsible content blocks (details/summary).
+  # Collapsible blocks (??? note)
   - pymdownx.details
-  - pymdownx.blocks.details
+
+  # Allows adding classes to elements, e.g., {: .api-symbol }
+  - attr_list
+
+  # Enables definition lists (Term : Definition)
+  - def_list
 
   # High-level control over code blocks and diagrams.
   - pymdownx.superfences:
@@ -87,27 +88,40 @@ markdown_extensions:
         # Mermaid.js integration: intercepts ```mermaid blocks and renders diagrams.
         - name: mermaid
           class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
 
         - name: flow
           class: highlight
-          format: pymdownx.superfences.fence_code_format
+          format: !!python/name:pymdownx.superfences.fence_code_format
 
-  # Advanced syntax highlighting.
-  - pymdownx.highlight
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
 
-# --- Plugins ---
+  # Material icon shortcodes like :material-folder: / :material-file:
+  - pymdownx.emoji:
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
 
 plugins:
-  # 1) Programmatic page generation (e.g. API reference from source code).
+  # 1) Search engine plugin - usually listed early in the sequence.
+  - search
+
+  # 2) Programmatic page generation (e.g. API reference from source code).
   - gen-files:
       scripts:
         - tools/docs/gen_api_pages.py
 
-  # 2) Allows including external Markdown files into pages.
+  # 3) Generates sidebar navigation from a Markdown SUMMARY.md file (used for generated internals pages).
+  - literate-nav
+
+  # 4) Allows including external Markdown files into pages.
   - include-markdown:
       rewrite_relative_urls: true
 
-  # 3) Automatic API documentation from Python docstrings.
+  # 5) Automatic API documentation from Python docstrings.
+  # Note: mkdocstrings handles 'autorefs' internally; separate declaration often causes schema errors.
   - mkdocstrings:
       default_handler: python
       handlers:
@@ -129,28 +143,23 @@ plugins:
               # hide dunder members like __init__
               - "!^__"
 
-  # 4) Provides lifecycle hooks to run custom Python logic during the build.
+  # 6) Provides lifecycle hooks to run custom Python logic during the build.
   - mkdocs-simple-hooks:
       hooks:
         # Setup tasks (e.g. version loading):
         on_pre_build: "tools.docs.hooks:pre_build"
         # Regex/text replacements on pages:
+        # Note: the 'on_page_markdown' hook is the correct place to
+        # transform GitHub style '> [!NOTE]' into '!!! note' automatically.
         on_page_markdown: "tools.docs.hooks:on_page_markdown"
         # Cleanup or reporting:
         on_post_build: "tools.docs.hooks:post_build"
-
-  # Enables cross-referencing between different documentation sets.
-  - autorefs
-
-  # Search engine plugin.
-  - search
-
-# --- Site Navigation ---
 
 nav:
   - Home: index.md
   - Installation: install.md
   - Usage:
+      - Global options: usage/global-options.md
       - Commands:
           - "check": usage/commands/check.md
           - "strip": usage/commands/strip.md
@@ -180,7 +189,9 @@ nav:
       - "Public API": api/public.md
       - "topmark.api": api/reference/topmark.api.md
       - "topmark.registry": api/reference/topmark.registry.md
-      - "Internals": api/internals.md
+      - "Internals":
+          - Overview: api/internals.md
+          - "Reference (generated)": api/internals/
   - Development:
       - "Architecture": dev/architecture.md
       - "Config schema": dev/config-schema.md
@@ -190,6 +201,7 @@ nav:
       - "Machine output": dev/machine-output.md
       - "Machine formats": dev/machine-formats.md
       - "Documentation Pipeline & Reference Hygiene": dev/documentation-pipeline.md
+      - "Roadmap": dev/roadmap.md
 
 # --- Development Server ---
 

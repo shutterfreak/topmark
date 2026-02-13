@@ -99,6 +99,8 @@ docs = [
   "mkdocs-autorefs>=1.4.3,<2.0.0",
   # Content Inclusion: Processes {% include-markdown ... %} for external snippets
   "mkdocs-include-markdown-plugin>=7.2.0,<8.0.0",
+  # Sidebar navigation generated from a Markdown SUMMARY.md (used with mkdocs-gen-files + !include)
+  "mkdocs-literate-nav>=0.6.2,<0.7.0",
   # Extra Markdown extensions (admonitions, superfences, etc.):
   "pymdown-extensions>=10.17.1,<11.0.0",
   # Programmatically generate documentation pages during the build

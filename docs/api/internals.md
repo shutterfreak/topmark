@@ -12,7 +12,8 @@ topmark:header:end
 
 # Internals (advanced) (%%TOPMARK_VERSION%%)
 
-> [!WARNING] **Subject to change**
+> [!WARNING]
+> **Subject to change**
 >
 > The modules listed under *Internals* are intended for contributors and advanced users.
 > They are **not** covered by the semver stability guarantees. Prefer the stable public API
@@ -28,4 +29,6 @@ search box to find symbols, or browse the generated paths under `/api/internals/
 These pages are generated automatically during the MkDocs build and should not be edited
 manually. Any changes should be made in the corresponding Python source files under `src/`.
 
-Browse the generated internals index: [`topmark` internals](../api/internals/topmark/index.md)
+Browse the generated internals index: [`topmark` internals](internals/topmark/index.md)
+
+You can also browse the full generated tree from the sidebar under **API → Internals → Reference (generated)**.

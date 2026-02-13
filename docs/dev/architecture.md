@@ -229,6 +229,20 @@ rely on canonical keys.
 
 ______________________________________________________________________
 
+## Policy Resolution (≥ 0.11.0)
+
+TopMark constructs a `PolicyRegistry` at pipeline bootstrap time.
+
+This guarantees:
+
+- Deterministic effective policy selection
+- No per-context ad-hoc merging
+- Clear separation between policy evaluation and status axes
+
+The public API remains stable.
+
+______________________________________________________________________
+
 ## Future Extensions
 
 This document may later be extended with sections on:

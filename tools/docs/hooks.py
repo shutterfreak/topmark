@@ -48,6 +48,7 @@ from re import Match
 from typing import Any, Final
 
 import tomlkit
+from mkdocs.plugins import PrefixedLogger
 from mkdocs.plugins import get_plugin_logger as get_logger
 
 # Use absolute module reference (MkDocs):
@@ -75,7 +76,7 @@ from topmark.config.io import (
     get_table_value,
 )
 
-logger = get_logger("hooks")
+logger: PrefixedLogger = get_logger("hooks")
 
 # Generate debug logging
 # Also enables extra debug checks during the docs build.
@@ -206,9 +207,9 @@ def pre_build(config: dict[str, Any], **kwargs: Any) -> dict[str, Any] | None:
 GH_CALLOUT_RE: re.Pattern[str] = re.compile(
     r"""
     ^> \s* \[!(?P<kind>NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]    # tag
-    (?: \s+ (?P<title_inline>.+?) )?                            # optional inline title
-    \s* \n
-    (?P<body>(?:^>.*\n?)*)                                      # subsequent '>' lines
+    (?: \s+ (?P<title_inline>.+?) )?                    # optional inline title
+    \s* $                                               # end of tag line
+    (?P<body>(?:\n>.*)*)                                # subsequent '>' lines starting with newline
     """,
     re.MULTILINE | re.VERBOSE,
 )
@@ -226,6 +227,7 @@ def _strip_blockquote_prefix(text: str) -> list[str]:
     out: list[str] = []
     ln: str
     for ln in text.splitlines():
+        # Correctly handle stripping the blockquote prefix even if no space follows
         if ln.startswith(">"):
             ln = ln[1:]
             if ln.startswith(" "):
@@ -237,10 +239,9 @@ def _strip_blockquote_prefix(text: str) -> list[str]:
 def _extract_title(lines: list[str], inline_title: str | None, kind: str) -> tuple[str, list[str]]:
     """Select a callout title from inline text or first bold body line.
 
-    If an inline title exists (on the same line as ``[!KIND]``), it is used. Otherwise,
-    the first non-empty body line is inspected and, when wrapped in ``**..**`` or
-    ``__..__``, it is used as the title (without the bold markers). If neither applies,
-    a humanized version of ``kind`` is returned.
+    If an inline title exists (on the same line as ``[!KIND]``), it is used. Otherwise, the first
+    non-empty body line is inspected. If it's bold and followed by an empty line, it's treated
+    as a title. Otherwise, the humanized kind is used as the title and all lines are preserved.
 
     Args:
         lines: Body lines (already stripped from ``>``).
@@ -254,8 +255,13 @@ def _extract_title(lines: list[str], inline_title: str | None, kind: str) -> tup
     """
 
     def _clean_title(raw: str) -> str:
+        # We strip again just in case the extraction logic missed some boundary whitespace
         raw = raw.strip()
-        # remove wrapping ** or __ if they fully enclose the title
+        # Ensure we strip any residual blockquote markers if they leaked in
+        # This is a safety check in case the regex captured the > prefix
+        while raw.startswith(">"):
+            raw = raw[1:].strip()
+        # Remove bold markers only if they wrap the entire string
         if (raw.startswith("**") and raw.endswith("**")) or (
             raw.startswith("__") and raw.endswith("__")
         ):
@@ -265,15 +271,30 @@ def _extract_title(lines: list[str], inline_title: str | None, kind: str) -> tup
     if inline_title:
         return _clean_title(inline_title), lines
 
-    # find first non-empty line; if it's bold, use as title
-    while lines and not lines[0].strip():
-        lines.pop(0)
-    if lines and (
-        (lines[0].startswith("**") and lines[0].endswith("**"))
-        or (lines[0].startswith("__") and lines[0].endswith("__"))
-    ):
-        title = _clean_title(lines.pop(0))
-        return title, lines
+    # Look for a title in the first non-empty line of the body.
+    # To be a title, it must be bold AND followed by an empty line (or be the only line).
+    temp_lines: list[str] = list(lines)
+    # Skip leading empty lines
+    while temp_lines and not temp_lines[0].strip():
+        temp_lines.pop(0)
+
+    if temp_lines:
+        first_line: str = temp_lines[0].strip()
+
+        # Check if the line is bold
+        is_bold: bool = (first_line.startswith("**") and first_line.endswith("**")) or (
+            first_line.startswith("__") and first_line.endswith("__")
+        )
+
+        # Separator check: GitHub titles are usually followed by a blank blockquote line
+        has_separator: bool = len(temp_lines) > 1 and not temp_lines[1].strip()
+
+        if is_bold and has_separator:
+            title: str = _clean_title(temp_lines.pop(0))
+            # Also consume the empty separator line if it exists
+            if temp_lines and not temp_lines[0].strip():
+                temp_lines.pop(0)
+            return title, temp_lines
 
     return kind.title(), lines
 
@@ -334,7 +355,7 @@ def on_page_markdown(
         The transformed Markdown string.
     """
     # 0) Replace version tokens
-    global topmark_version_id  # MUST declare global intent to READ
+    global topmark_version_id  # MUST declare global intent to WRITE
     markdown = markdown.replace("%%TOPMARK_VERSION%%", str(topmark_version_id))
 
     # 1) Shield GH Actions blocks (noop for simple-hooks)
@@ -345,6 +366,7 @@ def on_page_markdown(
         kind: str = m.group("kind")
         inline_title: str | None = m.group("title_inline")
         body_raw: str = m.group("body") or ""
+        # Strip blockquote prefixes from the raw body lines
         body_lines: list[str] = _strip_blockquote_prefix(body_raw)
         title: str
         remaining: list[str]
@@ -489,7 +511,7 @@ def post_build(config: dict[str, Any], **kwargs: Any) -> dict[str, Any] | None:
     # (without a full traceback). Fall back to RuntimeError only if Abort cannot be imported.
     try:
         from mkdocs.exceptions import Abort
+
+        raise Abort(message)
     except ImportError as err:
         raise RuntimeError(message) from err
-
-    raise Abort(message)

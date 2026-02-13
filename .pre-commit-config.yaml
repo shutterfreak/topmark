@@ -15,6 +15,8 @@ repos:
     hooks:
       - id: check-merge-conflict
       - id: check-yaml
+        # Allow custom YAML tags often used in MkDocs (PyYAML python/name tags)
+        args: [--unsafe]
       - id: check-added-large-files
 
   # Formatters

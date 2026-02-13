@@ -12,6 +12,8 @@ topmark:header:end
 
 # TopMark `filetypes` Command Guide
 
+**Purpose:** Display all recognized/supported file types.
+
 The `filetypes` subcommand lists TopMark’s supported **file type identifiers** and their **header
 policies**. Use it to discover which identifiers you can pass to `--include-file-types` / `--exclude-file-types` and to understand how TopMark classifies files.
 

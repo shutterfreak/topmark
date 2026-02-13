@@ -12,6 +12,8 @@ topmark:header:end
 
 # TopMark `config defaults` Command Guide
 
+**Purpose:** Show the default (builtin) config.
+
 The `config defaults` subcommand (part of the TopMark [`config` Command Family](config.md))
 prints TopMark’s **built‑in default configuration** as TOML.
 It uses a cleaned, comment-free representation derived from the bundled

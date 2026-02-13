@@ -37,7 +37,7 @@ ______________________________________________________________________
 
 ## 🔍 Running the API Stability Tests
 
-You can verify API stability via either **tox** or **make**.
+You can verify API stability via either **nox** or **make**.
 
 ### Quick local check (current interpreter only)
 
@@ -53,11 +53,10 @@ This runs the API snapshot test once using your active Python interpreter.
 make api-snapshot
 ```
 
-This executes the snapshot tests for all Python versions defined in the tox matrix (3.10–3.14).\
-It corresponds to running:
+This executes the snapshot tests for all Python versions defined in the `nox` matrix (3.10–3.14). It corresponds to running:
 
 ```bash
-tox -m api-check
+nox -s api_snapshot
 ```
 
 ### Regenerate snapshot (when public API changes intentionally)
@@ -133,7 +132,7 @@ ______________________________________________________________________
 Registry access for integrations is expected to go through \[`topmark.registry.Registry`\][topmark.registry.Registry] (read-only facade).
 The advanced registries (`FileTypeRegistry`, `HeaderProcessorRegistry`) are supported for tests and plugins via overlay registration, but changes to their public signatures are still tracked by the snapshot.
 
-- **Supported Python range:** 3.10–3.14 (tox matrix).\
+- **Supported Python range:** 3.10–3.14 (`nox` matrix).\
   Future minor Python releases will be added once supported by CI.
 
 - **File under version control:**\

@@ -172,6 +172,7 @@ topmark [COMMAND] [OPTIONS] [PATHS]...
 | ----------------- | --------------------------------------------------------------------- |
 | `check`           | Add or update TopMark headers                                         |
 | `strip`           | Remove TopMark headers                                                |
+| `config check`    | Check the merged config for errors.                                   |
 | `config defaults` | Show built-in defaults without merging                                |
 | `config dump`     | Show resolved configuration (merged TOML)                             |
 | `config init`     | Output a starter configuration (TOML with documentation in commments) |
@@ -211,7 +212,7 @@ TopMark supports **layered configuration discovery** and a flexible **policy sys
 
 ### Discovery order
 
-1. Built-in defaults (`topmark-default.toml`)
+1. Built-in defaults
 1. User config (`~/.config/topmark/topmark.toml` or `~/.topmark.toml`)
 1. Project config (nearest upward `pyproject.toml` or `topmark.toml`)
 1. Explicit `--config` files (merged in order)
@@ -220,6 +221,7 @@ TopMark supports **layered configuration discovery** and a flexible **policy sys
 ### Example `topmark.toml`
 
 ```toml
+root = true
 [fields]
 project = "TopMark"
 license = "MIT"
@@ -336,36 +338,36 @@ TopMark follows **Semantic Versioning (SemVer)**.
 | `feat:`                       | Minor          |
 | `feat!:` / `BREAKING CHANGE:` | Major          |
 
-Build and check distributions:
+Build and validate artifacts locally:
 
 ```bash
-python -m build
-python -m twine check dist/*
+make package-check
 ```
 
-Upload:
-
-```bash
-python -m twine upload dist/*
-```
-
-Tags are released via CI/CD.
+Release candidates and final releases are published by CI when you push a tag.
 
 ______________________________________________________________________
 
 ## 🧪 Development
 
-To test across all supported Python versions:
+To run the full QA suite across all supported Python versions:
 
 ```bash
-make test              # nox -e qa
-nox -e api_snapshot    # API stability across all Python versions
+make test              # nox -s qa (matrix)
+make api-snapshot      # nox -s api_snapshot (matrix)
+```
+
+Run QA for a single Python version:
+
+```bash
+nox -s qa -p 3.13
+nox -s qa_api -p 3.13
 ```
 
 For faster iteration:
 
 ```bash
-make pytest            # run tests in current interpreter
+make pytest            # run tests in current interpreter (no nox)
 make format            # formatting
 make lint              # static linting
 make docs-build        # build the docs

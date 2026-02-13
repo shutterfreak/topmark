@@ -19,7 +19,7 @@
   stages: [pre-commit, pre-push, manual]
   # Let TopMark decide what files are in-scope; pre-commit still passes the changed paths.
   # You can narrow further with "files:" or "types:", if desired.
-  additional_dependencies: []  # e.g., ["topmark==0.2.0"] if you want a PyPI install instead of building from source
+  additional_dependencies: [] # e.g., ["topmark==0.12.0"] if you want a PyPI install instead of building from source
 
 - id: topmark-apply
   name: topmark-apply
@@ -28,5 +28,5 @@
   language: python
   pass_filenames: true
   stages: [manual]
-  require_serial: true  # safer for file edits
+  require_serial: true # safer for file edits
   additional_dependencies: []

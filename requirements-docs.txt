@@ -30,12 +30,18 @@ click==8.3.1
     #   topmark
 colorama==0.4.6
     # via
-    #   griffe
+    #   griffecli
     #   mkdocs-material
 ghp-import==2.1.0
     # via mkdocs
-griffe==1.15.0
+griffe==2.0.0
     # via mkdocstrings-python
+griffecli==2.0.0
+    # via griffe
+griffelib==2.0.0
+    # via
+    #   griffe
+    #   griffecli
 idna==3.11
     # via requests
 importlib-resources==6.5.2
@@ -45,7 +51,7 @@ jinja2==3.1.6
     #   mkdocs
     #   mkdocs-material
     #   mkdocstrings
-markdown==3.10.1
+markdown==3.10.2
     # via
     #   mkdocs
     #   mkdocs-autorefs
@@ -67,11 +73,12 @@ mkdocs==1.6.1
     #   mkdocs-autorefs
     #   mkdocs-gen-files
     #   mkdocs-include-markdown-plugin
+    #   mkdocs-literate-nav
     #   mkdocs-material
     #   mkdocs-simple-hooks
     #   mkdocstrings
     #   topmark
-mkdocs-autorefs==1.4.3
+mkdocs-autorefs==1.4.4
     # via
     #   mkdocstrings
     #   mkdocstrings-python
@@ -81,6 +88,8 @@ mkdocs-gen-files==0.6.0
 mkdocs-get-deps==0.2.0
     # via mkdocs
 mkdocs-include-markdown-plugin==7.2.1
+    # via topmark
+mkdocs-literate-nav==0.6.2
     # via topmark
 mkdocs-material==9.7.1
     # via topmark
@@ -92,7 +101,7 @@ mkdocstrings==0.30.1
     # via
     #   mkdocstrings-python
     #   topmark
-mkdocstrings-python==2.0.1
+mkdocstrings-python==2.0.2
     # via mkdocstrings
 packaging==26.0
     # via mkdocs
@@ -102,7 +111,7 @@ pathspec==0.12.1
     # via
     #   mkdocs
     #   topmark
-platformdirs==4.5.1
+platformdirs==4.6.0
     # via mkdocs-get-deps
 pydocstringformatter==0.7.5
     # via topmark
@@ -127,7 +136,7 @@ requests==2.32.5
     # via mkdocs-material
 ruff==0.15.0
     # via topmark
-setuptools==80.10.2
+setuptools==82.0.0
     # via yachalk
 six==1.17.0
     # via python-dateutil

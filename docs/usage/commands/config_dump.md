@@ -12,6 +12,8 @@ topmark:header:end
 
 # TopMark `config dump` Command Guide
 
+**Purpose:** Dump the resolved config.
+
 The `config dump` subcommand (part of the TopMark [`config` Command Family](config.md))
 prints the **effective TopMark configuration** as TOML after applying
 built-in defaults, discovered project/user config, and any CLI overrides.

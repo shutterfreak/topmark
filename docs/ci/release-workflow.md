@@ -142,7 +142,7 @@ ______________________________________________________________________
 
 - Keep **pyproject version** aligned with tags.
 
-- Delete stale `.tox` or `.venv` dirs before local build tests.
+- Delete stale `.nox`, `*.egg-info` or `.venv` dirs before local build tests.
 
 - Validate with:
 

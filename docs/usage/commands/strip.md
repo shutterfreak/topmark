@@ -12,6 +12,8 @@ topmark:header:end
 
 # TopMark `strip` Command Guide
 
+**Purpose:** Strip TopMark headers.
+
 The `strip` command removes the entire TopMark header block from targeted files. It is
 **dry‑run by default** (summaries end with `- previewed`) and becomes destructive only with
 `--apply` (summaries end with `- removed`) when run with `--apply`.

@@ -15,7 +15,8 @@ topmark:header:end
 This page is a **machine-readable summary** of TopMark’s external configuration schema
 as consumed from `topmark.toml` and from `[tool.topmark]` in `pyproject.toml`.
 
-> [!NOTE] **Config diagnostics**
+> [!NOTE]
+> **Config diagnostics**
 >
 > - This is a schema *summary* (not a full JSON Schema).
 > - The ordering mirrors `src/topmark/config/topmark-default.toml`.

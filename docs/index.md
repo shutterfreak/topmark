@@ -86,7 +86,7 @@ topmark:header:end
 
 Core commands: `check`, `strip`, `config`, `filetypes`, `processors`, `version`.
 
-The `check` command has the following subcommands: `check`, `defaults`, `dump`, `init`.
+The `config` command has the following subcommands: `check`, `defaults`, `dump`, `init`.
 
 Read lists from STDIN with `--files-from -` (or `--include-from -` / `--exclude-from -`). To process
 a *single* file’s **content** from STDIN, pass `-` as the sole PATH and provide
@@ -105,6 +105,7 @@ a *single* file’s **content** from STDIN, pass `-` as the sole PATH and provid
 ## Configuration (example)
 
 ```toml
+root = true
 [fields]
 project = "TopMark"
 license = "MIT"

@@ -12,6 +12,8 @@ topmark:header:end
 
 # TopMark `version` Command Guide
 
+**Purpose:** Display the TopMark version.
+
 The `version` subcommand prints the TopMark version as installed in the active
 Python environment.
 
@@ -21,7 +23,7 @@ ______________________________________________________________________
 
 ```bash
 topmark version
-# → 0.12.0.dev2
+# → <package version>
 ```
 
 ______________________________________________________________________
@@ -39,17 +41,42 @@ Example:
 
 ```bash
 topmark version --semver
-# → 0.12.0-dev.2
+# → 0.12.0-dev.6
 ```
+
+### PEP 440 ↔ SemVer examples
+
+The table below illustrates how TopMark maps common PEP 440 versions to
+their SemVer-compatible equivalents when using `--semver`:
+
+| Release type        | PEP 440       | SemVer           |
+| ------------------- | ------------- | ---------------- |
+| Final release       | `0.12.0`      | `0.12.0`         |
+| Release candidate   | `0.12.0rc1`   | `0.12.0-rc.1`    |
+| Alpha (a / alpha)   | `0.12.0a2`    | `0.12.0-alpha.2` |
+| Beta (b / beta)     | `0.12.0b3`    | `0.12.0-beta.3`  |
+| Development release | `0.12.0.dev6` | `0.12.0-dev.6`   |
+
+Notes:
+
+- PEP 440 uses short pre-release markers: `a` (alpha), `b` (beta), and `rc`
+  (release candidate). SemVer conventionally uses the full identifiers
+  `alpha`, `beta`, and `rc` in the pre-release segment.
+- Pre-releases are mapped to SemVer using a dash and dot separator
+  (e.g. `0.12.0a2` → `0.12.0-alpha.2`).
+- Development releases (`.devN`) are mapped to `-dev.N`
+  (e.g. `0.12.0.dev6` → `0.12.0-dev.6`).
+- If a version cannot be converted cleanly, TopMark falls back to the
+  original PEP 440 string.
 
 ______________________________________________________________________
 
 ## Options
 
-| Option            | Description                                                                          |
-| ----------------- | ------------------------------------------------------------------------------------ |
-| `--semver`        | Render the version as SemVer instead of PEP 440 (maps `rc → -rc.N`, `dev → -dev.N`). |
-| `--output-format` | Select output format (`json`, `ndjson`, or default human-readable output).           |
+| Option            | Description                                                                            |
+| ----------------- | -------------------------------------------------------------------------------------- |
+| `--semver`        | Render the version as SemVer instead of PEP 440 (maps `rcN → -rc.N`, `devN → -dev.N`). |
+| `--output-format` | Select output format (`json`, `ndjson`, or default human-readable output).             |
 
 See `topmark version -h` for the full list of global CLI options.
 
@@ -78,11 +105,11 @@ Produces a single JSON object:
 {
   "meta": {
     "tool": "topmark",
-    "version": "0.12.0.dev2",
+    "version": "<package version>",
     "platform": "darwin"
   },
   "version_info": {
-    "version": "0.12.0.dev2",
+    "version": "<package version>",
     "version_format": "pep440"
   }
 }
@@ -101,7 +128,7 @@ topmark version --output-format ndjson
 Produces one JSON object per line:
 
 ```json
-{"kind":"version","meta":{"tool":"topmark","version":"0.12.0.dev2","platform":"darwin"},"version_info":{"version":"0.12.0.dev2","version_format":"pep440"}}
+{"kind":"version","meta":{"tool":"topmark","version":"<package version>","platform":"darwin"},"version_info":{"version":"<package version>","version_format":"pep440"}}
 ```
 
 - Each line is a self-contained record.

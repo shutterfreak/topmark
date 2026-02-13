@@ -10,7 +10,8 @@ topmark:header:start
 topmark:header:end
 -->
 
-> [!NOTE] **How config is resolved**
+> [!NOTE]
+> **How config is resolved**
 >
 > - TopMark merges config from **defaults → user → project chain → `--config` → CLI**.
 > - **Project discovery** starts from the *discovery anchor*: the **first input path** (its parent
