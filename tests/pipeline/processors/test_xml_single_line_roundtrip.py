@@ -28,18 +28,18 @@ from tests.pipeline.conftest import run_insert
 from topmark.config.model import Config
 from topmark.config.model import MutableConfig
 from topmark.constants import TOPMARK_START_MARKER
-from topmark.pipeline.processors.bootstrap import get_processor_for_file
-from topmark.pipeline.processors.types import StripDiagKind
-from topmark.pipeline.processors.types import StripDiagnostic
 from topmark.pipeline.status import ComparisonStatus
 from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import GenerationStatus
+from topmark.processors.bootstrap import get_processor_for_file
+from topmark.processors.types import StripDiagKind
+from topmark.processors.types import StripDiagnostic
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.pipeline.context.model import ProcessingContext
-    from topmark.pipeline.processors.base import HeaderProcessor
+    from topmark.processors.base import HeaderProcessor
 
 
 def test_xml_prolog_and_body_on_same_line_blocked_by_policy(tmp_path: Path) -> None:

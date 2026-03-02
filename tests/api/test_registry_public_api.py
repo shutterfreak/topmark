@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from topmark.filetypes.base import FileType
-    from topmark.pipeline.processors.base import HeaderProcessor
+    from topmark.processors.base import HeaderProcessor
 
 # ---------- helpers (duck-typed stubs) ----------
 

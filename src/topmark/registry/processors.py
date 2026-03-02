@@ -37,8 +37,8 @@ from typing import TYPE_CHECKING
 from typing import Final
 
 from topmark.filetypes.base import FileType
-from topmark.pipeline.processors.base import NO_LINE_ANCHOR
-from topmark.pipeline.processors.xml import XmlHeaderProcessor
+from topmark.processors.base import NO_LINE_ANCHOR
+from topmark.processors.xml import XmlHeaderProcessor
 from topmark.registry.filetypes import FileTypeRegistry
 
 if TYPE_CHECKING:
@@ -46,7 +46,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from topmark.filetypes.base import FileType
-    from topmark.pipeline.processors.base import HeaderProcessor
+    from topmark.processors.base import HeaderProcessor
 
 
 _validation_done: bool = False
@@ -135,7 +135,7 @@ class HeaderProcessorRegistry:
             return dict(cached)
 
         from topmark.filetypes.registry import get_base_header_processor_registry as _get
-        from topmark.pipeline.processors.bootstrap import register_all_processors
+        from topmark.processors.bootstrap import register_all_processors
 
         register_all_processors()
         # _get() returns the base decorator-populated processor registry.

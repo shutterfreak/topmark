@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : types.py
-#   file_relpath : src/topmark/pipeline/processors/types.py
+#   file_relpath : src/topmark/processors/types.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

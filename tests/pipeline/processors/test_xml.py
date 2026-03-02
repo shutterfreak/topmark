@@ -37,22 +37,22 @@ from topmark.core.logging import get_logger
 from topmark.filetypes.base import InsertCapability
 from topmark.pipeline import runner
 from topmark.pipeline.pipelines import Pipeline
-from topmark.pipeline.processors.bootstrap import get_processor_for_file
-from topmark.pipeline.processors.types import StripDiagKind
-from topmark.pipeline.processors.types import StripDiagnostic
-from topmark.pipeline.processors.xml import XmlHeaderProcessor
 from topmark.pipeline.status import ComparisonStatus
 from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import GenerationStatus
 from topmark.pipeline.status import ResolveStatus
+from topmark.processors.bootstrap import get_processor_for_file
+from topmark.processors.types import StripDiagKind
+from topmark.processors.types import StripDiagnostic
+from topmark.processors.xml import XmlHeaderProcessor
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
     from topmark.pipeline.context.model import ProcessingContext
-    from topmark.pipeline.processors.base import HeaderProcessor
     from topmark.pipeline.protocols import Step
+    from topmark.processors.base import HeaderProcessor
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -424,7 +424,7 @@ def test_xml_strip_header_block_respects_declaration(tmp_path: Path) -> None:
     Exercises both explicit-span and auto-detect paths and asserts identical
     results with the declaration retained as the first logical line.
     """
-    from topmark.pipeline.processors.bootstrap import get_processor_for_file
+    from topmark.processors.bootstrap import get_processor_for_file
 
     file: Path = tmp_path / "strip_doc.xml"
     file.write_text(

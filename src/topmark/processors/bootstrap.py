@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : bootstrap.py
-#   file_relpath : src/topmark/pipeline/processors/bootstrap.py
+#   file_relpath : src/topmark/processors/bootstrap.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
     from topmark.core.logging import TopmarkLogger
     from topmark.filetypes.base import FileType
-    from topmark.pipeline.processors.base import HeaderProcessor
+    from topmark.processors.base import HeaderProcessor
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -99,15 +99,15 @@ def get_processor_for_file(path: Path) -> HeaderProcessor | None:
 def register_all_processors() -> None:
     """Import header processor modules.
 
-    Import all processor modules in the parent `topmark.pipeline.processors` package.
+    Import all processor modules in the parent `topmark.processors` package.
     """
     global _processors_loaded
 
     if _processors_loaded:
         return
 
-    # We are executing inside `topmark.pipeline.processors.bootstrap`, but we want to import
-    # sibling modules from the parent package `topmark.pipeline.processors`.
+    # We are executing inside `topmark.processors.bootstrap`, but we want to import
+    # sibling modules from the parent package `topmark.processors`.
     processors_pkg: str = __name__.rsplit(".", 1)[0]
     package_dir: Path = Path(__file__).parent
     for module_info in pkgutil.iter_modules([str(package_dir)]):

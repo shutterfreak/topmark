@@ -19,9 +19,9 @@ import pytest
 from tests.conftest import mark_dev_validation
 from topmark.filetypes.instances import get_base_file_type_registry
 from topmark.filetypes.registry import get_base_header_processor_registry
-from topmark.pipeline.processors.base import NO_LINE_ANCHOR
-from topmark.pipeline.processors.base import HeaderProcessor
-from topmark.pipeline.processors.xml import XmlHeaderProcessor
+from topmark.processors.base import NO_LINE_ANCHOR
+from topmark.processors.base import HeaderProcessor
+from topmark.processors.xml import XmlHeaderProcessor
 
 if TYPE_CHECKING:
     from topmark.filetypes.base import FileType

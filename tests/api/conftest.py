@@ -26,9 +26,9 @@ from topmark import api
 from topmark.api.public_types import PublicPolicy
 from topmark.config.keys import Toml
 from topmark.filetypes.base import FileType
-from topmark.pipeline.processors.base import HeaderProcessor
-from topmark.pipeline.processors.types import BoundsKind
-from topmark.pipeline.processors.types import HeaderBounds
+from topmark.processors.base import HeaderProcessor
+from topmark.processors.types import BoundsKind
+from topmark.processors.types import HeaderBounds
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
 
@@ -39,7 +39,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.filetypes.base import FileType
-    from topmark.pipeline.processors.base import HeaderProcessor
+    from topmark.processors.base import HeaderProcessor
 
 
 def cfg(**overrides: Any) -> dict[str, Any]:

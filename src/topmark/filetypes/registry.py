@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING
 
 from topmark.core.logging import get_logger
 from topmark.filetypes.base import FileType
-from topmark.pipeline.processors.base import HeaderProcessor
+from topmark.processors.base import HeaderProcessor
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 
     from topmark.core.logging import TopmarkLogger
     from topmark.filetypes.base import FileType
-    from topmark.pipeline.processors.base import HeaderProcessor
+    from topmark.processors.base import HeaderProcessor
 
 logger: TopmarkLogger = get_logger(__name__)
 

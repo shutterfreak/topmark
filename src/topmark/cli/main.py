@@ -36,7 +36,7 @@ from topmark.core.keys import ArgKey
 
 # --- We use a module import here instead of relative import
 from topmark.core.logging import get_logger
-from topmark.pipeline.processors.bootstrap import register_all_processors
+from topmark.processors.bootstrap import register_all_processors
 from topmark.utils.version import check_python_version
 
 if TYPE_CHECKING:

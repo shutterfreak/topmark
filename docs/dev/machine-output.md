@@ -445,7 +445,7 @@ Processor entry (brief):
 
 ```jsonc
 {
-  "module": "topmark.pipeline.processors.python",
+  "module": "topmark.processors.python",
   "class_name": "PythonHeaderProcessor",
   "filetypes": ["python", "python-script"]
 }
@@ -455,7 +455,7 @@ Processor entry (detailed, `--show-details`):
 
 ```jsonc
 {
-  "module": "topmark.pipeline.processors.python",
+  "module": "topmark.processors.python",
   "class_name": "PythonHeaderProcessor",
   "filetypes": [
     { "name": "python", "description": "Python source file" },

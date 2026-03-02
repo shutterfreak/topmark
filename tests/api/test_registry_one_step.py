@@ -27,7 +27,7 @@ from topmark.registry.processors import HeaderProcessorRegistry
 
 if TYPE_CHECKING:
     from topmark.filetypes.base import FileType
-    from topmark.pipeline.processors.base import HeaderProcessor
+    from topmark.processors.base import HeaderProcessor
 
 
 def test_register_filetype_with_processor_in_one_step() -> None:

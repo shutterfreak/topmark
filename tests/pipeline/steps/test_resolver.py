@@ -33,8 +33,8 @@ from topmark.config.model import MutableConfig
 from topmark.filetypes.base import ContentGate
 from topmark.filetypes.base import FileType  # runtime import for typing/cast correctness
 from topmark.pipeline.context.model import ProcessingContext
-from topmark.pipeline.processors.base import HeaderProcessor
 from topmark.pipeline.status import ResolveStatus
+from topmark.processors.base import HeaderProcessor
 
 if TYPE_CHECKING:
     from collections.abc import Callable

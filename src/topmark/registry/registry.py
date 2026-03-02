@@ -62,7 +62,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from topmark.filetypes.base import FileType
-    from topmark.pipeline.processors.base import HeaderProcessor
+    from topmark.processors.base import HeaderProcessor
 
 
 @dataclass(frozen=True)
@@ -179,6 +179,6 @@ class Registry:
         registry which self-registers. Exposed for callers that want to
         pre-warm the registry explicitly.
         """
-        from topmark.pipeline.processors.bootstrap import register_all_processors
+        from topmark.processors.bootstrap import register_all_processors
 
         register_all_processors()

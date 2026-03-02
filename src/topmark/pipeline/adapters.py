@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 
     from topmark.filetypes.base import FileType
     from topmark.pipeline.context.model import ProcessingContext
-    from topmark.pipeline.processors.base import HeaderProcessor
+    from topmark.processors.base import HeaderProcessor
 
 
 # --- Adapter for PreInsertContextView (streaming-friendly) -----------

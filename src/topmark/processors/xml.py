@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : xml.py
-#   file_relpath : src/topmark/pipeline/processors/xml.py
+#   file_relpath : src/topmark/processors/xml.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -22,14 +22,14 @@ from typing import TYPE_CHECKING
 from topmark.core.logging import get_logger
 from topmark.filetypes.registry import register_filetype
 from topmark.pipeline.policy_whitespace import is_pure_spacer
-from topmark.pipeline.processors.base import HeaderProcessor
-from topmark.pipeline.processors.mixins import BlockCommentMixin
-from topmark.pipeline.processors.mixins import XmlPositionalMixin
+from topmark.processors.base import HeaderProcessor
+from topmark.processors.mixins import BlockCommentMixin
+from topmark.processors.mixins import XmlPositionalMixin
 
 if TYPE_CHECKING:
     from topmark.core.logging import TopmarkLogger
     from topmark.filetypes.policy import FileTypeHeaderPolicy
-    from topmark.pipeline.processors.types import StripDiagnostic
+    from topmark.processors.types import StripDiagnostic
 
 logger: TopmarkLogger = get_logger(__name__)
 

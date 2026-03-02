@@ -37,14 +37,14 @@ from tests.pipeline.conftest import run_insert
 from topmark.config.model import MutableConfig
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
-from topmark.pipeline.processors.types import StripDiagKind
-from topmark.pipeline.processors.types import StripDiagnostic
+from topmark.processors.types import StripDiagKind
+from topmark.processors.types import StripDiagnostic
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.pipeline.context.model import ProcessingContext
-    from topmark.pipeline.processors.base import HeaderProcessor
+    from topmark.processors.base import HeaderProcessor
 
 mark_pipeline: pytest.MarkDecorator = pytest.mark.pipeline
 
@@ -138,7 +138,7 @@ def test_strip_preserves_newline_style(
         fp.write(content)
 
     # Emulate strip pipeline: scanner -> stripper -> updater fast-path
-    from topmark.pipeline.processors.bootstrap import get_processor_for_file
+    from topmark.processors.bootstrap import get_processor_for_file
 
     proc: HeaderProcessor | None = get_processor_for_file(f)
     assert proc is not None

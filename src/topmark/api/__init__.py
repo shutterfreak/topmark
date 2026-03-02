@@ -92,8 +92,8 @@ if TYPE_CHECKING:
     from topmark.core.exit_codes import ExitCode
     from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
-    from topmark.pipeline.processors.base import HeaderProcessor
     from topmark.pipeline.protocols import Step
+    from topmark.processors.base import HeaderProcessor
 
 logger: TopmarkLogger = get_logger(__name__)
 

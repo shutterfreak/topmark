@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : pound.py
-#   file_relpath : src/topmark/pipeline/processors/pound.py
+#   file_relpath : src/topmark/processors/pound.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -20,8 +20,8 @@ from typing import TYPE_CHECKING
 
 from topmark.core.logging import get_logger
 from topmark.filetypes.registry import register_filetype
-from topmark.pipeline.processors.base import HeaderProcessor
-from topmark.pipeline.processors.mixins import LineCommentMixin
+from topmark.processors.base import HeaderProcessor
+from topmark.processors.mixins import LineCommentMixin
 
 if TYPE_CHECKING:
     from topmark.core.logging import TopmarkLogger

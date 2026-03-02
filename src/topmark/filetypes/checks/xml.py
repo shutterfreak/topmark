@@ -23,7 +23,7 @@ from topmark.filetypes.base import InsertCheckResult
 from topmark.filetypes.base import PreInsertContextView
 
 if TYPE_CHECKING:
-    from topmark.pipeline.processors.base import HeaderProcessor
+    from topmark.processors.base import HeaderProcessor
 
 # --- Local helpers for strict XML gate ---
 _BOM = "\ufeff"

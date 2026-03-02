@@ -29,15 +29,15 @@ from topmark.config.model import MutableConfig
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
 from topmark.pipeline.context.model import ProcessingContext
-from topmark.pipeline.processors.bootstrap import get_processor_for_file
-from topmark.pipeline.processors.types import StripDiagKind
-from topmark.pipeline.processors.types import StripDiagnostic
+from topmark.processors.bootstrap import get_processor_for_file
+from topmark.processors.types import StripDiagKind
+from topmark.processors.types import StripDiagnostic
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.pipeline.context.model import ProcessingContext
-    from topmark.pipeline.processors.base import HeaderProcessor
+    from topmark.processors.base import HeaderProcessor
 
 
 def _ends_with_newline(text: str) -> bool:

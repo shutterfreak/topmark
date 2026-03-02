@@ -51,7 +51,7 @@ from topmark.config.types import PatternSource
 from topmark.core import logging
 from topmark.filetypes.base import ContentGate
 from topmark.filetypes.base import FileType
-from topmark.pipeline.processors.base import HeaderProcessor
+from topmark.processors.base import HeaderProcessor
 
 if TYPE_CHECKING:
     from topmark.config.model import Config

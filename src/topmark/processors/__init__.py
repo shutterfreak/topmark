@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : __init__.py
-#   file_relpath : src/topmark/pipeline/processors/__init__.py
+#   file_relpath : src/topmark/processors/__init__.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

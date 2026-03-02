@@ -24,8 +24,6 @@ from topmark.core.logging import get_logger
 from topmark.pipeline.hints import Axis
 from topmark.pipeline.hints import Cluster
 from topmark.pipeline.hints import KnownCode
-from topmark.pipeline.processors.types import StripDiagKind
-from topmark.pipeline.processors.types import StripDiagnostic
 from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import FsStatus
 from topmark.pipeline.status import HeaderStatus
@@ -34,6 +32,8 @@ from topmark.pipeline.status import StripStatus
 from topmark.pipeline.steps.base import BaseStep
 from topmark.pipeline.views import HeaderView
 from topmark.pipeline.views import UpdatedView
+from topmark.processors.types import StripDiagKind
+from topmark.processors.types import StripDiagnostic
 
 if TYPE_CHECKING:
     from topmark.core.logging import TopmarkLogger

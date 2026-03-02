@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : base.py
-#   file_relpath : src/topmark/pipeline/processors/base.py
+#   file_relpath : src/topmark/processors/base.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -42,11 +42,11 @@ from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
 from topmark.core.logging import get_logger
 from topmark.pipeline.policy_whitespace import is_pure_spacer
-from topmark.pipeline.processors.types import BoundsKind
-from topmark.pipeline.processors.types import HeaderBounds
-from topmark.pipeline.processors.types import HeaderParseResult
-from topmark.pipeline.processors.types import StripDiagKind
-from topmark.pipeline.processors.types import StripDiagnostic
+from topmark.processors.types import BoundsKind
+from topmark.processors.types import HeaderBounds
+from topmark.processors.types import HeaderParseResult
+from topmark.processors.types import StripDiagKind
+from topmark.processors.types import StripDiagnostic
 from topmark.rendering.formats import HeaderOutputFormat
 
 if TYPE_CHECKING:

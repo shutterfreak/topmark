@@ -38,9 +38,6 @@ from topmark.config.policy import make_policy_registry
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.pipelines import CHECK_PATCH_PIPELINE
 from topmark.pipeline.pipelines import CHECK_SUMMMARY_PIPELINE
-from topmark.pipeline.processors.base import HeaderProcessor
-from topmark.pipeline.processors.bootstrap import get_processor_for_file
-from topmark.pipeline.processors.bootstrap import register_all_processors
 from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import FsStatus
 from topmark.pipeline.status import ResolveStatus
@@ -56,6 +53,9 @@ from topmark.pipeline.steps.sniffer import SnifferStep
 from topmark.pipeline.steps.stripper import StripperStep
 from topmark.pipeline.steps.writer import WriterStep
 from topmark.pipeline.views import ListFileImageView
+from topmark.processors.base import HeaderProcessor
+from topmark.processors.bootstrap import get_processor_for_file
+from topmark.processors.bootstrap import register_all_processors
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -63,8 +63,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.config.model import Config
-    from topmark.pipeline.processors.base import HeaderProcessor
     from topmark.pipeline.protocols import Step
+    from topmark.processors.base import HeaderProcessor
 
 
 def run_resolver(ctx: ProcessingContext) -> ProcessingContext:

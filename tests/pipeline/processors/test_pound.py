@@ -39,17 +39,17 @@ from topmark.core.logging import get_logger
 from topmark.pipeline import runner
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.pipelines import Pipeline
-from topmark.pipeline.processors.pound import PoundHeaderProcessor
-from topmark.pipeline.processors.types import StripDiagKind
-from topmark.pipeline.processors.types import StripDiagnostic
 from topmark.pipeline.status import HeaderStatus
+from topmark.processors.pound import PoundHeaderProcessor
+from topmark.processors.types import StripDiagKind
+from topmark.processors.types import StripDiagnostic
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-    from topmark.pipeline.processors.base import HeaderProcessor
     from topmark.pipeline.protocols import Step
+    from topmark.processors.base import HeaderProcessor
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -804,7 +804,7 @@ def test_strip_header_block_with_and_without_span_preserves_shebang(tmp_path: Pa
       * The entire TopMark header block is removed.
       * The returned span matches the actual header location.
     """
-    from topmark.pipeline.processors.bootstrap import get_processor_for_file
+    from topmark.processors.bootstrap import get_processor_for_file
 
     file: Path = tmp_path / "strip_shebang.py"
     file.write_text(

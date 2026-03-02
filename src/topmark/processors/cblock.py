@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : cblock.py
-#   file_relpath : src/topmark/pipeline/processors/cblock.py
+#   file_relpath : src/topmark/processors/cblock.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -31,8 +31,8 @@ We emit the wrapper lines '/*' and '*/' and render inner lines as '* ...'.
 from __future__ import annotations
 
 from topmark.filetypes.registry import register_filetype
-from topmark.pipeline.processors.base import HeaderProcessor
-from topmark.pipeline.processors.mixins import BlockCommentMixin
+from topmark.processors.base import HeaderProcessor
+from topmark.processors.mixins import BlockCommentMixin
 
 
 # Attach all relevant file types here; their concrete definitions live in filetypes/instances.py

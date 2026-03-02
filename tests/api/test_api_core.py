@@ -30,7 +30,7 @@ from topmark.config.keys import Toml
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.pipeline.processors.base import HeaderProcessor
+    from topmark.processors.base import HeaderProcessor
 
 
 def test_api_check_empty_dir(tmp_path: Path) -> None:

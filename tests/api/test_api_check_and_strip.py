@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.api.types import RunResult
-    from topmark.pipeline.processors.base import HeaderProcessor
+    from topmark.processors.base import HeaderProcessor
 
 
 def test_check_dry_run_reports_one_change_and_one_unchanged(

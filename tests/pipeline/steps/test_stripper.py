@@ -28,12 +28,12 @@ from topmark.config.model import Config
 from topmark.config.model import MutableConfig
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
-from topmark.pipeline.processors.base import HeaderProcessor
 from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.status import ResolveStatus
 from topmark.pipeline.views import HeaderView
 from topmark.pipeline.views import ListFileImageView
+from topmark.processors.base import HeaderProcessor
 
 if TYPE_CHECKING:
     from pathlib import Path

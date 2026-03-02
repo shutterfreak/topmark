@@ -12,9 +12,9 @@
 
 from __future__ import annotations
 
-from topmark.pipeline.processors.mixins import BlockCommentMixin
-from topmark.pipeline.processors.mixins import LineCommentMixin
-from topmark.pipeline.processors.mixins import XmlPositionalMixin
+from topmark.processors.mixins import BlockCommentMixin
+from topmark.processors.mixins import LineCommentMixin
+from topmark.processors.mixins import XmlPositionalMixin
 
 
 class _LineProc(LineCommentMixin):
@@ -90,7 +90,7 @@ def test_line_mixin_respects_no_shebang_policy() -> None:
     """Do not skip shebang when policy.supports_shebang is False."""
     from topmark.filetypes.base import FileType
     from topmark.filetypes.policy import FileTypeHeaderPolicy
-    from topmark.pipeline.processors.mixins import LineCommentMixin
+    from topmark.processors.mixins import LineCommentMixin
 
     class _P(LineCommentMixin):
         line_prefix = "# "
@@ -113,7 +113,7 @@ def test_line_mixin_skips_encoding_line_after_shebang() -> None:
     """Skip encoding line after shebang if policy encoding_line_regex is set."""
     from topmark.filetypes.base import FileType
     from topmark.filetypes.policy import FileTypeHeaderPolicy
-    from topmark.pipeline.processors.mixins import LineCommentMixin
+    from topmark.processors.mixins import LineCommentMixin
 
     class _P(LineCommentMixin):
         line_prefix = "# "

@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : markdown.py
-#   file_relpath : src/topmark/pipeline/processors/markdown.py
+#   file_relpath : src/topmark/processors/markdown.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -34,10 +34,10 @@ from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
 from topmark.core.logging import get_logger
 from topmark.filetypes.registry import register_filetype
-from topmark.pipeline.processors.base import HeaderProcessor
-from topmark.pipeline.processors.mixins import BlockCommentMixin
-from topmark.pipeline.processors.types import BoundsKind
-from topmark.pipeline.processors.types import HeaderBounds
+from topmark.processors.base import HeaderProcessor
+from topmark.processors.mixins import BlockCommentMixin
+from topmark.processors.types import BoundsKind
+from topmark.processors.types import HeaderBounds
 
 if TYPE_CHECKING:
     from collections.abc import Iterable

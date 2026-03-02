@@ -31,9 +31,9 @@ from topmark.filetypes.base import FileType
 from topmark.pipeline.hints import Axis
 from topmark.pipeline.hints import Cluster
 from topmark.pipeline.hints import KnownCode
-from topmark.pipeline.processors.base import HeaderProcessor
 from topmark.pipeline.status import ResolveStatus
 from topmark.pipeline.steps.base import BaseStep
+from topmark.processors.base import HeaderProcessor
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
 
@@ -45,7 +45,7 @@ if TYPE_CHECKING:
     from topmark.config.model import Config
     from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
-    from topmark.pipeline.processors.base import HeaderProcessor
+    from topmark.processors.base import HeaderProcessor
 
 logger: TopmarkLogger = get_logger(__name__)
 

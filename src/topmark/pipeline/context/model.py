@@ -63,8 +63,8 @@ if TYPE_CHECKING:
     from topmark.config.policy import PolicyRegistry
     from topmark.core.logging import TopmarkLogger
     from topmark.filetypes.base import FileType
-    from topmark.pipeline.processors.base import HeaderProcessor
     from topmark.pipeline.protocols import Step
+    from topmark.processors.base import HeaderProcessor
 
 
 logger: TopmarkLogger = get_logger(__name__)
