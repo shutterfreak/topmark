@@ -141,6 +141,20 @@ class Registry:
         return HeaderProcessorRegistry.is_registered(name)
 
     @staticmethod
+    def supported_filetype_names() -> tuple[str, ...]:
+        """Return file type names that currently have a registered processor."""
+        ft_names: set[str] = set(FileTypeRegistry.as_mapping().keys())
+        proc_names: set[str] = set(HeaderProcessorRegistry.as_mapping().keys())
+        return tuple(sorted(ft_names & proc_names))
+
+    @staticmethod
+    def unsupported_filetype_names() -> tuple[str, ...]:
+        """Return recognized file type names that currently lack a processor."""
+        ft_names: set[str] = set(FileTypeRegistry.as_mapping().keys())
+        proc_names: set[str] = set(HeaderProcessorRegistry.as_mapping().keys())
+        return tuple(sorted(ft_names - proc_names))
+
+    @staticmethod
     def register_filetype(
         ft_obj: FileType, *, processor: type[HeaderProcessor] | None = None
     ) -> None:
@@ -150,7 +164,10 @@ class Registry:
         [`FileTypeRegistry.register`][topmark.registry.filetypes.FileTypeRegistry.register].
         Mutates global state; prefer using in tests or controlled plugin init.
         """
-        return FileTypeRegistry.register(ft_obj, processor=processor)
+        FileTypeRegistry.register(ft_obj)
+        if processor is not None:
+            HeaderProcessorRegistry.register(ft_obj.name, processor, file_type=ft_obj)
+        return None
 
     @staticmethod
     def unregister_filetype(name: str) -> bool:
@@ -164,7 +181,10 @@ class Registry:
         Passthrough to
         [`HeaderProcessorRegistry.register`][topmark.registry.processors.HeaderProcessorRegistry.register].
         """
-        return HeaderProcessorRegistry.register(name, processor_class)
+        ft_obj = FileTypeRegistry.get(name)
+        if ft_obj is None:
+            raise ValueError(f"Unknown file type: {name}")
+        return HeaderProcessorRegistry.register(name, processor_class, file_type=ft_obj)
 
     @staticmethod
     def unregister_processor(name: str) -> bool:

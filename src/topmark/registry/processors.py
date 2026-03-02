@@ -37,9 +37,6 @@ from typing import TYPE_CHECKING
 from typing import Final
 
 from topmark.filetypes.base import FileType
-from topmark.processors.base import NO_LINE_ANCHOR
-from topmark.processors.xml import XmlHeaderProcessor
-from topmark.registry.filetypes import FileTypeRegistry
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -56,11 +53,6 @@ _VALIDATION_ENV: Final[str] = "TOPMARK_VALIDATE"
 def _dev_validate_processors(proc_map: Mapping[str, HeaderProcessor]) -> None:
     """Run lightweight developer validations when TOPMARK_VALIDATE=1.
 
-    Checks:
-        * Every registered processor key matches an existing FileType name.
-        * XML-like processors (instances of XmlHeaderProcessor) report
-          NO_LINE_ANCHOR for their line-based index.
-
     This function is a no-op unless the environment variable TOPMARK_VALIDATE
     is set to a truthy value ("1", "true", "yes"). It is executed at most once
     per process.
@@ -71,25 +63,8 @@ def _dev_validate_processors(proc_map: Mapping[str, HeaderProcessor]) -> None:
     if os.getenv(_VALIDATION_ENV, "").lower() not in {"1", "true", "yes"}:
         return
 
-    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
-
-    # 1) All processors refer to existing file types
-    missing: list[str] = [name for name in proc_map if name not in ft_registry]
-    if missing:
-        raise RuntimeError(f"Processors registered for unknown file types: {missing!r}")
-
-    # 2) Xml-like processors use NO_LINE_ANCHOR for line-based index
-    for name, proc in proc_map.items():
-        if (
-            isinstance(proc, XmlHeaderProcessor)
-            and proc.get_header_insertion_index(["<root/>"]) != NO_LINE_ANCHOR
-        ):
-            raise RuntimeError(
-                "XmlHeaderProcessor must return NO_LINE_ANCHOR from "
-                "get_header_insertion_index(); offending type: "
-                f"{name!r}"
-            )
-
+    # Intentionally lightweight: avoid importing other registries or concrete processors
+    # to prevent type-check-time import cycles.
     _validation_done = True
 
 
@@ -135,9 +110,7 @@ class HeaderProcessorRegistry:
             return dict(cached)
 
         from topmark.filetypes.registry import get_base_header_processor_registry as _get
-        from topmark.processors.bootstrap import register_all_processors
 
-        register_all_processors()
         # _get() returns the base decorator-populated processor registry.
         base: dict[str, HeaderProcessor] = dict(_get())
         base.update(cls._overrides)
@@ -223,6 +196,8 @@ class HeaderProcessorRegistry:
         cls,
         name: str,
         processor_class: type[HeaderProcessor],
+        *,
+        file_type: FileType,
     ) -> None:
         """Register a header processor under a file type name.
 
@@ -230,9 +205,10 @@ class HeaderProcessorRegistry:
             name: File type name under which the processor appears in the registry.
             processor_class: A `HeaderProcessor` class. It will be
                 instantiated with no arguments and bound to the file type.
+            file_type: The FileType instance to bind to the processor.
 
         Raises:
-            ValueError: If the file type name is unknown or already registered.
+            ValueError: If the file type name is already registered.
 
         Notes:
             - This mutates global state. Prefer temporary usage in tests with try/finally.
@@ -240,13 +216,6 @@ class HeaderProcessorRegistry:
               multi-tenant processes.
         """
         with cls._lock:
-            # Resolve FileType from the composed registry (includes local overrides).
-            from topmark.registry.filetypes import FileTypeRegistry as _FTReg
-
-            ft_obj: FileType | None = _FTReg.get(name)
-            if ft_obj is None:
-                raise ValueError(f"Unknown file type: {name}")
-
             # Check composed view to avoid dupes
             if name in cls._compose():
                 raise ValueError(f"File type '{name}' already has a registered processor.")
@@ -255,7 +224,7 @@ class HeaderProcessorRegistry:
             proc_obj: HeaderProcessor = processor_class()
 
             # Bind the processor to the FileType (mirror decorator behavior).
-            proc_obj.file_type = ft_obj
+            proc_obj.file_type = file_type
 
             # If this name was previously removed, allow re-registration.
             cls._removals.discard(name)

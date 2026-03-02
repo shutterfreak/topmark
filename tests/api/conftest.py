@@ -88,7 +88,7 @@ def register_pair() -> Iterator[Callable[[str], tuple[str, FileType]]]:
     def _make(name: str) -> tuple[str, FileType]:
         ft: FileType = stub_ft(name)
         FileTypeRegistry.register(ft)
-        HeaderProcessorRegistry.register(name, stub_proc_cls())
+        HeaderProcessorRegistry.register(name, stub_proc_cls(), file_type=ft)
         registered.append(name)
         return name, ft
 

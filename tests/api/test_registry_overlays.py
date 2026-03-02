@@ -16,6 +16,7 @@ from topmark.filetypes.base import FileType
 from topmark.processors.base import HeaderProcessor
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
+from topmark.registry.registry import Registry
 
 
 class _P(HeaderProcessor):
@@ -27,13 +28,13 @@ def test_overlay_partition_updates() -> None:
     """File type becomes supported when a processor is registered and reverts when removed."""
     ft = FileType(name="ftx", extensions=[".ftx"], filenames=[], patterns=[], description="x")
     FileTypeRegistry.register(ft)
-    assert "ftx" in FileTypeRegistry.unsupported_names()
+    assert "ftx" in Registry.unsupported_filetype_names()
 
-    HeaderProcessorRegistry.register("ftx", _P)  # now supported
-    assert "ftx" in FileTypeRegistry.supported_names()
+    HeaderProcessorRegistry.register("ftx", _P, file_type=ft)  # now supported
+    assert "ftx" in Registry.supported_filetype_names()
 
     HeaderProcessorRegistry.unregister("ftx")
-    assert "ftx" in FileTypeRegistry.unsupported_names()
+    assert "ftx" in Registry.unsupported_filetype_names()
 
     FileTypeRegistry.unregister("ftx")
     assert "ftx" not in FileTypeRegistry.as_mapping()

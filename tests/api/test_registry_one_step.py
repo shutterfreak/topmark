@@ -24,6 +24,7 @@ from tests.api.conftest import stub_ft
 from tests.api.conftest import stub_proc_cls
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
+from topmark.registry.registry import Registry
 
 if TYPE_CHECKING:
     from topmark.filetypes.base import FileType
@@ -35,8 +36,9 @@ def test_register_filetype_with_processor_in_one_step() -> None:
     name = "one_step"
     ft: FileType = stub_ft(name)
     try:
-        FileTypeRegistry.register(ft, processor=stub_proc_cls())
-        assert name in FileTypeRegistry.supported_names()
+        proc_cls: type[HeaderProcessor] = stub_proc_cls()
+        Registry.register_filetype(ft, processor=proc_cls)
+        assert name in Registry.supported_filetype_names()
         assert HeaderProcessorRegistry.is_registered(name)
         proc: HeaderProcessor = HeaderProcessorRegistry.as_mapping()[name]
         assert proc.file_type is not None and proc.file_type.name == name

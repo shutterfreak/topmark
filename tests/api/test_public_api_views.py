@@ -53,7 +53,7 @@ def test_register_and_unregister_processors() -> None:
         def process(self, text: str) -> str:
             return text
 
-    HeaderProcessorRegistry.register("tmp", TmpProcessor)
+    HeaderProcessorRegistry.register("tmp", TmpProcessor, file_type=ft)
     assert "tmp" in HeaderProcessorRegistry.as_mapping()
 
     HeaderProcessorRegistry.unregister("tmp")

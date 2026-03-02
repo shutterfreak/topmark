@@ -23,9 +23,6 @@ Notes:
       the internal base registry built by
       [`topmark.filetypes.instances`][topmark.filetypes.instances].
       Overlays are process-local and guarded by an `RLock`.
-    * `supported_names()` / `unsupported_names()` compute support against the **composed**
-      header processor registry to reflect overlay registrations made via
-      `HeaderProcessorRegistry`.
 """
 
 from __future__ import annotations
@@ -43,7 +40,6 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from topmark.filetypes.base import FileType
-    from topmark.processors.base import HeaderProcessor
 
 
 @dataclass(frozen=True)
@@ -116,25 +112,6 @@ class FileTypeRegistry:
             return tuple(sorted(cls._compose().keys()))
 
     @classmethod
-    def supported_names(cls) -> tuple[str, ...]:
-        """Return file type names that have a registered processor."""
-        from topmark.registry.processors import HeaderProcessorRegistry as _HPReg
-
-        with cls._lock:
-            proc_names: set[str] = set(_HPReg.as_mapping().keys())
-            return tuple(sorted(proc_names & set(cls._compose().keys())))
-
-    @classmethod
-    def unsupported_names(cls) -> tuple[str, ...]:
-        """Return file type names that are recognized but unsupported."""
-        from topmark.registry.processors import HeaderProcessorRegistry as _HPReg
-
-        with cls._lock:
-            all_names: set[str] = set(cls._compose().keys())
-            supported: set[str] = set(_HPReg.as_mapping().keys())
-            return tuple(sorted(all_names - supported))
-
-    @classmethod
     def get(cls, name: str) -> FileType | None:
         """Return a file type by name.
 
@@ -194,30 +171,21 @@ class FileTypeRegistry:
     def register(
         cls,
         ft_obj: FileType,
-        *,
-        processor: type[HeaderProcessor] | None = None,
     ) -> None:
-        """Register a new file type, and optionally attach a header processor.
+        """Register a new file type.
 
         Args:
             ft_obj: A `FileType` with a unique, non-empty `.name`.
-            processor: Optional `HeaderProcessor` instance or class
-                to register for this file type. If provided, the processor will be registered and
-                bound to this file type.
 
         Raises:
-            ValueError: If `.name` is empty or already registered, or if a processor is provided
-                and the file type already has a registered processor.
+            ValueError: If `.name` is empty or already registered.
 
         Notes:
             - This mutates global registry state. Prefer temporary usage in tests with
-              try/finally to ensure cleanup. If a processor is provided, it will be bound
-              to the file type and registered, raising if a processor is already present.
+              try/finally to ensure cleanup.
             - Thread safe via RLock; process-global state; do not mutate in long-lived
               multi-tenant processes.
         """
-        from topmark.registry.processors import HeaderProcessorRegistry
-
         with cls._lock:
             name: str = ft_obj.name or ""
             if not name:
@@ -230,9 +198,6 @@ class FileTypeRegistry:
             # If this name was previously removed, allow re-registration.
             cls._removals.discard(name)
             cls._clear_cache()
-            if processor is not None:
-                # Chain to HeaderProcessorRegistry for linkage; raises on conflict
-                HeaderProcessorRegistry.register(name, processor)
 
     @classmethod
     def unregister(cls, name: str) -> bool:
