@@ -9,6 +9,8 @@
 // topmark:header:end
 
 {
+    "editor.rulers": [80, 100],
+
     "makefile.configureOnOpen": false,
 
     // Turn off auto-detection of indentation that can override language-specific tab sizes
@@ -86,10 +88,7 @@
     "yaml.schemaStore.enable": false,
     // Add mkdocs-material schema
     "yaml.schemas": {
-        "https://squidfunk.github.io/mkdocs-material/schema.json": [
-            "mkdocs.yml",
-            "mkdocs.*.yml"
-        ]
+        "https://squidfunk.github.io/mkdocs-material/schema.json": "mkdocs*.yml"
     },
     // Add custom YAML tags (used in mkdocs.yml)
     "yaml.customTags": [
