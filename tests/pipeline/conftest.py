@@ -38,9 +38,9 @@ from topmark.config.policy import make_policy_registry
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.pipelines import CHECK_PATCH_PIPELINE
 from topmark.pipeline.pipelines import CHECK_SUMMMARY_PIPELINE
-from topmark.pipeline.processors import get_processor_for_file
-from topmark.pipeline.processors import register_all_processors
 from topmark.pipeline.processors.base import HeaderProcessor
+from topmark.pipeline.processors.bootstrap import get_processor_for_file
+from topmark.pipeline.processors.bootstrap import register_all_processors
 from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import FsStatus
 from topmark.pipeline.status import ResolveStatus
@@ -62,7 +62,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-    from topmark.config import Config
+    from topmark.config.model import Config
     from topmark.pipeline.processors.base import HeaderProcessor
     from topmark.pipeline.protocols import Step
 

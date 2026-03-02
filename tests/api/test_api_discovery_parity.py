@@ -24,8 +24,8 @@ import textwrap
 from typing import TYPE_CHECKING
 
 from topmark import api
-from topmark.config import MutableConfig
 from topmark.config.keys import Toml
+from topmark.config.model import MutableConfig
 from topmark.file_resolver import resolve_file_list
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.pipelines import Pipeline

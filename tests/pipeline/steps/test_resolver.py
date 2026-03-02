@@ -28,8 +28,8 @@ from tests.conftest import EffectiveRegistries
 from tests.conftest import make_file_type
 from tests.pipeline.conftest import make_pipeline_context
 from tests.pipeline.conftest import run_resolver
-from topmark.config import Config
-from topmark.config import MutableConfig
+from topmark.config.model import Config
+from topmark.config.model import MutableConfig
 from topmark.filetypes.base import ContentGate
 from topmark.filetypes.base import FileType  # runtime import for typing/cast correctness
 from topmark.pipeline.context.model import ProcessingContext

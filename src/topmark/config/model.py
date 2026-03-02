@@ -62,16 +62,16 @@ from topmark.config.args_io import get_arg_enum_checked
 from topmark.config.args_io import get_arg_int_or_none_checked
 from topmark.config.args_io import get_arg_string_list_checked
 from topmark.config.args_io import get_arg_string_or_none_checked
-from topmark.config.io import as_toml_table_map
-from topmark.config.io import clean_toml
-from topmark.config.io import get_bool_value_or_none_checked
-from topmark.config.io import get_string_list_value_checked
-from topmark.config.io import get_string_value_checked
-from topmark.config.io import get_string_value_or_none_checked
-from topmark.config.io import get_table_value
-from topmark.config.io import load_defaults_dict
-from topmark.config.io import load_toml_dict
+from topmark.config.io.getters import get_bool_value_or_none_checked
+from topmark.config.io.getters import get_string_list_value_checked
+from topmark.config.io.getters import get_string_value_checked
+from topmark.config.io.getters import get_string_value_or_none_checked
+from topmark.config.io.guards import as_toml_table_map
+from topmark.config.io.guards import get_table_value
+from topmark.config.io.loaders import load_defaults_dict
+from topmark.config.io.loaders import load_toml_dict
 from topmark.config.io.loaders import render_runtime_defaults_toml_text
+from topmark.config.io.render import clean_toml
 from topmark.config.keys import Toml
 from topmark.config.logging import get_logger
 from topmark.config.paths import abs_path_from
@@ -95,8 +95,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
     from collections.abc import Mapping
 
-    from topmark.config.io import TomlTable
-    from topmark.config.io import TomlTableMap
+    from topmark.config.io.types import TomlTable
+    from topmark.config.io.types import TomlTableMap
     from topmark.config.logging import TopmarkLogger
     from topmark.config.types import PatternSource
     from topmark.filetypes.base import FileType
@@ -1738,7 +1738,7 @@ class MutableConfig:
                 return
 
             # Local import to keep config import-safe and avoid incidental cycles.
-            from topmark.registry import FileTypeRegistry
+            from topmark.registry.filetypes import FileTypeRegistry
 
             # Validate against the effective file type registry:
             ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()

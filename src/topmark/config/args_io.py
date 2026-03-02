@@ -53,7 +53,7 @@ def get_arg_bool_or_none_checked(
 ) -> bool | None:
     """Return an optional boolean value, warning when present but not `bool`.
 
-    Mirrors the TOML helper [`topmark.config.io.get_bool_value_or_none_checked`][].
+    Mirrors the TOML helper [`topmark.config.io.getters.get_bool_value_or_none_checked`][].
     """
     value: Any | None = args.get(key)
     if value is None:
@@ -75,7 +75,7 @@ def get_arg_int_or_none_checked(
 ) -> int | None:
     """Return an optional int value, warning when present but not `int`.
 
-    Mirrors the TOML helper [`topmark.config.io.get_int_value_or_none_checked`][].
+    Mirrors the TOML helper [`topmark.config.io.getters.get_int_value_or_none_checked`][].
     TODO mirror implementation in config/io.py
     """
     value: Any | None = args.get(key)
@@ -105,7 +105,7 @@ def get_arg_string_or_none_checked(
 ) -> str | None:
     """Return an optional string value, warning when present but not `str`.
 
-    Mirrors the TOML helper [`topmark.config.io.get_string_value_or_none_checked`][].
+    Mirrors the TOML helper [`topmark.config.io.getters.get_string_value_or_none_checked`][].
     """
     value: Any | None = args.get(key)
     if value is None:
@@ -127,7 +127,7 @@ def get_arg_string_list_checked(
 ) -> list[str]:
     """Return a list of strings for `key`, warning when present but not a list of strings.
 
-    Mirrors the TOML helper [`topmark.config.io.get_string_list_value_checked`][].
+    Mirrors the TOML helper [`topmark.config.io.getters.get_string_list_value_checked`][].
 
     Behavior:
         - Missing key / None -> []
@@ -183,7 +183,7 @@ def get_arg_enum_checked(
 ) -> E | None:
     """Parse an Enum value from ArgsLike.
 
-    Mirrors the TOML helper [`topmark.config.io.get_enum_value_checked`][].
+    Mirrors the TOML helper [`topmark.config.io.getters.get_enum_value_checked`][].
 
     Expected input is a `str` matching one of the Enum values.
 

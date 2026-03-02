@@ -12,7 +12,7 @@
 
 Exposes read-only views and optional mutation helpers for registered file
 types. Most users should prefer the stable facade
-[`topmark.registry.Registry`][topmark.registry.Registry]. This module is intended
+[`topmark.registry.registry.Registry `][topmark.registry.registry.Registry]. This module is intended
 for plugins and tests.
 
 Notes:
@@ -118,7 +118,7 @@ class FileTypeRegistry:
     @classmethod
     def supported_names(cls) -> tuple[str, ...]:
         """Return file type names that have a registered processor."""
-        from topmark.registry import HeaderProcessorRegistry as _HPReg
+        from topmark.registry.processors import HeaderProcessorRegistry as _HPReg
 
         with cls._lock:
             proc_names: set[str] = set(_HPReg.as_mapping().keys())
@@ -127,7 +127,7 @@ class FileTypeRegistry:
     @classmethod
     def unsupported_names(cls) -> tuple[str, ...]:
         """Return file type names that are recognized but unsupported."""
-        from topmark.registry import HeaderProcessorRegistry as _HPReg
+        from topmark.registry.processors import HeaderProcessorRegistry as _HPReg
 
         with cls._lock:
             all_names: set[str] = set(cls._compose().keys())
@@ -216,7 +216,7 @@ class FileTypeRegistry:
             - Thread safe via RLock; process-global state; do not mutate in long-lived
               multi-tenant processes.
         """
-        from topmark.registry import HeaderProcessorRegistry
+        from topmark.registry.processors import HeaderProcessorRegistry
 
         with cls._lock:
             name: str = ft_obj.name or ""

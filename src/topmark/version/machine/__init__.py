@@ -41,6 +41,6 @@ from __future__ import annotations
 
 from topmark.version.machine.serializers import serialize_version
 
-__all__ = [
+__all__: list[str] = [
     "serialize_version",
 ]

@@ -34,7 +34,7 @@ import pytest
 
 from tests.pipeline.conftest import materialize_updated_lines
 from tests.pipeline.conftest import run_insert
-from topmark.config import MutableConfig
+from topmark.config.model import MutableConfig
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
 from topmark.pipeline.processors.types import StripDiagKind
@@ -138,7 +138,7 @@ def test_strip_preserves_newline_style(
         fp.write(content)
 
     # Emulate strip pipeline: scanner -> stripper -> updater fast-path
-    from topmark.pipeline.processors import get_processor_for_file
+    from topmark.pipeline.processors.bootstrap import get_processor_for_file
 
     proc: HeaderProcessor | None = get_processor_for_file(f)
     assert proc is not None

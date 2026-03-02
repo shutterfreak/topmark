@@ -15,16 +15,16 @@ This module exposes structured, read-only oriented registries plus optional
 mutation hooks. It is part of the public API and provides stable, serializable
 metadata views without exposing internal implementation details.
 
-The [`topmark.registry.Registry`][] facade is the **stable public surface**
+The [`topmark.registry.registry.Registry `][] facade is the **stable public surface**
 for read-only operations; the concrete registries remain available for advanced scenarios
 and tests but are not part of the semver stability promise.
 
-A FileType can be recognized (present in [`topmark.registry.FileTypeRegistry`][])
+A FileType can be recognized (present in [`topmark.registry.filetypes.FileTypeRegistry`][])
 but unsupported (no processor registered).
 
 Typical usage:
     ```python
-    from topmark.registry import FileTypeRegistry, HeaderProcessorRegistry
+    from topmark.registry.filetypes import FileTypeRegistry, HeaderProcessorRegistry
 
     # Read-only introspection
     names = FileTypeRegistry.names()
@@ -52,10 +52,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from topmark.registry import FileTypeMeta
-from topmark.registry import FileTypeRegistry
-from topmark.registry import HeaderProcessorRegistry
-from topmark.registry import ProcessorMeta
+from topmark.registry.filetypes import FileTypeMeta
+from topmark.registry.filetypes import FileTypeRegistry
+from topmark.registry.processors import HeaderProcessorRegistry
+from topmark.registry.processors import ProcessorMeta
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -147,7 +147,7 @@ class Registry:
         """Register a file type and optionally bind a processor (advanced).
 
         This is a convenience passthrough to
-        [`FileTypeRegistry.register`][topmark.registry.FileTypeRegistry.register].
+        [`FileTypeRegistry.register`][topmark.registry.filetypes.FileTypeRegistry.register].
         Mutates global state; prefer using in tests or controlled plugin init.
         """
         return FileTypeRegistry.register(ft_obj, processor=processor)
@@ -162,7 +162,7 @@ class Registry:
         """Register a header processor under a file type name (advanced).
 
         Passthrough to
-        [`HeaderProcessorRegistry.register`][topmark.registry.HeaderProcessorRegistry.register].
+        [`HeaderProcessorRegistry.register`][topmark.registry.processors.HeaderProcessorRegistry.register].
         """
         return HeaderProcessorRegistry.register(name, processor_class)
 
@@ -179,6 +179,6 @@ class Registry:
         registry which self-registers. Exposed for callers that want to
         pre-warm the registry explicitly.
         """
-        from topmark.pipeline.processors import register_all_processors
+        from topmark.pipeline.processors.bootstrap import register_all_processors
 
         register_all_processors()

@@ -38,7 +38,7 @@ from topmark.cli.validators import validate_human_only_config_flags_for_machine_
 from topmark.cli_shared.emitters.markdown.config import emit_config_defaults_markdown
 from topmark.cli_shared.emitters.shared.config import ConfigDefaultsPrepared
 from topmark.cli_shared.emitters.shared.config import prepare_config_defaults
-from topmark.config import MutableConfig
+from topmark.config.model import MutableConfig
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
 

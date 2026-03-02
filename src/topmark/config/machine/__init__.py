@@ -44,7 +44,7 @@ from topmark.config.machine.serializers import serialize_config
 from topmark.config.machine.serializers import serialize_config_check
 from topmark.config.machine.serializers import serialize_config_diagnostics
 
-__all__ = [
+__all__: list[str] = [
     "serialize_config",
     "serialize_config_check",
     "serialize_config_diagnostics",

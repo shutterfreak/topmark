@@ -99,7 +99,7 @@ ______________________________________________________________________
 
 ## Diagnostics
 
-TopMark uses internal \[`Diagnostic`\][topmark.diagnostic.Diagnostic] objects to
+TopMark uses internal \[`Diagnostic`\][topmark.diagnostic.model.Diagnostic] objects to
 represent warnings and errors. For machine output:
 
 - **JSON** uses stable `{level, message}` entries within domain payloads (for

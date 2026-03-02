@@ -11,9 +11,9 @@
 """Utilities for resolving TopMark configuration from Click parameters.
 
 This module provides helpers to convert Click command-line parameters into a
-[`topmark.config.Config`][topmark.config.Config] object. It bridges CLI parsing and the core
-configuration system by building an ArgsNamespace and merging user, project,
-and default config sources.
+[`topmark.config.model.Config `][topmark.config.model.Config] object. It bridges CLI parsing and
+the core configuration system by building an ArgsNamespace and merging user, project, and default
+config sources.
 """
 
 from __future__ import annotations
@@ -22,8 +22,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from topmark.cli.cli_types import build_args_namespace
-from topmark.config import MutableConfig
 from topmark.config.logging import get_logger
+from topmark.config.model import MutableConfig
 from topmark.core.keys import ArgKey
 
 if TYPE_CHECKING:
@@ -59,7 +59,7 @@ def resolve_config_from_click(
     align_fields: bool | None,
     header_format: HeaderOutputFormat | None,
 ) -> MutableConfig:
-    """Build a [`Config`][topmark.config.Config] from Click parameters.
+    """Build a [`Config`][topmark.config.model.Config] from Click parameters.
 
     Resolves a layered configuration by merging multiple sources with clear
     precedence. Discovery is anchored to the **first input path** (its parent

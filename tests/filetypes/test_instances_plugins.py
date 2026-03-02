@@ -19,7 +19,7 @@ from typing import cast
 
 from topmark.filetypes.base import FileType
 from topmark.filetypes.instances import get_base_file_type_registry
-from topmark.registry import FileTypeRegistry
+from topmark.registry.filetypes import FileTypeRegistry
 
 if TYPE_CHECKING:
     from collections.abc import Mapping

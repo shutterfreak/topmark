@@ -24,7 +24,7 @@ from argparse import Namespace
 from pathlib import Path
 
 from topmark import api
-from topmark.registry import Registry
+from topmark.registry.registry import Registry
 
 
 def _sig(obj: typing.Any) -> str:

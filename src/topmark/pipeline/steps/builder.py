@@ -45,8 +45,8 @@ from topmark.pipeline.views import BuilderView
 from topmark.utils.file import compute_relpath
 
 if TYPE_CHECKING:
-    from topmark.config import Config
     from topmark.config.logging import TopmarkLogger
+    from topmark.config.model import Config
     from topmark.pipeline.context.model import ProcessingContext
 
 logger: TopmarkLogger = get_logger(__name__)

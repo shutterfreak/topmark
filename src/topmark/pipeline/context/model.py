@@ -58,8 +58,8 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-    from topmark.config import Config
     from topmark.config.logging import TopmarkLogger
+    from topmark.config.model import Config
     from topmark.config.policy import Policy
     from topmark.config.policy import PolicyRegistry
     from topmark.filetypes.base import FileType
@@ -68,11 +68,6 @@ if TYPE_CHECKING:
 
 
 logger: TopmarkLogger = get_logger(__name__)
-
-__all__: list[str] = [
-    "HaltState",
-    "ProcessingContext",
-]
 
 
 @dataclass(frozen=True)

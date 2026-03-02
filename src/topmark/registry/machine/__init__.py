@@ -38,11 +38,10 @@ The design follows TopMark’s general machine-output layering:
 This package intentionally does not depend on Click and does not print to the console.
 
 Notes:
-    This package intentionally re-exports only the shared serializer façade
-    (`serialize_filetypes`, `serialize_processors`).
-    Typed payload schemas, payloads and shapes remain available from
+    Typed payload schemas, payloads, shapes and serializers are available from
     [`topmark.registry.machine.schemas`][topmark.registry.machine.schemas],
-    [`topmark.registry.machine.payloads`][topmark.registry.machine.payloads] and
+    [`topmark.registry.machine.payloads`][topmark.registry.machine.payloads],
+    [`topmark.registry.machine.shapes`][topmark.registry.machine.shapes], and
     [`topmark.registry.machine.shapes`][topmark.registry.machine.shapes],
     so callers can be explicit about which layer they depend on.
 
@@ -56,7 +55,7 @@ from __future__ import annotations
 from topmark.registry.machine.serializers import serialize_filetypes
 from topmark.registry.machine.serializers import serialize_processors
 
-__all__ = [
+__all__: list[str] = [
     "serialize_filetypes",
     "serialize_processors",
 ]

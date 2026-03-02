@@ -67,7 +67,7 @@ configuration.
 ### Registries and extensibility (read-only by default)
 
 TopMark exposes **read-only** registries for file types and header processors via the stable
-facade in \[`topmark.registry.Registry`\][topmark.registry.Registry]. These registries represent the **effective composed
+facade in \[`topmark.registry.registry .Registry`\][topmark.registry.registry.Registry]. These registries represent the **effective composed
 view** (base built-ins + entry points + overlays − removals) and are returned as immutable
 `Mapping` views (backed by `MappingProxyType`).
 
@@ -77,10 +77,10 @@ Most users should interact with registries through this facade and treat them as
 If you need dynamic extensions at runtime (typically in plugins or tests), use the
 **advanced registries** in \[`topmark.registry`\][topmark.registry] directly:
 
-- `topmark.registry.FileTypeRegistry.register(ft, processor=processor_class)`
-- `topmark.registry.FileTypeRegistry.unregister(name)`
-- `topmark.registry.HeaderProcessorRegistry.register(name, processor_class)`
-- `topmark.registry.HeaderProcessorRegistry.unregister(name)`
+- [`topmark.registry.filetypes.FileTypeRegistry.register(ft, processor=processor_class)`][topmark.registry.filetypes.FileTypeRegistry.register]
+- [`topmark.registry.filetypes.FileTypeRegistry.unregister(name)`][topmark.registry.filetypes.FileTypeRegistry.register]
+- [`topmark.registry.processors.HeaderProcessorRegistry.register(name, processor_class)`][topmark.registry.processors.HeaderProcessorRegistry.register]
+- [`topmark.registry.processors.HeaderProcessorRegistry.unregister(name)`][topmark.registry.processors.HeaderProcessorRegistry]
 
 These mutation helpers apply **overlay-only changes**: they do not mutate the internal base
 registries (built-ins + entry points). Overlays are process-local and thread-safe (via an

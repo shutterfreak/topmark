@@ -25,14 +25,14 @@ import topmark.file_resolver as file_resolver_mod
 # Import the module under test
 from tests.conftest import make_config
 from tests.conftest import make_file_type
-from topmark.registry import FileTypeRegistry
+from topmark.registry.filetypes import FileTypeRegistry
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     import pytest
 
-    from topmark.config import Config
+    from topmark.config.model import Config
     from topmark.filetypes.base import FileType
 
 

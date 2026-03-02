@@ -19,8 +19,8 @@ registry overlays and composed-view caches between tests.
 Notes:
     Tests should respect the immutable/mutable configuration split:
 
-    - Build configs using `topmark.config.MutableConfig` (mutable), then
-      `freeze()` into a `topmark.config.Config` for **public API**
+    - Build configs using `topmark.config.model.MutableConfig ` (mutable), then
+      `freeze()` into a `topmark.config.model.Config ` for **public API**
       calls (``topmark.api.check/strip``).
     - Do **not** mutate a frozen `Config`. If you need to tweak one,
       call `Config.thaw()`, edit the returned `MutableConfig`,
@@ -46,15 +46,15 @@ from typing import cast
 
 import pytest
 
-from topmark.config import MutableConfig
-from topmark.config import PatternSource
 from topmark.config import logging
+from topmark.config.model import MutableConfig
+from topmark.config.types import PatternSource
 from topmark.filetypes.base import ContentGate
 from topmark.filetypes.base import FileType
 from topmark.pipeline.processors.base import HeaderProcessor
 
 if TYPE_CHECKING:
-    from topmark.config import Config
+    from topmark.config.model import Config
 
 AnyCallable = Callable[..., object]
 DecoratorType = Callable[[AnyCallable], AnyCallable]
@@ -144,9 +144,9 @@ def reset_registry_overlays() -> Iterator[None]:
     Yields:
         None: Control is yielded to the test while registries are isolated.
     """
-    from topmark.registry import FileTypeRegistry
-    from topmark.registry import HeaderProcessorRegistry
     from topmark.registry import processors as _processors_mod
+    from topmark.registry.filetypes import FileTypeRegistry
+    from topmark.registry.processors import HeaderProcessorRegistry
 
     def _reset() -> None:
         # Silence Pyright regarding use of private members:
@@ -450,8 +450,8 @@ def patched_effective_registries(
         None: This context manager yields control to the caller while the effective
         registries are patched.
     """
-    from topmark.registry import FileTypeRegistry
-    from topmark.registry import HeaderProcessorRegistry
+    from topmark.registry.filetypes import FileTypeRegistry
+    from topmark.registry.processors import HeaderProcessorRegistry
 
     # Silence Pyright regarding use of private members:
     ft_reg = cast("Any", FileTypeRegistry)

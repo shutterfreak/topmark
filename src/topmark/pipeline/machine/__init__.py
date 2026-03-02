@@ -47,6 +47,6 @@ from __future__ import annotations
 
 from topmark.pipeline.machine.serializers import serialize_processing_results
 
-__all__ = [
+__all__: list[str] = [
     "serialize_processing_results",
 ]

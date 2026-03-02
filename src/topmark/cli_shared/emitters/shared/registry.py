@@ -34,7 +34,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from topmark.registry import FileTypeRegistry
+from topmark.registry.filetypes import FileTypeRegistry
 from topmark.utils.introspection import format_callable_pretty
 
 if TYPE_CHECKING:
@@ -174,7 +174,7 @@ def build_processors_human_report(
     """
     from collections import defaultdict
 
-    from topmark.registry import HeaderProcessorRegistry
+    from topmark.registry.processors import HeaderProcessorRegistry
 
     ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
     hp_registry: Mapping[str, HeaderProcessor] = HeaderProcessorRegistry.as_mapping()

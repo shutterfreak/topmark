@@ -33,8 +33,8 @@ from typing import Any
 
 import pytest
 
-from topmark.config import Config
-from topmark.config import MutableConfig
+from topmark.config.model import Config
+from topmark.config.model import MutableConfig
 from topmark.config.policy import MutablePolicy
 from topmark.config.policy import Policy
 from topmark.config.policy import effective_policy

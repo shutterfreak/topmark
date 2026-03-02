@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 
     from topmark.cli.io import InputPlan
     from topmark.cli_shared.console_api import ConsoleLike
-    from topmark.config import Config
+    from topmark.config.model import Config
     from topmark.config.model import MutableConfig
     from topmark.core.exit_codes import ExitCode
     from topmark.rendering.formats import HeaderOutputFormat

@@ -51,8 +51,8 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-    from topmark.config import Config
     from topmark.config.logging import TopmarkLogger
+    from topmark.config.model import Config
     from topmark.pipeline.protocols import Step
 
 logger: TopmarkLogger = get_logger(__name__)

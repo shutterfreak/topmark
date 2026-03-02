@@ -29,8 +29,8 @@ from topmark.filetypes.base import FileType
 from topmark.pipeline.processors.base import HeaderProcessor
 from topmark.pipeline.processors.types import BoundsKind
 from topmark.pipeline.processors.types import HeaderBounds
-from topmark.registry import FileTypeRegistry
-from topmark.registry import HeaderProcessorRegistry
+from topmark.registry.filetypes import FileTypeRegistry
+from topmark.registry.processors import HeaderProcessorRegistry
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -48,7 +48,7 @@ def cfg(**overrides: Any) -> dict[str, Any]:
     This helper intentionally returns a plain dictionary shaped like the
     TOML structure (e.g., the ``[files]`` table). It is used to exercise the
     public API branch where callers pass a *mapping* instead of a fully
-    constructed [`Config`][topmark.config.Config].
+    constructed [`Config`][topmark.config.model.Config].
 
     Notes:
         * Only a tiny base is provided (``files.include_file_types = ["python"]``) so tests

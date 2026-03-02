@@ -32,8 +32,8 @@ from typing import TYPE_CHECKING
 from topmark.cli_shared.emitters.shared.diagnostic import HumanDiagnosticCounts
 from topmark.cli_shared.emitters.shared.diagnostic import HumanDiagnosticLine
 from topmark.cli_shared.emitters.shared.diagnostic import prepare_human_diagnostics
-from topmark.config.io import to_toml
 from topmark.config.io.loaders import load_default_config_template_toml_text
+from topmark.config.io.render import to_toml
 from topmark.config.io.surgery import set_root_flag
 from topmark.config.io.template_surgery import TemplateEditResult
 from topmark.config.io.template_surgery import ensure_pyproject_header

@@ -28,10 +28,10 @@ from tests.pipeline.conftest import expected_block_lines_for
 from tests.pipeline.conftest import find_line
 from tests.pipeline.conftest import materialize_updated_lines
 from tests.pipeline.conftest import run_insert
-from topmark.config import Config
-from topmark.config import MutableConfig
 from topmark.config.logging import TopmarkLogger
 from topmark.config.logging import get_logger
+from topmark.config.model import Config
+from topmark.config.model import MutableConfig
 from topmark.config.policy import PolicyRegistry
 from topmark.config.policy import make_policy_registry
 from topmark.constants import TOPMARK_END_MARKER
@@ -804,7 +804,7 @@ def test_strip_header_block_with_and_without_span_preserves_shebang(tmp_path: Pa
       * The entire TopMark header block is removed.
       * The returned span matches the actual header location.
     """
-    from topmark.pipeline.processors import get_processor_for_file
+    from topmark.pipeline.processors.bootstrap import get_processor_for_file
 
     file: Path = tmp_path / "strip_shebang.py"
     file.write_text(

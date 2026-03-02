@@ -27,8 +27,8 @@ from tests.pipeline.conftest import run_comparer
 from tests.pipeline.conftest import run_reader
 from tests.pipeline.conftest import run_resolver
 from tests.pipeline.conftest import run_scanner
-from topmark.config import Config
-from topmark.config import MutableConfig
+from topmark.config.model import Config
+from topmark.config.model import MutableConfig
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
 from topmark.filetypes.base import FileType

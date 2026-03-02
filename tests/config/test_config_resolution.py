@@ -26,15 +26,15 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from topmark.config import MutableConfig
-from topmark.config import PatternSource
 from topmark.config.keys import Toml
+from topmark.config.model import MutableConfig
 from topmark.file_resolver import resolve_file_list
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.config.model import Config
+    from topmark.config.types import PatternSource
 
 
 def _write(path: Path, content: str) -> None:

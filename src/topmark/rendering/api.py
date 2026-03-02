@@ -23,7 +23,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import TYPE_CHECKING
 
-from topmark.config import Config
+from topmark.config.model import Config
 from topmark.config.policy import PolicyRegistry
 from topmark.config.policy import make_policy_registry
 from topmark.pipeline import runner
@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-    from topmark.config import Config
+    from topmark.config.model import Config
     from topmark.pipeline.protocols import Step
     from topmark.pipeline.views import RenderView
 

@@ -23,8 +23,8 @@ from tests.pipeline.conftest import expected_block_lines_for
 from tests.pipeline.conftest import find_line
 from tests.pipeline.conftest import materialize_updated_lines
 from tests.pipeline.conftest import run_insert
-from topmark.config import Config
-from topmark.config import MutableConfig
+from topmark.config.model import Config
+from topmark.config.model import MutableConfig
 from topmark.constants import TOPMARK_START_MARKER
 
 if TYPE_CHECKING:

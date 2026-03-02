@@ -34,8 +34,8 @@ from topmark.pipeline.hints import KnownCode
 from topmark.pipeline.processors.base import HeaderProcessor
 from topmark.pipeline.status import ResolveStatus
 from topmark.pipeline.steps.base import BaseStep
-from topmark.registry import FileTypeRegistry
-from topmark.registry import HeaderProcessorRegistry
+from topmark.registry.filetypes import FileTypeRegistry
+from topmark.registry.processors import HeaderProcessorRegistry
 
 if TYPE_CHECKING:
     from collections.abc import Callable

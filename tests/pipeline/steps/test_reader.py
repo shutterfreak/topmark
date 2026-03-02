@@ -36,8 +36,8 @@ from tests.pipeline.conftest import materialize_image_lines
 from tests.pipeline.conftest import run_reader
 from tests.pipeline.conftest import run_resolver
 from tests.pipeline.conftest import run_sniffer
-from topmark.config import Config
-from topmark.config import MutableConfig
+from topmark.config.model import Config
+from topmark.config.model import MutableConfig
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
 from topmark.pipeline.status import ContentStatus

@@ -37,6 +37,6 @@ from topmark.diagnostic.machine.shapes import iter_diagnostic_ndjson_records
 
 # Keep schemas import paths explicit (e.g. "...machine.schemas") to preserve layer intent.
 
-__all__ = [
+__all__: list[str] = [
     "iter_diagnostic_ndjson_records",
 ]

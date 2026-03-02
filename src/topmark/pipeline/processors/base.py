@@ -52,8 +52,8 @@ from topmark.rendering.formats import HeaderOutputFormat
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from topmark.config import Config
     from topmark.config.logging import TopmarkLogger
+    from topmark.config.model import Config
     from topmark.filetypes.base import FileType
     from topmark.filetypes.policy import FileTypeHeaderPolicy
     from topmark.pipeline.context.model import ProcessingContext

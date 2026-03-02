@@ -31,7 +31,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.registry import FileTypeRegistry
+from topmark.registry.filetypes import FileTypeRegistry
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -141,7 +141,7 @@ def build_processors_payload(*, show_details: bool) -> ProcessorsPayload:
     """
     from collections import defaultdict
 
-    from topmark.registry import HeaderProcessorRegistry
+    from topmark.registry.processors import HeaderProcessorRegistry
 
     ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
     hp_registry: Mapping[str, HeaderProcessor] = HeaderProcessorRegistry.as_mapping()

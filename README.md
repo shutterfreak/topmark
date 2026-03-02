@@ -320,7 +320,7 @@ api.strip([Path("src")], apply=True)
 For programmatic discovery:
 
 ```python
-from topmark.registry import Registry
+from topmark.registry.registry  import Registry
 
 for ft, proc in Registry.bindings():
     print(ft.name, bool(proc))

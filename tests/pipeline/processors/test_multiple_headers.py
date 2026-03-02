@@ -25,11 +25,11 @@ from typing import TYPE_CHECKING
 
 from tests.pipeline.conftest import materialize_updated_lines
 from tests.pipeline.conftest import run_insert
-from topmark.config import Config
-from topmark.config import MutableConfig
+from topmark.config.model import Config
+from topmark.config.model import MutableConfig
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
-from topmark.pipeline.processors import get_processor_for_file
+from topmark.pipeline.processors.bootstrap import get_processor_for_file
 from topmark.pipeline.processors.types import StripDiagKind
 from topmark.pipeline.processors.types import StripDiagnostic
 

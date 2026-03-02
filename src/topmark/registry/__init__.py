@@ -12,15 +12,15 @@
 
 This package exposes:
 
-* [`topmark.registry.Registry`][] – the **stable, read-only facade** for integrators.
-* [`topmark.registry.FileTypeRegistry`][] and
-  [`topmark.registry.HeaderProcessorRegistry`][] – advanced,
+* [`topmark.registry.registry.Registry `][] – the **stable, read-only facade** for integrators.
+* [`topmark.registry.filetypes.FileTypeRegistry`][] and
+  [`topmark.registry.processors.HeaderProcessorRegistry`][] – advanced,
   low-level registries intended for plugins and tests (no semver stability guarantee).
 
 Most users should import from here:
 
 ```python
-from topmark.registry import Registry
+from topmark.registry.registry  import Registry
 fts = Registry.filetypes()
 procs = Registry.processors()
 ```
@@ -28,28 +28,10 @@ procs = Registry.processors()
 Advanced usage (mutation; global state):
 
 ```python
-from topmark.registry import FileTypeRegistry, HeaderProcessorRegistry
+from topmark.registry.filetypes import FileTypeRegistry, HeaderProcessorRegistry
 FileTypeRegistry.register(my_ft)
 HeaderProcessorRegistry.register(my_ft.name, MyProc)
 ```
 """
 
 from __future__ import annotations
-
-from .filetypes import FileTypeMeta
-from .filetypes import FileTypeRegistry
-from .processors import HeaderProcessorRegistry
-from .processors import ProcessorMeta
-from .registry import Binding
-from .registry import Registry
-from .registry import iter_bindings
-
-__all__: list[str] = [
-    "Binding",
-    "FileTypeMeta",
-    "FileTypeRegistry",
-    "HeaderProcessorRegistry",
-    "ProcessorMeta",
-    "Registry",
-    "iter_bindings",
-]

@@ -33,8 +33,8 @@ from tests.pipeline.conftest import expected_block_lines_for
 from tests.pipeline.conftest import find_line
 from tests.pipeline.conftest import materialize_updated_lines
 from tests.pipeline.conftest import run_insert
-from topmark.config import Config
-from topmark.config import MutableConfig
+from topmark.config.model import Config
+from topmark.config.model import MutableConfig
 from topmark.config.policy import PolicyRegistry
 from topmark.config.policy import make_policy_registry
 from topmark.constants import TOPMARK_END_MARKER
@@ -218,7 +218,7 @@ def test_cblock_crlf_preserves_newlines(tmp_path: Path) -> None:
 @mark_pipeline
 def test_cblock_strip_header_block_with_and_without_span(tmp_path: Path) -> None:
     """`strip_header_block` removes the block with or without explicit bounds."""
-    from topmark.pipeline.processors import get_processor_for_file
+    from topmark.pipeline.processors.bootstrap import get_processor_for_file
 
     file: Path = tmp_path / "strip_me.css"
     file.write_text(
@@ -276,7 +276,7 @@ def test_cblock_banner_comment_after_header(tmp_path: Path) -> None:
 @mark_pipeline
 def test_cblock_strip_header_block_generated(tmp_path: Path) -> None:
     """strip_header_block removes a canonical TopMark C-block header."""
-    from topmark.pipeline.processors import get_processor_for_file
+    from topmark.pipeline.processors.bootstrap import get_processor_for_file
 
     file: Path = tmp_path / "strip_me.css"
     file.write_text("html{font-size:16px}\n")
@@ -310,7 +310,7 @@ def test_cblock_not_at_top_insertion_single_leading_blank(tmp_path: Path) -> Non
     remain *before* the TopMark header block. The processor should inject one
     blank line between that line and the header preamble.
     """
-    from topmark.pipeline.processors import get_processor_for_file
+    from topmark.pipeline.processors.bootstrap import get_processor_for_file
 
     # Use a non-CSS extension that still maps to the CBlockHeaderProcessor
     file: Path = tmp_path / "not_top.sql"

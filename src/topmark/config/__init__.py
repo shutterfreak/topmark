@@ -24,7 +24,7 @@ Higher-level concerns (file discovery, TOML parsing/serialization, multi-layer
 load/merge) may live in dedicated modules (``loader.py``, ``discovery.py``)
 and be re-exported here, keeping callers stable:
 
->>> from topmark.config import Config, MutableConfig, PatternSource
+>>> from topmark.config.model import Config, MutableConfig, PatternSource
 
 Path resolution policy (summary):
 * Globs in config files → resolved relative to the config file directory.
@@ -34,17 +34,3 @@ Path resolution policy (summary):
 """
 
 from __future__ import annotations
-
-from .model import Config
-from .model import MutableConfig
-from .model import sanitize_config
-from .types import ArgsLike
-from .types import PatternSource
-
-__all__: list[str] = [
-    "ArgsLike",
-    "Config",
-    "MutableConfig",
-    "PatternSource",
-    "sanitize_config",
-]

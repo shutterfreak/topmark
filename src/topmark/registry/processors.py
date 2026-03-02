@@ -12,7 +12,7 @@
 
 Exposes read-only views and optional mutation helpers for registered header
 processors. Most users should prefer the stable facade
-[`topmark.registry.Registry`][topmark.registry.Registry]. This module is intended
+[`topmark.registry.registry.Registry `][topmark.registry.registry.Registry]. This module is intended
 for plugins and tests.
 
 Notes:
@@ -39,7 +39,7 @@ from typing import Final
 from topmark.filetypes.base import FileType
 from topmark.pipeline.processors.base import NO_LINE_ANCHOR
 from topmark.pipeline.processors.xml import XmlHeaderProcessor
-from topmark.registry import FileTypeRegistry
+from topmark.registry.filetypes import FileTypeRegistry
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -135,7 +135,7 @@ class HeaderProcessorRegistry:
             return dict(cached)
 
         from topmark.filetypes.registry import get_base_header_processor_registry as _get
-        from topmark.pipeline.processors import register_all_processors
+        from topmark.pipeline.processors.bootstrap import register_all_processors
 
         register_all_processors()
         # _get() returns the base decorator-populated processor registry.
@@ -241,7 +241,7 @@ class HeaderProcessorRegistry:
         """
         with cls._lock:
             # Resolve FileType from the composed registry (includes local overrides).
-            from topmark.registry import FileTypeRegistry as _FTReg
+            from topmark.registry.filetypes import FileTypeRegistry as _FTReg
 
             ft_obj: FileType | None = _FTReg.get(name)
             if ft_obj is None:

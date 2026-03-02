@@ -40,10 +40,10 @@ from topmark.cli.validators import apply_ignore_positional_paths_policy
 from topmark.cli_shared.emitters.markdown.config import emit_config_check_markdown
 from topmark.cli_shared.emitters.shared.config import ConfigCheckPrepared
 from topmark.cli_shared.emitters.shared.config import prepare_config_check
-from topmark.config import Config
-from topmark.config import MutableConfig
 from topmark.config.logging import get_logger
 from topmark.config.machine.payloads import build_config_diagnostics_payload
+from topmark.config.model import Config
+from topmark.config.model import MutableConfig
 from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey

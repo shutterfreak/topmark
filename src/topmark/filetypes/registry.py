@@ -58,7 +58,7 @@ def register_filetype(
         ValueError: If the file type name is unknown or already registered.
     """
     # Validate against the *effective* registry (composed base + overlays).
-    from topmark.registry import FileTypeRegistry
+    from topmark.registry.filetypes import FileTypeRegistry
 
     ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
     if name not in ft_registry:

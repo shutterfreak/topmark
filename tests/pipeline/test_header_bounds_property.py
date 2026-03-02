@@ -32,8 +32,8 @@ from tests.pipeline.conftest import materialize_updated_lines
 from tests.pipeline.conftest import run_insert
 from tests.pipeline.conftest import run_strip
 from tests.strategies_topmark import s_source_envelope_for_ext
-from topmark.config import Config
-from topmark.config import MutableConfig
+from topmark.config.model import Config
+from topmark.config.model import MutableConfig
 from topmark.constants import TOPMARK_START_MARKER
 
 if TYPE_CHECKING:

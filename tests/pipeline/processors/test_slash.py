@@ -31,10 +31,10 @@ from tests.pipeline.conftest import find_line
 from tests.pipeline.conftest import materialize_updated_lines
 from tests.pipeline.conftest import run_insert
 from tests.pipeline.conftest import run_writer
-from topmark.config import Config
-from topmark.config import MutableConfig
 from topmark.config.logging import TopmarkLogger
 from topmark.config.logging import get_logger
+from topmark.config.model import Config
+from topmark.config.model import MutableConfig
 from topmark.config.policy import PolicyRegistry
 from topmark.config.policy import make_policy_registry
 from topmark.constants import TOPMARK_END_MARKER
@@ -247,7 +247,7 @@ def test_slash_strip_header_block_with_and_without_span(tmp_path: Path) -> None:
     Validates both the explicit-span path and the auto-detection fallback and
     ensures the resulting content is identical across both paths.
     """
-    from topmark.pipeline.processors import get_processor_for_file
+    from topmark.pipeline.processors.bootstrap import get_processor_for_file
 
     file: Path = tmp_path / "strip_me.js"
     file.write_text(

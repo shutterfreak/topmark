@@ -41,7 +41,7 @@ from topmark.pipeline.steps.sniffer import SnifferStep
 from topmark.pipeline.views import UpdatedView
 
 if TYPE_CHECKING:
-    from topmark.config import Config
+    from topmark.config.model import Config
     from topmark.pipeline.context.model import ProcessingContext
 
 # --- File fixtures ---------------------------------------------------------

@@ -28,15 +28,15 @@ from typing import TYPE_CHECKING
 from typing import Any
 from typing import Literal
 
-from topmark.config import Config
-from topmark.config import MutableConfig
 from topmark.config.logging import get_logger
+from topmark.config.model import Config
+from topmark.config.model import MutableConfig
 from topmark.config.policy import MutablePolicy
 from topmark.constants import TOPMARK_VERSION
 from topmark.file_resolver import resolve_file_list
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.pipelines import Pipeline
-from topmark.registry import Registry
+from topmark.registry.registry import Registry
 
 if TYPE_CHECKING:
     from collections.abc import Iterable

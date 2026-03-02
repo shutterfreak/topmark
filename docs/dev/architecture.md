@@ -68,8 +68,8 @@ graph TD
     BHP["<b>Base HeaderProcessor registry</b><br/><code>topmark.filetypes.registry.get_base_header_processor_registry()</code><br/><br/>• built-ins + entry points<br/>• discovered once<br/>• cached (LRU / process lifetime)<br/>• never mutated"]
 
     %% Overlay state (process-local)
-    OFT["<b>FileTypeRegistry overlays</b><br/><code>topmark.registry.FileTypeRegistry</code><br/><br/>• additions: <code>register()</code><br/>• removals: <code>unregister()</code><br/>• process-local<br/>• thread-safe"]
-    OHP["<b>HeaderProcessorRegistry overlays</b><br/><code>topmark.registry.HeaderProcessorRegistry</code><br/><br/>• additions: <code>register()</code><br/>• removals: <code>unregister()</code><br/>• process-local<br/>• thread-safe"]
+    OFT["<b>FileTypeRegistry overlays</b><br/><code>topmark.registry.filetypes.FileTypeRegistry</code><br/><br/>• additions: <code>register()</code><br/>• removals: <code>unregister()</code><br/>• process-local<br/>• thread-safe"]
+    OHP["<b>HeaderProcessorRegistry overlays</b><br/><code>topmark.registry.processors.HeaderProcessorRegistry</code><br/><br/>• additions: <code>register()</code><br/>• removals: <code>unregister()</code><br/>• process-local<br/>• thread-safe"]
 
     %% Composed effective views
     EFT["<b>Effective FileType view</b><br/><code>FileTypeRegistry.as_mapping()</code><br/><br/><i>= base + overlays − removals</i><br/>• cached composed view<br/>• exposed as <code>MappingProxyType</code>"]
@@ -94,7 +94,7 @@ graph TD
 
 #### Stable Facade (Public API)
 
-- \[`topmark.registry.Registry`\][topmark.registry.Registry]
+- \[`topmark.registry.registry.Registry `\][topmark.registry.registry.Registry]
 
 This facade exposes **read-only views** of the *effective* registries and is the
 recommended integration point for tooling and downstream consumers.
@@ -107,8 +107,8 @@ Characteristics:
 
 #### Advanced Registries (Internal / Power-User API)
 
-- \[`topmark.registry.FileTypeRegistry`\][topmark.registry.FileTypeRegistry]
-- \[`topmark.registry.HeaderProcessorRegistry`\][topmark.registry.HeaderProcessorRegistry]
+- \[`topmark.registry.filetypes.FileTypeRegistry`\][topmark.registry.filetypes.FileTypeRegistry]
+- \[`topmark.registry.processors.HeaderProcessorRegistry`\][topmark.registry.processors.HeaderProcessorRegistry]
 
 These classes provide **overlay mutation helpers**:
 

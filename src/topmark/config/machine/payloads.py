@@ -40,7 +40,7 @@ from topmark.diagnostic.model import DiagnosticStats
 from topmark.diagnostic.model import compute_diagnostic_stats
 
 if TYPE_CHECKING:
-    from topmark.config.io import TomlTable
+    from topmark.config.io.types import TomlTable
     from topmark.config.model import Config
 
 

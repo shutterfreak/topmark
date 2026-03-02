@@ -36,7 +36,7 @@ from topmark.cli.keys import CliOpt
 # --- We use a module import here instead of relative import
 from topmark.config.logging import get_logger
 from topmark.core.keys import ArgKey
-from topmark.pipeline.processors import register_all_processors
+from topmark.pipeline.processors.bootstrap import register_all_processors
 from topmark.utils.version import check_python_version
 
 if TYPE_CHECKING:

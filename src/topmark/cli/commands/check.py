@@ -90,9 +90,9 @@ if TYPE_CHECKING:
     from topmark.cli.io import InputPlan
     from topmark.cli_shared.color import ColorMode
     from topmark.cli_shared.console_api import ConsoleLike
-    from topmark.config import Config
-    from topmark.config import MutableConfig
     from topmark.config.logging import TopmarkLogger
+    from topmark.config.model import Config
+    from topmark.config.model import MutableConfig
     from topmark.core.machine.schemas import MetaPayload
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.protocols import Step

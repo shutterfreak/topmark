@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 
     from topmark.cli_shared.console_api import ConsoleLike
     from topmark.cli_shared.emitters.shared.config import HumanDiagnosticLine
-    from topmark.config import Config
+    from topmark.config.model import Config
 
 
 def render_human_diagnostics_text(

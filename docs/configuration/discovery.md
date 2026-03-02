@@ -186,7 +186,7 @@ ______________________________________________________________________
 ## See also
 
 - Default configuration: `src/topmark/config/topmark-default.toml`
-- Implementation: \[`MutableConfig.load_merged()`\][topmark.config.MutableConfig.load_merged]
+- Implementation: \[`MutableConfig.load_merged()`\][topmark.config.model.MutableConfig.load_merged]
   and \[`effective_policy()`\][topmark.config.policy.effective_policy]
   in \[`topmark.config.model`\][topmark.config.model]
 - Related doc: `README.md`

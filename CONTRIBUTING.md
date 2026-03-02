@@ -324,7 +324,7 @@ TopMark uses **Semantic Versioning (SemVer)**:
 - `feat:` → minor
 - `feat!:` or `BREAKING CHANGE:` → major
 
-Stable API: `topmark.api` and `topmark.registry.Registry`\
+Stable API: `topmark.api` and `topmark.registry.registry.Registry `\
 Advanced/internal APIs may change between minor versions.
 
 Before release:

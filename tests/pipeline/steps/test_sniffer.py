@@ -31,8 +31,8 @@ import pytest
 from tests.pipeline.conftest import make_pipeline_context
 from tests.pipeline.conftest import run_resolver
 from tests.pipeline.conftest import run_sniffer
-from topmark.config import Config
-from topmark.config import MutableConfig
+from topmark.config.model import Config
+from topmark.config.model import MutableConfig
 from topmark.pipeline.status import FsStatus
 from topmark.pipeline.steps.sniffer import inspect_bom_shebang
 

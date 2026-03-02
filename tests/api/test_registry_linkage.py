@@ -29,8 +29,8 @@ import pytest
 from tests.api.conftest import stub_ft
 from tests.api.conftest import stub_proc_cls
 from topmark.pipeline.processors.base import HeaderProcessor
-from topmark.registry import FileTypeRegistry
-from topmark.registry import HeaderProcessorRegistry
+from topmark.registry.filetypes import FileTypeRegistry
+from topmark.registry.processors import HeaderProcessorRegistry
 
 if TYPE_CHECKING:
     from topmark.filetypes.base import FileType
