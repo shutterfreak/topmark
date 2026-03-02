@@ -43,11 +43,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from typing import Any
+from typing import Protocol
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
-
-    from topmark.config.model import Config
 
 
 @dataclass(frozen=True, slots=True)
@@ -237,6 +236,35 @@ class MutablePolicy:
         return out
 
 
+class HasPolicyConfig(Protocol):
+    """Read-only view of resolved policy configuration.
+
+    This protocol captures the *minimum* surface required by helpers like
+    `make_policy_registry` and `effective_policy`.
+
+    It intentionally avoids importing the concrete
+    [`Config`][topmark.config.model.Config] / [`MutableConfig`][topmark.config.model.MutableConfig]
+    classes to prevent type-check-time import cycles.
+
+    Implementations are expected to expose *resolved* runtime policies:
+      - `policy` is a fully resolved `Policy` (plain booleans)
+      - `policy_by_type` maps file-type identifiers to resolved `Policy` overrides
+
+    Attributes are defined as read-only properties so both frozen `Config` and
+    mutable builders can satisfy the protocol.
+    """
+
+    @property
+    def policy(self) -> Policy:
+        """Mutable or immutable policy."""
+        ...
+
+    @property
+    def policy_by_type(self) -> Mapping[str, Policy]:
+        """Mutable or immutable policy_by_type."""
+        ...
+
+
 @dataclass(frozen=True, slots=True)
 class PolicyRegistry:
     """Immutable registry of effective policies per file type.
@@ -262,15 +290,15 @@ class PolicyRegistry:
         return self.by_type.get(name, self.global_policy)
 
 
-def make_policy_registry(config: Config) -> PolicyRegistry:
-    """Build a PolicyRegistry from a resolved Config."""
+def make_policy_registry(config: HasPolicyConfig) -> PolicyRegistry:
+    """Build a PolicyRegistry from a resolved Config-like object."""
     return PolicyRegistry(
         global_policy=config.policy,
         by_type=config.policy_by_type,
     )
 
 
-def effective_policy(cfg: Config, file_type_id: str | None) -> Policy:
+def effective_policy(cfg: HasPolicyConfig, file_type_id: str | None) -> Policy:
     r"""Return the effective policy for a given file type.
 
     Per-type overrides take precedence over the global policy. If ``file_type_id``
