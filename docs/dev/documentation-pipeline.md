@@ -131,7 +131,7 @@ Both handwritten Markdown **and Python module docstrings** are scanned for
 **unlinked backticked symbol references**, such as:
 
 ```markdown
-`topmark.registry.registry.Registry `
+`topmark.registry.registry.Registry`
 ```
 
 Docstring scanning is performed on raw Python source files before `mkdocstrings` renders them into Markdown,

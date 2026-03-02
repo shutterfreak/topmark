@@ -15,7 +15,7 @@ This module exposes structured, read-only oriented registries plus optional
 mutation hooks. It is part of the public API and provides stable, serializable
 metadata views without exposing internal implementation details.
 
-The [`topmark.registry.registry.Registry `][] facade is the **stable public surface**
+The [`topmark.registry.registry.Registry`][] facade is the **stable public surface**
 for read-only operations; the concrete registries remain available for advanced scenarios
 and tests but are not part of the semver stability promise.
 

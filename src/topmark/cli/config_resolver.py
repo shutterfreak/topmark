@@ -11,7 +11,7 @@
 """Utilities for resolving TopMark configuration from Click parameters.
 
 This module provides helpers to convert Click command-line parameters into a
-[`topmark.config.model.Config `][topmark.config.model.Config] object. It bridges CLI parsing and
+[`topmark.config.model.Config`][topmark.config.model.Config] object. It bridges CLI parsing and
 the core configuration system by building an ArgsNamespace and merging user, project, and default
 config sources.
 """

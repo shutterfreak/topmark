@@ -94,7 +94,7 @@ graph TD
 
 #### Stable Facade (Public API)
 
-- \[`topmark.registry.registry.Registry `\][topmark.registry.registry.Registry]
+- \[`topmark.registry.registry.Registry`\][topmark.registry.registry.Registry]
 
 This facade exposes **read-only views** of the *effective* registries and is the
 recommended integration point for tooling and downstream consumers.

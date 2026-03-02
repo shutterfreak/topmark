@@ -39,9 +39,9 @@ Notes:
 Configuration contract
 ----------------------
 - Public functions accept either a plain **mapping** (mirroring the TOML shape) or a frozen
-  [`topmark.config.model.Config `][]. We normalize/merge internally and run the pipeline against an
+  [`topmark.config.model.Config`][]. We normalize/merge internally and run the pipeline against an
   **immutable snapshot**.
-- The internal [`topmark.config.model.MutableConfig `][] builder is **not part of the public API**.
+- The internal [`topmark.config.model.MutableConfig`][] builder is **not part of the public API**.
   It exists to perform discovery/merging and then ``freeze()`` to a `Config` just before
   execution. This keeps runtime deterministic and avoids accidental mutation.
 - To "update config" programmatically, pass a mapping to the function call:

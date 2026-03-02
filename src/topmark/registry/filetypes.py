@@ -12,7 +12,7 @@
 
 Exposes read-only views and optional mutation helpers for registered file
 types. Most users should prefer the stable facade
-[`topmark.registry.registry.Registry `][topmark.registry.registry.Registry]. This module is intended
+[`topmark.registry.registry.Registry`][topmark.registry.registry.Registry]. This module is intended
 for plugins and tests.
 
 Notes:

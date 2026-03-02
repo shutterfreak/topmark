@@ -129,7 +129,7 @@ ______________________________________________________________________
      Also add a corresponding entry to the `CHANGELOG.md`.
 
 **Registry note:**
-Registry access for integrations is expected to go through \[`topmark.registry.registry.Registry `\][topmark.registry.registry.Registry] (read-only facade).
+Registry access for integrations is expected to go through \[`topmark.registry.registry.Registry`\][topmark.registry.registry.Registry] (read-only facade).
 The advanced registries (`FileTypeRegistry`, `HeaderProcessorRegistry`) are supported for tests and plugins via overlay registration, but changes to their public signatures are still tracked by the snapshot.
 
 - **Supported Python range:** 3.10–3.14 (`nox` matrix).\
@@ -145,7 +145,7 @@ ______________________________________________________________________
 - The snapshot test is implemented in `tests/api/test_public_api_snapshot.py`.
 - The generator logic lives in `tools/api_snapshot.py`.
 - Normalization ensures consistent diffing across OSes and Python builds.
-- The snapshot intentionally treats \[`topmark.registry.registry.Registry `\][topmark.registry.registry.Registry] as the stable entry point for registry introspection;
+- The snapshot intentionally treats \[`topmark.registry.registry.Registry`\][topmark.registry.registry.Registry] as the stable entry point for registry introspection;
   internal base registries under `topmark.filetypes.*` are not part of the public surface.
 - Advanced registries are snapshot-tracked for signatures, not behavior.
 - Internal helpers such as `get_base_file_type_registry()` and `get_base_header_processor_registry()` are not part of the public API and may change without notice
