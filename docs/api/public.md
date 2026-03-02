@@ -67,7 +67,7 @@ configuration.
 ### Registries and extensibility (read-only by default)
 
 TopMark exposes **read-only** registries for file types and header processors via the stable
-facade in \[`topmark.registry.registry .Registry`\][topmark.registry.registry.Registry]. These registries represent the **effective composed
+facade in \[`topmark.registry.registry.Registry`\][topmark.registry.registry.Registry]. These registries represent the **effective composed
 view** (base built-ins + entry points + overlays − removals) and are returned as immutable
 `Mapping` views (backed by `MappingProxyType`).
 
