@@ -30,10 +30,10 @@ from tomlkit.exceptions import ParseError as TomlkitParseError
 from topmark.config.io.render import to_toml
 from topmark.config.io.surgery import nest_toml_under_section
 from topmark.config.keys import Toml
-from topmark.config.logging import get_logger
 from topmark.constants import DEFAULT_TOML_CONFIG_NAME
 from topmark.constants import DEFAULT_TOML_CONFIG_PACKAGE
 from topmark.constants import TOPMARK_END_MARKER
+from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
     import sys
@@ -46,7 +46,7 @@ if TYPE_CHECKING:
         # Python 3.14+: Traversable moved here
         from importlib.resources.abc import Traversable
 
-    from topmark.config.logging import TopmarkLogger
+    from topmark.core.logging import TopmarkLogger
 
     from .types import TomlTable
 

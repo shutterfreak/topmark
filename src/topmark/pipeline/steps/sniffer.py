@@ -41,7 +41,7 @@ import os
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from topmark.config.logging import get_logger
+from topmark.core.logging import get_logger
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.context.policy import allow_empty_by_policy
 from topmark.pipeline.hints import Axis
@@ -54,7 +54,7 @@ from topmark.pipeline.steps.base import BaseStep
 if TYPE_CHECKING:
     from os import stat_result
 
-    from topmark.config.logging import TopmarkLogger
+    from topmark.core.logging import TopmarkLogger
     from topmark.filetypes.base import FileType
     from topmark.filetypes.policy import FileTypeHeaderPolicy
     from topmark.pipeline.context.model import ProcessingContext

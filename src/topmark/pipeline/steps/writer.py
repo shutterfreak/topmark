@@ -42,9 +42,9 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from typing import Protocol
 
-from topmark.config.logging import get_logger
 from topmark.config.types import FileWriteStrategy
 from topmark.config.types import OutputTarget
+from topmark.core.logging import get_logger
 from topmark.pipeline.context.policy import can_change
 from topmark.pipeline.context.policy import check_permitted_by_policy
 from topmark.pipeline.hints import Axis
@@ -58,8 +58,8 @@ from topmark.pipeline.views import UpdatedView
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.config.logging import TopmarkLogger
     from topmark.config.policy import Policy
+    from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.views import UpdatedView
 

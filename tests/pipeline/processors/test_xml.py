@@ -28,12 +28,12 @@ from tests.pipeline.conftest import find_line
 from tests.pipeline.conftest import make_pipeline_context
 from tests.pipeline.conftest import materialize_updated_lines
 from tests.pipeline.conftest import run_insert
-from topmark.config.logging import TopmarkLogger
-from topmark.config.logging import get_logger
 from topmark.config.model import Config
 from topmark.config.model import MutableConfig
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
+from topmark.core.logging import TopmarkLogger
+from topmark.core.logging import get_logger
 from topmark.filetypes.base import InsertCapability
 from topmark.pipeline import runner
 from topmark.pipeline.pipelines import Pipeline

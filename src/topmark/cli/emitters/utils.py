@@ -30,16 +30,16 @@ from topmark.cli_shared.emitters.markdown.pipeline import emit_pipeline_diffs_ma
 from topmark.cli_shared.emitters.markdown.pipeline import emit_pipeline_per_file_guidance_markdown
 from topmark.cli_shared.emitters.markdown.pipeline import render_pipeline_banner_markdown
 from topmark.cli_shared.emitters.markdown.pipeline import render_pipeline_per_file_guidance_markdown
-from topmark.config.logging import get_logger
 from topmark.constants import TOML_BLOCK_END
 from topmark.constants import TOML_BLOCK_START
 from topmark.core.formats import OutputFormat
+from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from topmark.cli_shared.console_api import ConsoleLike
-    from topmark.config.logging import TopmarkLogger
+    from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
 
 

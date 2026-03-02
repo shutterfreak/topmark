@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from topmark.api.public_types import PublicDiagnostic
-from topmark.config.logging import get_logger
+from topmark.core.logging import get_logger
 from topmark.pipeline.outcomes import NO_REASON_PROVIDED
 from topmark.pipeline.outcomes import ResultBucket
 from topmark.pipeline.outcomes import classify_outcome
@@ -44,8 +44,8 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from topmark.api.public_types import PublicDiagnostic
-    from topmark.config.logging import TopmarkLogger
     from topmark.core.exit_codes import ExitCode
+    from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.views import DiffView
 

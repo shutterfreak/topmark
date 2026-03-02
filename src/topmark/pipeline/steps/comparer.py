@@ -36,7 +36,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.config.logging import get_logger
+from topmark.core.logging import get_logger
 from topmark.pipeline.hints import Axis
 from topmark.pipeline.hints import Cluster
 from topmark.pipeline.hints import KnownCode
@@ -47,7 +47,7 @@ from topmark.pipeline.status import RenderStatus
 from topmark.pipeline.steps.base import BaseStep
 
 if TYPE_CHECKING:
-    from topmark.config.logging import TopmarkLogger
+    from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.views import BuilderView
     from topmark.pipeline.views import HeaderView

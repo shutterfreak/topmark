@@ -34,13 +34,13 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from typing import Any
 
-from topmark.config.logging import get_logger
 from topmark.core.enum_mixins import KeyedStrEnum
+from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.config.logging import TopmarkLogger
+    from topmark.core.logging import TopmarkLogger
 
 logger: TopmarkLogger = get_logger(__name__)
 

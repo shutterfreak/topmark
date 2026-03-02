@@ -30,13 +30,13 @@ from typing import Protocol
 from typing import TypedDict
 from typing import runtime_checkable
 
-from topmark.config.logging import get_logger
+from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path
 
-    from topmark.config.logging import TopmarkLogger
+    from topmark.core.logging import TopmarkLogger
     from topmark.filetypes.policy import FileTypeHeaderPolicy
 
 logger: TopmarkLogger = get_logger(__name__)

@@ -32,16 +32,16 @@ from topmark.cli.commands.strip import strip_command
 from topmark.cli.commands.version import version_command
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
+from topmark.core.keys import ArgKey
 
 # --- We use a module import here instead of relative import
-from topmark.config.logging import get_logger
-from topmark.core.keys import ArgKey
+from topmark.core.logging import get_logger
 from topmark.pipeline.processors.bootstrap import register_all_processors
 from topmark.utils.version import check_python_version
 
 if TYPE_CHECKING:
     from topmark.cli_shared.console_api import ConsoleLike
-    from topmark.config.logging import TopmarkLogger
+    from topmark.core.logging import TopmarkLogger
 
 logger: TopmarkLogger = get_logger(__name__)
 

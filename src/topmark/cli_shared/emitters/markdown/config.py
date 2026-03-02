@@ -23,8 +23,8 @@ from typing import TYPE_CHECKING
 
 from topmark.cli_shared.emitters.markdown.diagnostic import render_human_diagnostics_markdown
 from topmark.cli_shared.emitters.markdown.utils import render_toml_markdown
-from topmark.config.logging import TopmarkLogger
-from topmark.config.logging import get_logger
+from topmark.core.logging import TopmarkLogger
+from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
     from topmark.cli_shared.emitters.shared.config import ConfigCheckPrepared

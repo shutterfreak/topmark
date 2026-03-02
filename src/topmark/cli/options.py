@@ -30,17 +30,17 @@ from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.errors import TopmarkUsageError
 from topmark.cli.keys import CliOpt
 from topmark.cli_shared.color import ColorMode
-from topmark.config.logging import TRACE_LEVEL
-from topmark.config.logging import get_logger
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
+from topmark.core.logging import TRACE_LEVEL
+from topmark.core.logging import get_logger
 from topmark.rendering.formats import HeaderOutputFormat
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from collections.abc import Iterable
 
-    from topmark.config.logging import TopmarkLogger
+    from topmark.core.logging import TopmarkLogger
 
 P = ParamSpec("P")
 R = TypeVar("R")

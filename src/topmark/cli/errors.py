@@ -27,12 +27,12 @@ from typing import Any
 
 import click
 
-from topmark.config.logging import get_logger
 from topmark.core.exit_codes import ExitCode
 from topmark.core.keys import ArgKey
+from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
-    from topmark.config.logging import TopmarkLogger
+    from topmark.core.logging import TopmarkLogger
 
 logger: TopmarkLogger = get_logger(__name__)
 

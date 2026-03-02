@@ -22,8 +22,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.config.logging import TopmarkLogger
-from topmark.config.logging import get_logger
+from topmark.core.logging import TopmarkLogger
+from topmark.core.logging import get_logger
 from topmark.pipeline.status import ComparisonStatus
 from topmark.pipeline.status import FsStatus
 from topmark.pipeline.status import HeaderStatus

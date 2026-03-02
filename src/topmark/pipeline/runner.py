@@ -20,13 +20,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.config.logging import get_logger
 from topmark.constants import VALUE_NOT_SET
+from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from topmark.config.logging import TopmarkLogger
+    from topmark.core.logging import TopmarkLogger
 
     from .context.model import ProcessingContext
     from .protocols import Step

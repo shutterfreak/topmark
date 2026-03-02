@@ -58,10 +58,10 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from topmark.config.logging import get_logger
+from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
-    from topmark.config.logging import TopmarkLogger
+    from topmark.core.logging import TopmarkLogger
 
 logger: TopmarkLogger = get_logger(__name__)
 

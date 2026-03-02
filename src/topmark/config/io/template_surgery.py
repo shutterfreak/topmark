@@ -45,9 +45,9 @@ from tomlkit.exceptions import ParseError as TomlkitParseError
 from tomlkit.items import Item
 from tomlkit.items import Table
 
-from topmark.config.logging import TopmarkLogger
-from topmark.config.logging import get_logger
 from topmark.constants import TOPMARK_END_MARKER
+from topmark.core.logging import TopmarkLogger
+from topmark.core.logging import get_logger
 
 _TOOL_TOPMARK_HEADER: Final[str] = "[tool.topmark]"
 _ROOT_LINE: Final[str] = "root = true"

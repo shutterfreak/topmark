@@ -73,7 +73,6 @@ from topmark.config.io.loaders import load_toml_dict
 from topmark.config.io.loaders import render_runtime_defaults_toml_text
 from topmark.config.io.render import clean_toml
 from topmark.config.keys import Toml
-from topmark.config.logging import get_logger
 from topmark.config.paths import abs_path_from
 from topmark.config.paths import extend_pattern_sources
 from topmark.config.paths import ps_from_cli
@@ -85,6 +84,7 @@ from topmark.config.types import FileWriteStrategy
 from topmark.config.types import OutputTarget
 from topmark.constants import CLI_OVERRIDE_STR
 from topmark.core.keys import ArgKey
+from topmark.core.logging import get_logger
 from topmark.diagnostic.model import DiagnosticLog
 from topmark.diagnostic.model import DiagnosticStats
 from topmark.diagnostic.model import FrozenDiagnosticLog
@@ -97,8 +97,8 @@ if TYPE_CHECKING:
 
     from topmark.config.io.types import TomlTable
     from topmark.config.io.types import TomlTableMap
-    from topmark.config.logging import TopmarkLogger
     from topmark.config.types import PatternSource
+    from topmark.core.logging import TopmarkLogger
     from topmark.filetypes.base import FileType
 
 

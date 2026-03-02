@@ -38,9 +38,9 @@ import re
 from typing import TYPE_CHECKING
 from typing import Final
 
-from topmark.config.logging import get_logger
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
+from topmark.core.logging import get_logger
 from topmark.pipeline.policy_whitespace import is_pure_spacer
 from topmark.pipeline.processors.types import BoundsKind
 from topmark.pipeline.processors.types import HeaderBounds
@@ -52,8 +52,8 @@ from topmark.rendering.formats import HeaderOutputFormat
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from topmark.config.logging import TopmarkLogger
     from topmark.config.model import Config
+    from topmark.core.logging import TopmarkLogger
     from topmark.filetypes.base import FileType
     from topmark.filetypes.policy import FileTypeHeaderPolicy
     from topmark.pipeline.context.model import ProcessingContext

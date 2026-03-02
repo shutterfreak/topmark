@@ -24,8 +24,8 @@ import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from topmark.config.logging import get_logger
 from topmark.constants import VALUE_NOT_SET
+from topmark.core.logging import get_logger
 from topmark.filetypes.base import ContentGate
 from topmark.filetypes.base import FileType
 from topmark.pipeline.hints import Axis
@@ -42,8 +42,8 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
     from pathlib import Path
 
-    from topmark.config.logging import TopmarkLogger
     from topmark.config.model import Config
+    from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.processors.base import HeaderProcessor
 

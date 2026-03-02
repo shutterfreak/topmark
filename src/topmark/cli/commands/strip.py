@@ -69,10 +69,10 @@ from topmark.cli.options import underscored_trap_option
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import validate_diff_policy_for_output_format
 from topmark.cli_shared.emitters.shared.pipeline import strip_msg
-from topmark.config.logging import get_logger
 from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
+from topmark.core.logging import get_logger
 from topmark.pipeline.context.policy import effective_would_strip
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.status import WriteStatus
@@ -85,9 +85,9 @@ if TYPE_CHECKING:
     from topmark.cli.io import InputPlan
     from topmark.cli_shared.color import ColorMode
     from topmark.cli_shared.console_api import ConsoleLike
-    from topmark.config.logging import TopmarkLogger
     from topmark.config.model import Config
     from topmark.config.model import MutableConfig
+    from topmark.core.logging import TopmarkLogger
     from topmark.core.machine.schemas import MetaPayload
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.protocols import Step

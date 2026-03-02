@@ -69,8 +69,8 @@ from typing import Any
 from topmark.api.runtime import run_pipeline
 from topmark.api.runtime import select_pipeline
 from topmark.api.view import finalize_run_result
-from topmark.config.logging import get_logger
 from topmark.constants import TOPMARK_VERSION
+from topmark.core.logging import get_logger
 from topmark.pipeline.status import PlanStatus
 from topmark.registry.registry import Registry
 
@@ -88,9 +88,9 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-    from topmark.config.logging import TopmarkLogger
     from topmark.config.model import Config
     from topmark.core.exit_codes import ExitCode
+    from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.processors.base import HeaderProcessor
     from topmark.pipeline.protocols import Step

@@ -22,8 +22,8 @@ from enum import Enum
 from typing import TYPE_CHECKING
 from typing import TypedDict
 
-from topmark.config.logging import TopmarkLogger
-from topmark.config.logging import get_logger
+from topmark.core.logging import TopmarkLogger
+from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
     from collections.abc import Mapping

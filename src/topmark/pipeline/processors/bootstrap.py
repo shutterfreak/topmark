@@ -17,12 +17,12 @@ import pkgutil
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from topmark.config.logging import get_logger
+from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from topmark.config.logging import TopmarkLogger
+    from topmark.core.logging import TopmarkLogger
     from topmark.filetypes.base import FileType
     from topmark.pipeline.processors.base import HeaderProcessor
 

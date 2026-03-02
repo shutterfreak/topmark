@@ -29,7 +29,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.config.logging import get_logger
+from topmark.core.logging import get_logger
 from topmark.filetypes.base import FileType
 from topmark.pipeline.adapters import PreInsertViewAdapter
 from topmark.pipeline.context.policy import allow_content_reflow_by_policy
@@ -44,7 +44,7 @@ from topmark.pipeline.steps.base import BaseStep
 from topmark.pipeline.views import ListFileImageView
 
 if TYPE_CHECKING:
-    from topmark.config.logging import TopmarkLogger
+    from topmark.core.logging import TopmarkLogger
     from topmark.filetypes.base import FileType
     from topmark.filetypes.base import InsertChecker
     from topmark.filetypes.base import InsertCheckResult

@@ -46,14 +46,14 @@ from typing import Any
 
 from yachalk import chalk
 
-from topmark.config.logging import get_logger
 from topmark.core.enum_mixins import EnumIntrospectionMixin
+from topmark.core.logging import get_logger
 from topmark.core.presentation import ColoredStrEnum
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from topmark.config.logging import TopmarkLogger
+    from topmark.core.logging import TopmarkLogger
 
 logger: TopmarkLogger = get_logger(__name__)
 

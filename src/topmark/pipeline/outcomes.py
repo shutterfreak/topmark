@@ -29,8 +29,8 @@ from enum import Enum
 from typing import TYPE_CHECKING
 
 from topmark.api.types import Outcome
-from topmark.config.logging import TopmarkLogger
-from topmark.config.logging import get_logger
+from topmark.core.logging import TopmarkLogger
+from topmark.core.logging import get_logger
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.context.policy import can_change
 from topmark.pipeline.context.policy import check_permitted_by_policy

@@ -38,15 +38,15 @@ from pathlib import Path
 # For runtime type checks, prefer collections.abc
 from typing import TYPE_CHECKING
 
-from topmark.config.logging import get_logger
 from topmark.config.types import PatternSource
+from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from collections.abc import Iterable
     from os import PathLike
 
-    from topmark.config.logging import TopmarkLogger
+    from topmark.core.logging import TopmarkLogger
 
 logger: TopmarkLogger = get_logger(__name__)
 

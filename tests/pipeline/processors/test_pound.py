@@ -28,14 +28,14 @@ from tests.pipeline.conftest import expected_block_lines_for
 from tests.pipeline.conftest import find_line
 from tests.pipeline.conftest import materialize_updated_lines
 from tests.pipeline.conftest import run_insert
-from topmark.config.logging import TopmarkLogger
-from topmark.config.logging import get_logger
 from topmark.config.model import Config
 from topmark.config.model import MutableConfig
 from topmark.config.policy import PolicyRegistry
 from topmark.config.policy import make_policy_registry
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
+from topmark.core.logging import TopmarkLogger
+from topmark.core.logging import get_logger
 from topmark.pipeline import runner
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.pipelines import Pipeline

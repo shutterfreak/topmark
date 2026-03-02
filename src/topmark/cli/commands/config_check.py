@@ -40,19 +40,19 @@ from topmark.cli.validators import apply_ignore_positional_paths_policy
 from topmark.cli_shared.emitters.markdown.config import emit_config_check_markdown
 from topmark.cli_shared.emitters.shared.config import ConfigCheckPrepared
 from topmark.cli_shared.emitters.shared.config import prepare_config_check
-from topmark.config.logging import get_logger
 from topmark.config.machine.payloads import build_config_diagnostics_payload
 from topmark.config.model import Config
 from topmark.config.model import MutableConfig
 from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
+from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
     from topmark.cli_shared.color import ColorMode
     from topmark.cli_shared.console_api import ConsoleLike
-    from topmark.config.logging import TopmarkLogger
     from topmark.config.machine.schemas import ConfigDiagnosticsPayload
+    from topmark.core.logging import TopmarkLogger
     from topmark.core.machine.schemas import MetaPayload
     from topmark.diagnostic.machine.schemas import MachineDiagnosticCounts
 

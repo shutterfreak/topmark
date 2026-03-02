@@ -30,7 +30,7 @@ from __future__ import annotations
 from itertools import islice
 from typing import TYPE_CHECKING
 
-from topmark.config.logging import get_logger
+from topmark.core.logging import get_logger
 from topmark.pipeline.context.policy import allow_empty_header_by_policy
 from topmark.pipeline.hints import Axis
 from topmark.pipeline.status import GenerationStatus
@@ -41,7 +41,7 @@ from topmark.pipeline.views import HeaderView
 from topmark.pipeline.views import RenderView
 
 if TYPE_CHECKING:
-    from topmark.config.logging import TopmarkLogger
+    from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
 
 

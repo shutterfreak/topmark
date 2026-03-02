@@ -50,12 +50,12 @@ from topmark.cli.validators import apply_ignore_positional_paths_policy
 from topmark.cli_shared.emitters.markdown.config import emit_config_dump_markdown
 from topmark.cli_shared.emitters.shared.config import ConfigDumpPrepared
 from topmark.cli_shared.emitters.shared.config import prepare_config_dump
-from topmark.config.logging import get_logger
 from topmark.constants import TOML_BLOCK_END
 from topmark.constants import TOML_BLOCK_START
 from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
+from topmark.core.logging import get_logger
 from topmark.utils.file import safe_unlink
 
 if TYPE_CHECKING:
@@ -64,9 +64,9 @@ if TYPE_CHECKING:
     from topmark.cli.io import InputPlan
     from topmark.cli_shared.color import ColorMode
     from topmark.cli_shared.console_api import ConsoleLike
-    from topmark.config.logging import TopmarkLogger
     from topmark.config.model import Config
     from topmark.config.model import MutableConfig
+    from topmark.core.logging import TopmarkLogger
     from topmark.core.machine.schemas import MetaPayload
     from topmark.rendering.formats import HeaderOutputFormat
 

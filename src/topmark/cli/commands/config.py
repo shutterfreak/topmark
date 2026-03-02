@@ -24,8 +24,8 @@ import click
 
 from topmark.cli.keys import CliCmd
 from topmark.cli.options import CONTEXT_SETTINGS
-from topmark.config.logging import TopmarkLogger
-from topmark.config.logging import get_logger
+from topmark.core.logging import TopmarkLogger
+from topmark.core.logging import get_logger
 
 from .config_check import config_check_command
 from .config_defaults import config_defaults_command

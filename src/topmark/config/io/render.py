@@ -25,10 +25,10 @@ from typing import cast
 
 import tomlkit
 
-from topmark.config.logging import get_logger
+from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
-    from topmark.config.logging import TopmarkLogger
+    from topmark.core.logging import TopmarkLogger
 
     from .types import TomlTable
 

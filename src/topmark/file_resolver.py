@@ -29,17 +29,17 @@ from typing import TYPE_CHECKING
 from pathspec import PathSpec
 from pathspec.patterns.gitwildmatch import GitWildMatchPattern
 
-from topmark.config.logging import get_logger
 from topmark.config.types import PatternSource  # runtime use
+from topmark.core.logging import get_logger
 from topmark.filetypes.base import FileType
 from topmark.registry.filetypes import FileTypeRegistry
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from topmark.config.logging import TopmarkLogger
     from topmark.config.model import Config
     from topmark.config.types import PatternSource
+    from topmark.core.logging import TopmarkLogger
     from topmark.filetypes.base import FileType
 
 

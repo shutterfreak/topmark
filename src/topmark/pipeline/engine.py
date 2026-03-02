@@ -40,10 +40,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.config.logging import get_logger
 from topmark.config.policy import PolicyRegistry
 from topmark.config.policy import make_policy_registry
 from topmark.core.exit_codes import ExitCode
+from topmark.core.logging import get_logger
 from topmark.pipeline import runner
 from topmark.pipeline.context.model import ProcessingContext
 
@@ -51,8 +51,8 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-    from topmark.config.logging import TopmarkLogger
     from topmark.config.model import Config
+    from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.protocols import Step
 
 logger: TopmarkLogger = get_logger(__name__)

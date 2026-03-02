@@ -36,14 +36,14 @@ from typing import cast
 
 from yachalk import chalk
 
-from topmark.config.logging import get_logger
+from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from collections.abc import Iterable
     from collections.abc import Iterator
 
-    from topmark.config.logging import TopmarkLogger
+    from topmark.core.logging import TopmarkLogger
 
 
 logger: TopmarkLogger = get_logger(__name__)

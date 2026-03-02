@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : logging.py
-#   file_relpath : src/topmark/config/logging.py
+#   file_relpath : src/topmark/core/logging.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -10,8 +10,11 @@
 
 """Custom TopMark logging with TRACE logging.
 
-This module extends the standard logging module with TopMark-specific features,
-including a custom TRACE level, a specialized logger class, and colored output formatting.
+This module extends Python's standard logging with TopMark-specific features, including a custom
+`TRACE` level (below `DEBUG`) and a specialized logger class.
+
+Logging output is intentionally plain text (no ANSI styling). Presentation and color concerns belong
+in the CLI layer.
 """
 
 from __future__ import annotations
@@ -22,8 +25,6 @@ import sys
 from typing import TYPE_CHECKING
 from typing import Final
 from typing import cast
-
-from yachalk import chalk
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -51,8 +52,7 @@ class TopmarkLogger(logging.Logger):
         Args:
             msg: The message to be logged.
             *args: Variable length argument list for the message.
-            extra: Optional dictionary of extra information to pass
-                to the logger.
+            extra: Optional dictionary of extra information to pass to the logger.
         """
         if self.isEnabledFor(TRACE_LEVEL):
             self._log(
@@ -66,49 +66,13 @@ class TopmarkLogger(logging.Logger):
 
 logging.setLoggerClass(TopmarkLogger)
 
-# You can import TopmarkLogger via:
-# from topmark.logging_config import TopmarkLogger
+
+_LOG_FORMAT = "[%(levelname)s] %(message)s"
+_DEBUG_LOG_FORMAT = "[%(levelname)s] [%(filename)s:%(lineno)d] [%(funcName)s] %(message)s"
 
 
-LOG_FORMAT = "[%(levelname)s] %(message)s"
-DEBUG_LOG_FORMAT = "[%(levelname)s] [%(filename)s:%(lineno)d] [%(funcName)s] %(message)s"
-
-
-class ChalkFormatter(logging.Formatter):
-    """Formatter that outputs log records with chalk-colored formatting based on severity level."""
-
-    def format(self, record: logging.LogRecord) -> str:
-        """Format the specified record with colors based on log level.
-
-        Args:
-            record: The LogRecord to be formatted.
-
-        Returns:
-            The colorized formatted log message as a string.
-        """
-        level: int = record.levelno
-        message: str = super().format(record)
-
-        result: str = ""
-
-        # Apply color styles to the message depending on the log severity
-        if level >= logging.CRITICAL:
-            result = chalk.red_bright(message)
-        elif level >= logging.ERROR:
-            result = chalk.red(message)
-        elif level >= logging.WARNING:
-            result = chalk.yellow(message)
-        elif level >= logging.INFO:
-            result = chalk.green(message)
-        elif level >= logging.DEBUG:
-            result = chalk.gray(message)
-        elif level >= TRACE_LEVEL:  # Handle TRACE level specifically
-            result = chalk.blue(message)
-        else:
-            # Fallback color for unknown or lower-than-TRACE levels
-            result = chalk.dim.red(message)
-
-        return result
+class TopmarkFormatter(logging.Formatter):
+    """Plain-text formatter for TopMark logs."""
 
 
 def resolve_env_log_level() -> int | None:
@@ -140,10 +104,10 @@ def resolve_env_log_level() -> int | None:
 
 
 def setup_logging(level: int | None = None) -> None:
-    """Configure the root logger with a specified log level and colored output.
+    """Configure the root logger with a specified log level (and plain-text output).
 
     If ``level`` is None, environment variables are consulted via
-    [`resolve_env_log_level`][topmark.config.logging.resolve_env_log_level].
+    [`resolve_env_log_level`][topmark.core.logging.resolve_env_log_level].
     Default is CRITICAL when unspecified.
     """
     if level is None:
@@ -163,7 +127,7 @@ def setup_logging(level: int | None = None) -> None:
     # Create and add a StreamHandler explicitly outputting to sys.stdout
     handler = logging.StreamHandler(sys.stdout)
     # Use detailed logging format for info and above levels, simpler otherwise
-    formatter = ChalkFormatter(LOG_FORMAT if level >= logging.INFO else DEBUG_LOG_FORMAT)
+    formatter = TopmarkFormatter(_LOG_FORMAT if level >= logging.INFO else _DEBUG_LOG_FORMAT)
     handler.setFormatter(formatter)
     root_logger.addHandler(handler)
 

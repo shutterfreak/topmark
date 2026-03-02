@@ -31,16 +31,16 @@ from typing import TYPE_CHECKING
 from topmark.cli.errors import TopmarkUsageError
 from topmark.cli.keys import CliOpt
 from topmark.cli_shared.color import ColorMode
-from topmark.config.logging import get_logger
 from topmark.core.formats import OutputFormat
 from topmark.core.formats import is_machine_format
 from topmark.core.keys import ArgKey
+from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
     import click
 
     from topmark.cli_shared.console_api import ConsoleLike
-    from topmark.config.logging import TopmarkLogger
+    from topmark.core.logging import TopmarkLogger
 
 logger: TopmarkLogger = get_logger(__name__)
 

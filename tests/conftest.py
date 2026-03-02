@@ -46,9 +46,9 @@ from typing import cast
 
 import pytest
 
-from topmark.config import logging
 from topmark.config.model import MutableConfig
 from topmark.config.types import PatternSource
+from topmark.core import logging
 from topmark.filetypes.base import ContentGate
 from topmark.filetypes.base import FileType
 from topmark.pipeline.processors.base import HeaderProcessor

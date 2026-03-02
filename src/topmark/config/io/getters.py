@@ -29,12 +29,12 @@ from typing import Any
 from typing import Final
 from typing import TypeVar
 
-from topmark.config.logging import get_logger
+from topmark.core.logging import get_logger
 
 from .guards import is_any_list
 
 if TYPE_CHECKING:
-    from topmark.config.logging import TopmarkLogger
+    from topmark.core.logging import TopmarkLogger
     from topmark.diagnostic.model import DiagnosticLog
 
     from .types import TomlTable

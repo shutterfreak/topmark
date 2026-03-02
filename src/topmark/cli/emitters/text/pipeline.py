@@ -35,8 +35,8 @@ from topmark.cli.emitters.text.utils import maybe_colorize
 from topmark.cli_shared.console_api import ConsoleLike
 from topmark.cli_shared.emitters.shared.pipeline import render_diff
 from topmark.cli_shared.outcomes import collect_outcome_counts_colored
-from topmark.config.logging import get_logger
 from topmark.core.enum_mixins import enum_from_name
+from topmark.core.logging import get_logger
 from topmark.diagnostic.model import DiagnosticLevel
 from topmark.diagnostic.model import DiagnosticStats
 from topmark.pipeline.context.model import ProcessingContext
@@ -49,7 +49,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from topmark.cli_shared.console_api import ConsoleLike
-    from topmark.config.logging import TopmarkLogger
+    from topmark.core.logging import TopmarkLogger
     from topmark.core.presentation import Colorizer
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.views import UpdatedView

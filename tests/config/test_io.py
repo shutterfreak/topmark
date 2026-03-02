@@ -24,8 +24,8 @@ import tomlkit
 
 from topmark.config.io.getters import get_string_list_value_checked
 from topmark.config.io.surgery import nest_toml_under_section
-from topmark.config.logging import TopmarkLogger
-from topmark.config.logging import get_logger
+from topmark.core.logging import TopmarkLogger
+from topmark.core.logging import get_logger
 from topmark.diagnostic.model import DiagnosticLog
 
 if TYPE_CHECKING:

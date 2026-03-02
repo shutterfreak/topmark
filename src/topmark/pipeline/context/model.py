@@ -33,8 +33,8 @@ from dataclasses import field
 from typing import TYPE_CHECKING
 from typing import Any
 
-from topmark.config.logging import get_logger
 from topmark.config.policy import make_policy_registry
+from topmark.core.logging import get_logger
 from topmark.diagnostic.model import DiagnosticLog
 from topmark.filetypes.base import InsertCapability
 from topmark.pipeline.context.policy import can_change
@@ -58,10 +58,10 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-    from topmark.config.logging import TopmarkLogger
     from topmark.config.model import Config
     from topmark.config.policy import Policy
     from topmark.config.policy import PolicyRegistry
+    from topmark.core.logging import TopmarkLogger
     from topmark.filetypes.base import FileType
     from topmark.pipeline.processors.base import HeaderProcessor
     from topmark.pipeline.protocols import Step

@@ -32,7 +32,7 @@ from typing import TYPE_CHECKING
 
 from yachalk import chalk
 
-from topmark.config.logging import get_logger
+from topmark.core.logging import get_logger
 from topmark.pipeline.hints import Axis
 from topmark.pipeline.hints import Cluster
 from topmark.pipeline.hints import KnownCode
@@ -44,7 +44,7 @@ from topmark.pipeline.views import UpdatedView
 from topmark.utils.diff import render_patch
 
 if TYPE_CHECKING:
-    from topmark.config.logging import TopmarkLogger
+    from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
 
 

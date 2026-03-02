@@ -38,7 +38,7 @@ from typing import Any
 from typing import Final
 from typing import cast
 
-from topmark.config.logging import get_logger
+from topmark.core.logging import get_logger
 
 from .base import FileType
 
@@ -46,7 +46,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from types import ModuleType
 
-    from topmark.config.logging import TopmarkLogger
+    from topmark.core.logging import TopmarkLogger
 
 logger: TopmarkLogger = get_logger(__name__)
 

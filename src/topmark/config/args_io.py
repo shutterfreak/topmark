@@ -31,11 +31,11 @@ from typing import Any
 from typing import TypeVar
 from typing import cast
 
-from topmark.config.logging import get_logger
+from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
-    from topmark.config.logging import TopmarkLogger
     from topmark.config.types import ArgsLike
+    from topmark.core.logging import TopmarkLogger
     from topmark.diagnostic.model import DiagnosticLog
 
 E = TypeVar("E", bound=Enum)
