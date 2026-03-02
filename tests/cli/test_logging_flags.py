@@ -18,7 +18,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests.cli.conftest import assert_SUCCESS, assert_USAGE_ERROR, run_cli
+from tests.cli.conftest import assert_SUCCESS
+from tests.cli.conftest import assert_USAGE_ERROR
+from tests.cli.conftest import run_cli
 from topmark.cli.keys import CliCmd
 
 if TYPE_CHECKING:

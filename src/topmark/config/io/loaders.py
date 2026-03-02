@@ -20,7 +20,9 @@ Parsing is done with `tomlkit` and returned as plain `dict` structures.
 from __future__ import annotations
 
 from importlib.resources import files
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING
+from typing import Any
+from typing import cast
 
 import tomlkit
 from tomlkit.exceptions import ParseError as TomlkitParseError
@@ -29,11 +31,9 @@ from topmark.config.io.render import to_toml
 from topmark.config.io.surgery import nest_toml_under_section
 from topmark.config.keys import Toml
 from topmark.config.logging import get_logger
-from topmark.constants import (
-    DEFAULT_TOML_CONFIG_NAME,
-    DEFAULT_TOML_CONFIG_PACKAGE,
-    TOPMARK_END_MARKER,
-)
+from topmark.constants import DEFAULT_TOML_CONFIG_NAME
+from topmark.constants import DEFAULT_TOML_CONFIG_PACKAGE
+from topmark.constants import TOPMARK_END_MARKER
 
 if TYPE_CHECKING:
     import sys

@@ -15,7 +15,8 @@ from __future__ import annotations
 from inspect import getmodule
 from typing import Any
 
-from topmark.config.logging import TopmarkLogger, get_logger
+from topmark.config.logging import TopmarkLogger
+from topmark.config.logging import get_logger
 
 logger: TopmarkLogger = get_logger(__name__)
 

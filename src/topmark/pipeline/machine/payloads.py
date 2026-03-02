@@ -45,10 +45,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from topmark.pipeline.context.model import ProcessingContext
-    from topmark.pipeline.machine.schemas import (
-        OutcomeSummaryMapEntry,
-        OutcomeSummaryRecordPayload,
-    )
+    from topmark.pipeline.machine.schemas import OutcomeSummaryMapEntry
+    from topmark.pipeline.machine.schemas import OutcomeSummaryRecordPayload
 
 
 def iter_processing_results_payload_items(

@@ -26,18 +26,14 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.pipeline.conftest import (
-    make_pipeline_context,
-    materialize_image_lines,
-    run_steps,
-)
+from tests.pipeline.conftest import make_pipeline_context
+from tests.pipeline.conftest import materialize_image_lines
+from tests.pipeline.conftest import run_steps
 from topmark.pipeline.context.model import ProcessingContext
-from topmark.pipeline.status import (
-    ContentStatus,
-    PlanStatus,
-    ResolveStatus,
-    StripStatus,
-)
+from topmark.pipeline.status import ContentStatus
+from topmark.pipeline.status import PlanStatus
+from topmark.pipeline.status import ResolveStatus
+from topmark.pipeline.status import StripStatus
 from topmark.pipeline.steps.planner import PlannerStep
 from topmark.pipeline.steps.reader import ReaderStep
 from topmark.pipeline.steps.resolver import ResolverStep

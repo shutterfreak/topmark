@@ -63,20 +63,29 @@ run = api.check(
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
+from typing import Any
 
-from topmark.api.runtime import run_pipeline, select_pipeline
+from topmark.api.runtime import run_pipeline
+from topmark.api.runtime import select_pipeline
 from topmark.api.view import finalize_run_result
 from topmark.config.logging import get_logger
 from topmark.constants import TOPMARK_VERSION
 from topmark.pipeline.status import PlanStatus
 from topmark.registry import Registry
 
-from .public_types import PublicDiagnostic, PublicPolicy
-from .types import FileResult, FileTypeInfo, Outcome, ProcessorInfo, RunResult
+from .public_types import PublicDiagnostic
+from .public_types import PublicPolicy
+from .types import FileResult
+from .types import FileTypeInfo
+from .types import Outcome
+from .types import ProcessorInfo
+from .types import RunResult
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping, Sequence
+    from collections.abc import Iterable
+    from collections.abc import Mapping
+    from collections.abc import Sequence
     from pathlib import Path
 
     from topmark.config import Config

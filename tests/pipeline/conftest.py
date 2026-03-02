@@ -29,14 +29,21 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from typing_extensions import NotRequired, Required, TypedDict
+from typing_extensions import NotRequired
+from typing_extensions import Required
+from typing_extensions import TypedDict
 
-from topmark.config.policy import PolicyRegistry, make_policy_registry
+from topmark.config.policy import PolicyRegistry
+from topmark.config.policy import make_policy_registry
 from topmark.pipeline.context.model import ProcessingContext
-from topmark.pipeline.pipelines import CHECK_PATCH_PIPELINE, CHECK_SUMMMARY_PIPELINE
-from topmark.pipeline.processors import get_processor_for_file, register_all_processors
+from topmark.pipeline.pipelines import CHECK_PATCH_PIPELINE
+from topmark.pipeline.pipelines import CHECK_SUMMMARY_PIPELINE
+from topmark.pipeline.processors import get_processor_for_file
+from topmark.pipeline.processors import register_all_processors
 from topmark.pipeline.processors.base import HeaderProcessor
-from topmark.pipeline.status import ContentStatus, FsStatus, ResolveStatus
+from topmark.pipeline.status import ContentStatus
+from topmark.pipeline.status import FsStatus
+from topmark.pipeline.status import ResolveStatus
 from topmark.pipeline.steps.builder import BuilderStep
 from topmark.pipeline.steps.comparer import ComparerStep
 from topmark.pipeline.steps.patcher import PatcherStep
@@ -51,7 +58,8 @@ from topmark.pipeline.steps.writer import WriterStep
 from topmark.pipeline.views import ListFileImageView
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Sequence
+    from collections.abc import Iterable
+    from collections.abc import Sequence
     from pathlib import Path
 
     from topmark.config import Config

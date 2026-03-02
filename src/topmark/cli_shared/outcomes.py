@@ -24,9 +24,7 @@ from typing import TYPE_CHECKING
 from yachalk import chalk
 
 from topmark.api.types import Outcome
-from topmark.pipeline.outcomes import (
-    collect_outcome_counts,
-)
+from topmark.pipeline.outcomes import collect_outcome_counts
 
 if TYPE_CHECKING:
     from topmark.pipeline.context.model import ProcessingContext

@@ -38,16 +38,14 @@ if TYPE_CHECKING:
 
     from topmark.filetypes.base import FileType
     from topmark.pipeline.processors.base import HeaderProcessor
-    from topmark.registry.machine.schemas import (
-        FileTypeBriefEntry,
-        FileTypeDetailEntry,
-        FileTypeRef,
-        FileTypeRefEntry,
-        FileTypesPayload,
-        ProcessorBriefEntry,
-        ProcessorDetailEntry,
-        ProcessorsPayload,
-    )
+    from topmark.registry.machine.schemas import FileTypeBriefEntry
+    from topmark.registry.machine.schemas import FileTypeDetailEntry
+    from topmark.registry.machine.schemas import FileTypeRef
+    from topmark.registry.machine.schemas import FileTypeRefEntry
+    from topmark.registry.machine.schemas import FileTypesPayload
+    from topmark.registry.machine.schemas import ProcessorBriefEntry
+    from topmark.registry.machine.schemas import ProcessorDetailEntry
+    from topmark.registry.machine.schemas import ProcessorsPayload
 
 
 def _policy_name(obj: object | None) -> str:

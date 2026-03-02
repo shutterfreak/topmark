@@ -18,11 +18,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.filetypes.base import (
-    InsertCapability,
-    InsertCheckResult,
-    PreInsertContextView,
-)
+from topmark.filetypes.base import InsertCapability
+from topmark.filetypes.base import InsertCheckResult
+from topmark.filetypes.base import PreInsertContextView
 
 if TYPE_CHECKING:
     from topmark.pipeline.processors.base import HeaderProcessor

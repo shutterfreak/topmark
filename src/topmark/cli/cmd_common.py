@@ -29,12 +29,11 @@ import click
 from topmark.cli.config_resolver import resolve_config_from_click
 from topmark.cli.console import ClickConsole
 from topmark.cli.console_helpers import get_console_safely
-from topmark.cli.options import ColorMode, resolve_verbosity
+from topmark.cli.options import ColorMode
+from topmark.cli.options import resolve_verbosity
 from topmark.cli_shared.color import resolve_color_mode
-from topmark.config.logging import (
-    resolve_env_log_level,
-    setup_logging,
-)
+from topmark.config.logging import resolve_env_log_level
+from topmark.config.logging import setup_logging
 from topmark.core.keys import ArgKey
 from topmark.core.machine.payloads import build_meta_payload
 from topmark.file_resolver import resolve_file_list

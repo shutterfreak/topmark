@@ -30,7 +30,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Sequence
+    from collections.abc import Iterable
+    from collections.abc import Sequence
 
     from topmark.filetypes.base import FileType
     from topmark.pipeline.context.model import ProcessingContext

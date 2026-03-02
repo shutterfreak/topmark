@@ -46,6 +46,8 @@ from __future__ import annotations
 from enum import Enum
 from typing import Protocol
 
+from typing_extensions import Self
+
 
 class Colorizer(Protocol):
     """Callable that decorates a string for display.
@@ -84,7 +86,7 @@ class ColoredStrEnum(str, Enum):
     _value_: str
     _color: Colorizer
 
-    def __new__(cls, text: str, color: Colorizer) -> ColoredStrEnum:
+    def __new__(cls, text: str, color: Colorizer) -> Self:
         """Construct a colored enum member.
 
         Args:

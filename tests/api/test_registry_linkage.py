@@ -26,9 +26,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.api.conftest import stub_ft, stub_proc_cls
+from tests.api.conftest import stub_ft
+from tests.api.conftest import stub_proc_cls
 from topmark.pipeline.processors.base import HeaderProcessor
-from topmark.registry import FileTypeRegistry, HeaderProcessorRegistry
+from topmark.registry import FileTypeRegistry
+from topmark.registry import HeaderProcessorRegistry
 
 if TYPE_CHECKING:
     from topmark.filetypes.base import FileType

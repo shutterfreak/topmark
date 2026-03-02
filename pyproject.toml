@@ -10,7 +10,7 @@
 
 [project]
 name = "topmark"
-version = "0.12.0.dev6" # PEP 440: "X.Y.Z.devN", "X.Y.ZrcN", or "X.Y.Z"
+version = "0.12.0.dev7" # PEP 440: "X.Y.Z.devN", "X.Y.ZrcN", or "X.Y.Z"
 description = "A Python CLI to inspect, validate, and manage license and copyright headers."
 authors = [{ name = "Olivier Biot", email = "olivier.biot@gmail.com" }]
 license = { text = "MIT" }
@@ -59,8 +59,6 @@ dev = [
   "ruff>=0.14.5,<0.16.0",
   # Python docstring linter:
   "pydoclint>=0.8.1,<0.9.0",
-  # Traditional Python linter with rich checks:
-  "pylint>=4.0.3,<5.0.0",
   # Static type checker with fast, strict CLI (our primary type checker):
   "pyright>=1.1.407,<1.2.0",
   # Markdown formatter:
@@ -158,42 +156,6 @@ reorder_keys = true
 enabled = false # Disable catalog validation but keep syntax linting and formatting active
 
 
-[tool.mypy]
-mypy_path = ["src", "tests", "typings"]
-
-[tool.pylint]
-
-# Disable rules handled by other tools like ruff and black
-disable = [
-  # General checks handled by Ruff and/or Black
-  "C0103", # Invalid name
-  "C0114", # Missing module docstring
-  "C0115", # Missing class docstring
-  "C0116", # Missing function docstring
-  "C0301", # Line too long, handled by ruff
-  "W0105", # Unnecessary pass statement
-
-  # The following are from your new Pylint output
-  # Disable duplicate code checks (R0801) if you expect some code duplication
-  # e.g., for file type definitions.
-  "R0801", # Duplicate code
-
-  # The `no-else-return` rule (R1705) is a good practice but can be disabled
-  # if it conflicts with your preferred coding style.
-  "R1705", # Unnecessary "elif" after "return"
-
-  # The `too-many-locals` rule (R0914) can be helpful, but it can be disabled
-  # if your functions require many variables.
-  "R0914", # Too many local variables
-
-  # The `too-many-positional-arguments` rule (R0917) is an excellent hint for
-  # refactoring, but it can be disabled for specific cases like CLI functions.
-  "R0917", # Too many positional arguments
-]
-
-# Enable the optional typing checker in docstrings
-load-plugins = "pylint.extensions.typing"
-
 [tool.ruff]
 # The `line-length` rule applies to both the linter and the formatter.
 line-length = 100
@@ -203,6 +165,7 @@ exclude = [".git", ".vscode", ".venv", "venv", "build", "dist", "migrations"]
 select = [
   "E",      # pycodestyle errors
   "F",      # pyflakes
+  "PYI",    # flake8-pyi (includes __all__ checks)
   "B",      # bugbear
   "I",      # isort-compatible import sorting
   "D",      # pydocstyle
@@ -251,6 +214,7 @@ ignore = [
 "docs/**/*.py" = ["T201", "S101"]
 "tests/**/*.py" = ["ERA", "S101"]
 "tools/**/*.py" = ["T201", "S101"]
+"src/topmark/cli/**/*.py" = ["T201"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 15
@@ -260,6 +224,8 @@ convention = "google"
 
 [tool.ruff.lint.isort]
 required-imports = ["from __future__ import annotations"]
+# Enforce "One Name Per Import Line" automatically
+force-single-line = true
 
 [tool.pydoclint]
 style = "google"
@@ -285,6 +251,7 @@ require-yields-section = false
 
 [tool.pydocstringformatter]
 style = "pep257"
+max-line-length = 100
 exclude = ["tests/**"]
 # Specific fixers to ensure internal consistency
 beginning-quotes = true
@@ -306,6 +273,7 @@ stubPath = "typings"
 pythonVersion = "3.10"
 include = ["src", "tests"]
 exclude = [
+  "**/.*",
   ".git",
   ".vscode",
   ".venv",
@@ -330,6 +298,7 @@ reportImportCycles = false                # Prevent erroring on type-only circul
 reportUnnecessaryTypeIgnoreComment = true # Remove unnecessary `type: ignore` comments
 reportUnusedImport = true
 reportUnusedVariable = true
+reportPrivateUsage = true
 
 [tool.pytest.ini_options]
 markers = [

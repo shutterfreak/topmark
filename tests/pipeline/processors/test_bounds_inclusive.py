@@ -31,9 +31,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
+from topmark.constants import TOPMARK_END_MARKER
+from topmark.constants import TOPMARK_START_MARKER
 from topmark.pipeline.processors import get_processor_for_file
-from topmark.pipeline.processors.types import StripDiagKind, StripDiagnostic
+from topmark.pipeline.processors.types import StripDiagKind
+from topmark.pipeline.processors.types import StripDiagnostic
 
 if TYPE_CHECKING:
     from pathlib import Path

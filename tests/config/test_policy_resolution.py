@@ -27,13 +27,17 @@ The goal is to ensure that:
 
 from __future__ import annotations
 
-from dataclasses import fields, replace
+from dataclasses import fields
+from dataclasses import replace
 from typing import Any
 
 import pytest
 
-from topmark.config import Config, MutableConfig
-from topmark.config.policy import MutablePolicy, Policy, effective_policy
+from topmark.config import Config
+from topmark.config import MutableConfig
+from topmark.config.policy import MutablePolicy
+from topmark.config.policy import Policy
+from topmark.config.policy import effective_policy
 
 
 def _assert_policy_fields(

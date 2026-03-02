@@ -34,11 +34,9 @@ NDJSON convention (Pattern A):
 
 from __future__ import annotations
 
-from topmark.core.machine.schemas import (
-    MachineKey,
-    MetaPayload,
-    normalize_payload,
-)
+from topmark.core.machine.schemas import MachineKey
+from topmark.core.machine.schemas import MetaPayload
+from topmark.core.machine.schemas import normalize_payload
 
 
 def build_json_envelope(

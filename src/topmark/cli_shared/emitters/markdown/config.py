@@ -23,17 +23,16 @@ from typing import TYPE_CHECKING
 
 from topmark.cli_shared.emitters.markdown.diagnostic import render_human_diagnostics_markdown
 from topmark.cli_shared.emitters.markdown.utils import render_toml_markdown
-from topmark.config.logging import TopmarkLogger, get_logger
+from topmark.config.logging import TopmarkLogger
+from topmark.config.logging import get_logger
 
 if TYPE_CHECKING:
-    from topmark.cli_shared.emitters.shared.config import (
-        ConfigCheckPrepared,
-        ConfigDefaultsPrepared,
-        ConfigDumpPrepared,
-        ConfigInitPrepared,
-        HumanDiagnosticCounts,
-        HumanDiagnosticLine,
-    )
+    from topmark.cli_shared.emitters.shared.config import ConfigCheckPrepared
+    from topmark.cli_shared.emitters.shared.config import ConfigDefaultsPrepared
+    from topmark.cli_shared.emitters.shared.config import ConfigDumpPrepared
+    from topmark.cli_shared.emitters.shared.config import ConfigInitPrepared
+    from topmark.cli_shared.emitters.shared.config import HumanDiagnosticCounts
+    from topmark.cli_shared.emitters.shared.config import HumanDiagnosticLine
 
 logger: TopmarkLogger = get_logger(__name__)
 

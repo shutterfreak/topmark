@@ -15,7 +15,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tests.api.conftest import api_check_dir, api_strip_dir, by_path_outcome, has_header, read_text
+from tests.api.conftest import api_check_dir
+from tests.api.conftest import api_strip_dir
+from tests.api.conftest import by_path_outcome
+from tests.api.conftest import has_header
+from tests.api.conftest import read_text
 from topmark.api.public_types import PublicPolicy
 from topmark.api.types import Outcome
 

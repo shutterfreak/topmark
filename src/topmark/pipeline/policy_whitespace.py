@@ -26,10 +26,8 @@ Helpers
 
 from __future__ import annotations
 
-from topmark.filetypes.policy import (
-    BlankCollapseMode,
-    FileTypeHeaderPolicy,
-)
+from topmark.filetypes.policy import BlankCollapseMode
+from topmark.filetypes.policy import FileTypeHeaderPolicy
 
 
 def is_pure_spacer(line: str, policy: FileTypeHeaderPolicy | None) -> bool:

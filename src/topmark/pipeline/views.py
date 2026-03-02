@@ -23,10 +23,13 @@ dataclasses per phase.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING
+from typing import Protocol
+from typing import runtime_checkable
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Sequence
+    from collections.abc import Iterable
+    from collections.abc import Sequence
 
 
 @runtime_checkable

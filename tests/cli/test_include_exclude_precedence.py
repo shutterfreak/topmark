@@ -20,8 +20,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tests.cli.conftest import assert_SUCCESS, run_cli_in
-from topmark.cli.keys import CliCmd, CliOpt
+from tests.cli.conftest import assert_SUCCESS
+from tests.cli.conftest import run_cli_in
+from topmark.cli.keys import CliCmd
+from topmark.cli.keys import CliOpt
 from topmark.constants import TOPMARK_START_MARKER
 
 if TYPE_CHECKING:

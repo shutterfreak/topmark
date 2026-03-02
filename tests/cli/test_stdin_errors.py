@@ -22,8 +22,10 @@ from typing import TYPE_CHECKING
 
 from click.testing import Result
 
-from tests.cli.conftest import assert_USAGE_ERROR, run_cli_in
-from topmark.cli.keys import CliCmd, CliOpt
+from tests.cli.conftest import assert_USAGE_ERROR
+from tests.cli.conftest import run_cli_in
+from topmark.cli.keys import CliCmd
+from topmark.cli.keys import CliOpt
 
 if TYPE_CHECKING:
     from pathlib import Path

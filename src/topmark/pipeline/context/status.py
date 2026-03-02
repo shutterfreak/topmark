@@ -53,20 +53,18 @@ from dataclasses import dataclass
 from typing import TypedDict
 
 from topmark.pipeline.hints import Axis
-from topmark.pipeline.status import (
-    BaseStatus,
-    ComparisonStatus,
-    ContentStatus,
-    FsStatus,
-    GenerationStatus,
-    HeaderStatus,
-    PatchStatus,
-    PlanStatus,
-    RenderStatus,
-    ResolveStatus,
-    StripStatus,
-    WriteStatus,
-)
+from topmark.pipeline.status import BaseStatus
+from topmark.pipeline.status import ComparisonStatus
+from topmark.pipeline.status import ContentStatus
+from topmark.pipeline.status import FsStatus
+from topmark.pipeline.status import GenerationStatus
+from topmark.pipeline.status import HeaderStatus
+from topmark.pipeline.status import PatchStatus
+from topmark.pipeline.status import PlanStatus
+from topmark.pipeline.status import RenderStatus
+from topmark.pipeline.status import ResolveStatus
+from topmark.pipeline.status import StripStatus
+from topmark.pipeline.status import WriteStatus
 
 
 class AxisStatusPayload(TypedDict):

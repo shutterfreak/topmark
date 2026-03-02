@@ -14,13 +14,17 @@ from __future__ import annotations
 
 import json
 import re
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
+from typing import cast
 
 import pytest
-from packaging.version import InvalidVersion, Version
+from packaging.version import InvalidVersion
+from packaging.version import Version
 
-from tests.cli.conftest import assert_SUCCESS, run_cli
-from topmark.cli.keys import CliCmd, CliOpt
+from tests.cli.conftest import assert_SUCCESS
+from tests.cli.conftest import run_cli
+from topmark.cli.keys import CliCmd
+from topmark.cli.keys import CliOpt
 from topmark.constants import TOPMARK_VERSION
 from topmark.utils.version import convert_pep440_to_semver
 

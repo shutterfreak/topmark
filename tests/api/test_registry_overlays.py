@@ -14,7 +14,8 @@ from __future__ import annotations
 
 from topmark.filetypes.base import FileType
 from topmark.pipeline.processors.base import HeaderProcessor
-from topmark.registry import FileTypeRegistry, HeaderProcessorRegistry
+from topmark.registry import FileTypeRegistry
+from topmark.registry import HeaderProcessorRegistry
 
 
 class _P(HeaderProcessor):

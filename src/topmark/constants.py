@@ -13,10 +13,15 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from importlib.metadata import PackageMetadata, PackageNotFoundError, metadata
+from importlib.metadata import PackageMetadata
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import metadata
 from pathlib import Path
 from re import Match
-from typing import TYPE_CHECKING, Final, TypedDict, cast
+from typing import TYPE_CHECKING
+from typing import Final
+from typing import TypedDict
+from typing import cast
 
 from packaging.requirements import Requirement
 

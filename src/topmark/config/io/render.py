@@ -19,7 +19,9 @@ TOML has no `null` value, so `None` entries are stripped during rendering.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING
+from typing import Any
+from typing import cast
 
 import tomlkit
 

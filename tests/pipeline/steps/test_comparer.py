@@ -22,24 +22,25 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tests.pipeline.conftest import (
-    make_pipeline_context,
-    run_comparer,
-    run_reader,
-    run_resolver,
-    run_scanner,
-)
-from topmark.config import Config, MutableConfig
-from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
+from tests.pipeline.conftest import make_pipeline_context
+from tests.pipeline.conftest import run_comparer
+from tests.pipeline.conftest import run_reader
+from tests.pipeline.conftest import run_resolver
+from tests.pipeline.conftest import run_scanner
+from topmark.config import Config
+from topmark.config import MutableConfig
+from topmark.constants import TOPMARK_END_MARKER
+from topmark.constants import TOPMARK_START_MARKER
 from topmark.filetypes.base import FileType
 from topmark.pipeline.processors.base import HeaderProcessor
-from topmark.pipeline.status import (
-    ComparisonStatus,
-    GenerationStatus,
-    RenderStatus,
-    ResolveStatus,
-)
-from topmark.pipeline.views import BuilderView, ListFileImageView, RenderView, UpdatedView
+from topmark.pipeline.status import ComparisonStatus
+from topmark.pipeline.status import GenerationStatus
+from topmark.pipeline.status import RenderStatus
+from topmark.pipeline.status import ResolveStatus
+from topmark.pipeline.views import BuilderView
+from topmark.pipeline.views import ListFileImageView
+from topmark.pipeline.views import RenderView
+from topmark.pipeline.views import UpdatedView
 
 if TYPE_CHECKING:
     from pathlib import Path

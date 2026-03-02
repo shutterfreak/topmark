@@ -20,7 +20,8 @@ from topmark.api.types import Outcome
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.api.types import FileTypeInfo, ProcessorInfo
+    from topmark.api.types import FileTypeInfo
+    from topmark.api.types import ProcessorInfo
 
 
 def test_version_is_nonempty_string() -> None:

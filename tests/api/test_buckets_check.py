@@ -12,12 +12,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
+from typing import Any
 
 from topmark import api
 from topmark.api.public_types import PublicPolicy
 from topmark.api.types import Outcome
-from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
+from topmark.constants import TOPMARK_END_MARKER
+from topmark.constants import TOPMARK_START_MARKER
 
 if TYPE_CHECKING:
     from collections.abc import Mapping

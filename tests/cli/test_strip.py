@@ -29,16 +29,17 @@ from typing import TYPE_CHECKING
 
 from click.testing import Result
 
-from tests.cli.conftest import (
-    assert_SUCCESS,
-    assert_SUCCESS_or_WOULD_CHANGE,
-    assert_WOULD_CHANGE,
-    run_cli,
-    run_cli_in,
-)
-from topmark.cli.keys import CliCmd, CliOpt
-from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
-from topmark.pipeline.status import HeaderStatus, StripStatus
+from tests.cli.conftest import assert_SUCCESS
+from tests.cli.conftest import assert_SUCCESS_or_WOULD_CHANGE
+from tests.cli.conftest import assert_WOULD_CHANGE
+from tests.cli.conftest import run_cli
+from tests.cli.conftest import run_cli_in
+from topmark.cli.keys import CliCmd
+from topmark.cli.keys import CliOpt
+from topmark.constants import TOPMARK_END_MARKER
+from topmark.constants import TOPMARK_START_MARKER
+from topmark.pipeline.status import HeaderStatus
+from topmark.pipeline.status import StripStatus
 
 if TYPE_CHECKING:
     from click.testing import Result

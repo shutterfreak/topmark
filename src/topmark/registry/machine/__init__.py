@@ -53,10 +53,8 @@ See Also:
 
 from __future__ import annotations
 
-from topmark.registry.machine.serializers import (
-    serialize_filetypes,
-    serialize_processors,
-)
+from topmark.registry.machine.serializers import serialize_filetypes
+from topmark.registry.machine.serializers import serialize_processors
 
 __all__ = [
     "serialize_filetypes",

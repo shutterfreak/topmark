@@ -38,9 +38,11 @@ Design principles:
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from dataclasses import field
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
+from typing import Any
 
 from yachalk import chalk
 
@@ -49,7 +51,7 @@ from topmark.core.enum_mixins import EnumIntrospectionMixin
 from topmark.core.presentation import ColoredStrEnum
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterator
 
     from topmark.config.logging import TopmarkLogger
 
@@ -373,7 +375,7 @@ class HintLog:
                 best_key = key
         return best
 
-    def __iter__(self) -> Iterable[Hint]:
+    def __iter__(self) -> Iterator[Hint]:
         """Iterate over all hints stored in this log.
 
         Returns:

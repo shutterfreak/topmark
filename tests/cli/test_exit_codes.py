@@ -24,9 +24,12 @@ from typing import TYPE_CHECKING
 
 from click.testing import Result
 
-from tests.cli.conftest import assert_SUCCESS, assert_WOULD_CHANGE, run_cli
+from tests.cli.conftest import assert_SUCCESS
+from tests.cli.conftest import assert_WOULD_CHANGE
+from tests.cli.conftest import run_cli
 from tests.conftest import parametrize
-from topmark.cli.keys import CliCmd, CliOpt
+from topmark.cli.keys import CliCmd
+from topmark.cli.keys import CliOpt
 from topmark.constants import TOPMARK_START_MARKER
 from topmark.core.exit_codes import ExitCode
 

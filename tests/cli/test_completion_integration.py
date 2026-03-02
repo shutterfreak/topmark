@@ -27,13 +27,17 @@ Resilience:
 from __future__ import annotations
 
 import os
-from typing import Any, cast
+from typing import Any
+from typing import cast
 
 import pytest
-from click.shell_completion import BashComplete, CompletionItem
+from click.shell_completion import BashComplete
+from click.shell_completion import CompletionItem
 
-from tests.conftest import mark_integration, parametrize
-from topmark.cli.keys import CliCmd, CliOpt
+from tests.conftest import mark_integration
+from tests.conftest import parametrize
+from topmark.cli.keys import CliCmd
+from topmark.cli.keys import CliOpt
 from topmark.cli.main import cli
 from topmark.rendering.formats import HeaderOutputFormat
 

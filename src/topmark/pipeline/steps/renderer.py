@@ -33,9 +33,12 @@ from typing import TYPE_CHECKING
 from topmark.config.logging import get_logger
 from topmark.pipeline.context.policy import allow_empty_header_by_policy
 from topmark.pipeline.hints import Axis
-from topmark.pipeline.status import GenerationStatus, RenderStatus
+from topmark.pipeline.status import GenerationStatus
+from topmark.pipeline.status import RenderStatus
 from topmark.pipeline.steps.base import BaseStep
-from topmark.pipeline.views import BuilderView, HeaderView, RenderView
+from topmark.pipeline.views import BuilderView
+from topmark.pipeline.views import HeaderView
+from topmark.pipeline.views import RenderView
 
 if TYPE_CHECKING:
     from topmark.config.logging import TopmarkLogger

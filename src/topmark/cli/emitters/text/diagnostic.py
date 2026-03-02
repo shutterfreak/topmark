@@ -27,12 +27,10 @@ from typing import TYPE_CHECKING
 
 from topmark.cli.cmd_common import get_effective_verbosity
 from topmark.core.keys import ArgKey
-from topmark.diagnostic.model import (
-    DiagnosticLevel,
-    DiagnosticStats,
-    FrozenDiagnosticLog,
-    compute_diagnostic_stats,
-)
+from topmark.diagnostic.model import DiagnosticLevel
+from topmark.diagnostic.model import DiagnosticStats
+from topmark.diagnostic.model import FrozenDiagnosticLog
+from topmark.diagnostic.model import compute_diagnostic_stats
 
 if TYPE_CHECKING:
     import click

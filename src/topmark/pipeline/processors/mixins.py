@@ -24,7 +24,10 @@ mixins to share well-tested logic and reduce duplication.
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any, Final, cast
+from typing import TYPE_CHECKING
+from typing import Any
+from typing import Final
+from typing import cast
 
 from topmark.pipeline.policy_whitespace import is_pure_spacer
 

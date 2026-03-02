@@ -29,38 +29,30 @@ from typing import TYPE_CHECKING
 
 import click
 
-from topmark.cli.cmd_common import (
-    build_config_for_plan,
-    get_effective_verbosity,
-    init_common_state,
-)
+from topmark.cli.cmd_common import build_config_for_plan
+from topmark.cli.cmd_common import get_effective_verbosity
+from topmark.cli.cmd_common import init_common_state
 from topmark.cli.emitters.text.config import emit_config_dump_text
 from topmark.cli.emitters.text.diagnostic import render_config_diagnostics_text
 from topmark.cli.io import plan_cli_inputs
-from topmark.cli.keys import CliCmd, CliOpt
+from topmark.cli.keys import CliCmd
+from topmark.cli.keys import CliOpt
 from topmark.cli.machine_emitters import emit_config_machine
-from topmark.cli.options import (
-    CONTEXT_SETTINGS,
-    common_config_options,
-    common_file_and_filtering_options,
-    common_header_formatting_options,
-    common_output_format_options,
-    common_ui_options,
-)
-from topmark.cli.validators import (
-    apply_color_policy_for_output_format,
-    apply_ignore_files_from_policy,
-    apply_ignore_positional_paths_policy,
-)
-from topmark.cli_shared.emitters.markdown.config import (
-    emit_config_dump_markdown,
-)
-from topmark.cli_shared.emitters.shared.config import (
-    ConfigDumpPrepared,
-    prepare_config_dump,
-)
+from topmark.cli.options import CONTEXT_SETTINGS
+from topmark.cli.options import common_config_options
+from topmark.cli.options import common_file_and_filtering_options
+from topmark.cli.options import common_header_formatting_options
+from topmark.cli.options import common_output_format_options
+from topmark.cli.options import common_ui_options
+from topmark.cli.validators import apply_color_policy_for_output_format
+from topmark.cli.validators import apply_ignore_files_from_policy
+from topmark.cli.validators import apply_ignore_positional_paths_policy
+from topmark.cli_shared.emitters.markdown.config import emit_config_dump_markdown
+from topmark.cli_shared.emitters.shared.config import ConfigDumpPrepared
+from topmark.cli_shared.emitters.shared.config import prepare_config_dump
 from topmark.config.logging import get_logger
-from topmark.constants import TOML_BLOCK_END, TOML_BLOCK_START
+from topmark.constants import TOML_BLOCK_END
+from topmark.constants import TOML_BLOCK_START
 from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
@@ -72,7 +64,8 @@ if TYPE_CHECKING:
     from topmark.cli.io import InputPlan
     from topmark.cli_shared.color import ColorMode
     from topmark.cli_shared.console_api import ConsoleLike
-    from topmark.config import Config, MutableConfig
+    from topmark.config import Config
+    from topmark.config import MutableConfig
     from topmark.config.logging import TopmarkLogger
     from topmark.core.machine.schemas import MetaPayload
     from topmark.rendering.formats import HeaderOutputFormat

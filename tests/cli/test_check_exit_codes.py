@@ -20,7 +20,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tests.cli.conftest import assert_WOULD_CHANGE, run_cli_in
+from tests.cli.conftest import assert_WOULD_CHANGE
+from tests.cli.conftest import run_cli_in
 from topmark.cli.keys import CliCmd
 
 if TYPE_CHECKING:

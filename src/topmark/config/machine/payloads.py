@@ -24,26 +24,20 @@ This module performs no I/O and does not shape envelopes/records.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING
+from typing import Any
+from typing import cast
 
 from topmark.cli.keys import CliCmd
-from topmark.config.machine.schemas import (
-    ConfigCheckSummary,
-    ConfigDiagnosticsPayload,
-    ConfigPayload,
-)
+from topmark.config.machine.schemas import ConfigCheckSummary
+from topmark.config.machine.schemas import ConfigDiagnosticsPayload
+from topmark.config.machine.schemas import ConfigPayload
 from topmark.config.model import Config
-from topmark.core.machine.schemas import (
-    normalize_payload,
-)
-from topmark.diagnostic.machine.schemas import (
-    MachineDiagnosticCounts,
-    MachineDiagnosticEntry,
-)
-from topmark.diagnostic.model import (
-    DiagnosticStats,
-    compute_diagnostic_stats,
-)
+from topmark.core.machine.schemas import normalize_payload
+from topmark.diagnostic.machine.schemas import MachineDiagnosticCounts
+from topmark.diagnostic.machine.schemas import MachineDiagnosticEntry
+from topmark.diagnostic.model import DiagnosticStats
+from topmark.diagnostic.model import compute_diagnostic_stats
 
 if TYPE_CHECKING:
     from topmark.config.io import TomlTable

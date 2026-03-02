@@ -29,25 +29,22 @@ from enum import Enum
 from typing import TYPE_CHECKING
 
 from topmark.api.types import Outcome
-from topmark.config.logging import TopmarkLogger, get_logger
+from topmark.config.logging import TopmarkLogger
+from topmark.config.logging import get_logger
 from topmark.pipeline.context.model import ProcessingContext
-from topmark.pipeline.context.policy import (
-    can_change,
-    check_permitted_by_policy,
-    effective_would_add_or_update,
-    effective_would_strip,
-)
-from topmark.pipeline.status import (  # temporary
-    ComparisonStatus,
-    ContentStatus,
-    FsStatus,
-    GenerationStatus,
-    HeaderStatus,
-    PlanStatus,
-    ResolveStatus,
-    StripStatus,
-    WriteStatus,
-)
+from topmark.pipeline.context.policy import can_change
+from topmark.pipeline.context.policy import check_permitted_by_policy
+from topmark.pipeline.context.policy import effective_would_add_or_update
+from topmark.pipeline.context.policy import effective_would_strip
+from topmark.pipeline.status import ComparisonStatus  # temporary
+from topmark.pipeline.status import ContentStatus  # temporary
+from topmark.pipeline.status import FsStatus  # temporary
+from topmark.pipeline.status import GenerationStatus  # temporary
+from topmark.pipeline.status import HeaderStatus  # temporary
+from topmark.pipeline.status import PlanStatus  # temporary
+from topmark.pipeline.status import ResolveStatus  # temporary
+from topmark.pipeline.status import StripStatus  # temporary
+from topmark.pipeline.status import WriteStatus  # temporary
 
 if TYPE_CHECKING:
     from topmark.pipeline.context.model import ProcessingContext

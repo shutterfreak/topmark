@@ -32,22 +32,22 @@ from typing import TYPE_CHECKING
 from topmark.config.logging import get_logger
 from topmark.filetypes.base import FileType
 from topmark.pipeline.adapters import PreInsertViewAdapter
-from topmark.pipeline.context.policy import (
-    allow_content_reflow_by_policy,
-    allows_bom_before_shebang_by_policy,
-    allows_mixed_line_endings_by_policy,
-)
-from topmark.pipeline.hints import Axis, Cluster, KnownCode
-from topmark.pipeline.status import (
-    ContentStatus,
-    FsStatus,
-)
+from topmark.pipeline.context.policy import allow_content_reflow_by_policy
+from topmark.pipeline.context.policy import allows_bom_before_shebang_by_policy
+from topmark.pipeline.context.policy import allows_mixed_line_endings_by_policy
+from topmark.pipeline.hints import Axis
+from topmark.pipeline.hints import Cluster
+from topmark.pipeline.hints import KnownCode
+from topmark.pipeline.status import ContentStatus
+from topmark.pipeline.status import FsStatus
 from topmark.pipeline.steps.base import BaseStep
 from topmark.pipeline.views import ListFileImageView
 
 if TYPE_CHECKING:
     from topmark.config.logging import TopmarkLogger
-    from topmark.filetypes.base import FileType, InsertChecker, InsertCheckResult
+    from topmark.filetypes.base import FileType
+    from topmark.filetypes.base import InsertChecker
+    from topmark.filetypes.base import InsertCheckResult
     from topmark.pipeline.context.model import ProcessingContext
 
 logger: TopmarkLogger = get_logger(__name__)

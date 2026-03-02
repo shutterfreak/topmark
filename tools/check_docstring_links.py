@@ -175,7 +175,7 @@ def extract_docstrings(py_path: Path) -> list[tuple[int, int, str]]:
 
     # Class/def/async def docstrings
     for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and node.body:
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef) and node.body:
             first_stmt = node.body[0]
             if isinstance(first_stmt, ast.Expr) and isinstance(first_stmt.value, ast.Constant):
                 const = first_stmt.value

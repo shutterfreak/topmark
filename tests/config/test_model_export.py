@@ -17,7 +17,8 @@ These tests cover:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
+from typing import Any
 
 import pytest
 
@@ -25,7 +26,8 @@ from topmark.config import MutableConfig
 from topmark.config.io import to_toml
 from topmark.config.keys import Toml
 from topmark.config.model import Config
-from topmark.config.types import FileWriteStrategy, OutputTarget
+from topmark.config.types import FileWriteStrategy
+from topmark.config.types import OutputTarget
 from topmark.core.keys import ArgKey
 
 if TYPE_CHECKING:

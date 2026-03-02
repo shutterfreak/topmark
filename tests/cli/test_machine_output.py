@@ -36,17 +36,18 @@ assert exit codes.
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING
+from typing import Any
+from typing import cast
 
 import pytest
 
-from tests.cli.conftest import (
-    assert_SUCCESS,
-    assert_SUCCESS_or_WOULD_CHANGE,
-    run_cli,
-    run_cli_in,
-)
-from topmark.cli.keys import CliCmd, CliOpt
+from tests.cli.conftest import assert_SUCCESS
+from tests.cli.conftest import assert_SUCCESS_or_WOULD_CHANGE
+from tests.cli.conftest import run_cli
+from tests.cli.conftest import run_cli_in
+from topmark.cli.keys import CliCmd
+from topmark.cli.keys import CliOpt
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -44,13 +44,17 @@ from __future__ import annotations
 
 from enum import Enum
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, TypeVar, cast
+from typing import TYPE_CHECKING
+from typing import Any
+from typing import TypeVar
+from typing import cast
+
+from typing_extensions import Self
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
 _E = TypeVar("_E", bound=Enum)
-_KS = TypeVar("_KS", bound="KeyedStrEnum")
 
 
 def enum_from_name(
@@ -133,11 +137,11 @@ class KeyedStrEnum(str, Enum):
     aliases: tuple[str, ...]
 
     def __new__(
-        cls: type[_KS],
+        cls,
         key: str,
         label: str,
         aliases: Iterable[str] = (),
-    ) -> _KS:
+    ) -> Self:
         """Create a new KeyedStrEnum member with key, label, and optional aliases.
 
         Args:
@@ -148,7 +152,7 @@ class KeyedStrEnum(str, Enum):
         Returns:
             The newly created enum member.
         """
-        obj: _KS = str.__new__(cls, key)
+        obj: Self = str.__new__(cls, key)
         obj._value_ = key  # stable machine value
         obj.label = label
         obj.aliases = tuple(aliases)
@@ -160,7 +164,7 @@ class KeyedStrEnum(str, Enum):
         return str(self)
 
     @classmethod
-    def parse(cls: type[_KS], raw: str | None) -> _KS | None:
+    def parse(cls, raw: str | None) -> Self | None:
         """Parse a token into an enum member.
 
         Matches against:

@@ -19,19 +19,19 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests.pipeline.conftest import (
-    make_pipeline_context,
-    run_builder,
-    run_comparer,
-    run_patcher,
-    run_planner,
-    run_reader,
-    run_renderer,
-    run_resolver,
-    run_scanner,
-)
-from topmark.config import Config, MutableConfig
-from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
+from tests.pipeline.conftest import make_pipeline_context
+from tests.pipeline.conftest import run_builder
+from tests.pipeline.conftest import run_comparer
+from tests.pipeline.conftest import run_patcher
+from tests.pipeline.conftest import run_planner
+from tests.pipeline.conftest import run_reader
+from tests.pipeline.conftest import run_renderer
+from tests.pipeline.conftest import run_resolver
+from tests.pipeline.conftest import run_scanner
+from topmark.config import Config
+from topmark.config import MutableConfig
+from topmark.constants import TOPMARK_END_MARKER
+from topmark.constants import TOPMARK_START_MARKER
 from topmark.utils.diff import render_patch
 
 if TYPE_CHECKING:

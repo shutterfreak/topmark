@@ -28,14 +28,12 @@ from topmark.cli.emitters.utils import emit_toml_block
 
 if TYPE_CHECKING:
     from topmark.cli_shared.console_api import ConsoleLike
-    from topmark.cli_shared.emitters.shared.config import (
-        ConfigCheckPrepared,
-        ConfigDefaultsPrepared,
-        ConfigDumpPrepared,
-        ConfigInitPrepared,
-        HumanDiagnosticCounts,
-        HumanDiagnosticLine,
-    )
+    from topmark.cli_shared.emitters.shared.config import ConfigCheckPrepared
+    from topmark.cli_shared.emitters.shared.config import ConfigDefaultsPrepared
+    from topmark.cli_shared.emitters.shared.config import ConfigDumpPrepared
+    from topmark.cli_shared.emitters.shared.config import ConfigInitPrepared
+    from topmark.cli_shared.emitters.shared.config import HumanDiagnosticCounts
+    from topmark.cli_shared.emitters.shared.config import HumanDiagnosticLine
 
 
 # --- Generate initial / default Config ---

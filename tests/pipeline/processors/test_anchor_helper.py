@@ -12,7 +12,8 @@
 
 from __future__ import annotations
 
-from topmark.pipeline.processors.base import NO_LINE_ANCHOR, HeaderProcessor
+from topmark.pipeline.processors.base import NO_LINE_ANCHOR
+from topmark.pipeline.processors.base import HeaderProcessor
 
 
 class _FakeLine(HeaderProcessor):

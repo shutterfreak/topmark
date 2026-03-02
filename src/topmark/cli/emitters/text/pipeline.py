@@ -25,7 +25,8 @@ Notes:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING
+from typing import Final
 
 from yachalk import chalk
 
@@ -36,12 +37,16 @@ from topmark.cli_shared.emitters.shared.pipeline import render_diff
 from topmark.cli_shared.outcomes import collect_outcome_counts_colored
 from topmark.config.logging import get_logger
 from topmark.core.enum_mixins import enum_from_name
-from topmark.diagnostic.model import DiagnosticLevel, DiagnosticStats
+from topmark.diagnostic.model import DiagnosticLevel
+from topmark.diagnostic.model import DiagnosticStats
 from topmark.pipeline.context.model import ProcessingContext
-from topmark.pipeline.hints import Cluster, Hint
+from topmark.pipeline.hints import Cluster
+from topmark.pipeline.hints import Hint
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Sequence
+    from collections.abc import Callable
+    from collections.abc import Iterable
+    from collections.abc import Sequence
 
     from topmark.cli_shared.console_api import ConsoleLike
     from topmark.config.logging import TopmarkLogger

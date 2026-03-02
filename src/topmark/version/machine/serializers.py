@@ -36,8 +36,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.core.formats import OutputFormat
-from topmark.core.machine.schemas import MachineKey, MetaPayload
-from topmark.core.machine.serializers import serialize_json_envelope, serialize_ndjson
+from topmark.core.machine.schemas import MachineKey
+from topmark.core.machine.schemas import MetaPayload
+from topmark.core.machine.serializers import serialize_json_envelope
+from topmark.core.machine.serializers import serialize_ndjson
 from topmark.version.machine.payloads import build_version_payload
 from topmark.version.machine.shapes import iter_version_ndjson_records
 

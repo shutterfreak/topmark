@@ -37,13 +37,16 @@ output.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Final, cast
+from typing import Final
+from typing import cast
 
 import tomlkit
 from tomlkit.exceptions import ParseError as TomlkitParseError
-from tomlkit.items import Item, Table
+from tomlkit.items import Item
+from tomlkit.items import Table
 
-from topmark.config.logging import TopmarkLogger, get_logger
+from topmark.config.logging import TopmarkLogger
+from topmark.config.logging import get_logger
 from topmark.constants import TOPMARK_END_MARKER
 
 _TOOL_TOPMARK_HEADER: Final[str] = "[tool.topmark]"

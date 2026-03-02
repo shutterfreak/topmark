@@ -37,16 +37,13 @@ import json
 from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
-from topmark.core.machine.schemas import (
-    MetaPayload,
-    normalize_payload,
-)
-from topmark.core.machine.shapes import (
-    build_json_envelope,
-)
+from topmark.core.machine.schemas import MetaPayload
+from topmark.core.machine.schemas import normalize_payload
+from topmark.core.machine.shapes import build_json_envelope
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Mapping
+    from collections.abc import Iterator
+    from collections.abc import Mapping
 
 
 def serialize_json_object(obj: object) -> str:

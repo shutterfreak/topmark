@@ -30,30 +30,22 @@ from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
 from topmark.core.formats import OutputFormat
-from topmark.core.machine.serializers import (
-    iter_ndjson_strings,
-    serialize_json_object,
-)
-from topmark.registry.machine.payloads import (
-    build_filetypes_payload,
-    build_processors_payload,
-)
-from topmark.registry.machine.shapes import (
-    build_filetypes_json_envelope,
-    build_processors_json_envelope,
-    iter_filetypes_ndjson_records,
-    iter_processors_ndjson_records,
-)
+from topmark.core.machine.serializers import iter_ndjson_strings
+from topmark.core.machine.serializers import serialize_json_object
+from topmark.registry.machine.payloads import build_filetypes_payload
+from topmark.registry.machine.payloads import build_processors_payload
+from topmark.registry.machine.shapes import build_filetypes_json_envelope
+from topmark.registry.machine.shapes import build_processors_json_envelope
+from topmark.registry.machine.shapes import iter_filetypes_ndjson_records
+from topmark.registry.machine.shapes import iter_processors_ndjson_records
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from topmark.core.machine.schemas import MetaPayload
-    from topmark.registry.machine.schemas import (
-        FileTypeBriefEntry,
-        FileTypeDetailEntry,
-        ProcessorsPayload,
-    )
+    from topmark.registry.machine.schemas import FileTypeBriefEntry
+    from topmark.registry.machine.schemas import FileTypeDetailEntry
+    from topmark.registry.machine.schemas import ProcessorsPayload
 
 
 def serialize_filetypes(

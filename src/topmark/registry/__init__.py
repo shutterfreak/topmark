@@ -36,9 +36,13 @@ HeaderProcessorRegistry.register(my_ft.name, MyProc)
 
 from __future__ import annotations
 
-from .filetypes import FileTypeMeta, FileTypeRegistry
-from .processors import HeaderProcessorRegistry, ProcessorMeta
-from .registry import Binding, Registry, iter_bindings
+from .filetypes import FileTypeMeta
+from .filetypes import FileTypeRegistry
+from .processors import HeaderProcessorRegistry
+from .processors import ProcessorMeta
+from .registry import Binding
+from .registry import Registry
+from .registry import iter_bindings
 
 __all__: list[str] = [
     "Binding",

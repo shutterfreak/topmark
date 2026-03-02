@@ -23,7 +23,8 @@ from typing import TYPE_CHECKING
 import topmark.file_resolver as file_resolver_mod
 
 # Import the module under test
-from tests.conftest import make_config, make_file_type
+from tests.conftest import make_config
+from tests.conftest import make_file_type
 from topmark.registry import FileTypeRegistry
 
 if TYPE_CHECKING:

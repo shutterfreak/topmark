@@ -44,8 +44,11 @@ from typing import TYPE_CHECKING
 from topmark.config.logging import get_logger
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.context.policy import allow_empty_by_policy
-from topmark.pipeline.hints import Axis, Cluster, KnownCode
-from topmark.pipeline.status import FsStatus, ResolveStatus
+from topmark.pipeline.hints import Axis
+from topmark.pipeline.hints import Cluster
+from topmark.pipeline.hints import KnownCode
+from topmark.pipeline.status import FsStatus
+from topmark.pipeline.status import ResolveStatus
 from topmark.pipeline.steps.base import BaseStep
 
 if TYPE_CHECKING:

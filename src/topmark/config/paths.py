@@ -42,7 +42,8 @@ from topmark.config.logging import get_logger
 from topmark.config.types import PatternSource
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable
+    from collections.abc import Callable
+    from collections.abc import Iterable
     from os import PathLike
 
     from topmark.config.logging import TopmarkLogger

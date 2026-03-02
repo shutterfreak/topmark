@@ -24,7 +24,8 @@ from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from topmark.config import Config
-from topmark.config.policy import PolicyRegistry, make_policy_registry
+from topmark.config.policy import PolicyRegistry
+from topmark.config.policy import make_policy_registry
 from topmark.pipeline import runner
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.pipelines import Pipeline

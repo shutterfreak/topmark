@@ -46,62 +46,57 @@ import functools
 import os
 
 # For runtime type checks, prefer collections.abc
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from dataclasses import field
+from datetime import datetime
+from datetime import timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Final, cast
+from typing import TYPE_CHECKING
+from typing import Any
+from typing import Final
+from typing import cast
 
 from topmark.cli.keys import CliOpt
-from topmark.config.args_io import (
-    get_arg_bool_or_none_checked,
-    get_arg_enum_checked,
-    get_arg_int_or_none_checked,
-    get_arg_string_list_checked,
-    get_arg_string_or_none_checked,
-)
-from topmark.config.io import (
-    as_toml_table_map,
-    clean_toml,
-    get_bool_value_or_none_checked,
-    get_string_list_value_checked,
-    get_string_value_checked,
-    get_string_value_or_none_checked,
-    get_table_value,
-    load_defaults_dict,
-    load_toml_dict,
-)
+from topmark.config.args_io import get_arg_bool_or_none_checked
+from topmark.config.args_io import get_arg_enum_checked
+from topmark.config.args_io import get_arg_int_or_none_checked
+from topmark.config.args_io import get_arg_string_list_checked
+from topmark.config.args_io import get_arg_string_or_none_checked
+from topmark.config.io import as_toml_table_map
+from topmark.config.io import clean_toml
+from topmark.config.io import get_bool_value_or_none_checked
+from topmark.config.io import get_string_list_value_checked
+from topmark.config.io import get_string_value_checked
+from topmark.config.io import get_string_value_or_none_checked
+from topmark.config.io import get_table_value
+from topmark.config.io import load_defaults_dict
+from topmark.config.io import load_toml_dict
 from topmark.config.io.loaders import render_runtime_defaults_toml_text
 from topmark.config.keys import Toml
 from topmark.config.logging import get_logger
-from topmark.config.paths import (
-    abs_path_from,
-    extend_pattern_sources,
-    ps_from_cli,
-    ps_from_config,
-)
-from topmark.config.policy import (
-    MutablePolicy,
-    Policy,
-)
-from topmark.config.types import (
-    ArgsLike,
-    FileWriteStrategy,
-    OutputTarget,
-)
+from topmark.config.paths import abs_path_from
+from topmark.config.paths import extend_pattern_sources
+from topmark.config.paths import ps_from_cli
+from topmark.config.paths import ps_from_config
+from topmark.config.policy import MutablePolicy
+from topmark.config.policy import Policy
+from topmark.config.types import ArgsLike
+from topmark.config.types import FileWriteStrategy
+from topmark.config.types import OutputTarget
 from topmark.constants import CLI_OVERRIDE_STR
 from topmark.core.keys import ArgKey
-from topmark.diagnostic.model import (
-    DiagnosticLog,
-    DiagnosticStats,
-    FrozenDiagnosticLog,
-    compute_diagnostic_stats,
-)
+from topmark.diagnostic.model import DiagnosticLog
+from topmark.diagnostic.model import DiagnosticStats
+from topmark.diagnostic.model import FrozenDiagnosticLog
+from topmark.diagnostic.model import compute_diagnostic_stats
 from topmark.rendering.formats import HeaderOutputFormat
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Iterable
+    from collections.abc import Mapping
 
-    from topmark.config.io import TomlTable, TomlTableMap
+    from topmark.config.io import TomlTable
+    from topmark.config.io import TomlTableMap
     from topmark.config.logging import TopmarkLogger
     from topmark.config.types import PatternSource
     from topmark.filetypes.base import FileType
@@ -1002,7 +997,7 @@ class MutableConfig:
         # unused keys). Unsupported types are ignored with a warning.
         field_values: dict[str, str] = {}
         for k, v in field_tbl.items():
-            if isinstance(v, (str, int, float, bool)):
+            if isinstance(v, str | int | float | bool):
                 field_values[k] = str(v)
             else:
                 # [fields] is a free-form table; include the TOML location for consistency.

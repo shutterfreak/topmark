@@ -20,26 +20,19 @@ from typing import TYPE_CHECKING
 
 import click
 
-from topmark.cli.cmd_common import (
-    get_effective_verbosity,
-    init_common_state,
-)
+from topmark.cli.cmd_common import get_effective_verbosity
+from topmark.cli.cmd_common import init_common_state
 from topmark.cli.emitters.text.registry import emit_filetypes_text
-from topmark.cli.keys import CliCmd, CliOpt
+from topmark.cli.keys import CliCmd
+from topmark.cli.keys import CliOpt
 from topmark.cli.machine_emitters import emit_filetypes_machine
-from topmark.cli.options import (
-    common_output_format_options,
-    common_ui_options,
-)
-from topmark.cli.validators import (
-    apply_color_policy_for_output_format,
-    apply_ignore_positional_paths_policy,
-)
+from topmark.cli.options import common_output_format_options
+from topmark.cli.options import common_ui_options
+from topmark.cli.validators import apply_color_policy_for_output_format
+from topmark.cli.validators import apply_ignore_positional_paths_policy
 from topmark.cli_shared.emitters.markdown.registry import render_filetypes_markdown
-from topmark.cli_shared.emitters.shared.registry import (
-    FileTypesHumanReport,
-    build_filetypes_human_report,
-)
+from topmark.cli_shared.emitters.shared.registry import FileTypesHumanReport
+from topmark.cli_shared.emitters.shared.registry import build_filetypes_human_report
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
 

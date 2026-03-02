@@ -21,14 +21,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.cli.keys import CliCmd, CliOpt
+from topmark.cli.keys import CliCmd
+from topmark.cli.keys import CliOpt
 from topmark.pipeline.context.model import ProcessingContext
-from topmark.pipeline.context.policy import effective_would_add_or_update, effective_would_strip
-from topmark.pipeline.outcomes import Intent, determine_intent
-from topmark.pipeline.status import (
-    HeaderStatus,
-    WriteStatus,
-)
+from topmark.pipeline.context.policy import effective_would_add_or_update
+from topmark.pipeline.context.policy import effective_would_strip
+from topmark.pipeline.outcomes import Intent
+from topmark.pipeline.outcomes import determine_intent
+from topmark.pipeline.status import HeaderStatus
+from topmark.pipeline.status import WriteStatus
 from topmark.utils.diff import render_patch
 
 if TYPE_CHECKING:

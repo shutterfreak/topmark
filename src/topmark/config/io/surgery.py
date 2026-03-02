@@ -27,11 +27,16 @@ Notes:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING
+from typing import Any
+from typing import cast
 
 import tomlkit
 from tomlkit.exceptions import ParseError as TomlkitParseError
-from tomlkit.items import Comment, Item, Key, Table
+from tomlkit.items import Comment
+from tomlkit.items import Item
+from tomlkit.items import Key
+from tomlkit.items import Table
 
 if TYPE_CHECKING:
     from _collections_abc import dict_items

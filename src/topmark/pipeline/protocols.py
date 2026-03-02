@@ -32,7 +32,8 @@ axes_written : tuple[str, ...]
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING
+from typing import Protocol
 
 if TYPE_CHECKING:
     from .context.model import ProcessingContext

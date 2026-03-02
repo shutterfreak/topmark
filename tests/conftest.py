@@ -30,16 +30,27 @@ Notes:
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Iterator, Mapping, Sequence
-from contextlib import AbstractContextManager, contextmanager
+from collections.abc import Callable
+from collections.abc import Iterator
+from collections.abc import Mapping
+from collections.abc import Sequence
+from contextlib import AbstractContextManager
+from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, Any, Literal, TypeVar, cast
+from typing import TYPE_CHECKING
+from typing import Any
+from typing import Literal
+from typing import TypeVar
+from typing import cast
 
 import pytest
 
-from topmark.config import MutableConfig, PatternSource, logging
-from topmark.filetypes.base import ContentGate, FileType
+from topmark.config import MutableConfig
+from topmark.config import PatternSource
+from topmark.config import logging
+from topmark.filetypes.base import ContentGate
+from topmark.filetypes.base import FileType
 from topmark.pipeline.processors.base import HeaderProcessor
 
 if TYPE_CHECKING:
@@ -133,7 +144,8 @@ def reset_registry_overlays() -> Iterator[None]:
     Yields:
         None: Control is yielded to the test while registries are isolated.
     """
-    from topmark.registry import FileTypeRegistry, HeaderProcessorRegistry
+    from topmark.registry import FileTypeRegistry
+    from topmark.registry import HeaderProcessorRegistry
     from topmark.registry import processors as _processors_mod
 
     def _reset() -> None:
@@ -438,7 +450,8 @@ def patched_effective_registries(
         None: This context manager yields control to the caller while the effective
         registries are patched.
     """
-    from topmark.registry import FileTypeRegistry, HeaderProcessorRegistry
+    from topmark.registry import FileTypeRegistry
+    from topmark.registry import HeaderProcessorRegistry
 
     # Silence Pyright regarding use of private members:
     ft_reg = cast("Any", FileTypeRegistry)

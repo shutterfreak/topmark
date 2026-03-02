@@ -23,11 +23,17 @@ from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
-from hypothesis import HealthCheck, assume, given, settings
+from hypothesis import HealthCheck
+from hypothesis import assume
+from hypothesis import given
+from hypothesis import settings
 
-from tests.pipeline.conftest import materialize_updated_lines, run_insert, run_strip
+from tests.pipeline.conftest import materialize_updated_lines
+from tests.pipeline.conftest import run_insert
+from tests.pipeline.conftest import run_strip
 from tests.strategies_topmark import s_source_envelope_for_ext
-from topmark.config import Config, MutableConfig
+from topmark.config import Config
+from topmark.config import MutableConfig
 from topmark.constants import TOPMARK_START_MARKER
 
 if TYPE_CHECKING:

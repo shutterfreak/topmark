@@ -35,8 +35,11 @@ Path resolution policy (summary):
 
 from __future__ import annotations
 
-from .model import Config, MutableConfig, sanitize_config
-from .types import ArgsLike, PatternSource
+from .model import Config
+from .model import MutableConfig
+from .model import sanitize_config
+from .types import ArgsLike
+from .types import PatternSource
 
 __all__: list[str] = [
     "ArgsLike",

@@ -16,7 +16,9 @@ and small utilities that are reused across tests under `tests/api/`.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING
+from typing import Any
+from typing import cast
 
 import pytest
 
@@ -25,11 +27,15 @@ from topmark.api.public_types import PublicPolicy
 from topmark.config.keys import Toml
 from topmark.filetypes.base import FileType
 from topmark.pipeline.processors.base import HeaderProcessor
-from topmark.pipeline.processors.types import BoundsKind, HeaderBounds
-from topmark.registry import FileTypeRegistry, HeaderProcessorRegistry
+from topmark.pipeline.processors.types import BoundsKind
+from topmark.pipeline.processors.types import HeaderBounds
+from topmark.registry import FileTypeRegistry
+from topmark.registry import HeaderProcessorRegistry
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Iterator
+    from collections.abc import Callable
+    from collections.abc import Iterable
+    from collections.abc import Iterator
     from pathlib import Path
 
     from topmark.filetypes.base import FileType

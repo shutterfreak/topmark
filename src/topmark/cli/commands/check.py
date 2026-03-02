@@ -49,35 +49,30 @@ import click
 
 from topmark.api.runtime import select_pipeline
 from topmark.api.view import filter_view_results
-from topmark.cli.cmd_common import (
-    build_config_for_plan,
-    build_file_list,
-    exit_if_no_files,
-    get_effective_verbosity,
-    init_common_state,
-    maybe_exit_on_error,
-)
+from topmark.cli.cmd_common import build_config_for_plan
+from topmark.cli.cmd_common import build_file_list
+from topmark.cli.cmd_common import exit_if_no_files
+from topmark.cli.cmd_common import get_effective_verbosity
+from topmark.cli.cmd_common import init_common_state
+from topmark.cli.cmd_common import maybe_exit_on_error
 from topmark.cli.emitters.text.diagnostic import render_config_diagnostics_text
 from topmark.cli.emitters.text.pipeline import emit_updated_content_to_stdout
 from topmark.cli.emitters.utils import emit_pipeline_human_output
 from topmark.cli.errors import TopmarkIOError
 from topmark.cli.io import plan_cli_inputs
-from topmark.cli.keys import CliCmd, CliOpt
+from topmark.cli.keys import CliCmd
+from topmark.cli.keys import CliOpt
 from topmark.cli.machine_emitters import emit_processing_results_machine
-from topmark.cli.options import (
-    CONTEXT_SETTINGS,
-    common_config_options,
-    common_file_and_filtering_options,
-    common_header_formatting_options,
-    common_output_format_options,
-    common_ui_options,
-    underscored_trap_option,
-)
-from topmark.cli.validators import (
-    apply_color_policy_for_output_format,
-    validate_check_add_update_policy_exclusivity,
-    validate_diff_policy_for_output_format,
-)
+from topmark.cli.options import CONTEXT_SETTINGS
+from topmark.cli.options import common_config_options
+from topmark.cli.options import common_file_and_filtering_options
+from topmark.cli.options import common_header_formatting_options
+from topmark.cli.options import common_output_format_options
+from topmark.cli.options import common_ui_options
+from topmark.cli.options import underscored_trap_option
+from topmark.cli.validators import apply_color_policy_for_output_format
+from topmark.cli.validators import validate_check_add_update_policy_exclusivity
+from topmark.cli.validators import validate_diff_policy_for_output_format
 from topmark.cli_shared.emitters.shared.pipeline import check_msg
 from topmark.config.logging import get_logger
 from topmark.core.exit_codes import ExitCode
@@ -95,7 +90,8 @@ if TYPE_CHECKING:
     from topmark.cli.io import InputPlan
     from topmark.cli_shared.color import ColorMode
     from topmark.cli_shared.console_api import ConsoleLike
-    from topmark.config import Config, MutableConfig
+    from topmark.config import Config
+    from topmark.config import MutableConfig
     from topmark.config.logging import TopmarkLogger
     from topmark.core.machine.schemas import MetaPayload
     from topmark.pipeline.context.model import ProcessingContext

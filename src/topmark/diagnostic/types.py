@@ -18,15 +18,14 @@ on concrete classes.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING
+from typing import Protocol
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from topmark.diagnostic.model import (
-        Diagnostic,
-        DiagnosticStats,
-    )
+    from topmark.diagnostic.model import Diagnostic
+    from topmark.diagnostic.model import DiagnosticStats
 
 
 class DiagnosticsLike(Protocol):

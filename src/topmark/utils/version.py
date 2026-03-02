@@ -15,12 +15,10 @@ from __future__ import annotations
 import re
 import sys
 
-from topmark.constants import (
-    MIN_VERSION_MAJOR,
-    MIN_VERSION_MINOR,
-    TOPMARK,
-    TOPMARK_VERSION,
-)
+from topmark.constants import MIN_VERSION_MAJOR
+from topmark.constants import MIN_VERSION_MINOR
+from topmark.constants import TOPMARK
+from topmark.constants import TOPMARK_VERSION
 
 # Recognize the subset of PEP 440 we actually emit:
 #   X.Y.Z

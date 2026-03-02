@@ -21,25 +21,18 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.cli.console_helpers import get_console_safely
-from topmark.config.machine import (
-    serialize_config,
-    serialize_config_check,
-    serialize_config_diagnostics,
-)
-from topmark.core.formats import (
-    OutputFormat,
-    is_machine_format,
-)
-from topmark.pipeline.machine import (
-    serialize_processing_results,
-)
-from topmark.registry.machine import (
-    serialize_filetypes,
-    serialize_processors,
-)
+from topmark.config.machine import serialize_config
+from topmark.config.machine import serialize_config_check
+from topmark.config.machine import serialize_config_diagnostics
+from topmark.core.formats import OutputFormat
+from topmark.core.formats import is_machine_format
+from topmark.pipeline.machine import serialize_processing_results
+from topmark.registry.machine import serialize_filetypes
+from topmark.registry.machine import serialize_processors
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator
+    from collections.abc import Iterable
+    from collections.abc import Iterator
 
     from topmark.cli_shared.console_api import ConsoleLike
     from topmark.config.model import Config

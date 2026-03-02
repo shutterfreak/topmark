@@ -22,29 +22,29 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tests.conftest import mark_pipeline
-from tests.pipeline.conftest import (
-    BlockSignatures,
-    expected_block_lines_for,
-    find_line,
-    make_pipeline_context,
-    materialize_updated_lines,
-    run_insert,
-)
-from topmark.config import Config, MutableConfig
-from topmark.config.logging import TopmarkLogger, get_logger
-from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
+from tests.pipeline.conftest import BlockSignatures
+from tests.pipeline.conftest import expected_block_lines_for
+from tests.pipeline.conftest import find_line
+from tests.pipeline.conftest import make_pipeline_context
+from tests.pipeline.conftest import materialize_updated_lines
+from tests.pipeline.conftest import run_insert
+from topmark.config import Config
+from topmark.config import MutableConfig
+from topmark.config.logging import TopmarkLogger
+from topmark.config.logging import get_logger
+from topmark.constants import TOPMARK_END_MARKER
+from topmark.constants import TOPMARK_START_MARKER
 from topmark.filetypes.base import InsertCapability
 from topmark.pipeline import runner
 from topmark.pipeline.pipelines import Pipeline
 from topmark.pipeline.processors import get_processor_for_file
-from topmark.pipeline.processors.types import StripDiagKind, StripDiagnostic
+from topmark.pipeline.processors.types import StripDiagKind
+from topmark.pipeline.processors.types import StripDiagnostic
 from topmark.pipeline.processors.xml import XmlHeaderProcessor
-from topmark.pipeline.status import (
-    ComparisonStatus,
-    ContentStatus,
-    GenerationStatus,
-    ResolveStatus,
-)
+from topmark.pipeline.status import ComparisonStatus
+from topmark.pipeline.status import ContentStatus
+from topmark.pipeline.status import GenerationStatus
+from topmark.pipeline.status import ResolveStatus
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

@@ -25,10 +25,15 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tests.cli.conftest import assert_SUCCESS, assert_SUCCESS_or_WOULD_CHANGE, run_cli
-from topmark.cli.keys import CliCmd, CliOpt
-from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
-from topmark.pipeline.status import ResolveStatus, StripStatus
+from tests.cli.conftest import assert_SUCCESS
+from tests.cli.conftest import assert_SUCCESS_or_WOULD_CHANGE
+from tests.cli.conftest import run_cli
+from topmark.cli.keys import CliCmd
+from topmark.cli.keys import CliOpt
+from topmark.constants import TOPMARK_END_MARKER
+from topmark.constants import TOPMARK_START_MARKER
+from topmark.pipeline.status import ResolveStatus
+from topmark.pipeline.status import StripStatus
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -29,20 +29,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from topmark.cli_shared.emitters.shared.diagnostic import (
-    HumanDiagnosticCounts,
-    HumanDiagnosticLine,
-    prepare_human_diagnostics,
-)
+from topmark.cli_shared.emitters.shared.diagnostic import HumanDiagnosticCounts
+from topmark.cli_shared.emitters.shared.diagnostic import HumanDiagnosticLine
+from topmark.cli_shared.emitters.shared.diagnostic import prepare_human_diagnostics
 from topmark.config.io import to_toml
 from topmark.config.io.loaders import load_default_config_template_toml_text
 from topmark.config.io.surgery import set_root_flag
-from topmark.config.io.template_surgery import (
-    TemplateEditResult,
-    ensure_pyproject_header,
-    set_root_flag_in_template_text,
-    validate_toml_for_config_init,
-)
+from topmark.config.io.template_surgery import TemplateEditResult
+from topmark.config.io.template_surgery import ensure_pyproject_header
+from topmark.config.io.template_surgery import set_root_flag_in_template_text
+from topmark.config.io.template_surgery import validate_toml_for_config_init
 from topmark.config.model import MutableConfig
 
 if TYPE_CHECKING:

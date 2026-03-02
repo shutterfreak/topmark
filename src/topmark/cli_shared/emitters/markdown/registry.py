@@ -25,15 +25,13 @@ See Also:
 from __future__ import annotations
 
 from topmark.cli_shared.emitters.markdown.utils import render_markdown_table
-from topmark.cli_shared.emitters.shared.registry import (
-    FileTypeHumanItem,
-    FileTypesHumanReport,
-    ProcessorFileTypeHumanItem,
-    ProcessorsHumanReport,
-    UnboundFileTypeHumanItem,
-    build_filetypes_human_report,
-    build_processors_human_report,
-)
+from topmark.cli_shared.emitters.shared.registry import FileTypeHumanItem
+from topmark.cli_shared.emitters.shared.registry import FileTypesHumanReport
+from topmark.cli_shared.emitters.shared.registry import ProcessorFileTypeHumanItem
+from topmark.cli_shared.emitters.shared.registry import ProcessorsHumanReport
+from topmark.cli_shared.emitters.shared.registry import UnboundFileTypeHumanItem
+from topmark.cli_shared.emitters.shared.registry import build_filetypes_human_report
+from topmark.cli_shared.emitters.shared.registry import build_processors_human_report
 from topmark.constants import TOPMARK_VERSION
 
 

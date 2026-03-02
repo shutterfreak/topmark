@@ -32,11 +32,15 @@ Normalization rules:
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Final, TypedDict, cast
+from typing import Any
+from typing import Final
+from typing import TypedDict
+from typing import cast
 
 
 @dataclass(slots=True)
@@ -259,13 +263,13 @@ def normalize_payload(obj: object) -> object:
         # JSON-friendly representation.
         return normalize_payload(to_dict())
 
-    if isinstance(obj, (dict, Mapping)):
+    if isinstance(obj, dict | Mapping):
         # Safe: `value` is a Mapping after the isinstance check; we treat keys
         # as generic objects and values as Any for JSONification purposes.
         mapping: Mapping[object, Any] = cast("Mapping[object, Any]", obj)
         return {str(k): normalize_payload(v) for k, v in mapping.items()}
 
-    if isinstance(obj, (list, tuple, set, frozenset)):
+    if isinstance(obj, list | tuple | set | frozenset):
         # Safe: `value` is a collection after the isinstance check; iterate as objects.
         seq: Iterator[object] = cast("Iterator[object]", obj)
         return [normalize_payload(v) for v in seq]

@@ -23,16 +23,14 @@ from __future__ import annotations
 import glob
 from enum import Enum
 from pathlib import Path
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Generic,
-    NoReturn,
-    Protocol,
-    TypedDict,
-    TypeVar,
-    cast,
-)
+from typing import TYPE_CHECKING
+from typing import Any
+from typing import Generic
+from typing import NoReturn
+from typing import Protocol
+from typing import TypedDict
+from typing import TypeVar
+from typing import cast
 
 import click
 
@@ -264,9 +262,7 @@ class EnumChoiceParam(ParamTypeBase, Generic[E]):
         Zsh: `eval "$(_TOPMARK_COMPLETE=zsh_source topmark)"`
         """
         # Runtime import to avoid import-time dependency for non-completion paths
-        from click.shell_completion import (
-            CompletionItem as RuntimeCompletionItem,
-        )  # Click 8.x
+        from click.shell_completion import CompletionItem as RuntimeCompletionItem  # Click 8.x
 
         prefix: str = (incomplete or "").lower()
         items: list[ClickCompletionItem] = []

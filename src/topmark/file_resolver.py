@@ -37,7 +37,8 @@ from topmark.registry import FileTypeRegistry
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from topmark.config import Config, PatternSource
+    from topmark.config import Config
+    from topmark.config import PatternSource
     from topmark.config.logging import TopmarkLogger
     from topmark.filetypes.base import FileType
 

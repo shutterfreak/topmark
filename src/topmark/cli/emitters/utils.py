@@ -22,20 +22,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.cli.emitters.text.pipeline import (
-    emit_pipeline_banner_text,
-    emit_pipeline_diffs_text,
-    emit_pipeline_per_file_guidance_text,
-    emit_pipeline_summary_counts_text,
-)
-from topmark.cli_shared.emitters.markdown.pipeline import (
-    emit_pipeline_diffs_markdown,
-    emit_pipeline_per_file_guidance_markdown,
-    render_pipeline_banner_markdown,
-    render_pipeline_per_file_guidance_markdown,
-)
+from topmark.cli.emitters.text.pipeline import emit_pipeline_banner_text
+from topmark.cli.emitters.text.pipeline import emit_pipeline_diffs_text
+from topmark.cli.emitters.text.pipeline import emit_pipeline_per_file_guidance_text
+from topmark.cli.emitters.text.pipeline import emit_pipeline_summary_counts_text
+from topmark.cli_shared.emitters.markdown.pipeline import emit_pipeline_diffs_markdown
+from topmark.cli_shared.emitters.markdown.pipeline import emit_pipeline_per_file_guidance_markdown
+from topmark.cli_shared.emitters.markdown.pipeline import render_pipeline_banner_markdown
+from topmark.cli_shared.emitters.markdown.pipeline import render_pipeline_per_file_guidance_markdown
 from topmark.config.logging import get_logger
-from topmark.constants import TOML_BLOCK_END, TOML_BLOCK_START
+from topmark.constants import TOML_BLOCK_END
+from topmark.constants import TOML_BLOCK_START
 from topmark.core.formats import OutputFormat
 
 if TYPE_CHECKING:

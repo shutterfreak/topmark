@@ -31,20 +31,18 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tests.conftest import parametrize
-from tests.pipeline.conftest import (
-    make_pipeline_context,
-    materialize_image_lines,
-    run_reader,
-    run_resolver,
-    run_sniffer,
-)
-from topmark.config import Config, MutableConfig
-from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
-from topmark.pipeline.status import (
-    ContentStatus,
-    FsStatus,
-    ResolveStatus,
-)
+from tests.pipeline.conftest import make_pipeline_context
+from tests.pipeline.conftest import materialize_image_lines
+from tests.pipeline.conftest import run_reader
+from tests.pipeline.conftest import run_resolver
+from tests.pipeline.conftest import run_sniffer
+from topmark.config import Config
+from topmark.config import MutableConfig
+from topmark.constants import TOPMARK_END_MARKER
+from topmark.constants import TOPMARK_START_MARKER
+from topmark.pipeline.status import ContentStatus
+from topmark.pipeline.status import FsStatus
+from topmark.pipeline.status import ResolveStatus
 
 if TYPE_CHECKING:
     from pathlib import Path

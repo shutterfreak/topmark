@@ -22,14 +22,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.config.logging import TopmarkLogger, get_logger
-from topmark.pipeline.status import (
-    ComparisonStatus,
-    FsStatus,
-    HeaderStatus,
-    ResolveStatus,
-    StripStatus,
-)
+from topmark.config.logging import TopmarkLogger
+from topmark.config.logging import get_logger
+from topmark.pipeline.status import ComparisonStatus
+from topmark.pipeline.status import FsStatus
+from topmark.pipeline.status import HeaderStatus
+from topmark.pipeline.status import ResolveStatus
+from topmark.pipeline.status import StripStatus
 
 if TYPE_CHECKING:
     from topmark.config.policy import Policy

@@ -31,7 +31,8 @@ from typing import TYPE_CHECKING
 import click
 from click.shell_completion import CompletionItem
 
-from tests.conftest import mark_cli, parametrize
+from tests.conftest import mark_cli
+from tests.conftest import parametrize
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.keys import CliOpt
 from topmark.cli.main import cli

@@ -24,19 +24,21 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests.conftest import EffectiveRegistries, make_file_type
-from tests.pipeline.conftest import make_pipeline_context, run_resolver
-from topmark.config import Config, MutableConfig
-from topmark.filetypes.base import (
-    ContentGate,
-    FileType,  # runtime import for typing/cast correctness
-)
+from tests.conftest import EffectiveRegistries
+from tests.conftest import make_file_type
+from tests.pipeline.conftest import make_pipeline_context
+from tests.pipeline.conftest import run_resolver
+from topmark.config import Config
+from topmark.config import MutableConfig
+from topmark.filetypes.base import ContentGate
+from topmark.filetypes.base import FileType  # runtime import for typing/cast correctness
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.processors.base import HeaderProcessor
 from topmark.pipeline.status import ResolveStatus
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping
+    from collections.abc import Callable
+    from collections.abc import Mapping
     from pathlib import Path
 
     from topmark.pipeline.context.model import ProcessingContext

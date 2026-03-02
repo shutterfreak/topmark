@@ -13,7 +13,9 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING
+from typing import Any
+from typing import cast
 
 from topmark.filetypes.base import FileType
 from topmark.filetypes.instances import get_base_file_type_registry

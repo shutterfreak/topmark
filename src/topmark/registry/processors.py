@@ -33,7 +33,8 @@ import os
 from dataclasses import dataclass
 from threading import RLock
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING
+from typing import Final
 
 from topmark.filetypes.base import FileType
 from topmark.pipeline.processors.base import NO_LINE_ANCHOR
@@ -41,7 +42,8 @@ from topmark.pipeline.processors.xml import XmlHeaderProcessor
 from topmark.registry import FileTypeRegistry
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Mapping
+    from collections.abc import Iterator
+    from collections.abc import Mapping
 
     from topmark.filetypes.base import FileType
     from topmark.pipeline.processors.base import HeaderProcessor

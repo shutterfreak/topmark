@@ -8,7 +8,7 @@
 #
 # topmark:header:end
 
-"""Local stub for mkdocs-gen-files (validation of script in docs/)."""
+# Local stub for mkdocs-gen-files (validation of script in docs/).
 
 from collections.abc import Iterable
 from typing import TextIO

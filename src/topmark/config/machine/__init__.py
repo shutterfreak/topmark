@@ -40,11 +40,9 @@ See Also:
 
 from __future__ import annotations
 
-from topmark.config.machine.serializers import (
-    serialize_config,
-    serialize_config_check,
-    serialize_config_diagnostics,
-)
+from topmark.config.machine.serializers import serialize_config
+from topmark.config.machine.serializers import serialize_config_check
+from topmark.config.machine.serializers import serialize_config_diagnostics
 
 __all__ = [
     "serialize_config",

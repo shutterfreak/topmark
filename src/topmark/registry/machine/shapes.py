@@ -34,19 +34,18 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.core.machine.schemas import MachineKind
-from topmark.core.machine.shapes import build_json_envelope, build_ndjson_record
+from topmark.core.machine.shapes import build_json_envelope
+from topmark.core.machine.shapes import build_ndjson_record
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from topmark.core.machine.schemas import MetaPayload
-    from topmark.registry.machine.schemas import (
-        FileTypeEntry,
-        FileTypeRef,
-        FileTypesPayload,
-        ProcessorEntry,
-        ProcessorsPayload,
-    )
+    from topmark.registry.machine.schemas import FileTypeEntry
+    from topmark.registry.machine.schemas import FileTypeRef
+    from topmark.registry.machine.schemas import FileTypesPayload
+    from topmark.registry.machine.schemas import ProcessorEntry
+    from topmark.registry.machine.schemas import ProcessorsPayload
 
 
 def build_filetypes_json_envelope(

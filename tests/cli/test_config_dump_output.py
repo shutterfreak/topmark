@@ -25,9 +25,12 @@ import pytest
 import tomlkit
 from tomlkit.exceptions import ParseError as TomlkitParseError
 
-from tests.cli.conftest import assert_SUCCESS, run_cli
-from topmark.cli.keys import CliCmd, CliOpt
-from topmark.constants import TOML_BLOCK_END, TOML_BLOCK_START
+from tests.cli.conftest import assert_SUCCESS
+from tests.cli.conftest import run_cli
+from topmark.cli.keys import CliCmd
+from topmark.cli.keys import CliOpt
+from topmark.constants import TOML_BLOCK_END
+from topmark.constants import TOML_BLOCK_START
 
 if TYPE_CHECKING:
     from click.testing import Result

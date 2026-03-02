@@ -19,21 +19,16 @@ from typing import TYPE_CHECKING
 
 import click
 
-from topmark.cli.cmd_common import (
-    get_effective_verbosity,
-    init_common_state,
-)
+from topmark.cli.cmd_common import get_effective_verbosity
+from topmark.cli.cmd_common import init_common_state
 from topmark.cli.emitters.text.version import emit_version_text
-from topmark.cli.keys import CliCmd, CliOpt
+from topmark.cli.keys import CliCmd
+from topmark.cli.keys import CliOpt
 from topmark.cli.machine_emitters import emit_machine
-from topmark.cli.options import (
-    common_output_format_options,
-    common_ui_options,
-)
-from topmark.cli.validators import (
-    apply_color_policy_for_output_format,
-    apply_ignore_positional_paths_policy,
-)
+from topmark.cli.options import common_output_format_options
+from topmark.cli.options import common_ui_options
+from topmark.cli.validators import apply_color_policy_for_output_format
+from topmark.cli.validators import apply_ignore_positional_paths_policy
 from topmark.cli_shared.emitters.markdown.version import emit_version_markdown
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey

@@ -23,26 +23,25 @@ from typing import TYPE_CHECKING
 
 from topmark.api.public_types import PublicDiagnostic
 from topmark.config.logging import get_logger
-from topmark.pipeline.outcomes import (
-    NO_REASON_PROVIDED,
-    ResultBucket,
-    classify_outcome,
-    map_bucket,
-)
-from topmark.pipeline.status import (
-    ComparisonStatus,
-    ContentStatus,
-    GenerationStatus,
-    PlanStatus,
-    ResolveStatus,
-    StripStatus,
-    WriteStatus,
-)
+from topmark.pipeline.outcomes import NO_REASON_PROVIDED
+from topmark.pipeline.outcomes import ResultBucket
+from topmark.pipeline.outcomes import classify_outcome
+from topmark.pipeline.outcomes import map_bucket
+from topmark.pipeline.status import ComparisonStatus
+from topmark.pipeline.status import ContentStatus
+from topmark.pipeline.status import GenerationStatus
+from topmark.pipeline.status import PlanStatus
+from topmark.pipeline.status import ResolveStatus
+from topmark.pipeline.status import StripStatus
+from topmark.pipeline.status import WriteStatus
 
-from .types import DiagnosticTotals, FileResult, RunResult
+from .types import DiagnosticTotals
+from .types import FileResult
+from .types import RunResult
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Mapping
+    from collections.abc import Sequence
 
     from topmark.api.public_types import PublicDiagnostic
     from topmark.config.logging import TopmarkLogger

@@ -41,7 +41,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.config.logging import get_logger
-from topmark.config.policy import PolicyRegistry, make_policy_registry
+from topmark.config.policy import PolicyRegistry
+from topmark.config.policy import make_policy_registry
 from topmark.core.exit_codes import ExitCode
 from topmark.pipeline import runner
 from topmark.pipeline.context.model import ProcessingContext
@@ -115,7 +116,7 @@ def run_steps_for_files(
             results.append(ctx_obj)
         except (FileNotFoundError, PermissionError, IsADirectoryError) as e:
             logger.error("Filesystem error while processing %s: %s", path, e)
-            if isinstance(e, (FileNotFoundError, IsADirectoryError)):
+            if isinstance(e, FileNotFoundError | IsADirectoryError):
                 logger.error("%s: %s", e, path)
                 encountered_error_code = encountered_error_code or ExitCode.FILE_NOT_FOUND
             else:

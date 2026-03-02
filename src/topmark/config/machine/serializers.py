@@ -28,19 +28,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.config.machine.shapes import (
-    build_config_check_json_envelope,
-    build_config_diagnostics_json_envelope,
-    build_config_json_envelope,
-    iter_config_check_ndjson_records,
-    iter_config_diagnostics_ndjson_records,
-    iter_config_ndjson_records,
-)
-from topmark.core.formats import OutputFormat, is_machine_format
-from topmark.core.machine.serializers import (
-    iter_ndjson_strings,
-    serialize_json_object,
-)
+from topmark.config.machine.shapes import build_config_check_json_envelope
+from topmark.config.machine.shapes import build_config_diagnostics_json_envelope
+from topmark.config.machine.shapes import build_config_json_envelope
+from topmark.config.machine.shapes import iter_config_check_ndjson_records
+from topmark.config.machine.shapes import iter_config_diagnostics_ndjson_records
+from topmark.config.machine.shapes import iter_config_ndjson_records
+from topmark.core.formats import OutputFormat
+from topmark.core.formats import is_machine_format
+from topmark.core.machine.serializers import iter_ndjson_strings
+from topmark.core.machine.serializers import serialize_json_object
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

@@ -17,8 +17,11 @@ comments are not promoted to JSONC unless explicitly allowed.
 
 from __future__ import annotations
 
-from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
-from topmark.filetypes.base import InsertCapability, InsertCheckResult, PreInsertContextView
+from topmark.constants import TOPMARK_END_MARKER
+from topmark.constants import TOPMARK_START_MARKER
+from topmark.filetypes.base import InsertCapability
+from topmark.filetypes.base import InsertCheckResult
+from topmark.filetypes.base import PreInsertContextView
 
 
 def json_like_can_insert(

@@ -36,18 +36,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.core.machine.schemas import (
-    MachineDomain,
-    MachineKey,
-    MachineKind,
-    MetaPayload,
-)
+from topmark.core.machine.schemas import MachineDomain
+from topmark.core.machine.schemas import MachineKey
+from topmark.core.machine.schemas import MachineKind
+from topmark.core.machine.schemas import MetaPayload
 from topmark.core.machine.shapes import build_ndjson_record
 from topmark.diagnostic.model import DiagnosticLevel
 from topmark.version.machine.payloads import build_version_payload
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Mapping
+    from collections.abc import Iterator
+    from collections.abc import Mapping
 
 
 def build_version_ndjson_record(

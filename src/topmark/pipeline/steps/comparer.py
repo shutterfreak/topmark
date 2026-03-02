@@ -37,19 +37,22 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.config.logging import get_logger
-from topmark.pipeline.hints import Axis, Cluster, KnownCode
-from topmark.pipeline.status import (
-    ComparisonStatus,
-    GenerationStatus,
-    HeaderStatus,
-    RenderStatus,
-)
+from topmark.pipeline.hints import Axis
+from topmark.pipeline.hints import Cluster
+from topmark.pipeline.hints import KnownCode
+from topmark.pipeline.status import ComparisonStatus
+from topmark.pipeline.status import GenerationStatus
+from topmark.pipeline.status import HeaderStatus
+from topmark.pipeline.status import RenderStatus
 from topmark.pipeline.steps.base import BaseStep
 
 if TYPE_CHECKING:
     from topmark.config.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
-    from topmark.pipeline.views import BuilderView, HeaderView, RenderView, UpdatedView
+    from topmark.pipeline.views import BuilderView
+    from topmark.pipeline.views import HeaderView
+    from topmark.pipeline.views import RenderView
+    from topmark.pipeline.views import UpdatedView
 
 logger: TopmarkLogger = get_logger(__name__)
 

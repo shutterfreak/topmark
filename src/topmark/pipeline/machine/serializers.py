@@ -30,14 +30,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.core.formats import OutputFormat
-from topmark.core.machine.serializers import (
-    iter_ndjson_strings,
-    serialize_json_object,
-)
-from topmark.pipeline.machine.shapes import (
-    build_processing_results_json_envelope,
-    iter_processing_results_ndjson_records,
-)
+from topmark.core.machine.serializers import iter_ndjson_strings
+from topmark.core.machine.serializers import serialize_json_object
+from topmark.pipeline.machine.shapes import build_processing_results_json_envelope
+from topmark.pipeline.machine.shapes import iter_processing_results_ndjson_records
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

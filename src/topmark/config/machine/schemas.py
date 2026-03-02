@@ -25,17 +25,16 @@ Shape construction and serialization are handled by:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
+from typing import Any
 
 from topmark.core.machine.schemas import MachineKey
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from topmark.diagnostic.machine.schemas import (
-        MachineDiagnosticCounts,
-        MachineDiagnosticEntry,
-    )
+    from topmark.diagnostic.machine.schemas import MachineDiagnosticCounts
+    from topmark.diagnostic.machine.schemas import MachineDiagnosticEntry
 
 
 @dataclass(slots=True)

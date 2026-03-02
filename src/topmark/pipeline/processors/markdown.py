@@ -31,11 +31,13 @@ import re
 from typing import TYPE_CHECKING
 
 from topmark.config.logging import get_logger
-from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
+from topmark.constants import TOPMARK_END_MARKER
+from topmark.constants import TOPMARK_START_MARKER
 from topmark.filetypes.registry import register_filetype
 from topmark.pipeline.processors.base import HeaderProcessor
 from topmark.pipeline.processors.mixins import BlockCommentMixin
-from topmark.pipeline.processors.types import BoundsKind, HeaderBounds
+from topmark.pipeline.processors.types import BoundsKind
+from topmark.pipeline.processors.types import HeaderBounds
 
 if TYPE_CHECKING:
     from collections.abc import Iterable

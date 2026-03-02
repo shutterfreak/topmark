@@ -18,7 +18,9 @@ reserving `logging` for diagnostics.
 from __future__ import annotations
 
 import sys
-from typing import Any, TextIO, TypedDict
+from typing import Any
+from typing import TextIO
+from typing import TypedDict
 
 import click
 

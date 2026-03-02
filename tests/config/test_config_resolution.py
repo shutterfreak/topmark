@@ -26,7 +26,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from topmark.config import MutableConfig, PatternSource
+from topmark.config import MutableConfig
+from topmark.config import PatternSource
 from topmark.config.keys import Toml
 from topmark.file_resolver import resolve_file_list
 
@@ -904,7 +905,8 @@ def test_unknown_key_in_known_section_warns_and_is_recorded(
 
 def test_extend_pattern_sources_resolves_relative_paths_against_base(tmp_path: Path) -> None:
     """extend_pattern_sources() resolves relative paths against the provided base."""
-    from topmark.config.paths import extend_pattern_sources, ps_from_config
+    from topmark.config.paths import extend_pattern_sources
+    from topmark.config.paths import ps_from_config
 
     cfg_dir: Path = tmp_path / "cfg"
     cfg_dir.mkdir()

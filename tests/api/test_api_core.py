@@ -158,4 +158,4 @@ def test_diagnostics_shape(tmp_path: Path) -> None:
         [tmp_path],
         apply=False,
     )
-    assert isinstance(r.diagnostics, (dict, type(None)))
+    assert isinstance(r.diagnostics, dict | type(None))

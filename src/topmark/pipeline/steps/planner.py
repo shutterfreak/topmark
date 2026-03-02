@@ -47,28 +47,31 @@ from typing import TYPE_CHECKING
 from topmark.config.logging import get_logger
 from topmark.filetypes.base import InsertCapability
 from topmark.pipeline.adapters import PreInsertViewAdapter
-from topmark.pipeline.context.policy import (
-    allow_content_reflow_by_policy,
-    allow_empty_by_policy,
-)
-from topmark.pipeline.hints import Axis, Cluster, KnownCode
+from topmark.pipeline.context.policy import allow_content_reflow_by_policy
+from topmark.pipeline.context.policy import allow_empty_by_policy
+from topmark.pipeline.hints import Axis
+from topmark.pipeline.hints import Cluster
+from topmark.pipeline.hints import KnownCode
 from topmark.pipeline.processors.base import NO_LINE_ANCHOR
-from topmark.pipeline.status import (
-    ComparisonStatus,
-    ContentStatus,
-    HeaderStatus,
-    PlanStatus,
-    RenderStatus,
-    StripStatus,
-)
+from topmark.pipeline.status import ComparisonStatus
+from topmark.pipeline.status import ContentStatus
+from topmark.pipeline.status import HeaderStatus
+from topmark.pipeline.status import PlanStatus
+from topmark.pipeline.status import RenderStatus
+from topmark.pipeline.status import StripStatus
 from topmark.pipeline.steps.base import BaseStep
-from topmark.pipeline.views import HeaderView, RenderView, UpdatedView
+from topmark.pipeline.views import HeaderView
+from topmark.pipeline.views import RenderView
+from topmark.pipeline.views import UpdatedView
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Sequence
+    from collections.abc import Iterable
+    from collections.abc import Sequence
 
     from topmark.config.logging import TopmarkLogger
-    from topmark.filetypes.base import FileType, InsertChecker, InsertCheckResult
+    from topmark.filetypes.base import FileType
+    from topmark.filetypes.base import InsertChecker
+    from topmark.filetypes.base import InsertCheckResult
     from topmark.pipeline.context.model import ProcessingContext
 
 logger: TopmarkLogger = get_logger(__name__)

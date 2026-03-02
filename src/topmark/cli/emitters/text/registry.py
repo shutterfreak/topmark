@@ -28,18 +28,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.cli_shared.emitters.shared.registry import (
-    ProcessorFileTypeHumanItem,
-    UnboundFileTypeHumanItem,
-)
+from topmark.cli_shared.emitters.shared.registry import ProcessorFileTypeHumanItem
+from topmark.cli_shared.emitters.shared.registry import UnboundFileTypeHumanItem
 
 if TYPE_CHECKING:
     from topmark.cli_shared.console_api import ConsoleLike
-    from topmark.cli_shared.emitters.shared.registry import (
-        FileTypeHumanItem,
-        FileTypesHumanReport,
-        ProcessorsHumanReport,
-    )
+    from topmark.cli_shared.emitters.shared.registry import FileTypeHumanItem
+    from topmark.cli_shared.emitters.shared.registry import FileTypesHumanReport
+    from topmark.cli_shared.emitters.shared.registry import ProcessorsHumanReport
 
 
 def emit_filetypes_text(*, console: ConsoleLike, report: FileTypesHumanReport) -> None:

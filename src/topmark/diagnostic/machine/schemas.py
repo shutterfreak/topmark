@@ -27,10 +27,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from topmark.diagnostic.model import (
-    DiagnosticStats,
-    compute_diagnostic_stats,
-)
+from topmark.diagnostic.model import DiagnosticStats
+from topmark.diagnostic.model import compute_diagnostic_stats
 
 if TYPE_CHECKING:
     from collections.abc import Iterable

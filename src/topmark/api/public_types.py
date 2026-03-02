@@ -32,10 +32,14 @@ for the allowed values.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Protocol, TypedDict
+from typing import TYPE_CHECKING
+from typing import Literal
+from typing import Protocol
+from typing import TypedDict
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
+    from collections.abc import Callable
+    from collections.abc import Sequence
     from pathlib import Path
 
 
@@ -117,7 +121,6 @@ class PublicPolicyByType(TypedDict, total=False):
 
     # keys are file type identifiers (e.g., "python"); values are PublicPolicy
     # e.g. {"python": {"allow_header_in_empty_files": True}}
-    ...
 
 
 class PublicHeaderProcessor(Protocol):

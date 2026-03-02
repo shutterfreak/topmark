@@ -57,19 +57,17 @@ from typing import Final
 
 from topmark.pipeline.protocols import Step
 
-from .steps import (
-    builder,
-    comparer,
-    patcher,
-    planner,
-    reader,
-    renderer,
-    resolver,
-    scanner,
-    sniffer,
-    stripper,
-    writer,
-)
+from .steps import builder
+from .steps import comparer
+from .steps import patcher
+from .steps import planner
+from .steps import reader
+from .steps import renderer
+from .steps import resolver
+from .steps import scanner
+from .steps import sniffer
+from .steps import stripper
+from .steps import writer
 
 # Perform basic TopMark header scanning:
 SCAN_PIPELINE: Final[tuple[Step, ...]] = (

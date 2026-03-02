@@ -35,18 +35,18 @@ otherwise it falls back to the line-based strategy using the computed anchor.
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING
+from typing import Final
 
 from topmark.config.logging import get_logger
-from topmark.constants import TOPMARK_END_MARKER, TOPMARK_START_MARKER
+from topmark.constants import TOPMARK_END_MARKER
+from topmark.constants import TOPMARK_START_MARKER
 from topmark.pipeline.policy_whitespace import is_pure_spacer
-from topmark.pipeline.processors.types import (
-    BoundsKind,
-    HeaderBounds,
-    HeaderParseResult,
-    StripDiagKind,
-    StripDiagnostic,
-)
+from topmark.pipeline.processors.types import BoundsKind
+from topmark.pipeline.processors.types import HeaderBounds
+from topmark.pipeline.processors.types import HeaderParseResult
+from topmark.pipeline.processors.types import StripDiagKind
+from topmark.pipeline.processors.types import StripDiagnostic
 from topmark.rendering.formats import HeaderOutputFormat
 
 if TYPE_CHECKING:

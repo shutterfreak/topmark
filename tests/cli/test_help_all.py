@@ -22,8 +22,10 @@ from typing import TYPE_CHECKING
 
 from click.testing import Result
 
-from tests.cli.conftest import assert_SUCCESS, run_cli
-from topmark.cli.keys import CliCmd, CliOpt
+from tests.cli.conftest import assert_SUCCESS
+from tests.cli.conftest import run_cli
+from topmark.cli.keys import CliCmd
+from topmark.cli.keys import CliOpt
 
 if TYPE_CHECKING:
     from click.testing import Result

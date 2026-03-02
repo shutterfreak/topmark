@@ -17,12 +17,15 @@ comments and valid structure.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
+from typing import Any
 
 import tomlkit
 
-from topmark.config.io import get_string_list_value_checked, nest_toml_under_section
-from topmark.config.logging import TopmarkLogger, get_logger
+from topmark.config.io import get_string_list_value_checked
+from topmark.config.io import nest_toml_under_section
+from topmark.config.logging import TopmarkLogger
+from topmark.config.logging import get_logger
 from topmark.diagnostic.model import DiagnosticLog
 
 if TYPE_CHECKING:

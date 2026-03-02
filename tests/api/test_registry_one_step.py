@@ -20,8 +20,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests.api.conftest import stub_ft, stub_proc_cls
-from topmark.registry import FileTypeRegistry, HeaderProcessorRegistry
+from tests.api.conftest import stub_ft
+from tests.api.conftest import stub_proc_cls
+from topmark.registry import FileTypeRegistry
+from topmark.registry import HeaderProcessorRegistry
 
 if TYPE_CHECKING:
     from topmark.filetypes.base import FileType

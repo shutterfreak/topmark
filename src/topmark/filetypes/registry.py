@@ -31,7 +31,8 @@ from topmark.filetypes.base import FileType
 from topmark.pipeline.processors.base import HeaderProcessor
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping
+    from collections.abc import Callable
+    from collections.abc import Mapping
 
     from topmark.config.logging import TopmarkLogger
     from topmark.filetypes.base import FileType

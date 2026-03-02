@@ -40,7 +40,9 @@ import subprocess
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING
+from typing import Any
+from typing import Final
 
 import mkdocs_gen_files
 from mkdocs.plugins import PrefixedLogger
@@ -49,20 +51,18 @@ from mkdocs.plugins import get_plugin_logger as get_logger
 import topmark
 
 # Use absolute module reference (MkDocs):
-from tools.docs.docs_utils import (
-    NONLINKED_SYMBOLS,
-    PUBLIC_API_PREFIXES,
-    context_lines,
-    env_flag,
-    find_unlinked_backticked_symbols_with_locations,
-    fix_backticked_reference_links,
-    format_inline_symbols,
-    format_line_numbers,
-    format_repo_path,
-    public_ref_doc_for_symbol,
-    rel_href,
-    strip_repo_prefix,
-)
+from tools.docs.docs_utils import NONLINKED_SYMBOLS
+from tools.docs.docs_utils import PUBLIC_API_PREFIXES
+from tools.docs.docs_utils import context_lines
+from tools.docs.docs_utils import env_flag
+from tools.docs.docs_utils import find_unlinked_backticked_symbols_with_locations
+from tools.docs.docs_utils import fix_backticked_reference_links
+from tools.docs.docs_utils import format_inline_symbols
+from tools.docs.docs_utils import format_line_numbers
+from tools.docs.docs_utils import format_repo_path
+from tools.docs.docs_utils import public_ref_doc_for_symbol
+from tools.docs.docs_utils import rel_href
+from tools.docs.docs_utils import strip_repo_prefix
 
 if TYPE_CHECKING:
     from collections.abc import Iterable

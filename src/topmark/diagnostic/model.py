@@ -26,17 +26,22 @@ Sections:
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator
-from dataclasses import dataclass, field
+from collections.abc import Iterable
+from collections.abc import Iterator
+from dataclasses import dataclass
+from dataclasses import field
 from enum import Enum
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
+from typing import cast
 
 from yachalk import chalk
 
 from topmark.config.logging import get_logger
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Iterator
+    from collections.abc import Callable
+    from collections.abc import Iterable
+    from collections.abc import Iterator
 
     from topmark.config.logging import TopmarkLogger
 

@@ -38,10 +38,13 @@ import os
 import re
 from pathlib import Path
 from re import Match
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING
+from typing import Any
+from typing import Literal
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping
+    from collections.abc import Callable
+    from collections.abc import Mapping
 
 # ---------- config: public API surfaces ----------
 

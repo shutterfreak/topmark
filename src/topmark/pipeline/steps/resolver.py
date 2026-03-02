@@ -26,15 +26,20 @@ from typing import TYPE_CHECKING
 
 from topmark.config.logging import get_logger
 from topmark.constants import VALUE_NOT_SET
-from topmark.filetypes.base import ContentGate, FileType
-from topmark.pipeline.hints import Axis, Cluster, KnownCode
+from topmark.filetypes.base import ContentGate
+from topmark.filetypes.base import FileType
+from topmark.pipeline.hints import Axis
+from topmark.pipeline.hints import Cluster
+from topmark.pipeline.hints import KnownCode
 from topmark.pipeline.processors.base import HeaderProcessor
 from topmark.pipeline.status import ResolveStatus
 from topmark.pipeline.steps.base import BaseStep
-from topmark.registry import FileTypeRegistry, HeaderProcessorRegistry
+from topmark.registry import FileTypeRegistry
+from topmark.registry import HeaderProcessorRegistry
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping
+    from collections.abc import Callable
+    from collections.abc import Mapping
     from pathlib import Path
 
     from topmark.config.logging import TopmarkLogger

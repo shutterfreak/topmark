@@ -25,12 +25,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.diagnostic.model import (
-    DiagnosticLevel,
-    DiagnosticStats,
-    FrozenDiagnosticLog,
-    compute_diagnostic_stats,
-)
+from topmark.diagnostic.model import DiagnosticLevel
+from topmark.diagnostic.model import DiagnosticStats
+from topmark.diagnostic.model import FrozenDiagnosticLog
+from topmark.diagnostic.model import compute_diagnostic_stats
 
 if TYPE_CHECKING:
     from topmark.cli_shared.emitters.shared.config import HumanDiagnosticLine

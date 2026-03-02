@@ -24,7 +24,10 @@ surfaced without crashing or changing defaulting behavior.
 from __future__ import annotations
 
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Final, TypeVar
+from typing import TYPE_CHECKING
+from typing import Any
+from typing import Final
+from typing import TypeVar
 
 from topmark.config.logging import get_logger
 
@@ -60,7 +63,7 @@ def get_string_value(table: TomlTable, key: str, default: str = "") -> str:
     value: Any | None = table.get(key)
     if isinstance(value, str):
         return value
-    if isinstance(value, (int, float, bool)):
+    if isinstance(value, int | float | bool):
         return str(value)
     logger.debug(
         "Cannot coerce %r to string, returning default (%s)",
@@ -91,7 +94,7 @@ def get_string_value_or_none(table: TomlTable, key: str) -> str | None:
         return None
     if isinstance(value, str):
         return value
-    if isinstance(value, (int, float, bool)):
+    if isinstance(value, int | float | bool):
         return str(value)
     logger.debug(
         "Cannot coerce %r to string, returning None",

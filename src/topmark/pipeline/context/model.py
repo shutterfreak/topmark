@@ -28,44 +28,40 @@ Sections:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from dataclasses import dataclass
+from dataclasses import field
+from typing import TYPE_CHECKING
+from typing import Any
 
 from topmark.config.logging import get_logger
 from topmark.config.policy import make_policy_registry
-from topmark.diagnostic.model import (
-    DiagnosticLog,
-)
+from topmark.diagnostic.model import DiagnosticLog
 from topmark.filetypes.base import InsertCapability
-from topmark.pipeline.context.policy import (
-    can_change,
-    check_permitted_by_policy,
-    effective_would_add_or_update,
-    effective_would_strip,
-    would_add_or_update,
-    would_change,
-    would_strip,
-)
+from topmark.pipeline.context.policy import can_change
+from topmark.pipeline.context.policy import check_permitted_by_policy
+from topmark.pipeline.context.policy import effective_would_add_or_update
+from topmark.pipeline.context.policy import effective_would_strip
+from topmark.pipeline.context.policy import would_add_or_update
+from topmark.pipeline.context.policy import would_change
+from topmark.pipeline.context.policy import would_strip
 from topmark.pipeline.context.status import ProcessingStatus
-from topmark.pipeline.hints import (
-    Axis,
-    Cluster,
-    HintLog,
-    KnownCode,
-    make_hint,
-)
-from topmark.pipeline.views import (
-    UpdatedView,
-    Views,
-)
+from topmark.pipeline.hints import Axis
+from topmark.pipeline.hints import Cluster
+from topmark.pipeline.hints import HintLog
+from topmark.pipeline.hints import KnownCode
+from topmark.pipeline.hints import make_hint
+from topmark.pipeline.views import UpdatedView
+from topmark.pipeline.views import Views
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Sequence
+    from collections.abc import Iterable
+    from collections.abc import Sequence
     from pathlib import Path
 
     from topmark.config import Config
     from topmark.config.logging import TopmarkLogger
-    from topmark.config.policy import Policy, PolicyRegistry
+    from topmark.config.policy import Policy
+    from topmark.config.policy import PolicyRegistry
     from topmark.filetypes.base import FileType
     from topmark.pipeline.processors.base import HeaderProcessor
     from topmark.pipeline.protocols import Step
@@ -280,7 +276,7 @@ class ProcessingContext:
             return iter(())
         seq_or_it: Sequence[str] | Iterable[str] = uv.lines
         # If it's already a concrete sequence, avoid copying:
-        if isinstance(seq_or_it, (list, tuple)):
+        if isinstance(seq_or_it, list | tuple):
             return iter(seq_or_it)
         # Fallback: it's an arbitrary iterable (possibly a generator)
         return iter(seq_or_it)

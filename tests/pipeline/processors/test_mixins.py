@@ -12,11 +12,9 @@
 
 from __future__ import annotations
 
-from topmark.pipeline.processors.mixins import (
-    BlockCommentMixin,
-    LineCommentMixin,
-    XmlPositionalMixin,
-)
+from topmark.pipeline.processors.mixins import BlockCommentMixin
+from topmark.pipeline.processors.mixins import LineCommentMixin
+from topmark.pipeline.processors.mixins import XmlPositionalMixin
 
 
 class _LineProc(LineCommentMixin):

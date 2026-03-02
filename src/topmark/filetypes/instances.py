@@ -31,8 +31,12 @@ from __future__ import annotations
 from collections.abc import Iterable
 from functools import lru_cache
 from importlib import import_module
-from importlib.metadata import EntryPoints, entry_points
-from typing import TYPE_CHECKING, Any, Final, cast
+from importlib.metadata import EntryPoints
+from importlib.metadata import entry_points
+from typing import TYPE_CHECKING
+from typing import Any
+from typing import Final
+from typing import cast
 
 from topmark.config.logging import get_logger
 

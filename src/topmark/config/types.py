@@ -31,7 +31,8 @@ from __future__ import annotations
 # For runtime type checks, prefer collections.abc
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
+from typing import Any
 
 from topmark.config.logging import get_logger
 from topmark.core.enum_mixins import KeyedStrEnum

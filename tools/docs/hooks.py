@@ -45,36 +45,33 @@ import re
 from importlib.metadata import version as get_version
 from pathlib import Path
 from re import Match
-from typing import Any, Final
+from typing import Any
+from typing import Final
 
 import tomlkit
 from mkdocs.plugins import PrefixedLogger
 from mkdocs.plugins import get_plugin_logger as get_logger
 
 # Use absolute module reference (MkDocs):
-from tools.docs.docs_utils import (
-    NONLINKED_SYMBOLS,
-    apply_outside_fenced_blocks,
-    context_lines,
-    env_flag,
-    find_unlinked_backticked_symbols_with_locations,
-    fix_backticked_reference_links,
-    format_inline_symbols,
-    format_line_numbers,
-    format_repo_path,
-    public_ref_doc_for_symbol,
-    rel_href,
-    unescape_reference_link_text,
-    wrap_actions_blocks_with_raw,
-)
+from tools.docs.docs_utils import NONLINKED_SYMBOLS
+from tools.docs.docs_utils import apply_outside_fenced_blocks
+from tools.docs.docs_utils import context_lines
+from tools.docs.docs_utils import env_flag
+from tools.docs.docs_utils import find_unlinked_backticked_symbols_with_locations
+from tools.docs.docs_utils import fix_backticked_reference_links
+from tools.docs.docs_utils import format_inline_symbols
+from tools.docs.docs_utils import format_line_numbers
+from tools.docs.docs_utils import format_repo_path
+from tools.docs.docs_utils import public_ref_doc_for_symbol
+from tools.docs.docs_utils import rel_href
+from tools.docs.docs_utils import unescape_reference_link_text
+from tools.docs.docs_utils import wrap_actions_blocks_with_raw
 
 # NOTE: This hook intentionally depends on TopMark internals so that
 # documentation reflects the exact config semantics used by the tool.
-from topmark.config.io import (
-    as_toml_table,
-    get_string_value_or_none,
-    get_table_value,
-)
+from topmark.config.io import as_toml_table
+from topmark.config.io import get_string_value_or_none
+from topmark.config.io import get_table_value
 
 logger: PrefixedLogger = get_logger("hooks")
 

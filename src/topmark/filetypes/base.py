@@ -23,7 +23,12 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Final, Protocol, TypedDict, runtime_checkable
+from typing import TYPE_CHECKING
+from typing import Any
+from typing import Final
+from typing import Protocol
+from typing import TypedDict
+from typing import runtime_checkable
 
 from topmark.config.logging import get_logger
 

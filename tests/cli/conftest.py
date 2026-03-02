@@ -21,9 +21,12 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import IO, TYPE_CHECKING, Any
+from typing import IO
+from typing import TYPE_CHECKING
+from typing import Any
 
-from click.testing import CliRunner, Result
+from click.testing import CliRunner
+from click.testing import Result
 
 from topmark.cli.main import cli
 from topmark.core.exit_codes import ExitCode

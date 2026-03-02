@@ -21,7 +21,10 @@ into the plain-Python table shapes used by TopMark.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, TypeGuard, cast
+from typing import TYPE_CHECKING
+from typing import Any
+from typing import TypeGuard
+from typing import cast
 
 from tomlkit.items import Table
 
@@ -30,7 +33,8 @@ from topmark.config.logging import get_logger
 if TYPE_CHECKING:
     from topmark.config.logging import TopmarkLogger
 
-    from .types import TomlTable, TomlTableMap
+    from .types import TomlTable
+    from .types import TomlTableMap
 
 
 logger: TopmarkLogger = get_logger(__name__)

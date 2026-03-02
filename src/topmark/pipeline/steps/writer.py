@@ -39,16 +39,19 @@ import os
 import secrets
 import stat
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING
+from typing import Protocol
 
 from topmark.config.logging import get_logger
-from topmark.config.types import FileWriteStrategy, OutputTarget
-from topmark.pipeline.context.policy import can_change, check_permitted_by_policy
-from topmark.pipeline.hints import Axis, Cluster, KnownCode
-from topmark.pipeline.status import (
-    PlanStatus,
-    WriteStatus,
-)
+from topmark.config.types import FileWriteStrategy
+from topmark.config.types import OutputTarget
+from topmark.pipeline.context.policy import can_change
+from topmark.pipeline.context.policy import check_permitted_by_policy
+from topmark.pipeline.hints import Axis
+from topmark.pipeline.hints import Cluster
+from topmark.pipeline.hints import KnownCode
+from topmark.pipeline.status import PlanStatus
+from topmark.pipeline.status import WriteStatus
 from topmark.pipeline.steps.base import BaseStep
 from topmark.pipeline.views import UpdatedView
 

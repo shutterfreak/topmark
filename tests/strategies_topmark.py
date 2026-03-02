@@ -18,9 +18,11 @@ tests can explore a wide but bounded input space without exploding combinations.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any
+from typing import Literal
 
 from hypothesis import strategies as st
 

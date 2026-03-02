@@ -38,37 +38,25 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.config.machine.payloads import (
-    build_config_diagnostics_payload,
-    build_config_payload,
-)
-from topmark.config.machine.shapes import (
-    iter_config_prefix_ndjson_records,
-)
-from topmark.core.machine.schemas import (
-    MachineDomain,
-    MachineKey,
-    MachineKind,
-    MetaPayload,
-)
-from topmark.core.machine.shapes import (
-    build_json_envelope,
-    build_ndjson_record,
-)
+from topmark.config.machine.payloads import build_config_diagnostics_payload
+from topmark.config.machine.payloads import build_config_payload
+from topmark.config.machine.shapes import iter_config_prefix_ndjson_records
+from topmark.core.machine.schemas import MachineDomain
+from topmark.core.machine.schemas import MachineKey
+from topmark.core.machine.schemas import MachineKind
+from topmark.core.machine.schemas import MetaPayload
+from topmark.core.machine.shapes import build_json_envelope
+from topmark.core.machine.shapes import build_ndjson_record
 from topmark.diagnostic.machine.shapes import iter_diagnostic_ndjson_records
-from topmark.pipeline.machine.payloads import (
-    build_processing_results_summary_map_payload,
-    iter_processing_results_payload_items,
-    iter_processing_results_summary_entries,
-)
+from topmark.pipeline.machine.payloads import build_processing_results_summary_map_payload
+from topmark.pipeline.machine.payloads import iter_processing_results_payload_items
+from topmark.pipeline.machine.payloads import iter_processing_results_summary_entries
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from topmark.config.machine.schemas import (
-        ConfigDiagnosticsPayload,
-        ConfigPayload,
-    )
+    from topmark.config.machine.schemas import ConfigDiagnosticsPayload
+    from topmark.config.machine.schemas import ConfigPayload
     from topmark.config.model import Config
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.machine.schemas import OutcomeSummaryMapEntry

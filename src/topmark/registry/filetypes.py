@@ -39,7 +39,8 @@ from typing import TYPE_CHECKING
 from topmark.filetypes.base import FileType
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Mapping
+    from collections.abc import Iterator
+    from collections.abc import Mapping
 
     from topmark.filetypes.base import FileType
     from topmark.pipeline.processors.base import HeaderProcessor

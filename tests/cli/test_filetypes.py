@@ -18,7 +18,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests.cli.conftest import assert_SUCCESS, run_cli
+from tests.cli.conftest import assert_SUCCESS
+from tests.cli.conftest import run_cli
 
 if TYPE_CHECKING:
     from click.testing import Result

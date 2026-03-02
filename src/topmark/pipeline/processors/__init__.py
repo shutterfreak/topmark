@@ -40,7 +40,8 @@ def get_processor_for_file(path: Path) -> HeaderProcessor | None:
        An instance of a registered HeaderProcessor if a matching processor is found, or `None` if
        no processor is registered for the file's extension.
     """
-    from topmark.registry import FileTypeRegistry, HeaderProcessorRegistry
+    from topmark.registry import FileTypeRegistry
+    from topmark.registry import HeaderProcessorRegistry
 
     ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
     hp_registry: Mapping[str, HeaderProcessor] = HeaderProcessorRegistry.as_mapping()

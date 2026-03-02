@@ -24,15 +24,15 @@ import tempfile
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, NamedTuple
+from typing import TYPE_CHECKING
+from typing import Literal
+from typing import NamedTuple
 
 from topmark.cli.errors import TopmarkUsageError
 from topmark.cli.keys import CliOpt
-from topmark.cli.options import (
-    extract_stdin_for_from_options,
-    split_nonempty_lines,
-    strip_dash_sentinels,
-)
+from topmark.cli.options import extract_stdin_for_from_options
+from topmark.cli.options import split_nonempty_lines
+from topmark.cli.options import strip_dash_sentinels
 
 if TYPE_CHECKING:
     from collections.abc import Iterable

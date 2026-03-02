@@ -23,16 +23,17 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tests.pipeline.conftest import materialize_updated_lines, run_insert
-from topmark.config import Config, MutableConfig
+from tests.pipeline.conftest import materialize_updated_lines
+from tests.pipeline.conftest import run_insert
+from topmark.config import Config
+from topmark.config import MutableConfig
 from topmark.constants import TOPMARK_START_MARKER
 from topmark.pipeline.processors import get_processor_for_file
-from topmark.pipeline.processors.types import StripDiagKind, StripDiagnostic
-from topmark.pipeline.status import (
-    ComparisonStatus,
-    ContentStatus,
-    GenerationStatus,
-)
+from topmark.pipeline.processors.types import StripDiagKind
+from topmark.pipeline.processors.types import StripDiagnostic
+from topmark.pipeline.status import ComparisonStatus
+from topmark.pipeline.status import ContentStatus
+from topmark.pipeline.status import GenerationStatus
 
 if TYPE_CHECKING:
     from pathlib import Path

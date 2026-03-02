@@ -23,8 +23,10 @@ from typing import TYPE_CHECKING
 
 from click.testing import Result
 
-from tests.cli.conftest import assert_SUCCESS, run_cli_in
-from topmark.cli.keys import CliCmd, CliOpt
+from tests.cli.conftest import assert_SUCCESS
+from tests.cli.conftest import run_cli_in
+from topmark.cli.keys import CliCmd
+from topmark.cli.keys import CliOpt
 from topmark.core.exit_codes import ExitCode
 
 if TYPE_CHECKING:

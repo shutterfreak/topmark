@@ -19,7 +19,9 @@ from __future__ import annotations
 import logging
 import os
 import sys
-from typing import TYPE_CHECKING, Final, cast
+from typing import TYPE_CHECKING
+from typing import Final
+from typing import cast
 
 from yachalk import chalk
 

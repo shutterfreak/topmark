@@ -26,7 +26,10 @@ but the location string is simply the argument key.
 from __future__ import annotations
 
 from enum import Enum
-from typing import TYPE_CHECKING, Any, TypeVar, cast
+from typing import TYPE_CHECKING
+from typing import Any
+from typing import TypeVar
+from typing import cast
 
 from topmark.config.logging import get_logger
 
@@ -144,7 +147,7 @@ def get_arg_string_list_checked(
     if vals_any is None:
         return []
 
-    if not isinstance(vals_any, (list, tuple)):
+    if not isinstance(vals_any, list | tuple):
         logger.warning(
             "Expected list of strings in %s, got %s: %r",
             key,

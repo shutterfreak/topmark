@@ -26,51 +26,35 @@ from typing import TYPE_CHECKING
 
 import click
 
-from topmark.cli.cmd_common import (
-    get_effective_verbosity,
-    init_common_state,
-)
+from topmark.cli.cmd_common import get_effective_verbosity
+from topmark.cli.cmd_common import init_common_state
 from topmark.cli.emitters.text.config import emit_config_check_text
-from topmark.cli.keys import CliCmd, CliOpt
+from topmark.cli.keys import CliCmd
+from topmark.cli.keys import CliOpt
 from topmark.cli.machine_emitters import emit_config_check_machine
-from topmark.cli.options import (
-    common_config_options,
-    common_output_format_options,
-    common_ui_options,
-)
-from topmark.cli.validators import (
-    apply_color_policy_for_output_format,
-    apply_ignore_positional_paths_policy,
-)
-from topmark.cli_shared.emitters.markdown.config import (
-    emit_config_check_markdown,
-)
-from topmark.cli_shared.emitters.shared.config import (
-    ConfigCheckPrepared,
-    prepare_config_check,
-)
-from topmark.config import Config, MutableConfig
+from topmark.cli.options import common_config_options
+from topmark.cli.options import common_output_format_options
+from topmark.cli.options import common_ui_options
+from topmark.cli.validators import apply_color_policy_for_output_format
+from topmark.cli.validators import apply_ignore_positional_paths_policy
+from topmark.cli_shared.emitters.markdown.config import emit_config_check_markdown
+from topmark.cli_shared.emitters.shared.config import ConfigCheckPrepared
+from topmark.cli_shared.emitters.shared.config import prepare_config_check
+from topmark.config import Config
+from topmark.config import MutableConfig
 from topmark.config.logging import get_logger
-from topmark.config.machine.payloads import (
-    build_config_diagnostics_payload,
-)
+from topmark.config.machine.payloads import build_config_diagnostics_payload
 from topmark.core.exit_codes import ExitCode
-from topmark.core.formats import (
-    OutputFormat,
-)
+from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
 
 if TYPE_CHECKING:
     from topmark.cli_shared.color import ColorMode
     from topmark.cli_shared.console_api import ConsoleLike
     from topmark.config.logging import TopmarkLogger
-    from topmark.config.machine.schemas import (
-        ConfigDiagnosticsPayload,
-    )
+    from topmark.config.machine.schemas import ConfigDiagnosticsPayload
     from topmark.core.machine.schemas import MetaPayload
-    from topmark.diagnostic.machine.schemas import (
-        MachineDiagnosticCounts,
-    )
+    from topmark.diagnostic.machine.schemas import MachineDiagnosticCounts
 
 logger: TopmarkLogger = get_logger(__name__)
 

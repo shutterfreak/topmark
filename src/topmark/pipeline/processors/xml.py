@@ -23,7 +23,8 @@ from topmark.config.logging import get_logger
 from topmark.filetypes.registry import register_filetype
 from topmark.pipeline.policy_whitespace import is_pure_spacer
 from topmark.pipeline.processors.base import HeaderProcessor
-from topmark.pipeline.processors.mixins import BlockCommentMixin, XmlPositionalMixin
+from topmark.pipeline.processors.mixins import BlockCommentMixin
+from topmark.pipeline.processors.mixins import XmlPositionalMixin
 
 if TYPE_CHECKING:
     from topmark.config.logging import TopmarkLogger

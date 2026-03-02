@@ -33,10 +33,14 @@ from typing import TYPE_CHECKING
 from yachalk import chalk
 
 from topmark.config.logging import get_logger
-from topmark.pipeline.hints import Axis, Cluster, KnownCode
-from topmark.pipeline.status import ComparisonStatus, PatchStatus
+from topmark.pipeline.hints import Axis
+from topmark.pipeline.hints import Cluster
+from topmark.pipeline.hints import KnownCode
+from topmark.pipeline.status import ComparisonStatus
+from topmark.pipeline.status import PatchStatus
 from topmark.pipeline.steps.base import BaseStep
-from topmark.pipeline.views import DiffView, UpdatedView
+from topmark.pipeline.views import DiffView
+from topmark.pipeline.views import UpdatedView
 from topmark.utils.diff import render_patch
 
 if TYPE_CHECKING:

@@ -52,10 +52,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from topmark.registry import FileTypeMeta, FileTypeRegistry, HeaderProcessorRegistry, ProcessorMeta
+from topmark.registry import FileTypeMeta
+from topmark.registry import FileTypeRegistry
+from topmark.registry import HeaderProcessorRegistry
+from topmark.registry import ProcessorMeta
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Mapping
+    from collections.abc import Iterator
+    from collections.abc import Mapping
 
     from topmark.filetypes.base import FileType
     from topmark.pipeline.processors.base import HeaderProcessor

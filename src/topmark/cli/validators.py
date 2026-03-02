@@ -32,7 +32,8 @@ from topmark.cli.errors import TopmarkUsageError
 from topmark.cli.keys import CliOpt
 from topmark.cli_shared.color import ColorMode
 from topmark.config.logging import get_logger
-from topmark.core.formats import OutputFormat, is_machine_format
+from topmark.core.formats import OutputFormat
+from topmark.core.formats import is_machine_format
 from topmark.core.keys import ArgKey
 
 if TYPE_CHECKING:

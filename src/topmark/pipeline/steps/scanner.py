@@ -30,13 +30,14 @@ from typing import TYPE_CHECKING
 
 from topmark.config.logging import get_logger
 from topmark.pipeline.context.policy import check_permitted_by_policy
-from topmark.pipeline.hints import Axis, Cluster, KnownCode
-from topmark.pipeline.processors.types import BoundsKind, HeaderBounds
-from topmark.pipeline.status import (
-    ContentStatus,
-    FsStatus,
-    HeaderStatus,
-)
+from topmark.pipeline.hints import Axis
+from topmark.pipeline.hints import Cluster
+from topmark.pipeline.hints import KnownCode
+from topmark.pipeline.processors.types import BoundsKind
+from topmark.pipeline.processors.types import HeaderBounds
+from topmark.pipeline.status import ContentStatus
+from topmark.pipeline.status import FsStatus
+from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.steps.base import BaseStep
 from topmark.pipeline.views import HeaderView
 
