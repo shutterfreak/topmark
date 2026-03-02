@@ -20,7 +20,7 @@ This package exposes:
 Most users should import from here:
 
 ```python
-from topmark.registry.registry  import Registry
+from topmark.registry.registry import Registry
 fts = Registry.filetypes()
 procs = Registry.processors()
 ```

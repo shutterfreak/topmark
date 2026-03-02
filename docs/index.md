@@ -34,7 +34,7 @@ res2 = api.check(["src"], apply=True)
 ```
 
 ```python
-from topmark.registry.registry  import Registry
+from topmark.registry.registry import Registry
 for b in Registry.bindings():
     print(b.filetype.name, bool(b.processor))
 ```
