@@ -11,8 +11,8 @@
 """Type contracts for pipeline steps (engine-facing).
 
 This module defines the minimal protocol that all pipeline steps must implement.
-Steps are instantiated objects that are *callable*; the engine invokes them as
-`step(ctx)` where `ctx` is a `ProcessingContext`.
+Steps are instantiated objects that are *callable*; the engine invokes `step(ctx)` where `ctx` is
+the pipeline context (typically `ProcessingContext`).
 
 Lifecycle
 ---------
@@ -33,26 +33,38 @@ axes_written : tuple[str, ...]
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from typing import Any
 from typing import Protocol
+from typing import TypeVar
 
 if TYPE_CHECKING:
-    from .context.model import ProcessingContext
-    from .hints import Axis
+    from collections.abc import Sequence
+
+    from topmark.pipeline.hints import Axis
 
 
-class Step(Protocol):
+Ctx = TypeVar("Ctx")
+
+
+class Step(Protocol[Ctx]):
     """Protocol for a single pipeline step.
 
     A step is a callable object that mutates a `ProcessingContext` and
     declares which status axes it is responsible for. Implementations typically
     subclass [`topmark.pipeline.steps.base.BaseStep`][].
+
+    Notes:
+        In this context we're not type-checking step execution; we're keeping a log of step
+        instances. The concrete type we care about elsewhere is `Step[ProcessingContext]`
+        (in ProcessingContext.steps and pipeline declarations). Here, it's fine to say
+        "step of any context".
     """
 
     name: str
-    primary_axis: Axis | None  # new: axis this step “represents” in summaries
-    axes_written: tuple[Axis, ...]  # e.g. ("fs","content")
+    primary_axis: Axis | None
+    axes_written: tuple[Axis, ...]
 
-    def may_proceed(self, ctx: ProcessingContext) -> bool:
+    def may_proceed(self, ctx: Ctx) -> bool:
         """Return whether the step should run given the current context.
 
         Args:
@@ -63,7 +75,7 @@ class Step(Protocol):
         """
         ...
 
-    def run(self, ctx: ProcessingContext) -> None:
+    def run(self, ctx: Ctx) -> None:
         """Execute the step, mutating the context in place.
 
         Implementations must **only** write to axes they own (as declared in
@@ -75,7 +87,7 @@ class Step(Protocol):
         """
         ...
 
-    def hint(self, ctx: ProcessingContext) -> None:
+    def hint(self, ctx: Ctx) -> None:
         """Attach non-binding hints/telemetry to the context.
 
         A step can add structured reason hints or metrics to aid later
@@ -87,7 +99,7 @@ class Step(Protocol):
         """
         ...
 
-    def __call__(self, ctx: ProcessingContext) -> ProcessingContext:
+    def __call__(self, ctx: Ctx) -> Ctx:
         """Run the step lifecycle: gate → run (optional) → hint.
 
         Args:
@@ -96,4 +108,22 @@ class Step(Protocol):
         Returns:
             The same context object, for chaining.
         """
+        ...
+
+
+class StepContext(Protocol):
+    """Minimum context surface required by the step lifecycle (BaseStep/runner)."""
+
+    @property
+    def steps(self) -> Sequence[Step[Any]]:
+        """Executed steps (context type not relevant here)."""
+        ...
+
+    def request_halt(self, reason: str, at_step: Step[Any]) -> None:
+        """Record an early halt requested by a step."""
+        ...
+
+    @property
+    def is_halted(self) -> bool:
+        """Return True if a step has requested an early halt for this file."""
         ...

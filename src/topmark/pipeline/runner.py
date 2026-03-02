@@ -44,7 +44,7 @@ def trim_views(ctx: ProcessingContext) -> None:
 
 def run(
     ctx: ProcessingContext,
-    steps: Sequence[Step],
+    steps: Sequence[Step[ProcessingContext]],
     *,
     prune: bool = True,
 ) -> ProcessingContext:

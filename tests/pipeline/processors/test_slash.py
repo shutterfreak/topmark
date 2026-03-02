@@ -134,7 +134,7 @@ def test_slash_detect_existing_header(tmp_path: Path) -> None:
         policy_registry_override=policy_registry,
     )
 
-    pipeline: Sequence[Step] = Pipeline.CHECK.steps
+    pipeline: Sequence[Step[ProcessingContext]] = Pipeline.CHECK.steps
     ctx = runner.run(
         ctx,
         pipeline,
@@ -192,7 +192,7 @@ def test_slash_malformed_header_fields(
         policy_registry_override=policy_registry,
     )
 
-    pipeline: Sequence[Step] = Pipeline.CHECK.steps
+    pipeline: Sequence[Step[ProcessingContext]] = Pipeline.CHECK.steps
     ctx = runner.run(ctx, pipeline)
 
     assert ctx.views.header is not None

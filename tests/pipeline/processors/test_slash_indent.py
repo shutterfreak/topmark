@@ -110,7 +110,7 @@ def test_jsonc_replace_preserves_pre_prefix_indent(tmp_path: Path) -> None:
         policy_registry_override=policy_registry,
     )
 
-    pipeline: Sequence[Step] = Pipeline.CHECK_APPLY.steps
+    pipeline: Sequence[Step[ProcessingContext]] = Pipeline.CHECK_APPLY.steps
     ctx = runner.run(ctx, pipeline, prune=False)
 
     out: list[str] = materialize_updated_lines(ctx)

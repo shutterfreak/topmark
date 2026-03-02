@@ -82,7 +82,7 @@ def _run_cli_like(
     files: list[Path] = resolve_file_list(cfg)
     results: list[ProcessingContext]
     _exit_code: ExitCode | None
-    pipeline: Sequence[Step] = Pipeline.CHECK_APPLY_PATCH.steps
+    pipeline: Sequence[Step[ProcessingContext]] = Pipeline.CHECK_APPLY_PATCH.steps
     results, _exit_code = run_steps_for_files(
         file_list=files,
         pipeline=pipeline,

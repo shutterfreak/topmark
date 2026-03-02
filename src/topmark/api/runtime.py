@@ -214,7 +214,7 @@ def select_pipeline(
     *,
     apply: bool,
     diff: bool,
-) -> Sequence[Step]:
+) -> Sequence[Step[ProcessingContext]]:
     """Return the concrete pipeline steps for the requested kind and intent.
 
     Args:
@@ -223,7 +223,7 @@ def select_pipeline(
         diff: If `True`, choose a *PATCH* variant (includes unified diffs).
 
     Returns:
-        Sequence[Step]: The ordered list of steps to execute.
+        Sequence[Step[ProcessingContext]]: The ordered list of steps to execute.
     """
     # NOTE: Print existing header: new command!
     # NOTE: if we decide to add '--print-header' (not with '--appy'): Pipeline.CHECK_RENDER
@@ -251,7 +251,7 @@ def select_pipeline(
 
 def run_pipeline(
     *,
-    pipeline: Sequence[Step],
+    pipeline: Sequence[Step[ProcessingContext]],
     paths: Iterable[Path | str],
     base_config: Mapping[str, Any] | Config | None,
     include_file_types: Sequence[str] | None = None,

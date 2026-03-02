@@ -160,7 +160,7 @@ def check(
         to be written when `apply=True`.
     """
     # Choose the concrete pipeline variant
-    pipeline: Sequence[Step] = select_pipeline("check", apply=apply, diff=diff)
+    pipeline: Sequence[Step[ProcessingContext]] = select_pipeline("check", apply=apply, diff=diff)
 
     # Run the pipeline; `_run_pipeline` handles discovery and applies policy overlays
     _cfg: Config
@@ -240,7 +240,7 @@ def strip(
         pipeline write decisions.
     """
     # Choose the concrete pipeline variant
-    pipeline: Sequence[Step] = select_pipeline("strip", apply=apply, diff=diff)
+    pipeline: Sequence[Step[ProcessingContext]] = select_pipeline("strip", apply=apply, diff=diff)
 
     # Run the pipeline; `_run_pipeline` handles discovery and applies policy overlays
     _cfg: Config

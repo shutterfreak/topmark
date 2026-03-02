@@ -70,7 +70,7 @@ def test_cblock_processor_basics(tmp_path: Path) -> None:
         policy_registry_override=policy_registry,
     )
 
-    pipeline: Sequence[Step] = Pipeline.CHECK.steps
+    pipeline: Sequence[Step[ProcessingContext]] = Pipeline.CHECK.steps
     ctx = runner.run(ctx, pipeline)
 
     assert ctx.file_type is not None
@@ -142,7 +142,7 @@ def test_cblock_detect_existing_header_with_star_prefix(tmp_path: Path) -> None:
         policy_registry_override=policy_registry,
     )
 
-    pipeline: Sequence[Step] = Pipeline.CHECK.steps
+    pipeline: Sequence[Step[ProcessingContext]] = Pipeline.CHECK.steps
     ctx_check = runner.run(
         ctx_check,
         pipeline,
@@ -193,7 +193,7 @@ def test_cblock_detect_existing_header_without_star_on_directives(tmp_path: Path
         config=cfg,
         policy_registry_override=policy_registry,
     )
-    pipeline: Sequence[Step] = Pipeline.CHECK.steps
+    pipeline: Sequence[Step[ProcessingContext]] = Pipeline.CHECK.steps
     ctx2 = runner.run(ctx2, pipeline)
     assert ctx2.views.header is not None
     assert ctx2.views.header.range is not None

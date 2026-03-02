@@ -141,7 +141,7 @@ class ProcessingContext:
     path: Path  # The file path to process (absolute or relative to working directory)
     config: Config  # Active config at time of processing
     policy_registry: PolicyRegistry
-    steps: list[Step] = field(default_factory=lambda: [])
+    steps: list[Step[ProcessingContext]] = field(default_factory=lambda: [])
     file_type: FileType | None = None  # Resolved file type (e.g., PythonFileType)
     status: ProcessingStatus = field(default_factory=ProcessingStatus)
     halt_state: HaltState | None = None
@@ -207,7 +207,7 @@ class ProcessingContext:
             result[step.name] = axes
         return result
 
-    def request_halt(self, reason: str, at_step: Step) -> None:
+    def request_halt(self, reason: str, at_step: Step[ProcessingContext]) -> None:
         """Request a graceful, terminal stop for the rest of the pipeline.
 
         This method records a ``HaltState`` on the context so that subsequent

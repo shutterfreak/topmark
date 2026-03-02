@@ -264,7 +264,10 @@ def materialize_updated_lines(ctx: ProcessingContext) -> list[str]:
 
 
 # --- Class-based step runner helpers (tests) ---
-def run_steps(ctx: ProcessingContext, steps: list[Step] | tuple[Step, ...]) -> ProcessingContext:
+def run_steps(
+    ctx: ProcessingContext,
+    steps: list[Step[ProcessingContext]] | tuple[Step[ProcessingContext], ...],
+) -> ProcessingContext:
     """Run a list of class-based steps against a context and return it.
 
     This helper mirrors the engine's simple sequential execution. It does not     short-circuit on
@@ -276,17 +279,17 @@ def run_steps(ctx: ProcessingContext, steps: list[Step] | tuple[Step, ...]) -> P
 
 
 # Common step chains used by tests
-SCAN_STEPS: list[Step] = [
+SCAN_STEPS: list[Step[ProcessingContext]] = [
     ResolverStep(),
     SnifferStep(),
     ReaderStep(),
     ScannerStep(),
 ]
-STRIP_STEPS: list[Step] = SCAN_STEPS + [
+STRIP_STEPS: list[Step[ProcessingContext]] = SCAN_STEPS + [
     StripperStep(),
     PlannerStep(),
 ]
-CHECK_COMPARE_STEPS: list[Step] = SCAN_STEPS + [
+CHECK_COMPARE_STEPS: list[Step[ProcessingContext]] = SCAN_STEPS + [
     RendererStep(),
     ComparerStep(),
 ]

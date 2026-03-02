@@ -37,6 +37,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 from typing import Final
+from typing import Protocol
 
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
@@ -56,8 +57,27 @@ if TYPE_CHECKING:
     from topmark.core.logging import TopmarkLogger
     from topmark.filetypes.base import FileType
     from topmark.filetypes.policy import FileTypeHeaderPolicy
-    from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.views import HeaderView
+    from topmark.pipeline.views import Views
+
+
+class ProcessorContext(Protocol):
+    """Minimum context surface required by HeaderProcessor methods."""
+
+    views: Views
+
+    def info(self, message: str) -> None:
+        """Record an informational diagnostic for this context."""
+        ...
+
+    def warn(self, message: str) -> None:
+        """Record a warning diagnostic for this context."""
+        ...
+
+    def error(self, message: str) -> None:
+        """Record an error diagnostic for this context."""
+        ...
+
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -200,7 +220,7 @@ class HeaderProcessor:
         self._encoding_pattern: re.Pattern[str] | None = None
         self._encoding_pattern_src: str | None = None
 
-    def parse_fields(self, context: ProcessingContext) -> HeaderParseResult:
+    def parse_fields(self, context: ProcessorContext) -> HeaderParseResult:
         """Parse key-value pairs from the detected header block (*view-based*).
 
         This implementation expects the scanner to have populated

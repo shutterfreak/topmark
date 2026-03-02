@@ -92,7 +92,7 @@ def render_header_for_path(
     )
 
     # Get the pipeline steps
-    pipeline: Sequence[Step] = Pipeline.CHECK_RENDER.steps
+    pipeline: Sequence[Step[ProcessingContext]] = Pipeline.CHECK_RENDER.steps
 
     # Construct the policy registry
     policy_registry: PolicyRegistry = make_policy_registry(eff_config)

@@ -361,7 +361,9 @@ def check_command(
         return
 
     # Choose the concrete pipeline variant
-    pipeline: Sequence[Step] = select_pipeline("check", apply=apply_changes, diff=diff)
+    pipeline: Sequence[Step[ProcessingContext]] = select_pipeline(
+        "check", apply=apply_changes, diff=diff
+    )
 
     results: list[ProcessingContext] = []
     encountered_error_code: ExitCode | None = None

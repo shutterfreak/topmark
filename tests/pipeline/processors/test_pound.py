@@ -72,7 +72,7 @@ def test_pound_processor_basics(tmp_path: Path) -> None:
         config=cfg,
         policy_registry_override=policy_registry,
     )
-    pipeline: Sequence[Step] = Pipeline.CHECK.steps
+    pipeline: Sequence[Step[ProcessingContext]] = Pipeline.CHECK.steps
     ctx = runner.run(ctx, pipeline)
 
     assert ctx.path == file
@@ -113,7 +113,7 @@ def test_pound_processor_detects_existing_header(tmp_path: Path) -> None:
         policy_registry_override=policy_registry,
     )
 
-    pipeline: Sequence[Step] = Pipeline.CHECK.steps
+    pipeline: Sequence[Step[ProcessingContext]] = Pipeline.CHECK.steps
     ctx = runner.run(
         ctx,
         pipeline,
@@ -151,7 +151,7 @@ def test_pound_processor_missing_header(tmp_path: Path) -> None:
         policy_registry_override=policy_registry,
     )
 
-    pipeline: Sequence[Step] = Pipeline.CHECK.steps
+    pipeline: Sequence[Step[ProcessingContext]] = Pipeline.CHECK.steps
     ctx = runner.run(ctx, pipeline)
 
     assert ctx.file_type and ctx.file_type.name == "python"
@@ -205,7 +205,7 @@ def test_pound_malformed_header_fields(
         policy_registry_override=policy_registry,
     )
 
-    pipeline: Sequence[Step] = Pipeline.CHECK.steps
+    pipeline: Sequence[Step[ProcessingContext]] = Pipeline.CHECK.steps
     ctx = runner.run(ctx, pipeline)
 
     assert ctx.file_type and ctx.file_type.name == "python"

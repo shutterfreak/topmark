@@ -21,6 +21,7 @@ empty files or tolerating mixed newlines) are permitted.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from typing import Protocol
 
 from topmark.core.logging import TopmarkLogger
 from topmark.core.logging import get_logger
@@ -32,13 +33,26 @@ from topmark.pipeline.status import StripStatus
 
 if TYPE_CHECKING:
     from topmark.config.policy import Policy
+    from topmark.pipeline.context.status import ProcessingStatus
 
-    from .model import ProcessingContext
 
 logger: TopmarkLogger = get_logger(__name__)
 
 
-def allow_empty_by_policy(ctx: ProcessingContext) -> bool:
+class PolicyContext(Protocol):
+    """Minimum context surface required by policy helpers."""
+
+    @property
+    def status(self) -> ProcessingStatus:
+        """Current aggregated pipeline status for this file."""
+        ...
+
+    def get_effective_policy(self) -> Policy:
+        """Return the effective policy for this processing context."""
+        ...
+
+
+def allow_empty_by_policy(ctx: PolicyContext) -> bool:
     """Return True if the file is empty and policy allows header insertion.
 
     This helper inspects the effective per-type policy (global configuration
@@ -57,7 +71,7 @@ def allow_empty_by_policy(ctx: ProcessingContext) -> bool:
     return ctx.status.fs == FsStatus.EMPTY and eff.allow_header_in_empty_files is True
 
 
-def allow_empty_header_by_policy(ctx: ProcessingContext) -> bool:
+def allow_empty_header_by_policy(ctx: PolicyContext) -> bool:
     """Return True if the effective policy allows empty header insertion.
 
     This helper inspects the effective per-type policy (global configuration
@@ -76,7 +90,7 @@ def allow_empty_header_by_policy(ctx: ProcessingContext) -> bool:
     return eff.render_empty_header_when_no_fields
 
 
-def allow_content_reflow_by_policy(ctx: ProcessingContext) -> bool:
+def allow_content_reflow_by_policy(ctx: PolicyContext) -> bool:
     """Return True if the effective policy allows content reflow.
 
     This covers transformations that may adjust layout or whitespace around
@@ -94,7 +108,7 @@ def allow_content_reflow_by_policy(ctx: ProcessingContext) -> bool:
     return eff.allow_reflow
 
 
-def allows_mixed_line_endings_by_policy(ctx: ProcessingContext) -> bool:
+def allows_mixed_line_endings_by_policy(ctx: PolicyContext) -> bool:
     """Return True if policy allows proceeding despite mixed line endings.
 
     This helper is used by early pipeline steps (e.g., ReaderStep) when the
@@ -132,7 +146,7 @@ def allows_mixed_line_endings_by_policy(ctx: ProcessingContext) -> bool:
     return False
 
 
-def allows_bom_before_shebang_by_policy(ctx: ProcessingContext) -> bool:
+def allows_bom_before_shebang_by_policy(ctx: PolicyContext) -> bool:
     """Return True if policy allows proceeding despite a BOM before the shebang.
 
     This helper is used by early pipeline steps (e.g., ReaderStep) when the
@@ -170,7 +184,7 @@ def allows_bom_before_shebang_by_policy(ctx: ProcessingContext) -> bool:
     return False
 
 
-def policy_allows_fs_skip(ctx: ProcessingContext) -> bool:
+def policy_allows_fs_skip(ctx: PolicyContext) -> bool:
     """Return True if policy allows proceeding despite soft FS violations.
 
     This helper is used by early pipeline steps (e.g., ReaderStep) to continue
@@ -219,7 +233,7 @@ def policy_allows_fs_skip(ctx: ProcessingContext) -> bool:
     return False
 
 
-def check_permitted_by_policy(ctx: ProcessingContext) -> bool | None:
+def check_permitted_by_policy(ctx: PolicyContext) -> bool | None:
     """Whether policy allows the intended type of change (tri-state).
 
     Args:
@@ -321,7 +335,7 @@ def check_permitted_by_policy(ctx: ProcessingContext) -> bool | None:
     return True
 
 
-def would_change(ctx: ProcessingContext) -> bool | None:
+def would_change(ctx: PolicyContext) -> bool | None:
     """Return whether a change *would* occur (tri-state).
 
     Args:
@@ -351,7 +365,7 @@ def would_change(ctx: ProcessingContext) -> bool | None:
     return None
 
 
-def can_change(ctx: ProcessingContext) -> bool:
+def can_change(ctx: PolicyContext) -> bool:
     """Return whether a change *can* be applied safely.
 
     This reflects operational feasibility (filesystem/resolve status) and
@@ -390,7 +404,7 @@ def can_change(ctx: ProcessingContext) -> bool:
     return bool(ctx.status.fs == FsStatus.EMPTY and allow_empty_by_policy(ctx))
 
 
-def would_add_or_update(ctx: ProcessingContext) -> bool:
+def would_add_or_update(ctx: PolicyContext) -> bool:
     """Intent for check/apply: True if we'd insert or replace a header.
 
     Args:
@@ -406,7 +420,7 @@ def would_add_or_update(ctx: ProcessingContext) -> bool:
     )
 
 
-def effective_would_add_or_update(ctx: ProcessingContext) -> bool:
+def effective_would_add_or_update(ctx: PolicyContext) -> bool:
     """True iff add/update is intended, feasible, and allowed by policy.
 
     Args:
@@ -423,7 +437,7 @@ def effective_would_add_or_update(ctx: ProcessingContext) -> bool:
     )
 
 
-def would_strip(ctx: ProcessingContext) -> bool:
+def would_strip(ctx: PolicyContext) -> bool:
     """Intent for strip: True if a removal would occur.
 
     Args:
@@ -436,7 +450,7 @@ def would_strip(ctx: ProcessingContext) -> bool:
     return ctx.status.strip == StripStatus.READY
 
 
-def effective_would_strip(ctx: ProcessingContext) -> bool:
+def effective_would_strip(ctx: PolicyContext) -> bool:
     """True iff a strip is intended and feasible.
 
     Args:

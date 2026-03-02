@@ -71,7 +71,7 @@ def test_xml_processor_basics(tmp_path: Path) -> None:
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = make_pipeline_context(file, cfg)
 
-    pipeline: Sequence[Step] = Pipeline.CHECK.steps
+    pipeline: Sequence[Step[ProcessingContext]] = Pipeline.CHECK.steps
     ctx = runner.run(ctx, pipeline)
 
     assert ctx.path == file

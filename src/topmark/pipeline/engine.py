@@ -61,7 +61,7 @@ logger: TopmarkLogger = get_logger(__name__)
 def run_steps_for_files(
     *,
     file_list: list[Path],
-    pipeline: Sequence[Step],
+    pipeline: Sequence[Step[ProcessingContext]],
     config: Config,
     prune: bool = True,
 ) -> tuple[list[ProcessingContext], ExitCode | None]:
