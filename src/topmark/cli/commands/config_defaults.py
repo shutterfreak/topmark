@@ -23,15 +23,15 @@ from typing import TYPE_CHECKING
 
 import click
 
-from topmark.cli.cmd_common import get_effective_verbosity
 from topmark.cli.cmd_common import init_common_state
+from topmark.cli.emitters.machine import emit_config_machine
 from topmark.cli.emitters.text.config import emit_config_defaults_text
 from topmark.cli.keys import CliCmd
-from topmark.cli.keys import CliOpt
-from topmark.cli.machine_emitters import emit_config_machine
-from topmark.cli.options import common_config_options
+from topmark.cli.options import GROUP_CONTEXT_SETTINGS
 from topmark.cli.options import common_output_format_options
 from topmark.cli.options import common_ui_options
+from topmark.cli.options import config_pyproject_options
+from topmark.cli.options import config_root_options
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import apply_ignore_positional_paths_policy
 from topmark.cli.validators import validate_human_only_config_flags_for_machine_format
@@ -50,37 +50,37 @@ if TYPE_CHECKING:
 
 @click.command(
     name=CliCmd.CONFIG_DEFAULTS,
-    help="Display the built-in default TopMark configuration file.",
+    context_settings=GROUP_CONTEXT_SETTINGS,
+    help=(
+        "Display TopMark’s built-in runtime default configuration. "
+        "This command is file-agnostic: positional PATHS are ignored "
+        "and --stdin-filename is not allowed. "
+        "Use --output-format json/ndjson for a machine-readable config snapshot."
+    ),
+    epilog=(
+        "Notes:\n"
+        "  • text/markdown output is a cleaned TOML view of the runtime defaults (comment-free).\n"
+        "  • json/ndjson output emits a minimal Config snapshot (no diagnostics).\n"
+        "  • See docs/dev/machine_outputs.md for machine output conventions.\n"
+    ),
 )
-# Common option decorators
 @common_ui_options
-@common_config_options
+@config_pyproject_options
+@config_root_options
 @common_output_format_options
-# Command-specific option decorators
-@click.option(
-    CliOpt.CONFIG_FOR_PYPROJECT,
-    ArgKey.CONFIG_FOR_PYPROJECT,
-    is_flag=True,
-    help="Generate config for inclusion in pyproject.toml.",
-)
-@click.option(
-    CliOpt.CONFIG_ROOT,
-    ArgKey.CONFIG_ROOT,
-    is_flag=True,
-    help="Set generated config as root.",
-)
 def config_defaults_command(
     *,
-    # Command options: common options (verbosity, color)
+    # common_ui_options (verbosity, color):
     verbose: int,
     quiet: int,
     color_mode: ColorMode | None,
     no_color: bool,
-    # Command options: output format
-    output_format: OutputFormat | None,
-    # Command options: config
+    # config_pyproject_options:
     for_pyproject: bool,
+    # config_root_options:
     config_root: bool,
+    # common_output_format_options:
+    output_format: OutputFormat | None,
 ) -> None:
     """Display the runtime default configuration.
 
@@ -93,15 +93,14 @@ def config_defaults_command(
           (no diagnostics).
 
     Args:
-        verbose: Incements the verbosity level,
-        quiet: Decrements  the verbosity level,
-        color_mode: Set the color mode (derfault: autp),
-        no_color: bool: If set, disable color mode.
-        output_format: Output format to use
-            (``text``, ``markdown``, ``json``, or ``ndjson``).
+        verbose: Increment verbosity level.
+        quiet: Decrement verbosity level.
+        color_mode: Color mode for text format (default: auto).
+        no_color: If set, disable color mode.
         for_pyproject: If True, render as subtable under `[tool.topmark]`
             (default: False: plain topmark.toml TOML config format).
         config_root: If True, set config as root (stops further config resoution).
+        output_format: Output format to use (``text``, ``markdown``, ``json``, or ``ndjson``).
 
     Raises:
         NotImplementedError: When providing an unsupported OutputType.
@@ -118,6 +117,9 @@ def config_defaults_command(
         no_color=no_color,
     )
 
+    # Retrieve effective human facing program-output verbosity for gating extra details
+    verbosity_level: int = ctx.obj[ArgKey.VERBOSITY_LEVEL]
+
     # Select the console
     console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
 
@@ -130,14 +132,17 @@ def config_defaults_command(
     apply_color_policy_for_output_format(ctx, fmt=fmt)
 
     # config_check_command() is file-agnostic: ignore positional PATHS
-    apply_ignore_positional_paths_policy(ctx, warn_stdin_dash=True)
-
-    validate_human_only_config_flags_for_machine_format(
-        ctx, fmt=fmt, config_root=config_root, for_pyproject=for_pyproject
+    apply_ignore_positional_paths_policy(
+        ctx,
+        warn_stdin_dash=True,
     )
 
-    # Determine effective program-output verbosity for gating extra details
-    vlevel: int = get_effective_verbosity(ctx)
+    validate_human_only_config_flags_for_machine_format(
+        ctx,
+        fmt=fmt,
+        config_root=config_root,
+        for_pyproject=for_pyproject,
+    )
 
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         # Machine-readable formats: emit JSON/NDJSON without human banners
@@ -155,7 +160,7 @@ def config_defaults_command(
     if fmt == OutputFormat.MARKDOWN:
         md: str = emit_config_defaults_markdown(
             prepared=prepared,
-            verbosity_level=vlevel,
+            verbosity_level=verbosity_level,
         )
         console.print(md, nl=False)
         return
@@ -164,7 +169,7 @@ def config_defaults_command(
         emit_config_defaults_text(
             console=console,
             prepared=prepared,
-            verbosity_level=vlevel,
+            verbosity_level=verbosity_level,
         )
         return
 

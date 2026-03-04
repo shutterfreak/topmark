@@ -164,16 +164,16 @@ nav:
           - "check": usage/commands/check.md
           - "strip": usage/commands/strip.md
           - "config": usage/commands/config.md
-          - "config check": usage/commands/config_check.md
-          - "config dump": usage/commands/config_dump.md
-          - "config defaults": usage/commands/config_defaults.md
-          - "config init": usage/commands/config_init.md
-          - "filetypes": usage/commands/filetypes.md
-          - "processors": usage/commands/processors.md
+          - "config check": usage/commands/config/check.md
+          - "config dump": usage/commands/config/dump.md
+          - "config defaults": usage/commands/config/defaults.md
+          - "config init": usage/commands/config/init.md
+          - "registry filetypes": usage/commands/registry/filetypes.md
+          - "registry processors": usage/commands/registry/processors.md
           - "version": usage/commands/version.md
       - Guides:
-          - "Supported file types (generated)": usage/generated-filetypes.md
-          - "Supported header processors (generated)": usage/generated-processors.md
+          - "Supported file types (generated)": usage/generated/filetypes.md
+          - "Supported header processors (generated)": usage/generated/processors.md
           - "Filtering recipes": usage/filtering.md
           - "Header placement": usage/header-placement.md
           - "Pre-commit": usage/pre-commit.md

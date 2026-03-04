@@ -3,18 +3,18 @@ topmark:header:start
 
   project      : TopMark
   file         : processors.md
-  file_relpath : docs/usage/commands/processors.md
+  file_relpath : docs/usage/commands/registry/processors.md
   license      : MIT
   copyright    : (c) 2025 Olivier Biot
 
 topmark:header:end
 -->
 
-# TopMark `processors` Command Guide
+# TopMark `registry processors` Command Guide
 
 **Purpose:** Display all header processors and the registered file types.
 
-The `processors` subcommand lists registered **header processors** and the **file types** they
+The `registry processors` subcommand lists registered **header processors** and the **file types** they
 handle, as well as file types that aren't registered to a header processor (such types are recognized but left alone).
 Use it to verify how file types are mapped to their processing logic.
 
@@ -24,13 +24,13 @@ ______________________________________________________________________
 
 ```bash
 # Brief list
-topmark processors
+topmark registry processors
 
 # Detailed Markdown table
-topmark processors --long --output-format markdown
+topmark registry processors --long --output-format markdown
 
 # Machine‑readable
-topmark processors --output-format json | jq
+topmark registry processors --output-format json | jq
 ```
 
 ______________________________________________________________________
@@ -39,9 +39,9 @@ ______________________________________________________________________
 
 For the canonical, version-accurate list (used for the docs), see:
 
-- [Supported header processors (generated)](../generated-processors.md)
+- [Supported header processors (generated)](../../generated/processors.md)
 
-(This page is generated via `topmark processors --long --output-format markdown`.)
+(This page is generated via `topmark registry processors --long --output-format markdown`.)
 
 ______________________________________________________________________
 
@@ -49,7 +49,7 @@ ______________________________________________________________________
 
 Use `--output-format` to pick the output format:
 
-- `default` — human‑readable (brief or detailed)
+- `text` — human‑readable (brief or detailed)
 - `json` — a single JSON document
 - `ndjson` — one JSON object per line
 - `markdown` — a beautified Markdown table
@@ -86,16 +86,16 @@ ______________________________________________________________________
 
 ```bash
 # Brief list
-topmark processors
+topmark registry processors
 
 # Detailed Markdown table (ideal for project docs)
-topmark processors --long --output-format markdown
+topmark registry processors --long --output-format markdown
 
 # JSON for scripting
-topmark processors --long --output-format json | jq '.processors[] | {cls: .class, n: (.filetypes|length)}'
+topmark registry processors --long --output-format json | jq '.processors[] | {cls: .class, n: (.filetypes|length)}'
 
 # NDJSON for streaming
-topmark processors --output-format ndjson | grep processor | head -n 5
+topmark registry processors --output-format ndjson | grep processor | head -n 5
 ```
 
 ______________________________________________________________________

@@ -14,9 +14,14 @@ Validates the effective TopMark configuration after applying defaults,
 project/user config files, and any CLI overrides.
 
 Input modes:
-  * This command is file-agnostic: positional PATHS and --files-from are ignored
-    (with a warning if present).
-  * '-' as a PATH (content-on-STDIN) is ignored in `topmark config check`.
+  * This command is file-agnostic: positional PATHS and '-' STDIN content mode are ignored (with a
+    warning if present).
+  * `--files-from/--include-from/--exclude-from` are accepted and used to populate pattern/path
+    sources (as inputs with empty PATH list).
+
+Resolution mechanism:
+  * This command uses the same layered config discovery rules as other CLI commands,
+    via `topmark.cli.config_resolver`, to build the effective config snapshot.
 """
 
 from __future__ import annotations
@@ -26,15 +31,15 @@ from typing import TYPE_CHECKING
 
 import click
 
-from topmark.cli.cmd_common import get_effective_verbosity
 from topmark.cli.cmd_common import init_common_state
+from topmark.cli.emitters.machine import emit_config_check_machine
 from topmark.cli.emitters.text.config import emit_config_check_text
 from topmark.cli.keys import CliCmd
-from topmark.cli.keys import CliOpt
-from topmark.cli.machine_emitters import emit_config_check_machine
-from topmark.cli.options import common_config_options
+from topmark.cli.options import GROUP_CONTEXT_SETTINGS
+from topmark.cli.options import common_config_resolution_options
 from topmark.cli.options import common_output_format_options
 from topmark.cli.options import common_ui_options
+from topmark.cli.options import config_strict_checking_options
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import apply_ignore_positional_paths_policy
 from topmark.cli_shared.emitters.markdown.config import emit_config_check_markdown
@@ -61,33 +66,41 @@ logger: TopmarkLogger = get_logger(__name__)
 
 @click.command(
     name=CliCmd.CONFIG_CHECK,
-    help="Validate merged configuration and report any diagnostics.",
+    context_settings=GROUP_CONTEXT_SETTINGS,
+    help=(
+        "Validate the effective merged TopMark configuration and report diagnostics. "
+        "This command is file-agnostic: positional PATHS and --stdin-filename are ignored. "
+        "Use --strict to fail on warnings, and --output-format json/ndjson "
+        "for machine-readable output."
+    ),
+    epilog=(
+        "Notes:\n"
+        "  • The effective configuration is built from defaults, discovered config files, "
+        "explicit --config files, and CLI overrides.\n"
+        "  • Exit status is non-zero when validation fails (errors, or warnings with --strict).\n"
+        "  • NDJSON output begins with 'config' and 'config_diagnostics' records, followed by a "
+        "'config_check' record and then one 'diagnostic' record per configuration diagnostic.\n"
+        "  • See docs/dev/machine_outputs.md for canonical machine-output conventions."
+    ),
 )
-# Common option decorators
 @common_ui_options
-@common_config_options
+@common_config_resolution_options
+@config_strict_checking_options
 @common_output_format_options
-# Command-specific option decorators
-@click.option(
-    f"{CliOpt.STRICT_CONFIG_CHECKING}/{CliOpt.NO_STRICT_CONFIG_CHECKING}",
-    ArgKey.STRICT_CONFIG_CHECKING,
-    default=False,
-    show_default=True,
-    help="Fail if any warnings are present (in addition to errors).",
-)
 def config_check_command(
     *,
-    # Command options: common options (verbosity, color)
+    # common_ui_options (verbosity, color):
     verbose: int,
     quiet: int,
     color_mode: ColorMode | None,
     no_color: bool,
-    # Command options: output format
-    output_format: OutputFormat | None,
-    # Command options: config
+    # common_config_resolution_options:
     no_config: bool,
-    config_paths: list[str],
+    config_files: list[str],
+    # config_strict_checking_options:
     strict_config_checking: bool,
+    # common_output_format_options:
+    output_format: OutputFormat | None,
 ) -> None:
     """Validates and verifies the final merged configuration.
 
@@ -97,15 +110,14 @@ def config_check_command(
     that need to consume the resolved configuration.
 
     Args:
-        verbose: Incements the verbosity level,
-        quiet: Decrements  the verbosity level,
-        color_mode: Set the color mode (derfault: autp),
-        no_color: bool: If set, disable color mode.
-        output_format: Output format to use
-            (``text``, ``markdown``, ``json``, or ``ndjson``).
+        verbose: Increment verbosity level.
+        quiet: Decrement verbosity level.
+        color_mode: Color mode for text format (default: auto).
+        no_color: If set, disable color mode.
         no_config: If True, skip loading project/user configuration files.
-        config_paths: Additional configuration file paths to load and merge.
+        config_files: Additional configuration file paths to load and merge.
         strict_config_checking: if True, report warnings as errors.
+        output_format: Output format to use (``text``, ``markdown``, ``json``, or ``ndjson``).
 
     Raises:
         NotImplementedError: When providing an unsupported OutputType.
@@ -122,6 +134,9 @@ def config_check_command(
         no_color=no_color,
     )
 
+    # Retrieve effective human facing program-output verbosity for gating extra details
+    verbosity_level: int = ctx.obj[ArgKey.VERBOSITY_LEVEL]
+
     # Select the console
     console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
 
@@ -133,14 +148,15 @@ def config_check_command(
 
     apply_color_policy_for_output_format(ctx, fmt=fmt)
 
-    # config_check_command() is file-agnostic: ignore positional PATHS
+    # `config check` is file-agnostic w.r.t. positional PATHS and STDIN content mode ('-').
+    # However, we still accept `*_from` options so callers can validate pattern/path sources.
     apply_ignore_positional_paths_policy(ctx, warn_stdin_dash=True)
 
     # Build a merged draft config (we do not need an InputPlan since we're not processing files)
     draft_config: MutableConfig = MutableConfig.load_merged(
         strict_config_checking=strict_config_checking,
         no_config=no_config,
-        extra_config_files=[Path(p) for p in config_paths],
+        extra_config_files=[Path(p) for p in config_files],
     )
 
     # Freeze ensures sanitize + schema validation runs (and produces diagnostics)
@@ -152,9 +168,6 @@ def config_check_command(
     n_warn: int = counts.warning
     n_err: int = counts.error
     fail: bool = (n_err > 0) or (strict_config_checking and n_warn > 0)
-
-    # Determine effective program-output verbosity for gating extra details
-    vlevel: int = get_effective_verbosity(ctx, config)
 
     logger.trace("Config after merging CLI and discovered config: %s", draft_config)
 
@@ -175,7 +188,7 @@ def config_check_command(
     # Human formats: prepare shared data once for TEXT/MARKDOWN emitters.
     prepared: ConfigCheckPrepared = prepare_config_check(
         config=config,
-        verbosity_level=vlevel,
+        verbosity_level=verbosity_level,
     )
 
     if fmt == OutputFormat.MARKDOWN:
@@ -183,7 +196,7 @@ def config_check_command(
             ok=not fail,
             strict=strict_config_checking,
             prepared=prepared,
-            verbosity_level=vlevel,
+            verbosity_level=verbosity_level,
         )
         console.print(md, nl=False)
         _exit(ctx, fail=fail)
@@ -194,7 +207,7 @@ def config_check_command(
             ok=not fail,
             strict=strict_config_checking,
             prepared=prepared,
-            verbosity_level=vlevel,
+            verbosity_level=verbosity_level,
         )
         _exit(ctx, fail=fail)
 

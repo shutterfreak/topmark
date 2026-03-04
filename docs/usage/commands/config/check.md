@@ -2,8 +2,8 @@
 topmark:header:start
 
   project      : TopMark
-  file         : config_check.md
-  file_relpath : docs/usage/commands/config_check.md
+  file         : check.md
+  file_relpath : docs/usage/commands/config/check.md
   license      : MIT
   copyright    : (c) 2025 Olivier Biot
 
@@ -14,13 +14,13 @@ topmark:header:end
 
 **Purpose:** Check the config for errors.
 
-The `config check` subcommand (part of the TopMark [`config` Command Family](config.md))
+The `config check` subcommand (part of the TopMark [`config` Command Family](../config.md))
 validates the **effective merged configuration** and reports any configuration diagnostics.
 
 Unlike `check` / `strip`, this command is **file-agnostic**: it does not resolve or process files.
 It is intended for CI validation and debugging configuration precedence issues.
 
-- `default`: human-readable validation result (optionally verbose).
+- `text`: human-readable validation result (optionally verbose).
 - `markdown`: Markdown report suitable for pasting into tickets or CI logs.
 - `json` / `ndjson`: machine-readable envelopes/records aligned with TopMark’s machine format
   conventions.
@@ -68,12 +68,12 @@ ______________________________________________________________________
 
 ## Options (subset)
 
-| Option                 | Description                                              |
-| ---------------------- | -------------------------------------------------------- |
-| `--strict/--no-strict` | Fail on warnings as well as errors.                      |
-| `--output-format`      | Output format (`default`, `markdown`, `json`, `ndjson`). |
-| `--config`             | Merge an explicit TOML config file (can be repeated).    |
-| `--no-config`          | Do not discover local project/user config.               |
+| Option                 | Description                                           |
+| ---------------------- | ----------------------------------------------------- |
+| `--strict/--no-strict` | Fail on warnings as well as errors.                   |
+| `--output-format`      | Output format (`text`, `markdown`, `json`, `ndjson`). |
+| `--config`             | Merge an explicit TOML config file (can be repeated). |
+| `--no-config`          | Do not discover local project/user config.            |
 
 > Run `topmark config check -h` for the full list of options and help text.
 
@@ -117,8 +117,8 @@ Use `--output-format json` or `--output-format ndjson` to emit output suitable f
 
 The canonical schema, stable `kind` values, and shared conventions are documented here:
 
-- [Machine output schema (JSON & NDJSON)](../../dev/machine-output.md)
-- [Machine formats](../../dev/machine-formats.md)
+- [Machine output schema (JSON & NDJSON)](../../../dev/machine-output.md)
+- [Machine formats](../../../dev/machine-formats.md)
 
 Notes:
 
@@ -150,10 +150,10 @@ NDJSON is a stream where each line is a JSON object. Every record includes `kind
 
 Stream:
 
-1. `kind="config"` (effective config snapshot)
-1. `kind="config_diagnostics"` (counts-only)
-1. `kind="config_check"` (summary: ok/strict/counts/config_files)
-   4+) zero or more `kind="diagnostic"` records (each with `domain="config"`)
+1. kind="config" (effective config snapshot)
+1. kind="config_diagnostics" (counts-only)
+1. kind="config_check" (summary: ok/strict/counts/config_files)
+1. zero or more kind="diagnostic" records (each with domain="config")
 
 Example:
 
@@ -168,6 +168,6 @@ ______________________________________________________________________
 
 ## Related commands
 
-- [`topmark config dump`](config_dump.md) — show the *effective merged* configuration as TOML.
-- [`topmark config defaults`](config_defaults.md) — show TopMark’s *built-in defaults* as TOML.
-- [`topmark config init`](config_init.md) — print a *starter* config scaffold template.
+- [`topmark config dump`](./dump.md) — show the *effective merged* configuration as TOML.
+- [`topmark config defaults`](./defaults.md) — show TopMark’s *built-in defaults* as TOML.
+- [`topmark config init`](./init.md) — print a *starter* config scaffold template.

@@ -2,8 +2,8 @@
 topmark:header:start
 
   project      : TopMark
-  file         : config_defaults.md
-  file_relpath : docs/usage/commands/config_defaults.md
+  file         : defaults.md
+  file_relpath : docs/usage/commands/config/defaults.md
   license      : MIT
   copyright    : (c) 2025 Olivier Biot
 
@@ -14,12 +14,11 @@ topmark:header:end
 
 **Purpose:** Show the default (builtin) config.
 
-The `config defaults` subcommand (part of the TopMark [`config` Command Family](config.md))
+The `config defaults` subcommand (part of the TopMark [`config` Command Family](../config.md))
 prints TopMark’s **built‑in default configuration** as TOML.
-It uses a cleaned, comment-free representation derived from the bundled
-default config (no project files are discovered or merged).
+It uses a cleaned, comment-free TOML representation of the runtime default config (no project files are discovered or merged).
 
-- `default` / `markdown` formats: minimal, comment-free TOML.
+- `text` / `markdown` formats: minimal, comment-free TOML.
 - `json` / `ndjson`: a plain Config snapshot, with no diagnostics.
 
 ______________________________________________________________________
@@ -45,7 +44,7 @@ ______________________________________________________________________
 > evaluated relative to the **workspace base** (`relative_to`). Paths to other files (like
 > `exclude_from`) are resolved relative to the **config file** that declared them.
 >
-> See: [`Configuration → Discovery & Precedence`](../../configuration/discovery.md).
+> See: [`Configuration → Discovery & Precedence`](../../../configuration/discovery.md).
 
 ______________________________________________________________________
 
@@ -70,8 +69,8 @@ Use `--output-format json` or `--output-format ndjson` to emit output suitable f
 
 The canonical schema, stable `kind` values, and shared conventions are documented here:
 
-- [Machine output schema (JSON & NDJSON)](../../dev/machine-output.md)
-- [Machine formats](../../dev/machine-formats.md)
+- [Machine output schema (JSON & NDJSON)](../../../dev/machine-output.md)
+- [Machine formats](../../../dev/machine-formats.md)
 
 Notes:
 
@@ -108,6 +107,6 @@ ______________________________________________________________________
 
 ## Related commands
 
-- `topmark init-config` — prints a **starter** config scaffold you can save and edit.
-- `topmark dump-config` — prints the **effective merged** configuration (defaults → discovered →
-  CLI).
+- [`topmark config check`](./check.md) — check the *effective merged* configuration for errors.
+- [`topmark config dump`](./dump.md) — show the *effective merged* configuration as TOML.
+- [`topmark config init`](./init.md) — print a *starter* config scaffold template.

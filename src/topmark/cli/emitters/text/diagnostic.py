@@ -25,7 +25,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.cli.cmd_common import get_effective_verbosity
 from topmark.core.keys import ArgKey
 from topmark.diagnostic.model import DiagnosticLevel
 from topmark.diagnostic.model import DiagnosticStats
@@ -72,6 +71,7 @@ def render_config_diagnostics_text(
     *,
     ctx: click.Context,
     config: Config,
+    verbosity_level: int,
 ) -> None:
     """Render config-level diagnostics to the console for human output.
 
@@ -87,6 +87,7 @@ def render_config_diagnostics_text(
     Args:
         ctx: Click context providing access to `ctx.obj` values (console, meta, etc.).
         config: Effective frozen configuration containing an immutable diagnostic log.
+        verbosity_level: Effective verbosity level.
 
     Returns:
         None. Output is written to the configured console.
@@ -96,7 +97,6 @@ def render_config_diagnostics_text(
         return
 
     console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
-    verbosity: int = get_effective_verbosity(ctx, config)
 
     # Aggregate counts per level once (used for triage summary and verbosity gating).
     stats: DiagnosticStats = compute_diagnostic_stats(diags)
@@ -116,7 +116,7 @@ def render_config_diagnostics_text(
 
     triage: str = ", ".join(parts) if parts else "info"
 
-    if verbosity <= 0:
+    if verbosity_level <= 0:
         # Keep verbosity 0 output intentionally compact.
         console.print(
             console.styled(

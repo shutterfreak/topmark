@@ -36,6 +36,10 @@ COMMANDS: list[tuple[str, ...]] = [
     (CliCmd.CONFIG,),
     (
         CliCmd.CONFIG,
+        CliCmd.CONFIG_CHECK,
+    ),
+    (
+        CliCmd.CONFIG,
         CliCmd.CONFIG_INIT,
     ),
     (
@@ -46,8 +50,15 @@ COMMANDS: list[tuple[str, ...]] = [
         CliCmd.CONFIG,
         CliCmd.CONFIG_DUMP,
     ),
-    (CliCmd.FILETYPES,),
-    (CliCmd.PROCESSORS,),
+    (CliCmd.REGISTRY,),
+    (
+        CliCmd.REGISTRY,
+        CliCmd.REGISTRY_FILETYPES,
+    ),
+    (
+        CliCmd.REGISTRY,
+        CliCmd.REGISTRY_PROCESSORS,
+    ),
     (CliCmd.VERSION,),
 ]
 

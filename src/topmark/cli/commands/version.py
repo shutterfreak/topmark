@@ -19,14 +19,15 @@ from typing import TYPE_CHECKING
 
 import click
 
-from topmark.cli.cmd_common import get_effective_verbosity
 from topmark.cli.cmd_common import init_common_state
+from topmark.cli.emitters.machine import emit_machine
 from topmark.cli.emitters.text.version import emit_version_text
+from topmark.cli.errors import TopmarkCliVersionConverionError
 from topmark.cli.keys import CliCmd
-from topmark.cli.keys import CliOpt
-from topmark.cli.machine_emitters import emit_machine
+from topmark.cli.options import GROUP_CONTEXT_SETTINGS
 from topmark.cli.options import common_output_format_options
 from topmark.cli.options import common_ui_options
+from topmark.cli.options import version_format_options
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import apply_ignore_positional_paths_policy
 from topmark.cli_shared.emitters.markdown.version import emit_version_markdown
@@ -45,30 +46,23 @@ if TYPE_CHECKING:
 
 @click.command(
     name=CliCmd.VERSION,
+    context_settings=GROUP_CONTEXT_SETTINGS,
     help="Show the current version of TopMark.",
 )
-# Common option decorators
 @common_ui_options
+@version_format_options
 @common_output_format_options
-# Command-specific option decorators
-@click.option(
-    CliOpt.SEMVER_VERSION,
-    ArgKey.SEMVER_VERSION,
-    is_flag=True,
-    default=False,
-    help="Render the version as SemVer instead of PEP 440 (maps rc→-rc.N, dev→-dev.N).",
-)
 def version_command(
     *,
-    # Command options: common options (verbosity, color)
+    # common_ui_options (verbosity, color):
     verbose: int,
     quiet: int,
     color_mode: ColorMode | None,
     no_color: bool,
-    # Command options: output format
-    output_format: OutputFormat | None,
-    # Command-specific options:
+    # version_format_options:
     semver: bool = False,
+    # common_output_format_options:
+    output_format: OutputFormat | None,
 ) -> None:
     """Show the current version of TopMark.
 
@@ -79,11 +73,11 @@ def version_command(
         quiet: Decrements  the verbosity level,
         color_mode: Set the color mode (derfault: autp),
         no_color: bool: If set, disable color mode.
-        output_format: Output format to use
-            (``text``, ``markdown``, ``json``, or ``ndjson``).
-        semver: If True, attempt to render the version as SemVer; otherwise use PEP 440.
+        semver: Whether to attempt to render the version as SemVer (default: PEP 440).
+        output_format: Output format to use (``text``, ``markdown``, ``json``, or ``ndjson``).
 
     Raises:
+        TopmarkCliVersionConverionError: If the SemVer conversion of the TopMark version failed.
         ValueError: If an unsupported output format is requested.
     """
     ctx: click.Context = click.get_current_context()
@@ -98,6 +92,9 @@ def version_command(
         no_color=no_color,
     )
 
+    # Retrieve effective human facing program-output verbosity for gating extra details
+    verbosity_level: int = ctx.obj[ArgKey.VERBOSITY_LEVEL]
+
     # Select the console
     console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
 
@@ -109,11 +106,8 @@ def version_command(
 
     apply_color_policy_for_output_format(ctx, fmt=fmt)
 
-    # config_check_command() is file-agnostic: ignore positional PATHS
+    # version_command() is file-agnostic: ignore positional PATHS
     apply_ignore_positional_paths_policy(ctx, warn_stdin_dash=True)
-
-    # Determine effective program-output verbosity for gating extra details
-    vlevel: int = get_effective_verbosity(ctx)
 
     # Machine formats
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
@@ -129,12 +123,15 @@ def version_command(
 
     version_text, version_format, err = compute_version_text(semver=semver)
 
+    if err:
+        raise TopmarkCliVersionConverionError(message=str(err))
+
     if fmt == OutputFormat.TEXT:
         emit_version_text(
             console=console,
             version_text=version_text,
             version_format=version_format,
-            verbosity_level=vlevel,
+            verbosity_level=verbosity_level,
             error=err,
         )
         return

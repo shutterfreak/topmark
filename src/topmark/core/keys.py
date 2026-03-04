@@ -50,7 +50,6 @@ class ArgKey:
     EXCLUDE_FILE_TYPES: Final[str] = "exclude_file_types"
 
     # Config discovery
-    CONFIG_PATHS: Final[str] = "config_paths"
     CONFIG_FILES: Final[str] = "config_files"
     NO_CONFIG: Final[str] = "no_config"
     CONFIG_FOR_PYPROJECT: Final[str] = "for_pyproject"

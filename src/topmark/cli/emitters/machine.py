@@ -1,8 +1,8 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : machine_emitters.py
-#   file_relpath : src/topmark/cli/machine_emitters.py
+#   file         : machine.py
+#   file_relpath : src/topmark/cli/emitters/machine.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

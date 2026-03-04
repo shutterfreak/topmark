@@ -21,7 +21,7 @@ The intent is to keep `cli/commands/*` as orchestration only:
 Notes:
     - ANSI-styled (default) emitters live under [`topmark.cli.emitters`][topmark.cli.emitters].
     - Machine formats (JSON/NDJSON) are implemented via `topmark.*.machine` serializers and routed
-      through [`topmark.cli.machine_emitters`][topmark.cli.machine_emitters].
+      through [`topmark.cli.emitters.machine`][topmark.cli.emitters.machine].
 """
 
 from __future__ import annotations

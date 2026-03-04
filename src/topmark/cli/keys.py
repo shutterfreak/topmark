@@ -33,16 +33,18 @@ class CliCmd:
     These values are the Click command names (e.g., `topmark check`).
     """
 
-    CHECK: Final[str] = "check"
-    STRIP: Final[str] = "strip"
-    CONFIG: Final[str] = "config"
-    CONFIG_CHECK: Final[str] = "check"
-    CONFIG_DUMP: Final[str] = "dump"
-    CONFIG_DEFAULTS: Final[str] = "defaults"
-    CONFIG_INIT: Final[str] = "init"
-    FILETYPES: Final[str] = "filetypes"
-    PROCESSORS: Final[str] = "processors"
-    VERSION: Final[str] = "version"
+    CHECK: Final = "check"
+    STRIP: Final = "strip"
+    CONFIG: Final = "config"
+    CONFIG_CHECK: Final = "check"
+    CONFIG_DUMP: Final = "dump"
+    CONFIG_DEFAULTS: Final = "defaults"
+    CONFIG_INIT: Final = "init"
+    REGISTRY: Final = "registry"
+    REGISTRY_BINDINGS: Final = "bindings"
+    REGISTRY_FILETYPES: Final = "filetypes"
+    REGISTRY_PROCESSORS: Final = "processors"
+    VERSION: Final = "version"
 
 
 class CliOpt:
@@ -51,60 +53,85 @@ class CliOpt:
     Notes:
         - Each constant is the canonical **long** option spelling exposed to users.
         - Values include the leading `--`.
-        - Short options are defined alongside Click options in command modules,
-          not in this namespace.
+        - Short options are defined in `CliShortOpt`, not in this namespace.
     """
 
     # File selection & filters
-    INCLUDE_FILE_TYPES: Final[str] = "--include-file-types"
-    INCLUDE_FILE_TYPE: Final[str] = "--include-file-type"
-    EXCLUDE_FILE_TYPES: Final[str] = "--exclude-file-types"
-    EXCLUDE_FILE_TYPE: Final[str] = "--exclude-file-type"
-    INCLUDE_FROM: Final[str] = "--include-from"
-    EXCLUDE_FROM: Final[str] = "--exclude-from"
-    INCLUDE_PATTERNS: Final[str] = "--include"
-    EXCLUDE_PATTERNS: Final[str] = "--exclude"
-    FILES_FROM: Final[str] = "--files-from"
-    RELATIVE_TO: Final[str] = "--relative-to"
+    INCLUDE_FILE_TYPES: Final = "--include-file-types"
+    INCLUDE_FILE_TYPE: Final = "--include-file-type"
+    EXCLUDE_FILE_TYPES: Final = "--exclude-file-types"
+    EXCLUDE_FILE_TYPE: Final = "--exclude-file-type"
+    INCLUDE_FROM: Final = "--include-from"
+    EXCLUDE_FROM: Final = "--exclude-from"
+    INCLUDE_PATTERNS: Final = "--include"
+    EXCLUDE_PATTERNS: Final = "--exclude"
+    FILES_FROM: Final = "--files-from"
 
     # Config discovery
-    CONFIG_PATHS: Final[str] = "--config"
-    NO_CONFIG: Final[str] = "--no-config"
+    CONFIG_FILES: Final = "--config"
+    NO_CONFIG: Final = "--no-config"
+
+    # Config: provenance of include/exclude lists/patterns
+    SHOW_ORIGIN: Final = "--show-origin"
 
     # Header rendering
-    HEADER_FORMAT: Final[str] = "--header-format"
-    ALIGN_FIELDS: Final[str] = "--align-fields"
-    NO_ALIGN_FIELDS: Final[str] = "--no-align-fields"
+    HEADER_FORMAT: Final = "--header-format"
+    ALIGN_FIELDS: Final = "--align-fields"
+    NO_ALIGN_FIELDS: Final = "--no-align-fields"
+    RELATIVE_TO: Final = "--relative-to"
 
     # Policy
-    POLICY_CHECK_ADD_ONLY: Final[str] = "--add-only"
-    POLICY_CHECK_UPDATE_ONLY: Final[str] = "--update-only"
+    POLICY_CHECK_ADD_ONLY: Final = "--add-only"
+    POLICY_CHECK_UPDATE_ONLY: Final = "--update-only"
+
+    # Pipeline result reporting
+    REPORT: Final = "--report"
 
     # Output / write behavior
-    WRITE_MODE: Final[str] = "--write-mode"
-    APPLY_CHANGES: Final[str] = "--apply"
-    RENDER_DIFF: Final[str] = "--diff"
-    RESULTS_SUMMARY_MODE: Final[str] = "--summary"
-    OUTPUT_FORMAT: Final[str] = "--output-format"
-    SHOW_DETAILS: Final[str] = "--long"
-    SKIP_COMPLIANT: Final[str] = "--skip-compliant"
-    SKIP_UNSUPPORTED: Final[str] = "--skip-unsupported"
+    WRITE_MODE: Final = "--write-mode"
+    APPLY_CHANGES: Final = "--apply"
+    RENDER_DIFF: Final = "--diff"
+    RESULTS_SUMMARY_MODE: Final = "--summary"
+    OUTPUT_FORMAT: Final = "--output-format"
+    SHOW_DETAILS: Final = "--long"
+    SKIP_COMPLIANT: Final = "--skip-compliant"
+    SKIP_UNSUPPORTED: Final = "--skip-unsupported"
 
     # Logging / UX
-    VERBOSE: Final[str] = "--verbose"
-    QUIET: Final[str] = "--quiet"
-    COLOR_MODE: Final[str] = "--color"
-    NO_COLOR_MODE: Final[str] = "--no-color"
+    VERBOSE: Final = "--verbose"
+    QUIET: Final = "--quiet"
+    COLOR_MODE: Final = "--color"
+    NO_COLOR_MODE: Final = "--no-color"
 
     # Stdin / misc
-    STDIN_FILENAME: Final[str] = "--stdin-filename"
-    HELP: Final[str] = "--help"
-    CONFIG_FOR_PYPROJECT: Final[str] = "--pyproject"
-    SEMVER_VERSION: Final[str] = "--semver"
+    STDIN_FILENAME: Final = "--stdin-filename"
+    HELP: Final = "--help"
+    CONFIG_FOR_PYPROJECT: Final = "--pyproject"
+    SEMVER_VERSION: Final = "--semver"
 
     # Config checking
-    STRICT_CONFIG_CHECKING: Final[str] = "--strict"
-    NO_STRICT_CONFIG_CHECKING: Final[str] = "--no-strict"
+    STRICT_CONFIG_CHECKING: Final = "--strict"
+    NO_STRICT_CONFIG_CHECKING: Final = "--no-strict"
 
     # Config root
-    CONFIG_ROOT: Final[str] = "--root"
+    CONFIG_ROOT: Final = "--root"
+
+
+class CliShortOpt:
+    """User-facing short option spellings for the TopMark CLI.
+
+    Notes:
+        - Each constant is the canonical **short** option spelling exposed to users.
+        - Values include the leading `-`.
+        - Long options are defined in `CliOpt`, not in this namespace.
+    """
+
+    HELP: Final = "-h"
+    VERBOSE: Final = "-v"
+    QUIET: Final = "-q"
+    INCLUDE_FILE_TYPES: Final = "-t"
+    EXCLUDE_FILE_TYPES: Final = "-T"
+    CONFIG_FILES: Final = "-c"
+    INCLUDE_PATTERNS: Final = "-i"
+    EXCLUDE_PATTERNS: Final = "-e"
+    SHOW_DETAILS: Final = "-l"

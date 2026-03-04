@@ -26,31 +26,25 @@ import click
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.commands.check import check_command
 from topmark.cli.commands.config import config_command
-from topmark.cli.commands.filetypes import filetypes_command
-from topmark.cli.commands.processors import processors_command
+from topmark.cli.commands.registry import registry_command
 from topmark.cli.commands.strip import strip_command
 from topmark.cli.commands.version import version_command
 from topmark.cli.keys import CliCmd
-from topmark.cli.keys import CliOpt
+from topmark.cli.options import GROUP_CONTEXT_SETTINGS
 from topmark.core.keys import ArgKey
-
-# --- We use a module import here instead of relative import
-from topmark.core.logging import get_logger
 from topmark.processors.bootstrap import register_all_processors
 from topmark.utils.version import check_python_version
 
 if TYPE_CHECKING:
     from topmark.cli_shared.console_api import ConsoleLike
-    from topmark.core.logging import TopmarkLogger
 
-logger: TopmarkLogger = get_logger(__name__)
 
 register_all_processors()
 
 
 @click.group(
     cls=click.Group,
-    context_settings={"help_option_names": ["-h", CliOpt.HELP]},
+    context_settings=GROUP_CONTEXT_SETTINGS,
     invoke_without_command=True,  # Aalways invoke the cli() function
     help="TopMark CLI",
 )
@@ -85,9 +79,8 @@ def cli(
         console.print(ctx.get_help())
 
 
-cli.add_command(version_command)
 cli.add_command(config_command)
 cli.add_command(check_command)
 cli.add_command(strip_command)
-cli.add_command(filetypes_command)
-cli.add_command(processors_command)
+cli.add_command(registry_command)
+cli.add_command(version_command)

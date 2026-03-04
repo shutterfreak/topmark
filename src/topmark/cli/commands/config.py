@@ -13,6 +13,7 @@
 Provides a family of subcommands for inspecting and scaffolding TopMark
 configuration:
 
+  * ``topmark config check``: check merged configuration for errors.
   * ``topmark config dump``: show the effective merged configuration.
   * ``topmark config defaults``: show the built-in default configuration.
   * ``topmark config init``: print a starter configuration file.
@@ -22,23 +23,18 @@ from __future__ import annotations
 
 import click
 
+from topmark.cli.commands.config_check import config_check_command
+from topmark.cli.commands.config_defaults import config_defaults_command
+from topmark.cli.commands.config_dump import config_dump_command
+from topmark.cli.commands.config_init import config_init_command
 from topmark.cli.keys import CliCmd
-from topmark.cli.options import CONTEXT_SETTINGS
-from topmark.core.logging import TopmarkLogger
-from topmark.core.logging import get_logger
-
-from .config_check import config_check_command
-from .config_defaults import config_defaults_command
-from .config_dump import config_dump_command
-from .config_init import config_init_command
-
-logger: TopmarkLogger = get_logger(__name__)
+from topmark.cli.options import GROUP_CONTEXT_SETTINGS
 
 
 @click.group(
     name=CliCmd.CONFIG,
+    context_settings=GROUP_CONTEXT_SETTINGS,
     help="Inspect and scaffold TopMark configuration.",
-    context_settings=CONTEXT_SETTINGS,
 )
 def config_command() -> None:
     """Group for configuration-related subcommands.

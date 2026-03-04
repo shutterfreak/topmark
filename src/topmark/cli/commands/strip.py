@@ -48,26 +48,31 @@ from topmark.api.view import filter_view_results
 from topmark.cli.cmd_common import build_config_for_plan
 from topmark.cli.cmd_common import build_file_list
 from topmark.cli.cmd_common import exit_if_no_files
-from topmark.cli.cmd_common import get_effective_verbosity
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.cmd_common import maybe_exit_on_error
+from topmark.cli.cmd_common import maybe_route_console_to_stderr
+from topmark.cli.emitters.machine import emit_processing_results_machine
 from topmark.cli.emitters.text.diagnostic import render_config_diagnostics_text
 from topmark.cli.emitters.text.pipeline import emit_updated_content_to_stdout
 from topmark.cli.emitters.utils import emit_pipeline_human_output
-from topmark.cli.errors import TopmarkIOError
+from topmark.cli.errors import TopmarkCliIOError
 from topmark.cli.io import plan_cli_inputs
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
-from topmark.cli.machine_emitters import emit_processing_results_machine
-from topmark.cli.options import CONTEXT_SETTINGS
-from topmark.cli.options import common_config_options
-from topmark.cli.options import common_file_and_filtering_options
-from topmark.cli.options import common_header_formatting_options
+from topmark.cli.options import PATH_COMMAND_CONTEXT_SETTINGS
+from topmark.cli.options import common_apply_and_write_options
+from topmark.cli.options import common_config_resolution_options
+from topmark.cli.options import common_file_filtering_options
+from topmark.cli.options import common_file_type_filtering_options
+from topmark.cli.options import common_from_sources_options
 from topmark.cli.options import common_output_format_options
+from topmark.cli.options import common_stdin_content_mode_options
 from topmark.cli.options import common_ui_options
-from topmark.cli.options import underscored_trap_option
+from topmark.cli.options import pipeline_reporting_options
+from topmark.cli.options import render_diff_options
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import validate_diff_policy_for_output_format
+from topmark.cli.validators import validate_stdin_dash_requires_piped_input
 from topmark.cli_shared.emitters.shared.pipeline import strip_msg
 from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
@@ -91,15 +96,14 @@ if TYPE_CHECKING:
     from topmark.core.machine.schemas import MetaPayload
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.protocols import Step
-    from topmark.rendering.formats import HeaderOutputFormat
 
 logger: TopmarkLogger = get_logger(__name__)
 
 
 @click.command(
     name=CliCmd.STRIP,
+    context_settings=PATH_COMMAND_CONTEXT_SETTINGS,
     help="Remove the entire TopMark header from files.",
-    context_settings=CONTEXT_SETTINGS,
     epilog=f"""\
 Removes TopMark header blocks in files (in-place with {CliOpt.APPLY_CHANGES}).
 
@@ -112,86 +116,49 @@ Examples:
   topmark {CliCmd.STRIP} {CliOpt.APPLY_CHANGES} .
 """,
 )
-# Common option decorators
 @common_ui_options
-@common_config_options
+@common_config_resolution_options
+@common_stdin_content_mode_options
+@common_from_sources_options
+@common_file_filtering_options
+@common_file_type_filtering_options
+@common_apply_and_write_options
+@render_diff_options
+@pipeline_reporting_options
 @common_output_format_options
-# Command-specific option decorators
-@common_file_and_filtering_options
-@common_header_formatting_options
-@click.option(
-    CliOpt.APPLY_CHANGES,
-    ArgKey.APPLY_CHANGES,
-    is_flag=True,
-    help="Write changes to files (off by default).",
-)
-@click.option(
-    CliOpt.WRITE_MODE,
-    ArgKey.WRITE_MODE,
-    type=click.Choice(["atomic", "inplace", "stdout"], case_sensitive=False),
-    help=(
-        "Select write strategy: 'atomic' (safe, default), "
-        "'inplace' (fast, less safe), or 'stdout' (emit result to standard output)."
-    ),
-)
-@click.option(
-    CliOpt.RENDER_DIFF,
-    ArgKey.RENDER_DIFF,
-    is_flag=True,
-    help="Show unified diffs (human output only).",
-)
-@click.option(
-    CliOpt.RESULTS_SUMMARY_MODE,
-    ArgKey.RESULTS_SUMMARY_MODE,
-    is_flag=True,
-    help="Show outcome counts instead of per-file details.",
-)
-@click.option(
-    CliOpt.SKIP_COMPLIANT,
-    ArgKey.SKIP_COMPLIANT,
-    is_flag=True,
-    help="Hide files that are already up-to-date.",
-)
-@underscored_trap_option("--skip_compliant")
-@click.option(
-    CliOpt.SKIP_UNSUPPORTED,
-    ArgKey.SKIP_UNSUPPORTED,
-    is_flag=True,
-    help="Hide unsupported file types.",
-)
-@underscored_trap_option("--skip_unsupported")
 def strip_command(
     *,
-    # Command options: common options (verbosity, color)
+    # common_ui_options (verbosity, color):
     verbose: int,
     quiet: int,
     color_mode: ColorMode | None,
     no_color: bool,
-    # Command options: output format
-    output_format: OutputFormat | None,
-    # Command options: common_file_filtering_options
+    # common_config_resolution_options:
+    no_config: bool,
+    config_files: list[str],
+    # common_stdin_content_mode_options:
+    stdin_filename: str | None,
+    # common_from_sources_options:
     files_from: list[str],
-    include_patterns: list[str],
     include_from: list[str],
-    exclude_patterns: list[str],
     exclude_from: list[str],
+    # common_file_filtering_options:
+    include_patterns: list[str],
+    exclude_patterns: list[str],
+    # common_file_type_filtering_options:
     include_file_types: list[str],
     exclude_file_types: list[str],
-    relative_to: str | None,
-    stdin_filename: str | None,
-    # Command options: config
-    no_config: bool,
-    config_paths: list[str],
-    # Command options: formatting
-    align_fields: bool,
-    header_format: HeaderOutputFormat | None,
-    # Command options: check and strip
+    # common_apply_and_write_options
     apply_changes: bool,
     write_mode: str | None,
+    # render_diff_options:
     diff: bool,
+    # pipeline_reporting_options
     summary_mode: bool,
     skip_compliant: bool,
     skip_unsupported: bool,
+    # common_output_format_options:
+    output_format: OutputFormat | None,
 ) -> None:
     """Remove the TopMark header block from targeted files.
 
@@ -209,25 +176,19 @@ def strip_command(
         quiet: Decrements  the verbosity level,
         color_mode: Set the color mode (derfault: autp),
         no_color: bool: If set, disable color mode.
-        output_format: Output format to use
-            (``text``, ``markdown``, ``json``, or ``ndjson``).
+        no_config: If True, skip loading project/user configuration files.
+        config_files: Additional configuration file paths to load and merge.
+        stdin_filename: Assumed filename when  reading content from STDIN).
         files_from: Files that contain newline‑delimited *paths* to add to the
             candidate set before filtering. Use ``-`` to read from STDIN.
-        include_patterns: Glob patterns to *include* (intersection).
         include_from: Files that contain include glob patterns (one per line).
             Use ``-`` to read patterns from STDIN.
-        exclude_patterns: Glob patterns to *exclude* (subtraction).
         exclude_from: Files that contain exclude glob patterns (one per line).
             Use ``-`` to read patterns from STDIN.
+        include_patterns: Glob patterns to *include* (intersection).
+        exclude_patterns: Glob patterns to *exclude* (subtraction).
         include_file_types: Restrict processing to the given file type identifiers.
         exclude_file_types: Exclude processing for the given file type identifiers.
-        relative_to: Base directory used to compute relative paths in outputs.
-        stdin_filename: Assumed filename when  reading content from STDIN).
-        no_config: If True, skip loading project/user configuration files.
-        config_paths: Additional configuration file paths to load and merge.
-        align_fields: Whether to align header fields when rendering (captured in config).
-        header_format: Optional output format override for header
-            rendering (captured in config).
         apply_changes: Write changes to files; otherwise perform a dry run.
         write_mode: Whether to use safe atomic writing, faster in-place writing
             or writing to STDOUT (default: atomic writer).
@@ -235,9 +196,10 @@ def strip_command(
         summary_mode: Show outcome counts instead of per‑file details.
         skip_compliant: Suppress files whose comparison status is UNCHANGED.
         skip_unsupported: Suppress unsupported file types.
+        output_format: Output format to use (``text``, ``markdown``, ``json``, or ``ndjson``).
 
     Raises:
-        TopmarkIOError: If an I/O error occurred (read/write).
+        TopmarkCliIOError: If an I/O error occurred (read/write).
 
     Exit Status:
         SUCCESS (0): No changes required or all requested changes were written.
@@ -262,8 +224,8 @@ def strip_command(
         no_color=no_color,
     )
 
-    # Select the console
-    console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
+    # Retrieve effective human facing program-output verbosity for gating extra details
+    verbosity_level: int = ctx.obj[ArgKey.VERBOSITY_LEVEL]
 
     # Machine metadata
     meta: MetaPayload = ctx.obj[ArgKey.META]
@@ -273,6 +235,14 @@ def strip_command(
 
     apply_color_policy_for_output_format(ctx, fmt=fmt)
     enable_color: bool = ctx.obj[ArgKey.COLOR_ENABLED]
+
+    # common_from_sources_options - Fail fast if a `--*-from -` option is used without piped STDIN.
+    validate_stdin_dash_requires_piped_input(
+        ctx,
+        files_from=files_from,
+        include_from=include_from,
+        exclude_from=exclude_from,
+    )
 
     validate_diff_policy_for_output_format(ctx, diff=diff, fmt=fmt)
 
@@ -296,16 +266,33 @@ def strip_command(
         stdin_filename=stdin_filename,
     )
 
+    # Content-to-STDOUT modes: keep stdout clean for the rewritten file content.
+    #
+    # - STDIN content mode emits the updated file to stdout when --apply is set.
+    # - write_mode="stdout" also emits updated content to stdout.
+    #
+    # In both cases, route all human-facing console output (summaries, warnings,
+    # diagnostics) to stderr.
+    #
+    # Console selection must happen after planning inputs because stdin mode affects routing.
+    console: ConsoleLike = maybe_route_console_to_stderr(
+        ctx,
+        enable_color=enable_color,
+        apply_changes=apply_changes,
+        stdin_mode=plan.stdin_mode,
+        write_mode=write_mode,
+    )
+
     draft_config: MutableConfig = build_config_for_plan(
         ctx=ctx,
         plan=plan,
         no_config=no_config,
-        config_paths=config_paths,
+        config_paths=config_files,
         include_file_types=include_file_types,
         exclude_file_types=exclude_file_types,
-        relative_to=relative_to,
-        align_fields=align_fields,
-        header_format=header_format,
+        relative_to=None,  # Not relevant for `strip``
+        align_fields=None,  # Not relevant for `strip``
+        header_format=None,  # Not relevant for `strip``
     )
 
     # Propagate runtime intent for updater (terminal vs preview write status)
@@ -313,14 +300,15 @@ def strip_command(
 
     config: Config = draft_config.freeze()
 
-    # Determine effective program-output verbosity for gating extra details
-    vlevel: int = get_effective_verbosity(ctx, config)
-
     logger.trace("Config after merging args and resolving file list: %s", config)
 
     # Display Config diagnostics before resolving files
-    if fmt == OutputFormat.TEXT and vlevel > 0:
-        render_config_diagnostics_text(ctx=ctx, config=config)
+    if fmt == OutputFormat.TEXT and verbosity_level > 0:
+        render_config_diagnostics_text(
+            ctx=ctx,
+            config=config,
+            verbosity_level=verbosity_level,
+        )
 
     temp_path: Path | None = plan.temp_path  # for cleanup/STDIN-apply branch
     stdin_mode: bool = plan.stdin_mode
@@ -339,7 +327,9 @@ def strip_command(
 
     # Choose the concrete pipeline variant
     pipeline: Sequence[Step[ProcessingContext]] = select_pipeline(
-        "strip", apply=apply_changes, diff=diff
+        "strip",
+        apply=apply_changes,
+        diff=diff,
     )
 
     results: list[ProcessingContext] = []
@@ -376,7 +366,7 @@ def strip_command(
             file_list_total=len(file_list),
             view_results=view_results,
             fmt=fmt,
-            verbosity_level=vlevel,
+            verbosity_level=verbosity_level,
             summary_mode=summary_mode,
             show_diffs=diff,
             make_message=strip_msg,
@@ -405,7 +395,7 @@ def strip_command(
                 )
                 console.print(console.styled(msg, fg="green", bold=True))
             if failed:
-                raise TopmarkIOError(f"Failed to write {failed} file(s). See log for details.")
+                raise TopmarkCliIOError(f"Failed to write {failed} file(s). See log for details.")
 
     else:
         # Dry-run: determine exit code

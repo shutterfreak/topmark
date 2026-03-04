@@ -17,34 +17,158 @@ Conventions:
     - `apply_*` helpers apply a policy and may mutate `ctx.obj` (for example, to disable ANSI
       color for output formats that must remain plain). Some `apply_*` helpers also return the
       effective value they set/normalized.
-    - `validate_*` helpers enforce a policy and raise `TopmarkUsageError` when the invocation is
+    - `validate_*` helpers enforce a policy and raise `TopmarkCliUsageError` when the invocation is
       invalid or unsupported.
 
 Notes:
     - Messages should use `ctx.command_path` for consistency across command groups.
+    - All `validate_*` helpers raise `TopmarkCliUsageError` on invalid usage.
 """
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
+from typing import TypeVar
 
-from topmark.cli.errors import TopmarkUsageError
+from topmark.cli.errors import TopmarkCliUsageError
 from topmark.cli.keys import CliOpt
 from topmark.cli_shared.color import ColorMode
 from topmark.core.formats import OutputFormat
 from topmark.core.formats import is_machine_format
 from topmark.core.keys import ArgKey
+from topmark.core.logging import TRACE_LEVEL
 from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     import click
 
     from topmark.cli_shared.console_api import ConsoleLike
     from topmark.core.logging import TopmarkLogger
 
+
 logger: TopmarkLogger = get_logger(__name__)
 
-# "Apply" policies (mutating)
+# Type variable for warn_and_clear generic return type
+_T = TypeVar("_T")
+
+#: Custom verbosity levels, mapped to standard logging levels
+LOG_LEVELS: dict[str, int] = {
+    "TRACE": TRACE_LEVEL,  # Custom TRACE (5) sits below logging.DEBUG.
+    "DEBUG": logging.DEBUG,
+    "INFO": logging.INFO,
+    "WARNING": logging.WARNING,
+    "ERROR": logging.ERROR,
+    "CRITICAL": logging.CRITICAL,
+}
+
+# ---- Reusable validators ----
+
+
+def validate_mutually_exclusive(
+    ctx: click.Context,
+    *,
+    flags: dict[str, bool],
+    message: str | None = None,
+) -> None:
+    """Validate that at most one of the provided flags is enabled.
+
+    This is a small Click-oriented utility for enforcing mutual exclusion
+    between boolean CLI options.
+
+    Args:
+        ctx: Active Click context (used for `ctx.command_path` in messages).
+        flags: Mapping of user-facing option spellings (e.g. `"--add-only"`)
+            to their parsed boolean values.
+        message: Optional override for the error message. When omitted, a
+            standard message using the enabled option spellings is emitted.
+
+    Raises:
+        TopmarkCliUsageError: If more than one flag is enabled.
+    """
+    enabled: list[str] = [opt for opt, is_on in flags.items() if is_on]
+    if len(enabled) <= 1:
+        return
+
+    cmd: str = ctx.command_path
+    if message is None:
+        # Keep message stable and easy to read.
+        joined: str = " and ".join(enabled) if len(enabled) == 2 else ", ".join(enabled)
+        message = f"{cmd}: {joined} are mutually exclusive."
+
+    raise TopmarkCliUsageError(message)
+
+
+def validate_machine_format_forbids_flags(
+    ctx: click.Context,
+    *,
+    fmt: OutputFormat,
+    flags: Mapping[str, bool],
+    reason: str,
+) -> None:
+    """Validate that certain flags are forbidden when a machine-readable output format is used.
+
+    This is a Click-layer policy helper to enforce that specific CLI options are not
+    compatible with machine-readable output formats (e.g. JSON, NDJSON).
+
+    Args:
+        ctx: Active Click context (used for `ctx.command_path` in messages).
+        fmt: Effective output format selected for the command.
+        flags: Mapping of user-facing option spellings to their parsed boolean values.
+        reason: Explanation string appended to the error message. Should include a
+            leading verb phrase such as "is not supported" or "are not supported".
+
+    Raises:
+        TopmarkCliUsageError: If any of the specified flags are enabled with a machine format.
+    """
+    if not is_machine_format(fmt):
+        return
+
+    enabled: list[str] = [opt for opt, is_on in flags.items() if is_on]
+    if not enabled:
+        return
+
+    cmd: str = ctx.command_path
+    if len(enabled) == 1:
+        opts: str = enabled[0]
+    elif len(enabled) == 2:
+        opts = " and ".join(enabled)
+    else:
+        opts = ", ".join(enabled)
+
+    raise TopmarkCliUsageError(f"{cmd}: {CliOpt.OUTPUT_FORMAT}={fmt.value}: {opts} {reason}")
+
+
+# ---- Reusable apply policies ----
+
+
+def warn_and_clear(
+    ctx: click.Context,
+    *,
+    message: str,
+    obj_key: str,
+    cleared_value: _T,
+) -> _T:
+    """Emit a warning and clear a value in the Click context object.
+
+    This helper is useful for apply_* policies that need to warn the user about ignored
+    options and then clear the corresponding values in `ctx.obj`.
+
+    Args:
+        ctx: Active Click context containing CLI state and console.
+        message: Warning message to emit.
+        obj_key: The key in `ctx.obj` to clear (`ArgKey.*` string value).
+        cleared_value: The value to set for the cleared key.
+
+    Returns:
+        The cleared value.
+    """
+    console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
+    console.warn(message)
+    ctx.obj[obj_key] = cleared_value
+    return cleared_value
 
 
 def apply_color_policy_for_output_format(
@@ -76,18 +200,20 @@ def apply_color_policy_for_output_format(
         ctx: Active Click context containing CLI state and console.
         fmt: Effective output format selected for the command.
     """
-    console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
-    cmd: str = ctx.command_path
-
     if fmt != OutputFormat.TEXT:
         # ANSI color is only supported for OutputFormat.TEXT (human) output.
         color_mode: ColorMode | None = ctx.obj.get(ArgKey.COLOR_MODE)
 
         # Warn only when the user explicitly forced color.
         if color_mode == ColorMode.ALWAYS:
-            console.warn(
-                f"Note: {cmd}: {CliOpt.COLOR_MODE}={color_mode} is ignored "
-                f"when {CliOpt.OUTPUT_FORMAT}={fmt.value}."
+            warn_and_clear(
+                ctx,
+                message=(
+                    f"Note: {ctx.command_path}: {CliOpt.COLOR_MODE}={color_mode} is ignored "
+                    f"when {CliOpt.OUTPUT_FORMAT}={fmt.value}."
+                ),
+                obj_key=ArgKey.COLOR_ENABLED,
+                cleared_value=False,
             )
 
         # Ensure downstream emitters do not use ANSI styling.
@@ -142,73 +268,31 @@ def apply_ignore_positional_paths_policy(
     ctx.args = []
 
 
-def apply_ignore_files_from_policy(
+# ---- Command-specific validators ----
+
+
+def validate_verbose_quiet_exclusivity(
     ctx: click.Context,
     *,
-    files_from: list[str] | None,
-) -> list[str]:
-    """Ignore `--files-from` for commands that do not accept external file lists.
-
-    Some commands are file-agnostic and/or operate purely on configuration state. For those
-    commands, `--files-from` is meaningless and can confuse users because it suggests that file
-    discovery is involved.
-
-    Policy:
-        - If `files_from` is non-empty, emit a warning and clear `ArgKey.FILES_FROM` in `ctx.obj`.
-        - Always return the effective `files_from` list (empty when ignored).
-
-    Args:
-        ctx: Active Click context.
-        files_from: Parsed `--files-from` values (may be None).
-
-    Returns:
-        The effective `files_from` list (empty when ignored).
-    """
-    console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
-    cmd: str = ctx.command_path
-
-    if files_from:
-        console.warn(
-            f"Note: {cmd} ignores {CliOpt.FILES_FROM} "
-            "(file lists are not part of the configuration).",
-        )
-        ctx.obj[ArgKey.FILES_FROM] = []
-        return []
-    return files_from or []
-
-
-# "Validate" policies (raising)
-
-
-def validate_diff_policy_for_output_format(
-    ctx: click.Context,
-    *,
-    diff: bool,
-    fmt: OutputFormat,
+    verbose: bool,
+    quiet: bool,
 ) -> None:
-    """Validate the CLI diff policy for the selected output format.
-
-    Unified diffs are a human-facing rendering feature and are not supported for machine-readable
-    output (`json`/`ndjson`). If `--diff` is requested with a machine format, raise a
-    `TopmarkUsageError` with a clear message.
+    """Validate the CLI `--verbose` / `--quiet` exclusivity.
 
     Args:
         ctx: Active Click context containing CLI state and console.
-        diff: Whether the user requested unified diffs.
-        fmt: Effective output format for this invocation.
+        verbose: Whether `--verbose` was specified.
+        quiet: Whether `--quiet` was specified.
 
-    Raises:
-        TopmarkUsageError: If diff is True and fmt is JSON/NDJSON.
     """
-    cmd: str = ctx.command_path
-    opts: str = f"{CliOpt.OUTPUT_FORMAT}={fmt.value}"
-
-    if is_machine_format(fmt) and diff:
-        # Diffs are human-only; machine formats must remain structured.
-        raise TopmarkUsageError(
-            f"{cmd}: {opts}: {CliOpt.RENDER_DIFF} is not supported "
-            "with machine-readable output formats."
-        )
+    validate_mutually_exclusive(
+        ctx,
+        flags={
+            CliOpt.VERBOSE: verbose,
+            CliOpt.QUIET: quiet,
+        },
+    )
+    # Raises: TopmarkCliUsageError: If both flags are enabled.
 
 
 def validate_check_add_update_policy_exclusivity(
@@ -220,23 +304,47 @@ def validate_check_add_update_policy_exclusivity(
     """Validate the CLI add_only / update_only exclusivity policy for the `check` command.
 
     The `--add-only` and `--update-only` options represent incompatible operation modes. If both are
-    enabled, raise a `TopmarkUsageError` explaining that the options are mutually exclusive.
+    enabled, raise a `TopmarkCliUsageError` explaining that the options are mutually exclusive.
 
     Args:
         ctx: Active Click context containing CLI state and console.
         add_only: Whether we should only add nonexistent headers.
         update_only: Whether we should only update existing headers.
-
-    Raises:
-        TopmarkUsageError: If both flags are enabled.
     """
-    cmd: str = ctx.command_path
+    validate_mutually_exclusive(
+        ctx,
+        flags={
+            CliOpt.POLICY_CHECK_ADD_ONLY: add_only,
+            CliOpt.POLICY_CHECK_UPDATE_ONLY: update_only,
+        },
+    )
+    # Raises: TopmarkCliUsageError: If both flags are enabled.
 
-    if add_only and update_only:
-        raise TopmarkUsageError(
-            f"{cmd}: {CliOpt.POLICY_CHECK_ADD_ONLY} and "
-            f"{CliOpt.POLICY_CHECK_UPDATE_ONLY} are mutually exclusive."
-        )
+
+def validate_diff_policy_for_output_format(
+    ctx: click.Context,
+    *,
+    diff: bool,
+    fmt: OutputFormat,
+) -> None:
+    """Validate that unified diffs are only supported with human-readable output formats.
+
+    Unified diffs are a human-facing rendering feature and are not supported for machine-readable
+    output (`json`/`ndjson`). If `--diff` is requested with a machine format, raise a
+    `TopmarkCliUsageError`.
+
+    Args:
+        ctx: Active Click context containing CLI state and console.
+        diff: Whether the user requested unified diffs.
+        fmt: Effective output format for this invocation.
+    """
+    validate_machine_format_forbids_flags(
+        ctx,
+        fmt=fmt,
+        flags={CliOpt.RENDER_DIFF: diff},
+        reason="is not supported with machine-readable output formats.",
+    )
+    # Raises: TopmarkCliUsageError: If diff is True and fmt is JSON/NDJSON.
 
 
 def validate_human_only_config_flags_for_machine_format(
@@ -258,16 +366,51 @@ def validate_human_only_config_flags_for_machine_format(
         config_root: Whether the user requested `--root`.
         for_pyproject: Whether the user requested `--pyproject`.
         fmt: Effective output format for this invocation.
+    """
+    validate_machine_format_forbids_flags(
+        ctx,
+        fmt=fmt,
+        flags={
+            CliOpt.CONFIG_ROOT: config_root,
+            CliOpt.CONFIG_FOR_PYPROJECT: for_pyproject,
+        },
+        reason="are not supported with machine-readable output formats.",
+    )
+    # Raises: TopmarkCliUsageError: If a machine format is selected and any human-only template flag
+    # is set.
+
+
+def validate_stdin_dash_requires_piped_input(
+    ctx: click.Context,
+    *,
+    files_from: list[str] | None,
+    include_from: list[str] | None,
+    exclude_from: list[str] | None,
+) -> None:
+    """Fail fast if a `--*-from -` option is used without piped STDIN.
+
+    Args:
+        ctx: Active Click context.
+        files_from: Parsed `--files-from` values (may be None).
+        include_from: Parsed `--include-from` values (may be None).
+        exclude_from: Parsed `--exclude-from` values (may be None).
 
     Raises:
-        TopmarkUsageError: If a machine format is selected and any human-only template flag is set.
+        TopmarkCliUsageError: if any of the `--*-from` options contain '-' but STDIN is a TTY.
     """
-    cmd: str = ctx.command_path
-    opts: str = f"{CliOpt.OUTPUT_FORMAT}={fmt.value}"
+    uses_dash: bool = (
+        ("-" in files_from if files_from else False)
+        or ("-" in include_from if include_from else False)
+        or ("-" in exclude_from if exclude_from else False)
+    )
+    if not uses_dash:
+        return
 
-    if is_machine_format(fmt) and (config_root or for_pyproject):
-        raise TopmarkUsageError(
-            f"{cmd}: {opts}: {CliOpt.CONFIG_ROOT} and "
-            f"{CliOpt.CONFIG_FOR_PYPROJECT} are not supported "
-            "with machine-readable output formats."
+    import sys
+
+    if sys.stdin.isatty():
+        cmd: str = ctx.command_path
+        raise TopmarkCliUsageError(
+            f"{cmd}: '-' requests patterns/paths from STDIN, but no STDIN is piped. "
+            "Pipe input (e.g. `printf 'pat\\n' | ... --exclude-from -`) or use a file path."
         )

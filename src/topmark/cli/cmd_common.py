@@ -22,6 +22,7 @@ command group.
 
 from __future__ import annotations
 
+import sys
 from typing import TYPE_CHECKING
 
 import click
@@ -31,6 +32,7 @@ from topmark.cli.console import ClickConsole
 from topmark.cli.console_helpers import get_console_safely
 from topmark.cli.options import ColorMode
 from topmark.cli.options import resolve_verbosity
+from topmark.cli.validators import validate_verbose_quiet_exclusivity
 from topmark.cli_shared.color import resolve_color_mode
 from topmark.core.keys import ArgKey
 from topmark.core.logging import resolve_env_log_level
@@ -78,6 +80,8 @@ def init_common_state(
     ctx.obj = ctx.obj or {}
 
     # Program-output verbosity (stored for downstream gating).
+    validate_verbose_quiet_exclusivity(ctx, verbose=verbose > 0, quiet=quiet > 0)
+
     level_cli: int = resolve_verbosity(verbose, quiet)
     ctx.obj[ArgKey.VERBOSITY_LEVEL] = level_cli
 
@@ -98,25 +102,12 @@ def init_common_state(
     ctx.obj[ArgKey.COLOR_ENABLED] = enable_color
     ctx.color = enable_color
 
-    console = ClickConsole(enable_color=not no_color)
+    # Respect the resolved color policy (may differ from the raw --no-color flag).
+    console = ClickConsole(enable_color=enable_color)
     ctx.obj[ArgKey.CONSOLE] = console
 
     # Machine metadata payload.
     ctx.obj[ArgKey.META] = build_meta_payload()
-
-
-def get_effective_verbosity(ctx: click.Context, config: Config | None = None) -> int:
-    """Return the effective program-output verbosity for this command.
-
-    Resolution order (tri-state aware):
-        1. Config.verbosity_level if set (not None)
-        2. ctx.obj[ArgKey.VERBOSITY_LEVEL] if present
-        3. 0 (terse)
-    """
-    cfg_level: int | None = config.verbosity_level if config else None
-    if cfg_level is not None:
-        return int(cfg_level)
-    return int(ctx.obj.get(ArgKey.VERBOSITY_LEVEL, 0))
 
 
 def build_file_list(config: Config, *, stdin_mode: bool, temp_path: Path | None) -> list[Path]:
@@ -140,6 +131,53 @@ def exit_if_no_files(file_list: list[Path]) -> bool:
         console.print(console.styled("\nℹ️  No files to process.\n", fg="blue"))
         return True
     return False
+
+
+def maybe_route_console_to_stderr(
+    ctx: click.Context,
+    *,
+    enable_color: bool,
+    apply_changes: bool,
+    stdin_mode: bool,
+    write_mode: str | None,
+) -> ConsoleLike:
+    """Route human-facing console output to stderr when stdout carries file content.
+
+    TopMark can emit rewritten file content to STDOUT in two situations:
+
+    - content-on-STDIN mode (a lone `-` path) when ``--apply`` is set; and
+    - when ``--write-mode=stdout`` is used with ``--apply``.
+
+    In both cases, the command must keep STDOUT clean for the content stream so
+    that output can be piped safely. Human-facing output (summaries, warnings,
+    diagnostics) is therefore routed to STDERR.
+
+    The function updates ``ctx.obj[ArgKey.CONSOLE]`` when rerouting is needed and
+    returns the effective console instance.
+
+    Args:
+        ctx: Current Click context.
+        enable_color: Whether color output is enabled for this invocation.
+        apply_changes: Whether ``--apply`` is set (only then can content be emitted).
+        stdin_mode: Whether the invocation is in content-on-STDIN mode.
+        write_mode: Effective write mode (``"stdout"`` emits content to STDOUT).
+
+    Returns:
+        The effective console instance to use for human-facing output.
+    """
+    emits_content_to_stdout: bool = bool(apply_changes) and (stdin_mode or (write_mode == "stdout"))
+
+    if emits_content_to_stdout:
+        console = ClickConsole(
+            enable_color=enable_color,
+            out=sys.stderr,
+            err=sys.stderr,
+        )
+        ctx.obj[ArgKey.CONSOLE] = console
+        return console
+
+    # Fall back to the console initialized by `init_common_state`.
+    return get_console_safely()
 
 
 def maybe_exit_on_error(*, code: ExitCode | None, temp_path: Path | None) -> None:

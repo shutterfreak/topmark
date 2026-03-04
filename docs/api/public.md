@@ -20,8 +20,8 @@ The API reference complements the higher‑level usage guides:
 - [Installation](../install.md)
 - [Pre‑commit integration](../usage/pre-commit.md)
 - [Header placement rules](../usage/header-placement.md)
-- [Supported file types](../usage/generated-filetypes.md)
-- [Supported header processors](../usage/generated-processors.md)
+- [Supported file types](../usage/generated/filetypes.md)
+- [Supported header processors](../usage/generated/processors.md)
 
 Use this section if you need details on functions, classes, or constants available in TopMark.
 

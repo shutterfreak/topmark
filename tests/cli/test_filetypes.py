@@ -27,7 +27,12 @@ if TYPE_CHECKING:
 
 def test_filetypes_lists_known_types() -> None:
     """It should list supported file types and exit with code 0."""
-    result: Result = run_cli(["filetypes"])
+    result: Result = run_cli(
+        [
+            "registry",
+            "filetypes",
+        ]
+    )
 
     assert_SUCCESS(result)
 

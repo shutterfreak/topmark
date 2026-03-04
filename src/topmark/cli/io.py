@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING
 from typing import Literal
 from typing import NamedTuple
 
-from topmark.cli.errors import TopmarkUsageError
+from topmark.cli.errors import TopmarkCliUsageError
 from topmark.cli.keys import CliOpt
 from topmark.cli.options import extract_stdin_for_from_options
 from topmark.cli.options import split_nonempty_lines
@@ -237,7 +237,7 @@ def plan_cli_inputs(
             (Used for commands like dump-config that are file-agnostic.)
 
     Raises:
-        TopmarkUsageError: If
+        TopmarkCliUsageError: If
             - mixing content '-' with any ...-from '-' option.
             - using '-' as a PATH without --stdin-filename.
             - no input is provided (unless allow_empty_paths is True).
@@ -262,7 +262,7 @@ def plan_cli_inputs(
     if stdin_mode and any(
         t is not None for t in (files_from_text, include_from_text, exclude_from_text)
     ):
-        raise TopmarkUsageError(
+        raise TopmarkCliUsageError(
             "Cannot combine '-' (content on STDIN) with "
             f"{CliOpt.FILES_FROM} - / {CliOpt.INCLUDE_FROM} - / {CliOpt.EXCLUDE_FROM} -."
         )
@@ -274,12 +274,12 @@ def plan_cli_inputs(
 
     if stdin_mode:
         if not stdin_filename:
-            raise TopmarkUsageError(
+            raise TopmarkCliUsageError(
                 f"{CliOpt.STDIN_FILENAME} is required when using '-' to read from STDIN."
             )
         res: StdinResult = consume_stdin(expect="content", stdin_filename=stdin_filename)
         if res.mode != "content" or not res.paths:
-            raise TopmarkUsageError("No data received on STDIN while '-' was specified.")
+            raise TopmarkCliUsageError("No data received on STDIN while '-' was specified.")
         temp_path = res.paths[0]
         paths = [str(temp_path)]
         files_from, include_from, exclude_from = strip_dash_sentinels(
@@ -292,7 +292,7 @@ def plan_cli_inputs(
 
         if raw_args:
             if "-" in raw_args:
-                raise TopmarkUsageError(
+                raise TopmarkCliUsageError(
                     "'-' is only valid as the sole PATH to read content from STDIN. "
                     f"Use {CliOpt.FILES_FROM} - to read a list of paths from STDIN."
                 )
@@ -308,9 +308,7 @@ def plan_cli_inputs(
         )
 
     if not paths and not allow_empty_paths:
-        raise TopmarkUsageError(
-            f"Error: No arguments provided. Try 'topmark {ctx.command.name} FILE'"
-        )
+        raise TopmarkCliUsageError(f"No arguments provided. Try 'topmark {ctx.command.name} FILE'")
 
     return InputPlan(
         stdin_mode=stdin_mode,

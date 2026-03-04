@@ -11,12 +11,12 @@
 """Exceptions for TopMark CLI.
 
 Usage:
-    Raise these exceptions in CLI commands or processing to signal errors
-    with standardized messages and exit codes.
+    Raise these exceptions in CLI commands or processing to signal errors with standardized messages
+    and exit codes.
 
 Styling:
-    Exceptions prefer the project console if available (see `show()`); if no console
-    is present in the Click context, they fall back to Click's default styling.
+    Exceptions prefer the project console if available (see `show()`); if no console is present in
+    the Click context, they fall back to Click's default styling.
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-class TopmarkError(click.ClickException):
+class TopmarkCliError(click.ClickException):
     """Base class for all TopMark CLI errors."""
 
     exit_code: ExitCode = ExitCode.FAILURE
@@ -73,55 +73,61 @@ class TopmarkError(click.ClickException):
         super().show(file)
 
 
-class TopmarkUsageError(TopmarkError):
+class TopmarkCliUsageError(TopmarkCliError):
     """Error for command-line invocation errors (invalid flags/args)."""
 
     exit_code = ExitCode.USAGE_ERROR
 
 
-class TopmarkConfigError(TopmarkError):
+class TopmarkCliConfigError(TopmarkCliError):
     """Error for configuration errors (missing/invalid/malformed config)."""
 
     exit_code = ExitCode.CONFIG_ERROR
 
 
-class TopmarkFileNotFoundError(TopmarkError):
+class TopmarkCliFileNotFoundError(TopmarkCliError):
     """Error when input path does not exist."""
 
     exit_code = ExitCode.FILE_NOT_FOUND
 
 
-class TopmarkPermissionDeniedError(TopmarkError):
+class TopmarkCliPermissionDeniedError(TopmarkCliError):
     """Error for insufficient permissions (read/write)."""
 
     exit_code = ExitCode.PERMISSION_DENIED
 
 
-class TopmarkIOError(TopmarkError):
+class TopmarkCliIOError(TopmarkCliError):
     """Error for I/O errors reading/writing files."""
 
     exit_code = ExitCode.IO_ERROR
 
 
-class TopmarkEncodingError(TopmarkError):
+class TopmarkCliEncodingError(TopmarkCliError):
     """Error for text decoding/encoding errors (e.g., UnicodeDecodeError)."""
 
     exit_code = ExitCode.ENCODING_ERROR
 
 
-class TopmarkUnsupportedFileTypeError(TopmarkError):
+class TopmarkCliUnsupportedFileTypeError(TopmarkCliError):
     """Error for known/unsupported file types (skipped as per policy)."""
 
     exit_code = ExitCode.UNSUPPORTED_FILE_TYPE
 
 
-class TopmarkPipelineError(TopmarkError):
+class TopmarkCliPipelineError(TopmarkCliError):
     """Error for internal pipeline failures (processor/step contract violation)."""
 
     exit_code = ExitCode.PIPELINE_ERROR
 
 
-class TopmarkUnexpectedError(TopmarkError):
+class TopmarkCliVersionConverionError(TopmarkCliError):
+    """Error for PEP440-to-SemVer version converion."""
+
+    exit_code = ExitCode.VERSION_CONVERSION_ERROR
+
+
+class TopmarkCliUnexpectedError(TopmarkCliError):
     """Error for unhandled/unknown errors (last-resort)."""
 
     exit_code = ExitCode.UNEXPECTED_ERROR

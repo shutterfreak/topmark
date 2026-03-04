@@ -71,9 +71,9 @@ if TYPE_CHECKING:
 logger: PrefixedLogger = get_logger("gen_api_pages")
 
 # --- Constants for Directory Structure ---
-ROOT_PKG: Final[str] = "topmark"
-API_INTERNALS_DIR: Final[str] = "api/internals"
-API_REFERENCE_DIR: Final[str] = "api/reference"
+ROOT_PKG: Final = "topmark"
+API_INTERNALS_DIR: Final = "api/internals"
+API_REFERENCE_DIR: Final = "api/reference"
 TOP_INDEX_DIR: Final[str] = f"{API_INTERNALS_DIR}/topmark"
 TOP_INDEX: Final[str] = f"{TOP_INDEX_DIR}/index.md"
 
@@ -144,12 +144,14 @@ def generate_cli_reference_pages() -> None:
     have built-in Markdown exporters.
     """
     filetypes_md: str = _run_topmark_markdown(
+        "registry",
         "filetypes",
         "--long",
         "--output-format",
         "markdown",
     )
     processors_md: str = _run_topmark_markdown(
+        "registry",
         "processors",
         "--long",
         "--output-format",
@@ -172,12 +174,12 @@ def generate_cli_reference_pages() -> None:
             f.write(body)
 
     _write_generated_page(
-        "usage/generated-filetypes.md",
+        "usage/generated/filetypes.md",
         "Supported file types (generated)",
         filetypes_md,
     )
     _write_generated_page(
-        "usage/generated-processors.md",
+        "usage/generated/processors.md",
         "Registered processors (generated)",
         processors_md,
     )

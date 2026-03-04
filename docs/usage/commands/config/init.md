@@ -2,8 +2,8 @@
 topmark:header:start
 
   project      : TopMark
-  file         : config_init.md
-  file_relpath : docs/usage/commands/config_init.md
+  file         : init.md
+  file_relpath : docs/usage/commands/config/init.md
   license      : MIT
   copyright    : (c) 2025 Olivier Biot
 
@@ -14,11 +14,11 @@ topmark:header:end
 
 **Purpose:** Render a fully documented example config.
 
-The `config init` subcommand (part of the TopMark [`config` Command Family](config.md))
+The `config init` subcommand (part of the TopMark [`config` Command Family](../config.md))
 prints the **annotated default template** that ships with TopMark.
 This file is heavily commented and is intended as a scaffold for a new config file.
 
-- `default` / `markdown`: full commented template from the bundled resource.
+- `text` / `markdown`: full commented template from the bundled resource.
 - `json` / `ndjson`: minimal Config snapshot derived from the same defaults,
   without comments or diagnostics.
 
@@ -27,7 +27,7 @@ Notes:
 - Specify `--pyproject` if you want to add the configuration to your project's `pyproject.toml`.
   This will encapsulate the TopMark TOML config in a `[tool.topmark]` table.
 - When choosing `json` or `ndjson`, the output is identical to
-  [`topmark config defaults`](config_defaults.md)
+  [`topmark config defaults`](./defaults.md)
 
 ______________________________________________________________________
 
@@ -87,13 +87,12 @@ Use `--output-format json` or `--output-format ndjson` to emit output suitable f
 
 The canonical schema, stable `kind` values, and shared conventions are documented here:
 
-- [Machine output schema (JSON & NDJSON)](../../dev/machine-output.md)
-- [Machine formats](../../dev/machine-formats.md)
+- [Machine output schema (JSON & NDJSON)](../../../dev/machine-output.md)
+- [Machine formats](../../../dev/machine-formats.md)
 
 Notes:
 
-- In machine formats, `config init` emits the same defaults-derived configuration snapshot as
-  [`topmark config defaults`](config_defaults.md).
+- In machine formats, `config init` emits a machine version of the example configuration snapshot.
 - No diagnostics are emitted for this command.
 
 ### JSON schema
@@ -123,8 +122,8 @@ Example:
 
 ______________________________________________________________________
 
-## Notes
+## Related commands
 
-- Use `topmark show-defaults` to view the **built‑in defaults** without a scaffold.
-- Use `topmark dump-config` to view the **effective merged configuration** (defaults → discovered →
-  CLI).
+- [`topmark config check`](./check.md) — check the *effective merged* configuration for errors.
+- [`topmark config dump`](./dump.md) — show the *effective merged* configuration as TOML.
+- [`topmark config defaults`](./defaults.md) — show TopMark’s *built-in defaults* as TOML.

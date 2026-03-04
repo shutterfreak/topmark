@@ -1,8 +1,8 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : processors.py
-#   file_relpath : src/topmark/cli/commands/processors.py
+#   file         : registry_processors.py
+#   file_relpath : src/topmark/cli/commands/registry_processors.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -21,14 +21,14 @@ from typing import TYPE_CHECKING
 
 import click
 
-from topmark.cli.cmd_common import get_effective_verbosity
 from topmark.cli.cmd_common import init_common_state
+from topmark.cli.emitters.machine import emit_processors_machine
 from topmark.cli.emitters.text.registry import emit_processors_text
 from topmark.cli.keys import CliCmd
-from topmark.cli.keys import CliOpt
-from topmark.cli.machine_emitters import emit_processors_machine
+from topmark.cli.options import GROUP_CONTEXT_SETTINGS
 from topmark.cli.options import common_output_format_options
 from topmark.cli.options import common_ui_options
+from topmark.cli.options import registry_details_options
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import apply_ignore_positional_paths_policy
 from topmark.cli_shared.emitters.markdown.registry import render_processors_markdown
@@ -44,7 +44,8 @@ if TYPE_CHECKING:
 
 
 @click.command(
-    name=CliCmd.PROCESSORS,
+    name=CliCmd.REGISTRY_PROCESSORS,
+    context_settings=GROUP_CONTEXT_SETTINGS,
     help="List registered header processors.",
     epilog="""
 Lists all header processors currently registered in TopMark, along with the file types they handle.
@@ -52,25 +53,19 @@ Use this command to see which processors are available and which file types they
 )
 # Common option decorators
 @common_ui_options
+@registry_details_options
 @common_output_format_options
-# Command-specific option decorators
-@click.option(
-    CliOpt.SHOW_DETAILS,
-    ArgKey.SHOW_DETAILS,
-    is_flag=True,
-    help="Show extended information (file types and their description).",
-)
-def processors_command(
+def registry_processors_command(
     *,
-    # Command options: common options (verbosity, color)
+    # common_ui_options (verbosity, color):
     verbose: int,
     quiet: int,
     color_mode: ColorMode | None,
     no_color: bool,
-    # Command options: output format
-    output_format: OutputFormat | None,
-    # Command-specific options:
+    # registry_details_options:
     show_details: bool = False,
+    # common_output_format_options:
+    output_format: OutputFormat | None,
 ) -> None:
     """List registered header processors.
 
@@ -82,10 +77,9 @@ def processors_command(
         quiet: Decrements  the verbosity level,
         color_mode: Set the color mode (derfault: autp),
         no_color: bool: If set, disable color mode.
-        output_format: Output format to use
-            (``text``, ``markdown``, ``json``, or ``ndjson``).
-        show_details: If True, shows extended information about each processor,
+        show_details: Whether to show extended information about each processor,
             including associated file types and their descriptions.
+        output_format: Output format to use (``text``, ``markdown``, ``json``, or ``ndjson``).
 
     Raises:
         ValueError: If an unsupported output format is requested.
@@ -102,6 +96,9 @@ def processors_command(
         no_color=no_color,
     )
 
+    # Retrieve effective human facing program-output verbosity for gating extra details
+    verbosity_level: int = ctx.obj[ArgKey.VERBOSITY_LEVEL]
+
     # Select the console
     console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
 
@@ -114,10 +111,10 @@ def processors_command(
     apply_color_policy_for_output_format(ctx, fmt=fmt)
 
     # config_check_command() is file-agnostic: ignore positional PATHS
-    apply_ignore_positional_paths_policy(ctx, warn_stdin_dash=True)
-
-    # Determine effective program-output verbosity for gating extra details
-    vlevel: int = get_effective_verbosity(ctx)
+    apply_ignore_positional_paths_policy(
+        ctx,
+        warn_stdin_dash=True,
+    )
 
     # Machine formats
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
@@ -131,7 +128,7 @@ def processors_command(
     # Human-facing formats (Markdown / Default) share a single Click-free preparer.
     report: ProcessorsHumanReport = build_processors_human_report(
         show_details=show_details,
-        verbosity_level=vlevel,
+        verbosity_level=verbosity_level,
     )
 
     if fmt == OutputFormat.MARKDOWN:

@@ -2,8 +2,8 @@
 topmark:header:start
 
   project      : TopMark
-  file         : config_dump.md
-  file_relpath : docs/usage/commands/config_dump.md
+  file         : dump.md
+  file_relpath : docs/usage/commands/config/dump.md
   license      : MIT
   copyright    : (c) 2025 Olivier Biot
 
@@ -14,7 +14,7 @@ topmark:header:end
 
 **Purpose:** Dump the resolved config.
 
-The `config dump` subcommand (part of the TopMark [`config` Command Family](config.md))
+The `config dump` subcommand (part of the TopMark [`config` Command Family](../config.md))
 prints the **effective TopMark configuration** as TOML after applying
 built-in defaults, discovered project/user config, and any CLI overrides.
 
@@ -43,8 +43,8 @@ ______________________________________________________________________
 
 - **File-agnostic**:
 
-  - Positional PATHS are **ignored** (a note is printed).
-  - `--files-from` is **ignored** (a note is printed).
+  - Positional PATHS are **not accepted** (the command fails if provided).
+  - `--files-from` is accepted and treated as a source of input paths, but input paths do not affect the dumped configuration.
 
 - **Filters are config**:
 
@@ -68,10 +68,11 @@ ______________________________________________________________________
 ## Input modes
 
 - **List on STDIN for patterns**: `--include-from -` or `--exclude-from -` read newline-delimited
-  patterns from STDIN.
-- **Content on STDIN** (`-` as PATH) is **ignored** by `config dump`. This mode is only meaningful
+  patterns from STDIN. When using `-`, STDIN must be piped; otherwise the command fails.
+- **Content on STDIN** (`-` as PATH) is not supported by `config dump`. This mode is only meaningful
   for file-processing commands (e.g., `check`, `strip`).
-- **`--files-from`** is **ignored**. File lists are considered *inputs*, not *configuration*.
+- **`--files-from`** is accepted but does not influence the dumped configuration. File lists are
+  considered inputs for processing commands, not configuration state.
 
 ______________________________________________________________________
 
@@ -100,8 +101,8 @@ Use `--output-format json` or `--output-format ndjson` to emit output suitable f
 
 The canonical schema, stable `kind` values, and shared conventions are documented here:
 
-- [Machine output schema (JSON & NDJSON)](../../dev/machine-output.md)
-- [Machine formats](../../dev/machine-formats.md)
+- [Machine output schema (JSON & NDJSON)](../../../dev/machine-output.md)
+- [Machine formats](../../../dev/machine-formats.md)
 
 Notes:
 
@@ -147,7 +148,15 @@ ______________________________________________________________________
 
 ## Notes
 
-- The output reflects the configuration **TopMark would use** if you ran the processing commands
-  (`check`, `strip`) with the same flags in the current working directory.
+- The output reflects the configuration **TopMark would use** if you ran processing commands
+  (`check`, `strip`) with the same configuration-related flags in the current working directory.
 - For per-file configuration (e.g., overrides that may depend on path), consider a future option
   like `--for FILE` (not currently implemented), similar to ESLint’s `--print-config`.
+
+______________________________________________________________________
+
+## Related commands
+
+- [`topmark config check`](./dump.md) — check the *effective merged* configuration for errors.
+- [`topmark config defaults`](./defaults.md) — show TopMark’s *built-in defaults* as TOML.
+- [`topmark config init`](./init.md) — print a *starter* config scaffold template.

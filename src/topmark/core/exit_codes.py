@@ -56,6 +56,9 @@ class ExitCode(IntEnum):
             ``EX_NOPERM (77)``.
         CONFIG_ERROR: Configuration error (missing/invalid/malformed config).
             Mirrors BSD ``EX_CONFIG (78)``.
+        VERSION_CONVERSION_ERROR: Version conversion error (missing/invalid/malformed PEP version
+            identifier, version cannot be converted tot SemVer).
+            Mirrors BSD ``EX_CONFIG (78)``.
         UNEXPECTED_ERROR: Unhandled/unknown error (last-resort). Mirrors BSD
             ``EX_SOFTWARE (70)`` but kept distinct for clarity.
     """
@@ -73,6 +76,8 @@ class ExitCode(IntEnum):
     IO_ERROR = 74  # EX_IOERR
     PERMISSION_DENIED = 77  # EX_NOPERM
     CONFIG_ERROR = 78  # EX_CONFIG
+
+    VERSION_CONVERSION_ERROR = 100
 
     # Keep a distinct bucket for unknowns; maps to the same category as PIPELINE_ERROR
     UNEXPECTED_ERROR = 255

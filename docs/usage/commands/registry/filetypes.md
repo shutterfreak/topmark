@@ -3,18 +3,18 @@ topmark:header:start
 
   project      : TopMark
   file         : filetypes.md
-  file_relpath : docs/usage/commands/filetypes.md
+  file_relpath : docs/usage/commands/registry/filetypes.md
   license      : MIT
   copyright    : (c) 2025 Olivier Biot
 
 topmark:header:end
 -->
 
-# TopMark `filetypes` Command Guide
+# TopMark `registry filetypes` Command Guide
 
 **Purpose:** Display all recognized/supported file types.
 
-The `filetypes` subcommand lists TopMark’s supported **file type identifiers** and their **header
+The `registry filetypes` subcommand lists TopMark’s supported **file type identifiers** and their **header
 policies**. Use it to discover which identifiers you can pass to `--include-file-types` / `--exclude-file-types` and to understand how TopMark classifies files.
 
 ______________________________________________________________________
@@ -23,13 +23,13 @@ ______________________________________________________________________
 
 ```bash
 # List all supported file types (brief mode)
-topmark filetypes
+topmark registry filetypes
 
 # List all supported file types in Markdown (detailed mode)
-topmark filetypes --long --output-format markdown
+topmark registry filetypes --long --output-format markdown
 
 # Machine‑readable
-topmark filetypes --output-format json | jq
+topmark registry filetypes --output-format json | jq
 ```
 
 ______________________________________________________________________
@@ -38,9 +38,9 @@ ______________________________________________________________________
 
 For the canonical, version-accurate list (used for the docs), see:
 
-- [Supported file types (generated)](../generated-filetypes.md)
+- [Supported file types (generated)](../../generated/filetypes.md)
 
-(This page is generated via `topmark filetypes --long --output-format markdown`.)
+(This page is generated via `topmark registry filetypes --long --output-format markdown`.)
 
 ______________________________________________________________________
 
@@ -48,7 +48,7 @@ ______________________________________________________________________
 
 Use `--output-format` to pick the output format:
 
-- `default` — human‑readable (brief or detailed)
+- `text` — human‑readable (brief or detailed)
 - `json` — a single JSON document (array of file types)
 - `ndjson` — one JSON object per line (stream‑friendly)
 - `markdown` — a beautified Markdown table (great for docs)
@@ -66,7 +66,7 @@ ______________________________________________________________________
 
 ### Detailed (`--long`)
 
-Rendered consistently across `default`, `json`, `ndjson`, and `markdown`:
+Rendered consistently across `text`, `json`, `ndjson`, and `markdown`:
 
 - **Identifier**
 - **Extensions** (comma‑separated)
@@ -91,19 +91,19 @@ ______________________________________________________________________
 
 ```bash
 # Brief list
-topmark filetypes
+topmark registry filetypes
 
 # Detailed list (human)
-topmark filetypes --long
+topmark registry filetypes --long
 
 # Detailed Markdown table (ideal for project docs)
-topmark filetypes --long --output-format markdown
+topmark registry filetypes --long --output-format markdown
 
 # JSON for scripting
-topmark filetypes --long --output-format json | jq '.[] | select(.skip_processing==false)'
+topmark registry filetypes --long --output-format json | jq '.[] | select(.skip_processing==false)'
 
 # NDJSON for streaming
-topmark filetypes --output-format ndjson | head -n 5
+topmark registry filetypes --output-format ndjson | head -n 5
 ```
 
 ______________________________________________________________________
