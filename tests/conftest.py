@@ -37,11 +37,9 @@ from collections.abc import Sequence
 from contextlib import AbstractContextManager
 from contextlib import contextmanager
 from pathlib import Path
-from types import SimpleNamespace
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import Literal
-from typing import TypeVar
 from typing import cast
 
 import pytest
@@ -50,18 +48,19 @@ from topmark.config.model import MutableConfig
 from topmark.config.types import PatternSource
 from topmark.core import logging
 from topmark.filetypes.base import ContentGate
+from topmark.filetypes.base import ContentMatcher
 from topmark.filetypes.base import FileType
+from topmark.filetypes.base import InsertChecker
 from topmark.processors.base import HeaderProcessor
 
 if TYPE_CHECKING:
     from topmark.config.model import Config
+    from topmark.filetypes.policy import FileTypeHeaderPolicy
 
 AnyCallable = Callable[..., object]
 DecoratorType = Callable[[AnyCallable], AnyCallable]
 ScopeName = Literal["session", "package", "module", "class", "function"]
 
-# Typed fixture wrappers for pytest.fixture
-F = TypeVar("F", bound=Callable[..., object])
 
 # --- Typed Wrappers ---
 
@@ -309,15 +308,18 @@ def default_config() -> Config:
 def make_file_type(
     *,
     name: str,
-    extensions: Sequence[str] | None = None,
-    filenames: Sequence[str] | None = None,
-    patterns: Sequence[str] | None = None,
+    description: str = "",
+    extensions: list[str] | None = None,
+    filenames: list[str] | None = None,
+    patterns: list[str] | None = None,
+    content_matcher: ContentMatcher | None = None,
     content_gate: ContentGate = ContentGate.NEVER,
-    content_matcher: Callable[[Path], bool] | None = None,
+    header_policy: FileTypeHeaderPolicy | None = None,
+    pre_insert_checker: InsertChecker | None = None,
     matches: Callable[[Path], bool] | None = None,
     skip_processing: bool = False,
 ) -> FileType:
-    """Create a minimal duck-typed `FileType` for tests.
+    """Create a minimal `FileType` for tests.
 
     This helper avoids importing/constructing the real `FileType` implementation in
     unit tests that only require its public attributes. The returned object is a
@@ -334,11 +336,15 @@ def make_file_type(
 
     Args:
         name: File type identifier.
+        description: The file type description.
         extensions: Extension rules (including leading dots, e.g. `.py`).
         filenames: Filename-tail rules (relative path tails).
         patterns: Regex patterns (strings) evaluated via fullmatch in the resolver.
-        content_gate: Content gating mode.
         content_matcher: Optional content matcher callable.
+        content_gate: Content gating mode.
+        header_policy: Policy describing how headers should be inserted/removed for a file type.
+        pre_insert_checker: Optional Callable that inspects the current processing context before a
+            header insertion is attempted.
         matches: Optional matcher used by file discovery and file-type filtering. If not provided,
             `matches` defaults to a small matcher that checks extensions, filename tails, regex
             patterns (fullmatch), then falls back to content_matcher.
@@ -405,21 +411,39 @@ def make_file_type(
 
         return False
 
+    # Handle overrides of default `matches()` implementation.
     matcher: Callable[[Path], bool]
     matcher = matches if matches is not None else _default_matches
 
-    obj = SimpleNamespace(
-        name=name,
-        extensions=ext_rules,
-        filenames=filename_rules,
-        patterns=pattern_rules,
-        content_gate=content_gate,
-        content_matcher=content_matcher,
-        matches=matcher,
-        skip_processing=skip_processing,
-    )
+    if matches:
 
-    return cast("FileType", obj)
+        class CustomMatcherFileType(FileType):
+            matches: Callable[..., bool] = matcher
+
+        return CustomMatcherFileType(
+            name=name,
+            description=description,
+            extensions=extensions if extensions is not None else [],
+            filenames=filenames if filenames is not None else [],
+            patterns=patterns if patterns is not None else [],
+            skip_processing=skip_processing,
+            content_matcher=content_matcher,
+            content_gate=content_gate,
+            header_policy=header_policy,
+            pre_insert_checker=pre_insert_checker,
+        )
+    return FileType(
+        name=name,
+        description=description,
+        extensions=extensions if extensions is not None else [],
+        filenames=filenames if filenames is not None else [],
+        patterns=patterns if patterns is not None else [],
+        skip_processing=skip_processing,
+        content_matcher=content_matcher,
+        content_gate=content_gate,
+        header_policy=header_policy,
+        pre_insert_checker=pre_insert_checker,
+    )
 
 
 @contextmanager
@@ -510,3 +534,23 @@ def effective_registries() -> EffectiveRegistries:
         return patched_effective_registries(filetypes=filetypes, processors=processors)
 
     return _override
+
+
+# ---- Stub type and tiny helper for HeaderProcessor registry tests ----
+
+
+class _StubProcessor:
+    """Duck-typed HeaderProcessor stub that satisfies just what the registry uses."""
+
+    def __init__(self, description: str = "") -> None:
+        self.description: str = description
+        self.line_prefix: str = ""
+        self.line_suffix: str = ""
+        self.block_prefix: str = ""
+        self.block_suffix: str = ""
+        # `file_type` is set by the registry upon registration
+
+
+def stub_proc_cls() -> type[HeaderProcessor]:
+    """Return a duck-typed HeaderProcessor class for registry tests."""
+    return cast("type[HeaderProcessor]", _StubProcessor)

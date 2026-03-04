@@ -40,15 +40,40 @@ for a single run, pass just the keys you want to override as a mapping:
 ```python
 from topmark import api
 
-result = api.check(
-    ["src"],
-    config={
-        "fields": {"project": "TopMark", "license": "MIT"},
-        "header": {"fields": ["file", "project", "license"]},
-        "formatting": {"align_fields": True},
-        "files": {"include_file_types": ["python"], "exclude_patterns": [".venv"]},
+config = {
+    "fields": {
+        "project": "TopMark",
+        "license": "MIT",
     },
+    "header": {
+        "fields": [
+            "file",
+            "project",
+            "license",
+        ]
+    },
+    "formatting": {
+        "align_fields": True,
+    },
+    "files": {
+        "include_file_types": ["python"],
+        "exclude_patterns": [".venv"],
+    },
+    "policy_by_type": {
+        "python": {
+            "allow_header_in_empty_files": True,
+        },
+    }
+}
+
+run: api.runResult = api.check(
+    ["src"],
+    config=config,
+    diff=True,
+    skip_compliant=True,
 )
+
+assert run.summary.get("unchanged", 0) >= 0
 ```
 
 This design keeps the public surface small and semver-stable while allowing flexible per-call
@@ -56,8 +81,8 @@ configuration.
 
 ### Recognized vs supported file types
 
-- File types are identified by their **file type indentifier**.
-- A file type is **recognized** if its *file type indentifier* exists in `FileTypeRegistry`.
+- File types are identified by their **file type identifier**.
+- A file type is **recognized** if its *file type identifier* exists in `FileTypeRegistry`.
 - A file type is **supported** if it is recognized **and** has a registered `HeaderProcessor` in `HeaderProcessorRegistry`.
 - A file may be *recognized* but not *supported*. In that case:
   - it participates in discovery and filtering
@@ -70,6 +95,8 @@ TopMark exposes **read-only** registries for file types and header processors vi
 facade in \[`topmark.registry.registry.Registry`\][topmark.registry.registry.Registry]. These registries represent the **effective composed
 view** (base built-ins + entry points + overlays − removals) and are returned as immutable
 `Mapping` views (backed by `MappingProxyType`).
+
+These registry objects are **not part of the `topmark.api` stability contract**; the supported programmatic API is defined exclusively by the symbols exported in `topmark.api.__all__`.
 
 Most users should interact with registries through this facade and treat them as
 **introspection-only**.

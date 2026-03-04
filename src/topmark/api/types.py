@@ -10,9 +10,12 @@
 
 """Stable public types for the TopMark API.
 
-This module defines enums, dataclasses, and TypedDicts that appear in the
-public function signatures and return values of [`topmark.api`][topmark.api]. These
-shapes follow the project's semver policy.
+This module defines enums, dataclasses, and TypedDicts that appear in:
+- public function signatures in [`topmark.api`][topmark.api]
+- public return values (e.g., `RunResult`)
+
+These shapes follow the project's semver policy. Internal domain objects may be richer and
+are allowed to evolve independently (e.g., internal diagnostics or pipeline views).
 """
 
 from __future__ import annotations
@@ -20,6 +23,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
+from typing import Literal
 from typing import TypedDict
 
 from topmark.core.logging import TopmarkLogger
@@ -30,9 +34,23 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-    from .public_types import PublicDiagnostic
 
 logger: TopmarkLogger = get_logger(__name__)
+
+DiagnosticLevelLiteral = Literal["info", "warning", "error"]
+"""Allowed diagnostic severity levels in the public API."""
+
+
+class DiagnosticEntry(TypedDict):
+    """JSON-friendly diagnostic entry for API consumers.
+
+    Notes:
+        - Uses string literal levels for stability and easy serialization.
+        - Mirrors internal pipeline diagnostics but does not expose internal enums/classes.
+    """
+
+    level: DiagnosticLevelLiteral
+    message: str
 
 
 class DiagnosticTotals(TypedDict):
@@ -54,12 +72,8 @@ class DiagnosticTotals(TypedDict):
 class Outcome(str, Enum):
     """Per-file outcome bucket.
 
-    Values mirror CLI semantics:
-      - ``PENDING``: Outcome is undecided.
-      - ``UNCHANGED``: No changes needed.
-      - ``WOULD_CHANGE``: Dry-run detected changes would be made (apply=False).
-      - ``CHANGED``: A write occurred (apply=True).
-      - ``SKIPPED``: File processing skipped.
+    Values mirror CLI semantics. Consumers should use `Outcome` (and `.value`) for
+    programmatic decisions rather than relying on human labels.
     """
 
     PENDING = "pending"
@@ -167,25 +181,9 @@ class RunResult:
     written: int = 0
     failed: int = 0
     bucket_summary: Mapping[str, int] | None = None
-    diagnostics: dict[str, list[PublicDiagnostic]] | None = None
+    diagnostics: dict[str, list[DiagnosticEntry]] | None = None
     diagnostic_totals: DiagnosticTotals | None = None
     diagnostic_totals_all: DiagnosticTotals | None = None
-
-
-# Tiny intent object used by check()/strip() to gate writes
-@dataclass(frozen=True)
-class WritePolicy:
-    """Policy controlling which files to write when `apply=True`.
-
-    Attributes:
-        allow_insert: Permit inserting a new header (add-only).
-        allow_replace: Permit replacing/updating an existing header (update-only).
-        allow_remove: Permit removing a header (strip).
-    """
-
-    allow_insert: bool = False  # add missing headers
-    allow_replace: bool = False  # update existing non-compliant headers
-    allow_remove: bool = False  # strip headers
 
 
 class FileTypeInfo(TypedDict, total=False):

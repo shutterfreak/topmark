@@ -10,346 +10,105 @@
 
 """Public TopMark API (stable surface).
 
-This module exposes a **small, typed API** intended for integrations that want to
-run TopMark programmatically without going through the CLI. The goal is to keep
-this surface **stable** across minor versions; internal modules remain private.
+This package provides a **small, typed façade** for running TopMark programmatically.
 
-Versioning policy
------------------
-- The **signatures and dataclass/TypedDict shapes** in this module follow semver.
+Design goals:
+- Provide a stable entry point for integrations without requiring the CLI (Click).
+- Keep inputs JSON/TOML-friendly (plain mappings) while maintaining strict internal typing.
+- Return **machine-friendly** results (dataclasses / TypedDicts) without ANSI formatting.
+
+Stability policy:
+- Symbols exported by ``topmark.api`` via ``__all__`` are the supported surface.
 - Adding optional parameters with defaults is allowed in minor releases.
-- Removing/renaming anything here is a breaking change (major release).
+- Removing/renaming symbols or changing return shapes is a breaking change.
 
-Notes:
------
-- Functions here are **thin wrappers** around the internal pipeline, with the
-  same file discovery and filtering as the CLI when `config=None`.
-- The "config" parameter accepts a plain mapping and does not require importing
-  internal TopMark config types; the mapping is normalized internally.
-- Optional view flags mirror the CLI: `skip_compliant`, `skip_unsupported`.
-- Add/update intent is controlled via **policy overlays** (`PublicPolicy`, `PublicPolicyByType`)
-  that are applied after discovery.
-- Writes are performed exclusively by the pipeline writer step; the API only reports
-  statuses determined by the pipeline (no duplicate write logic).
-- A FileType instance is **recognized** if it is in the FileTypeRegistry.
-- A FileType instance is **supported** if it is recognized and is registered to
-  a HeaderProcessor instance in the HeaderProcessorRegistry.
-- The API returns per-file diagnostics and aggregate counts; levels are "info", "warning", "error".
+High-level concepts:
+- **Recognized** file types exist in the file type registry.
+- **Supported** file types are recognized *and* have a processor bound.
+- Diagnostics returned by the API are JSON-friendly and use string severities:
+  ``"info"``, ``"warning"``, ``"error"``.
 
-Configuration contract
-----------------------
-- Public functions accept either a plain **mapping** (mirroring the TOML shape) or a frozen
-  [`topmark.config.model.Config`][]. We normalize/merge internally and run the pipeline against an
-  **immutable snapshot**.
-- The internal [`topmark.config.model.MutableConfig`][] builder is **not part of the public API**.
-  It exists to perform discovery/merging and then ``freeze()`` to a `Config` just before
-  execution. This keeps runtime deterministic and avoids accidental mutation.
-- To "update config" programmatically, pass a mapping to the function call:
+Configuration contract:
+- Public pipeline functions (``check()``, ``strip()``) accept an optional plain mapping
+  (mirroring the TOML/pyproject structure) or a frozen
+  [`Config`][topmark.config.model.Config].
+- Passing ``config=None`` triggers layered discovery (defaults → user → project) using the
+  same rules as the CLI.
+- The internal [`MutableConfig`][topmark.config.model.MutableConfig] builder is not part of
+  the public API; it exists to perform discovery/merging and is frozen immediately before
+  execution.
 
-```python
-from topmark import api
+Example:
+    ```python
+    from topmark import api
 
-run = api.check(
-    ["src"],
-    config={
-        "fields": {"project": "TopMark", "license": "MIT"},
-        "header": {"fields": ["file", "project", "license"]},
-        "formatting": {"align_fields": True},
-        "files": {"include_file_types": ["python"], "exclude_patterns": [".venv"]},
-    },
-)
+    config = {
+        "fields": {
+            "project": "TopMark",
+            "license": "MIT",
+        },
+        "header": {
+            "fields": [
+                "file",
+                "project",
+                "license",
+            ]
+        },
+        "formatting": {
+            "align_fields": True,
+        },
+        "files": {
+            "include_file_types": ["python"],
+            "exclude_patterns": [".venv"],
+        },
+        "policy_by_type": {
+            "python": {
+                "allow_header_in_empty_files": True,
+            },
+        }
+    }
+
+    run: api.runResult = api.check(
+        ["src"],
+        config=config,
+        diff=True,
+        skip_compliant=True,
+    )
+
+    assert run.summary.get("unchanged", 0) >= 0
 ```
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-from typing import Any
+from topmark.api.commands.pipeline import check
+from topmark.api.commands.pipeline import strip
+from topmark.api.commands.registry import list_filetypes
+from topmark.api.commands.registry import list_processors
+from topmark.api.commands.version import get_version_info
+from topmark.api.commands.version import get_version_text
+from topmark.api.types import DiagnosticEntry
+from topmark.api.types import FileResult
+from topmark.api.types import FileTypeInfo
+from topmark.api.types import Outcome
+from topmark.api.types import ProcessorInfo
+from topmark.api.types import RunResult
+from topmark.version.types import VersionInfo
 
-from topmark.api.runtime import run_pipeline
-from topmark.api.runtime import select_pipeline
-from topmark.api.view import finalize_run_result
-from topmark.constants import TOPMARK_VERSION
-from topmark.core.logging import get_logger
-from topmark.pipeline.status import PlanStatus
-from topmark.registry.registry import Registry
-
-from .public_types import PublicDiagnostic
-from .public_types import PublicPolicy
-from .types import FileResult
-from .types import FileTypeInfo
-from .types import Outcome
-from .types import ProcessorInfo
-from .types import RunResult
-
-if TYPE_CHECKING:
-    from collections.abc import Iterable
-    from collections.abc import Mapping
-    from collections.abc import Sequence
-    from pathlib import Path
-
-    from topmark.config.model import Config
-    from topmark.core.exit_codes import ExitCode
-    from topmark.core.logging import TopmarkLogger
-    from topmark.pipeline.context.model import ProcessingContext
-    from topmark.pipeline.protocols import Step
-    from topmark.processors.base import HeaderProcessor
-
-logger: TopmarkLogger = get_logger(__name__)
-
-
-__all__: list[str] = [
+__all__ = (  # noqa: RUF022
+    # Types
     "FileResult",
     "FileTypeInfo",
     "Outcome",
     "ProcessorInfo",
-    "PublicDiagnostic",
-    "Registry",
+    "DiagnosticEntry",
     "RunResult",
+    "VersionInfo",
+    # Commands
     "check",
-    "get_filetype_info",
-    "get_processor_info",
     "strip",
-    "version",
-]
-
-
-def check(
-    paths: Iterable[Path | str],
-    *,
-    apply: bool = False,
-    diff: bool = False,
-    config: Mapping[str, Any] | None = None,
-    policy: PublicPolicy | None = None,
-    policy_by_type: Mapping[str, PublicPolicy] | None = None,
-    include_file_types: Sequence[str] | None = None,
-    exclude_file_types: Sequence[str] | None = None,
-    skip_compliant: bool = False,
-    skip_unsupported: bool = False,
-    prune: bool = False,
-) -> RunResult:
-    """Validate or apply TopMark headers for the given paths.
-
-    This is the programmatic equivalent of the CLI `topmark check`. It preserves
-    the same discovery behavior when `config` is `None` and accepts optional
-    policy overlays that are applied after discovery, before the pipeline runs.
-
-    Args:
-        paths: Files and/or directories to process. Globs are allowed by the caller; TopMark will
-            recurse and filter internally.
-        apply: If `True`, write changes in-place; otherwise perform a dry run.
-        diff: If `True`, include unified diffs for changes where applicable.
-        config: Optional plain mapping or frozen `Config` to seed configuration. When `None`,
-            project discovery and layered merge are performed (defaults → project config
-            → overrides).
-        policy: Optional global policy overrides (public shape). These are merged after discovery
-            using the standard policy resolution.
-        policy_by_type: Optional per-type policy overrides (public shape) merged after discovery.
-        include_file_types: Optional whitelist of file type identifiers to restrict discovery.
-        exclude_file_types: Optional blacklist of file type identifiers to exclude from discovery.
-        skip_compliant: Exclude already-compliant files from the returned view.
-        skip_unsupported: Exclude unsupported files from the returned view.
-        prune: If `True`, trim heavy views after the run (keeps summaries).
-
-    Returns:
-        Filtered per-file outcomes, counts, diagnostics, and write stats.
-
-    Notes:
-        The `skip_compliant` and `skip_unsupported` flags affect only the **returned view** (which
-        files appear and how counts are summarized). They do not change which files are *eligible*
-        to be written when `apply=True`.
-    """
-    # Choose the concrete pipeline variant
-    pipeline: Sequence[Step[ProcessingContext]] = select_pipeline("check", apply=apply, diff=diff)
-
-    # Run the pipeline; `_run_pipeline` handles discovery and applies policy overlays
-    _cfg: Config
-    file_list: list[Path]
-    results: list[ProcessingContext]
-    encountered_error_code: ExitCode | None
-    _cfg, file_list, results, encountered_error_code = run_pipeline(
-        pipeline=pipeline,
-        paths=paths,
-        base_config=config,  # `None` preserves discovery; mapping/Config is honored
-        include_file_types=include_file_types,
-        exclude_file_types=exclude_file_types,
-        apply_changes=apply,
-        policy=policy,
-        policy_by_type=policy_by_type,
-        prune=prune,
-    )
-
-    # Use common post-run assembly with the write-status set for "check"
-    update_statuses: set[PlanStatus] = {
-        PlanStatus.INSERTED,
-        PlanStatus.REPLACED,
-        PlanStatus.REMOVED,
-    }
-    return finalize_run_result(
-        results=results,
-        file_list=file_list,
-        apply=apply,
-        skip_compliant=skip_compliant,
-        skip_unsupported=skip_unsupported,
-        update_statuses=update_statuses,
-        encountered_error_code=encountered_error_code,
-    )
-
-
-def strip(
-    paths: Iterable[Path | str],
-    *,
-    apply: bool = False,
-    diff: bool = False,
-    config: Mapping[str, Any] | None = None,
-    policy: PublicPolicy | None = None,
-    policy_by_type: Mapping[str, PublicPolicy] | None = None,
-    include_file_types: Sequence[str] | None = None,
-    exclude_file_types: Sequence[str] | None = None,
-    skip_compliant: bool = False,
-    skip_unsupported: bool = False,
-    prune: bool = False,
-) -> RunResult:
-    """Remove TopMark headers from files (dry-run or apply).
-
-    This is the programmatic equivalent of the CLI `topmark strip`. When `config`
-    is `None`, the function performs the same project discovery as the CLI and then
-    applies optional policy overlays before running the pipeline.
-
-    Args:
-        paths: Files and/or directories to process. Globs are allowed.
-        apply: If `True`, write changes in-place; otherwise perform a dry run.
-        diff: If `True`, include unified diffs for changes where applicable.
-        config: Optional plain mapping or frozen `Config` to seed configuration. When `None`,
-            project discovery and layered merge are performed (defaults → project config
-            → overrides).
-        policy: Optional global policy overrides (public shape). Currently strip flows are
-            policy-agnostic, but this is accepted for forward compatibility.
-        policy_by_type: Optional per-type policy overrides (public shape).
-        include_file_types: Optional whitelist of file type identifiers to restrict discovery.
-        exclude_file_types: Optional blacklist of file type identifiers to exclude from discovery.
-        skip_compliant: Exclude already-compliant files from the returned view.
-        skip_unsupported: Exclude unsupported files from the returned view.
-        prune: If `True`, trim heavy views after the run (keeps summaries).
-
-    Returns:
-        Filtered per-file outcomes, counts, diagnostics, and write stats.
-
-    Notes:
-        The `skip_*` flags affect only the **returned view** and do not modify
-        pipeline write decisions.
-    """
-    # Choose the concrete pipeline variant
-    pipeline: Sequence[Step[ProcessingContext]] = select_pipeline("strip", apply=apply, diff=diff)
-
-    # Run the pipeline; `_run_pipeline` handles discovery and applies policy overlays
-    _cfg: Config
-    file_list: list[Path] = []
-    results: list[ProcessingContext] = []
-    encountered_error_code: ExitCode | None = None
-    _cfg, file_list, results, encountered_error_code = run_pipeline(
-        pipeline=pipeline,
-        paths=paths,
-        base_config=config,  # `None` preserves discovery; mapping/Config is honored
-        include_file_types=include_file_types,
-        exclude_file_types=exclude_file_types,
-        apply_changes=apply,
-        policy=policy,
-        policy_by_type=policy_by_type,
-        prune=prune,
-    )
-
-    # Use common post-run assembly with the write-status set for "strip"
-    update_statuses: set[PlanStatus] = {
-        PlanStatus.REMOVED,
-    }
-    return finalize_run_result(
-        results=results,
-        file_list=file_list,
-        apply=apply,
-        skip_compliant=skip_compliant,
-        skip_unsupported=skip_unsupported,
-        update_statuses=update_statuses,
-        encountered_error_code=encountered_error_code,
-    )
-
-
-def get_filetype_info(long: bool = False) -> list[FileTypeInfo]:
-    """Return metadata about registered file types.
-
-    Args:
-        long: If `True`, include extended metadata such as patterns and policy.
-
-    Returns:
-        A list of `FileTypeInfo` dicts (stable, serializable metadata).
-
-    Notes:
-        For object-level access, prefer `FileTypeRegistry` from
-        [`topmark.registry`][]. This function returns metadata (not the objects).
-    """
-    proc_reg: Mapping[str, object] = Registry.processors()
-
-    items: list[FileTypeInfo] = []
-    for name, ft in Registry.filetypes().items():
-        processor: HeaderProcessor | None = proc_reg.get(name, None) if proc_reg else None
-        supported = bool(processor)
-        processor_name: str | None = processor.__class__.__name__ if processor else None
-        info: FileTypeInfo = {
-            "name": name,
-            "description": getattr(ft, "description", ""),
-        }
-        if long:
-            info.update(
-                {
-                    "supported": supported,
-                    "processor_name": processor_name,
-                    "extensions": tuple(getattr(ft, "extensions", ()) or ()),
-                    "filenames": tuple(getattr(ft, "filenames", ()) or ()),
-                    "patterns": tuple(getattr(ft, "patterns", ()) or ()),
-                    "skip_processing": bool(getattr(ft, "skip_processing", False)),
-                    "content_matcher": bool(getattr(ft, "has_content_matcher", False)),
-                    "header_policy": str(getattr(ft, "header_policy_name", "")),
-                }
-            )
-        items.append(info)
-    return items
-
-
-def get_processor_info(long: bool = False) -> list[ProcessorInfo]:
-    """Return metadata about registered header processors.
-
-    Args:
-        long: If True, include extended details for line/block delimiters.
-
-    Returns:
-        A list of `ProcessorInfo` dicts (stable, serializable metadata).
-
-    Notes:
-        For object-level access, prefer `HeaderProcessorRegistry` from
-        [`topmark.registry`][]. This function returns metadata (not the objects).
-    """
-    # Ensure all processors are registered before listing (idempotent)
-    Registry.ensure_processors_registered()
-
-    items: list[ProcessorInfo] = []
-    for name, proc in Registry.processors().items():
-        info: ProcessorInfo = {
-            "name": name,
-            "description": getattr(proc, "description", ""),
-        }
-        if long:
-            info.update(
-                {
-                    "line_prefix": getattr(proc, "line_prefix", "") or "",
-                    "line_suffix": getattr(proc, "line_suffix", "") or "",
-                    "block_prefix": getattr(proc, "block_prefix", "") or "",
-                    "block_suffix": getattr(proc, "block_suffix", "") or "",
-                }
-            )
-        items.append(info)
-    return items
-
-
-def version() -> str:
-    """Return the current TopMark version string."""
-    return TOPMARK_VERSION
+    "list_filetypes",
+    "list_processors",
+    "get_version_info",
+    "get_version_text",
+)

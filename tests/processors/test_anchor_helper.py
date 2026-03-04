@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : test_anchor_helper.py
-#   file_relpath : tests/pipeline/processors/test_anchor_helper.py
+#   file_relpath : tests/processors/test_anchor_helper.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

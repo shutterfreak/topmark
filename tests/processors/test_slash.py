@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : test_slash.py
-#   file_relpath : tests/pipeline/processors/test_slash.py
+#   file_relpath : tests/processors/test_slash.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

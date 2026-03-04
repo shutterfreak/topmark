@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : test_mixins.py
-#   file_relpath : tests/pipeline/processors/test_mixins.py
+#   file_relpath : tests/processors/test_mixins.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

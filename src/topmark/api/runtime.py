@@ -8,15 +8,17 @@
 #
 # topmark:header:end
 
-"""Runtime helpers for the public API.
+"""Internal runtime helpers for the public API.
 
-This module contains **typed**, non-underscored helpers that orchestrate
-configuration discovery/normalization and pipeline execution. Keeping these
-helpers outside [`topmark.api.__init__`][topmark.api] maintains a
-clean public surface while remaining importable under strict typing.
+This module contains typed helpers that orchestrate:
+- configuration discovery/normalization
+- file list resolution
+- pipeline selection and execution
 
-The functions here are considered **internal API** for the package; they are
-not re-exported from [`topmark.api`][topmark.api] and may change in minor versions.
+These functions are **internal to the `topmark.api` package**:
+- They are not re-exported from `topmark.api`.
+- They may change in minor releases as internal architecture evolves.
+
 Public consumers should call `topmark.api.check()` / `topmark.api.strip()` instead.
 """
 
@@ -43,12 +45,11 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
     from collections.abc import Sequence
 
+    from topmark.api.protocols import PublicPolicy
     from topmark.core.exit_codes import ExitCode
     from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.protocols import Step
-
-    from .public_types import PublicPolicy
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -355,13 +356,3 @@ def run_pipeline(
     logger.info("Processing %d files with TopMark %s", len(file_list), TOPMARK_VERSION)
 
     return cfg, file_list, results, encountered_error_code
-
-
-# --- Exported symbols ---
-
-__all__: list[str] = [
-    "build_cfg_and_files_via_cli_helpers",
-    "ensure_mutable_config",
-    "run_pipeline",
-    "select_pipeline",
-]

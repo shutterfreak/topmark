@@ -22,7 +22,7 @@ import pytest
 
 from tests.api.conftest import cfg
 from topmark import api
-from topmark.api.public_types import PublicPolicy
+from topmark.api.protocols import PublicPolicy
 from topmark.config.keys import Toml
 
 if TYPE_CHECKING:

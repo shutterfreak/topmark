@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : test_registry_public_api.py
-#   file_relpath : tests/api/test_registry_public_api.py
+#   file_relpath : tests/registry/test_registry_public_api.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -22,8 +22,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.api.conftest import stub_ft
-from tests.api.conftest import stub_proc_cls
+from tests.conftest import make_file_type
+from tests.conftest import stub_proc_cls
 from topmark.filetypes.base import FileType
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
@@ -40,7 +40,10 @@ if TYPE_CHECKING:
 @pytest.mark.parametrize("dummy_name", ["dummy_ft", "dummy_ft_2"])
 def test_filetype_register_unregister_roundtrip(dummy_name: str) -> None:
     """Register a stub file type and then unregister it."""
-    ft: FileType = stub_ft(dummy_name, description="Stub FT")
+    ft: FileType = make_file_type(
+        name=dummy_name,
+        description="Stub FT",
+    )
 
     try:
         # Register
@@ -60,8 +63,8 @@ def test_filetype_register_unregister_roundtrip(dummy_name: str) -> None:
 def test_filetype_register_duplicate_raises() -> None:
     """Registering the same file type name twice should raise ValueError."""
     name = "dup_ft"
-    ft1: FileType = stub_ft(name)
-    ft2: FileType = stub_ft(name)
+    ft1: FileType = make_file_type(name=name)
+    ft2: FileType = make_file_type(name=name)
     try:
         FileTypeRegistry.register(ft1)
         with pytest.raises(ValueError):
@@ -73,7 +76,7 @@ def test_filetype_register_duplicate_raises() -> None:
 @pytest.mark.parametrize("proc_name", ["dummy_proc"])
 def test_processor_register_unregister_roundtrip(proc_name: str) -> None:
     """Register a stub processor under a new name and then unregister it."""
-    ft: FileType = stub_ft(proc_name)
+    ft: FileType = make_file_type(name=proc_name)
     FileTypeRegistry.register(ft)
 
     proc_cls: type[HeaderProcessor] = stub_proc_cls()
@@ -95,7 +98,7 @@ def test_processor_register_duplicate_raises() -> None:
     """Registering a processor under an existing name should raise ValueError."""
     name = "dup_proc"
 
-    ft: FileType = stub_ft(name)
+    ft: FileType = make_file_type(name=name)
     FileTypeRegistry.register(ft)
 
     proc_cls: type[HeaderProcessor] = stub_proc_cls()
@@ -113,7 +116,7 @@ def test_replace_processor_requires_unregister() -> None:
     """Verifies you can’t register a second processor without first unregistering."""
     name = "replace_proc_demo"
 
-    FileTypeRegistry.register(stub_ft(name))
+    FileTypeRegistry.register(make_file_type(name=name))
     try:
         cls1: type[HeaderProcessor] = stub_proc_cls()
         cls2: type[HeaderProcessor] = stub_proc_cls()

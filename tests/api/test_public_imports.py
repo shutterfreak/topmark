@@ -21,31 +21,26 @@ def test_api_all_contains_expected_symbols() -> None:
 
     # At minimum these should be present; the full list is allowed to grow.
 
-    expected: set[str] = {
+    expected_methods: set[str] = {
         "check",
         "strip",
-        "get_filetype_info",
-        "get_processor_info",
-        "version",
+        "list_filetypes",
+        "list_processors",
+        "get_version_info",
+        "get_version_text",
     }
     exported: set[str] = set(api.__all__)
-    missing: set[str] = expected - exported
+    missing: set[str] = expected_methods - exported
     assert not missing, f"Missing from api.__all__: {sorted(missing)}; have: {sorted(exported)}"
-
-
-def test_public_imports() -> None:
-    """Public modules import cleanly without raising."""
-    from topmark import api
-    from topmark.registry.registry import Registry
-
-    # Mark as used so static analyzers don't complain:
-    assert api is not None
-    assert Registry is not None
 
 
 def test_api_symbols_are_callable_or_types() -> None:
     """Every exported symbol is either callable or a type/class."""
     from topmark import api
+
+    # Ensure __all__ exists and is an iterable of strings
+    assert hasattr(api, "__all__")
+    assert all(isinstance(n, str) for n in api.__all__)
 
     for name in api.__all__:
         obj = getattr(api, name)

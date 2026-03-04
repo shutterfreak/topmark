@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : test_multiple_headers.py
-#   file_relpath : tests/pipeline/processors/test_multiple_headers.py
+#   file_relpath : tests/processors/test_multiple_headers.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

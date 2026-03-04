@@ -22,6 +22,7 @@ fully deterministic and independent of the built-in definitions.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tests.conftest import EffectiveRegistries
@@ -31,22 +32,46 @@ from tests.pipeline.conftest import run_resolver
 from topmark.config.model import Config
 from topmark.config.model import MutableConfig
 from topmark.filetypes.base import ContentGate
-from topmark.filetypes.base import FileType  # runtime import for typing/cast correctness
+from topmark.filetypes.base import FileType
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.status import ResolveStatus
 from topmark.processors.base import HeaderProcessor
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
     from collections.abc import Mapping
     from pathlib import Path
 
     from topmark.pipeline.context.model import ProcessingContext
 
 
-# Convenience to annotate content matcher callables
-def _cm(fn: Callable[[Path], bool]) -> Callable[[Path], bool]:
-    return fn
+class _ContentHitMatcher:
+    def __call__(self, path: Path) -> bool:
+        try:
+            return "MAGIC_SIGNATURE" in path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError):
+            return False
+
+
+class _HitsJsoncMatcher:
+    def __call__(self, path: Path) -> bool:
+        return path.read_text(encoding="utf-8").lstrip().startswith("//")
+
+
+class _AlwaysTrueContentMatcher:
+    def __call__(self, path: Path) -> bool:
+        _: Path = path
+        return True
+
+
+class _AlwaysFalseContentMatcher:
+    def __call__(self, path: Path) -> bool:
+        _: Path = path
+        return False
+
+
+class _AlwaysRuntimeContentMatcher:
+    def __call__(self, path: Path) -> bool:
+        raise RuntimeError("boom")
 
 
 # Helper to run resolver under deterministic registries using the fixture
@@ -163,15 +188,16 @@ def test_resolve_respects_skip_processing_filetype(
     file: Path = tmp_path / "readme.md"
     file.write_text("# docs\n", encoding="utf-8")
 
-    # Build a minimal duck-typed FileType with skip_processing=True
+    # Build a FileType with skip_processing=True
+    ft_name = "docs"
     ft: FileType = make_file_type(
-        name="Docs",
+        name=ft_name,
         extensions=[".md"],
         skip_processing=True,
     )
 
     # Monkeypatch the file type and processor registries to use our custom type only.
-    filetypes: dict[str, FileType] = {"Docs": ft}
+    filetypes: dict[str, FileType] = {ft_name: ft}
     processors: dict[str, HeaderProcessor] = {}
     ctx: ProcessingContext = _resolve(
         file,
@@ -179,7 +205,7 @@ def test_resolve_respects_skip_processing_filetype(
         processors=processors,
         effective_registries=effective_registries,
     )
-    assert ctx.file_type is not None and ctx.file_type.name == "Docs"
+    assert ctx.file_type is not None and ctx.file_type.name == ft_name
     assert ctx.header_processor is None
     assert ctx.status.resolve == ResolveStatus.TYPE_RESOLVED_HEADERS_UNSUPPORTED
 
@@ -192,19 +218,14 @@ def test_resolve_can_use_content_gate_when_allowed(
     file: Path = tmp_path / "mystery.bin"
     file.write_text("MAGIC_SIGNATURE\n", encoding="utf-8")
 
-    def _content_hit(p: Path) -> bool:
-        try:
-            return "MAGIC_SIGNATURE" in p.read_text(encoding="utf-8")
-        except (OSError, UnicodeError):
-            return False
-
-    ft: FileType = make_file_type(
-        name="Magic",
+    ft_magic_name = "magic"
+    ft_magic: FileType = make_file_type(
+        name=ft_magic_name,
         content_gate=ContentGate.ALWAYS,
-        content_matcher=_content_hit,
+        content_matcher=_ContentHitMatcher(),
     )
 
-    filetypes: dict[str, FileType] = {"Magic": ft}
+    filetypes: dict[str, FileType] = {ft_magic_name: ft_magic}
     processors: dict[str, HeaderProcessor] = {}
     ctx: ProcessingContext = _resolve(
         file,
@@ -212,7 +233,7 @@ def test_resolve_can_use_content_gate_when_allowed(
         processors=processors,
         effective_registries=effective_registries,
     )
-    assert ctx.file_type is not None and ctx.file_type.name == "Magic"
+    assert ctx.file_type is not None and ctx.file_type.name == ft_magic_name
     assert ctx.header_processor is None
     assert ctx.status.resolve == ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED
 
@@ -225,18 +246,20 @@ def test_resolve_deterministic_name_tiebreak(
     file: Path = tmp_path / "x.foo"
     file.write_text("data\n", encoding="utf-8")
 
+    ft_ajson_name = "ajson"
     ftA: FileType = make_file_type(
-        name="AJson",
+        name=ft_ajson_name,
         extensions=[".foo"],
     )
+    ft_bjson_name = "ajson"
     ftB: FileType = make_file_type(
-        name="BJson",
+        name=ft_bjson_name,
         extensions=[".foo"],
     )
 
-    filetypes: dict[str, FileType] = {"AJson": ftA, "BJson": ftB}
+    filetypes: dict[str, FileType] = {ft_ajson_name: ftA, ft_bjson_name: ftB}
 
-    processors: dict[str, HeaderProcessor] = {"AJson": HeaderProcessor()}
+    processors: dict[str, HeaderProcessor] = {ft_ajson_name: HeaderProcessor()}
 
     ctx: ProcessingContext = _resolve(
         file,
@@ -245,7 +268,7 @@ def test_resolve_deterministic_name_tiebreak(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == "AJson"  # name ASC
+    assert ctx.file_type and ctx.file_type.name == ft_ajson_name  # name ASC
     assert ctx.header_processor is not None
 
 
@@ -257,17 +280,20 @@ def test_resolve_filename_tail_beats_extension(
     file: Path = tmp_path / "app.conf.example"
     file.write_text("cfg\n", encoding="utf-8")
 
+    ft_ext_name = "by-ext"
     ft_ext: FileType = make_file_type(
-        name="ByExt",
+        name=ft_ext_name,
         extensions=[".conf"],
     )
+
+    ft_tail_name = "by-tail"
     ft_tail: FileType = make_file_type(
-        name="ByTail",
+        name=ft_tail_name,
         filenames=["app.conf.example"],
     )
 
-    filetypes: dict[str, FileType] = {"ByExt": ft_ext, "ByTail": ft_tail}
-    processors: dict[str, HeaderProcessor] = {"ByTail": HeaderProcessor()}
+    filetypes: dict[str, FileType] = {ft_ext_name: ft_ext, ft_tail_name: ft_tail}
+    processors: dict[str, HeaderProcessor] = {ft_tail_name: HeaderProcessor()}
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -275,7 +301,7 @@ def test_resolve_filename_tail_beats_extension(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == "ByTail"
+    assert ctx.file_type and ctx.file_type.name == ft_tail_name
 
 
 def test_resolve_pattern_beats_extension(
@@ -286,17 +312,20 @@ def test_resolve_pattern_beats_extension(
     file: Path = tmp_path / "service.special.log"
     file.write_text("lines\n", encoding="utf-8")
 
+    ft_ext_name = "by-ext"
     ft_ext: FileType = make_file_type(
-        name="ByExt",
+        name=ft_ext_name,
         extensions=[".log"],
     )
+
+    ft_pat_name = "by-pat"
     ft_pat: FileType = make_file_type(
-        name="ByPat",
+        name=ft_pat_name,
         patterns=[r".*\.special\.log"],
     )
 
-    filetypes: dict[str, FileType] = {"ByExt": ft_ext, "ByPat": ft_pat}
-    processors: dict[str, HeaderProcessor] = {"ByPat": HeaderProcessor()}
+    filetypes: dict[str, FileType] = {ft_ext_name: ft_ext, ft_pat_name: ft_pat}
+    processors: dict[str, HeaderProcessor] = {ft_pat_name: HeaderProcessor()}
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -304,7 +333,7 @@ def test_resolve_pattern_beats_extension(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == "ByPat"
+    assert ctx.file_type and ctx.file_type.name == ft_pat_name
 
 
 def test_resolve_content_upgrade_over_extension(
@@ -315,22 +344,22 @@ def test_resolve_content_upgrade_over_extension(
     file: Path = tmp_path / "x.json"
     file.write_text('// comment\n{ "k": 1 }\n', encoding="utf-8")
 
-    def hits_jsonc(p: Path) -> bool:
-        return p.read_text(encoding="utf-8").lstrip().startswith("//")
-
+    ft_json_name = "json"
     ft_json: FileType = make_file_type(
-        name="JSON",
+        name=ft_json_name,
         extensions=[".json"],
     )
+
+    ft_jsonc_name = "jsonc"
     ft_jsonc: FileType = make_file_type(
-        name="JSONC",
+        name=ft_jsonc_name,
         extensions=[".json"],
         content_gate=ContentGate.IF_EXTENSION,
-        content_matcher=hits_jsonc,
+        content_matcher=_HitsJsoncMatcher(),
     )
 
-    filetypes: dict[str, FileType] = {"JSON": ft_json, "JSONC": ft_jsonc}
-    processors: dict[str, HeaderProcessor] = {"JSONC": HeaderProcessor()}
+    filetypes: dict[str, FileType] = {ft_json_name: ft_json, ft_jsonc_name: ft_jsonc}
+    processors: dict[str, HeaderProcessor] = {ft_jsonc_name: HeaderProcessor()}
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -338,7 +367,7 @@ def test_resolve_content_upgrade_over_extension(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == "JSONC"
+    assert ctx.file_type and ctx.file_type.name == ft_jsonc_name
 
 
 def test_resolve_gating_if_extension_excludes_when_miss(
@@ -349,23 +378,22 @@ def test_resolve_gating_if_extension_excludes_when_miss(
     file: Path = tmp_path / "x.json"
     file.write_text('{"k": 1}\n', encoding="utf-8")
 
+    ft_json_name = "json"
     ft_json: FileType = make_file_type(
-        name="JSON",
+        name=ft_json_name,
         extensions=[".json"],
     )
 
-    def _no_jsonc(p: Path) -> bool:  # typed matcher
-        return False
-
+    ft_jsonc_name = "jsonc"
     ft_jsonc: FileType = make_file_type(
-        name="JSONC",
+        name=ft_jsonc_name,
         extensions=[".json"],
         content_gate=ContentGate.IF_EXTENSION,
-        content_matcher=_cm(_no_jsonc),
+        content_matcher=_AlwaysFalseContentMatcher(),
     )
 
-    filetypes: dict[str, FileType] = {"JSON": ft_json, "JSONC": ft_jsonc}
-    processors: dict[str, HeaderProcessor] = {"JSON": HeaderProcessor()}
+    filetypes: dict[str, FileType] = {ft_json_name: ft_json, ft_jsonc_name: ft_jsonc}
+    processors: dict[str, HeaderProcessor] = {ft_json_name: HeaderProcessor()}
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -373,7 +401,7 @@ def test_resolve_gating_if_extension_excludes_when_miss(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == "JSON"
+    assert ctx.file_type and ctx.file_type.name == ft_json_name
 
 
 def test_resolve_gating_if_any_requires_content_hit(
@@ -384,23 +412,22 @@ def test_resolve_gating_if_any_requires_content_hit(
     file: Path = tmp_path / "x.foo"
     file.write_text("payload\n", encoding="utf-8")
 
-    def _miss(p: Path) -> bool:
-        return False
-
+    ft_any_name = "any_name"
     ft_any: FileType = make_file_type(
-        name="AnyName",
+        name=ft_any_name,
         extensions=[".foo"],
         content_gate=ContentGate.IF_ANY_NAME_RULE,
-        content_matcher=_cm(_miss),
+        content_matcher=_AlwaysFalseContentMatcher(),
     )
     # Provide a fallback that wins when AnyName is excluded
+    ft_ext_name = "by-ext"
     ft_ext: FileType = make_file_type(
-        name="ByExt",
+        name=ft_ext_name,
         extensions=[".foo"],
     )
 
-    filetypes: dict[str, FileType] = {"AnyName": ft_any, "ByExt": ft_ext}
-    processors: dict[str, HeaderProcessor] = {"ByExt": HeaderProcessor()}
+    filetypes: dict[str, FileType] = {ft_any_name: ft_any, ft_ext_name: ft_ext}
+    processors: dict[str, HeaderProcessor] = {ft_ext_name: HeaderProcessor()}
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -408,7 +435,7 @@ def test_resolve_gating_if_any_requires_content_hit(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == "ByExt"
+    assert ctx.file_type and ctx.file_type.name == ft_ext_name
 
 
 def test_resolve_gating_if_none_allows_pure_content_match(
@@ -419,17 +446,15 @@ def test_resolve_gating_if_none_allows_pure_content_match(
     file: Path = tmp_path / "mystery"
     file.write_text("MAGIC\n", encoding="utf-8")
 
-    def _hit(p: Path) -> bool:
-        return True
-
-    ft: FileType = make_file_type(
-        name="Magic",
+    ft_magic_name = "magic"
+    ft_magic: FileType = make_file_type(
+        name=ft_magic_name,
         content_gate=ContentGate.IF_NONE,
-        content_matcher=_cm(_hit),
+        content_matcher=_AlwaysTrueContentMatcher(),
     )
 
-    filetypes: dict[str, FileType] = {"Magic": ft}
-    processors: dict[str, HeaderProcessor] = {"Magic": HeaderProcessor()}
+    filetypes: dict[str, FileType] = {ft_magic_name: ft_magic}
+    processors: dict[str, HeaderProcessor] = {ft_magic_name: HeaderProcessor()}
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -437,7 +462,7 @@ def test_resolve_gating_if_none_allows_pure_content_match(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == "Magic"
+    assert ctx.file_type and ctx.file_type.name == ft_magic_name
 
 
 def test_resolve_content_matcher_exception_is_safe(
@@ -448,22 +473,22 @@ def test_resolve_content_matcher_exception_is_safe(
     file: Path = tmp_path / "x.foo"
     file.write_text("x\n", encoding="utf-8")
 
-    def boom(_: Path) -> bool:
-        raise RuntimeError("boom")
-
+    ft_gate_name = "gate"
     ft_gate: FileType = make_file_type(
-        name="Gate",
+        name=ft_gate_name,
         extensions=[".foo"],
         content_gate=ContentGate.IF_EXTENSION,
-        content_matcher=boom,
+        content_matcher=_AlwaysRuntimeContentMatcher(),
     )
+
+    ft_fallback_name = "fallback"
     ft_fallback: FileType = make_file_type(
-        name="Fallback",
+        name=ft_fallback_name,
         extensions=[".foo"],
     )
 
-    filetypes: dict[str, FileType] = {"Gate": ft_gate, "Fallback": ft_fallback}
-    processors: dict[str, HeaderProcessor] = {"Fallback": HeaderProcessor()}
+    filetypes: dict[str, FileType] = {ft_gate_name: ft_gate, ft_fallback_name: ft_fallback}
+    processors: dict[str, HeaderProcessor] = {ft_fallback_name: HeaderProcessor()}
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -471,7 +496,7 @@ def test_resolve_content_matcher_exception_is_safe(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == "Fallback"
+    assert ctx.file_type and ctx.file_type.name == ft_fallback_name
 
 
 def test_resolve_filename_tail_backslash_normalization(
@@ -485,13 +510,14 @@ def test_resolve_filename_tail_backslash_normalization(
     file: Path = folder / "settings.json"
     file.write_text("{}\n", encoding="utf-8")
 
+    ft_vscode_name = "vscode"
     ft: FileType = make_file_type(
-        name="VSCode",
+        name=ft_vscode_name,
         filenames=[r".vscode\settings.json"],
     )
 
-    filetypes: dict[str, FileType] = {"VSCode": ft}
-    processors: dict[str, HeaderProcessor] = {"VSCode": HeaderProcessor()}
+    filetypes: dict[str, FileType] = {ft_vscode_name: ft}
+    processors: dict[str, HeaderProcessor] = {ft_vscode_name: HeaderProcessor()}
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -499,7 +525,7 @@ def test_resolve_filename_tail_backslash_normalization(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == "VSCode"
+    assert ctx.file_type and ctx.file_type.name == ft_vscode_name
 
 
 def test_resolve_multi_dot_extension_specificity(
@@ -510,17 +536,19 @@ def test_resolve_multi_dot_extension_specificity(
     file: Path = tmp_path / "x.d.ts"
     file.write_text("declare const x: number;\n", encoding="utf-8")
 
+    ft_ts_name = "ts"
     ft_ts: FileType = make_file_type(
-        name="TS",
+        name=ft_ts_name,
         extensions=[".ts"],
     )
+    ft_dts_name = "dts"
     ft_dts: FileType = make_file_type(
-        name="DTS",
+        name=ft_dts_name,
         extensions=[".d.ts"],
     )
 
-    filetypes: dict[str, FileType] = {"TS": ft_ts, "DTS": ft_dts}
-    processors: dict[str, HeaderProcessor] = {"DTS": HeaderProcessor()}
+    filetypes: dict[str, FileType] = {ft_ts_name: ft_ts, ft_dts_name: ft_dts}
+    processors: dict[str, HeaderProcessor] = {ft_dts_name: HeaderProcessor()}
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -528,7 +556,7 @@ def test_resolve_multi_dot_extension_specificity(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == "DTS"
+    assert ctx.file_type and ctx.file_type.name == ft_dts_name
 
 
 def test_resolve_skip_processing_overrides_registered_processor(
@@ -539,14 +567,16 @@ def test_resolve_skip_processing_overrides_registered_processor(
     file: Path = tmp_path / "doc.md"
     file.write_text("# md\n", encoding="utf-8")
 
+    # Build a FileType with skip_processing=True
+    ft_name = "docs"
     ft: FileType = make_file_type(
-        name="Docs",
+        name=ft_name,
         extensions=[".md"],
         skip_processing=True,
     )
 
-    filetypes: dict[str, FileType] = {"Docs": ft}
-    processors: dict[str, HeaderProcessor] = {"Docs": HeaderProcessor()}
+    filetypes: dict[str, FileType] = {ft_name: ft}
+    processors: dict[str, HeaderProcessor] = {ft_name: HeaderProcessor()}
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -590,17 +620,20 @@ def test_resolve_filename_tail_beats_pattern(
     file.parent.mkdir(parents=True, exist_ok=True)
     file.write_text("{}\n", encoding="utf-8")
 
+    ft_tail_name = "by-tail"
     ft_tail: FileType = make_file_type(
-        name="ByTail",
+        name=ft_tail_name,
         filenames=["config/app.json"],
     )
+
+    ft_pat_name = "by-pat"
     ft_pat: FileType = make_file_type(
-        name="ByPat",
+        name=ft_pat_name,
         patterns=[r".*\.json"],
     )
 
-    filetypes: dict[str, FileType] = {"ByTail": ft_tail, "ByPat": ft_pat}
-    processors: dict[str, HeaderProcessor] = {"ByTail": HeaderProcessor()}
+    filetypes: dict[str, FileType] = {ft_tail_name: ft_tail, ft_pat_name: ft_pat}
+    processors: dict[str, HeaderProcessor] = {ft_tail_name: HeaderProcessor()}
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -608,7 +641,7 @@ def test_resolve_filename_tail_beats_pattern(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == "ByTail"
+    assert ctx.file_type and ctx.file_type.name == ft_tail_name
 
 
 def test_resolve_extension_case_sensitivity_current_contract(
@@ -654,18 +687,21 @@ def test_resolve_pattern_fullmatch_not_search(
     file2: Path = tmp_path / "file.log.bak"
     file2.write_text("bak\n", encoding="utf-8")
 
+    ft_pat_name = "by-pat"
     ft_pat: FileType = make_file_type(
-        name="ByPat",
+        name=ft_pat_name,
         patterns=[r".*\.log"],
     )
+
+    ft_bak_name = "by-bak"
     ft_bak: FileType = make_file_type(
-        name="ByBak",
+        name=ft_bak_name,
         extensions=[".bak"],
     )
 
-    filetypes: dict[str, FileType] = {"ByPat": ft_pat, "ByBak": ft_bak}
-    processors1: dict[str, HeaderProcessor] = {"ByPat": HeaderProcessor()}
-    processors2: dict[str, HeaderProcessor] = {"ByBak": HeaderProcessor()}
+    filetypes: dict[str, FileType] = {ft_pat_name: ft_pat, ft_bak_name: ft_bak}
+    processors1: dict[str, HeaderProcessor] = {ft_pat_name: HeaderProcessor()}
+    processors2: dict[str, HeaderProcessor] = {ft_bak_name: HeaderProcessor()}
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx1: ProcessingContext = _resolve(
         file1,
@@ -675,7 +711,7 @@ def test_resolve_pattern_fullmatch_not_search(
         cfg=cfg,
     )
     assert ctx1.status.resolve == ResolveStatus.RESOLVED
-    assert ctx1.file_type and ctx1.file_type.name == "ByPat"
+    assert ctx1.file_type and ctx1.file_type.name == ft_pat_name
 
     # For file.log.bak, fullmatch should fail and fallback to ByBak
     ctx2: ProcessingContext = _resolve(
@@ -686,7 +722,7 @@ def test_resolve_pattern_fullmatch_not_search(
         cfg=cfg,
     )
     assert ctx2.status.resolve == ResolveStatus.RESOLVED
-    assert ctx2.file_type and ctx2.file_type.name == "ByBak"
+    assert ctx2.file_type and ctx2.file_type.name == ft_bak_name
 
 
 def test_resolve_gating_if_pattern_requires_content_hit(
@@ -697,22 +733,22 @@ def test_resolve_gating_if_pattern_requires_content_hit(
     file: Path = tmp_path / "metrics.prom"
     file.write_text("# HELP\n# TYPE\n", encoding="utf-8")
 
-    def _miss(_: Path) -> bool:
-        return False
-
+    ft_pat_name = "by-pat"
     ft_pat: FileType = make_file_type(
-        name="ByPat",
+        name=ft_pat_name,
         patterns=[r".*\.prom"],
         content_gate=ContentGate.IF_PATTERN,
-        content_matcher=_cm(_miss),
+        content_matcher=_AlwaysFalseContentMatcher(),
     )
+
+    ft_text_name = "text"
     ft_fallback: FileType = make_file_type(
-        name="Text",
+        name=ft_text_name,
         extensions=[".prom"],
     )
 
-    filetypes: dict[str, FileType] = {"ByPat": ft_pat, "Text": ft_fallback}
-    processors: dict[str, HeaderProcessor] = {"Text": HeaderProcessor()}
+    filetypes: dict[str, FileType] = {ft_pat_name: ft_pat, ft_text_name: ft_fallback}
+    processors: dict[str, HeaderProcessor] = {ft_text_name: HeaderProcessor()}
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -720,7 +756,7 @@ def test_resolve_gating_if_pattern_requires_content_hit(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == "Text"
+    assert ctx.file_type and ctx.file_type.name == ft_text_name
 
 
 def test_resolve_gating_if_filename_requires_content_hit(
@@ -732,22 +768,22 @@ def test_resolve_gating_if_filename_requires_content_hit(
     file.parent.mkdir(parents=True, exist_ok=True)
     file.write_text("k: v\n", encoding="utf-8")
 
-    def _miss(_: Path) -> bool:
-        return False
-
+    ft_tail_name = "by-tail"
     ft_fname: FileType = make_file_type(
-        name="ByTail",
+        name=ft_tail_name,
         filenames=["configs/service.yaml"],
         content_gate=ContentGate.IF_FILENAME,
-        content_matcher=_cm(_miss),
+        content_matcher=_AlwaysFalseContentMatcher(),
     )
+
+    ft_yaml_name = "yaml"
     ft_fallback: FileType = make_file_type(
-        name="YAML",
+        name=ft_yaml_name,
         extensions=[".yaml"],
     )
 
-    filetypes: dict[str, FileType] = {"ByTail": ft_fname, "YAML": ft_fallback}
-    processors: dict[str, HeaderProcessor] = {"YAML": HeaderProcessor()}
+    filetypes: dict[str, FileType] = {ft_tail_name: ft_fname, ft_yaml_name: ft_fallback}
+    processors: dict[str, HeaderProcessor] = {ft_yaml_name: HeaderProcessor()}
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -755,7 +791,7 @@ def test_resolve_gating_if_filename_requires_content_hit(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == "YAML"
+    assert ctx.file_type and ctx.file_type.name == ft_yaml_name
 
 
 def test_resolve_content_only_with_always_gate(
@@ -766,16 +802,14 @@ def test_resolve_content_only_with_always_gate(
     file: Path = tmp_path / "mystery.bin"
     file.write_text("MAGIC\n", encoding="utf-8")
 
-    def _hit(_: Path) -> bool:
-        return True
-
+    ft_magic_name = "magic"
     ft_magic: FileType = make_file_type(
-        name="Magic",
+        name=ft_magic_name,
         content_gate=ContentGate.ALWAYS,
-        content_matcher=_cm(_hit),
+        content_matcher=_AlwaysTrueContentMatcher(),
     )
 
-    filetypes: dict[str, FileType] = {"Magic": ft_magic}
+    filetypes: dict[str, FileType] = {ft_magic_name: ft_magic}
     processors: dict[str, HeaderProcessor] = {}
     ctx: ProcessingContext = _resolve(
         file,
@@ -783,7 +817,7 @@ def test_resolve_content_only_with_always_gate(
         processors=processors,
         effective_registries=effective_registries,
     )
-    assert ctx.file_type and ctx.file_type.name == "Magic"
+    assert ctx.file_type and ctx.file_type.name == ft_magic_name
     assert ctx.status.resolve == ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED
 
 
@@ -795,17 +829,20 @@ def test_resolve_tie_with_both_processors_uses_name_asc(
     file: Path = tmp_path / "x.data"
     file.write_text("x\n", encoding="utf-8")
 
-    ftA: FileType = make_file_type(
-        name="Alpha",
-        extensions=[".data"],
-    )
-    ftB: FileType = make_file_type(
-        name="Beta",
+    ft_alpha_name = "alpha"
+    ft_alpha: FileType = make_file_type(
+        name=ft_alpha_name,
         extensions=[".data"],
     )
 
-    filetypes: dict[str, FileType] = {"Alpha": ftA, "Beta": ftB}
-    processors: dict[str, HeaderProcessor] = {"Alpha": HeaderProcessor()}
+    ft_beta_name = "beta"
+    ft_beta: FileType = make_file_type(
+        name=ft_beta_name,
+        extensions=[".data"],
+    )
+
+    filetypes: dict[str, FileType] = {ft_alpha_name: ft_alpha, ft_beta_name: ft_beta}
+    processors: dict[str, HeaderProcessor] = {ft_alpha_name: HeaderProcessor()}
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -813,7 +850,7 @@ def test_resolve_tie_with_both_processors_uses_name_asc(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == "Alpha"
+    assert ctx.file_type and ctx.file_type.name == ft_alpha_name
 
 
 def test_resolve_processor_registry_name_mismatch_leads_to_skip(
@@ -824,14 +861,15 @@ def test_resolve_processor_registry_name_mismatch_leads_to_skip(
     file: Path = tmp_path / "x.py"
     file.write_text("print(1)\n", encoding="utf-8")
 
+    ft_py_name = "python"
     ft_py: FileType = make_file_type(
-        name="Python",
+        name=ft_py_name,
         extensions=[".py"],
     )
 
     # Processor registered under a different key; should not be found.
-    filetypes: dict[str, FileType] = {"Python": ft_py}
-    processors: dict[str, HeaderProcessor] = {"python": HeaderProcessor()}
+    filetypes: dict[str, FileType] = {ft_py_name: ft_py}
+    processors: dict[str, HeaderProcessor] = {"python-variant": HeaderProcessor()}
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -839,7 +877,7 @@ def test_resolve_processor_registry_name_mismatch_leads_to_skip(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED
-    assert ctx.file_type and ctx.file_type.name == "Python"
+    assert ctx.file_type and ctx.file_type.name == ft_py_name
 
 
 def test_resolve_deep_filename_tail_normalization(
@@ -852,13 +890,14 @@ def test_resolve_deep_filename_tail_normalization(
     file: Path = folder / "settings.json"
     file.write_text("{}\n", encoding="utf-8")
 
-    ft: FileType = make_file_type(
-        name="ToolCfg",
+    ft_toolcfg_name = "toolcfg"
+    ft_toolcfg: FileType = make_file_type(
+        name=ft_toolcfg_name,
         filenames=[r".config\tool/settings.json"],  # backslash in declared tail
     )
 
-    filetypes: dict[str, FileType] = {"ToolCfg": ft}
-    processors: dict[str, HeaderProcessor] = {"ToolCfg": HeaderProcessor()}
+    filetypes: dict[str, FileType] = {ft_toolcfg_name: ft_toolcfg}
+    processors: dict[str, HeaderProcessor] = {ft_toolcfg_name: HeaderProcessor()}
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -866,4 +905,4 @@ def test_resolve_deep_filename_tail_normalization(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == "ToolCfg"
+    assert ctx.file_type and ctx.file_type.name == ft_toolcfg_name

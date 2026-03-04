@@ -1,39 +1,35 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : public_types.py
-#   file_relpath : src/topmark/api/public_types.py
+#   file         : protocols.py
+#   file_relpath : src/topmark/api/protocols.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""Public Protocols for TopMark plugin authors.
+"""Public protocols for TopMark plugin authors.
 
-These Protocols define the **stable, public contracts** for third‑party
-integrations that want to add file types and header processors without
-importing TopMark's internal base classes. Implement these Protocols in your
-extension and register the instances through [`topmark.registry`][topmark.registry].
+These Protocols define stable, public contracts for third-party integrations that want to
+add file types and header processors without importing TopMark's internal base classes.
 
-Notes:
-    * These are *structural* Protocols used for static typing (mypy/pyright).
-      You do not inherit from them; you implement the same attributes.
-    * Attribute names and types here are part of the public API and follow
-      semver. Adding optional attributes is allowed in minor versions; removing
-      or changing types is a breaking change.
+You do not inherit from these Protocols at runtime; you implement the same attributes so that
+type checkers (pyright/mypy) can validate your integration.
 
-Diagnostics
------------
-The public API uses JSON-friendly diagnostics with string literal severities.
-See [`PublicDiagnostic`][topmark.api.public_types.PublicDiagnostic] for the shape and
-[`DiagnosticLevelLiteral`][topmark.api.public_types.DiagnosticLevelLiteral]
-for the allowed values.
+Stability policy:
+- Attribute names and types here follow semver.
+- Adding new optional attributes is allowed in minor releases.
+- Removing/renaming attributes or changing types is a breaking change.
+
+Diagnostics:
+- The public API uses JSON-friendly diagnostics with string literal severities.
+- See [`DiagnosticEntry`][topmark.api.types.DiagnosticEntry] for the stable shape and
+  [`DiagnosticLevelLiteral`][topmark.api.types.DiagnosticLevelLiteral] for allowed values.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from typing import Literal
 from typing import Protocol
 from typing import TypedDict
 
@@ -134,7 +130,7 @@ class PublicHeaderProcessor(Protocol):
         description: Short human description for UI/logs.
         line_prefix/line_suffix: Line comment delimiters (if applicable).
         block_prefix/block_suffix: Block comment delimiters (if applicable).
-        file_type: The bound [`PublicFileType`][topmark.api.public_types.PublicFileType] instance
+        file_type: The bound [`PublicFileType`][topmark.api.protocols.PublicFileType] instance
             (set by registry).
 
     Notes:
@@ -151,20 +147,3 @@ class PublicHeaderProcessor(Protocol):
     block_suffix: str
     # registry binds at runtime
     file_type: PublicFileType
-
-
-DiagnosticLevelLiteral = Literal["info", "warning", "error"]
-"""Allowed diagnostic severity levels in the public API."""
-
-
-class PublicDiagnostic(TypedDict):
-    """Stable, JSON-friendly diagnostic for API consumers.
-
-    Notes:
-        * Uses string literal levels for semver stability and easy serialization.
-        * Mirrors internal pipeline diagnostics but does not expose internals.
-        * This shape is stable for semver and safe to serialize to JSON/NDJSON.
-    """
-
-    level: DiagnosticLevelLiteral
-    message: str

@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : test_xml_anchor.py
-#   file_relpath : tests/pipeline/processors/test_xml_anchor.py
+#   file_relpath : tests/processors/test_xml_anchor.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

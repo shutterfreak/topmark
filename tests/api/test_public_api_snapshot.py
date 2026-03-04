@@ -18,7 +18,7 @@ How to generate the baseline:
 Run the Make target to (re)generate the snapshot JSON:
 
 ```sh
-    make public-api-update
+    make api-snapshot-update
 ```
 
 This calls ``tools/api_snapshot.py`` to write ``tests/api/public_api_snapshot.json``.
@@ -48,13 +48,26 @@ def _collect() -> Mapping[str, str]:
 
 @pytest.mark.skipif(
     not baseline_path.exists(),
-    reason="No baseline snapshot file found",
+    reason="No baseline snapshot file found. Run 'make api-snapshot-update' to generate.",
 )
 def test_public_api_snapshot() -> None:
     """Current public API signatures match the committed baseline JSON."""
     with baseline_path.open(encoding="utf-8") as f:
         baseline = json.load(f)
-    assert _collect() == baseline, (
-        "Public API changed. Run: make api-snapshot-update, then review, "
-        "bump version & update CHANGELOG."
-    )
+    current = _collect()
+    baseline_keys = set(baseline)
+    current_keys = set(current)
+    missing = sorted(baseline_keys - current_keys)
+    extra = sorted(current_keys - baseline_keys)
+    changed = sorted(k for k in (baseline_keys & current_keys) if baseline[k] != current[k])
+    msg_lines = [
+        "Public API changed.\n"
+        "Run 'make api-snapshot-update' to update, then review, bump version & update CHANGELOG."
+    ]
+    if missing:
+        msg_lines.append(f"missing={missing}")
+    if extra:
+        msg_lines.append(f"extra={extra}")
+    if changed:
+        msg_lines.append(f"changed={changed}")
+    assert current == baseline, "\n".join(msg_lines)

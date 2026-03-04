@@ -15,21 +15,41 @@ topmark:header:end
 TopMark enforces a **stable public API** across all supported Python versions (**3.10–3.14**) using a JSON-based snapshot test.\
 This ensures that downstream users can rely on consistent function signatures and symbols across releases.
 
+## Public API Contract
+
+TopMark defines its **stable programmatic API** as the set of symbols exported
+by `topmark.api.__all__`.
+
+In practice this means:
+
+- Anything exported from `topmark.api` is considered **public and versioned**.
+- Symbols not exported via `topmark.api.__all__` are **internal implementation
+  details** and may change without notice.
+- Registry internals (`topmark.registry.*`) and other subsystems are
+  documented for extensibility but are **not part of the snapshot stability
+  contract**.
+
+The API snapshot test therefore derives its reference surface directly from
+`topmark.api.__all__` and verifies that this façade remains stable across
+Python versions.
+
 ______________________________________________________________________
 
 ## 🧩 What’s Covered
 
-The snapshot captures public-facing API symbols and their structure, including:
+The snapshot captures the **stable programmatic API exposed via `topmark.api`**, including:
 
 - `from topmark import api`: all entries defined in `api.__all__`
-- `Registry.filetypes`, `Registry.processors`, and `Registry.bindings` method signatures (stable registry facade)
-- `FileTypeRegistry` / `HeaderProcessorRegistry` symbols and signatures when exported via \[`topmark.registry`\][topmark.registry] (advanced, but still snapshot-tracked)
+- Public API command functions (e.g. `check`, `strip`, `list_filetypes`, `list_processors`, version helpers)
+- Public result and metadata types exported by `topmark.api`
 - Enum and class structure normalization for cross-version consistency:
   - Enums → `"<enum>"`
   - Classes → `"<class>"`
   - Functions → real signatures are preserved
 
-Overlay state is intentionally excluded from the snapshot; only symbols and signatures are tracked.
+The snapshot intentionally **does not include internal registries or implementation modules**. Only the façade defined by `topmark.api.__all__` is considered part of the stable surface.
+
+Overlay state and internal registries are intentionally excluded from the snapshot; only symbols and signatures exported via `topmark.api` are tracked.
 
 The comparison is deterministic across Python versions by normalizing class representations and ordering.
 
@@ -129,8 +149,8 @@ ______________________________________________________________________
      Also add a corresponding entry to the `CHANGELOG.md`.
 
 **Registry note:**
-Registry access for integrations is expected to go through \[`topmark.registry.registry.Registry`\][topmark.registry.registry.Registry] (read-only facade).
-The advanced registries (`FileTypeRegistry`, `HeaderProcessorRegistry`) are supported for tests and plugins via overlay registration, but changes to their public signatures are still tracked by the snapshot.
+Registry access for integrations is provided via the read‑only façade in \[`topmark.registry.registry.Registry`\][topmark.registry.registry.Registry].
+The registry system itself is **not part of the `topmark.api` snapshot contract** and may evolve independently as long as the public API commands in `topmark.api` remain stable.
 
 - **Supported Python range:** 3.10–3.14 (`nox` matrix).\
   Future minor Python releases will be added once supported by CI.
@@ -145,9 +165,7 @@ ______________________________________________________________________
 - The snapshot test is implemented in `tests/api/test_public_api_snapshot.py`.
 - The generator logic lives in `tools/api_snapshot.py`.
 - Normalization ensures consistent diffing across OSes and Python builds.
-- The snapshot intentionally treats \[`topmark.registry.registry.Registry`\][topmark.registry.registry.Registry] as the stable entry point for registry introspection;
-  internal base registries under `topmark.filetypes.*` are not part of the public surface.
-- Advanced registries are snapshot-tracked for signatures, not behavior.
+- The snapshot is derived from `topmark.api.__all__`, ensuring the stable façade remains small and explicitly defined.
 - Internal helpers such as `get_base_file_type_registry()` and `get_base_header_processor_registry()` are not part of the public API and may change without notice
 
 ______________________________________________________________________

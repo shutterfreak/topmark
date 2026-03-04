@@ -34,7 +34,7 @@ from topmark.cli_shared.emitters.markdown.version import emit_version_markdown
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
 from topmark.utils.version import compute_version_text
-from topmark.version.machine import serialize_version
+from topmark.version.machine.serializers import serialize_version
 
 if TYPE_CHECKING:
     from collections.abc import Iterable

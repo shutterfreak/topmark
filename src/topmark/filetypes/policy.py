@@ -119,3 +119,14 @@ class FileTypeHeaderPolicy:
     # How to identify and collapse “blank” lines around the header during insert/strip repairs.
     blank_collapse_mode: BlankCollapseMode = BlankCollapseMode.STRICT
     blank_collapse_extra: str = ""
+
+    def to_dict(self) -> dict[str, object]:
+        """Return a JSON-friendly dict of the policy settings."""
+        return {
+            "supports_shebang": self.supports_shebang,
+            "encoding_line_regex": self.encoding_line_regex,
+            "pre_header_blank_after_block": self.pre_header_blank_after_block,
+            "ensure_blank_after_header": self.ensure_blank_after_header,
+            "blank_collapse_mode": self.blank_collapse_mode.value,
+            "blank_collapse_extra": self.blank_collapse_extra,
+        }

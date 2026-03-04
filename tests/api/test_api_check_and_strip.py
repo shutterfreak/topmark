@@ -20,13 +20,12 @@ from tests.api.conftest import api_strip_dir
 from tests.api.conftest import by_path_outcome
 from tests.api.conftest import has_header
 from tests.api.conftest import read_text
-from topmark.api.public_types import PublicPolicy
-from topmark.api.types import Outcome
+from topmark import api
+from topmark.api.protocols import PublicPolicy
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.api.types import RunResult
     from topmark.processors.base import HeaderProcessor
 
 
@@ -34,14 +33,14 @@ def test_check_dry_run_reports_one_change_and_one_unchanged(
     repo_py_with_and_without_header: Path,
 ) -> None:
     """Dry-run: a.py would change, b.py is unchanged."""
-    r: RunResult = api_check_dir(repo_py_with_and_without_header, apply=False)
+    r: api.RunResult = api_check_dir(repo_py_with_and_without_header, apply=False)
     by_path: dict[Path, str] = by_path_outcome(r)
     a: Path = repo_py_with_and_without_header / "src" / "without_header.py"
     b: Path = repo_py_with_and_without_header / "src" / "with_header.py"
 
     # assert by_path.get(a) in {"would_change", "changed"}
-    assert by_path.get(a) == Outcome.WOULD_INSERT  # "would_change"
-    assert by_path.get(b) == Outcome.UNCHANGED  # "unchanged"
+    assert by_path.get(a) == api.Outcome.WOULD_INSERT  # "would_change"
+    assert by_path.get(b) == api.Outcome.UNCHANGED  # "unchanged"
     assert r.written == 0 and r.failed == 0
 
 
@@ -55,7 +54,7 @@ def test_check_apply_add_only_inserts_header_for_missing(
     assert not has_header(read_text(a), proc_py, "\n")
     assert has_header(read_text(b), proc_py, "\n")
 
-    r: RunResult = api_check_dir(
+    r: api.RunResult = api_check_dir(
         repo_py_with_and_without_header,
         apply=True,
         policy=PublicPolicy(
@@ -78,7 +77,7 @@ def test_check_apply_update_only_does_not_add_new_headers(
     a: Path = repo_py_with_and_without_header / "src" / "without_header.py"
     a.write_text("print('hello')\n", encoding="utf-8")
 
-    r: RunResult = api_check_dir(
+    r: api.RunResult = api_check_dir(
         repo_py_with_and_without_header,
         apply=True,
         policy=PublicPolicy(
@@ -88,14 +87,16 @@ def test_check_apply_update_only_does_not_add_new_headers(
     )
     # Should not create a header in a.py because update_only=True
     assert r.bucket_summary is not None
-    assert Outcome.UPDATED.value not in r.bucket_summary
+    assert api.Outcome.UPDATED.value not in r.bucket_summary
     assert r.had_errors is False
     assert has_header(read_text(a), proc_py, "\n") is False
 
 
 def test_skip_compliant_filters_out_b_py_in_view(repo_py_with_and_without_header: Path) -> None:
     """skip_compliant: b.py filtered out, a.py remains."""
-    r: RunResult = api_check_dir(repo_py_with_and_without_header, apply=False, skip_compliant=True)
+    r: api.RunResult = api_check_dir(
+        repo_py_with_and_without_header, apply=False, skip_compliant=True
+    )
     returned_paths: set[Path] = {fr.path for fr in r.files}
     a: Path = repo_py_with_and_without_header / "src" / "without_header.py"
     b: Path = repo_py_with_and_without_header / "src" / "with_header.py"
@@ -109,10 +110,10 @@ def test_strip_dry_run_reports_would_change_on_files_with_headers(
     repo_py_with_and_without_header: Path,
 ) -> None:
     """Dry-run strip: would_change on files with headers."""
-    r: RunResult = api_strip_dir(repo_py_with_and_without_header, apply=False)
+    r: api.RunResult = api_strip_dir(repo_py_with_and_without_header, apply=False)
     # At least b.py has a header; strip would remove it
     # assert r.summary.get("would_change", 0) >= 1
-    assert Outcome.WOULD_STRIP in r.summary
+    assert api.Outcome.WOULD_STRIP in r.summary
 
 
 def test_strip_apply_removes_headers(
@@ -123,7 +124,7 @@ def test_strip_apply_removes_headers(
 
     assert has_header(read_text(b), proc_py, "\n")
 
-    r: RunResult = api_strip_dir(repo_py_with_and_without_header, apply=True)
+    r: api.RunResult = api_strip_dir(repo_py_with_and_without_header, apply=True)
     assert r.had_errors is False
     assert r.written >= 1
     # Header gone

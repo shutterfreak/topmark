@@ -25,6 +25,7 @@ import topmark.file_resolver as file_resolver_mod
 # Import the module under test
 from tests.conftest import make_config
 from tests.conftest import make_file_type
+from topmark.filetypes.base import ContentGate
 from topmark.registry.filetypes import FileTypeRegistry
 
 if TYPE_CHECKING:
@@ -34,6 +35,16 @@ if TYPE_CHECKING:
 
     from topmark.config.model import Config
     from topmark.filetypes.base import FileType
+
+
+def _py_content_matcher(path: Path) -> bool:
+    """Typed content matcher (Pyright)."""
+    return path.suffix == ".py"
+
+
+def _text_content_matcher(path: Path) -> bool:
+    """Typed content matcher (Pyright)."""
+    return path.suffix in {".txt", ".md"}
 
 
 class DummyType:
@@ -204,23 +215,17 @@ def test_file_types_filtering(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     with monkeypatch.context() as m:
         m.chdir(tmp_path)
 
-        def _py_content_matcher(p: Path) -> bool:
-            """Typed content matcher (Pyright)."""
-            return p.suffix == ".py"
-
         ft_py: FileType = make_file_type(
             name="py",
             content_matcher=_py_content_matcher,
+            content_gate=ContentGate.ALWAYS,
         )
         FileTypeRegistry.register(ft_py)
-
-        def _text_content_matcher(p: Path) -> bool:
-            """Typed content matcher (Pyright)."""
-            return p.suffix in {".txt", ".md"}
 
         ft_text: FileType = make_file_type(
             name="text",
             content_matcher=_text_content_matcher,
+            content_gate=ContentGate.ALWAYS,
         )
         FileTypeRegistry.register(ft_text)
 
@@ -380,13 +385,10 @@ def test_file_type_unknown_is_ignored(
     (tmp_path / "a.py").write_text("x")
     monkeypatch.chdir(tmp_path)
 
-    def _py_content_matcher(p: Path) -> bool:
-        """Typed content matcher (Pyright)."""
-        return p.suffix == ".py"
-
     ft_py: FileType = make_file_type(
         name="py",
         content_matcher=_py_content_matcher,
+        content_gate=ContentGate.ALWAYS,
     )
     FileTypeRegistry.register(ft_py)
 
@@ -597,13 +599,10 @@ def test_multiple_unknown_file_types_warn_once(
     (tmp_path / "a.py").write_text("x", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
 
-    def _py_content_matcher(p: Path) -> bool:
-        """Typed content matcher (Pyright)."""
-        return p.suffix == ".py"
-
     ft_py: FileType = make_file_type(
         name="py",
         content_matcher=_py_content_matcher,
+        content_gate=ContentGate.ALWAYS,
     )
     FileTypeRegistry.register(ft_py)
 

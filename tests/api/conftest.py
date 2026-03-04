@@ -18,12 +18,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 from typing import Any
-from typing import cast
 
 import pytest
 
+from tests.conftest import make_file_type
+from tests.conftest import stub_proc_cls
 from topmark import api
-from topmark.api.public_types import PublicPolicy
+from topmark.api.protocols import PublicPolicy
 from topmark.config.keys import Toml
 from topmark.filetypes.base import FileType
 from topmark.processors.base import HeaderProcessor
@@ -40,6 +41,17 @@ if TYPE_CHECKING:
 
     from topmark.filetypes.base import FileType
     from topmark.processors.base import HeaderProcessor
+
+
+# --- File reading ---
+
+
+def read_text(path: Path) -> str:
+    """Read a UTF-8 file and return its text contents."""
+    return path.read_text(encoding="utf-8")
+
+
+# --- Config-related helpers ---
 
 
 def cfg(**overrides: Any) -> dict[str, Any]:
@@ -80,15 +92,88 @@ def cfg(**overrides: Any) -> dict[str, Any]:
     return base
 
 
+# --- Pipeline helpers
+
+
+def by_path_outcome(run_result: api.RunResult) -> dict[Path, str]:
+    """Return a mapping of each file path to its outcome string (e.g., 'unchanged')."""
+    return {fr.path: fr.outcome.value for fr in run_result.files}
+
+
+def api_check_dir(
+    root: Path,
+    *,
+    apply: bool = False,
+    policy: PublicPolicy | None = None,
+    skip_compliant: bool = False,
+    skip_unsupported: bool = False,
+    include_file_types: Iterable[str] | None = None,
+    exclude_file_types: Iterable[str] | None = None,
+    prune: bool = False,
+) -> api.RunResult:
+    """Run [`topmark.api.check`][topmark.api.check] against `root / 'src'` with common defaults.
+
+    By default, does not exclude any file types (no blacklist).
+    """
+    paths: list[Path] = [root / "src"]
+    return api.check(
+        paths,
+        apply=apply,
+        config=None,  # let API load topmark.toml from repo root
+        include_file_types=list(include_file_types) if include_file_types else None,
+        exclude_file_types=list(exclude_file_types) if exclude_file_types else None,
+        policy=policy,
+        skip_compliant=skip_compliant,
+        skip_unsupported=skip_unsupported,
+        prune=prune,
+    )
+
+
+def api_strip_dir(
+    root: Path,
+    *,
+    apply: bool = False,
+    policy: PublicPolicy | None = None,
+    skip_compliant: bool = False,
+    skip_unsupported: bool = False,
+    include_file_types: Iterable[str] | None = None,
+    exclude_file_types: Iterable[str] | None = None,
+    prune: bool = False,
+) -> api.RunResult:
+    """Run [`topmark.api.strip`][topmark.api.strip] against `root / 'src'` with common defaults.
+
+    By default, does not exclude any file types (no blacklist).
+    """
+    paths: list[Path] = [root / "src"]
+    return api.strip(
+        paths,
+        apply=apply,
+        config=None,
+        include_file_types=list(include_file_types) if include_file_types else None,
+        exclude_file_types=list(exclude_file_types) if exclude_file_types else None,
+        policy=policy,
+        skip_compliant=skip_compliant,
+        skip_unsupported=skip_unsupported,
+        prune=prune,
+    )
+
+
+# --- Test fixtures
+
+
 @pytest.fixture()
 def register_pair() -> Iterator[Callable[[str], tuple[str, FileType]]]:
     """Factory: register (FT + processor) under a given name; auto-cleanup after test."""
     registered: list[str] = []
 
     def _make(name: str) -> tuple[str, FileType]:
-        ft: FileType = stub_ft(name)
+        ft: FileType = make_file_type(name=name)
         FileTypeRegistry.register(ft)
-        HeaderProcessorRegistry.register(name, stub_proc_cls(), file_type=ft)
+        HeaderProcessorRegistry.register(
+            name,
+            stub_proc_cls(),
+            file_type=ft,
+        )
         registered.append(name)
         return name, ft
 
@@ -245,107 +330,3 @@ def has_header(text: str, processor: HeaderProcessor, newline_style: str) -> boo
         and bounds.end is not None
         and bounds.start < bounds.end  # exclusive end; guarantees non-empty span
     )
-
-
-def by_path_outcome(run_result: api.RunResult) -> dict[Path, str]:
-    """Return a mapping of each file path to its outcome string (e.g., 'unchanged')."""
-    return {fr.path: fr.outcome.value for fr in run_result.files}
-
-
-def read_text(path: Path) -> str:
-    """Read a UTF-8 file and return its text contents."""
-    return path.read_text(encoding="utf-8")
-
-
-def api_check_dir(
-    root: Path,
-    *,
-    apply: bool = False,
-    policy: PublicPolicy | None = None,
-    skip_compliant: bool = False,
-    skip_unsupported: bool = False,
-    include_file_types: Iterable[str] | None = None,
-    exclude_file_types: Iterable[str] | None = None,
-    prune: bool = False,
-) -> api.RunResult:
-    """Run [`topmark.api.check`][topmark.api.check] against `root / 'src'` with common defaults.
-
-    By default, does not exclude any file types (no blacklist).
-    """
-    paths: list[Path] = [root / "src"]
-    return api.check(
-        paths,
-        apply=apply,
-        config=None,  # let API load topmark.toml from repo root
-        include_file_types=list(include_file_types) if include_file_types else None,
-        exclude_file_types=list(exclude_file_types) if exclude_file_types else None,
-        policy=policy,
-        skip_compliant=skip_compliant,
-        skip_unsupported=skip_unsupported,
-        prune=prune,
-    )
-
-
-def api_strip_dir(
-    root: Path,
-    *,
-    apply: bool = False,
-    policy: PublicPolicy | None = None,
-    skip_compliant: bool = False,
-    skip_unsupported: bool = False,
-    include_file_types: Iterable[str] | None = None,
-    exclude_file_types: Iterable[str] | None = None,
-    prune: bool = False,
-) -> api.RunResult:
-    """Run [`topmark.api.strip`][topmark.api.strip] against `root / 'src'` with common defaults.
-
-    By default, does not exclude any file types (no blacklist).
-    """
-    paths: list[Path] = [root / "src"]
-    return api.strip(
-        paths,
-        apply=apply,
-        config=None,
-        include_file_types=list(include_file_types) if include_file_types else None,
-        exclude_file_types=list(exclude_file_types) if exclude_file_types else None,
-        policy=policy,
-        skip_compliant=skip_compliant,
-        skip_unsupported=skip_unsupported,
-        prune=prune,
-    )
-
-
-# ---- Stub types and tiny helpers for registry API tests ----
-
-
-# Duck-typed stubs that satisfy just what the registry uses
-class _StubFileType:
-    def __init__(self, name: str, description: str = "") -> None:
-        self.name: str = name
-        self.description: str = description
-        self.extensions: tuple[str, ...] = ()
-        self.filenames: tuple[str, ...] = ()
-        self.patterns: tuple[str, ...] = ()
-        self.skip_processing = False
-        self.has_content_matcher = False
-        self.header_policy_name: str = ""
-
-
-class _StubProcessor:
-    def __init__(self, description: str = "") -> None:
-        self.description: str = description
-        self.line_prefix: str = ""
-        self.line_suffix: str = ""
-        self.block_prefix: str = ""
-        self.block_suffix: str = ""
-        # `file_type` is set by the registry upon registration
-
-
-def stub_ft(name: str, description: str = "") -> FileType:
-    """Return a duck-typed FileType stub cast for strict API use in tests."""
-    return cast("FileType", _StubFileType(name, description=description))
-
-
-def stub_proc_cls() -> type[HeaderProcessor]:
-    """Return a duck-typed HeaderProcessor class for registry tests."""
-    return cast("type[HeaderProcessor]", _StubProcessor)

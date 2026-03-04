@@ -85,7 +85,7 @@ class Diagnostic:
 
     Note:
         This type is **not** part of the public API surface. Conversions to
-        `PublicDiagnostic` happen at the API boundary.
+        [`DiagnosticEntry`][topmark.api.types.DiagnosticEntry] happen at the API boundary.
     """
 
     level: DiagnosticLevel

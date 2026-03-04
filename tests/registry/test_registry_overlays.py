@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : test_registry_overlays.py
-#   file_relpath : tests/api/test_registry_overlays.py
+#   file_relpath : tests/registry/test_registry_overlays.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

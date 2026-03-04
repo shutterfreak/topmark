@@ -16,8 +16,7 @@ from typing import TYPE_CHECKING
 from typing import Any
 
 from topmark import api
-from topmark.api.public_types import PublicPolicy
-from topmark.api.types import Outcome
+from topmark.api.protocols import PublicPolicy
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
 
@@ -42,7 +41,7 @@ def test_bucket_insert_missing_header_dry_run(repo_py_with_and_without_header: P
         include_file_types=["python"],
     )
     keys: set[str] = _summary_keys(r)
-    assert Outcome.WOULD_INSERT.value in keys
+    assert api.Outcome.WOULD_INSERT.value in keys
 
 
 def test_bucket_ok_up_to_date(repo_py_with_header: Path) -> None:
@@ -54,7 +53,7 @@ def test_bucket_ok_up_to_date(repo_py_with_header: Path) -> None:
         include_file_types=["python"],
     )
     keys: set[str] = _summary_keys(r)
-    assert Outcome.UNCHANGED.value in keys
+    assert api.Outcome.UNCHANGED.value in keys
 
 
 def test_bucket_no_fields_when_header_fields_empty(tmp_path: Path) -> None:
@@ -71,7 +70,7 @@ def test_bucket_no_fields_when_header_fields_empty(tmp_path: Path) -> None:
         config=cfg,
     )
     keys: set[str] = _summary_keys(r)
-    assert Outcome.WOULD_INSERT.value in keys
+    assert api.Outcome.WOULD_INSERT.value in keys
 
 
 def test_bucket_header_empty_detected(tmp_path: Path, proc_py: HeaderProcessor) -> None:
@@ -90,7 +89,7 @@ def test_bucket_header_empty_detected(tmp_path: Path, proc_py: HeaderProcessor) 
     )
     keys: set[str] = _summary_keys(r)
     # assert "header:empty" in keys
-    assert Outcome.WOULD_UPDATE.value in keys
+    assert api.Outcome.WOULD_UPDATE.value in keys
 
 
 def test_bucket_header_malformed_detected(tmp_path: Path) -> None:
@@ -106,7 +105,7 @@ def test_bucket_header_malformed_detected(tmp_path: Path) -> None:
         include_file_types=["python"],
     )
     keys: set[str] = _summary_keys(r)
-    assert Outcome.ERROR.value in keys
+    assert api.Outcome.ERROR.value in keys
 
 
 def test_bucket_blocked_policy_update_only_blocks_insert(tmp_path: Path) -> None:
@@ -122,4 +121,4 @@ def test_bucket_blocked_policy_update_only_blocks_insert(tmp_path: Path) -> None
     )
     keys: set[str] = _summary_keys(r)
     # assert "blocked:policy" in keys
-    assert Outcome.SKIPPED.value in keys
+    assert api.Outcome.SKIPPED.value in keys

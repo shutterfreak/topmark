@@ -9,9 +9,8 @@
 # topmark:header:end
 """Utilities to snapshot TopMark's public API.
 
-Captures callable signatures for symbols exposed by ``topmark.api`` and the
-facade methods on ``Registry``. Used by the public API snapshot test and
-the Makefile targets.
+Captures callable signatures for symbols exposed by ``topmark.api``. Used by the public API snapshot
+test and the Makefile targets.
 """
 
 from __future__ import annotations
@@ -24,7 +23,6 @@ from argparse import Namespace
 from pathlib import Path
 
 from topmark import api
-from topmark.registry.registry import Registry
 
 
 def _sig(obj: typing.Any) -> str:
@@ -94,11 +92,6 @@ def collect_snapshot() -> dict[str, str]:
     for name in sorted(api_exports):
         obj = getattr(api, name)
         snapshot[name] = _normalize(obj)
-
-    # Snapshot a curated set of Registry facades (match historical baseline)
-    for name in ("filetypes", "processors", "bindings"):
-        obj = getattr(Registry, name)
-        snapshot[f"Registry.{name}"] = _sig(obj)
 
     return snapshot
 

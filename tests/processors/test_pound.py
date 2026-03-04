@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : test_pound.py
-#   file_relpath : tests/pipeline/processors/test_pound.py
+#   file_relpath : tests/processors/test_pound.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : test_registry_linkage.py
-#   file_relpath : tests/api/test_registry_linkage.py
+#   file_relpath : tests/registry/test_registry_linkage.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -26,8 +26,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.api.conftest import stub_ft
-from tests.api.conftest import stub_proc_cls
+from tests.conftest import make_file_type
+from tests.conftest import stub_proc_cls
 from topmark.processors.base import HeaderProcessor
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
@@ -41,7 +41,7 @@ if TYPE_CHECKING:
 def test_supported_vs_unsupported_partition() -> None:
     """FileType may exist without processor; supported/unsupported reflect that."""
     ft_name = "x_demo"
-    ft: FileType = stub_ft(ft_name)
+    ft: FileType = make_file_type(name=ft_name)
 
     proc_cls: type[HeaderProcessor] = stub_proc_cls()
 

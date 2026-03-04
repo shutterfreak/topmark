@@ -10,10 +10,15 @@
 
 """View and packaging helpers for the public API.
 
-These helpers convert internal `ProcessingContext` objects into stable,
-JSON-friendly public shapes, apply user-visible filters, and assemble
-`RunResult` summaries. Keeping them separate from `api.__init__` avoids
-duplication between `check()` and `strip()` and keeps the public surface tidy.
+These helpers convert internal `ProcessingContext` objects into stable, JSON-friendly public
+shapes, apply view-level filtering, and assemble a `RunResult`.
+
+Why this exists:
+- `check()` and `strip()` share post-run behavior (filtering, summaries, diagnostics, counts).
+- Keeping this logic in one place avoids drift between API functions and keeps the façade small.
+
+This module performs no I/O and produces no formatted/ANSI output; presentation belongs to
+CLI/UI layers.
 """
 
 from __future__ import annotations
@@ -21,7 +26,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from topmark.api.public_types import PublicDiagnostic
+from topmark.api.types import DiagnosticEntry
+from topmark.api.types import DiagnosticTotals
+from topmark.api.types import FileResult
+from topmark.api.types import RunResult
 from topmark.core.logging import get_logger
 from topmark.pipeline.outcomes import NO_REASON_PROVIDED
 from topmark.pipeline.outcomes import ResultBucket
@@ -35,15 +43,11 @@ from topmark.pipeline.status import ResolveStatus
 from topmark.pipeline.status import StripStatus
 from topmark.pipeline.status import WriteStatus
 
-from .types import DiagnosticTotals
-from .types import FileResult
-from .types import RunResult
-
 if TYPE_CHECKING:
     from collections.abc import Mapping
     from collections.abc import Sequence
 
-    from topmark.api.public_types import PublicDiagnostic
+    from topmark.api.types import DiagnosticEntry
     from topmark.core.exit_codes import ExitCode
     from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
@@ -66,7 +70,7 @@ def to_file_result(ctx: ProcessingContext, *, apply: bool) -> FileResult:
     diff_view: DiffView | None = ctx.views.diff
     diff: str | None = diff_view.text if diff_view else None
 
-    # Compute CLI bucket for API visibility (key + human label)
+    # Bucket: CLI-style key + human label (label may change between versions).
     bucket: ResultBucket = map_bucket(ctx, apply=apply)
     key: str = bucket.outcome.value
     label: str = bucket.reason or NO_REASON_PROVIDED
@@ -203,7 +207,7 @@ def count_writes(
 
 def collect_diagnostics(
     results: list[ProcessingContext],
-) -> dict[str, list[PublicDiagnostic]]:
+) -> dict[str, list[DiagnosticEntry]]:
     """Collect per-file diagnostics as `{path: [diagnostic, ...]}`.
 
     Diagnostics are returned in the *public* JSON-friendly shape and do not
@@ -215,7 +219,7 @@ def collect_diagnostics(
     Returns:
         Mapping from file path to diagnostic entries.
     """
-    diags: dict[str, list[PublicDiagnostic]] = {}
+    diags: dict[str, list[DiagnosticEntry]] = {}
     for r in results:
         if r.diagnostics:
             diags[str(r.path)] = [
@@ -290,7 +294,7 @@ def finalize_run_result(
     files: tuple[FileResult, ...] = tuple(to_file_result(r, apply=apply) for r in view_results)
     summary: Mapping[str, int] = summarize(files)
 
-    diagnostics: dict[str, list[PublicDiagnostic]] = collect_diagnostics(view_results)
+    diagnostics: dict[str, list[DiagnosticEntry]] = collect_diagnostics(view_results)
     diagnostic_totals: DiagnosticTotals = collect_diagnostic_totals(view_results)
     diagnostic_totals_all: DiagnosticTotals = collect_diagnostic_totals(results)
     had_errors: bool = (diagnostic_totals_all["error"] > 0) or (encountered_error_code is not None)
@@ -322,14 +326,3 @@ def finalize_run_result(
         diagnostic_totals=diagnostic_totals,
         diagnostic_totals_all=diagnostic_totals_all,
     )
-
-
-__all__: list[str] = [
-    "apply_view_filter",
-    "collect_diagnostic_totals",
-    "collect_diagnostics",
-    "count_writes",
-    "finalize_run_result",
-    "summarize",
-    "to_file_result",
-]

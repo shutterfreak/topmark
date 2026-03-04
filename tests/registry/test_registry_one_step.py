@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : test_registry_one_step.py
-#   file_relpath : tests/api/test_registry_one_step.py
+#   file_relpath : tests/registry/test_registry_one_step.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -20,8 +20,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests.api.conftest import stub_ft
-from tests.api.conftest import stub_proc_cls
+from tests.conftest import make_file_type
+from tests.conftest import stub_proc_cls
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
 from topmark.registry.registry import Registry
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 def test_register_filetype_with_processor_in_one_step() -> None:
     """Register FT and processor in one step; verify support and binding."""
     name = "one_step"
-    ft: FileType = stub_ft(name)
+    ft: FileType = make_file_type(name=name)
     try:
         proc_cls: type[HeaderProcessor] = stub_proc_cls()
         Registry.register_filetype(ft, processor=proc_cls)

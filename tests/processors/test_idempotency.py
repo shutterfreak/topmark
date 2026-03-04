@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : test_idempotency.py
-#   file_relpath : tests/pipeline/processors/test_idempotency.py
+#   file_relpath : tests/processors/test_idempotency.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
