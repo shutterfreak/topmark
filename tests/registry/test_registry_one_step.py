@@ -27,7 +27,7 @@ from topmark.registry.processors import HeaderProcessorRegistry
 from topmark.registry.registry import Registry
 
 if TYPE_CHECKING:
-    from topmark.filetypes.base import FileType
+    from topmark.filetypes.model import FileType
     from topmark.processors.base import HeaderProcessor
 
 

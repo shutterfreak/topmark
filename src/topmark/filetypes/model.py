@@ -1,8 +1,8 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : base.py
-#   file_relpath : src/topmark/filetypes/base.py
+#   file         : model.py
+#   file_relpath : src/topmark/filetypes/model.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

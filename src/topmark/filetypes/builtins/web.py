@@ -24,12 +24,17 @@ Notes:
 
 from __future__ import annotations
 
-from topmark.filetypes.base import FileType
+from typing import TYPE_CHECKING
+
 from topmark.filetypes.checks.xml import xml_can_insert
+from topmark.filetypes.factory import BUILTIN_FILETYPE_FACTORY
 from topmark.filetypes.policy import FileTypeHeaderPolicy
 
+if TYPE_CHECKING:
+    from topmark.filetypes.model import FileType
+
 FILETYPES: list[FileType] = [
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="css",
         extensions=[".css"],
         filenames=[],
@@ -40,7 +45,7 @@ FILETYPES: list[FileType] = [
             ensure_blank_after_header=True,
         ),
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="html",
         extensions=[".html"],
         filenames=[],
@@ -48,7 +53,7 @@ FILETYPES: list[FileType] = [
         description="HyperText Markup Language (HTML)",
         pre_insert_checker=xml_can_insert,
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="javascript",
         extensions=[".js", ".mjs", ".cjs", ".jsx"],
         filenames=[],
@@ -60,7 +65,7 @@ FILETYPES: list[FileType] = [
             ensure_blank_after_header=True,
         ),
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="less",
         extensions=[".less"],
         filenames=[],
@@ -71,7 +76,7 @@ FILETYPES: list[FileType] = [
             ensure_blank_after_header=True,
         ),
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="scss",
         extensions=[".scss"],
         filenames=[],
@@ -82,7 +87,7 @@ FILETYPES: list[FileType] = [
             ensure_blank_after_header=True,
         ),
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="stylus",
         extensions=[".styl"],
         filenames=[],
@@ -93,14 +98,14 @@ FILETYPES: list[FileType] = [
             ensure_blank_after_header=True,
         ),
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="svelte",
         extensions=[".svelte"],
         filenames=[],
         patterns=[],
         description="Svelte component files",
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="svg",
         extensions=[".svg"],
         filenames=[],
@@ -108,7 +113,7 @@ FILETYPES: list[FileType] = [
         description="Scalable Vector Graphics (SVG)",
         pre_insert_checker=xml_can_insert,
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="typescript",
         extensions=[".ts", ".tsx", ".mts", ".cts"],
         filenames=[],
@@ -120,14 +125,14 @@ FILETYPES: list[FileType] = [
             ensure_blank_after_header=True,
         ),
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="vue",
         extensions=[".vue"],
         filenames=[],
         patterns=[],
         description="Vue Single-File Components",
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="xhtml",
         extensions=[".xhtml", ".xht"],
         filenames=[],
@@ -135,7 +140,7 @@ FILETYPES: list[FileType] = [
         description="XHTML documents",
         pre_insert_checker=xml_can_insert,
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="xml",
         extensions=[".xml"],
         filenames=["pom.xml"],
@@ -143,7 +148,7 @@ FILETYPES: list[FileType] = [
         description="Extensible Markup Language (XML)",
         pre_insert_checker=xml_can_insert,
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="xsl",
         extensions=[".xsl"],
         filenames=[],
@@ -151,7 +156,7 @@ FILETYPES: list[FileType] = [
         description="XSL stylesheets",
         pre_insert_checker=xml_can_insert,
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="xslt",
         extensions=[".xslt"],
         filenames=[],

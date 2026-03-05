@@ -23,11 +23,16 @@ Notes:
 
 from __future__ import annotations
 
-from topmark.filetypes.base import FileType
+from typing import TYPE_CHECKING
+
+from topmark.filetypes.factory import BUILTIN_FILETYPE_FACTORY
 from topmark.filetypes.policy import FileTypeHeaderPolicy
 
+if TYPE_CHECKING:
+    from topmark.filetypes.model import FileType
+
 FILETYPES: list[FileType] = [
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="c",
         extensions=[".c", ".h"],
         filenames=[],
@@ -39,7 +44,7 @@ FILETYPES: list[FileType] = [
             ensure_blank_after_header=True,
         ),
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="cpp",
         extensions=[".cc", ".cxx", ".cpp", ".hh", ".hpp", ".hxx"],
         filenames=[],
@@ -51,7 +56,7 @@ FILETYPES: list[FileType] = [
             ensure_blank_after_header=True,
         ),
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="cs",
         extensions=[".cs"],
         filenames=[],
@@ -63,7 +68,7 @@ FILETYPES: list[FileType] = [
             ensure_blank_after_header=True,
         ),
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="go",
         extensions=[".go"],
         filenames=[],
@@ -75,7 +80,7 @@ FILETYPES: list[FileType] = [
             ensure_blank_after_header=True,
         ),
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="java",
         extensions=[".java"],
         filenames=[],
@@ -87,7 +92,7 @@ FILETYPES: list[FileType] = [
             ensure_blank_after_header=True,
         ),
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="kotlin",
         extensions=[".kt", ".kts"],
         filenames=[],
@@ -99,7 +104,7 @@ FILETYPES: list[FileType] = [
             ensure_blank_after_header=True,
         ),
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="rust",
         extensions=[".rs"],
         filenames=[],
@@ -111,7 +116,7 @@ FILETYPES: list[FileType] = [
             ensure_blank_after_header=True,
         ),
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="solidity",
         extensions=[".sol"],
         filenames=[],
@@ -122,7 +127,7 @@ FILETYPES: list[FileType] = [
             ensure_blank_after_header=True,
         ),
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="swift",
         extensions=[".swift"],
         filenames=[],

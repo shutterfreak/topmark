@@ -15,9 +15,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from topmark.filetypes.base import ContentGate
-from topmark.filetypes.base import ContentMatcher
-from topmark.filetypes.base import FileType
+from topmark.filetypes.model import ContentGate
+from topmark.filetypes.model import ContentMatcher
+from topmark.filetypes.model import FileType
 from topmark.filetypes.policy import FileTypeHeaderPolicy
 
 if TYPE_CHECKING:

@@ -99,7 +99,7 @@ if TYPE_CHECKING:
     from topmark.config.io.types import TomlTableMap
     from topmark.config.types import PatternSource
     from topmark.core.logging import TopmarkLogger
-    from topmark.filetypes.base import FileType
+    from topmark.filetypes.model import FileType
 
 
 logger: TopmarkLogger = get_logger(__name__)

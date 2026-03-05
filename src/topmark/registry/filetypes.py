@@ -33,13 +33,11 @@ from threading import RLock
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
-from topmark.filetypes.base import FileType
-
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from collections.abc import Mapping
 
-    from topmark.filetypes.base import FileType
+    from topmark.filetypes.model import FileType
 
 
 @dataclass(frozen=True)

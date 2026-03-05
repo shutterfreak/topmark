@@ -25,11 +25,16 @@ Notes:
 
 from __future__ import annotations
 
-from topmark.filetypes.base import FileType
+from typing import TYPE_CHECKING
+
+from topmark.filetypes.factory import BUILTIN_FILETYPE_FACTORY
 from topmark.filetypes.policy import FileTypeHeaderPolicy
 
+if TYPE_CHECKING:
+    from topmark.filetypes.model import FileType
+
 FILETYPES: list[FileType] = [
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="dockerfile",
         extensions=[],
         filenames=["Dockerfile"],
@@ -41,7 +46,7 @@ FILETYPES: list[FileType] = [
             ensure_blank_after_header=True,
         ),
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="env",
         extensions=[],
         filenames=[".env"],
@@ -54,7 +59,7 @@ FILETYPES: list[FileType] = [
             ensure_blank_after_header=True,
         ),
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="git-meta",
         extensions=[],
         filenames=[".gitignore", ".gitattributes"],
@@ -66,7 +71,7 @@ FILETYPES: list[FileType] = [
             ensure_blank_after_header=True,
         ),
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="sql",
         extensions=[".sql"],
         filenames=[],

@@ -25,7 +25,7 @@ Responsibilities:
     * Surface advisory reasons when insertion is not supported.
 
 Relationship:
-    * [`topmark.filetypes.base`][] defines the ``InsertChecker`` protocol and the
+    * [`topmark.filetypes.model`][] defines the ``InsertChecker`` protocol and the
       ``FileType`` dataclass property where these checkers can be attached.
     * [`topmark.filetypes.detectors`][] provides complementary content matchers
       for file type detection.

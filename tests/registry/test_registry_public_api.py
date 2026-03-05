@@ -24,14 +24,14 @@ import pytest
 
 from tests.conftest import make_file_type
 from tests.conftest import stub_proc_cls
-from topmark.filetypes.base import FileType
+from topmark.filetypes.model import FileType
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from topmark.filetypes.base import FileType
+    from topmark.filetypes.model import FileType
     from topmark.processors.base import HeaderProcessor
 
 # ---------- helpers (duck-typed stubs) ----------

@@ -30,7 +30,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.core.logging import get_logger
-from topmark.filetypes.base import FileType
+from topmark.filetypes.model import FileType
 from topmark.pipeline.adapters import PreInsertViewAdapter
 from topmark.pipeline.context.policy import allow_content_reflow_by_policy
 from topmark.pipeline.context.policy import allows_bom_before_shebang_by_policy
@@ -45,9 +45,9 @@ from topmark.pipeline.views import ListFileImageView
 
 if TYPE_CHECKING:
     from topmark.core.logging import TopmarkLogger
-    from topmark.filetypes.base import FileType
-    from topmark.filetypes.base import InsertChecker
-    from topmark.filetypes.base import InsertCheckResult
+    from topmark.filetypes.model import FileType
+    from topmark.filetypes.model import InsertChecker
+    from topmark.filetypes.model import InsertCheckResult
     from topmark.pipeline.context.model import ProcessingContext
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -320,7 +320,7 @@ class ReaderStep(BaseStep):
                 # Keep the reader resilient: the checker is extensible code and may raise.
                 # We intentionally keep the try/except *tight* around the invocation.
                 try:
-                    from topmark.filetypes.base import InsertCapability  # local to avoid cycles
+                    from topmark.filetypes.model import InsertCapability  # local to avoid cycles
 
                     view = PreInsertViewAdapter(ctx)
                     res: InsertCheckResult = checker(view) or {}

@@ -12,7 +12,7 @@
 
 This module provides helper classes and functions that adapt a full
 [`topmark.pipeline.context.model.ProcessingContext`][] into protocol-compatible
-view objects such as [`topmark.filetypes.base.PreInsertContextView`][].
+view objects such as [`topmark.filetypes.model.PreInsertContextView`][].
 These adapters allow downstream components like InsertChecker or other
 file-type-specific validation utilities to operate without depending on the
 entire pipeline internals.
@@ -33,7 +33,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
     from collections.abc import Sequence
 
-    from topmark.filetypes.base import FileType
+    from topmark.filetypes.model import FileType
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.processors.base import HeaderProcessor
 
@@ -43,7 +43,7 @@ class PreInsertViewAdapter:
     """Adapter that exposes a ProcessingContext as a PreInsertContextView.
 
     This class extracts only the fields required by the
-    [`topmark.filetypes.base.PreInsertContextView`][] protocol and
+    [`topmark.filetypes.model.PreInsertContextView`][] protocol and
     presents them through lightweight, read-only attributes.
 
     Attributes:

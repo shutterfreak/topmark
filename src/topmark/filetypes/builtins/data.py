@@ -29,14 +29,19 @@ Notes:
 
 from __future__ import annotations
 
-from topmark.filetypes.base import ContentGate
-from topmark.filetypes.base import FileType
+from typing import TYPE_CHECKING
+
 from topmark.filetypes.checks.json_like import json_like_can_insert
 from topmark.filetypes.detectors.jsonc import looks_like_jsonc
+from topmark.filetypes.factory import BUILTIN_FILETYPE_FACTORY
+from topmark.filetypes.model import ContentGate
 from topmark.filetypes.policy import FileTypeHeaderPolicy
 
+if TYPE_CHECKING:
+    from topmark.filetypes.model import FileType
+
 FILETYPES: list[FileType] = [
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="ini",
         extensions=[".ini", ".cfg"],
         filenames=[".editorconfig", ".pypirc", ".pypirc.example", "pip.conf"],
@@ -50,7 +55,7 @@ FILETYPES: list[FileType] = [
             ensure_blank_after_header=True,
         ),
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="json",
         extensions=[".json"],
         filenames=[],
@@ -58,7 +63,7 @@ FILETYPES: list[FileType] = [
         description="JSON (no comments; unheaderable)",
         skip_processing=True,
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="jsonc",
         extensions=[".json"],
         filenames=[],
@@ -74,7 +79,7 @@ FILETYPES: list[FileType] = [
         ),
         pre_insert_checker=json_like_can_insert,
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="python-requirements",
         extensions=[],
         filenames=[],
@@ -86,7 +91,7 @@ FILETYPES: list[FileType] = [
             ensure_blank_after_header=True,
         ),
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="python-typed-marker",
         extensions=[],
         filenames=["py.typed"],
@@ -94,14 +99,14 @@ FILETYPES: list[FileType] = [
         description="PEP 561 marker (single-token file)",
         skip_processing=True,
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="toml",
         extensions=[".toml"],
         filenames=[],
         patterns=[],
         description="Tom's Obvious Minimal Language (*.toml)",
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="vscode-jsonc",
         extensions=[],
         filenames=[".vscode/settings.json", ".vscode/extensions.json"],
@@ -113,7 +118,7 @@ FILETYPES: list[FileType] = [
             ensure_blank_after_header=True,
         ),
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="yaml",
         extensions=[".yaml", ".yml"],
         filenames=[],

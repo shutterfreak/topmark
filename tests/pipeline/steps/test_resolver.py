@@ -31,8 +31,8 @@ from tests.pipeline.conftest import make_pipeline_context
 from tests.pipeline.conftest import run_resolver
 from topmark.config.model import Config
 from topmark.config.model import MutableConfig
-from topmark.filetypes.base import ContentGate
-from topmark.filetypes.base import FileType
+from topmark.filetypes.model import ContentGate
+from topmark.filetypes.model import FileType
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.status import ResolveStatus
 from topmark.processors.base import HeaderProcessor

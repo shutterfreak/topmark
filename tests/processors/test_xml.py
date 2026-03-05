@@ -34,7 +34,7 @@ from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
 from topmark.core.logging import TopmarkLogger
 from topmark.core.logging import get_logger
-from topmark.filetypes.base import InsertCapability
+from topmark.filetypes.model import InsertCapability
 from topmark.pipeline import runner
 from topmark.pipeline.pipelines import Pipeline
 from topmark.pipeline.status import ComparisonStatus

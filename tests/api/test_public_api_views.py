@@ -12,7 +12,7 @@
 
 from __future__ import annotations
 
-from topmark.filetypes.base import FileType
+from topmark.filetypes.model import FileType
 from topmark.processors.base import HeaderProcessor
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry

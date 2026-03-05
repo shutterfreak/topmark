@@ -40,7 +40,7 @@ from topmark.utils.introspection import format_callable_pretty
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from topmark.filetypes.base import FileType
+    from topmark.filetypes.model import FileType
     from topmark.processors.base import HeaderProcessor
 
 

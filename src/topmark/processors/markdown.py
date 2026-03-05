@@ -33,9 +33,9 @@ from typing import TYPE_CHECKING
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
 from topmark.core.logging import get_logger
-from topmark.filetypes.registry import register_filetype
 from topmark.processors.base import HeaderProcessor
 from topmark.processors.mixins import BlockCommentMixin
+from topmark.processors.registry import register_processor_for_filetype
 from topmark.processors.types import BoundsKind
 from topmark.processors.types import HeaderBounds
 
@@ -47,7 +47,7 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-@register_filetype("markdown")
+@register_processor_for_filetype("markdown")
 class MarkdownHeaderProcessor(BlockCommentMixin, HeaderProcessor):
     """Header processor for Markdown formats (HTML comment–based, line-oriented).
 

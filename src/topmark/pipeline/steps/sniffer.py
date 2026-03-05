@@ -55,7 +55,7 @@ if TYPE_CHECKING:
     from os import stat_result
 
     from topmark.core.logging import TopmarkLogger
-    from topmark.filetypes.base import FileType
+    from topmark.filetypes.model import FileType
     from topmark.filetypes.policy import FileTypeHeaderPolicy
     from topmark.pipeline.context.model import ProcessingContext
 

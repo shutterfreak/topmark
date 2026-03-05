@@ -31,7 +31,7 @@ from topmark.config.model import Config
 from topmark.config.model import MutableConfig
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
-from topmark.filetypes.base import FileType
+from topmark.filetypes.model import FileType
 from topmark.pipeline.status import ComparisonStatus
 from topmark.pipeline.status import GenerationStatus
 from topmark.pipeline.status import RenderStatus

@@ -31,7 +31,7 @@ from pathspec.patterns.gitwildmatch import GitWildMatchPattern
 
 from topmark.config.types import PatternSource  # runtime use
 from topmark.core.logging import get_logger
-from topmark.filetypes.base import FileType
+from topmark.filetypes.model import FileType
 from topmark.registry.filetypes import FileTypeRegistry
 
 if TYPE_CHECKING:
@@ -40,7 +40,7 @@ if TYPE_CHECKING:
     from topmark.config.model import Config
     from topmark.config.types import PatternSource
     from topmark.core.logging import TopmarkLogger
-    from topmark.filetypes.base import FileType
+    from topmark.filetypes.model import FileType
 
 
 logger: TopmarkLogger = get_logger(__name__)

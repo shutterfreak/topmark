@@ -36,13 +36,11 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING
 from typing import Final
 
-from topmark.filetypes.base import FileType
-
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from collections.abc import Mapping
 
-    from topmark.filetypes.base import FileType
+    from topmark.filetypes.model import FileType
     from topmark.processors.base import HeaderProcessor
 
 
@@ -109,7 +107,7 @@ class HeaderProcessorRegistry:
         if cached is not None:
             return dict(cached)
 
-        from topmark.filetypes.registry import get_base_header_processor_registry as _get
+        from topmark.processors.registry import get_base_header_processor_registry as _get
 
         # _get() returns the base decorator-populated processor registry.
         base: dict[str, HeaderProcessor] = dict(_get())

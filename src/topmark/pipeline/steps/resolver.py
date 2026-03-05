@@ -26,8 +26,8 @@ from typing import TYPE_CHECKING
 
 from topmark.constants import VALUE_NOT_SET
 from topmark.core.logging import get_logger
-from topmark.filetypes.base import ContentGate
-from topmark.filetypes.base import FileType
+from topmark.filetypes.model import ContentGate
+from topmark.filetypes.model import FileType
 from topmark.pipeline.hints import Axis
 from topmark.pipeline.hints import Cluster
 from topmark.pipeline.hints import KnownCode

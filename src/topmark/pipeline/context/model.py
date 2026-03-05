@@ -36,7 +36,7 @@ from typing import Any
 from topmark.config.policy import make_policy_registry
 from topmark.core.logging import get_logger
 from topmark.diagnostic.model import DiagnosticLog
-from topmark.filetypes.base import InsertCapability
+from topmark.filetypes.model import InsertCapability
 from topmark.pipeline.context.policy import can_change
 from topmark.pipeline.context.policy import check_permitted_by_policy
 from topmark.pipeline.context.policy import effective_would_add_or_update
@@ -62,7 +62,7 @@ if TYPE_CHECKING:
     from topmark.config.policy import Policy
     from topmark.config.policy import PolicyRegistry
     from topmark.core.logging import TopmarkLogger
-    from topmark.filetypes.base import FileType
+    from topmark.filetypes.model import FileType
     from topmark.pipeline.protocols import Step
     from topmark.processors.base import HeaderProcessor
 

@@ -30,18 +30,18 @@ We emit the wrapper lines '/*' and '*/' and render inner lines as '* ...'.
 
 from __future__ import annotations
 
-from topmark.filetypes.registry import register_filetype
 from topmark.processors.base import HeaderProcessor
 from topmark.processors.mixins import BlockCommentMixin
+from topmark.processors.registry import register_processor_for_filetype
 
 
 # Attach all relevant file types here; their concrete definitions live in filetypes/instances.py
-@register_filetype("css")
-@register_filetype("less")
-@register_filetype("scss")
-@register_filetype("solidity")
-@register_filetype("sql")
-@register_filetype("stylus")
+@register_processor_for_filetype("css")
+@register_processor_for_filetype("less")
+@register_processor_for_filetype("scss")
+@register_processor_for_filetype("solidity")
+@register_processor_for_filetype("sql")
+@register_processor_for_filetype("stylus")
 class CBlockHeaderProcessor(BlockCommentMixin, HeaderProcessor):
     """Processor for C-style block comment headers (uses BlockCommentMixin)."""
 

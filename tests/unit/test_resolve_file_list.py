@@ -25,7 +25,7 @@ import topmark.file_resolver as file_resolver_mod
 # Import the module under test
 from tests.conftest import make_config
 from tests.conftest import make_file_type
-from topmark.filetypes.base import ContentGate
+from topmark.filetypes.model import ContentGate
 from topmark.registry.filetypes import FileTypeRegistry
 
 if TYPE_CHECKING:
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
     import pytest
 
     from topmark.config.model import Config
-    from topmark.filetypes.base import FileType
+    from topmark.filetypes.model import FileType
 
 
 def _py_content_matcher(path: Path) -> bool:

@@ -36,7 +36,7 @@ from topmark.registry.filetypes import FileTypeRegistry
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from topmark.filetypes.base import FileType
+    from topmark.filetypes.model import FileType
     from topmark.processors.base import HeaderProcessor
     from topmark.registry.machine.schemas import FileTypeBriefEntry
     from topmark.registry.machine.schemas import FileTypeDetailEntry

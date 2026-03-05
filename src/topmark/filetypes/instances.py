@@ -10,7 +10,7 @@
 
 """File type instances and *base* registry for TopMark.
 
-Builds the runtime registry of [`topmark.filetypes.base.FileType`][] objects
+Builds the runtime registry of [`topmark.filetypes.model.FileType`][] objects
 from built-in groups and optionally from plugin entry points. The registry is
 constructed lazily on first access and cached thereafter.
 
@@ -39,8 +39,7 @@ from typing import Final
 from typing import cast
 
 from topmark.core.logging import get_logger
-
-from .base import FileType
+from topmark.filetypes.model import FileType
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -59,7 +58,7 @@ _BUILTIN_MODULES: Final[tuple[str, ...]] = (
     "topmark.filetypes.builtins.docs",
 )
 
-ENTRYPOINT_GROUP: Final[str] = "topmark.filetypes"
+_ENTRYPOINT_GROUP: Final[str] = "topmark.filetypes"
 
 
 def _iter_builtin_filetypes() -> Iterable[FileType]:
@@ -90,7 +89,7 @@ def _iter_plugin_filetypes() -> Iterable[FileType]:
         return
 
     # Python 3.10+ API: EntryPoints.select is available and typed
-    candidates: EntryPoints = eps.select(group=ENTRYPOINT_GROUP)
+    candidates: EntryPoints = eps.select(group=_ENTRYPOINT_GROUP)
 
     for ep in candidates:
         try:

@@ -23,11 +23,16 @@ Notes:
 
 from __future__ import annotations
 
-from topmark.filetypes.base import FileType
+from typing import TYPE_CHECKING
+
+from topmark.filetypes.factory import BUILTIN_FILETYPE_FACTORY
 from topmark.filetypes.policy import FileTypeHeaderPolicy
 
+if TYPE_CHECKING:
+    from topmark.filetypes.model import FileType
+
 FILETYPES: list[FileType] = [
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="julia",
         extensions=[".jl"],
         filenames=[],
@@ -39,7 +44,7 @@ FILETYPES: list[FileType] = [
             ensure_blank_after_header=True,
         ),
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="makefile",
         extensions=[],
         filenames=["Makefile", "makefile"],
@@ -50,7 +55,7 @@ FILETYPES: list[FileType] = [
             ensure_blank_after_header=True,
         ),
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="perl",
         extensions=[".pl", ".pm"],
         filenames=[],
@@ -62,7 +67,7 @@ FILETYPES: list[FileType] = [
             ensure_blank_after_header=True,
         ),
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="python",
         extensions=[".py"],
         filenames=[],
@@ -75,7 +80,7 @@ FILETYPES: list[FileType] = [
             ensure_blank_after_header=True,
         ),
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="python-stub",
         extensions=[".pyi"],
         filenames=[],
@@ -86,7 +91,7 @@ FILETYPES: list[FileType] = [
             ensure_blank_after_header=True,
         ),
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="r",
         extensions=[".R", ".r"],
         filenames=[],
@@ -98,7 +103,7 @@ FILETYPES: list[FileType] = [
             ensure_blank_after_header=True,
         ),
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="ruby",
         extensions=[".rb"],
         filenames=[],
@@ -111,7 +116,7 @@ FILETYPES: list[FileType] = [
             ensure_blank_after_header=True,
         ),
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="shell",
         extensions=[".sh", ".bash", ".zsh"],
         filenames=[],

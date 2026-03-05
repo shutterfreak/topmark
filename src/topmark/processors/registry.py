@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : registry.py
-#   file_relpath : src/topmark/filetypes/registry.py
+#   file_relpath : src/topmark/processors/registry.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -27,15 +27,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.core.logging import get_logger
-from topmark.filetypes.base import FileType
 from topmark.processors.base import HeaderProcessor
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from collections.abc import Mapping
 
     from topmark.core.logging import TopmarkLogger
-    from topmark.filetypes.base import FileType
+    from topmark.filetypes.model import FileType
     from topmark.processors.base import HeaderProcessor
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -43,10 +41,13 @@ logger: TopmarkLogger = get_logger(__name__)
 _registry: dict[str, HeaderProcessor] = {}
 
 
-def register_filetype(
+def register_processor_for_filetype(
     name: str,
 ) -> Callable[[type[HeaderProcessor]], type[HeaderProcessor]]:
     """Class decorator to register a HeaderProcessor for a specific file type.
+
+    This decorator validates against the **currently-discovered** base filetypes.
+    Therefore, filetypes must be registered **before** importing modules that register processors.
 
     Args:
         name: File type identifier under which the processor is registered.
@@ -58,9 +59,10 @@ def register_filetype(
         ValueError: If the file type name is unknown or already registered.
     """
     # Validate against the *effective* registry (composed base + overlays).
-    from topmark.registry.filetypes import FileTypeRegistry
+    from topmark.filetypes.instances import get_base_file_type_registry
 
-    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
+    ft_registry: dict[str, FileType] = get_base_file_type_registry()
+
     if name not in ft_registry:
         raise ValueError(f"Unknown file type: {name}")
 

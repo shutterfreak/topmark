@@ -24,10 +24,15 @@ Notes:
 
 from __future__ import annotations
 
-from topmark.filetypes.base import FileType
+from typing import TYPE_CHECKING
+
+from topmark.filetypes.factory import BUILTIN_FILETYPE_FACTORY
+
+if TYPE_CHECKING:
+    from topmark.filetypes.model import FileType
 
 FILETYPES: list[FileType] = [
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="license_text",
         extensions=[],
         filenames=["LICENSE", "LICENSE.txt"],
@@ -35,7 +40,7 @@ FILETYPES: list[FileType] = [
         description="License text (keep verbatim)",
         skip_processing=True,
     ),
-    FileType(
+    BUILTIN_FILETYPE_FACTORY(
         name="markdown",
         extensions=[".md", ".markdown"],
         filenames=[],

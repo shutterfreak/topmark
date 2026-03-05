@@ -26,7 +26,7 @@ from tests.conftest import stub_proc_cls
 from topmark import api
 from topmark.api.protocols import PublicPolicy
 from topmark.config.keys import Toml
-from topmark.filetypes.base import FileType
+from topmark.filetypes.model import FileType
 from topmark.processors.base import HeaderProcessor
 from topmark.processors.types import BoundsKind
 from topmark.processors.types import HeaderBounds
@@ -39,7 +39,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
 
-    from topmark.filetypes.base import FileType
+    from topmark.filetypes.model import FileType
     from topmark.processors.base import HeaderProcessor
 
 

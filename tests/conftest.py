@@ -47,10 +47,10 @@ import pytest
 from topmark.config.model import MutableConfig
 from topmark.config.types import PatternSource
 from topmark.core import logging
-from topmark.filetypes.base import ContentGate
-from topmark.filetypes.base import ContentMatcher
-from topmark.filetypes.base import FileType
-from topmark.filetypes.base import InsertChecker
+from topmark.filetypes.model import ContentGate
+from topmark.filetypes.model import ContentMatcher
+from topmark.filetypes.model import FileType
+from topmark.filetypes.model import InsertChecker
 from topmark.processors.base import HeaderProcessor
 
 if TYPE_CHECKING:
