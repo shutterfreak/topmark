@@ -31,17 +31,11 @@ from typing import Any
 from typing import TypeVar
 from typing import cast
 
-from topmark.core.logging import get_logger
-
 if TYPE_CHECKING:
     from topmark.config.types import ArgsLike
-    from topmark.core.logging import TopmarkLogger
     from topmark.diagnostic.model import DiagnosticLog
 
-E = TypeVar("E", bound=Enum)
-
-
-logger: TopmarkLogger = get_logger(__name__)
+_E = TypeVar("_E", bound=Enum)
 
 
 def get_arg_bool_or_none_checked(
@@ -49,7 +43,6 @@ def get_arg_bool_or_none_checked(
     key: str,
     *,
     diagnostics: DiagnosticLog,
-    logger: TopmarkLogger,
 ) -> bool | None:
     """Return an optional boolean value, warning when present but not `bool`.
 
@@ -61,7 +54,6 @@ def get_arg_bool_or_none_checked(
     if isinstance(value, bool):
         return value
 
-    logger.warning("Expected bool in %s, got %s: %r", key, type(value).__name__, value)
     diagnostics.add_warning(f"Expected bool in {key}, got {type(value).__name__}: {value}")
     return None
 
@@ -71,7 +63,6 @@ def get_arg_int_or_none_checked(
     key: str,
     *,
     diagnostics: DiagnosticLog,
-    logger: TopmarkLogger,
 ) -> int | None:
     """Return an optional int value, warning when present but not `int`.
 
@@ -84,14 +75,12 @@ def get_arg_int_or_none_checked(
 
     # Note: bool is a subclass of int; exclude it.
     if isinstance(value, bool):
-        logger.warning("Expected int in %s, got bool: %r", key, value)
         diagnostics.add_warning(f"Expected int in {key}, got bool: {value}")
         return None
 
     if isinstance(value, int):
         return value
 
-    logger.warning("Expected int in %s, got %s: %r", key, type(value).__name__, value)
     diagnostics.add_warning(f"Expected int in {key}, got {type(value).__name__}: {value}")
     return None
 
@@ -101,7 +90,6 @@ def get_arg_string_or_none_checked(
     key: str,
     *,
     diagnostics: DiagnosticLog,
-    logger: TopmarkLogger,
 ) -> str | None:
     """Return an optional string value, warning when present but not `str`.
 
@@ -113,7 +101,6 @@ def get_arg_string_or_none_checked(
     if isinstance(value, str):
         return value
 
-    logger.warning("Expected string in %s, got %s: %r", key, type(value).__name__, value)
     diagnostics.add_warning(f"Expected string in {key}, got {type(value).__name__}: {value}")
     return None
 
@@ -123,7 +110,6 @@ def get_arg_string_list_checked(
     key: str,
     *,
     diagnostics: DiagnosticLog,
-    logger: TopmarkLogger,
 ) -> list[str]:
     """Return a list of strings for `key`, warning when present but not a list of strings.
 
@@ -138,7 +124,6 @@ def get_arg_string_list_checked(
         args: TOML table to query.
         key: Key to extract.
         diagnostics: DiagnosticLog to record warnings.
-        logger: Logger for emitting warnings.
 
     Returns:
         Filtered list containing only string entries.
@@ -148,12 +133,6 @@ def get_arg_string_list_checked(
         return []
 
     if not isinstance(vals_any, list | tuple):
-        logger.warning(
-            "Expected list of strings in %s, got %s: %r",
-            key,
-            type(vals_any).__name__,
-            vals_any,
-        )
         diagnostics.add_warning(
             f"Expected list of strings in {key}, got {type(vals_any).__name__}: {vals_any!r}"
         )
@@ -167,7 +146,6 @@ def get_arg_string_list_checked(
         if isinstance(v_any, str):
             out.append(v_any)
         else:
-            logger.warning("Ignoring non-string entry in %s: %r", key, v_any)
             diagnostics.add_warning(f"Ignoring non-string entry in {key}: {v_any!r}")
 
     return out
@@ -176,11 +154,10 @@ def get_arg_string_list_checked(
 def get_arg_enum_checked(
     args: ArgsLike,
     key: str,
-    enum_cls: type[E],
+    enum_cls: type[_E],
     *,
     diagnostics: DiagnosticLog,
-    logger: TopmarkLogger,
-) -> E | None:
+) -> _E | None:
     """Parse an Enum value from ArgsLike.
 
     Mirrors the TOML helper [`topmark.config.io.getters.get_enum_value_checked`][].
@@ -196,12 +173,6 @@ def get_arg_enum_checked(
         return None
 
     if not isinstance(raw, str):
-        logger.warning(
-            "Expected string enum value in %s, got %s: %r",
-            key,
-            type(raw).__name__,
-            raw,
-        )
         diagnostics.add_warning(
             f"Expected string enum value in {key}, got {type(raw).__name__}: {raw!r}"
         )
@@ -211,6 +182,5 @@ def get_arg_enum_checked(
         return enum_cls(raw)
     except ValueError:
         allowed: str = ", ".join(str(e.value) for e in enum_cls)
-        logger.warning("Invalid value for %s: %r (allowed: %s)", key, raw, allowed)
         diagnostics.add_warning(f"Invalid value for {key}: {raw!r} (allowed: {allowed})")
         return None

@@ -20,7 +20,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.constants import VALUE_NOT_SET
 from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
@@ -58,10 +57,6 @@ def run(
     Returns:
         The final processing context after all steps have run.
     """
-    logger.info(
-        "header_format: %s",
-        ctx.config.header_format.value if ctx.config.header_format else VALUE_NOT_SET,
-    )
     for step in steps:
         ctx = step(ctx)
 

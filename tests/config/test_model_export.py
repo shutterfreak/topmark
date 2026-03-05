@@ -62,10 +62,10 @@ def test_to_toml_strips_none_entries() -> None:
 
     # Create a dict with explicit None where TOML doesn't allow it
     td: dict[str, Any] = c.to_toml_dict()
-    td[Toml.SECTION_FORMATTING][Toml.KEY_HEADER_FORMAT] = None
+    td[Toml.SECTION_FORMATTING][Toml.KEY_ALIGN_FIELDS] = None
 
     s: str = to_toml(td)
-    assert ArgKey.HEADER_FORMAT not in s  # or whatever your stripper does
+    assert ArgKey.ALIGN_FIELDS not in s  # or whatever your stripper does
 
 
 @pytest.mark.pipeline
@@ -96,7 +96,7 @@ def test_apply_args_bad_types_record_diagnostics() -> None:
         for m in msgs
     ), f"Expected list/string-shape diagnostics, got: {msgs!r}"
 
-    assert any(ArgKey.VERBOSITY_LEVEL in m.lower() for m in msgs), (
+    assert any(ArgKey.VERBOSITY_LEVEL.value in m.lower() for m in msgs), (
         f"Expected verbosity parsing diagnostic to be recorded; got: {msgs!r}"
     )
 
@@ -112,6 +112,6 @@ def test_apply_args_bad_types_record_diagnostics() -> None:
 
     # Diagnostics should include at least one message about the include_patterns list
     # (either wrong-type list handling or dropped non-strings)
-    assert any(ArgKey.INCLUDE_PATTERNS in m for m in msgs), (
+    assert any(ArgKey.INCLUDE_PATTERNS.value in m for m in msgs), (
         f"Expected include_patterns diagnostics to be recorded; got: {msgs!r}"
     )

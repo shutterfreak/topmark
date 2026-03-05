@@ -41,8 +41,6 @@ if TYPE_CHECKING:
 
     from click.shell_completion import CompletionItem as ClickCompletionItem
 
-    from topmark.rendering.formats import HeaderOutputFormat
-
     class ParamTypeBase(Protocol):
         """Typed base to avoid subclassing Any when Click lacks stubs."""
 
@@ -83,9 +81,8 @@ class ArgsNamespace(TypedDict, total=False):
         exclude_from: Files containing exclude patterns.
         include_file_types: Restrict to given file types.
         exclude_file_types: Exclude given file types.
-        relative_to: Root directory for relative paths.
         align_fields: Align header fields with colons.
-        header_format: Header output format (file type aware, plain, or json).
+        relative_to: Root directory for relative paths (for header fields).
     """
 
     # Global options: retrieve from ctx.obj
@@ -115,11 +112,10 @@ class ArgsNamespace(TypedDict, total=False):
     exclude_from: list[str] | None
     include_file_types: list[str] | None
     exclude_file_types: list[str] | None
-    relative_to: str | None
 
     # Command options: formatting
     align_fields: bool | None
-    header_format: HeaderOutputFormat | None
+    relative_to: str | None
 
 
 def build_args_namespace(
@@ -140,9 +136,8 @@ def build_args_namespace(
     exclude_from: list[str] | None = None,
     include_file_types: list[str] | None = None,
     exclude_file_types: list[str] | None = None,
-    relative_to: str | None = None,
     align_fields: bool | None = None,
-    header_format: HeaderOutputFormat | None = None,
+    relative_to: str | None = None,
 ) -> ArgsNamespace:
     """Build an ArgsNamespace dictionary for CLI argument passing.
 
@@ -164,9 +159,8 @@ def build_args_namespace(
         exclude_from: Files containing exclude patterns.
         include_file_types: Restrict to given file types.
         exclude_file_types: Exclude processing for given File types.
-        relative_to: Root directory for relative paths.
         align_fields: Align header fields with colons.
-        header_format: Header output format (native, plain, or json).
+        relative_to: Root directory for relative paths.
 
     Returns:
         Dictionary of CLI argument values for use throughout the CLI.
@@ -192,7 +186,6 @@ def build_args_namespace(
             ArgKey.EXCLUDE_FILE_TYPES: exclude_file_types,
             ArgKey.RELATIVE_TO: relative_to,
             ArgKey.ALIGN_FIELDS: align_fields,
-            ArgKey.HEADER_FORMAT: header_format,
         },
     )
 
@@ -211,7 +204,7 @@ class EnumChoiceParam(ParamTypeBase, Generic[E]):
     def __init__(self, enum_cls: type[E]) -> None:
         self.enum_cls = enum_cls
         self.name = self.enum_cls.__name__.lower()
-        # Assume the enum exposes string-valued members (e.g., HeaderOutputFormat)
+        # Assume the enum exposes string-valued members (e.g., OutputFormat)
         self.choices = [cast("str", getattr(e, "value", str(e))) for e in self.enum_cls]
 
     def _fail_noreturn(

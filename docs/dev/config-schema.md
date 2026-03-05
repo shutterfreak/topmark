@@ -46,12 +46,6 @@ topmark:
       default: true
       description: Align header field labels/colons.
 
-    header_format:
-      type: str
-      default: "native"
-      enum: ["native", "plain", "json"]
-      description: Header output format for rendering.
-
   writer:
     target:
       type: str

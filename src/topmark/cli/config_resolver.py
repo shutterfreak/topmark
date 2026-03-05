@@ -31,7 +31,6 @@ if TYPE_CHECKING:
 
     from topmark.cli.cli_types import ArgsNamespace
     from topmark.core.logging import TopmarkLogger
-    from topmark.rendering.formats import HeaderOutputFormat
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -53,11 +52,10 @@ def resolve_config_from_click(
     exclude_from: list[str],
     include_file_types: list[str],
     exclude_file_types: list[str],
-    relative_to: str | None,
     no_config: bool,
     config_paths: list[str],
     align_fields: bool | None,
-    header_format: HeaderOutputFormat | None,
+    relative_to: str | None,
 ) -> MutableConfig:
     """Build a [`Config`][topmark.config.model.Config] from Click parameters.
 
@@ -67,7 +65,7 @@ def resolve_config_from_click(
     are provided or when reading from STDIN.
 
     Resolution order (lowest → highest precedence):
-      1. **Packaged defaults** (bundled `topmark-default.toml`).
+      1. **Packaged defaults** (bundled `topmark-example.toml`).
       2. **User config** (if present):
          - `$XDG_CONFIG_HOME/topmark/topmark.toml` or `~/.topmark.toml`.
       3. **Discovered project configs** (root → cwd), unless `--no-config` is set:
@@ -96,11 +94,10 @@ def resolve_config_from_click(
         exclude_from: Paths to files that contain exclude patterns.
         include_file_types: File type identifiers to restrict processing to.
         exclude_file_types: File type identifiers to exclude processing for.
-        relative_to: Root directory used to compute relative paths.
         no_config: If True, ignore local project config files.
         config_paths: Extra config TOML file paths to merge.
         align_fields: Whether to align header fields with colons.
-        header_format: Selected header output format.
+        relative_to: Root directory used to compute relative paths.
 
     Returns:
         The merged configuration (mutable draft). Call `.freeze()` to obtain the immutable `Config`
@@ -122,9 +119,8 @@ def resolve_config_from_click(
         config_files=config_paths,
         include_file_types=include_file_types,
         exclude_file_types=exclude_file_types,
-        relative_to=relative_to,
         align_fields=align_fields,
-        header_format=header_format,
+        relative_to=relative_to,
     )
     logger.trace("ArgsNamespace: %s", args)
 

@@ -25,10 +25,10 @@ Notes:
 
 from __future__ import annotations
 
-from typing import Final
+from enum import Enum
 
 
-class ArgKey:
+class ArgKey(str, Enum):
     """Canonical argument keys used by the TopMark CLI / API.
 
     Notes:
@@ -39,59 +39,58 @@ class ArgKey:
     """
 
     # File selection & filters
-    FILES: Final[str] = "files"
-    INCLUDE_PATTERNS: Final[str] = "include_patterns"
-    EXCLUDE_PATTERNS: Final[str] = "exclude_patterns"
-    INCLUDE_FROM: Final[str] = "include_from"
-    EXCLUDE_FROM: Final[str] = "exclude_from"
-    FILES_FROM: Final[str] = "files_from"
-    RELATIVE_TO: Final[str] = "relative_to"
-    INCLUDE_FILE_TYPES: Final[str] = "include_file_types"
-    EXCLUDE_FILE_TYPES: Final[str] = "exclude_file_types"
+    FILES = "files"
+    INCLUDE_PATTERNS = "include_patterns"
+    EXCLUDE_PATTERNS = "exclude_patterns"
+    INCLUDE_FROM = "include_from"
+    EXCLUDE_FROM = "exclude_from"
+    FILES_FROM = "files_from"
+    INCLUDE_FILE_TYPES = "include_file_types"
+    EXCLUDE_FILE_TYPES = "exclude_file_types"
 
     # Config discovery
-    CONFIG_FILES: Final[str] = "config_files"
-    NO_CONFIG: Final[str] = "no_config"
-    CONFIG_FOR_PYPROJECT: Final[str] = "for_pyproject"
+    CONFIG_FILES = "config_files"
+    NO_CONFIG = "no_config"
+    CONFIG_FOR_PYPROJECT = "for_pyproject"
 
     # Header rendering
-    HEADER_FORMAT: Final[str] = "header_format"
-    ALIGN_FIELDS: Final[str] = "align_fields"
+    ALIGN_FIELDS = "align_fields"
+    RELATIVE_TO = "relative_to"
 
     # Policy
-    POLICY_CHECK_ADD_ONLY: Final[str] = "add_only"
-    POLICY_CHECK_UPDATE_ONLY: Final[str] = "update_only"
+    POLICY_CHECK_ADD_ONLY = "add_only"
+    POLICY_CHECK_UPDATE_ONLY = "update_only"
 
     # Output / write behavior
-    WRITE_MODE: Final[str] = "write_mode"
-    APPLY_CHANGES: Final[str] = "apply_changes"
-    RENDER_DIFF: Final[str] = "diff"
-    RESULTS_SUMMARY_MODE: Final[str] = "summary_mode"
-    OUTPUT_FORMAT: Final[str] = "output_format"
-    SHOW_DETAILS: Final[str] = "show_details"
-    SKIP_COMPLIANT: Final[str] = "skip_compliant"
-    SKIP_UNSUPPORTED: Final[str] = "skip_unsupported"
+    WRITE_MODE = "write_mode"
+    APPLY_CHANGES = "apply_changes"
+    RENDER_DIFF = "diff"
+    RESULTS_SUMMARY_MODE = "summary_mode"
+    OUTPUT_FORMAT = "output_format"
+    SHOW_DETAILS = "show_details"
+    SKIP_COMPLIANT = "skip_compliant"
+    SKIP_UNSUPPORTED = "skip_unsupported"
 
     # Logging / UX
-    VERBOSE: Final[str] = "verbose"
-    QUIET: Final[str] = "quiet"
-    VERBOSITY_LEVEL: Final[str] = "verbosity_level"
-    LOG_LEVEL: Final[str] = "log_level"
-    COLOR_MODE: Final[str] = "color_mode"
-    NO_COLOR_MODE: Final[str] = "no_color"
-    COLOR_ENABLED: Final[str] = "color_enabled"
-    CONSOLE: Final[str] = "console"
+    VERBOSE = "verbose"
+    QUIET = "quiet"
+    VERBOSITY_LEVEL = "verbosity_level"
+    LOG_LEVEL = "log_level"
+    COLOR_MODE = "color_mode"
+    NO_COLOR_MODE = "no_color"
+    COLOR_ENABLED = "color_enabled"
+    CONSOLE = "console"
 
     # Stdin / misc
-    STDIN_MODE: Final[str] = "stdin_mode"
-    STDIN_FILENAME: Final[str] = "stdin_filename"
-    SEMVER_VERSION: Final[str] = "semver"
+    STDIN_MODE = "stdin_mode"
+    STDIN_FILENAME = "stdin_filename"
+    SEMVER_VERSION = "semver"
 
     # Config checking
-    STRICT_CONFIG_CHECKING: Final[str] = "strict_config_checking"
+    STRICT_CONFIG_CHECKING = "strict_config_checking"
 
     # Config root
-    CONFIG_ROOT: Final[str] = "config_root"
+    CONFIG_ROOT = "config_root"
 
     # Machine metadata payload
-    META: Final[str] = "meta_payload"
+    META = "meta_payload"

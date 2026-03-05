@@ -1,8 +1,8 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : topmark-default.toml
-#   file_relpath : src/topmark/config/topmark-default.toml
+#   file         : topmark-example.toml
+#   file_relpath : src/topmark/config/topmark-example.toml
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -80,6 +80,9 @@
 #     custom value will override the built-in value *for rendering*.
 fields = ["file", "file_relpath"]
 
+# Affects header metadata (e.g., file_relpath) only, not discovery.
+# relative_to = "."
+
 
 # ========================
 # TopMark field definition
@@ -110,9 +113,6 @@ fields = ["file", "file_relpath"]
 
 # Align the fields (colons) in the header for better readability. Values: true or false.
 align_fields = true
-
-# File header format (default, native, plain, json)
-# header_format = "native"
 
 
 # ====================
@@ -207,9 +207,6 @@ allow_header_in_empty_files = false
 # Optional list of input paths (files/directories) to scan.
 # These are typically specified via CLI.
 # files = ["src", "tests", "README.md"]
-
-# Affects header metadata (e.g., file_relpath) only, not discovery.
-# relative_to = "."
 
 
 # ============================

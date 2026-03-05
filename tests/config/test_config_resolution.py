@@ -39,13 +39,20 @@ if TYPE_CHECKING:
 
 def _write(path: Path, content: str) -> None:
     """Write a small TOML snippet to `path`, creating parent directories."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(textwrap.dedent(content).lstrip("\n"), encoding="utf-8")
+    path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+    path.write_text(
+        textwrap.dedent(content).lstrip("\n"),
+        encoding="utf-8",
+    )
 
 
 @pytest.mark.pipeline
 def test_relative_to_resolves_against_config_dir(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """`relative_to = "."` in a config file resolves to that file's directory."""
     proj: Path = tmp_path / "proj"
@@ -55,7 +62,7 @@ def test_relative_to_resolves_against_config_dir(
     _write(
         proj / "pyproject.toml",
         """
-        [tool.topmark.files]
+        [tool.topmark.header]
         relative_to = "."
         """,
     )
@@ -181,8 +188,9 @@ def test_globs_evaluated_relative_to_relative_to(tmp_path: Path) -> None:
     _write(
         proj / "pyproject.toml",
         """
-        [tool.topmark.files]
+        [tool.topmark.header]
         relative_to = "."
+        [tool.topmark.files]
         include_patterns = ["src/**/*.py"]
         """,
     )
@@ -206,7 +214,7 @@ def test_relative_to_inheritance_across_multiple_discovered_configs(
     _write(
         root / "pyproject.toml",
         """
-        [tool.topmark.files]
+        [tool.topmark.header]
         relative_to = "."
         """,
     )
@@ -215,7 +223,7 @@ def test_relative_to_inheritance_across_multiple_discovered_configs(
         child / "pyproject.toml",
         """
         [tool.topmark]
-        # no files.relative_to here
+        # no header.relative_to here
         """,
     )
 
@@ -235,14 +243,14 @@ def test_child_overrides_relative_to_with_its_own_dir(tmp_path: Path) -> None:
     _write(
         root / "pyproject.toml",
         """
-        [tool.topmark.files]
+        [tool.topmark.header]
         relative_to = "."
         """,
     )
     _write(
         child / "pyproject.toml",
         """
-        [tool.topmark.files]
+        [tool.topmark.header]
         relative_to = "subroot"
         """,
     )

@@ -58,7 +58,7 @@ _BUILTIN_MODULES: Final[tuple[str, ...]] = (
     "topmark.filetypes.builtins.docs",
 )
 
-_ENTRYPOINT_GROUP: Final[str] = "topmark.filetypes"
+_ENTRYPOINT_GROUP: Final = "topmark.filetypes"
 
 
 def _iter_builtin_filetypes() -> Iterable[FileType]:

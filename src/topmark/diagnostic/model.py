@@ -155,6 +155,10 @@ class DiagnosticLog:
 
         """
         self._add(Diagnostic(DiagnosticLevel.INFO, message))
+        logger.info(
+            message,
+            stacklevel=2,
+        )
 
     def add_warning(self, message: str) -> None:
         """Add a ``warning`` diagnostic to the diagnostic log.
@@ -163,6 +167,10 @@ class DiagnosticLog:
             message: The diagnostic message.
         """
         self._add(Diagnostic(DiagnosticLevel.WARNING, message))
+        logger.warning(
+            message,
+            stacklevel=2,
+        )
 
     def add_error(self, message: str) -> None:
         """Add an ``error`` diagnostic to the diagnostic log.
@@ -173,6 +181,10 @@ class DiagnosticLog:
             message: The diagnostic message.
         """
         self._add(Diagnostic(DiagnosticLevel.ERROR, message))
+        logger.error(
+            message,
+            stacklevel=2,
+        )
 
     def stats(self) -> DiagnosticStats:
         """Return per-level counts for diagnostics in this log.

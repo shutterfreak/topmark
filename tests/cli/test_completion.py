@@ -13,8 +13,8 @@
 These tests validate that options backed by our custom EnumParam
 expose proper shell completions via Click 8.x's completion engine.
 
-We focus on the `--header-format` option, which is typed as
-`EnumParam(HeaderOutputFormat)` and should complete known values.
+We focus on the `--output-format` option, which is typed as
+`EnumParam(OutputFormat)` and should complete known values.
 
 To run only these tests:
     pytest -q tests/test_completion.py
@@ -36,13 +36,13 @@ from tests.conftest import parametrize
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.keys import CliOpt
 from topmark.cli.main import cli
-from topmark.rendering.formats import HeaderOutputFormat
+from topmark.core.formats import OutputFormat
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
 
-def _enum_values(enum_cls: type[HeaderOutputFormat]) -> set[str]:
+def _enum_values(enum_cls: type[OutputFormat]) -> set[str]:
     """Return the set of string values for the given Enum class.
 
     The CLI exposes enum *values* (not names), so we compare against these.
@@ -51,14 +51,14 @@ def _enum_values(enum_cls: type[HeaderOutputFormat]) -> set[str]:
 
 
 def _complete(incomplete: str = "") -> list[CompletionItem]:
-    """Call EnumParam(HeaderOutputFormat).shell_complete directly.
+    """Call EnumParam(OutputFormat).shell_complete directly.
 
     This isolates the test from Click's shell adapters and focuses on our
     custom parameter type's completion behavior.
     """
-    enum_type: EnumChoiceParam[HeaderOutputFormat] = EnumChoiceParam(HeaderOutputFormat)
+    enum_type: EnumChoiceParam[OutputFormat] = EnumChoiceParam(OutputFormat)
     # Minimal Click option and context
-    opt = click.Option((CliOpt.HEADER_FORMAT,), type=enum_type)
+    opt = click.Option((CliOpt.OUTPUT_FORMAT,), type=enum_type)
     ctx = click.Context(cli)
     items: list[CompletionItem] = enum_type.shell_complete(ctx, opt, incomplete)
     if items:
@@ -72,18 +72,18 @@ def _values(items: Iterable[CompletionItem]) -> set[str]:
     return {getattr(i, "value", str(i)) for i in items}
 
 
-def test_header_format_completion_lists_all_values() -> None:
-    """`--header-format` completion should list all HeaderOutputFormat values."""
+def test_output_format_completion_lists_all_values() -> None:
+    """`--output-format` completion should list all OutputFormat values."""
     items: list[CompletionItem] = _complete("")
     values: set[str] = _values(items)
-    assert _enum_values(HeaderOutputFormat) <= values
+    assert _enum_values(OutputFormat) <= values
 
 
 # adapt if enum values change
 @mark_cli
-@parametrize("prefix", ["n", "p", "j"])
+@parametrize("prefix", ["t", "m", "j", "n"])
 # adapt if enum values change
-def test_header_format_completion_filters_by_prefix(prefix: str) -> None:
+def test_output_format_completion_filters_by_prefix(prefix: str) -> None:
     """Completion should be filtered by the typed prefix (case-insensitive)."""
     items: list[CompletionItem] = _complete(prefix)
     values: set[str] = _values(items)
@@ -92,27 +92,25 @@ def test_header_format_completion_filters_by_prefix(prefix: str) -> None:
     assert all(v.lower().startswith(prefix.lower()) for v in values)
 
     # At least one known enum value starting with the prefix should appear (when applicable)
-    expected: set[str] = {
-        v for v in _enum_values(HeaderOutputFormat) if v.lower().startswith(prefix)
-    }
+    expected: set[str] = {v for v in _enum_values(OutputFormat) if v.lower().startswith(prefix)}
     if expected:
         assert expected & values
 
 
 @mark_cli
-def test_header_format_completion_handles_nonmatching_prefix() -> None:
+def test_output_format_completion_handles_nonmatching_prefix() -> None:
     """Non-matching prefixes should yield an empty suggestion list."""
     items: list[CompletionItem] = _complete("zzz")
     assert _values(items) == set()
 
 
 @mark_cli
-def test_header_format_completion_works_across_commands() -> None:
+def test_output_format_completion_works_across_commands() -> None:
     """The same option type should complete in other commands that accept it."""
     # If another command (e.g., check) exposes --header-format, it should complete too.
     items: list[CompletionItem] = _complete("")
     values: set[str] = _values(items)
     # Not all commands must expose the option, but when they do, values should be suggested.
     # Accept either empty (option not present) or the full enum set.
-    enum_vals: set[str] = _enum_values(HeaderOutputFormat)
+    enum_vals: set[str] = _enum_values(OutputFormat)
     assert values in (set(), values | enum_vals) or enum_vals <= values

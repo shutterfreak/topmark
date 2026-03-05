@@ -60,7 +60,7 @@ def load_default_config_template_toml_text() -> tuple[str, Exception | None]:
     """Load the bundled default TOML config *template* as text.
 
     This reads the annotated template bundled with TopMark
-    (``topmark-default.toml``) and returns it as UTF-8 text.
+    (``topmark-example.toml``) and returns it as UTF-8 text.
 
     Unlike `load_defaults_dict`, this helper preserves the template's
     comments and formatting (when the packaged resource is available).
@@ -111,7 +111,7 @@ def load_default_config_template_toml_text() -> tuple[str, Exception | None]:
 
         # Make the fallback explicit in the generated output, without breaking TOML.
         notice: str = (
-            "# NOTE: The packaged default configuration template 'topmark-default.toml' "
+            "# NOTE: The packaged default configuration template 'topmark-example.toml' "
             "could not be read.\n"
             f"# Reason: {exc}\n"
             "# The content below was generated from TopMark runtime defaults and "
@@ -128,7 +128,7 @@ def load_defaults_dict() -> TomlTable:
 
     This function intentionally performs **no I/O**.
 
-    The bundled file ``topmark-default.toml`` is an *annotated* template intended
+    The bundled file ``topmark-example.toml`` is an *annotated* template intended
     for human-facing output (e.g. ``topmark config init``). Runtime defaults,
     however, are defined in code so TopMark can operate even if the packaged
     template is missing or unreadable.
@@ -147,11 +147,12 @@ def load_defaults_dict() -> TomlTable:
     return {
         Toml.SECTION_HEADER: {
             Toml.KEY_FIELDS: ["file", "file_relpath"],
+            # `relative_to` defaults to empty/unset.
+            Toml.KEY_RELATIVE_TO: "",
         },
         Toml.SECTION_FIELDS: {},
         Toml.SECTION_FORMATTING: {
             Toml.KEY_ALIGN_FIELDS: True,
-            # NOTE: header_format defaults to None (unset) unless configured.
         },
         Toml.SECTION_WRITER: {
             Toml.KEY_TARGET: "file",
@@ -172,8 +173,6 @@ def load_defaults_dict() -> TomlTable:
             Toml.KEY_INCLUDE_FILE_TYPES: [],
             Toml.KEY_EXCLUDE_FILE_TYPES: [],
             Toml.KEY_FILES: [],
-            # `relative_to` defaults to empty/unset.
-            Toml.KEY_RELATIVE_TO: "",
         },
         # No policy_by_type defaults.
     }

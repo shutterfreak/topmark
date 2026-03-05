@@ -48,7 +48,6 @@ from topmark.cli_shared.color import ColorMode
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
 from topmark.core.logging import get_logger
-from topmark.rendering.formats import HeaderOutputFormat
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -844,7 +843,7 @@ def common_config_resolution_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
 def common_header_formatting_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
     """Apply common header formatting options.
 
-    Adds ``--align-fields/--no-align-fields``, ``--header-format`` and ``--relative-to``.
+    Adds ``--align-fields/--no-align-fields`` and ``--relative-to``.
 
     Args:
         f: The Click command function to decorate.
@@ -858,13 +857,6 @@ def common_header_formatting_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
         is_flag=True,
         default=None,
         help="Align header fields with colons.",
-    )(f)
-
-    f = option_with_underscore_traps(
-        CliOpt.HEADER_FORMAT,
-        ArgKey.HEADER_FORMAT,
-        type=EnumChoiceParam(HeaderOutputFormat),
-        help=f"Select the header format ({', '.join(e.value for e in HeaderOutputFormat)}).",
     )(f)
 
     f = option_with_underscore_traps(

@@ -39,7 +39,7 @@ class Toml:
     schema as it appears in `topmark.toml` and in `[tool.topmark]` inside
     `pyproject.toml`.
 
-    The ordering of constants mirrors `topmark-default.toml` to make it easy to
+    The ordering of constants mirrors `topmark-example.toml` to make it easy to
     audit schema changes and keep defaults/docs/parsing aligned.
 
     Notes:
@@ -55,6 +55,7 @@ class Toml:
     SECTION_HEADER: Final[str] = "header"
 
     KEY_FIELDS: Final[str] = "fields"
+    KEY_RELATIVE_TO: Final[str] = "relative_to"
 
     # [fields]
     SECTION_FIELDS: Final[str] = "fields"
@@ -63,7 +64,6 @@ class Toml:
     SECTION_FORMATTING: Final[str] = "formatting"
 
     KEY_ALIGN_FIELDS: Final[str] = "align_fields"
-    KEY_HEADER_FORMAT: Final[str] = "header_format"
 
     # [writer]
     SECTION_WRITER: Final[str] = "writer"
@@ -79,6 +79,9 @@ class Toml:
     KEY_POLICY_CHECK_ADD_ONLY: Final[str] = "add_only"
     KEY_POLICY_CHECK_UPDATE_ONLY: Final[str] = "update_only"
     KEY_POLICY_ALLOW_HEADER_IN_EMPTIES: Final[str] = "allow_header_in_empty_files"
+    KEY_POLICY_ALLOW_EMPTY_HEADER: Final[str] = "render_empty_header_when_no_fields"
+    KEY_POLICY_ALLOW_REFLOW: Final[str] = "allow_reflow"
+    KEY_POLICY_ALLOW_CONTENT_PROBE: Final[str] = "allow_content_probe"
 
     # [files]
     SECTION_FILES: Final[str] = "files"
@@ -90,7 +93,6 @@ class Toml:
     KEY_INCLUDE_PATTERNS: Final[str] = "include_patterns"
     KEY_EXCLUDE_PATTERNS: Final[str] = "exclude_patterns"
     KEY_FILES_FROM: Final[str] = "files_from"
-    KEY_RELATIVE_TO: Final[str] = "relative_to"
     KEY_CONFIG_FILES: Final[str] = "config_files"
     KEY_FILES: Final[str] = "files"
 
@@ -117,12 +119,12 @@ class Toml:
         SECTION_HEADER: frozenset(
             {
                 KEY_FIELDS,
+                KEY_RELATIVE_TO,
             }
         ),
         SECTION_FORMATTING: frozenset(
             {
                 KEY_ALIGN_FIELDS,
-                KEY_HEADER_FORMAT,
             }
         ),
         SECTION_WRITER: frozenset(
@@ -149,7 +151,6 @@ class Toml:
                 KEY_INCLUDE_PATTERNS,
                 KEY_EXCLUDE_PATTERNS,
                 KEY_FILES_FROM,
-                KEY_RELATIVE_TO,
                 KEY_CONFIG_FILES,
                 KEY_FILES,
             }

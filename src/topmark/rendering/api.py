@@ -29,7 +29,6 @@ from topmark.config.policy import make_policy_registry
 from topmark.pipeline import runner
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.pipelines import Pipeline
-from topmark.rendering.formats import HeaderOutputFormat
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -45,7 +44,6 @@ def render_header_for_path(
     path: Path,
     header_overrides: dict[str, str] | None = None,
     field_order_override: list[str] | None = None,
-    format_override: HeaderOutputFormat | None = None,
     # newline: str = "\n",
 ) -> str:
     """Render a TopMark header for a given file path using the render pipeline.
@@ -59,19 +57,12 @@ def render_header_for_path(
         path: Target file path whose file type determines the processor.
         header_overrides: Optional mapping of field overrides to inject into the header.
         field_order_override: Optional explicit field order to render instead of the default.
-        format_override: Optional explicit header output format to use. Defaults to
-            ``HeaderOutputFormat.NATIVE``.
 
     Returns:
         The rendered header as a single string (joined lines).
         Returns an empty string if the render view is absent.
     """
     # Prepare effective values without mutating the original Config (it's frozen)
-
-    # Compute the effective format (override > config > default)
-    effective_format: HeaderOutputFormat = (
-        format_override or config.header_format or HeaderOutputFormat.NATIVE
-    )
 
     # Compute effective field order (override > config)
     effective_fields: tuple[str, ...] = (
@@ -86,7 +77,6 @@ def render_header_for_path(
     # Build an effective frozen snapshot for the renderer
     eff_config: Config = replace(
         config,
-        header_format=effective_format,
         header_fields=effective_fields,
         field_values=merged,
     )

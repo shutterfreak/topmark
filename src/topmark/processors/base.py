@@ -48,7 +48,6 @@ from topmark.processors.types import HeaderBounds
 from topmark.processors.types import HeaderParseResult
 from topmark.processors.types import StripDiagKind
 from topmark.processors.types import StripDiagnostic
-from topmark.rendering.formats import HeaderOutputFormat
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -290,14 +289,7 @@ class HeaderProcessor:
 
             if ":" not in cleaned:
                 # Header line has no colon
-                logger.warning(
-                    "Malformed header at line %d (no colon found): %s",
-                    abs_line_no,
-                    raw,
-                )
-                context.error(
-                    f"Unrecognized header field name at line {abs_line_no}: '{raw.rstrip()}'"
-                )
+                context.error(f"Malformed header at line {abs_line_no} (no colon found): {raw!r}")
                 cnt_header_error += 1
                 continue
 
@@ -308,12 +300,9 @@ class HeaderProcessor:
             v: str = value.strip()
             if not k:
                 # Header line has colon but empty text before colon
-                logger.warning(
-                    "Malformed header at line %d (empty text before colon): %s",
-                    abs_line_no,
-                    raw,
+                context.error(
+                    f"Malformed header at line {abs_line_no} (empty text before colon): {raw!r}"
                 )
-                context.error(f"Empty header field name at line {abs_line_no}: '{raw.rstrip()}'")
                 cnt_header_error += 1
                 continue
 
@@ -583,17 +572,7 @@ class HeaderProcessor:
 
         Returns:
             Rendered header lines ending with ``newline_style``.
-
-        Raises:
-            RuntimeError: If `config` is undefined.
-
-        Notes:
-            - If ``config.header_format`` is ``HeaderOutputFormat.PLAIN``, the method emits
-              a raw/plain header (no prefixes/suffixes/indentation) unless overrides are given.
         """
-        if not config:
-            raise RuntimeError("Config is undefined")
-
         logger.info(
             "%s: rendering header fields: %s",
             self.__class__.__name__,
@@ -601,35 +580,21 @@ class HeaderProcessor:
         )
         logger.debug("render_header_lines: align_fields=%s", config.align_fields)
 
-        if config.header_format is HeaderOutputFormat.PLAIN:
-            # Don't use the config's block_prefix/suffix or
-            # line_prefix/suffix, but rather the provided overrides or defaults.
-            block_prefix: str = ""
-            block_suffix: str = ""
-            line_prefix: str = ""
-            line_suffix: str = ""
-            effective_line_indent: str = ""
-            header_indent: str = ""
-        else:
-            # Use provided overrides or defaults from the instance
-            block_prefix = (
-                block_prefix_override if block_prefix_override is not None else self.block_prefix
-            )
-            block_suffix = (
-                block_suffix_override if block_suffix_override is not None else self.block_suffix
-            )
-            line_prefix = (
-                line_prefix_override if line_prefix_override is not None else self.line_prefix
-            )
-            line_suffix = (
-                line_suffix_override if line_suffix_override is not None else self.line_suffix
-            )
-            effective_line_indent = (
-                line_indent_override if line_indent_override is not None else self.line_indent
-            )
-            header_indent = (
-                header_indent_override if header_indent_override is not None else self.header_indent
-            )
+        # Use provided overrides or defaults from the instance
+        block_prefix = (
+            block_prefix_override if block_prefix_override is not None else self.block_prefix
+        )
+        block_suffix = (
+            block_suffix_override if block_suffix_override is not None else self.block_suffix
+        )
+        line_prefix = line_prefix_override if line_prefix_override is not None else self.line_prefix
+        line_suffix = line_suffix_override if line_suffix_override is not None else self.line_suffix
+        effective_line_indent = (
+            line_indent_override if line_indent_override is not None else self.line_indent
+        )
+        header_indent = (
+            header_indent_override if header_indent_override is not None else self.header_indent
+        )
 
         # Compute header field name width only when alignment is enabled.
         # When align_fields is False, emit compact "field : value" without padding.

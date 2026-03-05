@@ -58,7 +58,6 @@ from typing import cast
 
 from topmark.cli.keys import CliOpt
 from topmark.config.args_io import get_arg_bool_or_none_checked
-from topmark.config.args_io import get_arg_enum_checked
 from topmark.config.args_io import get_arg_int_or_none_checked
 from topmark.config.args_io import get_arg_string_list_checked
 from topmark.config.args_io import get_arg_string_or_none_checked
@@ -89,7 +88,6 @@ from topmark.diagnostic.model import DiagnosticLog
 from topmark.diagnostic.model import DiagnosticStats
 from topmark.diagnostic.model import FrozenDiagnosticLog
 from topmark.diagnostic.model import compute_diagnostic_stats
-from topmark.rendering.formats import HeaderOutputFormat
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -139,8 +137,6 @@ class Config:
         field_values: Mapping of field names to their string values
             from [fields].
         align_fields: Whether to align fields, from [formatting].
-        header_format: Header output format
-            (file type aware, plain, or json).
         relative_to_raw: Original string from config or CLI
         relative_to: Base path used only for header metadata (e.g., file_relpath).
             Note: Glob expansion and filtering are resolved relative to their declaring source
@@ -198,11 +194,10 @@ class Config:
     header_fields: tuple[str, ...]
     field_values: Mapping[str, str]
 
-    # Formatting options
+    # Header formatting
     align_fields: bool | None
-    header_format: HeaderOutputFormat | None
 
-    # Base path resolution
+    # Header formatting: base path resolution
     relative_to_raw: str | None
     relative_to: Path | None
 
@@ -270,12 +265,12 @@ class Config:
 
         toml_dict: TomlTable = {
             Toml.SECTION_FIELDS: dict(self.field_values),
-            Toml.SECTION_HEADER: {Toml.KEY_FIELDS: list(self.header_fields)},
+            Toml.SECTION_HEADER: {
+                Toml.KEY_FIELDS: list(self.header_fields),
+                Toml.KEY_RELATIVE_TO: self.relative_to_raw,
+            },
             Toml.SECTION_FORMATTING: {
                 Toml.KEY_ALIGN_FIELDS: self.align_fields,
-                Toml.KEY_HEADER_FORMAT: (
-                    self.header_format.value if self.header_format is not None else None
-                ),
             },
             Toml.SECTION_WRITER: {
                 # self.output_target is an Enum type
@@ -290,7 +285,6 @@ class Config:
                 Toml.KEY_EXCLUDE_FROM: [str(ps.path) for ps in self.exclude_from],
                 Toml.KEY_INCLUDE_PATTERNS: list(self.include_patterns),
                 Toml.KEY_EXCLUDE_PATTERNS: list(self.exclude_patterns),
-                Toml.KEY_RELATIVE_TO: self.relative_to_raw,
                 Toml.KEY_CONFIG_FILES: [
                     str(p) if isinstance(p, Path) else str(p) for p in self.config_files
                 ],
@@ -342,7 +336,6 @@ class Config:
             header_fields=list(self.header_fields),
             field_values=dict(self.field_values),
             align_fields=self.align_fields,
-            header_format=self.header_format,
             relative_to_raw=self.relative_to_raw,
             relative_to=self.relative_to,
             stdin_mode=self.stdin_mode,
@@ -400,8 +393,6 @@ class MutableConfig:
         header_fields: List of header fields from the [header] section.
         field_values: Mapping of field names to their string values from [fields].
         align_fields: Whether to align fields, from [formatting].
-        header_format: Header output format
-            (file type aware, plain, or json).
         relative_to_raw: Original string from config or CLI
         relative_to: Base path for relative file references, from [files].
         stdin_mode: Whether to read from stdin; requires explicit True to activate.
@@ -446,11 +437,10 @@ class MutableConfig:
     header_fields: list[str] = field(default_factory=lambda: [])
     field_values: dict[str, str] = field(default_factory=lambda: {})
 
-    # Formatting options
+    # Header formatting
     align_fields: bool | None = None
-    header_format: HeaderOutputFormat | None = None
 
-    # Base path resolution
+    # Header formatting: base path resolution
     relative_to_raw: str | None = None  # original string from config or CLI
     relative_to: Path | None = None  # resolved version (used at runtime)
 
@@ -506,11 +496,7 @@ class MutableConfig:
 
         # Validate mutual exclusivity on resolved global policy
         if global_policy_frozen.add_only and global_policy_frozen.update_only:
-            raise ValueError(
-                "Policy invalid: "
-                f"`{ArgKey.POLICY_CHECK_ADD_ONLY}` and `{ArgKey.POLICY_CHECK_UPDATE_ONLY}` "
-                "cannot both be True."
-            )
+            raise ValueError("Policy invalid: `add_only` and `update_only` cannot both be True.")
 
         # Resolve per-type policies against the resolved global policy
         frozen_by_type: dict[str, Policy] = {}
@@ -519,8 +505,7 @@ class MutableConfig:
             if resolved.add_only and resolved.update_only:
                 raise ValueError(
                     f"Policy invalid for type '{ft}': "
-                    f"`{ArgKey.POLICY_CHECK_ADD_ONLY}` and `{ArgKey.POLICY_CHECK_UPDATE_ONLY}` "
-                    "cannot both be True."
+                    "`add_only` and `update_only` cannot both be True."
                 )
             frozen_by_type[ft] = resolved
 
@@ -540,7 +525,6 @@ class MutableConfig:
             header_fields=tuple(self.header_fields),
             field_values=dict(self.field_values),
             align_fields=self.align_fields,
-            header_format=self.header_format,
             relative_to_raw=self.relative_to_raw,
             relative_to=self.relative_to,
             stdin_mode=self.stdin_mode,
@@ -767,7 +751,6 @@ class MutableConfig:
             if not keys:
                 return
             msg: str = f"Unknown TOML key(s) in {where} (ignored): " + ", ".join(sorted(keys))
-            logger.warning(msg)
             draft.diagnostics.add_warning(msg)
 
         # Validate top-level keys
@@ -786,7 +769,6 @@ class MutableConfig:
                     f"TOML section [{section_name}] must be a table; "
                     f"got {type(section_val).__name__} (ignored)."
                 )
-                logger.warning(msg)
                 draft.diagnostics.add_warning(msg)
                 continue
 
@@ -804,7 +786,6 @@ class MutableConfig:
                         f"TOML section [{Toml.SECTION_POLICY_BY_TYPE}.{ft}] "
                         f"must be a table; got {type(ft_tbl_any).__name__} (ignored)."
                     )
-                    logger.warning(msg)
                     draft.diagnostics.add_warning(msg)
                     continue
 
@@ -855,7 +836,6 @@ class MutableConfig:
             Toml.KEY_TARGET,
             where=where_writer,
             diagnostics=draft.diagnostics,
-            logger=logger,
         )
         if raw_target is not None:
             parsed_target: OutputTarget | None = OutputTarget.parse(raw_target)
@@ -865,7 +845,6 @@ class MutableConfig:
                     f"Invalid value for {where_writer}.{Toml.KEY_TARGET}: "
                     f"{raw_target!r} (allowed: {allowed_targets})"
                 )
-                logger.warning(msg)
                 draft.diagnostics.add_warning(msg)
             else:
                 draft.output_target = parsed_target
@@ -876,7 +855,6 @@ class MutableConfig:
             Toml.KEY_STRATEGY,
             where=where_writer,
             diagnostics=draft.diagnostics,
-            logger=logger,
         )
         if raw_strategy is not None:
             parsed_strategy: FileWriteStrategy | None = FileWriteStrategy.parse(raw_strategy)
@@ -886,7 +864,6 @@ class MutableConfig:
                     f"Invalid value for {where_writer}.{Toml.KEY_STRATEGY}: "
                     f"{raw_strategy!r} (allowed: {allowed_strategies})"
                 )
-                logger.warning(msg)
                 draft.diagnostics.add_warning(msg)
             else:
                 draft.file_write_strategy = parsed_strategy
@@ -901,7 +878,6 @@ class MutableConfig:
                 key,
                 where=where_policy,
                 diagnostics=draft.diagnostics,
-                logger=logger,
             )
         draft.policy = MutablePolicy.from_toml_table(policy_tbl)
 
@@ -917,7 +893,6 @@ class MutableConfig:
                     key,
                     where=where,
                     diagnostics=draft.diagnostics,
-                    logger=logger,
                 )
         draft.policy_by_type = {
             str(ft): MutablePolicy.from_toml_table(tbl) for ft, tbl in policy_by_type_tbl.items()
@@ -930,7 +905,6 @@ class MutableConfig:
             Toml.KEY_FILES,
             where=where_files,
             diagnostics=draft.diagnostics,
-            logger=logger,
         )
         if raw_files:
             if cfg_dir is not None:
@@ -951,7 +925,6 @@ class MutableConfig:
                 key,
                 where=where_files,
                 diagnostics=draft.diagnostics,
-                logger=logger,
             )
 
             if not vals:
@@ -984,7 +957,10 @@ class MutableConfig:
         def _extend_glob_list(attr: str, key: str) -> None:
             # Enforce "list of strings" for field selection in TOML:
             vals: list[str] = get_string_list_value_checked(
-                files_tbl, key, where=where_files, diagnostics=draft.diagnostics, logger=logger
+                files_tbl,
+                key,
+                where=where_files,
+                diagnostics=draft.diagnostics,
             )
 
             if vals:
@@ -1002,11 +978,6 @@ class MutableConfig:
             else:
                 # [fields] is a free-form table; include the TOML location for consistency.
                 loc: str = f"[{Toml.SECTION_FIELDS}].{k}"
-                logger.warning(
-                    "Ignoring unsupported field value for %s: %r",
-                    loc,
-                    v,
-                )
                 draft.diagnostics.add_warning(f"Ignoring unsupported field value for {loc}: {v}")
         draft.field_values = field_values
 
@@ -1019,22 +990,23 @@ class MutableConfig:
             Toml.KEY_FIELDS,
             where=f"[{Toml.SECTION_HEADER}]",
             diagnostics=draft.diagnostics,
-            logger=logger,
         )
 
-        # # Fallback: if no explicit header field order is provided, use the keys of
-        # # the field_values table in their declared order. This preserves intuitive
-        # # behavior (headers render when values are present).
-        # if not header_fields and field_values:
-        #     header_fields = list(field_values.keys())
+        # NOTE: If the user did not specify any header fields, this results in an empty header.
+        # Fallback: if no explicit header field order is provided, use the keys of
+        # the field_values table in their declared order. This preserves intuitive
+        # behavior (headers render when values are present).
+        if not draft.header_fields:
+            draft.diagnostics.add_warning(
+                f"{Toml.SECTION_HEADER}.{Toml.KEY_FIELDS} is not set (empty TopMark header)"
+            )
 
         # Parse relative_to path if present, resolve to absolute path
         draft.relative_to_raw = get_string_value_checked(
-            files_tbl,
+            header_tbl,
             Toml.KEY_RELATIVE_TO,
             where=where_files,
             diagnostics=draft.diagnostics,
-            logger=logger,
             default="",
         )
         if draft.relative_to_raw:
@@ -1052,6 +1024,8 @@ class MutableConfig:
         else:
             draft.relative_to = None
 
+        # ---- Header Formatting ----
+
         where_fmt: Final[str] = f"[{Toml.SECTION_FORMATTING}]"
         # align_fields --  NOTE: do not set a default value if not set
         draft.align_fields = get_bool_value_or_none_checked(
@@ -1059,38 +1033,9 @@ class MutableConfig:
             Toml.KEY_ALIGN_FIELDS,
             where=where_fmt,
             diagnostics=draft.diagnostics,
-            logger=logger,
         )
 
-        # raw_header_format --  NOTE: do not set a default value if not set
-        raw_header_format: str | None = get_string_value_or_none_checked(
-            formatting_tbl,
-            Toml.KEY_HEADER_FORMAT,
-            where=where_fmt,
-            diagnostics=draft.diagnostics,
-            logger=logger,
-        )
-
-        if raw_header_format:
-            try:
-                draft.header_format = HeaderOutputFormat(raw_header_format)
-            except ValueError:
-                valid_values: str = ", ".join(e.value for e in HeaderOutputFormat)
-                logger.error(
-                    "Invalid header format specifier found: %s (allowed values: %s)",
-                    raw_header_format,
-                    valid_values,
-                )
-                draft.diagnostics.add_error(
-                    f"Invalid header format specifier found: {raw_header_format} "
-                    f"(allowed values: {valid_values})"
-                )
-                draft.header_format = None
-        else:
-            # choose your default; this keeps behavior predictable
-            draft.header_format = None
-
-        # File-related settings
+        # ---- File-related settings ----
 
         # include_file_types
         include_file_types: list[str] = get_string_list_value_checked(
@@ -1098,16 +1043,10 @@ class MutableConfig:
             Toml.KEY_INCLUDE_FILE_TYPES,
             where=where_files,
             diagnostics=draft.diagnostics,
-            logger=logger,
         )
         draft.include_file_types = set(include_file_types)
 
         if include_file_types and len(include_file_types) != len(draft.include_file_types):
-            logger.warning(
-                "Duplicate included file types found in config (key: %s): %s",
-                Toml.KEY_INCLUDE_FILE_TYPES,
-                ", ".join(include_file_types),
-            )
             draft.diagnostics.add_warning(
                 "Duplicate included file types found in config "
                 f"(key: {Toml.KEY_INCLUDE_FILE_TYPES}): "
@@ -1120,16 +1059,10 @@ class MutableConfig:
             Toml.KEY_EXCLUDE_FILE_TYPES,
             where=where_files,
             diagnostics=draft.diagnostics,
-            logger=logger,
         )
         draft.exclude_file_types = set(exclude_file_types)
 
         if exclude_file_types and len(exclude_file_types) != len(draft.exclude_file_types):
-            logger.warning(
-                "Duplicate excluded file types found in config (key: %s): %s",
-                Toml.KEY_EXCLUDE_FILE_TYPES,
-                ", ".join(exclude_file_types),
-            )
             draft.diagnostics.add_warning(
                 "Duplicate excluded file types found in config "
                 f"(key: {Toml.KEY_EXCLUDE_FILE_TYPES}): "
@@ -1277,14 +1210,15 @@ class MutableConfig:
             # diagnostics must be carried forward:
             diagnostics=merged_diags,
             # Default " last wins" merge strategy:
-            field_values=other.field_values or self.field_values,
             header_fields=other.header_fields or self.header_fields,
+            relative_to_raw=other.relative_to_raw
+            if other.relative_to_raw is not None
+            else self.relative_to_raw,
+            relative_to=other.relative_to if other.relative_to is not None else self.relative_to,
+            field_values=other.field_values or self.field_values,
             align_fields=other.align_fields
             if other.align_fields is not None
             else self.align_fields,
-            header_format=other.header_format
-            if other.header_format is not None
-            else self.header_format,
             stdin_mode=other.stdin_mode if other.stdin_mode is not None else self.stdin_mode,
             files=other.files or self.files,
             include_patterns=other.include_patterns or self.include_patterns,
@@ -1292,10 +1226,6 @@ class MutableConfig:
             exclude_patterns=other.exclude_patterns or self.exclude_patterns,
             exclude_from=other.exclude_from or self.exclude_from,
             files_from=other.files_from or self.files_from,
-            relative_to_raw=other.relative_to_raw
-            if other.relative_to_raw is not None
-            else self.relative_to_raw,
-            relative_to=other.relative_to if other.relative_to is not None else self.relative_to,
             include_file_types=other.include_file_types or self.include_file_types,
             exclude_file_types=other.exclude_file_types or self.exclude_file_types,
             verbosity_level=other.verbosity_level
@@ -1354,9 +1284,8 @@ class MutableConfig:
         # strict_config_checking
         strict: bool | None = get_arg_bool_or_none_checked(
             args,
-            ArgKey.STRICT_CONFIG_CHECKING,
+            ArgKey.STRICT_CONFIG_CHECKING.value,  # StrEnum
             diagnostics=self.diagnostics,
-            logger=logger,
         )
         if strict is not None:
             self.strict_config_checking = strict
@@ -1374,18 +1303,16 @@ class MutableConfig:
         # Policy flags (add_only, update_only)
         add_only: bool | None = get_arg_bool_or_none_checked(
             args,
-            ArgKey.POLICY_CHECK_ADD_ONLY,
+            ArgKey.POLICY_CHECK_ADD_ONLY.value,  # StrEnum
             diagnostics=self.diagnostics,
-            logger=logger,
         )
         if add_only is not None:
             self.policy.add_only = add_only
 
         update_only: bool | None = get_arg_bool_or_none_checked(
             args,
-            ArgKey.POLICY_CHECK_UPDATE_ONLY,
+            ArgKey.POLICY_CHECK_UPDATE_ONLY.value,  # StrEnum
             diagnostics=self.diagnostics,
-            logger=logger,
         )
         if update_only is not None:
             self.policy.update_only = update_only
@@ -1395,15 +1322,13 @@ class MutableConfig:
         if ArgKey.FILES in args:
             self.files = get_arg_string_list_checked(
                 args,
-                ArgKey.FILES,
+                ArgKey.FILES.value,  # StrEnum
                 diagnostics=self.diagnostics,
-                logger=logger,
             )
             if any(not s for s in self.files):
                 empties: list[str] = [s for s in self.files if not s]
-                logger.warning("Ignoring empty string entries in %s: %r", ArgKey.FILES, empties)
                 self.diagnostics.add_warning(
-                    f"Ignoring empty string entries in {ArgKey.FILES}: {empties!r}"
+                    f"Ignoring empty string entries in {ArgKey.FILES.value}: {empties!r}"
                 )
                 self.files = [s for s in self.files if s]
             if self.files:
@@ -1413,9 +1338,8 @@ class MutableConfig:
         if ArgKey.INCLUDE_PATTERNS in args:
             vals = get_arg_string_list_checked(
                 args,
-                ArgKey.INCLUDE_PATTERNS,
+                ArgKey.INCLUDE_PATTERNS.value,  # StrEnum
                 diagnostics=self.diagnostics,
-                logger=logger,
             )
             vals = [s for s in vals if s]
             if vals:
@@ -1423,9 +1347,8 @@ class MutableConfig:
         if ArgKey.EXCLUDE_PATTERNS in args:
             vals = get_arg_string_list_checked(
                 args,
-                ArgKey.EXCLUDE_PATTERNS,
+                ArgKey.EXCLUDE_PATTERNS.value,  # StrEnum
                 diagnostics=self.diagnostics,
-                logger=logger,
             )
             vals = [s for s in vals if s]
             if vals:
@@ -1438,9 +1361,8 @@ class MutableConfig:
         if ArgKey.INCLUDE_FROM in args:
             vals: list[str] = get_arg_string_list_checked(
                 args,
-                ArgKey.INCLUDE_FROM,
+                ArgKey.INCLUDE_FROM.value,  # StrEnum
                 diagnostics=self.diagnostics,
-                logger=logger,
             )
             vals = [s for s in vals if s]
             extend_pattern_sources(
@@ -1453,9 +1375,8 @@ class MutableConfig:
         if ArgKey.EXCLUDE_FROM in args:
             vals = get_arg_string_list_checked(
                 args,
-                ArgKey.EXCLUDE_FROM,
+                ArgKey.EXCLUDE_FROM.value,  # StrEnum
                 diagnostics=self.diagnostics,
-                logger=logger,
             )
             vals = [s for s in vals if s]
             extend_pattern_sources(
@@ -1468,9 +1389,8 @@ class MutableConfig:
         if ArgKey.FILES_FROM in args:
             vals = get_arg_string_list_checked(
                 args,
-                ArgKey.FILES_FROM,
+                ArgKey.FILES_FROM.value,  # StrEnum
                 diagnostics=self.diagnostics,
-                logger=logger,
             )
             vals = [s for s in vals if s]
             extend_pattern_sources(
@@ -1485,9 +1405,8 @@ class MutableConfig:
         if ArgKey.RELATIVE_TO in args:
             rel: str | None = get_arg_string_or_none_checked(
                 args,
-                ArgKey.RELATIVE_TO,
+                ArgKey.RELATIVE_TO.value,  # StrEnum
                 diagnostics=self.diagnostics,
-                logger=logger,
             )
             if rel is not None and rel.strip() != "":
                 rel_str: str = rel.strip()
@@ -1503,9 +1422,8 @@ class MutableConfig:
             # TODO decide whether `()` clears the property or whether we always extend the set
             vals = get_arg_string_list_checked(
                 args,
-                ArgKey.INCLUDE_FILE_TYPES,
+                ArgKey.INCLUDE_FILE_TYPES.value,  # StrEnum
                 diagnostics=self.diagnostics,
-                logger=logger,
             )
             filtered: list[str] = [s for s in vals if s]  # drop empty strings
             deduped: set[str] = set(filtered)
@@ -1513,7 +1431,7 @@ class MutableConfig:
             dup_count: int = len(filtered) - len(deduped)
             if dup_count:
                 self.diagnostics.add_info(
-                    f"Ignored {dup_count} duplicate values for {ArgKey.INCLUDE_FILE_TYPES}"
+                    f"Ignored {dup_count} duplicate values for {ArgKey.INCLUDE_FILE_TYPES.value}"
                 )
 
         raw: Any | None = args.get(ArgKey.EXCLUDE_FILE_TYPES)
@@ -1522,9 +1440,8 @@ class MutableConfig:
             # TODO decide whether `()` clears the property or whether we always extend the set
             vals = get_arg_string_list_checked(
                 args,
-                ArgKey.EXCLUDE_FILE_TYPES,
+                ArgKey.EXCLUDE_FILE_TYPES.value,  # StrEnum
                 diagnostics=self.diagnostics,
-                logger=logger,
             )
             filtered: list[str] = [s for s in vals if s]  # drop empty strings
             deduped: set[str] = set(filtered)
@@ -1532,7 +1449,7 @@ class MutableConfig:
             dup_count: int = len(filtered) - len(deduped)
             if dup_count:
                 self.diagnostics.add_info(
-                    f"Ignored {dup_count} duplicate values for {ArgKey.EXCLUDE_FILE_TYPES}"
+                    f"Ignored {dup_count} duplicate values for {ArgKey.EXCLUDE_FILE_TYPES.value}"
                 )
 
         # Apply CLI flags that require explicit True to activate or to explicitly disable
@@ -1542,33 +1459,19 @@ class MutableConfig:
         # Apply CLI flags that require explicit True to activate or to explicitly disable
         stdin_mode: bool | None = get_arg_bool_or_none_checked(
             args,
-            ArgKey.STDIN_MODE,
+            ArgKey.STDIN_MODE.value,  # StrEnum
             diagnostics=self.diagnostics,
-            logger=logger,
         )
         if stdin_mode is not None:
             # honor False explicitly
             self.stdin_mode = stdin_mode
 
-        # header_format: parse enum
-        if ArgKey.HEADER_FORMAT in args:
-            fmt: HeaderOutputFormat | None = get_arg_enum_checked(
-                args,
-                ArgKey.HEADER_FORMAT,
-                HeaderOutputFormat,
-                diagnostics=self.diagnostics,
-                logger=logger,
-            )
-            if fmt is not None:
-                self.header_format = fmt
-
         # align_fields: checked bool
         if ArgKey.ALIGN_FIELDS in args:
             af: bool | None = get_arg_bool_or_none_checked(
                 args,
-                ArgKey.ALIGN_FIELDS,
+                ArgKey.ALIGN_FIELDS.value,  # StrEnum
                 diagnostics=self.diagnostics,
-                logger=logger,
             )
             if af is not None:
                 self.align_fields = af
@@ -1577,18 +1480,12 @@ class MutableConfig:
         if ArgKey.VERBOSITY_LEVEL in args:
             v: int | None = get_arg_int_or_none_checked(
                 args,
-                ArgKey.VERBOSITY_LEVEL,
+                ArgKey.VERBOSITY_LEVEL.value,  # StrEnum
                 diagnostics=self.diagnostics,
-                logger=logger,
             )
             if v is not None:
                 self.verbosity_level = v
             else:
-                logger.warning(
-                    "Invalid verbosity_level=%r (expected int); keeping %r",
-                    args[ArgKey.VERBOSITY_LEVEL],
-                    self.verbosity_level,
-                )
                 self.diagnostics.add_warning(
                     f"Invalid verbosity_level={args[ArgKey.VERBOSITY_LEVEL]} (expected int); "
                     f"keeping {self.verbosity_level}",
@@ -1607,9 +1504,8 @@ class MutableConfig:
 
             raw_write_mode: str | None = get_arg_string_or_none_checked(
                 args,
-                ArgKey.WRITE_MODE,
+                ArgKey.WRITE_MODE.value,  # StrEnum
                 diagnostics=self.diagnostics,
-                logger=logger,
             )
             if raw_write_mode is None:
                 # present but wrong type already diagnosed; do not override
@@ -1625,15 +1521,9 @@ class MutableConfig:
                         write_mode
                     )
                     if file_write_strategy is None:
-                        logger.warning(
-                            "Invalid '%s' value specified in the arguments: %r - "
-                            "using defaults: output to file, atomic file write strategy.",
-                            ArgKey.WRITE_MODE,
-                            raw_write_mode,
-                        )
                         self.diagnostics.add_warning(
-                            f"Invalid '{ArgKey.WRITE_MODE}' value specified in the arguments: "
-                            f"{raw_write_mode} - "
+                            f"Invalid '{ArgKey.WRITE_MODE.value}' value specified "
+                            f"in the arguments: {raw_write_mode} - "
                             "using defaults: output to file, atomic file write strategy."
                         )
                         file_write_strategy = FileWriteStrategy.ATOMIC
@@ -1657,7 +1547,6 @@ class MutableConfig:
                     f"{Toml.KEY_POLICY_CHECK_ADD_ONLY}=true and "
                     f"{Toml.KEY_POLICY_CHECK_UPDATE_ONLY}=true cannot both be set."
                 )
-                logger.error(msg)
                 self.diagnostics.add_error(msg)
 
         # Global policy
@@ -1700,7 +1589,6 @@ class MutableConfig:
                         "(these options expect concrete files; use "
                         "include_patterns / exclude_patterns for globs)."
                     )
-                    logger.warning(msg)
                     self.diagnostics.add_warning(msg)
                     continue
                 kept.append(ps)
@@ -1710,7 +1598,6 @@ class MutableConfig:
                     f"Sanitized {name}: kept {len(kept)} source(s), "
                     f"dropped {len(sources) - len(kept)} invalid source(s)"
                 )
-                logger.warning(msg)
                 self.diagnostics.add_warning(msg)
 
             sources[:] = kept
@@ -1753,7 +1640,6 @@ class MutableConfig:
             else:
                 msg = f"Unknown included file types specified (ignored): {unknown_str}"
 
-            logger.warning(msg)
             self.diagnostics.add_warning(msg)
             ids.difference_update(unknown)
 
@@ -1776,7 +1662,6 @@ class MutableConfig:
                 "File types specified in both include and exclude filters; "
                 f"exclusion wins (removed from include): {overlap_str}"
             )
-            logger.warning(msg)
             self.diagnostics.add_warning(msg)
             # Remove overlaps (blacklisted wins from whitelisted):
             self.include_file_types.difference_update(overlap)
@@ -1789,7 +1674,6 @@ class MutableConfig:
                     f"STDIN mode: Setting {Toml.KEY_TARGET} to {OutputTarget.STDOUT.label} "
                     "(was not set)"
                 )
-                logger.info(msg)
                 self.diagnostics.add_info(msg)
             elif self.output_target != OutputTarget.STDOUT:
                 msg = (
@@ -1797,7 +1681,6 @@ class MutableConfig:
                     f"from {self.output_target.key} ({self.output_target.label}) "
                     f"to {OutputTarget.STDOUT.key} ({OutputTarget.STDOUT.label})"
                 )
-                logger.debug(msg)
                 self.diagnostics.add_warning(msg)
 
             self.output_target = OutputTarget.STDOUT
@@ -1807,7 +1690,6 @@ class MutableConfig:
                     f"STDIN mode: Clearing file_write_strategy "
                     f"(was: {self.file_write_strategy.key} ({self.file_write_strategy.label}))"
                 )
-                logger.debug(msg)
                 self.diagnostics.add_warning(msg)
 
             self.file_write_strategy = None

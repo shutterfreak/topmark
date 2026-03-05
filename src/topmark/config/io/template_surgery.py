@@ -11,7 +11,7 @@
 """Presentation-oriented edits for the bundled config template.
 
 This module performs *text-level* edits on the annotated default configuration
-template (``topmark-default.toml``) for copy/paste-friendly CLI output.
+template (``topmark-example.toml``) for copy/paste-friendly CLI output.
 
 Supported transformations:
 

@@ -27,7 +27,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.core.logging import get_logger
-from topmark.processors.base import HeaderProcessor
 
 if TYPE_CHECKING:
     from collections.abc import Callable

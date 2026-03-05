@@ -75,7 +75,6 @@ class CliOpt:
     SHOW_ORIGIN: Final = "--show-origin"
 
     # Header rendering
-    HEADER_FORMAT: Final = "--header-format"
     ALIGN_FIELDS: Final = "--align-fields"
     NO_ALIGN_FIELDS: Final = "--no-align-fields"
     RELATIVE_TO: Final = "--relative-to"

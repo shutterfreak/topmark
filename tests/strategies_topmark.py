@@ -38,18 +38,30 @@ Draw = Callable[[st.SearchStrategy[Any]], Any]
 # from topmark.config import TopmarkConfig
 
 # Common file type “families” you support
-CommentFamily = Literal["pound", "slash", "xml", "cblock", "plain"]
+CommentFamily = Literal[
+    "pound",
+    "slash",
+    "xml",
+    "cblock",
+    "plain",
+]
 
 SHEBANGS: tuple[str, ...] = (
     "#!/usr/bin/env bash",
     "#!/usr/bin/env sh",
     "#!/usr/bin/env python3",
 )
-BOMS: tuple[str, ...] = ("\ufeff", "")  # UTF-8 BOM or none
+BOMS: tuple[str, ...] = (
+    "\ufeff",
+    "",
+)  # UTF-8 BOM or none
 
-LINE_ENDINGS: tuple[str, ...] = ("\n", "\r\n")
+LINE_ENDINGS: tuple[str, ...] = (
+    "\n",
+    "\r\n",
+)
 
-BLACKLIST_CATEGORIES: tuple[Literal["Cs"], ...] = ("Cs",)
+BLACKLIST_CATEGORIES = ("Cs",)
 
 
 # Typical comment styles your processors handle
@@ -168,14 +180,30 @@ def s_source_envelope_for_ext(
     Note: content may be empty or contain no header block.
     """
     if exts is None:
-        exts = (".py", ".sh", ".js", ".ts", ".cpp", ".h", ".xml", ".html")
+        exts = (
+            ".py",
+            ".sh",
+            ".js",
+            ".ts",
+            ".cpp",
+            ".h",
+            ".xml",
+            ".html",
+        )
     ext: str = draw(st.sampled_from(tuple(exts)))
 
     # Shared knobs
     le: str = draw(st.sampled_from(LINE_ENDINGS))
     bom: str = draw(st.sampled_from(BOMS))
 
-    if ext in (".xml", ".html", ".svg", ".xhtml", ".xsl", ".xslt"):
+    if ext in (
+        ".xml",
+        ".html",
+        ".svg",
+        ".xhtml",
+        ".xsl",
+        ".xslt",
+    ):
         # XML/HTML-like: no shebang; optional XML decl; ensure tag-first if non-empty
         maybe_decl: bool = draw(st.booleans())
         decl: str = '<?xml version="1.0"?>' + le if maybe_decl else ""
@@ -215,7 +243,10 @@ def s_source_envelope_for_ext(
         content = _normalize_eol(content, le)
         style: CommentStyle = XML
 
-    elif ext in (".py", ".sh"):
+    elif ext in (
+        ".py",
+        ".sh",
+    ):
         # Shell/Python: shebang optional
         shebang: str = draw(st.sampled_from(SHEBANGS + ("",)))
         pre_junk = draw(

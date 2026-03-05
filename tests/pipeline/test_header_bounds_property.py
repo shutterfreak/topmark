@@ -45,7 +45,16 @@ if TYPE_CHECKING:
     from topmark.pipeline.context.model import ProcessingContext
 
 # If resolve depends on path suffix, we’ll simulate by extension choice.
-EXTENSIONS: Sequence[str] = [".py", ".sh", ".js", ".ts", ".cpp", ".h", ".xml", ".html"]
+EXTENSIONS: Sequence[str] = [
+    ".py",
+    ".sh",
+    ".js",
+    ".ts",
+    ".cpp",
+    ".h",
+    ".xml",
+    ".html",
+]
 
 
 # Mark the entire test module

@@ -24,8 +24,6 @@ import tomlkit
 
 from topmark.config.io.getters import get_string_list_value_checked
 from topmark.config.io.surgery import nest_toml_under_section
-from topmark.core.logging import TopmarkLogger
-from topmark.core.logging import get_logger
 from topmark.diagnostic.model import DiagnosticLog
 
 if TYPE_CHECKING:
@@ -116,7 +114,6 @@ def test_get_string_list_value_filters_and_records_warnings(
     """Non-string items are dropped and recorded as warnings with location."""
     caplog.set_level("WARNING")
     diagnostics = DiagnosticLog()
-    logger: TopmarkLogger = get_logger(__name__)
 
     table = {"k": ["a", 1, True, "b"]}
     out: list[str] = get_string_list_value_checked(
@@ -124,7 +121,6 @@ def test_get_string_list_value_filters_and_records_warnings(
         "k",
         where="[files]",
         diagnostics=diagnostics,
-        logger=logger,
     )
 
     assert out == ["a", "b"]
@@ -159,7 +155,6 @@ def test_get_string_list_value_wrong_type_returns_empty_and_records_warning(
     """get_string_list_value_checked wrong-type is treated as empty but warns."""
     caplog.set_level("WARNING")
     diagnostics = DiagnosticLog()
-    logger: TopmarkLogger = get_logger(__name__)
 
     table: dict[str, Any] = {"k": True}  # wrong shape
     out: list[str] = get_string_list_value_checked(
@@ -167,7 +162,6 @@ def test_get_string_list_value_wrong_type_returns_empty_and_records_warning(
         "k",
         where="[files]",
         diagnostics=diagnostics,
-        logger=logger,
     )
     assert out == []
 

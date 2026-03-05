@@ -128,7 +128,7 @@ include-package-data = true
 
 [tool.setuptools.package-data]
 "topmark" = ["py.typed"]
-"topmark.config" = ["topmark-default.toml"]
+"topmark.config" = ["topmark-example.toml"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -333,7 +333,7 @@ filterwarnings = ["default::DeprecationWarning"]
 # TopMark config note:
 # This repository uses layered config discovery (defaults → user → project chain → extras → CLI).
 # See the shipped default file for details:
-#   src/topmark/config/topmark-default.toml  (section: “Config discovery & precedence”)
+#   src/topmark/config/topmark-example.toml  (section: “Config discovery & precedence”)
 root = true # Mark this directory as the root for config discovery
 
 [tool.topmark.fields]
@@ -343,6 +343,7 @@ copyright = "(c) 2025 Olivier Biot"
 
 [tool.topmark.header]
 fields = ["project", "file", "file_relpath", "license", "copyright"]
+relative_to = "."
 
 [tool.topmark.policy]
 add_only = false
@@ -363,4 +364,3 @@ include_file_types = []
 exclude_file_types = []
 exclude_from = [".gitignore"]
 exclude_patterns = [".git/"]
-relative_to = "."

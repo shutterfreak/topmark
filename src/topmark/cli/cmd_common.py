@@ -48,7 +48,6 @@ if TYPE_CHECKING:
     from topmark.config.model import Config
     from topmark.config.model import MutableConfig
     from topmark.core.exit_codes import ExitCode
-    from topmark.rendering.formats import HeaderOutputFormat
 
 
 def init_common_state(
@@ -197,9 +196,8 @@ def build_config_for_plan(
     config_paths: list[str],
     include_file_types: list[str],
     exclude_file_types: list[str],
-    relative_to: str | None,
     align_fields: bool | None,
-    header_format: HeaderOutputFormat | None,
+    relative_to: str | None,
 ) -> MutableConfig:
     """Materialize Config from an input plan (no file list resolution).
 
@@ -223,11 +221,10 @@ def build_config_for_plan(
         exclude_from=plan.exclude_from,
         include_file_types=include_file_types,
         exclude_file_types=exclude_file_types,
-        relative_to=relative_to,
         no_config=no_config,
         config_paths=config_paths,
         align_fields=align_fields,
-        header_format=header_format,
+        relative_to=relative_to,
     )
 
     return draft

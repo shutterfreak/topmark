@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 from typing import Any
 from typing import cast
 
+from tests.conftest import make_file_type
 from topmark.filetypes.instances import get_base_file_type_registry
 from topmark.filetypes.model import FileType
 from topmark.registry.filetypes import FileTypeRegistry
@@ -26,10 +27,12 @@ if TYPE_CHECKING:
 
     import pytest
 
+    from topmark.filetypes.model import FileType
+
 
 def _provider() -> list[FileType]:
     return [
-        FileType(
+        make_file_type(
             name="pluggy",
             extensions=[".pg"],
             filenames=[],

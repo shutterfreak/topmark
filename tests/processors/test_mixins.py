@@ -12,11 +12,16 @@
 
 from __future__ import annotations
 
-from topmark.filetypes.model import FileType
+from typing import TYPE_CHECKING
+
+from tests.conftest import make_file_type
 from topmark.filetypes.policy import FileTypeHeaderPolicy
 from topmark.processors.mixins import BlockCommentMixin
 from topmark.processors.mixins import LineCommentMixin
 from topmark.processors.mixins import XmlPositionalMixin
+
+if TYPE_CHECKING:
+    from topmark.filetypes.model import FileType
 
 
 class _LineProc(LineCommentMixin):
@@ -92,10 +97,11 @@ def test_line_mixin_respects_no_shebang_policy() -> None:
     """Do not skip shebang when policy.supports_shebang is False."""
 
     class _P(LineCommentMixin):
+        file_type: FileType
         line_prefix = "# "
 
     p = _P()
-    p.file_type = FileType(  # type: ignore[attr-defined]
+    p.file_type = make_file_type(
         name="fake",
         extensions=[".fake"],
         filenames=[],
@@ -112,10 +118,11 @@ def test_line_mixin_skips_encoding_line_after_shebang() -> None:
     """Skip encoding line after shebang if policy encoding_line_regex is set."""
 
     class _P(LineCommentMixin):
+        file_type: FileType
         line_prefix = "# "
 
     p = _P()
-    p.file_type = FileType(  # type: ignore[attr-defined]
+    p.file_type = make_file_type(
         name="py",
         extensions=[".py"],
         filenames=[],

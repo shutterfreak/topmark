@@ -92,7 +92,6 @@ def ensure_mutable_config(
             header_fields=list(config.header_fields),
             field_values=dict(config.field_values),
             align_fields=config.align_fields,
-            header_format=config.header_format,
             relative_to_raw=config.relative_to_raw,
             relative_to=config.relative_to,
             stdin_mode=config.stdin_mode,

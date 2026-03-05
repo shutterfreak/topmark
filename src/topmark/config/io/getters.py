@@ -206,7 +206,6 @@ def get_string_value_checked(
     *,
     where: str,
     diagnostics: DiagnosticLog,
-    logger: TopmarkLogger,
     default: str = "",
 ) -> str:
     """Return a string value, recording a warning when the type is not `str`.
@@ -221,7 +220,6 @@ def get_string_value_checked(
         return value
 
     loc: Final[str] = f"{where}.{key}"
-    logger.warning("Expected string in %s, got %s: %r", loc, type(value).__name__, value)
     diagnostics.add_warning(f"Expected string in {loc}, got {type(value).__name__}: {value}")
     return default
 
@@ -232,7 +230,6 @@ def get_string_value_or_none_checked(
     *,
     where: str,
     diagnostics: DiagnosticLog,
-    logger: TopmarkLogger,
 ) -> str | None:
     """Return an optional string value, warning when present but not `str`.
 
@@ -245,7 +242,6 @@ def get_string_value_or_none_checked(
         return value
 
     loc: Final[str] = f"{where}.{key}"
-    logger.warning("Expected string in %s, got %s: %r", loc, type(value).__name__, value)
     diagnostics.add_warning(f"Expected string in {loc}, got {type(value).__name__}: {value}")
     return None
 
@@ -256,7 +252,6 @@ def get_bool_value_checked(
     *,
     where: str,
     diagnostics: DiagnosticLog,
-    logger: TopmarkLogger,
     default: bool = False,
 ) -> bool:
     """Return a boolean value, recording a warning when the type is not `bool`.
@@ -271,7 +266,6 @@ def get_bool_value_checked(
         return value
 
     loc: Final[str] = f"{where}.{key}"
-    logger.warning("Expected bool in %s, got %s: %r", loc, type(value).__name__, value)
     diagnostics.add_warning(f"Expected bool in {loc}, got {type(value).__name__}: {value}")
     return default
 
@@ -282,7 +276,6 @@ def get_bool_value_or_none_checked(
     *,
     where: str,
     diagnostics: DiagnosticLog,
-    logger: TopmarkLogger,
 ) -> bool | None:
     """Return an optional boolean value, warning when present but not `bool`.
 
@@ -295,7 +288,6 @@ def get_bool_value_or_none_checked(
         return value
 
     loc: Final[str] = f"{where}.{key}"
-    logger.warning("Expected bool in %s, got %s: %r", loc, type(value).__name__, value)
     diagnostics.add_warning(f"Expected bool in {loc}, got {type(value).__name__}: {value}")
     return None
 
@@ -306,7 +298,6 @@ def get_int_value_or_none_checked(
     *,
     where: str,
     diagnostics: DiagnosticLog,
-    logger: TopmarkLogger,
 ) -> int | None:
     """Return an optional int value, warning when present but not `int`.
 
@@ -324,14 +315,12 @@ def get_int_value_or_none_checked(
 
     # Note: bool is a subclass of int; exclude it.
     if isinstance(value, bool):
-        logger.warning("Expected int in %s, got bool: %r", loc, value)
         diagnostics.add_warning(f"Expected int in {loc}, got bool: {value!r}")
         return None
 
     if isinstance(value, int):
         return value
 
-    logger.warning("Expected int in %s, got %s: %r", loc, type(value).__name__, value)
     diagnostics.add_warning(f"Expected int in {loc}, got {type(value).__name__}: {value!r}")
     return None
 
@@ -345,7 +334,6 @@ def get_string_list_value_checked(
     *,
     where: str,
     diagnostics: DiagnosticLog,
-    logger: TopmarkLogger,
 ) -> list[str]:
     """Extract a list of strings from a TOML table, recording a warning when the type is incorrect.
 
@@ -365,7 +353,6 @@ def get_string_list_value_checked(
         key: Key to extract.
         where: TOML location prefix (e.g. "[files]").
         diagnostics: DiagnosticLog to record warnings.
-        logger: Logger for emitting warnings.
 
     Returns:
         Filtered list containing only string entries.
@@ -377,7 +364,6 @@ def get_string_list_value_checked(
     loc: Final[str] = f"{where}.{key}"
 
     if not is_any_list(value):
-        logger.warning("Expected list in %s, got %s: %r", loc, type(value).__name__, value)
         diagnostics.add_warning(f"Expected list in {loc}, got {type(value).__name__}: {value!r}")
         return []
 
@@ -390,7 +376,6 @@ def get_string_list_value_checked(
         if isinstance(v, str):
             out.append(v)
         else:
-            logger.warning("Ignoring non-string entry in %s: %r", loc, v)
             diagnostics.add_warning(f"Ignoring non-string entry in {loc}: {v!r}")
 
     return out
@@ -406,7 +391,6 @@ def get_enum_value_checked(
     *,
     where: str,
     diagnostics: DiagnosticLog,
-    logger: TopmarkLogger,
 ) -> E | None:
     """Parse an enum value from TOML.
 
@@ -426,12 +410,6 @@ def get_enum_value_checked(
 
     loc: Final[str] = f"{where}.{key}"
     if not isinstance(raw, str):
-        logger.warning(
-            "Expected string enum value in %s, got %s: %r",
-            loc,
-            type(raw).__name__,
-            raw,
-        )
         diagnostics.add_warning(
             f"Expected string enum value in {loc}, got {type(raw).__name__}: {raw!r}"
         )
@@ -441,6 +419,5 @@ def get_enum_value_checked(
         return enum_cls(raw)
     except ValueError:
         allowed: str = ", ".join(str(e.value) for e in enum_cls)
-        logger.warning("Invalid value for %s: %r (allowed: %s)", loc, raw, allowed)
         diagnostics.add_warning(f"Invalid value for {loc}: {raw!r} (allowed: {allowed})")
         return None

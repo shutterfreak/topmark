@@ -290,9 +290,8 @@ def strip_command(
         config_paths=config_files,
         include_file_types=include_file_types,
         exclude_file_types=exclude_file_types,
-        relative_to=None,  # Not relevant for `strip``
         align_fields=None,  # Not relevant for `strip``
-        header_format=None,  # Not relevant for `strip``
+        relative_to=None,  # Not relevant for `strip``
     )
 
     # Propagate runtime intent for updater (terminal vs preview write status)

@@ -45,6 +45,10 @@ from typing import TYPE_CHECKING
 from typing import Any
 from typing import Protocol
 
+from topmark.config.keys import Toml
+from topmark.core.merge import opt_bool
+from topmark.core.merge import overlay
+
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
@@ -96,6 +100,14 @@ class Policy:
             allow_content_probe=self.allow_content_probe,
         )
 
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize only explicitly set keys to a TOML-friendly dict.
+
+        Returns:
+            Table with primitive types only.
+        """
+        return policy_to_dict(self)
+
 
 @dataclass
 class MutablePolicy:
@@ -130,23 +142,30 @@ class MutablePolicy:
         Returns:
             Merged policy.
         """
-
-        def pick(*, current: bool | None, override: bool | None) -> bool | None:
-            return override if override is not None else current
-
         return MutablePolicy(
-            add_only=pick(override=other.add_only, current=self.add_only),
-            update_only=pick(override=other.update_only, current=self.update_only),
-            allow_header_in_empty_files=pick(
-                override=other.allow_header_in_empty_files, current=self.allow_header_in_empty_files
+            add_only=overlay(
+                override=other.add_only,
+                current=self.add_only,
             ),
-            render_empty_header_when_no_fields=pick(
+            update_only=overlay(
+                override=other.update_only,
+                current=self.update_only,
+            ),
+            allow_header_in_empty_files=overlay(
+                override=other.allow_header_in_empty_files,
+                current=self.allow_header_in_empty_files,
+            ),
+            render_empty_header_when_no_fields=overlay(
                 override=other.render_empty_header_when_no_fields,
                 current=self.render_empty_header_when_no_fields,
             ),
-            allow_reflow=pick(override=other.allow_reflow, current=self.allow_reflow),
-            allow_content_probe=pick(
-                override=other.allow_content_probe, current=self.allow_content_probe
+            allow_reflow=overlay(
+                override=other.allow_reflow,
+                current=self.allow_reflow,
+            ),
+            allow_content_probe=overlay(
+                override=other.allow_content_probe,
+                current=self.allow_content_probe,
             ),
         )
 
@@ -202,38 +221,57 @@ class MutablePolicy:
         if not tbl:
             return cls()
 
-        def pick(key: str) -> bool | None:
-            return None if key not in tbl else bool(tbl[key])
-
         return cls(
-            add_only=pick("add_only"),
-            update_only=pick("update_only"),
-            allow_header_in_empty_files=pick("allow_header_in_empty_files"),
-            render_empty_header_when_no_fields=pick("render_empty_header_when_no_fields"),
-            allow_reflow=pick("allow_reflow"),
-            allow_content_probe=pick("allow_content_probe"),
+            add_only=opt_bool(
+                tbl,
+                key=Toml.KEY_POLICY_CHECK_ADD_ONLY,
+            ),
+            update_only=opt_bool(
+                tbl,
+                key=Toml.KEY_POLICY_CHECK_UPDATE_ONLY,
+            ),
+            allow_header_in_empty_files=opt_bool(
+                tbl,
+                key=Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES,
+            ),
+            render_empty_header_when_no_fields=opt_bool(
+                tbl,
+                key=Toml.KEY_POLICY_ALLOW_EMPTY_HEADER,
+            ),
+            allow_reflow=opt_bool(
+                tbl,
+                key=Toml.KEY_POLICY_ALLOW_REFLOW,
+            ),
+            allow_content_probe=opt_bool(
+                tbl,
+                key=Toml.KEY_POLICY_ALLOW_CONTENT_PROBE,
+            ),
         )
 
-    def to_toml_table(self) -> dict[str, Any]:
-        """Serialize only explicitly set keys to a TOML-friendly dict.
 
-        Returns:
-            Table with primitive types only.
-        """
-        out: dict[str, Any] = {}
-        if self.add_only is not None:
-            out["add_only"] = self.add_only
-        if self.update_only is not None:
-            out["update_only"] = self.update_only
-        if self.allow_header_in_empty_files is not None:
-            out["allow_header_in_empty_files"] = self.allow_header_in_empty_files
-        if self.render_empty_header_when_no_fields is not None:
-            out["render_empty_header_when_no_fields"] = self.render_empty_header_when_no_fields
-        if self.allow_reflow is not None:
-            out["allow_reflow"] = self.allow_reflow
-        if self.allow_content_probe is not None:
-            out["allow_content_probe"] = self.allow_content_probe
-        return out
+def policy_to_dict(policy: Policy | MutablePolicy) -> dict[str, Any]:
+    """Serialize only explicitly set keys to a TOML-friendly dict.
+
+    Args:
+        policy: Mutable or frozen Policy object.
+
+    Returns:
+        Table with primitive types only.
+    """
+    out: dict[str, Any] = {}
+    if policy.add_only is not None:
+        out[Toml.KEY_POLICY_CHECK_ADD_ONLY] = policy.add_only
+    if policy.update_only is not None:
+        out[Toml.KEY_POLICY_CHECK_UPDATE_ONLY] = policy.update_only
+    if policy.allow_header_in_empty_files is not None:
+        out[Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES] = policy.allow_header_in_empty_files
+    if policy.render_empty_header_when_no_fields is not None:
+        out[Toml.KEY_POLICY_ALLOW_EMPTY_HEADER] = policy.render_empty_header_when_no_fields
+    if policy.allow_reflow is not None:
+        out[Toml.KEY_POLICY_ALLOW_REFLOW] = policy.allow_reflow
+    if policy.allow_content_probe is not None:
+        out[Toml.KEY_POLICY_ALLOW_CONTENT_PROBE] = policy.allow_content_probe
+    return out
 
 
 class HasPolicyConfig(Protocol):

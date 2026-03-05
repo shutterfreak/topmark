@@ -22,6 +22,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from tests.conftest import make_file_type
 from tests.pipeline.conftest import make_pipeline_context
 from tests.pipeline.conftest import run_comparer
 from tests.pipeline.conftest import run_reader
@@ -31,7 +32,6 @@ from topmark.config.model import Config
 from topmark.config.model import MutableConfig
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
-from topmark.filetypes.model import FileType
 from topmark.pipeline.status import ComparisonStatus
 from topmark.pipeline.status import GenerationStatus
 from topmark.pipeline.status import RenderStatus
@@ -59,7 +59,7 @@ def test_comparer_precomputed_lines_set_changed(tmp_path: Path) -> None:
     # Ensure the ComparerStep.may_proceed() gating helper allows processing:
     ctx.views.image = ListFileImageView(lines=["a\n", "b\n"])  # original
     ctx.views.updated = UpdatedView(lines=["a\n"])  # precomputed change
-    ctx.file_type = FileType(
+    ctx.file_type = make_file_type(
         name="test",
         description="Test File Type",
         extensions=[],
@@ -85,7 +85,7 @@ def test_comparer_precomputed_lines_set_unchanged(tmp_path: Path) -> None:
     # Ensure the ComparerStep.may_proceed() gating helper allows processing:
     ctx.views.image = ListFileImageView(lines=original)
     ctx.views.updated = UpdatedView(lines=list(original))  # identical copy
-    ctx.file_type = FileType(
+    ctx.file_type = make_file_type(
         name="test",
         description="Test File Type",
         extensions=[],

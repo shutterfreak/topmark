@@ -69,7 +69,6 @@ if TYPE_CHECKING:
     from topmark.config.model import MutableConfig
     from topmark.core.logging import TopmarkLogger
     from topmark.core.machine.schemas import MetaPayload
-    from topmark.rendering.formats import HeaderOutputFormat
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -125,7 +124,6 @@ def config_dump_command(
     exclude_file_types: list[str],
     # common_header_formatting_options:
     align_fields: bool,
-    header_format: HeaderOutputFormat | None,
     relative_to: str | None,
     # common_output_format_options:
     output_format: OutputFormat | None,
@@ -159,8 +157,6 @@ def config_dump_command(
         include_file_types: Restrict processing to the given file type identifiers.
         exclude_file_types: Exclude processing for the given file type identifiers.
         align_fields: Whether to align header fields when rendering (captured in config).
-        header_format: Optional output format override for header
-            rendering (captured in config).
         relative_to: Base path used only for resolving header metadata (e.g., `file_relpath`).
         output_format: Output format to use (``text``, ``markdown``, ``json``, or ``ndjson``).
 
@@ -236,9 +232,8 @@ def config_dump_command(
         config_paths=config_files,
         include_file_types=include_file_types,
         exclude_file_types=exclude_file_types,
-        relative_to=relative_to,
         align_fields=align_fields,
-        header_format=header_format,
+        relative_to=relative_to,
     )
 
     config: Config = draft_config.freeze()

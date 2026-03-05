@@ -30,10 +30,10 @@ if TYPE_CHECKING:
 
 # 1. The bootstrap string (Distribution name in pyproject.toml)
 # This MUST match the lowercase name in pyproject.toml for metadata resolution.
-PACKAGE_NAME: Final[str] = "topmark"
+PACKAGE_NAME: Final = "topmark"
 
 # Branded name for display/documentation
-DISPLAY_NAME: Final[str] = "TopMark"
+DISPLAY_NAME: Final = "TopMark"
 
 # Minimal Python version
 MIN_VERSION_MAJOR: Final[int] = 3
@@ -112,11 +112,11 @@ except (ImportError, PackageNotFoundError):
     _requires_python = f">={MIN_VERSION_MAJOR}.{MIN_VERSION_MINOR}"
     _dep_buckets = {"core": []}
 
-TOPMARK: Final[str] = _topmark
-TOPMARK_VERSION: Final[str] = _version
-DESCRIPTION: Final[str] = _description
-LICENSE: Final[str] = _license
-REQUIRES_PYTHON: Final[str] = _requires_python
+TOPMARK: Final = _topmark
+TOPMARK_VERSION: Final = _version
+DESCRIPTION: Final = _description
+LICENSE: Final = _license
+REQUIRES_PYTHON: Final = _requires_python
 
 # Exported Dependency Lists (sorted by package name)
 DEPENDENCIES: Final[list[DependencyInfo]] = sorted(
@@ -137,22 +137,22 @@ PYPROJECT_TOML_PATH: Final = (Path(__file__).parent.parent.parent / "pyproject.t
 
 # --- Global Markers ---
 
-DEFAULT_TOML_CONFIG_PACKAGE: Final[str] = "topmark.config"
+DEFAULT_TOML_CONFIG_PACKAGE: Final = "topmark.config"
 """Package containing the default config: [`topmark.config`][topmark.config]."""
 
-DEFAULT_TOML_CONFIG_NAME: Final[str] = "topmark-default.toml"
+DEFAULT_TOML_CONFIG_NAME: Final = "topmark-example.toml"
 """Name of the bundled default config inside the config package."""
 
-TOPMARK_START_MARKER: Final[str] = "topmark:header:start"
+TOPMARK_START_MARKER: Final = "topmark:header:start"
 """Start marker of TopMark header."""
-TOPMARK_END_MARKER: Final[str] = "topmark:header:end"
+TOPMARK_END_MARKER: Final = "topmark:header:end"
 """End marker of TopMark header."""
 
-TOML_BLOCK_START: Final[str] = "# === BEGIN[TOML] ==="
-TOML_BLOCK_END: Final[str] = "# === END[TOML] ==="
+TOML_BLOCK_START: Final = "# === BEGIN[TOML] ==="
+TOML_BLOCK_END: Final = "# === END[TOML] ==="
 
 # --- String constants ---
 
-VALUE_NOT_SET: Final[str] = "<not set>"
+VALUE_NOT_SET: Final = "<not set>"
 
-CLI_OVERRIDE_STR: Final[str] = "<CLI overrides>"
+CLI_OVERRIDE_STR: Final = "<CLI overrides>"
