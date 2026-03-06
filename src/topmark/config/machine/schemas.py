@@ -8,7 +8,6 @@
 #
 # topmark:header:end
 
-
 """Schema objects for config-related machine output.
 
 This module defines small dataclasses used as the *typed payload layer* for

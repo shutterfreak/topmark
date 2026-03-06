@@ -1,4 +1,3 @@
-# src/topmark/pipeline/steps/writer.py
 # topmark:header:start
 #
 #   project      : TopMark

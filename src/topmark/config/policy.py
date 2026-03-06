@@ -63,7 +63,7 @@ class Policy:
         allow_header_in_empty_files: Allow inserting headers in empty files (e.g., `__init__.py`).
         render_empty_header_when_no_fields: Allow inserting empty headers when no fields are
             defined.
-        allow_reflow: If True, allow revlowing file content when inserting a header. This
+        allow_reflow: If True, allow reflowing file content when inserting a header. This
             potentially breaks check/strip idempotence.
         allow_content_probe: Whether the resolver may consult file contents during file-type
             detection. True allows content-based probes, False forces name/extension-only
