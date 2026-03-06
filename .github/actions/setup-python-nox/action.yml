@@ -46,7 +46,7 @@ runs:
         path: |
           ~/.cache/pip
           ~/.cache/uv
-        key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles(inputs.cache-dependency-path) }}
+        key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('noxfile.py', 'pyproject.toml', 'requirements-*.txt', 'constraints.txt') }}
         restore-keys: |
           ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-
 
