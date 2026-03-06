@@ -19,15 +19,6 @@ inputs:
     description: Python version to install.
     required: false
     default: "3.13"
-  cache-dependency-path:
-    description: >-
-      Newline-separated dependency files used to compute the pip cache key.
-    required: false
-    default: |
-      requirements-*.txt
-      constraints.txt
-      pyproject.toml
-      noxfile.py
 
 runs:
   using: composite
@@ -38,7 +29,11 @@ runs:
       with:
         python-version: ${{ inputs.python-version }}
         cache: pip
-        cache-dependency-path: ${{ inputs.cache-dependency-path }}
+        cache-dependency-path: |
+          pyproject.toml
+          noxfile.py
+          requirements*.txt
+          constraints*.txt
 
     - name: Cache pip and uv
       uses: actions/cache@v4
@@ -46,7 +41,7 @@ runs:
         path: |
           ~/.cache/pip
           ~/.cache/uv
-        key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('noxfile.py', 'pyproject.toml', 'requirements-*.txt', 'constraints.txt') }}
+        key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('pyproject.toml', 'noxfile.py', 'requirements*.txt', 'constraints*.txt') }}
         restore-keys: |
           ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-
 
