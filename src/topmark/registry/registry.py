@@ -8,7 +8,6 @@
 #
 # topmark:header:end
 
-
 """Public registries for TopMark file types and header processors.
 
 This module exposes structured, read-only oriented registries plus optional

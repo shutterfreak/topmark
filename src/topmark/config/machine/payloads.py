@@ -8,7 +8,6 @@
 #
 # topmark:header:end
 
-
 """Machine-output payload builders for TopMark config commands.
 
 This module contains *pure* helpers that build strongly-typed payload objects

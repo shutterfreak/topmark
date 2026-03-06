@@ -8,7 +8,6 @@
 #
 # topmark:header:end
 
-
 """Serialization helpers for config-related machine output.
 
 This module turns *shaped* config records/envelopes into JSON or NDJSON strings.

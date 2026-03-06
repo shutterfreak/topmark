@@ -84,12 +84,16 @@ class PublicPolicy(TypedDict, total=False):
     are optional; unspecified options inherit from project/default config.
 
     Keys:
-        add_only: When `True`, allow only **insertion** of missing headers.
-            Updates to existing headers are blocked.
-        update_only: When `True`, allow only **updates** to existing headers.
-            Insertion of missing headers is blocked.
-        allow_header_in_empty_files: Permit inserting a header in an otherwise
-            empty file (e.g., `__init__.py`).
+        add_only: Only add missing headers; do not update existing ones.
+        update_only: Only update existing headers; do not add new ones.
+        allow_header_in_empty_files: Allow inserting headers in empty files (e.g., `__init__.py`).
+        render_empty_header_when_no_fields: Allow inserting empty headers when no fields are
+            defined.
+        allow_reflow: If True, allow reflowing file content when inserting a header. This
+            potentially breaks check/strip idempotence.
+        allow_content_probe: Whether the resolver may consult file contents during file-type
+            detection. True allows content-based probes, False forces name/extension-only
+            resolution.
 
     Notes:
         This is a stable public contract; the internal policy may have additional
@@ -99,7 +103,9 @@ class PublicPolicy(TypedDict, total=False):
     add_only: bool
     update_only: bool
     allow_header_in_empty_files: bool
-    # future: allow_unsafe_insert, allow_strip_on_malformed, etc.
+    render_empty_header_when_no_fields: bool
+    allow_reflow: bool
+    allow_content_probe: bool
 
 
 class PublicPolicyByType(TypedDict, total=False):
