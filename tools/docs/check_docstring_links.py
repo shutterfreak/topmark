@@ -4,7 +4,7 @@
 #
 #   project      : TopMark
 #   file         : check_docstring_links.py
-#   file_relpath : tools/check_docstring_links.py
+#   file_relpath : tools/docs/check_docstring_links.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -24,16 +24,16 @@ the docs build. We only look for patterns that indicate intent and good authorin
 
 Usage:
     # Default: scan the TopMark source tree
-    python tools/check_docstring_links.py --stats
+    python tools/docs/check_docstring_links.py --stats
 
     # Explicit files
-    python tools/check_docstring_links.py src/topmark/foo.py src/topmark/bar.py
+    python tools/docs/check_docstring_links.py src/topmark/foo.py src/topmark/bar.py
 
     # Directories are supported (recursively)
-    python tools/check_docstring_links.py src
+    python tools/docs/check_docstring_links.py src
 
     # Also ignore inline code spans (treat them like code blocks)
-    python tools/check_docstring_links.py --ignore-inline-code src
+    python tools/docs/check_docstring_links.py --ignore-inline-code src
 
 Exit codes:
     0  no issues found

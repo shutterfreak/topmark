@@ -177,7 +177,12 @@ PYTHONS: list[str] = get_supported_pythons()
 
 # Global options
 # Keep defaults fast; run QA (multi-Python) explicitly or in CI.
-nox.options.sessions = ["lint", "format_check", "docs", "test_entrypoints"]
+nox.options.sessions = [
+    "lint",
+    "format_check",
+    "docs",
+    "test_entrypoints",
+]
 nox.options.default_venv_backend = "uv"
 
 MAKEFILE_PATTERNS = (
@@ -194,6 +199,11 @@ MARKDOWN_PATTERNS = (
 
 SOURCE_PATTERNS = (":(glob)src/topmark/**/*.py",)
 
+
+# Tools and scripts
+CHECK_DOCSTRING_LINKS_SCRIPT = "tools/docs/check_docstring_links.py"
+
+TEST_PUBLIC_API_SNAPSHOT_SCRIPT = "tests/api/test_public_api_snapshot.py"
 # If using nox-uv, sessions use session.install the same way,
 # but installs are performed via uv under the hood.
 
@@ -236,8 +246,18 @@ def package_check(session: nox.Session) -> None:
         "for p in ['build', 'dist', 'src/topmark.egg-info']]",
     )
 
-    session.run("python", "-m", "build", "--sdist", "--wheel")
-    session.run("twine", "check", "dist/*")
+    session.run(
+        "python",
+        "-m",
+        "build",
+        "--sdist",
+        "--wheel",
+    )
+    session.run(
+        "twine",
+        "check",
+        "dist/*",
+    )
 
 
 def run_lychee(
@@ -286,7 +306,11 @@ def run_lychee(
         if root_dir is not None:
             args.extend(["--root-dir", root_dir])
 
-        session.run(*args, *chunk, external=True)
+        session.run(
+            *args,
+            *chunk,
+            external=True,
+        )
 
 
 @nox.session(python=PYTHONS)
@@ -297,7 +321,14 @@ def qa(session: nox.Session) -> None:
     session.install("-r", "requirements-dev.txt")
 
     # We add *session.posargs to the end of the command
-    session.run("pytest", "-q", "tests", "-m", "not slow and not hypothesis_slow", *session.posargs)
+    session.run(
+        "pytest",
+        "-q",
+        "tests",
+        "-m",
+        "not slow and not hypothesis_slow",
+        *session.posargs,
+    )
 
     # `nox.Session.python` is typed broadly in nox' stubs (it can reflect decorator inputs),
     # but within a running session it should be a concrete interpreter version string.
@@ -305,7 +336,11 @@ def qa(session: nox.Session) -> None:
     if not isinstance(py_ver, str) or not py_ver:
         raise RuntimeError(f"Unexpected session.python value: {py_ver!r}")
 
-    session.run("pyright", "--pythonversion", py_ver)
+    session.run(
+        "pyright",
+        "--pythonversion",
+        py_ver,
+    )
 
 
 @nox.session(python=PYTHONS)
@@ -332,14 +367,22 @@ def qa_api(session: nox.Session) -> None:
     )
 
     # Public API snapshot test (kept separate from the main suite)
-    session.run("pytest", "-vv", "tests/api/test_public_api_snapshot.py")
+    session.run(
+        "pytest",
+        "-vv",
+        TEST_PUBLIC_API_SNAPSHOT_SCRIPT,
+    )
 
     # Pyright
     py_ver = session.python
     if not isinstance(py_ver, str) or not py_ver:
         raise RuntimeError(f"Unexpected session.python value: {py_ver!r}")
 
-    session.run("pyright", "--pythonversion", py_ver)
+    session.run(
+        "pyright",
+        "--pythonversion",
+        py_ver,
+    )
 
 
 @nox.session(python=PYTHONS)
@@ -352,19 +395,43 @@ def test_entrypoints(session: nox.Session) -> None:
     debug_env: dict[str, str] = {"TOPMARK_LOG_LEVEL": "DEBUG"}
 
     # Print the sys.path of the Nox venv
-    session.run("python", "-c", "import sys; print('\\n'.join(sys.path))")
+    session.run(
+        "python",
+        "-c",
+        "import sys; print('\\n'.join(sys.path))",
+    )
 
     # Print the location of the installed topmark package
-    session.run("python", "-c", "import topmark; print(topmark.__file__)")
+    session.run(
+        "python",
+        "-c",
+        "import topmark; print(topmark.__file__)",
+    )
 
     # 1. Test the console script entry point defined in pyproject.toml
-    session.run("topmark", "version", external=True, env=debug_env)
+    session.run(
+        "topmark",
+        "version",
+        external=True,
+        env=debug_env,
+    )
 
     # 2. Test the module entry point defined in src/topmark/__main__.py
-    session.run("python", "-m", "topmark", "version", env=debug_env)
+    session.run(
+        "python",
+        "-m",
+        "topmark",
+        "version",
+        env=debug_env,
+    )
 
     # 3. Test a subcommand to ensure Click context/registry initialized correctly
-    session.run("topmark", "filetypes", env=debug_env)
+    session.run(
+        "topmark",
+        "registry",
+        "filetypes",
+        env=debug_env,
+    )
 
 
 @nox.session
@@ -372,15 +439,31 @@ def lint(session: nox.Session) -> None:
     """Static analysis and custom validation."""
     session.install("-r", "requirements-dev.txt")
 
-    session.run("ruff", "check", ".")
+    session.run(
+        "ruff",
+        "check",
+        ".",
+    )
 
-    session.run("pydoclint", "-q", "src/topmark", "tests", "tools")
+    session.run(
+        "pydoclint",
+        "-q",
+        "src/topmark",
+        "tests",
+        "tools",
+    )
 
     # Clean mbake validation
     makefiles: list[str] = get_git_files(session, *MAKEFILE_PATTERNS)
     # makefiles = [f for f in makefiles if f] # Filter empty
     if makefiles:
-        session.run("mbake", "validate", "--config", ".bake.toml", *makefiles)
+        session.run(
+            "mbake",
+            "validate",
+            "--config",
+            ".bake.toml",
+            *makefiles,
+        )
 
 
 @nox.session
@@ -388,7 +471,12 @@ def lint_fixall(session: nox.Session) -> None:
     """Run ruff with --fix (auto-fix lint issues)."""
     session.install("-r", "requirements-dev.txt")
 
-    session.run("ruff", "check", "--fix", ".")
+    session.run(
+        "ruff",
+        "check",
+        "--fix",
+        ".",
+    )
 
 
 @nox.session
@@ -396,17 +484,38 @@ def format_check(session: nox.Session) -> None:
     """Check formatting for code, markdown, and TOML."""
     session.install("-r", "requirements-dev.txt")
 
-    session.run("ruff", "format", "--check", ".")
+    session.run(
+        "ruff",
+        "format",
+        "--check",
+        ".",
+    )
     # Markdown check
     md_files: list[str] = get_git_files(session, *MARKDOWN_PATTERNS)
     if md_files:
-        session.run("mdformat", "--check", *md_files)
+        session.run(
+            "mdformat",
+            "--check",
+            *md_files,
+        )
 
-    session.run("taplo", "format", "--check", ".")
+    session.run(
+        "taplo",
+        "format",
+        "--check",
+        ".",
+    )
 
     makefiles: list[str] = get_git_files(session, *MAKEFILE_PATTERNS)
     if makefiles:
-        session.run("mbake", "format", "--check", "--config", ".bake.toml", *makefiles)
+        session.run(
+            "mbake",
+            "format",
+            "--check",
+            "--config",
+            ".bake.toml",
+            *makefiles,
+        )
 
 
 @nox.session
@@ -414,17 +523,31 @@ def format(session: nox.Session) -> None:
     """Format code, markdown, TOML, and Makefiles (auto-fix)."""
     session.install("-r", "requirements-dev.txt")
 
-    session.run("ruff", "format", ".")
+    session.run(
+        "ruff",
+        "format",
+        ".",
+    )
 
     md_files: list[str] = get_git_files(session, *MARKDOWN_PATTERNS)
     if md_files:
         session.run("mdformat", *md_files)
 
-    session.run("taplo", "format", ".")
+    session.run(
+        "taplo",
+        "format",
+        ".",
+    )
 
     makefiles: list[str] = get_git_files(session, *MAKEFILE_PATTERNS)
     if makefiles:
-        session.run("mbake", "format", "--config", ".bake.toml", *makefiles)
+        session.run(
+            "mbake",
+            "format",
+            "--config",
+            ".bake.toml",
+            *makefiles,
+        )
 
 
 @nox.session
@@ -432,7 +555,11 @@ def docs(session: nox.Session) -> None:
     """Build documentation."""
     session.install("-r", "requirements-docs.txt")
 
-    session.run("mkdocs", "build", "--strict")
+    session.run(
+        "mkdocs",
+        "build",
+        "--strict",
+    )
 
 
 @nox.session
@@ -440,7 +567,10 @@ def docs_serve(session: nox.Session) -> None:
     """Serve the docs locally (dev only)."""
     session.install("-r", "requirements-docs.txt")
 
-    session.run("mkdocs", "serve")
+    session.run(
+        "mkdocs",
+        "serve",
+    )
 
 
 @nox.session
@@ -503,7 +633,11 @@ def docstring_links(session: nox.Session) -> None:
     """Enforce docstring link style."""
     session.install("-r", "requirements-dev.txt")
 
-    session.run("python", "tools/check_docstring_links.py", "--stats")
+    session.run(
+        "python",
+        CHECK_DOCSTRING_LINKS_SCRIPT,
+        "--stats",
+    )
 
 
 @nox.session(python=PYTHONS)
@@ -514,7 +648,12 @@ def api_snapshot(session: nox.Session) -> None:
     session.install("-r", "requirements-dev.txt")
 
     # We add *session.posargs to the end of the command
-    session.run("pytest", "-vv", "tests/api/test_public_api_snapshot.py", *session.posargs)
+    session.run(
+        "pytest",
+        "-vv",
+        TEST_PUBLIC_API_SNAPSHOT_SCRIPT,
+        *session.posargs,
+    )
 
 
 @nox.session
@@ -522,7 +661,11 @@ def property_test(session: nox.Session) -> None:
     """Run the long-running property tests (developer only)."""
     session.install("-r", "requirements-dev.txt")
 
-    session.run("pytest", "-vv", "tests/pipeline/test_header_bounds_property.py")
+    session.run(
+        "pytest",
+        "-vv",
+        "tests/pipeline/test_header_bounds_property.py",
+    )
 
 
 @nox.session(python=CURRENT_PYTHON_VERSION)
@@ -535,7 +678,7 @@ def release_check(session: nox.Session) -> None:
     It runs:
       - Formatting checks (ruff, mdformat, taplo, mbake)
       - Lint checks (ruff, pydoclint)
-      - Docstring link style checks (tools/check_docstring_links.py)
+      - Docstring link style checks (CHECK_DOCSTRING_LINKS_SCRIPT)
       - Docs build in strict mode (mkdocs)
       - Packaging build + metadata checks (build, twine)
       - Tests + pyright for the session Python
@@ -546,29 +689,81 @@ def release_check(session: nox.Session) -> None:
     session.install("-r", "requirements-docs.txt")
 
     # --- Quality gates (mirror existing sessions, but as a single gate) ---
-    session.run("ruff", "format", "--check", ".")
-    session.run("ruff", "check", ".")
-    session.run("pydoclint", "-q", "src/topmark", "tests", "tools")
+    session.run(
+        "ruff",
+        "format",
+        "--check",
+        ".",
+    )
+    session.run(
+        "ruff",
+        "check",
+        ".",
+    )
+    session.run(
+        "pydoclint",
+        "-q",
+        "src/topmark",
+        "tests",
+        "tools",
+    )
 
     md_files: list[str] = get_git_files(session, *MARKDOWN_PATTERNS)
     if md_files:
-        session.run("mdformat", "--check", *md_files)
+        session.run(
+            "mdformat",
+            "--check",
+            *md_files,
+        )
 
-    session.run("taplo", "format", "--check", ".")
+    session.run(
+        "taplo",
+        "format",
+        "--check",
+        ".",
+    )
 
     makefiles: list[str] = get_git_files(session, *MAKEFILE_PATTERNS)
     if makefiles:
-        session.run("mbake", "validate", "--config", ".bake.toml", *makefiles)
-        session.run("mbake", "format", "--check", "--config", ".bake.toml", *makefiles)
+        session.run(
+            "mbake",
+            "validate",
+            "--config",
+            ".bake.toml",
+            *makefiles,
+        )
+        session.run(
+            "mbake",
+            "format",
+            "--check",
+            "--config",
+            ".bake.toml",
+            *makefiles,
+        )
 
     # Docstring link style (custom tool)
-    session.run("python", "tools/check_docstring_links.py", "--stats")
+    session.run(
+        "python",
+        CHECK_DOCSTRING_LINKS_SCRIPT,
+        "--stats",
+    )
 
     # Docs build (strict)
-    session.run("mkdocs", "build", "--strict")
+    session.run(
+        "mkdocs",
+        "build",
+        "--strict",
+    )
 
     # Tests
-    session.run("pytest", "-q", "tests", "-m", "not slow and not hypothesis_slow", *session.posargs)
+    session.run(
+        "pytest",
+        "-q",
+        "tests",
+        "-m",
+        "not slow and not hypothesis_slow",
+        *session.posargs,
+    )
     # Entry point check -- We call it as a function to reuse the current session environment
     test_entrypoints(session)
 
@@ -576,7 +771,11 @@ def release_check(session: nox.Session) -> None:
     py_ver = session.python
     if not isinstance(py_ver, str) or not py_ver:
         raise RuntimeError(f"Unexpected session.python value: {py_ver!r}")
-    session.run("pyright", "--pythonversion", py_ver)
+    session.run(
+        "pyright",
+        "--pythonversion",
+        py_ver,
+    )
 
     # Packaging checks (clean dist/ first to avoid stale artifacts)
     session.run(
@@ -584,8 +783,18 @@ def release_check(session: nox.Session) -> None:
         "-c",
         "import shutil; shutil.rmtree('dist', ignore_errors=True)",
     )
-    session.run("python", "-m", "build", "--sdist", "--wheel")
-    session.run("twine", "check", "dist/*")
+    session.run(
+        "python",
+        "-m",
+        "build",
+        "--sdist",
+        "--wheel",
+    )
+    session.run(
+        "twine",
+        "check",
+        "dist/*",
+    )
 
 
 @nox.session(python=False)
@@ -604,17 +813,57 @@ def release_full(session: nox.Session) -> None:
     """
     # Orchestrate in a separate nox process to reuse existing sessions and keep definitions DRY.
     # Serial, non-matrix gates first:
-    session.run("nox", "-s", "format_check", external=True)
-    session.run("nox", "-s", "lint", external=True)
-    session.run("nox", "-s", "docstring_links", external=True)
-    session.run("nox", "-s", "docs", external=True)
-    session.run("nox", "-s", "links_site", external=True)
-    session.run("nox", "-s", "links_all", external=True)
+    session.run(
+        "nox",
+        "-s",
+        "format_check",
+        external=True,
+    )
+    session.run(
+        "nox",
+        "-s",
+        "lint",
+        external=True,
+    )
+    session.run(
+        "nox",
+        "-s",
+        "docstring_links",
+        external=True,
+    )
+    session.run(
+        "nox",
+        "-s",
+        "docs",
+        external=True,
+    )
+    session.run(
+        "nox",
+        "-s",
+        "links_site",
+        external=True,
+    )
+    session.run(
+        "nox",
+        "-s",
+        "links_all",
+        external=True,
+    )
 
     # Verify CLI entrypoints across the matrix
-    session.run("nox", "-s", "test_entrypoints", external=True)
+    session.run(
+        "nox",
+        "-s",
+        "test_entrypoints",
+        external=True,
+    )
 
-    session.run("nox", "-s", "package_check", external=True)
+    session.run(
+        "nox",
+        "-s",
+        "package_check",
+        external=True,
+    )
 
     # Parallelize the per-Python QA+snapshot+typecheck gate across versions.
     jobs_s: str = os.environ.get("JOBS", "5")

@@ -58,7 +58,7 @@ help:
 	@echo "  format-check    Check code/markdown/toml/Makefile formatting"
 	@echo "  format          Format code/markdown/toml/Makefile (auto-fix)"
 	@echo "  format-docstrings  Auto-format docstrings using pydocstringformatter"
-	@echo "  docstring-links Enforce docstring link style (tools/check_docstring_links.py)"
+	@echo "  docstring-links Enforce docstring link style (tools/docs/check_docstring_links.py)"
 	@echo "  property-test   Run Hypothesis hardening tests (manual, opt-in)"
 	@echo ""
 	@echo "  release-check   Run the deterministic pre-release gate (nox: release_check)"
