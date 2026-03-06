@@ -17,6 +17,16 @@ end_of_line = lf
 insert_final_newline = true
 trim_trailing_whitespace = true
 
+[*.md]
+# Markdown files often use trailing spaces for explicit line breaks,
+# so trimming must remain disabled. We also restate newline/encoding
+# rules here because some editors treat Markdown specially and may
+# otherwise introduce CRLF or missing-final-newline diffs in docs.
+trim_trailing_whitespace = false
+end_of_line = lf
+insert_final_newline = true
+charset = utf-8
+
 [*.py]
 # This section applies to Python files.
 indent_style = space
@@ -26,3 +36,19 @@ indent_size = 4
 # This section applies to TOML files.
 indent_style = space
 indent_size = 2
+
+[*.{yml,yaml}]
+# YAML files (GitHub workflows, actions, etc.)
+indent_style = space
+indent_size = 2
+
+[.github/workflows/*.yml]
+# Ensure GitHub workflow files keep stable whitespace/indentation so that
+# editor auto-formatting does not introduce noisy diffs in CI workflow YAML.
+# These settings intentionally restate the YAML defaults to protect them
+# from editor overrides or language extensions.
+indent_style = space
+indent_size = 2
+trim_trailing_whitespace = true
+insert_final_newline = true
+end_of_line = lf

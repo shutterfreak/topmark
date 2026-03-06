@@ -10,5 +10,5 @@
 
 INHERIT: mkdocs.yml
 # For `nox -e links_site` we want to check links locally;
-# unset `site_url` to allow local resolution (relative URLs): 
+# unset `site_url` to allow local resolution (relative URLs):
 site_url: ""

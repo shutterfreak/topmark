@@ -29,13 +29,13 @@
         "source.organizeImports": "explicit"
     },
 
-    // --- MarkDown Settings ---
+    // --- Language-Specific Settings ---
+
     "[markdown]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode",
         "editor.formatOnSave": true
     },
 
-    // --- Python Settings ---
     "[python]": {
         // Set Ruff as the default formatter for Python files.
         "editor.defaultFormatter": "charliermarsh.ruff",
@@ -48,10 +48,14 @@
         }
     },
 
-    // --- TOML Settings ---
     "[toml]": {
         "editor.formatOnSave": true,
         "editor.defaultFormatter": "tamasfe.even-better-toml"
+    },
+
+    "[yaml]": {
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2
     },
 
     // --- Specific Tool Extensions Settings ---
@@ -59,9 +63,6 @@
     // Ruff Extension Settings (charliermarsh.ruff)
     // With the native Ruff extension, configuration comes from `pyproject.toml` ([tool.ruff] / [tool.ruff.lint]).
     "ruff.lint.enable": true,
-
-    // Optional: useful when debugging config reloads
-    // "ruff.logLevel": "information",
 
     // --- Python / Pylance ---
     // Ensure Pylance is your language server (Pyright extension should be disabled).
@@ -86,10 +87,12 @@
 
     // Stop schema-store from attaching random schemas (often causes weird “not accepted” lists)
     "yaml.schemaStore.enable": false,
+
     // Add mkdocs-material schema
     "yaml.schemas": {
         "https://squidfunk.github.io/mkdocs-material/schema.json": "mkdocs*.yml"
     },
+
     // Add custom YAML tags (used in mkdocs.yml)
     "yaml.customTags": [
         "!ENV scalar",
