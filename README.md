@@ -168,17 +168,17 @@ topmark [COMMAND] [OPTIONS] [PATHS]...
 
 ### Subcommands
 
-| Command           | Description                                                           |
-| ----------------- | --------------------------------------------------------------------- |
-| `check`           | Add or update TopMark headers                                         |
-| `strip`           | Remove TopMark headers                                                |
-| `config check`    | Check the merged config for errors.                                   |
-| `config defaults` | Show built-in defaults without merging                                |
-| `config dump`     | Show resolved configuration (merged TOML)                             |
-| `config init`     | Output a starter configuration (TOML with documentation in commments) |
-| `filetypes`       | List supported file types                                             |
-| `processors`      | List header processors and mappings                                   |
-| `version`         | Print version (PEP 440 or SemVer)                                     |
+| Command               | Description                                                           |
+| --------------------- | --------------------------------------------------------------------- |
+| `check`               | Add or update TopMark headers                                         |
+| `strip`               | Remove TopMark headers                                                |
+| `config check`        | Check the merged config for errors.                                   |
+| `config defaults`     | Show built-in defaults without merging                                |
+| `config dump`         | Show resolved configuration (merged TOML)                             |
+| `config init`         | Output a starter configuration (TOML with documentation in commments) |
+| `registry filetypes`  | List supported file types from the registry                           |
+| `registry processors` | List header processors and mappings from the registry                 |
+| `version`             | Print version (PEP 440 or SemVer)                                     |
 
 ### Examples
 
@@ -196,10 +196,10 @@ topmark strip src/
 topmark strip --apply src/
 
 # Show supported file types in Markdown format
-topmark filetypes --output-format markdown --long
+topmark registry filetypes --output-format markdown --long
 
 # List processors and associated file types
-topmark processors --output-format markdown --long
+topmark registry processors --output-format markdown --long
 ```
 
 TopMark preserves line endings, shebangs, BOMs, and indentation rules for each file type.
@@ -229,6 +229,7 @@ copyright = "(c) 2025 Olivier Biot"
 
 [header]
 fields = ["file", "file_relpath", "project", "license", "copyright"]
+relative_to = "."
 
 [tool.topmark.policy]
 add_only = false
@@ -240,13 +241,11 @@ allow_header_in_empty_files = true
 
 [formatting]
 align_fields = true
-raw_header = false
 
 [files]
 include_file_types = ["python", "markdown", "env"]
 exclude_file_types = ["html"]
 exclude_from = [".gitignore"]
-relative_to = "."
 ```
 
 ### Policy semantics
@@ -298,23 +297,34 @@ The public API now an optional `policy` argument (global or per-type) that integ
 ```python
 from pathlib import Path
 from topmark import api
-from topmark.api.public_types import Policy
 
-# Dry-run header checks
+paths: list[Path] = [Path("src")]
+
+policy: dict[str, object] = {
+    "add_only": True,
+}
+
+# Dry-run (apply=False) header checks
 result = api.check(
-    [Path("src")],
-    apply=True,
-    policy=Policy(add_only=True)
+    paths,
+    apply=False,
+    policy=policy,
 )
 
 print(result.summary)
 print(result.had_errors)
 
 # Apply changes
-applied = api.check([Path("src")], apply=True)
+result = api.check(
+    paths,
+    apply=True,
+)
 
 # Remove headers
-api.strip([Path("src")], apply=True)
+result = api.strip(
+    paths,
+    apply=True,
+)
 ```
 
 For programmatic discovery:
@@ -322,8 +332,12 @@ For programmatic discovery:
 ```python
 from topmark.registry.registry import Registry
 
-for ft, proc in Registry.bindings():
-    print(ft.name, bool(proc))
+for binding in Registry.bindings():
+    print(
+        binding.filetype.name,
+        binding.filetype.description,
+        "(bound)" if binding.processor else "(unbound)",
+    )
 ```
 
 ______________________________________________________________________
