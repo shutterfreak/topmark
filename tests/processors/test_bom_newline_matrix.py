@@ -138,7 +138,7 @@ def test_strip_preserves_newline_style(
         fp.write(content)
 
     # Emulate strip pipeline: scanner -> stripper -> updater fast-path
-    from topmark.processors.bootstrap import get_processor_for_file
+    from topmark.registry.resolver import get_processor_for_file
 
     proc: HeaderProcessor | None = get_processor_for_file(f)
     assert proc is not None

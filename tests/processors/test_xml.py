@@ -41,10 +41,10 @@ from topmark.pipeline.status import ComparisonStatus
 from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import GenerationStatus
 from topmark.pipeline.status import ResolveStatus
-from topmark.processors.bootstrap import get_processor_for_file
+from topmark.processors.builtins.xml import XmlHeaderProcessor
 from topmark.processors.types import StripDiagKind
 from topmark.processors.types import StripDiagnostic
-from topmark.processors.xml import XmlHeaderProcessor
+from topmark.registry.resolver import get_processor_for_file
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -424,7 +424,7 @@ def test_xml_strip_header_block_respects_declaration(tmp_path: Path) -> None:
     Exercises both explicit-span and auto-detect paths and asserts identical
     results with the declaration retained as the first logical line.
     """
-    from topmark.processors.bootstrap import get_processor_for_file
+    from topmark.registry.resolver import get_processor_for_file
 
     file: Path = tmp_path / "strip_doc.xml"
     file.write_text(

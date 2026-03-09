@@ -166,7 +166,7 @@ ______________________________________________________________________
 - The generator logic lives in `tools/api_snapshot.py`.
 - Normalization ensures consistent diffing across OSes and Python builds.
 - The snapshot is derived from `topmark.api.__all__`, ensuring the stable façade remains small and explicitly defined.
-- Internal helpers such as `get_base_file_type_registry()` and `get_base_header_processor_registry()` are not part of the public API and may change without notice
+- Internal helpers such as \[`topmark.filetypes.instances.get_base_file_type_registry`\][topmark.filetypes.instances.get_base_file_type_registry] and \[`topmark.processors.instances.get_base_header_processor_registry`\][topmark.processors.instances.get_base_header_processor_registry] are not part of the public API and may change without notice.
 
 ______________________________________________________________________
 

@@ -47,7 +47,7 @@ The current registry architecture was introduced to satisfy these goals:
 1. **Clear public vs. internal API**
    - Most users should *inspect* registries, not mutate them.
 1. **Efficient composition**
-   - Built-ins and plugins should be discovered once and cached.
+   - Internal base registries should be constructed once and cached.
 1. **Test isolation**
    - Registry mutations must be easy to reset between tests.
 1. **Single source of truth for reference docs**
@@ -65,7 +65,7 @@ Registries are split into three conceptual layers:
 graph TD
     %% Base registries (built-ins + entry points)
     BFT["<b>Base FileType registry</b><br/><code>topmark.filetypes.instances.get_base_file_type_registry()</code><br/><br/>• built-ins + entry points<br/>• discovered once<br/>• cached (LRU / process lifetime)<br/>• never mutated"]
-    BHP["<b>Base HeaderProcessor registry</b><br/><code>topmark.filetypes.registry.get_base_header_processor_registry()</code><br/><br/>• built-ins + entry points<br/>• discovered once<br/>• cached (LRU / process lifetime)<br/>• never mutated"]
+    BHP["<b>Base HeaderProcessor registry</b><br/><code>topmark.processors.instances.get_base_header_processor_registry()</code><br/><br/>• explicit built-in bindings<br/>• constructed once<br/>• cached (LRU / process lifetime)<br/>• never mutated"]
 
     %% Overlay state (process-local)
     OFT["<b>FileTypeRegistry overlays</b><br/><code>topmark.registry.filetypes.FileTypeRegistry</code><br/><br/>• additions: <code>register()</code><br/>• removals: <code>unregister()</code><br/>• process-local<br/>• thread-safe"]
@@ -118,7 +118,7 @@ These classes provide **overlay mutation helpers**:
 Important properties:
 
 - Mutations affect overlays only
-- Built-in and plugin-discovered entries are never mutated
+- Internal base-registry entries are never mutated
 - Overlay changes invalidate composed-view caches automatically
 - Intended for:
   - Tests
@@ -130,7 +130,7 @@ is considered advanced and may evolve.
 
 ### Caching and Invalidation
 
-- Base registries are cached (often via `lru_cache`) because discovery is expensive.
+- Base registries are cached (often via `lru_cache`) because construction and validation should only happen once per process.
 - Composed effective views are cached for fast access.
 - Any overlay mutation (`register` / `unregister`) clears the composed cache.
 - Tests must reset overlays *and* caches to avoid cross-test contamination.

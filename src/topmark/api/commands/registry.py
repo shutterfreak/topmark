@@ -96,9 +96,6 @@ def list_processors(long: bool = False) -> list[ProcessorInfo]:
         For object-level access, prefer `HeaderProcessorRegistry` from
         [`topmark.registry`][]. This function returns metadata (not the objects).
     """
-    # Ensure all processors are registered before listing (idempotent)
-    Registry.ensure_processors_registered()
-
     items: list[ProcessorInfo] = []
     for name, proc in Registry.processors().items():
         info: ProcessorInfo = {

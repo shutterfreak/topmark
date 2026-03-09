@@ -40,7 +40,7 @@ from topmark.pipeline import runner
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.pipelines import Pipeline
 from topmark.pipeline.status import HeaderStatus
-from topmark.processors.pound import PoundHeaderProcessor
+from topmark.processors.builtins.pound import PoundHeaderProcessor
 from topmark.processors.types import StripDiagKind
 from topmark.processors.types import StripDiagnostic
 
@@ -804,7 +804,7 @@ def test_strip_header_block_with_and_without_span_preserves_shebang(tmp_path: Pa
       * The entire TopMark header block is removed.
       * The returned span matches the actual header location.
     """
-    from topmark.processors.bootstrap import get_processor_for_file
+    from topmark.registry.resolver import get_processor_for_file
 
     file: Path = tmp_path / "strip_shebang.py"
     file.write_text(

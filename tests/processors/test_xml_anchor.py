@@ -13,7 +13,7 @@
 from __future__ import annotations
 
 from topmark.processors.base import NO_LINE_ANCHOR
-from topmark.processors.xml import XmlHeaderProcessor
+from topmark.processors.builtins.xml import XmlHeaderProcessor
 
 
 def test_xml_processor_reports_no_line_anchor() -> None:

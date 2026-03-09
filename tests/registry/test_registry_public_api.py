@@ -24,6 +24,7 @@ import pytest
 
 from tests.conftest import make_file_type
 from tests.conftest import stub_proc_cls
+from topmark.core.errors import DuplicateProcessorRegistrationError
 from topmark.filetypes.model import FileType
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
@@ -95,7 +96,10 @@ def test_processor_register_unregister_roundtrip(proc_name: str) -> None:
 
 
 def test_processor_register_duplicate_raises() -> None:
-    """Registering a processor under an existing name should raise ValueError."""
+    """Registering a processor under an existing name should raise.
+
+    Regustering under an expsting name raises DuplicateProcessorRegistrationError.
+    """
     name = "dup_proc"
 
     ft: FileType = make_file_type(name=name)
@@ -105,7 +109,7 @@ def test_processor_register_duplicate_raises() -> None:
 
     try:
         HeaderProcessorRegistry.register(name, proc_cls, file_type=ft)
-        with pytest.raises(ValueError):
+        with pytest.raises(DuplicateProcessorRegistrationError):
             HeaderProcessorRegistry.register(name, proc_cls, file_type=ft)
     finally:
         HeaderProcessorRegistry.unregister(name)
@@ -127,7 +131,7 @@ def test_replace_processor_requires_unregister() -> None:
         )
         import pytest
 
-        with pytest.raises(ValueError):
+        with pytest.raises(DuplicateProcessorRegistrationError):
             HeaderProcessorRegistry.register(
                 name,
                 cls2,

@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : xml.py
-#   file_relpath : src/topmark/processors/xml.py
+#   file_relpath : src/topmark/processors/builtins/xml.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -24,7 +24,6 @@ from topmark.pipeline.policy_whitespace import is_pure_spacer
 from topmark.processors.base import HeaderProcessor
 from topmark.processors.mixins import BlockCommentMixin
 from topmark.processors.mixins import XmlPositionalMixin
-from topmark.processors.registry import register_processor_for_filetype
 
 if TYPE_CHECKING:
     from topmark.core.logging import TopmarkLogger
@@ -34,14 +33,6 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-@register_processor_for_filetype("html")
-@register_processor_for_filetype("svelte")
-@register_processor_for_filetype("svg")
-@register_processor_for_filetype("vue")
-@register_processor_for_filetype("xhtml")
-@register_processor_for_filetype("xml")
-@register_processor_for_filetype("xsl")
-@register_processor_for_filetype("xslt")
 class XmlHeaderProcessor(XmlPositionalMixin, BlockCommentMixin, HeaderProcessor):
     """Header processor for XML/HTML-like formats (uses XmlPositionalMixin).
 
@@ -73,7 +64,7 @@ class XmlHeaderProcessor(XmlPositionalMixin, BlockCommentMixin, HeaderProcessor)
         Returns:
             ``NO_LINE_ANCHOR`` to signal char-offset insertion.
         """
-        from .base import NO_LINE_ANCHOR
+        from topmark.processors.base import NO_LINE_ANCHOR
 
         return NO_LINE_ANCHOR
 

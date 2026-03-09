@@ -32,14 +32,10 @@ from topmark.cli.commands.version import version_command
 from topmark.cli.keys import CliCmd
 from topmark.cli.options import GROUP_CONTEXT_SETTINGS
 from topmark.core.keys import ArgKey
-from topmark.processors.bootstrap import register_all_processors
 from topmark.utils.version import check_python_version
 
 if TYPE_CHECKING:
     from topmark.cli_shared.console_api import ConsoleLike
-
-
-register_all_processors()
 
 
 @click.group(

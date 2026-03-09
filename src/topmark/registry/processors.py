@@ -10,18 +10,18 @@
 
 """Public header processor registry (advanced).
 
-Exposes read-only views and optional mutation helpers for registered header
-processors. Most users should prefer the stable facade
+Exposes read-only views and optional mutation helpers for registered header processors. Most users
+should prefer the stable facade
 [`topmark.registry.registry.Registry`][topmark.registry.registry.Registry]. This module is intended
 for plugins and tests.
 
 Notes:
     * Public views (`as_mapping()`, `names()`, `get()`) are sourced from a **composed**
-      registry (base + local overrides − removals) and exposed as `MappingProxyType`.
+      registry (base + local overrides - removals) and exposed as `MappingProxyType`.
     * `register()` / `unregister()` apply **overlay-only** changes; they do not mutate
-      the base processor mapping registered during import/decorator discovery.
-    * When registering a processor, the target `FileType` is resolved from the composed
-      file type view to ensure overlay-added types can be bound.
+      the internal base processor mapping constructed from explicit built-in bindings.
+    * When registering a processor class, the target `FileType` is supplied by the
+      caller so the instantiated processor can be bound consistently.
     * When the environment variable ``TOPMARK_VALIDATE`` is set to a truthy value
       (``1``, ``true``, ``yes``), lightweight developer validations will run on the
       composed processor mapping (see `_dev_validate_processors`).
@@ -35,6 +35,8 @@ from threading import RLock
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 from typing import Final
+
+from topmark.core.errors import DuplicateProcessorRegistrationError
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -68,7 +70,7 @@ def _dev_validate_processors(proc_map: Mapping[str, HeaderProcessor]) -> None:
 
 @dataclass(frozen=True)
 class ProcessorMeta:
-    """Stable, serializable metadata about a registered HeaderProcessor."""
+    """Stable, serializable metadata about a registered processor instance."""
 
     name: str
     description: str = ""
@@ -107,10 +109,10 @@ class HeaderProcessorRegistry:
         if cached is not None:
             return dict(cached)
 
-        from topmark.processors.registry import get_base_header_processor_registry as _get
+        from topmark.processors.instances import get_base_header_processor_registry
 
-        # _get() returns the base decorator-populated processor registry.
-        base: dict[str, HeaderProcessor] = dict(_get())
+        # get_base_header_processor_registry() returns the base processor registry.
+        base: dict[str, HeaderProcessor] = dict(get_base_header_processor_registry())
         base.update(cls._overrides)
         for name in cls._removals:
             base.pop(name, None)
@@ -130,17 +132,17 @@ class HeaderProcessorRegistry:
             return tuple(sorted(cls._compose().keys()))
 
     @classmethod
-    def is_registered(cls, filetype_name: str) -> bool:
+    def is_registered(cls, file_type_name: str) -> bool:
         """Return True if a processor is registered for the given file type name."""
         with cls._lock:
-            return filetype_name in cls._compose()
+            return file_type_name in cls._compose()
 
     @classmethod
     def get(cls, name: str) -> HeaderProcessor | None:
         """Return a header processor by name.
 
         Args:
-            name: Registered processor name.
+            name: File type name used as the processor registry key.
 
         Returns:
             The processor if found, else None.
@@ -153,7 +155,7 @@ class HeaderProcessorRegistry:
         """Return a read-only mapping of header processors.
 
         Returns:
-            MApping of name to `HeaderProcessor`.
+            Mapping of file type name to bound `HeaderProcessor` instance.
 
         Notes:
             The returned mapping is a `MappingProxyType` and must not be mutated.
@@ -197,16 +199,16 @@ class HeaderProcessorRegistry:
         *,
         file_type: FileType,
     ) -> None:
-        """Register a header processor under a file type name.
+        """Register a header processor class under a file type name.
 
         Args:
             name: File type name under which the processor appears in the registry.
-            processor_class: A `HeaderProcessor` class. It will be
-                instantiated with no arguments and bound to the file type.
-            file_type: The FileType instance to bind to the processor.
+            processor_class: Concrete `HeaderProcessor` class to instantiate.
+            file_type: FileType instance to bind to the instantiated processor.
 
         Raises:
-            ValueError: If the file type name is already registered.
+            DuplicateProcessorRegistrationError: If the file type name already has a
+                registered processor in the composed view.
 
         Notes:
             - This mutates global state. Prefer temporary usage in tests with try/finally.
@@ -216,9 +218,11 @@ class HeaderProcessorRegistry:
         with cls._lock:
             # Check composed view to avoid dupes
             if name in cls._compose():
-                raise ValueError(f"File type '{name}' already has a registered processor.")
+                raise DuplicateProcessorRegistrationError(
+                    file_type=name,
+                )
 
-            # Instantiate if a class is provided
+            # Instantiate the provided processor class and bind it to the file type.
             proc_obj: HeaderProcessor = processor_class()
 
             # Bind the processor to the FileType (mirror decorator behavior).

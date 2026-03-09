@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : cblock.py
-#   file_relpath : src/topmark/processors/cblock.py
+#   file_relpath : src/topmark/processors/builtins/cblock.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -32,16 +32,8 @@ from __future__ import annotations
 
 from topmark.processors.base import HeaderProcessor
 from topmark.processors.mixins import BlockCommentMixin
-from topmark.processors.registry import register_processor_for_filetype
 
 
-# Attach all relevant file types here; their concrete definitions live in filetypes/instances.py
-@register_processor_for_filetype("css")
-@register_processor_for_filetype("less")
-@register_processor_for_filetype("scss")
-@register_processor_for_filetype("solidity")
-@register_processor_for_filetype("sql")
-@register_processor_for_filetype("stylus")
 class CBlockHeaderProcessor(BlockCommentMixin, HeaderProcessor):
     """Processor for C-style block comment headers (uses BlockCommentMixin)."""
 

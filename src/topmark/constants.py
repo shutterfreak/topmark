@@ -153,6 +153,22 @@ TOML_BLOCK_END: Final = "# === END[TOML] ==="
 
 # --- String constants ---
 
+TOPMARK_NAMESPACE: Final = "topmark"
+"""Namespace identifier for TopMark-provided registry entries."""
+
 VALUE_NOT_SET: Final = "<not set>"
 
 CLI_OVERRIDE_STR: Final = "<CLI overrides>"
+
+# --- Patterns and Regular Expressions ---
+
+VALID_REGISTRY_TOKEN_RE: Final = r"[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*"  # noqa: S105
+"""Regular expression pattern applicable to `key` and `namespace` in the registry.
+
+Rules:
+    - Allowed characters: a-z, 0-9, '.', '_', '-'
+    - Must start with a-z
+    - Must not end with a separator ('.', '_', '-')
+    - No consecutive separators
+    - Must not contain ':'
+"""

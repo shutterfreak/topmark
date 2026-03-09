@@ -37,7 +37,7 @@ def test_register_filetype_with_processor_in_one_step() -> None:
     ft: FileType = make_file_type(name=name)
     try:
         proc_cls: type[HeaderProcessor] = stub_proc_cls()
-        Registry.register_filetype(ft, processor=proc_cls)
+        Registry.register_filetype(ft, processor_class=proc_cls)
         assert name in Registry.supported_filetype_names()
         assert HeaderProcessorRegistry.is_registered(name)
         proc: HeaderProcessor = HeaderProcessorRegistry.as_mapping()[name]

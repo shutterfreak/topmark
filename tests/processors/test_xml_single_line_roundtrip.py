@@ -31,9 +31,9 @@ from topmark.constants import TOPMARK_START_MARKER
 from topmark.pipeline.status import ComparisonStatus
 from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import GenerationStatus
-from topmark.processors.bootstrap import get_processor_for_file
 from topmark.processors.types import StripDiagKind
 from topmark.processors.types import StripDiagnostic
+from topmark.registry.resolver import get_processor_for_file
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -247,7 +247,7 @@ def test_slash_strip_header_block_with_and_without_span(tmp_path: Path) -> None:
     Validates both the explicit-span path and the auto-detection fallback and
     ensures the resulting content is identical across both paths.
     """
-    from topmark.processors.bootstrap import get_processor_for_file
+    from topmark.registry.resolver import get_processor_for_file
 
     file: Path = tmp_path / "strip_me.js"
     file.write_text(

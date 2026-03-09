@@ -28,7 +28,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
 from typing_extensions import NotRequired
 from typing_extensions import Required
 from typing_extensions import TypedDict
@@ -54,8 +53,7 @@ from topmark.pipeline.steps.stripper import StripperStep
 from topmark.pipeline.steps.writer import WriterStep
 from topmark.pipeline.views import ListFileImageView
 from topmark.processors.base import HeaderProcessor
-from topmark.processors.bootstrap import get_processor_for_file
-from topmark.processors.bootstrap import register_all_processors
+from topmark.registry.resolver import get_processor_for_file
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -227,16 +225,6 @@ def coerce_newlines(
     else:
         out.append(core_last + target_nl if ends_with_newline else core_last)
     return out
-
-
-@pytest.fixture(scope="module", autouse=True)
-def register_processors_for_this_package() -> None:
-    """Ensure all header processors are registered for processor tests.
-
-    Using an autouse, module-scoped fixture here avoids repeating the same
-    registration fixture in each test module under ``tests/pipeline/processors``.
-    """
-    register_all_processors()
 
 
 def materialize_image_lines(ctx: ProcessingContext) -> list[str]:
@@ -417,7 +405,6 @@ def expected_block_lines_for(path: Path, newline: str = "\n") -> BlockSignatures
     # Ensure processors are registered and resolve the appropriate one
     proc: HeaderProcessor | None = get_processor_for_file(path)
     if proc is None:
-        register_all_processors()
         proc = get_processor_for_file(path)
     assert proc is not None, f"No header processor found for {path}"
 

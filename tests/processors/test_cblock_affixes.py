@@ -12,7 +12,7 @@
 
 from __future__ import annotations
 
-from topmark.processors.cblock import CBlockHeaderProcessor
+from topmark.processors.builtins.cblock import CBlockHeaderProcessor
 
 
 def test_cblock_affixes_are_set_via_class_attrs() -> None:

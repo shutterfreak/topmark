@@ -92,8 +92,8 @@ configuration.
 ### Registries and extensibility (read-only by default)
 
 TopMark exposes **read-only** registries for file types and header processors via the stable
-facade in \[`topmark.registry.registry.Registry`\][topmark.registry.registry.Registry]. These registries represent the **effective composed
-view** (base built-ins + entry points + overlays − removals) and are returned as immutable
+facade in [`topmark.registry.registry.Registry`][topmark.registry.registry.Registry]. These registries represent the **effective composed
+view** (internal base registries + overlays − removals) and are returned as immutable
 `Mapping` views (backed by `MappingProxyType`).
 
 These registry objects are **not part of the `topmark.api` stability contract**; the supported programmatic API is defined exclusively by the symbols exported in `topmark.api.__all__`.
@@ -110,8 +110,8 @@ If you need dynamic extensions at runtime (typically in plugins or tests), use t
 - \[`topmark.registry.processors.HeaderProcessorRegistry.unregister(name)`\][topmark.registry.processors.HeaderProcessorRegistry]
 
 These mutation helpers apply **overlay-only changes**: they do not mutate the internal base
-registries (built-ins + entry points). Overlays are process-local and thread-safe (via an
-internal lock). In tests, prefer wrapping mutations in `try/finally` to ensure cleanup.
+registries used to construct the effective views. Overlays are process-local and thread-safe
+(via an internal lock). In tests, prefer wrapping mutations in `try/finally` to ensure cleanup.
 
 Overlay mutations automatically invalidate composed registry caches;
 callers do not need to manage cache lifetimes explicitly.

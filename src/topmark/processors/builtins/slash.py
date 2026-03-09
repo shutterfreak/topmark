@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : slash.py
-#   file_relpath : src/topmark/processors/slash.py
+#   file_relpath : src/topmark/processors/builtins/slash.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -23,7 +23,6 @@ from typing import TYPE_CHECKING
 from topmark.core.logging import get_logger
 from topmark.processors.base import HeaderProcessor
 from topmark.processors.mixins import LineCommentMixin
-from topmark.processors.registry import register_processor_for_filetype
 
 if TYPE_CHECKING:
     from topmark.core.logging import TopmarkLogger
@@ -31,18 +30,6 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-@register_processor_for_filetype("c")
-@register_processor_for_filetype("cpp")
-@register_processor_for_filetype("cs")
-@register_processor_for_filetype("go")
-@register_processor_for_filetype("java")
-@register_processor_for_filetype("javascript")
-@register_processor_for_filetype("jsonc")
-@register_processor_for_filetype("kotlin")
-@register_processor_for_filetype("rust")
-@register_processor_for_filetype("swift")
-@register_processor_for_filetype("typescript")
-@register_processor_for_filetype("vscode-jsonc")
 class SlashHeaderProcessor(LineCommentMixin, HeaderProcessor):
     """Processor for files that accept C-style comments.
 

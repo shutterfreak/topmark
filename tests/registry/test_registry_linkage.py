@@ -17,7 +17,7 @@ interact:
   considered unsupported.
 - Registering a corresponding processor transitions a file type to supported and
   binds the processor to the file type object.
-- Registering a processor for an unknown file type raises ``ValueError``.
+- Registering a processor for an unknown file type raises ``UnknownFileTypeError``.
 """
 
 from __future__ import annotations
@@ -28,6 +28,7 @@ import pytest
 
 from tests.conftest import make_file_type
 from tests.conftest import stub_proc_cls
+from topmark.core.errors import UnknownFileTypeError
 from topmark.processors.base import HeaderProcessor
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
@@ -74,7 +75,7 @@ def test_register_processor_fails_for_unknown_filetype() -> None:
     """Reject registering a processor for a non-existent file type."""
     proc_cls: type[HeaderProcessor] = stub_proc_cls()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(UnknownFileTypeError):
         Registry.register_processor("nonexistent_ft", proc_cls)
 
 

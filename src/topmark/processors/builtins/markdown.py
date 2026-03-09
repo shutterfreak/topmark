@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : markdown.py
-#   file_relpath : src/topmark/processors/markdown.py
+#   file_relpath : src/topmark/processors/builtins/markdown.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -35,7 +35,6 @@ from topmark.constants import TOPMARK_START_MARKER
 from topmark.core.logging import get_logger
 from topmark.processors.base import HeaderProcessor
 from topmark.processors.mixins import BlockCommentMixin
-from topmark.processors.registry import register_processor_for_filetype
 from topmark.processors.types import BoundsKind
 from topmark.processors.types import HeaderBounds
 
@@ -47,7 +46,6 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-@register_processor_for_filetype("markdown")
 class MarkdownHeaderProcessor(BlockCommentMixin, HeaderProcessor):
     """Header processor for Markdown formats (HTML comment–based, line-oriented).
 

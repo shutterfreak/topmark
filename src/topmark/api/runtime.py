@@ -38,7 +38,6 @@ from topmark.core.logging import get_logger
 from topmark.file_resolver import resolve_file_list
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.pipelines import Pipeline
-from topmark.registry.registry import Registry
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -334,9 +333,6 @@ def run_pipeline(
 
     if not file_list:
         return cfg, file_list, [], None
-
-    # Ensure all processors are registered before running the pipeline (idempotent)
-    Registry.ensure_processors_registered()
 
     # 3) Final immutable snapshot for this run, carrying apply intent.
     cfg_for_run: Config = replace(cfg, apply_changes=apply_changes)

@@ -51,6 +51,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from topmark.core.errors import UnknownFileTypeError
+from topmark.filetypes.model import FileType
 from topmark.registry.filetypes import FileTypeMeta
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
@@ -155,17 +157,33 @@ class Registry:
 
     @staticmethod
     def register_filetype(
-        ft_obj: FileType, *, processor: type[HeaderProcessor] | None = None
+        ft_obj: FileType,
+        *,
+        processor_class: type[HeaderProcessor] | None = None,
     ) -> None:
-        """Register a file type and optionally bind a processor (advanced).
+        """Register a file type and optionally bind a processor class (advanced).
 
         This is a convenience passthrough to
         [`FileTypeRegistry.register`][topmark.registry.filetypes.FileTypeRegistry.register].
-        Mutates global state; prefer using in tests or controlled plugin init.
+        If `processor_class` is provided, the processor class is also registered
+        in the header processor overlay registry and bound to `ft_obj`.
+
+        Args:
+            ft_obj: File type definition to register.
+            processor_class: Optional `HeaderProcessor` class to instantiate and
+                bind to the registered file type.
+
+        Notes:
+            This mutates global overlay state. Prefer temporary usage in tests or
+            controlled initialization code, with explicit cleanup when needed.
         """
         FileTypeRegistry.register(ft_obj)
-        if processor is not None:
-            HeaderProcessorRegistry.register(ft_obj.name, processor, file_type=ft_obj)
+        if processor_class is not None:
+            HeaderProcessorRegistry.register(
+                ft_obj.name,
+                processor_class,
+                file_type=ft_obj,
+            )
         return None
 
     @staticmethod
@@ -174,30 +192,29 @@ class Registry:
         return FileTypeRegistry.unregister(name)
 
     @staticmethod
-    def register_processor(name: str, processor_class: type[HeaderProcessor]) -> None:
-        """Register a header processor under a file type name (advanced).
+    def register_processor(
+        name: str,
+        processor_class: type[HeaderProcessor],
+    ) -> None:
+        """Register a header processor class under a file type name (advanced).
 
         Passthrough to
         [`HeaderProcessorRegistry.register`][topmark.registry.processors.HeaderProcessorRegistry.register].
+
+        Args:
+            name: File type name that the processor should be registered under.
+            processor_class: Concrete `HeaderProcessor` class to instantiate and
+                bind.
+
+        Raises:
+            UnknownFileTypeError: If `name` does not resolve to a registered file type.
         """
-        ft_obj = FileTypeRegistry.get(name)
+        ft_obj: FileType | None = FileTypeRegistry.get(name)
         if ft_obj is None:
-            raise ValueError(f"Unknown file type: {name}")
+            raise UnknownFileTypeError(file_type=name)
         return HeaderProcessorRegistry.register(name, processor_class, file_type=ft_obj)
 
     @staticmethod
     def unregister_processor(name: str) -> bool:
         """Unregister a header processor by name (advanced)."""
         return HeaderProcessorRegistry.unregister(name)
-
-    @staticmethod
-    def ensure_processors_registered() -> None:
-        """Ensure all built-in processors are registered (idempotent).
-
-        Typically unnecessary because read methods call into the underlying
-        registry which self-registers. Exposed for callers that want to
-        pre-warm the registry explicitly.
-        """
-        from topmark.processors.bootstrap import register_all_processors
-
-        register_all_processors()
