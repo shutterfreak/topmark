@@ -38,7 +38,7 @@ from topmark.core.keys import ArgKey
 from topmark.core.logging import resolve_env_log_level
 from topmark.core.logging import setup_logging
 from topmark.core.machine.payloads import build_meta_payload
-from topmark.file_resolver import resolve_file_list
+from topmark.resolution.files import resolve_file_list
 
 if TYPE_CHECKING:
     from pathlib import Path

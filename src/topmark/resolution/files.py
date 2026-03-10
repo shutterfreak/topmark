@@ -1,23 +1,29 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : file_resolver.py
-#   file_relpath : src/topmark/file_resolver.py
+#   file         : files.py
+#   file_relpath : src/topmark/resolution/files.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""Resolve input files for TopMark based on config, paths, and filters.
+"""Resolve the concrete filesystem inputs that TopMark should process.
 
-This module expands positional arguments and paths read upstream from STDIN
-(when provided by the CLI layer), applies include/exclude patterns, and filters
-by registered file types.  Positional globs are expanded relative to the current
-working directory (CWD). Globs declared in configuration files are expanded
-relative to the directory of each declaring config file; globs passed via CLI
-are expanded relative to CWD. Path-to-file settings are resolved against their
-declaring sources. ``config.relative_to`` is used only for header metadata.
-The result is a deterministic, sorted list of files to process.
+This module expands configured or positional paths, applies include/exclude
+pattern filters, optionally constrains the candidate set by configured file type
+identifiers, and returns a deterministic list of files to process.
+
+Conceptually, this module answers a different question from
+[`topmark.resolution.filetypes`][topmark.resolution.filetypes]:
+
+- [`topmark.resolution.files`][topmark.resolution.files] decides which files should be processed;
+- [`topmark.resolution.filetypes`][topmark.resolution.filetypes] decides what each file is.
+
+Positional globs are expanded relative to the current working directory (CWD).
+Globs declared in configuration files are expanded relative to the directory of
+each declaring config file. Paths loaded from `files_from` sources are resolved
+against their declaring source base directory.
 """
 
 from __future__ import annotations
@@ -30,12 +36,14 @@ from pathspec import PathSpec
 from pathspec.patterns.gitwildmatch import GitWildMatchPattern
 
 from topmark.config.types import PatternSource  # runtime use
+from topmark.core.errors import AmbiguousFileTypeIdentifierError
+from topmark.core.logging import TRACE_LEVEL
 from topmark.core.logging import get_logger
 from topmark.filetypes.model import FileType
 from topmark.registry.filetypes import FileTypeRegistry
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Sequence
 
     from topmark.config.model import Config
     from topmark.config.types import PatternSource
@@ -76,17 +84,17 @@ def load_patterns_from_file(source: PatternSource) -> list[str]:
     return patterns
 
 
-def _read_paths_from_source(source: PatternSource) -> list[Path]:
-    """Read newline-delimited file paths from a list file.
+def _read_input_paths_from_source(source: PatternSource) -> list[Path]:
+    """Read newline-delimited input paths from a list file.
 
     Relative entries are resolved against the list file's base directory
-    (``source.base``).
+    (`source.base`). Blank lines and comment lines are ignored.
 
     Args:
-        source: List file reference and its resolution base.
+        source: List-file reference and its resolution base.
 
     Returns:
-        Absolute paths read from the file (comments/blank lines ignored).
+        Absolute paths read from the file.
     """
     try:
         text: str = source.path.read_text(encoding="utf-8")
@@ -108,15 +116,18 @@ def _read_paths_from_source(source: PatternSource) -> list[Path]:
     return out
 
 
-def _rel_for_match(path: Path, base: Path) -> str:
-    """Return a POSIX-style relative path (or absolute as fallback) for PathSpec matching.
+def _relative_posix_for_match(path: Path, base: Path) -> str:
+    """Return a POSIX-style path suitable for PathSpec matching.
+
+    The path is made relative to `base` when possible. If `path` does not lie under `base`, the
+    absolute POSIX path is returned instead.
 
     Args:
-        path: Absolute or relative file path to test.
-        base: Base directory against which the path is relativized for matching.
+        path: Path to test.
+        base: Base directory against which the path is relativized.
 
     Returns:
-        str: POSIX-style relative path for matching (or absolute POSIX path if not under base).
+        POSIX-style relative path for matching, or an absolute POSIX path as a fallback.
     """
     try:
         rel: Path = path.resolve().relative_to(base.resolve())
@@ -150,8 +161,33 @@ def _iter_config_base_dirs(config_files: tuple[str | Path, ...]) -> list[Path]:
     return bases
 
 
+def _resolve_configured_file_types(file_type_ids: frozenset[str]) -> list[FileType]:
+    """Resolve configured file type identifiers to concrete `FileType` objects.
+
+    Unknown identifiers are ignored with a warning. Ambiguous unqualified
+    identifiers are also ignored with a warning so resolution can continue.
+    """
+    resolved: list[FileType] = []
+    for file_type_id in sorted(file_type_ids):
+        try:
+            file_type: FileType | None = FileTypeRegistry.resolve_filetype_id(file_type_id)
+        except AmbiguousFileTypeIdentifierError as err:
+            logger.warning("Ambiguous file type identifier in config (ignored): %s", err)
+            continue
+        if file_type is None:
+            logger.warning("Unknown file type identifier in config (ignored): %s", file_type_id)
+            continue
+        resolved.append(file_type)
+    return resolved
+
+
+def _matches_any_file_type(path: Path, file_types: Sequence[FileType]) -> bool:
+    """Return whether `path` matches any of the supplied file types."""
+    return any(file_type.matches(path) for file_type in file_types)
+
+
 def resolve_file_list(config: Config) -> list[Path]:
-    """Return the list of input files to process, applying candidate expansion and filters.
+    """Return the concrete input files to process after expansion and filtering.
 
     The resolver implements these semantics:
       1. **Candidate set**: Expand positional paths (files, directories recursively, and globs).
@@ -189,7 +225,8 @@ def resolve_file_list(config: Config) -> list[Path]:
     include_sources: tuple[PatternSource, ...] = config.include_from
     exclude_sources: tuple[PatternSource, ...] = config.exclude_from
 
-    # TODO: keep raw + implement as PatternSource in config?
+    # Keep the original config-source identifiers so we can derive config-file
+    # base directories for include/exclude pattern expansion.
     config_files: tuple[Path | str, ...] = config.config_files
 
     include_file_types: frozenset[str] = frozenset(config.include_file_types)
@@ -206,8 +243,9 @@ def resolve_file_list(config: Config) -> list[Path]:
 
     cwd: Path = Path.cwd()
 
-    logger.trace(
-        """\
+    if logger.isEnabledFor(TRACE_LEVEL):
+        logger.trace(
+            """\
     positional_paths: %s
     include_patterns: %s
     include_sources: %s
@@ -221,19 +259,19 @@ def resolve_file_list(config: Config) -> list[Path]:
     stdin_flag: %s
     config: %s
 """,
-        positional_paths,
-        include_patterns,
-        include_sources,
-        exclude_patterns,
-        exclude_sources,
-        config_files,
-        include_file_types,
-        exclude_file_types,
-        files_from_sources,
-        workspace_root,
-        stdin_flag,
-        config,
-    )
+            positional_paths,
+            include_patterns,
+            include_sources,
+            exclude_patterns,
+            exclude_sources,
+            config_files,
+            include_file_types,
+            exclude_file_types,
+            files_from_sources,
+            workspace_root,
+            stdin_flag,
+            config,
+        )
 
     # -------- Precompute exclude specs to allow directory-level pruning --------
 
@@ -273,17 +311,17 @@ def resolve_file_list(config: Config) -> list[Path]:
         # 1) Global exclude_patterns against CWD + config dirs
         if exclude_pattern_spec is not None:
             for base in exclude_pattern_bases:
-                if exclude_pattern_spec.match_file(_rel_for_match(real, base)):
+                if exclude_pattern_spec.match_file(_relative_posix_for_match(real, base)):
                     return True
 
         # 2) exclude_from specs (each with its own base)
         for spec, base in exclude_source_specs:
-            if spec.match_file(_rel_for_match(real, base)):
+            if spec.match_file(_relative_posix_for_match(real, base)):
                 return True
 
         return False
 
-    def expand_path(p: Path) -> list[Path]:
+    def _expand_path(p: Path) -> list[Path]:
         """Expand a base path into a list of files and directories.
 
         Handles globs, directories (recursively), and files.
@@ -358,7 +396,7 @@ def resolve_file_list(config: Config) -> list[Path]:
     logger.debug("Initial input paths: %s", input_paths)
     # Merge paths from files-from into the candidate inputs (resolve relatives vs. source.base)
     for psrc in files_from_sources or []:
-        input_paths.extend(_read_paths_from_source(psrc))
+        input_paths.extend(_read_input_paths_from_source(psrc))
     logger.debug("Input paths before expansion: %s", input_paths)
 
     # If there are no explicit inputs (positional or files-from) but include globs
@@ -387,15 +425,15 @@ def resolve_file_list(config: Config) -> list[Path]:
             )
 
     # Step 2: Expand base paths into a set of files (and directories initially)
-    candidate_set: set[Path] = set()
+    candidate_paths: set[Path] = set()
     unmatched_patterns: list[str] = []
     missing_literals: list[Path] = []
 
     for raw in input_paths:
         p = Path(raw)
         # Expand
-        expanded: list[Path] = expand_path(p)
-        candidate_set.update(expanded)
+        expanded: list[Path] = _expand_path(p)
+        candidate_paths.update(expanded)
 
         # Report problems *after* expansion
         if "*" in str(p):
@@ -414,7 +452,7 @@ def resolve_file_list(config: Config) -> list[Path]:
             logger.warning("No such file or directory: %s", ml)
 
     # Only keep files (drop directories) before filtering
-    candidate_set = {p for p in candidate_set if p.is_file()}
+    candidate_paths = {p for p in candidate_paths if p.is_file()}
 
     # Step 3: Apply include intersection filter (if any include patterns)
     # Merge include_patterns + include_from patterns
@@ -431,10 +469,10 @@ def resolve_file_list(config: Config) -> list[Path]:
             for base_dir in _iter_config_base_dirs(config_files):
                 if base_dir not in bases:
                     bases.append(base_dir)
-            for p in candidate_set:
+            for p in candidate_paths:
                 # match if it matches under ANY base
                 for base in bases:
-                    if spec_root.match_file(_rel_for_match(p, base)):
+                    if spec_root.match_file(_relative_posix_for_match(p, base)):
                         kept.add(p)
                         break
         # 3.2 include_from sources (each with its own base)
@@ -443,10 +481,10 @@ def resolve_file_list(config: Config) -> list[Path]:
             if not pats:
                 continue
             spec_src: PathSpec = PathSpec.from_lines(GitWildMatchPattern, pats)
-            for p in candidate_set:
-                if spec_src.match_file(_rel_for_match(p, psrc.base)):
+            for p in candidate_paths:
+                if spec_src.match_file(_relative_posix_for_match(p, psrc.base)):
                     kept.add(p)
-        candidate_set = kept
+        candidate_paths = kept
 
     # Step 4: Apply exclude subtraction filter (if any exclude patterns/sources)
     any_excludes: bool = bool(exclude_patterns) or bool(exclude_sources)
@@ -461,76 +499,61 @@ def resolve_file_list(config: Config) -> list[Path]:
             for base_dir in _iter_config_base_dirs(config_files):
                 if base_dir not in bases:
                     bases.append(base_dir)
-            for p in candidate_set:
+            for p in candidate_paths:
                 matched = False
                 for base in bases:
-                    if spec_root.match_file(_rel_for_match(p, base)):
+                    if spec_root.match_file(_relative_posix_for_match(p, base)):
                         matched = True
                         break
                 if not matched:
                     kept.add(p)
         else:
-            kept = set(candidate_set)
+            kept = set(candidate_paths)
         # 4.2 exclude_from sources (each with its own base)
         for psrc in exclude_sources:
             pats = load_patterns_from_file(psrc)
             if not pats:
                 continue
             spec_src = PathSpec.from_lines(GitWildMatchPattern, pats)
-            kept = {p for p in kept if not spec_src.match_file(_rel_for_match(p, psrc.base))}
-        candidate_set = kept
+            kept = {
+                p for p in kept if not spec_src.match_file(_relative_posix_for_match(p, psrc.base))
+            }
+        candidate_paths = kept
 
-    filtered_files: set[Path] = candidate_set
+    filtered_paths: set[Path] = candidate_paths
 
-    # Step 5: Filter files by configured file types if specified
-
-    # Validate against the effective file type registry:
-    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
+    # Step 5: Filter files by configured file type identifiers if specified.
+    #
+    # Config values may contain either unqualified names ("markdown") or
+    # qualified identifiers ("topmark:markdown"). Resolve them through the
+    # namespace-aware file type registry before applying path-based matching.
 
     # 5.1: whitelisted file types
     # Invalid entries are handled and reported as Config diagnostic in MutableConfig.sanitize()
     if include_file_types:
-        # Warn about unknown file type names in config (ignored)
-        unknown: list[str] = sorted(t for t in include_file_types if t not in ft_registry)
-        if unknown:
-            logger.warning(
-                "Unknown included file types specified (ignored): %s",
-                ", ".join(unknown),
-            )
-
-        # Build the set of selected FileType instances from the registry
-        selected_types: list[FileType] = [
-            ft_registry[t] for t in include_file_types if t in ft_registry
-        ]
-
-        def _matches_selected_types(path: Path) -> bool:
-            return any(ft.matches(path) for ft in selected_types)
+        selected_include_types: list[FileType] = _resolve_configured_file_types(include_file_types)
 
         # Whitelisting:
-        filtered_files = {f for f in filtered_files if _matches_selected_types(f)}
+        filtered_paths = {
+            file_path
+            for file_path in filtered_paths
+            if _matches_any_file_type(file_path, selected_include_types)
+        }
 
     # 5.2: blacklisted file types
     if exclude_file_types:
-        # Warn about unknown excluded file type identifiers in config (ignored)
-        unknown: list[str] = sorted(t for t in exclude_file_types if t not in ft_registry)
-        if unknown:
-            logger.warning(
-                "Unknown excluded file type identifiers specified (ignored): %s",
-                ", ".join(unknown),
-            )
-
-        # Build the set of selected FileType instances from the registry
-        selected_types = [ft_registry[t] for t in exclude_file_types if t in ft_registry]
-
-        def _matches_selected_types(path: Path) -> bool:
-            return any(ft.matches(path) for ft in selected_types)
+        selected_exclude_types: list[FileType] = _resolve_configured_file_types(exclude_file_types)
 
         # Blacklisting:
-        filtered_files = {f for f in filtered_files if not _matches_selected_types(f)}
+        filtered_paths = {
+            file_path
+            for file_path in filtered_paths
+            if not _matches_any_file_type(file_path, selected_exclude_types)
+        }
 
     # Step 6 (Finalize): dedupe by real path, prefer CWD-relative presentation
     out_by_real: dict[Path, Path] = {}
-    for p in filtered_files:
+    for p in filtered_paths:
         real: Path = p.resolve()
         try:
             rel_to_cwd: Path = real.relative_to(cwd.resolve())
@@ -543,53 +566,3 @@ def resolve_file_list(config: Config) -> list[Path]:
     result: list[Path] = sorted(out_by_real.values(), key=lambda q: q.as_posix())
     logger.trace("Files to process: %d -- %s", len(result), result)
     return result
-
-
-def resolve_file_types(path: Path) -> list[FileType]:
-    """Resolve registered file types that match a path.
-
-    Attempts to match the path against all registered file type matchers and returns
-    a list of matching FileType instances. Logs a warning if multiple matches are found.
-
-    Note: currently unused; kept for potential future diagnostics API.
-
-    Args:
-        path: Path to test.
-
-    Returns:
-        Matching file types (may be empty). Logs a warning when multiple types match the same path.
-    """
-    # Validate against the effective file type registry:
-    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
-
-    matches: list[FileType] = [ft for ft in ft_registry.values() if ft.matches(path)]
-    if len(matches) > 1:
-        logger.warning(
-            "Ambiguous file type match for: %s (%s)",
-            path,
-            ", ".join([type(ft).__name__ for ft in matches]),
-        )
-    return matches
-
-
-def detect_newline(lines: list[str]) -> str:
-    r"""Detect the newline sequence used by the provided lines.
-
-    Scans in order and returns the first encountered newline **sequence**:
-    ``\"\\r\\n\"``, ``\"\\n\"``, or ``\"\\r\"``. Falls back to ``\"\\n\"`` when no
-    newline can be inferred (e.g., single line without terminator).
-
-    Args:
-        lines: Lines from a file, each potentially ending with a newline.
-
-    Returns:
-        One of ``\"\\r\\n\"``, ``\"\\n\"``, or ``\"\\r\"``.
-    """
-    for ln in lines:
-        if ln.endswith("\r\n"):
-            return "\r\n"
-        if ln.endswith("\n"):
-            return "\n"
-        if ln.endswith("\r"):
-            return "\r"
-    return "\n"

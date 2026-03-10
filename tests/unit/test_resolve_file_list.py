@@ -20,7 +20,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import topmark.file_resolver as file_resolver_mod
+import topmark.resolution.files as file_resolver_mod
 
 # Import the module under test
 from tests.conftest import make_config

@@ -35,9 +35,9 @@ from topmark.config.model import MutableConfig
 from topmark.config.policy import MutablePolicy
 from topmark.constants import TOPMARK_VERSION
 from topmark.core.logging import get_logger
-from topmark.file_resolver import resolve_file_list
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.pipelines import Pipeline
+from topmark.resolution.files import resolve_file_list
 
 if TYPE_CHECKING:
     from collections.abc import Iterable

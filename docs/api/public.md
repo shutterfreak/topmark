@@ -102,11 +102,11 @@ use the qualified `"namespace:name"` form.
 ### Registries and extensibility (read-only by default)
 
 TopMark exposes **read-only** registries for file types and header processors via the stable
-facade in [`topmark.registry.registry.Registry`][topmark.registry.registry.Registry]. These registries represent the **effective composed
+facade in \[`topmark.registry.registry.Registry`\][topmark.registry.registry.Registry]. These registries represent the **effective composed
 view** (internal base registries + overlays − removals) and are returned as immutable
 `Mapping` views (backed by `MappingProxyType`).
 
-These registry objects are **not part of the [`topmark.api`][topmark.api] stability contract**; the supported programmatic API is defined exclusively by the symbols exported in [`topmark.api.__all__`][topmark.api].
+These registry objects are **not part of the \[`topmark.api`\][topmark.api] stability contract**; the supported programmatic API is defined exclusively by the symbols exported in \[`topmark.api.__all__`\][topmark.api].
 
 Most users should interact with registries through this facade and treat them as
 **introspection-only**.

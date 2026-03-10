@@ -28,7 +28,7 @@ import pytest
 
 from topmark.config.keys import Toml
 from topmark.config.model import MutableConfig
-from topmark.file_resolver import resolve_file_list
+from topmark.resolution.files import resolve_file_list
 
 if TYPE_CHECKING:
     from pathlib import Path
