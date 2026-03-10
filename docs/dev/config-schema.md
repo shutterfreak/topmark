@@ -19,7 +19,7 @@ as consumed from `topmark.toml` and from `[tool.topmark]` in `pyproject.toml`.
 > **Config diagnostics**
 >
 > - This is a schema *summary* (not a full JSON Schema).
-> - The ordering mirrors `src/topmark/config/topmark-default.toml`.
+> - The ordering mirrors `src/topmark/config/topmark-example.toml`.
 > - Keys are defined authoritatively in `src/topmark/config/keys.py`.
 
 ```yaml

@@ -16,10 +16,12 @@ TopMark merges configuration from multiple sources with **clear precedence** and
 
 ______________________________________________________________________
 
-## Discovery order (lowest → highest precedence)
+## Discovery order
+
+Configuration is discoverd as follows (lowest → highest precedence):
 
 1. **Built-in defaults**\
-   The packaged `topmark-default.toml`.
+   Builtin runtime defaults.
 
 1. **User config**
 
@@ -52,7 +54,7 @@ ______________________________________________________________________
 
 | Layer            | Example location                                      | Notes                                                                                           |
 | ---------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| 1. Defaults      | bundled `topmark-default.toml`                        | lowest precedence                                                                               |
+| 1. Defaults      | Builtin runtime defaults                              | lowest precedence                                                                               |
 | 2. User          | `~/.config/topmark/topmark.toml` or `~/.topmark.toml` | personal overrides                                                                              |
 | 3. Project chain | `pyproject.toml` / `topmark.toml`                     | walk **root → current**; same-dir precedence: `pyproject` then `topmark`; stop on `root = true` |
 | 4. `--config`    | paths passed on CLI                                   | merged **in order**                                                                             |
@@ -111,7 +113,7 @@ Running `topmark check` in `repo/app/` will:
 
 See also:
 
-- [Discovery order](#discovery-order-lowest-highest-precedence)
+- [Discovery order](#discovery-order)
 - [Path semantics](#path-semantics)
 
 ______________________________________________________________________
@@ -185,7 +187,7 @@ ______________________________________________________________________
 
 ## See also
 
-- Default configuration: `src/topmark/config/topmark-default.toml`
+- Default configuration: `src/topmark/config/topmark-example.toml`
 - Implementation: \[`MutableConfig.load_merged()`\][topmark.config.model.MutableConfig.load_merged]
   and \[`effective_policy()`\][topmark.config.policy.effective_policy]
   in \[`topmark.config.model`\][topmark.config.model]
