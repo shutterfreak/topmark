@@ -19,7 +19,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from topmark.registry.resolver import get_processor_for_file
+from tests.conftest import resolve_processor_for_path
 
 if TYPE_CHECKING:
     from topmark.processors.base import HeaderProcessor
@@ -29,8 +29,7 @@ def test_get_processor_for_file_resolves_builtin_processor_for_python_path() -> 
     """Resolver should return a processor for a known built-in file type."""
     filename_to_test: str = "example.py"
 
-    processor: HeaderProcessor | None = get_processor_for_file(Path(filename_to_test))
-
-    assert processor is not None
-    assert processor.file_type is not None
-    assert processor.file_type.name == "python"
+    proc: HeaderProcessor | None = resolve_processor_for_path(path=Path(filename_to_test))
+    assert proc is not None
+    assert proc.file_type is not None
+    assert proc.file_type.name == "python"

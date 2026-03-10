@@ -30,6 +30,9 @@ from typing import Protocol
 from typing import TypedDict
 from typing import runtime_checkable
 
+from topmark.constants import PACKAGE_NAME
+from topmark.constants import TOPMARK_NAMESPACE
+from topmark.constants import VALID_REGISTRY_TOKEN_RE
 from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
@@ -89,7 +92,6 @@ class ContentMatcher(Protocol):
 
         Returns:
             True if the file matches the expected type, False otherwise.
-
         """
         ...
 
@@ -180,7 +182,7 @@ class InsertChecker(Protocol):
         ...
 
 
-@dataclass
+@dataclass(slots=True)
 class FileType:
     r"""Represents a file type recognized by TopMark.
 
@@ -191,6 +193,7 @@ class FileType:
 
     Attributes:
         name: Internal identifier of the file type (e.g. ``"python"``).
+        namespace: FileType namespace.
         extensions: List of filename extensions associated with this type. Values
             should include the leading dot (e.g. ``.py``) or be consistent with the
             matcher used elsewhere in TopMark.
@@ -201,7 +204,7 @@ class FileType:
         patterns: Regular expressions evaluated against the basename (see
             `re.fullmatch`). Useful for families of files that don't share a
             simple extension.
-        description: Human‑readable description of the file type.
+        description: Human-readable description of the file type.
         skip_processing: When ``True``, the pipeline **recognizes** files of this
             type but intentionally **skips header processing** (e.g. JSON without
             comments, LICENSE files). This lets discovery work while keeping writes
@@ -210,9 +213,9 @@ class FileType:
             that performs *content-based* recognition when name-based heuristics are
             ambiguous. TopMark calls this **last** in `matches` after
             testing extensions, filenames, and patterns. The callable should be
-            fast, side‑effect free, and return ``True`` if the file is of this
+            fast, side-effect free, and return ``True`` if the file is of this
             type. It must **not** raise; exceptions are caught and treated as
-            non‑matches.
+            non-matches.
         content_gate: Gate that controls when the content matcher is consulted.
         header_policy: Optional `FileTypeHeaderPolicy`
             that tunes placement (e.g., shebang handling) and scanning windows around the
@@ -220,7 +223,7 @@ class FileType:
         pre_insert_checker: Optional pre-insert checker:
             “may we add a TopMark header here?”
 
-    Content‑based recognition (example)
+    Content-based recognition (example)
     ----------------------------------
     A practical use case is differentiating *commented JSON* (CJSON) from plain
     JSON. File names like ``config.json`` might be CJSON (supports line comments)
@@ -249,10 +252,21 @@ class FileType:
     """
 
     name: str
+    namespace: str
+
+    @property
+    def qualified_key(self) -> str:
+        """Return the qualified identity key for this file type instance.
+
+        Format: ``"<namespace>:<name>"``.
+        """
+        return f"{self.namespace}:{self.name}"
+
     extensions: list[str]
     filenames: list[str]
     patterns: list[str]
     description: str
+
     # When True, TopMark recognizes this file type but will skip header processing.
     # Useful for formats that do not support comments (e.g., JSON), marker files, or LICENSE texts.
     skip_processing: bool = False
@@ -266,6 +280,62 @@ class FileType:
 
     # Compiled regex patterns (cached)
     _compiled_patterns: list[re.Pattern[str]] | None = None
+
+    def __post_init__(self) -> None:
+        """Validate file type identity attributes on instances.
+
+        Every concrete `FileType` instance must define a stable identity:
+
+        - `namespace`: non-empty string identifying the producer. Built-in file types use the
+          reserved [`TOPMARK_NAMESPACE`][topmark.constants.TOPMARK_NAMESPACE].
+        - `name`: non-empty string identifying the file type within its namespace.
+
+        Constraints (kept intentionally strict so keys are stable and easy to serialize):
+
+        - Lowercase ASCII only.
+        - Must not contain ':' (reserved separator for qualified keys).
+        - Allowed characters are defined by
+          [`VALID_REGISTRY_TOKEN_RE`][topmark.constants.VALID_REGISTRY_TOKEN_RE].
+
+        Uniqueness of the qualified key (``"<namespace>:<name>"``) is validated at registry
+        composition time.
+        """
+        # (1) types + presence
+        if not self.name:
+            raise TypeError("FileType.name must be a non-empty str")
+        if not self.namespace:
+            raise TypeError("FileType.namespace must be a non-empty str")
+
+        # (2) token validation (same constraints as processors)
+        def _is_valid_token(value: str) -> bool:
+            if value != value.lower():
+                return False
+            if ":" in value:
+                return False
+            return bool(re.fullmatch(VALID_REGISTRY_TOKEN_RE, value))
+
+        if not _is_valid_token(self.name):
+            raise TypeError(
+                f"FileType.name must match {VALID_REGISTRY_TOKEN_RE}, "
+                "be lowercase, and not contain ':' "
+                f"(found {self.name!r})"
+            )
+        if not _is_valid_token(self.namespace):
+            raise TypeError(
+                f"FileType.namespace must match {VALID_REGISTRY_TOKEN_RE}, "
+                "be lowercase, and not contain ':' "
+                f"(found {self.namespace!r})"
+            )
+
+        # (3) reserve TOPMARK_NAMESPACE for built-ins
+        # Since this is an *instance*, the best proxy for provenance is module name.
+        if self.namespace == TOPMARK_NAMESPACE and not type(self).__module__.startswith(
+            f"{PACKAGE_NAME}."
+        ):
+            raise TypeError(
+                f"{type(self).__module__}.{type(self).__name__}: "
+                f"namespace '{TOPMARK_NAMESPACE}' is reserved for TopMark built-in file types"
+            )
 
     def matches(self, path: Path) -> bool:
         """Determine if the file type matches the given file path.
@@ -281,7 +351,7 @@ class FileType:
         # Track which name rule (if any) matched; used for content gating.
         matched_by: str | None = None
 
-        # 1) Try mattching by file extension (if present)
+        # 1) Try matching by file extension (if present)
         if self.extensions:
             suffix: str = path.suffix
             name: str = path.name

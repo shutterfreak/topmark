@@ -36,11 +36,15 @@ from __future__ import annotations
 
 import re
 from typing import TYPE_CHECKING
+from typing import ClassVar
 from typing import Final
 from typing import Protocol
 
+from topmark.constants import PACKAGE_NAME
 from topmark.constants import TOPMARK_END_MARKER
+from topmark.constants import TOPMARK_NAMESPACE
 from topmark.constants import TOPMARK_START_MARKER
+from topmark.constants import VALID_REGISTRY_TOKEN_RE
 from topmark.core.logging import get_logger
 from topmark.pipeline.policy_whitespace import is_pure_spacer
 from topmark.processors.types import BoundsKind
@@ -52,12 +56,28 @@ from topmark.processors.types import StripDiagnostic
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from topmark.config.model import Config
     from topmark.core.logging import TopmarkLogger
     from topmark.filetypes.model import FileType
     from topmark.filetypes.policy import FileTypeHeaderPolicy
     from topmark.pipeline.views import HeaderView
     from topmark.pipeline.views import Views
+
+
+class ConfigLike(Protocol):
+    """Minimum config surface required by HeaderProcessor.render_header_lines.
+
+    This breaks circular imports of [`topmark.config.model.Config`][].
+    """
+
+    @property
+    def header_fields(self) -> tuple[str, ...]:
+        """List of header fields from the [header] section."""
+        ...
+
+    @property
+    def align_fields(self) -> bool | None:
+        """Whether to align fields, from [formatting]."""
+        ...
 
 
 class ProcessorContext(Protocol):
@@ -163,6 +183,8 @@ class HeaderProcessor:
             header block inside a document (e.g., nested JSONC).
 
     Attributes:
+        namespace: Processor namespace.
+        key: Unique identifier for the header processor class within its namespace.
         file_type: The `FileType` registered to the header processor.
         block_prefix: The prefix string for block-style header start.
         block_suffix: The suffix string for block-style header end.
@@ -173,8 +195,87 @@ class HeaderProcessor:
         header_indent: The indentation applied *before* the comment prefix; used
             to preserve existing leading indentation when replacing an indented
             header block inside a document (e.g., nested JSONC).
-
     """
+
+    namespace: ClassVar[str] = TOPMARK_NAMESPACE
+    key: ClassVar[str] = "base"
+
+    @property
+    def qualified_key(self) -> str:
+        """Return the qualified identity key for this processor.
+
+        Format: ``"<namespace>:<local_key>"``.
+        """
+        cls: type[HeaderProcessor] = type(self)
+        return f"{cls.namespace}:{cls.key}"
+
+    def __init_subclass__(cls, **kwargs: object) -> None:
+        """Validate processor identity attributes on subclasses.
+
+        Every concrete `HeaderProcessor` subclass must define a stable identity:
+
+        - `namespace`: non-empty string identifying the producer. Built-in processors use the
+          reserved [`TOPMARK_NAMESPACE`][topmark.constants.TOPMARK_NAMESPACE].
+        - `key`: non-empty string identifying the processor within its namespace.
+
+        Constraints (kept intentionally strict so keys are stable and easy to serialize):
+
+        - Lowercase ASCII only.
+        - Must not contain ':' (reserved separator for qualified keys).
+        - Allowed characters are defined by
+          [`VALID_REGISTRY_TOKEN_RE`][topmark.constants.VALID_REGISTRY_TOKEN_RE].
+
+        Uniqueness of the qualified key (``"<namespace>:<key>"``) is validated at registry
+        composition time.
+        """
+        super().__init_subclass__(**kwargs)
+
+        # Skip validation for the abstract base itself.
+        if cls is HeaderProcessor:
+            return
+
+        namespace: object = getattr(cls, "namespace", None)
+        if not isinstance(namespace, str) or not namespace:
+            raise TypeError(
+                f"{cls.__module__}.{cls.__name__}: "
+                "class variable 'namespace' must be a non-empty str"
+            )
+
+        key: object = getattr(cls, "key", None)
+        if not isinstance(key, str) or not key:
+            raise TypeError(
+                f"{cls.__module__}.{cls.__name__}: class variable 'key' must be a non-empty str"
+            )
+
+        def _is_valid_token(value: str) -> bool:
+            # Lowercase, no colon, stable serialization.
+            if value != value.lower():
+                return False
+            if ":" in value:
+                return False
+            return bool(re.fullmatch(VALID_REGISTRY_TOKEN_RE, value))
+
+        if not _is_valid_token(namespace):
+            raise TypeError(
+                f"{cls.__module__}.{cls.__name__}: "
+                f"'namespace' must match {VALID_REGISTRY_TOKEN_RE}, "
+                "be lowercase, and not contain ':'"
+                f"(found {namespace!r})"
+            )
+        if not _is_valid_token(key):
+            raise TypeError(
+                f"{cls.__module__}.{cls.__name__}: "
+                f"'key' must match {VALID_REGISTRY_TOKEN_RE}, "
+                "be lowercase, and not contain ':'"
+                f"(found {key!r})"
+            )
+
+        # Reserve the builtin namespace for TopMark itself.
+        if namespace == TOPMARK_NAMESPACE and not cls.__module__.startswith(f"{PACKAGE_NAME}."):
+            raise TypeError(
+                f"{cls.__module__}.{cls.__name__}: "
+                f"namespace '{TOPMARK_NAMESPACE}' is reserved for built-in TopMark processors"
+            )
 
     file_type: FileType | None = None
 
@@ -540,7 +641,7 @@ class HeaderProcessor:
     def render_header_lines(
         self,
         header_values: dict[str, str],
-        config: Config,
+        config: ConfigLike,
         newline_style: str,
         block_prefix_override: str | None = None,
         block_suffix_override: str | None = None,

@@ -19,6 +19,7 @@ avoid interfering with tools that might not fully accept block comments.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from typing import ClassVar
 
 from topmark.core.logging import get_logger
 from topmark.processors.base import HeaderProcessor
@@ -35,6 +36,8 @@ class SlashHeaderProcessor(LineCommentMixin, HeaderProcessor):
 
     We render the header as `//`-prefixed lines. Shebang handling is disabled.
     """
+
+    key: ClassVar[str] = "slash"
 
     # LineCommentMixin:
     line_prefix = "//"

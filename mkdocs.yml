@@ -201,6 +201,7 @@ nav:
       - "Machine output": dev/machine-output.md
       - "Machine formats": dev/machine-formats.md
       - "Documentation Pipeline & Reference Hygiene": dev/documentation-pipeline.md
+      - "Plugins and extensibility": dev/plugins.md
       - "Roadmap": dev/roadmap.md
 
 # --- Development Server ---

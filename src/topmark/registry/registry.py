@@ -51,12 +51,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from topmark.core.errors import AmbiguousFileTypeIdentifierError
 from topmark.core.errors import UnknownFileTypeError
 from topmark.filetypes.model import FileType
-from topmark.registry.filetypes import FileTypeMeta
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
-from topmark.registry.processors import ProcessorMeta
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -64,6 +63,8 @@ if TYPE_CHECKING:
 
     from topmark.filetypes.model import FileType
     from topmark.processors.base import HeaderProcessor
+    from topmark.registry.types import FileTypeMeta
+    from topmark.registry.types import ProcessorMeta
 
 
 @dataclass(frozen=True)
@@ -180,9 +181,8 @@ class Registry:
         FileTypeRegistry.register(ft_obj)
         if processor_class is not None:
             HeaderProcessorRegistry.register(
-                ft_obj.name,
-                processor_class,
                 file_type=ft_obj,
+                processor_class=processor_class,
             )
         return None
 
@@ -193,26 +193,95 @@ class Registry:
 
     @staticmethod
     def register_processor(
-        name: str,
+        file_type_id: str,
         processor_class: type[HeaderProcessor],
     ) -> None:
-        """Register a header processor class under a file type name (advanced).
+        """Register a header processor class under a file type identifier (advanced).
+
+        Prefer `try_register_processor()` if you want a boolean status instead of
+        exceptions for unknown, ambiguous, or duplicate registrations.
 
         Passthrough to
         [`HeaderProcessorRegistry.register`][topmark.registry.processors.HeaderProcessorRegistry.register].
 
         Args:
-            name: File type name that the processor should be registered under.
+            file_type_id: File type identifier that the processor should be registered
+                under. Both ``"name"`` and ``"namespace:name"`` forms are
+                accepted.
             processor_class: Concrete `HeaderProcessor` class to instantiate and
                 bind.
 
         Raises:
-            UnknownFileTypeError: If `name` does not resolve to a registered file type.
+            UnknownFileTypeError: If `file_type_id` does not resolve to a registered file type.
+            AmbiguousFileTypeIdentifierError: If an unqualified `file_type_id` matches
+                multiple file types.
         """
-        ft_obj: FileType | None = FileTypeRegistry.get(name)
+        try:
+            # Propagate ambiguity explicitly so the public facade documents it accurately.
+            ft_obj: FileType | None = FileTypeRegistry.resolve_filetype_id(file_type_id)
+        except AmbiguousFileTypeIdentifierError:  # noqa: TRY203
+            raise
+
         if ft_obj is None:
-            raise UnknownFileTypeError(file_type=name)
-        return HeaderProcessorRegistry.register(name, processor_class, file_type=ft_obj)
+            # Keep the facade strict: callers asked to register against a specific
+            # file type identifier; silently ignoring mistakes would be surprising.
+            raise UnknownFileTypeError(file_type=file_type_id)
+
+        HeaderProcessorRegistry.register(
+            file_type=ft_obj,
+            processor_class=processor_class,
+        )
+        return None
+
+    @staticmethod
+    def try_register_processor(
+        file_type_id: str,
+        processor_class: type[HeaderProcessor],
+    ) -> bool:
+        """Try to register a header processor for a file type identifier.
+
+        This is a lenient variant of `register_processor()` intended for callers
+        that want a boolean success/failure signal rather than an exception.
+
+        Behavior:
+            - Returns ``False`` if the file type identifier does not resolve.
+            - Returns ``False`` if an unqualified identifier resolves ambiguously.
+            - Returns ``False`` if a processor is already registered for the
+              resolved file type.
+            - Returns ``True`` if the registration succeeds.
+
+        Notes:
+            This method is conservative and avoids raising for common caller
+            mistakes. It still delegates to the underlying registry for the
+            actual mutation.
+
+        Args:
+            file_type_id: File type identifier that the processor should be registered
+                under. Both ``"name"`` and ``"namespace:name"`` forms are
+                accepted.
+            processor_class: Concrete `HeaderProcessor` class to instantiate and
+                bind.
+
+        Returns:
+            `True` if the registration succeeds, `False` otherwise.
+        """
+        try:
+            ft_obj: FileType | None = FileTypeRegistry.resolve_filetype_id(file_type_id)
+        except AmbiguousFileTypeIdentifierError:
+            return False
+
+        if ft_obj is None:
+            return False
+
+        # The processor registry is keyed by file type *name* (unqualified) today.
+        if HeaderProcessorRegistry.is_registered(ft_obj.name):
+            return False
+
+        HeaderProcessorRegistry.register(
+            file_type=ft_obj,
+            processor_class=processor_class,
+        )
+        return True
 
     @staticmethod
     def unregister_processor(name: str) -> bool:

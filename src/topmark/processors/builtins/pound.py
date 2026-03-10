@@ -17,6 +17,7 @@ and Makefiles. It delegates header processing to the core pipeline dispatcher.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from typing import ClassVar
 
 from topmark.core.logging import get_logger
 from topmark.processors.base import HeaderProcessor
@@ -36,6 +37,8 @@ class PoundHeaderProcessor(LineCommentMixin, HeaderProcessor):
 
     Respects FileTypeHeaderPolicy for shebang and encoding line handling.
     """
+
+    key: ClassVar[str] = "pound"
 
     # LineCommentMixin:
     line_prefix = "#"

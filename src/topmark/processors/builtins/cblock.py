@@ -30,12 +30,16 @@ We emit the wrapper lines '/*' and '*/' and render inner lines as '* ...'.
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from topmark.processors.base import HeaderProcessor
 from topmark.processors.mixins import BlockCommentMixin
 
 
 class CBlockHeaderProcessor(BlockCommentMixin, HeaderProcessor):
     """Processor for C-style block comment headers (uses BlockCommentMixin)."""
+
+    key: ClassVar[str] = "cblock"
 
     # We want:
     #   block wrapper:   /*  ...  */

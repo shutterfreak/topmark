@@ -26,16 +26,15 @@ pipeline-level processor behavior.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.conftest import resolve_processor_for_path
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
 from topmark.processors.types import StripDiagKind
 from topmark.processors.types import StripDiagnostic
-from topmark.registry.resolver import get_processor_for_file
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -93,7 +92,7 @@ def test_strip_bounds_are_inclusive(
     content: str = header_open + header_line + header_close + body
     f.write_text(content, encoding="utf-8")
 
-    proc: HeaderProcessor | None = get_processor_for_file(f)
+    proc: HeaderProcessor | None = resolve_processor_for_path(path=f)
     assert proc is not None
     lines: list[str] = f.read_text(encoding="utf-8").splitlines(keepends=True)
 

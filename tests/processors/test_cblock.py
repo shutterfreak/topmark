@@ -22,12 +22,12 @@ Covers:
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 
 from tests.conftest import mark_pipeline
+from tests.conftest import resolve_processor_for_path
 from tests.pipeline.conftest import BlockSignatures
 from tests.pipeline.conftest import expected_block_lines_for
 from tests.pipeline.conftest import find_line
@@ -42,7 +42,6 @@ from topmark.constants import TOPMARK_START_MARKER
 from topmark.pipeline import runner
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.pipelines import Pipeline
-from topmark.processors.base import HeaderProcessor
 from topmark.processors.types import StripDiagKind
 from topmark.processors.types import StripDiagnostic
 
@@ -218,15 +217,13 @@ def test_cblock_crlf_preserves_newlines(tmp_path: Path) -> None:
 @mark_pipeline
 def test_cblock_strip_header_block_with_and_without_span(tmp_path: Path) -> None:
     """`strip_header_block` removes the block with or without explicit bounds."""
-    from topmark.registry.resolver import get_processor_for_file
-
     file: Path = tmp_path / "strip_me.css"
     file.write_text(
         f"/*\n * {TOPMARK_START_MARKER}\n * h\n * {TOPMARK_END_MARKER}\n */\nbody{{margin:0}}\n",
         encoding="utf-8",
     )
 
-    proc: HeaderProcessor | None = get_processor_for_file(file)
+    proc: HeaderProcessor | None = resolve_processor_for_path(path=file)
     assert proc is not None
 
     lines: list[str] = file.read_text(encoding="utf-8").splitlines(keepends=True)
@@ -276,8 +273,6 @@ def test_cblock_banner_comment_after_header(tmp_path: Path) -> None:
 @mark_pipeline
 def test_cblock_strip_header_block_generated(tmp_path: Path) -> None:
     """strip_header_block removes a canonical TopMark C-block header."""
-    from topmark.registry.resolver import get_processor_for_file
-
     file: Path = tmp_path / "strip_me.css"
     file.write_text("html{font-size:16px}\n")
     cfg: Config = MutableConfig.from_defaults().freeze()
@@ -287,7 +282,7 @@ def test_cblock_strip_header_block_generated(tmp_path: Path) -> None:
     lines: list[str] = materialize_updated_lines(ctx)
     file.write_text("".join(lines), encoding="utf-8")
 
-    proc: HeaderProcessor | None = get_processor_for_file(file)
+    proc: HeaderProcessor | None = resolve_processor_for_path(path=file)
     assert proc is not None
 
     # Let processor auto-detect the span and strip
@@ -310,8 +305,6 @@ def test_cblock_not_at_top_insertion_single_leading_blank(tmp_path: Path) -> Non
     remain *before* the TopMark header block. The processor should inject one
     blank line between that line and the header preamble.
     """
-    from topmark.registry.resolver import get_processor_for_file
-
     # Use a non-CSS extension that still maps to the CBlockHeaderProcessor
     file: Path = tmp_path / "not_top.sql"
     original: list[str] = [
@@ -321,7 +314,7 @@ def test_cblock_not_at_top_insertion_single_leading_blank(tmp_path: Path) -> Non
     file.write_text("".join(original), encoding="utf-8")
 
     # Resolve processor & basics
-    proc: HeaderProcessor | None = get_processor_for_file(file)
+    proc: HeaderProcessor | None = resolve_processor_for_path(path=file)
     assert proc is not None, "Processor must resolve for .sql"
     cfg: Config = MutableConfig.from_defaults().freeze()
 

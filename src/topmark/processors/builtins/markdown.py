@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import re
 from typing import TYPE_CHECKING
+from typing import ClassVar
 
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
@@ -54,6 +55,8 @@ class MarkdownHeaderProcessor(BlockCommentMixin, HeaderProcessor):
     adds Markdown-specific safeguards to ignore header-like markers that appear
     inside fenced code blocks (``` or ~~~).
     """
+
+    key: ClassVar[str] = "markdown"
 
     def __init__(self) -> None:
         # Use HTML-style block comment delimiters for the header block.

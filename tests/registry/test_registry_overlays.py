@@ -12,25 +12,44 @@
 
 from __future__ import annotations
 
-from topmark.filetypes.model import FileType
+from typing import TYPE_CHECKING
+
+from tests.conftest import make_file_type
 from topmark.processors.base import HeaderProcessor
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
 from topmark.registry.registry import Registry
 
+if TYPE_CHECKING:
+    from topmark.filetypes.model import FileType
+
 
 class _P(HeaderProcessor):
+    """Stub processor for registry overlay tests."""
+
+    namespace = "test"
+    key = "p"
+
     def process(self, text: str) -> str:  # one-line stub
         return text
 
 
 def test_overlay_partition_updates() -> None:
     """File type becomes supported when a processor is registered and reverts when removed."""
-    ft = FileType(name="ftx", extensions=[".ftx"], filenames=[], patterns=[], description="x")
+    ft: FileType = make_file_type(
+        name="ftx",
+        extensions=[".ftx"],
+        filenames=[],
+        patterns=[],
+        description="x",
+    )
     FileTypeRegistry.register(ft)
     assert "ftx" in Registry.unsupported_filetype_names()
 
-    HeaderProcessorRegistry.register("ftx", _P, file_type=ft)  # now supported
+    HeaderProcessorRegistry.register(
+        processor_class=_P,
+        file_type=ft,
+    )  # now supported
     assert "ftx" in Registry.supported_filetype_names()
 
     HeaderProcessorRegistry.unregister("ftx")

@@ -55,7 +55,10 @@ def test_supported_vs_unsupported_partition() -> None:
         assert not HeaderProcessorRegistry.is_registered(ft_name)
 
         # Now register a processor -> becomes supported
-        HeaderProcessorRegistry.register(ft_name, proc_cls, file_type=ft)
+        HeaderProcessorRegistry.register(
+            processor_class=proc_cls,
+            file_type=ft,
+        )
 
         assert HeaderProcessorRegistry.is_registered(ft_name)
         assert ft_name in Registry.supported_filetype_names()

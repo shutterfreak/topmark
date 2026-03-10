@@ -19,12 +19,12 @@ explicit spans.
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 
 from tests.conftest import mark_pipeline
+from tests.conftest import resolve_processor_for_path
 from tests.pipeline.conftest import BlockSignatures
 from tests.pipeline.conftest import expected_block_lines_for
 from tests.pipeline.conftest import find_line
@@ -37,8 +37,6 @@ from topmark.config.policy import PolicyRegistry
 from topmark.config.policy import make_policy_registry
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
-from topmark.core.logging import TopmarkLogger
-from topmark.core.logging import get_logger
 from topmark.pipeline import runner
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.pipelines import Pipeline
@@ -52,8 +50,6 @@ if TYPE_CHECKING:
 
     from topmark.pipeline.protocols import Step
     from topmark.processors.base import HeaderProcessor
-
-logger: TopmarkLogger = get_logger(__name__)
 
 
 @mark_pipeline
@@ -247,14 +243,12 @@ def test_slash_strip_header_block_with_and_without_span(tmp_path: Path) -> None:
     Validates both the explicit-span path and the auto-detection fallback and
     ensures the resulting content is identical across both paths.
     """
-    from topmark.registry.resolver import get_processor_for_file
-
     file: Path = tmp_path / "strip_me.js"
     file.write_text(
         f"// {TOPMARK_START_MARKER}\n// f\n// {TOPMARK_END_MARKER}\nconsole.log(1)\n",
         encoding="utf-8",
     )
-    proc: HeaderProcessor | None = get_processor_for_file(file)
+    proc: HeaderProcessor | None = resolve_processor_for_path(path=file)
     assert proc is not None
     lines: list[str] = file.read_text(encoding="utf-8").splitlines(keepends=True)
 

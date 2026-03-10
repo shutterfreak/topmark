@@ -20,9 +20,9 @@ touching header-like blocks far away in the body.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
+from tests.conftest import resolve_processor_for_path
 from tests.pipeline.conftest import materialize_updated_lines
 from tests.pipeline.conftest import run_insert
 from topmark.config.model import Config
@@ -31,7 +31,6 @@ from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
 from topmark.processors.types import StripDiagKind
 from topmark.processors.types import StripDiagnostic
-from topmark.registry.resolver import get_processor_for_file
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -80,7 +79,7 @@ def test_multiple_headers_strip_removes_first_only_xml(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    proc: HeaderProcessor | None = get_processor_for_file(f)
+    proc: HeaderProcessor | None = resolve_processor_for_path(path=f)
     assert proc is not None
 
     lines: list[str] = f.read_text(encoding="utf-8").splitlines(keepends=True)

@@ -30,13 +30,14 @@ Notes:
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
 from threading import RLock
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 from typing import Final
 
+from topmark.core.errors import DuplicateProcessorKeyError
 from topmark.core.errors import DuplicateProcessorRegistrationError
+from topmark.registry.types import ProcessorMeta
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -47,11 +48,16 @@ if TYPE_CHECKING:
 
 
 _validation_done: bool = False
-_VALIDATION_ENV: Final[str] = "TOPMARK_VALIDATE"
+_VALIDATION_ENV: Final = "TOPMARK_VALIDATE"
 
 
 def _dev_validate_processors(proc_map: Mapping[str, HeaderProcessor]) -> None:
     """Run lightweight developer validations when TOPMARK_VALIDATE=1.
+
+    Checks:
+        * Every registered processor key matches an existing FileType name.
+        * XML-like processors (instances of XmlHeaderProcessor) report
+          NO_LINE_ANCHOR for their line-based index.
 
     This function is a no-op unless the environment variable TOPMARK_VALIDATE
     is set to a truthy value ("1", "true", "yes"). It is executed at most once
@@ -66,18 +72,6 @@ def _dev_validate_processors(proc_map: Mapping[str, HeaderProcessor]) -> None:
     # Intentionally lightweight: avoid importing other registries or concrete processors
     # to prevent type-check-time import cycles.
     _validation_done = True
-
-
-@dataclass(frozen=True)
-class ProcessorMeta:
-    """Stable, serializable metadata about a registered processor instance."""
-
-    name: str
-    description: str = ""
-    line_prefix: str = ""
-    line_suffix: str = ""
-    block_prefix: str = ""
-    block_suffix: str = ""
 
 
 class HeaderProcessorRegistry:
@@ -104,7 +98,12 @@ class HeaderProcessorRegistry:
 
     @classmethod
     def _compose(cls) -> dict[str, HeaderProcessor]:
-        """Compose base processor registry with local overrides/removals."""
+        """Compose the effective processor registry from base state and overlays.
+
+        The effective registry is still keyed by unqualified file type name for
+        compatibility. Processor identity consistency is validated separately via
+        each processor instance's `qualified_key`.
+        """
         cached: Mapping[str, HeaderProcessor] | None = cls._cache
         if cached is not None:
             return dict(cached)
@@ -113,9 +112,33 @@ class HeaderProcessorRegistry:
 
         # get_base_header_processor_registry() returns the base processor registry.
         base: dict[str, HeaderProcessor] = dict(get_base_header_processor_registry())
+
         base.update(cls._overrides)
         for name in cls._removals:
             base.pop(name, None)
+
+        # Validate processor identity keys.
+        #
+        # IMPORTANT: the base registry is keyed by *file type name* and stores one processor
+        # instance per bound file type. Many file types can legally reuse the same processor
+        # class (e.g. one XML processor instance per XML-like file type), which means we may
+        # see the same `qualified_key` multiple times.
+        #
+        # We only consider it a conflict when the *same* qualified key is provided by
+        # *different* processor classes.
+        seen: dict[str, type[HeaderProcessor]] = {}
+        for proc in base.values():
+            qk: str = proc.qualified_key
+            proc_cls: type[HeaderProcessor] = type(proc)
+            existing: type[HeaderProcessor] | None = seen.get(qk)
+            if existing is not None and existing is not proc_cls:
+                raise DuplicateProcessorKeyError(
+                    qualified_key=qk,
+                    existing_class=f"{existing.__module__}.{existing.__name__}",
+                    new_class=f"{proc_cls.__module__}.{proc_cls.__name__}",
+                )
+            seen[qk] = proc_cls
+
         _dev_validate_processors(base)
 
         cls._cache = MappingProxyType(base)
@@ -194,15 +217,13 @@ class HeaderProcessorRegistry:
     @classmethod
     def register(
         cls,
-        name: str,
-        processor_class: type[HeaderProcessor],
         *,
+        processor_class: type[HeaderProcessor],
         file_type: FileType,
     ) -> None:
         """Register a header processor class under a file type name.
 
         Args:
-            name: File type name under which the processor appears in the registry.
             processor_class: Concrete `HeaderProcessor` class to instantiate.
             file_type: FileType instance to bind to the instantiated processor.
 
@@ -216,10 +237,11 @@ class HeaderProcessorRegistry:
               multi-tenant processes.
         """
         with cls._lock:
+            file_type_name: str = file_type.name
             # Check composed view to avoid dupes
-            if name in cls._compose():
+            if file_type_name in cls._compose():
                 raise DuplicateProcessorRegistrationError(
-                    file_type=name,
+                    file_type=file_type_name,
                 )
 
             # Instantiate the provided processor class and bind it to the file type.
@@ -229,8 +251,8 @@ class HeaderProcessorRegistry:
             proc_obj.file_type = file_type
 
             # If this name was previously removed, allow re-registration.
-            cls._removals.discard(name)
-            cls._overrides[name] = proc_obj
+            cls._removals.discard(file_type_name)
+            cls._overrides[file_type_name] = proc_obj
             cls._clear_cache()
 
     @classmethod

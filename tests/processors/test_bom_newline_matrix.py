@@ -27,11 +27,11 @@ extensions and newline styles for broad coverage.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.conftest import resolve_processor_for_path
 from tests.pipeline.conftest import materialize_updated_lines
 from tests.pipeline.conftest import run_insert
 from topmark.config.model import MutableConfig
@@ -138,9 +138,7 @@ def test_strip_preserves_newline_style(
         fp.write(content)
 
     # Emulate strip pipeline: scanner -> stripper -> updater fast-path
-    from topmark.registry.resolver import get_processor_for_file
-
-    proc: HeaderProcessor | None = get_processor_for_file(f)
+    proc: HeaderProcessor | None = resolve_processor_for_path(path=f)
     assert proc is not None
     lines: list[str] = f.read_text(encoding="utf-8").splitlines(keepends=True)
 

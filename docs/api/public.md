@@ -89,6 +89,16 @@ configuration.
   - it may appear in results (unless `skip_unsupported=True`)
   - no header insertion or removal is attempted
 
+File type identifiers may be provided either as an unqualified name
+(`"python"`) or as a qualified identifier (`"topmark:python"`). Internally,
+TopMark resolves these identifiers using
+`FileTypeRegistry.resolve_filetype_id(...)`, which returns the corresponding
+`FileType` instance used by the runtime registries.
+
+Unqualified identifiers are only safe when they remain unique in the composed
+registry. If multiple file types share the same unqualified name, callers must
+use the qualified `"namespace:name"` form.
+
 ### Registries and extensibility (read-only by default)
 
 TopMark exposes **read-only** registries for file types and header processors via the stable
@@ -96,7 +106,7 @@ facade in [`topmark.registry.registry.Registry`][topmark.registry.registry.Regis
 view** (internal base registries + overlays − removals) and are returned as immutable
 `Mapping` views (backed by `MappingProxyType`).
 
-These registry objects are **not part of the `topmark.api` stability contract**; the supported programmatic API is defined exclusively by the symbols exported in `topmark.api.__all__`.
+These registry objects are **not part of the [`topmark.api`][topmark.api] stability contract**; the supported programmatic API is defined exclusively by the symbols exported in [`topmark.api.__all__`][topmark.api].
 
 Most users should interact with registries through this facade and treat them as
 **introspection-only**.
@@ -104,10 +114,12 @@ Most users should interact with registries through this facade and treat them as
 If you need dynamic extensions at runtime (typically in plugins or tests), use the
 **advanced registries** in \[`topmark.registry`\][topmark.registry] directly:
 
-- \[`topmark.registry.filetypes.FileTypeRegistry.register(ft, processor=processor_class)`\][topmark.registry.filetypes.FileTypeRegistry.register]
-- \[`topmark.registry.filetypes.FileTypeRegistry.unregister(name)`\][topmark.registry.filetypes.FileTypeRegistry.register]
+- \[`topmark.registry.filetypes.FileTypeRegistry.register(ft, processor_class=processor_class)`\][topmark.registry.filetypes.FileTypeRegistry.register]
+- \[`topmark.registry.filetypes.FileTypeRegistry.unregister(name)`\][topmark.registry.filetypes.FileTypeRegistry.unregister]
+- \[`topmark.registry.registry.Registry.register_processor(name, processor_class)`\][topmark.registry.registry.Registry.register_processor]
+- \[`topmark.registry.registry.Registry.try_register_processor(name, processor_class)`\][topmark.registry.registry.Registry.try_register_processor]
 - \[`topmark.registry.processors.HeaderProcessorRegistry.register(name, processor_class)`\][topmark.registry.processors.HeaderProcessorRegistry.register]
-- \[`topmark.registry.processors.HeaderProcessorRegistry.unregister(name)`\][topmark.registry.processors.HeaderProcessorRegistry]
+- \[`topmark.registry.processors.HeaderProcessorRegistry.unregister(name)`\][topmark.registry.processors.HeaderProcessorRegistry.unregister]
 
 These mutation helpers apply **overlay-only changes**: they do not mutate the internal base
 registries used to construct the effective views. Overlays are process-local and thread-safe
@@ -115,6 +127,11 @@ registries used to construct the effective views. Overlays are process-local and
 
 Overlay mutations automatically invalidate composed registry caches;
 callers do not need to manage cache lifetimes explicitly.
+
+When registering processors against file types, prefer qualified file type
+identifiers such as `"topmark:python"` or `"my_plugin:django_html"` once
+multiple namespaces are in play. Unqualified names remain supported for
+compatibility, but may become ambiguous.
 
 For long-term or redistributable extensions, prefer publishing a plugin using the
 \[`topmark.filetypes`\][topmark.filetypes] entry point group.

@@ -20,9 +20,9 @@ Covers the tricky single-line XML case:
 from __future__ import annotations
 
 import re
-from pathlib import Path
 from typing import TYPE_CHECKING
 
+from tests.conftest import resolve_processor_for_path
 from tests.pipeline.conftest import materialize_updated_lines
 from tests.pipeline.conftest import run_insert
 from topmark.config.model import Config
@@ -33,7 +33,6 @@ from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import GenerationStatus
 from topmark.processors.types import StripDiagKind
 from topmark.processors.types import StripDiagnostic
-from topmark.registry.resolver import get_processor_for_file
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -73,8 +72,9 @@ def test_xml_prolog_and_body_on_same_line_alllowed_by_policy(tmp_path: Path) -> 
     assert ctx.status.comparison == ComparisonStatus.CHANGED
     assert any(TOPMARK_START_MARKER in line for line in lines)
 
-    proc: HeaderProcessor | None = get_processor_for_file(f)
+    proc: HeaderProcessor | None = resolve_processor_for_path(path=f)
     assert proc is not None
+
     lines = after_insert.splitlines(keepends=True)
     stripped_lines: list[str] = []
     _span: tuple[int, int] | None = None
@@ -86,6 +86,7 @@ def test_xml_prolog_and_body_on_same_line_alllowed_by_policy(tmp_path: Path) -> 
         ends_with_newline=False,  # original was single-line without FNL
     )
     assert diag.kind == StripDiagKind.REMOVED
+
     roundtrip: str = "".join(stripped_lines)
 
     # Assert that original and roundtrip only differ in white space

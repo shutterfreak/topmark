@@ -83,7 +83,10 @@ def test_processor_register_unregister_roundtrip(proc_name: str) -> None:
     proc_cls: type[HeaderProcessor] = stub_proc_cls()
 
     try:
-        HeaderProcessorRegistry.register(proc_name, proc_cls, file_type=ft)
+        HeaderProcessorRegistry.register(
+            processor_class=proc_cls,
+            file_type=ft,
+        )
         assert proc_name in HeaderProcessorRegistry.names()
         assert proc_name in HeaderProcessorRegistry.as_mapping()
         # Iter meta should include it
@@ -108,9 +111,15 @@ def test_processor_register_duplicate_raises() -> None:
     proc_cls: type[HeaderProcessor] = stub_proc_cls()
 
     try:
-        HeaderProcessorRegistry.register(name, proc_cls, file_type=ft)
+        HeaderProcessorRegistry.register(
+            processor_class=proc_cls,
+            file_type=ft,
+        )
         with pytest.raises(DuplicateProcessorRegistrationError):
-            HeaderProcessorRegistry.register(name, proc_cls, file_type=ft)
+            HeaderProcessorRegistry.register(
+                processor_class=proc_cls,
+                file_type=ft,
+            )
     finally:
         HeaderProcessorRegistry.unregister(name)
         FileTypeRegistry.unregister(name)
@@ -125,22 +134,19 @@ def test_replace_processor_requires_unregister() -> None:
         cls1: type[HeaderProcessor] = stub_proc_cls()
         cls2: type[HeaderProcessor] = stub_proc_cls()
         HeaderProcessorRegistry.register(
-            name,
-            cls1,
+            processor_class=cls1,
             file_type=FileTypeRegistry.as_mapping()[name],
         )
         import pytest
 
         with pytest.raises(DuplicateProcessorRegistrationError):
             HeaderProcessorRegistry.register(
-                name,
-                cls2,
+                processor_class=cls2,
                 file_type=FileTypeRegistry.as_mapping()[name],
             )
         assert HeaderProcessorRegistry.unregister(name) is True
         HeaderProcessorRegistry.register(
-            name,
-            cls2,
+            processor_class=cls2,
             file_type=FileTypeRegistry.as_mapping()[name],
         )  # now OK
     finally:

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import re
 from typing import TYPE_CHECKING
+from typing import ClassVar
 
 from topmark.core.logging import get_logger
 from topmark.pipeline.policy_whitespace import is_pure_spacer
@@ -44,6 +45,8 @@ class XmlHeaderProcessor(XmlPositionalMixin, BlockCommentMixin, HeaderProcessor)
     It still leverages the base processor for rendering, whitespace alignment,
     and policy-aware behavior where applicable.
     """
+
+    key: ClassVar[str] = "xml"
 
     def __init__(self) -> None:
         super().__init__(

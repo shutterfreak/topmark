@@ -32,6 +32,7 @@ from typing_extensions import NotRequired
 from typing_extensions import Required
 from typing_extensions import TypedDict
 
+from tests.conftest import resolve_processor_for_path
 from topmark.config.policy import PolicyRegistry
 from topmark.config.policy import make_policy_registry
 from topmark.pipeline.context.model import ProcessingContext
@@ -52,8 +53,6 @@ from topmark.pipeline.steps.sniffer import SnifferStep
 from topmark.pipeline.steps.stripper import StripperStep
 from topmark.pipeline.steps.writer import WriterStep
 from topmark.pipeline.views import ListFileImageView
-from topmark.processors.base import HeaderProcessor
-from topmark.registry.resolver import get_processor_for_file
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -168,7 +167,7 @@ def make_context_from_text(
     ctx: ProcessingContext = make_pipeline_context(path=path, cfg=cfg)
 
     # Resolve and attach processor/file type using the normal registry helper.
-    proc: HeaderProcessor | None = get_processor_for_file(path=path)
+    proc: HeaderProcessor | None = resolve_processor_for_path(path=path)
     assert proc is not None, f"Expected a registered HeaderProcessor for test path {path!s}"
     ctx.header_processor = proc
     ctx.file_type = proc.file_type
@@ -403,9 +402,7 @@ def expected_block_lines_for(path: Path, newline: str = "\n") -> BlockSignatures
         A dict with canonical single-line strings suitable for assertions.
     """
     # Ensure processors are registered and resolve the appropriate one
-    proc: HeaderProcessor | None = get_processor_for_file(path)
-    if proc is None:
-        proc = get_processor_for_file(path)
+    proc: HeaderProcessor | None = resolve_processor_for_path(path=path)
     assert proc is not None, f"No header processor found for {path}"
 
     pre: list[str] = proc.render_preamble_lines(newline_style=newline)

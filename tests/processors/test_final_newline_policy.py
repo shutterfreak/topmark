@@ -22,16 +22,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from tests.conftest import resolve_processor_for_path
 from tests.pipeline.conftest import materialize_updated_lines
 from tests.pipeline.conftest import run_insert
 from topmark.config.model import Config
 from topmark.config.model import MutableConfig
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
-from topmark.pipeline.context.model import ProcessingContext
 from topmark.processors.types import StripDiagKind
 from topmark.processors.types import StripDiagnostic
-from topmark.registry.resolver import get_processor_for_file
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -95,8 +94,8 @@ def test_strip_preserves_final_newline_xml(tmp_path: Path) -> None:
     f1.write_text(with_nl, encoding="utf-8")
     f2.write_text(no_nl, encoding="utf-8")
 
-    proc1: HeaderProcessor | None = get_processor_for_file(f1)
-    proc2: HeaderProcessor | None = get_processor_for_file(f2)
+    proc1: HeaderProcessor | None = resolve_processor_for_path(path=f1)
+    proc2: HeaderProcessor | None = resolve_processor_for_path(path=f2)
     assert proc1 and proc2
 
     lines1: list[str] = f1.read_text(encoding="utf-8").splitlines(keepends=True)

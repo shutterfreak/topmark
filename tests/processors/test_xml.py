@@ -18,10 +18,10 @@ and component templates (Vue, Svelte). Also validates idempotency and `strip_hea
 from __future__ import annotations
 
 import re
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tests.conftest import mark_pipeline
+from tests.conftest import resolve_processor_for_path
 from tests.pipeline.conftest import BlockSignatures
 from tests.pipeline.conftest import expected_block_lines_for
 from tests.pipeline.conftest import find_line
@@ -44,7 +44,6 @@ from topmark.pipeline.status import ResolveStatus
 from topmark.processors.builtins.xml import XmlHeaderProcessor
 from topmark.processors.types import StripDiagKind
 from topmark.processors.types import StripDiagnostic
-from topmark.registry.resolver import get_processor_for_file
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -283,8 +282,9 @@ def test_xml_prolog_and_body_on_same_line_alllowed_by_policy(tmp_path: Path) -> 
     assert ctx.status.comparison == ComparisonStatus.CHANGED
     assert any(TOPMARK_START_MARKER in line for line in lines)
 
-    proc: HeaderProcessor | None = get_processor_for_file(file)
+    proc: HeaderProcessor | None = resolve_processor_for_path(path=file)
     assert proc is not None
+
     lines = after_insert.splitlines(keepends=True)
     stripped_lines: list[str] = []
     _span: tuple[int, int] | None = None
@@ -296,6 +296,7 @@ def test_xml_prolog_and_body_on_same_line_alllowed_by_policy(tmp_path: Path) -> 
         ends_with_newline=False,  # original was single-line without FNL
     )
     assert diag.kind == StripDiagKind.REMOVED
+
     roundtrip: str = "".join(stripped_lines)
 
     # Assert that original and roundtrip only differ in white space
@@ -424,8 +425,6 @@ def test_xml_strip_header_block_respects_declaration(tmp_path: Path) -> None:
     Exercises both explicit-span and auto-detect paths and asserts identical
     results with the declaration retained as the first logical line.
     """
-    from topmark.registry.resolver import get_processor_for_file
-
     file: Path = tmp_path / "strip_doc.xml"
     file.write_text(
         '<?xml version="1.0"?>\n'
@@ -436,7 +435,7 @@ def test_xml_strip_header_block_respects_declaration(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    proc: HeaderProcessor | None = get_processor_for_file(file)
+    proc: HeaderProcessor | None = resolve_processor_for_path(path=file)
     assert proc is not None
 
     lines: list[str] = file.read_text(encoding="utf-8").splitlines(keepends=True)

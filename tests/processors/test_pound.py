@@ -17,12 +17,12 @@ Google style and end with punctuation.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 
 from tests.conftest import mark_pipeline
+from tests.conftest import resolve_processor_for_path
 from tests.pipeline.conftest import BlockSignatures
 from tests.pipeline.conftest import expected_block_lines_for
 from tests.pipeline.conftest import find_line
@@ -804,8 +804,6 @@ def test_strip_header_block_with_and_without_span_preserves_shebang(tmp_path: Pa
       * The entire TopMark header block is removed.
       * The returned span matches the actual header location.
     """
-    from topmark.registry.resolver import get_processor_for_file
-
     file: Path = tmp_path / "strip_shebang.py"
     file.write_text(
         "#!/usr/bin/env python3\n"
@@ -816,7 +814,7 @@ def test_strip_header_block_with_and_without_span_preserves_shebang(tmp_path: Pa
         encoding="utf-8",
     )
 
-    proc: HeaderProcessor | None = get_processor_for_file(file)
+    proc: HeaderProcessor | None = resolve_processor_for_path(path=file)
     assert proc is not None
 
     lines: list[str] = file.read_text(encoding="utf-8").splitlines(keepends=True)

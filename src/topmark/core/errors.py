@@ -92,6 +92,29 @@ class UnknownFileTypeError(TopmarkError):
         self.file_type: Final[str] = file_type
 
 
+class AmbiguousFileTypeIdentifierError(TopmarkError):
+    """Raised when an unqualified file type identifier resolves ambiguously.
+
+    This error is intended for lookup helpers that accept either unqualified or
+    qualified file type identifiers. Callers can recover by retrying with an
+    explicit qualified identifier of the form ``"<namespace>:<name>"``.
+    """
+
+    def __init__(self, *, file_type: str, candidates: tuple[str, ...]) -> None:
+        message: str = (
+            f"Ambiguous file type identifier: {file_type} (candidates: {', '.join(candidates)})"
+        )
+        super().__init__(
+            ErrorContext(
+                message=message,
+                file_type=file_type,
+                details=tuple(f"candidate={candidate}" for candidate in candidates),
+            )
+        )
+        self.file_type: Final[str] = file_type
+        self.candidates: Final[tuple[str, ...]] = candidates
+
+
 class ProcessorBindingError(TopmarkError):
     """Raised when explicit processor bindings are invalid or inconsistent.
 
@@ -131,6 +154,40 @@ class DuplicateProcessorRegistrationError(ProcessorRegistrationError):
             message=f"File type '{file_type}' already has a registered processor.",
             file_type=file_type,
         )
+
+
+class DuplicateProcessorKeyError(TopmarkError):
+    """Raised when multiple processor classes claim the same qualified key.
+
+    This signals an internal or overlay-composition invariant failure: the same
+    qualified processor identity must not resolve to different processor classes
+    in the effective processor registry.
+    """
+
+    def __init__(
+        self,
+        *,
+        qualified_key: str,
+        existing_class: str,
+        new_class: str,
+    ) -> None:
+        message: str = (
+            "Duplicate processor key detected: "
+            f"{qualified_key} (classes: {existing_class} vs {new_class})"
+        )
+        super().__init__(
+            ErrorContext(
+                message=message,
+                details=(
+                    f"qualified_key={qualified_key}",
+                    f"existing_class={existing_class}",
+                    f"new_class={new_class}",
+                ),
+            )
+        )
+        self.qualified_key: Final[str] = qualified_key
+        self.existing_class: Final[str] = existing_class
+        self.new_class: Final[str] = new_class
 
 
 class UnsupportedFileTypeError(TopmarkError):

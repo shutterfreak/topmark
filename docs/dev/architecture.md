@@ -59,6 +59,35 @@ The current registry architecture was introduced to satisfy these goals:
 The registry system is intentionally layered: immutable base registries are composed
 with mutable overlay state to produce a cached, read-only effective view.
 
+The composed (“effective”) registries are formed by combining base registries with overlays/removals, and resolution happens against that effective view.
+
+```mermaid
+flowchart TB
+    subgraph BASE[Base registries]
+        BFT["Base FileTypes<br/>(built-ins + discovered plugins)"]
+        BPR["Base Processors<br/>(explicit registration)"]
+    end
+
+    subgraph OVER[Overlays]
+        OFT["FileType overlays<br/>(add/override/remove)"]
+        OPR["Processor overlays<br/>(add/override/remove)"]
+    end
+
+    BFT --> EFT["Effective FileType view<br/>(FileTypeRegistry._compose / as_mapping)"]
+    OFT --> EFT
+
+    BPR --> EPR["Effective Processor view<br/>(HeaderProcessorRegistry._compose / as_mapping)"]
+    OPR --> EPR
+
+    EFT --> RES["resolve_filetype_id(name | namespace:name)"]
+    RES --> FT["Resolved FileType instance<br/>(namespace, name)"]
+
+    %% Processor selection is a lookup against the effective processor view
+    FT --> LOOKUP["Lookup bound processor<br/>(by file type name)"]
+    EPR --> LOOKUP
+    LOOKUP --> PROC["Bound HeaderProcessor instance"]
+```
+
 Registries are split into three conceptual layers:
 
 ```mermaid
@@ -118,7 +147,7 @@ These classes provide **overlay mutation helpers**:
 Important properties:
 
 - Mutations affect overlays only
-- Internal base-registry entries are never mutated
+- Internal base-registry and plugin-discovered entries are never mutated
 - Overlay changes invalidate composed-view caches automatically
 - Intended for:
   - Tests
@@ -219,6 +248,45 @@ TopMark defines centralized constants for:
 This reduces accidental drift between CLI help text, config parsing, and runtime logic.
 Validation should occur at “seams” (CLI parsing and TOML loading) so internal code can
 rely on canonical keys.
+
+## FileType identity and resolution
+
+A `FileType` has a stable identity defined by the tuple:
+
+```py
+(namespace, name)
+```
+
+The canonical identifier form is therefore:
+
+```text
+<namespace>:<name>
+```
+
+For compatibility with existing configuration and CLI filtering, registries
+may still accept or expose the *unqualified* file type name. Resolution is
+performed through `FileTypeRegistry.resolve_filetype_id(...)`, which accepts
+both forms and returns the corresponding `FileType` instance.
+
+The resolution path from a user-provided identifier to a bound processor looks like this:
+
+```mermaid
+flowchart TD
+    ID["User identifier<br/>(name or namespace:name)"] --> RESOLVE["FileTypeRegistry.resolve_filetype_id(...)"]
+    RESOLVE --> FT["FileType instance<br/>(namespace, name)"]
+    FT --> HPR["HeaderProcessorRegistry<br/>binds processor"]
+    HPR --> PIPE["Pipeline steps<br/>operate on resolved FileType"]
+```
+
+Internally:
+
+- `FileTypeRegistry` stores and validates `FileType` objects
+- `HeaderProcessorRegistry` binds processors to specific `FileType` instances
+- the public `Registry` facade resolves identifiers before delegating to the
+  underlying registries
+
+This design allows TopMark to gradually move toward fully-qualified
+identifiers without breaking existing configuration or CLI usage.
 
 ### Practical Implications for Contributors
 

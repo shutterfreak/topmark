@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
+from collections.abc import Collection
 from collections.abc import Iterator
 from collections.abc import Mapping
 from collections.abc import Sequence
@@ -52,6 +53,7 @@ from topmark.filetypes.model import ContentMatcher
 from topmark.filetypes.model import FileType
 from topmark.filetypes.model import InsertChecker
 from topmark.processors.base import HeaderProcessor
+from topmark.resolution.filetypes import resolve_binding_for_path
 
 if TYPE_CHECKING:
     from topmark.config.model import Config
@@ -308,6 +310,7 @@ def default_config() -> Config:
 def make_file_type(
     *,
     name: str,
+    namespace: str = "pytest",
     description: str = "",
     extensions: list[str] | None = None,
     filenames: list[str] | None = None,
@@ -336,6 +339,7 @@ def make_file_type(
 
     Args:
         name: File type identifier.
+        namespace: File type namespace (MUST NOT be `topmark`).
         description: The file type description.
         extensions: Extension rules (including leading dots, e.g. `.py`).
         filenames: Filename-tail rules (relative path tails).
@@ -422,6 +426,7 @@ def make_file_type(
 
         return CustomMatcherFileType(
             name=name,
+            namespace=namespace,
             description=description,
             extensions=extensions if extensions is not None else [],
             filenames=filenames if filenames is not None else [],
@@ -434,6 +439,7 @@ def make_file_type(
         )
     return FileType(
         name=name,
+        namespace=namespace,
         description=description,
         extensions=extensions if extensions is not None else [],
         filenames=filenames if filenames is not None else [],
@@ -542,7 +548,11 @@ def effective_registries() -> EffectiveRegistries:
 class _StubProcessor:
     """Duck-typed HeaderProcessor stub that satisfies just what the registry uses."""
 
+    key: str = "stub_processor"
+    namespace: str = "test"
+
     def __init__(self, description: str = "") -> None:
+        self.qualified_key: str = f"{self.namespace}:{self.key}"
         self.description: str = description
         self.line_prefix: str = ""
         self.line_suffix: str = ""
@@ -554,3 +564,30 @@ class _StubProcessor:
 def stub_proc_cls() -> type[HeaderProcessor]:
     """Return a duck-typed HeaderProcessor class for registry tests."""
     return cast("type[HeaderProcessor]", _StubProcessor)
+
+
+def resolve_processor_for_path(
+    path: Path,
+    *,
+    include_file_types: Collection[str] | None = None,
+    exclude_file_types: Collection[str] | None = None,
+) -> HeaderProcessor | None:
+    """Resolve the effective processor for `path`.
+
+    Convenience wrapper for `resolve_binding_for_path()`.
+
+    Args:
+        path: Filesystem path of the file being resolved.
+        include_file_types: Optional whitelist of allowed unqualified file type
+            names.
+        exclude_file_types: Optional blacklist of disallowed unqualified file
+            type names.
+
+    Returns:
+        The resolved header processor (or None).
+    """
+    return resolve_binding_for_path(
+        path,
+        include_file_types=include_file_types,
+        exclude_file_types=exclude_file_types,
+    ).processor

@@ -1,19 +1,18 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : test_public_api_views.py
-#   file_relpath : tests/api/test_public_api_views.py
+#   file         : test_register_unregister.py
+#   file_relpath : tests/registry/test_register_unregister.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""Tests for the public API facade (read-only views and mutators)."""
+"""Tests for registering and unregistering processors and filetypes."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from typing import ClassVar
 
 from tests.conftest import make_file_type
 from topmark.processors.base import HeaderProcessor
@@ -56,13 +55,16 @@ def test_register_and_unregister_processors() -> None:
     assert "tmp" in FileTypeRegistry.as_mapping()
 
     class TmpProcessor(HeaderProcessor):
-        name: ClassVar = "test_proc"
-        namespace = "pytest"
+        key = "tmp_processor"
+        namespace = "test"
 
         def process(self, text: str) -> str:
             return text
 
-    HeaderProcessorRegistry.register(processor_class=TmpProcessor, file_type=ft)
+    HeaderProcessorRegistry.register(
+        file_type=ft,
+        processor_class=TmpProcessor,
+    )
     assert "tmp" in HeaderProcessorRegistry.as_mapping()
 
     HeaderProcessorRegistry.unregister("tmp")
