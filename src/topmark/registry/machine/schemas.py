@@ -31,7 +31,7 @@ Serialization conventions:
 Payload construction lives in
 [`topmark.registry.machine.payloads`][topmark.registry.machine.payloads].
 Envelope/record shaping lives in
-[`topmark.registry.machine.shapes`][topmark.registry.machine.shapes].
+[`topmark.registry.machine.envelopes`][topmark.registry.machine.envelopes].
 """
 
 from __future__ import annotations
@@ -43,6 +43,8 @@ class FileTypeBriefEntry(TypedDict):
     """Brief file type entry used when `--show-details` is not requested."""
 
     name: str
+    namespace: str
+    qualified_key: str
     description: str
 
 
@@ -50,6 +52,8 @@ class FileTypeDetailEntry(TypedDict):
     """Detailed file type entry used when `--show-details` is enabled."""
 
     name: str
+    namespace: str
+    qualified_key: str
     description: str
     extensions: list[str]
     filenames: list[str]
@@ -71,14 +75,16 @@ class FileTypeRefEntry(TypedDict):
     """Expanded file type reference used inside processor detail entries."""
 
     name: str
+    namespace: str
+    qualified_key: str
     description: str
 
 
 FileTypeRef = str | FileTypeRefEntry
 """Reference to a file type.
 
-- In brief mode: a string containing the file type name.
-- In detail mode: an object containing `name` and `description`.
+- In brief mode: a string containing the qualified file type identifier.
+- In detail mode: an object containing identity and description fields.
 """
 
 
@@ -88,6 +94,9 @@ class ProcessorBriefEntry(TypedDict):
     In brief mode, `filetypes` is a list of file type names.
     """
 
+    namespace: str
+    key: str
+    qualified_key: str
     module: str
     class_name: str
     filetypes: list[str]
@@ -99,6 +108,9 @@ class ProcessorDetailEntry(TypedDict):
     In detail mode, `filetypes` is a list of expanded file type references.
     """
 
+    namespace: str
+    key: str
+    qualified_key: str
     module: str
     class_name: str
     filetypes: list[FileTypeRefEntry]

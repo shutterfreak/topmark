@@ -23,6 +23,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
+from typing import Final
 from typing import Literal
 from typing import TypedDict
 
@@ -92,6 +93,22 @@ class Outcome(str, Enum):
     INSERTED = "inserted"
     UPDATED = "updated"
     STRIPPED = "stripped"
+
+
+OUTCOME_ORDER: Final[tuple[Outcome, ...]] = (
+    Outcome.PENDING,
+    Outcome.SKIPPED,
+    Outcome.UNCHANGED,
+    Outcome.WOULD_CHANGE,
+    Outcome.WOULD_INSERT,
+    Outcome.WOULD_UPDATE,
+    Outcome.WOULD_STRIP,
+    Outcome.CHANGED,
+    Outcome.INSERTED,
+    Outcome.UPDATED,
+    Outcome.STRIPPED,
+    Outcome.ERROR,
+)
 
 
 @dataclass(frozen=True)

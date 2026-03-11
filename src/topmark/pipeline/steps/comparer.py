@@ -95,23 +95,15 @@ class ComparerStep(BaseStep):
             True if processing can proceed to the build step, False otherwise.
         """
         if ctx.is_halted:
-            outcome: bool = False
-        else:
-            # Check pipelines:
-            rendered_ready: bool = ctx.status.render == RenderStatus.RENDERED
-            # Strip pipelines:
-            # strip_ready   = ctx.status.strip == StripStatus.READY
-            # Check and strip pipelines:
-            updated_ready: bool = (
-                ctx.views.updated is not None and ctx.views.updated.lines is not None
-            )
-            outcome = (
-                rendered_ready
-                # or strip_ready
-                or updated_ready
-            )
-        logger.debug("%s may_proceed is %s", self.__class__.__name__, outcome)
-        return outcome
+            return False
+
+        # Check pipelines:
+        rendered_ready: bool = ctx.status.render == RenderStatus.RENDERED
+        # Strip pipelines:
+        # strip_ready   = ctx.status.strip == StripStatus.READY
+        # Check and strip pipelines:
+        updated_ready: bool = ctx.views.updated is not None and ctx.views.updated.lines is not None
+        return rendered_ready or updated_ready
 
     def run(self, ctx: ProcessingContext) -> None:
         """Compare existing vs expected header and set `ctx.status.comparison`.

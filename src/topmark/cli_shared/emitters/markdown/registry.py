@@ -49,11 +49,17 @@ def render_filetypes_markdown(*, report: FileTypesHumanReport) -> str:
 
     lines: list[str] = []
     lines.append("# Supported File Types\n")
-    lines.append(f"TopMark version **{TOPMARK_VERSION}** supports the following file types:\n")
+    lines.append(
+        f"TopMark version **{TOPMARK_VERSION}** supports the following file types "
+        f"(shown as qualified identifiers):\n"
+    )
 
     if report.show_details:
         lines.append("## Legend\n")
-        lines.append("- **Identifier**: File type key used in configuration.")
+        lines.append(
+            "- **Identifier**: Qualified file type identifier used in configuration "
+            "and machine output."
+        )
         lines.append("- **Extensions/Filenames/Patterns**: How files are matched on disk.")
         lines.append(
             "- **Skip Processing**: "
@@ -95,7 +101,7 @@ def render_filetypes_markdown(*, report: FileTypesHumanReport) -> str:
         lines.append(render_markdown_table(headers, rows))
     else:
         lines.append(
-            "_This list shows the file type identifiers and a short description. "
+            "_This list shows the qualified file type identifiers and a short description. "
             "Use `--long` for details._\n"
         )
         headers: list[str] = ["File Type", "Description"]
@@ -137,13 +143,15 @@ def render_processors_markdown(*, report: ProcessorsHumanReport) -> str:
     lines: list[str] = []
     lines.append("# Supported Header Processors\n")
     lines.append(
-        f"TopMark version **{TOPMARK_VERSION}** supports the following header processors:\n"
+        f"TopMark version **{TOPMARK_VERSION}** supports the following header processors "
+        f"and bound qualified file type identifiers:\n"
     )
 
     if report.show_details:
         lines.append("## Legend\n")
         lines.append(
-            "- This section groups file types by the **header processor** class handling them."
+            "- This section groups qualified file type identifiers by the "
+            "**header processor** class handling them."
         )
         lines.append(
             "- See `topmark filetypes --output-format=markdown --long` for per-type matching rules "
@@ -160,7 +168,8 @@ def render_processors_markdown(*, report: ProcessorsHumanReport) -> str:
             lines.append(render_markdown_table(headers, rows))
     else:
         lines.append(
-            "_This table lists header processors and the file types they handle. "
+            "_This table lists header processors and the qualified file type identifiers "
+            "they handle. "
             "Use `--long` to expand  per-processor file type listings into separate tables._\n"
         )
         headers = ["Processor", "Module", "File Types"]
@@ -179,8 +188,8 @@ def render_processors_markdown(*, report: ProcessorsHumanReport) -> str:
     if report.unbound_filetypes:
         lines.append("\n## File types without a registered processor\n")
         lines.append(
-            "These file types are recognized by TopMark but currently have no "
-            "header processor bound. They will be listed, but not processed.\n"
+            "These qualified file type identifiers are recognized by TopMark but "
+            "currently have no header processor bound. They will be listed, but not processed.\n"
         )
         if report.show_details:
             headers = ["File Types", "Description"]

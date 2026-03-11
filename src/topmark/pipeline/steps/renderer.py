@@ -31,7 +31,7 @@ from itertools import islice
 from typing import TYPE_CHECKING
 
 from topmark.core.logging import get_logger
-from topmark.pipeline.context.policy import allow_empty_header_by_policy
+from topmark.pipeline.context.policy import allow_empty_header
 from topmark.pipeline.hints import Axis
 from topmark.pipeline.status import GenerationStatus
 from topmark.pipeline.status import RenderStatus
@@ -81,13 +81,12 @@ class RendererStep(BaseStep):
             True if processing can proceed to the render step, False otherwise.
         """
         if ctx.is_halted:
-            outcome: bool = False
-        else:
-            outcome = ctx.status.generation in {
-                GenerationStatus.GENERATED,
-                GenerationStatus.NO_FIELDS,
-            }
-        logger.debug("%s may_proceed is %s", self.__class__.__name__, outcome)
+            return False
+
+        outcome: bool = ctx.status.generation in {
+            GenerationStatus.GENERATED,
+            GenerationStatus.NO_FIELDS,
+        }
         return outcome
 
     def run(self, ctx: ProcessingContext) -> None:
@@ -121,7 +120,7 @@ class RendererStep(BaseStep):
 
         # Nothing to render when no fields were generated; short-circuit safely.
         if ctx.status.generation == GenerationStatus.NO_FIELDS:
-            if allow_empty_header_by_policy(ctx):
+            if allow_empty_header(ctx):
                 # Render markers-only (empty header) to enable deterministic compare/update.
                 rendered_lines: list[str] = ctx.header_processor.render_header_lines(
                     header_values={},  # no fields

@@ -28,14 +28,15 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
 
+from topmark.api.types import OUTCOME_ORDER
 from topmark.api.types import Outcome
 from topmark.core.logging import TopmarkLogger
 from topmark.core.logging import get_logger
 from topmark.pipeline.context.model import ProcessingContext
-from topmark.pipeline.context.policy import can_change
 from topmark.pipeline.context.policy import check_permitted_by_policy
 from topmark.pipeline.context.policy import effective_would_add_or_update
 from topmark.pipeline.context.policy import effective_would_strip
+from topmark.pipeline.context.policy import is_empty_for_insert_unchanged_by_default
 from topmark.pipeline.status import ComparisonStatus  # temporary
 from topmark.pipeline.status import ContentStatus  # temporary
 from topmark.pipeline.status import FsStatus  # temporary
@@ -62,31 +63,6 @@ class Intent(Enum):
     INSERT = "insert"
     UPDATE = "update"
     NONE = "none"  # no clear action (compare skipped, etc.)
-
-
-def determine_intent(ctx: ProcessingContext) -> Intent:
-    """Derive the high-level intent for bucketing from the current context.
-
-    Intent is inferred from statuses that indicate what the pipeline is trying to do for this file:
-
-    - STRIP: the strip axis is non-pending (strip pipeline ran).
-    - INSERT: header axis indicates a missing header.
-    - UPDATE: header axis is decided (not PENDING) and not missing.
-    - NONE: insufficient information to infer an action (early termination).
-
-    Args:
-        ctx: The processing context.
-
-    Returns:
-        The inferred bucketing intent.
-    """
-    if ctx.status.strip != StripStatus.PENDING:
-        return Intent.STRIP
-    if ctx.status.header == HeaderStatus.MISSING:
-        return Intent.INSERT
-    if ctx.status.header != HeaderStatus.PENDING:
-        return Intent.UPDATE
-    return Intent.NONE
 
 
 @dataclass
@@ -125,6 +101,50 @@ class ResultBucket:
             The `str` representation of the `ResultBucket` instance.
         """
         return f"{self.outcome.value}: {self.reason or NO_REASON_PROVIDED}"
+
+
+@dataclass(frozen=True)
+class OutcomeReasonCount:
+    """Count for a specific `(outcome, reason)` summary bucket.
+
+    This value object is the canonical summary row used by human and machine
+    output layers. It preserves both axes of classification:
+
+    - `outcome`: the stable public `Outcome`
+    - `reason`: the human-facing bucket reason used within that outcome
+
+    Keeping both axes avoids collapsing distinct reasons into a single per-outcome
+    label in summary mode.
+    """
+
+    outcome: Outcome
+    reason: str
+    count: int
+
+
+def determine_intent(ctx: ProcessingContext) -> Intent:
+    """Derive the high-level intent for bucketing from the current context.
+
+    Intent is inferred from statuses that indicate what the pipeline is trying to do for this file:
+
+    - STRIP: the strip axis is non-pending (strip pipeline ran).
+    - INSERT: header axis indicates a missing header.
+    - UPDATE: header axis is decided (not PENDING) and not missing.
+    - NONE: insufficient information to infer an action (early termination).
+
+    Args:
+        ctx: The processing context.
+
+    Returns:
+        The inferred bucketing intent.
+    """
+    if ctx.status.strip != StripStatus.PENDING:
+        return Intent.STRIP
+    if ctx.status.header == HeaderStatus.MISSING:
+        return Intent.INSERT
+    if ctx.status.header != HeaderStatus.PENDING:
+        return Intent.UPDATE
+    return Intent.NONE
 
 
 def map_bucket(ctx: ProcessingContext, *, apply: bool) -> ResultBucket:
@@ -228,17 +248,20 @@ def map_bucket(ctx: ProcessingContext, *, apply: bool) -> ResultBucket:
             reason=ctx.status.content.value,
         )
 
-    # 3) Empty-file default compliance
-    # Empty files are compliant by default (not a non-compliance). If policy allows inserting
-    # into empties, `can_change(r)` will be True and we fall through to normal change bucketing.
-    if ctx.status.fs == FsStatus.EMPTY and not can_change(ctx):
+    # 3) Empty-for-insert default compliance
+    #
+    # Files classified as "empty for insertion" are treated as compliant /
+    # unchanged by default when policy does not allow inserting into that class.
+    #
+    # This covers true empty files as well as empty-like placeholders such as
+    # BOM-only, newline-only, or other images covered by the configured
+    # `EmptyInsertMode`.
+    if is_empty_for_insert_unchanged_by_default(ctx):
         return ret(
-            debug_tag="unchanged:empty-default",
+            debug_tag="unchanged:empty-for-insert",
             outcome=Outcome.UNCHANGED,
-            reason="empty_file",
+            reason="empty-like file (policy)",
         )
-
-    # TODO: Also check 'pseudo-empty' file containing only BOM
 
     # 4) Strip mapping (strip pipelines may omit comparer; do not depend on comparison)
     if intent == Intent.STRIP:
@@ -436,26 +459,39 @@ def classify_outcome(ctx: ProcessingContext, *, apply: bool) -> Outcome:
     return map_bucket(ctx, apply=apply).outcome
 
 
-def collect_outcome_counts(
+def collect_outcome_reason_counts(
     results: list[ProcessingContext],
-) -> dict[str, tuple[int, str]]:
-    """Collect outcome counts by classification key.
+) -> list[OutcomeReasonCount]:
+    """Collect summary counts grouped by `(outcome, reason)`.
 
-    The key is the public outcome value (e.g. "unchanged", "error"). The label
-    is the first-seen human-facing bucket label (reason).
+    Unlike the old per-outcome aggregation, this helper preserves the second
+    bucketing axis (`reason`) so summary views do not collapse distinct
+    sub-buckets inside the same `Outcome`.
+
+    Ordering is deterministic and stable:
+    1. Fixed public `OUTCOME_ORDER`
+    2. Alphabetical `reason` within each outcome
 
     Args:
         results: Processing contexts to bucket and count.
 
     Returns:
-        Mapping from classification key to ``(count, label)``.
+        Sorted list of `OutcomeReasonCount` rows.
     """
-    counts: dict[str, tuple[int, str]] = {}
+    counts: dict[tuple[Outcome, str], int] = {}
     for r in results:
         apply: bool = r.config.apply_changes is True
         bucket: ResultBucket = map_bucket(r, apply=apply)
-        key: str = bucket.outcome.value
-        initial_label: str = bucket.reason or NO_REASON_PROVIDED
-        n, label = counts.get(key, (0, initial_label))
-        counts[key] = (n + 1, label)
-    return counts
+        outcome: Outcome = bucket.outcome
+        reason: str = bucket.reason or NO_REASON_PROVIDED
+        key: tuple[Outcome, str] = (outcome, reason)
+        counts[key] = counts.get(key, 0) + 1
+
+    order_index: dict[Outcome, int] = {outcome: idx for idx, outcome in enumerate(OUTCOME_ORDER)}
+
+    rows: list[OutcomeReasonCount] = [
+        OutcomeReasonCount(outcome=outcome, reason=reason, count=count)
+        for (outcome, reason), count in counts.items()
+    ]
+    rows.sort(key=lambda row: (order_index.get(row.outcome, 10_000), row.reason))
+    return rows

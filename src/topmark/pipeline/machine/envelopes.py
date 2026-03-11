@@ -1,14 +1,14 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : shapes.py
-#   file_relpath : src/topmark/pipeline/machine/shapes.py
+#   file         : envelopes.py
+#   file_relpath : src/topmark/pipeline/machine/envelopes.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""Machine-output shape builders for pipeline processing commands.
+"""Machine-output envelope builders for pipeline processing commands.
 
 This module composes **machine-readable output shapes** for pipeline runs
 (`topmark check` / `topmark strip`).
@@ -59,7 +59,6 @@ if TYPE_CHECKING:
     from topmark.config.machine.schemas import ConfigPayload
     from topmark.config.model import Config
     from topmark.pipeline.context.model import ProcessingContext
-    from topmark.pipeline.machine.schemas import OutcomeSummaryMapEntry
 
 
 def build_processing_results_json_envelope(
@@ -110,15 +109,13 @@ def build_processing_results_json_envelope(
     # OR meta + config + config diagnostics + summary
     # results_payload is {"results": [...]} or {"summary": {...}}
     if summary_mode:
-        summary_dict: dict[str, OutcomeSummaryMapEntry] = (
-            build_processing_results_summary_map_payload(
-                results,
-            )
+        summary_list: list[dict[str, object]] = build_processing_results_summary_map_payload(
+            results,
         )
         payload: dict[str, object] = {
             MachineKey.CONFIG: cfg_payload,
             MachineKey.CONFIG_DIAGNOSTICS: cfg_diag_payload,
-            MachineKey.SUMMARY: summary_dict,
+            MachineKey.SUMMARY: summary_list,
         }
     else:
         results_iter: Iterator[dict[str, object]] = iter_processing_results_payload_items(

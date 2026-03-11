@@ -24,7 +24,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.cli_shared.emitters.markdown.utils import render_markdown_table
-from topmark.cli_shared.outcomes import collect_outcome_counts
+from topmark.pipeline.outcomes import OutcomeReasonCount
+from topmark.pipeline.outcomes import collect_outcome_reason_counts
 from topmark.utils.diff import render_patch
 
 if TYPE_CHECKING:
@@ -132,18 +133,18 @@ def render_file_summary_line_markdown(*, ctx: ProcessingContext) -> str:
     return f"- `{ctx.path}` ({ft}) — `{key}`: {label}{suffix}"
 
 
-def emit_pipeline_per_file_guidance_markdown(
+def render_pipeline_summary_counts_markdown(
     *, view_results: list[ProcessingContext], total: int
 ) -> str:
     """Render outcome counts as a Markdown table."""
-    counts: dict[str, tuple[int, str]] = collect_outcome_counts(view_results)
+    counts: list[OutcomeReasonCount] = collect_outcome_reason_counts(view_results)
 
-    headers: list[str] = ["Outcome", "Count"]
+    headers: list[str] = ["Outcome", "Reason", "Count"]
     rows: list[list[str]] = []
-    for _key, (n, label) in counts.items():
-        rows.append([label, str(n)])
+    for row in counts:
+        rows.append([row.outcome.value, row.reason, str(row.count)])
 
-    table: str = render_markdown_table(headers, rows, align={1: "right"}).rstrip()
+    table: str = render_markdown_table(headers, rows, align={2: "right"}).rstrip()
 
     return "\n".join(
         [

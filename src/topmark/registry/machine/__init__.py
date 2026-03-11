@@ -38,16 +38,16 @@ The design follows TopMark’s general machine-output layering:
 This package intentionally does not depend on Click and does not print to the console.
 
 Notes:
-    Typed payload schemas, payloads, shapes and serializers are available from
-    [`topmark.registry.machine.schemas`][topmark.registry.machine.schemas],
-    [`topmark.registry.machine.payloads`][topmark.registry.machine.payloads],
-    [`topmark.registry.machine.shapes`][topmark.registry.machine.shapes], and
-    [`topmark.registry.machine.shapes`][topmark.registry.machine.shapes],
-    so callers can be explicit about which layer they depend on.
+    Typed schemas, payloads, envelopes and serializers are available from:
+    - [`topmark.registry.machine.schemas`][topmark.registry.machine.schemas]
+    - [`topmark.registry.machine.payloads`][topmark.registry.machine.payloads]
+    - [`topmark.registry.machine.envelopes`][topmark.registry.machine.envelopes]
+    - [`topmark.registry.machine.envelopes`][topmark.registry.machine.envelopes]
+    Callers can be explicit about which layer they depend on.
 
 See Also:
-- [`topmark.core.machine`][topmark.core.machine]: shared machine-output primitives
-  (keys/kinds/domains, envelopes/records, normalization, JSON/NDJSON serialization helpers).
+    - [`topmark.core.machine`][topmark.core.machine]: shared machine-output primitives
+    (keys/kinds/domains, envelopes/records, normalization, JSON/NDJSON serialization helpers).
 """
 
 from __future__ import annotations

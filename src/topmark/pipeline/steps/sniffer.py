@@ -43,7 +43,7 @@ from typing import TYPE_CHECKING
 
 from topmark.core.logging import get_logger
 from topmark.pipeline.context.model import ProcessingContext
-from topmark.pipeline.context.policy import allow_empty_by_policy
+from topmark.pipeline.context.policy import allow_insert_into_empty_like
 from topmark.pipeline.hints import Axis
 from topmark.pipeline.hints import Cluster
 from topmark.pipeline.hints import KnownCode
@@ -369,6 +369,7 @@ class SnifferStep(BaseStep):
         """
         if ctx.is_halted:
             return False
+
         return ctx.status.resolve == ResolveStatus.RESOLVED
 
     def run(self, ctx: ProcessingContext) -> None:
@@ -418,7 +419,7 @@ class SnifferStep(BaseStep):
 
             # If policy does NOT allow inserting headers into empty files for this type,
             # attach a non-terminal hint explaining how to enable it.
-            if ctx.file_type is not None and not allow_empty_by_policy(ctx):
+            if ctx.file_type is not None and not allow_insert_into_empty_like(ctx):
                 file_type: FileType = ctx.file_type
                 table_name: str = f"policy_by_type.{file_type.name}"
                 ctx.hint(

@@ -23,6 +23,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from typing import Protocol
 
+from topmark.config.policy import EmptyInsertMode
+from topmark.config.policy import Policy
 from topmark.core.logging import TopmarkLogger
 from topmark.core.logging import get_logger
 from topmark.pipeline.status import ComparisonStatus
@@ -51,27 +53,163 @@ class PolicyContext(Protocol):
         """Return the effective policy for this processing context."""
         ...
 
+    @property
+    def is_effectively_empty(self) -> bool:
+        """Whether the file image is effectively empty.
 
-def allow_empty_by_policy(ctx: PolicyContext) -> bool:
-    """Return True if the file is empty and policy allows header insertion.
+        Returns whether the decoded, BOM-stripped text image contains **no
+        non-whitespace characters**. Newlines and other whitespace are allowed.
+        This is the broad notion of “empty” used for most policy decisions.
+        """
+        ...
 
-    This helper inspects the effective per-type policy (global configuration
-    overlaid by per-type overrides) and combines it with the current
-    filesystem status of the context.
+    @property
+    def is_logically_empty(self) -> bool:
+        """Whether the file is “logically empty”.
+
+        Returns whether the file is “logically empty”: after BOM stripping,
+        it contains optional horizontal whitespace and **at most one** trailing
+        newline sequence (LF/CRLF/CR), and nothing else. This is a stricter subset
+        of `is_effectively_empty` and is useful to preserve stable round-trips for
+        files that are effectively placeholders.
+        """
+        ...
+
+    @property
+    def is_empty_like(self) -> bool:
+        """Whether a file image is "empty-like"."""
+        ...
+
+
+# ---- Classification helpers ----
+
+
+def is_empty_for_insert(ctx: PolicyContext) -> bool:
+    """Return whether this file should be treated as "empty" for *insertion* decisions.
+
+    This helper interprets the effective per-type policy setting
+    ``Policy.empty_insert_mode`` and maps it onto the file's observed state.
+
+    The distinction matters because TopMark may need to preserve stable round-trips:
+
+    - A *true empty* file (0 bytes) is represented by ``FsStatus.EMPTY``.
+    - A file can be *logically empty* (BOM stripped, optional whitespace, optional single
+      trailing newline) even when it is not 0 bytes.
+    - A file can be *effectively empty* (no non-whitespace characters) while containing
+      multiple blank lines.
+
+    The selected mode controls which of these categories is considered "empty" when
+    deciding whether inserting a header is allowed.
 
     Args:
-        ctx: Processing context containing status and configuration.
+        ctx: Processing context (or compatible protocol) providing filesystem status and
+            decoded image emptiness flags.
 
     Returns:
-        `True` if the file is empty and policy permits inserting a header into empty files,
-        `False` otherwise.
+        True if the current file qualifies as empty under the configured insertion mode.
+
+    Notes:
+        - This predicate is only about *classification* of emptiness for insert gating.
+          It does not check whether insertion is allowed; use
+          `allow_insert_into_empty_like` for that.
+        - ``FsStatus.EMPTY`` is always treated as empty, regardless of mode.
     """
-    eff: Policy | None = ctx.get_effective_policy()
+    policy: Policy = ctx.get_effective_policy()
+    mode: EmptyInsertMode = policy.empty_insert_mode
+    if mode == EmptyInsertMode.BYTES_EMPTY:
+        return ctx.status.fs == FsStatus.EMPTY
+    if mode == EmptyInsertMode.LOGICAL_EMPTY:
+        return ctx.is_logically_empty or ctx.status.fs == FsStatus.EMPTY
+    # EmptyInsertMode.WHITESPACE_EMPTY
+    return ctx.is_effectively_empty or ctx.status.fs == FsStatus.EMPTY
 
-    return ctx.status.fs == FsStatus.EMPTY and eff.allow_header_in_empty_files is True
+
+def is_empty_for_insert_unchanged_by_default(ctx: PolicyContext) -> bool:
+    """Return True when an insertion-empty file should default to `UNCHANGED`.
+
+    This helper is for *bucketing/reporting*, not mutation.
+
+    It captures the default policy interpretation for files that are classified
+    as "empty for insertion":
+
+    - If the file counts as empty under `is_empty_for_insert(ctx)`, and
+    - policy does *not* allow inserting into such files,
+
+    then TopMark should generally treat the file as compliant / unchanged rather
+    than as "missing header".
+
+    This avoids surprising "would insert" or "missing header" outcomes for
+    placeholder files such as:
+
+    - true 0-byte files
+    - BOM-only files
+    - newline-only files
+    - other empty-like images covered by the configured `EmptyInsertMode`
+
+    The actual definition of "empty" is delegated to `is_empty_for_insert(ctx)`,
+    so this helper automatically obeys the effective `EmptyInsertMode`
+    (`bytes_empty`, `logical_empty`, or `whitespace_empty`).
+
+    Args:
+        ctx: Processing context (or compatible protocol).
+
+    Returns:
+        True if the file is classified as empty-for-insert and policy does not
+        allow inserting into such files; otherwise False.
+
+    Notes:
+        - Use this in outcome bucketing and summaries.
+        - Mutation steps should instead use `allow_insert_into_empty_like(ctx)`.
+    """
+    # First determine whether the current file belongs to the configured
+    # "empty for insertion" class.
+    if not is_empty_for_insert(ctx):
+        return False
+
+    # If the file is empty-for-insert but policy does not permit insertion into
+    # that class, it should be treated as compliant / unchanged by default.
+    return not allow_insert_into_empty_like(ctx)
 
 
-def allow_empty_header_by_policy(ctx: PolicyContext) -> bool:
+# ---- Policy permission helpers ----
+
+
+def allow_insert_into_empty_like(ctx: PolicyContext) -> bool:
+    """Return True if policy permits inserting a header into an empty-like file.
+
+    This is the primary policy gate used by planner/updater when a file has no
+    meaningful body content.
+
+    The decision is a conjunction of:
+
+    1) whether the file is considered *empty for insert* (see
+       `is_empty_for_insert`), and
+    2) whether the effective policy enables insertion into empty files
+       (``Policy.allow_header_in_empty_files``).
+
+    Because this helper delegates classification to `is_empty_for_insert`, it
+    automatically obeys the configured ``EmptyInsertMode`` (`bytes_empty`,
+    `logical_empty`, or `whitespace_empty`).
+
+    Args:
+        ctx: Processing context (or compatible protocol).
+
+    Returns:
+        True if insertion is allowed for this file given its empty-like state and the
+        effective policy.
+
+    Guidance:
+        - Use this in *mutation* steps (planner/updater) when deciding whether
+          an insert/update is allowed to proceed.
+        - Do **not** use it to skip reading/analysis steps; those should be governed by
+          filesystem/content feasibility (e.g., unreadable/binary/mixed-newlines).
+    """
+    policy: Policy | None = ctx.get_effective_policy()
+
+    return is_empty_for_insert(ctx) and bool(policy.allow_header_in_empty_files)
+
+
+def allow_empty_header(ctx: PolicyContext) -> bool:
     """Return True if the effective policy allows empty header insertion.
 
     This helper inspects the effective per-type policy (global configuration
@@ -85,12 +223,12 @@ def allow_empty_header_by_policy(ctx: PolicyContext) -> bool:
         `True` if policy allows rendering an empty header when there are no fields,
         `False` otherwise.
     """
-    eff: Policy | None = ctx.get_effective_policy()
+    policy: Policy | None = ctx.get_effective_policy()
 
-    return eff.render_empty_header_when_no_fields
+    return policy.render_empty_header_when_no_fields
 
 
-def allow_content_reflow_by_policy(ctx: PolicyContext) -> bool:
+def allow_content_reflow(ctx: PolicyContext) -> bool:
     """Return True if the effective policy allows content reflow.
 
     This covers transformations that may adjust layout or whitespace around
@@ -103,12 +241,12 @@ def allow_content_reflow_by_policy(ctx: PolicyContext) -> bool:
         bool: True if policy allows reflowing content around the header,
         False otherwise.
     """
-    eff: Policy | None = ctx.get_effective_policy()
+    policy: Policy | None = ctx.get_effective_policy()
 
-    return eff.allow_reflow
+    return policy.allow_reflow
 
 
-def allows_mixed_line_endings_by_policy(ctx: PolicyContext) -> bool:
+def allow_mixed_line_endings(ctx: PolicyContext) -> bool:
     """Return True if policy allows proceeding despite mixed line endings.
 
     This helper is used by early pipeline steps (e.g., ReaderStep) when the
@@ -123,7 +261,7 @@ def allows_mixed_line_endings_by_policy(ctx: PolicyContext) -> bool:
       - This function is forward-compatible: it uses `getattr(...)` so it returns
         False for unknown fields on older Policy versions (safe default).
       - We *always* allow when `FsStatus` is already OK/EMPTY; for EMPTY, your
-        existing `allow_empty_by_policy()` governs header insertion later.
+        existing `allow_insert_into_empty_like()` governs header insertion later.
 
     Args:
         ctx: Processing context containing filesystem status and configuration.
@@ -136,17 +274,17 @@ def allows_mixed_line_endings_by_policy(ctx: PolicyContext) -> bool:
     if ctx.status.fs in {FsStatus.OK, FsStatus.EMPTY}:
         return True
 
-    eff: Policy | None = ctx.get_effective_policy()
+    policy: Policy | None = ctx.get_effective_policy()
 
     if ctx.status.fs == FsStatus.MIXED_LINE_ENDINGS:
         # Newer policies may provide this flag; default False if absent.
-        return bool(getattr(eff, "ignore_mixed_line_endings", False))
+        return bool(getattr(policy, "ignore_mixed_line_endings", False))
 
     # All other FS states should not be skipped by policy here.
     return False
 
 
-def allows_bom_before_shebang_by_policy(ctx: PolicyContext) -> bool:
+def allow_bom_before_shebang(ctx: PolicyContext) -> bool:
     """Return True if policy allows proceeding despite a BOM before the shebang.
 
     This helper is used by early pipeline steps (e.g., ReaderStep) when the
@@ -161,7 +299,7 @@ def allows_bom_before_shebang_by_policy(ctx: PolicyContext) -> bool:
       - This function is forward-compatible: it uses `getattr(...)` so it returns
         False for unknown fields on older Policy versions (safe default).
       - We *always* allow when `FsStatus` is already OK/EMPTY; for EMPTY, your
-        existing `allow_empty_by_policy()` governs header insertion later.
+        existing `allow_insert_into_empty_like()` governs header insertion later.
 
     Args:
         ctx: Processing context containing filesystem status and configuration.
@@ -174,63 +312,17 @@ def allows_bom_before_shebang_by_policy(ctx: PolicyContext) -> bool:
     if ctx.status.fs in {FsStatus.OK, FsStatus.EMPTY}:
         return True
 
-    eff: Policy | None = ctx.get_effective_policy()
+    policy: Policy | None = ctx.get_effective_policy()
 
     if ctx.status.fs == FsStatus.BOM_BEFORE_SHEBANG:
         # Newer policies may provide this flag; default False if absent.
-        return bool(getattr(eff, "ignore_bom_before_shebang", False))
+        return bool(getattr(policy, "ignore_bom_before_shebang", False))
 
     # All other FS states should not be skipped by policy here.
     return False
 
 
-def policy_allows_fs_skip(ctx: PolicyContext) -> bool:
-    """Return True if policy allows proceeding despite soft FS violations.
-
-    This helper is used by early pipeline steps (e.g., ReaderStep) to continue
-    when Sniffer detected *soft* file-system issues that a project might choose
-    to tolerate. Hard errors (e.g., not found, unreadable, binary) must remain
-    terminal and are not bypassed here.
-
-    Soft violations considered:
-      - FsStatus.BOM_BEFORE_SHEBANG
-      - FsStatus.MIXED_LINE_ENDINGS
-
-    Policy fields:
-      - If the effective `Policy` defines `ignore_bom_before_shebang` and it is True,
-        we allow proceeding on `BOM_BEFORE_SHEBANG`.
-      - If the effective `Policy` defines `ignore_mixed_line_endings` and it is True,
-        we allow proceeding on `MIXED_LINE_ENDINGS`.
-
-    Notes:
-      - This function is forward-compatible: it uses `getattr(...)` so it returns
-        False for unknown fields on older Policy versions (safe default).
-      - We *always* allow when `FsStatus` is already OK/EMPTY; for EMPTY, your
-        existing `allow_empty_by_policy()` governs header insertion later.
-
-    Args:
-        ctx: Processing context containing filesystem status and configuration.
-
-    Returns:
-        `True` if we may proceed despite a soft filesystem violation,
-        `False` otherwise.
-    """
-    # Always OK to proceed if FS is healthy or empty (read can still run).
-    if ctx.status.fs in {FsStatus.OK, FsStatus.EMPTY}:
-        return True
-
-    eff: Policy | None = ctx.get_effective_policy()
-
-    if ctx.status.fs == FsStatus.BOM_BEFORE_SHEBANG:
-        # Newer policies may provide this flag; default False if absent.
-        return bool(getattr(eff, "ignore_bom_before_shebang", False))
-
-    if ctx.status.fs == FsStatus.MIXED_LINE_ENDINGS:
-        # Newer policies may provide this flag; default False if absent.
-        return bool(getattr(eff, "ignore_mixed_line_endings", False))
-
-    # All other FS states should not be skipped by policy here.
-    return False
+# ---- Mutation intent / feasibility / pipeline decision logic ----
 
 
 def check_permitted_by_policy(ctx: PolicyContext) -> bool | None:
@@ -366,20 +458,47 @@ def would_change(ctx: PolicyContext) -> bool | None:
 
 
 def can_change(ctx: PolicyContext) -> bool:
-    """Return whether a change *can* be applied safely.
+    """Return whether a mutation can be applied safely for this file.
 
-    This reflects operational feasibility (filesystem/resolve status) and
-    structural safety, with a policy-based allowance for inserting headers
-    into empty files.
+    This helper answers a narrow question:
+
+    *If the pipeline intends to mutate this file, is that mutation structurally
+    and operationally allowed to proceed?*
+
+    It combines three categories of checks:
+
+    1) **Baseline feasibility**
+       The file must have resolved successfully, strip preparation must not have
+       failed, and the header state must not be one of the malformed states that
+       block safe mutation.
+
+    2) **Normal files**
+       For ordinary files (`FsStatus.OK`), mutation is allowed once baseline
+       feasibility is satisfied.
+
+    3) **Empty / empty-like files**
+       For files that are considered “empty for insert”, mutation is allowed only
+       when policy explicitly permits inserting into such files. Importantly,
+       emptiness classification is delegated to `is_empty_for_insert(ctx)`, which
+       obeys the configured `EmptyInsertMode`.
+
+    This means:
+    - true 0-byte files may be mutable if policy allows it
+    - logically empty placeholders may be mutable if policy allows it
+    - whitespace-only files may be mutable if policy allows it
+      (depending on `EmptyInsertMode`)
 
     Args:
         ctx: Processing context for the current file.
 
     Returns:
-        `True` if a change is structurally and operationally safe,
-        `False` otherwise.
+        True if a mutation is structurally and operationally safe to apply,
+        otherwise False.
     """
-    # baseline feasibility + structural safety
+    # --- 1) Baseline feasibility -------------------------------------------------
+    #
+    # These checks are independent of "empty-like" policy semantics.
+    # If any of them fail, the pipeline should not attempt mutation at all.
     feasible: bool = (
         ctx.status.resolve == ResolveStatus.RESOLVED
         # if strip preparation failed, we can’t change via strip:
@@ -392,16 +511,25 @@ def can_change(ctx: PolicyContext) -> bool:
             HeaderStatus.MALFORMED_SOME_FIELDS,
         }
     )
-
     if not feasible:
         return False
 
-    # Filesystem feasibility:
-    # - OK files: allowed
-    # - EMPTY files: allowed if per-type policy permits insertion into empty files
-    if ctx.status.fs == FsStatus.OK:
+    # --- 2) Normal files ---------------------------------------------------------
+    #
+    # For regular decoded files, baseline feasibility is enough.
+    if ctx.status.fs == FsStatus.OK and not is_empty_for_insert(ctx):
         return True
-    return bool(ctx.status.fs == FsStatus.EMPTY and allow_empty_by_policy(ctx))
+
+    # --- 3) Empty / empty-like files --------------------------------------------
+    #
+    # If this file is considered "empty for insert" under the active policy mode,
+    # we may only mutate it when insertion into empty-like files is explicitly
+    # allowed.
+    if is_empty_for_insert(ctx):
+        return allow_insert_into_empty_like(ctx)
+
+    # Any remaining filesystem states are not considered safely mutable here.
+    return False
 
 
 def would_add_or_update(ctx: PolicyContext) -> bool:

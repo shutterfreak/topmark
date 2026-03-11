@@ -79,6 +79,7 @@ class Toml:
     KEY_POLICY_CHECK_ADD_ONLY: Final[str] = "add_only"
     KEY_POLICY_CHECK_UPDATE_ONLY: Final[str] = "update_only"
     KEY_POLICY_ALLOW_HEADER_IN_EMPTIES: Final[str] = "allow_header_in_empty_files"
+    KEY_POLICY_EMPTIES_INSERT_MODE: Final[str] = "empty_insert_mode"
     KEY_POLICY_ALLOW_EMPTY_HEADER: Final[str] = "render_empty_header_when_no_fields"
     KEY_POLICY_ALLOW_REFLOW: Final[str] = "allow_reflow"
     KEY_POLICY_ALLOW_CONTENT_PROBE: Final[str] = "allow_content_probe"

@@ -245,17 +245,16 @@ def test_processing_json_summary_shape(tmp_path: Path, command: str) -> None:
     assert "summary" in payload
 
     summary_obj = payload["summary"]
-    assert isinstance(summary_obj, dict)
-    summary: dict[str, Any] = cast("dict[str, Any]", summary_obj)
-    assert summary  # at least one bucket
+    assert isinstance(summary_obj, list)
+    summary_rows: list[object] = cast("list[object]", summary_obj)
+    assert summary_rows  # at least one summary row
 
-    # Pick one bucket and validate its shape
-    key, value_obj = next(iter(summary.items()))
-    assert isinstance(key, str)
-    assert isinstance(value_obj, dict)
-    value: dict[str, Any] = cast("dict[str, Any]", value_obj)
-    assert isinstance(value.get("count"), int)
-    assert isinstance(value.get("label"), str)
+    first_obj: object = summary_rows[0]
+    assert isinstance(first_obj, dict)
+    first: dict[str, Any] = cast("dict[str, Any]", first_obj)
+    assert isinstance(first.get("outcome"), str)
+    assert isinstance(first.get("reason"), str)
+    assert isinstance(first.get("count"), int)
 
 
 # ----- NDJSON -----
@@ -330,12 +329,12 @@ def test_processing_ndjson_kinds_with_summary(tmp_path: Path, command: str) -> N
             assert isinstance(summary_obj, dict)
             summary: dict[str, Any] = cast("dict[str, Any]", summary_obj)
 
-            key_obj = summary.get("key")
+            outcome_obj = summary.get("outcome")
+            reason_obj = summary.get("reason")
             count_obj = summary.get("count")
-            label_obj = summary.get("label")
-            assert isinstance(key_obj, str)
+            assert isinstance(outcome_obj, str)
+            assert isinstance(reason_obj, str)
             assert isinstance(count_obj, int)
-            assert isinstance(label_obj, str)
 
     kinds_set: set[str] = set(kinds)
     assert "config" in kinds_set

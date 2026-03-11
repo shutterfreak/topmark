@@ -26,18 +26,17 @@ ConsoleLike (or stdout).
 
 from __future__ import annotations
 
-from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
 from topmark.core.formats import OutputFormat
 from topmark.core.machine.serializers import iter_ndjson_strings
 from topmark.core.machine.serializers import serialize_json_object
+from topmark.registry.machine.envelopes import build_filetypes_json_envelope
+from topmark.registry.machine.envelopes import build_processors_json_envelope
+from topmark.registry.machine.envelopes import iter_filetypes_ndjson_records
+from topmark.registry.machine.envelopes import iter_processors_ndjson_records
 from topmark.registry.machine.payloads import build_filetypes_payload
 from topmark.registry.machine.payloads import build_processors_payload
-from topmark.registry.machine.shapes import build_filetypes_json_envelope
-from topmark.registry.machine.shapes import build_processors_json_envelope
-from topmark.registry.machine.shapes import iter_filetypes_ndjson_records
-from topmark.registry.machine.shapes import iter_processors_ndjson_records
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

@@ -77,10 +77,12 @@ class ScannerStep(BaseStep):
     def may_proceed(self, ctx: ProcessingContext) -> bool:
         """Determine if processing can proceed to the scan step.
 
-        Processing can proceed if:
-        - The file was successfully resolved (ctx.status.resolve is RESOLVED)
-        - The file type was resolved (ctx.file_type is not None)
-        - A header processor is available (ctx.header_processor is not None)
+        Processing can proceed if all of the following apply:
+        - A header processor is available (ctx.header_processor is not None), meaning:
+            - The file was successfully resolved (ctx.status.resolve is RESOLVED)
+            - The file type was resolved (ctx.file_type is not None)
+            - The file type is registered to a header processor
+        - ReaderStep set `ContentStatus.OK`
 
         Args:
             ctx: The processing context for the current file.
@@ -90,16 +92,8 @@ class ScannerStep(BaseStep):
         """
         if ctx.is_halted:
             return False
-        return (
-            ctx.header_processor is not None
-            and ctx.status.content == ContentStatus.OK
-            and ctx.status.content
-            not in {
-                ContentStatus.PENDING,
-                ContentStatus.UNSUPPORTED,
-                ContentStatus.UNREADABLE,
-            }
-        )
+
+        return ctx.header_processor is not None and ctx.status.content == ContentStatus.OK
 
     def run(self, ctx: ProcessingContext) -> None:
         """Detect and extract a TopMark header from the file image.

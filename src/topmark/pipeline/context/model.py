@@ -50,6 +50,7 @@ from topmark.pipeline.hints import Cluster
 from topmark.pipeline.hints import HintLog
 from topmark.pipeline.hints import KnownCode
 from topmark.pipeline.hints import make_hint
+from topmark.pipeline.status import FsStatus
 from topmark.pipeline.views import UpdatedView
 from topmark.pipeline.views import Views
 
@@ -92,7 +93,7 @@ class HaltState:
     step_name: str = ""  # step name that requested the halt
 
 
-@dataclass
+@dataclass(slots=True)
 class ProcessingContext:
     r"""Context for header processing in the TopMark pipeline.
 
@@ -117,6 +118,14 @@ class ProcessingContext:
             sets this flag and strips the BOM from the in-memory image; the writer re-attaches it
             to the final output.
         has_shebang: True if the first logical line starts with ``"#!" `` (post-BOM normalization).
+        is_effectively_empty: Whether the decoded, BOM-stripped text image contains **no
+            non-whitespace characters**. Newlines and other whitespace are allowed.
+            This is the broad notion of “empty” used for most policy decisions.
+        is_logically_empty: Whether the file is “logically empty”: after BOM stripping,
+            it contains optional horizontal whitespace and **at most one** trailing
+            newline sequence (LF/CRLF/CR), and nothing else. This is a stricter subset
+            of `is_effectively_empty` and is useful to preserve stable round-trips for
+            files that are effectively placeholders.
         newline_hist: Histogram of newline styles detected in the file image.
         dominant_newline: Dominant newline sequence detected in the file (for example, ``"\\n"``
             or ``"\\r\\n"``), if any.
@@ -152,6 +161,22 @@ class ProcessingContext:
 
     leading_bom: bool = False  # True if original file began with a UTF-8 BOM
     has_shebang: bool = False  # True if the first line starts with '#!' (post-BOM normalization)
+    is_effectively_empty: bool = False  # True if file is effectively empty
+    is_logically_empty: bool = False  # True if file is "logically" empty
+
+    @property
+    def is_empty_like(self) -> bool:
+        """Return True if the file contains no meaningful content.
+
+        This is True when the file is either:
+        - physically empty on disk (0 bytes), or
+        - effectively empty after decoding (only whitespace).
+
+        This helper is intended for convenience checks in pipeline steps
+        and should not replace explicit emptiness distinctions in policy
+        evaluation.
+        """
+        return self.status.fs == FsStatus.EMPTY or self.is_effectively_empty
 
     newline_hist: dict[str, int] = field(default_factory=lambda: {})
     dominant_newline: str | None = None

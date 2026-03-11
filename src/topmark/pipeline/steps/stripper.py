@@ -27,7 +27,6 @@ from topmark.pipeline.hints import KnownCode
 from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import FsStatus
 from topmark.pipeline.status import HeaderStatus
-from topmark.pipeline.status import ResolveStatus
 from topmark.pipeline.status import StripStatus
 from topmark.pipeline.steps.base import BaseStep
 from topmark.pipeline.views import HeaderView
@@ -59,7 +58,10 @@ def _reapply_bom_after_strip(lines: list[str], ctx: ProcessingContext) -> list[s
     # If the original file had only a BOM (or stripping removed all content),
     # restore a BOM-only image to preserve round-trip fidelity.
     if not lines:
-        # Equivalent to ctx.status.fs == FsStatus.EMPTY_FILE
+        # Preserve whether the original image ended with a newline.
+        # This matters for logically-empty placeholders like "\ufeff\n".
+        if ctx.ends_with_newline:
+            return ["\ufeff" + (ctx.newline_style or "\n")]
         return ["\ufeff"]
 
     # The resulting file is non-empty and the original file had a BOM.
@@ -70,6 +72,23 @@ def _reapply_bom_after_strip(lines: list[str], ctx: ProcessingContext) -> list[s
         out: list[str] = lines[:]
         out[0] = "\ufeff" + first
         return out
+    return lines
+
+
+def _restore_logical_empty_placeholder_after_strip(
+    lines: list[str],
+    ctx: ProcessingContext,
+) -> list[str]:
+    r"""Restore a stable logical-empty placeholder when stripping removes all content.
+
+    If stripping yields an empty image and the original image ended with a newline,
+    write back a single newline using the file's normalized newline style.
+    This preserves newline-style round-trips for inputs like '\\r\\n'.
+    """
+    if lines:
+        return lines
+    if ctx.ends_with_newline is True:
+        return [ctx.newline_style or "\n"]
     return lines
 
 
@@ -97,9 +116,7 @@ class StripperStep(BaseStep):
         """Return True when content is processable and a processor is available.
 
         Requires:
-          - `resolve == RESOLVED`
-          - `file_type` and `header_processor` are set
-          - `content not in {PENDING, UNSUPPORTED, UNREADABLE}`
+          - `content == OK`
 
         Args:
             ctx: The processing context for the current file.
@@ -109,16 +126,8 @@ class StripperStep(BaseStep):
         """
         if ctx.is_halted:
             return False
-        return (
-            ctx.status.resolve == ResolveStatus.RESOLVED
-            and ctx.header_processor is not None
-            and ctx.status.content
-            not in {
-                ContentStatus.PENDING,
-                ContentStatus.UNSUPPORTED,
-                ContentStatus.UNREADABLE,
-            }
-        )
+
+        return ctx.status.content == ContentStatus.OK
 
     def run(self, ctx: ProcessingContext) -> None:
         """Remove the TopMark header using the processor and known span if available (view‑based).
@@ -274,6 +283,12 @@ class StripperStep(BaseStep):
                 new_lines = []
 
         logger.info("Updated file lines: %s", new_lines[:15])
+
+        # If stripping yields an empty image but the original file was a logically-empty
+        # placeholder (e.g. just a newline), restore that placeholder so round-trips are
+        # stable (insert→strip→insert).
+        new_lines = _restore_logical_empty_placeholder_after_strip(new_lines, ctx)
+
         updated_lines: list[str] = _reapply_bom_after_strip(new_lines, ctx)
 
         # Preserve original final-newline (FNL) semantics: if the original file did not
@@ -331,9 +346,9 @@ class StripperStep(BaseStep):
                         # Case 4: If *all* lines are blank-like and no BOM, collapse to empty.
                         updated_lines = []
                 # Case 4: Otherwise, leave as-is (body has non-blank content).
-        ctx.views.updated = UpdatedView(lines=updated_lines)
 
         # A header was present and removed
+        ctx.views.updated = UpdatedView(lines=updated_lines)
         ctx.status.strip = StripStatus.READY
         logger.debug("stripper: removed header lines at span %d..%d", removed[0], removed[1])
         return

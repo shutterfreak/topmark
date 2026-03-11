@@ -30,8 +30,19 @@ Diagnostics:
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from typing import Literal
 from typing import Protocol
 from typing import TypedDict
+
+PublicEmptyInsertModeLiteral = Literal[
+    "bytes_empty",
+    "logical_empty",
+    "whitespace_empty",
+]
+"""Public, JSON-friendly tokens for configuring how TopMark classifies “empty” files
+for insertion. These values intentionally mirror the internal `EmptyInsertMode.value`
+strings without exposing the internal enum class as part of the public API.
+"""
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -86,23 +97,29 @@ class PublicPolicy(TypedDict, total=False):
     Keys:
         add_only: Only add missing headers; do not update existing ones.
         update_only: Only update existing headers; do not add new ones.
-        allow_header_in_empty_files: Allow inserting headers in empty files (e.g., `__init__.py`).
-        render_empty_header_when_no_fields: Allow inserting empty headers when no fields are
-            defined.
-        allow_reflow: If True, allow reflowing file content when inserting a header. This
-            potentially breaks check/strip idempotence.
-        allow_content_probe: Whether the resolver may consult file contents during file-type
-            detection. True allows content-based probes, False forces name/extension-only
-            resolution.
+        allow_header_in_empty_files: Allow inserting headers into files that are
+            classified as empty under the effective `empty_insert_mode`.
+        empty_insert_mode: Public, JSON-friendly token controlling which files are
+            considered “empty” for insertion. Allowed values are:
+            `"bytes_empty"`, `"logical_empty"`, and `"whitespace_empty"`.
+        render_empty_header_when_no_fields: Allow inserting empty headers when no
+            fields are defined.
+        allow_reflow: If True, allow reflowing file content when inserting a header.
+            This potentially breaks check/strip idempotence.
+        allow_content_probe: Whether the resolver may consult file contents during
+            file-type detection. True allows content-based probes, False forces
+            name/extension-only resolution.
 
     Notes:
-        This is a stable public contract; the internal policy may have additional
-        fields introduced over time. Unknown keys are ignored.
+        This is a stable public contract. Public APIs use JSON/TOML-friendly
+        primitive values, so `empty_insert_mode` is exposed as a string-literal
+        token rather than the internal enum class. Unknown keys are ignored.
     """
 
     add_only: bool
     update_only: bool
     allow_header_in_empty_files: bool
+    empty_insert_mode: PublicEmptyInsertModeLiteral
     render_empty_header_when_no_fields: bool
     allow_reflow: bool
     allow_content_probe: bool

@@ -255,7 +255,7 @@ def test_read_accepts_unicode_rich_text(tmp_path: Path) -> None:
 
 
 def test_read_bom_only_file_contract(tmp_path: Path) -> None:
-    """Define/verify behavior when the file is only a BOM."""
+    """BOM-only files are empty-like, but no longer true FS-empty files."""
     file: Path = tmp_path / "bom_only.py"
     with file.open("w", encoding="utf-8", newline="") as fh:
         fh.write("\ufeff")
@@ -268,15 +268,44 @@ def test_read_bom_only_file_contract(tmp_path: Path) -> None:
     ctx = run_sniffer(ctx)
     ctx = run_reader(ctx)
 
-    # RESOLVED with leading_bom:
+    # Reader now distinguishes true 0-byte empties from logical/effective empties.
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.status.fs == FsStatus.EMPTY
+    assert ctx.status.fs == FsStatus.OK
     assert ctx.leading_bom is True
     assert ctx.ends_with_newline is False
+    assert ctx.is_effectively_empty is True
+    assert ctx.is_logically_empty is True
+    assert ctx.is_empty_like is True
 
     lines: list[str] = materialize_image_lines(ctx)
+    assert lines == [""]  # BOM is stripped from the in-memory text image
 
-    assert lines == []  # BOM-only file is treated as empty
+
+def test_read_newline_only_file_is_empty_like_but_not_fs_empty(tmp_path: Path) -> None:
+    """A newline-only placeholder is empty-like, but not a true 0-byte empty file."""
+    file: Path = tmp_path / "newline_only.py"
+    with file.open("w", encoding="utf-8", newline="") as fh:
+        fh.write("\r\n")
+    cfg: Config = MutableConfig.from_defaults().freeze()
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
+    ctx = run_resolver(ctx)
+    assert ctx.file_type is not None
+
+    ctx = run_sniffer(ctx)
+    ctx = run_reader(ctx)
+
+    assert ctx.status.resolve == ResolveStatus.RESOLVED
+    assert ctx.status.fs == FsStatus.OK
+    assert ctx.leading_bom is False
+    assert ctx.ends_with_newline is True
+    assert ctx.newline_style == "\r\n"
+    assert ctx.is_effectively_empty is True
+    assert ctx.is_logically_empty is True
+    assert ctx.is_empty_like is True
+
+    lines: list[str] = materialize_image_lines(ctx)
+    assert lines == ["\r\n"]
 
 
 def test_read_mixed_newlines_even_if_dominant(tmp_path: Path) -> None:

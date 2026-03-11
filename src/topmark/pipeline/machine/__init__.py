@@ -30,13 +30,12 @@ Design goals:
   [`topmark.core.machine`][topmark.core.machine].
 
 Notes:
-    This package intentionally re-exports only the shared serializezs
-    (`serialize_processing_results`).
-    Typed payload schemas, payloads and shapes remain available
-    from [`topmark.pipeline.machine.schemas`][topmark.pipeline.machine.schemas],
-    [`topmark.pipeline.machine.payloads`][topmark.pipeline.machine.schemas] and
-    [`topmark.pipeline.machine.shapes`][topmark.pipeline.machine.schemas],
-    so callers can be explicit about which layer they depend on.
+    Typed payload schemas, payloads, envelopes and serializers are available from:
+    - [`topmark.pipeline.machine.schemas`][topmark.pipeline.machine.schemas]
+    - [`topmark.pipeline.machine.payloads`][topmark.pipeline.machine.payloads]
+    - [`topmark.pipeline.machine.envelopes`][topmark.pipeline.machine.envelopes]
+    - [`topmark.pipeline.machine.serializers`][topmark.pipeline.machine.serializers]
+    Callers can be explicit about which layer they depend on.
 
 See Also:
 - [`topmark.core.machine`][topmark.core.machine]: shared machine-output primitives

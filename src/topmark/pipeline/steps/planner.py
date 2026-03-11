@@ -47,8 +47,8 @@ from typing import TYPE_CHECKING
 from topmark.core.logging import get_logger
 from topmark.filetypes.model import InsertCapability
 from topmark.pipeline.adapters import PreInsertViewAdapter
-from topmark.pipeline.context.policy import allow_content_reflow_by_policy
-from topmark.pipeline.context.policy import allow_empty_by_policy
+from topmark.pipeline.context.policy import allow_content_reflow
+from topmark.pipeline.context.policy import allow_insert_into_empty_like
 from topmark.pipeline.hints import Axis
 from topmark.pipeline.hints import Cluster
 from topmark.pipeline.hints import KnownCode
@@ -105,6 +105,43 @@ def _drop_trailing_blank_if_header_at_eof(
         while i >= 0 and lines[i].strip() == "":
             i -= 1
         return lines[: i + 1]
+    return lines
+
+
+def _canonicalize_logically_empty_body_after_insert(
+    *,
+    lines: list[str],
+    insert_index: int,
+    header_len: int,
+    ctx: ProcessingContext,
+) -> list[str]:
+    r"""Normalize the body when the original input was logically empty.
+
+    For logically-empty placeholders (optional whitespace + at most one trailing newline),
+    we drop the placeholder body after inserting the header so that insert→strip→insert
+    is stable (avoids a double-newline tail for input like '\\n').
+    """
+    if not ctx.is_logically_empty:
+        return lines
+
+    if not lines:
+        return lines
+
+    tail_start: int = insert_index + header_len
+
+    # Discard placeholder body; keep only the inserted header region.
+    if tail_start < len(lines):
+        lines = lines[:tail_start]
+
+    # Ensure the final line ends with exactly one newline.
+    nl: str = ctx.newline_style or "\n"
+    # Strip trailing fully-blank lines beyond the header terminator.
+    while len(lines) >= 2 and lines[-1].strip() == "":
+        lines.pop()
+
+    if lines and not lines[-1].endswith(("\n", "\r")):
+        lines[-1] = lines[-1] + nl
+
     return lines
 
 
@@ -183,31 +220,32 @@ class PlannerStep(BaseStep):
     def may_proceed(self, ctx: ProcessingContext) -> bool:
         """Return True if the planner can compute an updated image.
 
-        Conditions:
-            * Resolve succeeded (``resolve == RESOLVED``); and
-            * Either:
-                - **Strip fast-path**: ``status.strip == READY``; or
-                - **Normal path**: content is OK **or** empty+policy is allowed,
-                  and we have something to apply (``comparison == CHANGED`` **or** a
-                  rendered header is present via ``RenderView.lines``).
+        This gate only checks whether the planner has enough upstream
+        information to synthesize an updated image. It deliberately avoids
+        enforcing mutation policy here; policy checks (e.g.
+        `allow_insert_into_empty_like`) are handled inside `run()`.
+
+        Planner may proceed when:
+            * The pipeline has not been halted; and
+            * Either a strip operation is ready, a rendered header exists,
+              or the comparer detected a change.
 
         Args:
             ctx: The processing context.
 
         Returns:
-            ``True`` if the updater can proceed; otherwise ``False``.
+            True if the planner can attempt to compute an updated image.
         """
         if ctx.is_halted:
-            outcome: bool = False
-        else:
-            outcome = (
-                # Strip fast-path
-                ctx.status.strip == StripStatus.READY
-                # Normal update: content OK or empty+policy allowed
-                or ctx.status.render == RenderStatus.RENDERED
-                or ctx.status.comparison == ComparisonStatus.CHANGED
-            )
-        logger.info("may_proceed: %s", outcome)
+            return False
+
+        outcome: bool = (
+            # Strip fast-path
+            ctx.status.strip == StripStatus.READY
+            # Normal update: content OK or empty+policy allowed
+            or ctx.status.render == RenderStatus.RENDERED
+            or ctx.status.comparison == ComparisonStatus.CHANGED
+        )
         return outcome
 
     def run(self, ctx: ProcessingContext) -> None:
@@ -245,7 +283,7 @@ class PlannerStep(BaseStep):
         # Materialize original image once (list[str]) for splice operations.
         original_lines: list[str] = list(ctx.iter_image_lines())
 
-        if ctx.status.content != ContentStatus.OK and not allow_empty_by_policy(ctx):
+        if ctx.status.content != ContentStatus.OK and not allow_insert_into_empty_like(ctx):
             logger.debug("planner: skipping (content status=%s)", ctx.status.content.value)
             ctx.status.plan = PlanStatus.SKIPPED
             reason: str = f"Could not update file (status: {ctx.status.content.value})."
@@ -367,7 +405,7 @@ class PlannerStep(BaseStep):
 
             if ctx.pre_insert_capability == InsertCapability.SKIP_IDEMPOTENCE_RISK:
                 # TODO - align with reader.ReaderStep.run()
-                if ctx.status.content == ContentStatus.OK and allow_content_reflow_by_policy(ctx):
+                if ctx.status.content == ContentStatus.OK and allow_content_reflow(ctx):
                     pass
                 else:
                     # Advisory-only pre-insert probe already ran in reader step.
@@ -479,6 +517,25 @@ class PlannerStep(BaseStep):
                 # Prepend BOM if needed
                 if getattr(ctx, "leading_bom", False) and not new_text.startswith("\ufeff"):
                     new_text = "\ufeff" + new_text
+
+                # Canonicalize logically-empty placeholder bodies (e.g. a file that was just "\n")
+                # so insert→strip→insert round-trips are stable (avoid a double trailing newline).
+                if getattr(ctx, "is_logically_empty", False):
+                    insert_index_lines: int = (
+                        len(original_text[:char_offset].splitlines(keepends=True))
+                        if char_offset
+                        else 0
+                    )
+                    header_len_lines: int = len(header_text.splitlines(keepends=True))
+                    new_lines_tmp: list[str] = new_text.splitlines(keepends=True)
+                    new_lines_tmp = _canonicalize_logically_empty_body_after_insert(
+                        lines=new_lines_tmp,
+                        insert_index=insert_index_lines,
+                        header_len=header_len_lines,
+                        ctx=ctx,
+                    )
+                    new_text = "".join(new_lines_tmp)
+
                 if new_text == original_text:
                     ctx.views.updated = UpdatedView(lines=original_lines)
                     # ctx.status.write = WriteStatus.SKIPPED
@@ -540,6 +597,13 @@ class PlannerStep(BaseStep):
         new_lines = _drop_trailing_blank_if_header_at_eof(
             new_lines, insert_index, len(header_lines)
         )
+        # Canonicalize logically-empty placeholder bodies to keep round-trips stable.
+        new_lines = _canonicalize_logically_empty_body_after_insert(
+            lines=new_lines,
+            insert_index=insert_index,
+            header_len=len(header_lines),
+            ctx=ctx,
+        )
         # Prepend BOM if needed
         new_lines = _prepend_bom_to_lines_if_needed(new_lines, ctx)
         if new_lines == original_lines:
@@ -586,7 +650,7 @@ class PlannerStep(BaseStep):
                 message="header will be removed" if apply else "header would be removed",
             )
         elif st == PlanStatus.SKIPPED:
-            if ctx.status.content != ContentStatus.OK and not allow_empty_by_policy(ctx):
+            if ctx.status.content != ContentStatus.OK and not allow_insert_into_empty_like(ctx):
                 msg: str = f"Could not update file (status: {ctx.status.content.value})."
             elif ctx.status.header in {
                 HeaderStatus.MALFORMED_ALL_FIELDS,

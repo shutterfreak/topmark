@@ -18,9 +18,9 @@ Responsibilities:
 - NDJSON: serialize a stream of already-shaped record mappings as
   newline-delimited JSON (one JSON object per line).
 
-Shaping (adding `meta`/`kind`, selecting container keys, etc.) happens in
-[`topmark.pipeline.machine.shapes`][topmark.pipeline.machine.shapes], using shared helpers from
-[`topmark.core.machine.shapes`][topmark.core.machine.shapes].
+Creation of envelopes (adding `meta`/`kind`, selecting container keys, etc.) happens in
+[`topmark.pipeline.machine.envelopes`][topmark.pipeline.machine.envelopes], using shared helpers
+from [`topmark.core.machine.shapes`][topmark.core.machine.shapes].
 Payload normalization for JSON-compatibility is handled by
 [`topmark.core.machine.schemas.normalize_payload`][topmark.core.machine.schemas.normalize_payload].
 """
@@ -32,8 +32,8 @@ from typing import TYPE_CHECKING
 from topmark.core.formats import OutputFormat
 from topmark.core.machine.serializers import iter_ndjson_strings
 from topmark.core.machine.serializers import serialize_json_object
-from topmark.pipeline.machine.shapes import build_processing_results_json_envelope
-from topmark.pipeline.machine.shapes import iter_processing_results_ndjson_records
+from topmark.pipeline.machine.envelopes import build_processing_results_json_envelope
+from topmark.pipeline.machine.envelopes import iter_processing_results_ndjson_records
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

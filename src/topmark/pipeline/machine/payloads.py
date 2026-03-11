@@ -39,14 +39,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.pipeline.context.model import ProcessingContext
-from topmark.pipeline.outcomes import collect_outcome_counts
+from topmark.pipeline.outcomes import OutcomeReasonCount
+from topmark.pipeline.outcomes import collect_outcome_reason_counts
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from topmark.pipeline.context.model import ProcessingContext
-    from topmark.pipeline.machine.schemas import OutcomeSummaryMapEntry
-    from topmark.pipeline.machine.schemas import OutcomeSummaryRecordPayload
 
 
 def iter_processing_results_payload_items(
@@ -69,11 +68,17 @@ def iter_processing_results_payload_items(
 
 def build_processing_results_summary_map_payload(
     results: list[ProcessingContext],
-) -> dict[str, OutcomeSummaryMapEntry]:
-    """Build a JSON-friendly summary map payload for processing results (summary mode).
+) -> list[dict[str, object]]:
+    """Build a JSON-friendly summary payload for processing results (summary mode).
 
-    The returned mapping is keyed by outcome string (the value of `Outcome`),
-    for example `"unchanged"` or `"would insert"`.
+    The returned payload is a flat list of summary rows, each preserving both
+    bucketing axes:
+
+    - `outcome`
+    - `reason`
+    - `count`
+
+    This avoids collapsing distinct reasons inside the same outcome bucket.
 
     This payload is intended for **JSON envelopes** where the summary is a single
     object, e.g.::
@@ -87,20 +92,21 @@ def build_processing_results_summary_map_payload(
         results: Ordered list of per-file processing contexts.
 
     Returns:
-        Mapping from outcome key to an `OutcomeSummaryMapEntry` containing `count`
-        and `label`.
+        List of JSON-friendly summary row objects.
     """
-    counts: dict[str, tuple[int, str]] = collect_outcome_counts(results)
-    return {key: {"count": n, "label": label} for key, (n, label) in counts.items()}
+    counts: list[OutcomeReasonCount] = collect_outcome_reason_counts(results)
+    return [
+        {"outcome": row.outcome.value, "reason": row.reason, "count": row.count} for row in counts
+    ]
 
 
 def iter_processing_results_summary_entries(
     results: list[ProcessingContext],
-) -> Iterator[OutcomeSummaryRecordPayload]:
-    """Yield NDJSON-friendly summary entries for processing results (summary mode).
+) -> Iterator[dict[str, object]]:
+    """Yield NDJSON-friendly summary rows for processing results.
 
-    Each yielded object is suitable as the payload under `"summary"` in an NDJSON
-    record with `kind="summary"`, e.g.::
+    Each yielded object preserves the full `(outcome, reason, count)` tuple so
+    NDJSON summary mode does not collapse sub-buckets inside the same outcome, e.g.:
 
         {"kind": "summary", "meta": {...},
          "summary": {"key": "unchanged", "count": 3, "label": "no changes needed"}}
@@ -109,9 +115,9 @@ def iter_processing_results_summary_entries(
         results: Ordered list of per-file processing contexts.
 
     Yields:
-        One summary payload per outcome bucket, with keys `"key"`, `"count"`, and `"label"`.
+        One summary row object per `(outcome, reason)` bucket.
     """
-    counts: dict[str, tuple[int, str]] = collect_outcome_counts(results)
+    counts: list[OutcomeReasonCount] = collect_outcome_reason_counts(results)
 
-    for key, (n, label) in counts.items():
-        yield {"key": key, "count": n, "label": label}
+    for row in counts:
+        yield {"outcome": row.outcome.value, "reason": row.reason, "count": row.count}

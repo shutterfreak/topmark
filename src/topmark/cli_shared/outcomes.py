@@ -24,7 +24,8 @@ from typing import TYPE_CHECKING
 from yachalk import chalk
 
 from topmark.api.types import Outcome
-from topmark.pipeline.outcomes import collect_outcome_counts
+from topmark.pipeline.outcomes import OutcomeReasonCount
+from topmark.pipeline.outcomes import collect_outcome_reason_counts
 
 if TYPE_CHECKING:
     from topmark.pipeline.context.model import ProcessingContext
@@ -61,44 +62,16 @@ def _outcome_color(outcome: Outcome) -> FormatCallable:
     return _OUTCOME_COLOR[outcome]
 
 
-def _outcome_from_value(value: str) -> Outcome | None:
-    """Return the matching Outcome member, or None if not found.
-
-    Args:
-        value: The Outome value to look for.
-
-    Returns:
-        The matching `Outcome` or `None` if no match.
-    """
-    try:
-        result = Outcome(value)
-    except ValueError:
-        # This should not happen
-        return None
-
-    return result
-
-
 def collect_outcome_counts_colored(
     results: list[ProcessingContext],
-) -> dict[str, tuple[int, str, Callable[[str], str]]]:
-    """Count results by classification key and include a colorizer.
-
-    Keeps the first-seen label and color for each key.
+) -> list[tuple[OutcomeReasonCount, Callable[[str], str]]]:
+    """Return colored summary rows grouped by `(outcome, reason)`.
 
     Args:
         results: Processing contexts to classify and count.
 
     Returns:
-        Mapping from classification key to ``(count, label, color_fn)``.
+        Stable summary rows paired with the formatter for their `Outcome`.
     """
-    counts: dict[str, tuple[int, str]] = collect_outcome_counts(results)
-    colored_counts: dict[str, tuple[int, str, Callable[[str], str]]] = {
-        outcome_value: (
-            count,
-            label,
-            _outcome_color(_outcome_from_value(outcome_value) or Outcome.ERROR),
-        )
-        for outcome_value, (count, label) in counts.items()
-    }
-    return colored_counts
+    counts: list[OutcomeReasonCount] = collect_outcome_reason_counts(results)
+    return [(row, _outcome_color(row.outcome)) for row in counts]

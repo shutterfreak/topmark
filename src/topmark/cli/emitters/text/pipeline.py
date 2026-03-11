@@ -52,6 +52,7 @@ if TYPE_CHECKING:
     from topmark.core.logging import TopmarkLogger
     from topmark.core.presentation import Colorizer
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.outcomes import OutcomeReasonCount
     from topmark.pipeline.views import UpdatedView
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -81,16 +82,47 @@ def emit_pipeline_summary_counts_text(
     view_results: list[ProcessingContext],
     total: int,
 ) -> None:
-    """Emit outcome counts summary (TEXT format)."""
+    """Emit summary counts grouped by `(outcome, reason)` (TEXT format)."""
     console: ConsoleLike = get_console_safely()
     console.print()
     console.print(console.styled("Summary by outcome:", bold=True, underline=True))
 
-    counts = collect_outcome_counts_colored(view_results)
-    label_width: int = max((len(v[1]) for v in counts.values()), default=0) + 1
+    counts: list[tuple[OutcomeReasonCount, Callable[[str], str]]] = collect_outcome_counts_colored(
+        view_results
+    )
+    outcome_width: int = max(
+        max((len(row.outcome.value) for row, _ in counts), default=0),
+        len("TOTAL"),
+    )
+    reason_width: int = max((len(row.reason) for row, _ in counts), default=0)
     num_width: int = len(str(total))
-    for _key, (n, label, color) in counts.items():
-        console.print(color(f"  {label:<{label_width}}: {n:>{num_width}}"))
+
+    for row, color in counts:
+        outcome_text: str = console.styled(
+            color(f"{row.outcome.value:<{outcome_width}}"),
+            bold=True,
+        )
+        reason_text: str = console.styled(
+            color(f"{row.reason:<{reason_width}}"),
+            italic=True,
+        )
+        count_text: str = console.styled(
+            color(f"{row.count:>{num_width}}"),
+        )
+        console.print(f"  {outcome_text}  {reason_text} : {count_text}")
+
+    sep_width: int = 2 + outcome_width + 2 + reason_width + 3 + num_width
+    console.print("─" * sep_width)
+
+    total_outcome: str = "TOTAL"
+    total_reason: str = ""
+    console.print(
+        console.styled(
+            f"  {total_outcome:<{outcome_width}}"
+            f"  {total_reason:<{reason_width}} : {total:>{num_width}}",
+            bold=True,
+        )
+    )
 
 
 def emit_pipeline_per_file_guidance_text(

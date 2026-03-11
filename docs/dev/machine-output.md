@@ -149,7 +149,7 @@ Summary mode corresponds to `summary_mode = true`.
 
 The JSON envelopes and summary payload shapes are built in:
 
-- \[`topmark.pipeline.machine.shapes.build_processing_results_json_envelope`\][topmark.pipeline.machine.shapes.build_processing_results_json_envelope]
+- \[`topmark.pipeline.machine.envelopes.build_processing_results_json_envelope`\][topmark.pipeline.machine.envelopes.build_processing_results_json_envelope]
 - \[`topmark.pipeline.machine.payloads`\][topmark.pipeline.machine.payloads] (summary payload helpers)
 
 ### NDJSON schema (detail and summary)
@@ -195,7 +195,7 @@ NDJSON rules for processing commands:
 
 The NDJSON record stream is produced by:
 
-- \[`topmark.pipeline.machine.shapes.iter_processing_results_ndjson_records`\][topmark.pipeline.machine.shapes.iter_processing_results_ndjson_records]
+- \[`topmark.pipeline.machine.envelopes.iter_processing_results_ndjson_records`\][topmark.pipeline.machine.envelopes.iter_processing_results_ndjson_records]
 - serialization helpers in \[`topmark.pipeline.machine.serializers`\][topmark.pipeline.machine.serializers]
 
 ______________________________________________________________________

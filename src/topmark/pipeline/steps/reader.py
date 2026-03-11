@@ -32,9 +32,9 @@ from typing import TYPE_CHECKING
 from topmark.core.logging import get_logger
 from topmark.filetypes.model import FileType
 from topmark.pipeline.adapters import PreInsertViewAdapter
-from topmark.pipeline.context.policy import allow_content_reflow_by_policy
-from topmark.pipeline.context.policy import allows_bom_before_shebang_by_policy
-from topmark.pipeline.context.policy import allows_mixed_line_endings_by_policy
+from topmark.pipeline.context.policy import allow_bom_before_shebang
+from topmark.pipeline.context.policy import allow_content_reflow
+from topmark.pipeline.context.policy import allow_mixed_line_endings
 from topmark.pipeline.hints import Axis
 from topmark.pipeline.hints import Cluster
 from topmark.pipeline.hints import KnownCode
@@ -74,6 +74,52 @@ def _newline_histogram(lines: list[str]) -> dict[str, int]:
     return hist
 
 
+# --- Emptiness detection helpers ---
+def _compute_empty_flags(lines: list[str]) -> tuple[bool, bool]:
+    """Compute `effective` and `logical` emptiness for a decoded, BOM-stripped image.
+
+    Args:
+        lines: Full file image as `keepends=True` lines **after** BOM stripping.
+
+    Returns:
+        A `(is_effectively_empty, is_logically_empty)` tuple.
+
+    Notes:
+        - *Effectively empty* means there are no non-whitespace characters.
+        - *Logically empty* is stricter: optional horizontal whitespace plus at most
+          one trailing newline sequence.
+    """
+    if not lines:
+        return True, True
+
+    text: str = "".join(lines)
+
+    # Broad check: any non-whitespace character makes the file non-empty.
+    is_effectively_empty: bool = text.strip() == ""
+
+    # Strict check: allow optional horizontal whitespace and at most one trailing
+    # newline sequence (LF/CRLF/CR). Reject interior newlines.
+    t: str = text
+    removed_nl: bool = False
+    for nl in ("\r\n", "\n", "\r"):
+        if t.endswith(nl):
+            t = t[: -len(nl)]
+            removed_nl = True
+            break
+
+    # After removing at most one trailing newline, no newline characters may remain.
+    if "\n" in t or "\r" in t:
+        is_logically_empty = False
+    else:
+        # Only allow horizontal whitespace (spaces/tabs/etc.)
+        is_logically_empty: bool = t.strip(" \t\f\v") == "" and (removed_nl or t != "")
+        # `t != ""` keeps the empty-string case True even when `removed_nl` is False.
+        if t == "":
+            is_logically_empty = True
+
+    return is_effectively_empty, is_logically_empty
+
+
 class ReaderStep(BaseStep):
     """Load text image, detect newline style, and set `ContentStatus`.
 
@@ -105,11 +151,14 @@ class ReaderStep(BaseStep):
         - A file type is present (ctx.file_type is not None)
         - A header processor is available (ctx.header_processor is not None)
 
-        Note:
-            The file system status (`ctx.status.fs`) is not strictly required here,
-            to allow tests to skip the sniffer and invoke the reader directly. In such
-            cases, the reader is the definitive authority for content checks (existence,
-            permissions, binary/text, etc).
+        Notes:
+        - The file system status (`ctx.status.fs`) states are set by the SnifferStep:
+            - OK
+            - controlled by policy
+            - errors
+        - The file system status (`ctx.status.fs`) is not strictly required here, to allow tests
+          to skip the sniffer and invoke the reader directly. In such cases, ReaderStep is the
+          definitive authority for content checks (existence, permissions, binary/text, etc).
 
         Args:
             ctx: The processing context for the current file.
@@ -117,11 +166,7 @@ class ReaderStep(BaseStep):
         Returns:
             True if processing can proceed to the read step, False otherwise.
         """
-        if ctx.is_halted:  # noqa: SIM103
-            # SnifferStep already flagged FsStatus statuses which halt processng
-            return False
-        # The remaining FsStatus states are either OK or controlled by policy
-        return True
+        return not ctx.is_halted
 
     def run(self, ctx: ProcessingContext) -> None:
         """Loads file lines and detects newline style.
@@ -154,7 +199,7 @@ class ReaderStep(BaseStep):
 
         if ctx.status.fs == FsStatus.BOM_BEFORE_SHEBANG:
             # Strict default: refuse unless policy says otherwise
-            if allows_bom_before_shebang_by_policy(ctx):
+            if allow_bom_before_shebang(ctx):
                 # TODO later: apply policies
                 # (remove BOM before shebang)
                 pass
@@ -167,7 +212,7 @@ class ReaderStep(BaseStep):
 
         if ctx.status.fs == FsStatus.MIXED_LINE_ENDINGS:
             # Strict default: refuse unless policy says otherwise
-            if allows_mixed_line_endings_by_policy(ctx):
+            if allow_mixed_line_endings(ctx):
                 # TODO later: apply policies
                 # (refine what to do when mixed line endngs are present)
                 pass
@@ -197,6 +242,8 @@ class ReaderStep(BaseStep):
             ctx.dominance_ratio = None
             ctx.mixed_newlines = False
             ctx.status.content = ContentStatus.OK
+            ctx.is_effectively_empty = True
+            ctx.is_logically_empty = True
             logger.debug(
                 "Reader: empty file %s; content status set to %s.",
                 ctx.path,
@@ -229,14 +276,39 @@ class ReaderStep(BaseStep):
                 # For a BOM-only file, lines == [""], so it doesn’t take the empty-file branch.
                 # Downstream, an empty "" line can look like “body exists” to spacing logic.
 
-            # If no lines, or BOM-only (single empty logical line after BOM strip), mark empty.
-            if len(lines) == 0 or (len(lines) == 1 and lines[0] == ""):
-                # Edge case: file truncated to 0 bytes between sniff and read.
-                # Mirror sniffer semantics for consistency.
-                ctx.ends_with_newline = False
-                ctx.status.fs = FsStatus.EMPTY
-                # NOTE: real zero-length files already marked EMPTY in sniffer
-                _initialize_empty_file_content(ctx)
+            # Compute emptiness flags on the fully decoded, BOM-stripped image.
+            ctx.is_effectively_empty, ctx.is_logically_empty = _compute_empty_flags(lines)
+
+            # Treat *true* empty files (0 bytes on disk) as `FsStatus.EMPTY`.
+            #
+            # IMPORTANT:
+            #   Do NOT upgrade “logical empties” (e.g., a BOM-only image that becomes a single
+            #   empty logical line after BOM stripping) to `FsStatus.EMPTY` here. Those cases
+            #   must be represented via `ctx.is_effectively_empty` / `ctx.is_logically_empty`
+            #   so newline-style and round-trip placeholders remain stable.
+            if len(lines) == 0:
+                try:
+                    st_size: int = ctx.path.stat().st_size
+                except OSError:
+                    st_size = 0
+
+                if st_size == 0:
+                    # Edge case: file truncated to 0 bytes between sniff and read.
+                    # Mirror sniffer semantics for consistency.
+                    ctx.ends_with_newline = False
+                    ctx.status.fs = FsStatus.EMPTY
+                    # Ensure emptiness flags are set
+                    ctx.is_effectively_empty = True
+                    ctx.is_logically_empty = True
+                    # NOTE: real zero-length files already marked EMPTY in sniffer
+                    _initialize_empty_file_content(ctx)
+                    return
+
+                # Non-empty on disk but yielded no decoded lines: treat as unreadable.
+                ctx.status.content = ContentStatus.UNREADABLE
+                reason = "Could not decode file to text (no decoded lines)."
+                ctx.error(reason)
+                ctx.request_halt(reason=reason, at_step=self)
                 return
 
             # Record whether the file ends with a newline (used when generating patches)
@@ -244,6 +316,9 @@ class ReaderStep(BaseStep):
 
             # Preserve original line endings; each element contains its own terminator
             ctx.views.image = ListFileImageView(lines)
+
+            # Ensure emptiness flags remain consistent with the loaded image.
+            ctx.is_effectively_empty, ctx.is_logically_empty = _compute_empty_flags(lines)
 
             # Compute detailed newline histogram
             hist: dict[str, int] = _newline_histogram(lines)
@@ -336,7 +411,7 @@ class ReaderStep(BaseStep):
                         ctx.pre_insert_reason,
                     )
                     if ctx.pre_insert_capability == InsertCapability.SKIP_IDEMPOTENCE_RISK:
-                        if allow_content_reflow_by_policy(ctx) is True:
+                        if allow_content_reflow(ctx) is True:
                             reason = (
                                 f"Strict policy: {ctx.pre_insert_capability.value} "
                                 "- overridden (OK to proceed)"

@@ -49,7 +49,13 @@ def emit_filetypes_text(*, console: ConsoleLike, report: FileTypesHumanReport) -
     vlevel: int = report.verbosity_level
 
     if vlevel > 0:
-        console.print(console.styled("Supported file types:\n", bold=True, underline=True))
+        console.print(
+            console.styled(
+                "Supported file types (qualified identifiers):\n",
+                bold=True,
+                underline=True,
+            )
+        )
 
     total: int = len(items)
     num_width: int = len(str(total)) if total > 0 else 1
@@ -94,7 +100,13 @@ def emit_processors_text(*, console: ConsoleLike, report: ProcessorsHumanReport)
     vlevel: int = report.verbosity_level
 
     if vlevel > 0:
-        console.print(console.styled("\nSupported Header Processors:\n", bold=True, underline=True))
+        console.print(
+            console.styled(
+                "\nSupported Header Processors (with qualified file type identifiers):\n",
+                bold=True,
+                underline=True,
+            )
+        )
 
     total_proc: int = len(report.processors)
     num_proc_width: int = len(str(total_proc)) if total_proc > 0 else 1
@@ -139,7 +151,7 @@ def emit_processors_text(*, console: ConsoleLike, report: ProcessorsHumanReport)
 
     if report.unbound_filetypes:
         hdr_no_processor: str = console.styled(
-            "File types without a registered processor:",
+            "File types without a registered processor (qualified identifiers):",
             bold=True,
         )
         if report.show_details:

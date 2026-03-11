@@ -1,8 +1,8 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : shapes.py
-#   file_relpath : src/topmark/registry/machine/shapes.py
+#   file         : envelopes.py
+#   file_relpath : src/topmark/registry/machine/envelopes.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -24,7 +24,7 @@ Conventions:
 - JSON: one envelope object:
     `{"meta": ..., <payload_key>: ...}`
 - NDJSON: one record per entity:
-    `{"kind": <kind>, "meta": ..., <container_key>: <payload>}`
+    `{"kind": <kind>, "meta": ..., <payload>}`
 
 This module is Click-free and console-free.
 """

@@ -96,6 +96,7 @@ class PatcherStep(BaseStep):
         """
         if ctx.is_halted:
             return False
+
         return ctx.status.comparison in {
             ComparisonStatus.CHANGED,
             ComparisonStatus.UNCHANGED,

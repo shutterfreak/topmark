@@ -53,7 +53,19 @@ def _policy_name(obj: object | None) -> str:
 
 @dataclass(frozen=True, slots=True)
 class FileTypeHumanItem:
-    """Click-free, human-facing view of one file type."""
+    """Click-free, human-facing view of one file type.
+
+    Attributes:
+        name: Qualified file type identifier shown in human-facing output.
+        description: Human-readable file type description.
+        extensions: Registered filename extensions.
+        filenames: Exact registered filenames.
+        patterns: Registered path or glob patterns.
+        skip_processing: Whether TopMark recognizes but never mutates this type.
+        content_matcher_name: Pretty-printed content matcher name, if present.
+        insert_checker_name: Pretty-printed insert-checker name, if present.
+        header_policy_name: Human-readable header policy identifier.
+    """
 
     name: str
     description: str
@@ -79,7 +91,12 @@ class FileTypesHumanReport:
 
 @dataclass(frozen=True, slots=True)
 class ProcessorFileTypeHumanItem:
-    """Click-free, human-facing view of a file type entry used under a processor."""
+    """Click-free, human-facing view of a processor-bound file type entry.
+
+    Attributes:
+        name: Qualified file type identifier shown under the processor.
+        description: Human-readable file type description.
+    """
 
     name: str
     description: str
@@ -87,7 +104,14 @@ class ProcessorFileTypeHumanItem:
 
 @dataclass(frozen=True, slots=True)
 class ProcessorHumanItem:
-    """Click-free, human-facing view of one header processor binding group."""
+    """Click-free, human-facing view of one header processor binding group.
+
+    Attributes:
+        module: Fully-qualified module path of the processor class.
+        class_name: Processor class name.
+        filetypes: Either qualified file type identifiers (brief mode) or
+            expanded processor/file-type items (detail mode).
+    """
 
     module: str
     class_name: str
@@ -96,7 +120,12 @@ class ProcessorHumanItem:
 
 @dataclass(frozen=True, slots=True)
 class UnboundFileTypeHumanItem:
-    """Click-free, human-facing view of an unbound file type entry."""
+    """Click-free, human-facing view of an unbound file type entry.
+
+    Attributes:
+        name: Qualified file type identifier shown in human-facing output.
+        description: Human-readable file type description.
+    """
 
     name: str
     description: str
@@ -127,26 +156,26 @@ def build_filetypes_human_report(
     ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
 
     items: list[FileTypeHumanItem] = []
-    for k, v in sorted(ft_registry.items()):
+    for _, file_type in sorted(ft_registry.items()):
         items.append(
             FileTypeHumanItem(
-                name=k,
-                description=v.description,
-                extensions=tuple(v.extensions),
-                filenames=tuple(v.filenames),
-                patterns=tuple(v.patterns),
-                skip_processing=v.skip_processing,
+                name=file_type.qualified_key,
+                description=file_type.description,
+                extensions=tuple(file_type.extensions),
+                filenames=tuple(file_type.filenames),
+                patterns=tuple(file_type.patterns),
+                skip_processing=file_type.skip_processing,
                 content_matcher_name=(
-                    format_callable_pretty(v.content_matcher)
-                    if v.content_matcher is not None
+                    format_callable_pretty(file_type.content_matcher)
+                    if file_type.content_matcher is not None
                     else None
                 ),
                 insert_checker_name=(
-                    format_callable_pretty(v.pre_insert_checker)
-                    if v.pre_insert_checker is not None
+                    format_callable_pretty(file_type.pre_insert_checker)
+                    if file_type.pre_insert_checker is not None
                     else None
                 ),
-                header_policy_name=_policy_name(v.header_policy),
+                header_policy_name=_policy_name(file_type.header_policy),
             )
         )
 
@@ -169,56 +198,70 @@ def build_processors_human_report(
         verbosity_level: Effective verbosity (consumers may ignore).
 
     Returns:
-        A `ProcessorsHumanReport` grouping file types by header processor class and listing unbound
-        file types.
+        A `ProcessorsHumanReport` grouping qualified file type identifiers by
+        header processor identity and listing unbound file types.
     """
-    from collections import defaultdict
-
     from topmark.registry.processors import HeaderProcessorRegistry
 
     ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
     hp_registry: Mapping[str, HeaderProcessor] = HeaderProcessorRegistry.as_mapping()
 
-    # Invert mapping: (module, class) -> [filetype names]
-    groups: dict[tuple[str, str], list[str]] = defaultdict(list)
-    for name, proc in hp_registry.items():
-        key: tuple[str, str] = (proc.__class__.__module__, proc.__class__.__name__)
-        groups[key].append(name)
+    # Invert mapping: processor identity -> (processor exemplar, [file type names])
+    groups: dict[tuple[str, str, str, str, str], tuple[HeaderProcessor, list[str]]] = {}
+    for file_type_name, processor in hp_registry.items():
+        key: tuple[str, str, str, str, str] = (
+            processor.namespace,
+            processor.key,
+            processor.qualified_key,
+            processor.__class__.__module__,
+            processor.__class__.__name__,
+        )
+        if key not in groups:
+            groups[key] = (processor, [])
+        groups[key][1].append(file_type_name)
 
     processors: list[ProcessorHumanItem] = []
-    for (mod, cls), names in sorted(groups.items()):
-        ft_names: list[str] = sorted(names)
+    for (_, _, _, _, _), (processor, names) in sorted(groups.items()):
+        file_type_names: list[str] = sorted(names)
         if show_details:
             processors.append(
                 ProcessorHumanItem(
-                    module=mod,
-                    class_name=cls,
+                    module=processor.__class__.__module__,
+                    class_name=processor.__class__.__name__,
                     filetypes=tuple(
                         ProcessorFileTypeHumanItem(
-                            name=n,
-                            description=ft_registry[n].description,
+                            name=ft_registry[file_type_name].qualified_key,
+                            description=ft_registry[file_type_name].description,
                         )
-                        for n in ft_names
+                        for file_type_name in file_type_names
                     ),
                 )
             )
         else:
             processors.append(
                 ProcessorHumanItem(
-                    module=mod,
-                    class_name=cls,
-                    filetypes=tuple(ft_names),
+                    module=processor.__class__.__module__,
+                    class_name=processor.__class__.__name__,
+                    filetypes=tuple(
+                        ft_registry[file_type_name].qualified_key
+                        for file_type_name in file_type_names
+                    ),
                 )
             )
 
     unbound_names: list[str] = sorted([name for name in ft_registry if name not in hp_registry])
     if show_details:
         unbound_filetypes: tuple[str, ...] | tuple[UnboundFileTypeHumanItem, ...] = tuple(
-            UnboundFileTypeHumanItem(name=n, description=ft_registry[n].description)
-            for n in unbound_names
+            UnboundFileTypeHumanItem(
+                name=ft_registry[file_type_name].qualified_key,
+                description=ft_registry[file_type_name].description,
+            )
+            for file_type_name in unbound_names
         )
     else:
-        unbound_filetypes = tuple(unbound_names)
+        unbound_filetypes = tuple(
+            ft_registry[file_type_name].qualified_key for file_type_name in unbound_names
+        )
 
     return ProcessorsHumanReport(
         show_details=show_details,

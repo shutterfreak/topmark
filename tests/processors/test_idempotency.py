@@ -19,6 +19,7 @@ import pytest
 
 from tests.pipeline.conftest import materialize_updated_lines
 from tests.pipeline.conftest import run_insert
+from tests.pipeline.conftest import run_strip
 from topmark.config.model import Config
 from topmark.config.model import MutableConfig
 from topmark.constants import TOPMARK_END_MARKER
@@ -103,3 +104,44 @@ def test_blank_line_after_header_for_line_and_block(
         assert lines[end_idx + 1].strip() == ""
     if end_idx + 2 < len(lines):
         assert lines[end_idx + 2].strip() != ""
+
+
+@pytest.mark.parametrize(
+    "filename, content",
+    [
+        ("idem.py", "print('hello')\n"),
+        ("idem_2_emty_lines.py", "print('hello')\n\n"),
+        ("idem_3_emty_lines.py", "print('hello')\n\n\n"),
+        ("idem.scss", "$x: 1;\nbody{margin:$x}\n"),
+    ],
+)
+def test_idempotent_insert_strip(tmp_path: Path, filename: str, content: str) -> None:
+    """Running the insert pipeline twice should produce identical output."""
+    f: Path = tmp_path / filename
+    f.write_text(content)
+
+    with f.open(
+        "r",
+        encoding="utf-8",
+        errors="replace",
+        newline="",
+    ) as f_initial:
+        lines: list[str] = list(f_initial)
+
+    cfg: Config = MutableConfig.from_defaults().freeze()
+
+    # First run inserts a header (if not present yet)
+    ctx1: ProcessingContext = run_insert(f, cfg)
+    lines1: list[str] = materialize_updated_lines(ctx1)
+
+    # Write updates to file
+    with f.open("w", encoding="utf-8", newline="") as fp:
+        fp.write("".join(lines1))
+
+    # Second run should be a no-op (idempotent)
+    ctx2: ProcessingContext = run_strip(f, cfg)
+    lines2: list[str] = materialize_updated_lines(ctx2)
+
+    assert lines2 == lines, "Second run must revert to initial (idempotent)"
+    # Header must be detected by scanner on the second run (it’s now in the original file)
+    assert ctx2.views.header is not None

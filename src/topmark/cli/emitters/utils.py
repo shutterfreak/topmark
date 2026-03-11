@@ -27,9 +27,9 @@ from topmark.cli.emitters.text.pipeline import emit_pipeline_diffs_text
 from topmark.cli.emitters.text.pipeline import emit_pipeline_per_file_guidance_text
 from topmark.cli.emitters.text.pipeline import emit_pipeline_summary_counts_text
 from topmark.cli_shared.emitters.markdown.pipeline import emit_pipeline_diffs_markdown
-from topmark.cli_shared.emitters.markdown.pipeline import emit_pipeline_per_file_guidance_markdown
 from topmark.cli_shared.emitters.markdown.pipeline import render_pipeline_banner_markdown
 from topmark.cli_shared.emitters.markdown.pipeline import render_pipeline_per_file_guidance_markdown
+from topmark.cli_shared.emitters.markdown.pipeline import render_pipeline_summary_counts_markdown
 from topmark.constants import TOML_BLOCK_END
 from topmark.constants import TOML_BLOCK_START
 from topmark.core.formats import OutputFormat
@@ -147,7 +147,7 @@ def emit_pipeline_human_output(
             console.print(render_pipeline_banner_markdown(cmd=cmd, n_files=file_list_total))
             console.print()
 
-    # Summary mode
+    # Summary mode (grouped by `(outcome, reason)`)
     if summary_mode:
         if show_diffs:
             if fmt == OutputFormat.TEXT:
@@ -158,7 +158,7 @@ def emit_pipeline_human_output(
             emit_pipeline_summary_counts_text(view_results=view_results, total=file_list_total)
         else:
             console.print(
-                emit_pipeline_per_file_guidance_markdown(
+                render_pipeline_summary_counts_markdown(
                     view_results=view_results,
                     total=file_list_total,
                 )

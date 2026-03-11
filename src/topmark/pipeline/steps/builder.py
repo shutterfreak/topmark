@@ -32,13 +32,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from topmark.core.logging import get_logger
-from topmark.pipeline.context.policy import allow_empty_by_policy
 from topmark.pipeline.context.policy import check_permitted_by_policy
 from topmark.pipeline.hints import Axis
 from topmark.pipeline.hints import Cluster
 from topmark.pipeline.hints import KnownCode
 from topmark.pipeline.status import ContentStatus
-from topmark.pipeline.status import FsStatus
 from topmark.pipeline.status import GenerationStatus
 from topmark.pipeline.steps.base import BaseStep
 from topmark.pipeline.views import BuilderView
@@ -75,30 +73,26 @@ class BuilderStep(BaseStep):
     def may_proceed(self, ctx: ProcessingContext) -> bool:
         """Determine if processing can proceed to the build step.
 
-        Processing can proceed if:
-        - The file was successfully resolved (ctx.status.resolve is RESOLVED)
-        - A header processor is available (ctx.header_processor is not None)
-        - The file image is available (via `ctx.views.image`).
+        Return whether the builder has the prerequisites to compute field values.
+
+        The builder should run whenever content is available, even for empty-like
+        images. Empty-file insertion policy is a *mutation* concern and is handled
+        later by planner/updater logic via `allow_insert_into_empty_like()`, not by
+        `may_proceed()`.
 
         Args:
             ctx: The processing context for the current file.
 
         Returns:
-            True if processing can proceed to the build step, False otherwise.
+            True if the builder can compute header field values for this context.
         """
         if ctx.is_halted:
             return False
 
-        # Do not generate headers for empty files when policy forbids it.
-        # We only allow generation for empty files if the effective policy
-        # explicitly permits inserting headers into empty files.
-        if ctx.status.fs == FsStatus.EMPTY and not allow_empty_by_policy(ctx):
-            return False
-
         # Normal path:
         # - non-empty files require ContentStatus.OK
-        # - empty files can proceed only when allowed by policy
-        return ctx.status.content == ContentStatus.OK or allow_empty_by_policy(ctx)
+        # - empty files can proceed only when allowed by policy (also ContentStatus.OK)
+        return ctx.status.content == ContentStatus.OK
 
     def run(self, ctx: ProcessingContext) -> None:
         """Build the field dictionaries used to render a TopMark header.

@@ -251,6 +251,8 @@ def materialize_updated_lines(ctx: ProcessingContext) -> list[str]:
 
 
 # --- Class-based step runner helpers (tests) ---
+
+
 def run_steps(
     ctx: ProcessingContext,
     steps: list[Step[ProcessingContext]] | tuple[Step[ProcessingContext], ...],
