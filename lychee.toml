@@ -8,10 +8,10 @@
 #
 # topmark:header:end
 
-timeout = 20        # seconds per request (default is lower)
-max_retries = 3     # retry transient failures
-retry_wait_time = 2 # seconds between retries
-max_concurrency = 8 # lower = fewer parallel requests to GitHub
+timeout         = 20 # seconds per request (default is lower)
+max_retries     = 3  # retry transient failures
+retry_wait_time = 2  # seconds between retries
+max_concurrency = 8  # lower = fewer parallel requests to GitHub
 
 # (Optional) identify as a normal browser; can help with some hosts
 user_agent = "Mozilla/5.0 (compatible; lychee)"
