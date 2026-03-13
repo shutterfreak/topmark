@@ -12,8 +12,8 @@ topmark:header:end
 
 # Common filtering recipes
 
-TopMark determines which files to process using a combination of **path-based filters**
-and **file type filters**.
+TopMark determines which files to process using a combination of **path-based filters** and **file
+type filters**.
 
 Filtering order:
 

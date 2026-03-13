@@ -12,7 +12,8 @@ topmark:header:end
 
 # 🧩 Developer Validation Marker
 
-TopMark defines an internal **pytest marker** `@mark_dev_validation`, used for selective validation of developer-only integrity tests (e.g., registry consistency).
+TopMark defines an internal **pytest marker** `@mark_dev_validation`, used for selective validation
+of developer-only integrity tests (e.g., registry consistency).
 
 ## Purpose
 
@@ -36,7 +37,8 @@ def test_registered_processors_map_to_existing_filetypes():
 ## Execution
 
 Currently, these tests are **run with all other tests** (no separate nox job).\
-In earlier versions, a dedicated `dev-validation` CI job existed, but this was merged into the general test suite for simplicity.
+In earlier versions, a dedicated `dev-validation` CI job existed, but this was merged into the
+general test suite for simplicity.
 
 To run only these tests locally:
 

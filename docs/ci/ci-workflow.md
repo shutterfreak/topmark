@@ -12,14 +12,16 @@ topmark:header:end
 
 # 🧪 Continuous Integration (CI)
 
-This document describes the automated **CI pipeline** for TopMark, implemented in `.github/workflows/ci.yml`.
+This document describes the automated **CI pipeline** for TopMark, implemented in
+`.github/workflows/ci.yml`.
 
 ______________________________________________________________________
 
 ## Overview
 
 The CI workflow validates all contributions (pushes and pull requests).\
-It ensures **type safety, formatting, linting, documentation integrity, test coverage, and API stability**.
+It ensures **type safety, formatting, linting, documentation integrity, test coverage, and API
+stability**.
 
 ### Trigger Conditions
 
@@ -84,21 +86,27 @@ Runs all hooks defined in `.pre-commit-config.yaml`:
   run: pre-commit run --all-files --show-diff-on-failure
 ```
 
-In CI we skip a small set of slower hooks (notably lychee and pyright) because dedicated jobs cover them.
+In CI we skip a small set of slower hooks (notably lychee and pyright) because dedicated jobs cover
+them.
 
 ### 📚 Docs integrity
 
 Documentation integrity is validated at multiple levels:
 
-- **Strict MkDocs build** (`docs` job): ensures all pages build without warnings or errors. This includes pages generated at build time (e.g. API reference pages).
-- **Source link checking** (`links` job): validates links in handwritten Markdown files (e.g. `docs/**`, `README.md`).
-- **Built-site link checking** (`links-site` job): validates links in the rendered HTML output, including theme navigation and **generated API pages**.
+- **Strict MkDocs build** (`docs` job): ensures all pages build without warnings or errors. This
+  includes pages generated at build time (e.g. API reference pages).
+- **Source link checking** (`links` job): validates links in handwritten Markdown files (e.g.
+  `docs/**`, `README.md`).
+- **Built-site link checking** (`links-site` job): validates links in the rendered HTML output,
+  including theme navigation and **generated API pages**.
 
-**Important:** generated API pages are only validated by the built-site link check (`links-site`). Source-only checks cannot see these pages.
+**Important:** generated API pages are only validated by the built-site link check (`links-site`).
+Source-only checks cannot see these pages.
 
 ### 🔍 API Stability Check
 
-For pull requests that modify `src/**`, a quick snapshot test ensures the **public API has not changed** unexpectedly.
+For pull requests that modify `src/**`, a quick snapshot test ensures the **public API has not
+changed** unexpectedly.
 
 ______________________________________________________________________
 

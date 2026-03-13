@@ -14,8 +14,9 @@ topmark:header:end
 
 **Purpose:** Display all recognized/supported file types.
 
-The `registry filetypes` subcommand lists TopMark’s supported **file type identifiers** and their **header
-policies**. Use it to discover which identifiers you can pass to `--include-file-types` / `--exclude-file-types` and to understand how TopMark classifies files.
+The `registry filetypes` subcommand lists TopMark’s supported **file type identifiers** and their
+**header policies**. Use it to discover which identifiers you can pass to `--include-file-types` /
+`--exclude-file-types` and to understand how TopMark classifies files.
 
 ______________________________________________________________________
 
@@ -117,8 +118,8 @@ ______________________________________________________________________
 
 ## How TopMark resolves file types
 
-TopMark may have multiple `FileType` definitions that match a given path. The resolver evaluates
-all matching file types and selects the most specific match.
+TopMark may have multiple `FileType` definitions that match a given path. The resolver evaluates all
+matching file types and selects the most specific match.
 
 In practice, specificity follows this order:
 

@@ -14,9 +14,9 @@ topmark:header:end
 
 **Purpose:** Display all header processors and the registered file types.
 
-The `registry processors` subcommand lists registered **header processors** and the **file types** they
-handle, as well as file types that aren't registered to a header processor (such types are recognized but left alone).
-Use it to verify how file types are mapped to their processing logic.
+The `registry processors` subcommand lists registered **header processors** and the **file types**
+they handle, as well as file types that aren't registered to a header processor (such types are
+recognized but left alone). Use it to verify how file types are mapped to their processing logic.
 
 ______________________________________________________________________
 

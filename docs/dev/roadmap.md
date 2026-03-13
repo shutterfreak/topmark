@@ -15,9 +15,9 @@ topmark:header:end
 ## Motivation / Why this matters
 
 TopMark increasingly operates on data that is not naturally file-backed: generated code, editor
-buffers, CI-provided snippets, or API-driven integrations. Today, almost all of TopMark’s
-processing pipeline assumes filesystem I/O, which makes testing heavier, limits reuse, and
-complicates future integrations.
+buffers, CI-provided snippets, or API-driven integrations. Today, almost all of TopMark’s processing
+pipeline assumes filesystem I/O, which makes testing heavier, limits reuse, and complicates future
+integrations.
 
 Supporting an in-memory pipeline enables:
 
@@ -30,21 +30,24 @@ ______________________________________________________________________
 
 ## Done so far
 
-This section tracks work completed during the 0.12 development series that directly supports the
-1.0 goals.
+This section tracks work completed during the 0.12 development series that directly supports the 1.0
+goals.
 
 ### CLI output architecture
 
 - Introduced a clearer split between:
   - \[`topmark.cli.emitters.*`\][topmark.cli.emitters] (Click-facing, console printing)
-  - \[`topmark.cli_shared.*`\][topmark.cli_shared] (Click-free CLI concerns: presentation helpers, color policy, small shared utilities)
+  - \[`topmark.cli_shared.*`\][topmark.cli_shared] (Click-free CLI concerns: presentation helpers,
+    color policy, small shared utilities)
 - Refactored many commands to share the same conceptual pipeline:
   - prepare Click-free model → render (text/markdown) → print
-- Introduced shared Click-layer validators/policies (\[`topmark.cli.validators`\][topmark.cli.validators]) to centralize:
+- Introduced shared Click-layer validators/policies
+  (\[`topmark.cli.validators`\][topmark.cli.validators]) to centralize:
   - output-format policies (e.g., diff restrictions, machine-format limitations)
   - file-agnostic command behaviors (ignoring positional paths)
   - color policy enforcement for non-text outputs
-- Moved verbosity (`-v`) and color (`--color/--no-color`) options from the root CLI group to individual commands.
+- Moved verbosity (`-v`) and color (`--color/--no-color`) options from the root CLI group to
+  individual commands.
 - Added a convenience decorator to consistently attach common verbosity/color options per command.
 - Clarified and centralized CLI initialization state in `cli.cmd_common`.
 - Moved all machine-format generation out of `cli_shared` into domain-specific `*.machine` packages.
@@ -53,46 +56,58 @@ This section tracks work completed during the 0.12 development series that direc
   - pure serializers (no console, no Click)
   - CLI emitters (console-only, Click-aware)
 - Centralized `build_meta_payload()` at CLI initialization (computed once per process and reused).
-- Introduced `compute_version_text()` in `utils.version` to unify SemVer conversion and fallback logic across CLI and machine formats.
+- Introduced `compute_version_text()` in `utils.version` to unify SemVer conversion and fallback
+  logic across CLI and machine formats.
 
 ### Pipeline semantics: preview vs apply
 
 - Made write-status reporting **honest** and consistent across dry-run and apply pipelines:
   - Dry-run now emits `WriteStatus.PREVIEWED` (no terminal verbs like “removed” / “replaced”).
-  - Apply mode (`--apply`) emits terminal statuses (`INSERTED`, `REPLACED`, `REMOVED`) and writers perform the actual filesystem updates.
+  - Apply mode (`--apply`) emits terminal statuses (`INSERTED`, `REPLACED`, `REMOVED`) and writers
+    perform the actual filesystem updates.
 - Plumbed apply intent end-to-end:
-  - Added `Config.apply_changes` as a tri-state runtime intent and ensured CLI + API set it on the final merged config.
+  - Added `Config.apply_changes` as a tri-state runtime intent and ensured CLI + API set it on the
+    final merged config.
   - Updated the updater step to gate terminal `WriteStatus` values on `apply_changes`.
-  - Refined bucketing/outcomes so “would change” vs “changed” categories align with apply intent and reasons match the established convention.
-- Updated human summaries (`ProcessingContext.format_summary`) so dry-run output is no longer misleading (e.g., “would strip header” without claiming it was removed).
+  - Refined bucketing/outcomes so “would change” vs “changed” categories align with apply intent and
+    reasons match the established convention.
+- Updated human summaries (`ProcessingContext.format_summary`) so dry-run output is no longer
+  misleading (e.g., “would strip header” without claiming it was removed).
 
 ### Human output formats
 
 - Consolidated human formats under:
   - `OutputFormat.TEXT` (label `"text"`)
   - `OutputFormat.MARKDOWN`
-- Renamed emitter package *topmark.cli.emitters.default* to \[`topmark.cli.emitters.text`\][topmark.cli.emitters.text] to align naming with `OutputFormat.TEXT`.
-- Extracted shared pipeline rendering primitives (diff rendering, per-command guidance)
-  into \[`topmark.cli_shared.emitters.shared.pipeline`\][topmark.cli_shared.emitters.shared.pipeline].
-- Improved consistency of wording across commands by reusing shared helpers for registry/config outputs.
+- Renamed emitter package *topmark.cli.emitters.default* to
+  \[`topmark.cli.emitters.text`\][topmark.cli.emitters.text] to align naming with
+  `OutputFormat.TEXT`.
+- Extracted shared pipeline rendering primitives (diff rendering, per-command guidance) into
+  \[`topmark.cli_shared.emitters.shared.pipeline`\][topmark.cli_shared.emitters.shared.pipeline].
+- Improved consistency of wording across commands by reusing shared helpers for registry/config
+  outputs.
 
 ### Command output consistency improvements
 
-- `processors` and `filetypes` human output now uses **numbered lists** (right-aligned indices) and clearer counts.
-- `dump-config` / `init-config` emit **plain TOML** by default; BEGIN/END markers are shown only at higher verbosity.
+- `processors` and `filetypes` human output now uses **numbered lists** (right-aligned indices) and
+  clearer counts.
+- `dump-config` / `init-config` emit **plain TOML** by default; BEGIN/END markers are shown only at
+  higher verbosity.
 - `version` command output is now script-friendly (prints only the SemVer string, no label).
 - Documentation updated across command pages to match the new verbosity and summary semantics.
 
 ### Machine output formats
 
-Machine-readable output is now domain-scoped and schema-driven, with consistent envelopes and stable keys across commands.
+Machine-readable output is now domain-scoped and schema-driven, with consistent envelopes and stable
+keys across commands.
 
-- Shared payload shapes and builders under \[`topmark.config.machine`\][topmark.config.machine] and related modules
+- Shared payload shapes and builders under \[`topmark.config.machine`\][topmark.config.machine] and
+  related modules
 - Consistent envelope structures (metadata + data) across commands
 - Aligned semantics for config, registry, and version commands
 
-The remaining gaps are primarily in pipeline-oriented commands (`check`, `strip`), where
-historical CLI-specific emitters are still being phased out in favor of shared serializers.
+The remaining gaps are primarily in pipeline-oriented commands (`check`, `strip`), where historical
+CLI-specific emitters are still being phased out in favor of shared serializers.
 
 The 1.0 goal is full symmetry:
 
@@ -105,22 +120,29 @@ Completed work:
 - Completed full separation of machine-format responsibilities into domain-specific packages:
   - \[`topmark.core.machine`\][topmark.core.machine] (shared keys/schemas/meta payloads)
   - \[`topmark.config.machine`\][topmark.config.machine] (config-related shapes and serializers)
-  - \[`topmark.pipeline.machine`\][topmark.pipeline.machine] (processing results shapes and serializers)
-  - \[`topmark.registry.machine`\][topmark.registry.machine] (filetype and processor registry shapes and serializers)
-- Removed ad-hoc JSON construction from CLI command modules (`check`, `strip`, `config_*`, `filetypes`, `processors`, `version`).
+  - \[`topmark.pipeline.machine`\][topmark.pipeline.machine] (processing results shapes and
+    serializers)
+  - \[`topmark.registry.machine`\][topmark.registry.machine] (filetype and processor registry shapes
+    and serializers)
+- Removed ad-hoc JSON construction from CLI command modules (`check`, `strip`, `config_*`,
+  `filetypes`, `processors`, `version`).
 - Standardized naming conventions:
   - `build_*` → payload construction (pure data)
   - `build_*_envelope` / `iter_*_records` → shape builders
   - `serialize_*` → JSON/NDJSON serialization (no console I/O)
   - `emit_*` → CLI-layer console output only
-- Introduced shared NDJSON prefix builders for config + config_diagnostics records to avoid duplication across commands.
-- Centralized machine keys and canonical values in \[`topmark.core.machine.schemas`\][topmark.core.machine.schemas], eliminating circular imports and key drift.
+- Introduced shared NDJSON prefix builders for config + config_diagnostics records to avoid
+  duplication across commands.
+- Centralized machine keys and canonical values in
+  \[`topmark.core.machine.schemas`\][topmark.core.machine.schemas], eliminating circular imports and
+  key drift.
 - Added explicit `MachineMeta` keys and extended the `meta` payload with `platform` information.
 - Introduced typed `TypedDict` schemas for:
   - outcome summary entries and records (pipeline)
   - filetype registry entries
   - processor registry entries
-- Documented the stable envelope and key conventions in `docs/dev/machine-formats.md` (and updated command pages accordingly).
+- Documented the stable envelope and key conventions in `docs/dev/machine-formats.md` (and updated
+  command pages accordingly).
 
 ### Config template handling
 
@@ -139,29 +161,40 @@ Completed work:
 ### Documentation: pipeline docs + generated API internals
 
 - Added pipeline documentation under `docs/dev/`:
-  - `pipelines.md` (concepts): Mermaid diagrams for the pipeline overview, CLI flows (`check` vs `strip`), and per-axis lifecycles.
-  - `pipelines-reference.md` (reference hub): formatter-safe links into generated internals pages (no `mkdocstrings` directives).
-- Introduced `mkdocs.linkcheck.yml` to support local/CI link checking without baking production-only base URLs.
-- Clarified the documentation authoring rule: handwritten Markdown must not contain `mkdocstrings` directives; generated pages own all `:::` blocks.
+  - `pipelines.md` (concepts): Mermaid diagrams for the pipeline overview, CLI flows (`check` vs
+    `strip`), and per-axis lifecycles.
+  - `pipelines-reference.md` (reference hub): formatter-safe links into generated internals pages
+    (no `mkdocstrings` directives).
+- Introduced `mkdocs.linkcheck.yml` to support local/CI link checking without baking production-only
+  base URLs.
+- Clarified the documentation authoring rule: handwritten Markdown must not contain `mkdocstrings`
+  directives; generated pages own all `:::` blocks.
 
 ### CI + link checking hardening (docs integrity)
 
-- Added a built-site link check (`links-site`) that validates the rendered MkDocs HTML output, including generated API pages.
-  - Uses `mkdocs.linkcheck.yml` and runs `lychee` against `site/` with `--root-dir` to resolve root-relative links.
+- Added a built-site link check (`links-site`) that validates the rendered MkDocs HTML output,
+  including generated API pages.
+  - Uses `mkdocs.linkcheck.yml` and runs `lychee` against `site/` with `--root-dir` to resolve
+    root-relative links.
 - Updated GitHub Actions workflows to gate releases on built-site link integrity:
-  - CI: conditional `links` (source Markdown) + `links-site` (built site) based on detected docs changes.
+  - CI: conditional `links` (source Markdown) + `links-site` (built site) based on detected docs
+    changes.
   - Release: publishing is gated on `links-site`.
-- Updated CI documentation pages to reflect the new “docs integrity” model and to explicitly note that generated API pages are only validated via `links-site`.
-- Hardened resolver behavior: exceptions in file type `content_matcher` functions are treated as misses (not failures), preserving resolution safety.
+- Updated CI documentation pages to reflect the new “docs integrity” model and to explicitly note
+  that generated API pages are only validated via `links-site`.
+- Hardened resolver behavior: exceptions in file type `content_matcher` functions are treated as
+  misses (not failures), preserving resolution safety.
 
 ### Developer automation: nox + uv (tox removal)
 
 - Migrated project automation from tox to nox and removed `tox.ini`.
-- Added `noxfile.py` sessions for formatting, linting, docs build, QA (pytest + pyright), API snapshot, link checks, packaging checks, and release gates.
+- Added `noxfile.py` sessions for formatting, linting, docs build, QA (pytest + pyright), API
+  snapshot, link checks, packaging checks, and release gates.
 - Switched to uv-backed environments to reduce env creation and dependency install time.
 - Updated Makefile targets to call nox sessions (including parallel QA via `make -j`).
 - Made `noxfile.py` import-time TOML parsing robust on Python < 3.11 (`tomllib`/`tomli` fallback).
-- Hardened lychee invocation for large file lists by chunking arguments to avoid command line length limits.
+- Hardened lychee invocation for large file lists by chunking arguments to avoid command line length
+  limits.
 
 ### Compatibility and release hygiene
 
@@ -177,24 +210,25 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
 
 ### CLI / output format changes
 
-- Output format rename: `DEFAULT` was removed and replaced by `TEXT`
-  (label now `"text"`).
-- Emitter package rename:
-  *topmark.cli.emitters.default* → \[`topmark.cli.emitters.text`\][topmark.cli.emitters.text].
+- Output format rename: `DEFAULT` was removed and replaced by `TEXT` (label now `"text"`).
+- Emitter package rename: *topmark.cli.emitters.default* →
+  \[`topmark.cli.emitters.text`\][topmark.cli.emitters.text].
 - Shared pipeline helpers moved to
   \[`topmark.cli_shared.emitters.shared.pipeline`\][topmark.cli_shared.emitters.shared.pipeline].
-- Verbosity and color options were moved from the root CLI group to individual commands.
-  Global invocation patterns may need to be updated.
+- Verbosity and color options were moved from the root CLI group to individual commands. Global
+  invocation patterns may need to be updated.
 - Color behavior tightened:
   - color is only meaningful for `OutputFormat.TEXT`
   - non-text formats ignore color requests and may warn (policy is centralized in validators)
-- Dry-run summaries now end with `- previewed` instead of terminal verbs; apply runs show `- inserted` / `- replaced` / `- removed`.
+- Dry-run summaries now end with `- previewed` instead of terminal verbs; apply runs show
+  `- inserted` / `- replaced` / `- removed`.
 
 ### Documentation build behavior
 
 - Documentation build now depends on Markdown output paths for registry/pipeline commands. Missing
   emitter modules will fail the docs build (`mkdocs build --strict`).
-- CI now performs built-site link checks (`links-site`) during release gating; link validation failures may block publishing.
+- CI now performs built-site link checks (`links-site`) during release gating; link validation
+  failures may block publishing.
 
 ### Developer tooling / CI
 
@@ -215,7 +249,8 @@ This section lists remaining 1.0 decisions and implementation work. Items are gr
 - Target window: post-0.12, before 1.0 feature freeze
 
 Goal: enable TopMark to run the existing processing pipeline on **in-memory** inputs (strings or
-bytes) without restructuring the pipeline architecture or changing the default file-based CLI behavior.
+bytes) without restructuring the pipeline architecture or changing the default file-based CLI
+behavior.
 
 This refactor should:
 
@@ -241,13 +276,12 @@ Explicit non-goals (for 1.0):
 
 #### Risks & trade-offs
 
-- **File-type detection**: Some file types rely heavily on filename or path semantics.
-  In-memory inputs must either provide a synthetic name or accept reduced detection
-  fidelity in edge cases.
-- **Synthetic paths**: Introducing fake or sentinel paths risks accidental assumptions
-  in downstream code (e.g. path arithmetic, parent traversal).
-- **Behavior parity**: Ensuring identical behavior between file-based and memory-based
-  pipelines requires disciplined reuse of sniffers, matchers, and policies.
+- **File-type detection**: Some file types rely heavily on filename or path semantics. In-memory
+  inputs must either provide a synthetic name or accept reduced detection fidelity in edge cases.
+- **Synthetic paths**: Introducing fake or sentinel paths risks accidental assumptions in downstream
+  code (e.g. path arithmetic, parent traversal).
+- **Behavior parity**: Ensuring identical behavior between file-based and memory-based pipelines
+  requires disciplined reuse of sniffers, matchers, and policies.
 
 ### Concept: Input sources
 
@@ -301,7 +335,8 @@ In-memory variant:
 
 - If `display_name` has an extension, use the same registry mapping as path-based resolution.
 - Run content matcher / pre-insert checker using the in-memory content.
-- Ensure the final `FileType` selection matches file-based behavior when given equivalent name/content.
+- Ensure the final `FileType` selection matches file-based behavior when given equivalent
+  name/content.
 
 ##### Reader
 
@@ -309,8 +344,8 @@ Current responsibility: read file bytes/text from disk.
 
 In-memory variant:
 
-- No I/O. Populate the same context fields that the file reader would populate
-  (e.g. `original_text`, `newline`, `encoding`, etc.)
+- No I/O. Populate the same context fields that the file reader would populate (e.g.
+  `original_text`, `newline`, `encoding`, etc.)
 
 #### API surface
 
@@ -335,7 +370,8 @@ Possible addition:
 The introduction of in-memory inputs is an opportunity to improve the test suite:
 
 - Reduce reliance on filesystem I/O in unit tests by using `InputSource(kind="memory")`
-- Consolidate overlapping tests that currently exercise the same logic via different filesystem setups
+- Consolidate overlapping tests that currently exercise the same logic via different filesystem
+  setups
 - Increase coverage of edge cases (empty files, unusual encodings, synthetic names)
 - Keep a smaller number of integration tests to validate real filesystem behavior
 
@@ -362,8 +398,8 @@ The long-term goal is a clearer split between:
 
 #### Status
 
-Some CLI-oriented concerns still leak into API-facing modules (notably in \[`topmark.config`\][topmark.config]
-and parts of pipeline orchestration).
+Some CLI-oriented concerns still leak into API-facing modules (notably in
+\[`topmark.config`\][topmark.config] and parts of pipeline orchestration).
 
 Before 1.0, aim for:
 
@@ -385,15 +421,18 @@ Additional progress:
 
 ### Config override application boundary
 
-Today, `MutableConfig.apply_args()` lives in \[`topmark.config.model`\][topmark.config.model] and applies a generic `ArgsLike`
-mapping (CLI or API) directly onto the config. This keeps CLI and API behavior aligned, but it also
-introduces CLI-shaped concepts (argument keys and CLI option semantics) into a core module.
+Today, `MutableConfig.apply_args()` lives in \[`topmark.config.model`\][topmark.config.model] and
+applies a generic `ArgsLike` mapping (CLI or API) directly onto the config. This keeps CLI and API
+behavior aligned, but it also introduces CLI-shaped concepts (argument keys and CLI option
+semantics) into a core module.
 
 Decision to make before 1.0:
 
-- Keep `MutableConfig.apply_args()` in core config (but narrow the surface and decouple from CLI keys), or
+- Keep `MutableConfig.apply_args()` in core config (but narrow the surface and decouple from CLI
+  keys), or
 - Move override application to a CLI-shared semantics layer (Click-free), or
-- Introduce a typed overrides model (e.g., *topmark.config.overrides*) that CLI/API construct, and core applies.
+- Introduce a typed overrides model (e.g., *topmark.config.overrides*) that CLI/API construct, and
+  core applies.
 
 Desired outcome:
 
@@ -407,10 +446,14 @@ Machine formats are now fully centralized and domain-scoped.
 
 Completed work:
 
-- Pipeline commands (`check`, `strip`) use \[`topmark.pipeline.machine`\][topmark.pipeline.machine] shape builders and serializers.
-- Registry commands (`filetypes`, `processors`) use \[`topmark.registry.machine`\][topmark.registry.machine].
-- Config commands (`init`, `defaults`, `dump`, `check`) use \[`topmark.config.machine`\][topmark.config.machine].
-- Version command uses \[`topmark.core.machine`\][topmark.core.machine] serializers with shared meta handling.
+- Pipeline commands (`check`, `strip`) use \[`topmark.pipeline.machine`\][topmark.pipeline.machine]
+  shape builders and serializers.
+- Registry commands (`filetypes`, `processors`) use
+  \[`topmark.registry.machine`\][topmark.registry.machine].
+- Config commands (`init`, `defaults`, `dump`, `check`) use
+  \[`topmark.config.machine`\][topmark.config.machine].
+- Version command uses \[`topmark.core.machine`\][topmark.core.machine] serializers with shared meta
+  handling.
 - All commands emit identical envelope structures for JSON and NDJSON.
 - CLI modules no longer construct machine payloads directly.
 
@@ -422,8 +465,8 @@ Remaining work before 1.0:
 
 ### Human-facing output formats
 
-Text (ANSI) and Markdown output formats have been refactored for most commands,
-with shared Click-free renderers and centralized CLI policy enforcement.
+Text (ANSI) and Markdown output formats have been refactored for most commands, with shared
+Click-free renderers and centralized CLI policy enforcement.
 
 Remaining work before 1.0:
 
@@ -441,8 +484,8 @@ Remaining work before 1.0:
 - Confirm and document verbosity semantics consistently across all commands:
   - `-v`: show per-file guidance / extra hints
   - `-vv`: show detailed diagnostics / expanded sections
-- Confirm that no `yachalk` imports remain outside CLI-facing modules
-  once color-boundary cleanup is completed.
+- Confirm that no `yachalk` imports remain outside CLI-facing modules once color-boundary cleanup is
+  completed.
 
 ### CLI framework choice: Click vs Rich
 
@@ -548,7 +591,8 @@ This checklist defines the minimum criteria for cutting TopMark 1.0.
 - [x] Machine payload construction removed from CLI command modules
 - [ ] Documented examples for each command category in `docs/dev/machine-formats.md`
 - [ ] No presentation leakage (color text, human wording) in machine output
-- [ ] Machine outputs are covered by tests for registry commands (`filetypes`, `processors`) and pipeline commands (`check`, `strip`) in both JSON and NDJSON modes
+- [ ] Machine outputs are covered by tests for registry commands (`filetypes`, `processors`) and
+  pipeline commands (`check`, `strip`) in both JSON and NDJSON modes
 - [ ] Final schema freeze review before 1.0
 
 ### Human formats
@@ -562,7 +606,8 @@ This checklist defines the minimum criteria for cutting TopMark 1.0.
 
 - [x] Global options correctly scoped to commands (verbosity, color)
 - [x] Validators centralized and consistently applied
-- [ ] Exit codes documented and stable (audit after preview/apply status changes and bucketing fixes)
+- [ ] Exit codes documented and stable (audit after preview/apply status changes and bucketing
+  fixes)
 - [ ] Help output accurate and aligned with implemented behavior
 - [x] Meta payload initialized once per process and reused across commands
 
@@ -571,17 +616,21 @@ This checklist defines the minimum criteria for cutting TopMark 1.0.
 - [ ] Config keys and semantics documented and considered stable
 - [ ] Decision made on schema versioning (explicit key vs implicit evolution)
 - [ ] `config init`, `defaults`, `check`, `dump` produce aligned outputs (text, markdown, machine)
-- [ ] Decision made and documented on where config overrides (`MutableConfig.apply_args`) live and how API callers apply overrides
+- [ ] Decision made and documented on where config overrides (`MutableConfig.apply_args`) live and
+  how API callers apply overrides
 
 ### Pipeline & testing
 
 - [ ] Decision taken on in-memory pipeline support (implemented or deferred)
-- [x] CI validates docs integrity at both source and built-site levels (including generated API pages)
+- [x] CI validates docs integrity at both source and built-site levels (including generated API
+  pages)
 - [ ] Clear split between unit (memory-based) and integration (filesystem) tests
 - [ ] High-coverage tests for edge cases (encoding, empty files, synthetic names)
 - [x] Resolver treats content matcher exceptions as safe misses (does not abort resolution)
-- [x] Preview vs apply semantics are consistent end-to-end (write statuses, bucketing, and summaries)
-- [ ] API surface clarified for in-memory pipeline inputs (either implemented or deferred with rationale)
+- [x] Preview vs apply semantics are consistent end-to-end (write statuses, bucketing, and
+  summaries)
+- [ ] API surface clarified for in-memory pipeline inputs (either implemented or deferred with
+  rationale)
 
 ### Dependency & ecosystem
 
@@ -589,4 +638,5 @@ This checklist defines the minimum criteria for cutting TopMark 1.0.
 - [ ] Decision made on color backend (`yachalk` confinement or removal)
 - [ ] No unnecessary runtime dependencies remaining
 
-Only when all checklist items are either completed or explicitly deferred with rationale should 1.0 be tagged.
+Only when all checklist items are either completed or explicitly deferred with rationale should 1.0
+be tagged.

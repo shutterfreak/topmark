@@ -12,7 +12,8 @@ topmark:header:end
 
 # 🚀 Release Workflow
 
-This document describes the **automated release pipeline** defined in `.github/workflows/release.yml`.
+This document describes the **automated release pipeline** defined in
+`.github/workflows/release.yml`.
 
 ______________________________________________________________________
 
@@ -43,7 +44,8 @@ ______________________________________________________________________
 
 ### Trusted Publishing via OIDC
 
-No API tokens are stored — PyPI and TestPyPI releases use **Trusted Publishing** with OIDC credentials.
+No API tokens are stored — PyPI and TestPyPI releases use **Trusted Publishing** with OIDC
+credentials.
 
 ### 🧰 Nox-Centric Docs Build
 
@@ -79,9 +81,11 @@ Each job caches both pip and uv directories for faster re-runs:
 Releases are gated by a **built-site** link check:
 
 - Builds the docs with `mkdocs.linkcheck.yml` (to avoid production-only base URLs)
-- Runs `lychee` against the generated `site/` output using `--root-dir` so root-relative links are resolved
+- Runs `lychee` against the generated `site/` output using `--root-dir` so root-relative links are
+  resolved
 
-This catches broken links in **generated API pages** and theme navigation that source-only checks cannot see.
+This catches broken links in **generated API pages** and theme navigation that source-only checks
+cannot see.
 
 This is the only stage where links inside generated API documentation are validated.
 

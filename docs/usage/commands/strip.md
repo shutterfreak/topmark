@@ -14,9 +14,9 @@ topmark:header:end
 
 **Purpose:** Strip TopMark headers.
 
-The `strip` command removes the entire TopMark header block from targeted files. It is
-**dry‑run by default** (summaries end with `- previewed`) and becomes destructive only with
-`--apply` (summaries end with `- removed`) when run with `--apply`.
+The `strip` command removes the entire TopMark header block from targeted files. It is **dry‑run by
+default** (summaries end with `- previewed`) and becomes destructive only with `--apply` (summaries
+end with `- removed`) when run with `--apply`.
 
 ______________________________________________________________________
 
@@ -62,31 +62,26 @@ ______________________________________________________________________
 
 ## Filtering
 
-TopMark determines which files to process using a combination of
-path-based filters and file-type filters.
+TopMark determines which files to process using a combination of path-based filters and file-type
+filters.
 
 ### File type filters
 
-- `--include-file-types / -t`
-  Restrict processing to the given file type identifiers.
-  May be repeated and/or provided as a comma-separated list.
+- `--include-file-types / -t` Restrict processing to the given file type identifiers. May be
+  repeated and/or provided as a comma-separated list.
 
-- `--exclude-file-types / -T`
-  Exclude the given file type identifiers.
-  May be repeated and/or provided as a comma-separated list.
+- `--exclude-file-types / -T` Exclude the given file type identifiers. May be repeated and/or
+  provided as a comma-separated list.
 
 Exclude rules take precedence over include rules.
 
 ### Path-based filters
 
-- `--include`, `--exclude`
-  Include or exclude glob patterns.
+- `--include`, `--exclude` Include or exclude glob patterns.
 
-- `--include-from`, `--exclude-from`
-  Load patterns from files (one per line).
+- `--include-from`, `--exclude-from` Load patterns from files (one per line).
 
-- `--files-from`
-  Provide an explicit list of files to process.
+- `--files-from` Provide an explicit list of files to process.
 
 Notes:
 
@@ -100,8 +95,8 @@ ______________________________________________________________________
 
 Use `--output-format json` or `--output-format ndjson` to emit output suitable for tooling:
 
-- **JSON**: a single JSON document containing `meta`, `config`, `config_diagnostics`, and then either
-  `results` (detail mode) or `summary` (summary mode).
+- **JSON**: a single JSON document containing `meta`, `config`, `config_diagnostics`, and then
+  either `results` (detail mode) or `summary` (summary mode).
 - **NDJSON**: one JSON object per line. Every record includes `kind` and `meta`, and the payload is
   stored under a container key that matches `kind`.
 
@@ -130,8 +125,8 @@ When `--summary` is **not** set, `topmark strip` emits a single JSON object:
 }
 ```
 
-The per-file result payload mirrors `check` but reflects the *strip* intent
-(e.g. `outcome.strip.*` fields instead of `outcome.check.*`).
+The per-file result payload mirrors `check` but reflects the *strip* intent (e.g. `outcome.strip.*`
+fields instead of `outcome.check.*`).
 
 ### JSON schema (summary mode)
 
@@ -283,7 +278,8 @@ topmark strip --summary
 
 ## Pre‑commit integration
 
-There is currently **no** `topmark-strip` pre-commit hook. Use the CLI directly when you need to remove headers:
+There is currently **no** `topmark-strip` pre-commit hook. Use the CLI directly when you need to
+remove headers:
 
 ```bash
 topmark strip --apply <paths>

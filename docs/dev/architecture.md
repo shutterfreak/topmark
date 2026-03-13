@@ -12,9 +12,9 @@ topmark:header:end
 
 # Architecture Overview
 
-This document describes key architectural decisions in TopMark that are relevant
-to contributors, plugin authors, and maintainers. It focuses on *design intent*
-and *invariants*, not on end-user usage.
+This document describes key architectural decisions in TopMark that are relevant to contributors,
+plugin authors, and maintainers. It focuses on *design intent* and *invariants*, not on end-user
+usage.
 
 ______________________________________________________________________
 
@@ -27,8 +27,8 @@ TopMark needs to manage two extensible concepts:
 - **File types** (how files are detected and classified)
 - **Header processors** (how headers are inserted/updated/removed)
 
-Early implementations relied on *process-global mutable registries* populated
-from built-ins and entry-point discovery. This caused several issues:
+Early implementations relied on *process-global mutable registries* populated from built-ins and
+entry-point discovery. This caused several issues:
 
 - Tests that mutated registries leaked state into later tests
 - Plugin discovery was expensive and order-dependent
@@ -42,8 +42,7 @@ The current registry architecture was introduced to satisfy these goals:
 1. **Deterministic behavior**
    - The same inputs must produce the same results regardless of test order.
 1. **Safe extensibility**
-   - Plugins and tests must be able to add or remove entries without mutating
-     built-ins.
+   - Plugins and tests must be able to add or remove entries without mutating built-ins.
 1. **Clear public vs. internal API**
    - Most users should *inspect* registries, not mutate them.
 1. **Efficient composition**
@@ -51,15 +50,16 @@ The current registry architecture was introduced to satisfy these goals:
 1. **Test isolation**
    - Registry mutations must be easy to reset between tests.
 1. **Single source of truth for reference docs**
-   - Generated docs should reflect the *actual* registries and wiring used by the running
-     TopMark version.
+   - Generated docs should reflect the *actual* registries and wiring used by the running TopMark
+     version.
 
 ### Registry System Architecture
 
-The registry system is intentionally layered: immutable base registries are composed
-with mutable overlay state to produce a cached, read-only effective view.
+The registry system is intentionally layered: immutable base registries are composed with mutable
+overlay state to produce a cached, read-only effective view.
 
-The composed (“effective”) registries are formed by combining base registries with overlays/removals, and resolution happens against that effective view.
+The composed (“effective”) registries are formed by combining base registries with
+overlays/removals, and resolution happens against that effective view.
 
 ```mermaid
 flowchart TB
@@ -125,8 +125,8 @@ graph TD
 
 - \[`topmark.registry.registry.Registry`\][topmark.registry.registry.Registry]
 
-This facade exposes **read-only views** of the *effective* registries and is the
-recommended integration point for tooling and downstream consumers.
+This facade exposes **read-only views** of the *effective* registries and is the recommended
+integration point for tooling and downstream consumers.
 
 Characteristics:
 
@@ -154,12 +154,13 @@ Important properties:
   - Plugins
   - Advanced integrations
 
-Although these registries are snapshot-tracked for *signatures*, their **behavior**
-is considered advanced and may evolve.
+Although these registries are snapshot-tracked for *signatures*, their **behavior** is considered
+advanced and may evolve.
 
 ### Caching and Invalidation
 
-- Base registries are cached (often via `lru_cache`) because construction and validation should only happen once per process.
+- Base registries are cached (often via `lru_cache`) because construction and validation should only
+  happen once per process.
 - Composed effective views are cached for fast access.
 - Any overlay mutation (`register` / `unregister`) clears the composed cache.
 - Tests must reset overlays *and* caches to avoid cross-test contamination.
@@ -167,10 +168,9 @@ is considered advanced and may evolve.
 Overlay mutations are intentionally cheap: they only update overlay state and clear the
 composed-view cache. The next call to `as_mapping()` recomposes the effective view on demand.
 
-Separately, TopMark’s documentation site generates “Supported file types” and
-“Registered processors” pages by running the CLI in Markdown mode during the MkDocs
-build. This keeps reference tables aligned with the effective registries of the
-current version.
+Separately, TopMark’s documentation site generates “Supported file types” and “Registered
+processors” pages by running the CLI in Markdown mode during the MkDocs build. This keeps reference
+tables aligned with the effective registries of the current version.
 
 ```mermaid
 sequenceDiagram
@@ -245,9 +245,8 @@ TopMark defines centralized constants for:
 - **CLI destination keys** (the `dest` names Click stores in its parsed namespace)
 - **TOML keys** used by the config model and default configuration
 
-This reduces accidental drift between CLI help text, config parsing, and runtime logic.
-Validation should occur at “seams” (CLI parsing and TOML loading) so internal code can
-rely on canonical keys.
+This reduces accidental drift between CLI help text, config parsing, and runtime logic. Validation
+should occur at “seams” (CLI parsing and TOML loading) so internal code can rely on canonical keys.
 
 ## FileType identity and resolution
 
@@ -263,10 +262,10 @@ The canonical identifier form is therefore:
 <namespace>:<name>
 ```
 
-For compatibility with existing configuration and CLI filtering, registries
-may still accept or expose the *unqualified* file type name. Resolution is
-performed through `FileTypeRegistry.resolve_filetype_id(...)`, which accepts
-both forms and returns the corresponding `FileType` instance.
+For compatibility with existing configuration and CLI filtering, registries may still accept or
+expose the *unqualified* file type name. Resolution is performed through
+`FileTypeRegistry.resolve_filetype_id(...)`, which accepts both forms and returns the corresponding
+`FileType` instance.
 
 The resolution path from a user-provided identifier to a bound processor looks like this:
 
@@ -282,11 +281,10 @@ Internally:
 
 - `FileTypeRegistry` stores and validates `FileType` objects
 - `HeaderProcessorRegistry` binds processors to specific `FileType` instances
-- the public `Registry` facade resolves identifiers before delegating to the
-  underlying registries
+- the public `Registry` facade resolves identifiers before delegating to the underlying registries
 
-This design allows TopMark to gradually move toward fully-qualified
-identifiers without breaking existing configuration or CLI usage.
+This design allows TopMark to gradually move toward fully-qualified identifiers without breaking
+existing configuration or CLI usage.
 
 ### Practical Implications for Contributors
 
@@ -320,11 +318,10 @@ This document may later be extended with sections on:
 - Header placement rules
 - Configuration lifecycle (mutable → frozen)
 
-For now, registry design is documented here because it underpins test isolation,
-plugin extensibility, and API stability.
+For now, registry design is documented here because it underpins test isolation, plugin
+extensibility, and API stability.
 
 ______________________________________________________________________
 
-**Summary:**
-Overlay registries allow TopMark to remain extensible, deterministic, and testable
+**Summary:** Overlay registries allow TopMark to remain extensible, deterministic, and testable
 without sacrificing a small, stable public API surface.

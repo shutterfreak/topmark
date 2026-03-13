@@ -12,31 +12,31 @@ topmark:header:end
 
 # Pipelines (Concepts)
 
-TopMark processes files through **explicit, immutable pipelines** composed of
-small, single-responsibility steps. Each pipeline represents a supported user
-intent (scan, check, strip, apply, patch) and defines **exactly which steps run
-and in which order**.
+TopMark processes files through **explicit, immutable pipelines** composed of small,
+single-responsibility steps. Each pipeline represents a supported user intent (scan, check, strip,
+apply, patch) and defines **exactly which steps run and in which order**.
 
 Pipelines do not make high-level decisions themselves. Instead:
 
 - Each step mutates a **strictly defined set of status axes**
 - Steps may **halt execution** when required by policy or safety rules
-- Final outcomes (changed, unchanged, skipped, unsupported, error, …) are
-  **derived centrally** by the CLI and views from accumulated statuses and hints
+- Final outcomes (changed, unchanged, skipped, unsupported, error, …) are **derived centrally** by
+  the CLI and views from accumulated statuses and hints
 
 This design guarantees predictability, debuggability, and idempotence.
 
 ## Concepts vs Reference
 
-This page explains **how the pipelines work** and how the CLI composes them.
-For the canonical, API-backed definitions of pipelines, steps, and enums, see:
+This page explains **how the pipelines work** and how the CLI composes them. For the canonical,
+API-backed definitions of pipelines, steps, and enums, see:
 
 - **Pipelines (Reference hub):** [`dev/pipelines-reference.md`](./pipelines-reference.md)
-- **Internals (generated):** [`api/internals/topmark/pipeline/pipelines.md`](../api/internals/topmark/pipeline/pipelines.md)
+- **Internals (generated):**
+  [`api/internals/topmark/pipeline/pipelines.md`](../api/internals/topmark/pipeline/pipelines.md)
 
-Tip: step names and enum names on this page are written as MkDocStrings/AutoRefs
-links (e.g. \[`topmark.pipeline.steps.resolver.ResolverStep`\][topmark.pipeline.steps.resolver.ResolverStep]). Once the reference
-page is present, MkDocs will turn those into clickable links.
+Tip: step names and enum names on this page are written as MkDocStrings/AutoRefs links (e.g.
+\[`topmark.pipeline.steps.resolver.ResolverStep`\][topmark.pipeline.steps.resolver.ResolverStep]).
+Once the reference page is present, MkDocs will turn those into clickable links.
 
 ______________________________________________________________________
 
@@ -83,16 +83,13 @@ flowchart TD
   X ---> C
 ```
 
-Not all pipelines traverse all phases. Each variant selects a **strict subset**
-of steps.
+Not all pipelines traverse all phases. Each variant selects a **strict subset** of steps.
 
 ______________________________________________________________________
 
 ## Available Pipelines
 
-Pipelines are defined in
-`src/topmark/pipeline/pipelines.py`
-and exposed via the `Pipeline` enum.
+Pipelines are defined in `src/topmark/pipeline/pipelines.py` and exposed via the `Pipeline` enum.
 
 ### SCAN
 
@@ -375,19 +372,17 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-This pipeline model is the backbone of TopMark’s reliability and extensibility.
-New behaviors are introduced by adding steps or composing new pipelines—never by
-special-casing control flow.
+This pipeline model is the backbone of TopMark’s reliability and extensibility. New behaviors are
+introduced by adding steps or composing new pipelines—never by special-casing control flow.
 
 ______________________________________________________________________
 
 ## Per-axis lifecycle
 
-TopMark tracks progress using a set of **status axes**. Each axis starts in
-`PENDING` and transitions as steps complete or halt early.
+TopMark tracks progress using a set of **status axes**. Each axis starts in `PENDING` and
+transitions as steps complete or halt early.
 
-These diagrams are intentionally coarse: they show *possible* terminal states,
-not every code path.
+These diagrams are intentionally coarse: they show *possible* terminal states, not every code path.
 
 ### Resolve axis
 
@@ -527,8 +522,8 @@ ______________________________________________________________________
 
 ## CLI-focused flowcharts
 
-These diagrams describe the **user-visible** execution paths behind `topmark check`
-and `topmark strip`, including the `--patch` and `--apply` switches.
+These diagrams describe the **user-visible** execution paths behind `topmark check` and
+`topmark strip`, including the `--patch` and `--apply` switches.
 
 ### `topmark check`
 

@@ -13,7 +13,8 @@ topmark:header:end
 # Contributing to TopMark
 
 Thank you for your interest in contributing to **TopMark**!\
-This guide explains how to set up your environment, run checks, contribute code, and prepare releases.
+This guide explains how to set up your environment, run checks, contribute code, and prepare
+releases.
 
 ______________________________________________________________________
 
@@ -120,43 +121,42 @@ make docstring-links # enforce docstring link style
 
 ### Linting policy
 
-TopMark treats Ruff, Pyright, and the supporting tools as the single source of truth
-for code style and typing rules:
+TopMark treats Ruff, Pyright, and the supporting tools as the single source of truth for code style
+and typing rules:
 
 - **Ruff**:
 
   - Enforces import style and modern syntax via the `UP` ruleset (pyupgrade), including:
-    - Using builtin generics (`list[...]`, `dict[...]`, `tuple[...]`) instead of
-      `typing.List` / `typing.Dict` / `typing.Tuple`.
-    - Importing abstract collections from `collections.abc` (e.g. `Iterable`, `Mapping`,
-      `Sequence`, `Callable`, `Iterator`) rather than from `typing`.
+    - Using builtin generics (`list[...]`, `dict[...]`, `tuple[...]`) instead of `typing.List` /
+      `typing.Dict` / `typing.Tuple`.
+    - Importing abstract collections from `collections.abc` (e.g. `Iterable`, `Mapping`, `Sequence`,
+      `Callable`, `Iterator`) rather than from `typing`.
   - Enforces moving type-only imports under `if TYPE_CHECKING:` via the `TC` rules.
   - Acts as the primary linter for style, unused code, and import ordering.
 
 - **Typing imports**:
 
   - Reserve `typing` imports for: `TYPE_CHECKING`, `Any`, `Final`, `Literal`, `Protocol`,
-    `TypedDict`, `TypeVar`, `ParamSpec`, `TypeGuard`, `NamedTuple`, `TextIO`, `IO`,
-    and `cast`.
+    `TypedDict`, `TypeVar`, `ParamSpec`, `TypeGuard`, `NamedTuple`, `TextIO`, `IO`, and `cast`.
   - Import abstract collections from `collections.abc` (not from `typing`).
   - Prefer PEP 604 unions (e.g. `X | None`) over `typing.Optional[X]`.
 
 - **Type checking**:
 
   - Pyright runs in `strict` mode for `src/` and `tests/`.
-  - Public APIs must be fully annotated and pass Pyright without `# type: ignore`
-    (exceptions must be documented and justified in code comments).
+  - Public APIs must be fully annotated and pass Pyright without `# type: ignore` (exceptions must
+    be documented and justified in code comments).
 
 - **Docstrings**:
 
-  - Use Google-style docstrings with explicit `Args:`, `Returns:`, and `Raises:` sections
-    for public functions, methods, and classes.
+  - Use Google-style docstrings with explicit `Args:`, `Returns:`, and `Raises:` sections for public
+    functions, methods, and classes.
   - Keep docstrings import-safe: avoid heavy imports or side effects at module import time.
 
 - **Pre-commit**:
 
-  - Pre-commit hooks are optional but recommended and primarily run Ruff, Taplo, mdformat,
-    TopMark header checks, and related hygiene tools.
+  - Pre-commit hooks are optional but recommended and primarily run Ruff, Taplo, mdformat, TopMark
+    header checks, and related hygiene tools.
   - We rely on Ruff (with `UP`/`TC` enabled) to enforce import/typing style; no additional
     grep-based hooks for typing/collections imports are needed.
 
@@ -168,23 +168,22 @@ TopMark uses a two-layer dependency strategy:
 
 - **`pyproject.toml`** defines *compatibility ranges*:
 
-  - Runtime and extras are expressed as `>=` / `<` ranges (for example
-    `click>=8.3.1,<9.0.0`).
-  - This describes what TopMark is compatible with, without forcing users to
-    install our exact dev versions.
+  - Runtime and extras are expressed as `>=` / `<` ranges (for example `click>=8.3.1,<9.0.0`).
+  - This describes what TopMark is compatible with, without forcing users to install our exact dev
+    versions.
 
 - **`requirements*.txt`** (generated via `pip-tools`) hold *exact pins*:
 
-  - `requirements.txt` and `requirements-dev.txt` are compiled from
-    `pyproject.toml` and are used for local development, CI, and tox.
-  - They contain `==` pins and act as the reproducible snapshot of the
-    dependencies we actually test against.
+  - `requirements.txt` and `requirements-dev.txt` are compiled from `pyproject.toml` and are used
+    for local development, CI, and tox.
+  - They contain `==` pins and act as the reproducible snapshot of the dependencies we actually test
+    against.
 
 When updating dependencies:
 
 1. Adjust **ranges** in `pyproject.toml` if compatibility changes.
-1. Regenerate **pins** with `pip-compile` (see comments at the top of each
-   `requirements*.txt` file).
+1. Regenerate **pins** with `pip-compile` (see comments at the top of each `requirements*.txt`
+   file).
 1. Commit both the updated `pyproject.toml` and requirements files together.
 
 ______________________________________________________________________
@@ -229,7 +228,8 @@ make api-snapshot-update      # regenerate snapshot (interactive)
 make api-snapshot-ensure-clean  # fail if snapshot differs from Git index
 ```
 
-If the snapshot changes **intentionally**, commit the updated JSON and bump the version in `pyproject.toml`.
+If the snapshot changes **intentionally**, commit the updated JSON and bump the version in
+`pyproject.toml`.
 
 ______________________________________________________________________
 
@@ -258,7 +258,8 @@ ______________________________________________________________________
 
 ## 🪝 Pre-commit Hooks
 
-Pre-commit hooks are **optional but recommended**. They mirror the checks run by `make verify` and `make lint`.
+Pre-commit hooks are **optional but recommended**. They mirror the checks run by `make verify` and
+`make lint`.
 
 ```bash
 pre-commit install

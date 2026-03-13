@@ -64,7 +64,9 @@ This policy ensures safety in CI and everyday workflows.\
 Teams that want formatter-like behavior (similar to Black or Prettier) may choose to enable
 `topmark-apply` at `pre-commit` once the repository is clean.
 
-The hook manifest intentionally uses minimal defaults. All behavioral flags (such as `--summary`, `--skip-compliant`, `--skip-unsupported`, or output mode) should be supplied by consuming repositories via the hook’s `args:` configuration.
+The hook manifest intentionally uses minimal defaults. All behavioral flags (such as `--summary`,
+`--skip-compliant`, `--skip-unsupported`, or output mode) should be supplied by consuming
+repositories via the hook’s `args:` configuration.
 
 Invoke the manual hook locally:
 
@@ -97,7 +99,9 @@ perform its own file discovery from config:
 
 ### About args
 
-Pre-commit supports an `args:` list **in consumer repos** (in `.pre-commit-config.yaml`). Because TopMark’s hook manifest uses minimal defaults, consumer `args:` are the primary mechanism for configuring TopMark’s behavior when run under pre-commit.
+Pre-commit supports an `args:` list **in consumer repos** (in `.pre-commit-config.yaml`). Because
+TopMark’s hook manifest uses minimal defaults, consumer `args:` are the primary mechanism for
+configuring TopMark’s behavior when run under pre-commit.
 
 Example (consumer repo):
 
@@ -120,8 +124,10 @@ For the manual hook:
 Notes:
 
 - `args:` is appended to the hook’s `entry`.
-- Prefer `args:` over copying a full `entry:` in the consumer config; it stays compatible when the hook entry changes.
-- If you need TopMark to run once per repo (self-discovery), combine `pass_filenames: false` with `args:` as needed.
+- Prefer `args:` over copying a full `entry:` in the consumer config; it stays compatible when the
+  hook entry changes.
+- If you need TopMark to run once per repo (self-discovery), combine `pass_filenames: false` with
+  `args:` as needed.
 
 ______________________________________________________________________
 

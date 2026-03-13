@@ -25,7 +25,8 @@ TopMark supports 4 output formats:
 ```
 
 - Human-facing output:
-  - `text` (default): When using in an interactive terminal; if color-enabled the output will be rendered in color by default (disable with `--no-color`).
+  - `text` (default): When using in an interactive terminal; if color-enabled the output will be
+    rendered in color by default (disable with `--no-color`).
   - `markdown`: Generate output as MarkDown (can be redirected to a file).
 - Machine formats:
   - `json`: Return a single JSON object, formatted for easier reading.

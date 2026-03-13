@@ -17,8 +17,10 @@ topmark:header:end
 [![Downloads](https://static.pepy.tech/badge/topmark)](https://pepy.tech/project/topmark)
 [![GitHub release](https://img.shields.io/github/v/release/shutterfreak/topmark)](https://github.com/shutterfreak/topmark/releases)
 
-**TopMark** is a command-line tool to inspect, insert, validate, and manage file headers in diverse codebases.\
-It maintains consistent metadata across files by supporting multiple comment styles, configuration formats, and dry-run safety.
+**TopMark** is a command-line tool to inspect, insert, validate, and manage file headers in diverse
+codebases.\
+It maintains consistent metadata across files by supporting multiple comment styles, configuration
+formats, and dry-run safety.
 
 ______________________________________________________________________
 
@@ -208,7 +210,8 @@ ______________________________________________________________________
 
 ## 🧠 Configuration & Policy
 
-TopMark supports **layered configuration discovery** and a flexible **policy system** controlling insert/update behavior.
+TopMark supports **layered configuration discovery** and a flexible **policy system** controlling
+insert/update behavior.
 
 ### Discovery order
 
@@ -290,7 +293,8 @@ ______________________________________________________________________
 
 ## 🔒 Public API
 
-The public API now an optional `policy` argument (global or per-type) that integrates with the same resolution mechanism used by the CLI.
+The public API now an optional `policy` argument (global or per-type) that integrates with the same
+resolution mechanism used by the CLI.
 
 ### Example
 

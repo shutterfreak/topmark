@@ -84,8 +84,8 @@ Characteristics:
 - A grouped index under `api/internals/topmark/index.md`
 
 Exact public surfaces (defined in `PUBLIC_API_PREFIXES`) are **not generated as internals pages**,
-because generating both a public reference page and an internals page for the same module
-would create duplicate `mkdocs-autorefs` anchors.
+because generating both a public reference page and an internals page for the same module would
+create duplicate `mkdocs-autorefs` anchors.
 
 ### Public reference pages
 
@@ -127,15 +127,15 @@ ______________________________________________________________________
 
 ## Docstring Scanning & Reference Hygiene
 
-Both handwritten Markdown **and Python module docstrings** are scanned for
-**unlinked backticked symbol references**, such as:
+Both handwritten Markdown **and Python module docstrings** are scanned for **unlinked backticked
+symbol references**, such as:
 
 ```markdown
 `topmark.registry.registry.Registry`
 ```
 
-Docstring scanning is performed on raw Python source files before `mkdocstrings` renders them into Markdown,
-which ensures reported line numbers always refer to the original `src/...` files..
+Docstring scanning is performed on raw Python source files before `mkdocstrings` renders them into
+Markdown, which ensures reported line numbers always refer to the original `src/...` files..
 
 The shared enforcement logic lives in:
 
@@ -276,17 +276,13 @@ ______________________________________________________________________
 
 The documentation tooling follows a few strict principles:
 
-- **Deterministic**
-  No hidden state, no reliance on import order
+- **Deterministic** No hidden state, no reliance on import order
 
-- **Fail-late, report-all**
-  Especially in strict mode
+- **Fail-late, report-all** Especially in strict mode
 
-- **Shared logic, single source of truth**
-  No duplicated regexes or heuristics
+- **Shared logic, single source of truth** No duplicated regexes or heuristics
 
-- **Docs are code**
-  Docstrings and Markdown are held to the same standard
+- **Docs are code** Docstrings and Markdown are held to the same standard
 
 ______________________________________________________________________
 
@@ -297,5 +293,5 @@ ______________________________________________________________________
 - Reference hygiene is enforced consistently across Markdown and docstrings
 - Debug and strict modes provide both flexibility and CI-grade guarantees
 
-If you change how TopMark is structured, **update the docs pipeline accordingly** —
-it is a first-class part of the project.
+If you change how TopMark is structured, **update the docs pipeline accordingly** — it is a
+first-class part of the project.

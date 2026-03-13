@@ -23,7 +23,9 @@ Covered command groups:
 - **Configuration commands**: `config check`, `config init`, `config defaults`, `config dump`
 - **Version reporting**: `version`
 
-This page is the canonical reference for TopMark’s machine output shapes. Usage guides for individual commands (for example, [`check`](../usage/commands/check.md) and [`strip`](../usage/commands/strip.md)) provide task-oriented examples consistent with this schema.
+This page is the canonical reference for TopMark’s machine output shapes. Usage guides for
+individual commands (for example, [`check`](../usage/commands/check.md) and
+[`strip`](../usage/commands/strip.md)) provide task-oriented examples consistent with this schema.
 
 ## Output formats
 
@@ -41,8 +43,8 @@ The schemas below only apply to **`json`** and **`ndjson`**.
 Notes:
 
 - Machine formats never include ANSI color codes and are **not affected** by `--color`.
-- Verbosity flags may change *which records are emitted* (e.g. detail vs summary),
-  but they do not change the schema shape of a given record type (`kind`).
+- Verbosity flags may change *which records are emitted* (e.g. detail vs summary), but they do not
+  change the schema shape of a given record type (`kind`).
 
 ______________________________________________________________________
 
@@ -69,7 +71,8 @@ Shape:
 
 Notes:
 
-- `version` reflects the installed TopMark package version (PEP 440). Examples are illustrative only.
+- `version` reflects the installed TopMark package version (PEP 440). Examples are illustrative
+  only.
 - `platform` is a short runtime identifier (e.g., from `sys.platform`).
 
 Canonical keys are defined in \[`topmark.core.machine.schemas`\][topmark.core.machine.schemas].
@@ -89,17 +92,21 @@ Example:
 {"kind":"config","meta":{...},"config":{...}}
 ```
 
-Consumers should switch on the `kind` field rather than relying on ordering, though TopMark does emit a stable prefix for some command families (see below).
+Consumers should switch on the `kind` field rather than relying on ordering, though TopMark does
+emit a stable prefix for some command families (see below).
 
-Record construction and serialization helpers live under \[`topmark.core.machine`\][topmark.core.machine].
+Record construction and serialization helpers live under
+\[`topmark.core.machine`\][topmark.core.machine].
 
-Canonical `kind` strings are defined in \[`topmark.core.machine.schemas.MachineKind`\][topmark.core.machine.schemas.MachineKind].
+Canonical `kind` strings are defined in
+\[`topmark.core.machine.schemas.MachineKind`\][topmark.core.machine.schemas.MachineKind].
 
 ______________________________________________________________________
 
 ## Processing commands (`check`, `strip`)
 
-Processing commands produce either **detail** output (per-file results) or **summary** output (bucket counts), depending on whether the CLI is in `--summary` mode.
+Processing commands produce either **detail** output (per-file results) or **summary** output
+(bucket counts), depending on whether the CLI is in `--summary` mode.
 
 ### JSON schema (detail mode)
 
@@ -119,7 +126,8 @@ Detail mode corresponds to `summary_mode = false`.
 - `meta`: small metadata block, including tool name and TopMark version.
 - `config`: snapshot of the effective config as emitted by
   \[`topmark.config.machine.payloads.build_config_payload`\][topmark.config.machine.payloads.build_config_payload].
-- `config_diagnostics`: full diagnostics payload including counts and the list of config diagnostics as emitted by
+- `config_diagnostics`: full diagnostics payload including counts and the list of config diagnostics
+  as emitted by
   \[`topmark.config.machine.payloads.build_config_diagnostics_payload`\][topmark.config.machine.payloads.build_config_diagnostics_payload].
 - `results`: one entry per processed file (see **Per-file result payload** below).
 
@@ -150,11 +158,13 @@ Summary mode corresponds to `summary_mode = true`.
 The JSON envelopes and summary payload shapes are built in:
 
 - \[`topmark.pipeline.machine.envelopes.build_processing_results_json_envelope`\][topmark.pipeline.machine.envelopes.build_processing_results_json_envelope]
-- \[`topmark.pipeline.machine.payloads`\][topmark.pipeline.machine.payloads] (summary payload helpers)
+- \[`topmark.pipeline.machine.payloads`\][topmark.pipeline.machine.payloads] (summary payload
+  helpers)
 
 ### NDJSON schema (detail and summary)
 
-NDJSON output is a stream with a stable prefix and then either result records (detail) or summary records (summary).
+NDJSON output is a stream with a stable prefix and then either result records (detail) or summary
+records (summary).
 
 Example stream:
 
@@ -196,13 +206,15 @@ NDJSON rules for processing commands:
 The NDJSON record stream is produced by:
 
 - \[`topmark.pipeline.machine.envelopes.iter_processing_results_ndjson_records`\][topmark.pipeline.machine.envelopes.iter_processing_results_ndjson_records]
-- serialization helpers in \[`topmark.pipeline.machine.serializers`\][topmark.pipeline.machine.serializers]
+- serialization helpers in
+  \[`topmark.pipeline.machine.serializers`\][topmark.pipeline.machine.serializers]
 
 ______________________________________________________________________
 
 ## Per-file result payload
 
-Each element of the JSON `results` array (detail mode) and each NDJSON `result` record contains a **per-file processing result payload**.
+Each element of the JSON `results` array (detail mode) and each NDJSON `result` record contains a
+**per-file processing result payload**.
 
 The exact field set can evolve over time, but the payload is intended to be:
 
@@ -212,9 +224,11 @@ The exact field set can evolve over time, but the payload is intended to be:
 
 The canonical builders and typing live under:
 
-- \[`topmark.pipeline.machine.schemas`\][topmark.pipeline.machine.schemas] (TypedDict schemas / payload shapes)
+- \[`topmark.pipeline.machine.schemas`\][topmark.pipeline.machine.schemas] (TypedDict schemas /
+  payload shapes)
 - \[`topmark.pipeline.machine.payloads`\][topmark.pipeline.machine.payloads] (payload builders)
-- \[`topmark.pipeline.machine.serializers`\][topmark.pipeline.machine.serializers] (JSON/NDJSON serialization)
+- \[`topmark.pipeline.machine.serializers`\][topmark.pipeline.machine.serializers] (JSON/NDJSON
+  serialization)
 
 At a high level, per-file results include:
 
@@ -231,15 +245,15 @@ At a high level, per-file results include:
   - list of diagnostics (when requested / enabled)
   - pre-computed diagnostic counts
 
-> [!NOTE]
-> Diffs (`--diff`) and any ANSI coloring are **human-only** and are not included in machine payloads.
+> [!NOTE] Diffs (`--diff`) and any ANSI coloring are **human-only** and are not included in machine
+> payloads.
 
 ______________________________________________________________________
 
 ## ConfigPayload
 
-`ConfigPayload` is a JSON-safe representation of the effective `Config`,
-as produced by \[`topmark.config.machine.payloads.build_config_payload`\][topmark.config.machine.payloads.build_config_payload].
+`ConfigPayload` is a JSON-safe representation of the effective `Config`, as produced by
+\[`topmark.config.machine.payloads.build_config_payload`\][topmark.config.machine.payloads.build_config_payload].
 
 High-level structure (keys may be extended over time):
 
@@ -266,7 +280,8 @@ ______________________________________________________________________
 
 ## ConfigDiagnosticsPayload
 
-`ConfigDiagnosticsPayload` summarizes configuration diagnostics collected during config discovery/merge/sanitization.
+`ConfigDiagnosticsPayload` summarizes configuration diagnostics collected during config
+discovery/merge/sanitization.
 
 JSON shape:
 
@@ -281,12 +296,11 @@ JSON shape:
 ```
 
 - `diagnostic_counts`: counts per level (`info`, `warning`, `error`)
-- `diagnostics`: list of individual diagnostics (stable `{level, message}` entries; see \[`topmark.diagnostic.machine.schemas`\][topmark.diagnostic.machine.schemas])
+- `diagnostics`: list of individual diagnostics (stable `{level, message}` entries; see
+  \[`topmark.diagnostic.machine.schemas`\][topmark.diagnostic.machine.schemas])
 
-> [!NOTE]
-> **NDJSON difference**
->
-> In NDJSON, `config_diagnostics` is **counts-only** and each individual config diagnostic is emitted as a separate `diagnostic` record with `domain="config"` (one record per diagnostic).
+> [!NOTE] In NDJSON, `config_diagnostics` is **counts-only** and each individual config diagnostic
+> is emitted as a separate `diagnostic` record with `domain="config"` (one record per diagnostic).
 
 See:
 
@@ -477,7 +491,8 @@ ______________________________________________________________________
 
 ## Backwards compatibility and evolution
 
-TopMark’s machine-output schema is part of its integration surface and may change between pre-1.0 releases.
+TopMark’s machine-output schema is part of its integration surface and may change between pre-1.0
+releases.
 
 Consumers should:
 
@@ -486,4 +501,5 @@ Consumers should:
 - Prefer parsing and schema-tolerant logic over strict string matching.
 - Assume additive fields may appear over time.
 
-Breaking changes should be signaled via Conventional Commits (using the `!` marker) and documented in the changelog.
+Breaking changes should be signaled via Conventional Commits (using the `!` marker) and documented
+in the changelog.

@@ -18,8 +18,8 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ## [0.11.1] – 2026-01-18
 
-This patch release focuses exclusively on **developer tooling, CI reliability, and release automation**.
-There are **no user-facing or runtime behavior changes** relative to 0.11.0.
+This patch release focuses exclusively on **developer tooling, CI reliability, and release
+automation**. There are **no user-facing or runtime behavior changes** relative to 0.11.0.
 
 ### Changed
 
@@ -39,16 +39,17 @@ There are **no user-facing or runtime behavior changes** relative to 0.11.0.
 
 - **Makefile streamlined to delegate orchestration to nox**
 
-  - Updated targets (`verify`, `test`, `qa`, `qa-api`, `links`, `package-check`,
-    `release-check`, `release-full`) to call nox sessions directly.
+  - Updated targets (`verify`, `test`, `qa`, `qa-api`, `links`, `package-check`, `release-check`,
+    `release-full`) to call nox sessions directly.
   - Added support for parallel per-Python release QA via `make -j`.
 
 - **Release workflow hardening**
 
   - Release gates now reuse the same nox sessions as CI for consistency.
-  - Packaging, docs, and QA checks are enforced uniformly for both release candidates
-    and final releases.
-  - Pre-releases (`-rc`, `-a`, `-b`) automatically publish to **TestPyPI**; finals publish to **PyPI**.
+  - Packaging, docs, and QA checks are enforced uniformly for both release candidates and final
+    releases.
+  - Pre-releases (`-rc`, `-a`, `-b`) automatically publish to **TestPyPI**; finals publish to
+    **PyPI**.
 
 ### Fixed
 
@@ -70,10 +71,10 @@ There are **no user-facing or runtime behavior changes** relative to 0.11.0.
 
 ## [0.11.0] – 2026-01-15
 
-This release introduces a set of **internal architectural improvements** that strengthen
-policy correctness, STDIN handling, and CLI/API parity. While user-facing behavior remains
-compatible with the 0.10.x series, there is an **intentional internal breaking change** for
-integrators relying on TopMark internals.
+This release introduces a set of **internal architectural improvements** that strengthen policy
+correctness, STDIN handling, and CLI/API parity. While user-facing behavior remains compatible with
+the 0.10.x series, there is an **intentional internal breaking change** for integrators relying on
+TopMark internals.
 
 ______________________________________________________________________
 
@@ -87,8 +88,8 @@ ______________________________________________________________________
   - This removes ad-hoc policy resolution, eliminates repeated per-context merging, and guarantees
     deterministic effective policy selection across all pipeline steps.
 
-  > **Note:** This affects **internal and test code only**. The public API
-  > (`topmark.api.check`, `topmark.api.strip`, CLI commands) remains source-compatible.
+  > **Note:** This affects **internal and test code only**. The public API (`topmark.api.check`,
+  > `topmark.api.strip`, CLI commands) remains source-compatible.
 
 ______________________________________________________________________
 
@@ -163,8 +164,10 @@ ______________________________________________________________________
 
 ## [0.10.1] – 2025-11-20
 
-This patch release republishes the intended `0.10.0` release with two commits that were accidentally omitted from the PyPI artifact.\
-There are **no functional code changes** relative to `0.10.0`; this release only corrects packaging and metadata.
+This patch release republishes the intended `0.10.0` release with two commits that were accidentally
+omitted from the PyPI artifact.\
+There are **no functional code changes** relative to `0.10.0`; this release only corrects packaging
+and metadata.
 
 ### Changed
 
@@ -175,7 +178,8 @@ There are **no functional code changes** relative to `0.10.0`; this release only
     - `ruff-pre-commit` v0.14.x
     - `pydoclint` 0.8.x
     - `pyright-python` v1.1.407
-  - Tightened dependency ranges in `pyproject.toml` and regenerated `requirements*.txt` via pip-tools.
+  - Tightened dependency ranges in `pyproject.toml` and regenerated `requirements*.txt` via
+    pip-tools.
 
 - **Metadata**
 
@@ -189,7 +193,9 @@ All functionality, schemas, and breaking changes remain exactly as described in 
 
 ## [0.10.0] – 2025-11-20
 
-This release introduces **major pipeline and CLI changes**, a full **machine-output schema redesign**, a refactored **ProcessingContext**, and multiple BREAKING CHANGES. It also includes substantial internal cleanup, dependency updates, and correctness fixes.
+This release introduces **major pipeline and CLI changes**, a full **machine-output schema
+redesign**, a refactored **ProcessingContext**, and multiple BREAKING CHANGES. It also includes
+substantial internal cleanup, dependency updates, and correctness fixes.
 
 ______________________________________________________________________
 
@@ -198,9 +204,11 @@ ______________________________________________________________________
 #### Machine Output (JSON / NDJSON)
 
 - **Completely redesigned schema**:
-  - All records include a `kind` discriminator (`config`, `config_diagnostics`, `result`, `summary`).
+  - All records include a `kind` discriminator (`config`, `config_diagnostics`, `result`,
+    `summary`).
   - All records include a top-level `meta` block (version, intent, timestamps).
-  - File-level results now use a stable, explicit envelope (`file`, `statuses`, `hints`, `diagnostic_counts`, `outcome`).
+  - File-level results now use a stable, explicit envelope (`file`, `statuses`, `hints`,
+    `diagnostic_counts`, `outcome`).
   - NDJSON encoding is now strictly one-record-per-line with unified keys.
 - **Old JSON/NDJSON formats from \<0.10.0 are no longer emitted.**
 - Downstream tools **must** update their parsers.
@@ -238,7 +246,8 @@ ______________________________________________________________________
 - Clean separation of pipeline responsibilities (context, policy, status).
 - Unified machine-readable output schema supporting stable integrations.
 - Significantly clearer CLI output with accurate bucket, hint, and summary logic.
-- Simplified type system with uniform abstract collections (`collections.abc`) and Ruff `UP`/`TC` enforcement.
+- Simplified type system with uniform abstract collections (`collections.abc`) and Ruff `UP`/`TC`
+  enforcement.
 - Full modernization of imports, dependency ranges, and development tooling.
 - Large suite of correctness fixes across header bounds, scanner, renderer, patcher, and writer.
 
@@ -318,22 +327,29 @@ ______________________________________________________________________
 
 ### Notes
 
-`topmark.api` remains *public and stable*, but all **machine-readable formats** and **internal pipeline interfaces** changed and require downstream updates. Integrators consuming NDJSON/JSON must migrate to the new envelopes and keys.
+`topmark.api` remains *public and stable*, but all **machine-readable formats** and **internal
+pipeline interfaces** changed and require downstream updates. Integrators consuming NDJSON/JSON must
+migrate to the new envelopes and keys.
 
 ## [0.9.1] - 2025-10-07
 
 ### Highlights
 
-- **Python 3.14 support (prerelease)** — test matrix, classifiers, and tooling updated for 3.10–3.14.
-- **Tox-first developer workflow** — Makefile simplified to delegate heavy lifting to tox; consistent local/CI behavior.
+- **Python 3.14 support (prerelease)** — test matrix, classifiers, and tooling updated for
+  3.10–3.14.
+- **Tox-first developer workflow** — Makefile simplified to delegate heavy lifting to tox;
+  consistent local/CI behavior.
 - **Property-based hardening** — Hypothesis harness added for idempotence and edge-case discovery.
-- **Robust idempotence & XML/HTML guardrails** — Safer insertion rules and whitespace/newline preservation.
+- **Robust idempotence & XML/HTML guardrails** — Safer insertion rules and whitespace/newline
+  preservation.
 
 ### Added
 
 - **Testing & quality**
-  - Hypothesis-based **property tests** for insert→strip→insert idempotence and edge cases across common file types.
-  - CI **pre-commit** job to run fast hooks on every PR/push (heavy/duplicated hooks handled elsewhere).
+  - Hypothesis-based **property tests** for insert→strip→insert idempotence and edge cases across
+    common file types.
+  - CI **pre-commit** job to run fast hooks on every PR/push (heavy/duplicated hooks handled
+    elsewhere).
 - **Python versions**
   - CI matrix extended to **3.14** (rc/dev as needed) with `allow-prereleases: true`.
 
@@ -341,7 +357,8 @@ ______________________________________________________________________
 
 - **Developer workflow**
   - **Makefile overhaul**: now a thin wrapper that delegates to tox envs:
-    - Core targets: `verify`, `test`, `pytest`, `property-test`, `lint`, `lint-fixall`, `format`, `format-check`, `docs-build`, `docs-serve`, `api-snapshot*`.
+    - Core targets: `verify`, `test`, `pytest`, `property-test`, `lint`, `lint-fixall`, `format`,
+      `format-check`, `docs-build`, `docs-serve`, `api-snapshot*`.
     - Lock management: `lock-compile-*`, `lock-dry-run-*`, `lock-upgrade-*`.
     - Parallel runners passthroughs: `PYTEST_PAR`, `TOX_PAR`.
   - **tox.ini refactor**:
@@ -367,13 +384,17 @@ ______________________________________________________________________
 ### CI / Tooling
 
 - **CI (`ci.yml`)**
-  - **Tox-first** for lint (`format-check`, `lint`, `docstring-links`), docs (`docs`), tests (`py310…py314`), and API snapshot (`py313-api`).
-  - Add caching for **pip** and **.tox** across jobs; add `actions/checkout@v4` before cache globbing.
-  - New **pre-commit** job; skip heavy/duplicated hooks in that job (`lychee-*`, `pyright`, `docstring-ref-links`) since they run in other jobs.
+  - **Tox-first** for lint (`format-check`, `lint`, `docstring-links`), docs (`docs`), tests
+    (`py310…py314`), and API snapshot (`py313-api`).
+  - Add caching for **pip** and **.tox** across jobs; add `actions/checkout@v4` before cache
+    globbing.
+  - New **pre-commit** job; skip heavy/duplicated hooks in that job (`lychee-*`, `pyright`,
+    `docstring-ref-links`) since they run in other jobs.
 - **Release (`release.yml`)**
   - Build docs via **tox**; add pip/.tox caching to **build-docs** and **publish-package**.
 - **Docs**
-  - Refresh **CONTRIBUTING.md**, **INSTALL.md**, **README.md**, and **docs/dev/api-stability.md** to match the tox/Makefile workflow.
+  - Refresh **CONTRIBUTING.md**, **INSTALL.md**, **README.md**, and **docs/dev/api-stability.md** to
+    match the tox/Makefile workflow.
   - New CI/release workflow docs; fix broken links to workflow YAMLs.
 
 ### Developer notes
@@ -387,7 +408,8 @@ ______________________________________________________________________
     make venv && make venv-sync-dev
     ```
 
-  - Use `make verify`, `make test`, `make pytest [PYTEST_PAR="-n auto"]`, `make docs-*`, `make api-snapshot*`, and the `lock-*` targets for daily work.
+  - Use `make verify`, `make test`, `make pytest [PYTEST_PAR="-n auto"]`, `make docs-*`,
+    `make api-snapshot*`, and the `lock-*` targets for daily work.
 
 **Breaking changes**: *None.*\
 Public API remains stable; changes focus on tooling, CI reliability, and correctness fixes.
@@ -396,30 +418,39 @@ Public API remains stable; changes focus on tooling, CI reliability, and correct
 
 ### Highlights
 
-- **Configuration resolution finalized** — TopMark now fully supports layered config discovery with deterministic merge precedence, explicit anchor semantics, and path-aware pattern resolution.
-- **Docs & MkDocs rebuild** — Documentation migrated to a snippet-driven architecture with reusable callouts, dynamic version injection, and a modernized MkDocs toolchain.
-- **CLI alignment fix** — The `--align-fields` flag is now tri-state, preserving `pyproject.toml` defaults when the flag is omitted.
-- **Public API parity** — The Python API now mirrors CLI behavior, respecting discovery, precedence, and formatting options such as `align_fields`.
-- **Note:** Config discovery and precedence are now finalized; projects that relied on implicit or CWD-only behavior may see changes in which configuration takes effect.\
+- **Configuration resolution finalized** — TopMark now fully supports layered config discovery with
+  deterministic merge precedence, explicit anchor semantics, and path-aware pattern resolution.
+- **Docs & MkDocs rebuild** — Documentation migrated to a snippet-driven architecture with reusable
+  callouts, dynamic version injection, and a modernized MkDocs toolchain.
+- **CLI alignment fix** — The `--align-fields` flag is now tri-state, preserving `pyproject.toml`
+  defaults when the flag is omitted.
+- **Public API parity** — The Python API now mirrors CLI behavior, respecting discovery, precedence,
+  and formatting options such as `align_fields`.
+- **Note:** Config discovery and precedence are now finalized; projects that relied on implicit or
+  CWD-only behavior may see changes in which configuration takes effect.\
   See [**Configuration → Discovery & Precedence**](docs/configuration/discovery.md).
 
 ### Added
 
 - **Configuration system**
   - Complete implementation of **layered discovery**:
-    - Precedence: defaults → user → project chain (`root → cwd`; per-dir: `pyproject.toml` → `topmark.toml`) → `--config` → CLI.
+    - Precedence: defaults → user → project chain (`root → cwd`; per-dir: `pyproject.toml` →
+      `topmark.toml`) → `--config` → CLI.
     - **Discovery anchor** = first input path (or its parent if file) → falls back to CWD.
     - **`root = true`** stops traversal; ensures predictable isolation.
   - Added `PatternSource` abstraction for tracking pattern bases.
   - Added `MutableConfig.load_merged()` and detailed docstrings for all discovery steps.
-  - New test suite `tests/config/test_config_resolution.py` for full coverage of anchors, globs, and precedence.
+  - New test suite `tests/config/test_config_resolution.py` for full coverage of anchors, globs, and
+    precedence.
 - **Header rendering**
-  - Conditional field alignment via `config.align_fields` in `HeaderProcessor.render_header_lines()`.
+  - Conditional field alignment via `config.align_fields` in
+    `HeaderProcessor.render_header_lines()`.
 - **API**
   - Public API functions use the authoritative discovery and merge logic.
   - Added `tests/api/test_api_discovery_parity.py` to guarantee CLI/API parity.
 - **MkDocs & docs**
-  - Introduced snippet-based reusable callouts (`> [!NOTE]`) rendered through a custom **simple hook**.
+  - Introduced snippet-based reusable callouts (`> [!NOTE]`) rendered through a custom **simple
+    hook**.
   - Added `docs/hooks.py` to convert callouts and inject `%%TOPMARK_VERSION%%` dynamically.
   - Added `docs/_snippets/config-resolution.md` for consistent “How config is resolved” sections.
   - Automated generation of API reference pages for `topmark.api` and `topmark.registry`.
@@ -429,7 +460,8 @@ Public API remains stable; changes focus on tooling, CI reliability, and correct
 ### Changed
 
 - **CLI**
-  - `--align-fields` is now **tri-state** (`True`, `False`, `None`)—when omitted, TOML defaults are respected.
+  - `--align-fields` is now **tri-state** (`True`, `False`, `None`)—when omitted, TOML defaults are
+    respected.
   - `topmark dump-config` and all CLI flows now reflect the effective merged configuration.
 - **Processor pipeline**
   - Field alignment respects `config.align_fields`.
@@ -447,18 +479,25 @@ Public API remains stable; changes focus on tooling, CI reliability, and correct
 
 ### Fixed
 
-- **Config precedence bug** — Same-directory order (`pyproject.toml` before `topmark.toml`) was previously inverted; now fixed via per-directory grouping.
-- **CLI override bug** — `--align-fields` no longer forces `false` when omitted; correctly inherits TOML default.
+- **Config precedence bug** — Same-directory order (`pyproject.toml` before `topmark.toml`) was
+  previously inverted; now fixed via per-directory grouping.
+- **CLI override bug** — `--align-fields` no longer forces `false` when omitted; correctly inherits
+  TOML default.
 - **Header alignment** — Processors no longer align fields when `align_fields = false`.
-- **Docs build** — Resolved missing MkDocs plugin errors in CI (`include-markdown` and `simple-hooks`).
-- **Lychee false positives** — Updated snippet links and exclusion list to prevent link-checker failures.
-- **Version token substitution** — The documentation now correctly substitutes `%%TOPMARK_VERSION%%` via pre-build hook.
+- **Docs build** — Resolved missing MkDocs plugin errors in CI (`include-markdown` and
+  `simple-hooks`).
+- **Lychee false positives** — Updated snippet links and exclusion list to prevent link-checker
+  failures.
+- **Version token substitution** — The documentation now correctly substitutes `%%TOPMARK_VERSION%%`
+  via pre-build hook.
 
 ### Docs / Tooling
 
-- Overhauled `pyproject.toml` `[project.optional-dependencies].docs` section to include all MkDocs plugins.
+- Overhauled `pyproject.toml` `[project.optional-dependencies].docs` section to include all MkDocs
+  plugins.
 - Added `requirements-docs.txt` synced with `pyproject.toml` extras for CI.
-- CI and release workflows (`ci.yml`, `release.yml`) now install docs extras (`-e .[docs]`) with constraints.
+- CI and release workflows (`ci.yml`, `release.yml`) now install docs extras (`-e .[docs]`) with
+  constraints.
 - Bumped doc dependencies: `mkdocs>=1.6.0`, `mkdocs-material>=9.5.19`, `pymdown-extensions>=10.16`.
 - Removed obsolete `.mdformat.yml` and outdated constraints for `backrefs` and `markdown-it-py`.
 
@@ -468,7 +507,9 @@ All changes are backward-compatible with v0.8.x configurations and APIs.
 ______________________________________________________________________
 
 ✅ **Summary:**\
-TopMark 0.9.0 consolidates its configuration system, aligns CLI and API behavior, and modernizes the documentation pipeline. Config resolution, discovery anchors, and formatting flags now work predictably across CLI, API, and generated docs.
+TopMark 0.9.0 consolidates its configuration system, aligns CLI and API behavior, and modernizes the
+documentation pipeline. Config resolution, discovery anchors, and formatting flags now work
+predictably across CLI, API, and generated docs.
 
 ## [0.8.1] - 2025-09-26
 

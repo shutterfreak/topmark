@@ -12,7 +12,8 @@ topmark:header:end
 
 # Configuration: Discovery, Precedence & Policy
 
-TopMark merges configuration from multiple sources with **clear precedence** and now supports **policy-based control** over header insertion and updates.
+TopMark merges configuration from multiple sources with **clear precedence** and now supports
+**policy-based control** over header insertion and updates.
 
 ______________________________________________________________________
 
@@ -31,13 +32,16 @@ Configuration is discoverd as follows (lowest → highest precedence):
 1. **Project configs (root → current)**\
    Discovered upward from the **discovery anchor** to the filesystem root:
 
-   - **Anchor selection:** the first input path you pass (its **parent** directory if it is a file).\
-     If no input paths are given (or you read from STDIN), the anchor is the **current working directory**.\
+   - **Anchor selection:** the first input path you pass (its **parent** directory if it is a
+     file).\
+     If no input paths are given (or you read from STDIN), the anchor is the **current working
+     directory**.\
      Use `--no-config` to skip this layer.
    - In each directory, TopMark considers both:
      - `pyproject.toml` (`[tool.topmark]`)
      - `topmark.toml`
-   - **Same-directory precedence:** `pyproject.toml` is merged first, then `topmark.toml` can override it.
+   - **Same-directory precedence:** `pyproject.toml` is merged first, then `topmark.toml` can
+     override it.
    - **Nearest-last wins:** directories are merged **root → current** (the nearest config wins).
    - **Stopping discovery:** set `root = true` to stop traversal above that directory.
 
@@ -148,7 +152,9 @@ ______________________________________________________________________
 
 ## Gatekeeping & Pipeline
 
-Each pipeline step (`ResolverStep`, `SnifferStep`, `ReaderStep`, `ScannerStep`, `BuilderStep`, `RendererStep`, `ComparerStep`, `StripperStep`, `PatcherStep`,`PlannerStep`, `WriterStep`) is protected by a `may_proceed(ctx)` **gating helper**.\
+Each pipeline step (`ResolverStep`, `SnifferStep`, `ReaderStep`, `ScannerStep`, `BuilderStep`,
+`RendererStep`, `ComparerStep`, `StripperStep`, `PatcherStep`,`PlannerStep`, `WriterStep`) is
+protected by a `may_proceed(ctx)` **gating helper**.\
 These consider:
 
 - File system status
@@ -189,6 +195,6 @@ ______________________________________________________________________
 
 - Default configuration: `src/topmark/config/topmark-example.toml`
 - Implementation: \[`MutableConfig.load_merged()`\][topmark.config.model.MutableConfig.load_merged]
-  and \[`effective_policy()`\][topmark.config.policy.effective_policy]
-  in \[`topmark.config.model`\][topmark.config.model]
+  and \[`effective_policy()`\][topmark.config.policy.effective_policy] in
+  \[`topmark.config.model`\][topmark.config.model]
 - Related doc: `README.md`

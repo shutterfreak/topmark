@@ -12,7 +12,8 @@ topmark:header:end
 
 # Installation
 
-This guide covers how to **install** TopMark for regular use, and how to set up a **development** environment that matches our current tooling (`noxfile.py`, `Makefile`, and `CONTRIBUTING.md`).
+This guide covers how to **install** TopMark for regular use, and how to set up a **development**
+environment that matches our current tooling (`noxfile.py`, `Makefile`, and `CONTRIBUTING.md`).
 
 ______________________________________________________________________
 
@@ -55,7 +56,8 @@ cd topmark
 
 ### 2) Create an editor-friendly virtual environment (optional)
 
-We keep a small `.venv` only for editor integration (e.g., Pyright import resolution); `nox` (using the `uv` backend) manages the automated QA environments used by CI and `Makefile` targets.
+We keep a small `.venv` only for editor integration (e.g., Pyright import resolution); `nox` (using
+the `uv` backend) manages the automated QA environments used by CI and `Makefile` targets.
 
 ```bash
 make venv
@@ -192,7 +194,8 @@ TopMark enforces a stable public API using a JSON snapshot (`tests/api/public_ap
   make api-snapshot-ensure-clean
   ```
 
-If you **intentionally** changed the public API, commit the updated snapshot and bump the version in `pyproject.toml`.
+If you **intentionally** changed the public API, commit the updated snapshot and bump the version in
+`pyproject.toml`.
 
 ______________________________________________________________________
 
@@ -241,7 +244,8 @@ For a full deterministic pre-release gate:
 make release-check
 ```
 
-Upload to PyPI (or TestPyPI) is normally handled by `.github/workflows/release.yml` when pushing a tag.
+Upload to PyPI (or TestPyPI) is normally handled by `.github/workflows/release.yml` when pushing a
+tag.
 
 Manual upload (maintainers only):
 
@@ -276,8 +280,9 @@ ______________________________________________________________________
   make docs-serve
   ```
 
-- **Multiple Python versions**: if running `nox` across versions locally, install interpreters with `pyenv` (e.g., `3.10–3.14`).
-  `nox` will skip sessions whose interpreter is missing (unless configured to error).
+- **Multiple Python versions**: if running `nox` across versions locally, install interpreters with
+  `pyenv` (e.g., `3.10–3.14`). `nox` will skip sessions whose interpreter is missing (unless
+  configured to error).
 
 - **Windows PowerShell activation**: allow script execution:
 

@@ -63,31 +63,26 @@ ______________________________________________________________________
 
 ## Filtering
 
-TopMark determines which files to process using a combination of
-path-based filters and file-type filters.
+TopMark determines which files to process using a combination of path-based filters and file-type
+filters.
 
 ### File type filters
 
-- `--include-file-types / -t`
-  Restrict processing to the given file type identifiers.
-  May be repeated and/or provided as a comma-separated list.
+- `--include-file-types / -t` Restrict processing to the given file type identifiers. May be
+  repeated and/or provided as a comma-separated list.
 
-- `--exclude-file-types / -T`
-  Exclude the given file type identifiers.
-  May be repeated and/or provided as a comma-separated list.
+- `--exclude-file-types / -T` Exclude the given file type identifiers. May be repeated and/or
+  provided as a comma-separated list.
 
 Exclude rules take precedence over include rules.
 
 ### Path-based filters
 
-- `--include`, `--exclude`
-  Include or exclude glob patterns.
+- `--include`, `--exclude` Include or exclude glob patterns.
 
-- `--include-from`, `--exclude-from`
-  Load patterns from files (one per line).
+- `--include-from`, `--exclude-from` Load patterns from files (one per line).
 
-- `--files-from`
-  Provide an explicit list of files to process.
+- `--files-from` Provide an explicit list of files to process.
 
 Notes:
 
@@ -101,8 +96,8 @@ ______________________________________________________________________
 
 Use `--output-format json` or `--output-format ndjson` to emit output suitable for tooling:
 
-- **JSON**: a single JSON document containing `meta`, `config`, `config_diagnostics`, and then either
-  `results` (detail mode) or `summary` (summary mode).
+- **JSON**: a single JSON document containing `meta`, `config`, `config_diagnostics`, and then
+  either `results` (detail mode) or `summary` (summary mode).
 - **NDJSON**: one record (JSON object) per line. Every record includes `kind` and `meta`, and the
   payload is stored under a container key that matches `kind`.
 
@@ -172,7 +167,8 @@ ______________________________________________________________________
 
 ## Global options
 
-Output format, verbosity and color output are configured with [global options](../global-options.md).
+Output format, verbosity and color output are configured with
+[global options](../global-options.md).
 
 ### Verbosity & logging
 

@@ -14,9 +14,9 @@ topmark:header:end
 
 **Purpose:** Dump the resolved config.
 
-The `config dump` subcommand (part of the TopMark [`config` Command Family](../config.md))
-prints the **effective TopMark configuration** as TOML after applying
-built-in defaults, discovered project/user config, and any CLI overrides.
+The `config dump` subcommand (part of the TopMark [`config` Command Family](../config.md)) prints
+the **effective TopMark configuration** as TOML after applying built-in defaults, discovered
+project/user config, and any CLI overrides.
 
 It is **file-agnostic**: it does not resolve or process any files.
 
@@ -44,7 +44,8 @@ ______________________________________________________________________
 - **File-agnostic**:
 
   - Positional PATHS are **not accepted** (the command fails if provided).
-  - `--files-from` is accepted and treated as a source of input paths, but input paths do not affect the dumped configuration.
+  - `--files-from` is accepted and treated as a source of input paths, but input paths do not affect
+    the dumped configuration.
 
 - **Filters are config**:
 
@@ -106,8 +107,8 @@ The canonical schema, stable `kind` values, and shared conventions are documente
 
 Notes:
 
-- `config dump` is **file-agnostic** and emits the effective configuration after applying
-  defaults → discovered config → `--config` files → CLI overrides.
+- `config dump` is **file-agnostic** and emits the effective configuration after applying defaults →
+  discovered config → `--config` files → CLI overrides.
 - Diagnostics are not emitted for this command; it is an inspection view of the merged config.
 
 ### JSON schema

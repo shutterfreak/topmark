@@ -14,8 +14,7 @@ topmark:header:end
 
 **Purpose:** Display the TopMark version.
 
-The `version` subcommand prints the TopMark version as installed in the active
-Python environment.
+The `version` subcommand prints the TopMark version as installed in the active Python environment.
 
 ______________________________________________________________________
 
@@ -30,8 +29,8 @@ ______________________________________________________________________
 
 ## Output
 
-By default, `topmark version` prints **only the version string**, with no
-additional labels or decoration.
+By default, `topmark version` prints **only the version string**, with no additional labels or
+decoration.
 
 - The default format is the package’s **PEP 440** version.
 - Use `--semver` to request a **SemVer-compatible** representation when possible.
@@ -46,8 +45,8 @@ topmark version --semver
 
 ### PEP 440 ↔ SemVer examples
 
-The table below illustrates how TopMark maps common PEP 440 versions to
-their SemVer-compatible equivalents when using `--semver`:
+The table below illustrates how TopMark maps common PEP 440 versions to their SemVer-compatible
+equivalents when using `--semver`:
 
 | Release type        | PEP 440       | SemVer           |
 | ------------------- | ------------- | ---------------- |
@@ -59,15 +58,13 @@ their SemVer-compatible equivalents when using `--semver`:
 
 Notes:
 
-- PEP 440 uses short pre-release markers: `a` (alpha), `b` (beta), and `rc`
-  (release candidate). SemVer conventionally uses the full identifiers
-  `alpha`, `beta`, and `rc` in the pre-release segment.
-- Pre-releases are mapped to SemVer using a dash and dot separator
-  (e.g. `0.12.0a2` → `0.12.0-alpha.2`).
-- Development releases (`.devN`) are mapped to `-dev.N`
-  (e.g. `0.12.0.dev6` → `0.12.0-dev.6`).
-- If a version cannot be converted cleanly, TopMark falls back to the
-  original PEP 440 string.
+- PEP 440 uses short pre-release markers: `a` (alpha), `b` (beta), and `rc` (release candidate).
+  SemVer conventionally uses the full identifiers `alpha`, `beta`, and `rc` in the pre-release
+  segment.
+- Pre-releases are mapped to SemVer using a dash and dot separator (e.g. `0.12.0a2` →
+  `0.12.0-alpha.2`).
+- Development releases (`.devN`) are mapped to `-dev.N` (e.g. `0.12.0.dev6` → `0.12.0-dev.6`).
+- If a version cannot be converted cleanly, TopMark falls back to the original PEP 440 string.
 
 ______________________________________________________________________
 
@@ -89,9 +86,8 @@ The `version` command supports machine-readable output via:
 - `--output-format json`
 - `--output-format ndjson`
 
-These formats follow TopMark’s shared machine-output conventions.
-For a full overview of machine formats and envelopes, see
-[`docs/dev/machine-formats.md`](../../dev/machine-formats.md).
+These formats follow TopMark’s shared machine-output conventions. For a full overview of machine
+formats and envelopes, see [`docs/dev/machine-formats.md`](../../dev/machine-formats.md).
 
 ### JSON format
 

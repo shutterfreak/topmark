@@ -27,8 +27,8 @@ TopMark exposes four `--output-format` values:
   - `json`: a single JSON document per invocation.
   - `ndjson`: a newline-delimited JSON stream.
 
-This page describes the **conventions** shared across machine formats.
-For the canonical field-level schema reference, see:
+This page describes the **conventions** shared across machine formats. For the canonical field-level
+schema reference, see:
 
 - [Machine output schema (JSON & NDJSON)](machine-output.md)
 
@@ -65,8 +65,10 @@ In JSON, `meta` appears once at the top level.
 
 In NDJSON, `meta` appears in **every record**.
 
-Canonical keys, kinds, and helper builders for machine output live under \[`topmark.core.machine`\][topmark.core.machine].
-Domain packages (for example \[`topmark.config.machine`\][topmark.config.machine] and \[`topmark.pipeline.machine`\][topmark.pipeline.machine]) build on these shared primitives.
+Canonical keys, kinds, and helper builders for machine output live under
+\[`topmark.core.machine`\][topmark.core.machine]. Domain packages (for example
+\[`topmark.config.machine`\][topmark.config.machine] and
+\[`topmark.pipeline.machine`\][topmark.pipeline.machine]) build on these shared primitives.
 
 ## NDJSON envelope contract
 
@@ -99,17 +101,17 @@ ______________________________________________________________________
 
 ## Diagnostics
 
-TopMark uses internal \[`Diagnostic`\][topmark.diagnostic.model.Diagnostic] objects to
-represent warnings and errors. For machine output:
+TopMark uses internal \[`Diagnostic`\][topmark.diagnostic.model.Diagnostic] objects to represent
+warnings and errors. For machine output:
 
-- **JSON** uses stable `{level, message}` entries within domain payloads (for
-  example `config_diagnostics.diagnostics`).
-- **NDJSON** emits one `diagnostic` record per diagnostic, with a `domain`
-  field identifying the originating domain (for example `"config"`).
+- **JSON** uses stable `{level, message}` entries within domain payloads (for example
+  `config_diagnostics.diagnostics`).
+- **NDJSON** emits one `diagnostic` record per diagnostic, with a `domain` field identifying the
+  originating domain (for example `"config"`).
 
-The JSON-friendly schema helpers for diagnostics are named with a `Machine*`
-prefix (for example `MachineDiagnosticEntry` and `MachineDiagnosticCounts`) and
-live under \[`topmark.diagnostic.machine.schemas`\][topmark.diagnostic.machine.schemas].
+The JSON-friendly schema helpers for diagnostics are named with a `Machine*` prefix (for example
+`MachineDiagnosticEntry` and `MachineDiagnosticCounts`) and live under
+\[`topmark.diagnostic.machine.schemas`\][topmark.diagnostic.machine.schemas].
 
 ______________________________________________________________________
 
@@ -124,7 +126,8 @@ ______________________________________________________________________
   - `config`
   - `config_diagnostics` (counts-only)
   - zero or more `diagnostic` records (config diagnostics)
-  - then either per-file `result` records (detail mode) or per-outcome `summary` records (summary mode)
+  - then either per-file `result` records (detail mode) or per-outcome `summary` records (summary
+    mode)
 
 ______________________________________________________________________
 

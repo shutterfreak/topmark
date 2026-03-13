@@ -15,8 +15,8 @@ topmark:header:end
 **Purpose:** Show the default (builtin) config.
 
 The `config defaults` subcommand (part of the TopMark [`config` Command Family](../config.md))
-prints TopMark’s **built‑in default configuration** as TOML.
-It uses a cleaned, comment-free TOML representation of the runtime default config (no project files are discovered or merged).
+prints TopMark’s **built‑in default configuration** as TOML. It uses a cleaned, comment-free TOML
+representation of the runtime default config (no project files are discovered or merged).
 
 - `text` / `markdown` formats: minimal, comment-free TOML.
 - `json` / `ndjson`: a plain Config snapshot, with no diagnostics.
@@ -58,8 +58,8 @@ ______________________________________________________________________
 
 ## Options (subset)
 
-This command is intentionally minimal and usually has no options. See `topmark config defaults -h` for
-any environment‑specific flags that may be available in your build.
+This command is intentionally minimal and usually has no options. See `topmark config defaults -h`
+for any environment‑specific flags that may be available in your build.
 
 ______________________________________________________________________
 

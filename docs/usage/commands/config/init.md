@@ -14,13 +14,13 @@ topmark:header:end
 
 **Purpose:** Render a fully documented example config.
 
-The `config init` subcommand (part of the TopMark [`config` Command Family](../config.md))
-prints the **annotated default template** that ships with TopMark.
-This file is heavily commented and is intended as a scaffold for a new config file.
+The `config init` subcommand (part of the TopMark [`config` Command Family](../config.md)) prints
+the **annotated default template** that ships with TopMark. This file is heavily commented and is
+intended as a scaffold for a new config file.
 
 - `text` / `markdown`: full commented template from the bundled resource.
-- `json` / `ndjson`: minimal Config snapshot derived from the same defaults,
-  without comments or diagnostics.
+- `json` / `ndjson`: minimal Config snapshot derived from the same defaults, without comments or
+  diagnostics.
 
 Notes:
 
@@ -53,7 +53,8 @@ The starter config provides a well‑commented TOML scaffold with the most commo
 - `[fields]` – default header fields (`project`, `license`, …)
 - `[header]` – order of fields to render in the header
 - `[formatting]` – layout options (e.g., `align_fields`)
-- `[files]` – file discovery knobs (`include_file_types`, `exclude_file_types`, `relative_to`, include/exclude lists)
+- `[files]` – file discovery knobs (`include_file_types`, `exclude_file_types`, `relative_to`,
+  include/exclude lists)
 
 You can safely edit the generated file to match your project’s needs.
 

@@ -47,8 +47,8 @@ ______________________________________________________________________
 
 ## Key properties
 
-- **Validates merged config**: loads defaults → discovered config → `--config` files → CLI overrides,
-  then freezes/validates the final configuration.
+- **Validates merged config**: loads defaults → discovered config → `--config` files → CLI
+  overrides, then freezes/validates the final configuration.
 - **File-agnostic**: positional PATHS are ignored (a note is printed). `-` (content-on-STDIN) is
   ignored.
 - **CI-friendly**: exit code is non-zero when validation fails.
