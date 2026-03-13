@@ -111,7 +111,7 @@ dependencies = [
     # MkDocs theme with rich features:
     "mkdocs-material>=9.7.0,<10.0.0",
     # Auto API reference from docstrings/type hints:
-    "mkdocstrings[python]>=0.30.1,<0.31.0",
+    "mkdocstrings[python]>=0.30.1,<1.1.0",
     # Enable symbol cross-refs in Markdown
     "mkdocs-autorefs>=1.4.3,<2.0.0",
     # Content Inclusion: Processes {% include-markdown ... %} for external snippets
