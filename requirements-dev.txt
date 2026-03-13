@@ -130,7 +130,7 @@ packaging==26.0
     #   nox
     #   pytest
     #   twine
-pathspec==0.12.1
+pathspec==1.0.4
     # via topmark
 platformdirs==4.9.2
     # via
