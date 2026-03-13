@@ -17,8 +17,9 @@ MkDocs build. It intentionally avoids Jinja templating and focuses on several ta
    TopMark distribution version (with a fall-back to reading pyproject in a helper),
    captured once in `pre_build`.
 2) **GitHub-style callouts** conversion (``> [!NOTE] ...`` etc.) into Material for
-   MkDocs admonitions, implemented in `on_page_markdown`. The conversion also
-   de-quotes the title when the first body line is a bold heading (``**Title**``).
+   MkDocs admonitions, implemented in `on_page_markdown`. The conversion always
+   uses the humanized alert kind as the admonition title and preserves authored
+   content as the admonition body.
 3) **Fixing Markdown reference-style links** whose reference label incorrectly includes
    backticks (e.g., ``[`topmark.core.keys.ArgKey`][]``), so that mkdocs-autorefs can
    resolve them.
@@ -203,10 +204,18 @@ def pre_build(config: dict[str, Any], **kwargs: Any) -> dict[str, Any] | None:
 
 GH_CALLOUT_RE: re.Pattern[str] = re.compile(
     r"""
-    ^> \s* \[!(?P<kind>NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]    # tag
-    (?: \s+ (?P<title_inline>.+?) )?                    # optional inline title
-    \s* $                                               # end of tag line
-    (?P<body>(?:\n>.*)*)                                # subsequent '>' lines starting with newline
+    ^> \s* \[!
+        (?P<kind>
+            NOTE
+            | TIP
+            | IMPORTANT
+            | WARNING
+            | CAUTION
+        )
+    \]                                   # tag
+    (?P<content>(?: \s+ .+?)?)           # optional same-line content
+    \s* $                                # end of tag line
+    (?P<body>(?:\n>.*)*)                 # subsequent '>' lines starting with newline
     """,
     re.MULTILINE | re.VERBOSE,
 )
@@ -233,67 +242,33 @@ def _strip_blockquote_prefix(text: str) -> list[str]:
     return out
 
 
-def _extract_title(lines: list[str], inline_title: str | None, kind: str) -> tuple[str, list[str]]:
-    """Select a callout title from inline text or first bold body line.
+def _extract_callout_body(
+    inline_content: str | None,
+    body_lines: list[str],
+) -> str:
+    """Build the rendered Markdown body for a GitHub-style callout.
 
-    If an inline title exists (on the same line as ``[!KIND]``), it is used. Otherwise, the first
-    non-empty body line is inspected. If it's bold and followed by an empty line, it's treated
-    as a title. Otherwise, the humanized kind is used as the title and all lines are preserved.
+    GitHub alerts do not provide a reliable, formatter-stable distinction between
+    custom titles and body content. We therefore always use the humanized callout
+    kind as the admonition title and treat any inline content after ``[!KIND]`` as
+    the first body line.
 
     Args:
-        lines: Body lines (already stripped from ``>``).
-        inline_title: Optional inline title text.
-        kind: Callout kind: ``NOTE``, ``TIP``, ``IMPORTANT``, ``WARNING``, ``CAUTION``.
+        inline_content: Optional content captured on the same line as ``[!KIND]``.
+        body_lines: Subsequent blockquoted lines with one leading ``>`` removed.
 
     Returns:
-        A pair ``(title, remaining_lines)`` where the title is plain text (no surrounding bold
-        markers) and ``remaining_lines`` contains the body lines without the consumed title line
-        (if any).
+        Markdown body content for the rendered admonition.
     """
+    content_lines: list[str] = []
 
-    def _clean_title(raw: str) -> str:
-        # We strip again just in case the extraction logic missed some boundary whitespace
-        raw = raw.strip()
-        # Ensure we strip any residual blockquote markers if they leaked in
-        # This is a safety check in case the regex captured the > prefix
-        while raw.startswith(">"):
-            raw = raw[1:].strip()
-        # Remove bold markers only if they wrap the entire string
-        if (raw.startswith("**") and raw.endswith("**")) or (
-            raw.startswith("__") and raw.endswith("__")
-        ):
-            raw = raw[2:-2].strip()
-        return raw
+    if inline_content is not None:
+        stripped_inline: str = inline_content.strip()
+        if stripped_inline:
+            content_lines.append(stripped_inline)
 
-    if inline_title:
-        return _clean_title(inline_title), lines
-
-    # Look for a title in the first non-empty line of the body.
-    # To be a title, it must be bold AND followed by an empty line (or be the only line).
-    temp_lines: list[str] = list(lines)
-    # Skip leading empty lines
-    while temp_lines and not temp_lines[0].strip():
-        temp_lines.pop(0)
-
-    if temp_lines:
-        first_line: str = temp_lines[0].strip()
-
-        # Check if the line is bold
-        is_bold: bool = (first_line.startswith("**") and first_line.endswith("**")) or (
-            first_line.startswith("__") and first_line.endswith("__")
-        )
-
-        # Separator check: GitHub titles are usually followed by a blank blockquote line
-        has_separator: bool = len(temp_lines) > 1 and not temp_lines[1].strip()
-
-        if is_bold and has_separator:
-            title: str = _clean_title(temp_lines.pop(0))
-            # Also consume the empty separator line if it exists
-            if temp_lines and not temp_lines[0].strip():
-                temp_lines.pop(0)
-            return title, temp_lines
-
-    return kind.title(), lines
+    content_lines.extend(body_lines)
+    return "\n".join(content_lines).strip("\n")
 
 
 def _render_admonition(kind: str, title: str, inner_markdown: str) -> str:
@@ -301,7 +276,7 @@ def _render_admonition(kind: str, title: str, inner_markdown: str) -> str:
 
     Args:
         kind: Callout type; used as CSS class (lowercased).
-        title: Title text (plain; the theme already bolds it).
+        title: Title text (plain; usually derived from the alert kind).
         inner_markdown: Body content to be parsed as Markdown.
 
     Returns:
@@ -338,7 +313,8 @@ def on_page_markdown(
 
     1. Version token substitution (``%%TOPMARK_VERSION%%``) from ``config['extra']``.
     2. A harmless guard for GitHub Actions expressions in fenced blocks (no-op here).
-    3. Conversion of GitHub-style callouts into Material admonition blocks.
+    3. Conversion of GitHub-style callouts into Material admonition blocks with
+       default titles derived from the alert kind.
     4. Fix backticked reference-style link labels (outside fenced blocks)
     5. (Debug only) Log unlinked backticked symbol references
 
@@ -361,15 +337,12 @@ def on_page_markdown(
     # 2) Convert GH-style callouts to Material admonitions
     def _replace(m: Match[str]) -> str:
         kind: str = m.group("kind")
-        inline_title: str | None = m.group("title_inline")
+        inline_content: str | None = m.group("content")
         body_raw: str = m.group("body") or ""
         # Strip blockquote prefixes from the raw body lines
         body_lines: list[str] = _strip_blockquote_prefix(body_raw)
-        title: str
-        remaining: list[str]
-        title, remaining = _extract_title(body_lines, inline_title, kind)
-        inner_markdown: str = "\n".join(remaining).strip("\n")
-        return _render_admonition(kind, title, inner_markdown)
+        inner_markdown: str = _extract_callout_body(inline_content, body_lines)
+        return _render_admonition(kind, kind.title(), inner_markdown)
 
     markdown = GH_CALLOUT_RE.sub(_replace, markdown)
 

@@ -80,11 +80,18 @@ mbake==1.4.5
 mdformat==1.0.0
     # via
     #   mdformat-gfm
+    #   mdformat-gfm-alerts
     #   topmark
 mdformat-gfm==1.0.0
+    # via
+    #   mdformat-gfm-alerts
+    #   topmark
+mdformat-gfm-alerts==0.0.1
     # via topmark
 mdit-py-plugins==0.5.0
-    # via mdformat-gfm
+    # via
+    #   mdformat-gfm
+    #   mdformat-gfm-alerts
 mdurl==0.1.2
     # via markdown-it-py
 more-itertools==10.8.0

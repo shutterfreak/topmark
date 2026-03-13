@@ -1,0 +1,18 @@
+# topmark:header:start
+#
+#   project      : TopMark
+#   file         : .mdformat.toml
+#   file_relpath : .mdformat.toml
+#   license      : MIT
+#   copyright    : (c) 2025 Olivier Biot
+#
+# topmark:header:end
+
+
+end_of_line = "lf"
+extensions = [
+  "gfm", # GitHub Flavored Markdown tables and extensions
+]
+number = false
+validate = true
+wrap = 100

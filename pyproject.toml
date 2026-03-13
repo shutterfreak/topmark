@@ -8,13 +8,57 @@
 #
 # topmark:header:end
 
+[build-system]
+requires      = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "topmark"
 version = "0.12.0.dev8" # PEP 440: "X.Y.Z.devN", "X.Y.ZrcN", or "X.Y.Z"
 description = "A Python CLI to inspect, validate, and manage license and copyright headers."
+readme = { file = "README.md", content-type = "text/markdown" }
+keywords = [
+  "headers",
+  "license-header",
+  "copyright-header",
+  "source-code",
+  "cli",
+  "code-quality",
+  "project-maintenance",
+  "compliance",
+  "formatting",
+]
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Olivier Biot", email = "olivier.biot@gmail.com" }]
-license = { text = "MIT" }
-readme = "README.md"
+maintainers = [{ name = "Olivier Biot", email = "olivier.biot@gmail.com" }]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Information Technology",
+  "Operating System :: OS Independent",
+
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+
+  "Topic :: Software Development :: Quality Assurance",
+  "Topic :: Software Development :: Build Tools",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Software Development :: Documentation",
+  "Topic :: Text Processing",
+  "Topic :: Utilities",
+
+  "Typing :: Typed",
+]
+requires-python = ">=3.10,<3.15"
+
+# Runtime application dependencies (PEP 621)
 dependencies = [
   # Git-style pattern matching used for file inclusion/exclusion
   "pathspec>=0.12.1,<0.13.0",
@@ -25,239 +69,90 @@ dependencies = [
   # CLI framework
   "click>=8.3.1,<9.0.0",
 ]
-requires-python = ">=3.10,<3.15"
-classifiers = [
-  "Programming Language :: Python :: 3.10",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.12",
-  "Programming Language :: Python :: 3.13",
-  "Programming Language :: Python :: 3.14",
-  "Operating System :: OS Independent",
-]
 
-[project.scripts]
-topmark = "topmark.cli.main:cli"
+  [project.optional-dependencies]
+  dev = [
+    # Python linter & formatter in one tool (we use it for both):
+    "ruff>=0.14.5,<0.16.0",
+    # Python docstring linter:
+    "pydoclint>=0.8.1,<0.9.0",
+    # Static type checker with fast, strict CLI (our primary type checker):
+    "pyright>=1.1.407,<1.2.0",
+    # Markdown formatter:
+    "mdformat>=1.0.0,<2.0.0",
+    # GitHub Flavored Markdown (including table support) for mdformat:
+    "mdformat-gfm>=1.0.0,<2.0.0",
+    # GitHub Flavored Markdown alerts (admonitions) for mdformat:
+    "mdformat-gfm-alerts>=0.0.1,<1.0.0",
+    # TOML formatter (consistent with Taplo VS Code extension):
+    "taplo>=0.9.3,<0.10.0",
+    # Pre-commit hook manager:
+    "pre-commit>=4.4.0,<5.0.0",
+    # Run tests across multiple Python versions/environments:
+    "nox>=2025.11.12,<2027.0.0",
+    # Nox integration for uv-based environments:
+    "nox-uv>=0.7.0,<1.0.0",
+    # Fast Python package/project manager used by Nox:
+    "uv>=0.5.0,<0.6.0",
+    # Build wheel/sdist artifacts:
+    "build>=1.3.0,<2.0.0",
+    # Upload distributions to PyPI:
+    "twine>=6.2.0,<7.0.0",
+    # Add deprecation annotations:
+    "typing-extensions>=4.15.0,<5.0.0",
+    # Formatting and linting for Makefile:
+    "mbake>=1.4.3,<2.0.0",
+    # Formatter for docstrings (handles content-specific formatting):
+    "pydocstringformatter>=0.7.3,<1.0.0",
+  ]
+  docs = [
+    # Static site generator core:
+    "mkdocs>=1.6.1,<2.0.0",
+    # MkDocs theme with rich features:
+    "mkdocs-material>=9.7.0,<10.0.0",
+    # Auto API reference from docstrings/type hints:
+    "mkdocstrings[python]>=0.30.1,<0.31.0",
+    # Enable symbol cross-refs in Markdown
+    "mkdocs-autorefs>=1.4.3,<2.0.0",
+    # Content Inclusion: Processes {% include-markdown ... %} for external snippets
+    "mkdocs-include-markdown-plugin>=7.2.0,<8.0.0",
+    # Sidebar navigation generated from a Markdown SUMMARY.md (used with mkdocs-gen-files + !include)
+    "mkdocs-literate-nav>=0.6.2,<0.7.0",
+    # Extra Markdown extensions (admonitions, superfences, etc.):
+    "pymdown-extensions>=10.17.1,<11.0.0",
+    # Programmatically generate documentation pages during the build
+    "mkdocs-gen-files>=0.5.0,<0.7.0",
+    # Custom Logic: Runs your on_page_markdown hook for callout conversion
+    "mkdocs-simple-hooks>=0.1.5,<0.2.0",
+    # Python linter & formatter in one tool (docs uses formatter only):
+    "ruff>=0.14.5,<0.16.0",
+    # Add deprecation annotations:
+    "typing-extensions>=4.15.0,<5.0.0",
+    # Formatter for docstrings (handles content-specific formatting):
+    "pydocstringformatter>=0.7.3,<1.0.0",
+  ]
+  test = [
+    # Unit testing framework:
+    "pytest>=9.0.1,<10.0.0",
+    # Parallel test execution:
+    "pytest-xdist>=3.8.0,<4.0.0",
+    # Property-based testing library:
+    "hypothesis>=6.148.2,<7.0.0",
+  ]
+  typing = []
 
-[project.urls]
-Homepage = "https://github.com/shutterfreak/topmark"
-Documentation = "https://topmark.readthedocs.io/en/latest/"
-Source = "https://github.com/shutterfreak/topmark"
-Changelog = "https://github.com/shutterfreak/topmark/releases"
+  [project.scripts]
+  topmark = "topmark.cli.main:cli"
 
-[build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
+  [project.urls]
+  Homepage      = "https://github.com/shutterfreak/topmark"
+  Documentation = "https://topmark.readthedocs.io/en/latest/"
+  Source        = "https://github.com/shutterfreak/topmark"
+  Issues        = "https://github.com/shutterfreak/topmark/issues"
+  Discussions   = "https://github.com/shutterfreak/topmark/discussions"
+  CI            = "https://github.com/shutterfreak/topmark/actions"
+  Changelog     = "https://github.com/shutterfreak/topmark/releases"
 
-
-[project.optional-dependencies]
-lock = [
-  # Dependency management / compile requirements (pip-compile, pip-sync):
-  "pip-tools>=7.5.2,<8.0.0", # Installed with `make venv`
-]
-dev = [
-  # Python linter & formatter in one tool (we use it for both):
-  "ruff>=0.14.5,<0.16.0",
-  # Python docstring linter:
-  "pydoclint>=0.8.1,<0.9.0",
-  # Static type checker with fast, strict CLI (our primary type checker):
-  "pyright>=1.1.407,<1.2.0",
-  # Markdown formatter:
-  "mdformat>=1.0.0,<2.0.0",
-  # GitHub Flavored Markdown (including table support) for mdformat:
-  "mdformat-gfm>=1.0.0,<2.0.0",
-  # TOML formatter (consistent with Taplo VS Code extension):
-  "taplo>=0.9.3,<0.10.0",
-  # Pre-commit hook manager:
-  "pre-commit>=4.4.0,<5.0.0",
-  # Run tests across multiple Python versions/environments:
-  "nox>=2025.11.12,<2026.0.0",
-  # Nox integration for uv-based environments:
-  "nox-uv>=0.7.0,<1.0.0",
-  # Fast Python package/project manager used by Nox:
-  "uv>=0.5.0,<0.6.0",
-  # Build wheel/sdist artifacts:
-  "build>=1.3.0,<2.0.0",
-  # Upload distributions to PyPI:
-  "twine>=6.2.0,<7.0.0",
-  # Add deprecation annotations:
-  "typing-extensions>=4.15.0,<5.0.0",
-  # Formatting and linting for Makefile:
-  "mbake>=1.4.3,<2.0.0",
-  # Formatter for docstrings (handles content-specific formatting):
-  "pydocstringformatter>=0.7.3,<1.0.0",
-]
-docs = [
-  # Static site generator core:
-  "mkdocs>=1.6.1,<2.0.0",
-  # MkDocs theme with rich features:
-  "mkdocs-material>=9.7.0,<10.0.0",
-  # Auto API reference from docstrings/type hints:
-  "mkdocstrings[python]>=0.30.1,<0.31.0",
-  # Enable symbol cross-refs in Markdown
-  "mkdocs-autorefs>=1.4.3,<2.0.0",
-  # Content Inclusion: Processes {% include-markdown ... %} for external snippets
-  "mkdocs-include-markdown-plugin>=7.2.0,<8.0.0",
-  # Sidebar navigation generated from a Markdown SUMMARY.md (used with mkdocs-gen-files + !include)
-  "mkdocs-literate-nav>=0.6.2,<0.7.0",
-  # Extra Markdown extensions (admonitions, superfences, etc.):
-  "pymdown-extensions>=10.17.1,<11.0.0",
-  # Programmatically generate documentation pages during the build
-  "mkdocs-gen-files>=0.5.0,<0.7.0",
-  # Custom Logic: Runs your on_page_markdown hook for callout conversion
-  "mkdocs-simple-hooks>=0.1.5,<0.2.0",
-  # Python linter & formatter in one tool (docs uses formatter only):
-  "ruff>=0.14.5,<0.16.0",
-  # Add deprecation annotations:
-  "typing-extensions>=4.15.0,<5.0.0",
-  # Formatter for docstrings (handles content-specific formatting):
-  "pydocstringformatter>=0.7.3,<1.0.0",
-]
-test = [
-  # Unit testing framework:
-  "pytest>=9.0.1,<10.0.0",
-  # Parallel test execution:
-  "pytest-xdist>=3.8.0,<4.0.0",
-  # Property-based testing library:
-  "hypothesis>=6.148.2,<7.0.0",
-]
-typing = []
-
-[tool.setuptools]
-package-dir = { "" = "src" }
-include-package-data = true
-
-[tool.setuptools.package-data]
-"topmark" = ["py.typed"]
-"topmark.config" = ["topmark-example.toml"]
-
-[tool.setuptools.packages.find]
-where = ["src"]
-
-# Markdown formatting
-[tool.mdformat]
-wrap = 100
-extensions = [
-  "admonitions", # For !!! note syntax
-  "gfm",         # For GFM features like tables
-]
-# NOTE: exclude only supported in Python 3.13+
-
-
-# TOML formatting
-[tool.taplo.format]
-# TOML files are indented with 2 spaces (mirrored in .editorconfig)
-indent_tables = true
-align_entries = true
-reorder_keys = true
-
-# Prevent Taplo from failing on slow or unreachable remote schema catalog fetches
-# This ensures formatting and linting works reliably in VS Code, CI, and pre-commit
-[tool.taplo.schemas]
-enabled = false # Disable catalog validation but keep syntax linting and formatting active
-
-
-[tool.ruff]
-# The `line-length` rule applies to both the linter and the formatter.
-line-length = 100
-
-[tool.ruff.lint]
-exclude = [".git", ".vscode", ".venv", "venv", "build", "dist", "migrations"]
-select = [
-  "E",      # pycodestyle errors
-  "F",      # pyflakes
-  "PYI",    # flake8-pyi (includes __all__ checks)
-  "B",      # bugbear
-  "I",      # isort-compatible import sorting
-  "D",      # pydocstyle
-  "TC",     # type-checking (TCH001/2/3: move type-only imports under TYPE_CHECKING)
-  "UP",     # pyupgrade: modern syntax, builtin/collections.abc generics
-  "TID",    # Tidy imports
-  "T20",    # Enable print linting globally
-  "RUF010", # changes f"{str(user)}" → f"{user!s}" and f"{repr(user)}" → f"{user!r}"
-  "RUF022", # checks if the items in __all__ are sorted alphabetically and unique
-  "RUF023", # checks if the __slots__ in classes are sorted alphabetically and unique
-  "RUF100", # Checks for unused `noqa` directives
-  "SIM",    # Reduce complex conditionals that hide logic bugs
-  "ERA",    # Flags commented-out code (often forgotten debug code).
-  "BLE",    # (flake8-blind-except) — catches except Exception: without re-raising or logging context.
-  "TRY",    # (tryceratops) — encourages structured exception handling (raise from, avoid empty handlers).
-  "B904",   # (raise-without-from inside except) — this improves tracebacks a lot.
-  "B905",   # (zip without strict) — optional; Python 3.10+ supports strict=....
-  "FA",     # (flake8-future-annotations) if you want to enforce future annotations consistently (you already enforce required-imports in isort).
-  "C4",     # (flake8-comprehensions): catches inefficient/odd list/set/dict constructs.
-  # "C90",  # (mccabe) Comlexity
-  "G",   # catches logging formatting mistakes and encourages lazy formatting
-  "DTZ", # (flake8-datetimez): catches naive timezone bugs if you ever handle datetimes (you do timestamps in config).
-  "PTH", # pathlib
-  "S",   # (bandit) selectively: can be noisy; but in a tool that writes files, it can catch risky patterns. Often you enable it and then ignore a handful of specific codes.
-]
-ignore = [
-  # Note: D212 and D213 cannot be enabled simultaneously
-  "D213", # Keep D213 ignored for Google style
-  "D107", # Prefer class docstring over __init__ docstring (align with pydoclint)
-  # If you prefer to allow first line not ending with a period (though usually good practice)
-  # "D400",
-  # If you don't want strict capitalization checks for the first word
-  # "D403",
-  # If your sections sometimes lack blank lines (though Google style prefers them)
-  # "D406", "D407", "D408", "D409",
-  # If you don't want to enforce a blank line after the last section in the docstring
-  # "D413",
-  "ERA001", # TopMark headers trigger false positives
-  "TRY003",
-  # "TRY004",
-  "TRY400",
-  "TRY401",
-]
-
-[tool.ruff.lint.per-file-ignores]
-"docs/**/*.py" = ["T201", "S101"]
-"tests/**/*.py" = ["ERA", "S101"]
-"tools/**/*.py" = ["T201", "S101"]
-"src/topmark/cli/**/*.py" = ["T201"]
-
-[tool.ruff.lint.mccabe]
-max-complexity = 15
-
-[tool.ruff.lint.pydocstyle]
-convention = "google"
-
-[tool.ruff.lint.isort]
-required-imports = ["from __future__ import annotations"]
-# Enforce "One Name Per Import Line" automatically
-force-single-line = true
-
-[tool.pydoclint]
-style = "google"
-
-exclude = '\.venv|tests|build|dist' # Regex for paths to skip
-
-# Be pedantic about the style
-allow-init-docstring = false
-
-# Types are already present in method signatures so don't re-add them in docstrings
-arg-type-hints-in-docstring = false
-check-return-types = false
-check-yield-types = false
-
-check-arg-order = true
-
-check-raises = true
-require-return-section = true
-require-yields-section = false
-
-# You can also disable whole families of rules if needed
-# ignore = ["DOC501", "DOC502"]  # example
-
-[tool.pydocstringformatter]
-style = "pep257"
-max-line-length = 100
-exclude = ["tests/**"]
-# Specific fixers to ensure internal consistency
-beginning-quotes = true
-closing-quotes = true
-capitalize-first-letter = true
-final-period = true
 
 # Pre-commit configuration
 # Coordinates with VS Code settings to ensure consistent formatting and linting across environments
@@ -266,23 +161,50 @@ default_stages = ["commit"]
 # This section coordinates with VS Code settings to ensure consistent formatting and linting
 # behavior across local development environments and CI pipelines.
 
+[tool.pydoclint]
+style = "google"
+
+exclude = '\.venv|tests|build|dist' # Regex for paths to skip
+
+# Be strict about docstring structure.
+allow-init-docstring        = false
+arg-type-hints-in-docstring = false # Types already exist in signatures.
+check-arg-order             = true
+check-raises                = true
+check-return-types          = false
+check-yield-types           = false
+require-return-section      = true
+require-yields-section      = false
+
+# Example:
+# ignore = ["DOC501", "DOC502"]
+
+[tool.pydocstringformatter]
+style           = "pep257"
+max-line-length = 100
+exclude         = ["tests/**"]
+# Specific fixers to ensure internal consistency
+beginning-quotes        = true
+closing-quotes          = true
+capitalize-first-letter = true
+final-period            = true
+
 # Pyright configuration
 [tool.pyright]
-typeCheckingMode = "strict"
-stubPath = "typings"
-pythonVersion = "3.10"
 include = ["src", "tests"]
 exclude = [
+  "**/__pycache__",
   "**/.*",
   ".git",
-  ".vscode",
   ".venv",
-  "venv",
+  ".vscode",
   "build",
   "dist",
-  "migrations",
-  "**/__pycache__",
+  "venv",
 ]
+pythonVersion = "3.10"
+stubPath = "typings"
+typeCheckingMode = "strict"
 
 # Editor-only integration:
 # The settings below help your **editor** (VS Code Pyright extension) resolve imports
@@ -290,15 +212,15 @@ exclude = [
 # because our actual type checks run inside tox-managed environments where Pyright
 # is invoked with an explicit `--pythonversion` per env.
 # If you don't maintain a local `.venv`, you can remove these two lines.
-venvPath = "."
-venv = ".venv"
-reportMissingImports = true
-reportMissingTypeStubs = false            # Set to true if you want to be strict about missing type stubs
-reportImportCycles = true                 # Prevent erroring on type-only circular cependencies
-reportUnnecessaryTypeIgnoreComment = true # Remove unnecessary `type: ignore` comments
-reportUnusedImport = true
-reportUnusedVariable = true
-reportPrivateUsage = true
+venvPath                           = "."
+venv                               = ".venv"
+reportImportCycles                 = true
+reportMissingImports               = true
+reportMissingTypeStubs             = false   # Set to true if you want to be strict about missing type stubs
+reportPrivateUsage                 = true
+reportUnnecessaryTypeIgnoreComment = true
+reportUnusedImport                 = true
+reportUnusedVariable               = true
 
 [tool.pytest.ini_options]
 markers = [
@@ -311,56 +233,128 @@ markers = [
 testpaths = ["tests"]
 norecursedirs = [
   ".git",
-  ".vscode",
   ".hypothesis",
   ".tox",
   ".venv",
-  "venv",
+  ".vscode",
+  "archives",
   "build",
   "dist",
-  "site",
-  "archives",
   "docs",
-  "tools",
   "sample_files",
+  "site",
+  "tools",
+  "venv",
 ]
 python_files = ["test_*.py", "*_test.py"]
 filterwarnings = ["default::DeprecationWarning"]
 
+[tool.ruff]
+# Shared formatter/linter line length.
+line-length = 100
 
-# TopMark related configuration for the project repository
+  [tool.ruff.lint]
+  exclude = [".git", ".venv", ".vscode", "build", "dist", "venv"]
+  select = [
+    "B",      # (flake8-bugbear)
+    "B904",   # raise-without-from inside except
+    "B905",   # zip() without strict=
+    "BLE",    # (flake8-blind-except)
+    "C4",     # (flake8-comprehensions)
+    "D",      # (pydocstyle)
+    "DTZ",    # (flake8-datetimez): catches naive datetime usage
+    "E",      # (pycodestyle) errors
+    "ERA",    # (eradicate) commented-out code
+    "F",      # (pyflakes)
+    "FA",     # (flake8-future-annotations)
+    "G",      # flake8-logging-format
+    "I",      # isort-compatible import sorting
+    "PTH",    # pathlib usage
+    "PYI",    # flake8-pyi (stub-related rules, includes __all__ checks)
+    "RUF010", # (ruff) prefer !s / !r in f-strings
+    "RUF022", # (ruff) sorted and unique __all__
+    "RUF023", # (ruff) sorted and unique __slots__
+    "RUF100", # (ruff) unused noqa
+    "S",      # (bandit) catch risky patterns
+    "SIM",    # simplify complex conditionals
+    "T20",    # Enable print linting globally
+    "TC",     # type-checking imports
+    "TID",    # Tidy imports
+    "TRY",    # tryceratops — structured exception handling
+    "UP",     # pyupgrade
+  ]
+  ignore = [
+    "D107", # pydocstyle: prefer class docstring over __init__ docstring
+    "D213", # pydocstyle: keep D213 ignored for Google style (incompatible with D212)
+    # "D400",  # pydocstyle: allow first line not ending with a period
+    # "D403",  # pydocstyle: No strict capitalization checks for the first word
+    # "D406", "D407", "D408", "D409", # pydocstyle: If your sections sometimes lack blank lines
+    # "D413", # pydocstyle: don't enforce a blank line after the last section in the docstring
+    "ERA001", # eradicate: TopMark headers trigger false positives
+    "TRY003", # tryceratops: Avoid specifying long messages outside the exception class
+    "TRY400",
+    "TRY401",
+  ]
+
+  # Optional rule groups you may enable later if desired:
+  # "C90"  # mccabe complexity (enabled separately via [tool.ruff.lint.mccabe])
+
+    [tool.ruff.lint.per-file-ignores]
+    "docs/**/*.py"            = ["S101", "T201"]
+    "tests/**/*.py"           = ["ERA", "S101"]
+    "tools/**/*.py"           = ["S101", "T201"]
+    "src/topmark/cli/**/*.py" = ["T201"]
+
+    [tool.ruff.lint.isort]
+    required-imports = ["from __future__ import annotations"]
+    # Enforce "One Name Per Import Line" automatically
+    force-single-line = true
+
+    [tool.ruff.lint.mccabe]
+    max-complexity = 15
+
+    [tool.ruff.lint.pydocstyle]
+    convention = "google"
+
+[tool.setuptools]
+package-dir          = { "" = "src" }
+include-package-data = true
+
+  [tool.setuptools.package-data]
+  "topmark"        = ["py.typed"]
+  "topmark.config" = ["topmark-example.toml"]
+
+  [tool.setuptools.packages.find]
+  where = ["src"]
+
+
 [tool.topmark]
-# TopMark config note:
-# This repository uses layered config discovery (defaults → user → project chain → extras → CLI).
-# See the shipped default file for details:
-#   src/topmark/config/topmark-example.toml  (section: “Config discovery & precedence”)
 root = true # Mark this directory as the root for config discovery
 
-[tool.topmark.fields]
-project = "TopMark"
-license = "MIT"
-copyright = "(c) 2025 Olivier Biot"
+  [tool.topmark.fields]
+  project   = "TopMark"
+  license   = "MIT"
+  copyright = "(c) 2025 Olivier Biot"
 
-[tool.topmark.header]
-fields = ["project", "file", "file_relpath", "license", "copyright"]
-relative_to = "."
+  [tool.topmark.files]
+  include_file_types = []
+  exclude_file_types = []
+  exclude_from       = [".gitignore"]
+  exclude_patterns   = [".git/"]
 
-[tool.topmark.policy]
-add_only = false
-update_only = false
-allow_header_in_empty_files = false
+  [tool.topmark.formatting]
+  align_fields = true # Align colons of fields
+  [tool.topmark.header]
+  fields      = ["project", "file", "file_relpath", "license", "copyright"]
+  relative_to = "."
 
-[tool.topmark.policy_by_type.python]
-allow_header_in_empty_files = true
+  [tool.topmark.policy]
+  add_only                    = false
+  update_only                 = false
+  allow_header_in_empty_files = false
 
-[tool.topmark.formatting]
-align_fields = true # Align colons of fields
+  [tool.topmark.policy_by_type.python]
+  allow_header_in_empty_files = true
 
-[tool.topmark.writer]
-strategy = "atomic" # Use the safe atomic writer (default)
-
-[tool.topmark.files]
-include_file_types = []
-exclude_file_types = []
-exclude_from = [".gitignore"]
-exclude_patterns = [".git/"]
+  [tool.topmark.writer]
+  strategy = "atomic" # Use the safe atomic writer (default)

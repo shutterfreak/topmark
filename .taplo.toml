@@ -1,0 +1,25 @@
+# topmark:header:start
+#
+#   project      : TopMark
+#   file         : .taplo.toml
+#   file_relpath : .taplo.toml
+#   license      : MIT
+#   copyright    : (c) 2025 Olivier Biot
+#
+# topmark:header:end
+
+# Taplo reads project configuration from `.taplo.toml` / `taplo.toml`.
+# Keep this file minimal and limited to options supported by Taplo's native
+# configuration schema so the CLI, pre-commit, and VS Code extension all agree.
+
+[formatting]
+# TOML files use 2-space indentation, matching .editorconfig.
+align_entries  = true
+indent_tables  = true
+reorder_arrays = false
+# reorder_keys = true
+
+[schema]
+# Prevent Taplo from failing on slow or unreachable remote schema catalog fetches
+# This ensures formatting and linting works reliably in VS Code, CI, and pre-commit
+enabled = false # Disable catalog validation but keep syntax linting and formatting active

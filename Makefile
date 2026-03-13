@@ -83,7 +83,7 @@ help:
 	@echo "  api-snapshot-ensure-clean  Fail if snapshot differs from Git index"
 	@echo ""
 	@echo "Local editor venv (optional, for Pyright/import resolution in IDE):"
-	@echo "  venv            Create .venv with lock tooling (uv)"
+	@echo "  venv            Create .venv (uv)"
 	@echo "  venv-sync-dev   Sync requirements-dev.txt into .venv"
 	@echo "  venv-sync-dev-docs   Sync requirements-dev.txt and requirements-docs.txt into .venv"
 	@echo "  venv-sync-docs  Sync requirements-docs.txt into .venv (removes DEV-only packages from .venv)"
@@ -233,8 +233,7 @@ venv:
 	@test -d $(VENV) || ( \
 		echo "Creating $(VENV)..." && \
 		$(PY) -m venv $(VENV) && \
-		$(VENV_BIN)/pip install uv && \
-		$(UV) pip install -e ".[lock]" \
+		$(VENV_BIN)/pip install uv \
 		)
 	@echo "Activate with: source $(VENV_BIN)/activate"
 

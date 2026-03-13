@@ -32,7 +32,7 @@ repos:
         exclude: ^docs/api/public\.md$
         additional_dependencies:
           - mdformat-gfm
-        args: ["--extensions", "tables"]
+          - mdformat-gfm-alerts
 
   - repo: local # Use local lychee setup to overcome the 'nightly' release tag problem in autoupdate
     hooks:
