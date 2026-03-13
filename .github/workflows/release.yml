@@ -37,7 +37,7 @@ jobs:
       channel: ${{ steps.set.outputs.channel }} # pypi | testpypi
       release_name: ${{ steps.set.outputs.release_name }} # e.g. v1.2.3 or v1.2.3-rc1
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -117,7 +117,7 @@ jobs:
       channel: ${{ needs.preflight.outputs.channel }}
       release_name: ${{ needs.preflight.outputs.release_name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ./.github/actions/setup-python-nox
         with:
@@ -141,7 +141,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ./.github/actions/setup-python-nox
         with:
@@ -158,7 +158,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ./.github/actions/setup-python-nox
         with:
@@ -174,7 +174,7 @@ jobs:
           mkdocs build -f mkdocs.linkcheck.yml --strict
 
       - name: Check links in built site
-        uses: lycheeverse/lychee-action@v1
+        uses: lycheeverse/lychee-action@v2
         with:
           args: >-
             --config lychee.toml
@@ -190,7 +190,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ needs.details.outputs.channel }} # 'testpypi' for rc/a/b, else 'pypi'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ./.github/actions/setup-python-nox
         with:
@@ -283,7 +283,7 @@ jobs:
 
       - name: Publish to TestPyPI (Trusted Publishing)
         if: ${{ needs.details.outputs.is_prerelease == 'true' }}
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
         with:
           repository-url: https://test.pypi.org/legacy/
           attestations: true
@@ -291,7 +291,7 @@ jobs:
 
       - name: Publish to PyPI (Trusted Publishing)
         if: ${{ needs.details.outputs.is_prerelease != 'true' }}
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
         with:
           attestations: true
           # (intentionally no repository-url here → real PyPI)
@@ -304,7 +304,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

@@ -21,9 +21,12 @@ on:
       - ".github/actions/**"
       - ".pre-commit-config.yaml"
       - ".bake.toml"
+      - ".mdformat.toml"
+      - ".taplo.toml"
       - "Makefile"
       - "mkdocs.yml"
       - "mkdocs.linkcheck.yml"
+      - ".readthedocs.yaml"
       - "pyproject.toml"
       - "noxfile.py"
       - "requirements*.txt"
@@ -47,12 +50,12 @@ jobs:
       markdown_links_changed: ${{ steps.filter.outputs.markdown_links }}
       precommit_changed: ${{ steps.filter.outputs.precommit }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - id: filter
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         with:
           filters: |
             python:
@@ -69,8 +72,10 @@ jobs:
               - 'src/**'
               - 'tools/docs/**'
               - '.github/actions/setup-python-nox/**'
+              - '.mdformat.toml'
               - 'mkdocs.yml'
               - 'mkdocs.linkcheck.yml'
+              - '.readthedocs.yaml'
               - 'pyproject.toml'
               - 'noxfile.py'
               - 'requirements*.txt'
@@ -91,9 +96,12 @@ jobs:
               - '.github/actions/**'
               - '.pre-commit-config.yaml'
               - '.bake.toml'
+              - '.mdformat.toml'
+              - '.taplo.toml'
               - 'Makefile'
               - 'mkdocs.yml'
               - 'mkdocs.linkcheck.yml'
+              - '.readthedocs.yaml'
               - 'pyproject.toml'
               - 'noxfile.py'
               - 'requirements*.txt'
@@ -113,7 +121,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ./.github/actions/setup-python-nox
         with:
@@ -131,10 +139,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - id: setup-python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.13"
           cache: pip
@@ -145,7 +153,7 @@ jobs:
             constraints*.txt
 
       - name: Cache pip
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cache/pip
@@ -169,7 +177,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ./.github/actions/setup-python-nox
         with:
@@ -188,10 +196,10 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - id: setup-python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
@@ -203,7 +211,7 @@ jobs:
             constraints*.txt
 
       - name: Cache pip & nox
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cache/pip
@@ -228,7 +236,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ./.github/actions/setup-python-nox
         with:
@@ -244,10 +252,10 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.markdown_links_changed == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Check links in docs and selected top-level Markdown
-        uses: lycheeverse/lychee-action@v1
+        uses: lycheeverse/lychee-action@v2
         with:
           args: >-
             --config lychee.toml
@@ -263,7 +271,7 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.docs_changed == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ./.github/actions/setup-python-nox
         with:
@@ -279,7 +287,7 @@ jobs:
           mkdocs build -f mkdocs.linkcheck.yml --strict
 
       - name: Check links in built site
-        uses: lycheeverse/lychee-action@v1
+        uses: lycheeverse/lychee-action@v2
         with:
           args: >-
             --config lychee.toml
