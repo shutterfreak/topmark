@@ -276,24 +276,30 @@ uv-lock-upgrade: check-uv
 
 uv-export-prod: check-uv
 	$(UV) export --no-hashes --output-file requirements.txt
+	topmark check --apply requirements*.txt constraints*.txt
 
 uv-export-dev: check-uv
 	$(UV) export --no-hashes --extra dev --extra typing --extra test --output-file requirements-dev.txt
+	topmark check --apply requirements*.txt constraints*.txt
 
 uv-export-docs: check-uv
 	$(UV) export --no-hashes --extra docs --output-file requirements-docs.txt
+	topmark check --apply requirements*.txt constraints*.txt
 
 # ---- Legacy requirements export workflow (kept temporarily during migration) ----
 #
 # ---- Lock management (pins) using UV. These do NOT affect nox; nox uses the compiled locks. ----
 lock-compile-prod: check-uv
 	$(UV) pip compile -q -c constraints.txt requirements.in -o requirements.txt
+	topmark check --apply requirements*.txt constraints*.txt
 
 lock-compile-dev: check-uv
 	$(UV) pip compile -q -c constraints.txt requirements-dev.in -o requirements-dev.txt
+	topmark check --apply requirements*.txt constraints*.txt
 
 lock-compile-docs: check-uv
 	$(UV) pip compile -q -c constraints.txt requirements-docs.in -o requirements-docs.txt
+	topmark check --apply requirements*.txt constraints*.txt
 
 # (Preview) dry-run upgrade helpers — show solver changes without writing files
 lock-dry-run-prod: check-uv
@@ -308,9 +314,12 @@ lock-dry-run-docs: check-uv
 # Upgrade helpers — write solver changes to files:
 lock-upgrade-prod: check-uv
 	$(UV) pip compile -U -c constraints.txt requirements.in -o requirements.txt
+	topmark check --apply requirements*.txt constraints*.txt
 
 lock-upgrade-dev: check-uv
 	$(UV) pip compile -U -c constraints.txt requirements-dev.in -o requirements-dev.txt
+	topmark check --apply requirements*.txt constraints*.txt
 
 lock-upgrade-docs: check-uv
 	$(UV) pip compile -U -c constraints.txt requirements-docs.in -o requirements-docs.txt
+	topmark check --apply requirements*.txt constraints*.txt
