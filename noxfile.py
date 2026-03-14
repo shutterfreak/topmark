@@ -34,6 +34,8 @@ Sessions:
 
 Notes:
   - The default venv backend is `uv` (via `nox-uv`) for faster environment sync.
+  - Session dependencies are installed from `pyproject.toml` extras instead of exported requirements
+    files.
   - File lists are resolved from git via `git ls-files` to avoid scanning ignored files.
 
 Common invocations:
@@ -51,6 +53,7 @@ import sys
 import warnings
 from typing import TYPE_CHECKING
 from typing import Any
+from typing import Final
 from typing import cast
 
 import nox
@@ -78,7 +81,10 @@ else:
 
     _toml_loads = cast("Callable[[str], dict[str, Any]]", tomli.loads)  # type: ignore[assignment]
 
-CURRENT_PYTHON_VERSION: str = f"{sys.version_info[0]}.{sys.version_info[1]}"
+CURRENT_PYTHON_VERSION: Final[str] = f"{sys.version_info[0]}.{sys.version_info[1]}"
+
+DEPS_DEV: Final[str] = ".[dev,typing,test]"
+DEPS_DOCS: Final[str] = ".[docs]"
 
 # --- Dynamic Python Version Resolution ---
 
@@ -204,8 +210,10 @@ SOURCE_PATTERNS = (":(glob)src/topmark/**/*.py",)
 CHECK_DOCSTRING_LINKS_SCRIPT = "tools/docs/check_docstring_links.py"
 
 TEST_PUBLIC_API_SNAPSHOT_SCRIPT = "tests/api/test_public_api_snapshot.py"
-# If using nox-uv, sessions use session.install the same way,
-# but installs are performed via uv under the hood.
+
+
+# Session installs are resolved from project metadata and extras.
+# With nox-uv, `session.install(...)` is executed via uv under the hood.
 
 
 def get_git_files(session: nox.Session, *specs: str) -> list[str]:
@@ -236,7 +244,7 @@ def package_check(session: nox.Session) -> None:
 
     This is a lightweight packaging sanity check used by release gates.
     """
-    session.install("-r", "requirements-dev.txt")
+    session.install(DEPS_DEV)
 
     # Ensure a clean dist/ to avoid stale artifacts influencing checks.
     session.run(
@@ -317,7 +325,7 @@ def qa(session: nox.Session) -> None:
     """Run tests + pyright (per Python version)."""
     session.log("Supported Python versions: " + ", ".join(PYTHONS))
 
-    session.install("-r", "requirements-dev.txt")
+    session.install(DEPS_DEV)
 
     # We add *session.posargs to the end of the command
     session.run(
@@ -353,7 +361,7 @@ def qa_api(session: nox.Session) -> None:
     """
     session.log("Supported Python versions: " + ", ".join(PYTHONS))
 
-    session.install("-r", "requirements-dev.txt")
+    session.install(DEPS_DEV)
 
     # Main test suite (posargs forwarded, e.g. "-n auto")
     session.run(
@@ -436,7 +444,7 @@ def test_entrypoints(session: nox.Session) -> None:
 @nox.session
 def lint(session: nox.Session) -> None:
     """Static analysis and custom validation."""
-    session.install("-r", "requirements-dev.txt")
+    session.install(DEPS_DEV)
 
     session.run(
         "ruff",
@@ -468,7 +476,7 @@ def lint(session: nox.Session) -> None:
 @nox.session
 def lint_fixall(session: nox.Session) -> None:
     """Run ruff with --fix (auto-fix lint issues)."""
-    session.install("-r", "requirements-dev.txt")
+    session.install(DEPS_DEV)
 
     session.run(
         "ruff",
@@ -481,7 +489,7 @@ def lint_fixall(session: nox.Session) -> None:
 @nox.session
 def format_check(session: nox.Session) -> None:
     """Check formatting for code, markdown, and TOML."""
-    session.install("-r", "requirements-dev.txt")
+    session.install(DEPS_DEV)
 
     session.run(
         "ruff",
@@ -520,7 +528,7 @@ def format_check(session: nox.Session) -> None:
 @nox.session
 def format(session: nox.Session) -> None:
     """Format code, markdown, TOML, and Makefiles (auto-fix)."""
-    session.install("-r", "requirements-dev.txt")
+    session.install(DEPS_DEV)
 
     session.run(
         "ruff",
@@ -552,7 +560,7 @@ def format(session: nox.Session) -> None:
 @nox.session
 def docs(session: nox.Session) -> None:
     """Build documentation."""
-    session.install("-r", "requirements-docs.txt")
+    session.install(DEPS_DOCS)
 
     session.run(
         "mkdocs",
@@ -564,7 +572,7 @@ def docs(session: nox.Session) -> None:
 @nox.session
 def docs_serve(session: nox.Session) -> None:
     """Serve the docs locally (dev only)."""
-    session.install("-r", "requirements-docs.txt")
+    session.install(DEPS_DOCS)
 
     session.run(
         "mkdocs",
@@ -610,7 +618,7 @@ def links_site(session: nox.Session) -> None:
       - This session is network-dependent.
       - It is intentionally separate from `links` (which is pre-build and fast).
     """
-    session.install("-r", "requirements-docs.txt")
+    session.install(DEPS_DOCS)
 
     # Build docs strictly so generated pages exist.
     session.run(
@@ -630,7 +638,7 @@ def links_site(session: nox.Session) -> None:
 @nox.session
 def docstring_links(session: nox.Session) -> None:
     """Enforce docstring link style."""
-    session.install("-r", "requirements-dev.txt")
+    session.install(DEPS_DEV)
 
     session.run(
         "python",
@@ -644,7 +652,7 @@ def api_snapshot(session: nox.Session) -> None:
     """Run the public API snapshot test (per Python version)."""
     session.log("Supported Python versions: " + ", ".join(PYTHONS))
 
-    session.install("-r", "requirements-dev.txt")
+    session.install(DEPS_DEV)
 
     # We add *session.posargs to the end of the command
     session.run(
@@ -658,7 +666,7 @@ def api_snapshot(session: nox.Session) -> None:
 @nox.session
 def property_test(session: nox.Session) -> None:
     """Run the long-running property tests (developer only)."""
-    session.install("-r", "requirements-dev.txt")
+    session.install(DEPS_DEV)
 
     session.run(
         "pytest",
@@ -683,9 +691,9 @@ def release_check(session: nox.Session) -> None:
       - Tests + pyright for the session Python
     """
     # Tooling / QA deps
-    session.install("-r", "requirements-dev.txt")
+    session.install(DEPS_DEV)
     # Docs deps (mkdocs, plugins)
-    session.install("-r", "requirements-docs.txt")
+    session.install(DEPS_DOCS)
 
     # --- Quality gates (mirror existing sessions, but as a single gate) ---
     session.run(
