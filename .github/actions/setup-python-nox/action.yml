@@ -11,7 +11,7 @@
 name: Setup Python + nox
 
 description: >-
-  Shared bootstrap for GitHub Actions jobs that need Python, pip/uv caches,
+  Shared bootstrap for GitHub Actions jobs that need Python, uv caching,
   and the nox toolchain.
 
 inputs:
@@ -28,19 +28,16 @@ runs:
       uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
       with:
         python-version: ${{ inputs.python-version }}
-        cache: pip
-        cache-dependency-path: |
-          pyproject.toml
-          noxfile.py
-          requirements*.txt
-          constraints*.txt
 
-    - name: Cache pip and uv
+    - name: Set up uv
+      uses: astral-sh/setup-uv@e06108dd0aef18192324c70427afc47652e63a82 # v7.5.0
+      with:
+        version: "0.10.x"
+
+    - name: Cache uv
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
       with:
-        path: |
-          ~/.cache/pip
-          ~/.cache/uv
+        path: ~/.cache/uv
         key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('pyproject.toml', 'noxfile.py', 'requirements*.txt', 'constraints*.txt') }}
         restore-keys: |
           ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-
@@ -49,5 +46,4 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        python -m pip install -U pip
-        python -m pip install nox nox-uv uv
+        uv pip install --system nox nox-uv

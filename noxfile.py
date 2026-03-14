@@ -247,8 +247,7 @@ def package_check(session: nox.Session) -> None:
     )
 
     session.run(
-        "python",
-        "-m",
+        "uv",
         "build",
         "--sdist",
         "--wheel",
@@ -784,8 +783,7 @@ def release_check(session: nox.Session) -> None:
         "import shutil; shutil.rmtree('dist', ignore_errors=True)",
     )
     session.run(
-        "python",
-        "-m",
+        "uv",
         "build",
         "--sdist",
         "--wheel",
