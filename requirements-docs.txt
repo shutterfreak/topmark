@@ -121,7 +121,7 @@ pyyaml-env-tag==1.1
     # via mkdocs
 requests==2.32.5
     # via mkdocs-material
-ruff==0.15.4
+ruff==0.15.6
     # via topmark
 six==1.17.0
     # via python-dateutil
