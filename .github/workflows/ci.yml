@@ -26,11 +26,11 @@ on:
       - "Makefile"
       - "mkdocs.yml"
       - "mkdocs.linkcheck.yml"
-      - ".readthedocs.yaml"
+      - ".readthedocs.yml"
       - "pyproject.toml"
+      - "uv.lock"
       - "noxfile.py"
       - "requirements*.txt"
-      - "constraints*.txt"
       - "README.md"
       - "INSTALL.md"
       - "CONTRIBUTING.md"
@@ -64,9 +64,8 @@ jobs:
               - 'tools/**'
               - '.github/actions/setup-python-nox/**'
               - 'pyproject.toml'
+              - 'uv.lock'
               - 'noxfile.py'
-              - 'requirements*.txt'
-              - 'constraints*.txt'
             docs:
               - 'docs/**'
               - 'src/**'
@@ -75,11 +74,10 @@ jobs:
               - '.mdformat.toml'
               - 'mkdocs.yml'
               - 'mkdocs.linkcheck.yml'
-              - '.readthedocs.yaml'
+              - '.readthedocs.yml'
               - 'pyproject.toml'
+              - 'uv.lock'
               - 'noxfile.py'
-              - 'requirements*.txt'
-              - 'constraints*.txt'
             markdown_links:
               - 'docs/**'
               - 'tools/docs/**'
@@ -101,11 +99,11 @@ jobs:
               - 'Makefile'
               - 'mkdocs.yml'
               - 'mkdocs.linkcheck.yml'
-              - '.readthedocs.yaml'
+              - '.readthedocs.yml'
               - 'pyproject.toml'
+              - 'uv.lock'
               - 'noxfile.py'
               - 'requirements*.txt'
-              - 'constraints*.txt'
               - 'README.md'
               - 'INSTALL.md'
               - 'CONTRIBUTING.md'
@@ -155,7 +153,7 @@ jobs:
         uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: ~/.cache/uv
-          key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('.pre-commit-config.yaml', 'pyproject.toml', 'requirements*.txt', 'constraints*.txt') }}
+          key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('.pre-commit-config.yaml', 'pyproject.toml', 'uv.lock') }}
           restore-keys: |
             ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-
 
@@ -210,7 +208,7 @@ jobs:
         uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: ~/.cache/uv
-          key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('pyproject.toml', 'noxfile.py', 'requirements*.txt', 'constraints*.txt') }}
+          key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('pyproject.toml', 'uv.lock', 'noxfile.py') }}
           restore-keys: |
             ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-
 
@@ -270,20 +268,6 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Install docs requirements
+      - name: Check links in built site via nox
         run: |
-          uv pip install --system -r requirements-docs.txt
-
-      - name: Build docs (linkcheck config)
-        run: |
-          mkdocs build -f mkdocs.linkcheck.yml --strict
-
-      - name: Check links in built site
-        uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411 # v2.8.0
-        with:
-          args: >-
-            --config lychee.toml
-            --no-progress
-            --quiet
-            --root-dir ${{ github.workspace }}/site
-            site
+          nox -s links_site

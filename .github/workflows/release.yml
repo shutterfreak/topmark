@@ -164,23 +164,9 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Install docs requirements
+      - name: Check links in built site via nox
         run: |
-          uv pip install --system -r requirements-docs.txt
-
-      - name: Build docs (linkcheck config)
-        run: |
-          mkdocs build -f mkdocs.linkcheck.yml --strict
-
-      - name: Check links in built site
-        uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411 # v2.8.0
-        with:
-          args: >-
-            --config lychee.toml
-            --no-progress
-            --quiet
-            --root-dir ${{ github.workspace }}/site
-            site
+          nox -s links_site
 
   publish-package:
     name: Publish to PyPI/TestPyPI

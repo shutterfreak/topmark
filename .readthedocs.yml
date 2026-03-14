@@ -20,7 +20,8 @@ build:
   tools:
     python: "3.13"
   commands:
-    # Use pip to install your project and its dependencies, applying the constraints file
-    - pip install -c constraints.txt -e .[docs]
-    # Tell Mkdocs to output the built site to the correct Read the Docs directory
+    # Install uv, then install the project with docs extras into the RTD build environment.
+    - python -m pip install uv
+    - uv pip install --system -e .[docs]
+    # Tell MkDocs to output the built site to the correct Read the Docs directory.
     - mkdocs build --site-dir $READTHEDOCS_OUTPUT/html

@@ -33,7 +33,7 @@ PYTEST_PAR ?= # e.g. set PYTEST_PAR="-n auto" or "-n 4"
 PY ?= python
 VENV := .venv
 VENV_BIN := $(VENV)/bin
-UV := $(VENV_BIN)/uv
+UV ?= uv
 
 PUBLIC_API_JSON := tests/api/public_api_snapshot.json
 
@@ -45,7 +45,7 @@ check-lychee:
 	@command -v lychee >/dev/null 2>&1 || (echo "❌ lychee not found. Install with: brew install lychee" && exit 1)
 
 check-uv:
-	@test -f $(UV) || (echo "❌ uv not found in venv. Run 'make venv' first." && exit 1)
+	@command -v $(UV) >/dev/null 2>&1 || (echo "❌ uv not found. Install uv and ensure it is on PATH." && exit 1)
 
 help:
 	@echo "Usage: make <target>"
@@ -85,10 +85,10 @@ help:
 	@echo "  api-snapshot-ensure-clean  Fail if snapshot differs from Git index"
 	@echo ""
 	@echo "Local editor venv (optional, for Pyright/import resolution in IDE):"
-	@echo "  venv            Create .venv (Python venv + uv bootstrap)"
-	@echo "  venv-sync-dev   Sync requirements-dev.txt into .venv"
-	@echo "  venv-sync-dev-docs   Sync requirements-dev.txt and requirements-docs.txt into .venv"
-	@echo "  venv-sync-docs  Sync requirements-docs.txt into .venv (removes DEV-only packages from .venv)"
+	@echo "  venv            Create .venv via uv"
+	@echo "  venv-sync-dev   Sync dev/test/typing extras into .venv"
+	@echo "  venv-sync-dev-docs   Sync dev/test/typing/docs extras into .venv"
+	@echo "  venv-sync-docs  Sync docs extras into .venv (removes DEV-only packages from .venv)"
 	@echo "  venv-clean      Remove .venv"
 	@echo ""
 	@echo "UV project lock workflow:"
@@ -226,31 +226,30 @@ api-snapshot-ensure-clean: check-venv
 # ---- Optional local convenience venv for editor / pyright (kept during uv migration) ----
 #
 # Local editor venv bootstrap.
-# We still create a standard .venv for IDE integration, then use uv inside it.
-venv:
+# We keep a project-local .venv for IDE integration, but let uv manage it directly.
+venv: check-uv
 	@test -d $(VENV) || ( \
-		echo "Creating $(VENV)..." && \
-		$(PY) -m venv $(VENV) && \
-		$(VENV_BIN)/python -m pip install uv \
+		echo "Creating $(VENV) via uv..." && \
+		$(UV) venv $(VENV) \
 		)
 	@echo "Activate with: source $(VENV_BIN)/activate"
 
 venv-sync-dev: venv
-	$(UV) pip sync requirements-dev.txt
-	@echo "Synced dev deps into $(VENV)."
+	$(UV) sync --extra dev --extra typing --extra test
+	@echo "Synced dev/test/typing extras into $(VENV)."
 
 # Sync docs-only deps into the shared venv.
-# NOTE:running this will remove dev-only tools which are not present in requirements-docs.txt.
+# NOTE: running this will remove dev-only tools which are not part of the docs environment.
 # Prefer venv-sync-dev-docs for a combined environment.
 venv-sync-docs: venv
-	$(UV) pip sync requirements-docs.txt
-	@echo "Synced docs deps into $(VENV)."
+	$(UV) sync --extra docs
+	@echo "Synced docs extras into $(VENV)."
 
 # Sync the UNION of dev + docs deps into the shared venv.
 # This is the recommended target for local MkDocs development and VS Code import resolution.
 venv-sync-dev-docs: venv
-	$(UV) pip sync requirements-dev.txt requirements-docs.txt
-	@echo "Synced dev+docs deps into $(VENV)."
+	$(UV) sync --extra dev --extra typing --extra test --extra docs
+	@echo "Synced dev/test/typing/docs extras into $(VENV)."
 
 venv-clean:
 	@rm -rf $(VENV)
