@@ -30,7 +30,6 @@ on:
       - "pyproject.toml"
       - "uv.lock"
       - "noxfile.py"
-      - "requirements*.txt"
       - "README.md"
       - "INSTALL.md"
       - "CONTRIBUTING.md"
@@ -103,7 +102,6 @@ jobs:
               - 'pyproject.toml'
               - 'uv.lock'
               - 'noxfile.py'
-              - 'requirements*.txt'
               - 'README.md'
               - 'INSTALL.md'
               - 'CONTRIBUTING.md'
