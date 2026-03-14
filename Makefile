@@ -19,6 +19,7 @@
 	links links-all links-site links-src \
 	api-snapshot api-snapshot-dev api-snapshot-update api-snapshot-ensure-clean \
 	venv venv-sync-dev venv-sync-dev-docs venv-sync-docs venv-clean \
+	uv-lock uv-lock-upgrade uv-export-prod uv-export-dev uv-export-docs \
 	lock-compile-prod lock-compile-dev lock-compile-docs \
 	lock-dry-run-prod lock-dry-run-dev lock-dry-run-docs \
 	lock-upgrade-prod lock-upgrade-dev lock-upgrade-docs \
@@ -83,13 +84,20 @@ help:
 	@echo "  api-snapshot-ensure-clean  Fail if snapshot differs from Git index"
 	@echo ""
 	@echo "Local editor venv (optional, for Pyright/import resolution in IDE):"
-	@echo "  venv            Create .venv (uv)"
+	@echo "  venv            Create .venv (Python venv + uv bootstrap)"
 	@echo "  venv-sync-dev   Sync requirements-dev.txt into .venv"
 	@echo "  venv-sync-dev-docs   Sync requirements-dev.txt and requirements-docs.txt into .venv"
 	@echo "  venv-sync-docs  Sync requirements-docs.txt into .venv (removes DEV-only packages from .venv)"
 	@echo "  venv-clean      Remove .venv"
 	@echo ""
-	@echo "Lock management (uv pip compile; run manually when you choose to refresh pins):"
+	@echo "UV project lock workflow (new; kept in parallel with requirements exports during migration):"
+	@echo "  uv-lock         Generate or refresh uv.lock from pyproject.toml"
+	@echo "  uv-lock-upgrade Refresh uv.lock with dependency upgrades"
+	@echo "  uv-export-prod  Export runtime requirements.txt from uv.lock"
+	@echo "  uv-export-dev   Export requirements-dev.txt from uv.lock"
+	@echo "  uv-export-docs  Export requirements-docs.txt from uv.lock"
+	@echo ""
+	@echo "Legacy requirements lock management (kept temporarily during migration):"
 	@echo "  lock-compile-prod     requirements.in  -> requirements.txt"
 	@echo "  lock-compile-dev      requirements-dev.in -> requirements-dev.txt"
 	@echo "  lock-compile-docs     requirements-docs.in -> requirements-docs.txt"
@@ -226,7 +234,7 @@ api-snapshot-ensure-clean: check-venv
 		exit 1; \
 	fi
 
-# ---- Optional local convenience venv for editor / pyright (nox still runs checks) ----
+# ---- Optional local convenience venv for editor / pyright (kept during uv migration) ----
 
 # We use uv for everything now as it is immune to pip internal breakages.
 venv:
@@ -258,6 +266,25 @@ venv-clean:
 	@rm -rf $(VENV)
 	@echo "Removed $(VENV)."
 
+#
+# ---- UV project lock workflow (introduced in parallel with legacy exports) ----
+uv-lock: check-uv
+	$(UV) lock
+
+uv-lock-upgrade: check-uv
+	$(UV) lock --upgrade
+
+uv-export-prod: check-uv
+	$(UV) export --no-hashes --output-file requirements.txt
+
+uv-export-dev: check-uv
+	$(UV) export --no-hashes --extra dev --extra typing --extra test --output-file requirements-dev.txt
+
+uv-export-docs: check-uv
+	$(UV) export --no-hashes --extra docs --output-file requirements-docs.txt
+
+# ---- Legacy requirements export workflow (kept temporarily during migration) ----
+#
 # ---- Lock management (pins) using UV. These do NOT affect nox; nox uses the compiled locks. ----
 lock-compile-prod: check-uv
 	$(UV) pip compile -q -c constraints.txt requirements.in -o requirements.txt
