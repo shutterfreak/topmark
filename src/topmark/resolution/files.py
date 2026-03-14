@@ -33,7 +33,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from pathspec import PathSpec
-from pathspec.patterns.gitwildmatch import GitWildMatchPattern
 
 from topmark.config.types import PatternSource  # runtime use
 from topmark.core.errors import AmbiguousFileTypeIdentifierError
@@ -286,7 +285,7 @@ def resolve_file_list(config: Config) -> list[Path]:
             if base_dir not in exclude_pattern_bases:
                 exclude_pattern_bases.append(base_dir)
         exclude_pattern_spec = PathSpec.from_lines(
-            GitWildMatchPattern,
+            "gitignore",
             list(exclude_patterns),
         )
 
@@ -296,7 +295,10 @@ def resolve_file_list(config: Config) -> list[Path]:
             pats: list[str] = load_patterns_from_file(psrc)
             if not pats:
                 continue
-            spec_src: PathSpec = PathSpec.from_lines(GitWildMatchPattern, pats)
+            spec_src: PathSpec = PathSpec.from_lines(
+                "gitignore",
+                pats,
+            )
             exclude_source_specs.append((spec_src, psrc.base))
 
     def _is_excluded_dir(path: Path) -> bool:
@@ -463,7 +465,10 @@ def resolve_file_list(config: Config) -> list[Path]:
         if include_patterns:
             # NOTE: This branch is reachable depending on CLI/config inputs;
             # some static analyzers may flag it falsely.
-            spec_root: PathSpec = PathSpec.from_lines(GitWildMatchPattern, list(include_patterns))
+            spec_root: PathSpec = PathSpec.from_lines(
+                "gitignore",
+                list(include_patterns),
+            )
             bases: list[Path] = [cwd.resolve()]
             # add parent directories of discovered/explicit config files
             for base_dir in _iter_config_base_dirs(config_files):
@@ -480,7 +485,10 @@ def resolve_file_list(config: Config) -> list[Path]:
             pats: list[str] = load_patterns_from_file(psrc)
             if not pats:
                 continue
-            spec_src: PathSpec = PathSpec.from_lines(GitWildMatchPattern, pats)
+            spec_src: PathSpec = PathSpec.from_lines(
+                "gitignore",
+                pats,
+            )
             for p in candidate_paths:
                 if spec_src.match_file(_relative_posix_for_match(p, psrc.base)):
                     kept.add(p)
@@ -494,7 +502,10 @@ def resolve_file_list(config: Config) -> list[Path]:
         if exclude_patterns:
             # NOTE: This branch is reachable depending on CLI/config inputs;
             # some static analyzers may flag it falsely.
-            spec_root = PathSpec.from_lines(GitWildMatchPattern, list(exclude_patterns))
+            spec_root = PathSpec.from_lines(
+                "gitignore",
+                list(exclude_patterns),
+            )
             bases = [cwd.resolve()]
             for base_dir in _iter_config_base_dirs(config_files):
                 if base_dir not in bases:
@@ -514,7 +525,10 @@ def resolve_file_list(config: Config) -> list[Path]:
             pats = load_patterns_from_file(psrc)
             if not pats:
                 continue
-            spec_src = PathSpec.from_lines(GitWildMatchPattern, pats)
+            spec_src = PathSpec.from_lines(
+                "gitignore",
+                pats,
+            )
             kept = {
                 p for p in kept if not spec_src.match_file(_relative_posix_for_match(p, psrc.base))
             }
