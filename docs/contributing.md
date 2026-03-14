@@ -12,14 +12,14 @@ topmark:header:end
 
 # Contributing
 
-This page exists to keep MkDocs **strict** mode happy and avoid broken links. The canonical
-contributor guide lives at the repository root.
+This page exists to keep MkDocs **strict** mode happy by providing a stable in-site link target. The
+canonical contributor guide lives at the repository root.
 
 ## 📂 Where things live
 
 - **README.md** — overview, features, usage, examples
 - **INSTALL.md** — installation & development setup
-- **CONTRIBUTING.md** — contributor guide (this file)
+- **CONTRIBUTING.md** — canonical contributor guide at the repository root
 - **docs/** — MkDocs documentation site
   - **docs/index.md** — docs landing page
   - **docs/usage/** — detailed usage guides (pre-commit, header placement, file types, …)
@@ -29,7 +29,8 @@ contributor guide lives at the repository root.
 - **.pre-commit-config.yaml** — enabled hooks for this repo
 - **.pre-commit-hooks.yaml** — hook definitions exported to consumer repos
 
-👉 **Read the full contributor guide on GitHub:**
+Read the full contributor guide on GitHub:
+[CONTRIBUTING.md](https://github.com/shutterfreak/topmark/blob/main/CONTRIBUTING.md)
 
 - <https://github.com/shutterfreak/topmark/blob/main/CONTRIBUTING.md>
 

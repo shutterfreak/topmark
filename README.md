@@ -146,6 +146,10 @@ make venv
 make venv-sync-dev
 ```
 
+TopMark uses `uv` as the canonical dependency manager. `pyproject.toml` declares dependency ranges,
+`uv.lock` is the locked source of truth, and the optional local `.venv` is kept for editor
+integration.
+
 Run checks to confirm setup:
 
 ```bash
@@ -349,6 +353,12 @@ ______________________________________________________________________
 ## 📦 Packaging & Versioning
 
 TopMark follows **Semantic Versioning (SemVer)**.
+
+For development and CI, dependency resolution is driven by `uv`:
+
+- `pyproject.toml` defines supported dependency ranges
+- `uv.lock` is the committed lock file
+- `nox` installs session dependencies from project extras
 
 | Change Type                   | Version Impact |
 | ----------------------------- | -------------- |

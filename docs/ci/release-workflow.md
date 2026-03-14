@@ -52,10 +52,9 @@ credentials.
 Documentation is built through **nox** for parity with CI and local development:
 
 ```yaml
-- name: Bootstrap nox
-  run: |
-      python -m pip install -U pip
-      pip install nox nox-uv uv
+- uses: ./.github/actions/setup-python-nox
+  with:
+      python-version: "3.13"
 
 - name: Build docs (strict via nox)
   run: |
@@ -64,16 +63,14 @@ Documentation is built through **nox** for parity with CI and local development:
 
 ### 🧰 Caching
 
-Each job caches both pip and uv directories for faster re-runs:
+Each job restores the uv cache and keys it from the canonical dependency inputs:
 
 ```yaml
-- name: Cache pip & nox
-  uses: actions/cache@v4
+- name: Cache uv
+  uses: actions/cache@v5
   with:
-      path: |
-          ~/.cache/pip
-          ~/.cache/uv
-      key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('noxfile.py', 'pyproject.toml', 'requirements-*.txt', 'constraints.txt') }}
+      path: ~/.cache/uv
+      key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('pyproject.toml', 'uv.lock', 'noxfile.py') }}
 ```
 
 ### 🔗 Built-site Link Checking
@@ -99,7 +96,7 @@ Before publishing, the workflow ensures:
 
 ### 📦 Package Validation
 
-- Builds sdist + wheel with `python -m build`
+- Builds sdist + wheel with `uv build`
 
 - Verifies filenames and version correctness
 
@@ -155,7 +152,14 @@ ______________________________________________________________________
   nox -s links_site
   nox -s links_all
 
-  python -m build
+  uv build
   ```
 
 - Run `make verify` before tagging.
+
+GitHub Actions used by this workflow are pinned to specific commit hashes for supply-chain security.
+
+Dependabot periodically opens PRs updating these hashes. Maintainers should review and merge these
+PRs once CI passes.
+
+See [`docs/ci/dependabot.md`](./dependabot.md) for details.

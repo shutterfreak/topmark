@@ -23,8 +23,8 @@ ______________________________________________________________________
 - **Python 3.10–3.14**
 - **Git**
 - **make** (for convenience targets)
-- **tox** (`pipx install tox` or `pip install tox`)
-- **pip-tools ≥ 7.4** (installed automatically by `make venv`)
+- **uv** (install and keep it on your `PATH`)
+- **nox** (installed as part of the project extras / QA workflow)
 
 Optional (for local testing across multiple versions):
 
@@ -54,7 +54,7 @@ make test       # tox default envs
 make pytest     # supports PYTEST_PAR="-n auto"
 ```
 
-> **Note**: `.venv` is for IDE and Pyright support; tox runs isolated environments for checks.
+> **Note**: `.venv` is for IDE and Pyright support; `nox` runs isolated environments for checks.
 
 ______________________________________________________________________
 
@@ -162,7 +162,7 @@ and typing rules:
 
 ______________________________________________________________________
 
-### Dependency versioning: ranges vs pins
+### Dependency versioning: ranges and locks
 
 TopMark uses a two-layer dependency strategy:
 
@@ -172,28 +172,33 @@ TopMark uses a two-layer dependency strategy:
   - This describes what TopMark is compatible with, without forcing users to install our exact dev
     versions.
 
-- **`requirements*.txt`** (generated via `pip-tools`) hold *exact pins*:
+- **`uv.lock`** holds the *resolved lock state*:
 
-  - `requirements.txt` and `requirements-dev.txt` are compiled from `pyproject.toml` and are used
-    for local development, CI, and tox.
-  - They contain `==` pins and act as the reproducible snapshot of the dependencies we actually test
-    against.
+  - `uv.lock` is the committed dependency lock used as the canonical reproducible dependency graph.
+  - CI, release automation, and local development all derive from this uv-managed lock workflow.
 
 When updating dependencies:
 
 1. Adjust **ranges** in `pyproject.toml` if compatibility changes.
-1. Regenerate **pins** with `pip-compile` (see comments at the top of each `requirements*.txt`
-   file).
-1. Commit both the updated `pyproject.toml` and requirements files together.
+
+1. Refresh the lock with:
+
+   ```bash
+   make uv-lock
+   # or, to upgrade resolved versions within the allowed ranges:
+   make uv-lock-upgrade
+   ```
+
+1. Commit both the updated `pyproject.toml` and `uv.lock` together.
 
 ______________________________________________________________________
 
 ## 🧠 Type Checking
 
-Run strict **Pyright** type checks via tox:
+Run strict **Pyright** type checks via `nox`:
 
 ```bash
-tox -e py313-typecheck
+nox -s qa -p 3.13
 ```
 
 Or run all verification checks (format, lint, links, docs):
@@ -213,7 +218,8 @@ make docs-build   # strict build (CI)
 make docs-serve   # local live-reload server
 ```
 
-MkDocs configuration lives in `mkdocs.yml`, with dependencies pinned in `requirements-docs.txt`.
+MkDocs configuration lives in `mkdocs.yml`, and documentation dependencies are installed from the
+`docs` extra declared in `pyproject.toml` and resolved through `uv.lock`.
 
 ______________________________________________________________________
 
@@ -240,16 +246,16 @@ TopMark follows PEP 517/518 standards.
 Build and verify artifacts:
 
 ```bash
-python -m build
-python -m twine check dist/*
+uv build
+twine check dist/*
 ```
 
 Upload to PyPI (or TestPyPI):
 
 ```bash
-python -m twine upload dist/*
+twine upload dist/*
 # or:
-python -m twine upload --repository testpypi dist/*
+twine upload --repository testpypi dist/*
 ```
 
 Releases are typically handled by GitHub Actions when tags are pushed.
@@ -346,7 +352,8 @@ ______________________________________________________________________
 ## 🧭 Troubleshooting
 
 - **Missing tools:** run `make venv` then `make venv-sync-dev`
-- **mkdocs errors:** try `make docs-serve` to detect missing plugins
+- **mkdocs errors:** run `make venv-sync-all` or `make docs-serve` to ensure the docs extras are
+  installed
 - **Python version errors:** install interpreters via `pyenv`
 - **Permission issues (Windows):**\
   Run PowerShell as Administrator and execute\

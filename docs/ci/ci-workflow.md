@@ -57,24 +57,21 @@ Most heavy lifting is delegated to **nox sessions**:
 - Centralizes environment configuration in `noxfile.py`
 
 ```yaml
-- name: Bootstrap nox
-  run: |
-      python -m pip install -U pip
-      pip install nox nox-uv uv
+- uses: ./.github/actions/setup-python-nox
+  with:
+      python-version: "3.13"
 ```
 
 ### ⚡ Caching
 
-Each job caches both pip and uv caches for speed:
+Each job restores the uv cache and keys it from the canonical dependency inputs:
 
 ```yaml
-- name: Cache pip & nox
-  uses: actions/cache@v4
+- name: Cache uv
+  uses: actions/cache@v5
   with:
-      path: |
-          ~/.cache/pip
-          ~/.cache/uv
-      key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('noxfile.py', 'pyproject.toml', 'requirements-*.txt', 'constraints.txt') }}
+      path: ~/.cache/uv
+      key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('pyproject.toml', 'uv.lock', 'noxfile.py') }}
 ```
 
 ### ✅ Pre-commit Validation
@@ -123,6 +120,17 @@ nox -s qa -p 3.13
 nox -s links_all        # source Markdown + docstrings
 nox -s links_site       # built site (includes generated pages)
 ```
+
+______________________________________________________________________
+
+## Dependency Automation
+
+TopMark uses **Dependabot** to keep GitHub Actions and dependencies up to date.
+
+For security reasons, GitHub Actions are pinned to **exact commit SHAs** instead of version tags.
+Dependabot automatically opens pull requests when upstream actions release updates.
+
+See [`docs/ci/dependabot.md`](./dependabot.md) for details on the update policy and review workflow.
 
 ______________________________________________________________________
 

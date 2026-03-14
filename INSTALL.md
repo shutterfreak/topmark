@@ -13,7 +13,8 @@ topmark:header:end
 # Installation
 
 This guide covers how to **install** TopMark for regular use, and how to set up a **development**
-environment that matches our current tooling (`noxfile.py`, `Makefile`, and `CONTRIBUTING.md`).
+environment that matches our current tooling (`uv`, `noxfile.py`, `Makefile`, and
+`CONTRIBUTING.md`).
 
 ______________________________________________________________________
 
@@ -23,7 +24,7 @@ ______________________________________________________________________
 - Git (for cloning and contributing)
 - macOS, Linux, or Windows
 
-> For development: `make`, `nox`, `uv` and optionally `pyenv` to install multiple Python versions.
+> For development: `make`, `uv`, `nox`, and optionally `pyenv` to install multiple Python versions.
 
 ______________________________________________________________________
 
@@ -56,12 +57,13 @@ cd topmark
 
 ### 2) Create an editor-friendly virtual environment (optional)
 
-We keep a small `.venv` only for editor integration (e.g., Pyright import resolution); `nox` (using
-the `uv` backend) manages the automated QA environments used by CI and `Makefile` targets.
+We keep a small `.venv` only for editor integration (for example, Pyright import resolution); `uv`
+manages that local environment directly, while `nox` (using the `uv` backend) manages the automated
+QA environments used by CI and the `Makefile` targets.
 
 ```bash
 make venv
-make venv-sync-dev  # installs dev deps into .venv
+make venv-sync-dev  # syncs dev/test/typing extras into .venv
 ```
 
 Activate it:
@@ -147,10 +149,11 @@ make docs-serve
 
 ### 6) (Optional) Editable install of TopMark
 
-If you want to run `topmark` from your checkout without building a wheel:
+If you want to run `topmark` from your checkout without building a wheel, install the project in
+editable mode inside your active environment:
 
 ```bash
-pip install -e .
+uv pip install --system -e .
 topmark version
 ```
 
@@ -250,9 +253,9 @@ tag.
 Manual upload (maintainers only):
 
 ```bash
-python -m twine upload dist/*
+twine upload dist/*
 # or:
-python -m twine upload --repository testpypi dist/*
+twine upload --repository testpypi dist/*
 ```
 
 Releases are typically published by CI when you push a tag (see `CONTRIBUTING.md` for details).
