@@ -22,8 +22,8 @@
 	pytest pytest-full \
 	release-check release-full release-qa-api-% \
 	test \
-	uv-export-dev uv-export-docs uv-export-prod uv-lock uv-lock-upgrade \
-	venv venv-clean venv-sync-dev venv-sync-dev-docs venv-sync-docs \
+	uv-lock uv-lock-upgrade \
+	venv venv-clean venv-sync-all venv-sync-dev venv-sync-docs \
 	verify
 
 .DEFAULT_GOAL := help
@@ -87,16 +87,13 @@ help:
 	@echo "Local editor venv (optional, for Pyright/import resolution in IDE):"
 	@echo "  venv            Create .venv via uv"
 	@echo "  venv-sync-dev   Sync dev/test/typing extras into .venv"
-	@echo "  venv-sync-dev-docs   Sync dev/test/typing/docs extras into .venv"
+	@echo "  venv-sync-all   Sync dev/test/typing/docs extras into .venv"
 	@echo "  venv-sync-docs  Sync docs extras into .venv (removes DEV-only packages from .venv)"
 	@echo "  venv-clean      Remove .venv"
 	@echo ""
 	@echo "UV project lock workflow:"
 	@echo "  uv-lock         Generate or refresh uv.lock from pyproject.toml"
 	@echo "  uv-lock-upgrade Refresh uv.lock with dependency upgrades"
-	@echo "  uv-export-prod  Export runtime requirements.txt from uv.lock"
-	@echo "  uv-export-dev   Export requirements-dev.txt from uv.lock"
-	@echo "  uv-export-docs  Export requirements-docs.txt from uv.lock"
 
 test: check-venv
 	@echo "Running tests via nox..."
@@ -223,10 +220,10 @@ api-snapshot-ensure-clean: check-venv
 	fi
 
 #
-# ---- Optional local convenience venv for editor / pyright (kept during uv migration) ----
+# ---- Optional local convenience venv for editor / pyright ----
 #
 # Local editor venv bootstrap.
-# We keep a project-local .venv for IDE integration, but let uv manage it directly.
+# We keep a project-local .venv for IDE integration, and let uv manage it directly.
 venv: check-uv
 	@test -d $(VENV) || ( \
 		echo "Creating $(VENV) via uv..." && \
@@ -238,16 +235,16 @@ venv-sync-dev: venv
 	$(UV) sync --extra dev --extra typing --extra test
 	@echo "Synced dev/test/typing extras into $(VENV)."
 
-# Sync docs-only deps into the shared venv.
-# NOTE: running this will remove dev-only tools which are not part of the docs environment.
-# Prefer venv-sync-dev-docs for a combined environment.
+# Sync docs-only extras into the shared venv.
+# NOTE: running this will remove dev/test/typing tools which are not part of the docs environment.
+# Prefer venv-sync-all for a combined environment.
 venv-sync-docs: venv
 	$(UV) sync --extra docs
 	@echo "Synced docs extras into $(VENV)."
 
-# Sync the UNION of dev + docs deps into the shared venv.
+# Sync the union of dev/test/typing/docs extras into the shared venv.
 # This is the recommended target for local MkDocs development and VS Code import resolution.
-venv-sync-dev-docs: venv
+venv-sync-all: venv
 	$(UV) sync --extra dev --extra typing --extra test --extra docs
 	@echo "Synced dev/test/typing/docs extras into $(VENV)."
 
@@ -256,21 +253,9 @@ venv-clean:
 	@echo "Removed $(VENV)."
 
 #
-# ---- UV project lock workflow ----
+# ---- UV project lock workflow (canonical dependency management) ----
 uv-lock: check-uv
 	$(UV) lock
 
 uv-lock-upgrade: check-uv
 	$(UV) lock --upgrade
-
-uv-export-prod: check-uv
-	$(UV) export --no-hashes --output-file requirements.txt
-	topmark check --apply requirements*.txt constraints*.txt
-
-uv-export-dev: check-uv
-	$(UV) export --no-hashes --extra dev --extra typing --extra test --output-file requirements-dev.txt
-	topmark check --apply requirements*.txt constraints*.txt
-
-uv-export-docs: check-uv
-	$(UV) export --no-hashes --extra docs --output-file requirements-docs.txt
-	topmark check --apply requirements*.txt constraints*.txt

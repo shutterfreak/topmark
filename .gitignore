@@ -28,10 +28,12 @@ docs/**/_drafts/
 # Documentation (built)
 site/
 
-
 # Virtual environments
 .venv/
-.rtd/
+
+# Legacy pip-centric requirements and constraints pins:
+requirements*.txt
+constraints*.txt
 
 # mypy
 .mypy_cache/
