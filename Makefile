@@ -9,21 +9,22 @@
 # topmark:header:end
 
 .PHONY: \
-	check-venv check-lychee check-uv \
+	api-snapshot api-snapshot-dev api-snapshot-ensure-clean api-snapshot-update \
+	check-lychee check-uv check-venv \
+	docstring-links \
+	docs-build docs-clean docs-serve \
+	format format-check format-docstrings \
 	help \
-	test verify lint lint-fixall \
-	format-check format format-docstrings docstring-links \
-	pytest pytest-full \
-	property-test \
-	docs-build docs-serve docs-clean \
 	links links-all links-site links-src \
-	api-snapshot api-snapshot-dev api-snapshot-update api-snapshot-ensure-clean \
-	venv venv-sync-dev venv-sync-dev-docs venv-sync-docs venv-clean \
-	uv-lock uv-lock-upgrade uv-export-prod uv-export-dev uv-export-docs \
-	lock-compile-prod lock-compile-dev lock-compile-docs \
-	lock-dry-run-prod lock-dry-run-dev lock-dry-run-docs \
-	lock-upgrade-prod lock-upgrade-dev lock-upgrade-docs \
-	package-check release-check release-full release-qa-api-%
+	lint lint-fixall \
+	package-check \
+	property-test \
+	pytest pytest-full \
+	release-check release-full release-qa-api-% \
+	test \
+	uv-export-dev uv-export-docs uv-export-prod uv-lock uv-lock-upgrade \
+	venv venv-clean venv-sync-dev venv-sync-dev-docs venv-sync-docs \
+	verify
 
 .DEFAULT_GOAL := help
 NOX ?= nox
@@ -221,14 +222,16 @@ api-snapshot-ensure-clean: check-venv
 		exit 1; \
 	fi
 
+#
 # ---- Optional local convenience venv for editor / pyright (kept during uv migration) ----
-
-# We use uv for everything now as it is immune to pip internal breakages.
+#
+# Local editor venv bootstrap.
+# We still create a standard .venv for IDE integration, then use uv inside it.
 venv:
 	@test -d $(VENV) || ( \
 		echo "Creating $(VENV)..." && \
 		$(PY) -m venv $(VENV) && \
-		$(VENV_BIN)/pip install uv \
+		$(VENV_BIN)/python -m pip install uv \
 		)
 	@echo "Activate with: source $(VENV_BIN)/activate"
 
@@ -254,7 +257,7 @@ venv-clean:
 	@echo "Removed $(VENV)."
 
 #
-# ---- UV project lock workflow (introduced in parallel with legacy exports) ----
+# ---- UV project lock workflow ----
 uv-lock: check-uv
 	$(UV) lock
 
