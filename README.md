@@ -147,9 +147,9 @@ make venv
 make venv-sync-dev
 ```
 
-TopMark uses `uv` as the canonical dependency manager. `pyproject.toml` declares dependency ranges,
-`uv.lock` is the locked source of truth, and the optional local `.venv` is kept for editor
-integration.
+TopMark uses **`uv` as the canonical dependency manager**. `pyproject.toml` declares dependency
+ranges, `uv.lock` is the committed lock source of truth, and a project-local `.venv` is used as the
+standard environment for editor integration and interactive development.
 
 Run checks to confirm setup:
 
@@ -378,6 +378,12 @@ Release candidates and final releases are published by CI when you push a tag.
 ______________________________________________________________________
 
 ## 🧪 Development
+
+For day-to-day development, use the local `.venv` for editor integration and interactive work.
+Automated testing, typing, documentation, and validation still run in isolated environments managed
+by `nox`, which keeps local convenience separate from reproducible QA automation.
+
+Typical development workflows:
 
 To run the full QA suite across all supported Python versions:
 

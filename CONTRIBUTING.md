@@ -54,7 +54,10 @@ make test       # tox default envs
 make pytest     # supports PYTEST_PAR="-n auto"
 ```
 
-> **Note**: `.venv` is for IDE and Pyright support; `nox` runs isolated environments for checks.
+> **Note**: `.venv` is the standard local development environment for IDE integration and
+> interactive work. It is managed with `uv` and intended for editor support (for example Pyright
+> import resolution). All automated validation, testing, and CI parity checks still run through
+> isolated `nox` environments.
 
 ______________________________________________________________________
 

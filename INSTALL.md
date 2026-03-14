@@ -57,9 +57,11 @@ cd topmark
 
 ### 2) Create an editor-friendly virtual environment (optional)
 
-We keep a small `.venv` only for editor integration (for example, Pyright import resolution); `uv`
-manages that local environment directly, while `nox` (using the `uv` backend) manages the automated
-QA environments used by CI and the `Makefile` targets.
+We keep a project-local `.venv` as the recommended long-term environment for editor integration (for
+example, Pyright import resolution) and interactive development. `uv` manages this environment
+directly. Automated validation environments used by CI and quality checks are still created and
+managed by `nox` (via the `uv` backend), ensuring reproducible and isolated test environments while
+keeping the local developer workflow simple.
 
 ```bash
 make venv
