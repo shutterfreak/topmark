@@ -90,25 +90,12 @@ help:
 	@echo "  venv-sync-docs  Sync requirements-docs.txt into .venv (removes DEV-only packages from .venv)"
 	@echo "  venv-clean      Remove .venv"
 	@echo ""
-	@echo "UV project lock workflow (new; kept in parallel with requirements exports during migration):"
+	@echo "UV project lock workflow:"
 	@echo "  uv-lock         Generate or refresh uv.lock from pyproject.toml"
 	@echo "  uv-lock-upgrade Refresh uv.lock with dependency upgrades"
 	@echo "  uv-export-prod  Export runtime requirements.txt from uv.lock"
 	@echo "  uv-export-dev   Export requirements-dev.txt from uv.lock"
 	@echo "  uv-export-docs  Export requirements-docs.txt from uv.lock"
-	@echo ""
-	@echo "Legacy requirements lock management (kept temporarily during migration):"
-	@echo "  lock-compile-prod     requirements.in  -> requirements.txt"
-	@echo "  lock-compile-dev      requirements-dev.in -> requirements-dev.txt"
-	@echo "  lock-compile-docs     requirements-docs.in -> requirements-docs.txt"
-	@echo ""
-	@echo "  lock-dry-run-prod     Preview upgrades for prod lock (no file changes)"
-	@echo "  lock-dry-run-dev      Preview upgrades for dev lock (no file changes)"
-	@echo "  lock-dry-run-docs     Preview upgrades for docs lock (no file changes)"
-	@echo ""
-	@echo "  lock-upgrade-prod     Upgrade pins in requirements.txt"
-	@echo "  lock-upgrade-dev      Upgrade pins in requirements-dev.txt"
-	@echo "  lock-upgrade-docs     Upgrade pins in requirements-docs.txt"
 
 test: check-venv
 	@echo "Running tests via nox..."
@@ -284,42 +271,4 @@ uv-export-dev: check-uv
 
 uv-export-docs: check-uv
 	$(UV) export --no-hashes --extra docs --output-file requirements-docs.txt
-	topmark check --apply requirements*.txt constraints*.txt
-
-# ---- Legacy requirements export workflow (kept temporarily during migration) ----
-#
-# ---- Lock management (pins) using UV. These do NOT affect nox; nox uses the compiled locks. ----
-lock-compile-prod: check-uv
-	$(UV) pip compile -q -c constraints.txt requirements.in -o requirements.txt
-	topmark check --apply requirements*.txt constraints*.txt
-
-lock-compile-dev: check-uv
-	$(UV) pip compile -q -c constraints.txt requirements-dev.in -o requirements-dev.txt
-	topmark check --apply requirements*.txt constraints*.txt
-
-lock-compile-docs: check-uv
-	$(UV) pip compile -q -c constraints.txt requirements-docs.in -o requirements-docs.txt
-	topmark check --apply requirements*.txt constraints*.txt
-
-# (Preview) dry-run upgrade helpers — show solver changes without writing files
-lock-dry-run-prod: check-uv
-	$(UV) pip compile -U -c constraints.txt requirements.in --dry-run
-
-lock-dry-run-dev: check-uv
-	$(UV) pip compile -U -c constraints.txt requirements-dev.in --dry-run
-
-lock-dry-run-docs: check-uv
-	$(UV) pip compile -U -c constraints.txt requirements-docs.in --dry-run
-
-# Upgrade helpers — write solver changes to files:
-lock-upgrade-prod: check-uv
-	$(UV) pip compile -U -c constraints.txt requirements.in -o requirements.txt
-	topmark check --apply requirements*.txt constraints*.txt
-
-lock-upgrade-dev: check-uv
-	$(UV) pip compile -U -c constraints.txt requirements-dev.in -o requirements-dev.txt
-	topmark check --apply requirements*.txt constraints*.txt
-
-lock-upgrade-docs: check-uv
-	$(UV) pip compile -U -c constraints.txt requirements-docs.in -o requirements-docs.txt
 	topmark check --apply requirements*.txt constraints*.txt
