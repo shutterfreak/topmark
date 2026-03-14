@@ -63,7 +63,7 @@ dependencies = [
   # Git-style pattern matching used for file inclusion/exclusion
   "pathspec>=0.12.1,<1.1.0",
   # Manipulate TOML configuration files:
-  "tomlkit>=0.13.3,<0.14.0",
+  "tomlkit>=0.13.3,<0.15.0",
   # ANSI colored terminal output:
   "yachalk>=0.1.8,<0.2.0",
   # CLI framework
