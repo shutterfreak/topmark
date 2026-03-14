@@ -234,7 +234,6 @@ testpaths = ["tests"]
 norecursedirs = [
   ".git",
   ".hypothesis",
-  ".tox",
   ".venv",
   ".vscode",
   "archives",
