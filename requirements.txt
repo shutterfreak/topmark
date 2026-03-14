@@ -13,7 +13,7 @@ click==8.3.1
     # via topmark
 importlib-resources==6.5.2
     # via yachalk
-pathspec==0.12.1
+pathspec==1.0.4
     # via topmark
 tomlkit==0.13.3
     # via topmark
