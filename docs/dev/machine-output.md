@@ -140,26 +140,25 @@ Summary mode corresponds to `summary_mode = true`.
   "meta": { /* MetaPayload */ },
   "config": { /* ConfigPayload */ },
   "config_diagnostics": { /* ConfigDiagnosticsPayload */ },
-  "summary": {
-    /* aggregated counts per outcome bucket */
-  }
+  "summary": [
+    { "outcome": "unchanged", "reason": "up-to-date", "count": 30 },
+    { "outcome": "would insert", "reason": "header missing, changes found", "count": 1 }
+  ]
 }
 ```
 
-- `summary`: mapping of bucket key → `{count, label}`:
+- `summary`: a **flat list of summary rows**, each representing a unique `(outcome, reason)` bucket
+  with the number of files that produced that pair.
 
-  ```jsonc
-  "summary": {
-    "unchanged":    { "count": 30, "label": "up-to-date" },
-    "would insert": { "count":  1, "label": "header missing, changes found" }
-  }
-  ```
+Important characteristics:
 
-The JSON envelopes and summary payload shapes are built in:
-
-- \[`topmark.pipeline.machine.envelopes.build_processing_results_json_envelope`\][topmark.pipeline.machine.envelopes.build_processing_results_json_envelope]
-- \[`topmark.pipeline.machine.payloads`\][topmark.pipeline.machine.payloads] (summary payload
-  helpers)
+- The summary is **not nested by outcome**.
+- Each row has three stable fields:
+  - `outcome` — pipeline outcome (e.g. `inserted`, `replaced`, `unchanged`).
+  - `reason` — short lowercase bucket reason used for grouping.
+  - `count` — number of files in that bucket.
+- Ordering is deterministic: outcomes follow the internal `Outcome` ordering and reasons are
+  alphabetically sorted within each outcome.
 
 ### NDJSON schema (detail and summary)
 
@@ -184,11 +183,12 @@ Example stream:
  "result": { /* per-file result payload */ } }
 ```
 
-In summary mode, per-file `result` records are replaced by one `summary` record per bucket:
+In summary mode, per-file `result` records are replaced by one `summary` record per
+`(outcome, reason)` bucket:
 
 ```jsonc
-{"kind": "summary", "meta": { /* MetaPayload */ }, "summary": {"key": "unchanged", "count": 30, "label": "up-to-date"}}
-{"kind": "summary", "meta": { /* MetaPayload */ }, "summary": {"key": "skipped", "count": 1, "label": "known file type, headers not supported"}}
+{"kind":"summary","meta":{ /* MetaPayload */ },"summary":{"outcome":"unchanged","reason":"up-to-date","count":30}}
+{"kind":"summary","meta":{ /* MetaPayload */ },"summary":{"outcome":"skipped","reason":"known file type, headers not supported","count":1}}
 ```
 
 NDJSON rules for processing commands:
@@ -201,7 +201,7 @@ NDJSON rules for processing commands:
   1. zero or more `diagnostic` records (each with `domain="config"`)
 - Then either:
   - detail mode: one `result` record per file
-  - summary mode: one `summary` record per bucket
+  - summary mode: one `summary` record per `(outcome, reason)` bucket
 
 The NDJSON record stream is produced by:
 
@@ -313,7 +313,7 @@ ______________________________________________________________________
 
 These commands produce a config snapshot without running the processing pipeline.
 
-### JSON shape
+### JSON shape for `config dump`, `config defaults`, `config init`
 
 ```jsonc
 {
@@ -322,7 +322,7 @@ These commands produce a config snapshot without running the processing pipeline
 }
 ```
 
-### NDJSON shape
+### NDJSON shape for `config dump`, `config defaults`, `config init`
 
 A single record:
 
@@ -334,9 +334,10 @@ ______________________________________________________________________
 
 ## `topmark config check`
 
-This command validates configuration and emits diagnostics plus a summary.
+This command validates configuration and emits the resolved config snapshot, configuration
+diagnostics, and a `config_check` status payload.
 
-### JSON shape
+### JSON shape for `config check`
 
 ```jsonc
 {
@@ -352,7 +353,16 @@ This command validates configuration and emits diagnostics plus a summary.
 }
 ```
 
-### NDJSON shape
+- `config`: resolved configuration snapshot.
+- `config_diagnostics`: full diagnostics payload, including counts and the list of individual config
+  diagnostics.
+- `config_check`: command-status payload containing:
+  - `ok` — whether validation succeeded
+  - `strict` — whether strict validation mode was enabled
+  - `diagnostic_counts` — counts by diagnostic level
+  - `config_files` — config files that contributed to the resolved config
+
+### NDJSON shape for `config check`
 
 Stream prefix:
 
@@ -362,6 +372,13 @@ Stream prefix:
 {"kind":"diagnostic","meta":{...},"diagnostic":{"domain":"config","level":"warning","message":"..."}}
 {"kind":"config_check","meta":{...},"config_check":{...}}
 ```
+
+The NDJSON stream follows the same stable prefix pattern used by processing commands:
+
+1. `config`
+1. `config_diagnostics` (counts-only)
+1. zero or more `diagnostic` records
+1. one final `config_check` record
 
 Notes:
 
@@ -373,7 +390,7 @@ ______________________________________________________________________
 
 ## `topmark version`
 
-### JSON shape
+### JSON shape for `version`
 
 ```jsonc
 {
@@ -385,7 +402,7 @@ ______________________________________________________________________
 }
 ```
 
-### NDJSON shape
+### NDJSON shape for `version`
 
 ```jsonc
 {"kind":"version","meta":{ /* MetaPayload */ },"version_info":{ "version":"<package version>", "version_format":"pep440" }}

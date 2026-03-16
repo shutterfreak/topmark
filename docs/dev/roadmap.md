@@ -33,6 +33,62 @@ ______________________________________________________________________
 This section tracks work completed during the 0.12 development series that directly supports the 1.0
 goals.
 
+### Registry architecture: explicit processor bindings, namespaces, and shared resolution
+
+- Replaced legacy decorator/bootstrap-based built-in processor registration with an explicit,
+  deterministic binding model:
+  - Added \[`topmark.processors.bindings`\][topmark.processors.bindings] with `ProcessorBinding` and
+    `bindings_for(...)`.
+  - Added \[`topmark.processors.instances`\][topmark.processors.instances] as the source of truth
+    for built-in processor bindings and base processor registry construction.
+  - Removed the old bootstrap/discovery path for built-in processors and deleted
+    `topmark.processors.bootstrap` / `topmark.processors.registry`.
+- Moved concrete built-in header processors into
+  \[`topmark.processors.builtins`\][topmark.processors.builtins] and made them pure class-definition
+  modules (no import-time registration side effects).
+- Introduced namespace-aware identities for file types and processors:
+  - `namespace` is now part of the stable identity model.
+  - File types and processors expose `qualified_key` (`"<namespace>:<name>"` or
+    `"<namespace>:<key>"`).
+  - The built-in namespace token is explicitly represented as `topmark`.
+- Added namespace-aware file type identifier resolution in
+  \[`topmark.registry.filetypes.FileTypeRegistry.resolve_filetype_id`\][topmark.registry.filetypes.FileTypeRegistry.resolve_filetype_id],
+  supporting both unqualified and qualified identifiers.
+- Added ambiguity-aware file type lookup with
+  \[`AmbiguousFileTypeIdentifierError`\][topmark.core.errors.AmbiguousFileTypeIdentifierError] so
+  callers can distinguish:
+  - unknown file type identifiers,
+  - ambiguous unqualified identifiers, and
+  - known-but-unsupported file types.
+- Strengthened TopMark-specific registry errors in \[`topmark.core.errors`\][topmark.core.errors],
+  including:
+  - `ProcessorBindingError`
+  - `ProcessorRegistrationError`
+  - `DuplicateProcessorRegistrationError`
+  - `DuplicateProcessorKeyError`
+  - `UnknownFileTypeError`
+  - `AmbiguousFileTypeIdentifierError`
+- Introduced the new \[`topmark.resolution`\][topmark.resolution] package and clarified resolution
+  responsibilities:
+  - \[`topmark.resolution.files`\][topmark.resolution.files] resolves **which files** should be
+    processed.
+  - \[`topmark.resolution.filetypes`\][topmark.resolution.filetypes] resolves **what each file is**
+    using scoring-based file type and processor binding selection.
+- Moved scoring-based file type resolution out of
+  \[`topmark.pipeline.steps.resolver`\][topmark.pipeline.steps.resolver] into the shared resolution
+  layer and slimmed the pipeline resolver step down to orchestration/context mutation.
+- Deleted the old `topmark.registry.resolver` compatibility module after tests were migrated to the
+  shared resolution helpers.
+- Moved the former top-level `topmark.file_resolver` module into
+  \[`topmark.resolution.files`\][topmark.resolution.files] to consolidate all runtime resolution
+  logic under a dedicated package.
+- Made configured file type filtering in file-input resolution namespace-aware by resolving config
+  identifiers through `FileTypeRegistry.resolve_filetype_id(...)` rather than raw registry-key
+  lookup.
+- Fixed a regression in the new shared resolver where empty include/exclude file type collections
+  were treated as active filters. Empty collections are now normalized to mean “no filter”,
+  restoring expected file type resolution behavior.
+
 ### CLI output architecture
 
 - Introduced a clearer split between:
@@ -73,6 +129,54 @@ goals.
     reasons match the established convention.
 - Updated human summaries (`ProcessingContext.format_summary`) so dry-run output is no longer
   misleading (e.g., “would strip header” without claiming it was removed).
+
+### Policy model, empty-file semantics, and outcome summaries
+
+- Introduced a clearer runtime distinction between:
+  - true empty files (`FsStatus.EMPTY`)
+  - logically empty placeholders
+  - effectively empty decoded images
+  - derived `is_empty_like` classification in `ProcessingContext`
+- Added processing-context emptiness flags and derived helpers used consistently across reader,
+  planner, stripper, policy evaluation, and bucketing.
+- Introduced `EmptyInsertMode` so insertion policy can distinguish between:
+  - 0-byte files only
+  - logical-empty placeholders
+  - broader whitespace-empty images
+- Refactored policy helpers in `topmark.pipeline.context.policy` so the same empty classification is
+  reused for:
+  - insert gating (`allow_insert_into_empty_like`)
+  - change feasibility (`can_change`)
+  - unchanged-by-default bucketing for empty-for-insert files
+- Fixed reader behavior so only true 0-byte files remain `FsStatus.EMPTY`, while BOM-only,
+  newline-only, and other empty-like decoded images preserve newline semantics and are represented
+  via the emptiness flags instead.
+- Fixed planner and stripper normalization for BOM-only, newline-only, and other placeholder images
+  so insert → strip → insert remains idempotent.
+- Updated outcome summary aggregation so counts are grouped by **(Outcome, reason)** instead of
+  collapsing all reasons inside the same outcome bucket.
+- Updated human-facing text/Markdown summaries and machine JSON/NDJSON summary payloads to preserve
+  `outcome`, `reason`, and `count` explicitly.
+- Improved summary rendering to include deterministic ordering and explicit total counts in
+  human-facing summary output.
+- Renamed machine summary/data wrapper terminology from `shapes.py` to `envelopes.py` where
+  appropriate to better match responsibility.
+
+### Registry output formats: qualified identifiers in machine and human output
+
+- Updated \[`topmark.registry.machine`\][topmark.registry.machine] payloads and schemas so registry
+  machine formats now emit namespace-aware identity data:
+  - file type entries now include `name`, `namespace`, and `qualified_key`
+  - processor entries now include `namespace`, `key`, and `qualified_key`
+  - processor-bound and unbound file type references use qualified file type identifiers in brief
+    output and expanded identity fields in detailed output
+- Aligned machine payload grouping around processor identity rather than just `(module, class)`.
+- Updated human-facing registry emitters (text and Markdown) and the shared Click-free registry
+  report builders so file types are shown as qualified identifiers in human output as well.
+- Updated plugin/API-facing documentation to explain:
+  - qualified vs unqualified file type identifiers
+  - ambiguity of unqualified names once multiple namespaces are present
+  - runtime processor overlay registration against qualified file type identifiers
 
 ### Human output formats
 
@@ -175,7 +279,8 @@ Completed work:
 - Added a built-site link check (`links-site`) that validates the rendered MkDocs HTML output,
   including generated API pages.
   - Uses `mkdocs.linkcheck.yml` and runs `lychee` against `site/` with `--root-dir` to resolve
-    root-relative links.
+    root-relative links. This built-site validation is now also used as part of the release gating
+    flow.
 - Updated GitHub Actions workflows to gate releases on built-site link integrity:
   - CI: conditional `links` (source Markdown) + `links-site` (built site) based on detected docs
     changes.
@@ -184,6 +289,75 @@ Completed work:
   that generated API pages are only validated via `links-site`.
 - Hardened resolver behavior: exceptions in file type `content_matcher` functions are treated as
   misses (not failures), preserving resolution safety.
+
+### GitHub Actions workflow refactor: CI gating, release preflight, and shared setup
+
+- Refactored GitHub Actions into a clearer two-workflow model:
+
+  - `CI` remains the main validation workflow for pull requests, pushes to `main`, and tag pushes.
+  - `Release to PyPI` now runs only via `workflow_run` after `CI` completes, instead of also being
+    triggered directly by tag pushes.
+
+- Added an explicit **release preflight** job to the release workflow that:
+
+  - verifies the trigger is a successful `workflow_run` from `CI`,
+  - resolves the release tag from the CI head SHA,
+  - exits cleanly with `should_release=false` when the run is not a real release,
+  - gates all downstream release jobs (`details`, docs build, built-site link check, publish, GitHub
+    release).
+
+- This turns non-release `workflow_run` executions into a quiet no-op instead of a noisy or failing
+  path.
+
+- Split release responsibilities more clearly:
+
+  - `preflight` decides whether a release should happen and derives tag/channel/version metadata,
+  - `details` validates repository and package metadata against the resolved tag,
+  - later jobs perform docs checks, packaging, publishing, and GitHub release creation only when
+    preflight succeeds.
+
+- Introduced a reusable local composite action at `/.github/actions/setup-python-nox/action.yml` to
+  standardize Python setup, pip/uv cache handling, and nox bootstrap across workflows.
+
+- Simplified the composite action API so `python-version` is the only public input; cache dependency
+  inputs are now fixed internally to the canonical dependency set.
+
+- Standardized GitHub Actions cache dependency globs and ordering around:
+
+  - `pyproject.toml`
+  - `noxfile.py`
+  - `uv.lock` so setup, cache keys, and trigger logic do not drift out of sync.
+
+- Refined CI changed-file detection into explicit buckets:
+
+  - `python_changed`
+  - `docs_changed`
+  - `markdown_links_changed`
+  - `precommit_changed`
+
+- Used those buckets to gate CI jobs more precisely on pull requests:
+
+  - `lint`, `tests`, and `api-snapshot` follow Python/code changes,
+  - `docs` and `links-site` follow docs and docstring-related changes,
+  - `links` follows Markdown/docs-link changes,
+  - `pre-commit` follows code, docs, workflow, tooling, and config changes.
+
+- Expanded CI trigger coverage so pull-request workflow execution now responds correctly to:
+
+  - workflow/action changes,
+  - docs-tooling changes,
+  - selected top-level Markdown files (`README.md`, `INSTALL.md`, `CONTRIBUTING.md`),
+  - shared editor/tooling config relevant to validation.
+
+- Confirmed via PR-based validation that the new CI gating behaves as intended:
+
+  - a top-level Markdown-only PR runs `changes`, `links`, and `pre-commit`, while skipping
+    code-heavy and docs-heavy jobs,
+  - a `src/**`-only PR runs `changes`, `lint`, `pre-commit`, `docs`, `links-site`, `tests`, and
+    PR-only `api-snapshot`, while skipping top-level Markdown link checks.
+
+- Retained a small permanent troubleshooting log in release preflight that prints tags pointing at
+  the CI SHA before selecting a release tag.
 
 ### Developer automation: nox + uv (tox removal)
 
@@ -196,17 +370,125 @@ Completed work:
 - Hardened lychee invocation for large file lists by chunking arguments to avoid command line length
   limits.
 
+### Dependency workflow modernization: uv-first project model
+
+- Completed the transition from mixed pip/requirements-based dependency management to a **uv-first**
+  workflow:
+  - `pyproject.toml` remains the declaration source for runtime and extra dependency ranges.
+  - `uv.lock` is now the canonical committed lockfile and source of truth for reproducible
+    dependency resolution.
+- Refactored `noxfile.py` so sessions install from **project extras** instead of exported
+  `requirements-*.txt` files:
+  - introduced shared dependency constants for dev/docs extras,
+  - kept base-project installation only where appropriate (for example entry-point validation),
+  - aligned session behavior with the `pyproject.toml` extras model.
+- Completed the migration of local development workflow to uv-managed environments:
+  - `.venv` is now created through `uv venv` and synchronized through uv extras-based sync targets,
+  - local `.venv` is documented as the standard long-term environment for IDE integration and
+    interactive development,
+  - `nox` remains the isolated QA/CI-parity execution layer.
+- Removed legacy exported dependency artifacts and the associated compatibility workflow:
+  - deleted `requirements.txt`, `requirements-dev.txt`, `requirements-docs.txt`, and
+    `constraints.txt`,
+  - removed the corresponding Makefile export/compile targets,
+  - removed workflow/cache/trigger dependence on those files.
+- Updated GitHub Actions and release automation to treat `uv.lock` as the canonical dependency
+  signal:
+  - cache keys now derive from `pyproject.toml`, `uv.lock`, and `noxfile.py`,
+  - docs installation in CI/release jobs now installs from project extras (`.[docs]`) instead of
+    exported requirements files,
+  - built-site link checking was restored with `lycheeverse/lychee-action` after confirming that the
+    nox session itself does not provision the `lychee` binary in GitHub-hosted runners.
+- Migrated Read the Docs build commands to a uv-based installation flow:
+  - install `uv`,
+  - install the project with `.[docs]`,
+  - build MkDocs from project metadata rather than compatibility requirements files.
+- Updated documentation (`README.md`, `INSTALL.md`, `CONTRIBUTING.md`, CI docs) to describe the new
+  uv-first model, including:
+  - `.venv` as the standard local development environment,
+  - `uv.lock` as the canonical lock source,
+  - `nox` as the isolated QA/automation layer.
+
 ### Compatibility and release hygiene
 
 - Fixed a Python < 3.12 incompatibility caused by multiline f-strings in CLI output code paths.
 - Updated pre-commit hook recommendations to rely on the default terse output.
 - Improved internal debug logging around bucket mapping and summary formatting.
+- Removed PathSpec deprecation warnings by replacing deprecated `GitWildMatchPattern` usage with the
+  supported `"gitignore"` pattern family in file-resolution logic, while preserving include/exclude
+  behavior.
+
+### Supply-chain hardening and Dependabot policy
+
+- Upgraded GitHub Actions to Node 24-compatible releases where available and pinned workflow actions
+  to **full commit SHAs** instead of floating tags.
+- Added Dependabot configuration for:
+  - GitHub Actions updates,
+  - uv-managed Python dependency updates.
+- Switched Dependabot from the pip ecosystem to the **uv ecosystem** so dependency automation aligns
+  with `pyproject.toml` + `uv.lock` rather than exported requirements files.
+- Added repository labels and PR-volume controls for Dependabot to keep automated update traffic
+  manageable.
+- Documented action pinning, SHA updates, and Dependabot review policy in dedicated CI documentation
+  (`docs/ci/dependabot.md`) and cross-linked the CI/release workflow docs.
+
+### Formatting/tooling alignment: Markdown, TOML, docs hooks, and packaging metadata
+
+- Centralized Markdown formatter configuration in `.mdformat.toml` and TOML formatter configuration
+  in `.taplo.toml` so CLI tools, pre-commit, CI, and editor integrations use the same source of
+  truth.
+- Fixed an incorrect Markdown formatter setup by explicitly supporting GitHub Flavored Markdown
+  alert/callout syntax through `mdformat-gfm-alerts`.
+- Fixed an incorrect Taplo configuration layout by moving Taplo-specific settings out of
+  `pyproject.toml` into Taplo’s native config file, improving consistency across the Taplo CLI and
+  the VS Code extension.
+- Updated pre-commit and development dependency wiring so Markdown formatting environments
+  consistently install the required mdformat plugins.
+- Simplified GitHub alert conversion in `tools.docs.hooks`:
+  - Material admonition titles are now always derived from the alert kind (`NOTE`, `TIP`, etc.).
+  - Authored callout content is preserved as admonition body content without attempting to infer a
+    separate custom title.
+  - The regex and helper logic were simplified to be robust against `mdformat` normalization of
+    GitHub alert blocks.
+- Improved packaging metadata in `pyproject.toml`:
+  - modern license metadata (`license` + `license-files`)
+  - richer keywords and topic classifiers
+  - maintainer metadata
+  - additional project URLs (Issues, Discussions, CI, Changelog)
+- Simplified local environment bootstrap in `Makefile` so `make venv` only creates the environment
+  and installs `uv`; dependency synchronization is handled explicitly by the sync targets.
 
 ______________________________________________________________________
 
 ## Breaking changes introduced so far
 
 These are changes already landed (or expected to land) during the 0.12 refactor series.
+
+### Registry / resolution model changes
+
+- Built-in processor registration no longer relies on import-time decorators or bootstrap scanning.
+  Integrations depending on decorator/bootstrap-era processor registration behavior must migrate to
+  the explicit binding/overlay model.
+- Removed:
+  - `topmark.processors.bootstrap`
+  - `topmark.processors.registry`
+  - `topmark.registry.resolver`
+  - `register_all_processors()`
+  - `Registry.ensure_processors_registered()`
+- Concrete built-in processor classes now live under
+  \[`topmark.processors.builtins`\][topmark.processors.builtins]. Older import paths such as
+  `topmark.processors.xml.XmlHeaderProcessor` were migrated to the new package layout.
+- Path-based resolution is now centralized in \[`topmark.resolution`\][topmark.resolution].
+  Callers/tests that previously relied on legacy resolver helpers must use the shared resolution
+  helpers instead (for example `resolve_binding_for_path(...)`).
+- Namespace-aware file type lookup now supports qualified identifiers and may raise
+  \[`AmbiguousFileTypeIdentifierError`\][topmark.core.errors.AmbiguousFileTypeIdentifierError] when
+  an unqualified identifier matches multiple file types.
+- Registry mutation and registration errors now use TopMark-specific core errors instead of generic
+  `ValueError` / `RuntimeError` in the refactored code paths.
+- Registry machine and human outputs now expose qualified identifiers and namespace metadata for
+  file types/processors. Downstream tooling or snapshots expecting unqualified-only registry output
+  may need to be updated.
 
 ### CLI / output format changes
 
@@ -222,6 +504,17 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
   - non-text formats ignore color requests and may warn (policy is centralized in validators)
 - Dry-run summaries now end with `- previewed` instead of terminal verbs; apply runs show
   `- inserted` / `- replaced` / `- removed`.
+- Summary output (human and machine) now groups by `(outcome, reason)` rather than collapsing all
+  reasons into a single per-outcome label.
+- Machine summary payloads now emit explicit summary rows with:
+  - `outcome`
+  - `reason`
+  - `count`
+- Policy around inserting into empty files is now interpreted through `EmptyInsertMode`; behavior
+  for BOM-only, newline-only, and other empty-like placeholders may therefore differ from older
+  0-byte-only semantics.
+- Machine summary payloads are now flat row lists keyed by `(outcome, reason)` rather than
+  outcome-keyed maps with a single collapsed label.
 
 ### Documentation build behavior
 
@@ -229,16 +522,114 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
   emitter modules will fail the docs build (`mkdocs build --strict`).
 - CI now performs built-site link checks (`links-site`) during release gating; link validation
   failures may block publishing.
+- GitHub-style alert handling in the docs pipeline no longer attempts to infer custom titles from
+  inline/body text; rendered admonition titles now always come from the alert kind (`Note`, `Tip`,
+  etc.).
+- Formatter configuration for Markdown and TOML is now sourced from dedicated tool config files
+  (`.mdformat.toml`, `.taplo.toml`) rather than mixed into `pyproject.toml`.
 
 ### Developer tooling / CI
 
 - tox support removed; contributors and CI must use `nox` (and uv-backed envs) going forward.
+- Local/editor/Nox/pre-commit environments now assume dedicated mdformat and Taplo tool
+  configuration files are present and authoritative.
+- Packaging metadata was modernized in `pyproject.toml` (including SPDX-style `license` and
+  `license-files`), which may require older packaging/tooling environments to be refreshed.
+- The project no longer maintains committed `requirements*.txt` or `constraints.txt` artifacts as
+  part of its dependency-management model.
+- `uv.lock` is now the canonical lock artifact; CI, release automation, and local workflows derive
+  dependency resolution from `pyproject.toml` + `uv.lock`.
+- Local development now assumes `uv` is installed and available on `PATH` for the standard Makefile
+  and environment-management workflow.
+- `nox` session dependency installation now comes from project extras (`.[dev,...]`, `.[docs]`,
+  etc.) instead of exported requirement files.
+- GitHub workflow action references are pinned to commit SHAs rather than release tags, which may
+  affect maintainers who previously expected floating-tag behavior.
+- Dependabot now tracks the `uv` ecosystem instead of pip/requirements-file inputs.
+- Release publishing is no longer triggered directly by tag pushes in the release workflow;
+  publishing now depends on a successful `CI` `workflow_run` plus a valid release tag resolved from
+  the CI head SHA.
+- GitHub Actions workflow behavior on pull requests is now more aggressively gated by changed-file
+  buckets, so some jobs that previously ran for all PRs may now be skipped unless the relevant files
+  changed.
+- CI/release workflow bootstrap is now centralized through a shared local composite action
+  (`.github/actions/setup-python-nox`). Maintainers changing workflow bootstrap behavior should
+  update that action rather than duplicating edits across workflow files.
+
+### uv workflow follow-up and ecosystem stabilization
+
+The uv migration is functionally complete, but a few follow-up decisions remain before 1.0:
+
+- Perform a final documentation wording sweep for stale references to:
+  - tox,
+  - requirements/constraints files,
+  - legacy target names,
+  - older pip-oriented setup language.
+- Decide whether `uv.lock` should be represented in TopMark’s built-in file type registry as a
+  recognized-but-header-unsupported generated artifact.
+- Keep validating that local `.venv`, nox, CI, pre-commit, and RTD all continue to reflect the same
+  dependency and formatter/plugin expectations under the uv-first model.
+
+### GitHub Actions follow-up and release-path rehearsal
+
+The workflow refactor is functionally in place, but a few follow-up decisions remain before 1.0:
+
+- Decide whether to rehearse the positive release path with a dedicated dry-run or a TestPyPI
+  publish before 1.0.
+- Decide whether the duplicated built-site docs/linkcheck steps in CI and release should remain
+  inline or later be factored into a reusable workflow.
+- Decide whether the `tests` matrix job should eventually reuse the shared setup composite action by
+  adding optional settings such as prerelease-Python support, or whether the current explicit matrix
+  setup should remain the clearer implementation.
+- Decide whether workflow-file indentation/style should be enforced only through `.editorconfig` and
+  editor policy, or also documented explicitly in contributor-facing CI guidance.
+- Keep validating that workflow trigger coverage and changed-file buckets stay aligned as project
+  tooling and config files evolve.
 
 ______________________________________________________________________
 
 ## Still undecided / still to do
 
 This section lists remaining 1.0 decisions and implementation work. Items are grouped by theme.
+
+### Namespace-based registry completion
+
+#### Status
+
+- Identity model: partially implemented
+- Qualified lookup: implemented for file type identifier resolution
+- Effective registry storage: still transitional
+
+Current state:
+
+- File types and processors now have namespace-aware stable identities.
+- Qualified identifiers are supported in lookup and registry-facing output.
+- Effective composed registries are still keyed largely by **unqualified file type name** for
+  compatibility.
+
+Remaining work before 1.0:
+
+- Decide whether internal composed registries should move fully to **qualified-key storage**.
+- Decide how unqualified compatibility views should behave when multiple namespaces define the same
+  file type name.
+- Decide whether unqualified lookup should:
+  - remain allowed only when unique,
+  - warn on ambiguity,
+  - or fail fast and require qualified identifiers.
+- Clarify how processor overlays should behave once multiple namespaces can define similarly named
+  file types.
+- Freeze a precedence model across:
+  - built-in base entries
+  - plugin-discovered base entries
+  - runtime overlay entries
+  - explicit removals/masks
+
+Recommended direction:
+
+- Treat qualified identity as canonical internally.
+- Keep unqualified lookup only as a compatibility layer when unambiguous.
+- Preserve a fail-fast default for duplicate processor overlay registration, with any replacement or
+  keep-existing behavior made explicit via higher-level APIs.
 
 ### In-memory pipeline (Option A)
 
@@ -394,6 +785,43 @@ The long-term goal is a clearer split between:
 - How to represent a synthetic path in reports (string vs Path)?
 - Should `--stdin` map to `InputSource(display_name="<stdin>")`?
 
+### Resolution package stabilization
+
+The new \[`topmark.resolution`\][topmark.resolution] package now centralizes runtime file-input and
+file-type resolution, but its public/internal API surface should still be stabilized before 1.0.
+
+Open decisions:
+
+- Which resolution helpers should remain public versus private implementation details?
+- Should `topmark.resolution.filetypes` expose only the high-level trio:
+  - `get_file_type_candidates_for_path(...)`
+  - `resolve_file_type_for_path(...)`
+  - `resolve_binding_for_path(...)` while keeping candidate scoring helpers private?
+- Should input resolution (`resolve_file_list`) be renamed to something more explicit such as
+  `resolve_files_to_process(...)`, or is the current name stable enough for 1.0?
+- Should the resolution layer stay decoupled from full config objects and instead continue to accept
+  only the specific include/exclude file type filters it actually needs?
+
+Before 1.0, the package should have:
+
+- a documented stable responsibility split between `resolution.files` and `resolution.filetypes`
+- a frozen public helper surface
+- test coverage for namespace-aware filtering and ambiguity behavior in both file-input and
+  file-type resolution
+
+### Documentation/tooling policy stabilization
+
+Open follow-up work before 1.0:
+
+- Decide whether GitHub alerts in docs should remain a first-class source format long-term, or
+  whether authored Markdown should eventually migrate to native MkDocs/Material admonition syntax.
+- Freeze and document the supported Markdown authoring conventions now that formatter normalization
+  is part of the pipeline (especially for alerts/callouts, blockquotes, and reference-style links).
+- Decide how much packaging metadata policy should be documented for contributors (e.g. required
+  project URLs, classifiers, and license metadata conventions).
+- Keep validating that Nox, pre-commit, local `.venv`, and editor integrations all install the same
+  formatter plugin set and consume the same tool configuration.
+
 ### API vs CLI separation
 
 #### Status
@@ -462,6 +890,10 @@ Remaining work before 1.0:
 - Final audit of field naming consistency across domains.
 - Expand test coverage for machine formats (especially registry + pipeline commands, JSON + NDJSON).
 - Stabilize and freeze machine schema documentation (`docs/dev/machine-formats.md`).
+- Decide whether summary payloads should remain flat row lists everywhere or also expose
+  grouped-by-outcome views in documentation/examples.
+- Review whether pipeline summary rows should eventually expose additional structured fields beyond
+  `(outcome, reason, count)`.
 
 ### Human-facing output formats
 
@@ -558,6 +990,10 @@ is mostly consistency and authoring guidance:
 - Consistent rendering of `True` and `False`
 - Consistent bullets/dashes and indentation
 - Keep docstrings and Markdown aligned with the same wrap width
+- Keep handwritten Markdown style guidance aligned with `.mdformat.toml` so contributor expectations
+  match automated formatting.
+- Decide whether docs authoring guidance should explicitly forbid semantic dependence on
+  formatter-unstable Markdown layouts.
 
 ### Policy model and operation modes
 
@@ -568,6 +1004,11 @@ Open questions for 1.0:
 - Should the default mode remain “process all supported types”?
 - Should we introduce a stricter whitelist-first mode (e.g. Python, Markdown, TOML only)?
 - How should policies interact with file-type inclusion/exclusion at scale?
+- Freeze the public/documented token names for `EmptyInsertMode` and their exact semantics.
+- Decide whether API callers should configure `empty_insert_mode` via public string literals only,
+  or whether a dedicated public enum should exist post-1.0.
+- Decide whether summary bucketing reason strings should be treated as stable integration surface or
+  only as presentation-facing labels.
 
 Any change here should preserve backward compatibility unless explicitly gated.
 
@@ -581,6 +1022,8 @@ This checklist defines the minimum criteria for cutting TopMark 1.0.
 
 - [ ] Clear separation between CLI layer and API/core modules
 - [ ] No CLI-specific concerns (verbosity, color, formatting) in core logic
+- [x] Path-based file resolution and file type / processor resolution are separated into the
+  `topmark.resolution` package instead of being split across pipeline and registry helpers
 - [x] All machine-format payloads built outside CLI command modules
 - [ ] Color handling either fully confined to CLI or replaced by semantic tokens
 
@@ -589,18 +1032,24 @@ This checklist defines the minimum criteria for cutting TopMark 1.0.
 - [x] JSON and NDJSON schemas fully aligned across all commands
 - [x] Identical envelope structure (metadata + data) everywhere
 - [x] Machine payload construction removed from CLI command modules
-- [ ] Documented examples for each command category in `docs/dev/machine-formats.md`
+- [x] Registry machine formats include namespace-aware identity fields (`namespace`,
+  `qualified_key`, processor `key`)
+- [x] Documented examples for processing summary rows in `docs/dev/machine-formats.md` /
+  `docs/dev/machine-output.md`
+- [ ] Documented examples for each remaining command category in `docs/dev/machine-formats.md`
 - [ ] No presentation leakage (color text, human wording) in machine output
 - [ ] Machine outputs are covered by tests for registry commands (`filetypes`, `processors`) and
   pipeline commands (`check`, `strip`) in both JSON and NDJSON modes
-- [ ] Final schema freeze review before 1.0
+- [ ] Final schema freeze review before 1.0 (including `(outcome, reason, count)` summary rows)
 
 ### Human formats
 
 - [ ] `OutputFormat.TEXT` and `OutputFormat.MARKDOWN` consistent across commands
+- [ ] Human-facing registry outputs reviewed/frozen for qualified identifier presentation
 - [ ] Verbosity levels (`-v`, `-vv`, `-q`) documented and behave consistently
 - [ ] Diff rendering policy consistent across pipeline commands
 - [ ] Warnings and error phrasing consistent across CLI
+- [x] Summary mode renders stable `(outcome, reason, count)` rows in both text and Markdown
 
 ### CLI behavior
 
@@ -614,18 +1063,31 @@ This checklist defines the minimum criteria for cutting TopMark 1.0.
 ### Configuration
 
 - [ ] Config keys and semantics documented and considered stable
+- [ ] Qualified and unqualified file type identifier semantics in config include/exclude filters
+  documented and considered stable
 - [ ] Decision made on schema versioning (explicit key vs implicit evolution)
 - [ ] `config init`, `defaults`, `check`, `dump` produce aligned outputs (text, markdown, machine)
 - [ ] Decision made and documented on where config overrides (`MutableConfig.apply_args`) live and
   how API callers apply overrides
+- [ ] Packaging/project metadata policy documented and considered stable (license metadata, URLs,
+  classifiers, README rendering)
+- [x] `uv.lock` is established as the canonical lock artifact and the repository no longer depends
+  on exported requirements/constraints files for normal operation
+- [ ] `EmptyInsertMode` tokens and semantics documented and considered stable
 
 ### Pipeline & testing
 
 - [ ] Decision taken on in-memory pipeline support (implemented or deferred)
 - [x] CI validates docs integrity at both source and built-site levels (including generated API
   pages)
+- [x] Docs pipeline robust against mdformat normalization of GitHub alerts/callouts
 - [ ] Clear split between unit (memory-based) and integration (filesystem) tests
-- [ ] High-coverage tests for edge cases (encoding, empty files, synthetic names)
+- [ ] Namespace-aware registry lookup and ambiguity behavior covered by tests across config,
+  registry, and resolution layers
+- [ ] High-coverage tests for edge cases (encoding, synthetic names, and remaining empty-like
+  variants)
+- [x] Empty and empty-like file handling is explicit and idempotent (BOM-only, newline-only,
+  whitespace-only placeholder cases)
 - [x] Resolver treats content matcher exceptions as safe misses (does not abort resolution)
 - [x] Preview vs apply semantics are consistent end-to-end (write statuses, bucketing, and
   summaries)
@@ -636,7 +1098,17 @@ This checklist defines the minimum criteria for cutting TopMark 1.0.
 
 - [ ] Decision made on long-term CLI framework (Click vs alternative)
 - [ ] Decision made on color backend (`yachalk` confinement or removal)
-- [ ] No unnecessary runtime dependencies remaining
+- [x] Canonical dependency workflow migrated to `pyproject.toml` + `uv.lock` with no remaining
+  dependence on exported requirements/constraints files for normal development, CI, or release flows
+- [ ] Decide whether the transitional unqualified-keyed effective registry model is acceptable for
+  1.0 or whether full qualified-key internal storage is required before release
+- [ ] Decide whether duplicated built-site docs/linkcheck steps in CI and release workflows should
+  remain inline or eventually be factored into a reusable workflow
+- [ ] Formatter/tool configuration split stabilized and documented (.mdformat.toml, .taplo.toml,
+  pyproject ownership boundaries)
+- [ ] Tooling environments (Nox, pre-commit, local venv, editor) verified to consume the same
+  formatter plugin set
+- [x] Read the Docs uv-based installation/build path verified and documented as stable
 
 Only when all checklist items are either completed or explicitly deferred with rationale should 1.0
 be tagged.

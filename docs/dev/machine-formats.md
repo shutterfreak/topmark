@@ -92,7 +92,7 @@ Common NDJSON kinds include:
 - `config_diagnostics` (counts-only in NDJSON prefix records)
 - `diagnostic` (one diagnostic per record; see "Diagnostics" below)
 - `result` (per-file result)
-- `summary` (aggregated summary entry)
+- `summary` (aggregated `(outcome, reason)` summary entry)
 - `version`
 
 Individual commands may emit subsets of these kinds.
@@ -126,8 +126,45 @@ ______________________________________________________________________
   - `config`
   - `config_diagnostics` (counts-only)
   - zero or more `diagnostic` records (config diagnostics)
-  - then either per-file `result` records (detail mode) or per-outcome `summary` records (summary
-    mode)
+  - then either per-file `result` records (detail mode) or per-outcome **reason-preserving**
+    `summary` records (summary mode)
+
+In **summary mode**, TopMark aggregates results by the pair `(outcome, reason)` rather than
+collapsing all reasons under a single outcome bucket.
+
+Each summary entry therefore contains:
+
+- `outcome` — the pipeline outcome (for example `inserted`, `replaced`, `unchanged`)
+- `reason` — the short lowercase reason string used for bucketing
+- `count` — the number of files that produced this `(outcome, reason)` pair
+
+This guarantees that machine consumers can distinguish between different causes that lead to the
+same high-level outcome.
+
+### Summary payload shape
+
+In both JSON and NDJSON machine formats, summary entries follow the same logical structure.
+
+Conceptually the summary is a flat list of rows:
+
+```json
+{
+  "outcome": "unchanged",
+  "reason": "empty-like file (policy)",
+  "count": 12
+}
+```
+
+Important properties of the summary model:
+
+- The summary is **not nested by outcome**.
+- Each row represents one `(outcome, reason)` bucket.
+- Ordering is deterministic:
+  - outcomes follow the internal `Outcome` ordering
+  - reasons are sorted alphabetically within each outcome.
+
+This design keeps JSON and NDJSON schemas consistent and avoids ambiguous aggregation when different
+reasons share the same outcome.
 
 ______________________________________________________________________
 

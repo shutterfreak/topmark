@@ -297,15 +297,67 @@ ______________________________________________________________________
 
 ## Policy Resolution (≥ 0.11.0)
 
-TopMark constructs a `PolicyRegistry` at pipeline bootstrap time.
+TopMark constructs a `PolicyRegistry` at pipeline bootstrap time and resolves runtime policy from
+**global defaults + per-file-type overrides** before policy queries are used by pipeline steps.
 
 This guarantees:
 
 - Deterministic effective policy selection
 - No per-context ad-hoc merging
 - Clear separation between policy evaluation and status axes
+- Stable, testable behavior for empty and empty-like files
 
-The public API remains stable.
+The runtime model now distinguishes three related concepts:
+
+- **true empty**: a 0-byte file (`FsStatus.EMPTY`)
+- **logically empty**: a placeholder image with no meaningful content after BOM stripping (for
+  example BOM-only, newline-only, or optional horizontal whitespace with at most one trailing
+  newline)
+- **effectively empty**: a decoded image containing no non-whitespace characters, even if it spans
+  multiple blank lines
+
+These are represented in the processing context via:
+
+- `is_logically_empty`
+- `is_effectively_empty`
+- `is_empty_like`
+
+Policy evaluation for insertion now uses the configured `EmptyInsertMode`, which controls which
+class of "empty" files is eligible for insertion when `allow_header_in_empty_files` is enabled.
+
+The canonical policy helpers live in
+\[`topmark.pipeline.context.policy`\]\[topmark.pipeline.context.policy\]:
+
+- `is_empty_for_insert(ctx)`
+- `allow_insert_into_empty_like(ctx)`
+- `is_empty_for_insert_unchanged_by_default(ctx)`
+- `can_change(ctx)`
+
+This keeps step-level gating and outcome bucketing consistent with the same policy interpretation.
+
+### Empty-image handling and idempotence
+
+A major source of subtle bugs in TopMark was the difference between:
+
+- a file that is truly empty on disk, and
+- a file that is *empty-like* in the decoded image (for example `"\r\n"` or a BOM-only file).
+
+The current design treats this distinction explicitly:
+
+- `FsStatus.EMPTY` is reserved for true 0-byte files
+- reader-computed flags describe logical/effective emptiness for decoded images
+- planner and stripper normalize placeholder images conservatively so that insert → strip → insert
+  remains stable
+
+This matters especially for:
+
+- newline-only placeholders
+- BOM-only files
+- newline-style preservation (`LF` vs `CRLF`)
+- policy decisions around whether insertion into empty-like files is allowed
+
+The practical consequence is that newline semantics and placeholder images are preserved without
+collapsing all empty-like cases to the same filesystem status.
 
 ______________________________________________________________________
 
@@ -317,6 +369,7 @@ This document may later be extended with sections on:
 - Content sniffing and normalization
 - Header placement rules
 - Configuration lifecycle (mutable → frozen)
+- Machine summary/reporting schema evolution
 
 For now, registry design is documented here because it underpins test isolation, plugin
 extensibility, and API stability.
