@@ -84,6 +84,7 @@ def test_apply_args_bad_types_record_diagnostics() -> None:
             ArgKey.INCLUDE_PATTERNS: ["src/**", 123],
             # wrong type for int: should diagnose
             ArgKey.VERBOSITY_LEVEL: "nope",
+            ArgKey.STRICT_CONFIG_CHECKING: "nope",
             # empty string: should be ignored / treated as unset (depending on your rule)
             ArgKey.RELATIVE_TO: "",
         }
@@ -99,6 +100,9 @@ def test_apply_args_bad_types_record_diagnostics() -> None:
     assert any(ArgKey.VERBOSITY_LEVEL.value in m.lower() for m in msgs), (
         f"Expected verbosity parsing diagnostic to be recorded; got: {msgs!r}"
     )
+    assert any(ArgKey.STRICT_CONFIG_CHECKING.value in m.lower() for m in msgs), (
+        f"Expected strict config checkig parsing diagnostic to be recorded; got: {msgs!r}"
+    )
 
     # Empty relative_to should not become a meaningful value
     assert draft.relative_to_raw in (None, ""), "Empty relative_to should be ignored or cleared"
@@ -107,8 +111,8 @@ def test_apply_args_bad_types_record_diagnostics() -> None:
     assert "src/**" in draft.include_patterns
     assert all(isinstance(p, str) for p in draft.include_patterns)
 
-    # Verbosity should remain unset/default when an invalid type is provided
-    assert draft.verbosity_level in (None, 0)
+    # Strict config checking should remain unset when an invalid type is provided
+    assert draft.strict_config_checking is None
 
     # Diagnostics should include at least one message about the include_patterns list
     # (either wrong-type list handling or dropped non-strings)

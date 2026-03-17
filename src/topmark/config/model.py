@@ -1464,19 +1464,17 @@ class MutableConfig:
             if af is not None:
                 self.align_fields = af
 
-        # verbosity_level: checked int
+        # verbosity_level: not part of MutableConfig
         if ArgKey.VERBOSITY_LEVEL in args:
             v: int | None = get_arg_int_or_none_checked(
                 args,
                 ArgKey.VERBOSITY_LEVEL.value,  # StrEnum
                 diagnostics=self.diagnostics,
             )
-            if v is not None:
-                self.verbosity_level = v
-            else:
+            if v is None:
                 self.diagnostics.add_warning(
                     f"Invalid verbosity_level={args[ArgKey.VERBOSITY_LEVEL]} (expected int); "
-                    f"keeping {self.verbosity_level}",
+                    f"found {args.get(ArgKey.VERBOSITY_LEVEL.value)!r}",
                 )
 
         if ArgKey.APPLY_CHANGES in args and args[ArgKey.APPLY_CHANGES] is not None:
