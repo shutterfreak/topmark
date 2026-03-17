@@ -83,7 +83,6 @@ def ensure_mutable_config(
         logger.debug("Supplied config is Config - returning MutableConfig")
         return MutableConfig(
             timestamp=config.timestamp,
-            verbosity_level=config.verbosity_level,
             apply_changes=config.apply_changes,
             policy=config.policy.thaw(),
             policy_by_type={k: v.thaw() for k, v in config.policy_by_type.items()},

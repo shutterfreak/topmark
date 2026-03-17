@@ -41,7 +41,7 @@ from topmark.pipeline.status import PatchStatus
 from topmark.pipeline.steps.base import BaseStep
 from topmark.pipeline.views import DiffView
 from topmark.pipeline.views import UpdatedView
-from topmark.utils.diff import render_patch
+from topmark.utils.timestamp import format_gnu_diff_timestamp
 
 if TYPE_CHECKING:
     from topmark.core.logging import TopmarkLogger
@@ -138,15 +138,6 @@ class PatcherStep(BaseStep):
         if updated_view and updated_view.lines is not None:
             updated_lines = ctx.materialize_updated_lines()
 
-        logger.trace(
-            "Current file lines: %d",
-            len(current_lines),
-        )
-        logger.trace(
-            "Updated file lines: %s",
-            "None" if updated_lines is None else str(len(updated_lines)),
-        )
-
         # We only generate a diff when we have an updated image; otherwise skip.
         if updated_lines is None:
             logger.debug(
@@ -164,8 +155,10 @@ class PatcherStep(BaseStep):
                 updated_lines,
                 fromfile=f"{ctx.path} (current)",
                 tofile=f"{ctx.path} (updated)",
+                fromfiledate=format_gnu_diff_timestamp(dt=ctx.timestamp),
                 n=3,
                 lineterm=ctx.newline_style,
+                tofiledate=format_gnu_diff_timestamp(dt=ctx.config.timestamp),
             )
         )
         if len(patch_lines) == 0:
@@ -174,14 +167,6 @@ class PatcherStep(BaseStep):
             ctx.views.diff = DiffView(text=None)
             logger.debug("File header unchanged: %s", ctx.path)
             return
-
-        logger.info(
-            "Patch (rendered):\n%s",
-            render_patch(
-                patch=patch_lines,
-                color=False,
-            ),
-        )
 
         # Join exactly as produced by difflib. Do not introduce CRLF conversions.
         ctx.views.diff = DiffView(text="".join(patch_lines))

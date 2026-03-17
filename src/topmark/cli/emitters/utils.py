@@ -172,6 +172,7 @@ def emit_pipeline_human_output(
             make_message=make_message,
             apply_changes=apply_changes,
             show_diffs=show_diffs,
+            verbosity_level=verbosity_level,
         )
     else:
         console.print(

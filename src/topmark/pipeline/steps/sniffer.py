@@ -41,7 +41,6 @@ import os
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from topmark.core.logging import get_logger
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.context.policy import allow_insert_into_empty_like
 from topmark.pipeline.hints import Axis
@@ -50,16 +49,14 @@ from topmark.pipeline.hints import KnownCode
 from topmark.pipeline.status import FsStatus
 from topmark.pipeline.status import ResolveStatus
 from topmark.pipeline.steps.base import BaseStep
+from topmark.utils.timestamp import get_path_mtime_utc
 
 if TYPE_CHECKING:
     from os import stat_result
 
-    from topmark.core.logging import TopmarkLogger
     from topmark.filetypes.model import FileType
     from topmark.filetypes.policy import FileTypeHeaderPolicy
     from topmark.pipeline.context.model import ProcessingContext
-
-logger: TopmarkLogger = get_logger(__name__)
 
 
 @dataclass(frozen=True)
@@ -228,7 +225,6 @@ def _sniff_stream(ctx: ProcessingContext) -> FsStatus | None:
         prefix: bytes = bf.read(4096)
         # Binary heuristic: NUL anywhere in prefix → not text
         if b"\0" in prefix:
-            logger.warning("sniffer: binary (NUL) %s", ctx.path)
             ctx.error("NUL byte detected; treating this as a binary file.")
             return FsStatus.BINARY
 
@@ -246,11 +242,6 @@ def _sniff_stream(ctx: ProcessingContext) -> FsStatus | None:
         )
         supports_shebang: bool = bool(policy and getattr(policy, "supports_shebang", False))
         if shebang_after_bom and supports_shebang:
-            logger.warning(
-                "sniffer: BOM precedes shebang; skipping per policy (file type: %s): %s",
-                ctx.file_type.name if ctx.file_type else "<unknown>",
-                ctx.path,
-            )
             ctx.error(
                 "UTF-8 BOM appears before the shebang; POSIX requires '#!' at byte 0. "
                 "TopMark will not modify this file by default."
@@ -268,7 +259,6 @@ def _sniff_stream(ctx: ProcessingContext) -> FsStatus | None:
                 # Attempt to decode the current chunk strictly as UTF-8
                 decoder.decode(chunk)
             except UnicodeDecodeError:
-                logger.warning("sniffer: invalid UTF-8 in chunk → skip: %s", ctx.path)
                 ctx.error("Invalid UTF-8 byte sequence detected; treating as non-text file.")
                 return FsStatus.UNICODE_DECODE_ERROR
 
@@ -292,7 +282,6 @@ def _sniff_stream(ctx: ProcessingContext) -> FsStatus | None:
         try:
             decoder.decode(b"", final=True)
         except UnicodeDecodeError:
-            logger.warning("sniffer: invalid UTF-8 at EOF → skip: %s", ctx.path)
             ctx.error("Invalid UTF-8 sequence at end-of-file; treating as non-text file.")
             return FsStatus.UNICODE_DECODE_ERROR
 
@@ -306,13 +295,6 @@ def _sniff_stream(ctx: ProcessingContext) -> FsStatus | None:
             lf: int = ctx.newline_hist.get("\n", 0)
             crlf: int = ctx.newline_hist.get("\r\n", 0)
             cr: int = ctx.newline_hist.get("\r", 0)
-            logger.warning(
-                "sniffer: multiple line endings found (LF=%d, CRLF=%d, CR=%d) → skip: %s",
-                lf,
-                crlf,
-                cr,
-                ctx.path,
-            )
             ctx.error(
                 "Mixed line endings detected during sniff "
                 f"(LF={lf}, CRLF={crlf}, CR={cr}). "
@@ -386,8 +368,6 @@ class SnifferStep(BaseStep):
         - Does **not** populate `ctx.file_lines`; that is the reader's job.
         - If this step sets a non-RESOLVED file status, later steps will early-return.
         """
-        logger.debug("ctx: %s", ctx)
-
         apply: bool = False if ctx.config.apply_changes is None else ctx.config.apply_changes
         ctx.status.fs = FsStatus.PENDING
 
@@ -395,18 +375,19 @@ class SnifferStep(BaseStep):
         try:
             st: stat_result = ctx.path.stat()
         except FileNotFoundError:
-            logger.info("%s: File not found: %s", ctx.status.fs.value, ctx.path)
             ctx.status.fs = FsStatus.NOT_FOUND
             reason: str = f"File not found: {ctx.path}"
             ctx.request_halt(reason=reason, at_step=self)
             return
         except PermissionError as e:
-            logger.error("sniffer: permission denied %s: %s", ctx.path, e)
             ctx.status.fs = FsStatus.NO_READ_PERMISSION
             reason = f"Permission denied: {e}"
             ctx.error(reason)
             ctx.request_halt(reason=reason, at_step=self)
             return
+
+        # Get the path's modification timestamp
+        ctx.timestamp = get_path_mtime_utc(path=ctx.path)
 
         # Apply mode: check write permission upfront
         if apply is True and not os.access(ctx.path, os.W_OK):
@@ -452,20 +433,17 @@ class SnifferStep(BaseStep):
                 return
         except FileNotFoundError:
             ctx.status.fs = FsStatus.NOT_FOUND
-            logger.warning("%s: File not found: %s", ctx.status.fs.value, ctx.path)
             reason = f"File not found: {ctx.path}"
             ctx.error(reason)
             ctx.request_halt(reason=reason, at_step=self)
             return
         except PermissionError as e:
-            logger.error("sniffer: permission denied %s: %s", ctx.path, e)
             ctx.status.fs = FsStatus.NO_READ_PERMISSION
             reason = f"Permission denied: {e}"
             ctx.error(reason)
             ctx.request_halt(reason=reason, at_step=self)
             return
         except (OSError, UnicodeError, ValueError) as e:
-            logger.error("sniffer: error sniffing %s: %s", ctx.path, e)
             ctx.status.fs = FsStatus.UNREADABLE
             reason = f"Error while sniffing: {e}"
             ctx.error(reason)
@@ -473,13 +451,6 @@ class SnifferStep(BaseStep):
             return
 
         # Keep status RESOLVED so the reader proceeds.
-        logger.debug(
-            "sniffer: nl_style=%r leading_bom=%s has_shebang=%s",
-            ctx.newline_style,
-            ctx.leading_bom,
-            ctx.has_shebang,
-        )
-
         ctx.status.fs = FsStatus.OK
         return
 

@@ -131,6 +131,7 @@ def emit_pipeline_per_file_guidance_text(
     make_message: Callable[[ProcessingContext, bool], str | None],
     apply_changes: bool,
     show_diffs: bool,
+    verbosity_level: int,
 ) -> None:
     """Emit per-file detailed guidance (TEXT format)."""
     console: ConsoleLike = get_console_safely()
@@ -141,18 +142,21 @@ def emit_pipeline_per_file_guidance_text(
     diff_end_fence: Final[str] = " diff - end ".center(line_width, "─")
 
     for r in view_results:
-        console.print(render_file_summary_line(ctx=r))
-
-        verbosity: int = r.config.verbosity_level or 0
+        console.print(
+            render_file_summary_line(
+                ctx=r,
+                verbosity_level=verbosity_level,
+            )
+        )
 
         # At verbosity 0, keep output minimal: one summary line per file.
         # At verbosity >= 1, include extra guidance and hint summaries.
-        if verbosity > 0:
+        if verbosity_level > 0:
             msg: str | None = make_message(r, apply_changes)
             if msg:
                 console.print(console.styled(f"   {msg}", fg="yellow"))
 
-        if verbosity > 0 and r.diagnostic_hints:
+        if verbosity_level > 0 and r.diagnostic_hints:
             console.print(
                 console.styled(
                     "  Hints (newest first):",
@@ -188,7 +192,7 @@ def emit_pipeline_per_file_guidance_text(
 
                 # Optional detail vs "use -vv" nudge
                 if h.detail:
-                    if verbosity > 1:
+                    if verbosity_level > 1:
                         for line in h.detail.splitlines():
                             console.print(
                                 console.styled(
@@ -290,6 +294,7 @@ def render_file_summary_line(
     *,
     ctx: ProcessingContext,
     color: bool = True,
+    verbosity_level: int,
 ) -> str:
     """Return a concise, human-readable one-liner for this file.
 
@@ -318,12 +323,11 @@ def render_file_summary_line(
     Args:
         ctx: Processing context containing status and configuration.
         color: Render in color if `True`, else as plain text.
+        verbosity_level: The verbosity level.
 
     Returns:
         Human-readable one-line summary (may include embedded newlines for verbose diagnostics).
     """
-    verbosity_level: int = ctx.config.verbosity_level or 0
-
     parts: list[str] = [f"{ctx.path}:"]
 
     # File type (dim), or <unknown> if resolution failed

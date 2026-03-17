@@ -57,6 +57,7 @@ from topmark.pipeline.views import Views
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from collections.abc import Sequence
+    from datetime import datetime
     from pathlib import Path
 
     from topmark.config.model import Config
@@ -106,6 +107,7 @@ class ProcessingContext:
         path: The file path to process (absolute or relative to the working directory).
         config: Effective configuration at the time of processing.
         policy_registry: The policy registry (global + file type specific overrides).
+        timestamp: The file path's modification timestamp.
         steps: Ordered list of pipeline steps that have been executed for this context.
         file_type: Resolved file type for the file (for example, a Python or Markdown file type),
             if applicable.
@@ -150,7 +152,10 @@ class ProcessingContext:
     path: Path  # The file path to process (absolute or relative to working directory)
     config: Config  # Active config at time of processing
     policy_registry: PolicyRegistry
+
+    timestamp: datetime | None = None
     steps: list[Step[ProcessingContext]] = field(default_factory=lambda: [])
+
     file_type: FileType | None = None  # Resolved file type (e.g., PythonFileType)
     status: ProcessingStatus = field(default_factory=ProcessingStatus)
     halt_state: HaltState | None = None
@@ -245,7 +250,12 @@ class ProcessingContext:
                 pipeline (for example, ``"unsupported"``).
             at_step: Step instance requesting the halt.
         """
-        logger.info("🛑 Processing halted in %s: %s", at_step.name, reason)
+        logger.info(
+            "🛑 Processing halted in %s: %s",
+            at_step.name,
+            reason,
+            stacklevel=2,
+        )
         self.halt_state = HaltState(reason_code=reason, step_name=at_step.name)
 
     @property

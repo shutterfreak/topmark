@@ -48,8 +48,6 @@ import os
 # For runtime type checks, prefer collections.abc
 from dataclasses import dataclass
 from dataclasses import field
-from datetime import datetime
-from datetime import timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Any
@@ -88,10 +86,12 @@ from topmark.diagnostic.model import DiagnosticLog
 from topmark.diagnostic.model import DiagnosticStats
 from topmark.diagnostic.model import FrozenDiagnosticLog
 from topmark.diagnostic.model import compute_diagnostic_stats
+from topmark.utils.timestamp import get_utc_now
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from collections.abc import Mapping
+    from datetime import datetime
 
     from topmark.config.io.types import TomlTable
     from topmark.config.io.types import TomlTableMap
@@ -119,8 +119,7 @@ class Config:
     Layered merging with clear precedence is provided by `MutableConfig.load_merged()`.
 
     Attributes:
-        timestamp: ISO-formatted timestamp when the Config instance was created.
-        verbosity_level: None = inherit, 0 = terse, 1 = verbose diagnostics.
+        timestamp: Timestamp when the Config instance was created.
         apply_changes: Runtime intent: whether to actually write changes (apply)
             or preview only. None = inherit/unspecified, False = dry-run/preview, True = apply.
         output_target: Where to send output: `"file"` or `"stdout"`.
@@ -168,11 +167,9 @@ class Config:
     """
 
     # Initialization timestamp for the config instance
-    timestamp: str
+    timestamp: datetime
 
-    # Verbosity & runtime intent
-    verbosity_level: int | None
-
+    # Runtime intent: whether to actually write changes (apply) or preview only
     apply_changes: bool | None
 
     # Output target for writing (file, stdout)
@@ -325,7 +322,6 @@ class Config:
         """
         return MutableConfig(
             timestamp=self.timestamp,
-            verbosity_level=self.verbosity_level,
             apply_changes=self.apply_changes,
             output_target=self.output_target,
             file_write_strategy=self.file_write_strategy,
@@ -378,8 +374,7 @@ class MutableConfig:
     [`topmark.config.io`][topmark.config.io] to keep this class focused on merge policy.
 
     Attributes:
-        timestamp: ISO-formatted timestamp when the Config instance was created.
-        verbosity_level: None = inherit, 0 = terse, 1 = verbose diagnostics.
+        timestamp: Timestamp when the MutableConfig instance was created.
         apply_changes: Runtime intent: whether to actually write changes (apply)
             or preview only. None = inherit/unspecified, False = dry-run/preview, True = apply.
         output_target: Where to send output: `"file"` or `"stdout"`.
@@ -410,10 +405,7 @@ class MutableConfig:
     """
 
     # Initialization timestamp for the draft instance
-    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-
-    # Verbosity level ()
-    verbosity_level: int | None = None
+    timestamp: datetime = field(default_factory=get_utc_now)
 
     # Runtime intent: whether to actually write changes (apply) or preview only
     apply_changes: bool | None = None
@@ -514,7 +506,6 @@ class MutableConfig:
 
         return Config(
             timestamp=self.timestamp,
-            verbosity_level=self.verbosity_level,
             apply_changes=self.apply_changes,
             output_target=self.output_target,
             file_write_strategy=self.file_write_strategy,
@@ -739,9 +730,8 @@ class MutableConfig:
         """
         tool_tbl: TomlTable = data  # top-level tool configuration dictionary
 
-        # Start from a fresh draft with current timestamp early so we can attach diagnostics
-        # while parsing.
-        draft: MutableConfig = cls(timestamp=datetime.now(timezone.utc).isoformat())
+        # Start from a fresh draft early so we can attach diagnostics while parsing.
+        draft: MutableConfig = cls()
 
         # Config file's directory for relative path resolution
         cfg_dir: Path | None = config_file.parent.resolve() if config_file else None
@@ -1155,6 +1145,7 @@ class MutableConfig:
         return draft
 
     # ------------------------------- Merging -------------------------------
+
     def merge_with(self, other: MutableConfig) -> MutableConfig:
         """Return a new draft where values from ``other`` override this draft.
 
@@ -1228,9 +1219,6 @@ class MutableConfig:
             files_from=other.files_from or self.files_from,
             include_file_types=other.include_file_types or self.include_file_types,
             exclude_file_types=other.exclude_file_types or self.exclude_file_types,
-            verbosity_level=other.verbosity_level
-            if other.verbosity_level is not None
-            else self.verbosity_level,
             apply_changes=other.apply_changes
             if other.apply_changes is not None
             else self.apply_changes,
