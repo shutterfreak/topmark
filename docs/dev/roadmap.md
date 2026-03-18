@@ -115,6 +115,32 @@ goals.
 - Introduced `compute_version_text()` in `utils.version` to unify SemVer conversion and fallback
   logic across CLI and machine formats.
 
+### Semantic styling and unified rendering
+
+- Introduced a semantic styling layer based on `StyleRole`, decoupling presentation from business
+  logic:
+  - styling decisions are now mapped from semantic roles instead of applied directly in emitters
+- Refactored text and Markdown emitters to use shared semantic styling helpers instead of direct
+  Click/yachalk usage
+- Centralized presentation helpers in \[`topmark.cli.presentation`\][topmark.cli.presentation] and
+  aligned CLI-facing rendering logic with core presentation semantics
+- Unified summary rendering across emitters using `map_bucket()`:
+  - CLI output is now consistently derived from pipeline outcomes instead of ad-hoc hint inspection
+- Introduced `DiagnosticStats.triage_summary()` to centralize diagnostic aggregation logic and
+  remove duplication across emitters
+- Extracted shared diagnostic rendering into reusable helpers (`render_diagnostics_text`)
+- Aligned verbosity semantics across emitters:
+  - default: concise summary with optional diagnostic hint
+  - `-v`: primary hint + diagnostic summary
+  - `-vv`: full hint list + detailed diagnostics
+- Removed duplication between summary line rendering, diagnostic output, and hint rendering
+- Removed `Hint.headline()` and simplified hint rendering semantics:
+  - newest hint is treated as primary at `-v`
+  - full ordered list is rendered at `-vv`
+- Improved Markdown emitter:
+  - switched to numbered result lists
+  - aligned structure with text emitter (summary → guidance → diagnostics → hints)
+
 ### Pipeline semantics: preview vs apply
 
 - Made write-status reporting **honest** and consistent across dry-run and apply pipelines:
@@ -515,6 +541,17 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
   0-byte-only semantics.
 - Machine summary payloads are now flat row lists keyed by `(outcome, reason)` rather than
   outcome-keyed maps with a single collapsed label.
+- Summary line rendering is now **outcome-driven** (via `map_bucket()`) instead of hint-driven;
+  wording and structure of per-file output may differ from previous versions.
+- Verbosity behavior refined:
+  - `-v` now shows a single primary hint (newest)
+  - `-vv` shows the full hint list
+- Diagnostics are no longer embedded in summary lines and are rendered via dedicated helpers.
+- Removal of `Hint.headline()`; downstream consumers must no longer rely on headline-specific
+  behavior.
+- Introduction of `would_change` vs `changed` outcome distinction in CLI output (check vs apply).
+- Removal of legacy diff utilities (`topmark.utils.diff`) in favor of unified diff rendering
+  modules.
 
 ### Documentation build behavior
 
@@ -905,6 +942,15 @@ Remaining work before 1.0:
 - Ensure `OutputFormat.TEXT` and `OutputFormat.MARKDOWN` are consistent across commands.
 - Ensure verbosity semantics are consistent (`-v`, `-vv`, `-q`) and documented.
 - Keep all formatting logic out of CLI command functions.
+- Finalize hint ordering strategy (newest-first vs oldest-first) and ensure consistency across text
+  and Markdown emitters.
+- Decide whether the “primary hint” concept (shown at `-v`) should remain explicit or be generalized
+  to multi-hint display.
+- Evaluate whether Markdown output should remain structurally equivalent to text output or evolve
+  toward more document-oriented layouts (e.g., tables or grouped sections).
+- Decide whether semantic style roles should be exposed/configurable (themes, CI/no-color modes).
+- Further clarify boundary between pipeline outcome computation (`map_bucket()`) and presentation
+  logic in emitters.
 
 ### Pipeline commands: complete human + machine format refactor
 
@@ -924,6 +970,11 @@ Remaining work before 1.0:
 Recommendation: keep Click through 1.0 unless there is a strong feature need.
 
 ### Color output and dependency on yachalk
+
+Recent refactoring introduced semantic styling via `StyleRole`, significantly reducing direct
+`yachalk` usage in emitters and enabling a cleaner separation between core logic and CLI
+presentation. Remaining work focuses on fully eliminating or strictly confining `yachalk` usage to
+CLI-only modules.
 
 Open question: remove `yachalk` fully or enforce a strict boundary (CLI-only usage).
 
@@ -1025,7 +1076,8 @@ This checklist defines the minimum criteria for cutting TopMark 1.0.
 - [x] Path-based file resolution and file type / processor resolution are separated into the
   `topmark.resolution` package instead of being split across pipeline and registry helpers
 - [x] All machine-format payloads built outside CLI command modules
-- [ ] Color handling either fully confined to CLI or replaced by semantic tokens
+- [x] Color handling fully confined to CLI (semantic style roles implemented; remaining yachalk
+  usage to be eliminated or isolated)
 
 ### Machine formats
 
@@ -1045,11 +1097,17 @@ This checklist defines the minimum criteria for cutting TopMark 1.0.
 ### Human formats
 
 - [ ] `OutputFormat.TEXT` and `OutputFormat.MARKDOWN` consistent across commands
+  - [ ] Config commands
+  - [x] Pipeline commands (check, strip)
+  - [ ] Registry commands
+  - [x] Version command
+- [x] Semantic styling implemented via `StyleRole` and consistently applied across emitters
 - [ ] Human-facing registry outputs reviewed/frozen for qualified identifier presentation
 - [ ] Verbosity levels (`-v`, `-vv`, `-q`) documented and behave consistently
 - [ ] Diff rendering policy consistent across pipeline commands
 - [ ] Warnings and error phrasing consistent across CLI
 - [x] Summary mode renders stable `(outcome, reason, count)` rows in both text and Markdown
+- [x] CLI summary rendering unified via `map_bucket()` and consistent across pipelines and emitters
 
 ### CLI behavior
 
