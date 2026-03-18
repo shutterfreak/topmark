@@ -8,12 +8,11 @@
 #
 # topmark:header:end
 
-"""CLI tests for `--file-type`, `--skip-compliant`, and `--skip-unsupported`.
+"""CLI tests for `--file-type` and report scoping (`--report`).
 
 Covers:
 - `--file-type` filters: default and `strip` should only act on the selected type(s).
-- `--skip-compliant`: compliant files are hidden in both normal and summary modes.
-- `--skip-unsupported`: unknown file types are hidden from output and summary.
+- `--report`: actionable/problematics scoping hides compliant and/or unsupported entries.
 
 Labels asserted in this module follow the public summary buckets documented in
 `topmark.cli.utils.classify_outcome()`. Tests should match label **substrings**
@@ -30,6 +29,7 @@ from tests.cli.conftest import assert_SUCCESS_or_WOULD_CHANGE
 from tests.cli.conftest import run_cli
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
+from topmark.cli.reporting import ReportScope
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
 from topmark.pipeline.status import ResolveStatus
@@ -41,8 +41,8 @@ if TYPE_CHECKING:
     from click.testing import Result
 
 
-def test_file_type_filter_limits_processing_default(tmp_path: Path) -> None:
-    """`--file-type` limits header insertion/updates to selected types."""
+def test_file_type_filter_limits_check_processing(tmp_path: Path) -> None:
+    """`--file-type` limits `check` processing to the selected types."""
     py: Path = tmp_path / "a.py"
     ts: Path = tmp_path / "a.ts"
     py.write_text("print('x')\n", "utf-8")
@@ -50,7 +50,13 @@ def test_file_type_filter_limits_processing_default(tmp_path: Path) -> None:
 
     # Only act on python files
     result: Result = run_cli(
-        [CliCmd.CHECK, CliOpt.INCLUDE_FILE_TYPES, "python", CliOpt.APPLY_CHANGES, str(tmp_path)],
+        [
+            CliCmd.CHECK,
+            CliOpt.INCLUDE_FILE_TYPES,
+            "python",
+            CliOpt.APPLY_CHANGES,
+            str(tmp_path),
+        ],
     )
 
     assert_SUCCESS(result)
@@ -63,8 +69,8 @@ def test_file_type_filter_limits_processing_default(tmp_path: Path) -> None:
     assert TOPMARK_START_MARKER not in out_ts
 
 
-def test_file_type_filter_limits_processing_strip(tmp_path: Path) -> None:
-    """`--file-type` also constrains `strip` to the selected types."""
+def test_file_type_filter_limits_strip_processing(tmp_path: Path) -> None:
+    """`--file-type` limits `strip` processing to the selected types."""
     py: Path = tmp_path / "b.py"
     ts: Path = tmp_path / "b.ts"
     py.write_text(
@@ -77,7 +83,13 @@ def test_file_type_filter_limits_processing_strip(tmp_path: Path) -> None:
 
     # Strip only for python → TS header remains
     result: Result = run_cli(
-        [CliCmd.STRIP, CliOpt.INCLUDE_FILE_TYPES, "python", CliOpt.APPLY_CHANGES, str(tmp_path)],
+        [
+            CliCmd.STRIP,
+            CliOpt.INCLUDE_FILE_TYPES,
+            "python",
+            CliOpt.APPLY_CHANGES,
+            str(tmp_path),
+        ],
     )
 
     assert_SUCCESS(result)
@@ -87,8 +99,13 @@ def test_file_type_filter_limits_processing_strip(tmp_path: Path) -> None:
     assert TOPMARK_START_MARKER in ts.read_text("utf-8")
 
 
-def test_skip_compliant_hides_clean_files(tmp_path: Path) -> None:
-    """`--skip-compliant` removes compliant files from per-file and summary output."""
+def test_report_actionable_per_file_hides_not_needed_but_summary_counts_it(tmp_path: Path) -> None:
+    """`--report actionable` filters per-file output, but summary still counts compliant files.
+
+    In actionable mode, TopMark suppresses per-file entries that have no actionable work.
+    However, `--summary` is an overview of *all* outcomes, so it still includes the
+    compliant/not-needed bucket count.
+    """
     f1: Path = tmp_path / "has.py"
     f2: Path = tmp_path / "clean.py"
     f1.write_text(
@@ -96,9 +113,15 @@ def test_skip_compliant_hides_clean_files(tmp_path: Path) -> None:
     )
     f2.write_text("print()\n", "utf-8")
 
-    # In summary mode, ensure the compliant bucket isn't shown when skip-compliant is set.
+    # In summary mode, ensure the compliant bucket isn't shown when actionable reporting is set.
     result: Result = run_cli(
-        [CliCmd.STRIP, CliOpt.RESULTS_SUMMARY_MODE, CliOpt.SKIP_COMPLIANT, str(tmp_path)],
+        [
+            CliCmd.STRIP,
+            CliOpt.RESULTS_SUMMARY_MODE,
+            CliOpt.REPORT,
+            ReportScope.ALL,  # Ensure compliant files are also reported
+            str(tmp_path),
+        ],
     )
 
     assert_SUCCESS_or_WOULD_CHANGE(result)
@@ -106,27 +129,45 @@ def test_skip_compliant_hides_clean_files(tmp_path: Path) -> None:
     out: str = result.output.lower()
     # NOTE: Labels come from map_bucket/summary labels
     assert StripStatus.READY.value in out
+    # The compliant ("not needed") bucket should still be present in summary
+    assert StripStatus.NOT_NEEDED.value in out
 
 
-def test_skip_unsupported_hides_unknown(tmp_path: Path) -> None:
-    """`--skip-unsupported` hides unknown types from normal and summary outputs."""
+def test_report_actionable_per_file_hides_unsupported_but_summary_counts_it(tmp_path: Path) -> None:
+    """`--report actionable` filters per-file output, but summary still counts unsupported files.
+
+    In actionable mode, TopMark suppresses per-file entries that are unsupported.
+    However, `--summary` remains a full distribution of outcomes and still includes an
+    unsupported bucket count.
+    """
     # Create a clearly unsupported file (extension not registered).
     unk: Path = tmp_path / "data.unknown"
     unk.write_text("payload\n", "utf-8")
 
     # Normal mode
     result_normal: Result = run_cli(
-        [CliCmd.CHECK, CliOpt.SKIP_UNSUPPORTED, str(unk)],
+        [
+            CliCmd.CHECK,
+            CliOpt.REPORT,
+            ReportScope.ACTIONABLE,  # Default
+            str(unk),
+        ],
     )
 
     # nothing to do, and unknown is skipped from output
     assert_SUCCESS(result_normal)
+    assert ResolveStatus.UNSUPPORTED.value not in result_normal.output.lower()
 
-    # Summary mode: the "unsupported" bucket should not be present now.
+    # Summary mode: the "unsupported" bucket should still be present in summary.
     result_summary: Result = run_cli(
-        [CliCmd.CHECK, CliOpt.RESULTS_SUMMARY_MODE, CliOpt.SKIP_UNSUPPORTED, str(unk)],
+        [
+            CliCmd.CHECK,
+            CliOpt.RESULTS_SUMMARY_MODE,
+            CliOpt.REPORT,
+            ReportScope.ACTIONABLE,  # Default
+            str(unk),
+        ],
     )
 
     assert_SUCCESS(result_summary)
-
-    assert ResolveStatus.UNSUPPORTED.value not in result_summary.output
+    assert ResolveStatus.UNSUPPORTED.value in result_summary.output.lower()

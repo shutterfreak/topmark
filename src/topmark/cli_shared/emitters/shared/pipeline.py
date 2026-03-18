@@ -75,12 +75,114 @@ def render_diff_plain(
 # Per-command guidance messages
 
 
-def check_msg(r: ProcessingContext, apply_changes: bool) -> str | None:
+def display_path(r: ProcessingContext) -> str:
+    """Return the user-facing path to display for a processing result.
+
+    TopMark may process *content-on-STDIN* by writing it to a temporary file.
+    In that mode, `ProcessingContext.path` points at the temporary file on disk,
+    but users expect messages to refer to the logical filename supplied via
+    `--stdin-filename`.
+
+    This helper centralizes that policy so all human-facing emitters (TEXT and
+    MARKDOWN) remain consistent.
+
+    Args:
+        r: Processing context to render.
+
+    Returns:
+        The logical filename in STDIN content mode, otherwise the actual file path.
+    """
+    if r.config.stdin_mode and r.config.stdin_filename:
+        return r.config.stdin_filename
+    return str(r.path)
+
+
+def display_path_label(r: ProcessingContext) -> str:
+    """Return a short user-facing path label for TEXT output.
+
+    This is like [`display_path()`][topmark.cli_shared.emitters.shared.pipeline.display_path]
+    but formats the path for human TEXT output:
+
+    - The path is wrapped in single quotes for readability.
+    - STDIN content mode is annotated with "(via STDIN)" to clarify that TopMark
+      processed content from standard input using a temporary file.
+
+    Args:
+        r: Processing context to render.
+
+    Returns:
+        A short label suitable for TEXT messages.
+    """
+    path: str = display_path(r)
+    if r.config.stdin_mode and r.config.stdin_filename:
+        return f"'{path}' (via STDIN)"
+
+    return f"'{path}'"
+
+
+# Markdown helpers
+
+
+def markdown_code_span(text: str) -> str:
+    """Render `text` as a Markdown inline code span.
+
+    This chooses a backtick fence that is one longer than the longest run of
+    backticks in `text`, which safely supports filenames that contain backticks.
+
+    Args:
+        text: Raw text to wrap.
+
+    Returns:
+        Markdown inline code span.
+    """
+    max_run: int = 0
+    run: int = 0
+    for ch in text:
+        if ch == "`":
+            run += 1
+            if run > max_run:
+                max_run = run
+        else:
+            run = 0
+
+    fence: str = "`" * (max_run + 1)
+    return f"{fence}{text}{fence}"
+
+
+def display_path_label_markdown(r: ProcessingContext) -> str:
+    """Return a short user-facing path label for MARKDOWN output.
+
+    This is like [`display_path()`][topmark.cli_shared.emitters.shared.pipeline.display_path]
+    but formats the path for Markdown:
+
+    - The path is rendered as an inline code span.
+    - STDIN content mode is annotated with "(via STDIN)" (emphasized) to clarify
+      that TopMark processed content from standard input.
+
+    Args:
+        r: Processing context to render.
+
+    Returns:
+        A short label suitable for Markdown headings and list items.
+    """
+    path: str = display_path(r)
+    code: str = markdown_code_span(path)
+
+    if r.config.stdin_mode and r.config.stdin_filename:
+        return f"{code} _(via STDIN)_"
+
+    return code
+
+
+def check_msg_text(r: ProcessingContext, apply_changes: bool) -> str | None:
     """Generate a per-file guidance message for `topmark check` results."""
     if not effective_would_add_or_update(r):
         return None
 
+    path_label: str = display_path_label(r)
+    path_name: str = display_path(r)
     intent: Intent = determine_intent(r)
+
     if apply_changes:
         if r.status.write == WriteStatus.FAILED:
             return f"❌ Could not {intent.value} header: {r.status.write.value}"
@@ -90,10 +192,17 @@ def check_msg(r: ProcessingContext, apply_changes: bool) -> str | None:
             return f"⚠️  Could not {intent.value} header (write skipped)."
 
         return (
-            f"➕ Adding header in '{r.path}'"
+            f"➕ Adding header in {path_label}"
             if r.status.header == HeaderStatus.MISSING
-            else f"✏️  Updating header in '{r.path}'"
+            else f"✏️  Updating header in {path_label}"
         )
+
+    if r.config.stdin_mode and r.config.stdin_filename:
+        apply_cmd: str = (
+            f"topmark {CliCmd.CHECK} {CliOpt.APPLY_CHANGES} {CliOpt.STDIN_FILENAME} '{path_name}' -"
+        )
+    else:
+        apply_cmd = f"topmark {CliCmd.CHECK} {CliOpt.APPLY_CHANGES} '{path_name}'"
 
     if intent == Intent.INSERT:
         action: str = "add a TopMark header to this file"
@@ -103,15 +212,18 @@ def check_msg(r: ProcessingContext, apply_changes: bool) -> str | None:
         raise TopmarkCliPipelineError(
             message=f"Unexpected intent {intent.value} in check pipeline.",
         )
-    return f"🛠️  Run `topmark {CliCmd.CHECK} {CliOpt.APPLY_CHANGES} {r.path}` to {action}."
+    return f"🛠️  Run `{apply_cmd}` to {action}."
 
 
-def strip_msg(r: ProcessingContext, apply_changes: bool) -> str | None:
+def strip_msg_text(r: ProcessingContext, apply_changes: bool) -> str | None:
     """Generate a per-file guidance message for `topmark strip` results."""
     if not effective_would_strip(r):
         return None
 
+    path_label: str = display_path_label(r)
+    path_name: str = display_path(r)
     intent: Intent = determine_intent(r)
+
     if apply_changes:
         if r.status.write == WriteStatus.FAILED:
             return f"❌ Could not {intent.value} header: {r.status.write.value}"
@@ -120,7 +232,14 @@ def strip_msg(r: ProcessingContext, apply_changes: bool) -> str | None:
             # but keeps CLI honest if a later step halts.
             return f"⚠️  Could not {intent.value} header (write skipped)."
 
-        return f"🧹 Stripping header in '{r.path}'"
+        return f"🧹 Stripping header in {path_label}"
+
+    if r.config.stdin_mode and r.config.stdin_filename:
+        apply_cmd: str = (
+            f"topmark {CliCmd.STRIP} {CliOpt.APPLY_CHANGES} {CliOpt.STDIN_FILENAME} '{path_name}' -"
+        )
+    else:
+        apply_cmd = f"topmark {CliCmd.STRIP} {CliOpt.APPLY_CHANGES} '{path_name}'"
 
     if intent == Intent.STRIP:
         action: str = "strip the TopMark header from this file"
@@ -128,4 +247,76 @@ def strip_msg(r: ProcessingContext, apply_changes: bool) -> str | None:
         raise TopmarkCliPipelineError(
             message=f"Unexpected intent {intent.value} in check pipeline.",
         )
-    return f"🛠️  Run `topmark {CliCmd.STRIP} {CliOpt.APPLY_CHANGES} {r.path}` to {action}."
+    return f"🛠️  Run `{apply_cmd}` to {action}."
+
+
+def check_msg_markdown(r: ProcessingContext, apply_changes: bool) -> str | None:
+    """Generate a per-file guidance message for `topmark check` (MARKDOWN output)."""
+    if not effective_would_add_or_update(r):
+        return None
+
+    path_label: str = display_path_label_markdown(r)
+    path_name: str = display_path(r)
+    intent: Intent = determine_intent(r)
+
+    if apply_changes:
+        if r.status.write == WriteStatus.FAILED:
+            return f"❌ Could not {intent.value} header: {r.status.write.value}"
+        if r.status.write == WriteStatus.SKIPPED:
+            return f"⚠️  Could not {intent.value} header (write skipped)."
+
+        return (
+            f"➕ Adding header in {path_label}"
+            if r.status.header == HeaderStatus.MISSING
+            else f"✏️  Updating header in {path_label}"
+        )
+
+    if r.config.stdin_mode and r.config.stdin_filename:
+        apply_cmd: str = (
+            f"topmark {CliCmd.CHECK} {CliOpt.APPLY_CHANGES} {CliOpt.STDIN_FILENAME} '{path_name}' -"
+        )
+    else:
+        apply_cmd = f"topmark {CliCmd.CHECK} {CliOpt.APPLY_CHANGES} '{path_name}'"
+
+    if intent == Intent.INSERT:
+        action: str = "add a TopMark header to this file"
+    elif intent == Intent.UPDATE:
+        action = "update the TopMark header in this file"
+    else:
+        raise TopmarkCliPipelineError(
+            message=f"Unexpected intent {intent.value} in check pipeline.",
+        )
+    return f"🛠️  Run `{apply_cmd}` to {action}."
+
+
+def strip_msg_markdown(r: ProcessingContext, apply_changes: bool) -> str | None:
+    """Generate a per-file guidance message for `topmark strip` (MARKDOWN output)."""
+    if not effective_would_strip(r):
+        return None
+
+    path_label: str = display_path_label_markdown(r)
+    path_name: str = display_path(r)
+    intent: Intent = determine_intent(r)
+
+    if apply_changes:
+        if r.status.write == WriteStatus.FAILED:
+            return f"❌ Could not {intent.value} header: {r.status.write.value}"
+        if r.status.write == WriteStatus.SKIPPED:
+            return f"⚠️  Could not {intent.value} header (write skipped)."
+
+        return f"🧹 Stripping header in {path_label}"
+
+    if r.config.stdin_mode and r.config.stdin_filename:
+        apply_cmd: str = (
+            f"topmark {CliCmd.STRIP} {CliOpt.APPLY_CHANGES} {CliOpt.STDIN_FILENAME} '{path_name}' -"
+        )
+    else:
+        apply_cmd = f"topmark {CliCmd.STRIP} {CliOpt.APPLY_CHANGES} '{path_name}'"
+
+    if intent == Intent.STRIP:
+        action: str = "strip the TopMark header from this file"
+    else:
+        raise TopmarkCliPipelineError(
+            message=f"Unexpected intent {intent.value} in check pipeline.",
+        )
+    return f"🛠️  Run `{apply_cmd}` to {action}."

@@ -89,7 +89,13 @@ def test_config_dump_json_includes_meta() -> None:
     assert version_obj != ""
 
 
-@pytest.mark.parametrize("command", [CliCmd.CHECK, CliCmd.STRIP])
+@pytest.mark.parametrize(
+    "command",
+    [
+        CliCmd.CHECK,
+        CliCmd.STRIP,
+    ],
+)
 def test_processing_json_includes_meta(tmp_path: Path, command: str) -> None:
     """Ensure JSON machine output for `check` / `strip` includes meta/tool/version.
 
@@ -126,7 +132,13 @@ def test_processing_json_includes_meta(tmp_path: Path, command: str) -> None:
     assert version_obj != ""
 
 
-@pytest.mark.parametrize("command", [CliCmd.CHECK, CliCmd.STRIP])
+@pytest.mark.parametrize(
+    "command",
+    [
+        CliCmd.CHECK,
+        CliCmd.STRIP,
+    ],
+)
 def test_processing_json_detail_shape(tmp_path: Path, command: str) -> None:
     """Check JSON detail-mode shape for `check` / `strip` with `--output-format json`.
 
@@ -142,7 +154,12 @@ def test_processing_json_detail_shape(tmp_path: Path, command: str) -> None:
 
     result: Result = run_cli_in(
         tmp_path,
-        [command, CliOpt.OUTPUT_FORMAT, "json", "."],
+        [
+            command,
+            CliOpt.OUTPUT_FORMAT,
+            "json",
+            ".",
+        ],
     )
     assert_SUCCESS_or_WOULD_CHANGE(result)
 
@@ -213,7 +230,13 @@ def test_processing_json_detail_shape(tmp_path: Path, command: str) -> None:
     assert isinstance(outcome_obj, dict)
 
 
-@pytest.mark.parametrize("command", [CliCmd.CHECK, CliCmd.STRIP])
+@pytest.mark.parametrize(
+    "command",
+    [
+        CliCmd.CHECK,
+        CliCmd.STRIP,
+    ],
+)
 def test_processing_json_summary_shape(tmp_path: Path, command: str) -> None:
     """Check JSON summary-mode shape for `check` / `strip` with `--summary`.
 
@@ -229,7 +252,13 @@ def test_processing_json_summary_shape(tmp_path: Path, command: str) -> None:
 
     result: Result = run_cli_in(
         tmp_path,
-        [command, CliOpt.OUTPUT_FORMAT, "json", CliOpt.RESULTS_SUMMARY_MODE, "."],
+        [
+            command,
+            CliOpt.OUTPUT_FORMAT,
+            "json",
+            CliOpt.RESULTS_SUMMARY_MODE,
+            ".",
+        ],
     )
     assert_SUCCESS_or_WOULD_CHANGE(result)
 
@@ -290,7 +319,13 @@ def test_config_dump_ndjson_kinds() -> None:
     assert kinds <= {"config", "config_diagnostics"}
 
 
-@pytest.mark.parametrize("command", [CliCmd.CHECK, CliCmd.STRIP])
+@pytest.mark.parametrize(
+    "command",
+    [
+        CliCmd.CHECK,
+        CliCmd.STRIP,
+    ],
+)
 def test_processing_ndjson_kinds_with_summary(tmp_path: Path, command: str) -> None:
     """Ensure NDJSON `--summary` output for `check` / `strip` emits config and summary records.
 
@@ -308,7 +343,13 @@ def test_processing_ndjson_kinds_with_summary(tmp_path: Path, command: str) -> N
 
     result: Result = run_cli_in(
         tmp_path,
-        [command, CliOpt.OUTPUT_FORMAT, "ndjson", CliOpt.RESULTS_SUMMARY_MODE, "."],
+        [
+            command,
+            CliOpt.OUTPUT_FORMAT,
+            "ndjson",
+            CliOpt.RESULTS_SUMMARY_MODE,
+            ".",
+        ],
     )
     assert_SUCCESS_or_WOULD_CHANGE(result)
 

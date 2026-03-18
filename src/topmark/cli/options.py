@@ -44,6 +44,7 @@ from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.errors import TopmarkCliUsageError
 from topmark.cli.keys import CliOpt
 from topmark.cli.keys import CliShortOpt
+from topmark.cli.reporting import ReportScope
 from topmark.cli_shared.color import ColorMode
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
@@ -663,8 +664,7 @@ def common_file_type_filtering_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
 def common_apply_and_write_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
     """Apply common file selection and filtering options.
 
-    Adds options such as ``--files-from``, ``--include``, ``--exclude``, ``--file-type``,
-    and ``--relative-to``.
+    Adds options such as ``--apply``, ``--write-mode``.
 
     Args:
         f: The Click command function to decorate.
@@ -714,9 +714,16 @@ def render_diff_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
 
 
 def pipeline_reporting_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
-    """Apply summary mode output options.
+    """Apply summary/reporting options for pipeline-style commands.
 
-    Adds the following option: ``--summary``, ``--skip-compliant``, ``skip-unsupported``.
+    Adds the following options:
+        - ``--summary``: show outcome counts instead of per-file details.
+        - ``--report``: control which entries appear in **human per-file**
+          output.
+
+    Notes:
+        `--report` is a human-facing per-file listing policy. It is ignored for
+        summary mode and machine-readable output.
 
     Args:
         f: The Click command function to decorate.
@@ -732,19 +739,19 @@ def pipeline_reporting_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
     )(f)
 
     f = option_with_underscore_traps(
-        CliOpt.SKIP_COMPLIANT,
-        ArgKey.SKIP_COMPLIANT,
-        is_flag=True,
-        default=False,
-        help="Hide files that are already up-to-date from the results.",
-    )(f)
-
-    f = option_with_underscore_traps(
-        CliOpt.SKIP_UNSUPPORTED,
-        ArgKey.SKIP_UNSUPPORTED,
-        is_flag=True,
-        default=False,
-        help="Hide unsupported file types from the results.",
+        CliOpt.REPORT,
+        ArgKey.REPORT,
+        type=EnumChoiceParam(ReportScope),
+        default=ReportScope.ACTIONABLE,
+        show_default=True,
+        help=(
+            "Reporting scope for human per-file output: "
+            "'actionable': list would-change results and other attention-worthy states; "
+            "summarize unsupported entries separately. "
+            "'noncompliant': list actionable results plus unsupported entries. "
+            "'all': list every processed result, including unchanged entries. "
+            "Ignored for summary mode and machine-readable formats."
+        ),
     )(f)
 
     return f

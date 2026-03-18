@@ -141,6 +141,8 @@ class Config:
             Note: Glob expansion and filtering are resolved relative to their declaring source
             (config file dir or CWD for CLI), not relative_to.
         stdin_mode: Whether to read from stdin; requires explicit True to activate.
+        stdin_filename: File name to use when reading file contents from stdin (used when building
+            headers).
         files: List of files to process.
         include_from: Files containing include patterns.
         exclude_from: Files containing exclude patterns.
@@ -200,6 +202,7 @@ class Config:
 
     # File processing options
     stdin_mode: bool | None
+    stdin_filename: str | None
     files: tuple[str, ...]
 
     include_from: tuple[PatternSource, ...]
@@ -335,6 +338,7 @@ class Config:
             relative_to_raw=self.relative_to_raw,
             relative_to=self.relative_to,
             stdin_mode=self.stdin_mode,
+            stdin_filename=self.stdin_filename,
             files=list(self.files),
             include_patterns=list(self.include_patterns),
             include_from=list(self.include_from),
@@ -389,8 +393,10 @@ class MutableConfig:
         field_values: Mapping of field names to their string values from [fields].
         align_fields: Whether to align fields, from [formatting].
         relative_to_raw: Original string from config or CLI
-        relative_to: Base path for relative file references, from [files].
+        relative_to: Base path used only for resolving header metadata (e.g., `file_relpath`).
         stdin_mode: Whether to read from stdin; requires explicit True to activate.
+        stdin_filename: File name to use when reading file contents from stdin (used when building
+            headers).
         files: List of files to process.
         include_from: Files containing include patterns.
         exclude_from: Files containing exclude patterns.
@@ -438,6 +444,8 @@ class MutableConfig:
 
     # File processing options
     stdin_mode: bool | None = None  # Explicit True required to enable reading from stdin
+    stdin_filename: str | None = None
+
     files: list[str] = field(default_factory=lambda: [])
 
     include_from: list[PatternSource] = field(default_factory=lambda: [])
@@ -519,6 +527,7 @@ class MutableConfig:
             relative_to_raw=self.relative_to_raw,
             relative_to=self.relative_to,
             stdin_mode=self.stdin_mode,
+            stdin_filename=self.stdin_filename,
             files=tuple(self.files),
             include_from=tuple(self.include_from),
             exclude_from=tuple(self.exclude_from),
@@ -1453,6 +1462,15 @@ class MutableConfig:
         if stdin_mode is not None:
             # honor False explicitly
             self.stdin_mode = stdin_mode
+
+        stdin_filename: str | None = get_arg_string_or_none_checked(
+            args,
+            ArgKey.STDIN_FILENAME.value,  # StrEnum
+            diagnostics=self.diagnostics,
+        )
+        if stdin_filename:
+            # `stdin_filename`` must be nonempty
+            self.stdin_filename = stdin_filename
 
         # align_fields: checked bool
         if ArgKey.ALIGN_FIELDS in args:

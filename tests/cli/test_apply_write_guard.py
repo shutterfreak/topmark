@@ -30,6 +30,7 @@ from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli_in
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
+from topmark.cli.reporting import ReportScope
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
 
@@ -58,14 +59,20 @@ def test_apply_does_not_write_skipped_known_no_headers(tmp_path: Path) -> None:
     # 2) Apply: should not write (guarded by WriteStatus != INSERTED/REPLACED/REMOVED)
     result: Result = run_cli_in(
         tmp_path,
-        [CliCmd.CHECK, CliOpt.APPLY_CHANGES, "LICENSE"],
+        [
+            CliCmd.CHECK,
+            CliOpt.REPORT,
+            ReportScope.ALL,  # Ensure compliant files are also reported
+            CliOpt.APPLY_CHANGES,
+            "LICENSE",
+        ],
     )
 
     # 3) Assertions
     assert_SUCCESS(result)
 
     # Allow either your standard “file skipped” diagnostic or the JSON paths in other modes.
-    assert "No changes to apply." in result.output
+    assert "no changes to apply." in result.output
     assert lic.read_text("utf-8") == original  # content intact
 
 

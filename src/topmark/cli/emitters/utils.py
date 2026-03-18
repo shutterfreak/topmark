@@ -26,10 +26,13 @@ from topmark.cli.emitters.text.pipeline import emit_pipeline_banner_text
 from topmark.cli.emitters.text.pipeline import emit_pipeline_diffs_text
 from topmark.cli.emitters.text.pipeline import emit_pipeline_per_file_guidance_text
 from topmark.cli.emitters.text.pipeline import emit_pipeline_summary_counts_text
+from topmark.cli.keys import CliOpt
+from topmark.cli.reporting import ReportScope
 from topmark.cli_shared.emitters.markdown.pipeline import emit_pipeline_diffs_markdown
 from topmark.cli_shared.emitters.markdown.pipeline import render_pipeline_banner_markdown
 from topmark.cli_shared.emitters.markdown.pipeline import render_pipeline_per_file_guidance_markdown
 from topmark.cli_shared.emitters.markdown.pipeline import render_pipeline_summary_counts_markdown
+from topmark.cli_shared.emitters.shared.pipeline import markdown_code_span
 from topmark.constants import TOML_BLOCK_END
 from topmark.constants import TOML_BLOCK_START
 from topmark.core.formats import OutputFormat
@@ -107,6 +110,8 @@ def emit_pipeline_human_output(
     cmd: str,
     file_list_total: int,
     view_results: list[ProcessingContext],
+    report: ReportScope,
+    unsupported_count: int,
     fmt: OutputFormat,
     verbosity_level: int,
     summary_mode: bool,
@@ -120,11 +125,16 @@ def emit_pipeline_human_output(
     This unifies TEXT (ANSI) and MARKDOWN output for pipeline-oriented
     commands like `check` and `strip`.
 
+    Notes:
+        This helper only supports `TEXT` and `MARKDOWN`.
+
     Args:
         console: Console used for printing.
         cmd: Command name (e.g. "check", "strip").
         file_list_total: Total number of candidate files (before view filtering).
         view_results: Filtered results to render.
+        report: Controls which per-file entries are rendered for human output.
+        unsupported_count: Unsupported file count.
         fmt: Human output format.
         verbosity_level: Effective verbosity for gating banners/details.
         summary_mode: If True, show outcome counts only.
@@ -185,4 +195,86 @@ def emit_pipeline_human_output(
                 verbosity_level=verbosity_level,
             ),
             nl=False,
+        )
+
+    # In actionable mode, unsupported files are hidden from the per-file listing but summarized
+    # for visibility.
+    if (not summary_mode) and (report is ReportScope.ACTIONABLE) and (unsupported_count > 0):
+        emit_pipeline_hidden_unsupported_footer_human(
+            console=console,
+            fmt=fmt,
+            unsupported_count=unsupported_count,
+        )
+
+
+def emit_pipeline_hidden_unsupported_footer_human(
+    *,
+    console: ConsoleLike,
+    fmt: OutputFormat,
+    unsupported_count: int,
+) -> None:
+    """Emit the footer after a pipeline 'apply' command."""
+    if fmt == OutputFormat.TEXT:
+        console.print(
+            console.styled(
+                f"⚠️  Unsupported: {unsupported_count} file(s) "
+                f"(use {CliOpt.REPORT}={ReportScope.NONCOMPLIANT} to list)",
+                fg="yellow",
+            )
+        )
+    elif fmt == OutputFormat.MARKDOWN:
+        console.print(
+            f"\n> ⚠️ Unsupported: {unsupported_count} file(s) "
+            f"(use {CliOpt.REPORT}={ReportScope.NONCOMPLIANT} to list)\n"
+        )
+
+
+def emit_pipeline_apply_summary_human(
+    *,
+    console: ConsoleLike,
+    fmt: OutputFormat,
+    command_path: str,
+    written: int,
+    failed: int,
+) -> None:
+    """Emit a short human-facing apply summary footer.
+
+    This is only for human formats (TEXT/MARKDOWN). Machine formats must never emit
+    human summaries.
+
+    Args:
+        console: Console used for printing.
+        fmt: Human output format (TEXT or MARKDOWN).
+        command_path: Command path (e.g. "topmark check", "topmark strip").
+        written: Number of files written.
+        failed: Number of files that failed to write.
+    """
+    if fmt not in (OutputFormat.TEXT, OutputFormat.MARKDOWN):
+        return
+
+    if fmt == OutputFormat.TEXT:
+        if written:
+            msg: str = f"\n✅ {command_path}: applied changes to {written} file(s)."
+        else:
+            msg = f"\n✅ {command_path}: no changes to apply."
+        console.print(console.styled(msg, fg="green", bold=True))
+        if failed:
+            console.print(
+                console.styled(
+                    f"\n⚠️ {command_path}: failed to write {failed} file(s). See log for details.",
+                    fg="yellow",
+                    bold=True,
+                )
+            )
+        return
+
+    # MARKDOWN
+    cmd_md: str = markdown_code_span(command_path)
+    if written:
+        console.print(f"\n✅ {cmd_md}: applied changes to **{written}** file(s).\n")
+    else:
+        console.print(f"\n✅ {cmd_md}: no changes to apply.\n")
+    if failed:
+        console.print(
+            f"\n> ⚠️ {cmd_md}: failed to write **{failed}** file(s). See log for details.\n"
         )

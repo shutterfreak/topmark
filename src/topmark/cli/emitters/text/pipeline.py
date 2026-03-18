@@ -129,8 +129,10 @@ def emit_pipeline_summary_counts_text(
         )
         console.print(f"  {outcome_text}  {reason_text} : {count_text}")
 
-    sep_width: int = 2 + outcome_width + 2 + reason_width + 3 + num_width
-    console.print("─" * sep_width)
+    if counts:
+        # Only render a horizontal line before the totals if there were outcome counts
+        sep_width: int = 2 + outcome_width + 2 + reason_width + 3 + num_width
+        console.print("─" * sep_width)
 
     total_outcome: str = "TOTAL"
     total_reason: str = ""

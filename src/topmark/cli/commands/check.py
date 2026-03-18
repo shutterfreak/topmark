@@ -48,7 +48,6 @@ from typing import TYPE_CHECKING
 import click
 
 from topmark.api.runtime import select_pipeline
-from topmark.api.view import filter_view_results
 from topmark.cli.cmd_common import build_config_for_plan
 from topmark.cli.cmd_common import build_file_list
 from topmark.cli.cmd_common import exit_if_no_files
@@ -57,7 +56,7 @@ from topmark.cli.cmd_common import maybe_exit_on_error
 from topmark.cli.cmd_common import maybe_route_console_to_stderr
 from topmark.cli.emitters.machine import emit_processing_results_machine
 from topmark.cli.emitters.text.diagnostic import render_diagnostics_text
-from topmark.cli.emitters.text.pipeline import emit_updated_content_to_stdout
+from topmark.cli.emitters.utils import emit_pipeline_apply_summary_human
 from topmark.cli.emitters.utils import emit_pipeline_human_output
 from topmark.cli.errors import TopmarkCliIOError
 from topmark.cli.io import plan_cli_inputs
@@ -76,11 +75,15 @@ from topmark.cli.options import common_stdin_content_mode_options
 from topmark.cli.options import common_ui_options
 from topmark.cli.options import pipeline_reporting_options
 from topmark.cli.options import render_diff_options
+from topmark.cli.reporting import ReportScope
+from topmark.cli.reporting import filter_results_for_report
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import validate_check_add_update_policy_exclusivity
 from topmark.cli.validators import validate_diff_policy_for_output_format
 from topmark.cli.validators import validate_stdin_dash_requires_piped_input
-from topmark.cli_shared.emitters.shared.pipeline import check_msg
+from topmark.cli.validators import warn_if_report_scope_ignored
+from topmark.cli_shared.emitters.shared.pipeline import check_msg_markdown
+from topmark.cli_shared.emitters.shared.pipeline import check_msg_text
 from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
@@ -166,8 +169,7 @@ def check_command(
     diff: bool,
     # pipeline_reporting_options
     summary_mode: bool,
-    skip_compliant: bool,
-    skip_unsupported: bool,
+    report: ReportScope,
     # common_header_formatting_options:
     align_fields: bool,
     relative_to: str | None,
@@ -210,8 +212,8 @@ def check_command(
             or writing to STDOUT (default: atomic writer).
         diff: Show unified diffs of header changes (human output only).
         summary_mode: Show outcome counts instead of per‑file details.
-        skip_compliant: Suppress files whose comparison status is UNCHANGED.
-        skip_unsupported: Suppress unsupported file types.
+        report: Reporting scope for human per-file output (`actionable`, `noncompliant`, `all`).
+            Ignored for summary mode and machine-readable formats.
         align_fields: Whether to align header fields when rendering (captured in config).
         relative_to: Base path used only for resolving header metadata (e.g., `file_relpath`).
         output_format: Output format to use (``text``, ``markdown``, ``json``, or ``ndjson``).
@@ -265,6 +267,13 @@ def check_command(
     validate_diff_policy_for_output_format(ctx, diff=diff, fmt=fmt)
 
     validate_check_add_update_policy_exclusivity(ctx, add_only=add_only, update_only=update_only)
+
+    warn_if_report_scope_ignored(
+        ctx,
+        output_format=output_format or OutputFormat.TEXT,
+        summary_mode=summary_mode,
+        report=report,
+    )
 
     prune_override: bool | None = ctx.obj.get(
         "prune"
@@ -361,34 +370,41 @@ def check_command(
         prune=prune,
     )
 
-    # Optional filtering
-    view_results: list[ProcessingContext] = filter_view_results(
+    # Report scope is a human per-file listing policy only.
+    #
+    # - Machine output must always use the full raw result set.
+    # - Human summary mode must also use the full raw result set so aggregated
+    #   counts are not distorted by per-file report filtering.
+    # - Human non-summary output uses the filtered per-file view.
+    view_results, unsupported_count = filter_results_for_report(
         results,
-        skip_compliant=skip_compliant,
-        skip_unsupported=skip_unsupported,
+        report=report,
+        would_change=effective_would_add_or_update,
     )
 
-    # Machine formats first
+    human_results: list[ProcessingContext] = results if summary_mode else view_results
+
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         emit_processing_results_machine(
             meta=meta,
             config=config,
-            results=view_results,
+            results=results,
             fmt=fmt,
             summary_mode=summary_mode,
         )
     else:
-        # Human output
         emit_pipeline_human_output(
             console=console,
             cmd=CliCmd.CHECK,
             file_list_total=len(file_list),
-            view_results=view_results,
+            view_results=human_results,
+            report=report,
+            unsupported_count=unsupported_count,
             fmt=fmt,
             verbosity_level=verbosity_level,
             summary_mode=summary_mode,
             show_diffs=diff,
-            make_message=check_msg,
+            make_message=check_msg_markdown if fmt == OutputFormat.MARKDOWN else check_msg_text,
             apply_changes=apply_changes,
             enable_color=enable_color,
         )
@@ -396,9 +412,10 @@ def check_command(
     if apply_changes:
         # Writes (only when --apply is set)
         if stdin_mode:
-            # For STDIN content mode, emit the modified file content to stdout.
-            emit_updated_content_to_stdout(results=view_results)
-            # Cleanup temp file
+            # For STDIN content mode, the modified file content is emitted to stdout in WriterStep.
+            # So we do not have to output it here.
+            #
+            # Cleanup the temp file
             safe_unlink(temp_path)
             return
         else:
@@ -406,13 +423,14 @@ def check_command(
             written: int = sum(1 for r in results if r.status.write == WriteStatus.WRITTEN)
             failed: int = sum(1 for r in results if r.status.write == WriteStatus.FAILED)
 
-            if fmt == OutputFormat.TEXT:
-                msg: str = (
-                    f"\n✅ Applied changes to {written} file(s)."
-                    if written
-                    else "\n✅ No changes to apply."
-                )
-                console.print(console.styled(msg, fg="green", bold=True))
+            emit_pipeline_apply_summary_human(
+                console=console,
+                fmt=fmt,
+                command_path=ctx.command_path,
+                written=written,
+                failed=failed,
+            )
+
             if failed:
                 raise TopmarkCliIOError(f"Failed to write {failed} file(s). See log for details.")
 

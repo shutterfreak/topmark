@@ -31,6 +31,9 @@ import logging
 from typing import TYPE_CHECKING
 from typing import TypeVar
 
+import click
+
+from topmark.cli.console_helpers import get_console_safely
 from topmark.cli.errors import TopmarkCliUsageError
 from topmark.cli.keys import CliOpt
 from topmark.cli_shared.color import ColorMode
@@ -43,8 +46,9 @@ from topmark.core.logging import get_logger
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    import click
+    from click.core import ParameterSource
 
+    from topmark.cli.reporting import ReportScope
     from topmark.cli_shared.console_api import ConsoleLike
     from topmark.core.logging import TopmarkLogger
 
@@ -141,7 +145,7 @@ def validate_machine_format_forbids_flags(
     raise TopmarkCliUsageError(f"{cmd}: {CliOpt.OUTPUT_FORMAT}={fmt.value}: {opts} {reason}")
 
 
-# ---- Reusable apply policies ----
+# ---- Reusable non-raising policy helpers ----
 
 
 def warn_and_clear(
@@ -169,6 +173,56 @@ def warn_and_clear(
     console.warn(message)
     ctx.obj[obj_key] = cleared_value
     return cleared_value
+
+
+def warn_if_report_scope_ignored(
+    ctx: click.Context,
+    *,
+    output_format: OutputFormat,
+    summary_mode: bool,
+    report: ReportScope,
+) -> None:
+    """Warn when an explicitly provided `--report` value will have no effect.
+
+    `--report` only affects human per-file output. It is ignored when:
+
+    - a machine-readable output format is selected, or
+    - summary mode is enabled.
+
+    To avoid noisy warnings for the default case, this helper only emits a
+    warning when the user explicitly provided `--report` on the command line.
+
+    Warnings are emitted through the CLI console helper so machine-readable payloads on stdout
+    remain unchanged.
+
+    Args:
+        ctx: Active Click context.
+        output_format: Effective output format.
+        summary_mode: Whether summary-only mode is enabled.
+        report: Effective report scope.
+    """
+    param_source: ParameterSource | None = ctx.get_parameter_source(ArgKey.REPORT)
+    if param_source is not click.core.ParameterSource.COMMANDLINE:
+        return
+
+    msgs: list[str] = []
+
+    if is_machine_format(output_format):
+        msgs.append(
+            f"Note: {ctx.command_path}: {CliOpt.REPORT}={report.value} is ignored when "
+            f"{CliOpt.OUTPUT_FORMAT}={output_format.value}."
+        )
+    if summary_mode:
+        msgs.append(
+            f"Note: {ctx.command_path}: {CliOpt.REPORT}={report.value} is ignored when "
+            f"{CliOpt.RESULTS_SUMMARY_MODE} is enabled."
+        )
+    if not msgs:
+        return
+
+    console: ConsoleLike = get_console_safely()
+    for msg in msgs:
+        console.warn(msg)
 
 
 def apply_color_policy_for_output_format(

@@ -45,7 +45,6 @@ from topmark.config.types import FileWriteStrategy
 from topmark.config.types import OutputTarget
 from topmark.core.logging import get_logger
 from topmark.pipeline.context.policy import can_change
-from topmark.pipeline.context.policy import check_permitted_by_policy
 from topmark.pipeline.hints import Axis
 from topmark.pipeline.hints import Cluster
 from topmark.pipeline.hints import KnownCode
@@ -82,16 +81,19 @@ def _updated_lines(ctx: ProcessingContext) -> list[str] | None:
     return ctx.materialize_updated_lines()
 
 
-def _normalize_eof(text: str, ctx: ProcessingContext) -> str:
-    """Normalize end-of-file newline according to the original file policy.
-
-    If the original file did not end with a newline, remove a trailing newline
-    from ``text`` using the detected newline style.
-    """
-    nl: str = ctx.newline_style or "\n"
-    if ctx.ends_with_newline is False and text.endswith(nl):
-        return text[: -len(nl)]
-    return text
+# TODO: currently `_normalize_eof` isn’t applied by _InplaceFileSink / _AtomicFileSink. Verify
+# whether we strill need to add this “no trailing newline” semantics for file writes in the real
+# sinks (likely by adjusting what ctx.iter_updated_lines() yields).
+# def _normalize_eof(text: str, ctx: ProcessingContext) -> str:
+#     """Normalize end-of-file newline according to the original file policy.
+#
+#     If the original file did not end with a newline, remove a trailing newline
+#     from ``text`` using the detected newline style.
+#     """
+#     nl: str = ctx.newline_style or "\n"
+#     if ctx.ends_with_newline is False and text.endswith(nl):
+#         return text[: -len(nl)]
+#     return text
 
 
 class WriteSink(Protocol):
@@ -168,56 +170,6 @@ class StdoutSink:
         size: int = len(text.encode("utf-8"))
         print(text, end="")  # noqa: T201 (intentional: pipeline handles stdout here)
         return WriteResult(status=WriteStatus.WRITTEN, bytes_written=size)
-
-
-class FileSystemSink:
-    """Filesystem sink that writes in-place to ``ctx.path``."""
-
-    def write(self, *, ctx: ProcessingContext) -> WriteResult:
-        """Write the updated content in-place to ``ctx.path``.
-
-        The sink preserves the original end-of-file newline behavior captured by
-        the reader step (``ctx.ends_with_newline``) and uses the detected newline
-        style for joins (``ctx.newline_style``).
-
-        Args:
-            ctx: Processing context containing the updated lines.
-
-        Returns:
-            ``WRITTEN`` with the number of UTF-8 bytes written when content is available;
-            otherwise ``SKIPPED`` with zero bytes written.
-        """
-        lines: list[str] | None = _updated_lines(ctx)
-        if lines is None:
-            logger.debug(
-                "FileSystemSink: ctx.views.updated not defined or ctx.views.updated.lines "
-                "not defined: nothing to do"
-            )
-            return WriteResult(status=WriteStatus.SKIPPED, bytes_written=0)
-
-        text: str = "".join(lines)
-
-        # Respect original EOF newline policy
-        text = _normalize_eof(text, ctx)
-
-        try:
-            with ctx.path.open("w", encoding="utf-8", newline="") as f:
-                f.write(text)
-
-            bytes_written: int = len(text.encode("utf-8"))
-            logger.debug("FileSystemSink: wrote %d bytes to file %s", bytes_written, ctx.path)
-            return WriteResult(status=WriteStatus.WRITTEN, bytes_written=bytes_written)
-
-        except UnicodeEncodeError as e:
-            # Log that the text contains characters that can't be saved with the chosen encoding
-            logger.error("Failed to write file due to encoding issue in content: %s", e)
-            # Consider returning an appropriate status or re-raising a custom exception
-            return WriteResult(status=WriteStatus.FAILED)
-
-        except OSError as e:
-            # Catches FileNotFoundError, PermissionError, IsADirectoryError, etc.
-            logger.error("Failed to write file %s due to file system error: %s", ctx.path, e)
-            return WriteResult(status=WriteStatus.FAILED)
 
 
 class InplaceFileSink(WriteSink):
@@ -496,32 +448,19 @@ class WriterStep(BaseStep):
         if ctx.status.plan == PlanStatus.INSERTED and pol.update_only:
             ctx.status.write = WriteStatus.SKIPPED
             ctx.info("Skipped by policy: --update-only")
-            logger.debug("Skipped by policy: --update-only")
             return
 
         if ctx.status.plan == PlanStatus.REPLACED and pol.add_only:
             ctx.status.write = WriteStatus.SKIPPED
             ctx.info("Skipped by policy: --add-only")
-            logger.debug("Skipped by policy: --add-only")
             return
 
         # Defensive: nothing to write if updater did not produce an updated image
         updated_view: UpdatedView | None = ctx.views.updated
         if updated_view is None or updated_view.lines is None:
             ctx.info("File unchanged - nothing to write.")
-            logger.debug("File unchanged - nothing to write")
             return
 
-        logger.debug(
-            "writer gate: resolve=%s can_change=%s header=%s comparison=%s strip=%s policy=%s",
-            ctx.status.resolve,
-            can_change(ctx),
-            ctx.status.header,
-            ctx.status.comparison,
-            ctx.status.strip,
-            check_permitted_by_policy(ctx),
-        )
-        logger.debug("ProcessingContext before writing: %s", ctx.to_dict())
         sink: WriteSink = _select_sink(ctx)
         result: WriteResult = sink.write(ctx=ctx)
 

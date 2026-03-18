@@ -93,8 +93,6 @@ class CliOpt:
     RESULTS_SUMMARY_MODE: Final = "--summary"
     OUTPUT_FORMAT: Final = "--output-format"
     SHOW_DETAILS: Final = "--long"
-    SKIP_COMPLIANT: Final = "--skip-compliant"
-    SKIP_UNSUPPORTED: Final = "--skip-unsupported"
 
     # Logging / UX
     VERBOSE: Final = "--verbose"

@@ -36,6 +36,7 @@ from tests.cli.conftest import run_cli
 from tests.cli.conftest import run_cli_in
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
+from topmark.cli.reporting import ReportScope
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
 from topmark.pipeline.status import HeaderStatus
@@ -153,6 +154,8 @@ def test_strip_summary_buckets(tmp_path: Path) -> None:
         [
             CliCmd.STRIP,
             CliOpt.RESULTS_SUMMARY_MODE,
+            CliOpt.REPORT,
+            ReportScope.ALL,  # Ensure compliant files are also reported
             str(has),  # file with good header: "would strip header"
             str(clean),  # file without header: "up-to-date"
             str(bad),  # file with malformed header: "up-to-date"

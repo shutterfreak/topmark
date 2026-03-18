@@ -61,6 +61,9 @@ class ArgKey(str, Enum):
     POLICY_CHECK_ADD_ONLY = "add_only"
     POLICY_CHECK_UPDATE_ONLY = "update_only"
 
+    # Pipeline result reporting
+    REPORT = "report"
+
     # Output / write behavior
     WRITE_MODE = "write_mode"
     APPLY_CHANGES = "apply_changes"
@@ -68,8 +71,6 @@ class ArgKey(str, Enum):
     RESULTS_SUMMARY_MODE = "summary_mode"
     OUTPUT_FORMAT = "output_format"
     SHOW_DETAILS = "show_details"
-    SKIP_COMPLIANT = "skip_compliant"
-    SKIP_UNSUPPORTED = "skip_unsupported"
 
     # Logging / UX
     VERBOSE = "verbose"
