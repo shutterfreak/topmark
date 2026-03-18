@@ -127,7 +127,6 @@ def emit_config_check_text(
         console.print(f"{status_icon} Config OK (no diagnostics). [strict: {strict_str}]")
     else:
         render_human_diagnostics_text(
-            console=console,
             counts=counts,
             diagnostics=diags,
             verbosity_level=verbosity_level,

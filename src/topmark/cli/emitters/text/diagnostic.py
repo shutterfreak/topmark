@@ -25,59 +25,59 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.core.keys import ArgKey
-from topmark.diagnostic.model import DiagnosticLevel
+from topmark.cli.console_helpers import get_console_safely
+from topmark.cli.keys import CliShortOpt
+from topmark.cli.presentation import TextStyler
+from topmark.cli.presentation import maybe_style
+from topmark.cli.presentation import style_for_role
+from topmark.core.presentation import StyleRole
+from topmark.diagnostic.model import DiagnosticLog
 from topmark.diagnostic.model import DiagnosticStats
 from topmark.diagnostic.model import FrozenDiagnosticLog
 from topmark.diagnostic.model import compute_diagnostic_stats
 
 if TYPE_CHECKING:
-    import click
-
     from topmark.cli_shared.console_api import ConsoleLike
     from topmark.cli_shared.emitters.shared.config import HumanDiagnosticLine
-    from topmark.config.model import Config
+    from topmark.cli_shared.emitters.shared.diagnostic import HumanDiagnosticCounts
 
 
 def render_human_diagnostics_text(
     *,
-    console: ConsoleLike,
-    counts: object,
+    counts: HumanDiagnosticCounts,
     diagnostics: list[HumanDiagnosticLine],
     verbosity_level: int,
 ) -> None:
     """Render prepared human diagnostics to ConsoleLike (TEXT).
 
     Args:
-        console: ConsoleLike for output.
         counts: HumanDiagnosticCounts (object with .error, .warning, .info).
         diagnostics: List of HumanDiagnosticLine (object with .level, .message).
         verbosity_level: Controls detail.
     """
     if not diagnostics:
         return
-    err = getattr(counts, "error", 0)
-    warn = getattr(counts, "warning", 0)
-    info = getattr(counts, "info", 0)
-    console.print(f"Config diagnostics: {err} error(s), {warn} warning(s), {info} information(s)")
+
+    console: ConsoleLike = get_console_safely()
+    console.print(
+        f"Diagnostics: {counts.error} error(s), "
+        f"{counts.warning} warning(s), "
+        f"{counts.info} information(s)"
+    )
     if verbosity_level > 0:
         for d in diagnostics:
-            level = getattr(d, "level", "")
-            message = getattr(d, "message", "")
-            console.print(f"- {level}: {message}")
+            console.print(f"- {d.level}: {d.message}")
 
 
-def render_config_diagnostics_text(
+def render_diagnostics_text(
     *,
-    ctx: click.Context,
-    config: Config,
+    diagnostics: FrozenDiagnosticLog | DiagnosticLog,
     verbosity_level: int,
+    color: bool,
 ) -> None:
-    """Render config-level diagnostics to the console for human output.
+    """Render diagnostics to the console for human output.
 
-    This helper prints configuration resolution/validation diagnostics that were
-    accumulated while building the effective `Config`. It is intended for
-    human-facing output only (TEXT/ANSI), not for machine formats.
+    It is intended for human-facing output only (TEXT/ANSI), not for machine formats.
 
     Behavior:
         - If there are no diagnostics, do nothing.
@@ -85,21 +85,20 @@ def render_config_diagnostics_text(
         - At verbosity >= 1, emit a summary line and then one line per diagnostic.
 
     Args:
-        ctx: Click context providing access to `ctx.obj` values (console, meta, etc.).
-        config: Effective frozen configuration containing an immutable diagnostic log.
+        diagnostics: An immutable or mutable diagnostic log.
         verbosity_level: Effective verbosity level.
+        color: Render in color if True, as plain text otherwise.
 
     Returns:
         None. Output is written to the configured console.
     """
-    diags: FrozenDiagnosticLog = config.diagnostics
-    if not diags:
+    if len(diagnostics.items) == 0:
         return
 
-    console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
+    console: ConsoleLike = get_console_safely()
 
     # Aggregate counts per level once (used for triage summary and verbosity gating).
-    stats: DiagnosticStats = compute_diagnostic_stats(diags)
+    stats: DiagnosticStats = compute_diagnostic_stats(diagnostics)
     n_info: int = stats.n_info
     n_warn: int = stats.n_warning
     n_err: int = stats.n_error
@@ -116,36 +115,34 @@ def render_config_diagnostics_text(
 
     triage: str = ", ".join(parts) if parts else "info"
 
+    info_styler: TextStyler = style_for_role(StyleRole.INFO, styled=color)
     if verbosity_level <= 0:
         # Keep verbosity 0 output intentionally compact.
         console.print(
-            console.styled(
-                f"ℹ️  Config diagnostics: {triage} (use '-v' to view details)",
-                fg="blue",
+            maybe_style(
+                info_styler,
+                f"ℹ️  Diagnostics: {triage} (use '{CliShortOpt.VERBOSE}' to view details)",
+                styled=color,
             )
         )
         return
 
-    # Verbose mode: show the triage header and then each diagnostic message.
+    # Display diagnostics triage info.
     console.print(
-        console.styled(
-            f"ℹ️  Config diagnostics: {triage}",
-            fg="blue",
-            bold=True,
+        maybe_style(
+            info_styler,
+            f"ℹ️  Diagnostics: {triage}",
+            styled=color,
         )
     )
-    for d in diags:
-        # Color by severity; keep level label stable via `.value`.
-        fg: str
-        if d.level == DiagnosticLevel.ERROR:
-            fg = "red"
-        elif d.level == DiagnosticLevel.WARNING:
-            fg = "yellow"
-        else:
-            fg = "blue"
+
+    # Display diagnostics log.
+    for d in diagnostics:
+        styler: TextStyler = style_for_role(d.level.role, styled=color)
         console.print(
-            console.styled(
+            maybe_style(
+                styler,
                 f"  [{d.level.value}] {d.message}",
-                fg=fg,
+                styled=color,
             )
         )

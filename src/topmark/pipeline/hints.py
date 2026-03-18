@@ -44,11 +44,10 @@ from enum import Enum
 from typing import TYPE_CHECKING
 from typing import Any
 
-from yachalk import chalk
-
 from topmark.core.enum_mixins import EnumIntrospectionMixin
 from topmark.core.logging import get_logger
-from topmark.core.presentation import ColoredStrEnum
+from topmark.core.presentation import StyledStrEnum
+from topmark.core.presentation import StyleRole
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -98,27 +97,50 @@ class Axis(EnumIntrospectionMixin, str, Enum):
     WRITE = "write"
 
 
-class Cluster(EnumIntrospectionMixin, ColoredStrEnum):
+class Cluster(EnumIntrospectionMixin, StyledStrEnum):
     """Coarse, outcome-oriented groups for hints.
 
     Clusters provide a small set of semantically meaningful buckets used for CLI
-    coloring and headline ranking (e.g., ERROR outranks UNCHANGED). Colors are
-    chosen to be legible on common dark/light terminal themes and to avoid low
-    contrast combinations.
+    headline ranking and mapping to `StyleRole` for renderers (e.g., ERROR outranks UNCHANGED).
+    Renderers should map `StyleRole` to concrete styling (color, bold, etc.).
 
     Accessibility:
         Do not rely solely on color to convey meaning. Always include a textual
         label (e.g., "changed", "skipped").
     """
 
-    PENDING = "pending", chalk.gray
-    UNCHANGED = "unchanged", chalk.green
-    WOULD_CHANGE = "would_change", chalk.yellow
-    CHANGED = "changed", chalk.yellow_bright.bold
-    SKIPPED = "skipped", chalk.gray.bold
-    UNSUPPORTED = "unsupported", chalk.magenta
-    BLOCKED_POLICY = "blocked_policy", chalk.red.bold
-    ERROR = "error", chalk.red_bright
+    PENDING = (
+        "pending",
+        StyleRole.PENDING,
+    )
+    UNCHANGED = (
+        "unchanged",
+        StyleRole.UNCHANGED,
+    )
+    WOULD_CHANGE = (
+        "would_change",
+        StyleRole.WOULD_CHANGE,
+    )
+    CHANGED = (
+        "changed",
+        StyleRole.CHANGED,
+    )
+    SKIPPED = (
+        "skipped",
+        StyleRole.SKIPPED,
+    )
+    UNSUPPORTED = (
+        "unsupported",
+        StyleRole.UNSUPPORTED,
+    )
+    BLOCKED_POLICY = (
+        "blocked_policy",
+        StyleRole.BLOCKED_POLICY,
+    )
+    ERROR = (
+        "error",
+        StyleRole.ERROR,
+    )
 
 
 class KnownCode(EnumIntrospectionMixin, str, Enum):
@@ -136,7 +158,7 @@ class KnownCode(EnumIntrospectionMixin, str, Enum):
 
         content:          'content:skipped_bom_shebang', 'content:skipped_mixed'
 
-        header:           'header:missing', 'header:empty', 'header:malformed'
+        header:           'header:detected', 'header:missing', 'header:empty', 'header:malformed'
 
         generation:       'generation:no_fields', 'generation:generated'
 
@@ -176,6 +198,7 @@ class KnownCode(EnumIntrospectionMixin, str, Enum):
     CONTENT_SKIPPED_REFLOW = "content:skipped_reflow"
     CONTENT_UNREADABLE = "content:unreadable"
     # Header
+    HEADER_DETECTED = "header:detected"
     HEADER_MISSING = "header:missing"
     HEADER_EMPTY = "header:empty"
     HEADER_MALFORMED = "header:malformed"
@@ -186,6 +209,7 @@ class KnownCode(EnumIntrospectionMixin, str, Enum):
     RENDER_RENDERED = "render:rendered"
     # Comparison
     COMPARE_CHANGED = "compare:changed"
+    COMPARE_WOULD_CHANGE = "compare:would_change"
     COMPARE_UNCHANGED = "compare:unchanged"
     COMPARE_SKIPPED = "compare:skipped"
     # Strip
@@ -347,33 +371,6 @@ class HintLog:
             logger.debug(
                 "added hint axis=%s code=%s message=%s", hint.axis, hint.code, hint.message
             )
-
-    def headline(self) -> Hint | None:
-        """Return the single most relevant hint from a hint log, order-agnostically.
-
-        Ranking: ERROR > BLOCKED_POLICY > SKIPPED/UNSUPPORTED > CHANGED
-        > WOULD_CHANGE > UNCHANGED > PENDING. Ties prefer ``terminal=True``.
-
-        Returns:
-            The top-ranked hint, or ``None`` if the log is empty.
-
-        Notes:
-            You can extend the tie-breaker with axis priority without changing callers.
-        """
-
-        def _score_cluster(cluster: str | None) -> int:
-            if not cluster:
-                return 0
-            return _CLUSTER_SCORE.get(cluster, 0)
-
-        best: Hint | None = None
-        best_key: tuple[int, bool] = (-1, False)
-        for h in self.items:
-            key: tuple[int, bool] = (_score_cluster(h.cluster), bool(h.terminal))
-            if key > best_key:
-                best = h
-                best_key = key
-        return best
 
     def __iter__(self) -> Iterator[Hint]:
         """Iterate over all hints stored in this log.

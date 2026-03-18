@@ -277,6 +277,12 @@ class ScannerStep(BaseStep):
         # May proceed to next step (always):
         permitted_by_policy: bool | None = check_permitted_by_policy(ctx)
         if st == HeaderStatus.DETECTED:
+            ctx.hint(
+                axis=Axis.HEADER,
+                code=KnownCode.HEADER_DETECTED,
+                cluster=Cluster.PENDING,
+                message="TopMark header detected",
+            )
             if permitted_by_policy is False:
                 ctx.request_halt(reason="stopped by policy", at_step=self)
             pass  # detected; normal path

@@ -16,7 +16,7 @@ intentionally separate from the public API schemas so that internal
 diagnostics can evolve without breaking external contracts.
 
 Sections:
-    * DiagnosticLevel: severity levels with associated terminal colors.
+    * DiagnosticLevel: severity levels with associated semantic style roles.
     * Diagnostic: immutable structured diagnostic payload (level + message).
     * DiagnosticStats: aggregated per-level counts.
     * DiagnosticLog: mutable per-context collection with helpers for
@@ -32,14 +32,11 @@ from dataclasses import dataclass
 from dataclasses import field
 from enum import Enum
 from typing import TYPE_CHECKING
-from typing import cast
-
-from yachalk import chalk
 
 from topmark.core.logging import get_logger
+from topmark.core.presentation import StyleRole
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
     from collections.abc import Iterable
     from collections.abc import Iterator
 
@@ -52,7 +49,7 @@ logger: TopmarkLogger = get_logger(__name__)
 class DiagnosticLevel(Enum):
     """Severity levels for diagnostics collected during processing.
 
-    Levels map to terminal colors and are ordered by importance: ERROR > WARNING > INFO.
+    Levels map to semantic style roles and are ordered by importance: ERROR > WARNING > INFO.
     This enum is **internal**; the public API exposes string literals.
     """
 
@@ -61,22 +58,16 @@ class DiagnosticLevel(Enum):
     ERROR = "error"
 
     @property
-    def color(self) -> Callable[[str], str]:
-        """Return the `yachalk` color function associated with this severity level.
+    def role(self) -> StyleRole:
+        """Return the semantic `StyleRole` for this diagnostic level.
 
-        Intended for human-readable output only; machine formats should not use colors.
-
-        Returns:
-            Callable[[str], str]: The `yachalk` color function associated with this severity level.
+        Renderers may map this role to concrete styling (e.g., colors).
         """
-        return cast(
-            "Callable[[str], str]",
-            {
-                DiagnosticLevel.INFO: chalk.blue,
-                DiagnosticLevel.WARNING: chalk.yellow,
-                DiagnosticLevel.ERROR: chalk.red_bright,
-            }[self],
-        )
+        return {
+            DiagnosticLevel.INFO: StyleRole.INFO,
+            DiagnosticLevel.WARNING: StyleRole.WARNING,
+            DiagnosticLevel.ERROR: StyleRole.ERROR,
+        }[self]
 
 
 @dataclass(frozen=True)
@@ -104,6 +95,56 @@ class DiagnosticStats:
     def total(self) -> int:
         """Return the total count of diagnostics."""
         return self.n_info + self.n_warning + self.n_error
+
+    def triage_summary(
+        self,
+        severity_threshold: DiagnosticLevel = DiagnosticLevel.INFO,
+    ) -> str:
+        """Return a compact triage summary ordered by decreasing severity.
+
+        The summary is built from the aggregated per-level counts stored on this
+        object and is suitable for concise human-facing suffixes such as:
+        ``"1 error, 2 warnings"``.
+
+        The `severity_threshold` controls how far the summary descends:
+
+        - `DiagnosticLevel.ERROR`: include only errors
+        - `DiagnosticLevel.WARNING`: include errors and warnings
+        - `DiagnosticLevel.INFO`: include errors, warnings, and infos
+
+        Args:
+            severity_threshold: Lowest severity level that may be included; default: `INFO` (all).
+
+        Returns:
+            Compact triage summary string. Returns an empty string when no
+            matching counts are present.
+        """
+        parts: list[str] = []
+
+        n_info: int = self.n_info
+        n_warn: int = self.n_warning
+        n_err: int = self.n_error
+
+        # Compose a compact triage summary like "1 error, 2 warnings" while
+        # respecting the requested lowest included severity.
+        stop: bool = False
+        if n_err:
+            parts.append(f"{n_err} error" + ("s" if n_err != 1 else ""))
+            if severity_threshold == DiagnosticLevel.ERROR:
+                stop = True
+
+        if n_warn:
+            if not stop:
+                parts.append(f"{n_warn} warning" + ("s" if n_warn != 1 else ""))
+            if severity_threshold == DiagnosticLevel.WARNING:
+                stop = True
+
+        if not stop and n_info:
+            parts.append(f"{n_info} info" + ("s" if n_info != 1 else ""))
+
+        if parts:
+            return ", ".join(parts)
+        return ""
 
 
 @dataclass
@@ -152,7 +193,6 @@ class DiagnosticLog:
 
         Args:
             message: The diagnostic message.
-
         """
         self._add(Diagnostic(DiagnosticLevel.INFO, message))
         logger.info(

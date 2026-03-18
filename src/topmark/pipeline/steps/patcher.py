@@ -30,8 +30,6 @@ from __future__ import annotations
 import difflib
 from typing import TYPE_CHECKING
 
-from yachalk import chalk
-
 from topmark.core.logging import get_logger
 from topmark.pipeline.hints import Axis
 from topmark.pipeline.hints import Cluster
@@ -41,6 +39,7 @@ from topmark.pipeline.status import PatchStatus
 from topmark.pipeline.steps.base import BaseStep
 from topmark.pipeline.views import DiffView
 from topmark.pipeline.views import UpdatedView
+from topmark.rendering.unified_diff import format_patch_plain
 from topmark.utils.timestamp import format_gnu_diff_timestamp
 
 if TYPE_CHECKING:
@@ -168,6 +167,13 @@ class PatcherStep(BaseStep):
             logger.debug("File header unchanged: %s", ctx.path)
             return
 
+        logger.info(
+            "Patch (rendered):\n%s",
+            format_patch_plain(
+                patch=patch_lines,
+            ),
+        )
+
         # Join exactly as produced by difflib. Do not introduce CRLF conversions.
         ctx.views.diff = DiffView(text="".join(patch_lines))
         if not ctx.views.diff or not ctx.views.diff.text:
@@ -175,10 +181,6 @@ class PatcherStep(BaseStep):
             ctx.status.patch = PatchStatus.FAILED
         else:
             ctx.status.patch = PatchStatus.GENERATED
-            logger.debug(
-                "\n===DIFF START ===\n%s=== DIFF END ===",
-                chalk.yellow_bright.bg_blue(ctx.views.diff.text or ""),
-            )
 
         return
 

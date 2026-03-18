@@ -8,119 +8,116 @@
 #
 # topmark:header:end
 
-"""Color-aware enum primitives for human-facing rendering.
+"""Semantic presentation primitives for human-facing rendering.
 
-This module provides a small, focused base enum that stores a textual value
-while *optionally* attaching a colorizer (callable that decorates strings).
-It avoids coupling the rest of the system to a specific color library.
+This module defines a small, stable vocabulary of *semantic* style roles and a lightweight enum base
+that can carry such roles.
 
-Key types:
-    - `Colorizer`: Protocol describing any callable compatible with
-      `yachalk.ChalkBuilder.__call__`.
-    - `ColoredStrEnum`: `str, Enum` that stores the enum's text value and a
-      colorizer (e.g., a yachalk style). The enum `.value` remains a plain
-      string, while the colorizer is exposed via `.color`.
+The key goal is to keep **core** code free of any concrete presentation backend (ANSI, Rich,
+yachalk, etc.) while still allowing it to attach meaningful styling intent to domain concepts.
 
-Design:
-    `ColoredStrEnum` keeps `_value_` as the plain `str` and stores the
-    color function separately (`_color`). This preserves Enum semantics
-    (hashing, equality, `repr`) and avoids crashes in pretty-printers that
-    assume a scalar value. The colorizer can be any callable that matches the
-    `Colorizer` protocol; in practice, it's typically a `ChalkBuilder`.
+Core modules should depend only on:
 
-Example:
-    ```python
-    from yachalk import chalk
+- `StyleRole`: semantic roles such as ERROR/WARNING/OK/CHANGED.
+- `StyledStrEnum`: an enum whose `.value` is a plain `str` plus an attached semantic role via
+  `.role`.
 
-    class Cluster(ColoredStrEnum):
-        OK    = ("ok", chalk.green)
-        ERROR = ("error", chalk.red_bright)
+The CLI (or any other renderer) is responsible for mapping `StyleRole` values to actual presentation
+(color, bold, icons, etc.).
 
-    print(Cluster.OK.value)            # 'ok'
-    print(Cluster.OK.color("hello"))   # green "hello"
-    ```
+Design notes:
+    * Keep the `StyleRole` vocabulary small and stable.
+    * Prefer mapping richer domain concepts onto `StyleRole` rather than introducing per-module
+      style enums.
+    * Keep enum values as plain strings for deterministic serialization.
 """
 
 from __future__ import annotations
 
 from enum import Enum
-from typing import Protocol
 
 from typing_extensions import Self
 
 
-class Colorizer(Protocol):
-    """Callable that decorates a string for display.
+class StyleRole(str, Enum):
+    """Semantic styling role for human-facing rendering.
 
-    Designed to be compatible with `yachalk.ChalkBuilder.__call__`, which
-    accepts a variadic list of arguments and a `sep` keyword. Implementations
-    may ignore extra args; TopMark typically calls colorizers with a single string.
+    `StyleRole` expresses *meaning* (severity, outcome, emphasis) without prescribing a concrete
+    presentation (color/bold). The CLI (or any other renderer) is responsible for mapping roles to
+    an actual style backend.
+
+    Notes:
+        Keep this vocabulary small and stable. Prefer mapping richer domain concepts (e.g.,
+        `DiagnosticLevel`, `Cluster`, `*Status`) onto these roles rather than introducing per-module
+        style enums.
     """
 
-    def __call__(self, *args: object, sep: str = " ") -> str:
-        """Colorize and concatenate provided arguments into a display string.
+    # Generic severities
+    INFO = "info"
+    WARNING = "warning"
+    ERROR = "error"
 
-        This method takes one or more objects (typically strings), optionally joins them
-        using the specified separator, and applies colorization or decoration suitable for
-        display in a terminal or other output. The decoration is implementation-dependent,
-        and may include color, bolding, or other markup.
+    # Generic outcomes / states
+    OK = "ok"
+    MUTED = "muted"
+    EMPHASIS = "emphasis"
 
-        Args:
-            *args: One or more objects to render, typically strings.
-            sep: Separator between arguments when multiple values
-                are provided. Defaults to a single space.
+    # Change semantics (often used by check/strip pipelines)
+    UNCHANGED = "unchanged"
+    WOULD_CHANGE = "would_change"
+    CHANGED = "changed"
 
-        Returns:
-            The colorized and concatenated output string.
-        """
-        ...
+    # Other common buckets
+    SKIPPED = "skipped"
+    UNSUPPORTED = "unsupported"
+    BLOCKED_POLICY = "blocked_policy"
+    PENDING = "pending"
+
+    # Unified diffs
+    DIFF_HEADER = "diff_header"
+    DIFF_META = "diff_meta"
+    DIFF_ADD = "diff_add"
+    DIFF_DEL = "diff_del"
+    DIFF_LINE_NO = "diff_line_no"
+
+    # No style
+    NO_STYLE = "no_style"
 
 
-class ColoredStrEnum(str, Enum):
-    """Enum whose *value* is a string and that carries an associated colorizer.
+# --- Semantic string enum for backend-agnostic styling -------------------------------------------
 
-    The enum member remains a `str` (so Enum internals, hashing, repr, etc.
-    behave normally), and the colorizer is stored separately on the instance.
+
+class StyledStrEnum(str, Enum):
+    """Enum whose value is a display string and that carries a semantic `StyleRole`.
+
+    This is a backend-agnostic enum helper: core code attaches semantic meaning (`StyleRole`)
+    without depending on any renderer. Core code can attach semantic meaning (e.g.,
+    `ERROR`/`WARNING`/`OK`) without importing terminal styling libraries. Renderers (CLI, rich,
+    etc.) can map `StyleRole` to concrete presentation.
+
+    Notes:
+        Keep the enum value (`.value`) as a plain string for stable serialization.
+        The semantic role is exposed via `.role`.
     """
 
-    _value_: str
-    _color: Colorizer
+    _role: StyleRole
 
-    def __new__(cls, text: str, color: Colorizer) -> Self:
-        """Construct a colored enum member.
+    def __new__(cls, text: str, role: StyleRole) -> Self:
+        """Create a `StyledStrEnum` instance.
 
         Args:
-            text: The textual value for the enum member (stored in `_value_`).
-            color: A callable used to colorize text for display.
+            text: The text value.
+            role: The style role.
 
         Returns:
-            The newly constructed enum member.
-
-        Notes:
-            Stores the textual value in `_value_` and the colorizer in `_color` to preserve
-            `Enum` semantics while exposing color separately.
+            The newly created enum member.
         """
-        # Ensure the enum *value* is the textual string
-        obj: ColoredStrEnum = str.__new__(cls, text)
+        obj: StyledStrEnum = str.__new__(cls, text)
         obj._value_ = text
-        obj._color = color
+        obj._role = role
         return obj
 
     @property
-    def value(self) -> str:
-        """Return the textual value of the enum member.
-
-        Returns:
-            The string value associated with this member.
-        """
-        # `_value_` is assigned in __new__; Enum guarantees it exists on members.
-        return self._value_
-
-    @property
-    def color(self) -> Colorizer:
-        """Return the colorizer associated with this member.
-
-        Returns:
-            A callable that decorates strings for display.
-        """
-        return self._color
+    def role(self) -> StyleRole:
+        """Return the semantic `StyleRole` attached to this enum member."""
+        return self._role

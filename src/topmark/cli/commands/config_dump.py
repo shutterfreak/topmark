@@ -34,7 +34,7 @@ from topmark.cli.cmd_common import init_common_state
 from topmark.cli.cmd_common import maybe_route_console_to_stderr
 from topmark.cli.emitters.machine import emit_config_machine
 from topmark.cli.emitters.text.config import emit_config_dump_text
-from topmark.cli.emitters.text.diagnostic import render_config_diagnostics_text
+from topmark.cli.emitters.text.diagnostic import render_diagnostics_text
 from topmark.cli.io import plan_cli_inputs
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
@@ -240,10 +240,10 @@ def config_dump_command(
 
     # Display Config diagnostics before resolving files
     if fmt == OutputFormat.TEXT:
-        render_config_diagnostics_text(
-            ctx=ctx,
-            config=config,
+        render_diagnostics_text(
+            diagnostics=config.diagnostics,
             verbosity_level=verbosity_level,
+            color=enable_color,
         )
 
     temp_path: Path | None = plan.temp_path  # for cleanup/STDIN-apply branch

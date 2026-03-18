@@ -232,12 +232,20 @@ class ComparerStep(BaseStep):
 
         # May proceed to next step (always):
         if st == ComparisonStatus.CHANGED:
-            ctx.hint(
-                axis=Axis.COMPARISON,
-                code=KnownCode.COMPARE_CHANGED,
-                cluster=Cluster.CHANGED,
-                message="differences detected",
-            )
+            if ctx.config.apply_changes is True:
+                ctx.hint(
+                    axis=Axis.COMPARISON,
+                    code=KnownCode.COMPARE_CHANGED,
+                    cluster=Cluster.CHANGED,
+                    message="differences detected",
+                )
+            else:
+                ctx.hint(
+                    axis=Axis.COMPARISON,
+                    code=KnownCode.COMPARE_WOULD_CHANGE,
+                    cluster=Cluster.WOULD_CHANGE,
+                    message="differences detected",
+                )
         elif st == ComparisonStatus.UNCHANGED:
             ctx.hint(
                 axis=Axis.COMPARISON,

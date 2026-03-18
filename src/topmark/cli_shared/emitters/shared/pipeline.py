@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from topmark.cli.errors import TopmarkCliPipelineError
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.pipeline.context.model import ProcessingContext
@@ -30,7 +31,7 @@ from topmark.pipeline.outcomes import Intent
 from topmark.pipeline.outcomes import determine_intent
 from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.status import WriteStatus
-from topmark.utils.diff import render_patch
+from topmark.rendering.unified_diff import format_patch_plain
 
 if TYPE_CHECKING:
     from topmark.pipeline.context.model import ProcessingContext
@@ -40,17 +41,15 @@ if TYPE_CHECKING:
 # High-level emitters
 
 
-def render_diff(
+def render_diff_plain(
     *,
     result: ProcessingContext,
-    color: bool,
     show_line_numbers: bool = False,
 ) -> str | None:
-    """Render a unified diff (human formats).
+    """Render a unified diff (plain-text).
 
     Args:
         result: List of processing contexts to inspect.
-        color: Render in color if True, as plain text otherwise.
         show_line_numbers: Prepend line numbers if True, render patch only (default).
 
     Returns:
@@ -66,9 +65,8 @@ def render_diff(
         return None
     diff_text: str | None = diff_view.text
     if diff_text:
-        return render_patch(
+        return format_patch_plain(
             patch=diff_text,
-            color=color,
             show_line_numbers=show_line_numbers,
         )
     return None
@@ -97,10 +95,15 @@ def check_msg(r: ProcessingContext, apply_changes: bool) -> str | None:
             else f"✏️  Updating header in '{r.path}'"
         )
 
-    return (
-        f"🛠️  Run `topmark {CliCmd.CHECK} {CliOpt.APPLY_CHANGES} {r.path}` "
-        f"to {intent.value} this file."
-    )
+    if intent == Intent.INSERT:
+        action: str = "add a TopMark header to this file"
+    elif intent == Intent.UPDATE:
+        action = "update the TopMark header in this file"
+    else:
+        raise TopmarkCliPipelineError(
+            message=f"Unexpected intent {intent.value} in check pipeline.",
+        )
+    return f"🛠️  Run `topmark {CliCmd.CHECK} {CliOpt.APPLY_CHANGES} {r.path}` to {action}."
 
 
 def strip_msg(r: ProcessingContext, apply_changes: bool) -> str | None:
@@ -119,7 +122,10 @@ def strip_msg(r: ProcessingContext, apply_changes: bool) -> str | None:
 
         return f"🧹 Stripping header in '{r.path}'"
 
-    return (
-        f"🛠️  Run `topmark {CliCmd.STRIP} {CliOpt.APPLY_CHANGES} {r.path}` "
-        f"to {intent.value} the header."
-    )
+    if intent == Intent.STRIP:
+        action: str = "strip the TopMark header from this file"
+    else:
+        raise TopmarkCliPipelineError(
+            message=f"Unexpected intent {intent.value} in check pipeline.",
+        )
+    return f"🛠️  Run `topmark {CliCmd.STRIP} {CliOpt.APPLY_CHANGES} {r.path}` to {action}."

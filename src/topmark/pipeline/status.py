@@ -20,9 +20,9 @@ Conventions:
     [`EnumIntrospectionMixin`][topmark.core.enum_mixins.EnumIntrospectionMixin]
     (from [`topmark.core.enum_mixins`][topmark.core.enum_mixins]).
     and
-    [`ColoredStrEnum`][topmark.core.presentation.ColoredStrEnum]
+    [`StyledStrEnum`][topmark.core.presentation.StyledStrEnum]
     (from [`topmark.core.presentation`][topmark.core.presentation])
-    for shared utilities and colors.
+    for shared utilities and semantic style roles.
   * Values are human‑readable strings used in CLI/diagnostics; do not rely on
     identity (`is`) checks—prefer equality (`==`).
   * Only the view/API layer synthesizes public outcomes; steps should not
@@ -31,14 +31,16 @@ Conventions:
 
 from __future__ import annotations
 
-from yachalk import chalk
-
 from topmark.core.enum_mixins import EnumIntrospectionMixin
-from topmark.core.presentation import ColoredStrEnum
+from topmark.core.presentation import StyledStrEnum
+from topmark.core.presentation import StyleRole
 
 
-class BaseStatus(EnumIntrospectionMixin, ColoredStrEnum):
-    """Represents the base status class of file system checks in the pipeline."""
+class BaseStatus(EnumIntrospectionMixin, StyledStrEnum):
+    """Represents the base status class of file system checks in the pipeline.
+
+    Each member should define a ``str` value and a semantic `StyleRole`.
+    """
 
     pass
 
@@ -46,18 +48,50 @@ class BaseStatus(EnumIntrospectionMixin, ColoredStrEnum):
 class FsStatus(BaseStatus):
     """Represents the status of file system checks in the pipeline."""
 
-    # Value format: (description: str, color_renderer: ChalkBuilder)
-    PENDING = ("pending", chalk.gray)
-    OK = ("ok", chalk.green)
-    EMPTY = ("empty file", chalk.yellow)
-    NOT_FOUND = ("not found", chalk.red)
-    NO_READ_PERMISSION = ("no read permission", chalk.red_bright)
-    UNREADABLE = ("read error", chalk.red_bright)
-    NO_WRITE_PERMISSION = ("no write permission", chalk.red_bright)
-    BINARY = ("binary file", chalk.red)
-    BOM_BEFORE_SHEBANG = ("UTF BOM before shebang", chalk.yellow)
-    UNICODE_DECODE_ERROR = ("Unicode decode error", chalk.yellow)
-    MIXED_LINE_ENDINGS = ("file contains mixed line endings", chalk.yellow)
+    PENDING = (
+        "pending",
+        StyleRole.PENDING,
+    )
+    OK = (
+        "ok",
+        StyleRole.OK,
+    )
+    EMPTY = (
+        "empty file",
+        StyleRole.WARNING,
+    )
+    NOT_FOUND = (
+        "not found",
+        StyleRole.ERROR,
+    )
+    NO_READ_PERMISSION = (
+        "no read permission",
+        StyleRole.ERROR,
+    )
+    UNREADABLE = (
+        "read error",
+        StyleRole.ERROR,
+    )
+    NO_WRITE_PERMISSION = (
+        "no write permission",
+        StyleRole.ERROR,
+    )
+    BINARY = (
+        "binary file",
+        StyleRole.ERROR,
+    )
+    BOM_BEFORE_SHEBANG = (
+        "UTF BOM before shebang",
+        StyleRole.WARNING,
+    )
+    UNICODE_DECODE_ERROR = (
+        "Unicode decode error",
+        StyleRole.WARNING,
+    )
+    MIXED_LINE_ENDINGS = (
+        "file contains mixed line endings",
+        StyleRole.WARNING,
+    )
 
 
 class ResolveStatus(BaseStatus):
@@ -66,11 +100,26 @@ class ResolveStatus(BaseStatus):
     Used to indicate whether the file type was successfully resolved or not.
     """
 
-    PENDING = ("resolve pending", chalk.gray)
-    RESOLVED = ("resolved", chalk.green)
-    TYPE_RESOLVED_HEADERS_UNSUPPORTED = ("known file type, headers not supported", chalk.yellow)
-    TYPE_RESOLVED_NO_PROCESSOR_REGISTERED = ("known file type, no header processor", chalk.red)
-    UNSUPPORTED = ("unsupported file type", chalk.yellow)
+    PENDING = (
+        "resolve pending",
+        StyleRole.PENDING,
+    )
+    RESOLVED = (
+        "resolved",
+        StyleRole.OK,
+    )
+    TYPE_RESOLVED_HEADERS_UNSUPPORTED = (
+        "known file type, headers not supported",
+        StyleRole.UNSUPPORTED,
+    )
+    TYPE_RESOLVED_NO_PROCESSOR_REGISTERED = (
+        "known file type, no header processor",
+        StyleRole.ERROR,
+    )
+    UNSUPPORTED = (
+        "unsupported file type",
+        StyleRole.UNSUPPORTED,
+    )
 
 
 class ContentStatus(BaseStatus):
@@ -79,13 +128,34 @@ class ContentStatus(BaseStatus):
     `SKIPPED_*` states are policy-aware potential non-terminal states.
     """
 
-    PENDING = ("file content pending", chalk.gray)
-    OK = ("ok", chalk.green)
-    UNSUPPORTED = ("unsupported", chalk.yellow)
-    SKIPPED_MIXED_LINE_ENDINGS = ("mixed line endings", chalk.red)
-    SKIPPED_POLICY_BOM_BEFORE_SHEBANG = ("BOM before shebang", chalk.red)
-    SKIPPED_REFLOW = ("Would reflow content (breaks check/strip idempotence)", chalk.red)
-    UNREADABLE = ("unreadable", chalk.red_bright)
+    PENDING = (
+        "file content pending",
+        StyleRole.PENDING,
+    )
+    OK = (
+        "ok",
+        StyleRole.OK,
+    )
+    UNSUPPORTED = (
+        "unsupported",
+        StyleRole.UNSUPPORTED,
+    )
+    SKIPPED_MIXED_LINE_ENDINGS = (
+        "mixed line endings",
+        StyleRole.ERROR,
+    )
+    SKIPPED_POLICY_BOM_BEFORE_SHEBANG = (
+        "BOM before shebang",
+        StyleRole.ERROR,
+    )
+    SKIPPED_REFLOW = (
+        "Would reflow content (breaks check/strip idempotence)",
+        StyleRole.ERROR,
+    )
+    UNREADABLE = (
+        "unreadable",
+        StyleRole.ERROR,
+    )
 
 
 class HeaderStatus(BaseStatus):
@@ -94,13 +164,34 @@ class HeaderStatus(BaseStatus):
     Used to indicate detection, parsing, and validation results for the file header.
     """
 
-    PENDING = ("header detection pending", chalk.gray)
-    MISSING = ("header missing", chalk.blue)
-    DETECTED = ("header detected", chalk.green)
-    MALFORMED = ("header malformed", chalk.red_bright)
-    MALFORMED_ALL_FIELDS = ("header malformed (all fields invalid)", chalk.red_bright)
-    MALFORMED_SOME_FIELDS = ("header malformed (some fields invalid)", chalk.red_bright)
-    EMPTY = ("header empty", chalk.yellow_bright)
+    PENDING = (
+        "header detection pending",
+        StyleRole.PENDING,
+    )
+    MISSING = (
+        "header missing",
+        StyleRole.EMPHASIS,
+    )
+    DETECTED = (
+        "header detected",
+        StyleRole.OK,
+    )
+    MALFORMED = (
+        "header malformed",
+        StyleRole.ERROR,
+    )
+    MALFORMED_ALL_FIELDS = (
+        "header malformed (all fields invalid)",
+        StyleRole.ERROR,
+    )
+    MALFORMED_SOME_FIELDS = (
+        "header malformed (some fields invalid)",
+        StyleRole.ERROR,
+    )
+    EMPTY = (
+        "header empty",
+        StyleRole.WARNING,
+    )
 
 
 class GenerationStatus(BaseStatus):
@@ -110,11 +201,22 @@ class GenerationStatus(BaseStatus):
     or if required fields are missing.
     """
 
-    PENDING = ("header field generation pending", chalk.gray)
-    GENERATED = ("header fields generated", chalk.green)
-    NO_FIELDS = ("no header fields", chalk.yellow_bright)
-    SKIPPED = ("header field generation skipped", chalk.red)
-    # RENDERED = "header fields rendered", chalk.blue
+    PENDING = (
+        "header field generation pending",
+        StyleRole.PENDING,
+    )
+    GENERATED = (
+        "header fields generated",
+        StyleRole.OK,
+    )
+    NO_FIELDS = (
+        "no header fields",
+        StyleRole.WARNING,
+    )
+    SKIPPED = (
+        "header field generation skipped",
+        StyleRole.SKIPPED,
+    )
 
 
 class RenderStatus(BaseStatus):
@@ -129,9 +231,18 @@ class RenderStatus(BaseStatus):
         RENDERED: The expected header text was successfully rendered.
     """
 
-    PENDING = ("header field rendering pending", chalk.gray)
-    RENDERED = ("header fields rendered", chalk.blue)
-    SKIPPED = ("header rendering skipped", chalk.yellow)
+    PENDING = (
+        "header field rendering pending",
+        StyleRole.PENDING,
+    )
+    RENDERED = (
+        "header fields rendered",
+        StyleRole.EMPHASIS,
+    )
+    SKIPPED = (
+        "header rendering skipped",
+        StyleRole.SKIPPED,
+    )
 
 
 class ComparisonStatus(BaseStatus):
@@ -140,10 +251,22 @@ class ComparisonStatus(BaseStatus):
     Used to indicate if the header has changed, is unchanged, or cannot be compared.
     """
 
-    PENDING = ("comparison pending", chalk.gray)
-    CHANGED = ("changes found", chalk.red)
-    UNCHANGED = ("no changes found", chalk.green)
-    SKIPPED = ("comparison skipped", chalk.yellow)
+    PENDING = (
+        "comparison pending",
+        StyleRole.PENDING,
+    )
+    CHANGED = (
+        "changes found",
+        StyleRole.CHANGED,
+    )
+    UNCHANGED = (
+        "no changes found",
+        StyleRole.UNCHANGED,
+    )
+    SKIPPED = (
+        "comparison skipped",
+        StyleRole.SKIPPED,
+    )
 
 
 class StripStatus(BaseStatus):
@@ -155,10 +278,22 @@ class StripStatus(BaseStatus):
       - WriteStatus records the final write outcome (e.g., REMOVED on apply).
     """
 
-    PENDING = ("stripping pending", chalk.gray)
-    NOT_NEEDED = ("stripping not needed", chalk.blue)  # no header present to remove
-    READY = ("ready for stripping", chalk.green)  # removal prepared (updated_file_lines computed)
-    FAILED = ("stripping failed", chalk.red_bright)
+    PENDING = (
+        "stripping pending",
+        StyleRole.PENDING,
+    )
+    NOT_NEEDED = (
+        "stripping not needed",
+        StyleRole.UNCHANGED,
+    )  # no header present to remove
+    READY = (
+        "ready for stripping",
+        StyleRole.OK,
+    )  # removal prepared (updated_file_lines computed,)
+    FAILED = (
+        "stripping failed",
+        StyleRole.ERROR,
+    )
 
 
 class PlanStatus(BaseStatus):
@@ -168,13 +303,34 @@ class PlanStatus(BaseStatus):
     preview was produced.
     """
 
-    PENDING = ("update pending", chalk.gray)
-    PREVIEWED = ("update previewed", chalk.blue)
-    REPLACED = ("header replaced", chalk.green)
-    INSERTED = ("header inserted", chalk.green_bright)
-    REMOVED = ("header removed", chalk.yellow_bright)
-    SKIPPED = ("update skipped", chalk.yellow)
-    FAILED = ("update failed", chalk.red_bright)
+    PENDING = (
+        "update pending",
+        StyleRole.PENDING,
+    )
+    PREVIEWED = (
+        "update previewed",
+        StyleRole.EMPHASIS,
+    )
+    REPLACED = (
+        "header replaced",
+        StyleRole.CHANGED,
+    )
+    INSERTED = (
+        "header inserted",
+        StyleRole.CHANGED,
+    )
+    REMOVED = (
+        "header removed",
+        StyleRole.CHANGED,
+    )
+    SKIPPED = (
+        "update skipped",
+        StyleRole.SKIPPED,
+    )
+    FAILED = (
+        "update failed",
+        StyleRole.ERROR,
+    )
 
 
 class PatchStatus(BaseStatus):
@@ -184,10 +340,22 @@ class PatchStatus(BaseStatus):
     is unchanged or an updated image was unavailable, or failed to generate.
     """
 
-    PENDING = ("patch pending", chalk.gray)
-    GENERATED = ("patch generated", chalk.green)
-    SKIPPED = ("patch skipped", chalk.yellow)
-    FAILED = ("patch failed", chalk.red_bright)
+    PENDING = (
+        "patch pending",
+        StyleRole.PENDING,
+    )
+    GENERATED = (
+        "patch generated",
+        StyleRole.OK,
+    )
+    SKIPPED = (
+        "patch skipped",
+        StyleRole.SKIPPED,
+    )
+    FAILED = (
+        "patch failed",
+        StyleRole.ERROR,
+    )
 
 
 class WriteStatus(BaseStatus):
@@ -196,7 +364,19 @@ class WriteStatus(BaseStatus):
     Used to indicate whether the header was written, previewed, skipped, or failed.
     """
 
-    PENDING = ("write pending", chalk.gray)
-    WRITTEN = ("changes written to file", chalk.green)
-    SKIPPED = ("write was skipped", chalk.yellow)
-    FAILED = ("write failed", chalk.red_bright)
+    PENDING = (
+        "write pending",
+        StyleRole.PENDING,
+    )
+    WRITTEN = (
+        "changes written to file",
+        StyleRole.OK,
+    )
+    SKIPPED = (
+        "write was skipped",
+        StyleRole.SKIPPED,
+    )
+    FAILED = (
+        "write failed",
+        StyleRole.ERROR,
+    )

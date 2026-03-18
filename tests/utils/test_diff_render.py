@@ -16,19 +16,17 @@ Covers `render_patch` inputs and output type guarantees.
 
 from __future__ import annotations
 
-from topmark.utils.diff import render_patch
+from topmark.rendering.unified_diff import format_patch_plain
 
 
 def test_render_patch_accepts_str_and_list() -> None:
     """`render_patch` should accept both a diff string and an iterable of lines."""
     diff_text = "--- a\n+++ b\n-foo\n+bar\n"
-    s1: str = render_patch(
+    s1: str = format_patch_plain(
         patch=diff_text,
-        color=False,
     )
-    s2: str = render_patch(
+    s2: str = format_patch_plain(
         patch=diff_text.splitlines(False),
-        color=False,
     )
 
     # Both should render to non-empty strings.
@@ -37,8 +35,7 @@ def test_render_patch_accepts_str_and_list() -> None:
 
 def test_render_patch_empty_input_is_safe() -> None:
     """Empty diff input should not raise and should return a string."""
-    s: str = render_patch(
+    s: str = format_patch_plain(
         patch="",
-        color=False,
     )
     assert isinstance(s, str)

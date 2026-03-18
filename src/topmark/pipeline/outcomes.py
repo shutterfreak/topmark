@@ -10,16 +10,22 @@
 
 """Pure outcome bucketing and counting helpers used across frontends.
 
-This module owns the *bucketing* logic that maps a `ProcessingContext` to a
-stable public outcome key and a human-facing bucket label.
+This module owns the presentation-free *bucketing* logic that maps a
+[`ProcessingContext`][topmark.pipeline.context.model.ProcessingContext]
+to a stable public outcome and an optional human-facing reason.
 
 Design goals:
-- Presentation-free: no ANSI, no chalk/yachalk, no console logic.
+- Presentation-free: no ANSI styling, markdown, or CLI-only wording.
 - Reusable across frontends: CLI, docs tooling, and the public API.
-- Stable keys/labels: keys are `Outcome.value` strings; labels are the
-  first-seen bucket reason.
+- Stable outcomes: bucketing produces public [`Outcome`][topmark.api.types.Outcome]
+  values that are independent of the chosen frontend.
+- Deterministic summaries: `(outcome, reason)` counting is stable and ordered.
 
-Coloring/styling is intentionally layered on top (e.g. in `cli_shared`).
+Notes:
+    Styling is layered on top in frontend modules such as
+    [`topmark.cli_shared.outcomes`][topmark.cli_shared.outcomes],
+    [`topmark.core.presentation`][topmark.core.presentation] and
+    [`topmark.cli.presentation`][topmark.cli.presentation].
 """
 
 from __future__ import annotations
@@ -30,7 +36,6 @@ from typing import TYPE_CHECKING
 
 from topmark.api.types import OUTCOME_ORDER
 from topmark.api.types import Outcome
-from topmark.core.logging import TopmarkLogger
 from topmark.core.logging import get_logger
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.context.policy import check_permitted_by_policy
@@ -48,89 +53,45 @@ from topmark.pipeline.status import StripStatus  # temporary
 from topmark.pipeline.status import WriteStatus  # temporary
 
 if TYPE_CHECKING:
+    from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
 
 
-NO_REASON_PROVIDED: str = "(no reason provided)"
-
 logger: TopmarkLogger = get_logger(__name__)
+
+NO_REASON_PROVIDED: str = "(no reason provided)"
 
 
 class Intent(Enum):
-    """High-level action intent inferred from pipeline statuses."""
+    """High-level action intent inferred from pipeline status.
+
+    Intent is a small internal classification used by `map_bucket()` to decide
+    whether a detected change should be reported as an insert, update, strip,
+    or a more generic change.
+
+    This is intentionally derived from status axes rather than from the chosen
+    pipeline name so that bucketing remains robust across pipeline variants.
+    """
 
     STRIP = "strip"
     INSERT = "insert"
     UPDATE = "update"
-    NONE = "none"  # no clear action (compare skipped, etc.)
-
-
-@dataclass
-class ResultBucket:
-    """Outcome + optional human label used for bucketing.
-
-    The bucket is a small value object that couples a public `Outcome` with an optional human-facing
-    label used in summaries.
-
-    Args:
-        outcome: The classified outcome to set. If ``None``, the default value is preserved.
-        reason: Human-facing bucket label (summary text). If ``None``, the default value is
-            preserved.
-
-    Attributes:
-        outcome: The classified outcome.
-        reason: Human-facing bucket label (summary text). This is intentionally independent of
-            internal debug tracing.
-    """
-
-    outcome: Outcome = Outcome.PENDING
-    reason: str | None = None
-
-    def __init__(self, *, outcome: Outcome | None, reason: str | None) -> None:
-        if outcome is not None:
-            self.outcome = outcome
-        if reason is not None:
-            self.reason = reason
-
-        logger.debug("ResultBucket: '%s'", self.__repr__())
-
-    def __repr__(self) -> str:
-        """Return a `str` representation of a `ResultBucket` instance.
-
-        Returns:
-            The `str` representation of the `ResultBucket` instance.
-        """
-        return f"{self.outcome.value}: {self.reason or NO_REASON_PROVIDED}"
-
-
-@dataclass(frozen=True)
-class OutcomeReasonCount:
-    """Count for a specific `(outcome, reason)` summary bucket.
-
-    This value object is the canonical summary row used by human and machine
-    output layers. It preserves both axes of classification:
-
-    - `outcome`: the stable public `Outcome`
-    - `reason`: the human-facing bucket reason used within that outcome
-
-    Keeping both axes avoids collapsing distinct reasons into a single per-outcome
-    label in summary mode.
-    """
-
-    outcome: Outcome
-    reason: str
-    count: int
+    NONE = "none"  # insufficient information to infer a concrete action
 
 
 def determine_intent(ctx: ProcessingContext) -> Intent:
-    """Derive the high-level intent for bucketing from the current context.
+    """Infer the high-level action intent from the current context.
 
-    Intent is inferred from statuses that indicate what the pipeline is trying to do for this file:
+    The inferred intent is used only for public bucketing. It is intentionally
+    derived from status axes so that it still works when different pipeline
+    variants omit certain steps (for example, strip-summary pipelines may not
+    run the comparer).
 
-    - STRIP: the strip axis is non-pending (strip pipeline ran).
-    - INSERT: header axis indicates a missing header.
-    - UPDATE: header axis is decided (not PENDING) and not missing.
-    - NONE: insufficient information to infer an action (early termination).
+    Inference rules:
+    - `STRIP`: the strip axis is non-pending, meaning a strip-oriented pipeline ran.
+    - `INSERT`: the header axis reports a missing header.
+    - `UPDATE`: the header axis is decided (not `PENDING`) and not missing.
+    - `NONE`: there is not yet enough information to infer a concrete action.
 
     Args:
         ctx: The processing context.
@@ -147,25 +108,65 @@ def determine_intent(ctx: ProcessingContext) -> Intent:
     return Intent.NONE
 
 
-def map_bucket(ctx: ProcessingContext, *, apply: bool) -> ResultBucket:
-    """Map a file context to a public bucket (Outcome + label).
+@dataclass(frozen=True, slots=True)
+class ResultBucket:
+    """Outcome + optional human-facing reason used for bucketing.
 
-    This logic is precedence-ordered: the first matching rule wins. The ordering
-    matters because some axes may remain `PENDING` depending on the chosen pipeline
-    (for example, `strip` pipelines may omit comparison).
+    `ResultBucket` is the small value object returned by `map_bucket()`. It
+    couples the stable public outcome with the reason text used in summaries.
+
+    Attributes:
+        outcome: The classified public outcome.
+        reason: Optional human-facing reason used in summary output.
+    """
+
+    outcome: Outcome
+    reason: str | None = None
+
+    def __repr__(self) -> str:
+        """Return a compact debug representation of the bucket."""
+        return f"{self.outcome.value}: {self.reason or NO_REASON_PROVIDED}"
+
+
+@dataclass(frozen=True)
+class OutcomeReasonCount:
+    """Count for a specific `(outcome, reason)` summary bucket.
+
+    This value object is the canonical summary row used by human and machine
+    output layers. It preserves both axes of classification:
+
+    - `outcome`: the stable public `Outcome`
+    - `reason`: the human-facing bucket reason used within that outcome
+
+    Keeping both axes avoids collapsing multiple distinct reasons into a single
+    per-outcome count in summary views.
+    """
+
+    outcome: Outcome
+    reason: str
+    count: int
+
+
+def map_bucket(ctx: ProcessingContext, *, apply: bool) -> ResultBucket:
+    """Map a processing context to a public bucket (`Outcome` + reason).
+
+    This logic is precedence-ordered: the first matching rule wins. The ordering matters because
+    some axes may remain `PENDING` depending on the chosen pipeline (for example, `strip` pipelines
+    may omit comparison).
 
     Precedence (high → low):
         1) Hard skips/errors (resolve/fs/content fatal states).
         2) Content-level soft skips (mixed newlines / BOM-before-shebang / reflow).
-        3) Empty-file default compliance: empty files are UNCHANGED unless policy allows
-           inserting headers into empty files.
-        4) Strip intent mapping based on the strip axis (READY/NOT_NEEDED/FAILED). This
-           must not depend on comparison.
+        3) Empty-file default compliance: empty files are `UNCHANGED` unless policy allows inserting
+           headers into empty files.
+        4) Strip intent mapping based on the strip axis (`READY`/`NOT_NEEDED`/`FAILED`). This must
+           not depend on comparison.
         5) Malformed headers that TopMark cannot safely interpret.
         6) Policy veto (add-only / update-only).
-        7) Comparison/write outcomes (UNCHANGED/CHANGED and write WRITTEN/FAILED).
-        8) Dry-run previews and remaining fallbacks (NO_FIELDS, plan skipped).
-        9) Pending (no rule matched).
+        7) Comparison/write outcomes (for pipelines that ran compare and/or write).
+        8) Dry-run previews and remaining fallbacks (`NO_FIELDS`, plan status, generic would-change
+           cases).
+        9) Pending fallback.
 
     Args:
         ctx: The per-file pipeline context.
@@ -185,8 +186,8 @@ def map_bucket(ctx: ProcessingContext, *, apply: bool) -> ResultBucket:
     ) -> ResultBucket:
         """Return a bucket while emitting a structured debug trace.
 
-        The `tag` is debug-only and is intended to make it easy to locate the matching precedence
-        branch in logs.
+        The `debug_tag` is debug-only and is intended to make it easy to locate the matching
+        precedence branch in logs.
 
         Args:
             debug_tag: Stable debug tag for the matching branch.
@@ -308,6 +309,13 @@ def map_bucket(ctx: ProcessingContext, *, apply: bool) -> ResultBucket:
     comparison_lbl: str = ctx.status.comparison.value
     strip_lbl: str = ctx.status.strip.value
 
+    # Helper for constructing the most specific reason for a detected change.
+    def changed_reason_for(current_intent: Intent) -> str:
+        """Return the most specific human-facing reason for a detected change."""
+        if current_intent == Intent.STRIP:
+            return f"{header_lbl}, {strip_lbl}"
+        return f"{header_lbl}, {comparison_lbl}"
+
     # 7) Comparison/write outcomes
     if ctx.status.comparison == ComparisonStatus.UNCHANGED:
         return ret(
@@ -337,7 +345,7 @@ def map_bucket(ctx: ProcessingContext, *, apply: bool) -> ResultBucket:
         else:
             outcome_if_changed = Outcome.WOULD_CHANGE
 
-    reason_if_changed: str = f"{header_lbl}, {comparison_lbl}"
+    reason_if_changed: str = changed_reason_for(intent)
     logger.debug(
         "Outcome if changed: '%s', reason if changed: '%s'",
         outcome_if_changed.value,
@@ -360,26 +368,19 @@ def map_bucket(ctx: ProcessingContext, *, apply: bool) -> ResultBucket:
 
     # Changed comparison: map to the appropriate change outcome.
     if ctx.status.comparison == ComparisonStatus.CHANGED:
-        if intent == Intent.STRIP:
-            return ret(
-                debug_tag="changed:strip",
-                outcome=outcome_if_changed,
-                reason=f"{header_lbl}, {strip_lbl}",
-            )
-        elif intent in (Intent.INSERT, Intent.UPDATE):
-            return ret(
-                debug_tag="changed:header",
-                outcome=outcome_if_changed,
-                reason=reason_if_changed,
-            )
-        else:
-            return ret(
-                debug_tag="changed:generic",
-                outcome=outcome_if_changed,
-                reason=reason_if_changed,
-            )
+        return ret(
+            debug_tag="changed:strip"
+            if intent == Intent.STRIP
+            else (
+                "changed:header" if intent in (Intent.INSERT, Intent.UPDATE) else "changed:generic"
+            ),
+            outcome=outcome_if_changed,
+            reason=reason_if_changed,
+        )
 
-    # 8) Dry-run previews and remaining fallbacks
+    # 8) Dry-run previews and remaining fallbacks.
+    # These branches matter most for summary/dry-run pipelines where later mutation
+    # steps (planner/writer) may not have run.
     if not apply:
         if intent in (Intent.INSERT, Intent.UPDATE):
             if effective_would_add_or_update(ctx):
@@ -431,8 +432,10 @@ def map_bucket(ctx: ProcessingContext, *, apply: bool) -> ResultBucket:
             reason=ctx.status.plan.value,  # or other e.g. reason_if_changed?
         )
 
-    # 9) Pending (optional)
-    # If you prefer to collapse this to UNCHANGED, return that here instead.
+    # 9) Pending fallback.
+    # Reaching this branch means no earlier precedence rule matched. Keeping a
+    # distinct `PENDING` outcome is more honest than silently collapsing to
+    # `UNCHANGED`.
     return ret(
         debug_tag="pending",
         outcome=Outcome.PENDING,
@@ -441,20 +444,17 @@ def map_bucket(ctx: ProcessingContext, *, apply: bool) -> ResultBucket:
 
 
 def classify_outcome(ctx: ProcessingContext, *, apply: bool) -> Outcome:
-    """Translate a `ProcessingContext` status into a public `Outcome`.
+    """Return the public `Outcome` classification for a processing context.
+
+    This is a thin convenience wrapper around `map_bucket()` when only the
+    public `Outcome` (and not the human-facing reason) is needed.
 
     Args:
         ctx: The processing context to classify.
-        apply: Whether the run is in apply mode; influences CHANGED/Would-change.
+        apply: Whether the run is in apply mode.
 
     Returns:
-        The public outcome classification.
-
-    Notes:
-        - Non-resolved *skipped* statuses (e.g., unsupported or known-no-headers)
-          are treated as `UNCHANGED` in the API layer.
-        - When `apply=False`, changed files are reported as `WOULD_CHANGE`.
-        - When `apply=True`, changed files are reported as `CHANGED`.
+        The public outcome classification derived by `map_bucket()`.
     """
     return map_bucket(ctx, apply=apply).outcome
 
@@ -464,7 +464,7 @@ def collect_outcome_reason_counts(
 ) -> list[OutcomeReasonCount]:
     """Collect summary counts grouped by `(outcome, reason)`.
 
-    Unlike the old per-outcome aggregation, this helper preserves the second
+    Unlike a plain per-outcome aggregation, this helper preserves the second
     bucketing axis (`reason`) so summary views do not collapse distinct
     sub-buckets inside the same `Outcome`.
 

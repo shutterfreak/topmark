@@ -56,7 +56,7 @@ from topmark.cli.cmd_common import init_common_state
 from topmark.cli.cmd_common import maybe_exit_on_error
 from topmark.cli.cmd_common import maybe_route_console_to_stderr
 from topmark.cli.emitters.machine import emit_processing_results_machine
-from topmark.cli.emitters.text.diagnostic import render_config_diagnostics_text
+from topmark.cli.emitters.text.diagnostic import render_diagnostics_text
 from topmark.cli.emitters.text.pipeline import emit_updated_content_to_stdout
 from topmark.cli.emitters.utils import emit_pipeline_human_output
 from topmark.cli.errors import TopmarkCliIOError
@@ -323,10 +323,10 @@ def check_command(
 
     # Display Config diagnostics before resolving files
     if fmt == OutputFormat.TEXT and verbosity_level > 0:
-        render_config_diagnostics_text(
-            ctx=ctx,
-            config=config,
+        render_diagnostics_text(
+            diagnostics=config.diagnostics,
             verbosity_level=verbosity_level,
+            color=enable_color,
         )
 
     temp_path: Path | None = plan.temp_path  # for cleanup/STDIN-apply branch
