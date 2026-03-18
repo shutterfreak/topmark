@@ -46,6 +46,29 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from collections.abc import Mapping
 
+
+__all__ = (
+    "MAX_INLINE_SYMBOLS",
+    "NONLINKED_SYMBOLS",
+    "PUBLIC_API_PREFIXES",
+    "apply_outside_fenced_blocks",
+    "context_lines",
+    "env_flag",
+    "find_unlinked_backticked_symbols_with_locations",
+    "fix_backticked_reference_links",
+    "format_inline_symbols",
+    "format_line_numbers",
+    "format_repo_path",
+    "load_nonlinked_symbols",
+    "public_ref_doc_for_symbol",
+    "rel_href",
+    "should_enforce_link",
+    "strip_repo_prefix",
+    "unescape_reference_link_text",
+    "wrap_actions_blocks_with_raw",
+)
+
+
 # ---------- config: public API surfaces ----------
 
 # Modules/prefixes to skip from internals (documented on the Public API page)
@@ -592,28 +615,3 @@ def public_ref_doc_for_symbol(sym: str) -> str | None:
         if sym == prefix or sym.startswith(prefix + "."):
             return f"api/reference/{prefix}.md"
     return None
-
-
-# ---------- exported symbols ----------
-
-
-__all__ = [
-    "MAX_INLINE_SYMBOLS",
-    "NONLINKED_SYMBOLS",
-    "PUBLIC_API_PREFIXES",
-    "apply_outside_fenced_blocks",
-    "context_lines",
-    "env_flag",
-    "find_unlinked_backticked_symbols_with_locations",
-    "fix_backticked_reference_links",
-    "format_inline_symbols",
-    "format_line_numbers",
-    "format_repo_path",
-    "load_nonlinked_symbols",
-    "public_ref_doc_for_symbol",
-    "rel_href",
-    "should_enforce_link",
-    "strip_repo_prefix",
-    "unescape_reference_link_text",
-    "wrap_actions_blocks_with_raw",
-]
