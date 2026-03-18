@@ -9,15 +9,13 @@
 // topmark:header:end
 
 {
+    // --- Editor Settings ---
+
     "editor.rulers": [80, 100],
-
-    "makefile.configureOnOpen": false,
-
     // Turn off auto-detection of indentation that can override language-specific tab sizes
     "editor.detectIndentation": false,
     // Enable default formatting on save for all languages where a formatter is configured.
     "editor.formatOnSave": true,
-
     // Configure code actions to run on save for all languages.
     // This is where linters' auto-fixes and import organization are triggered.
     "editor.codeActionsOnSave": {
@@ -30,6 +28,8 @@
     },
 
     // --- Language-Specific Settings ---
+
+    "makefile.configureOnOpen": false,
 
     "[markdown]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode",
@@ -45,8 +45,17 @@
         "editor.codeActionsOnSave": {
             "source.fixAll.ruff": "explicit",
             "source.organizeImports": "explicit"
-        }
+        },
     },
+    // Note: Type checking mode is configured in `pyproject.toml` under [tool.pyright].
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.diagnosticMode": "workspace",
+    "python.analysis.inlayHints.functionReturnTypes": true,
+    "python.analysis.inlayHints.variableTypes": true,
+    // Use the Python interpreter from the virtual environment:
+    "python.defaultInterpreterPath": ".venv/bin/python",
+    // Ensure Pylance is your language server (Pyright extension should be disabled):
+    "python.languageServer": "Pylance",
 
     "[toml]": {
         "editor.formatOnSave": true,
@@ -57,42 +66,6 @@
         "editor.insertSpaces": true,
         "editor.tabSize": 2
     },
-
-    // --- Specific Tool Extensions Settings ---
-
-    // Ruff Extension Settings (charliermarsh.ruff)
-    // With the native Ruff extension, configuration comes from `pyproject.toml` ([tool.ruff] / [tool.ruff.lint]).
-    "ruff.lint.enable": true,
-
-    // --- Python / Pylance ---
-    // Ensure Pylance is your language server (Pyright extension should be disabled).
-    "python.languageServer": "Pylance",
-
-    // Show diagnostics for the entire workspace (not just open files).
-    "python.analysis.diagnosticMode": "workspace",
-
-    // Docstring
-    "autoDocstring.docstringFormat": "google",
-
-    // Keep the helpful type hints you already enabled:
-
-    // Note: Type checking mode is configured in `pyproject.toml` under [tool.pyright].
-    "python.analysis.inlayHints.variableTypes": true,
-    "python.analysis.inlayHints.functionReturnTypes": true,
-
-    // Use the Python interpreter from the virtual environment:
-    "python.defaultInterpreterPath": ".venv/bin/python",
-
-    // --- Custom YAML Schema validation ---
-
-    // Stop schema-store from attaching random schemas (often causes weird “not accepted” lists)
-    "yaml.schemaStore.enable": false,
-
-    // Add mkdocs-material schema
-    "yaml.schemas": {
-        "https://squidfunk.github.io/mkdocs-material/schema.json": "mkdocs*.yml"
-    },
-
     // Add custom YAML tags (used in mkdocs.yml)
     "yaml.customTags": [
         "!ENV scalar",
@@ -102,5 +75,21 @@
         "tag:yaml.org,2002:python/name:material.extensions.emoji.twemoji",
         "tag:yaml.org,2002:python/name:pymdownx.superfences.fence_code_format",
         "tag:yaml.org,2002:python/object/apply:pymdownx.slugs.slugify mapping"
-    ]
+    ],
+    // Stop schema-store from attaching random schemas (often causes weird “not accepted” lists):
+    "yaml.schemaStore.enable": false,
+    // Add mkdocs-material schema
+    "yaml.schemas": {
+        "https://squidfunk.github.io/mkdocs-material/schema.json": "mkdocs*.yml"
+    },
+
+    // --- Specific Tool Extensions Settings ---
+
+    // Docstring
+    "autoDocstring.docstringFormat": "google",
+
+    // Ruff Extension Settings (charliermarsh.ruff)
+    // With the native Ruff extension, configuration comes from `pyproject.toml` ([tool.ruff] / [tool.ruff.lint]).
+    "ruff.fixAll": true,
+    "ruff.lint.enable": true,
 }
