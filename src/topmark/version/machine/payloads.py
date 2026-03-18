@@ -30,8 +30,13 @@ If a payload needs keys/kinds/domains, import those from
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from topmark.core.machine.schemas import MachineKey
-from topmark.utils.version import compute_version_text
+from topmark.version.runtime import compute_version_info
+
+if TYPE_CHECKING:
+    from topmark.version.types import VersionInfo
 
 
 def build_version_payload(
@@ -54,9 +59,9 @@ def build_version_payload(
                 - `MachineKey.VERSION_FORMAT`: `"semver"` or `"pep440"` (effective format).
             - error: Conversion exception when SemVer was requested and failed; otherwise None.
     """
-    version_text, version_format, err = compute_version_text(semver=semver)
+    version_info: VersionInfo = compute_version_info(semver=semver)
 
     return {
-        MachineKey.VERSION: version_text,
-        MachineKey.VERSION_FORMAT: version_format,
-    }, err
+        MachineKey.VERSION: version_info.version_text,
+        MachineKey.VERSION_FORMAT: version_info.version_format,
+    }, version_info.err
