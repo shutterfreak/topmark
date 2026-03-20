@@ -13,10 +13,13 @@ topmark:header:end
 # TopMark
 
 [![PyPI version](https://img.shields.io/pypi/v/topmark.svg)](https://pypi.org/project/topmark/)
+[![GitHub release](https://img.shields.io/github/v/release/shutterfreak/topmark)](https://github.com/shutterfreak/topmark/releases)
+[![Python Versions](https://img.shields.io/pypi/pyversions/topmark.svg)](https://pypi.org/project/topmark/)
 [![CI](https://github.com/shutterfreak/topmark/actions/workflows/ci.yml/badge.svg)](https://github.com/shutterfreak/topmark/actions/workflows/ci.yml)
 [![Documentation Status](https://readthedocs.org/projects/topmark/badge/?version=latest)](https://topmark.readthedocs.io/en/latest/?badge=latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Development Status](https://img.shields.io/badge/status-beta-orange.svg)](https://pypi.org/project/topmark/)
 [![Downloads](https://static.pepy.tech/badge/topmark)](https://pepy.tech/project/topmark)
-[![GitHub release](https://img.shields.io/github/v/release/shutterfreak/topmark)](https://github.com/shutterfreak/topmark/releases)
 
 **TopMark** is a command-line tool to inspect, insert, validate, and manage file headers in diverse
 codebases.\
