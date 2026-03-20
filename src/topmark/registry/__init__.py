@@ -21,6 +21,7 @@ Most users should import from here:
 
 ```python
 from topmark.registry.registry import Registry
+
 fts = Registry.filetypes()
 procs = Registry.processors()
 ```
@@ -29,6 +30,7 @@ Advanced usage (mutation; global state):
 
 ```python
 from topmark.registry.filetypes import FileTypeRegistry, HeaderProcessorRegistry
+
 FileTypeRegistry.register(my_ft)
 HeaderProcessorRegistry.register(my_ft.name, MyProc)
 ```

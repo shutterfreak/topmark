@@ -252,6 +252,14 @@ filterwarnings = ["default::DeprecationWarning"]
 # Shared formatter/linter line length.
 line-length = 100
 
+  [tool.ruff.format]
+  quote-style               = "double"
+  indent-style              = "space"
+  skip-magic-trailing-comma = false
+  line-ending               = "lf"
+  # Keep Google-style Args examples clean
+  docstring-code-format = true
+
   [tool.ruff.lint]
   exclude = [".git", ".venv", ".vscode", "build", "dist", "venv"]
   select = [

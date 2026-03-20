@@ -65,7 +65,7 @@ Example:
             "python": {
                 "allow_header_in_empty_files": True,
             },
-        }
+        },
     }
 
     run: api.runResult = api.check(

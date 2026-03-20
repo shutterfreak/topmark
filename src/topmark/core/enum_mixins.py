@@ -31,9 +31,11 @@ Example:
     from enum import Enum
     from topmark.core.enum_mixins import EnumIntrospectionMixin, enum_from_name
 
+
     class Mode(EnumIntrospectionMixin, str, Enum):
         A = "alpha"
         B = "beta"
+
 
     assert Mode.A.value_length == 5
     assert enum_from_name(Mode, "A") is Mode.A

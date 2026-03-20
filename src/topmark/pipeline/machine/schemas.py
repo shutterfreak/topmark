@@ -18,20 +18,22 @@ envelopes/records):
 
 - **JSON envelope (summary mode)** uses a *summary map* keyed by outcome string,
   where each value is an `OutcomeSummaryMapEntry`::
-
+      ```json
       {
         "summary": {
           "unchanged": {"count": 3, "label": "no changes needed"},
           "would insert": {"count": 1, "label": "header missing, changes found"}
         }
       }
+      ```
 
 - **NDJSON stream (summary mode)** emits one `kind="summary"` record per bucket.
   The payload under `"summary"` follows `OutcomeSummaryRecordPayload`::
 
+      ```ndjson
       {"kind": "summary", "meta": {...},
        "summary": {"key": "unchanged", "count": 3, "label": "no changes needed"}}
-
+      ```
 Notes:
     - These are `TypedDict` definitions (static typing only). Runtime validation is
       intentionally out-of-scope.
