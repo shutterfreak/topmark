@@ -211,7 +211,7 @@ def build_processors_human_report(
     for file_type_name, processor in hp_registry.items():
         key: tuple[str, str, str, str, str] = (
             processor.namespace,
-            processor.key,
+            processor.local_key,
             processor.qualified_key,
             processor.__class__.__module__,
             processor.__class__.__name__,

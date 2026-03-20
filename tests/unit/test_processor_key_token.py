@@ -174,7 +174,7 @@ def test_init_subclass_rejects_invalid_namespace_token() -> None:
 
         class _BadNamespace(HeaderProcessor):  # pyright: ignore[reportUnusedClass]
             namespace = "Bad"  # uppercase should be rejected
-            key = "xml"
+            local_key = "xml"
 
 
 def test_init_subclass_rejects_invalid_key_token() -> None:
@@ -183,7 +183,7 @@ def test_init_subclass_rejects_invalid_key_token() -> None:
 
         class _BadKey(HeaderProcessor):  # pyright: ignore[reportUnusedClass]
             namespace = "builtin"
-            key = "xml:"  # colon / trailing separator should be rejected
+            local_key = "xml:"  # colon / trailing separator should be rejected
 
 
 # ----------------------------
@@ -202,14 +202,14 @@ def test_registry_compose_rejects_duplicate_qualified_key_for_different_classes(
 
     class _ProcA(HeaderProcessor):
         namespace = "testns"
-        key = "dup"
+        local_key = "dup"
 
         def process(self, text: str) -> str:
             return text
 
     class _ProcB(HeaderProcessor):
         namespace = "testns"
-        key = "dup"
+        local_key = "dup"
 
         def process(self, text: str) -> str:
             return text
@@ -237,10 +237,10 @@ def test_registry_compose_rejects_duplicate_qualified_key_for_different_classes(
         with pytest.raises(DuplicateProcessorKeyError):
             _ = HeaderProcessorRegistry.as_mapping()
     finally:
-        HeaderProcessorRegistry.unregister(ft1.name)
-        HeaderProcessorRegistry.unregister(ft2.name)
-        FileTypeRegistry.unregister(ft1.name)
-        FileTypeRegistry.unregister(ft2.name)
+        HeaderProcessorRegistry.unregister(ft1.local_key)
+        HeaderProcessorRegistry.unregister(ft2.local_key)
+        FileTypeRegistry.unregister(ft1.local_key)
+        FileTypeRegistry.unregister(ft2.local_key)
 
 
 def test_registry_compose_allows_duplicate_qualified_key_for_same_class() -> None:
@@ -248,7 +248,7 @@ def test_registry_compose_allows_duplicate_qualified_key_for_same_class() -> Non
 
     class _ProcSame(HeaderProcessor):
         namespace = "testns"
-        key = "same"
+        local_key = "same"
 
         def process(self, text: str) -> str:
             return text
@@ -274,12 +274,12 @@ def test_registry_compose_allows_duplicate_qualified_key_for_same_class() -> Non
         )
 
         m: Mapping[str, HeaderProcessor] = HeaderProcessorRegistry.as_mapping()
-        assert ft1.name in m and ft2.name in m
-        assert type(m[ft1.name]) is _ProcSame
-        assert type(m[ft2.name]) is _ProcSame
-        assert m[ft1.name].qualified_key == m[ft2.name].qualified_key == "testns:same"
+        assert ft1.local_key in m and ft2.local_key in m
+        assert type(m[ft1.local_key]) is _ProcSame
+        assert type(m[ft2.local_key]) is _ProcSame
+        assert m[ft1.local_key].qualified_key == m[ft2.local_key].qualified_key == "testns:same"
     finally:
-        HeaderProcessorRegistry.unregister(ft1.name)
-        HeaderProcessorRegistry.unregister(ft2.name)
-        FileTypeRegistry.unregister(ft1.name)
-        FileTypeRegistry.unregister(ft2.name)
+        HeaderProcessorRegistry.unregister(ft1.local_key)
+        HeaderProcessorRegistry.unregister(ft2.local_key)
+        FileTypeRegistry.unregister(ft1.local_key)
+        FileTypeRegistry.unregister(ft2.local_key)

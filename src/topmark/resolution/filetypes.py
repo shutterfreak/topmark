@@ -28,7 +28,6 @@ from collections.abc import Collection
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
-from typing import TypeAlias
 
 from topmark.core.logging import get_logger
 from topmark.filetypes.model import ContentGate
@@ -48,7 +47,21 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-FileTypeCandidate: TypeAlias = tuple[int, str, "FileType"]
+@dataclass(frozen=True, slots=True, init=True)
+class FileTypeCandidate:
+    """Describe a FileType candidate.
+
+    Attributes:
+        score: file type candidate matching score
+        namespace: Candidate file type namespace
+        local_key: Candiate file type local key
+        file_type: Candidate FileType instance
+    """
+
+    score: int
+    namespace: str
+    local_key: str
+    file_type: FileType
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,7 +92,7 @@ class ResolvedBinding:
     processor: HeaderProcessor | None
 
 
-def candidate_order_key(
+def candidate_order_key(  # TODO: make namespace-aware (TOPMARK_NAMESPACE loest priority)
     candidate: FileTypeCandidate,
 ) -> tuple[int, str]:
     """Return the ordering key for a file type resolution candidate.
@@ -99,8 +112,7 @@ def candidate_order_key(
     Returns:
         The composite ordering key.
     """
-    score, name, _ = candidate
-    return (-score, name)
+    return (-candidate.score, candidate.local_key)
 
 
 def _compute_match_signals(
@@ -298,9 +310,9 @@ def get_file_type_candidates_for_path(
     effective_exclude: Collection[str] | None = exclude_file_types or None
 
     for ft in ft_registry.values():
-        if effective_include is not None and ft.name not in effective_include:
+        if effective_include is not None and ft.local_key not in effective_include:
             continue
-        if effective_exclude is not None and ft.name in effective_exclude:
+        if effective_exclude is not None and ft.local_key in effective_exclude:
             continue
 
         sig: MatchSignals = _compute_match_signals(ft, base_name, path_str)
@@ -327,10 +339,11 @@ def get_file_type_candidates_for_path(
             continue
 
         candidates.append(
-            (
-                _score_file_type_candidate(ft, sig, content_hit, base_name, path_str),
-                ft.name,
-                ft,
+            FileTypeCandidate(
+                score=_score_file_type_candidate(ft, sig, content_hit, base_name, path_str),
+                namespace=ft.namespace,
+                local_key=ft.local_key,
+                file_type=ft,
             )
         )
     return candidates
@@ -394,7 +407,7 @@ def resolve_file_type_for_path(
         return None
 
     best: FileTypeCandidate | None = _select_best_file_type_candidate(candidates)
-    return None if best is None else best[2]
+    return None if best is None else best.file_type
 
 
 def resolve_binding_for_path(
@@ -427,11 +440,13 @@ def resolve_binding_for_path(
         logger.warning("File '%s' cannot be resolved to a registered file type", path)
         return ResolvedBinding(None, None)
 
-    processor: HeaderProcessor | None = HeaderProcessorRegistry.as_mapping().get(file_type.name)
+    processor: HeaderProcessor | None = HeaderProcessorRegistry.as_mapping().get(
+        file_type.local_key
+    )
     if processor is None:
         logger.warning(
             "File '%s' is resolved to file type '%s' but has no registered header processor",
             path,
-            file_type.name,
+            file_type.local_key,
         )
     return ResolvedBinding(file_type, processor)

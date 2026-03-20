@@ -37,6 +37,10 @@ from typing import Final
 
 from topmark.core.errors import DuplicateProcessorKeyError
 from topmark.core.errors import DuplicateProcessorRegistrationError
+from topmark.core.errors import ReservedNamespaceError
+from topmark.registry.identity import owner_label
+from topmark.registry.identity import require_and_validate_registry_identity
+from topmark.registry.identity import validate_reserved_topmark_namespace
 from topmark.registry.types import ProcessorMeta
 
 if TYPE_CHECKING:
@@ -74,6 +78,101 @@ def _dev_validate_processors(proc_map: Mapping[str, HeaderProcessor]) -> None:
     _validation_done = True
 
 
+def _validate_processor_class(processor_class: object) -> type[HeaderProcessor]:
+    """Validate a processor class for registry composition/registration.
+
+    This is the registry-layer runtime validation boundary for processor classes. It reuses the
+    shared identity helpers from [`topmark.registry.identity`][topmark.registry.identity] but
+    translates reserved-namespace violations into a registry-specific core error so callers of the
+    registry API can distinguish malformed identities from disallowed namespace usage.
+
+    Args:
+        processor_class: Candidate processor class.
+
+    Returns:
+        The validated processor class.
+
+    Raises:
+        TypeError: If `processor_class` is not a `HeaderProcessor` subclass, or if its
+            namespace/local-key identity is malformed.
+        ReservedNamespaceError: If the reserved built-in `topmark` namespace is used by an
+            ineligible external processor class.
+    """
+    from topmark.processors.base import HeaderProcessor
+
+    if not isinstance(processor_class, type):
+        raise TypeError(
+            f"Expected subclass of HeaderProcessor, got non-type {type(processor_class).__name__}."
+        )
+    if not issubclass(processor_class, HeaderProcessor):
+        raise TypeError(f"Expected subclass of HeaderProcessor, got {processor_class.__name__}.")
+
+    owner: str = owner_label(processor_class)
+
+    namespace: str
+    local_key: str
+    namespace, local_key = require_and_validate_registry_identity(
+        namespace=getattr(processor_class, "namespace", None),
+        local_key=getattr(processor_class, "local_key", None),
+        owner=owner,
+    )
+
+    # Normalize validated identity values on the subclass.
+    processor_class.namespace = namespace
+    processor_class.local_key = local_key
+
+    try:
+        validate_reserved_topmark_namespace(
+            namespace=namespace,
+            owner=owner,
+            owner_module=processor_class.__module__,
+            entities="processors",
+        )
+    except TypeError as exc:
+        raise ReservedNamespaceError(
+            namespace=namespace,
+            owner=owner,
+            entities="processors",
+            owner_module=processor_class.__module__,
+        ) from exc
+
+    return processor_class
+
+
+def _validate_processor_instance(proc: object) -> HeaderProcessor:
+    """Validate a processor instance for registry composition.
+
+    Validates that `proc` is a [`HeaderProcessor`][topmark.processors.base.HeaderProcessor] instance
+    and that its defining class has a valid registry identity.
+
+    Args:
+        proc: Candidate processor instance.
+
+    Returns:
+        The validated `HeaderProcessor` instance.
+
+    Raises:
+        TypeError: If `proc` is not a `HeaderProcessor` instance or if its class identity is
+            malformed.
+        ReservedNamespaceError: If the reserved built-in `topmark` namespace is  used by an
+            ineligible external processor class.
+    """
+    from topmark.processors.base import HeaderProcessor
+
+    if not isinstance(proc, HeaderProcessor):
+        raise TypeError(
+            f"Expected instance of HeaderProcessor, got {type(proc).__name__}. "
+            "Only HeaderProcessor instances can be registered."
+        )
+
+    try:
+        _validate_processor_class(type(proc))
+    except (TypeError, ReservedNamespaceError):  # noqa: TRY203
+        raise
+
+    return proc
+
+
 class HeaderProcessorRegistry:
     """Stable, read-only oriented view with optional mutation hooks.
 
@@ -100,7 +199,7 @@ class HeaderProcessorRegistry:
     def _compose(cls) -> dict[str, HeaderProcessor]:
         """Compose the effective processor registry from base state and overlays.
 
-        The effective registry is still keyed by unqualified file type name for
+        The effective registry is still keyed by unqualified file type local_key for
         compatibility. Processor identity consistency is validated separately via
         each processor instance's `qualified_key`.
         """
@@ -127,17 +226,19 @@ class HeaderProcessorRegistry:
         # We only consider it a conflict when the *same* qualified key is provided by
         # *different* processor classes.
         seen: dict[str, type[HeaderProcessor]] = {}
-        for proc in base.values():
+        for local_key, raw_proc in base.items():
+            proc: HeaderProcessor = _validate_processor_instance(raw_proc)
             qk: str = proc.qualified_key
             proc_cls: type[HeaderProcessor] = type(proc)
             existing: type[HeaderProcessor] | None = seen.get(qk)
             if existing is not None and existing is not proc_cls:
                 raise DuplicateProcessorKeyError(
                     qualified_key=qk,
-                    existing_class=f"{existing.__module__}.{existing.__name__}",
-                    new_class=f"{proc_cls.__module__}.{proc_cls.__name__}",
+                    existing_class=owner_label(existing),
+                    new_class=owner_label(proc_cls),
                 )
             seen[qk] = proc_cls
+            base[local_key] = proc
 
         _dev_validate_processors(base)
 
@@ -203,14 +304,16 @@ class HeaderProcessorRegistry:
             Serializable `ProcessorMeta` metadata about each processor.
         """
         with cls._lock:
-            for name, proc in cls._compose().items():
+            for local_key, proc in cls._compose().items():
                 yield ProcessorMeta(
-                    name=name,
+                    namespace=proc.namespace,
+                    local_key=local_key,
                     description=getattr(proc, "description", "") or "",
-                    line_prefix=getattr(proc, "line_prefix", "") or "",
-                    line_suffix=getattr(proc, "line_suffix", "") or "",
                     block_prefix=getattr(proc, "block_prefix", "") or "",
                     block_suffix=getattr(proc, "block_suffix", "") or "",
+                    line_indent=getattr(proc, "line_indent", "") or "",
+                    line_prefix=getattr(proc, "line_prefix", "") or "",
+                    line_suffix=getattr(proc, "line_suffix", "") or "",
                 )
 
     # Optional: mutation
@@ -221,15 +324,19 @@ class HeaderProcessorRegistry:
         processor_class: type[HeaderProcessor],
         file_type: FileType,
     ) -> None:
-        """Register a header processor class under a file type name.
+        """Register a header processor class under a file type local_key.
 
         Args:
             processor_class: Concrete `HeaderProcessor` class to instantiate.
             file_type: FileType instance to bind to the instantiated processor.
 
         Raises:
-            DuplicateProcessorRegistrationError: If the file type name already has a
+            DuplicateProcessorRegistrationError: If the file type local_key already has a
                 registered processor in the composed view.
+            TypeError: If `processor_class` is not a valid `HeaderProcessor` subclass or
+                if its identity is malformed.
+            ReservedNamespaceError: If the reserved built-in `topmark` namespace is used
+                by an ineligible external processor class.
 
         Notes:
             - This mutates global state. Prefer temporary usage in tests with try/finally.
@@ -237,11 +344,16 @@ class HeaderProcessorRegistry:
               multi-tenant processes.
         """
         with cls._lock:
-            file_type_name: str = file_type.name
+            file_type_local_key: str = file_type.local_key
+            try:
+                _validate_processor_class(processor_class)
+            except (TypeError, ReservedNamespaceError):  # noqa: TRY203
+                raise
+
             # Check composed view to avoid dupes
-            if file_type_name in cls._compose():
+            if file_type_local_key in cls._compose():
                 raise DuplicateProcessorRegistrationError(
-                    file_type=file_type_name,
+                    file_type=file_type_local_key,
                 )
 
             # Instantiate the provided processor class and bind it to the file type.
@@ -250,17 +362,17 @@ class HeaderProcessorRegistry:
             # Bind the processor to the FileType (mirror decorator behavior).
             proc_obj.file_type = file_type
 
-            # If this name was previously removed, allow re-registration.
-            cls._removals.discard(file_type_name)
-            cls._overrides[file_type_name] = proc_obj
+            # If this local_key was previously removed, allow re-registration.
+            cls._removals.discard(file_type_local_key)
+            cls._overrides[file_type_local_key] = proc_obj
             cls._clear_cache()
 
     @classmethod
-    def unregister(cls, name: str) -> bool:
-        """Unregister a header processor by name.
+    def unregister(cls, local_key: str) -> bool:
+        """Unregister a header processor by local key.
 
         Args:
-            name: Registered processor name.
+            local_key: Registered processor local key.
 
         Returns:
             True if removed, else False.
@@ -272,12 +384,12 @@ class HeaderProcessorRegistry:
         """
         with cls._lock:
             existed = False
-            if name in cls._overrides:
-                cls._overrides.pop(name, None)
+            if local_key in cls._overrides:
+                cls._overrides.pop(local_key, None)
                 existed = True
             # Mark for removal from the composed view (including base entries).
-            if name in cls._compose():
-                cls._removals.add(name)
+            if local_key in cls._compose():
+                cls._removals.add(local_key)
                 existed = True
             cls._clear_cache()
             return existed

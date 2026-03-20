@@ -22,7 +22,7 @@ from typing import Any
 import pytest
 
 from tests.conftest import make_file_type
-from tests.conftest import stub_proc_cls
+from tests.conftest import registry_processor_class
 from topmark import api
 from topmark.api.protocols import PublicPolicy
 from topmark.config.keys import Toml
@@ -171,7 +171,7 @@ def register_pair() -> Iterator[Callable[[str], tuple[str, FileType]]]:
         FileTypeRegistry.register(ft)
         HeaderProcessorRegistry.register(
             file_type=ft,
-            processor_class=stub_proc_cls(),
+            processor_class=registry_processor_class(),
         )
         registered.append(name)
         return name, ft

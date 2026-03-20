@@ -46,7 +46,10 @@ class XmlHeaderProcessor(XmlPositionalMixin, BlockCommentMixin, HeaderProcessor)
     and policy-aware behavior where applicable.
     """
 
-    key: ClassVar[str] = "xml"
+    local_key: ClassVar[str] = "xml"
+    description: ClassVar[str] = (
+        "Header processor for files with HTML/XML-style block comments (<!-- ... -->)."
+    )
 
     def __init__(self) -> None:
         super().__init__(

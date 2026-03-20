@@ -30,10 +30,11 @@ from typing import Protocol
 from typing import TypedDict
 from typing import runtime_checkable
 
-from topmark.constants import PACKAGE_NAME
-from topmark.constants import TOPMARK_NAMESPACE
-from topmark.constants import VALID_REGISTRY_TOKEN_RE
 from topmark.core.logging import get_logger
+from topmark.registry.identity import make_qualified_key
+from topmark.registry.identity import owner_label
+from topmark.registry.identity import require_and_validate_registry_identity
+from topmark.registry.identity import validate_reserved_topmark_namespace
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -192,7 +193,7 @@ class FileType:
     `content_matcher`.
 
     Attributes:
-        name: Internal identifier of the file type (e.g. ``"python"``).
+        local_key: Internal identifier of the file type (e.g. ``"python"``).
         namespace: FileType namespace.
         extensions: List of filename extensions associated with this type. Values
             should include the leading dot (e.g. ``.py``) or be consistent with the
@@ -251,16 +252,16 @@ class FileType:
           policy to the callable to keep the base class simple.
     """
 
-    name: str
+    local_key: str
     namespace: str
 
     @property
     def qualified_key(self) -> str:
         """Return the qualified identity key for this file type instance.
 
-        Format: ``"<namespace>:<name>"``.
+        Format: ``"<namespace>:<local_key>"``.
         """
-        return f"{self.namespace}:{self.name}"
+        return make_qualified_key(self.namespace, self.local_key)
 
     extensions: list[str]
     filenames: list[str]
@@ -288,7 +289,7 @@ class FileType:
 
         - `namespace`: non-empty string identifying the producer. Built-in file types use the
           reserved [`TOPMARK_NAMESPACE`][topmark.constants.TOPMARK_NAMESPACE].
-        - `name`: non-empty string identifying the file type within its namespace.
+        - `local_key`: non-empty string identifying the file type within its namespace.
 
         Constraints (kept intentionally strict so keys are stable and easy to serialize):
 
@@ -297,45 +298,32 @@ class FileType:
         - Allowed characters are defined by
           [`VALID_REGISTRY_TOKEN_RE`][topmark.constants.VALID_REGISTRY_TOKEN_RE].
 
-        Uniqueness of the qualified key (``"<namespace>:<name>"``) is validated at registry
+        Uniqueness of the qualified key (``"<namespace>:<local_key>"``) is validated at registry
         composition time.
         """
-        # (1) types + presence
-        if not self.name:
-            raise TypeError("FileType.name must be a non-empty str")
-        if not self.namespace:
-            raise TypeError("FileType.namespace must be a non-empty str")
+        cls: type[FileType] = self.__class__
+        owner: Final[str] = owner_label(cls)
 
-        # (2) token validation (same constraints as processors)
-        def _is_valid_token(value: str) -> bool:
-            if value != value.lower():
-                return False
-            if ":" in value:
-                return False
-            return bool(re.fullmatch(VALID_REGISTRY_TOKEN_RE, value))
+        namespace: str
+        local_key: str
+        namespace, local_key = require_and_validate_registry_identity(
+            namespace=self.namespace,
+            local_key=self.local_key,
+            owner=owner,
+        )
 
-        if not _is_valid_token(self.name):
-            raise TypeError(
-                f"FileType.name must match {VALID_REGISTRY_TOKEN_RE}, "
-                "be lowercase, and not contain ':' "
-                f"(found {self.name!r})"
-            )
-        if not _is_valid_token(self.namespace):
-            raise TypeError(
-                f"FileType.namespace must match {VALID_REGISTRY_TOKEN_RE}, "
-                "be lowercase, and not contain ':' "
-                f"(found {self.namespace!r})"
-            )
+        # Normalize validated identity values on the instance.
+        self.namespace = namespace
+        self.local_key = local_key
 
-        # (3) reserve TOPMARK_NAMESPACE for built-ins
-        # Since this is an *instance*, the best proxy for provenance is module name.
-        if self.namespace == TOPMARK_NAMESPACE and not type(self).__module__.startswith(
-            f"{PACKAGE_NAME}."
-        ):
-            raise TypeError(
-                f"{type(self).__module__}.{type(self).__name__}: "
-                f"namespace '{TOPMARK_NAMESPACE}' is reserved for TopMark built-in file types"
-            )
+        # Reserve the builtin namespace for TopMark itself. Since this is an
+        # instance, the defining module is the best available provenance signal.
+        validate_reserved_topmark_namespace(
+            namespace=self.namespace,
+            owner=owner,
+            owner_module=self.__class__.__module__,
+            entities="file types",
+        )
 
     def matches(self, path: Path) -> bool:
         """Determine if the file type matches the given file path.

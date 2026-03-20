@@ -74,7 +74,7 @@ def test_cblock_processor_basics(tmp_path: Path) -> None:
 
     assert ctx.file_type is not None
     # Depending on registry naming you might use "css"
-    assert ctx.file_type.name in {"css"}
+    assert ctx.file_type.local_key in {"css"}
     assert ctx.views.header is None
     assert ctx.status.header.name == "MISSING"
 

@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from tests.conftest import make_file_type
-from tests.conftest import stub_proc_cls
+from tests.conftest import registry_processor_class
 from topmark.core.errors import DuplicateProcessorRegistrationError
 from topmark.filetypes.model import FileType
 from topmark.registry.filetypes import FileTypeRegistry
@@ -53,7 +53,7 @@ def test_filetype_register_unregister_roundtrip(dummy_name: str) -> None:
         assert dummy_name in FileTypeRegistry.names()
         assert dummy_name in FileTypeRegistry.as_mapping()
         # Visible via iter_meta()
-        names: set[str] = {m.name for m in FileTypeRegistry.iter_meta()}
+        names: set[str] = {m.local_key for m in FileTypeRegistry.iter_meta()}
         assert dummy_name in names
     finally:
         # Cleanup
@@ -80,7 +80,7 @@ def test_processor_register_unregister_roundtrip(proc_name: str) -> None:
     ft: FileType = make_file_type(name=proc_name)
     FileTypeRegistry.register(ft)
 
-    proc_cls: type[HeaderProcessor] = stub_proc_cls()
+    proc_cls: type[HeaderProcessor] = registry_processor_class()
 
     try:
         HeaderProcessorRegistry.register(
@@ -90,7 +90,7 @@ def test_processor_register_unregister_roundtrip(proc_name: str) -> None:
         assert proc_name in HeaderProcessorRegistry.names()
         assert proc_name in HeaderProcessorRegistry.as_mapping()
         # Iter meta should include it
-        names: set[str] = {m.name for m in HeaderProcessorRegistry.iter_meta()}
+        names: set[str] = {m.local_key for m in HeaderProcessorRegistry.iter_meta()}
         assert proc_name in names
     finally:
         assert HeaderProcessorRegistry.unregister(proc_name) is True
@@ -108,7 +108,7 @@ def test_processor_register_duplicate_raises() -> None:
     ft: FileType = make_file_type(name=name)
     FileTypeRegistry.register(ft)
 
-    proc_cls: type[HeaderProcessor] = stub_proc_cls()
+    proc_cls: type[HeaderProcessor] = registry_processor_class()
 
     try:
         HeaderProcessorRegistry.register(
@@ -131,8 +131,8 @@ def test_replace_processor_requires_unregister() -> None:
 
     FileTypeRegistry.register(make_file_type(name=name))
     try:
-        cls1: type[HeaderProcessor] = stub_proc_cls()
-        cls2: type[HeaderProcessor] = stub_proc_cls()
+        cls1: type[HeaderProcessor] = registry_processor_class()
+        cls2: type[HeaderProcessor] = registry_processor_class()
         HeaderProcessorRegistry.register(
             processor_class=cls1,
             file_type=FileTypeRegistry.as_mapping()[name],

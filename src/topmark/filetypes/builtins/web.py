@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 
 FILETYPES: list[FileType] = [
     BUILTIN_FILETYPE_FACTORY(
-        name="css",
+        local_key="css",
         extensions=[".css"],
         filenames=[],
         patterns=[],
@@ -46,7 +46,7 @@ FILETYPES: list[FileType] = [
         ),
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="html",
+        local_key="html",
         extensions=[".html"],
         filenames=[],
         patterns=[],
@@ -54,7 +54,7 @@ FILETYPES: list[FileType] = [
         pre_insert_checker=xml_can_insert,
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="javascript",
+        local_key="javascript",
         extensions=[".js", ".mjs", ".cjs", ".jsx"],
         filenames=[],
         patterns=[],
@@ -66,7 +66,7 @@ FILETYPES: list[FileType] = [
         ),
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="less",
+        local_key="less",
         extensions=[".less"],
         filenames=[],
         patterns=[],
@@ -77,7 +77,7 @@ FILETYPES: list[FileType] = [
         ),
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="scss",
+        local_key="scss",
         extensions=[".scss"],
         filenames=[],
         patterns=[],
@@ -88,7 +88,7 @@ FILETYPES: list[FileType] = [
         ),
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="stylus",
+        local_key="stylus",
         extensions=[".styl"],
         filenames=[],
         patterns=[],
@@ -99,14 +99,14 @@ FILETYPES: list[FileType] = [
         ),
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="svelte",
+        local_key="svelte",
         extensions=[".svelte"],
         filenames=[],
         patterns=[],
         description="Svelte component files",
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="svg",
+        local_key="svg",
         extensions=[".svg"],
         filenames=[],
         patterns=[],
@@ -114,7 +114,7 @@ FILETYPES: list[FileType] = [
         pre_insert_checker=xml_can_insert,
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="typescript",
+        local_key="typescript",
         extensions=[".ts", ".tsx", ".mts", ".cts"],
         filenames=[],
         patterns=[],
@@ -126,14 +126,14 @@ FILETYPES: list[FileType] = [
         ),
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="vue",
+        local_key="vue",
         extensions=[".vue"],
         filenames=[],
         patterns=[],
         description="Vue Single-File Components",
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="xhtml",
+        local_key="xhtml",
         extensions=[".xhtml", ".xht"],
         filenames=[],
         patterns=[],
@@ -141,7 +141,7 @@ FILETYPES: list[FileType] = [
         pre_insert_checker=xml_can_insert,
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="xml",
+        local_key="xml",
         extensions=[".xml"],
         filenames=["pom.xml"],
         patterns=[],
@@ -149,7 +149,7 @@ FILETYPES: list[FileType] = [
         pre_insert_checker=xml_can_insert,
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="xsl",
+        local_key="xsl",
         extensions=[".xsl"],
         filenames=[],
         patterns=[],
@@ -157,7 +157,7 @@ FILETYPES: list[FileType] = [
         pre_insert_checker=xml_can_insert,
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="xslt",
+        local_key="xslt",
         extensions=[".xslt"],
         filenames=[],
         patterns=[],

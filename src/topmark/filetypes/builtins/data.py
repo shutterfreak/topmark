@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 
 FILETYPES: list[FileType] = [
     BUILTIN_FILETYPE_FACTORY(
-        name="ini",
+        local_key="ini",
         extensions=[".ini", ".cfg"],
         filenames=[".editorconfig", ".pypirc", ".pypirc.example", "pip.conf"],
         patterns=[],
@@ -56,7 +56,7 @@ FILETYPES: list[FileType] = [
         ),
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="json",
+        local_key="json",
         extensions=[".json"],
         filenames=[],
         patterns=[],
@@ -64,7 +64,7 @@ FILETYPES: list[FileType] = [
         skip_processing=True,
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="jsonc",
+        local_key="jsonc",
         extensions=[".json"],
         filenames=[],
         patterns=[],
@@ -80,7 +80,7 @@ FILETYPES: list[FileType] = [
         pre_insert_checker=json_like_can_insert,
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="python-requirements",
+        local_key="python-requirements",
         extensions=[],
         filenames=[],
         patterns=[r"requirements.*\.(in|txt)$", r"constraints.*\.txt$"],
@@ -92,7 +92,7 @@ FILETYPES: list[FileType] = [
         ),
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="python-typed-marker",
+        local_key="python-typed-marker",
         extensions=[],
         filenames=["py.typed"],
         patterns=[],
@@ -100,14 +100,14 @@ FILETYPES: list[FileType] = [
         skip_processing=True,
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="toml",
+        local_key="toml",
         extensions=[".toml"],
         filenames=[],
         patterns=[],
         description="Tom's Obvious Minimal Language (*.toml)",
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="vscode-jsonc",
+        local_key="vscode-jsonc",
         extensions=[],
         filenames=[".vscode/settings.json", ".vscode/extensions.json"],
         patterns=[],
@@ -119,7 +119,7 @@ FILETYPES: list[FileType] = [
         ),
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="yaml",
+        local_key="yaml",
         extensions=[".yaml", ".yml"],
         filenames=[],
         patterns=[],

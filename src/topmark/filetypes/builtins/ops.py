@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 
 FILETYPES: list[FileType] = [
     BUILTIN_FILETYPE_FACTORY(
-        name="dockerfile",
+        local_key="dockerfile",
         extensions=[],
         filenames=["Dockerfile"],
         patterns=[r"Dockerfile(\..+)?"],
@@ -47,7 +47,7 @@ FILETYPES: list[FileType] = [
         ),
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="env",
+        local_key="env",
         extensions=[],
         filenames=[".env"],
         patterns=[r"\.env\..*"],
@@ -60,7 +60,7 @@ FILETYPES: list[FileType] = [
         ),
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="git-meta",
+        local_key="git-meta",
         extensions=[],
         filenames=[".gitignore", ".gitattributes"],
         patterns=[],
@@ -72,7 +72,7 @@ FILETYPES: list[FileType] = [
         ),
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="sql",
+        local_key="sql",
         extensions=[".sql"],
         filenames=[],
         patterns=[],

@@ -40,6 +40,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Any
+from typing import ClassVar
 from typing import Literal
 from typing import cast
 
@@ -425,7 +426,7 @@ def make_file_type(
             matches: Callable[..., bool] = matcher
 
         return CustomMatcherFileType(
-            name=name,
+            local_key=name,
             namespace=namespace,
             description=description,
             extensions=extensions if extensions is not None else [],
@@ -438,7 +439,7 @@ def make_file_type(
             pre_insert_checker=pre_insert_checker,
         )
     return FileType(
-        name=name,
+        local_key=name,
         namespace=namespace,
         description=description,
         extensions=extensions if extensions is not None else [],
@@ -542,28 +543,25 @@ def effective_registries() -> EffectiveRegistries:
     return _override
 
 
-# ---- Stub type and tiny helper for HeaderProcessor registry tests ----
+# ---- Concrete helper type for HeaderProcessor registry tests ----
 
 
-class _StubProcessor:
-    """Duck-typed HeaderProcessor stub that satisfies just what the registry uses."""
+class TestRegistryProcessor(HeaderProcessor):
+    """Minimal concrete `HeaderProcessor` subclass for registry tests.
 
-    key: str = "stub_processor"
-    namespace: str = "test"
+    This test helper is no longer duck-typed. It is a real `HeaderProcessor`
+    subclass so it participates in the same identity validation as production
+    processors.
+    """
 
-    def __init__(self, description: str = "") -> None:
-        self.qualified_key: str = f"{self.namespace}:{self.key}"
-        self.description: str = description
-        self.line_prefix: str = ""
-        self.line_suffix: str = ""
-        self.block_prefix: str = ""
-        self.block_suffix: str = ""
-        # `file_type` is set by the registry upon registration
+    local_key: ClassVar[str] = "stub_processor"
+    namespace: ClassVar[str] = "test"
+    description: ClassVar[str] = "Minimal concrete HeaderProcessor subclass used by registry tests."
 
 
-def stub_proc_cls() -> type[HeaderProcessor]:
-    """Return a duck-typed HeaderProcessor class for registry tests."""
-    return cast("type[HeaderProcessor]", _StubProcessor)
+def registry_processor_class() -> type[HeaderProcessor]:
+    """Return the concrete processor class used in registry tests."""
+    return TestRegistryProcessor
 
 
 def resolve_processor_for_path(

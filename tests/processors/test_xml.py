@@ -74,7 +74,7 @@ def test_xml_processor_basics(tmp_path: Path) -> None:
     ctx = runner.run(ctx, pipeline)
 
     assert ctx.path == file
-    assert ctx.file_type and ctx.file_type.name == "html"
+    assert ctx.file_type and ctx.file_type.local_key == "html"
     assert ctx.views.image is not None
     assert ctx.views.header is None
 

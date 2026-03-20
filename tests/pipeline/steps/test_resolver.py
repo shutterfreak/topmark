@@ -120,7 +120,7 @@ def test_resolve_python_file_resolves_with_processor(
 
     # The resolver must identify a processor; otherwise the reader step would be ill-defined.
     assert ctx.file_type is not None
-    assert ctx.file_type.name == "python"
+    assert ctx.file_type.local_key == "python"
     assert ctx.header_processor is not None
 
 
@@ -205,7 +205,7 @@ def test_resolve_respects_skip_processing_filetype(
         processors=processors,
         effective_registries=effective_registries,
     )
-    assert ctx.file_type is not None and ctx.file_type.name == ft_name
+    assert ctx.file_type is not None and ctx.file_type.local_key == ft_name
     assert ctx.header_processor is None
     assert ctx.status.resolve == ResolveStatus.TYPE_RESOLVED_HEADERS_UNSUPPORTED
 
@@ -233,7 +233,7 @@ def test_resolve_can_use_content_gate_when_allowed(
         processors=processors,
         effective_registries=effective_registries,
     )
-    assert ctx.file_type is not None and ctx.file_type.name == ft_magic_name
+    assert ctx.file_type is not None and ctx.file_type.local_key == ft_magic_name
     assert ctx.header_processor is None
     assert ctx.status.resolve == ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED
 
@@ -268,7 +268,7 @@ def test_resolve_deterministic_name_tiebreak(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == ft_ajson_name  # name ASC
+    assert ctx.file_type and ctx.file_type.local_key == ft_ajson_name  # name ASC
     assert ctx.header_processor is not None
 
 
@@ -301,7 +301,7 @@ def test_resolve_filename_tail_beats_extension(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == ft_tail_name
+    assert ctx.file_type and ctx.file_type.local_key == ft_tail_name
 
 
 def test_resolve_pattern_beats_extension(
@@ -333,7 +333,7 @@ def test_resolve_pattern_beats_extension(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == ft_pat_name
+    assert ctx.file_type and ctx.file_type.local_key == ft_pat_name
 
 
 def test_resolve_content_upgrade_over_extension(
@@ -367,7 +367,7 @@ def test_resolve_content_upgrade_over_extension(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == ft_jsonc_name
+    assert ctx.file_type and ctx.file_type.local_key == ft_jsonc_name
 
 
 def test_resolve_gating_if_extension_excludes_when_miss(
@@ -401,7 +401,7 @@ def test_resolve_gating_if_extension_excludes_when_miss(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == ft_json_name
+    assert ctx.file_type and ctx.file_type.local_key == ft_json_name
 
 
 def test_resolve_gating_if_any_requires_content_hit(
@@ -435,7 +435,7 @@ def test_resolve_gating_if_any_requires_content_hit(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == ft_ext_name
+    assert ctx.file_type and ctx.file_type.local_key == ft_ext_name
 
 
 def test_resolve_gating_if_none_allows_pure_content_match(
@@ -462,7 +462,7 @@ def test_resolve_gating_if_none_allows_pure_content_match(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == ft_magic_name
+    assert ctx.file_type and ctx.file_type.local_key == ft_magic_name
 
 
 def test_resolve_content_matcher_exception_is_safe(
@@ -496,7 +496,7 @@ def test_resolve_content_matcher_exception_is_safe(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == ft_fallback_name
+    assert ctx.file_type and ctx.file_type.local_key == ft_fallback_name
 
 
 def test_resolve_filename_tail_backslash_normalization(
@@ -525,7 +525,7 @@ def test_resolve_filename_tail_backslash_normalization(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == ft_vscode_name
+    assert ctx.file_type and ctx.file_type.local_key == ft_vscode_name
 
 
 def test_resolve_multi_dot_extension_specificity(
@@ -556,7 +556,7 @@ def test_resolve_multi_dot_extension_specificity(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == ft_dts_name
+    assert ctx.file_type and ctx.file_type.local_key == ft_dts_name
 
 
 def test_resolve_skip_processing_overrides_registered_processor(
@@ -641,7 +641,7 @@ def test_resolve_filename_tail_beats_pattern(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == ft_tail_name
+    assert ctx.file_type and ctx.file_type.local_key == ft_tail_name
 
 
 def test_resolve_extension_case_sensitivity_current_contract(
@@ -711,7 +711,7 @@ def test_resolve_pattern_fullmatch_not_search(
         cfg=cfg,
     )
     assert ctx1.status.resolve == ResolveStatus.RESOLVED
-    assert ctx1.file_type and ctx1.file_type.name == ft_pat_name
+    assert ctx1.file_type and ctx1.file_type.local_key == ft_pat_name
 
     # For file.log.bak, fullmatch should fail and fallback to ByBak
     ctx2: ProcessingContext = _resolve(
@@ -722,7 +722,7 @@ def test_resolve_pattern_fullmatch_not_search(
         cfg=cfg,
     )
     assert ctx2.status.resolve == ResolveStatus.RESOLVED
-    assert ctx2.file_type and ctx2.file_type.name == ft_bak_name
+    assert ctx2.file_type and ctx2.file_type.local_key == ft_bak_name
 
 
 def test_resolve_gating_if_pattern_requires_content_hit(
@@ -756,7 +756,7 @@ def test_resolve_gating_if_pattern_requires_content_hit(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == ft_text_name
+    assert ctx.file_type and ctx.file_type.local_key == ft_text_name
 
 
 def test_resolve_gating_if_filename_requires_content_hit(
@@ -791,7 +791,7 @@ def test_resolve_gating_if_filename_requires_content_hit(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == ft_yaml_name
+    assert ctx.file_type and ctx.file_type.local_key == ft_yaml_name
 
 
 def test_resolve_content_only_with_always_gate(
@@ -817,7 +817,7 @@ def test_resolve_content_only_with_always_gate(
         processors=processors,
         effective_registries=effective_registries,
     )
-    assert ctx.file_type and ctx.file_type.name == ft_magic_name
+    assert ctx.file_type and ctx.file_type.local_key == ft_magic_name
     assert ctx.status.resolve == ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED
 
 
@@ -850,7 +850,7 @@ def test_resolve_tie_with_both_processors_uses_name_asc(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == ft_alpha_name
+    assert ctx.file_type and ctx.file_type.local_key == ft_alpha_name
 
 
 def test_resolve_processor_registry_name_mismatch_leads_to_skip(
@@ -877,7 +877,7 @@ def test_resolve_processor_registry_name_mismatch_leads_to_skip(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED
-    assert ctx.file_type and ctx.file_type.name == ft_py_name
+    assert ctx.file_type and ctx.file_type.local_key == ft_py_name
 
 
 def test_resolve_deep_filename_tail_normalization(
@@ -905,4 +905,4 @@ def test_resolve_deep_filename_tail_normalization(
         effective_registries=effective_registries,
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
-    assert ctx.file_type and ctx.file_type.name == ft_toolcfg_name
+    assert ctx.file_type and ctx.file_type.local_key == ft_toolcfg_name

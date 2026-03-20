@@ -117,15 +117,18 @@ def _iter_plugin_filetypes() -> Iterable[FileType]:
             )
 
 
-def _dedupe_by_name(items: Iterable[FileType]) -> list[FileType]:
-    """Deduplicate by FileType.name, preserving first occurrence order."""
+# TODO: make namespace-aware + define override behavior (last wins?)
+def _dedupe_by_local_key(items: Iterable[FileType]) -> list[FileType]:
+    """Deduplicate by FileType.local_key, preserving first occurrence order."""
     seen: set[str] = set()
     acc: list[FileType] = []
     for ft in items:
-        if ft.name in seen:
-            logger.warning("Duplicate FileType name detected: %s (keeping first)", ft.name)
+        if ft.local_key in seen:
+            logger.warning(
+                "Duplicate FileType local_key detected: %s (keeping first)", ft.local_key
+            )
             continue
-        seen.add(ft.name)
+        seen.add(ft.local_key)
         acc.append(ft)
     return acc
 
@@ -134,16 +137,16 @@ def _aggregate_all_filetypes() -> list[FileType]:
     """Aggregate built-ins plus any plugin-provided file types (deduped)."""
     ordered: list[FileType] = list(_iter_builtin_filetypes())
     ordered.extend(list(_iter_plugin_filetypes()))
-    return _dedupe_by_name(ordered)
+    return _dedupe_by_local_key(ordered)
 
 
 def _generate_registry(filetypes: Iterable[FileType]) -> dict[str, FileType]:
     """Generate a registry mapping file type names to their definitions."""
     registry: dict[str, FileType] = {}
     for ft in filetypes:
-        if ft.name in registry:
-            raise ValueError(f"Duplicate FileType name: {ft.name}")
-        registry[ft.name] = ft
+        if ft.local_key in registry:
+            raise ValueError(f"Duplicate FileType local_key: {ft.local_key}")
+        registry[ft.local_key] = ft
     return registry
 
 

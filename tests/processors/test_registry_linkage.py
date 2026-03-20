@@ -37,5 +37,5 @@ def test_base_processor_registry_entries_are_bound_to_matching_filetypes() -> No
             f"Processor key {name!r} is not bound to a file type"
         )
 
-        assert processor.file_type.name == name
+        assert processor.file_type.local_key == name
         assert processor.file_type is ft_registry[name]

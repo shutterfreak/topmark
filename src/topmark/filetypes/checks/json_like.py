@@ -51,8 +51,8 @@ def json_like_can_insert(
     origin: str = f"{__name__}.json_like_can_insert"
 
     # Only act for JSON-family types; other types OK
-    ftname: str = (ctx.file_type.name if ctx.file_type else "").lower()
-    if ftname not in ("jsonc", "json-with-comments"):
+    ft_local_key: str = (ctx.file_type.local_key if ctx.file_type else "").lower()
+    if ft_local_key not in ("jsonc", "json-with-comments"):
         return {
             "capability": InsertCapability.OK,
             "origin": origin,

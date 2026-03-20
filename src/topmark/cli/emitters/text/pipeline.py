@@ -333,7 +333,7 @@ def render_file_summary_line_text(
     parts.append(
         maybe_style(
             muted_styler,
-            ctx.file_type.name if ctx.file_type is not None else "<unknown>",
+            ctx.file_type.local_key if ctx.file_type is not None else "<unknown>",
             styled=color,
         )
     )

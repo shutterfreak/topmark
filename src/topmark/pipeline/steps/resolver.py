@@ -95,7 +95,7 @@ class ResolverStep(BaseStep):
             "Resolve start: file='%s', fs status='%s', type=%s, processor=%s",
             ctx.path,
             ctx.status.fs.value,
-            getattr(ctx.file_type, "name", VALUE_NOT_SET),
+            ctx.file_type.local_key if ctx.file_type else VALUE_NOT_SET,
             (ctx.header_processor.__class__.__name__ if ctx.header_processor else VALUE_NOT_SET),
         )
 
@@ -109,18 +109,18 @@ class ResolverStep(BaseStep):
 
         if file_type is not None:
             ctx.file_type = file_type
-            logger.debug("File '%s' resolved to type: %s", ctx.path, file_type.name)
+            logger.debug("File '%s' resolved to type: %s", ctx.path, file_type.local_key)
 
             if file_type.skip_processing:
                 logger.info(
                     "Skipping header processing for '%s' "
                     "(file type '%s' marked skip_processing=True)",
                     ctx.path,
-                    file_type.name,
+                    file_type.local_key,
                 )
                 ctx.status.resolve = ResolveStatus.TYPE_RESOLVED_HEADERS_UNSUPPORTED
                 reason: str = (
-                    f"File type '{file_type.name}' recognized; "
+                    f"File type '{file_type.local_key}' recognized; "
                     "headers are not supported for this format."
                 )
                 ctx.info(reason)
@@ -130,11 +130,11 @@ class ResolverStep(BaseStep):
             if processor is None:
                 logger.info(
                     "No header processor registered for file type '%s' (file '%s')",
-                    file_type.name,
+                    file_type.local_key,
                     ctx.path,
                 )
                 ctx.status.resolve = ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED
-                reason = f"No header processor registered for file type '{file_type.name}'."
+                reason = f"No header processor registered for file type '{file_type.local_key}'."
                 ctx.info(reason)
                 ctx.request_halt(reason=reason, at_step=self)
                 return
@@ -145,7 +145,7 @@ class ResolverStep(BaseStep):
             logger.debug(
                 "Resolve success: file='%s' type='%s' processor=%s",
                 ctx.path,
-                file_type.name,
+                file_type.local_key,
                 processor.__class__.__name__,
             )
             return

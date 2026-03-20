@@ -76,7 +76,7 @@ def test_pound_processor_basics(tmp_path: Path) -> None:
     ctx = runner.run(ctx, pipeline)
 
     assert ctx.path == file
-    assert ctx.file_type and ctx.file_type.name == "python"
+    assert ctx.file_type and ctx.file_type.local_key == "python"
     assert ctx.views.image is not None  # or: assert context.file_line_count() > 0
     assert ctx.views.header is None
 
@@ -120,7 +120,7 @@ def test_pound_processor_detects_existing_header(tmp_path: Path) -> None:
         prune=False,  # We must inspect ctx_check.views.header
     )
 
-    assert ctx.file_type and ctx.file_type.name == "python"
+    assert ctx.file_type and ctx.file_type.local_key == "python"
     assert ctx.views.header is not None
     assert ctx.views.header.range == (0, 5)
     assert ctx.views.header.mapping is not None
@@ -154,7 +154,7 @@ def test_pound_processor_missing_header(tmp_path: Path) -> None:
     pipeline: Sequence[Step[ProcessingContext]] = Pipeline.CHECK.steps
     ctx = runner.run(ctx, pipeline)
 
-    assert ctx.file_type and ctx.file_type.name == "python"
+    assert ctx.file_type and ctx.file_type.local_key == "python"
     assert ctx.views.header is None
     assert ctx.status.header.name == "MISSING"
 
@@ -208,7 +208,7 @@ def test_pound_malformed_header_fields(
     pipeline: Sequence[Step[ProcessingContext]] = Pipeline.CHECK.steps
     ctx = runner.run(ctx, pipeline)
 
-    assert ctx.file_type and ctx.file_type.name == "python"
+    assert ctx.file_type and ctx.file_type.local_key == "python"
     assert ctx.views.header is not None
     assert ctx.status.header == expected_status
 

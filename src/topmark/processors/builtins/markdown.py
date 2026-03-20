@@ -56,7 +56,10 @@ class MarkdownHeaderProcessor(BlockCommentMixin, HeaderProcessor):
     inside fenced code blocks (``` or ~~~).
     """
 
-    key: ClassVar[str] = "markdown"
+    local_key: ClassVar[str] = "markdown"
+    description: ClassVar[str] = (
+        "Header processor for Markdown formats (HTML comment-based, line-oriented)."
+    )
 
     def __init__(self) -> None:
         # Use HTML-style block comment delimiters for the header block.

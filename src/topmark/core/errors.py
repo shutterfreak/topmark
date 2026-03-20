@@ -75,18 +75,18 @@ class TopmarkError(Exception):
 
 
 class UnknownFileTypeError(TopmarkError):
-    """Raised when a file type name cannot be resolved from a registry.
+    """Raised when a file type identifier cannot be resolved from a registry.
 
     This error is typically raised by public registry helpers when a caller
-    references a file type name that is not present in the effective file type
-    view.
+    references a file type identifier that is not present in the effective file
+    type view.
     """
 
     def __init__(self, *, file_type: str, path: Path | None = None) -> None:
         msg: str = (
-            f"Unknown file type: {file_type}"
+            f"Unknown file type identifier: {file_type}"
             if path is None
-            else f"Unknown file type for {path}: {file_type}"
+            else f"Unknown file type identifier for {path}: {file_type}"
         )
         super().__init__(ErrorContext(message=msg, path=path, file_type=file_type))
         self.file_type: Final[str] = file_type
@@ -115,11 +115,90 @@ class AmbiguousFileTypeIdentifierError(TopmarkError):
         self.candidates: Final[tuple[str, ...]] = candidates
 
 
+class InvalidRegistryIdentityError(TopmarkError):
+    """Raised when a registry identifier or identity pair is malformed.
+
+    This error is intended for public registry APIs that accept identifiers such
+    as ``"<local_key>"`` or ``"<namespace>:<local_key>"`` and need to reject
+    malformed input explicitly rather than treating it as merely unknown.
+
+    Args:
+        message: Human-readable error message, without CLI styling.
+        identifier: Optional raw identifier string supplied by the caller.
+        namespace: Optional namespace component when available.
+        local_key: Optional namespace-local identifier when available.
+    """
+
+    def __init__(
+        self,
+        *,
+        message: str,
+        identifier: str | None = None,
+        namespace: str | None = None,
+        local_key: str | None = None,
+    ) -> None:
+        details: list[str] = []
+        if identifier is not None:
+            details.append(f"identifier={identifier}")
+        if namespace is not None:
+            details.append(f"namespace={namespace}")
+        if local_key is not None:
+            details.append(f"local_key={local_key}")
+
+        super().__init__(
+            ErrorContext(
+                message=message,
+                file_type=identifier or local_key,
+                details=tuple(details),
+            )
+        )
+        self.identifier: Final[str | None] = identifier
+        self.namespace: Final[str | None] = namespace
+        self.local_key: Final[str | None] = local_key
+
+
+class ReservedNamespaceError(TopmarkError):
+    """Raised when a reserved namespace is used by an ineligible registry entry.
+
+    This is intended for registry composition / registration APIs where the
+    `topmark` namespace is reserved for built-in entities and must not be
+    claimed by external overlays, plugins, or test fixtures unless they are
+    defined from within the TopMark package.
+    """
+
+    def __init__(
+        self,
+        *,
+        namespace: str,
+        owner: str,
+        entities: str,
+        owner_module: str | None = None,
+    ) -> None:
+        details: list[str] = [f"namespace={namespace}", f"owner={owner}", f"entities={entities}"]
+        if owner_module is not None:
+            details.append(f"owner_module={owner_module}")
+
+        message: str = (
+            f"Reserved namespace violation: '{namespace}' is reserved for built-in "
+            f"TopMark {entities} (owner: {owner})"
+        )
+        super().__init__(
+            ErrorContext(
+                message=message,
+                details=tuple(details),
+            )
+        )
+        self.namespace: Final[str] = namespace
+        self.owner: Final[str] = owner
+        self.entities: Final[str] = entities
+        self.owner_module: Final[str | None] = owner_module
+
+
 class ProcessorBindingError(TopmarkError):
     """Raised when explicit processor bindings are invalid or inconsistent.
 
     This signals an internal registry-construction invariant failure, such as an
-    unknown bound file type name or duplicate binding declaration. Callers would
+    unknown bound file type identifier or duplicate binding declaration. Callers would
     normally treat this as a programming or packaging error rather than attempt
     recovery.
     """

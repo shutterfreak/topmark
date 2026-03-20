@@ -64,7 +64,7 @@ def test_slash_processor_basics(tmp_path: Path) -> None:
 
     cfg: Config = MutableConfig.from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
-    assert ctx.file_type and ctx.file_type.name == "javascript"
+    assert ctx.file_type and ctx.file_type.local_key == "javascript"
     assert ctx.views.header is None
 
 
@@ -81,7 +81,7 @@ def test_slash_processor_with_content_matcher_detects_jsonc_in_json(tmp_path: Pa
     file.write_text("// JSON with comments\n" + json.dumps({"test": "Value", "try": True}))
 
     ctx: ProcessingContext = run_insert(file, cfg)
-    assert ctx.file_type and ctx.file_type.name == "jsonc"
+    assert ctx.file_type and ctx.file_type.local_key == "jsonc"
     assert ctx.views.header is None
 
 

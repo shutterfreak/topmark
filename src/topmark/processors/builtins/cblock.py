@@ -39,7 +39,10 @@ from topmark.processors.mixins import BlockCommentMixin
 class CBlockHeaderProcessor(BlockCommentMixin, HeaderProcessor):
     """Processor for C-style block comment headers (uses BlockCommentMixin)."""
 
-    key: ClassVar[str] = "cblock"
+    local_key: ClassVar[str] = "cblock"
+    description: ClassVar[str] = (
+        "Header processor for C-like block comments: /* ... */ with per-line *."
+    )
 
     # We want:
     #   block wrapper:   /*  ...  */

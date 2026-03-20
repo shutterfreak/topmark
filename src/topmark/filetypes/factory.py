@@ -14,7 +14,7 @@ This module centralizes small helpers that build `FileType` objects with sensibl
 defaults and a clear identity model.
 
 Rationale:
-    * `FileType` identity is **(namespace, name)**.
+    * `FileType` identity is **(namespace, local_key)**.
     * TopMark reserves the namespace `TOPMARK_NAMESPACE` for built-in file types.
     * Call sites should not repeat boilerplate such as converting `None` to empty lists.
 
@@ -60,7 +60,7 @@ def make_filetype_factory(*, namespace: str) -> Callable[..., FileType]:
 
     def _make(
         *,
-        name: str,
+        local_key: str,
         description: str,
         extensions: list[str] | None = None,
         filenames: list[str] | None = None,
@@ -73,7 +73,7 @@ def make_filetype_factory(*, namespace: str) -> Callable[..., FileType]:
     ) -> FileType:
         return FileType(
             namespace=namespace,
-            name=name,
+            local_key=local_key,
             extensions=extensions if extensions is not None else [],
             filenames=filenames if filenames is not None else [],
             patterns=patterns if patterns is not None else [],

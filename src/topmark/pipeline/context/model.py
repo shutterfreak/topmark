@@ -216,8 +216,8 @@ class ProcessingContext:
         Returns:
             The effective policy for this context.
         """
-        name: str | None = self.file_type.name if self.file_type is not None else None
-        return self.policy_registry.for_type(name)
+        local_key: str | None = self.file_type.local_key if self.file_type is not None else None
+        return self.policy_registry.for_type(local_key)
 
     @property
     def step_axes(self) -> dict[str, list[str]]:
@@ -348,7 +348,12 @@ class ProcessingContext:
 
         return {
             "path": str(self.path),
-            "file_type": (self.file_type.name if self.file_type else None),
+            "file_type": {
+                "qualified_key": (self.file_type.qualified_key),
+                "description": (self.file_type.description),
+            }
+            if self.file_type
+            else None,
             "steps": [s.name for s in self.steps],
             "step_axes": self.step_axes,
             "status": self.status.to_dict(),

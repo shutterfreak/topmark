@@ -29,7 +29,7 @@ Typical usage:
     names = FileTypeRegistry.names()
     ft_map = FileTypeRegistry.as_mapping()  # read-only mapping proxy
     for meta in FileTypeRegistry.iter_meta():
-        print(meta.name, meta.extensions)
+        print(meta.local_key, meta.extensions)
 
     # Optional mutation (global state):
     # ALWAYS clean up after registering temporary entries.
@@ -37,7 +37,7 @@ Typical usage:
     try:
         ...
     finally:
-        FileTypeRegistry.unregister(my_ft.name)
+        FileTypeRegistry.unregister(my_ft.local_key)
     ```
 
 Warning:
@@ -52,6 +52,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from topmark.core.errors import AmbiguousFileTypeIdentifierError
+from topmark.core.errors import InvalidRegistryIdentityError
 from topmark.core.errors import UnknownFileTypeError
 from topmark.filetypes.model import FileType
 from topmark.registry.filetypes import FileTypeRegistry
@@ -88,9 +89,9 @@ def iter_bindings() -> Iterator[Binding]:
         Binding: A pair containing file type metadata and the optionally
         bound processor metadata (``None`` for unsupported types).
     """
-    proc: dict[str, ProcessorMeta] = {m.name: m for m in HeaderProcessorRegistry.iter_meta()}
+    proc: dict[str, ProcessorMeta] = {m.local_key: m for m in HeaderProcessorRegistry.iter_meta()}
     for ft in FileTypeRegistry.iter_meta():
-        yield Binding(filetype=ft, processor=proc.get(ft.name))
+        yield Binding(filetype=ft, processor=proc.get(ft.local_key))
 
 
 class Registry:
@@ -131,16 +132,16 @@ class Registry:
         return HeaderProcessorRegistry.as_mapping()
 
     @staticmethod
-    def is_supported(name: str) -> bool:
-        """Return True if a processor is registered for the given file type name.
+    def is_supported(local_key: str) -> bool:
+        """Return True if a processor is registered for the given file type local_key.
 
         Args:
-            name: File type identifier to query.
+            local_key: File type identifier to query.
 
         Returns:
             ``True`` if the file type has a registered processor; otherwise ``False``.
         """
-        return HeaderProcessorRegistry.is_registered(name)
+        return HeaderProcessorRegistry.is_registered(local_key)
 
     @staticmethod
     def supported_filetype_names() -> tuple[str, ...]:
@@ -187,9 +188,9 @@ class Registry:
         return None
 
     @staticmethod
-    def unregister_filetype(name: str) -> bool:
-        """Unregister a file type by name (advanced)."""
-        return FileTypeRegistry.unregister(name)
+    def unregister_filetype(local_key: str) -> bool:
+        """Unregister a file type by local_key (advanced)."""
+        return FileTypeRegistry.unregister(local_key)
 
     @staticmethod
     def register_processor(
@@ -206,7 +207,7 @@ class Registry:
 
         Args:
             file_type_id: File type identifier that the processor should be registered
-                under. Both ``"name"`` and ``"namespace:name"`` forms are
+                under. Both ``"local_key"`` and ``"namespace:local_key"`` forms are
                 accepted.
             processor_class: Concrete `HeaderProcessor` class to instantiate and
                 bind.
@@ -215,11 +216,13 @@ class Registry:
             UnknownFileTypeError: If `file_type_id` does not resolve to a registered file type.
             AmbiguousFileTypeIdentifierError: If an unqualified `file_type_id` matches
                 multiple file types.
+            InvalidRegistryIdentityError: If registration is attempted with an invalid registry
+                identifier.
         """
         try:
             # Propagate ambiguity explicitly so the public facade documents it accurately.
             ft_obj: FileType | None = FileTypeRegistry.resolve_filetype_id(file_type_id)
-        except AmbiguousFileTypeIdentifierError:  # noqa: TRY203
+        except (AmbiguousFileTypeIdentifierError, InvalidRegistryIdentityError):  # noqa: TRY203
             raise
 
         if ft_obj is None:
@@ -257,7 +260,7 @@ class Registry:
 
         Args:
             file_type_id: File type identifier that the processor should be registered
-                under. Both ``"name"`` and ``"namespace:name"`` forms are
+                under. Both ``"local_key"`` and ``"namespace:local_key"`` forms are
                 accepted.
             processor_class: Concrete `HeaderProcessor` class to instantiate and
                 bind.
@@ -267,14 +270,14 @@ class Registry:
         """
         try:
             ft_obj: FileType | None = FileTypeRegistry.resolve_filetype_id(file_type_id)
-        except AmbiguousFileTypeIdentifierError:
+        except (AmbiguousFileTypeIdentifierError, InvalidRegistryIdentityError):
             return False
 
         if ft_obj is None:
             return False
 
-        # The processor registry is keyed by file type *name* (unqualified) today.
-        if HeaderProcessorRegistry.is_registered(ft_obj.name):
+        # The processor registry is keyed by file type *local_key* (unqualified) today.
+        if HeaderProcessorRegistry.is_registered(ft_obj.local_key):
             return False
 
         HeaderProcessorRegistry.register(
@@ -284,6 +287,6 @@ class Registry:
         return True
 
     @staticmethod
-    def unregister_processor(name: str) -> bool:
-        """Unregister a header processor by name (advanced)."""
-        return HeaderProcessorRegistry.unregister(name)
+    def unregister_processor(local_key: str) -> bool:
+        """Unregister a header processor by local_key (advanced)."""
+        return HeaderProcessorRegistry.unregister(local_key)

@@ -37,7 +37,10 @@ class SlashHeaderProcessor(LineCommentMixin, HeaderProcessor):
     We render the header as `//`-prefixed lines. Shebang handling is disabled.
     """
 
-    key: ClassVar[str] = "slash"
+    local_key: ClassVar[str] = "slash"
+    description: ClassVar[str] = (
+        "Header processor for files that accept C-style line comments (`//`)."
+    )
 
     # LineCommentMixin:
     line_prefix = "//"

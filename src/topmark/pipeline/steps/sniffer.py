@@ -402,7 +402,7 @@ class SnifferStep(BaseStep):
             # attach a non-terminal hint explaining how to enable it.
             if ctx.file_type is not None and not allow_insert_into_empty_like(ctx):
                 file_type: FileType = ctx.file_type
-                table_name: str = f"policy_by_type.{file_type.name}"
+                table_name: str = f"policy_by_type.{file_type.local_key}"
                 ctx.hint(
                     axis=Axis.FS,
                     code=KnownCode.FS_EMPTY,
@@ -411,7 +411,7 @@ class SnifferStep(BaseStep):
                     detail=(
                         f"{file_type.description}:\n"
                         "To allow headers in empty "
-                        f"{file_type.name} files, add the following "
+                        f"{file_type.local_key} files, add the following "
                         "to your TopMark configuration:\n"
                         f"  [{table_name}]\n"
                         "  allow_header_in_empty_files = true\n"

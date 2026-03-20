@@ -27,7 +27,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from tests.conftest import make_file_type
-from tests.conftest import stub_proc_cls
+from tests.conftest import registry_processor_class
 from topmark.core.errors import UnknownFileTypeError
 from topmark.processors.base import HeaderProcessor
 from topmark.registry.filetypes import FileTypeRegistry
@@ -44,7 +44,7 @@ def test_supported_vs_unsupported_partition() -> None:
     ft_name = "x_demo"
     ft: FileType = make_file_type(name=ft_name)
 
-    proc_cls: type[HeaderProcessor] = stub_proc_cls()
+    proc_cls: type[HeaderProcessor] = registry_processor_class()
 
     try:
         # Register FT only (recognized, unsupported)
@@ -68,7 +68,7 @@ def test_supported_vs_unsupported_partition() -> None:
         proc_obj: HeaderProcessor = HeaderProcessorRegistry.as_mapping()[ft_name]
         assert getattr(proc_obj, "file_type", None) is not None
         assert proc_obj.file_type is not None
-        assert proc_obj.file_type.name == ft_name
+        assert proc_obj.file_type.local_key == ft_name
     finally:
         HeaderProcessorRegistry.unregister(ft_name)
         FileTypeRegistry.unregister(ft_name)
@@ -76,7 +76,7 @@ def test_supported_vs_unsupported_partition() -> None:
 
 def test_register_processor_fails_for_unknown_filetype() -> None:
     """Reject registering a processor for a non-existent file type."""
-    proc_cls: type[HeaderProcessor] = stub_proc_cls()
+    proc_cls: type[HeaderProcessor] = registry_processor_class()
 
     with pytest.raises(UnknownFileTypeError):
         Registry.register_processor("nonexistent_ft", proc_cls)

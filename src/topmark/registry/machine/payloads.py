@@ -32,20 +32,20 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.registry.filetypes import FileTypeRegistry
+from topmark.registry.machine.schemas import FileTypeBriefEntry
+from topmark.registry.machine.schemas import FileTypeDetailEntry
+from topmark.registry.machine.schemas import FileTypeRefEntry
+from topmark.registry.machine.schemas import FileTypesPayload
+from topmark.registry.machine.schemas import ProcessorBriefEntry
+from topmark.registry.machine.schemas import ProcessorDetailEntry
+from topmark.registry.machine.schemas import ProcessorsPayload
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from topmark.filetypes.model import FileType
     from topmark.processors.base import HeaderProcessor
-    from topmark.registry.machine.schemas import FileTypeBriefEntry
-    from topmark.registry.machine.schemas import FileTypeDetailEntry
     from topmark.registry.machine.schemas import FileTypeRef
-    from topmark.registry.machine.schemas import FileTypeRefEntry
-    from topmark.registry.machine.schemas import FileTypesPayload
-    from topmark.registry.machine.schemas import ProcessorBriefEntry
-    from topmark.registry.machine.schemas import ProcessorDetailEntry
-    from topmark.registry.machine.schemas import ProcessorsPayload
 
 
 def _policy_name(obj: object | None) -> str:
@@ -77,12 +77,12 @@ def _serialize_filetype_ref(ft: FileType) -> FileTypeRefEntry:
     Returns:
         A `FileTypeRefEntry` dict containing stable identity fields.
     """
-    return {
-        "name": ft.name,
-        "namespace": ft.namespace,
-        "qualified_key": ft.qualified_key,
-        "description": ft.description,
-    }
+    return FileTypeRefEntry(
+        local_key=ft.local_key,
+        namespace=ft.namespace,
+        qualified_key=ft.qualified_key,
+        description=ft.description,
+    )
 
 
 def _serialize_filetype_details(ft: FileType) -> FileTypeDetailEntry:
@@ -95,19 +95,19 @@ def _serialize_filetype_details(ft: FileType) -> FileTypeDetailEntry:
         A `FileTypeDetailEntry` dict.
     """
     policy_name: str = _policy_name(ft.header_policy)
-    return {
-        "name": ft.name,
-        "namespace": ft.namespace,
-        "qualified_key": ft.qualified_key,
-        "description": ft.description,
-        "extensions": list(ft.extensions or []),
-        "filenames": list(ft.filenames or []),
-        "patterns": list(ft.patterns or []),
-        "skip_processing": bool(ft.skip_processing),
-        "has_content_matcher": ft.content_matcher is not None,
-        "has_insert_checker": ft.pre_insert_checker is not None,
-        "header_policy": policy_name,
-    }
+    return FileTypeDetailEntry(
+        local_key=ft.local_key,
+        namespace=ft.namespace,
+        qualified_key=ft.qualified_key,
+        description=ft.description,
+        extensions=list(ft.extensions or []),
+        filenames=list(ft.filenames or []),
+        patterns=list(ft.patterns or []),
+        skip_processing=bool(ft.skip_processing),
+        has_content_matcher=ft.content_matcher is not None,
+        has_insert_checker=ft.pre_insert_checker is not None,
+        header_policy=policy_name,
+    )
 
 
 def build_filetypes_payload(*, show_details: bool) -> FileTypesPayload:
@@ -126,16 +126,17 @@ def build_filetypes_payload(*, show_details: bool) -> FileTypesPayload:
     ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
 
     payload: list[FileTypeBriefEntry | FileTypeDetailEntry] = []
-    for _key, ft in sorted(ft_registry.items()):
-        if show_details:
+    if show_details:
+        for _key, ft in sorted(ft_registry.items()):
             payload.append(_serialize_filetype_details(ft))
-        else:
-            brief: FileTypeBriefEntry = {
-                "name": ft.name,
-                "namespace": ft.namespace,
-                "qualified_key": ft.qualified_key,
-                "description": ft.description,
-            }
+    else:
+        for _key, ft in sorted(ft_registry.items()):
+            brief = FileTypeBriefEntry(
+                local_key=ft.local_key,
+                namespace=ft.namespace,
+                qualified_key=ft.qualified_key,
+                description=ft.description,
+            )
             payload.append(brief)
 
     return payload
@@ -173,7 +174,7 @@ def build_processors_payload(*, show_details: bool) -> ProcessorsPayload:
     for ft_name, proc in hp_registry.items():
         key: tuple[str, str, str, str, str] = (
             proc.namespace,
-            proc.key,
+            proc.local_key,
             proc.qualified_key,
             proc.__class__.__module__,
             proc.__class__.__name__,
@@ -183,45 +184,50 @@ def build_processors_payload(*, show_details: bool) -> ProcessorsPayload:
         groups[key][1].append(ft_name)
 
     # File types without a bound processor
-    unbound: list[str] = sorted([name for name in ft_registry if name not in hp_registry])
+    unbound: list[str] = sorted(
+        [local_key for local_key in ft_registry if local_key not in hp_registry]
+    )
 
     processors: list[ProcessorBriefEntry | ProcessorDetailEntry] = []
-    for (_, _, _, _, _), (proc, names) in sorted(groups.items()):
+    for (_, _, _, _, _), (proc, ft_local_keys) in sorted(groups.items()):
         if show_details:
             ft_refs: list[FileTypeRefEntry] = [
-                _serialize_filetype_ref(ft_registry[name]) for name in sorted(names)
+                _serialize_filetype_ref(ft_registry[local_key])
+                for local_key in sorted(ft_local_keys)
             ]
-            entry_d: ProcessorDetailEntry = {
-                "namespace": proc.namespace,
-                "key": proc.key,
-                "qualified_key": proc.qualified_key,
-                "module": proc.__class__.__module__,
-                "class_name": proc.__class__.__name__,
-                "filetypes": ft_refs,
-            }
+            entry_d = ProcessorDetailEntry(
+                namespace=proc.namespace,
+                local_key=proc.local_key,
+                qualified_key=proc.qualified_key,
+                module=proc.__class__.__module__,
+                class_name=proc.__class__.__name__,
+                filetypes=ft_refs,
+            )
             processors.append(entry_d)
         else:
-            ft_names: list[str] = [ft_registry[name].qualified_key for name in sorted(names)]
-            entry_b: ProcessorBriefEntry = {
-                "namespace": proc.namespace,
-                "key": proc.key,
-                "qualified_key": proc.qualified_key,
-                "module": proc.__class__.__module__,
-                "class_name": proc.__class__.__name__,
-                "filetypes": ft_names,
-            }
+            ft_names: list[str] = [
+                ft_registry[local_key].qualified_key for local_key in sorted(ft_local_keys)
+            ]
+            entry_b = ProcessorBriefEntry(
+                namespace=proc.namespace,
+                local_key=proc.local_key,
+                qualified_key=proc.qualified_key,
+                module=proc.__class__.__module__,
+                class_name=proc.__class__.__name__,
+                filetypes=ft_names,
+            )
             processors.append(entry_b)
 
     unbound_payload: list[FileTypeRef] = []
-    for name in unbound:
-        file_type: FileType = ft_registry[name]
+    for local_key in unbound:
+        file_type: FileType = ft_registry[local_key]
         if show_details:
             ref: FileTypeRefEntry = _serialize_filetype_ref(file_type)
             unbound_payload.append(ref)
         else:
             unbound_payload.append(file_type.qualified_key)
 
-    return {
-        "processors": processors,
-        "unbound_filetypes": unbound_payload,
-    }
+    return ProcessorsPayload(
+        processors=processors,
+        unbound_filetypes=unbound_payload,
+    )

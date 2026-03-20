@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 
 FILETYPES: list[FileType] = [
     BUILTIN_FILETYPE_FACTORY(
-        name="license_text",
+        local_key="license_text",
         extensions=[],
         filenames=["LICENSE", "LICENSE.txt"],
         patterns=[],
@@ -41,7 +41,7 @@ FILETYPES: list[FileType] = [
         skip_processing=True,
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="markdown",
+        local_key="markdown",
         extensions=[".md", ".markdown"],
         filenames=[],
         patterns=[],

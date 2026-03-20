@@ -38,7 +38,8 @@ class PoundHeaderProcessor(LineCommentMixin, HeaderProcessor):
     Respects FileTypeHeaderPolicy for shebang and encoding line handling.
     """
 
-    key: ClassVar[str] = "pound"
+    local_key: ClassVar[str] = "pound"
+    description: ClassVar[str] = "Header processor for pound-prefixed (`#`) line comment formats."
 
     # LineCommentMixin:
     line_prefix = "#"

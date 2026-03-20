@@ -32,4 +32,4 @@ def test_get_processor_for_file_resolves_builtin_processor_for_python_path() -> 
     proc: HeaderProcessor | None = resolve_processor_for_path(path=Path(filename_to_test))
     assert proc is not None
     assert proc.file_type is not None
-    assert proc.file_type.name == "python"
+    assert proc.file_type.local_key == "python"

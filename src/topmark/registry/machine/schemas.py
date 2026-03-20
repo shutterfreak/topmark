@@ -42,7 +42,7 @@ from typing import TypedDict
 class FileTypeBriefEntry(TypedDict):
     """Brief file type entry used when `--show-details` is not requested."""
 
-    name: str
+    local_key: str
     namespace: str
     qualified_key: str
     description: str
@@ -51,10 +51,11 @@ class FileTypeBriefEntry(TypedDict):
 class FileTypeDetailEntry(TypedDict):
     """Detailed file type entry used when `--show-details` is enabled."""
 
-    name: str
+    local_key: str
     namespace: str
     qualified_key: str
     description: str
+
     extensions: list[str]
     filenames: list[str]
     patterns: list[str]
@@ -74,7 +75,7 @@ FileTypesPayload = list[FileTypeEntry]
 class FileTypeRefEntry(TypedDict):
     """Expanded file type reference used inside processor detail entries."""
 
-    name: str
+    local_key: str
     namespace: str
     qualified_key: str
     description: str
@@ -94,8 +95,8 @@ class ProcessorBriefEntry(TypedDict):
     In brief mode, `filetypes` is a list of file type names.
     """
 
+    local_key: str
     namespace: str
-    key: str
     qualified_key: str
     module: str
     class_name: str
@@ -108,8 +109,8 @@ class ProcessorDetailEntry(TypedDict):
     In detail mode, `filetypes` is a list of expanded file type references.
     """
 
+    local_key: str
     namespace: str
-    key: str
     qualified_key: str
     module: str
     class_name: str

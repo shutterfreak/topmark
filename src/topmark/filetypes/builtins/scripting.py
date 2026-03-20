@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 
 FILETYPES: list[FileType] = [
     BUILTIN_FILETYPE_FACTORY(
-        name="julia",
+        local_key="julia",
         extensions=[".jl"],
         filenames=[],
         patterns=[],
@@ -45,7 +45,7 @@ FILETYPES: list[FileType] = [
         ),
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="makefile",
+        local_key="makefile",
         extensions=[],
         filenames=["Makefile", "makefile"],
         patterns=[],
@@ -56,7 +56,7 @@ FILETYPES: list[FileType] = [
         ),
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="perl",
+        local_key="perl",
         extensions=[".pl", ".pm"],
         filenames=[],
         patterns=[],
@@ -68,7 +68,7 @@ FILETYPES: list[FileType] = [
         ),
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="python",
+        local_key="python",
         extensions=[".py"],
         filenames=[],
         patterns=[],
@@ -81,7 +81,7 @@ FILETYPES: list[FileType] = [
         ),
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="python-stub",
+        local_key="python-stub",
         extensions=[".pyi"],
         filenames=[],
         patterns=[],
@@ -92,7 +92,7 @@ FILETYPES: list[FileType] = [
         ),
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="r",
+        local_key="r",
         extensions=[".R", ".r"],
         filenames=[],
         patterns=[],
@@ -104,7 +104,7 @@ FILETYPES: list[FileType] = [
         ),
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="ruby",
+        local_key="ruby",
         extensions=[".rb"],
         filenames=[],
         patterns=[],
@@ -117,7 +117,7 @@ FILETYPES: list[FileType] = [
         ),
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="shell",
+        local_key="shell",
         extensions=[".sh", ".bash", ".zsh"],
         filenames=[],
         patterns=[],

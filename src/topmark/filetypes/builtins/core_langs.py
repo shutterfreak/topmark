@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 
 FILETYPES: list[FileType] = [
     BUILTIN_FILETYPE_FACTORY(
-        name="c",
+        local_key="c",
         extensions=[".c", ".h"],
         filenames=[],
         patterns=[],
@@ -45,7 +45,7 @@ FILETYPES: list[FileType] = [
         ),
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="cpp",
+        local_key="cpp",
         extensions=[".cc", ".cxx", ".cpp", ".hh", ".hpp", ".hxx"],
         filenames=[],
         patterns=[],
@@ -57,7 +57,7 @@ FILETYPES: list[FileType] = [
         ),
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="cs",
+        local_key="cs",
         extensions=[".cs"],
         filenames=[],
         patterns=[],
@@ -69,7 +69,7 @@ FILETYPES: list[FileType] = [
         ),
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="go",
+        local_key="go",
         extensions=[".go"],
         filenames=[],
         patterns=[],
@@ -81,7 +81,7 @@ FILETYPES: list[FileType] = [
         ),
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="java",
+        local_key="java",
         extensions=[".java"],
         filenames=[],
         patterns=[],
@@ -93,7 +93,7 @@ FILETYPES: list[FileType] = [
         ),
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="kotlin",
+        local_key="kotlin",
         extensions=[".kt", ".kts"],
         filenames=[],
         patterns=[],
@@ -105,7 +105,7 @@ FILETYPES: list[FileType] = [
         ),
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="rust",
+        local_key="rust",
         extensions=[".rs"],
         filenames=[],
         patterns=[],
@@ -117,7 +117,7 @@ FILETYPES: list[FileType] = [
         ),
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="solidity",
+        local_key="solidity",
         extensions=[".sol"],
         filenames=[],
         patterns=[],
@@ -128,7 +128,7 @@ FILETYPES: list[FileType] = [
         ),
     ),
     BUILTIN_FILETYPE_FACTORY(
-        name="swift",
+        local_key="swift",
         extensions=[".swift"],
         filenames=[],
         patterns=[],

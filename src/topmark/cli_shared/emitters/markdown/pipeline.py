@@ -249,7 +249,7 @@ def render_file_summary_line_markdown(
         Human-readable Markdown one-line summary.
     """
     # File type, or <unknown> if resolution failed
-    ft: str = ctx.file_type.name if ctx.file_type is not None else "<unknown>"
+    ft: str = ctx.file_type.local_key if ctx.file_type is not None else "<unknown>"
 
     # Resolve the public bucket for this context.
     apply_changes: bool = ctx.config.apply_changes is True

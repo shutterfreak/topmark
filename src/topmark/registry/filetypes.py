@@ -27,16 +27,17 @@ Notes:
 
 from __future__ import annotations
 
-import re
 from threading import RLock
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
-from topmark.constants import PACKAGE_NAME
-from topmark.constants import TOPMARK_NAMESPACE
-from topmark.constants import VALID_REGISTRY_TOKEN_RE
 from topmark.core.errors import AmbiguousFileTypeIdentifierError
+from topmark.core.errors import InvalidRegistryIdentityError
+from topmark.core.errors import ReservedNamespaceError
 from topmark.filetypes.model import FileType
+from topmark.registry.identity import owner_label
+from topmark.registry.identity import require_and_validate_registry_identity
+from topmark.registry.identity import validate_reserved_topmark_namespace
 from topmark.registry.types import FileTypeMeta
 
 if TYPE_CHECKING:
@@ -63,59 +64,61 @@ class FileTypeRegistry:
 
     @classmethod
     def _validate_ft(cls, ft: object) -> FileType:
-        """Centralized validation for FileType instances."""
+        """Validate a file type instance for registry composition/registration.
+
+        This method is the registry-layer validation boundary for `FileType`
+        instances. It reuses the shared identity helpers from
+        [`topmark.registry.identity`][topmark.registry.identity] but translates
+        reserved-namespace violations into a registry-specific core error so
+        callers of the registry API can distinguish malformed identities from
+        disallowed namespace usage.
+
+        Args:
+            ft: Candidate registry entry.
+
+        Returns:
+            The validated `FileType` instance.
+
+        Raises:
+            TypeError: If `ft` is not a `FileType`, or if its namespace/local-key
+                identity is malformed.
+            ReservedNamespaceError: If the reserved built-in `topmark` namespace
+                is used by an ineligible external file type.
+        """
         if not isinstance(ft, FileType):
             raise TypeError(
                 f"Expected instance of FileType, got {type(ft).__name__}. "
                 "Only FileType instances can be registered."
             )
-        if not ft.name:
-            raise ValueError("FileType instance must have a non-empty '.name' property.")
 
-        namespace: str = ft.namespace
-        if not namespace:
-            raise TypeError(
-                f"{cls.__module__}.{cls.__name__}: "
-                "instance variable 'namespace' must be a non-empty str"
-            )
+        owner: str = owner_label(type(ft))
 
-        name: str = ft.name
-        if not name:
-            raise TypeError(
-                f"{cls.__module__}.{cls.__name__}: instance variable 'name' must be a non-empty str"
-            )
+        namespace: str
+        local_key: str
+        namespace, local_key = require_and_validate_registry_identity(
+            namespace=ft.namespace,
+            local_key=ft.local_key,
+            owner=owner,
+        )
 
-        def _is_valid_token(value: str) -> bool:
-            # Lowercase, no colon, stable serialization.
-            if value != value.lower():
-                return False
-            if ":" in value:
-                return False
-            return bool(re.fullmatch(VALID_REGISTRY_TOKEN_RE, value))
+        # Normalize validated identity values on the instance.
+        ft.namespace = namespace
+        ft.local_key = local_key
 
-        if not _is_valid_token(namespace):
-            raise TypeError(
-                f"{cls.__module__}.{cls.__name__}: "
-                f"'namespace' must match {VALID_REGISTRY_TOKEN_RE}, "
-                "be lowercase, and not contain ':' "
-                f"(found {namespace!r})"
+        try:
+            validate_reserved_topmark_namespace(
+                namespace=namespace,
+                owner=owner,
+                owner_module=type(ft).__module__,
+                entities="file types",
             )
-        if not _is_valid_token(name):
-            raise TypeError(
-                f"{cls.__module__}.{cls.__name__}: "
-                f"'name' must match {VALID_REGISTRY_TOKEN_RE}, "
-                "be lowercase, and not contain ':' "
-                f"(found {name!r})"
-            )
-
-        # Reserve the builtin namespace for TopMark itself.
-        if namespace == TOPMARK_NAMESPACE and not type(ft).__module__.startswith(
-            f"{PACKAGE_NAME}."
-        ):
-            raise TypeError(
-                f"{cls.__module__}.{cls.__name__}: "
-                f"namespace '{TOPMARK_NAMESPACE}' is reserved for built-in TopMark file types"
-            )
+        except TypeError as exc:
+            raise ReservedNamespaceError(
+                namespace=namespace,
+                owner=owner,
+                entities="file types",
+                owner_module=type(ft).__module__,
+            ) from exc
 
         return ft
 
@@ -143,21 +146,21 @@ class FileTypeRegistry:
         raw_base: dict[str, FileType] = get_base_file_type_registry()
         base: dict[str, FileType] = {}
 
-        for name, ft in raw_base.items():
+        for ft_local_key, ft in raw_base.items():
             # First validate
             validated: FileType = cls._validate_ft(ft)
-            if name != validated.name:
+            if ft_local_key != validated.local_key:
                 raise ValueError(
-                    f"FileType registry key {name!r} "
-                    f"does not match FileType.name {validated.name!r}"
+                    f"FileType registry key {ft_local_key!r} "
+                    f"does not match FileType.local_key {validated.local_key!r}"
                 )
 
-            if name in cls._removals:
+            if ft_local_key in cls._removals:
                 # Skip removals
                 continue
 
             # Add validated entry to base registry
-            base[name] = validated
+            base[ft_local_key] = validated
 
         # 2. Apply overrides (Validated during register())
         base.update(cls._overrides)
@@ -197,7 +200,7 @@ class FileTypeRegistry:
     @classmethod
     def resolve_filetype_id(
         cls,
-        file_type_name: str,
+        file_type_name: str,  # TODO use a more suitable arg name
         *,
         default_namespace: str | None = None,
     ) -> FileType | None:
@@ -205,50 +208,55 @@ class FileTypeRegistry:
 
         This helper supports both *unqualified* and *qualified* identifiers:
 
-        - Unqualified: ``"<name>"``
-        - Qualified: ``"<namespace>:<name>"``
+        - Unqualified: ``"<local_key>"``
+        - Qualified: ``"<namespace>:<local_key>"``
 
         Args:
             file_type_name: Identifier to resolve (unqualified or qualified).
-            default_namespace: Optional namespace constraint applied when the
-                identifier is unqualified.
+            default_namespace: Optional namespace constraint applied when the identifier is
+                unqualified.
 
         Returns:
-            The resolved `FileType` instance, or ``None`` if no matching entry
-            exists.
+            The resolved `FileType` instance, or ``None`` if no matching entry exists.
 
         Raises:
-            AmbiguousFileTypeIdentifierError: If an unqualified identifier would
-                match multiple file types in the composed registry.
+            AmbiguousFileTypeIdentifierError: If an unqualified identifier would match multiple
+                file types in the composed registry.
+            InvalidRegistryIdentityError: If registration is attempted with an invalid registry
+                identifier.
 
         Notes:
-            The composed registry is still keyed by unqualified file type name for
-            compatibility, but this resolver treats ``namespace:name`` as the
-            canonical stable identity and is the preferred lookup entry point for
-            namespace-aware code.
+            The composed registry is still keyed by unqualified file type local_key for
+            compatibility, but this resolver treats ``namespace:local_key`` as the canonical stable
+            identity and is the preferred lookup entry point for namespace-aware code.
         """
         raw: str = file_type_name.strip()
         if not raw:
             return None
 
-        # Qualified form: "namespace:name"
+        # Qualified form: "namespace:local_key"
         if ":" in raw:
-            # Keep parsing strict: only one separator is allowed.
-            namespace, sep, name = raw.partition(":")
-            if not sep or not namespace or not name or ":" in name:
-                return None
+            namespace, sep, local_key = raw.partition(":")
+            if not sep or not namespace or not local_key or ":" in local_key:
+                raise InvalidRegistryIdentityError(
+                    message=f"Malformed file type identifier: {raw!r}",
+                    identifier=raw,
+                    namespace=namespace or None,
+                    local_key=local_key or None,
+                )
+
             with cls._lock:
                 for file_type in cls._compose().values():
-                    if file_type.name == name and file_type.namespace == namespace:
+                    if file_type.local_key == local_key and file_type.namespace == namespace:
                         return file_type
                 return None
 
-        # Unqualified form: "name"
+        # Unqualified form: "local_key"
         with cls._lock:
             candidates: list[FileType] = [
                 file_type
                 for file_type in cls._compose().values()
-                if file_type.name == raw
+                if file_type.local_key == raw
                 and (default_namespace is None or file_type.namespace == default_namespace)
             ]
             if not candidates:
@@ -292,9 +300,10 @@ class FileTypeRegistry:
             Serializable `FileTypeMeta` metadata about each file type.
         """
         with cls._lock:
-            for name, ft in cls._compose().items():
+            for local_key, ft in cls._compose().items():
                 yield FileTypeMeta(
-                    name=name,
+                    local_key=local_key,
+                    namespace=ft.namespace,
                     description=ft.description or "",
                     extensions=tuple(ft.extensions or ()),
                     filenames=tuple(ft.filenames or ()),
@@ -314,10 +323,10 @@ class FileTypeRegistry:
         """Register a new file type.
 
         Args:
-            ft_obj: A `FileType` with a unique, non-empty `.name`.
+            ft_obj: A `FileType` with a unique, non-empty `.local_key`.
 
         Raises:
-            ValueError: If `.name` is empty or already registered.
+            ValueError: If `.local_key` is empty or already registered.
 
         Notes:
             - This mutates global registry state. Prefer temporary usage in tests with
@@ -325,29 +334,31 @@ class FileTypeRegistry:
             - Thread safe via RLock; process-global state; do not mutate in long-lived
               multi-tenant processes.
         """
-        # Strict validation of ft_obj type (`FileType``) and ft_obj.name (nonempty `str`)
+        # Strict validation of ft_obj type (`FileType``) and ft_obj.local_key (nonempty `str`)
         # before touching state
         _ = cls._validate_ft(ft_obj)
 
         with cls._lock:
-            name: str = ft_obj.name
-            if not name.strip():
-                raise ValueError(f"FileType.name must be a nonempty string (found {name!r}).")
+            local_key: str = ft_obj.local_key
+            if not local_key.strip():
+                raise ValueError(
+                    f"FileType.local_key must be a nonempty string (found {local_key!r})."
+                )
             # Check against *composed* view to avoid dupes
-            if name in cls._compose():
-                raise ValueError(f"Duplicate FileType name: {name}")
+            if local_key in cls._compose():
+                raise ValueError(f"Duplicate FileType local_key: {local_key}")
             # Record override locally (no base mutation)
-            cls._overrides[name] = ft_obj
-            # If this name was previously removed, allow re-registration.
-            cls._removals.discard(name)
+            cls._overrides[local_key] = ft_obj
+            # If this local_key was previously removed, allow re-registration.
+            cls._removals.discard(local_key)
             cls._clear_cache()
 
     @classmethod
-    def unregister(cls, name: str) -> bool:
-        """Unregister a file type by name.
+    def unregister(cls, local_key: str) -> bool:
+        """Unregister a file type by local_key.
 
         Args:
-            name: Registered file type name.
+            local_key: Registered file type local_key.
 
         Returns:
             `True` if the entry existed and was removed, else `False`.
@@ -360,12 +371,12 @@ class FileTypeRegistry:
         with cls._lock:
             # Remove local override (if any) and mark for removal from base
             existed = False
-            if name in cls._overrides:
+            if local_key in cls._overrides:
                 existed = True
-                cls._overrides.pop(name, None)
+                cls._overrides.pop(local_key, None)
             # If present only in base, we still support hiding it
-            if name in cls._compose():
+            if local_key in cls._compose():
                 existed = True
-                cls._removals.add(name)
+                cls._removals.add(local_key)
             cls._clear_cache()
             return existed

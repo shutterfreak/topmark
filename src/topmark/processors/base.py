@@ -40,11 +40,9 @@ from typing import ClassVar
 from typing import Final
 from typing import Protocol
 
-from topmark.constants import PACKAGE_NAME
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_NAMESPACE
 from topmark.constants import TOPMARK_START_MARKER
-from topmark.constants import VALID_REGISTRY_TOKEN_RE
 from topmark.core.logging import get_logger
 from topmark.pipeline.policy_whitespace import is_pure_spacer
 from topmark.processors.types import BoundsKind
@@ -52,6 +50,10 @@ from topmark.processors.types import HeaderBounds
 from topmark.processors.types import HeaderParseResult
 from topmark.processors.types import StripDiagKind
 from topmark.processors.types import StripDiagnostic
+from topmark.registry.identity import make_qualified_key
+from topmark.registry.identity import owner_label
+from topmark.registry.identity import require_and_validate_registry_identity
+from topmark.registry.identity import validate_reserved_topmark_namespace
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -184,7 +186,8 @@ class HeaderProcessor:
 
     Attributes:
         namespace: Processor namespace.
-        key: Unique identifier for the header processor class within its namespace.
+        local_key: Unique identifier for the header processor class within its namespace.
+        description: Brief description of the header processor class.
         file_type: The `FileType` registered to the header processor.
         block_prefix: The prefix string for block-style header start.
         block_suffix: The suffix string for block-style header end.
@@ -198,7 +201,10 @@ class HeaderProcessor:
     """
 
     namespace: ClassVar[str] = TOPMARK_NAMESPACE
-    key: ClassVar[str] = "base"
+    local_key: ClassVar[str] = "base"
+    description: ClassVar[str] = (
+        "Base header processor class. All header processor classes must subclass this class."
+    )
 
     @property
     def qualified_key(self) -> str:
@@ -207,7 +213,7 @@ class HeaderProcessor:
         Format: ``"<namespace>:<local_key>"``.
         """
         cls: type[HeaderProcessor] = type(self)
-        return f"{cls.namespace}:{cls.key}"
+        return make_qualified_key(cls.namespace, cls.local_key)
 
     def __init_subclass__(cls, **kwargs: object) -> None:
         """Validate processor identity attributes on subclasses.
@@ -216,7 +222,7 @@ class HeaderProcessor:
 
         - `namespace`: non-empty string identifying the producer. Built-in processors use the
           reserved [`TOPMARK_NAMESPACE`][topmark.constants.TOPMARK_NAMESPACE].
-        - `key`: non-empty string identifying the processor within its namespace.
+        - `local_key`: non-empty string identifying the processor within its namespace.
 
         Constraints (kept intentionally strict so keys are stable and easy to serialize):
 
@@ -225,7 +231,7 @@ class HeaderProcessor:
         - Allowed characters are defined by
           [`VALID_REGISTRY_TOKEN_RE`][topmark.constants.VALID_REGISTRY_TOKEN_RE].
 
-        Uniqueness of the qualified key (``"<namespace>:<key>"``) is validated at registry
+        Uniqueness of the qualified key (``"<namespace>:<local_key>"``) is validated at registry
         composition time.
         """
         super().__init_subclass__(**kwargs)
@@ -234,48 +240,27 @@ class HeaderProcessor:
         if cls is HeaderProcessor:
             return
 
-        namespace: object = getattr(cls, "namespace", None)
-        if not isinstance(namespace, str) or not namespace:
-            raise TypeError(
-                f"{cls.__module__}.{cls.__name__}: "
-                "class variable 'namespace' must be a non-empty str"
-            )
+        owner: Final[str] = owner_label(cls)
 
-        key: object = getattr(cls, "key", None)
-        if not isinstance(key, str) or not key:
-            raise TypeError(
-                f"{cls.__module__}.{cls.__name__}: class variable 'key' must be a non-empty str"
-            )
+        namespace: str
+        local_key: str
+        namespace, local_key = require_and_validate_registry_identity(
+            namespace=getattr(cls, "namespace", None),
+            local_key=getattr(cls, "local_key", None),
+            owner=owner,
+        )
 
-        def _is_valid_token(value: str) -> bool:
-            # Lowercase, no colon, stable serialization.
-            if value != value.lower():
-                return False
-            if ":" in value:
-                return False
-            return bool(re.fullmatch(VALID_REGISTRY_TOKEN_RE, value))
-
-        if not _is_valid_token(namespace):
-            raise TypeError(
-                f"{cls.__module__}.{cls.__name__}: "
-                f"'namespace' must match {VALID_REGISTRY_TOKEN_RE}, "
-                "be lowercase, and not contain ':'"
-                f"(found {namespace!r})"
-            )
-        if not _is_valid_token(key):
-            raise TypeError(
-                f"{cls.__module__}.{cls.__name__}: "
-                f"'key' must match {VALID_REGISTRY_TOKEN_RE}, "
-                "be lowercase, and not contain ':'"
-                f"(found {key!r})"
-            )
+        # Normalize validated identity values on the subclass.
+        cls.namespace = namespace
+        cls.local_key = local_key
 
         # Reserve the builtin namespace for TopMark itself.
-        if namespace == TOPMARK_NAMESPACE and not cls.__module__.startswith(f"{PACKAGE_NAME}."):
-            raise TypeError(
-                f"{cls.__module__}.{cls.__name__}: "
-                f"namespace '{TOPMARK_NAMESPACE}' is reserved for built-in TopMark processors"
-            )
+        validate_reserved_topmark_namespace(
+            namespace=namespace,
+            owner=owner,
+            owner_module=cls.__module__,
+            entities="processors",
+        )
 
     file_type: FileType | None = None
 
