@@ -46,14 +46,14 @@ class ErrorContext:
     Attributes:
         message: Human-readable error message, without CLI styling.
         path: Optional filesystem path associated with the failure.
-        file_type: Optional file type name associated with the failure.
+        qualified_key: Optional qualifgied key associated with the failure.
         encoding: Optional encoding name relevant to the failure.
         details: Optional tuple of additional diagnostic details.
     """
 
     message: str
     path: Path | None = None
-    file_type: str | None = None
+    qualified_key: str | None = None
     encoding: str | None = None
     details: tuple[str, ...] = ()
 
@@ -65,7 +65,10 @@ class TopmarkError(Exception):
         context: Structured context describing the failure.
     """
 
-    def __init__(self, context: ErrorContext) -> None:
+    def __init__(
+        self,
+        context: ErrorContext,
+    ) -> None:
         super().__init__(context.message)
         self.context: Final[ErrorContext] = context
 
@@ -82,13 +85,24 @@ class UnknownFileTypeError(TopmarkError):
     type view.
     """
 
-    def __init__(self, *, file_type: str, path: Path | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        file_type: str,
+        path: Path | None = None,
+    ) -> None:
         msg: str = (
             f"Unknown file type identifier: {file_type}"
             if path is None
             else f"Unknown file type identifier for {path}: {file_type}"
         )
-        super().__init__(ErrorContext(message=msg, path=path, file_type=file_type))
+        super().__init__(
+            ErrorContext(
+                message=msg,
+                path=path,
+                qualified_key=file_type,
+            )
+        )
         self.file_type: Final[str] = file_type
 
 
@@ -100,14 +114,19 @@ class AmbiguousFileTypeIdentifierError(TopmarkError):
     explicit qualified identifier of the form ``"<namespace>:<name>"``.
     """
 
-    def __init__(self, *, file_type: str, candidates: tuple[str, ...]) -> None:
+    def __init__(
+        self,
+        *,
+        file_type: str,
+        candidates: tuple[str, ...],
+    ) -> None:
         message: str = (
             f"Ambiguous file type identifier: {file_type} (candidates: {', '.join(candidates)})"
         )
         super().__init__(
             ErrorContext(
                 message=message,
-                file_type=file_type,
+                qualified_key=file_type,
                 details=tuple(f"candidate={candidate}" for candidate in candidates),
             )
         )
@@ -148,7 +167,7 @@ class InvalidRegistryIdentityError(TopmarkError):
         super().__init__(
             ErrorContext(
                 message=message,
-                file_type=identifier or local_key,
+                qualified_key=identifier or local_key,
                 details=tuple(details),
             )
         )
@@ -174,7 +193,11 @@ class ReservedNamespaceError(TopmarkError):
         entities: str,
         owner_module: str | None = None,
     ) -> None:
-        details: list[str] = [f"namespace={namespace}", f"owner={owner}", f"entities={entities}"]
+        details: list[str] = [
+            f"namespace={namespace}",
+            f"owner={owner}",
+            f"entities={entities}",
+        ]
         if owner_module is not None:
             details.append(f"owner_module={owner_module}")
 
@@ -203,8 +226,18 @@ class ProcessorBindingError(TopmarkError):
     recovery.
     """
 
-    def __init__(self, *, message: str, file_type: str | None = None) -> None:
-        super().__init__(ErrorContext(message=message, file_type=file_type))
+    def __init__(
+        self,
+        *,
+        message: str,
+        file_type: str | None = None,
+    ) -> None:
+        super().__init__(
+            ErrorContext(
+                message=message,
+                qualified_key=file_type,
+            )
+        )
         self.file_type: Final[str | None] = file_type
 
 
@@ -213,25 +246,39 @@ class ProcessorRegistrationError(TopmarkError):
 
     Args:
         message: Human-readable error message.
-        file_type: File type name associated with the failed registration.
+        qualified_key: Processor qualified key associated with the failed registration.
     """
 
-    def __init__(self, *, message: str, file_type: str) -> None:
-        super().__init__(ErrorContext(message=message, file_type=file_type))
-        self.file_type: Final[str] = file_type
+    def __init__(
+        self,
+        *,
+        message: str,
+        qualified_key: str,
+    ) -> None:
+        super().__init__(
+            ErrorContext(
+                message=message,
+                qualified_key=qualified_key,
+            )
+        )
+        self.qualified_key: Final[str] = qualified_key
 
 
 class DuplicateProcessorRegistrationError(ProcessorRegistrationError):
-    """Raised when a processor is already registered for a given file type.
+    """Raised when a processor qualified key is already registered.
 
     This condition may be recoverable depending on caller policy, for example by
-    unregistering or replacing the existing overlay entry before retrying.
+    unregistering or replacing the existing entry before retrying.
     """
 
-    def __init__(self, *, file_type: str) -> None:
+    def __init__(
+        self,
+        *,
+        qualified_key: str,
+    ) -> None:
         super().__init__(
-            message=f"File type '{file_type}' already has a registered processor.",
-            file_type=file_type,
+            message=f"Processor '{qualified_key}' is already registered.",
+            qualified_key=qualified_key,
         )
 
 
@@ -257,8 +304,8 @@ class DuplicateProcessorKeyError(TopmarkError):
         super().__init__(
             ErrorContext(
                 message=message,
+                qualified_key=qualified_key,
                 details=(
-                    f"qualified_key={qualified_key}",
                     f"existing_class={existing_class}",
                     f"new_class={new_class}",
                 ),
@@ -277,11 +324,22 @@ class UnsupportedFileTypeError(TopmarkError):
     handling.
     """
 
-    def __init__(self, *, file_type: str, path: Path | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        file_type: str,
+        path: Path | None = None,
+    ) -> None:
         msg: str = (
             f"Unsupported file type: {file_type}"
             if path is None
             else f"Unsupported file type for {path}: {file_type}"
         )
-        super().__init__(ErrorContext(message=msg, path=path, file_type=file_type))
+        super().__init__(
+            ErrorContext(
+                message=msg,
+                path=path,
+                qualified_key=file_type,
+            )
+        )
         self.file_type: Final[str] = file_type

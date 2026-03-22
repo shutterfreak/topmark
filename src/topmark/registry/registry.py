@@ -331,7 +331,6 @@ class Registry:
             DuplicateProcessorRegistrationError,
             ReservedNamespaceError,
             TypeError,
-            RuntimeError,
         ):
             return False
         except (
@@ -347,16 +346,57 @@ class Registry:
 
     @staticmethod
     def unregister_processor(local_key: str) -> bool:
-        """Unregister a header processor by local_key (advanced)."""
+        """Remove the binding for a file type local key without deleting the processor definition.
+
+        Args:
+            local_key: File type local key whose binding should be removed.
+
+        Returns:
+            ``True`` if a binding existed and was removed, else ``False``.
+
+        Notes:
+            This helper intentionally only removes the binding from the resolved
+            file type to its processor. Processor definitions are identity-level
+            registry entries and may still be shared by other file types.
+        """
         ft_obj: FileType | None = FileTypeRegistry.resolve_filetype_id(local_key)
         if ft_obj is None:
             return False
+        return BindingRegistry.unbind(ft_obj.qualified_key)
 
-        processor_qualified_key: str | None = BindingRegistry.get_processor_key_for_filetype(
-            ft_obj.qualified_key,
+    @staticmethod
+    def unregister_processor_by_qualified_key(
+        qualified_key: str,
+        *,
+        remove_bindings: bool = False,
+    ) -> bool:
+        """Unregister a processor definition by qualified key.
+
+        Args:
+            qualified_key: Processor qualified key to unregister.
+            remove_bindings: If ``True``, remove all existing bindings that point
+                to the processor before unregistering it. If ``False``, the
+                processor is only unregistered when no file types are currently
+                bound to it.
+
+        Returns:
+            ``True`` if the processor definition was unregistered, else ``False``.
+
+        Notes:
+            This helper operates at the processor-identity level. Most callers
+            that are working from a file type should prefer `unregister_processor()`
+            to remove a single file type binding. Use `remove_bindings=True` to
+            explicitly clear all bindings that currently reference the processor
+            before unregistering it.
+        """
+        bound_filetype_qks: tuple[str, ...] = BindingRegistry.get_filetype_keys_for_processor(
+            qualified_key,
         )
-        if processor_qualified_key is None:
+
+        if bound_filetype_qks and not remove_bindings:
             return False
 
-        BindingRegistry.unbind(ft_obj.qualified_key)
-        return HeaderProcessorRegistry.unregister_by_qualified_key(processor_qualified_key)
+        if remove_bindings:
+            BindingRegistry.unbind_processor(qualified_key)
+
+        return HeaderProcessorRegistry.unregister_by_qualified_key(qualified_key)

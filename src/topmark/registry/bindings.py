@@ -168,6 +168,57 @@ class BindingRegistry:
             return cls._compose().get(filetype_qualified_key)
 
     @classmethod
+    def get_filetype_keys_for_processor(cls, processor_qualified_key: str) -> tuple[str, ...]:
+        """Return file type qualified keys currently bound to a processor.
+
+        Args:
+            processor_qualified_key: Processor qualified key.
+
+        Returns:
+            Sorted tuple of file type qualified keys currently bound to the
+            processor.
+        """
+        with cls._lock:
+            return tuple(
+                sorted(
+                    filetype_qk
+                    for filetype_qk, processor_qk in cls._compose().items()
+                    if processor_qk == processor_qualified_key
+                )
+            )
+
+    @classmethod
+    def is_processor_bound(cls, processor_qualified_key: str) -> bool:
+        """Return whether a processor qualified key is referenced by any binding."""
+        with cls._lock:
+            return any(
+                processor_qk == processor_qualified_key for processor_qk in cls._compose().values()
+            )
+
+    @classmethod
+    def unbind_processor(cls, processor_qualified_key: str) -> tuple[str, ...]:
+        """Remove all bindings that currently reference a processor.
+
+        Args:
+            processor_qualified_key: Processor qualified key.
+
+        Returns:
+            Sorted tuple of file type qualified keys that were unbound.
+        """
+        with cls._lock:
+            filetype_qks: tuple[str, ...] = tuple(
+                sorted(
+                    filetype_qk
+                    for filetype_qk, processor_qk in cls._compose().items()
+                    if processor_qk == processor_qualified_key
+                )
+            )
+            for filetype_qk in filetype_qks:
+                cls._overrides.pop(filetype_qk, None)
+                cls._removals.add(filetype_qk)
+            return filetype_qks
+
+    @classmethod
     def is_bound(cls, filetype_qualified_key: str) -> bool:
         """Return whether a file type qualified key currently has a binding."""
         with cls._lock:

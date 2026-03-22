@@ -326,7 +326,7 @@ class HeaderProcessorRegistry:
             qualified_key: str = proc_def.qualified_key
 
             if qualified_key in cls._compose_by_qualified_key():
-                raise DuplicateProcessorRegistrationError(file_type=qualified_key)
+                raise DuplicateProcessorRegistrationError(qualified_key=qualified_key)
 
             cls._removals.discard(qualified_key)
             cls._overrides[qualified_key] = proc_def
