@@ -177,32 +177,33 @@ def get_base_processor_binding_registry() -> dict[str, str]:
 def get_base_processor_definition_registry() -> dict[str, ProcessorDefinition]:
     """Build and cache the base processor-definition registry.
 
-    The returned mapping is keyed by file type local key for compatibility with
-    the current composed `HeaderProcessorRegistry` view. Values are processor
-    definitions derived directly from the explicit built-in processor bindings.
+    The returned mapping is keyed by processor qualified key. Values are
+    processor definitions derived directly from the explicit built-in processor
+    bindings.
 
     Returns:
-        Base mapping of file type local key to `ProcessorDefinition`.
+        Base mapping of processor qualified key to `ProcessorDefinition`.
 
     Raises:
-        ProcessorBindingError: If multiple bindings target the same file type
-            local key.
+        ProcessorBindingError: If multiple built-in bindings resolve to the same
+            processor qualified key but reference different processor classes.
     """
     registry: dict[str, ProcessorDefinition] = {}
 
     for binding in get_builtin_processor_bindings():
-        file_type_name: str = binding.file_type_name
-        if file_type_name in registry:
-            raise ProcessorBindingError(
-                message=f"Duplicate processor binding for file type: {file_type_name}",
-                file_type=file_type_name,
-            )
-
-        registry[file_type_name] = ProcessorDefinition(
+        proc_def = ProcessorDefinition(
             namespace=binding.namespace,
             local_key=binding.processor_class.local_key,
             processor_class=binding.processor_class,
         )
+        qualified_key: str = proc_def.qualified_key
+        existing: ProcessorDefinition | None = registry.get(qualified_key)
+        if existing is not None and existing.processor_class is not proc_def.processor_class:
+            raise ProcessorBindingError(
+                message=(f"Duplicate processor definition for qualified key: {qualified_key}"),
+                file_type=qualified_key,
+            )
+        registry[qualified_key] = proc_def
 
     return registry
 

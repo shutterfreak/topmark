@@ -46,7 +46,7 @@ def test_filetypes_mapping_is_readonly() -> None:
 
 def test_processors_mapping_is_readonly() -> None:
     """Registry processors mapping is read-only (raises on attempted mutation)."""
-    procs: Mapping[str, object] = Registry.processors()
+    procs: Mapping[str, object] = Registry.processors_by_qualified_key()
     assert isinstance(procs, Mapping)
     # Mapping proxy must raise on mutation
     try:

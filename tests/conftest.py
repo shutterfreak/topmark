@@ -460,27 +460,35 @@ def patched_effective_registries(
     filetypes: Mapping[str, FileType],
     processors: Mapping[str, HeaderProcessor | ProcessorDefinition],
 ) -> Iterator[None]:
-    """Temporarily override the *effective* registries used by TopMark.
+    """Temporarily override the effective registries used by TopMark.
 
     This helper patches the composed registry views returned by
-    `FileTypeRegistry.as_mapping()` and `HeaderProcessorRegistry.as_mapping()` by
-    overriding the internal `_compose()` classmethods used to build the composed views.
+    `FileTypeRegistry.as_mapping()`,
+    `FileTypeRegistry.as_mapping_by_qualified_key()`, and
+    `HeaderProcessorRegistry.as_mapping_by_qualified_key()` by overriding the
+    internal composition classmethods used to build those views.
 
     Use this in tests that need deterministic, minimal registries without
     depending on built-in file types/processors or plugin discovery.
 
     Notes:
-        - This overrides the composition function only; overlays remain reset
+        - This overrides the composition functions only; overlays remain reset
           by the autouse fixture (or are irrelevant while patched).
         - Cache is cleared before patch, after patch, and again on restore.
+        - The `processors` input is still keyed by file type local key for test
+          convenience, but processor definitions are normalized into the new
+          qualified-key registry shape before patching.
 
     Args:
-        filetypes: Effective file type registry to expose for the duration of the context.
-        processors: Effective header processor registry to expose for the duration of the context.
+        filetypes: Effective file type registry to expose for the duration of
+            the context, keyed by file type local key.
+        processors: Effective processor registry input keyed by file type local
+            key for test convenience. Values may be runtime `HeaderProcessor`
+            instances or `ProcessorDefinition` objects.
 
     Yields:
-        None: This context manager yields control to the caller while the effective
-        registries are patched.
+        None: Control is yielded to the caller while the effective registries
+        are patched.
     """
     from topmark.registry.bindings import BindingRegistry
     from topmark.registry.filetypes import FileTypeRegistry
@@ -490,23 +498,26 @@ def patched_effective_registries(
     ft_reg = cast("Any", FileTypeRegistry)
     hp_reg = cast("Any", HeaderProcessorRegistry)
 
-    # Normalize processors to ProcessorDefinition
-    processor_defs: dict[str, ProcessorDefinition] = {}
+    # Normalize processors into the canonical qualified-key registry shape.
+    processor_defs_by_filetype: dict[str, ProcessorDefinition] = {}
+    processor_defs_by_qualified_key: dict[str, ProcessorDefinition] = {}
     for file_type_local_key, processor in processors.items():
         if isinstance(processor, ProcessorDefinition):
-            processor_defs[file_type_local_key] = processor
+            proc_def: ProcessorDefinition = processor
         else:
             proc_cls = type(processor)
-            processor_defs[file_type_local_key] = ProcessorDefinition(
+            proc_def = ProcessorDefinition(
                 namespace=proc_cls.namespace,
                 local_key=proc_cls.local_key,
                 processor_class=proc_cls,
             )
+        processor_defs_by_filetype[file_type_local_key] = proc_def
+        processor_defs_by_qualified_key[proc_def.qualified_key] = proc_def
 
-    # Some tests intentionally use mismatched processor keys; in those cases we should not invent a
-    # binding for a file type that is not present.
+    # Some tests intentionally use mismatched processor keys; in those cases we
+    # should not invent a binding for a file type that is not present.
     binding_map: dict[str, str] = {}
-    for file_type_local_key, proc_def in processor_defs.items():
+    for file_type_local_key, proc_def in processor_defs_by_filetype.items():
         file_type: FileType | None = filetypes.get(file_type_local_key)
         if file_type is None:
             continue
@@ -515,21 +526,28 @@ def patched_effective_registries(
     ft_reg._clear_cache()
     hp_reg._clear_cache()
 
-    # Save the original compose hooks
+    # Save the original compose hooks.
     orig_ft_compose = ft_reg._compose
-    orig_hp_compose = hp_reg._compose
-    orig_binding_compose: Callable[[], dict[str, str]] = BindingRegistry._compose  # pyright: ignore[reportPrivateUsage]
+    orig_ft_compose_by_qualified_key = ft_reg._compose_by_qualified_key
+    orig_hp_compose_by_qualified_key = hp_reg._compose_by_qualified_key
+    orig_binding_compose: Callable[..., dict[str, str]] = BindingRegistry._compose  # pyright: ignore[reportPrivateUsage]
 
     try:
         ft_reg._compose = classmethod(lambda cls: dict(filetypes))
-        hp_reg._compose = classmethod(lambda cls: dict(processor_defs))
+        ft_reg._compose_by_qualified_key = classmethod(
+            lambda cls: {ft.qualified_key: ft for ft in filetypes.values()}
+        )
+        hp_reg._compose_by_qualified_key = classmethod(
+            lambda cls: dict(processor_defs_by_qualified_key)
+        )
         BindingRegistry._compose = classmethod(lambda cls: dict(binding_map))  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
         ft_reg._clear_cache()
         hp_reg._clear_cache()
         yield
     finally:
         ft_reg._compose = orig_ft_compose
-        hp_reg._compose = orig_hp_compose
+        ft_reg._compose_by_qualified_key = orig_ft_compose_by_qualified_key
+        hp_reg._compose_by_qualified_key = orig_hp_compose_by_qualified_key
         BindingRegistry._compose = orig_binding_compose  # pyright: ignore[reportPrivateUsage]
         ft_reg._clear_cache()
         hp_reg._clear_cache()

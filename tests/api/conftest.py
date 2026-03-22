@@ -26,10 +26,9 @@ from tests.conftest import registry_processor_class
 from topmark import api
 from topmark.api.protocols import PublicPolicy
 from topmark.config.keys import Toml
-from topmark.filetypes.model import FileType
-from topmark.processors.base import HeaderProcessor
 from topmark.processors.types import BoundsKind
 from topmark.processors.types import HeaderBounds
+from topmark.registry.bindings import BindingRegistry
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
 from topmark.registry.registry import Registry
@@ -42,6 +41,7 @@ if TYPE_CHECKING:
 
     from topmark.filetypes.model import FileType
     from topmark.processors.base import HeaderProcessor
+    from topmark.registry.types import ProcessorDefinition
 
 
 # --- File reading ---
@@ -163,25 +163,31 @@ def api_strip_dir(
 
 
 @pytest.fixture()
-def register_pair() -> Iterator[Callable[[str], tuple[str, FileType]]]:
-    """Factory: register (FT + processor) under a given name; auto-cleanup after test."""
-    registered: list[str] = []
+def register_pair() -> Iterator[Callable[[str], tuple[str, FileType, str]]]:
+    """Factory: register a file type, processor definition, and binding; auto-cleanup after test."""
+    registered: list[tuple[str, str]] = []
 
-    def _make(name: str) -> tuple[str, FileType]:
+    def _make(name: str) -> tuple[str, FileType, str]:
         ft: FileType = make_file_type(local_key=name)
         FileTypeRegistry.register(ft)
-        HeaderProcessorRegistry.register(
-            file_type=ft,
+        proc_def: ProcessorDefinition = HeaderProcessorRegistry.register(
             processor_class=registry_processor_class(),
         )
-        registered.append(name)
-        return name, ft
+        BindingRegistry.bind(
+            filetype_qualified_key=ft.qualified_key,
+            processor_qualified_key=proc_def.qualified_key,
+        )
+        registered.append((name, proc_def.qualified_key))
+        return name, ft, proc_def.qualified_key
 
     try:
         yield _make
     finally:
-        for name in registered:
-            HeaderProcessorRegistry.unregister(name)
+        for name, processor_qualified_key in registered:
+            ft_obj: FileType | None = FileTypeRegistry.resolve_filetype_id(name)
+            if ft_obj is not None:
+                BindingRegistry.unbind(ft_obj.qualified_key)
+            HeaderProcessorRegistry.unregister_by_qualified_key(processor_qualified_key)
             FileTypeRegistry.unregister(name)
 
 

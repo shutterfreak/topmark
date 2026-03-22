@@ -79,80 +79,54 @@ def test_filetype_register_duplicate_raises() -> None:
 
 @pytest.mark.parametrize("proc_name", ["dummy_proc"])
 def test_processor_register_unregister_roundtrip(proc_name: str) -> None:
-    """Register a stub processor under a new name and then unregister it."""
-    ft: FileType = make_file_type(local_key=proc_name)
-    FileTypeRegistry.register(ft)
-
+    """Register a stub processor definition and then unregister it by qualified key."""
     proc_cls: type[HeaderProcessor] = registry_processor_class()
 
+    proc_def: ProcessorDefinition = HeaderProcessorRegistry.register(
+        processor_class=proc_cls,
+    )
     try:
-        HeaderProcessorRegistry.register(
-            processor_class=proc_cls,
-            file_type=ft,
-        )
-        proc_def: ProcessorDefinition = HeaderProcessorRegistry.as_mapping()[proc_name]
+        assert proc_def.qualified_key in HeaderProcessorRegistry.as_mapping_by_qualified_key()
         names: set[str] = {m.local_key for m in HeaderProcessorRegistry.iter_meta()}
         assert proc_def.local_key in names
     finally:
-        assert HeaderProcessorRegistry.unregister(proc_name) is True
-        assert proc_name not in HeaderProcessorRegistry.names()
-        FileTypeRegistry.unregister(proc_name)
+        assert HeaderProcessorRegistry.unregister_by_qualified_key(proc_def.qualified_key) is True
+        assert proc_def.qualified_key not in HeaderProcessorRegistry.as_mapping_by_qualified_key()
 
 
 def test_processor_register_duplicate_raises() -> None:
-    """Registering a processor under an existing name should raise.
-
-    Regustering under an expsting name raises DuplicateProcessorRegistrationError.
-    """
-    name = "dup_proc"
-
-    ft: FileType = make_file_type(local_key=name)
-    FileTypeRegistry.register(ft)
-
+    """Registering the same processor qualified key twice should raise."""
     proc_cls: type[HeaderProcessor] = registry_processor_class()
-
+    proc_def: ProcessorDefinition = HeaderProcessorRegistry.register(
+        processor_class=proc_cls,
+    )
     try:
-        HeaderProcessorRegistry.register(
-            processor_class=proc_cls,
-            file_type=ft,
-        )
         with pytest.raises(DuplicateProcessorRegistrationError):
             HeaderProcessorRegistry.register(
                 processor_class=proc_cls,
-                file_type=ft,
             )
     finally:
-        HeaderProcessorRegistry.unregister(name)
-        FileTypeRegistry.unregister(name)
+        HeaderProcessorRegistry.unregister_by_qualified_key(proc_def.qualified_key)
 
 
 def test_replace_processor_requires_unregister() -> None:
-    """Verifies you can’t register a second processor without first unregistering."""
-    name = "replace_proc_demo"
-
-    FileTypeRegistry.register(make_file_type(local_key=name))
+    """Verifies you can’t register the same processor twice without first unregistering it."""
+    cls1: type[HeaderProcessor] = registry_processor_class()
+    proc_def1: ProcessorDefinition = HeaderProcessorRegistry.register(
+        processor_class=cls1,
+    )
     try:
-        cls1: type[HeaderProcessor] = registry_processor_class()
-        cls2: type[HeaderProcessor] = registry_processor_class()
-        HeaderProcessorRegistry.register(
-            processor_class=cls1,
-            file_type=FileTypeRegistry.as_mapping()[name],
-        )
-        import pytest
-
         with pytest.raises(DuplicateProcessorRegistrationError):
             HeaderProcessorRegistry.register(
-                processor_class=cls2,
-                file_type=FileTypeRegistry.as_mapping()[name],
+                processor_class=cls1,
             )
-        assert HeaderProcessorRegistry.unregister(name) is True
-        HeaderProcessorRegistry.register(
-            processor_class=cls2,
-            file_type=FileTypeRegistry.as_mapping()[name],
-        )  # now OK
+        assert HeaderProcessorRegistry.unregister_by_qualified_key(proc_def1.qualified_key) is True
+        proc_def2: ProcessorDefinition = HeaderProcessorRegistry.register(
+            processor_class=cls1,
+        )
+        HeaderProcessorRegistry.unregister_by_qualified_key(proc_def2.qualified_key)
     finally:
-        HeaderProcessorRegistry.unregister(name)
-        FileTypeRegistry.unregister(name)
+        HeaderProcessorRegistry.unregister_by_qualified_key(proc_def1.qualified_key)
 
 
 def test_filetype_as_mapping_is_readonly() -> None:

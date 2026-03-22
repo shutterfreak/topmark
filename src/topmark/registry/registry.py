@@ -97,17 +97,6 @@ class Registry:
         return FileTypeRegistry.as_mapping_by_qualified_key()
 
     @staticmethod
-    def processors() -> Mapping[str, ProcessorDefinition]:
-        """Return a compatibility mapping of processor definitions keyed by file type local key.
-
-        The mapping is a ``MappingProxyType`` and must not be mutated.
-        This view exists for backward compatibility during the current registry
-        migration. The canonical identity-oriented processor view is
-        `processors_by_qualified_key()`.
-        """
-        return HeaderProcessorRegistry.as_mapping()
-
-    @staticmethod
     def processors_by_qualified_key() -> Mapping[str, ProcessorDefinition]:
         """Return the canonical processor-definition mapping keyed by qualified key.
 
@@ -203,25 +192,15 @@ class Registry:
             processor_class: Optional `HeaderProcessor` class to register and
                 bind to the registered file type.
 
-        Raises:
-            RuntimeError: If processor registration succeeds but does not yield a
-                processor definition for the registered file type.
-
         Notes:
             This mutates global overlay state. Prefer temporary usage in tests or
             controlled initialization code, with explicit cleanup when needed.
         """
         FileTypeRegistry.register(ft_obj)
         if processor_class is not None:
-            HeaderProcessorRegistry.register(
-                file_type=ft_obj,
+            proc_def: ProcessorDefinition = HeaderProcessorRegistry.register(
                 processor_class=processor_class,
             )
-            proc_def: ProcessorDefinition | None = HeaderProcessorRegistry.get(ft_obj.local_key)
-            if proc_def is None:
-                raise RuntimeError(
-                    f"Processor registration did not produce a definition for '{ft_obj.local_key}'."
-                )
             BindingRegistry.bind(
                 filetype_qualified_key=ft_obj.qualified_key,
                 processor_qualified_key=proc_def.qualified_key,
@@ -260,8 +239,12 @@ class Registry:
             InvalidRegistryIdentityError: If `file_type_id` is malformed.
             UnknownFileTypeError: If `file_type_id` does not resolve to a
                 registered file type.
-            RuntimeError: If processor registration succeeds but does not yield a
-                processor definition for the resolved file type.
+            DuplicateProcessorRegistrationError: If the effective registry already contains a
+                processor for the same qualified key.
+            TypeError: If processor_class is not a valid HeaderProcessor subclass or if its identity
+                is malformed.
+            ReservedNamespaceError: If the reserved built-in topmark namespace is used by an
+                ineligible external processor class.
         """
         try:
             # Propagate ambiguity explicitly so the public facade documents it accurately.
@@ -274,19 +257,22 @@ class Registry:
             # file type identifier; silently ignoring mistakes would be surprising.
             raise UnknownFileTypeError(file_type=file_type_id)
 
-        HeaderProcessorRegistry.register(
-            file_type=ft_obj,
-            processor_class=processor_class,
-        )
-        proc_def: ProcessorDefinition | None = HeaderProcessorRegistry.get(ft_obj.local_key)
-        if proc_def is None:
-            raise RuntimeError(
-                f"Processor registration did not produce a definition for '{ft_obj.local_key}'."
+        proc_def: ProcessorDefinition | None = None
+        try:
+            proc_def = HeaderProcessorRegistry.register(
+                processor_class=processor_class,
             )
-        BindingRegistry.bind(
-            filetype_qualified_key=ft_obj.qualified_key,
-            processor_qualified_key=proc_def.qualified_key,
-        )
+            BindingRegistry.bind(
+                filetype_qualified_key=ft_obj.qualified_key,
+                processor_qualified_key=proc_def.qualified_key,
+            )
+        except (  # noqa: TRY203
+            DuplicateProcessorRegistrationError,
+            ReservedNamespaceError,
+            TypeError,
+        ):
+            raise
+
         return None
 
     @staticmethod
@@ -332,14 +318,11 @@ class Registry:
         if BindingRegistry.is_bound(ft_obj.qualified_key):
             return False
 
+        proc_def: ProcessorDefinition | None = None
         try:
-            HeaderProcessorRegistry.register(
-                file_type=ft_obj,
+            proc_def = HeaderProcessorRegistry.register(
                 processor_class=processor_class,
             )
-            proc_def: ProcessorDefinition | None = HeaderProcessorRegistry.get(ft_obj.local_key)
-            if proc_def is None:
-                return False
             BindingRegistry.bind(
                 filetype_qualified_key=ft_obj.qualified_key,
                 processor_qualified_key=proc_def.qualified_key,
@@ -356,7 +339,8 @@ class Registry:
             UnknownFileTypeError,
         ):
             # Roll-back
-            HeaderProcessorRegistry.unregister(ft_obj.local_key)
+            if proc_def:
+                HeaderProcessorRegistry.unregister_by_qualified_key(proc_def.qualified_key)
             return False
 
         return True
@@ -365,6 +349,14 @@ class Registry:
     def unregister_processor(local_key: str) -> bool:
         """Unregister a header processor by local_key (advanced)."""
         ft_obj: FileType | None = FileTypeRegistry.resolve_filetype_id(local_key)
-        if ft_obj is not None:
-            BindingRegistry.unbind(ft_obj.qualified_key)
-        return HeaderProcessorRegistry.unregister(local_key)
+        if ft_obj is None:
+            return False
+
+        processor_qualified_key: str | None = BindingRegistry.get_processor_key_for_filetype(
+            ft_obj.qualified_key,
+        )
+        if processor_qualified_key is None:
+            return False
+
+        BindingRegistry.unbind(ft_obj.qualified_key)
+        return HeaderProcessorRegistry.unregister_by_qualified_key(processor_qualified_key)

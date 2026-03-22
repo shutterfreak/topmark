@@ -27,18 +27,16 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from tests.conftest import make_file_type
 from topmark.constants import TOPMARK_NAMESPACE
 from topmark.constants import VALID_REGISTRY_TOKEN_RE
-from topmark.core.errors import DuplicateProcessorKeyError
+from topmark.core.errors import DuplicateProcessorRegistrationError
 from topmark.processors.base import HeaderProcessor
-from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
+from topmark.registry.types import ProcessorDefinition
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from topmark.filetypes.model import FileType
     from topmark.registry.types import ProcessorDefinition
 
 TOKEN_RE: re.Pattern[str] = re.compile(f"^{VALID_REGISTRY_TOKEN_RE}$")
@@ -193,13 +191,7 @@ def test_init_subclass_rejects_invalid_key_token() -> None:
 
 
 def test_registry_compose_rejects_duplicate_qualified_key_for_different_classes() -> None:
-    """Reject two different processor classes sharing the same qualified key.
-
-    The composed registry is keyed by file type name, so multiple instances of the *same*
-    processor class may appear (one per file type). That is allowed.
-
-    But two different classes claiming the same qualified key is a conflict.
-    """
+    """Reject two different processor classes sharing the same qualified key."""
 
     class _ProcA(HeaderProcessor):
         namespace = "testns"
@@ -215,37 +207,20 @@ def test_registry_compose_rejects_duplicate_qualified_key_for_different_classes(
         def process(self, text: str) -> str:
             return text
 
-    ft1: FileType = make_file_type(
-        local_key="ft_dup_1",
+    proc_def: ProcessorDefinition = HeaderProcessorRegistry.register(
+        processor_class=_ProcA,
     )
-    FileTypeRegistry.register(ft1)
-    ft2: FileType = make_file_type(
-        local_key="ft_dup_2",
-    )
-    FileTypeRegistry.register(ft2)
-
     try:
-        HeaderProcessorRegistry.register(
-            file_type=ft1,
-            processor_class=_ProcA,
-        )
-        HeaderProcessorRegistry.register(
-            file_type=ft2,
-            processor_class=_ProcB,
-        )
-
-        # composition must fail because qk is the same but classes differ
-        with pytest.raises(DuplicateProcessorKeyError):
-            _ = HeaderProcessorRegistry.as_mapping()
+        with pytest.raises(DuplicateProcessorRegistrationError):
+            HeaderProcessorRegistry.register(
+                processor_class=_ProcB,
+            )
     finally:
-        HeaderProcessorRegistry.unregister(ft1.local_key)
-        HeaderProcessorRegistry.unregister(ft2.local_key)
-        FileTypeRegistry.unregister(ft1.local_key)
-        FileTypeRegistry.unregister(ft2.local_key)
+        HeaderProcessorRegistry.unregister_by_qualified_key(proc_def.qualified_key)
 
 
 def test_registry_compose_allows_duplicate_qualified_key_for_same_class() -> None:
-    """Allow the same processor class (same qualified key) to be bound to multiple file types."""
+    """Expose the registered processor definition through the qualified-key mapping."""
 
     class _ProcSame(HeaderProcessor):
         namespace = "testns"
@@ -254,33 +229,13 @@ def test_registry_compose_allows_duplicate_qualified_key_for_same_class() -> Non
         def process(self, text: str) -> str:
             return text
 
-    ft1: FileType = make_file_type(
-        local_key="ft_same_1",
+    proc_def: ProcessorDefinition = HeaderProcessorRegistry.register(
+        processor_class=_ProcSame,
     )
-    ft2: FileType = make_file_type(
-        local_key="ft_same_2",
-    )
-
-    FileTypeRegistry.register(ft1)
-    FileTypeRegistry.register(ft2)
-
     try:
-        HeaderProcessorRegistry.register(
-            file_type=ft1,
-            processor_class=_ProcSame,
-        )
-        HeaderProcessorRegistry.register(
-            file_type=ft2,
-            processor_class=_ProcSame,
-        )
-
-        m: Mapping[str, ProcessorDefinition] = HeaderProcessorRegistry.as_mapping()
-        assert ft1.local_key in m and ft2.local_key in m
-        assert m[ft1.local_key].processor_class is _ProcSame
-        assert m[ft2.local_key].processor_class is _ProcSame
-        assert m[ft1.local_key].qualified_key == m[ft2.local_key].qualified_key == "testns:same"
+        m: Mapping[str, ProcessorDefinition] = HeaderProcessorRegistry.as_mapping_by_qualified_key()
+        assert "testns:same" in m
+        assert m["testns:same"].processor_class is _ProcSame
+        assert m["testns:same"].qualified_key == proc_def.qualified_key == "testns:same"
     finally:
-        HeaderProcessorRegistry.unregister(ft1.local_key)
-        HeaderProcessorRegistry.unregister(ft2.local_key)
-        FileTypeRegistry.unregister(ft1.local_key)
-        FileTypeRegistry.unregister(ft2.local_key)
+        HeaderProcessorRegistry.unregister_by_qualified_key(proc_def.qualified_key)

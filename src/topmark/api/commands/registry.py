@@ -57,7 +57,7 @@ def list_filetypes(long: bool = False) -> list[FileTypeInfo]:
         For object-level access, prefer `FileTypeRegistry` from
         [`topmark.registry`][]. This function returns metadata (not the objects).
     """
-    proc_reg: Mapping[str, object] = Registry.processors()
+    proc_reg: Mapping[str, object] = Registry.processors_by_qualified_key()
 
     items: list[FileTypeInfo] = []
     for name, ft in Registry.filetypes().items():
@@ -99,7 +99,7 @@ def list_processors(long: bool = False) -> list[ProcessorInfo]:
         [`topmark.registry`][]. This function returns metadata (not the objects).
     """
     items: list[ProcessorInfo] = []
-    for name, proc_def in Registry.processors().items():
+    for name, proc_def in Registry.processors_by_qualified_key().items():
         proc_obj: HeaderProcessor = proc_def.processor_class()
         info: ProcessorInfo = {
             "name": name,

@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING
 
 from tests.conftest import make_file_type
 from tests.conftest import registry_processor_class
+from topmark.registry.bindings import BindingRegistry
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
 from topmark.registry.registry import Registry
@@ -40,8 +41,16 @@ def test_register_filetype_with_processor_in_one_step() -> None:
         proc_cls: type[HeaderProcessor] = registry_processor_class()
         Registry.register_filetype(ft, processor_class=proc_cls)
         assert name in Registry.bound_filetype_names()
-        assert HeaderProcessorRegistry.is_registered(name)
-        proc_def: ProcessorDefinition = HeaderProcessorRegistry.as_mapping()[name]
+
+        processor_qualified_key: str | None = BindingRegistry.get_processor_key_for_filetype(
+            ft.qualified_key,
+        )
+        assert processor_qualified_key is not None
+
+        proc_def: ProcessorDefinition | None = HeaderProcessorRegistry.get_by_qualified_key(
+            processor_qualified_key,
+        )
+        assert proc_def is not None
         assert proc_def.local_key == proc_cls.local_key
 
         proc: HeaderProcessor | None = Registry.resolve_processor(name)
@@ -49,5 +58,5 @@ def test_register_filetype_with_processor_in_one_step() -> None:
         assert proc.file_type is not None
         assert proc.file_type.local_key == name
     finally:
-        HeaderProcessorRegistry.unregister(name)
+        Registry.unregister_processor(name)
         FileTypeRegistry.unregister(name)

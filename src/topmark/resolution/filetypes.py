@@ -429,8 +429,6 @@ def resolve_binding_for_path(
         [`ResolvedBinding`][topmark.resolution.filetypes.ResolvedBinding]
         containing the resolved file type and associated processor.
     """
-    from topmark.registry.processors import HeaderProcessorRegistry
-
     file_type: FileType | None = resolve_file_type_for_path(
         path,
         include_file_types=include_file_types,
@@ -440,9 +438,9 @@ def resolve_binding_for_path(
         logger.warning("File '%s' cannot be resolved to a registered file type", path)
         return ResolvedBinding(None, None)
 
-    processor: HeaderProcessor | None = HeaderProcessorRegistry.resolve_for_filetype(
-        file_type,
-    )
+    from topmark.registry.registry import Registry
+
+    processor: HeaderProcessor | None = Registry.resolve_processor(file_type.qualified_key)
     if processor is None:
         logger.warning(
             "File '%s' is resolved to file type '%s' but has no registered header processor",

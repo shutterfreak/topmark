@@ -16,16 +16,15 @@ stable facade in [`topmark.registry.registry.Registry`][topmark.registry.registr
 this module primarily serves advanced integrations, plugins, and tests.
 
 Notes:
-    * Public views such as `as_mapping()`, `as_mapping_by_qualified_key()`, and
-      `iter_meta()` are derived from a composed registry (base built-ins + local
+    * Public views such as `as_mapping_by_qualified_key()` and `iter_meta()`
+      are derived from a composed registry (base built-ins + local
       overlays - removals) and are exposed as `MappingProxyType` where
       appropriate.
-    * `register()` and `unregister()` apply overlay-only changes; they do not
-      mutate the base processor-definition registry built from explicit
-      built-in bindings.
-    * During the current migration phase, the compatibility mapping returned by
-      `as_mapping()` is still keyed by `FileType.local_key`, while the canonical
-      identity-oriented processor view is `as_mapping_by_qualified_key()`.
+    * `register()` and `unregister_by_qualified_key()` apply overlay-only
+      changes; they do not mutate the base processor-definition registry built
+      from explicit built-in bindings.
+    * The canonical identity-oriented processor view is keyed by qualified key
+      and exposed via `as_mapping_by_qualified_key()`.
     * When the environment variable ``TOPMARK_VALIDATE`` is set to a truthy
       value (``1``, ``true``, ``yes``), lightweight developer validations run
       on the composed processor mapping.
@@ -52,7 +51,6 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
     from collections.abc import Mapping
 
-    from topmark.filetypes.model import FileType
     from topmark.processors.base import HeaderProcessor
 
 
@@ -151,38 +149,22 @@ class HeaderProcessorRegistry:
           effective registry.
         - Mutation hooks are intended for plugin authors and test scaffolding.
           Most integrations should consume metadata and read-only views instead.
-        - The compatibility mapping keyed by file type local key exists only
-          during the current migration phase; the qualified-key mapping is the
-          canonical identity-oriented view.
     """
 
     _lock: RLock = RLock()
     _overrides: dict[str, ProcessorDefinition] = {}
     _removals: set[str] = set()
-    _cache: Mapping[str, ProcessorDefinition] | None = None
     _cache_by_qualified_key: Mapping[str, ProcessorDefinition] | None = None
 
     @classmethod
     def _clear_cache(cls) -> None:
         """Clear cached composed processor-registry views."""
-        cls._cache = None
         cls._cache_by_qualified_key = None
 
     @classmethod
-    def _compose(cls) -> dict[str, ProcessorDefinition]:
-        """Compose the effective compatibility processor registry.
-
-        Returns:
-            Mapping of file type local key to `ProcessorDefinition`, built from
-            the base processor-definition registry plus local overlays minus
-            removals.
-
-        Raises:
-            DuplicateProcessorKeyError: If the composed compatibility mapping
-                contains the same processor qualified key for different
-                processor classes.
-        """
-        cached: Mapping[str, ProcessorDefinition] | None = cls._cache
+    def _compose_by_qualified_key(cls) -> dict[str, ProcessorDefinition]:
+        """Compose the effective processor-definition registry keyed by qualified key."""
+        cached: Mapping[str, ProcessorDefinition] | None = cls._cache_by_qualified_key
         if cached is not None:
             return dict(cached)
 
@@ -191,68 +173,41 @@ class HeaderProcessorRegistry:
         raw_base: dict[str, ProcessorDefinition] = dict(get_base_processor_definition_registry())
         base: dict[str, ProcessorDefinition] = {}
 
-        for file_type_local_key, proc_def in raw_base.items():
+        for qualified_key, proc_def in raw_base.items():
             proc_cls: type[HeaderProcessor] = _validate_processor_class(proc_def.processor_class)
-            base[file_type_local_key] = ProcessorDefinition(
+            normalized = ProcessorDefinition(
                 namespace=proc_cls.namespace,
                 local_key=proc_cls.local_key,
                 processor_class=proc_cls,
             )
+            if qualified_key != normalized.qualified_key:
+                raise DuplicateProcessorKeyError(
+                    qualified_key=qualified_key,
+                    existing_class=owner_label(proc_cls),
+                    new_class=owner_label(proc_cls),
+                )
+            base[qualified_key] = normalized
 
         base.update(cls._overrides)
-        for name in cls._removals:
-            base.pop(name, None)
+        for qualified_key in cls._removals:
+            base.pop(qualified_key, None)
 
         seen: dict[str, type[HeaderProcessor]] = {}
-        for proc_def in base.values():
-            qk: str = proc_def.qualified_key
+        for qualified_key, proc_def in base.items():
             proc_cls = proc_def.processor_class
-            existing: type[HeaderProcessor] | None = seen.get(qk)
+            existing: type[HeaderProcessor] | None = seen.get(qualified_key)
             if existing is not None and existing is not proc_cls:
                 raise DuplicateProcessorKeyError(
-                    qualified_key=qk,
+                    qualified_key=qualified_key,
                     existing_class=owner_label(existing),
                     new_class=owner_label(proc_cls),
                 )
-            seen[qk] = proc_cls
+            seen[qualified_key] = proc_cls
 
         _dev_validate_processors(base)
 
-        cls._cache = MappingProxyType(base)
+        cls._cache_by_qualified_key = MappingProxyType(base)
         return dict(base)
-
-    @classmethod
-    def _compose_by_qualified_key(cls) -> dict[str, ProcessorDefinition]:
-        """Compose the effective processor registry keyed by qualified key."""
-        cached: Mapping[str, ProcessorDefinition] | None = cls._cache_by_qualified_key
-        if cached is not None:
-            return dict(cached)
-
-        local_map: dict[str, ProcessorDefinition] = cls._compose()
-        composed: dict[str, ProcessorDefinition] = {}
-        for proc_def in local_map.values():
-            existing: ProcessorDefinition | None = composed.get(proc_def.qualified_key)
-            if existing is not None and existing.processor_class is not proc_def.processor_class:
-                raise DuplicateProcessorKeyError(
-                    qualified_key=proc_def.qualified_key,
-                    existing_class=owner_label(existing.processor_class),
-                    new_class=owner_label(proc_def.processor_class),
-                )
-            composed[proc_def.qualified_key] = proc_def
-
-        cls._cache_by_qualified_key = MappingProxyType(composed)
-        return dict(composed)
-
-    @classmethod
-    def names(cls) -> tuple[str, ...]:
-        """Return local keys from the compatibility processor mapping.
-
-        Returns:
-            Sorted tuple of file type local keys currently present in the
-            compatibility mapping.
-        """
-        with cls._lock:
-            return tuple(sorted(cls._compose().keys()))
 
     @classmethod
     def qualified_keys(cls) -> tuple[str, ...]:
@@ -279,25 +234,6 @@ class HeaderProcessorRegistry:
             )
 
     @classmethod
-    def is_registered(cls, file_type_name: str) -> bool:
-        """Return whether the compatibility mapping contains a given local key."""
-        with cls._lock:
-            return file_type_name in cls._compose()
-
-    @classmethod
-    def get(cls, local_key: str) -> ProcessorDefinition | None:
-        """Return a processor definition from the compatibility mapping.
-
-        Args:
-            local_key: File type local key used by the compatibility mapping.
-
-        Returns:
-            Matching `ProcessorDefinition`, or ``None`` if not found.
-        """
-        with cls._lock:
-            return cls._compose().get(local_key)
-
-    @classmethod
     def get_by_qualified_key(cls, qualified_key: str) -> ProcessorDefinition | None:
         """Return a processor definition by canonical qualified key.
 
@@ -309,31 +245,6 @@ class HeaderProcessorRegistry:
         """
         with cls._lock:
             return cls._compose_by_qualified_key().get(qualified_key)
-
-    @classmethod
-    def as_mapping(cls) -> Mapping[str, ProcessorDefinition]:
-        """Return the compatibility processor-definition mapping keyed by local key.
-
-        Returns:
-            Mapping of file type local key to `ProcessorDefinition`.
-
-        Notes:
-            The returned mapping is a `MappingProxyType` and must not be
-            mutated. This compatibility view exists during the current registry
-            migration; the canonical identity-oriented processor view is
-            `as_mapping_by_qualified_key()`.
-        """
-        with cls._lock:
-            cached: Mapping[str, ProcessorDefinition] | None = cls._cache
-            if cached is not None:
-                return cached
-
-            # Compose a fresh view and cache it.
-            # NOTE: tests may monkeypatch `_compose()`; do not rely on `_compose()`
-            # to populate `_cache`.
-            composed: dict[str, ProcessorDefinition] = cls._compose()
-            cls._cache = MappingProxyType(composed)
-            return cls._cache
 
     @classmethod
     def as_mapping_by_qualified_key(cls) -> Mapping[str, ProcessorDefinition]:
@@ -351,9 +262,6 @@ class HeaderProcessorRegistry:
             if cached is not None:
                 return cached
 
-            # Compose a fresh view and cache it.
-            # NOTE: tests may monkeypatch `_compose()`; do not rely on `_compose()`
-            # to populate `_cache`.
             composed: dict[str, ProcessorDefinition] = cls._compose_by_qualified_key()
             cls._cache_by_qualified_key = MappingProxyType(composed)
             return cls._cache_by_qualified_key
@@ -381,91 +289,71 @@ class HeaderProcessorRegistry:
                 )
 
     @classmethod
-    def resolve_for_filetype(cls, file_type: FileType) -> HeaderProcessor | None:
-        """Instantiate the processor currently registered for a file type.
-
-        Args:
-            file_type: File type for which a runtime processor instance is
-                requested.
-
-        Returns:
-            Newly instantiated `HeaderProcessor` bound to `file_type`, or
-            ``None`` if the compatibility mapping contains no processor for that
-            file type.
-
-        Notes:
-            This is a legacy compatibility resolver. Binding-aware runtime
-            resolution belongs in the higher-level registry facade.
-        """
-        with cls._lock:
-            proc_def: ProcessorDefinition | None = cls._compose().get(file_type.local_key)
-            if proc_def is None:
-                return None
-
-            proc_obj: HeaderProcessor = proc_def.processor_class()
-            proc_obj.file_type = file_type
-            return proc_obj
-
-    @classmethod
     def register(
         cls,
         *,
         processor_class: type[HeaderProcessor],
-        file_type: FileType,
-    ) -> None:
-        """Register a processor definition under a compatibility local key.
+    ) -> ProcessorDefinition:
+        """Register a processor definition under its qualified key.
 
         Args:
             processor_class: Concrete `HeaderProcessor` subclass to register.
-            file_type: File type whose `local_key` is used as the compatibility
-                registry key during the current migration phase.
+
+        Returns:
+            The registered `ProcessorDefinition`.
 
         Raises:
-            DuplicateProcessorRegistrationError: If the compatibility mapping
-                already contains a processor for `file_type.local_key`.
+            DuplicateProcessorRegistrationError: If the effective registry
+                already contains a processor for the same qualified key.
+            TypeError: If `processor_class` is not a valid `HeaderProcessor`
+                subclass or if its identity is malformed.
+            ReservedNamespaceError: If the reserved built-in ``topmark``
+                namespace is used by an ineligible external processor class.
         """
         with cls._lock:
-            file_type_local_key: str = file_type.local_key
-            proc_cls: type[HeaderProcessor] = _validate_processor_class(processor_class)
-
-            # Check composed view to avoid dupes
-            if file_type_local_key in cls._compose():
-                raise DuplicateProcessorRegistrationError(
-                    file_type=file_type_local_key,
-                )
-
+            try:
+                proc_cls: type[HeaderProcessor] = _validate_processor_class(processor_class)
+            except (  # noqa: TRY203
+                ReservedNamespaceError,
+                TypeError,
+            ):
+                raise
             proc_def = ProcessorDefinition(
                 namespace=proc_cls.namespace,
                 local_key=proc_cls.local_key,
                 processor_class=proc_cls,
             )
+            qualified_key: str = proc_def.qualified_key
 
-            cls._removals.discard(file_type_local_key)
-            cls._overrides[file_type_local_key] = proc_def
+            if qualified_key in cls._compose_by_qualified_key():
+                raise DuplicateProcessorRegistrationError(file_type=qualified_key)
+
+            cls._removals.discard(qualified_key)
+            cls._overrides[qualified_key] = proc_def
             cls._clear_cache()
+            return proc_def
 
     @classmethod
-    def unregister(cls, local_key: str) -> bool:
-        """Remove a processor definition from the compatibility mapping.
+    def unregister_by_qualified_key(cls, qualified_key: str) -> bool:
+        """Remove a processor definition from the effective registry by qualified key.
 
         Args:
-            local_key: Compatibility key to remove.
+            qualified_key: Processor qualified key to remove.
 
         Returns:
             ``True`` if the processor definition was present in the effective
-            compatibility view, else ``False``.
+            registry, else ``False``.
 
         Notes:
             This mutates process-global registry overlay state.
         """
         with cls._lock:
             existed = False
-            if local_key in cls._overrides:
-                cls._overrides.pop(local_key, None)
+            if qualified_key in cls._overrides:
+                cls._overrides.pop(qualified_key, None)
                 existed = True
-            # Mark for removal from the composed view (including base entries).
-            if local_key in cls._compose():
-                cls._removals.add(local_key)
+            if qualified_key in cls._compose_by_qualified_key():
+                cls._removals.add(qualified_key)
                 existed = True
             cls._clear_cache()
             return existed
