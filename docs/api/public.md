@@ -120,7 +120,7 @@ registries** in \[`topmark.registry`\][topmark.registry] directly:
 - \[`topmark.registry.registry.Registry.register_processor(name, processor_class)`\][topmark.registry.registry.Registry.register_processor]
 - \[`topmark.registry.registry.Registry.try_register_processor(name, processor_class)`\][topmark.registry.registry.Registry.try_register_processor]
 - \[`topmark.registry.processors.HeaderProcessorRegistry.register(name, processor_class)`\][topmark.registry.processors.HeaderProcessorRegistry.register]
-- \[`topmark.registry.processors.HeaderProcessorRegistry.unregister(name)`\][topmark.registry.processors.HeaderProcessorRegistry.unregister]
+- \[`topmark.registry.processors.HeaderProcessorRegistry.unregister_by_qualified_key(qualified_key)`\][topmark.registry.processors.HeaderProcessorRegistry.unregister_by_qualified_key]
 
 These mutation helpers apply **overlay-only changes**: they do not mutate the internal base
 registries used to construct the effective views. Overlays are process-local and thread-safe (via an
