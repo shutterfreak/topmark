@@ -29,19 +29,25 @@ from topmark.registry.registry import Registry
 if TYPE_CHECKING:
     from topmark.filetypes.model import FileType
     from topmark.processors.base import HeaderProcessor
+    from topmark.registry.types import ProcessorDefinition
 
 
 def test_register_filetype_with_processor_in_one_step() -> None:
     """Register FT and processor in one step; verify support and binding."""
     name = "one_step"
-    ft: FileType = make_file_type(name=name)
+    ft: FileType = make_file_type(local_key=name)
     try:
         proc_cls: type[HeaderProcessor] = registry_processor_class()
         Registry.register_filetype(ft, processor_class=proc_cls)
-        assert name in Registry.supported_filetype_names()
+        assert name in Registry.bound_filetype_names()
         assert HeaderProcessorRegistry.is_registered(name)
-        proc: HeaderProcessor = HeaderProcessorRegistry.as_mapping()[name]
-        assert proc.file_type is not None and proc.file_type.local_key == name
+        proc_def: ProcessorDefinition = HeaderProcessorRegistry.as_mapping()[name]
+        assert proc_def.local_key == proc_cls.local_key
+
+        proc: HeaderProcessor | None = Registry.resolve_processor(name)
+        assert proc is not None
+        assert proc.file_type is not None
+        assert proc.file_type.local_key == name
     finally:
         HeaderProcessorRegistry.unregister(name)
         FileTypeRegistry.unregister(name)

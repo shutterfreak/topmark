@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from topmark.filetypes.model import FileType
+    from topmark.registry.types import ProcessorDefinition
 
 TOKEN_RE: re.Pattern[str] = re.compile(f"^{VALID_REGISTRY_TOKEN_RE}$")
 
@@ -215,11 +216,11 @@ def test_registry_compose_rejects_duplicate_qualified_key_for_different_classes(
             return text
 
     ft1: FileType = make_file_type(
-        name="ft_dup_1",
+        local_key="ft_dup_1",
     )
     FileTypeRegistry.register(ft1)
     ft2: FileType = make_file_type(
-        name="ft_dup_2",
+        local_key="ft_dup_2",
     )
     FileTypeRegistry.register(ft2)
 
@@ -254,10 +255,10 @@ def test_registry_compose_allows_duplicate_qualified_key_for_same_class() -> Non
             return text
 
     ft1: FileType = make_file_type(
-        name="ft_same_1",
+        local_key="ft_same_1",
     )
     ft2: FileType = make_file_type(
-        name="ft_same_2",
+        local_key="ft_same_2",
     )
 
     FileTypeRegistry.register(ft1)
@@ -273,10 +274,10 @@ def test_registry_compose_allows_duplicate_qualified_key_for_same_class() -> Non
             processor_class=_ProcSame,
         )
 
-        m: Mapping[str, HeaderProcessor] = HeaderProcessorRegistry.as_mapping()
+        m: Mapping[str, ProcessorDefinition] = HeaderProcessorRegistry.as_mapping()
         assert ft1.local_key in m and ft2.local_key in m
-        assert type(m[ft1.local_key]) is _ProcSame
-        assert type(m[ft2.local_key]) is _ProcSame
+        assert m[ft1.local_key].processor_class is _ProcSame
+        assert m[ft2.local_key].processor_class is _ProcSame
         assert m[ft1.local_key].qualified_key == m[ft2.local_key].qualified_key == "testns:same"
     finally:
         HeaderProcessorRegistry.unregister(ft1.local_key)

@@ -31,17 +31,21 @@ See Also:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from topmark.filetypes.model import FileType
+from topmark.registry.bindings import BindingRegistry
 from topmark.registry.filetypes import FileTypeRegistry
+from topmark.registry.types import ProcessorDefinition
 from topmark.utils.introspection import format_callable_pretty
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from topmark.filetypes.model import FileType
-    from topmark.processors.base import HeaderProcessor
+    from topmark.registry.types import ProcessorDefinition
 
 
 def _policy_name(obj: object | None) -> str:
@@ -204,64 +208,72 @@ def build_processors_human_report(
     from topmark.registry.processors import HeaderProcessorRegistry
 
     ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
-    hp_registry: Mapping[str, HeaderProcessor] = HeaderProcessorRegistry.as_mapping()
+    hp_registry: Mapping[str, ProcessorDefinition] = (
+        HeaderProcessorRegistry.as_mapping_by_qualified_key()
+    )
+    binding_registry: Mapping[str, str] = BindingRegistry.as_mapping()
 
-    # Invert mapping: processor identity -> (processor exemplar, [file type names])
-    groups: dict[tuple[str, str, str, str, str], tuple[HeaderProcessor, list[str]]] = {}
-    for file_type_name, processor in hp_registry.items():
-        key: tuple[str, str, str, str, str] = (
-            processor.namespace,
-            processor.local_key,
-            processor.qualified_key,
-            processor.__class__.__module__,
-            processor.__class__.__name__,
-        )
-        if key not in groups:
-            groups[key] = (processor, [])
-        groups[key][1].append(file_type_name)
+    # Build a helper map of file types by qualified key:
+    ft_by_qk: dict[str, FileType] = {ft.qualified_key: ft for ft in ft_registry.values()}
+
+    # Group by processor qualified key using binding_registry.items()
+    groups: dict[str, tuple[ProcessorDefinition, list[FileType]]] = {}
+
+    for filetype_qk, processor_qk in binding_registry.items():
+        file_type: FileType | None = ft_by_qk.get(filetype_qk)
+        if file_type is None:
+            continue
+        proc_definition: ProcessorDefinition | None = hp_registry.get(processor_qk)
+        if proc_definition is None:
+            continue
+
+        if processor_qk not in groups:
+            groups[processor_qk] = (proc_definition, [])
+        groups[processor_qk][1].append(file_type)
 
     processors: list[ProcessorHumanItem] = []
-    for (_, _, _, _, _), (processor, names) in sorted(groups.items()):
-        file_type_names: list[str] = sorted(names)
+    for _key, (proc_definition, bound_file_types_list) in sorted(groups.items()):
+        sorted_file_types: list[FileType] = sorted(
+            bound_file_types_list,
+            key=lambda ft: ft.qualified_key,
+        )
         if show_details:
             processors.append(
                 ProcessorHumanItem(
-                    module=processor.__class__.__module__,
-                    class_name=processor.__class__.__name__,
+                    module=proc_definition.processor_class.__module__,
+                    class_name=proc_definition.processor_class.__name__,
                     filetypes=tuple(
                         ProcessorFileTypeHumanItem(
-                            name=ft_registry[file_type_name].qualified_key,
-                            description=ft_registry[file_type_name].description,
+                            name=ft.qualified_key,
+                            description=ft.description,
                         )
-                        for file_type_name in file_type_names
+                        for ft in sorted_file_types
                     ),
                 )
             )
         else:
             processors.append(
                 ProcessorHumanItem(
-                    module=processor.__class__.__module__,
-                    class_name=processor.__class__.__name__,
-                    filetypes=tuple(
-                        ft_registry[file_type_name].qualified_key
-                        for file_type_name in file_type_names
-                    ),
+                    module=proc_definition.processor_class.__module__,
+                    class_name=proc_definition.processor_class.__name__,
+                    filetypes=tuple(ft.qualified_key for ft in sorted_file_types),
                 )
             )
 
-    unbound_names: list[str] = sorted([name for name in ft_registry if name not in hp_registry])
+    unbound_filetypes_list: list[FileType] = sorted(
+        [ft for ft in ft_registry.values() if ft.qualified_key not in binding_registry],
+        key=lambda ft: ft.qualified_key,
+    )
     if show_details:
         unbound_filetypes: tuple[str, ...] | tuple[UnboundFileTypeHumanItem, ...] = tuple(
             UnboundFileTypeHumanItem(
-                name=ft_registry[file_type_name].qualified_key,
-                description=ft_registry[file_type_name].description,
+                name=ft.qualified_key,
+                description=ft.description,
             )
-            for file_type_name in unbound_names
+            for ft in unbound_filetypes_list
         )
     else:
-        unbound_filetypes = tuple(
-            ft_registry[file_type_name].qualified_key for file_type_name in unbound_names
-        )
+        unbound_filetypes = tuple(ft.qualified_key for ft in unbound_filetypes_list)
 
     return ProcessorsHumanReport(
         show_details=show_details,

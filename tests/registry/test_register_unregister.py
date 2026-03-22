@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 def test_register_and_unregister_filetypes() -> None:
     """Verify that the registry mutators change behavior via overlays."""
     ft: FileType = make_file_type(
-        name="tmp",
+        local_key="tmp",
         extensions=[".tmp"],
         filenames=[],
         patterns=[],
@@ -45,7 +45,7 @@ def test_register_and_unregister_processors() -> None:
     """Verify that processor overlay mutators change behavior."""
     # Ensure the target file type exists before processor registration.
     ft: FileType = make_file_type(
-        name="tmp",
+        local_key="tmp",
         extensions=[".tmp"],
         filenames=[],
         patterns=[],

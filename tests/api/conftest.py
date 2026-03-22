@@ -32,6 +32,7 @@ from topmark.processors.types import BoundsKind
 from topmark.processors.types import HeaderBounds
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
+from topmark.registry.registry import Registry
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -167,7 +168,7 @@ def register_pair() -> Iterator[Callable[[str], tuple[str, FileType]]]:
     registered: list[str] = []
 
     def _make(name: str) -> tuple[str, FileType]:
-        ft: FileType = make_file_type(name=name)
+        ft: FileType = make_file_type(local_key=name)
         FileTypeRegistry.register(ft)
         HeaderProcessorRegistry.register(
             file_type=ft,
@@ -186,10 +187,11 @@ def register_pair() -> Iterator[Callable[[str], tuple[str, FileType]]]:
 
 @pytest.fixture()
 def proc_py() -> HeaderProcessor:
-    """Return the registered `HeaderProcessor` for Python files (composed view)."""
-    ft_name = "python"
-    proc: HeaderProcessor | None = HeaderProcessorRegistry.get(ft_name)
-    assert proc, f"No HeaderProcessor registered to FileType '{ft_name}'"
+    """Return a runtime Python header processor bound to the Python file type."""
+    proc: HeaderProcessor | None = Registry.resolve_processor("python")
+    assert proc is not None
+    assert proc.file_type is not None
+    assert proc.file_type.local_key == "python"
     return proc
 
 

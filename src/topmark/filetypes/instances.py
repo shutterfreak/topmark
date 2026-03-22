@@ -8,22 +8,25 @@
 #
 # topmark:header:end
 
-"""File type instances and *base* registry for TopMark.
+"""Built-in and plugin-provided file type declarations for the base registry.
 
-Builds the runtime registry of [`topmark.filetypes.model.FileType`][] objects
-from built-in groups and optionally from plugin entry points. The registry is
-constructed lazily on first access and cached thereafter.
+This module aggregates [`FileType`][topmark.filetypes.model.FileType]
+definitions from TopMark's built-in file type modules and from the
+``topmark.filetypes`` entry point group. The resulting base registry is built
+lazily on first access and cached for reuse.
 
 Notes:
-    * Built-ins are imported lazily from topical modules.
-    * Plugins are discovered via the [`topmark.filetypes`][topmark.filetypes]
+    * Built-in file type modules are imported lazily.
+    * Plugin file types are discovered through the [`topmark.filetypes`][topmark.filetypes]
       entry point group.
-    * The returned mapping is a plain ``dict`` but should be treated as
+    * The returned base registry is a plain ``dict`` and should be treated as
       immutable by callers.
-    * This is the **base** registry (built-ins + entry points). For the
-      effective, user-facing composed view (base + overlays - removals), use
+    * This module exposes the **base** registry only (built-ins + entry
+      points). For the effective composed view used by the public registry
+      facade, use
       [`topmark.registry.filetypes.FileTypeRegistry.as_mapping`][topmark.registry.filetypes.FileTypeRegistry.as_mapping].
-    * Overlay mutations must go through [`topmark.registry`][topmark.registry].
+    * Overlay mutations belong in [`topmark.registry`][topmark.registry], not
+      in this module.
 """
 
 from __future__ import annotations
@@ -42,6 +45,7 @@ from topmark.core.logging import get_logger
 from topmark.filetypes.model import FileType
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
     from collections.abc import Sequence
     from types import ModuleType
 
@@ -62,7 +66,12 @@ _ENTRYPOINT_GROUP: Final = "topmark.filetypes"
 
 
 def _iter_builtin_filetypes() -> Iterable[FileType]:
-    """Yield built-in FileType objects from topical modules (lazy import)."""
+    """Yield built-in `FileType` objects from the configured built-in modules.
+
+    Yields:
+        Built-in `FileType` instances discovered from the modules listed in
+        `_BUILTIN_MODULES`.
+    """
     for modname in _BUILTIN_MODULES:
         try:
             mod: ModuleType = import_module(modname)
@@ -80,8 +89,13 @@ def _iter_builtin_filetypes() -> Iterable[FileType]:
             logger.exception("Failed to import built-in filetypes from %s", modname)
 
 
-def _iter_plugin_filetypes() -> Iterable[FileType]:
-    """Yield FileType objects provided by external plugins (entry points)."""
+def _iter_plugin_filetypes() -> Generator[FileType, None, None]:
+    """Yield `FileType` objects provided by plugin entry points.
+
+    Yields:
+        Plugin-provided `FileType` instances loaded from the
+        ``topmark.filetypes`` entry point group.
+    """
     try:
         eps = entry_points()
     except Exception:
@@ -119,7 +133,15 @@ def _iter_plugin_filetypes() -> Iterable[FileType]:
 
 # TODO: make namespace-aware + define override behavior (last wins?)
 def _dedupe_by_local_key(items: Iterable[FileType]) -> list[FileType]:
-    """Deduplicate by FileType.local_key, preserving first occurrence order."""
+    """Deduplicate file types by local key while preserving first occurrence.
+
+    Args:
+        items: File type instances in declaration order.
+
+    Returns:
+        List of file types with duplicate ``local_key`` values removed, keeping
+        the first occurrence.
+    """
     seen: set[str] = set()
     acc: list[FileType] = []
     for ft in items:
@@ -134,14 +156,29 @@ def _dedupe_by_local_key(items: Iterable[FileType]) -> list[FileType]:
 
 
 def _aggregate_all_filetypes() -> list[FileType]:
-    """Aggregate built-ins plus any plugin-provided file types (deduped)."""
+    """Collect all built-in and plugin file types into one ordered sequence.
+
+    Returns:
+        Deduplicated list containing built-in file types followed by plugin
+        file types.
+    """
     ordered: list[FileType] = list(_iter_builtin_filetypes())
     ordered.extend(list(_iter_plugin_filetypes()))
     return _dedupe_by_local_key(ordered)
 
 
 def _generate_registry(filetypes: Iterable[FileType]) -> dict[str, FileType]:
-    """Generate a registry mapping file type names to their definitions."""
+    """Generate a file type registry keyed by local key.
+
+    Args:
+        filetypes: File type definitions to index.
+
+    Returns:
+        Mapping of ``FileType.local_key`` to `FileType`.
+
+    Raises:
+        ValueError: If duplicate file type local keys are encountered.
+    """
     registry: dict[str, FileType] = {}
     for ft in filetypes:
         if ft.local_key in registry:
@@ -152,11 +189,18 @@ def _generate_registry(filetypes: Iterable[FileType]) -> dict[str, FileType]:
 
 @lru_cache(maxsize=1)
 def get_base_file_type_registry() -> dict[str, FileType]:
-    """Return (and cache) the base FileType registry (built-ins + entry points).
+    """Return and cache the base file type registry.
+
+    The base registry contains built-in and plugin-provided file types keyed by
+    ``FileType.local_key``.
+
+    Returns:
+        Cached mapping of file type local key to `FileType`.
 
     Notes:
-        For the effective, user-facing composed registry (including test/plugin
-        overlays), use [`topmark.registry.filetypes.FileTypeRegistry.as_mapping`][].
+        For the effective composed registry (including overlay mutations used by
+        tests and advanced callers), use
+        [`topmark.registry.filetypes.FileTypeRegistry.as_mapping`][topmark.registry.filetypes.FileTypeRegistry.as_mapping].
     """
     all_types: list[FileType] = _aggregate_all_filetypes()
     registry: dict[str, FileType] = _generate_registry(all_types)

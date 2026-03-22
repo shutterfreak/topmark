@@ -54,6 +54,7 @@ from topmark.filetypes.model import ContentMatcher
 from topmark.filetypes.model import FileType
 from topmark.filetypes.model import InsertChecker
 from topmark.processors.base import HeaderProcessor
+from topmark.registry.types import ProcessorDefinition
 from topmark.resolution.filetypes import resolve_binding_for_path
 
 if TYPE_CHECKING:
@@ -310,7 +311,7 @@ def default_config() -> Config:
 
 def make_file_type(
     *,
-    name: str,
+    local_key: str,
     namespace: str = "pytest",
     description: str = "",
     extensions: list[str] | None = None,
@@ -339,7 +340,7 @@ def make_file_type(
           is provided. Extension matching is suffix-based, so `.tar.gz` rules work.
 
     Args:
-        name: File type identifier.
+        local_key: File type local identifier within the namespace.
         namespace: File type namespace (MUST NOT be `topmark`).
         description: The file type description.
         extensions: Extension rules (including leading dots, e.g. `.py`).
@@ -426,7 +427,7 @@ def make_file_type(
             matches: Callable[..., bool] = matcher
 
         return CustomMatcherFileType(
-            local_key=name,
+            local_key=local_key,
             namespace=namespace,
             description=description,
             extensions=extensions if extensions is not None else [],
@@ -439,7 +440,7 @@ def make_file_type(
             pre_insert_checker=pre_insert_checker,
         )
     return FileType(
-        local_key=name,
+        local_key=local_key,
         namespace=namespace,
         description=description,
         extensions=extensions if extensions is not None else [],
@@ -457,7 +458,7 @@ def make_file_type(
 def patched_effective_registries(
     *,
     filetypes: Mapping[str, FileType],
-    processors: Mapping[str, HeaderProcessor],
+    processors: Mapping[str, HeaderProcessor | ProcessorDefinition],
 ) -> Iterator[None]:
     """Temporarily override the *effective* registries used by TopMark.
 
@@ -481,6 +482,7 @@ def patched_effective_registries(
         None: This context manager yields control to the caller while the effective
         registries are patched.
     """
+    from topmark.registry.bindings import BindingRegistry
     from topmark.registry.filetypes import FileTypeRegistry
     from topmark.registry.processors import HeaderProcessorRegistry
 
@@ -488,20 +490,47 @@ def patched_effective_registries(
     ft_reg = cast("Any", FileTypeRegistry)
     hp_reg = cast("Any", HeaderProcessorRegistry)
 
+    # Normalize processors to ProcessorDefinition
+    processor_defs: dict[str, ProcessorDefinition] = {}
+    for file_type_local_key, processor in processors.items():
+        if isinstance(processor, ProcessorDefinition):
+            processor_defs[file_type_local_key] = processor
+        else:
+            proc_cls = type(processor)
+            processor_defs[file_type_local_key] = ProcessorDefinition(
+                namespace=proc_cls.namespace,
+                local_key=proc_cls.local_key,
+                processor_class=proc_cls,
+            )
+
+    # Some tests intentionally use mismatched processor keys; in those cases we should not invent a
+    # binding for a file type that is not present.
+    binding_map: dict[str, str] = {}
+    for file_type_local_key, proc_def in processor_defs.items():
+        file_type: FileType | None = filetypes.get(file_type_local_key)
+        if file_type is None:
+            continue
+        binding_map[file_type.qualified_key] = proc_def.qualified_key
+
     ft_reg._clear_cache()
     hp_reg._clear_cache()
 
+    # Save the original compose hooks
     orig_ft_compose = ft_reg._compose
     orig_hp_compose = hp_reg._compose
+    orig_binding_compose: Callable[[], dict[str, str]] = BindingRegistry._compose  # pyright: ignore[reportPrivateUsage]
+
     try:
         ft_reg._compose = classmethod(lambda cls: dict(filetypes))
-        hp_reg._compose = classmethod(lambda cls: dict(processors))
+        hp_reg._compose = classmethod(lambda cls: dict(processor_defs))
+        BindingRegistry._compose = classmethod(lambda cls: dict(binding_map))  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
         ft_reg._clear_cache()
         hp_reg._clear_cache()
         yield
     finally:
         ft_reg._compose = orig_ft_compose
         hp_reg._compose = orig_hp_compose
+        BindingRegistry._compose = orig_binding_compose  # pyright: ignore[reportPrivateUsage]
         ft_reg._clear_cache()
         hp_reg._clear_cache()
 
@@ -511,7 +540,7 @@ def patched_effective_registries(
 #
 # Type alias for the callable returned by the effective_registries() fixture.
 EffectiveRegistries = Callable[
-    [Mapping[str, FileType], Mapping[str, HeaderProcessor]],
+    [Mapping[str, FileType], Mapping[str, HeaderProcessor | ProcessorDefinition]],
     AbstractContextManager[None],
 ]
 
@@ -536,7 +565,7 @@ def effective_registries() -> EffectiveRegistries:
 
     def _override(
         filetypes: Mapping[str, FileType],
-        processors: Mapping[str, HeaderProcessor],
+        processors: Mapping[str, HeaderProcessor | ProcessorDefinition],
     ) -> AbstractContextManager[None]:
         return patched_effective_registries(filetypes=filetypes, processors=processors)
 

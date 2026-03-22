@@ -31,6 +31,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from topmark.filetypes.model import FileType
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.machine.schemas import FileTypeBriefEntry
 from topmark.registry.machine.schemas import FileTypeDetailEntry
@@ -39,13 +40,14 @@ from topmark.registry.machine.schemas import FileTypesPayload
 from topmark.registry.machine.schemas import ProcessorBriefEntry
 from topmark.registry.machine.schemas import ProcessorDetailEntry
 from topmark.registry.machine.schemas import ProcessorsPayload
+from topmark.registry.types import ProcessorDefinition
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from topmark.filetypes.model import FileType
-    from topmark.processors.base import HeaderProcessor
     from topmark.registry.machine.schemas import FileTypeRef
+    from topmark.registry.types import ProcessorDefinition
 
 
 def _policy_name(obj: object | None) -> str:
@@ -164,63 +166,72 @@ def build_processors_payload(*, show_details: bool) -> ProcessorsPayload:
         - Processors are grouped by concrete processor class (module + class name).
         - `unbound_filetypes` are registry file types that do not have a bound processor.
     """
+    from topmark.registry.bindings import BindingRegistry
     from topmark.registry.processors import HeaderProcessorRegistry
 
     ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
-    hp_registry: Mapping[str, HeaderProcessor] = HeaderProcessorRegistry.as_mapping()
+    hp_registry: Mapping[str, ProcessorDefinition] = (
+        HeaderProcessorRegistry.as_mapping_by_qualified_key()
+    )
+    binding_registry: Mapping[str, str] = BindingRegistry.as_mapping()
+    ft_by_qk: dict[str, FileType] = {ft.qualified_key: ft for ft in ft_registry.values()}
 
-    # Invert mapping: processor identity -> (processor exemplar, [file type names])
-    groups: dict[tuple[str, str, str, str, str], tuple[HeaderProcessor, list[str]]] = {}
-    for ft_name, proc in hp_registry.items():
-        key: tuple[str, str, str, str, str] = (
-            proc.namespace,
-            proc.local_key,
-            proc.qualified_key,
-            proc.__class__.__module__,
-            proc.__class__.__name__,
-        )
-        if key not in groups:
-            groups[key] = (proc, [])
-        groups[key][1].append(ft_name)
+    # Group by processor_qk
+
+    groups: dict[str, tuple[ProcessorDefinition, list[FileType]]] = {}
+
+    for filetype_qk, processor_qk in binding_registry.items():
+        file_type: FileType | None = ft_by_qk.get(filetype_qk)
+        if file_type is None:
+            continue
+        proc_definition: ProcessorDefinition | None = hp_registry.get(processor_qk)
+        if proc_definition is None:
+            continue
+
+        if processor_qk not in groups:
+            groups[processor_qk] = (proc_definition, [])
+        groups[processor_qk][1].append(file_type)
 
     # File types without a bound processor
-    unbound: list[str] = sorted(
-        [local_key for local_key in ft_registry if local_key not in hp_registry]
+    unbound_filetypes: list[FileType] = sorted(
+        [ft for ft in ft_registry.values() if ft.qualified_key not in binding_registry],
+        key=lambda ft: ft.qualified_key,
     )
 
     processors: list[ProcessorBriefEntry | ProcessorDetailEntry] = []
-    for (_, _, _, _, _), (proc, ft_local_keys) in sorted(groups.items()):
+    for _key, (proc_definition, bound_file_types_list) in sorted(groups.items()):
+        sorted_file_types: list[FileType] = sorted(
+            bound_file_types_list,
+            key=lambda ft: ft.qualified_key,
+        )
         if show_details:
             ft_refs: list[FileTypeRefEntry] = [
-                _serialize_filetype_ref(ft_registry[local_key])
-                for local_key in sorted(ft_local_keys)
+                _serialize_filetype_ref(ft) for ft in sorted_file_types
             ]
             entry_d = ProcessorDetailEntry(
-                namespace=proc.namespace,
-                local_key=proc.local_key,
-                qualified_key=proc.qualified_key,
-                module=proc.__class__.__module__,
-                class_name=proc.__class__.__name__,
+                namespace=proc_definition.namespace,
+                local_key=proc_definition.local_key,
+                qualified_key=proc_definition.qualified_key,
+                module=proc_definition.processor_class.__module__,
+                class_name=proc_definition.processor_class.__name__,
                 filetypes=ft_refs,
             )
             processors.append(entry_d)
         else:
-            ft_names: list[str] = [
-                ft_registry[local_key].qualified_key for local_key in sorted(ft_local_keys)
-            ]
+            ft_names: list[str] = [ft.qualified_key for ft in sorted_file_types]
+
             entry_b = ProcessorBriefEntry(
-                namespace=proc.namespace,
-                local_key=proc.local_key,
-                qualified_key=proc.qualified_key,
-                module=proc.__class__.__module__,
-                class_name=proc.__class__.__name__,
+                namespace=proc_definition.namespace,
+                local_key=proc_definition.local_key,
+                qualified_key=proc_definition.qualified_key,
+                module=proc_definition.processor_class.__module__,
+                class_name=proc_definition.processor_class.__name__,
                 filetypes=ft_names,
             )
             processors.append(entry_b)
 
     unbound_payload: list[FileTypeRef] = []
-    for local_key in unbound:
-        file_type: FileType = ft_registry[local_key]
+    for file_type in unbound_filetypes:
         if show_details:
             ref: FileTypeRefEntry = _serialize_filetype_ref(file_type)
             unbound_payload.append(ref)

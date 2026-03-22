@@ -440,8 +440,8 @@ def resolve_binding_for_path(
         logger.warning("File '%s' cannot be resolved to a registered file type", path)
         return ResolvedBinding(None, None)
 
-    processor: HeaderProcessor | None = HeaderProcessorRegistry.as_mapping().get(
-        file_type.local_key
+    processor: HeaderProcessor | None = HeaderProcessorRegistry.resolve_for_filetype(
+        file_type,
     )
     if processor is None:
         logger.warning(

@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 def test_supported_vs_unsupported_partition() -> None:
     """FileType may exist without processor; supported/unsupported reflect that."""
     ft_name = "x_demo"
-    ft: FileType = make_file_type(name=ft_name)
+    ft: FileType = make_file_type(local_key=ft_name)
 
     proc_cls: type[HeaderProcessor] = registry_processor_class()
 
@@ -51,22 +51,25 @@ def test_supported_vs_unsupported_partition() -> None:
         FileTypeRegistry.register(ft)
         assert ft_name in FileTypeRegistry.names()
         assert ft_name in Registry.unsupported_filetype_names()
-        assert ft_name not in Registry.supported_filetype_names()
+        assert ft_name not in Registry.bound_filetype_names()
         assert not HeaderProcessorRegistry.is_registered(ft_name)
 
-        # Now register a processor -> becomes supported
-        HeaderProcessorRegistry.register(
+        # Now register via the public facade -> becomes supported
+        Registry.register_processor(
+            file_type_id=ft_name,
             processor_class=proc_cls,
-            file_type=ft,
         )
 
         assert HeaderProcessorRegistry.is_registered(ft_name)
-        assert ft_name in Registry.supported_filetype_names()
+        assert ft_name in Registry.bound_filetype_names()
         assert ft_name not in Registry.unsupported_filetype_names()
 
-        # The processor should be bound to the FT object
-        proc_obj: HeaderProcessor = HeaderProcessorRegistry.as_mapping()[ft_name]
-        assert getattr(proc_obj, "file_type", None) is not None
+        # The registry stores a processor definition; runtime resolution binds it to the FT object.
+        proc_def = HeaderProcessorRegistry.as_mapping()[ft_name]
+        assert proc_def.local_key == proc_cls.local_key
+
+        proc_obj: HeaderProcessor | None = Registry.resolve_processor(ft_name)
+        assert proc_obj is not None
         assert proc_obj.file_type is not None
         assert proc_obj.file_type.local_key == ft_name
     finally:
@@ -79,13 +82,16 @@ def test_register_processor_fails_for_unknown_filetype() -> None:
     proc_cls: type[HeaderProcessor] = registry_processor_class()
 
     with pytest.raises(UnknownFileTypeError):
-        Registry.register_processor("nonexistent_ft", proc_cls)
+        Registry.register_processor(
+            file_type_id="nonexistent_ft",
+            processor_class=proc_cls,
+        )
 
 
 def test_supported_unsupported_partition_coherent() -> None:
     """Partition coherence (disjoint & covers all names)."""
     all_names: set[str] = set(FileTypeRegistry.names())
-    supp: set[str] = set(Registry.supported_filetype_names())
+    supp: set[str] = set(Registry.bound_filetype_names())
     unsupp: set[str] = set(Registry.unsupported_filetype_names())
     assert supp.isdisjoint(unsupp)
     assert supp.union(unsupp) == all_names

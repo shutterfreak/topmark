@@ -8,25 +8,26 @@
 #
 # topmark:header:end
 
-"""Public file type registry (advanced).
+"""Advanced public registry for file type definitions.
 
-Exposes read-only views and optional mutation helpers for registered file
-types. Most users should prefer the stable facade
-[`topmark.registry.registry.Registry`][topmark.registry.registry.Registry]. This module is intended
-for plugins and tests.
+This module exposes read-oriented views and limited mutation hooks for the
+composed file type registry used by TopMark. Most callers should prefer the
+stable facade in [`topmark.registry.registry.Registry`][topmark.registry.registry.Registry];
+this module primarily serves advanced integrations, plugins, and tests.
 
 Notes:
-    * All public views (`as_mapping()`, `names()`, etc.) are derived from a **composed**
-      registry (base built-ins + entry points + local overlays − removals) and are
-      returned as `MappingProxyType` to prevent accidental mutation.
-    * `register()` / `unregister()` perform **overlay-only** changes. They do not mutate
-      the internal base registry built by
+    * Public views such as `as_mapping()` and `iter_meta()` are derived from a
+      composed registry (base built-ins + entry points + local overlays -
+      removals) and are exposed as `MappingProxyType` where appropriate.
+    * `register()` and `unregister()` apply overlay-only changes; they do not
+      mutate the base registry built by
       [`topmark.filetypes.instances`][topmark.filetypes.instances].
-      Overlays are process-local and guarded by an `RLock`.
+    * Overlay state is process-local and guarded by an `RLock`.
 """
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from threading import RLock
 from types import MappingProxyType
 from typing import TYPE_CHECKING
@@ -35,6 +36,7 @@ from topmark.core.errors import AmbiguousFileTypeIdentifierError
 from topmark.core.errors import InvalidRegistryIdentityError
 from topmark.core.errors import ReservedNamespaceError
 from topmark.filetypes.model import FileType
+from topmark.registry.identity import make_qualified_key
 from topmark.registry.identity import owner_label
 from topmark.registry.identity import require_and_validate_registry_identity
 from topmark.registry.identity import validate_reserved_topmark_namespace
@@ -46,12 +48,12 @@ if TYPE_CHECKING:
 
 
 class FileTypeRegistry:
-    """Stable, read-only oriented view with optional mutation hooks.
+    """Composed registry view for file type definitions.
 
     Notes:
-        - Guarantees that it only registers `FileType` instances;
-        - Mutation hooks are intended for plugin authors and test scaffolding; most integrations
-          should use metadata views only.
+        - Only validated `FileType` instances are admitted to the effective registry.
+        - Mutation hooks are intended for plugin authors and test scaffolding.
+          Most integrations should consume metadata and read-only views instead.
     """
 
     _lock: RLock = RLock()
@@ -61,6 +63,7 @@ class FileTypeRegistry:
     _overrides: dict[str, FileType] = {}
     _removals: set[str] = set()
     _cache: Mapping[str, FileType] | None = None
+    _cache_by_qualified_key: Mapping[str, FileType] | None = None
 
     @classmethod
     def _validate_ft(cls, ft: object) -> FileType:
@@ -130,10 +133,20 @@ class FileTypeRegistry:
         `as_mapping()` calls see updated overlays or base registry changes.
         """
         cls._cache = None
+        cls._cache_by_qualified_key = None
 
     @classmethod
     def _compose(cls) -> dict[str, FileType]:
-        """Compose base registry with local overlays/removals."""
+        """Compose the effective file type registry.
+
+        Returns:
+            Mapping of file type local key to validated `FileType` built from the
+            base registry plus local overlays minus removals.
+
+        Raises:
+            ValueError: If a base registry entry is keyed under a local key that
+                does not match the validated `FileType.local_key`.
+        """
         # Use cached MappingProxy if available for performance
         cached: Mapping[str, FileType] | None = cls._cache
         if cached is not None:
@@ -169,6 +182,22 @@ class FileTypeRegistry:
         return base
 
     @classmethod
+    def _compose_by_qualified_key(cls) -> dict[str, FileType]:
+        """Compose the effective file type registry keyed by qualified key."""
+        # Use cached MappingProxy if available for performance
+        cached: Mapping[str, FileType] | None = cls._cache_by_qualified_key
+        if cached is not None:
+            return dict(cached)
+
+        local_map: dict[str, FileType] = cls._compose()
+        composed: dict[str, FileType] = {}
+        for ft in local_map.values():
+            composed[ft.qualified_key] = ft
+
+        cls._cache_by_qualified_key = MappingProxyType(composed)
+        return dict(composed)
+
+    @classmethod
     def names(cls) -> tuple[str, ...]:
         """Return all registered file type names (sorted).
 
@@ -179,23 +208,29 @@ class FileTypeRegistry:
             return tuple(sorted(cls._compose().keys()))
 
     @classmethod
-    def supported_names(cls) -> tuple[str, ...]:
-        """Return file type names that have a registered processor."""
-        from topmark.registry.processors import HeaderProcessorRegistry as _HPReg
+    def qualified_keys(cls) -> tuple[str, ...]:
+        """Return the qualified keys of all registered file types (sorted).
 
+        TODO: define a stable and sensible "prioritized" sort helper (builtins lowest precedence).
+
+        Returns:
+            Tuple with sorted file type qualified keys.
+        """
         with cls._lock:
-            proc_names: set[str] = set(_HPReg.as_mapping().keys())
-            return tuple(sorted(proc_names & set(cls._compose().keys())))
+            return tuple(sorted(cls._compose_by_qualified_key().keys()))
 
     @classmethod
-    def unsupported_names(cls) -> tuple[str, ...]:
-        """Return file type names that are recognized but unsupported."""
-        from topmark.registry.processors import HeaderProcessorRegistry as _HPReg
+    def namespaces(cls) -> tuple[str, ...]:
+        """Return the namespaces of all registered file types (sorted).
 
+        TODO: define a stable and sensible "prioritized" sort helper (builtins lowest precedence).
+
+        Returns:
+            Tuple with sorted file type namepaces.
+        """
         with cls._lock:
-            all_names: set[str] = set(cls._compose().keys())
-            supported: set[str] = set(_HPReg.as_mapping().keys())
-            return tuple(sorted(all_names - supported))
+            # Use set comprehension to return "sorted set" of namespaces
+            return tuple(sorted({ft.namespace for ft in cls._compose_by_qualified_key().values()}))
 
     @classmethod
     def resolve_filetype_id(
@@ -246,10 +281,9 @@ class FileTypeRegistry:
                 )
 
             with cls._lock:
-                for file_type in cls._compose().values():
-                    if file_type.local_key == local_key and file_type.namespace == namespace:
-                        return file_type
-                return None
+                return cls._compose_by_qualified_key().get(
+                    make_qualified_key(namespace, local_key),
+                )
 
         # Unqualified form: "local_key"
         with cls._lock:
@@ -269,11 +303,24 @@ class FileTypeRegistry:
             return candidates[0]
 
     @classmethod
-    def as_mapping(cls) -> Mapping[str, FileType]:
-        """Return a read-only mapping of file types.
+    def get_by_qualified_key(cls, qualified_key: str) -> FileType | None:
+        """Return a file type by qualified key.
+
+        Args:
+            qualified_key: Qualified key used as the registry key.
 
         Returns:
-            Name -> FileType mapping.
+            The file type if found, else None.
+        """
+        with cls._lock:
+            return cls._compose_by_qualified_key().get(qualified_key)
+
+    @classmethod
+    def as_mapping(cls) -> Mapping[str, FileType]:
+        """Return a read-only mapping of file types keyed by local key.
+
+        Returns:
+            Mapping of file type local key to `FileType`.
 
         Notes:
             The returned mapping is a `MappingProxyType` and must not be mutated.
@@ -289,6 +336,28 @@ class FileTypeRegistry:
             composed: dict[str, FileType] = cls._compose()
             cls._cache = MappingProxyType(composed)
             return cls._cache
+
+    @classmethod
+    def as_mapping_by_qualified_key(cls) -> Mapping[str, FileType]:
+        """Return a read-only mapping of file types keyed by qualified key.
+
+        Returns:
+            Mapping of file type qualified key to `FileType`.
+
+        Notes:
+            The returned mapping is a `MappingProxyType` and must not be mutated.
+        """
+        with cls._lock:
+            cached: Mapping[str, FileType] | None = cls._cache_by_qualified_key
+            if cached is not None:
+                return cached
+
+            # Compose a fresh view and cache it.
+            # NOTE: tests may monkeypatch `_compose()`; do not rely on `_compose()`
+            # to populate `_cache`.
+            composed: dict[str, FileType] = cls._compose_by_qualified_key()
+            cls._cache_by_qualified_key = MappingProxyType(composed)
+            return cls._cache_by_qualified_key
 
     @classmethod
     def iter_meta(cls) -> Iterator[FileTypeMeta]:

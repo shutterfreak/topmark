@@ -42,6 +42,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.registry.types import ProcessorDefinition
 
 
 class _ContentHitMatcher:
@@ -79,7 +80,7 @@ def _resolve(
     file: Path,
     *,
     filetypes: Mapping[str, FileType],
-    processors: Mapping[str, HeaderProcessor],
+    processors: Mapping[str, HeaderProcessor | ProcessorDefinition],
     effective_registries: EffectiveRegistries,
     cfg: Config | None = None,
 ) -> ProcessingContext:
@@ -103,7 +104,7 @@ def test_resolve_python_file_resolves_with_processor(
 
     # Deterministic registries: one Python FileType and a dummy processor for it
     py_ft: FileType = make_file_type(
-        name="python",
+        local_key="python",
         extensions=[".py"],
     )
 
@@ -161,7 +162,7 @@ def test_resolve_sets_skip_when_no_processor_registered(
 
     # Monkeypatch the processor registry to be empty to force the no-processor path.
     py_ft: FileType = make_file_type(
-        name="python",
+        local_key="python",
         extensions=[".py"],
     )
 
@@ -191,7 +192,7 @@ def test_resolve_respects_skip_processing_filetype(
     # Build a FileType with skip_processing=True
     ft_name = "docs"
     ft: FileType = make_file_type(
-        name=ft_name,
+        local_key=ft_name,
         extensions=[".md"],
         skip_processing=True,
     )
@@ -220,7 +221,7 @@ def test_resolve_can_use_content_gate_when_allowed(
 
     ft_magic_name = "magic"
     ft_magic: FileType = make_file_type(
-        name=ft_magic_name,
+        local_key=ft_magic_name,
         content_gate=ContentGate.ALWAYS,
         content_matcher=_ContentHitMatcher(),
     )
@@ -248,12 +249,12 @@ def test_resolve_deterministic_name_tiebreak(
 
     ft_ajson_name = "ajson"
     ftA: FileType = make_file_type(
-        name=ft_ajson_name,
+        local_key=ft_ajson_name,
         extensions=[".foo"],
     )
     ft_bjson_name = "ajson"
     ftB: FileType = make_file_type(
-        name=ft_bjson_name,
+        local_key=ft_bjson_name,
         extensions=[".foo"],
     )
 
@@ -282,13 +283,13 @@ def test_resolve_filename_tail_beats_extension(
 
     ft_ext_name = "by-ext"
     ft_ext: FileType = make_file_type(
-        name=ft_ext_name,
+        local_key=ft_ext_name,
         extensions=[".conf"],
     )
 
     ft_tail_name = "by-tail"
     ft_tail: FileType = make_file_type(
-        name=ft_tail_name,
+        local_key=ft_tail_name,
         filenames=["app.conf.example"],
     )
 
@@ -314,13 +315,13 @@ def test_resolve_pattern_beats_extension(
 
     ft_ext_name = "by-ext"
     ft_ext: FileType = make_file_type(
-        name=ft_ext_name,
+        local_key=ft_ext_name,
         extensions=[".log"],
     )
 
     ft_pat_name = "by-pat"
     ft_pat: FileType = make_file_type(
-        name=ft_pat_name,
+        local_key=ft_pat_name,
         patterns=[r".*\.special\.log"],
     )
 
@@ -346,13 +347,13 @@ def test_resolve_content_upgrade_over_extension(
 
     ft_json_name = "json"
     ft_json: FileType = make_file_type(
-        name=ft_json_name,
+        local_key=ft_json_name,
         extensions=[".json"],
     )
 
     ft_jsonc_name = "jsonc"
     ft_jsonc: FileType = make_file_type(
-        name=ft_jsonc_name,
+        local_key=ft_jsonc_name,
         extensions=[".json"],
         content_gate=ContentGate.IF_EXTENSION,
         content_matcher=_HitsJsoncMatcher(),
@@ -380,13 +381,13 @@ def test_resolve_gating_if_extension_excludes_when_miss(
 
     ft_json_name = "json"
     ft_json: FileType = make_file_type(
-        name=ft_json_name,
+        local_key=ft_json_name,
         extensions=[".json"],
     )
 
     ft_jsonc_name = "jsonc"
     ft_jsonc: FileType = make_file_type(
-        name=ft_jsonc_name,
+        local_key=ft_jsonc_name,
         extensions=[".json"],
         content_gate=ContentGate.IF_EXTENSION,
         content_matcher=_AlwaysFalseContentMatcher(),
@@ -414,7 +415,7 @@ def test_resolve_gating_if_any_requires_content_hit(
 
     ft_any_name = "any_name"
     ft_any: FileType = make_file_type(
-        name=ft_any_name,
+        local_key=ft_any_name,
         extensions=[".foo"],
         content_gate=ContentGate.IF_ANY_NAME_RULE,
         content_matcher=_AlwaysFalseContentMatcher(),
@@ -422,7 +423,7 @@ def test_resolve_gating_if_any_requires_content_hit(
     # Provide a fallback that wins when AnyName is excluded
     ft_ext_name = "by-ext"
     ft_ext: FileType = make_file_type(
-        name=ft_ext_name,
+        local_key=ft_ext_name,
         extensions=[".foo"],
     )
 
@@ -448,7 +449,7 @@ def test_resolve_gating_if_none_allows_pure_content_match(
 
     ft_magic_name = "magic"
     ft_magic: FileType = make_file_type(
-        name=ft_magic_name,
+        local_key=ft_magic_name,
         content_gate=ContentGate.IF_NONE,
         content_matcher=_AlwaysTrueContentMatcher(),
     )
@@ -475,7 +476,7 @@ def test_resolve_content_matcher_exception_is_safe(
 
     ft_gate_name = "gate"
     ft_gate: FileType = make_file_type(
-        name=ft_gate_name,
+        local_key=ft_gate_name,
         extensions=[".foo"],
         content_gate=ContentGate.IF_EXTENSION,
         content_matcher=_AlwaysRuntimeContentMatcher(),
@@ -483,7 +484,7 @@ def test_resolve_content_matcher_exception_is_safe(
 
     ft_fallback_name = "fallback"
     ft_fallback: FileType = make_file_type(
-        name=ft_fallback_name,
+        local_key=ft_fallback_name,
         extensions=[".foo"],
     )
 
@@ -512,7 +513,7 @@ def test_resolve_filename_tail_backslash_normalization(
 
     ft_vscode_name = "vscode"
     ft: FileType = make_file_type(
-        name=ft_vscode_name,
+        local_key=ft_vscode_name,
         filenames=[r".vscode\settings.json"],
     )
 
@@ -538,12 +539,12 @@ def test_resolve_multi_dot_extension_specificity(
 
     ft_ts_name = "ts"
     ft_ts: FileType = make_file_type(
-        name=ft_ts_name,
+        local_key=ft_ts_name,
         extensions=[".ts"],
     )
     ft_dts_name = "dts"
     ft_dts: FileType = make_file_type(
-        name=ft_dts_name,
+        local_key=ft_dts_name,
         extensions=[".d.ts"],
     )
 
@@ -570,7 +571,7 @@ def test_resolve_skip_processing_overrides_registered_processor(
     # Build a FileType with skip_processing=True
     ft_name = "docs"
     ft: FileType = make_file_type(
-        name=ft_name,
+        local_key=ft_name,
         extensions=[".md"],
         skip_processing=True,
     )
@@ -622,13 +623,13 @@ def test_resolve_filename_tail_beats_pattern(
 
     ft_tail_name = "by-tail"
     ft_tail: FileType = make_file_type(
-        name=ft_tail_name,
+        local_key=ft_tail_name,
         filenames=["config/app.json"],
     )
 
     ft_pat_name = "by-pat"
     ft_pat: FileType = make_file_type(
-        name=ft_pat_name,
+        local_key=ft_pat_name,
         patterns=[r".*\.json"],
     )
 
@@ -654,7 +655,7 @@ def test_resolve_extension_case_sensitivity_current_contract(
 
     # Only a .py type is registered; uppercase filename should not match by extension.
     ft_py: FileType = make_file_type(
-        name="python",
+        local_key="python",
         extensions=[".py"],
     )
 
@@ -689,13 +690,13 @@ def test_resolve_pattern_fullmatch_not_search(
 
     ft_pat_name = "by-pat"
     ft_pat: FileType = make_file_type(
-        name=ft_pat_name,
+        local_key=ft_pat_name,
         patterns=[r".*\.log"],
     )
 
     ft_bak_name = "by-bak"
     ft_bak: FileType = make_file_type(
-        name=ft_bak_name,
+        local_key=ft_bak_name,
         extensions=[".bak"],
     )
 
@@ -735,7 +736,7 @@ def test_resolve_gating_if_pattern_requires_content_hit(
 
     ft_pat_name = "by-pat"
     ft_pat: FileType = make_file_type(
-        name=ft_pat_name,
+        local_key=ft_pat_name,
         patterns=[r".*\.prom"],
         content_gate=ContentGate.IF_PATTERN,
         content_matcher=_AlwaysFalseContentMatcher(),
@@ -743,7 +744,7 @@ def test_resolve_gating_if_pattern_requires_content_hit(
 
     ft_text_name = "text"
     ft_fallback: FileType = make_file_type(
-        name=ft_text_name,
+        local_key=ft_text_name,
         extensions=[".prom"],
     )
 
@@ -770,7 +771,7 @@ def test_resolve_gating_if_filename_requires_content_hit(
 
     ft_tail_name = "by-tail"
     ft_fname: FileType = make_file_type(
-        name=ft_tail_name,
+        local_key=ft_tail_name,
         filenames=["configs/service.yaml"],
         content_gate=ContentGate.IF_FILENAME,
         content_matcher=_AlwaysFalseContentMatcher(),
@@ -778,7 +779,7 @@ def test_resolve_gating_if_filename_requires_content_hit(
 
     ft_yaml_name = "yaml"
     ft_fallback: FileType = make_file_type(
-        name=ft_yaml_name,
+        local_key=ft_yaml_name,
         extensions=[".yaml"],
     )
 
@@ -804,7 +805,7 @@ def test_resolve_content_only_with_always_gate(
 
     ft_magic_name = "magic"
     ft_magic: FileType = make_file_type(
-        name=ft_magic_name,
+        local_key=ft_magic_name,
         content_gate=ContentGate.ALWAYS,
         content_matcher=_AlwaysTrueContentMatcher(),
     )
@@ -831,13 +832,13 @@ def test_resolve_tie_with_both_processors_uses_name_asc(
 
     ft_alpha_name = "alpha"
     ft_alpha: FileType = make_file_type(
-        name=ft_alpha_name,
+        local_key=ft_alpha_name,
         extensions=[".data"],
     )
 
     ft_beta_name = "beta"
     ft_beta: FileType = make_file_type(
-        name=ft_beta_name,
+        local_key=ft_beta_name,
         extensions=[".data"],
     )
 
@@ -863,7 +864,7 @@ def test_resolve_processor_registry_name_mismatch_leads_to_skip(
 
     ft_py_name = "python"
     ft_py: FileType = make_file_type(
-        name=ft_py_name,
+        local_key=ft_py_name,
         extensions=[".py"],
     )
 
@@ -892,7 +893,7 @@ def test_resolve_deep_filename_tail_normalization(
 
     ft_toolcfg_name = "toolcfg"
     ft_toolcfg: FileType = make_file_type(
-        name=ft_toolcfg_name,
+        local_key=ft_toolcfg_name,
         filenames=[r".config\tool/settings.json"],  # backslash in declared tail
     )
 

@@ -60,7 +60,7 @@ def test_comparer_precomputed_lines_set_changed(tmp_path: Path) -> None:
     ctx.views.image = ListFileImageView(lines=["a\n", "b\n"])  # original
     ctx.views.updated = UpdatedView(lines=["a\n"])  # precomputed change
     ctx.file_type = make_file_type(
-        name="test",
+        local_key="test",
         description="Test File Type",
         extensions=[],
         filenames=[],
@@ -86,7 +86,7 @@ def test_comparer_precomputed_lines_set_unchanged(tmp_path: Path) -> None:
     ctx.views.image = ListFileImageView(lines=original)
     ctx.views.updated = UpdatedView(lines=list(original))  # identical copy
     ctx.file_type = make_file_type(
-        name="test",
+        local_key="test",
         description="Test File Type",
         extensions=[],
         filenames=[],

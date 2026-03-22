@@ -17,7 +17,6 @@ from typing import TYPE_CHECKING
 from tests.conftest import make_file_type
 from topmark.processors.base import HeaderProcessor
 from topmark.registry.filetypes import FileTypeRegistry
-from topmark.registry.processors import HeaderProcessorRegistry
 from topmark.registry.registry import Registry
 
 if TYPE_CHECKING:
@@ -37,7 +36,7 @@ class _P(HeaderProcessor):
 def test_overlay_partition_updates() -> None:
     """File type becomes supported when a processor is registered and reverts when removed."""
     ft: FileType = make_file_type(
-        name="ftx",
+        local_key="ftx",
         extensions=[".ftx"],
         filenames=[],
         patterns=[],
@@ -46,17 +45,20 @@ def test_overlay_partition_updates() -> None:
     FileTypeRegistry.register(ft)
     assert "ftx" in Registry.unsupported_filetype_names()
 
-    HeaderProcessorRegistry.register(
+    Registry.register_processor(
+        file_type_id=ft.local_key,
         processor_class=_P,
-        file_type=ft,
     )  # now supported
-    assert "ftx" in Registry.supported_filetype_names()
+    assert "ftx" in Registry.bound_filetype_names()
 
-    HeaderProcessorRegistry.unregister("ftx")
+    Registry.unregister_processor("ftx")
+    assert "ftx" in FileTypeRegistry.as_mapping()
+    assert "ftx" not in Registry.bound_filetype_names()
     assert "ftx" in Registry.unsupported_filetype_names()
 
     FileTypeRegistry.unregister("ftx")
     assert "ftx" not in FileTypeRegistry.as_mapping()
+    assert "ftx" not in Registry.unsupported_filetype_names()
 
 
 def test_hiding_builtin_is_non_destructive() -> None:

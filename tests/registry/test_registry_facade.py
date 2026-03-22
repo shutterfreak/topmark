@@ -13,9 +13,12 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import TYPE_CHECKING
 
-from topmark.registry.registry import Binding
 from topmark.registry.registry import Registry
+
+if TYPE_CHECKING:
+    from topmark.registry.bindings import Binding
 
 
 def test_bindings_shape() -> None:

@@ -26,6 +26,7 @@ from tests.conftest import make_file_type
 from tests.conftest import registry_processor_class
 from topmark.core.errors import DuplicateProcessorRegistrationError
 from topmark.filetypes.model import FileType
+from topmark.processors.base import HeaderProcessor
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
 
@@ -34,6 +35,8 @@ if TYPE_CHECKING:
 
     from topmark.filetypes.model import FileType
     from topmark.processors.base import HeaderProcessor
+    from topmark.registry.types import ProcessorDefinition
+
 
 # ---------- helpers (duck-typed stubs) ----------
 
@@ -42,7 +45,7 @@ if TYPE_CHECKING:
 def test_filetype_register_unregister_roundtrip(dummy_name: str) -> None:
     """Register a stub file type and then unregister it."""
     ft: FileType = make_file_type(
-        name=dummy_name,
+        local_key=dummy_name,
         description="Stub FT",
     )
 
@@ -64,8 +67,8 @@ def test_filetype_register_unregister_roundtrip(dummy_name: str) -> None:
 def test_filetype_register_duplicate_raises() -> None:
     """Registering the same file type name twice should raise ValueError."""
     name = "dup_ft"
-    ft1: FileType = make_file_type(name=name)
-    ft2: FileType = make_file_type(name=name)
+    ft1: FileType = make_file_type(local_key=name)
+    ft2: FileType = make_file_type(local_key=name)
     try:
         FileTypeRegistry.register(ft1)
         with pytest.raises(ValueError):
@@ -77,7 +80,7 @@ def test_filetype_register_duplicate_raises() -> None:
 @pytest.mark.parametrize("proc_name", ["dummy_proc"])
 def test_processor_register_unregister_roundtrip(proc_name: str) -> None:
     """Register a stub processor under a new name and then unregister it."""
-    ft: FileType = make_file_type(name=proc_name)
+    ft: FileType = make_file_type(local_key=proc_name)
     FileTypeRegistry.register(ft)
 
     proc_cls: type[HeaderProcessor] = registry_processor_class()
@@ -87,11 +90,9 @@ def test_processor_register_unregister_roundtrip(proc_name: str) -> None:
             processor_class=proc_cls,
             file_type=ft,
         )
-        assert proc_name in HeaderProcessorRegistry.names()
-        assert proc_name in HeaderProcessorRegistry.as_mapping()
-        # Iter meta should include it
+        proc_def: ProcessorDefinition = HeaderProcessorRegistry.as_mapping()[proc_name]
         names: set[str] = {m.local_key for m in HeaderProcessorRegistry.iter_meta()}
-        assert proc_name in names
+        assert proc_def.local_key in names
     finally:
         assert HeaderProcessorRegistry.unregister(proc_name) is True
         assert proc_name not in HeaderProcessorRegistry.names()
@@ -105,7 +106,7 @@ def test_processor_register_duplicate_raises() -> None:
     """
     name = "dup_proc"
 
-    ft: FileType = make_file_type(name=name)
+    ft: FileType = make_file_type(local_key=name)
     FileTypeRegistry.register(ft)
 
     proc_cls: type[HeaderProcessor] = registry_processor_class()
@@ -129,7 +130,7 @@ def test_replace_processor_requires_unregister() -> None:
     """Verifies you can’t register a second processor without first unregistering."""
     name = "replace_proc_demo"
 
-    FileTypeRegistry.register(make_file_type(name=name))
+    FileTypeRegistry.register(make_file_type(local_key=name))
     try:
         cls1: type[HeaderProcessor] = registry_processor_class()
         cls2: type[HeaderProcessor] = registry_processor_class()

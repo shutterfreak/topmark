@@ -102,7 +102,7 @@ def test_line_mixin_respects_no_shebang_policy() -> None:
 
     p = _P()
     p.file_type = make_file_type(
-        name="fake",
+        local_key="fake",
         extensions=[".fake"],
         filenames=[],
         patterns=[],
@@ -123,7 +123,7 @@ def test_line_mixin_skips_encoding_line_after_shebang() -> None:
 
     p = _P()
     p.file_type = make_file_type(
-        name="py",
+        local_key="py",
         extensions=[".py"],
         filenames=[],
         patterns=[],

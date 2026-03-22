@@ -8,15 +8,15 @@
 #
 # topmark:header:end
 
-"""Declarative processor-to-file-type bindings.
+"""Declarative built-in processor binding helpers.
 
-This module defines small value objects and helpers used to declare how
-[`HeaderProcessor`][topmark.processors.base.HeaderProcessor] implementations
-should be bound to file type names when constructing the base processor
-registry.
+This module defines small value objects and expansion helpers used to declare
+how [`HeaderProcessor`][topmark.processors.base.HeaderProcessor]
+implementations are associated with file type names in TopMark's built-in
+registry data.
 
-These bindings are intentionally declarative: they describe registry contents
-without relying on import-time decorator side effects.
+The bindings are intentionally declarative: they describe built-in registry
+contents without relying on import-time decorator side effects.
 """
 
 from __future__ import annotations
@@ -32,17 +32,15 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, kw_only=True)
 class ProcessorBinding:
-    """Declarative binding from a file type name to a processor class.
+    """Declarative association between one file type name and one processor class.
 
-    `kw_only=True` ensures call sites remain explicit and readable when
-    constructing bindings, especially when multiple bindings are declared
-    in processor instance lists.
+    ``kw_only=True`` keeps call sites explicit and readable when many bindings
+    are declared together.
 
     Attributes:
-        file_type_name: Name of the file type the processor should be bound to.
-        processor_class: Concrete `HeaderProcessor` class to instantiate for
-            that file type.
-        namespace: Namespace label identifying the binding source, typically the
+        file_type_name: Local key of the file type the processor should be bound to.
+        processor_class: Concrete `HeaderProcessor` class associated with that file type.
+        namespace: Namespace label identifying the binding source, usually the
             built-in TopMark namespace or a plugin namespace.
     """
 
@@ -61,13 +59,13 @@ def bindings_for(
 
     Args:
         processor_class: Concrete `HeaderProcessor` class to bind.
-        file_type_names: Iterable of file type names that should resolve to the
-            same processor class.
+        file_type_names: File type local keys that should resolve to the same
+            processor class.
         namespace: Namespace label identifying the binding source.
 
     Returns:
         Tuple of [`ProcessorBinding`][topmark.processors.bindings.ProcessorBinding]
-        objects, preserving the input order of `file_type_names`.
+        objects preserving the input order of `file_type_names`.
     """
     return tuple(
         ProcessorBinding(

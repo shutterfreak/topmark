@@ -27,6 +27,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from topmark.processors.base import HeaderProcessor
 from topmark.registry.registry import Registry
 
 if TYPE_CHECKING:
@@ -35,6 +36,7 @@ if TYPE_CHECKING:
     from topmark.api.types import FileTypeInfo
     from topmark.api.types import ProcessorInfo
     from topmark.processors.base import HeaderProcessor
+    from topmark.registry.types import ProcessorDefinition
 
 __all__ = (
     "list_filetypes",
@@ -59,9 +61,9 @@ def list_filetypes(long: bool = False) -> list[FileTypeInfo]:
 
     items: list[FileTypeInfo] = []
     for name, ft in Registry.filetypes().items():
-        processor: HeaderProcessor | None = proc_reg.get(name, None) if proc_reg else None
+        processor: ProcessorDefinition | None = proc_reg.get(name, None) if proc_reg else None
         supported = bool(processor)
-        processor_name: str | None = processor.__class__.__name__ if processor else None
+        processor_name: str | None = processor.processor_class.__name__ if processor else None
         info: FileTypeInfo = {
             "name": name,
             "description": getattr(ft, "description", ""),
@@ -97,18 +99,19 @@ def list_processors(long: bool = False) -> list[ProcessorInfo]:
         [`topmark.registry`][]. This function returns metadata (not the objects).
     """
     items: list[ProcessorInfo] = []
-    for name, proc in Registry.processors().items():
+    for name, proc_def in Registry.processors().items():
+        proc_obj: HeaderProcessor = proc_def.processor_class()
         info: ProcessorInfo = {
             "name": name,
-            "description": getattr(proc, "description", ""),
+            "description": getattr(proc_obj, "description", ""),
         }
         if long:
             info.update(
                 {
-                    "line_prefix": getattr(proc, "line_prefix", "") or "",
-                    "line_suffix": getattr(proc, "line_suffix", "") or "",
-                    "block_prefix": getattr(proc, "block_prefix", "") or "",
-                    "block_suffix": getattr(proc, "block_suffix", "") or "",
+                    "line_prefix": getattr(proc_obj, "line_prefix", "") or "",
+                    "line_suffix": getattr(proc_obj, "line_suffix", "") or "",
+                    "block_prefix": getattr(proc_obj, "block_prefix", "") or "",
+                    "block_suffix": getattr(proc_obj, "block_suffix", "") or "",
                 }
             )
         items.append(info)

@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 def _provider() -> list[FileType]:
     return [
         make_file_type(
-            name="pluggy",
+            local_key="pluggy",
             extensions=[".pg"],
             filenames=[],
             patterns=[],

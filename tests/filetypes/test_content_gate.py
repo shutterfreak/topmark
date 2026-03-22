@@ -40,7 +40,7 @@ def test_gate_never_does_not_call_matcher_but_keeps_name_match(tmp_path: Path) -
     """NEVER gate skips matcher but still matches on name rules."""
     probe = Probe(result=False)
     ft: FileType = make_file_type(
-        name="json",
+        local_key="json",
         extensions=[".json"],
         content_matcher=probe,
         content_gate=ContentGate.NEVER,
@@ -57,7 +57,7 @@ def test_gate_if_extension_calls_matcher_only_on_extension_match(tmp_path: Path)
     # Extension match ⇒ probe called
     probe_ext = Probe(result=True)
     ft_ext: FileType = make_file_type(
-        name="json",
+        local_key="json",
         extensions=[".json"],
         content_matcher=probe_ext,
         content_gate=ContentGate.IF_EXTENSION,
@@ -70,7 +70,7 @@ def test_gate_if_extension_calls_matcher_only_on_extension_match(tmp_path: Path)
     # Filename (not extension) match ⇒ probe NOT called
     probe_name = Probe(result=True)
     ft_name: FileType = make_file_type(
-        name="special-conf",
+        local_key="special-conf",
         filenames=["special.conf"],
         content_matcher=probe_name,
         content_gate=ContentGate.IF_EXTENSION,
@@ -83,7 +83,7 @@ def test_gate_if_extension_calls_matcher_only_on_extension_match(tmp_path: Path)
     # No name rule match ⇒ probe NOT called, overall False
     probe_none = Probe(result=True)
     ft_none: FileType = make_file_type(
-        name="json",
+        local_key="json",
         extensions=[".json"],
         content_matcher=probe_none,
         content_gate=ContentGate.IF_EXTENSION,
@@ -98,7 +98,7 @@ def test_gate_if_filename_calls_matcher_only_on_filename_match(tmp_path: Path) -
     """IF_FILENAME gate calls matcher only when filename matched."""
     probe = Probe(result=True)
     ft: FileType = make_file_type(
-        name="vscode",
+        local_key="vscode",
         filenames=[".vscode/settings.json"],
         content_matcher=probe,
         content_gate=ContentGate.IF_FILENAME,
@@ -114,7 +114,7 @@ def test_gate_if_filename_calls_matcher_only_on_filename_match(tmp_path: Path) -
     # Extension-only match ⇒ probe NOT called; still True due to name match
     probe2 = Probe(result=True)
     ft2: FileType = make_file_type(
-        name="json",
+        local_key="json",
         extensions=[".json"],
         filenames=["config.yaml"],
         content_matcher=probe2,
@@ -130,7 +130,7 @@ def test_gate_if_pattern_calls_matcher_only_on_pattern_match(tmp_path: Path) -> 
     """IF_PATTERN gate calls matcher only when regex pattern matched."""
     probe = Probe(result=False)
     ft: FileType = make_file_type(
-        name="python-requirements",
+        local_key="python-requirements",
         patterns=[r"requirements\.(in|txt)"],
         content_matcher=probe,
         content_gate=ContentGate.IF_PATTERN,
@@ -146,7 +146,7 @@ def test_gate_if_any_name_rule_calls_matcher_for_any_name_hit(tmp_path: Path) ->
     """IF_ANY_NAME_RULE gate calls matcher for any matching rule (ext/file/pattern)."""
     probe = Probe(result=True)
     ft: FileType = make_file_type(
-        name="json",
+        local_key="json",
         extensions=[".json"],
         filenames=["Makefile"],
         content_matcher=probe,
@@ -170,7 +170,7 @@ def test_gate_if_none_probes_when_no_name_rules_defined(tmp_path: Path) -> None:
     # No extensions/filenames/patterns ⇒ probe allowed
     probe = Probe(result=True)
     ft: FileType = make_file_type(
-        name="test",
+        local_key="test",
         extensions=[],
         filenames=[],
         patterns=[],
@@ -186,7 +186,7 @@ def test_gate_if_none_probes_when_no_name_rules_defined(tmp_path: Path) -> None:
     # If any name rule exists, IF_NONE must NOT probe; result = name rule truthiness
     probe2 = Probe(result=True)
     ft2: FileType = make_file_type(
-        name="weird",
+        local_key="weird",
         extensions=[".weird"],
         content_matcher=probe2,
         content_gate=ContentGate.IF_NONE,
@@ -201,7 +201,7 @@ def test_gate_always_always_calls_matcher_and_returns_its_result(tmp_path: Path)
     """ALWAYS gate always calls matcher and returns its boolean result."""
     probe_true = Probe(result=True)
     ft_true: FileType = make_file_type(
-        name="test",
+        local_key="test",
         extensions=[],
         content_matcher=probe_true,
         content_gate=ContentGate.ALWAYS,
@@ -213,7 +213,7 @@ def test_gate_always_always_calls_matcher_and_returns_its_result(tmp_path: Path)
 
     probe_false = Probe(result=False)
     ft_false: FileType = make_file_type(
-        name="json",
+        local_key="json",
         extensions=[".json"],
         content_matcher=probe_false,
         content_gate=ContentGate.ALWAYS,

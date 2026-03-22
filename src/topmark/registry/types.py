@@ -8,14 +8,18 @@
 #
 # topmark:header:end
 
-"""Registry metadata types."""
+"""Serializable metadata and definition types used by the registry layer."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+from typing import TYPE_CHECKING
 
 from topmark.registry.identity import make_qualified_key
+
+if TYPE_CHECKING:
+    from topmark.processors.base import HeaderProcessor
 
 
 def _empty_header_policy() -> dict[str, object]:
@@ -25,7 +29,7 @@ def _empty_header_policy() -> dict[str, object]:
 
 @dataclass(frozen=True)
 class FileTypeMeta:
-    """Stable, serializable metadata about a registered FileType."""
+    """Stable, serializable metadata describing a registered file type."""
 
     namespace: str
     local_key: str
@@ -51,14 +55,14 @@ class FileTypeMeta:
 
 @dataclass(frozen=True)
 class ProcessorMeta:
-    """Stable, serializable metadata about a registered processor instance."""
+    """Stable, serializable metadata about a registered processor definition."""
 
     namespace: str
     local_key: str
 
     @property
     def qualified_key(self) -> str:
-        """Return the qualified identity key for this file type instance.
+        """Return the qualified identity key for this processor definition.
 
         Format: ``"<namespace>:<local_key>"``.
         """
@@ -72,3 +76,23 @@ class ProcessorMeta:
     line_indent: str = ""
     line_prefix: str = ""
     line_suffix: str = ""
+
+
+@dataclass(frozen=True)
+class ProcessorDefinition:
+    """Stable definition of a registered processor identity and implementation class."""
+
+    namespace: str
+    local_key: str
+    processor_class: type[HeaderProcessor]
+
+    @property
+    def qualified_key(self) -> str:
+        """Return the qualified identity key for this processor.
+
+        Format: ``"<namespace>:<local_key>"``.
+        """
+        return make_qualified_key(
+            namespace=self.namespace,
+            local_key=self.local_key,
+        )
