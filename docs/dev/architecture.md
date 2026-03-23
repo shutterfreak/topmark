@@ -284,7 +284,8 @@ Internally:
 - the public `Registry` facade resolves identifiers before delegating to the underlying registries
 
 This design allows TopMark to gradually move toward fully-qualified identifiers without breaking
-existing configuration or CLI usage.
+existing configuration or CLI usage. For the path-based winner-selection and ambiguity policy, see
+[`resolution.md`](resolution.md).
 
 ### Practical Implications for Contributors
 

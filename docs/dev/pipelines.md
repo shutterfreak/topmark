@@ -323,19 +323,19 @@ Each step implements the `Step` protocol and:
 - May halt execution via `ctx.flow.halt`
 - Emits structured hints for diagnostics
 
-| Step                                                             | Responsibility                           |
-| ---------------------------------------------------------------- | ---------------------------------------- |
-| \[`ResolverStep`\][topmark.pipeline.steps.resolver.ResolverStep] | Determine file type and header processor |
-| \[`SnifferStep`\][topmark.pipeline.steps.sniffer.SnifferStep]    | Fast policy and newline checks           |
-| \[`ReaderStep`\][topmark.pipeline.steps.reader.ReaderStep]       | Read file content safely                 |
-| \[`ScannerStep`\][topmark.pipeline.steps.scanner.ScannerStep]    | Locate existing header bounds            |
-| \[`BuilderStep`\][topmark.pipeline.steps.builder.BuilderStep]    | Build expected header field values       |
-| \[`RendererStep`\][topmark.pipeline.steps.renderer.RendererStep] | Render header text                       |
-| \[`ComparerStep`\][topmark.pipeline.steps.comparer.ComparerStep] | Compare existing vs rendered header      |
-| \[`StripperStep`\][topmark.pipeline.steps.stripper.StripperStep] | Remove header content                    |
-| \[`PlannerStep`\][topmark.pipeline.steps.planner.PlannerStep]    | Decide insert / replace / remove plan    |
-| \[`PatcherStep`\][topmark.pipeline.steps.patcher.PatcherStep]    | Generate unified diff                    |
-| \[`WriterStep`\][topmark.pipeline.steps.writer.WriterStep]       | Persist changes                          |
+| Step                                                             | Responsibility                                                                  |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| \[`ResolverStep`\][topmark.pipeline.steps.resolver.ResolverStep] | Determine file type and header processor (see [`resolution.md`](resolution.md)) |
+| \[`SnifferStep`\][topmark.pipeline.steps.sniffer.SnifferStep]    | Fast policy and newline checks                                                  |
+| \[`ReaderStep`\][topmark.pipeline.steps.reader.ReaderStep]       | Read file content safely                                                        |
+| \[`ScannerStep`\][topmark.pipeline.steps.scanner.ScannerStep]    | Locate existing header bounds                                                   |
+| \[`BuilderStep`\][topmark.pipeline.steps.builder.BuilderStep]    | Build expected header field values                                              |
+| \[`RendererStep`\][topmark.pipeline.steps.renderer.RendererStep] | Render header text                                                              |
+| \[`ComparerStep`\][topmark.pipeline.steps.comparer.ComparerStep] | Compare existing vs rendered header                                             |
+| \[`StripperStep`\][topmark.pipeline.steps.stripper.StripperStep] | Remove header content                                                           |
+| \[`PlannerStep`\][topmark.pipeline.steps.planner.PlannerStep]    | Decide insert / replace / remove plan                                           |
+| \[`PatcherStep`\][topmark.pipeline.steps.patcher.PatcherStep]    | Generate unified diff                                                           |
+| \[`WriterStep`\][topmark.pipeline.steps.writer.WriterStep]       | Persist changes                                                                 |
 
 ______________________________________________________________________
 

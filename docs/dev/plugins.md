@@ -85,7 +85,8 @@ TopMark now uses explicit base registries plus overlay registries:
 This means plugin-defined file types must still be available before a processor class is registered
 against them, but the processor side no longer depends on module import order or decorator side
 effects. Path-based file type selection is performed by the shared scoring resolver in
-\[`topmark.resolution.filetypes`\][topmark.resolution.filetypes].
+\[`topmark.resolution.filetypes`\][topmark.resolution.filetypes]. The formal selection and ambiguity
+policy is documented in [`resolution.md`](resolution.md).
 
 ______________________________________________________________________
 

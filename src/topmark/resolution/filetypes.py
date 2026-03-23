@@ -19,6 +19,12 @@ resolved file type.
 Unlike identifier-based lookup in [`topmark.registry.filetypes`][topmark.registry.filetypes],
 these helpers operate on real paths and evaluate extension, filename, pattern,
 and optional content-based signals.
+
+Resolution may produce multiple matching `FileType` candidates. This is not a
+registry error. Instead, the resolver applies a deterministic precedence model
+and selects at most one effective winner. Candidate overlap is therefore
+allowed, but the final selection must remain stable for the same path, content,
+and effective registry state.
 """
 
 from __future__ import annotations
@@ -49,13 +55,13 @@ logger: TopmarkLogger = get_logger(__name__)
 
 @dataclass(frozen=True, slots=True, init=True)
 class FileTypeCandidate:
-    """Describe a FileType candidate.
+    """Describe a scored file type resolution candidate.
 
     Attributes:
-        score: file type candidate matching score
-        namespace: Candidate file type namespace
-        local_key: Candiate file type local key
-        file_type: Candidate FileType instance
+        score: Candidate precedence score; higher is better.
+        namespace: Candidate file type namespace.
+        local_key: Candidate file type local key.
+        file_type: Candidate `FileType` instance.
     """
 
     score: int
@@ -92,27 +98,31 @@ class ResolvedBinding:
     processor: HeaderProcessor | None
 
 
-def candidate_order_key(  # TODO: make namespace-aware (TOPMARK_NAMESPACE loest priority)
+def candidate_order_key(
     candidate: FileTypeCandidate,
-) -> tuple[int, str]:
-    """Return the ordering key for a file type resolution candidate.
+) -> tuple[int, str, str]:
+    """Return the deterministic ordering key for a file type candidate.
 
     Candidates are ordered by:
       1) score (descending)
-      2) file type name (ascending)
+      2) namespace (ascending)
+      3) local key (ascending)
 
-    This key is intended to be used with `min()`:
-        min(candidates, key=_candidate_order_key)
-    so that the best candidate is selected deterministically without
+    This key is intended to be used with `min()` so that the highest-scoring
+    candidate wins and exact score ties are resolved deterministically without
     sorting the entire list.
 
     Args:
-        candidate: A `(score, name, FileType)` tuple.
+        candidate: Candidate being ranked.
 
     Returns:
         The composite ordering key.
     """
-    return (-candidate.score, candidate.local_key)
+    return (
+        -candidate.score,
+        candidate.namespace,
+        candidate.local_key,
+    )
 
 
 def _compute_match_signals(
@@ -356,10 +366,14 @@ def _select_best_file_type_candidate(
 
     Candidates are ranked by
     [`candidate_order_key`][topmark.resolution.filetypes.candidate_order_key],
-    which prefers higher score and then lower file type name.
+    which prefers higher score and then uses namespace and local key as stable
+    tie-breakers.
+
+    Multiple candidates are therefore allowed, but the resolver always returns
+    at most one effective winner.
 
     Args:
-        candidates: Candidate tuples in `(score, file_type_name, FileType)` form.
+        candidates: Resolution candidates for the current path.
 
     Returns:
         The best candidate, or ``None`` if `candidates` is empty.
@@ -369,11 +383,13 @@ def _select_best_file_type_candidate(
 
     # Deterministic best candidate selection.
     #
-    # We want the highest score to win, with a stable tie-break on file type name
-    # (ascending) to ensure deterministic behavior across runs.
+    # We want the highest score to win, with a stable tie-break on namespace
+    # and local key (both ascending) to ensure deterministic behavior across
+    # runs and across overlapping file type definitions from different
+    # namespaces.
     #
     # Using `min()` with a composite key avoids sorting the full list:
-    #   key = (-score, name)
+    #   key = (-score, namespace, local_key)
     # so the "best" candidate becomes the smallest by this ordering.
     return min(candidates, key=candidate_order_key)
 
@@ -386,16 +402,20 @@ def resolve_file_type_for_path(
 ) -> FileType | None:
     """Resolve the best matching `FileType` for `path`.
 
+    Multiple candidates may match the same path. When that happens, the
+    resolver applies the documented deterministic precedence and tie-break
+    policy and returns at most one effective winner.
+
     Args:
         path: Filesystem path of the file being resolved.
         include_file_types: Optional set of file type identifiers to include (whitelist).
-            Empty collection means no whitelist filter
+            Empty collection means no whitelist filter.
         exclude_file_types: Optional set of file type identifiers to exclude (blacklist).
-            Empty collection means no blacklist filter
+            Empty collection means no blacklist filter.
 
     Returns:
-        The highest-scoring matching `FileType`, or ``None`` if no candidates
-        remain after filtering.
+        The highest-precedence matching `FileType`, or ``None`` if no
+        candidates remain after filtering.
     """
     candidates: list[FileTypeCandidate] = get_file_type_candidates_for_path(
         path,
@@ -405,6 +425,18 @@ def resolve_file_type_for_path(
 
     if not candidates:
         return None
+
+    top_score: int = max(candidate.score for candidate in candidates)
+    top_candidates: list[FileTypeCandidate] = [
+        candidate for candidate in candidates if candidate.score == top_score
+    ]
+    if len(top_candidates) > 1:
+        logger.debug(
+            "File type resolution tie for '%s' at score %s; applying deterministic tie-break: %s",
+            path,
+            top_score,
+            [candidate.file_type.qualified_key for candidate in top_candidates],
+        )
 
     best: FileTypeCandidate | None = _select_best_file_type_candidate(candidates)
     return None if best is None else best.file_type

@@ -45,9 +45,11 @@ logger: TopmarkLogger = get_logger(__name__)
 class ResolverStep(BaseStep):
     """Resolve file type and attach a header processor (no I/O).
 
-    This step evaluates name rules (extensions/filenames/patterns) and, if allowed
-    by the file type's content-gate, optional content probes to pick the best
-    `FileType`. It also binds the matching `HeaderProcessor` (if registered).
+    This step evaluates name rules (extensions, filenames, patterns) and, if
+    allowed by the file type's content gate, optional content probes to select
+    the best matching `FileType`. Multiple candidates may match a path; the
+    shared resolver applies a deterministic precedence and tie-break policy and
+    returns at most one effective winner.
 
     Axes written:
       - resolve
