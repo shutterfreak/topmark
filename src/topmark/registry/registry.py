@@ -21,7 +21,8 @@ cross-registry coordination.
 
 A file type can be recognized (present in
 [`topmark.registry.filetypes.FileTypeRegistry`][topmark.registry.filetypes.FileTypeRegistry])
-while still being unbound if no processor binding exists for it.
+while still being unbound if no effective binding exists for it in
+[`topmark.registry.bindings.BindingRegistry`][topmark.registry.bindings.BindingRegistry].
 
 Typical usage:
     ```python
@@ -77,7 +78,7 @@ class Registry:
         """Return a joined view of file types and their processor bindings.
 
         Each element contains the file type metadata and the optionally bound
-        processor metadata (``None`` means recognized but unbound).
+        processor metadata (``None`` means recognized but currently unbound).
 
         Returns:
             Immutable tuple of joined binding entries.
@@ -127,10 +128,10 @@ class Registry:
 
     @staticmethod
     def get_filetype(file_type_key: str) -> FileType | None:
-        """Return a file type by qualified key.
+        """Return a file type by canonical file type key.
 
         Args:
-            file_type_key: File type qualified key.
+            file_type_key: Canonical file type key.
 
         Returns:
             The matching `FileType`, or ``None`` if not found.
@@ -139,10 +140,10 @@ class Registry:
 
     @staticmethod
     def get_processor(processor_key: str) -> ProcessorDefinition | None:
-        """Return a processor definition by qualified key.
+        """Return a processor definition by canonical processor key.
 
         Args:
-            processor_key: Processor qualified key.
+            processor_key: Canonical processor key.
 
         Returns:
             The matching `ProcessorDefinition`, or ``None`` if not found.
@@ -201,10 +202,10 @@ class Registry:
 
     @staticmethod
     def is_processor_bound(processor_key: str) -> bool:
-        """Return whether a processor qualified key is referenced by any binding.
+        """Return whether a canonical processor key is referenced by any binding.
 
         Args:
-            processor_key: Processor qualified key to query.
+            processor_key: Canonical processor key to query.
 
         Returns:
             ``True`` if the processor is referenced by any binding, else ``False``.
@@ -233,13 +234,13 @@ class Registry:
     def get_filetype_keys(
         processor_key: str,
     ) -> tuple[str, ...]:
-        """Return the qualified keys of file types currently bound to a processor.
+        """Return the canonical file type keys currently bound to a processor.
 
         Args:
-            processor_key: Processor qualified key.
+            processor_key: Canonical processor key.
 
         Returns:
-            Sorted tuple of file type qualified keys currently bound to the
+            Sorted tuple of canonical file type keys currently bound to the
             processor.
         """
         return BindingRegistry.get_filetype_keys(processor_key)
@@ -258,13 +259,13 @@ class Registry:
         definitions must already exist in `HeaderProcessorRegistry`; callers
         that need to create one should first call
         `HeaderProcessorRegistry.register()` and then bind the resulting
-        qualified key through this method.
+        canonical processor key through this method.
 
         Args:
             file_type_id: File type identifier that should be bound. Both
                 ``"local_key"`` and qualified ``"namespace:local_key"`` forms are
                 accepted.
-            processor_key: Processor qualified key to bind.
+            processor_key: Canonical processor key to bind.
 
         Raises:
             AmbiguousFileTypeIdentifierError: If an unqualified `file_type_id`
@@ -314,10 +315,10 @@ class Registry:
         """Remove all bindings that currently reference a processor.
 
         Args:
-            processor_key: Processor qualified key.
+            processor_key: Canonical processor key.
 
         Returns:
-            Sorted tuple of file type qualified keys that were unbound.
+            Sorted tuple of canonical file type keys that were unbound.
 
         Notes:
             This helper only removes bindings. It does not unregister the
@@ -333,10 +334,10 @@ class Registry:
         *,
         remove_bindings: bool = False,
     ) -> bool:
-        """Unregister a processor definition by qualified key.
+        """Unregister a processor definition by canonical processor key.
 
         Args:
-            processor_key: Processor qualified key to unregister.
+            processor_key: Canonical processor key to unregister.
             remove_bindings: If ``True``, remove all existing bindings that point
                 to the processor before unregistering it. If ``False``, the
                 processor is only unregistered when no file types are currently

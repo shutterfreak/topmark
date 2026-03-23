@@ -16,12 +16,11 @@ stable facade in [`topmark.registry.registry.Registry`][topmark.registry.registr
 this module primarily serves advanced integrations, plugins, and tests.
 
 Notes:
-    * Public views such as `as_mapping()` and `iter_meta()` are derived from a
-      composed registry (base built-ins + entry points + local overlays -
-      removals) and are exposed as `MappingProxyType` where appropriate.
-    * `register()` and `unregister()` apply overlay-only changes; they do not
-      mutate the base registry built by
-      [`topmark.filetypes.instances`][topmark.filetypes.instances].
+    * Public views such as `as_mapping_by_local_key()` and `iter_meta_by_local_key()` expose the
+      local-key compatibility view, while `as_mapping()` and `iter_meta()` expose the canonical
+      qualified-key view.
+    * `register()` and `unregister()` apply overlay-only changes; they do not mutate the base
+      registry built by [`topmark.filetypes.instances`][topmark.filetypes.instances].
     * Overlay state is process-local and guarded by an `RLock`.
 """
 
@@ -323,7 +322,7 @@ class FileTypeRegistry:
 
     @classmethod
     def as_mapping_by_local_key(cls) -> Mapping[str, FileType]:
-        """Return a read-only local-key compatibility view of file types (keyed by local key).
+        """Return the read-only local-key compatibility view of file types.
 
         Returns:
             Mapping of file type local key to `FileType`.
@@ -345,7 +344,7 @@ class FileTypeRegistry:
 
     @classmethod
     def as_mapping(cls) -> Mapping[str, FileType]:
-        """Return a read-only qualified-key canonical view of file types (keyed by qualified key).
+        """Return the read-only qualified-key canonical view of file types.
 
         Returns:
             Mapping of file type qualified key to `FileType`.
@@ -367,7 +366,7 @@ class FileTypeRegistry:
 
     @classmethod
     def iter_meta_by_local_key(cls) -> Iterator[FileTypeMeta]:
-        """Iterate over read-only local-key compatibility view for registered file types.
+        """Iterate stable metadata for the local-key compatibility view.
 
         No getattr needed because types are guaranteed.
 
@@ -392,7 +391,7 @@ class FileTypeRegistry:
 
     @classmethod
     def iter_meta(cls) -> Iterator[FileTypeMeta]:
-        """Iterate over qualified-key canonical view for registered file types.
+        """Iterate stable metadata for the qualified-key canonical view.
 
         No getattr needed because types are guaranteed.
 

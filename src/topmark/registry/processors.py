@@ -23,8 +23,8 @@ Notes:
     * `register()` and `unregister()` apply overlay-only
       changes; they do not mutate the base processor-definition registry built
       from explicit built-in bindings.
-    * The canonical identity-oriented processor view is keyed by qualified key
-      and exposed via `as_mapping()`.
+    * The canonical identity-oriented processor view is keyed by canonical
+      processor key and exposed via `as_mapping()`.
     * When the environment variable ``TOPMARK_VALIDATE`` is set to a truthy
       value (``1``, ``true``, ``yes``), lightweight developer validations run
       on the composed processor mapping.
@@ -233,10 +233,10 @@ class HeaderProcessorRegistry:
 
     @classmethod
     def get(cls, processor_key: str) -> ProcessorDefinition | None:
-        """Return a processor definition by canonical qualified key.
+        """Return a processor definition by canonical processor key.
 
         Args:
-            processor_key: Processor qualified key.
+            processor_key: Canonical processor key.
 
         Returns:
             Matching `ProcessorDefinition`, or ``None`` if not found.
@@ -249,7 +249,7 @@ class HeaderProcessorRegistry:
         """Return the canonical processor-definition mapping keyed by qualified key.
 
         Returns:
-            Mapping of processor qualified key to `ProcessorDefinition` objects.
+            Mapping of canonical processor key to `ProcessorDefinition` objects.
 
         Notes:
             The returned mapping is a ``MappingProxyType`` and must not be mutated.
@@ -326,10 +326,10 @@ class HeaderProcessorRegistry:
 
     @classmethod
     def unregister(cls, processor_key: str) -> bool:
-        """Remove a processor definition from the effective registry by qualified key.
+        """Remove a processor definition from the effective registry by canonical processor key.
 
         Args:
-            processor_key: Processor qualified key to remove.
+            processor_key: Canonical processor key to remove.
 
         Returns:
             ``True`` if the processor definition was present in the effective

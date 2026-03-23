@@ -53,7 +53,7 @@ class Binding:
 
 
 class BindingRegistry:
-    """Composed registry of effective file type to processor bindings.
+    """Composed registry of effective file-type-key to processor-key bindings.
 
     The base binding view is derived from the explicit built-in processor
     bindings declared in `topmark.processors.instances`. Local overrides and
@@ -71,7 +71,7 @@ class BindingRegistry:
         """Compose the effective binding registry and validate referenced identities.
 
         Returns:
-            Mapping of file type qualified key to processor qualified key.
+            Mapping of canonical file type key to canonical processor key.
 
         Raises:
             ProcessorBindingError: If a composed binding references an unknown
@@ -118,7 +118,7 @@ class BindingRegistry:
         """Return a read-only mapping of effective file type to processor bindings.
 
         Returns:
-            Mapping of file type qualified key to processor qualified key.
+            Mapping of canonical file type key to canonical processor key.
         """
         with cls._lock:
             composed: dict[str, str] = cls._compose()
@@ -128,13 +128,13 @@ class BindingRegistry:
 
     @classmethod
     def get_processor_key(cls, file_type_key: str) -> str | None:
-        """Return the bound processor qualified key for a file type.
+        """Return the bound canonical processor key for a file type key.
 
         Args:
-            file_type_key: File type qualified key.
+            file_type_key: Canonical file type key.
 
         Returns:
-            The bound processor qualified key, or ``None`` if the file type is
+            The bound canonical processor key, or ``None`` if the file type is
             currently unbound.
         """
         with cls._lock:
@@ -142,13 +142,13 @@ class BindingRegistry:
 
     @classmethod
     def get_filetype_keys(cls, processor_key: str) -> tuple[str, ...]:
-        """Return file type qualified keys currently bound to a processor.
+        """Return canonical file type keys currently bound to a processor.
 
         Args:
-            processor_key: Processor qualified key.
+            processor_key: Canonical processor key.
 
         Returns:
-            Sorted tuple of file type qualified keys currently bound to the
+            Sorted tuple of canonical file type keys currently bound to the
             processor.
         """
         with cls._lock:
@@ -164,10 +164,10 @@ class BindingRegistry:
 
     @classmethod
     def is_bound(cls, file_type_key: str) -> bool:
-        """Return whether a file type qualified key currently has a binding.
+        """Return whether a canonical file type key currently has a binding.
 
         Args:
-            file_type_key: File type qualified key.
+            file_type_key: Canonical file type key.
 
         Returns:
             ``True`` if the file type currently has a binding, else ``False``.
@@ -177,10 +177,10 @@ class BindingRegistry:
 
     @classmethod
     def is_processor_bound(cls, processor_key: str) -> bool:
-        """Return whether a processor qualified key is referenced by any binding.
+        """Return whether a canonical processor key is referenced by any binding.
 
         Args:
-            processor_key: Processor qualified key.
+            processor_key: Canonical processor key.
 
         Returns:
             ``True`` if at least one file type is currently bound to the
@@ -193,12 +193,11 @@ class BindingRegistry:
 
     @classmethod
     def bind(cls, *, file_type_key: str, processor_key: str) -> None:
-        """Bind a registered file type qualified key to a registered processor.
+        """Bind a registered file type key to a registered processor key.
 
         Args:
-            file_type_key: File type qualified key to bind.
-            processor_key: Processor qualified key to bind to the file
-                type.
+            file_type_key: Canonical file type key to bind.
+            processor_key: Canonical processor key to bind to the file type.
 
         Raises:
             UnknownFileTypeError: If `file_type_key` does not resolve to
@@ -236,10 +235,10 @@ class BindingRegistry:
 
     @classmethod
     def unbind(cls, file_type_key: str) -> bool:
-        """Remove the effective binding for a file type qualified key.
+        """Remove the effective binding for a canonical file type key.
 
         Args:
-            file_type_key: File type qualified key whose binding should be removed.
+            file_type_key: Canonical file type key whose binding should be removed.
 
         Returns:
             ``True`` if a binding existed in the effective view, else ``False``.
@@ -255,10 +254,10 @@ class BindingRegistry:
         """Remove all bindings that currently reference a processor.
 
         Args:
-            processor_key: Processor qualified key.
+            processor_key: Canonical processor key.
 
         Returns:
-            Sorted tuple of file type qualified keys that were unbound.
+            Sorted tuple of canonical file type keys that were unbound.
         """
         with cls._lock:
             filetype_qks: tuple[str, ...] = tuple(
