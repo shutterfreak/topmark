@@ -68,8 +68,25 @@ goals.
   - `DuplicateProcessorKeyError`
   - `UnknownFileTypeError`
   - `AmbiguousFileTypeIdentifierError`
-- Introduced the new \[`topmark.resolution`\][topmark.resolution] package and clarified resolution
-  responsibilities:
+- Completed the registry split into three explicit layers plus a thin façade:
+  - \[`topmark.registry.filetypes`\][topmark.registry.filetypes] manages file type identities
+  - \[`topmark.registry.processors`\][topmark.registry.processors] manages processor identities
+  - \[`topmark.registry.bindings`\][topmark.registry.bindings] manages effective
+    file-type-to-processor relationships
+  - \[`topmark.registry.registry`\][topmark.registry.registry] now acts only as a thin
+    cross-registry façade
+- Made canonical key semantics explicit throughout the registry layer:
+  - processor identity is keyed canonically by processor key
+  - binding relationships are keyed canonically by file type key and processor key
+  - file types expose both a local-key compatibility view and a canonical qualified-key view
+- Removed convenience façade helpers that mixed identity registration with binding side effects:
+  - removed `Registry.register_processor()` / `Registry.try_register_processor()`
+  - removed `Registry.register_filetype()` / `Registry.unregister_filetype()`
+  - processor-definition creation is now explicit through `HeaderProcessorRegistry.register(...)`
+  - file type registration is now explicit through `FileTypeRegistry.register(...)`
+  - binding remains explicit through `Registry.bind(...)` / `BindingRegistry.bind(...)`
+  - Introduced the new \[`topmark.resolution`\][topmark.resolution] package and clarified resolution
+    responsibilities:
   - \[`topmark.resolution.files`\][topmark.resolution.files] resolves **which files** should be
     processed.
   - \[`topmark.resolution.filetypes`\][topmark.resolution.filetypes] resolves **what each file is**
@@ -88,6 +105,15 @@ goals.
 - Fixed a regression in the new shared resolver where empty include/exclude file type collections
   were treated as active filters. Empty collections are now normalized to mean “no filter”,
   restoring expected file type resolution behavior.
+- Formalized the resolver's ambiguity policy in the shared resolution layer:
+  - overlapping `FileType` candidates are allowed and are treated as a resolver concern rather than
+    a registry error
+  - candidate selection is deterministic and now uses score, namespace, and local key as the stable
+    tie-break order
+  - tied top-scoring candidates emit debug logs before deterministic tie-break selection is applied
+- Added dedicated developer documentation for path-based resolution and ambiguity handling in
+  [`docs/dev/resolution.md`](resolution.md), and cross-linked it from architecture, pipelines, and
+  plugin documentation.
 
 ### CLI output architecture
 
@@ -287,6 +313,13 @@ Completed work:
   - pydocstringformatter for consistent formatting
 - Removed duplicate type hints from docstrings in the typed codebase
   (`arg-type-hints-in-docstring = false`).
+- Documented and standardized exception documentation policy for public APIs:
+  - `Raises:` sections now describe the observable caller contract, including intentionally
+    propagated exceptions where relevant
+  - targeted `# noqa: DOC503` suppressions are used on closing docstring lines for façade/delegation
+    helpers that intentionally document propagated exceptions
+  - contributor and developer docs now explain why redundant `try/except: raise` blocks should not
+    be added solely to satisfy docstring linting
 
 ### Documentation: pipeline docs + generated API internals
 
@@ -507,6 +540,12 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
 - Path-based resolution is now centralized in \[`topmark.resolution`\][topmark.resolution].
   Callers/tests that previously relied on legacy resolver helpers must use the shared resolution
   helpers instead (for example `resolve_binding_for_path(...)`).
+- Registry mutation is now fully explicit and split by responsibility:
+  - processor-definition registration must go through `HeaderProcessorRegistry.register(...)`
+  - file type registration must go through `FileTypeRegistry.register(...)`
+  - file-type-to-processor association must go through `Registry.bind(...)` /
+    `BindingRegistry.bind(...)`
+  - the former convenience helpers that combined registration and binding in `Registry` were removed
 - Namespace-aware file type lookup now supports qualified identifiers and may raise
   \[`AmbiguousFileTypeIdentifierError`\][topmark.core.errors.AmbiguousFileTypeIdentifierError] when
   an unqualified identifier matches multiple file types.
@@ -515,6 +554,10 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
 - Registry machine and human outputs now expose qualified identifiers and namespace metadata for
   file types/processors. Downstream tooling or snapshots expecting unqualified-only registry output
   may need to be updated.
+- File type resolution ambiguity is now an explicitly documented resolver concern:
+  - overlapping `FileType` definitions are permitted
+  - deterministic tie-breaks are part of the resolver contract
+  - the policy is documented in `docs/dev/resolution.md`
 
 ### CLI / output format changes
 
@@ -633,40 +676,39 @@ This section lists remaining 1.0 decisions and implementation work. Items are gr
 
 #### Status
 
-- Identity model: partially implemented
-- Qualified lookup: implemented for file type identifier resolution
-- Effective registry storage: still transitional
+- Identity model: implemented
+- Canonical processor/binding storage: implemented
+- File type dual-view model: implemented and under review for 1.0 freeze
 
 Current state:
 
 - File types and processors now have namespace-aware stable identities.
-- Qualified identifiers are supported in lookup and registry-facing output.
-- Effective composed registries are still keyed largely by **unqualified file type name** for
-  compatibility.
+- Processor definitions are stored canonically by processor key.
+- Effective bindings are stored canonically by file type key → processor key.
+- `FileTypeRegistry` intentionally maintains two overlapping views:
+  - a local-key compatibility view
+  - a canonical qualified-key view
+- The public registry façade now treats canonical keys as the default identity form and uses
+  `file_type_id` only for resolver-style inputs that may be local or qualified.
 
 Remaining work before 1.0:
 
-- Decide whether internal composed registries should move fully to **qualified-key storage**.
-- Decide how unqualified compatibility views should behave when multiple namespaces define the same
-  file type name.
-- Decide whether unqualified lookup should:
-  - remain allowed only when unique,
-  - warn on ambiguity,
-  - or fail fast and require qualified identifiers.
-- Clarify how processor overlays should behave once multiple namespaces can define similarly named
-  file types.
-- Freeze a precedence model across:
-  - built-in base entries
-  - plugin-discovered base entries
-  - runtime overlay entries
-  - explicit removals/masks
+- Decide whether the local-key compatibility view in `FileTypeRegistry` should remain an explicit
+  long-term 1.0 feature or be treated as a transitional bridge.
+- Freeze and document where local keys remain acceptable user-facing input:
+  - CLI/config include/exclude filters
+  - API resolver-style helpers
+  - plugin-facing examples and tests
+- Confirm that canonical key terminology (`file_type_key`, `processor_key`, `file_type_id`,
+  `local_key`) is fully stabilized across docs, tests, and public API references.
 
 Recommended direction:
 
-- Treat qualified identity as canonical internally.
-- Keep unqualified lookup only as a compatibility layer when unambiguous.
-- Preserve a fail-fast default for duplicate processor overlay registration, with any replacement or
-  keep-existing behavior made explicit via higher-level APIs.
+- Keep canonical qualified identity as the default internal model.
+- Keep the file-type local-key view only as an explicit compatibility layer where it provides real
+  user-facing value.
+- Preserve fail-fast behavior for duplicate processor registration while keeping overlap between
+  file types a resolver concern rather than a registry error.
 
 ### In-memory pipeline (Option A)
 
@@ -838,10 +880,17 @@ Open decisions:
   `resolve_files_to_process(...)`, or is the current name stable enough for 1.0?
 - Should the resolution layer stay decoupled from full config objects and instead continue to accept
   only the specific include/exclude file type filters it actually needs?
+- Should TopMark keep the current deterministic winner-selection policy for overlapping `FileType`
+  candidates through 1.0, or introduce a stricter ambiguity mode later?
+- Should namespace ever become a semantic precedence signal, or remain only a stable tie-breaker?
 
 Before 1.0, the package should have:
 
 - a documented stable responsibility split between `resolution.files` and `resolution.filetypes`
+- a frozen ambiguity policy for path-based file type resolution, including:
+  - deterministic tie-break ordering
+  - overlap being treated as a resolver concern rather than a registry error
+  - documented observability/debug logging behavior for tied top candidates
 - a frozen public helper surface
 - test coverage for namespace-aware filtering and ambiguity behavior in both file-input and
   file-type resolution
@@ -1075,6 +1124,8 @@ This checklist defines the minimum criteria for cutting TopMark 1.0.
 - [ ] No CLI-specific concerns (verbosity, color, formatting) in core logic
 - [x] Path-based file resolution and file type / processor resolution are separated into the
   `topmark.resolution` package instead of being split across pipeline and registry helpers
+- [x] File type resolution ambiguity policy is documented and deterministic (score + namespace +
+  local key tie-breaks)
 - [x] All machine-format payloads built outside CLI command modules
 - [x] Color handling fully confined to CLI (semantic style roles implemented; remaining yachalk
   usage to be eliminated or isolated)
@@ -1121,8 +1172,8 @@ This checklist defines the minimum criteria for cutting TopMark 1.0.
 ### Configuration
 
 - [ ] Config keys and semantics documented and considered stable
-- [ ] Qualified and unqualified file type identifier semantics in config include/exclude filters
-  documented and considered stable
+- [ ] Qualified and unqualified file type identifier semantics in config include/exclude filters,
+  resolver-style API helpers, and file-type compatibility views are documented and considered stable
 - [ ] Decision made on schema versioning (explicit key vs implicit evolution)
 - [ ] `config init`, `defaults`, `check`, `dump` produce aligned outputs (text, markdown, machine)
 - [ ] Decision made and documented on where config overrides (`MutableConfig.apply_args`) live and
@@ -1140,8 +1191,8 @@ This checklist defines the minimum criteria for cutting TopMark 1.0.
   pages)
 - [x] Docs pipeline robust against mdformat normalization of GitHub alerts/callouts
 - [ ] Clear split between unit (memory-based) and integration (filesystem) tests
-- [ ] Namespace-aware registry lookup and ambiguity behavior covered by tests across config,
-  registry, and resolution layers
+- [ ] Namespace-aware registry lookup and deterministic ambiguity behavior covered by tests across
+  config, registry, and resolution layers
 - [ ] High-coverage tests for edge cases (encoding, synthetic names, and remaining empty-like
   variants)
 - [x] Empty and empty-like file handling is explicit and idempotent (BOM-only, newline-only,
@@ -1158,8 +1209,8 @@ This checklist defines the minimum criteria for cutting TopMark 1.0.
 - [ ] Decision made on color backend (`yachalk` confinement or removal)
 - [x] Canonical dependency workflow migrated to `pyproject.toml` + `uv.lock` with no remaining
   dependence on exported requirements/constraints files for normal development, CI, or release flows
-- [ ] Decide whether the transitional unqualified-keyed effective registry model is acceptable for
-  1.0 or whether full qualified-key internal storage is required before release
+- [ ] Decide whether the explicit local-key compatibility view in `FileTypeRegistry` should remain a
+  supported 1.0 feature or be reduced further in favor of canonical qualified-key-only operation
 - [ ] Decide whether duplicated built-site docs/linkcheck steps in CI and release workflows should
   remain inline or eventually be factored into a reusable workflow
 - [ ] Formatter/tool configuration split stabilized and documented (.mdformat.toml, .taplo.toml,
