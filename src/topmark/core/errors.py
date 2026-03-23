@@ -16,7 +16,7 @@ and higher-level orchestration code.
 
 Each exception carries structured [`ErrorContext`][topmark.core.errors.ErrorContext]
 metadata so callers can inspect machine-useful details such as the affected
-path, file type, encoding, or additional diagnostic information.
+path, qualified key, encoding, or additional diagnostic information.
 
 CLI commands should catch these core exceptions and translate them into
 user-facing CLI errors with appropriate exit codes.
@@ -46,7 +46,7 @@ class ErrorContext:
     Attributes:
         message: Human-readable error message, without CLI styling.
         path: Optional filesystem path associated with the failure.
-        qualified_key: Optional qualifgied key associated with the failure.
+        qualified_key: Optional qualified key associated with the failure.
         encoding: Optional encoding name relevant to the failure.
         details: Optional tuple of additional diagnostic details.
     """
@@ -73,7 +73,11 @@ class TopmarkError(Exception):
         self.context: Final[ErrorContext] = context
 
     def __str__(self) -> str:
-        """Return the human-readable message for display purposes."""
+        """Return the human-readable message for display purposes.
+
+        Returns:
+            The message stored in the attached `ErrorContext`.
+        """
         return self.context.message
 
 
@@ -83,6 +87,10 @@ class UnknownFileTypeError(TopmarkError):
     This error is typically raised by public registry helpers when a caller
     references a file type identifier that is not present in the effective file
     type view.
+
+    Args:
+        file_type: File type identifier that could not be resolved.
+        path: Optional filesystem path associated with the lookup.
     """
 
     def __init__(
@@ -112,6 +120,10 @@ class AmbiguousFileTypeIdentifierError(TopmarkError):
     This error is intended for lookup helpers that accept either unqualified or
     qualified file type identifiers. Callers can recover by retrying with an
     explicit qualified identifier of the form ``"<namespace>:<name>"``.
+
+    Args:
+        file_type: Unqualified file type identifier supplied by the caller.
+        candidates: Candidate qualified keys that matched the identifier.
     """
 
     def __init__(
@@ -179,10 +191,16 @@ class InvalidRegistryIdentityError(TopmarkError):
 class ReservedNamespaceError(TopmarkError):
     """Raised when a reserved namespace is used by an ineligible registry entry.
 
-    This is intended for registry composition / registration APIs where the
-    `topmark` namespace is reserved for built-in entities and must not be
+    This is intended for registry composition and registration APIs where the
+    ``topmark`` namespace is reserved for built-in entities and must not be
     claimed by external overlays, plugins, or test fixtures unless they are
     defined from within the TopMark package.
+
+    Args:
+        namespace: Reserved namespace that was used.
+        owner: Human-readable owner label for the offending entry.
+        entities: Registry entity category involved in the violation.
+        owner_module: Optional module path where the offending entry is defined.
     """
 
     def __init__(
@@ -220,10 +238,14 @@ class ReservedNamespaceError(TopmarkError):
 class ProcessorBindingError(TopmarkError):
     """Raised when explicit processor bindings are invalid or inconsistent.
 
-    This signals an internal registry-construction invariant failure, such as an
-    unknown bound file type identifier or duplicate binding declaration. Callers would
-    normally treat this as a programming or packaging error rather than attempt
-    recovery.
+    This signals a registry-construction or registry-mutation invariant
+    failure, such as an unknown bound file type identifier, an unknown
+    processor qualified key, or a duplicate binding declaration.
+
+    Args:
+        message: Human-readable error message.
+        file_type: Optional file type qualified key associated with the failed
+            binding operation.
     """
 
     def __init__(
@@ -269,6 +291,10 @@ class DuplicateProcessorRegistrationError(ProcessorRegistrationError):
 
     This condition may be recoverable depending on caller policy, for example by
     unregistering or replacing the existing entry before retrying.
+
+    Args:
+        qualified_key: Processor qualified key that is already present in the
+            effective registry.
     """
 
     def __init__(
@@ -288,6 +314,11 @@ class DuplicateProcessorKeyError(TopmarkError):
     This signals an internal or overlay-composition invariant failure: the same
     qualified processor identity must not resolve to different processor classes
     in the effective processor registry.
+
+    Args:
+        qualified_key: Conflicting processor qualified key.
+        existing_class: Human-readable label for the already-associated class.
+        new_class: Human-readable label for the newly encountered class.
     """
 
     def __init__(
@@ -319,9 +350,13 @@ class DuplicateProcessorKeyError(TopmarkError):
 class UnsupportedFileTypeError(TopmarkError):
     """Raised when a file type is recognized but currently unsupported.
 
-    This distinguishes “unknown file type” from “known file type with no usable
-    processor”, which can be useful for diagnostics, reporting, and fallback
+    This distinguishes "unknown file type" from "known file type with no usable
+    processor", which can be useful for diagnostics, reporting, and fallback
     handling.
+
+    Args:
+        file_type: Recognized file type identifier that is currently unsupported.
+        path: Optional filesystem path associated with the lookup.
     """
 
     def __init__(

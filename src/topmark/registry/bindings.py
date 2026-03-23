@@ -64,6 +64,8 @@ class BindingRegistry:
     _overrides: dict[str, str] = {}  # filetype_qk -> processor_qk
     _removals: set[str] = set()
 
+    # --- Internal composition ---
+
     @classmethod
     def _compose(cls) -> dict[str, str]:
         """Compose the effective binding registry and validate referenced identities.
@@ -113,14 +115,99 @@ class BindingRegistry:
 
     @classmethod
     def as_mapping(cls) -> Mapping[str, str]:
-        """Return a read-only mapping of file type qualified key to processor qualified key."""
+        """Return a read-only mapping of effective file type to processor bindings.
+
+        Returns:
+            Mapping of file type qualified key to processor qualified key.
+        """
         with cls._lock:
             composed: dict[str, str] = cls._compose()
             return MappingProxyType(composed)
 
+    # --- Exact point lookups ---
+
+    @classmethod
+    def get_processor_key_for_filetype(cls, filetype_qualified_key: str) -> str | None:
+        """Return the bound processor qualified key for a file type.
+
+        Args:
+            filetype_qualified_key: File type qualified key.
+
+        Returns:
+            The bound processor qualified key, or ``None`` if the file type is
+            currently unbound.
+        """
+        with cls._lock:
+            return cls._compose().get(filetype_qualified_key)
+
+    @classmethod
+    def get_filetype_keys_for_processor(cls, processor_qualified_key: str) -> tuple[str, ...]:
+        """Return file type qualified keys currently bound to a processor.
+
+        Args:
+            processor_qualified_key: Processor qualified key.
+
+        Returns:
+            Sorted tuple of file type qualified keys currently bound to the
+            processor.
+        """
+        with cls._lock:
+            return tuple(
+                sorted(
+                    filetype_qk
+                    for filetype_qk, processor_qk in cls._compose().items()
+                    if processor_qk == processor_qualified_key
+                )
+            )
+
+    # --- Predicates ---
+
+    @classmethod
+    def is_bound(cls, filetype_qualified_key: str) -> bool:
+        """Return whether a file type qualified key currently has a binding.
+
+        Args:
+            filetype_qualified_key: File type qualified key.
+
+        Returns:
+            ``True`` if the file type currently has a binding, else ``False``.
+        """
+        with cls._lock:
+            return filetype_qualified_key in cls._compose()
+
+    @classmethod
+    def is_processor_bound(cls, processor_qualified_key: str) -> bool:
+        """Return whether a processor qualified key is referenced by any binding.
+
+        Args:
+            processor_qualified_key: Processor qualified key.
+
+        Returns:
+            ``True`` if at least one file type is currently bound to the
+            processor, else ``False``.
+        """
+        with cls._lock:
+            return any(
+                processor_qk == processor_qualified_key for processor_qk in cls._compose().values()
+            )
+
+    # --- Mutations ---
+
     @classmethod
     def bind(cls, *, filetype_qualified_key: str, processor_qualified_key: str) -> None:
-        """Bind a registered file type qualified key to a registered processor qualified key."""
+        """Bind a registered file type qualified key to a registered processor.
+
+        Args:
+            filetype_qualified_key: File type qualified key to bind.
+            processor_qualified_key: Processor qualified key to bind to the file
+                type.
+
+        Raises:
+            UnknownFileTypeError: If `filetype_qualified_key` does not resolve to
+                a registered file type.
+            ProcessorBindingError: If `processor_qualified_key` is unknown or if
+                the file type is already bound.
+        """
         with cls._lock:
             file_type: FileType | None = FileTypeRegistry.get_by_qualified_key(
                 filetype_qualified_key,
@@ -152,7 +239,15 @@ class BindingRegistry:
 
     @classmethod
     def unbind(cls, filetype_qualified_key: str) -> bool:
-        """Remove the effective binding for a file type qualified key."""
+        """Remove the effective binding for a file type qualified key.
+
+        Args:
+            filetype_qualified_key: File type qualified key whose binding should
+                be removed.
+
+        Returns:
+            ``True`` if a binding existed in the effective view, else ``False``.
+        """
         with cls._lock:
             existed: bool = (
                 filetype_qualified_key in cls._overrides or filetype_qualified_key in cls._compose()
@@ -160,40 +255,6 @@ class BindingRegistry:
             cls._overrides.pop(filetype_qualified_key, None)
             cls._removals.add(filetype_qualified_key)
             return existed
-
-    @classmethod
-    def get_processor_key_for_filetype(cls, filetype_qualified_key: str) -> str | None:
-        """Return the bound processor qualified key for a file type qualified key."""
-        with cls._lock:
-            return cls._compose().get(filetype_qualified_key)
-
-    @classmethod
-    def get_filetype_keys_for_processor(cls, processor_qualified_key: str) -> tuple[str, ...]:
-        """Return file type qualified keys currently bound to a processor.
-
-        Args:
-            processor_qualified_key: Processor qualified key.
-
-        Returns:
-            Sorted tuple of file type qualified keys currently bound to the
-            processor.
-        """
-        with cls._lock:
-            return tuple(
-                sorted(
-                    filetype_qk
-                    for filetype_qk, processor_qk in cls._compose().items()
-                    if processor_qk == processor_qualified_key
-                )
-            )
-
-    @classmethod
-    def is_processor_bound(cls, processor_qualified_key: str) -> bool:
-        """Return whether a processor qualified key is referenced by any binding."""
-        with cls._lock:
-            return any(
-                processor_qk == processor_qualified_key for processor_qk in cls._compose().values()
-            )
 
     @classmethod
     def unbind_processor(cls, processor_qualified_key: str) -> tuple[str, ...]:
@@ -218,21 +279,54 @@ class BindingRegistry:
                 cls._removals.add(filetype_qk)
             return filetype_qks
 
+    # --- Iteration and reporting ---
+
     @classmethod
-    def is_bound(cls, filetype_qualified_key: str) -> bool:
-        """Return whether a file type qualified key currently has a binding."""
-        with cls._lock:
-            return filetype_qualified_key in cls._compose()
+    def iter_bindings(cls) -> Iterator[Binding]:
+        """Iterate the effective joined bindings of file types and processors.
+
+        Yields:
+            Binding: A pair containing file type metadata and the optionally
+            bound processor metadata (``None`` for unbound types).
+        """
+        filetypes_by_qualified_key: dict[str, FileTypeMeta] = {
+            meta.qualified_key: meta for meta in FileTypeRegistry.iter_meta()
+        }
+        processors_by_qualified_key: dict[str, ProcessorMeta] = {
+            meta.qualified_key: meta for meta in HeaderProcessorRegistry.iter_meta()
+        }
+
+        for filetype_qualified_key, filetype_meta in sorted(filetypes_by_qualified_key.items()):
+            processor_qualified_key: str | None = cls.get_processor_key_for_filetype(
+                filetype_qualified_key,
+            )
+            yield Binding(
+                filetype=filetype_meta,
+                processor=(
+                    processors_by_qualified_key.get(processor_qualified_key)
+                    if processor_qualified_key is not None
+                    else None
+                ),
+            )
 
     @classmethod
     def iter_meta(cls) -> Iterator[tuple[str, str]]:
-        """Iterate over effective ``(filetype_qk, processor_qk)`` pairs."""
+        """Iterate over effective ``(filetype_qk, processor_qk)`` pairs.
+
+        Yields:
+            Tuples of ``(filetype_qualified_key, processor_qualified_key)`` in
+            sorted order.
+        """
         with cls._lock:
             yield from sorted(cls._compose().items())
 
     @classmethod
-    def bound_filetype_names(cls) -> tuple[str, ...]:
-        """Return local keys of file types that currently have a binding."""
+    def bound_filetype_local_keys(cls) -> tuple[str, ...]:
+        """Return sorted local keys of file types that currently have a binding.
+
+        Returns:
+            Sorted tuple of file type local keys that are currently bound.
+        """
         with cls._lock:
             return tuple(
                 sorted(
@@ -243,8 +337,12 @@ class BindingRegistry:
             )
 
     @classmethod
-    def unbound_filetype_names(cls) -> tuple[str, ...]:
-        """Return local keys of recognized file types that currently lack a binding."""
+    def unbound_filetype_local_keys(cls) -> tuple[str, ...]:
+        """Return sorted local keys of recognized file types that currently lack a binding.
+
+        Returns:
+            Sorted tuple of file type local keys that are currently unbound.
+        """
         with cls._lock:
             return tuple(
                 sorted(
@@ -253,31 +351,3 @@ class BindingRegistry:
                     if not cls.is_bound(ft.qualified_key)
                 )
             )
-
-
-def iter_bindings() -> Iterator[Binding]:
-    """Iterate joined bindings of file types and processors.
-
-    Yields:
-        Binding: A pair containing file type metadata and the optionally
-        bound processor metadata (``None`` for unbound types).
-    """
-    filetypes_by_qualified_key: dict[str, FileTypeMeta] = {
-        meta.qualified_key: meta for meta in FileTypeRegistry.iter_meta()
-    }
-    processors_by_qualified_key: dict[str, ProcessorMeta] = {
-        meta.qualified_key: meta for meta in HeaderProcessorRegistry.iter_meta()
-    }
-
-    for filetype_qualified_key, filetype_meta in sorted(filetypes_by_qualified_key.items()):
-        processor_qualified_key: str | None = BindingRegistry.get_processor_key_for_filetype(
-            filetype_qualified_key,
-        )
-        yield Binding(
-            filetype=filetype_meta,
-            processor=(
-                processors_by_qualified_key.get(processor_qualified_key)
-                if processor_qualified_key is not None
-                else None
-            ),
-        )

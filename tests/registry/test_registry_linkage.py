@@ -47,13 +47,14 @@ def test_supported_vs_unsupported_partition() -> None:
     ft: FileType = make_file_type(local_key=ft_name)
 
     proc_cls: type[HeaderProcessor] = registry_processor_class()
+    processor_qualified_key: str | None = None
 
     try:
         # Register FT only (recognized, unsupported)
         FileTypeRegistry.register(ft)
         assert ft_name in FileTypeRegistry.names()
-        assert ft_name in Registry.unsupported_filetype_names()
-        assert ft_name not in Registry.bound_filetype_names()
+        assert ft_name in Registry.unbound_filetype_local_keys()
+        assert ft_name not in Registry.bound_filetype_local_keys()
         assert BindingRegistry.get_processor_key_for_filetype(ft.qualified_key) is None
 
         # Now register via the public facade -> becomes supported
@@ -62,10 +63,10 @@ def test_supported_vs_unsupported_partition() -> None:
             processor_class=proc_cls,
         )
 
-        assert ft_name in Registry.bound_filetype_names()
-        assert ft_name not in Registry.unsupported_filetype_names()
+        assert ft_name in Registry.bound_filetype_local_keys()
+        assert ft_name not in Registry.unbound_filetype_local_keys()
 
-        processor_qualified_key: str | None = BindingRegistry.get_processor_key_for_filetype(
+        processor_qualified_key = BindingRegistry.get_processor_key_for_filetype(
             ft.qualified_key,
         )
         assert processor_qualified_key is not None
@@ -82,7 +83,12 @@ def test_supported_vs_unsupported_partition() -> None:
         assert proc_obj.file_type is not None
         assert proc_obj.file_type.local_key == ft_name
     finally:
-        Registry.unregister_processor(ft_name)
+        Registry.unbind_filetype_by_local_key(ft_name)
+        if processor_qualified_key is not None:
+            Registry.unregister_processor_by_qualified_key(
+                processor_qualified_key,
+                remove_bindings=False,
+            )
         FileTypeRegistry.unregister(ft_name)
 
 
@@ -100,7 +106,7 @@ def test_register_processor_fails_for_unknown_filetype() -> None:
 def test_supported_unsupported_partition_coherent() -> None:
     """Partition coherence (disjoint & covers all names)."""
     all_names: set[str] = set(FileTypeRegistry.names())
-    supp: set[str] = set(Registry.bound_filetype_names())
-    unsupp: set[str] = set(Registry.unsupported_filetype_names())
+    supp: set[str] = set(Registry.bound_filetype_local_keys())
+    unsupp: set[str] = set(Registry.unbound_filetype_local_keys())
     assert supp.isdisjoint(unsupp)
     assert supp.union(unsupp) == all_names

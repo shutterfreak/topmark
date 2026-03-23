@@ -46,9 +46,9 @@ from topmark.core.errors import ReservedNamespaceError
 from topmark.core.errors import UnknownFileTypeError
 from topmark.registry.bindings import Binding
 from topmark.registry.bindings import BindingRegistry
-from topmark.registry.bindings import iter_bindings
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
+from topmark.registry.types import ProcessorDefinition
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -66,33 +66,44 @@ class Registry:
     mutation helpers.
     """
 
+    # --- Read-only registry views ---
+
     @staticmethod
     def bindings() -> tuple[Binding, ...]:
-        """Return joined view of file types and their processor bindings.
+        """Return a joined view of file types and their processor bindings.
 
         Each element contains the file type metadata and the optionally bound
         processor metadata (``None`` means recognized but unsupported).
 
         Returns:
-            Immutable sequence of bindings.
+            Immutable tuple of joined binding entries.
         """
-        return tuple(iter_bindings())
+        return tuple(BindingRegistry.iter_bindings())
 
     @staticmethod
     def filetypes() -> Mapping[str, FileType]:
-        """Return a read-only mapping of registered file types keyed by local_key.
+        """Return a read-only mapping of registered file types keyed by local key.
 
-        The mapping is a ``MappingProxyType`` (mutations are not allowed).
-        Keys are file type names (local_key) ; values are concrete FileType instances.
+        Returns:
+            Mapping of file type local key to concrete `FileType` instances.
+
+        Notes:
+            The returned mapping is a ``MappingProxyType`` and must not be
+            mutated.
         """
         return FileTypeRegistry.as_mapping()
 
     @staticmethod
     def filetypes_by_qualified_key() -> Mapping[str, FileType]:
-        """Return a read-only mapping of registered file types keyed by qualified_key.
+        """Return a read-only mapping of registered file types keyed by qualified key.
 
-        The mapping is a ``MappingProxyType`` (mutations are not allowed).
-        Keys are qualified keys of file types; values are concrete FileType instances.
+        Returns:
+            Mapping of file type qualified key to concrete `FileType`
+            instances.
+
+        Notes:
+            The returned mapping is a ``MappingProxyType`` and must not be
+            mutated.
         """
         return FileTypeRegistry.as_mapping_by_qualified_key()
 
@@ -105,6 +116,32 @@ class Registry:
         objects.
         """
         return HeaderProcessorRegistry.as_mapping_by_qualified_key()
+
+    @staticmethod
+    def get_filetype_by_qualified_key(qualified_key: str) -> FileType | None:
+        """Return a file type by qualified key.
+
+        Args:
+            qualified_key: File type qualified key.
+
+        Returns:
+            The matching `FileType`, or ``None`` if not found.
+        """
+        return FileTypeRegistry.get_by_qualified_key(qualified_key=qualified_key)
+
+    @staticmethod
+    def get_processor_by_qualified_key(qualified_key: str) -> ProcessorDefinition | None:
+        """Return a processor definition by qualified key.
+
+        Args:
+            qualified_key: Processor qualified key.
+
+        Returns:
+            The matching `ProcessorDefinition`, or ``None`` if not found.
+        """
+        return HeaderProcessorRegistry.get_by_qualified_key(qualified_key)
+
+    # --- Runtime resolution ---
 
     @staticmethod
     def resolve_processor(file_type_id: str) -> HeaderProcessor | None:
@@ -137,27 +174,18 @@ class Registry:
         proc_obj.file_type = ft_obj
         return proc_obj
 
-    @staticmethod
-    def get_filetype_by_qualified_key(qualified_key: str) -> FileType | None:
-        """Return a file type by qualified key.
+    # --- Binding/status inspection ---
 
-        Args:
-            qualified_key: File type qualified key.
-
-        Returns:
-            The matching `FileType`, or ``None`` if not found.
-        """
-        return FileTypeRegistry.get_by_qualified_key(qualified_key=qualified_key)
-
+    # TODO rename to a more suitable name
     @staticmethod
     def is_supported(local_key: str) -> bool:
-        """Return True if a processor is registered for the given file type local_key.
+        """Return whether the given file type local key currently has a binding.
 
         Args:
-            local_key: File type identifier to query.
+            local_key: File type local key to query.
 
         Returns:
-            ``True`` if the file type has a registered processor; otherwise ``False``.
+            ``True`` if the file type currently has a binding, else ``False``.
         """
         ft_obj: FileType | None = FileTypeRegistry.resolve_filetype_id(local_key)
         if ft_obj is None:
@@ -165,14 +193,39 @@ class Registry:
         return BindingRegistry.is_bound(ft_obj.qualified_key)
 
     @staticmethod
-    def bound_filetype_names() -> tuple[str, ...]:
-        """Return file type names that currently have a registered processor."""
-        return BindingRegistry.bound_filetype_names()
+    def bound_filetype_local_keys() -> tuple[str, ...]:
+        """Return local keys of file types that currently have a binding.
+
+        Returns:
+            Sorted tuple of file type local keys that are currently bound.
+        """
+        return BindingRegistry.bound_filetype_local_keys()
 
     @staticmethod
-    def unsupported_filetype_names() -> tuple[str, ...]:
-        """Return recognized file type names that currently lack a processor."""
-        return BindingRegistry.unbound_filetype_names()
+    def unbound_filetype_local_keys() -> tuple[str, ...]:
+        """Return local keys of recognized file types that currently lack a binding.
+
+        Returns:
+            Sorted tuple of file type local keys that are currently unbound.
+        """
+        return BindingRegistry.unbound_filetype_local_keys()
+
+    @staticmethod
+    def get_bound_filetype_qualified_keys_for_processor(
+        qualified_key: str,
+    ) -> tuple[str, ...]:
+        """Return file type qualified keys currently bound to a processor.
+
+        Args:
+            qualified_key: Processor qualified key.
+
+        Returns:
+            Sorted tuple of file type qualified keys currently bound to the
+            processor.
+        """
+        return BindingRegistry.get_filetype_keys_for_processor(qualified_key)
+
+    # --- File type mutation ---
 
     @staticmethod
     def register_filetype(
@@ -180,7 +233,7 @@ class Registry:
         *,
         processor_class: type[HeaderProcessor] | None = None,
     ) -> None:
-        """Register a file type and optionally bind a processor class (advanced).
+        """Register a file type and optionally bind a processor class.
 
         This is a convenience passthrough to
         [`FileTypeRegistry.register`][topmark.registry.filetypes.FileTypeRegistry.register].
@@ -209,8 +262,18 @@ class Registry:
 
     @staticmethod
     def unregister_filetype(local_key: str) -> bool:
-        """Unregister a file type by local_key (advanced)."""
+        """Unregister a file type by local key.
+
+        Args:
+            local_key: File type local key to remove.
+
+        Returns:
+            ``True`` if the file type was present in the effective registry,
+            else ``False``.
+        """
         return FileTypeRegistry.unregister(local_key)
+
+    # --- Processor definition mutation ---
 
     @staticmethod
     def register_processor(
@@ -218,18 +281,23 @@ class Registry:
         file_type_id: str,
         processor_class: type[HeaderProcessor],
     ) -> None:
-        """Register a header processor class under a file type identifier (advanced).
+        """Register a header processor class under a file type identifier.
 
         Prefer `try_register_processor()` if you want a boolean status instead of
         exceptions for unknown, ambiguous, or duplicate registrations.
+
+        This is a convenience helper that both registers the processor
+        definition and immediately binds it to the resolved file type. Use
+        `bind_processor()` when you want to bind an already-registered
+        processor definition.
 
         Passthrough to
         [`HeaderProcessorRegistry.register`][topmark.registry.processors.HeaderProcessorRegistry.register].
 
         Args:
-            file_type_id: File type identifier that the processor should be registered
-                under. Both ``"local_key"`` and ``"namespace:local_key"`` forms are
-                accepted.
+            file_type_id: File type identifier that the processor should be bound
+                under. Both ``"local_key"`` and ``"namespace:local_key"`` forms
+                are accepted.
             processor_class: Concrete `HeaderProcessor` class to register and
                 bind to the registered file type.
 
@@ -239,12 +307,13 @@ class Registry:
             InvalidRegistryIdentityError: If `file_type_id` is malformed.
             UnknownFileTypeError: If `file_type_id` does not resolve to a
                 registered file type.
-            DuplicateProcessorRegistrationError: If the effective registry already contains a
-                processor for the same qualified key.
-            TypeError: If processor_class is not a valid HeaderProcessor subclass or if its identity
-                is malformed.
-            ReservedNamespaceError: If the reserved built-in topmark namespace is used by an
-                ineligible external processor class.
+            DuplicateProcessorRegistrationError: If the effective registry
+                already contains a processor for the same qualified key.
+            TypeError: If `processor_class` is not a valid `HeaderProcessor`
+                subclass or if its identity is malformed.
+            ReservedNamespaceError: If the reserved built-in ``topmark``
+                namespace is used by an ineligible external processor class.
+            ProcessorBindingError: If the resolved file type is already bound.
         """
         try:
             # Propagate ambiguity explicitly so the public facade documents it accurately.
@@ -269,6 +338,8 @@ class Registry:
         except (  # noqa: TRY203
             DuplicateProcessorRegistrationError,
             ReservedNamespaceError,
+            UnknownFileTypeError,
+            ProcessorBindingError,
             TypeError,
         ):
             raise
@@ -290,22 +361,19 @@ class Registry:
             - Returns ``False`` if an unqualified identifier resolves ambiguously.
             - Returns ``False`` if a processor is already registered for the
               resolved file type.
+            - Returns ``False`` for duplicate processor registrations or other
+              registration and binding failures.
             - Returns ``True`` if the registration succeeds.
 
-        Notes:
-            This method is conservative and avoids raising for common caller
-            mistakes. It still delegates to the underlying registry for the
-            actual mutation.
-
         Args:
-            file_type_id: File type identifier that the processor should be registered
-                under. Both ``"local_key"`` and ``"namespace:local_key"`` forms are
-                accepted.
-            processor_class: Concrete `HeaderProcessor` class to instantiate and
+            file_type_id: File type identifier that the processor should be bound
+                under. Both ``"local_key"`` and ``"namespace:local_key"`` forms
+                are accepted.
+            processor_class: Concrete `HeaderProcessor` class to register and
                 bind.
 
         Returns:
-            `True` if the registration succeeds, `False` otherwise.
+            ``True`` if the registration succeeds, else ``False``.
         """
         try:
             ft_obj: FileType | None = FileTypeRegistry.resolve_filetype_id(file_type_id)
@@ -344,8 +412,55 @@ class Registry:
 
         return True
 
+    # --- Explicit binding mutation ---
+
     @staticmethod
-    def unregister_processor(local_key: str) -> bool:
+    def bind_processor(
+        *,
+        file_type_id: str,
+        processor_qualified_key: str,
+    ) -> None:
+        """Bind an existing processor definition to a registered file type.
+
+        Args:
+            file_type_id: File type identifier that should be bound. Both
+                ``"local_key"`` and ``"namespace:local_key"`` forms are
+                accepted.
+            processor_qualified_key: Processor qualified key to bind.
+
+        Raises:
+            AmbiguousFileTypeIdentifierError: If an unqualified `file_type_id`
+                matches multiple file types.
+            InvalidRegistryIdentityError: If `file_type_id` is malformed.
+            UnknownFileTypeError: If `file_type_id` does not resolve to a
+                registered file type.
+            ProcessorBindingError: If the processor qualified key is unknown or
+                if the file type is already bound.
+        """
+        try:
+            ft_obj: FileType | None = FileTypeRegistry.resolve_filetype_id(file_type_id)
+        except (  # noqa: TRY203
+            AmbiguousFileTypeIdentifierError,
+            InvalidRegistryIdentityError,
+        ):
+            raise
+
+        if ft_obj is None:
+            raise UnknownFileTypeError(file_type=file_type_id)
+
+        try:
+            BindingRegistry.bind(
+                filetype_qualified_key=ft_obj.qualified_key,
+                processor_qualified_key=processor_qualified_key,
+            )
+        except (  # noqa: TRY203
+            UnknownFileTypeError,
+            ProcessorBindingError,
+        ):
+            raise
+
+    @staticmethod
+    def unbind_filetype_by_local_key(local_key: str) -> bool:
         """Remove the binding for a file type local key without deleting the processor definition.
 
         Args:
@@ -357,12 +472,32 @@ class Registry:
         Notes:
             This helper intentionally only removes the binding from the resolved
             file type to its processor. Processor definitions are identity-level
-            registry entries and may still be shared by other file types.
+            registry entries and may still be shared by other file types. Use
+            `unregister_processor_by_qualified_key()` if you need to remove the
+            processor definition itself.
         """
         ft_obj: FileType | None = FileTypeRegistry.resolve_filetype_id(local_key)
         if ft_obj is None:
             return False
         return BindingRegistry.unbind(ft_obj.qualified_key)
+
+    @staticmethod
+    def unbind_processor_by_qualified_key(qualified_key: str) -> tuple[str, ...]:
+        """Remove all bindings that currently reference a processor.
+
+        Args:
+            qualified_key: Processor qualified key.
+
+        Returns:
+            Sorted tuple of file type qualified keys that were unbound.
+
+        Notes:
+            This helper only removes bindings. It does not unregister the
+            processor definition itself.
+        """
+        return BindingRegistry.unbind_processor(qualified_key)
+
+    # --- Binding-aware processor removal ---
 
     @staticmethod
     def unregister_processor_by_qualified_key(
@@ -384,10 +519,10 @@ class Registry:
 
         Notes:
             This helper operates at the processor-identity level. Most callers
-            that are working from a file type should prefer `unregister_processor()`
-            to remove a single file type binding. Use `remove_bindings=True` to
-            explicitly clear all bindings that currently reference the processor
-            before unregistering it.
+            that are working from a file type should prefer
+            `unbind_filetype_by_local_key()` to remove a single file type
+            binding. Use `remove_bindings=True` to explicitly clear all current
+            bindings before unregistering the processor definition.
         """
         bound_filetype_qks: tuple[str, ...] = BindingRegistry.get_filetype_keys_for_processor(
             qualified_key,

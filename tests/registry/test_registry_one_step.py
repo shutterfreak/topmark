@@ -37,12 +37,13 @@ def test_register_filetype_with_processor_in_one_step() -> None:
     """Register FT and processor in one step; verify support and binding."""
     name = "one_step"
     ft: FileType = make_file_type(local_key=name)
+    processor_qualified_key: str | None = None
     try:
         proc_cls: type[HeaderProcessor] = registry_processor_class()
         Registry.register_filetype(ft, processor_class=proc_cls)
-        assert name in Registry.bound_filetype_names()
+        assert name in Registry.bound_filetype_local_keys()
 
-        processor_qualified_key: str | None = BindingRegistry.get_processor_key_for_filetype(
+        processor_qualified_key = BindingRegistry.get_processor_key_for_filetype(
             ft.qualified_key,
         )
         assert processor_qualified_key is not None
@@ -58,5 +59,10 @@ def test_register_filetype_with_processor_in_one_step() -> None:
         assert proc.file_type is not None
         assert proc.file_type.local_key == name
     finally:
-        Registry.unregister_processor(name)
+        Registry.unbind_filetype_by_local_key(name)
+        if processor_qualified_key is not None:
+            Registry.unregister_processor_by_qualified_key(
+                processor_qualified_key,
+                remove_bindings=False,
+            )
         FileTypeRegistry.unregister(name)
