@@ -113,6 +113,20 @@ Identity registries (`FileTypeRegistry`, `HeaderProcessorRegistry`) and the rela
 (`BindingRegistry`) are advanced APIs. The stable `Registry` façade remains the preferred entry
 point for public read operations and cross-registry coordination.
 
+The registry model has been refactored into three explicit layers with clear responsibilities:
+
+- `FileTypeRegistry`: manages file type identities (namespace, local key, qualified key)
+- `HeaderProcessorRegistry`: manages processor identities (namespace, local key, qualified key)
+- `BindingRegistry`: manages relationships between file types and processors (bindings)
+
+The `Registry` facade composes these layers and provides convenience read-only accessors such as:
+
+- `Registry.filetypes()` → effective file type mapping
+- `Registry.processors_by_qualified_key()` → processor definitions by qualified key
+- `Registry.bindings()` → effective bindings
+
+This separation ensures that identity and relationships remain decoupled, and avoids implicit side effects when registering or binding components.
+
 Most users should interact with registries through this facade and treat them as
 **introspection-only**.
 
@@ -124,12 +138,15 @@ from topmark.registry.bindings import BindingRegistry
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
 
+# Register file type identity
 FileTypeRegistry.register(ft)
 
+# Register processor identity
 proc_def = HeaderProcessorRegistry.register(
     processor_class=MyProcessor,
 )
 
+# Bind file type to processor
 BindingRegistry.bind(
     file_type_key=ft.qualified_key,
     processor_key=proc_def.qualified_key,
@@ -140,8 +157,9 @@ For cleanup, reverse the same steps explicitly:
 
 - `BindingRegistry.unbind(ft.qualified_key)`
 - `HeaderProcessorRegistry.unregister(proc_def.qualified_key)`
-- `FileTypeRegistry.unregister_by_local_key(ft.local_key)`\
-  or `FileTypeRegistry.unregister(ft.qualified_key)` when you already have the qualified key
+- `FileTypeRegistry.unregister(ft.qualified_key)`
+
+Note that all mutation helpers operate on **overlay state only**. They do not mutate the built-in registry definitions and are intended for runtime extensions (e.g. plugins or tests).
 
 These mutation helpers apply **overlay-only changes**: they do not mutate the internal base
 registries used to construct the effective views. Overlays are process-local and thread-safe (via an

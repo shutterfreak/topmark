@@ -204,26 +204,30 @@ class RunResult:
 
 
 class FileTypeInfo(TypedDict, total=False):
-    """Metadata about a registered file type.
+    """Stable metadata about a registered file type.
 
     Attributes:
-        name: Identifier of the file type (e.g., ``"python"``).
+        local_key: File type local key (compatibility identifier).
+        namespace: Namespace that owns the file type.
+        qualified_key: Canonical file type key.
         description: Human description.
-        supported: File type is supported by a header processor
-        processor_name: Name of the header processor registered to the file type
-            or `None`
+        bound: Whether the file type currently has an effective processor binding.
         extensions: Known filename extensions (without dots).
         filenames: Exact filenames matched (e.g., ``"Makefile"``).
-        patterns: Glob-like patterns.
+        patterns: Full-match regular-expression patterns.
         skip_processing: Whether the type is discoverable but not processed.
         content_matcher: Whether a content matcher is configured.
         header_policy: Policy/strategy name for header placement.
     """
 
-    name: str
+    local_key: str
+    namespace: str
+    qualified_key: str
+
     description: str
-    supported: bool
-    processor_name: str | None
+
+    bound: bool
+
     extensions: Sequence[str]
     filenames: Sequence[str]
     patterns: Sequence[str]
@@ -233,20 +237,54 @@ class FileTypeInfo(TypedDict, total=False):
 
 
 class ProcessorInfo(TypedDict, total=False):
-    """Metadata about a registered header processor.
+    """Stable metadata about a registered header processor.
 
     Attributes:
-        name: Processor identifier (e.g., ``"pound"``, ``"slash"``, ``"xml"``).
+        local_key: Processor local key.
+        namespace: Namespace that owns the processor.
+        qualified_key: Canonical processor key.
         description: Human description.
+        line_indent: Line comment indent (if applicable).
         line_prefix: Line comment prefix (if applicable).
         line_suffix: Line comment suffix (if applicable).
         block_prefix: Block comment prefix (if applicable).
         block_suffix: Block comment suffix (if applicable).
     """
 
-    name: str
+    local_key: str
+    namespace: str
+    qualified_key: str
+
     description: str
+
+    line_indent: str
     line_prefix: str
     line_suffix: str
     block_prefix: str
     block_suffix: str
+
+
+class BindingInfo(TypedDict, total=False):
+    """Stable metadata about an effective file-type-to-processor binding.
+
+    Attributes:
+        file_type_key: Canonical file type key.
+        file_type_local_key: File type local key.
+        file_type_namespace: Namespace that owns the file type.
+        processor_key: Canonical processor key.
+        processor_local_key: Processor local key.
+        processor_namespace: Namespace that owns the processor.
+        file_type_description: Human description of the file type.
+        processor_description: Human description of the processor.
+    """
+
+    file_type_key: str
+    file_type_local_key: str
+    file_type_namespace: str
+
+    processor_key: str
+    processor_local_key: str
+    processor_namespace: str
+
+    file_type_description: str
+    processor_description: str

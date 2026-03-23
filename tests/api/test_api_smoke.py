@@ -30,15 +30,17 @@ def test_version_is_nonempty_string() -> None:
 
 
 def test_list_filetypes_includes_python() -> None:
-    """api.commands.registry.get_filetypes() contains a FileType instance for "python"."""
+    """api.list_filetypes() contains metadata for the built-in Python file type."""
     items: list[api.FileTypeInfo] = api.list_filetypes()
-    assert any(ft.get("name") == "python" for ft in items), "python filetype must be registered"
+    assert any(ft.get("local_key") == "python" for ft in items), (
+        "python file type must be registered"
+    )
 
 
 def test_list_processors_is_nonempty() -> None:
-    """api.commands.registry.get_processors() returns structurally valid processor entries."""
+    """api.list_processors() returns structurally valid processor metadata entries."""
     procs: list[api.ProcessorInfo] = api.list_processors()
-    assert procs and all("name" in p for p in procs), "processors list should not be empty"
+    assert procs and all("qualified_key" in p for p in procs), "processors list should not be empty"
 
 
 def test_strip_dry_run_reports_would_strip(repo_py_with_header: Path) -> None:

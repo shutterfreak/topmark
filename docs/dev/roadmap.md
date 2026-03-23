@@ -75,6 +75,11 @@ goals.
     file-type-to-processor relationships
   - \[`topmark.registry.registry`\][topmark.registry.registry] now acts only as a thin
     cross-registry façade
+- Normalized naming and public semantics across registries:
+  - canonical identity keys (`qualified_key`) are now the default across APIs
+  - `file_type_id` is reserved for user input that may be qualified or unqualified
+  - helper naming now reflects canonical-key-first semantics (no `_by_qualified_key` suffix for
+    default operations)
 - Made canonical key semantics explicit throughout the registry layer:
   - processor identity is keyed canonically by processor key
   - binding relationships are keyed canonically by file type key and processor key
@@ -91,6 +96,8 @@ goals.
     processed.
   - \[`topmark.resolution.filetypes`\][topmark.resolution.filetypes] resolves **what each file is**
     using scoring-based file type and processor binding selection.
+- Simplified exception handling in registry façade helpers by removing redundant catch-and-reraise
+  patterns and documenting propagated exceptions as part of the public contract
 - Moved scoring-based file type resolution out of
   \[`topmark.pipeline.steps.resolver`\][topmark.pipeline.steps.resolver] into the shared resolution
   layer and slimmed the pipeline resolver step down to orchestration/context mutation.
@@ -554,6 +561,14 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
 - Registry machine and human outputs now expose qualified identifiers and namespace metadata for
   file types/processors. Downstream tooling or snapshots expecting unqualified-only registry output
   may need to be updated.
+- Public API registry metadata in \[`topmark.api`\][topmark.api] was reshaped to align with the
+  split filetype / processor / binding model:
+  - `FileTypeInfo.name` was removed in favor of `local_key`, `namespace`, and `qualified_key`
+  - `FileTypeInfo.processor_name` was removed
+  - `FileTypeInfo.supported` was replaced by `bound`
+  - `ProcessorInfo.name` was removed in favor of `local_key`, `namespace`, and `qualified_key`
+  - `list_bindings()` was added as the explicit relationship-oriented API entry point
+  - downstream callers consuming the old TypedDict field names must be updated
 - File type resolution ambiguity is now an explicitly documented resolver concern:
   - overlapping `FileType` definitions are permitted
   - deterministic tie-breaks are part of the resolver contract
@@ -701,6 +716,8 @@ Remaining work before 1.0:
   - plugin-facing examples and tests
 - Confirm that canonical key terminology (`file_type_key`, `processor_key`, `file_type_id`,
   `local_key`) is fully stabilized across docs, tests, and public API references.
+- Align CLI commands and API representations with the split registry model (filetypes / processors /
+  bindings) and remove remaining binding-flavored coupling from processor-oriented views
 
 Recommended direction:
 
