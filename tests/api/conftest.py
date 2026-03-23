@@ -174,8 +174,8 @@ def register_pair() -> Iterator[Callable[[str], tuple[str, FileType, str]]]:
             processor_class=registry_processor_class(),
         )
         BindingRegistry.bind(
-            filetype_qualified_key=ft.qualified_key,
-            processor_qualified_key=proc_def.qualified_key,
+            file_type_key=ft.qualified_key,
+            processor_key=proc_def.qualified_key,
         )
         registered.append((name, proc_def.qualified_key))
         return name, ft, proc_def.qualified_key
@@ -187,8 +187,8 @@ def register_pair() -> Iterator[Callable[[str], tuple[str, FileType, str]]]:
             ft_obj: FileType | None = FileTypeRegistry.resolve_filetype_id(name)
             if ft_obj is not None:
                 BindingRegistry.unbind(ft_obj.qualified_key)
-            HeaderProcessorRegistry.unregister_by_qualified_key(processor_qualified_key)
-            FileTypeRegistry.unregister(name)
+            HeaderProcessorRegistry.unregister(processor_qualified_key)
+            FileTypeRegistry.unregister_by_local_key(name)
 
 
 @pytest.fixture()

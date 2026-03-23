@@ -56,27 +56,27 @@ def test_supported_vs_unsupported_partition() -> None:
         assert ft_name in FileTypeRegistry.names()
         assert ft_name in Registry.unbound_filetype_local_keys()
         assert ft_name not in Registry.bound_filetype_local_keys()
-        assert BindingRegistry.get_processor_key_for_filetype(ft.qualified_key) is None
+        assert BindingRegistry.get_processor_key(ft.qualified_key) is None
 
         # Register the processor definition, then bind it via the public facade.
         proc_def: ProcessorDefinition | None = HeaderProcessorRegistry.register(
             processor_class=proc_cls,
         )
-        Registry.bind_processor(
+        Registry.bind(
             file_type_id=ft_name,
-            processor_qualified_key=proc_def.qualified_key,
+            processor_key=proc_def.qualified_key,
         )
 
         assert ft_name in Registry.bound_filetype_local_keys()
         assert ft_name not in Registry.unbound_filetype_local_keys()
 
-        processor_qualified_key = BindingRegistry.get_processor_key_for_filetype(
+        processor_qualified_key = BindingRegistry.get_processor_key(
             ft.qualified_key,
         )
         assert processor_qualified_key is not None
 
         # The registry stores a processor definition; runtime resolution binds it to the FT object.
-        proc_def = HeaderProcessorRegistry.get_by_qualified_key(
+        proc_def = HeaderProcessorRegistry.get(
             processor_qualified_key,
         )
         assert proc_def is not None
@@ -87,13 +87,13 @@ def test_supported_vs_unsupported_partition() -> None:
         assert proc_obj.file_type is not None
         assert proc_obj.file_type.local_key == ft_name
     finally:
-        Registry.unbind_filetype_by_local_key(ft_name)
+        Registry.unbind_filetype(ft_name)
         if processor_qualified_key is not None:
-            Registry.unregister_processor_by_qualified_key(
+            Registry.unregister_processor(
                 processor_qualified_key,
                 remove_bindings=False,
             )
-        FileTypeRegistry.unregister(ft_name)
+        FileTypeRegistry.unregister_by_local_key(ft_name)
 
 
 def test_register_processor_fails_for_unknown_filetype() -> None:
@@ -105,12 +105,12 @@ def test_register_processor_fails_for_unknown_filetype() -> None:
     )
     try:
         with pytest.raises(UnknownFileTypeError):
-            Registry.bind_processor(
+            Registry.bind(
                 file_type_id="nonexistent_ft",
-                processor_qualified_key=proc_def.qualified_key,
+                processor_key=proc_def.qualified_key,
             )
     finally:
-        HeaderProcessorRegistry.unregister_by_qualified_key(proc_def.qualified_key)
+        HeaderProcessorRegistry.unregister(proc_def.qualified_key)
 
 
 def test_supported_unsupported_partition_coherent() -> None:

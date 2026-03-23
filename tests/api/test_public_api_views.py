@@ -37,11 +37,11 @@ def test_register_and_unregister_filetypes() -> None:
     )
 
     FileTypeRegistry.register(ft)
-    assert "tmp" in FileTypeRegistry.as_mapping()
+    assert "tmp" in FileTypeRegistry.as_mapping_by_local_key()
 
-    FileTypeRegistry.unregister("tmp")
+    FileTypeRegistry.unregister_by_local_key("tmp")
     # Composed view should reflect removal immediately
-    assert "tmp" not in FileTypeRegistry.as_mapping()
+    assert "tmp" not in FileTypeRegistry.as_mapping_by_local_key()
 
 
 def test_register_and_unregister_processors() -> None:
@@ -55,7 +55,7 @@ def test_register_and_unregister_processors() -> None:
         description="tmp",
     )
     FileTypeRegistry.register(ft)
-    assert "tmp" in FileTypeRegistry.as_mapping()
+    assert "tmp" in FileTypeRegistry.as_mapping_by_local_key()
 
     class TmpProcessor(HeaderProcessor):
         name: ClassVar = "test_proc"
@@ -67,21 +67,19 @@ def test_register_and_unregister_processors() -> None:
     proc_def: ProcessorDefinition = HeaderProcessorRegistry.register(
         processor_class=TmpProcessor,
     )
-    assert proc_def.qualified_key in HeaderProcessorRegistry.as_mapping_by_qualified_key()
+    assert proc_def.qualified_key in HeaderProcessorRegistry.as_mapping()
 
     BindingRegistry.bind(
-        filetype_qualified_key=ft.qualified_key,
-        processor_qualified_key=proc_def.qualified_key,
+        file_type_key=ft.qualified_key,
+        processor_key=proc_def.qualified_key,
     )
-    assert (
-        BindingRegistry.get_processor_key_for_filetype(ft.qualified_key) == proc_def.qualified_key
-    )
+    assert BindingRegistry.get_processor_key(ft.qualified_key) == proc_def.qualified_key
 
     BindingRegistry.unbind(ft.qualified_key)
-    assert BindingRegistry.get_processor_key_for_filetype(ft.qualified_key) is None
+    assert BindingRegistry.get_processor_key(ft.qualified_key) is None
 
-    HeaderProcessorRegistry.unregister_by_qualified_key(proc_def.qualified_key)
-    assert proc_def.qualified_key not in HeaderProcessorRegistry.as_mapping_by_qualified_key()
+    HeaderProcessorRegistry.unregister(proc_def.qualified_key)
+    assert proc_def.qualified_key not in HeaderProcessorRegistry.as_mapping()
 
-    FileTypeRegistry.unregister("tmp")
-    assert "tmp" not in FileTypeRegistry.as_mapping()
+    FileTypeRegistry.unregister_by_local_key("tmp")
+    assert "tmp" not in FileTypeRegistry.as_mapping_by_local_key()

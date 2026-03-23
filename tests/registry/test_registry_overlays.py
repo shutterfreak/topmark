@@ -51,31 +51,29 @@ def test_overlay_partition_updates() -> None:
     proc_def: ProcessorDefinition = HeaderProcessorRegistry.register(
         processor_class=_P,
     )
-    Registry.bind_processor(
+    Registry.bind(
         file_type_id=ft.local_key,
-        processor_qualified_key=proc_def.qualified_key,
+        processor_key=proc_def.qualified_key,
     )  # now supported
-    assert (
-        BindingRegistry.get_processor_key_for_filetype(ft.qualified_key) == proc_def.qualified_key
-    )
+    assert BindingRegistry.get_processor_key(ft.qualified_key) == proc_def.qualified_key
 
     assert "ftx" in Registry.bound_filetype_local_keys()
 
-    Registry.unbind_filetype_by_local_key("ftx")
-    assert BindingRegistry.get_processor_key_for_filetype(ft.qualified_key) is None
-    assert "ftx" in FileTypeRegistry.as_mapping()
+    Registry.unbind_filetype("ftx")
+    assert BindingRegistry.get_processor_key(ft.qualified_key) is None
+    assert "ftx" in FileTypeRegistry.as_mapping_by_local_key()
     assert "ftx" not in Registry.bound_filetype_local_keys()
     assert "ftx" in Registry.unbound_filetype_local_keys()
 
     assert (
-        Registry.unregister_processor_by_qualified_key(
+        Registry.unregister_processor(
             proc_def.qualified_key,
             remove_bindings=False,
         )
         is True
     )
-    FileTypeRegistry.unregister("ftx")
-    assert "ftx" not in FileTypeRegistry.as_mapping()
+    FileTypeRegistry.unregister_by_local_key("ftx")
+    assert "ftx" not in FileTypeRegistry.as_mapping_by_local_key()
     assert "ftx" not in Registry.unbound_filetype_local_keys()
 
 
@@ -83,7 +81,7 @@ def test_hiding_builtin_is_non_destructive() -> None:
     """Hiding a built-in file type via overlay is non-destructive to the base registry."""
     # pick a known builtin, e.g., "python"
     assert "python" in FileTypeRegistry.names()
-    FileTypeRegistry.unregister("python")
+    FileTypeRegistry.unregister_by_local_key("python")
     assert "python" not in FileTypeRegistry.names()
     # Re-registering via overlay should restore visibility
     # (optional) FileTypeRegistry.register(stub_ft("python"))  # if you expose a stub factory

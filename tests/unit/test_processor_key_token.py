@@ -216,7 +216,7 @@ def test_registry_compose_rejects_duplicate_qualified_key_for_different_classes(
                 processor_class=_ProcB,
             )
     finally:
-        HeaderProcessorRegistry.unregister_by_qualified_key(proc_def.qualified_key)
+        HeaderProcessorRegistry.unregister(proc_def.qualified_key)
 
 
 def test_registry_compose_allows_duplicate_qualified_key_for_same_class() -> None:
@@ -233,9 +233,9 @@ def test_registry_compose_allows_duplicate_qualified_key_for_same_class() -> Non
         processor_class=_ProcSame,
     )
     try:
-        m: Mapping[str, ProcessorDefinition] = HeaderProcessorRegistry.as_mapping_by_qualified_key()
+        m: Mapping[str, ProcessorDefinition] = HeaderProcessorRegistry.as_mapping()
         assert "testns:same" in m
         assert m["testns:same"].processor_class is _ProcSame
         assert m["testns:same"].qualified_key == proc_def.qualified_key == "testns:same"
     finally:
-        HeaderProcessorRegistry.unregister_by_qualified_key(proc_def.qualified_key)
+        HeaderProcessorRegistry.unregister(proc_def.qualified_key)

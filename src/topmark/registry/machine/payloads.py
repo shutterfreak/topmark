@@ -125,7 +125,7 @@ def build_filetypes_payload(*, show_details: bool) -> FileTypesPayload:
         - The returned structure is JSON-serializable.
         - Sorting is by the registry key to ensure stable output.
     """
-    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
+    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping_by_local_key()
 
     payload: list[FileTypeBriefEntry | FileTypeDetailEntry] = []
     if show_details:
@@ -169,10 +169,8 @@ def build_processors_payload(*, show_details: bool) -> ProcessorsPayload:
     from topmark.registry.bindings import BindingRegistry
     from topmark.registry.processors import HeaderProcessorRegistry
 
-    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
-    hp_registry: Mapping[str, ProcessorDefinition] = (
-        HeaderProcessorRegistry.as_mapping_by_qualified_key()
-    )
+    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping_by_local_key()
+    hp_registry: Mapping[str, ProcessorDefinition] = HeaderProcessorRegistry.as_mapping()
     binding_registry: Mapping[str, str] = BindingRegistry.as_mapping()
     ft_by_qk: dict[str, FileType] = {ft.qualified_key: ft for ft in ft_registry.values()}
 

@@ -66,5 +66,5 @@ def test_plugins_are_discovered(monkeypatch: pytest.MonkeyPatch) -> None:
     ft_reg = cast("Any", FileTypeRegistry)
     ft_reg._clear_cache()
 
-    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
+    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping_by_local_key()
     assert "pluggy" in ft_registry

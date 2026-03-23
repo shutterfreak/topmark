@@ -83,9 +83,9 @@ configuration.
 
 - File types are identified by their **file type identifier**.
 - A file type is **recognized** if its *file type identifier* exists in `FileTypeRegistry`.
-- A file type is **supported** if it is recognized **and** has a registered `HeaderProcessor` in
-  `HeaderProcessorRegistry`.
-- A file may be *recognized* but not *supported*. In that case:
+- A file type is **supported** if it is recognized **and** has an effective binding in
+  `BindingRegistry` to a registered processor definition in `HeaderProcessorRegistry`.
+- A file may be *recognized* but still *unbound* (and therefore not supported). In that case:
   - it participates in discovery and filtering
   - it may appear in results (unless `skip_unsupported=True`)
   - no header insertion or removal is attempted
@@ -98,7 +98,7 @@ used by the runtime registries.
 Unqualified identifiers are only safe when they remain unique in the composed registry. If multiple
 file types share the same unqualified name, callers must use the qualified `"namespace:name"` form.
 
-### Registries and extensibility (read-only by default)
+### Registries, bindings, and extensibility
 
 TopMark exposes **read-only** registries for file types and header processors via the stable facade
 in \[`topmark.registry.registry.Registry`\][topmark.registry.registry.Registry]. These registries
@@ -109,19 +109,40 @@ These registry objects are **not part of the \[`topmark.api`\][topmark.api] stab
 the supported programmatic API is defined exclusively by the symbols exported in
 \[`topmark.api.__all__`\][topmark.api].
 
+Identity registries (`FileTypeRegistry`, `HeaderProcessorRegistry`) and the relationship registry
+(`BindingRegistry`) are advanced APIs. The stable `Registry` façade remains the preferred entry
+point for public read operations and cross-registry coordination.
+
 Most users should interact with registries through this facade and treat them as
 **introspection-only**.
 
-If you need dynamic extensions at runtime (typically in plugins or tests), use the **advanced
-registries** in \[`topmark.registry`\][topmark.registry] directly:
+If you need dynamic extensions at runtime (typically in plugins or tests), use the advanced
+registries in [`topmark.registry`][topmark.registry] directly and keep the steps explicit:
 
-- \[`topmark.registry.filetypes.FileTypeRegistry.register(ft, processor_class=processor_class)`\][topmark.registry.filetypes.FileTypeRegistry.register]
-- \[`topmark.registry.filetypes.FileTypeRegistry.unregister(name)`\][topmark.registry.filetypes.FileTypeRegistry.unregister]
-- \[`topmark.registry.registry.Registry.register_processor(name, processor_class)`\][topmark.registry.registry.Registry.register_processor]
-- \[`topmark.registry.registry.Registry.try_register_processor(name, processor_class)`\][topmark.registry.registry.Registry.try_register_processor]
-- \[`topmark.registry.processors.HeaderProcessorRegistry.register(name, processor_class)`\][topmark.registry.processors.HeaderProcessorRegistry.register]
-- \[`topmark.registry.processors.HeaderProcessorRegistry.unregister_by_qualified_key(qualified_key)`\][topmark.registry.processors.HeaderProcessorRegistry.unregister_by_qualified_key]
+```python
+from topmark.registry.bindings import BindingRegistry
+from topmark.registry.filetypes import FileTypeRegistry
+from topmark.registry.processors import HeaderProcessorRegistry
 
+FileTypeRegistry.register(ft)
+
+proc_def = HeaderProcessorRegistry.register(
+    processor_class=MyProcessor,
+)
+
+BindingRegistry.bind(
+    file_type_key=ft.qualified_key,
+    processor_key=proc_def.qualified_key,
+)
+```
+
+For cleanup, reverse the same steps explicitly:
+
+- `BindingRegistry.unbind(ft.qualified_key)`
+- `HeaderProcessorRegistry.unregister(proc_def.qualified_key)`
+- `FileTypeRegistry.unregister_by_local_key(ft.local_key)`  
+  or `FileTypeRegistry.unregister(ft.qualified_key)` when you already have the qualified key
+  
 These mutation helpers apply **overlay-only changes**: they do not mutate the internal base
 registries used to construct the effective views. Overlays are process-local and thread-safe (via an
 internal lock). In tests, prefer wrapping mutations in `try/finally` to ensure cleanup.

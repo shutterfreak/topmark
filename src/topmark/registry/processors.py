@@ -16,15 +16,15 @@ stable facade in [`topmark.registry.registry.Registry`][topmark.registry.registr
 this module primarily serves advanced integrations, plugins, and tests.
 
 Notes:
-    * Public views such as `as_mapping_by_qualified_key()` and `iter_meta()`
+    * Public views such as `as_mapping()` and `iter_meta()`
       are derived from a composed registry (base built-ins + local
       overlays - removals) and are exposed as `MappingProxyType` where
       appropriate.
-    * `register()` and `unregister_by_qualified_key()` apply overlay-only
+    * `register()` and `unregister()` apply overlay-only
       changes; they do not mutate the base processor-definition registry built
       from explicit built-in bindings.
     * The canonical identity-oriented processor view is keyed by qualified key
-      and exposed via `as_mapping_by_qualified_key()`.
+      and exposed via `as_mapping()`.
     * When the environment variable ``TOPMARK_VALIDATE`` is set to a truthy
       value (``1``, ``true``, ``yes``), lightweight developer validations run
       on the composed processor mapping.
@@ -162,7 +162,7 @@ class HeaderProcessorRegistry:
         cls._cache_by_qualified_key = None
 
     @classmethod
-    def _compose_by_qualified_key(cls) -> dict[str, ProcessorDefinition]:
+    def _compose(cls) -> dict[str, ProcessorDefinition]:
         """Compose the effective processor-definition registry keyed by qualified key."""
         cached: Mapping[str, ProcessorDefinition] | None = cls._cache_by_qualified_key
         if cached is not None:
@@ -218,7 +218,7 @@ class HeaderProcessorRegistry:
         """
         with cls._lock:
             # NOTE: keys are already unique
-            return tuple(sorted(cls._compose_by_qualified_key().keys()))
+            return tuple(sorted(cls._compose().keys()))
 
     @classmethod
     def namespaces(cls) -> tuple[str, ...]:
@@ -229,40 +229,37 @@ class HeaderProcessorRegistry:
         """
         with cls._lock:
             # Use set comprehension to return "sorted set" of namespaces
-            return tuple(
-                sorted({proc.namespace for proc in cls._compose_by_qualified_key().values()})
-            )
+            return tuple(sorted({proc.namespace for proc in cls._compose().values()}))
 
     @classmethod
-    def get_by_qualified_key(cls, qualified_key: str) -> ProcessorDefinition | None:
+    def get(cls, processor_key: str) -> ProcessorDefinition | None:
         """Return a processor definition by canonical qualified key.
 
         Args:
-            qualified_key: Processor qualified key.
+            processor_key: Processor qualified key.
 
         Returns:
             Matching `ProcessorDefinition`, or ``None`` if not found.
         """
         with cls._lock:
-            return cls._compose_by_qualified_key().get(qualified_key)
+            return cls._compose().get(processor_key)
 
     @classmethod
-    def as_mapping_by_qualified_key(cls) -> Mapping[str, ProcessorDefinition]:
+    def as_mapping(cls) -> Mapping[str, ProcessorDefinition]:
         """Return the canonical processor-definition mapping keyed by qualified key.
 
         Returns:
-            Mapping of processor qualified key to `ProcessorDefinition`.
+            Mapping of processor qualified key to `ProcessorDefinition` objects.
 
         Notes:
-            The returned mapping is a `MappingProxyType` and must not be
-            mutated.
+            The returned mapping is a ``MappingProxyType`` and must not be mutated.
         """
         with cls._lock:
             cached: Mapping[str, ProcessorDefinition] | None = cls._cache_by_qualified_key
             if cached is not None:
                 return cached
 
-            composed: dict[str, ProcessorDefinition] = cls._compose_by_qualified_key()
+            composed: dict[str, ProcessorDefinition] = cls._compose()
             cls._cache_by_qualified_key = MappingProxyType(composed)
             return cls._cache_by_qualified_key
 
@@ -275,7 +272,7 @@ class HeaderProcessorRegistry:
             processor definition.
         """
         with cls._lock:
-            for proc_def in cls._compose_by_qualified_key().values():
+            for proc_def in cls._compose().values():
                 proc_obj: HeaderProcessor = proc_def.processor_class()
                 yield ProcessorMeta(
                     namespace=proc_def.namespace,
@@ -294,7 +291,7 @@ class HeaderProcessorRegistry:
         *,
         processor_class: type[HeaderProcessor],
     ) -> ProcessorDefinition:
-        """Register a processor definition under its qualified key.
+        """Register a processor definition.
 
         Args:
             processor_class: Concrete `HeaderProcessor` subclass to register.
@@ -319,7 +316,7 @@ class HeaderProcessorRegistry:
             )
             qualified_key: str = proc_def.qualified_key
 
-            if qualified_key in cls._compose_by_qualified_key():
+            if qualified_key in cls._compose():
                 raise DuplicateProcessorRegistrationError(qualified_key=qualified_key)
 
             cls._removals.discard(qualified_key)
@@ -328,11 +325,11 @@ class HeaderProcessorRegistry:
             return proc_def
 
     @classmethod
-    def unregister_by_qualified_key(cls, qualified_key: str) -> bool:
+    def unregister(cls, processor_key: str) -> bool:
         """Remove a processor definition from the effective registry by qualified key.
 
         Args:
-            qualified_key: Processor qualified key to remove.
+            processor_key: Processor qualified key to remove.
 
         Returns:
             ``True`` if the processor definition was present in the effective
@@ -343,11 +340,11 @@ class HeaderProcessorRegistry:
         """
         with cls._lock:
             existed = False
-            if qualified_key in cls._overrides:
-                cls._overrides.pop(qualified_key, None)
+            if processor_key in cls._overrides:
+                cls._overrides.pop(processor_key, None)
                 existed = True
-            if qualified_key in cls._compose_by_qualified_key():
-                cls._removals.add(qualified_key)
+            if processor_key in cls._compose():
+                cls._removals.add(processor_key)
                 existed = True
             cls._clear_cache()
             return existed

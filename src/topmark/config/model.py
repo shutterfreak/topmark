@@ -1632,7 +1632,7 @@ class MutableConfig:
             from topmark.registry.filetypes import FileTypeRegistry
 
             # Validate against the effective file type registry:
-            ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
+            ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping_by_local_key()
 
             unknown: list[str] = sorted(t for t in ids if t not in ft_registry)
             if not unknown:

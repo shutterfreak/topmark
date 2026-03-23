@@ -87,7 +87,7 @@ class BindingRegistry:
         base.update(cls._overrides)
 
         for filetype_qualified_key, processor_qualified_key in base.items():
-            file_type: FileType | None = FileTypeRegistry.get_by_qualified_key(
+            file_type: FileType | None = FileTypeRegistry.get(
                 filetype_qualified_key,
             )
             if file_type is None:
@@ -99,7 +99,7 @@ class BindingRegistry:
                     file_type=filetype_qualified_key,
                 )
 
-            processor: ProcessorDefinition | None = HeaderProcessorRegistry.get_by_qualified_key(
+            processor: ProcessorDefinition | None = HeaderProcessorRegistry.get(
                 processor_qualified_key,
             )
             if processor is None:
@@ -127,25 +127,25 @@ class BindingRegistry:
     # --- Exact point lookups ---
 
     @classmethod
-    def get_processor_key_for_filetype(cls, filetype_qualified_key: str) -> str | None:
+    def get_processor_key(cls, file_type_key: str) -> str | None:
         """Return the bound processor qualified key for a file type.
 
         Args:
-            filetype_qualified_key: File type qualified key.
+            file_type_key: File type qualified key.
 
         Returns:
             The bound processor qualified key, or ``None`` if the file type is
             currently unbound.
         """
         with cls._lock:
-            return cls._compose().get(filetype_qualified_key)
+            return cls._compose().get(file_type_key)
 
     @classmethod
-    def get_filetype_keys_for_processor(cls, processor_qualified_key: str) -> tuple[str, ...]:
+    def get_filetype_keys(cls, processor_key: str) -> tuple[str, ...]:
         """Return file type qualified keys currently bound to a processor.
 
         Args:
-            processor_qualified_key: Processor qualified key.
+            processor_key: Processor qualified key.
 
         Returns:
             Sorted tuple of file type qualified keys currently bound to the
@@ -156,112 +156,106 @@ class BindingRegistry:
                 sorted(
                     filetype_qk
                     for filetype_qk, processor_qk in cls._compose().items()
-                    if processor_qk == processor_qualified_key
+                    if processor_qk == processor_key
                 )
             )
 
     # --- Predicates ---
 
     @classmethod
-    def is_bound(cls, filetype_qualified_key: str) -> bool:
+    def is_bound(cls, file_type_key: str) -> bool:
         """Return whether a file type qualified key currently has a binding.
 
         Args:
-            filetype_qualified_key: File type qualified key.
+            file_type_key: File type qualified key.
 
         Returns:
             ``True`` if the file type currently has a binding, else ``False``.
         """
         with cls._lock:
-            return filetype_qualified_key in cls._compose()
+            return file_type_key in cls._compose()
 
     @classmethod
-    def is_processor_bound(cls, processor_qualified_key: str) -> bool:
+    def is_processor_bound(cls, processor_key: str) -> bool:
         """Return whether a processor qualified key is referenced by any binding.
 
         Args:
-            processor_qualified_key: Processor qualified key.
+            processor_key: Processor qualified key.
 
         Returns:
             ``True`` if at least one file type is currently bound to the
             processor, else ``False``.
         """
         with cls._lock:
-            return any(
-                processor_qk == processor_qualified_key for processor_qk in cls._compose().values()
-            )
+            return any(processor_qk == processor_key for processor_qk in cls._compose().values())
 
     # --- Mutations ---
 
     @classmethod
-    def bind(cls, *, filetype_qualified_key: str, processor_qualified_key: str) -> None:
+    def bind(cls, *, file_type_key: str, processor_key: str) -> None:
         """Bind a registered file type qualified key to a registered processor.
 
         Args:
-            filetype_qualified_key: File type qualified key to bind.
-            processor_qualified_key: Processor qualified key to bind to the file
+            file_type_key: File type qualified key to bind.
+            processor_key: Processor qualified key to bind to the file
                 type.
 
         Raises:
-            UnknownFileTypeError: If `filetype_qualified_key` does not resolve to
+            UnknownFileTypeError: If `file_type_key` does not resolve to
                 a registered file type.
-            ProcessorBindingError: If `processor_qualified_key` is unknown or if
+            ProcessorBindingError: If `processor_key` is unknown or if
                 the file type is already bound.
         """
         with cls._lock:
-            file_type: FileType | None = FileTypeRegistry.get_by_qualified_key(
-                filetype_qualified_key,
+            file_type: FileType | None = FileTypeRegistry.get(
+                file_type_key,
             )
             if file_type is None:
-                raise UnknownFileTypeError(file_type=filetype_qualified_key)
+                raise UnknownFileTypeError(file_type=file_type_key)
 
-            processor: ProcessorDefinition | None = HeaderProcessorRegistry.get_by_qualified_key(
-                processor_qualified_key,
+            processor: ProcessorDefinition | None = HeaderProcessorRegistry.get(
+                processor_key,
             )
             if processor is None:
                 raise ProcessorBindingError(
-                    message=f"Unknown processor qualified key: {processor_qualified_key}",
-                    file_type=filetype_qualified_key,
+                    message=f"Unknown processor qualified key: {processor_key}",
+                    file_type=file_type_key,
                 )
 
-            existing: str | None = cls._compose().get(filetype_qualified_key)
+            existing: str | None = cls._compose().get(file_type_key)
             if existing is not None:
                 raise ProcessorBindingError(
                     message=(
-                        f"File type '{filetype_qualified_key}' is already bound to "
-                        f"processor '{existing}'."
+                        f"File type '{file_type_key}' is already bound to processor '{existing}'."
                     ),
-                    file_type=filetype_qualified_key,
+                    file_type=file_type_key,
                 )
 
-            cls._removals.discard(filetype_qualified_key)
-            cls._overrides[filetype_qualified_key] = processor.qualified_key
+            cls._removals.discard(file_type_key)
+            cls._overrides[file_type_key] = processor.qualified_key
 
     @classmethod
-    def unbind(cls, filetype_qualified_key: str) -> bool:
+    def unbind(cls, file_type_key: str) -> bool:
         """Remove the effective binding for a file type qualified key.
 
         Args:
-            filetype_qualified_key: File type qualified key whose binding should
-                be removed.
+            file_type_key: File type qualified key whose binding should be removed.
 
         Returns:
             ``True`` if a binding existed in the effective view, else ``False``.
         """
         with cls._lock:
-            existed: bool = (
-                filetype_qualified_key in cls._overrides or filetype_qualified_key in cls._compose()
-            )
-            cls._overrides.pop(filetype_qualified_key, None)
-            cls._removals.add(filetype_qualified_key)
+            existed: bool = file_type_key in cls._overrides or file_type_key in cls._compose()
+            cls._overrides.pop(file_type_key, None)
+            cls._removals.add(file_type_key)
             return existed
 
     @classmethod
-    def unbind_processor(cls, processor_qualified_key: str) -> tuple[str, ...]:
+    def unbind_processor(cls, processor_key: str) -> tuple[str, ...]:
         """Remove all bindings that currently reference a processor.
 
         Args:
-            processor_qualified_key: Processor qualified key.
+            processor_key: Processor qualified key.
 
         Returns:
             Sorted tuple of file type qualified keys that were unbound.
@@ -271,7 +265,7 @@ class BindingRegistry:
                 sorted(
                     filetype_qk
                     for filetype_qk, processor_qk in cls._compose().items()
-                    if processor_qk == processor_qualified_key
+                    if processor_qk == processor_key
                 )
             )
             for filetype_qk in filetype_qks:
@@ -297,7 +291,7 @@ class BindingRegistry:
         }
 
         for filetype_qualified_key, filetype_meta in sorted(filetypes_by_qualified_key.items()):
-            processor_qualified_key: str | None = cls.get_processor_key_for_filetype(
+            processor_qualified_key: str | None = cls.get_processor_key(
                 filetype_qualified_key,
             )
             yield Binding(
@@ -311,11 +305,10 @@ class BindingRegistry:
 
     @classmethod
     def iter_meta(cls) -> Iterator[tuple[str, str]]:
-        """Iterate over effective ``(filetype_qk, processor_qk)`` pairs.
+        """Iterate over effective ``(file_type_key, processor_key)`` pairs.
 
         Yields:
-            Tuples of ``(filetype_qualified_key, processor_qualified_key)`` in
-            sorted order.
+            Tuples of ``(filetype_key, processor_key)`` in sorted order.
         """
         with cls._lock:
             yield from sorted(cls._compose().items())
@@ -330,9 +323,11 @@ class BindingRegistry:
         with cls._lock:
             return tuple(
                 sorted(
-                    ft.local_key
-                    for ft in FileTypeRegistry.iter_meta()
-                    if cls.is_bound(ft.qualified_key)
+                    {  # Use set comprehension to remove local key duplicates
+                        ft.local_key
+                        for ft in FileTypeRegistry.iter_meta_by_local_key()
+                        if cls.is_bound(ft.qualified_key)
+                    }
                 )
             )
 
@@ -346,8 +341,10 @@ class BindingRegistry:
         with cls._lock:
             return tuple(
                 sorted(
-                    ft.local_key
-                    for ft in FileTypeRegistry.iter_meta()
-                    if not cls.is_bound(ft.qualified_key)
+                    {  # Use set comprehension to remove local key duplicates
+                        ft.local_key
+                        for ft in FileTypeRegistry.iter_meta_by_local_key()
+                        if not cls.is_bound(ft.qualified_key)
+                    }
                 )
             )

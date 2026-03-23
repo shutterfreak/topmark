@@ -239,8 +239,8 @@ def test_file_types_filtering(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
 
             assert rel == ["a.py"]
         finally:
-            FileTypeRegistry.unregister("py")
-            FileTypeRegistry.unregister("text")
+            FileTypeRegistry.unregister_by_local_key("py")
+            FileTypeRegistry.unregister_by_local_key("text")
 
 
 def test_returns_sorted_and_files_only(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -407,7 +407,7 @@ def test_file_type_unknown_is_ignored(
             for r in caplog.records
         )
     finally:
-        FileTypeRegistry.unregister("py")
+        FileTypeRegistry.unregister_by_local_key("py")
 
 
 def test_config_files_respected_by_filters(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -624,7 +624,7 @@ def test_multiple_unknown_file_types_warn_once(
         assert len(msgs) == 1
         assert "unknown1" in msgs[0] and "unknown2" in msgs[0]
     finally:
-        FileTypeRegistry.unregister("py")
+        FileTypeRegistry.unregister_by_local_key("py")
 
 
 def test_pattern_files_trim_whitespace_and_trailing_spaces(

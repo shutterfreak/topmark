@@ -33,7 +33,7 @@ def test_bindings_shape() -> None:
 
 def test_filetypes_mapping_is_readonly() -> None:
     """Registry filetypes mapping is read-only (raises on attempted mutation)."""
-    ft: Mapping[str, object] = Registry.filetypes()
+    ft: Mapping[str, object] = Registry.filetypes_by_local_key()
     assert isinstance(ft, Mapping)
     # Mapping proxy must raise on mutation
     try:
@@ -46,7 +46,7 @@ def test_filetypes_mapping_is_readonly() -> None:
 
 def test_processors_mapping_is_readonly() -> None:
     """Registry processors mapping is read-only (raises on attempted mutation)."""
-    procs: Mapping[str, object] = Registry.processors_by_qualified_key()
+    procs: Mapping[str, object] = Registry.processors()
     assert isinstance(procs, Mapping)
     # Mapping proxy must raise on mutation
     try:

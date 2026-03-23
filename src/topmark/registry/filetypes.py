@@ -27,7 +27,6 @@ Notes:
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from threading import RLock
 from types import MappingProxyType
 from typing import TYPE_CHECKING
@@ -58,12 +57,19 @@ class FileTypeRegistry:
 
     _lock: RLock = RLock()
 
-    # Local overlays; applied on top of the base (built-ins + plugins).
-    # These *do not* mutate the base registry returned by instances.
     _overrides: dict[str, FileType] = {}
+    """Local overlays; applied on top of the base (built-ins + plugins).
+    These *do not* mutate the base registry returned by instances."""
+
     _removals: set[str] = set()
+    """Local-key removals only. Qualified-key unregister helpers must normalize
+    through the resolved FileType and store `ft.local_key` here."""
+
     _cache: Mapping[str, FileType] | None = None
+    """Local-key cache."""
+
     _cache_by_qualified_key: Mapping[str, FileType] | None = None
+    """Qualified-key cache."""
 
     @classmethod
     def _validate_ft(cls, ft: object) -> FileType:
@@ -136,8 +142,8 @@ class FileTypeRegistry:
         cls._cache_by_qualified_key = None
 
     @classmethod
-    def _compose(cls) -> dict[str, FileType]:
-        """Compose the effective file type registry.
+    def _compose_by_local_key(cls) -> dict[str, FileType]:
+        """Compose the effective file type registry by unqualified local key.
 
         Returns:
             Mapping of file type local key to validated `FileType` built from the
@@ -182,14 +188,14 @@ class FileTypeRegistry:
         return base
 
     @classmethod
-    def _compose_by_qualified_key(cls) -> dict[str, FileType]:
+    def _compose(cls) -> dict[str, FileType]:
         """Compose the effective file type registry keyed by qualified key."""
         # Use cached MappingProxy if available for performance
         cached: Mapping[str, FileType] | None = cls._cache_by_qualified_key
         if cached is not None:
             return dict(cached)
 
-        local_map: dict[str, FileType] = cls._compose()
+        local_map: dict[str, FileType] = cls._compose_by_local_key()
         composed: dict[str, FileType] = {}
         for ft in local_map.values():
             composed[ft.qualified_key] = ft
@@ -205,7 +211,7 @@ class FileTypeRegistry:
             Tuple with sorted file type names.
         """
         with cls._lock:
-            return tuple(sorted(cls._compose().keys()))
+            return tuple(sorted(cls._compose_by_local_key().keys()))
 
     @classmethod
     def qualified_keys(cls) -> tuple[str, ...]:
@@ -217,7 +223,7 @@ class FileTypeRegistry:
             Tuple with sorted file type qualified keys.
         """
         with cls._lock:
-            return tuple(sorted(cls._compose_by_qualified_key().keys()))
+            return tuple(sorted(cls._compose().keys()))
 
     @classmethod
     def namespaces(cls) -> tuple[str, ...]:
@@ -230,12 +236,12 @@ class FileTypeRegistry:
         """
         with cls._lock:
             # Use set comprehension to return "sorted set" of namespaces
-            return tuple(sorted({ft.namespace for ft in cls._compose_by_qualified_key().values()}))
+            return tuple(sorted({ft.namespace for ft in cls._compose().values()}))
 
     @classmethod
     def resolve_filetype_id(
         cls,
-        file_type_name: str,  # TODO use a more suitable arg name
+        file_type_id: str,
         *,
         default_namespace: str | None = None,
     ) -> FileType | None:
@@ -247,7 +253,7 @@ class FileTypeRegistry:
         - Qualified: ``"<namespace>:<local_key>"``
 
         Args:
-            file_type_name: Identifier to resolve (unqualified or qualified).
+            file_type_id: Identifier to resolve (unqualified or qualified).
             default_namespace: Optional namespace constraint applied when the identifier is
                 unqualified.
 
@@ -265,7 +271,7 @@ class FileTypeRegistry:
             compatibility, but this resolver treats ``namespace:local_key`` as the canonical stable
             identity and is the preferred lookup entry point for namespace-aware code.
         """
-        raw: str = file_type_name.strip()
+        raw: str = file_type_id.strip()
         if not raw:
             return None
 
@@ -281,7 +287,7 @@ class FileTypeRegistry:
                 )
 
             with cls._lock:
-                return cls._compose_by_qualified_key().get(
+                return cls._compose().get(
                     make_qualified_key(namespace, local_key),
                 )
 
@@ -289,7 +295,7 @@ class FileTypeRegistry:
         with cls._lock:
             candidates: list[FileType] = [
                 file_type
-                for file_type in cls._compose().values()
+                for file_type in cls._compose_by_local_key().values()
                 if file_type.local_key == raw
                 and (default_namespace is None or file_type.namespace == default_namespace)
             ]
@@ -303,27 +309,27 @@ class FileTypeRegistry:
             return candidates[0]
 
     @classmethod
-    def get_by_qualified_key(cls, qualified_key: str) -> FileType | None:
+    def get(cls, file_type_key: str) -> FileType | None:
         """Return a file type by qualified key.
 
         Args:
-            qualified_key: Qualified key used as the registry key.
+            file_type_key: Qualified key used as the registry key.
 
         Returns:
             The file type if found, else None.
         """
         with cls._lock:
-            return cls._compose_by_qualified_key().get(qualified_key)
+            return cls._compose().get(file_type_key)
 
     @classmethod
-    def as_mapping(cls) -> Mapping[str, FileType]:
-        """Return a read-only mapping of file types keyed by local key.
+    def as_mapping_by_local_key(cls) -> Mapping[str, FileType]:
+        """Return a read-only local-key compatibility view of file types (keyed by local key).
 
         Returns:
             Mapping of file type local key to `FileType`.
 
         Notes:
-            The returned mapping is a `MappingProxyType` and must not be mutated.
+            The returned mapping is a ``MappingProxyType`` and must not be mutated.
         """
         with cls._lock:
             cached: Mapping[str, FileType] | None = cls._cache
@@ -333,19 +339,19 @@ class FileTypeRegistry:
             # Compose a fresh view and cache it.
             # NOTE: tests may monkeypatch `_compose()`; do not rely on `_compose()`
             # to populate `_cache`.
-            composed: dict[str, FileType] = cls._compose()
+            composed: dict[str, FileType] = cls._compose_by_local_key()
             cls._cache = MappingProxyType(composed)
             return cls._cache
 
     @classmethod
-    def as_mapping_by_qualified_key(cls) -> Mapping[str, FileType]:
-        """Return a read-only mapping of file types keyed by qualified key.
+    def as_mapping(cls) -> Mapping[str, FileType]:
+        """Return a read-only qualified-key canonical view of file types (keyed by qualified key).
 
         Returns:
             Mapping of file type qualified key to `FileType`.
 
         Notes:
-            The returned mapping is a `MappingProxyType` and must not be mutated.
+            The returned mapping is a ``MappingProxyType`` and must not be mutated.
         """
         with cls._lock:
             cached: Mapping[str, FileType] | None = cls._cache_by_qualified_key
@@ -355,13 +361,38 @@ class FileTypeRegistry:
             # Compose a fresh view and cache it.
             # NOTE: tests may monkeypatch `_compose()`; do not rely on `_compose()`
             # to populate `_cache`.
-            composed: dict[str, FileType] = cls._compose_by_qualified_key()
+            composed: dict[str, FileType] = cls._compose()
             cls._cache_by_qualified_key = MappingProxyType(composed)
             return cls._cache_by_qualified_key
 
     @classmethod
+    def iter_meta_by_local_key(cls) -> Iterator[FileTypeMeta]:
+        """Iterate over read-only local-key compatibility view for registered file types.
+
+        No getattr needed because types are guaranteed.
+
+        Yields:
+            Serializable ``FileTypeMeta`` metadata about each file type.
+        """
+        with cls._lock:
+            for ft in cls._compose_by_local_key().values():
+                yield FileTypeMeta(
+                    local_key=ft.local_key,
+                    namespace=ft.namespace,
+                    description=ft.description or "",
+                    extensions=tuple(ft.extensions or ()),
+                    filenames=tuple(ft.filenames or ()),
+                    patterns=tuple(ft.patterns or ()),
+                    skip_processing=ft.skip_processing,
+                    content_matcher=ft.content_matcher is not None,
+                    header_policy=ft.header_policy.to_dict()
+                    if ft.header_policy is not None
+                    else {},
+                )
+
+    @classmethod
     def iter_meta(cls) -> Iterator[FileTypeMeta]:
-        """Iterate over stable metadata for registered file types.
+        """Iterate over qualified-key canonical view for registered file types.
 
         No getattr needed because types are guaranteed.
 
@@ -369,9 +400,9 @@ class FileTypeRegistry:
             Serializable `FileTypeMeta` metadata about each file type.
         """
         with cls._lock:
-            for local_key, ft in cls._compose().items():
+            for ft in cls._compose().values():
                 yield FileTypeMeta(
-                    local_key=local_key,
+                    local_key=ft.local_key,
                     namespace=ft.namespace,
                     description=ft.description or "",
                     extensions=tuple(ft.extensions or ()),
@@ -414,7 +445,7 @@ class FileTypeRegistry:
                     f"FileType.local_key must be a nonempty string (found {local_key!r})."
                 )
             # Check against *composed* view to avoid dupes
-            if local_key in cls._compose():
+            if local_key in cls._compose_by_local_key():
                 raise ValueError(f"Duplicate FileType local_key: {local_key}")
             # Record override locally (no base mutation)
             cls._overrides[local_key] = ft_obj
@@ -423,8 +454,8 @@ class FileTypeRegistry:
             cls._clear_cache()
 
     @classmethod
-    def unregister(cls, local_key: str) -> bool:
-        """Unregister a file type by local_key.
+    def unregister_by_local_key(cls, local_key: str) -> bool:
+        """Unregister a file type by unqualified local key.
 
         Args:
             local_key: Registered file type local_key.
@@ -441,11 +472,44 @@ class FileTypeRegistry:
             # Remove local override (if any) and mark for removal from base
             existed = False
             if local_key in cls._overrides:
-                existed = True
                 cls._overrides.pop(local_key, None)
-            # If present only in base, we still support hiding it
-            if local_key in cls._compose():
                 existed = True
+            # If present only in base, we still support hiding it
+            if local_key in cls._compose_by_local_key():
                 cls._removals.add(local_key)
+                existed = True
+            cls._clear_cache()
+            return existed
+
+    @classmethod
+    def unregister(cls, file_type_key: str) -> bool:
+        """Unregister a file type by qualified key.
+
+        Args:
+            file_type_key: Registered file type qualified key.
+
+        Returns:
+            `True` if the entry existed and was removed, else `False`.
+
+        Notes:
+            - This mutates global registry state.
+            - Thread safe via RLock; process-global state; do not mutate in long-lived
+              multi-tenant processes.
+        """
+        with cls._lock:
+            ft: FileType | None = cls._compose().get(file_type_key)
+            if ft is None:
+                return False
+
+            # Remove local override (if any) and mark for removal from base
+            local_key: str = ft.local_key
+            existed = False
+            if local_key in cls._overrides:
+                cls._overrides.pop(local_key, None)
+                existed = True
+            # If present only in base, we still support hiding it
+            if local_key in cls._compose_by_local_key():
+                cls._removals.add(local_key)
+                existed = True
             cls._clear_cache()
             return existed

@@ -463,10 +463,11 @@ def patched_effective_registries(
     """Temporarily override the effective registries used by TopMark.
 
     This helper patches the composed registry views returned by
+    `FileTypeRegistry.as_mapping_by_local_key()`,
     `FileTypeRegistry.as_mapping()`,
-    `FileTypeRegistry.as_mapping_by_qualified_key()`, and
-    `HeaderProcessorRegistry.as_mapping_by_qualified_key()` by overriding the
-    internal composition classmethods used to build those views.
+    `HeaderProcessorRegistry.as_mapping()`, and
+    `BindingRegistry.as_mapping()` by overriding the internal composition
+    classmethods used to build those views.
 
     Use this in tests that need deterministic, minimal registries without
     depending on built-in file types/processors or plugin discovery.
@@ -477,14 +478,15 @@ def patched_effective_registries(
         - Cache is cleared before patch, after patch, and again on restore.
         - The `processors` input is still keyed by file type local key for test
           convenience, but processor definitions are normalized into the new
-          qualified-key registry shape before patching.
+          canonical processor-key registry shape before patching.
 
     Args:
         filetypes: Effective file type registry to expose for the duration of
             the context, keyed by file type local key.
         processors: Effective processor registry input keyed by file type local
             key for test convenience. Values may be runtime `HeaderProcessor`
-            instances or `ProcessorDefinition` objects.
+            instances or `ProcessorDefinition` objects and are normalized into
+            the canonical processor-key registry shape.
 
     Yields:
         None: Control is yielded to the caller while the effective registries
@@ -498,7 +500,7 @@ def patched_effective_registries(
     ft_reg = cast("Any", FileTypeRegistry)
     hp_reg = cast("Any", HeaderProcessorRegistry)
 
-    # Normalize processors into the canonical qualified-key registry shape.
+    # Normalize processors into the canonical processor-key registry shape.
     processor_defs_by_filetype: dict[str, ProcessorDefinition] = {}
     processor_defs_by_qualified_key: dict[str, ProcessorDefinition] = {}
     for file_type_local_key, processor in processors.items():
@@ -528,26 +530,24 @@ def patched_effective_registries(
 
     # Save the original compose hooks.
     orig_ft_compose = ft_reg._compose
-    orig_ft_compose_by_qualified_key = ft_reg._compose_by_qualified_key
-    orig_hp_compose_by_qualified_key = hp_reg._compose_by_qualified_key
+    orig_ft_compose_by_local_key = ft_reg._compose_by_local_key
+    orig_hp_compose = hp_reg._compose
     orig_binding_compose: Callable[..., dict[str, str]] = BindingRegistry._compose  # pyright: ignore[reportPrivateUsage]
 
     try:
-        ft_reg._compose = classmethod(lambda cls: dict(filetypes))
-        ft_reg._compose_by_qualified_key = classmethod(
+        ft_reg._compose = classmethod(
             lambda cls: {ft.qualified_key: ft for ft in filetypes.values()}
         )
-        hp_reg._compose_by_qualified_key = classmethod(
-            lambda cls: dict(processor_defs_by_qualified_key)
-        )
+        ft_reg._compose_by_local_key = classmethod(lambda cls: dict(filetypes))
+        hp_reg._compose = classmethod(lambda cls: dict(processor_defs_by_qualified_key))
         BindingRegistry._compose = classmethod(lambda cls: dict(binding_map))  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
         ft_reg._clear_cache()
         hp_reg._clear_cache()
         yield
     finally:
         ft_reg._compose = orig_ft_compose
-        ft_reg._compose_by_qualified_key = orig_ft_compose_by_qualified_key
-        hp_reg._compose_by_qualified_key = orig_hp_compose_by_qualified_key
+        ft_reg._compose_by_local_key = orig_ft_compose_by_local_key
+        hp_reg._compose = orig_hp_compose
         BindingRegistry._compose = orig_binding_compose  # pyright: ignore[reportPrivateUsage]
         ft_reg._clear_cache()
         hp_reg._clear_cache()
@@ -568,7 +568,9 @@ def effective_registries() -> EffectiveRegistries:
     """Return a callable that patches the effective registries for the duration of a test.
 
     This fixture is a thin wrapper around `patched_effective_registries` that
-    integrates naturally with pytest.
+    integrates naturally with pytest and patches the canonical processor-key
+    and file-type-key registry views together with the local-key compatibility
+    view for file types.
 
     Example:
         ```python

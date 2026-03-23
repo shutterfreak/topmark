@@ -40,15 +40,22 @@ def test_register_filetype_with_processor_in_one_step() -> None:
     processor_qualified_key: str | None = None
     try:
         proc_cls: type[HeaderProcessor] = registry_processor_class()
-        Registry.register_filetype(ft, processor_class=proc_cls)
+        FileTypeRegistry.register(ft)
+        proc_def: ProcessorDefinition | None = HeaderProcessorRegistry.register(
+            processor_class=proc_cls,
+        )
+        Registry.bind(
+            file_type_id=name,
+            processor_key=proc_def.qualified_key,
+        )
         assert name in Registry.bound_filetype_local_keys()
 
-        processor_qualified_key = BindingRegistry.get_processor_key_for_filetype(
+        processor_qualified_key = BindingRegistry.get_processor_key(
             ft.qualified_key,
         )
         assert processor_qualified_key is not None
 
-        proc_def: ProcessorDefinition | None = HeaderProcessorRegistry.get_by_qualified_key(
+        proc_def = HeaderProcessorRegistry.get(
             processor_qualified_key,
         )
         assert proc_def is not None
@@ -59,10 +66,10 @@ def test_register_filetype_with_processor_in_one_step() -> None:
         assert proc.file_type is not None
         assert proc.file_type.local_key == name
     finally:
-        Registry.unbind_filetype_by_local_key(name)
+        Registry.unbind_filetype(name)
         if processor_qualified_key is not None:
-            Registry.unregister_processor_by_qualified_key(
+            Registry.unregister_processor(
                 processor_qualified_key,
                 remove_bindings=False,
             )
-        FileTypeRegistry.unregister(name)
+        FileTypeRegistry.unregister_by_local_key(name)

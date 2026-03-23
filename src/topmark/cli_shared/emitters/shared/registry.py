@@ -157,7 +157,7 @@ def build_filetypes_human_report(
     Returns:
         A `FileTypesHumanReport` with one item per file type.
     """
-    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
+    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping_by_local_key()
 
     items: list[FileTypeHumanItem] = []
     for _, file_type in sorted(ft_registry.items()):
@@ -207,10 +207,8 @@ def build_processors_human_report(
     """
     from topmark.registry.processors import HeaderProcessorRegistry
 
-    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
-    hp_registry: Mapping[str, ProcessorDefinition] = (
-        HeaderProcessorRegistry.as_mapping_by_qualified_key()
-    )
+    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping_by_local_key()
+    hp_registry: Mapping[str, ProcessorDefinition] = HeaderProcessorRegistry.as_mapping()
     binding_registry: Mapping[str, str] = BindingRegistry.as_mapping()
 
     # Build a helper map of file types by qualified key:

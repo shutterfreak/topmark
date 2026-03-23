@@ -301,7 +301,7 @@ def get_file_type_candidates_for_path(
     candidates: list[FileTypeCandidate] = []
 
     # Validate against the effective file type registry:
-    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
+    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping_by_local_key()
 
     # 1) Compute name signals -> 2) Gate content probe -> 3) Include? -> 4) Score
 

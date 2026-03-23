@@ -54,13 +54,13 @@ def test_filetype_register_unregister_roundtrip(dummy_name: str) -> None:
         FileTypeRegistry.register(ft)
         # Visible via names() and as_mapping()
         assert dummy_name in FileTypeRegistry.names()
-        assert dummy_name in FileTypeRegistry.as_mapping()
+        assert dummy_name in FileTypeRegistry.as_mapping_by_local_key()
         # Visible via iter_meta()
-        names: set[str] = {m.local_key for m in FileTypeRegistry.iter_meta()}
+        names: set[str] = {m.local_key for m in FileTypeRegistry.iter_meta_by_local_key()}
         assert dummy_name in names
     finally:
         # Cleanup
-        assert FileTypeRegistry.unregister(dummy_name) is True
+        assert FileTypeRegistry.unregister_by_local_key(dummy_name) is True
         assert dummy_name not in FileTypeRegistry.names()
 
 
@@ -74,7 +74,7 @@ def test_filetype_register_duplicate_raises() -> None:
         with pytest.raises(ValueError):
             FileTypeRegistry.register(ft2)
     finally:
-        FileTypeRegistry.unregister(name)
+        FileTypeRegistry.unregister_by_local_key(name)
 
 
 @pytest.mark.parametrize("proc_name", ["dummy_proc"])
@@ -86,12 +86,12 @@ def test_processor_register_unregister_roundtrip(proc_name: str) -> None:
         processor_class=proc_cls,
     )
     try:
-        assert proc_def.qualified_key in HeaderProcessorRegistry.as_mapping_by_qualified_key()
+        assert proc_def.qualified_key in HeaderProcessorRegistry.as_mapping()
         names: set[str] = {m.local_key for m in HeaderProcessorRegistry.iter_meta()}
         assert proc_def.local_key in names
     finally:
-        assert HeaderProcessorRegistry.unregister_by_qualified_key(proc_def.qualified_key) is True
-        assert proc_def.qualified_key not in HeaderProcessorRegistry.as_mapping_by_qualified_key()
+        assert HeaderProcessorRegistry.unregister(proc_def.qualified_key) is True
+        assert proc_def.qualified_key not in HeaderProcessorRegistry.as_mapping()
 
 
 def test_processor_register_duplicate_raises() -> None:
@@ -106,7 +106,7 @@ def test_processor_register_duplicate_raises() -> None:
                 processor_class=proc_cls,
             )
     finally:
-        HeaderProcessorRegistry.unregister_by_qualified_key(proc_def.qualified_key)
+        HeaderProcessorRegistry.unregister(proc_def.qualified_key)
 
 
 def test_replace_processor_requires_unregister() -> None:
@@ -120,18 +120,18 @@ def test_replace_processor_requires_unregister() -> None:
             HeaderProcessorRegistry.register(
                 processor_class=cls1,
             )
-        assert HeaderProcessorRegistry.unregister_by_qualified_key(proc_def1.qualified_key) is True
+        assert HeaderProcessorRegistry.unregister(proc_def1.qualified_key) is True
         proc_def2: ProcessorDefinition = HeaderProcessorRegistry.register(
             processor_class=cls1,
         )
-        HeaderProcessorRegistry.unregister_by_qualified_key(proc_def2.qualified_key)
+        HeaderProcessorRegistry.unregister(proc_def2.qualified_key)
     finally:
-        HeaderProcessorRegistry.unregister_by_qualified_key(proc_def1.qualified_key)
+        HeaderProcessorRegistry.unregister(proc_def1.qualified_key)
 
 
 def test_filetype_as_mapping_is_readonly() -> None:
     """Verify that as_mapping() is read-only."""
     import types
 
-    m: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
+    m: Mapping[str, FileType] = FileTypeRegistry.as_mapping_by_local_key()
     assert isinstance(m, types.MappingProxyType)
