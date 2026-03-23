@@ -164,7 +164,7 @@ default_stages = ["commit"]
 [tool.pydoclint]
 style = "google"
 
-exclude = '\.venv|tests|build|dist' # Regex for paths to skip
+exclude = '\.venv|archives|build|dist|site|tests' # Regex for paths to skip
 
 # Be strict about docstring structure.
 allow-init-docstring        = false
@@ -174,7 +174,7 @@ check-raises                = true
 check-return-types          = false
 check-yield-types           = false
 require-return-section      = true
-require-yields-section      = false
+require-yields-section      = true
 
 # Example:
 # ignore = ["DOC501", "DOC502"]
