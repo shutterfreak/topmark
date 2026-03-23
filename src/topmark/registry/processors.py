@@ -271,7 +271,7 @@ class HeaderProcessorRegistry:
         """Iterate over stable metadata for processor definitions.
 
         Yields:
-            Serializable `ProcessorMeta` metadata about each registered
+            Serializable `ProcessorMeta` values describing each registered
             processor definition.
         """
         with cls._lock:
@@ -309,15 +309,9 @@ class HeaderProcessorRegistry:
                 subclass or if its identity is malformed.
             ReservedNamespaceError: If the reserved built-in ``topmark``
                 namespace is used by an ineligible external processor class.
-        """
+        """  # noqa: DOC503 - documents propagated exceptions from underlying registry helpers
         with cls._lock:
-            try:
-                proc_cls: type[HeaderProcessor] = _validate_processor_class(processor_class)
-            except (  # noqa: TRY203
-                ReservedNamespaceError,
-                TypeError,
-            ):
-                raise
+            proc_cls: type[HeaderProcessor] = _validate_processor_class(processor_class)
             proc_def = ProcessorDefinition(
                 namespace=proc_cls.namespace,
                 local_key=proc_cls.local_key,

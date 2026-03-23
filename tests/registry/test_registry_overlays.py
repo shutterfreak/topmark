@@ -18,10 +18,12 @@ from tests.conftest import make_file_type
 from topmark.processors.base import HeaderProcessor
 from topmark.registry.bindings import BindingRegistry
 from topmark.registry.filetypes import FileTypeRegistry
+from topmark.registry.processors import HeaderProcessorRegistry
 from topmark.registry.registry import Registry
 
 if TYPE_CHECKING:
     from topmark.filetypes.model import FileType
+    from topmark.registry.types import ProcessorDefinition
 
 
 class _P(HeaderProcessor):
@@ -46,10 +48,17 @@ def test_overlay_partition_updates() -> None:
     FileTypeRegistry.register(ft)
     assert "ftx" in Registry.unbound_filetype_local_keys()
 
-    Registry.register_processor(
-        file_type_id=ft.local_key,
+    proc_def: ProcessorDefinition = HeaderProcessorRegistry.register(
         processor_class=_P,
+    )
+    Registry.bind_processor(
+        file_type_id=ft.local_key,
+        processor_qualified_key=proc_def.qualified_key,
     )  # now supported
+    assert (
+        BindingRegistry.get_processor_key_for_filetype(ft.qualified_key) == proc_def.qualified_key
+    )
+
     assert "ftx" in Registry.bound_filetype_local_keys()
 
     Registry.unbind_filetype_by_local_key("ftx")
@@ -58,6 +67,13 @@ def test_overlay_partition_updates() -> None:
     assert "ftx" not in Registry.bound_filetype_local_keys()
     assert "ftx" in Registry.unbound_filetype_local_keys()
 
+    assert (
+        Registry.unregister_processor_by_qualified_key(
+            proc_def.qualified_key,
+            remove_bindings=False,
+        )
+        is True
+    )
     FileTypeRegistry.unregister("ftx")
     assert "ftx" not in FileTypeRegistry.as_mapping()
     assert "ftx" not in Registry.unbound_filetype_local_keys()

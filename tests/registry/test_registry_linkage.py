@@ -34,6 +34,7 @@ from topmark.registry.bindings import BindingRegistry
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
 from topmark.registry.registry import Registry
+from topmark.registry.types import ProcessorDefinition
 
 if TYPE_CHECKING:
     from topmark.filetypes.model import FileType
@@ -57,10 +58,13 @@ def test_supported_vs_unsupported_partition() -> None:
         assert ft_name not in Registry.bound_filetype_local_keys()
         assert BindingRegistry.get_processor_key_for_filetype(ft.qualified_key) is None
 
-        # Now register via the public facade -> becomes supported
-        Registry.register_processor(
-            file_type_id=ft_name,
+        # Register the processor definition, then bind it via the public facade.
+        proc_def: ProcessorDefinition | None = HeaderProcessorRegistry.register(
             processor_class=proc_cls,
+        )
+        Registry.bind_processor(
+            file_type_id=ft_name,
+            processor_qualified_key=proc_def.qualified_key,
         )
 
         assert ft_name in Registry.bound_filetype_local_keys()
@@ -72,7 +76,7 @@ def test_supported_vs_unsupported_partition() -> None:
         assert processor_qualified_key is not None
 
         # The registry stores a processor definition; runtime resolution binds it to the FT object.
-        proc_def: ProcessorDefinition | None = HeaderProcessorRegistry.get_by_qualified_key(
+        proc_def = HeaderProcessorRegistry.get_by_qualified_key(
             processor_qualified_key,
         )
         assert proc_def is not None
@@ -96,11 +100,17 @@ def test_register_processor_fails_for_unknown_filetype() -> None:
     """Reject registering a processor for a non-existent file type."""
     proc_cls: type[HeaderProcessor] = registry_processor_class()
 
-    with pytest.raises(UnknownFileTypeError):
-        Registry.register_processor(
-            file_type_id="nonexistent_ft",
-            processor_class=proc_cls,
-        )
+    proc_def: ProcessorDefinition = HeaderProcessorRegistry.register(
+        processor_class=proc_cls,
+    )
+    try:
+        with pytest.raises(UnknownFileTypeError):
+            Registry.bind_processor(
+                file_type_id="nonexistent_ft",
+                processor_qualified_key=proc_def.qualified_key,
+            )
+    finally:
+        HeaderProcessorRegistry.unregister_by_qualified_key(proc_def.qualified_key)
 
 
 def test_supported_unsupported_partition_coherent() -> None:

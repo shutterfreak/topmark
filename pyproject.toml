@@ -176,9 +176,6 @@ check-yield-types           = false
 require-return-section      = true
 require-yields-section      = true
 
-# Example:
-# ignore = ["DOC501", "DOC502"]
-
 [tool.pydocstringformatter]
 style           = "pep257"
 max-line-length = 100

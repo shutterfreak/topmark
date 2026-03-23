@@ -22,11 +22,18 @@ while still being unsupported if no processor binding exists for it.
 
 Typical usage:
     ```python
+    from topmark.registry.processors import HeaderProcessorRegistry
     from topmark.registry.registry import Registry
 
     filetypes = Registry.filetypes()
     processors = Registry.processors_by_qualified_key()
     bindings = Registry.bindings()
+
+    proc_def = HeaderProcessorRegistry.register(processor_class=MyProcessor)
+    Registry.bind_processor(
+        file_type_id="python",
+        processor_qualified_key=proc_def.qualified_key,
+    )
     ```
 
 Warning:
@@ -38,17 +45,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.core.errors import AmbiguousFileTypeIdentifierError
-from topmark.core.errors import DuplicateProcessorRegistrationError
-from topmark.core.errors import InvalidRegistryIdentityError
-from topmark.core.errors import ProcessorBindingError
-from topmark.core.errors import ReservedNamespaceError
 from topmark.core.errors import UnknownFileTypeError
 from topmark.registry.bindings import Binding
 from topmark.registry.bindings import BindingRegistry
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
-from topmark.registry.types import ProcessorDefinition
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -111,9 +112,13 @@ class Registry:
     def processors_by_qualified_key() -> Mapping[str, ProcessorDefinition]:
         """Return the canonical processor-definition mapping keyed by qualified key.
 
-        The mapping is a ``MappingProxyType`` and must not be mutated.
-        Keys are processor qualified keys; values are `ProcessorDefinition`
-        objects.
+        Returns:
+            Mapping of processor qualified key to `ProcessorDefinition`
+            objects.
+
+        Notes:
+            The returned mapping is a ``MappingProxyType`` and must not be
+            mutated.
         """
         return HeaderProcessorRegistry.as_mapping_by_qualified_key()
 
@@ -176,9 +181,8 @@ class Registry:
 
     # --- Binding/status inspection ---
 
-    # TODO rename to a more suitable name
     @staticmethod
-    def is_supported(local_key: str) -> bool:
+    def is_filetype_bound(local_key: str) -> bool:
         """Return whether the given file type local key currently has a binding.
 
         Args:
@@ -191,6 +195,18 @@ class Registry:
         if ft_obj is None:
             return False
         return BindingRegistry.is_bound(ft_obj.qualified_key)
+
+    @staticmethod
+    def is_processor_bound(qualified_key: str) -> bool:
+        """Return whether a processor qualified key is referenced by any binding.
+
+        Args:
+            qualified_key: Processor qualified key to query.
+
+        Returns:
+            ``True`` if the processor is referenced by any binding, else ``False``.
+        """
+        return BindingRegistry.is_processor_bound(qualified_key)
 
     @staticmethod
     def bound_filetype_local_keys() -> tuple[str, ...]:
@@ -273,145 +289,6 @@ class Registry:
         """
         return FileTypeRegistry.unregister(local_key)
 
-    # --- Processor definition mutation ---
-
-    @staticmethod
-    def register_processor(
-        *,
-        file_type_id: str,
-        processor_class: type[HeaderProcessor],
-    ) -> None:
-        """Register a header processor class under a file type identifier.
-
-        Prefer `try_register_processor()` if you want a boolean status instead of
-        exceptions for unknown, ambiguous, or duplicate registrations.
-
-        This is a convenience helper that both registers the processor
-        definition and immediately binds it to the resolved file type. Use
-        `bind_processor()` when you want to bind an already-registered
-        processor definition.
-
-        Passthrough to
-        [`HeaderProcessorRegistry.register`][topmark.registry.processors.HeaderProcessorRegistry.register].
-
-        Args:
-            file_type_id: File type identifier that the processor should be bound
-                under. Both ``"local_key"`` and ``"namespace:local_key"`` forms
-                are accepted.
-            processor_class: Concrete `HeaderProcessor` class to register and
-                bind to the registered file type.
-
-        Raises:
-            AmbiguousFileTypeIdentifierError: If an unqualified `file_type_id`
-                matches multiple file types.
-            InvalidRegistryIdentityError: If `file_type_id` is malformed.
-            UnknownFileTypeError: If `file_type_id` does not resolve to a
-                registered file type.
-            DuplicateProcessorRegistrationError: If the effective registry
-                already contains a processor for the same qualified key.
-            TypeError: If `processor_class` is not a valid `HeaderProcessor`
-                subclass or if its identity is malformed.
-            ReservedNamespaceError: If the reserved built-in ``topmark``
-                namespace is used by an ineligible external processor class.
-            ProcessorBindingError: If the resolved file type is already bound.
-        """
-        try:
-            # Propagate ambiguity explicitly so the public facade documents it accurately.
-            ft_obj: FileType | None = FileTypeRegistry.resolve_filetype_id(file_type_id)
-        except (AmbiguousFileTypeIdentifierError, InvalidRegistryIdentityError):  # noqa: TRY203
-            raise
-
-        if ft_obj is None:
-            # Keep the facade strict: callers asked to register against a specific
-            # file type identifier; silently ignoring mistakes would be surprising.
-            raise UnknownFileTypeError(file_type=file_type_id)
-
-        proc_def: ProcessorDefinition | None = None
-        try:
-            proc_def = HeaderProcessorRegistry.register(
-                processor_class=processor_class,
-            )
-            BindingRegistry.bind(
-                filetype_qualified_key=ft_obj.qualified_key,
-                processor_qualified_key=proc_def.qualified_key,
-            )
-        except (  # noqa: TRY203
-            DuplicateProcessorRegistrationError,
-            ReservedNamespaceError,
-            UnknownFileTypeError,
-            ProcessorBindingError,
-            TypeError,
-        ):
-            raise
-
-        return None
-
-    @staticmethod
-    def try_register_processor(
-        file_type_id: str,
-        processor_class: type[HeaderProcessor],
-    ) -> bool:
-        """Try to register a header processor for a file type identifier.
-
-        This is a lenient variant of `register_processor()` intended for callers
-        that want a boolean success/failure signal rather than an exception.
-
-        Behavior:
-            - Returns ``False`` if the file type identifier does not resolve.
-            - Returns ``False`` if an unqualified identifier resolves ambiguously.
-            - Returns ``False`` if a processor is already registered for the
-              resolved file type.
-            - Returns ``False`` for duplicate processor registrations or other
-              registration and binding failures.
-            - Returns ``True`` if the registration succeeds.
-
-        Args:
-            file_type_id: File type identifier that the processor should be bound
-                under. Both ``"local_key"`` and ``"namespace:local_key"`` forms
-                are accepted.
-            processor_class: Concrete `HeaderProcessor` class to register and
-                bind.
-
-        Returns:
-            ``True`` if the registration succeeds, else ``False``.
-        """
-        try:
-            ft_obj: FileType | None = FileTypeRegistry.resolve_filetype_id(file_type_id)
-        except (AmbiguousFileTypeIdentifierError, InvalidRegistryIdentityError):
-            return False
-
-        if ft_obj is None:
-            return False
-
-        if BindingRegistry.is_bound(ft_obj.qualified_key):
-            return False
-
-        proc_def: ProcessorDefinition | None = None
-        try:
-            proc_def = HeaderProcessorRegistry.register(
-                processor_class=processor_class,
-            )
-            BindingRegistry.bind(
-                filetype_qualified_key=ft_obj.qualified_key,
-                processor_qualified_key=proc_def.qualified_key,
-            )
-        except (
-            DuplicateProcessorRegistrationError,
-            ReservedNamespaceError,
-            TypeError,
-        ):
-            return False
-        except (
-            ProcessorBindingError,
-            UnknownFileTypeError,
-        ):
-            # Roll-back
-            if proc_def:
-                HeaderProcessorRegistry.unregister_by_qualified_key(proc_def.qualified_key)
-            return False
-
-        return True
-
     # --- Explicit binding mutation ---
 
     @staticmethod
@@ -421,6 +298,12 @@ class Registry:
         processor_qualified_key: str,
     ) -> None:
         """Bind an existing processor definition to a registered file type.
+
+        This is the public binding-oriented facade helper. Processor
+        definitions must already exist in `HeaderProcessorRegistry`; callers
+        that need to create one should first call
+        `HeaderProcessorRegistry.register()` and then bind the resulting
+        qualified key through this method.
 
         Args:
             file_type_id: File type identifier that should be bound. Both
@@ -436,28 +319,16 @@ class Registry:
                 registered file type.
             ProcessorBindingError: If the processor qualified key is unknown or
                 if the file type is already bound.
-        """
-        try:
-            ft_obj: FileType | None = FileTypeRegistry.resolve_filetype_id(file_type_id)
-        except (  # noqa: TRY203
-            AmbiguousFileTypeIdentifierError,
-            InvalidRegistryIdentityError,
-        ):
-            raise
+        """  # noqa: DOC503 - documents propagated exceptions from underlying registry helpers
+        ft_obj: FileType | None = FileTypeRegistry.resolve_filetype_id(file_type_id)
 
         if ft_obj is None:
             raise UnknownFileTypeError(file_type=file_type_id)
 
-        try:
-            BindingRegistry.bind(
-                filetype_qualified_key=ft_obj.qualified_key,
-                processor_qualified_key=processor_qualified_key,
-            )
-        except (  # noqa: TRY203
-            UnknownFileTypeError,
-            ProcessorBindingError,
-        ):
-            raise
+        BindingRegistry.bind(
+            filetype_qualified_key=ft_obj.qualified_key,
+            processor_qualified_key=processor_qualified_key,
+        )
 
     @staticmethod
     def unbind_filetype_by_local_key(local_key: str) -> bool:

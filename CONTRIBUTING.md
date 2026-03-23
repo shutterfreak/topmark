@@ -155,13 +155,21 @@ and typing rules:
   - Use Google-style docstrings with explicit `Args:`, `Returns:`, and `Raises:` sections for public
     functions, methods, and classes.
   - Keep docstrings import-safe: avoid heavy imports or side effects at module import time.
+  - Treat the `Raises:` section as part of the **observable caller contract**. For public APIs, it
+    may document exceptions intentionally propagated from delegated helpers when those exceptions
+    are part of the supported behavior.
+  - Do **not** introduce redundant `try/except: raise` blocks solely to satisfy docstring linting.
+    Prefer accurate `Raises:` documentation and let lower-level helpers remain the source of truth
+    for validation and invariants.
+  - When a public façade or delegation helper intentionally documents propagated exceptions that are
+    not raised syntactically in its own body, use a targeted `# noqa: DOC503` on the **closing
+    docstring line** and include a short rationale.
 
 - **Pre-commit**:
 
-  - Pre-commit hooks are optional but recommended and primarily run Ruff, Taplo, mdformat, TopMark
-    header checks, and related hygiene tools.
-  - We rely on Ruff (with `UP`/`TC` enabled) to enforce import/typing style; no additional
-    grep-based hooks for typing/collections imports are needed.
+  - Pre-commit hooks are optional but recommended and primarily run Pyright, Ruff, Taplo, mdformat,
+    pydoclint, TopMark header checks, and related hygiene tools.
+  - We rely on Ruff to enforce import and typing style.
 
 ______________________________________________________________________
 

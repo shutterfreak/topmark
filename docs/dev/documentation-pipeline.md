@@ -125,6 +125,50 @@ This guarantees version-accurate CLI documentation.
 
 ______________________________________________________________________
 
+## Documentation Guidelines
+
+The following rules define how TopMark docstrings and documentation describe the public API and its
+observable behavior.
+
+### Exception documentation (public API contract)
+
+TopMark treats docstrings as part of the **observable API contract**, not merely a reflection of the
+local function body or static analysis of the immediate implementation.
+
+For public APIs, the `Raises:` section may document exceptions intentionally **propagated** from
+lower-level helpers when those exceptions are part of the supported caller-facing contract at the
+current abstraction level.
+
+Accordingly:
+
+- TopMark does **not** add redundant `try/except: raise` blocks solely to satisfy docstring linting.
+- Public façade and delegation helpers should prefer accurate `Raises:` documentation over
+  artificial re-raise code.
+- When `pydoclint` rule `DOC503` would otherwise complain because a docstring intentionally
+  documents propagated exceptions, TopMark uses a **targeted** suppression on the closing docstring
+  line:
+
+```python
+"""Bind an existing processor definition to a registered file type.
+
+Raises:
+    UnknownFileTypeError: If `file_type_id` does not resolve.
+    ProcessorBindingError: If the processor qualified key is unknown.
+"""  # noqa: DOC503 - documents propagated exceptions from delegated registry helpers
+```
+
+This suppression should be used **sparingly** and only when all of the following are true:
+
+- the method is a public façade or delegation helper,
+- the documented exceptions are part of the supported contract,
+- the exceptions originate in delegated helpers,
+- and adding local catch-and-reraise code would make the implementation worse.
+
+This policy keeps TopMark's implementations clean while preserving accurate and stable exception
+documentation for callers.
+
+______________________________________________________________________
+
 ## Docstring Scanning & Reference Hygiene
 
 Both handwritten Markdown **and Python module docstrings** are scanned for **unlinked backticked
@@ -135,7 +179,7 @@ symbol references**, such as:
 ```
 
 Docstring scanning is performed on raw Python source files before `mkdocstrings` renders them into
-Markdown, which ensures reported line numbers always refer to the original `src/...` files..
+Markdown, which ensures reported line numbers always refer to the original `src/...` files.
 
 The shared enforcement logic lives in:
 
