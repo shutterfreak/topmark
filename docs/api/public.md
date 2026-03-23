@@ -117,7 +117,7 @@ Most users should interact with registries through this facade and treat them as
 **introspection-only**.
 
 If you need dynamic extensions at runtime (typically in plugins or tests), use the advanced
-registries in [`topmark.registry`][topmark.registry] directly and keep the steps explicit:
+registries in \[`topmark.registry`\][topmark.registry] directly and keep the steps explicit:
 
 ```python
 from topmark.registry.bindings import BindingRegistry
@@ -140,9 +140,9 @@ For cleanup, reverse the same steps explicitly:
 
 - `BindingRegistry.unbind(ft.qualified_key)`
 - `HeaderProcessorRegistry.unregister(proc_def.qualified_key)`
-- `FileTypeRegistry.unregister_by_local_key(ft.local_key)`  
+- `FileTypeRegistry.unregister_by_local_key(ft.local_key)`\
   or `FileTypeRegistry.unregister(ft.qualified_key)` when you already have the qualified key
-  
+
 These mutation helpers apply **overlay-only changes**: they do not mutate the internal base
 registries used to construct the effective views. Overlays are process-local and thread-safe (via an
 internal lock). In tests, prefer wrapping mutations in `try/finally` to ensure cleanup.
