@@ -199,7 +199,7 @@ def emit_pipeline_human_output(
 
     # In actionable mode, unsupported files are hidden from the per-file listing but summarized
     # for visibility.
-    if (not summary_mode) and (report is ReportScope.ACTIONABLE) and (unsupported_count > 0):
+    if (not summary_mode) and (report == ReportScope.ACTIONABLE) and (unsupported_count > 0):
         emit_pipeline_hidden_unsupported_footer_human(
             console=console,
             fmt=fmt,
@@ -218,14 +218,14 @@ def emit_pipeline_hidden_unsupported_footer_human(
         console.print(
             console.styled(
                 f"⚠️  Unsupported: {unsupported_count} file(s) "
-                f"(use {CliOpt.REPORT}={ReportScope.NONCOMPLIANT} to list)",
+                f"(use {CliOpt.REPORT}={ReportScope.NONCOMPLIANT.value} to list)",
                 fg="yellow",
             )
         )
     elif fmt == OutputFormat.MARKDOWN:
         console.print(
             f"\n> ⚠️ Unsupported: {unsupported_count} file(s) "
-            f"(use {CliOpt.REPORT}={ReportScope.NONCOMPLIANT} to list)\n"
+            f"(use {CliOpt.REPORT}={ReportScope.NONCOMPLIANT.value} to list)\n"
         )
 
 
