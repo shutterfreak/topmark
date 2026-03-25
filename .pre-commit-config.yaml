@@ -29,7 +29,6 @@ repos:
     rev: 1.0.0
     hooks:
       - id: mdformat
-        exclude: ^docs/api/public\.md$
         additional_dependencies:
           - mdformat-gfm
           - mdformat-gfm-alerts

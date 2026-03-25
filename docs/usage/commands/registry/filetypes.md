@@ -12,11 +12,11 @@ topmark:header:end
 
 # TopMark `registry filetypes` Command Guide
 
-**Purpose:** Display all recognized/supported file types.
+**Purpose:** Display registered file type identities.
 
-The `registry filetypes` subcommand lists TopMark’s supported **file type identifiers** and their
-**header policies**. Use it to discover which identifiers you can pass to `--include-file-types` /
-`--exclude-file-types` and to understand how TopMark classifies files.
+The `registry filetypes` subcommand lists TopMark’s known **file types**, including their matching
+rules and header policies. Use it to understand how TopMark classifies files and what behavior is
+associated with each type.
 
 ______________________________________________________________________
 
@@ -58,24 +58,29 @@ The `--long` flag controls the level of detail for **all** formats.
 
 ______________________________________________________________________
 
+Unlike [`registry bindings`](./bindings.md), this command focuses on **file type identities**, not
+which processor handles them.
+
 ## What it shows
 
 ### Brief (default)
 
-- **Identifier** — the file type identifier (e.g., `python`, `markdown`, `env`)
+- **Local key** — the file type identifier (e.g., `python`, `markdown`, `env`)
 - **Description** — a short description
 
 ### Detailed (`--long`)
 
 Rendered consistently across `text`, `json`, `ndjson`, and `markdown`:
 
-- **Identifier**
+- **Qualified key**
+- **Local key / namespace**
 - **Extensions** (comma‑separated)
 - **Filenames** (comma‑separated)
 - **Patterns** (comma‑separated)
 - **skip_processing** (`true`/`false`)
 - **has_content_matcher** (`true`/`false`)
-- **header_policy** (policy name)
+- **header_policy** (structured policy fields)
+- **Bound** (`true`/`false`)
 - **Description**
 
 ______________________________________________________________________
@@ -111,8 +116,9 @@ ______________________________________________________________________
 
 ## Notes
 
-- The identifiers shown here can be passed to `--file-type` on commands like `check` and `strip`.
-- Header placement and comment styles are file‑type specific. See the dedicated guides for details.
+- File types define **how files are matched and classified**.
+- Processing behavior is determined by bindings (see [`registry bindings`](./bindings.md)).
+- A file type may be present but not processed if it is unbound or marked `skip_processing`.
 
 ______________________________________________________________________
 
@@ -149,4 +155,4 @@ Some file types are recognized but intentionally unmodified (reported as “unsu
 - `license_text` (keep verbatim)
 - `python-typed-marker` (`py.typed` is a single-token marker)
 
-Use `--skip-unsupported` to hide these from reports.
+These are hidden by default; use `--report=noncompliant` or `--report=all` to show these in reports.

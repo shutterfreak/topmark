@@ -64,7 +64,8 @@ Shape:
   "meta": {
     "tool": "topmark",
     "version": "<package version>",
-    "platform": "darwin" // optional
+    "platform": "darwin",
+    "detail_level": "brief" // or "long"
   }
 }
 ```
@@ -74,6 +75,8 @@ Notes:
 - `version` reflects the installed TopMark package version (PEP 440). Examples are illustrative
   only.
 - `platform` is a short runtime identifier (e.g., from `sys.platform`).
+- `detail_level` (optional) is machine-facing and distinguishes the default projection (`"brief"`)
+  from the expanded projection requested via `--long` (`"long"`).
 
 Canonical keys are defined in \[`topmark.core.machine.schemas`\][topmark.core.machine.schemas].
 
@@ -417,7 +420,7 @@ ______________________________________________________________________
 
 ## Registry commands
 
-### `topmark filetypes`
+### `topmark registry filetypes`
 
 JSON envelope:
 
@@ -430,23 +433,38 @@ JSON envelope:
 
 Brief entry (default):
 
-```json
-{ "name": "python", "description": "Python source file" }
+```jsonc
+{
+  "local_key": "python",
+  "namespace": "topmark",
+  "qualified_key": "topmark:python",
+  "description": "Python source file"
+}
 ```
 
 Detailed entry (`--show-details`):
 
 ```jsonc
 {
-  "name": "python",
+  "local_key": "python",
+  "namespace": "topmark",
+  "qualified_key": "topmark:python",
   "description": "Python source file",
+  "bound": true,
   "extensions": [".py"],
   "filenames": [],
   "patterns": [],
   "skip_processing": false,
   "has_content_matcher": false,
   "has_insert_checker": false,
-  "header_policy": "DefaultHeaderPolicy"
+  "policy": {
+    "supports_shebang": true,
+    "encoding_line_regex": null,
+    "pre_header_blank_after_block": 1,
+    "ensure_blank_after_header": true,
+    "blank_collapse_mode": "strict",
+    "blank_collapse_extra": ""
+  }
 }
 ```
 
@@ -458,7 +476,7 @@ NDJSON emits one record per file type:
 
 Canonical schemas/builders live in `topmark.registry.machine.*`.
 
-### `topmark processors`
+### `topmark registry processors`
 
 JSON envelope:
 
@@ -466,8 +484,7 @@ JSON envelope:
 {
   "meta": { /* MetaPayload */ },
   "processors": {
-    "processors": [ /* ProcessorEntry ... */ ],
-    "unbound_filetypes": [ /* FileTypeRef ... */ ]
+    "processors": [ /* ProcessorEntry ... */ ]
   }
 }
 ```
@@ -476,9 +493,10 @@ Processor entry (brief):
 
 ```jsonc
 {
-  "module": "topmark.processors.python",
-  "class_name": "PythonHeaderProcessor",
-  "filetypes": ["python", "python-script"]
+  "local_key": "python",
+  "namespace": "topmark",
+  "qualified_key": "topmark:python",
+  "description": "Python-style line comment processor"
 }
 ```
 
@@ -486,20 +504,82 @@ Processor entry (detailed, `--show-details`):
 
 ```jsonc
 {
-  "module": "topmark.processors.python",
-  "class_name": "PythonHeaderProcessor",
-  "filetypes": [
-    { "name": "python", "description": "Python source file" },
-    { "name": "python-script", "description": "Python executable script" }
-  ]
+  "local_key": "python",
+  "namespace": "topmark",
+  "qualified_key": "topmark:python",
+  "description": "Python-style line comment processor",
+  "bound": true,
+  "line_indent": "",
+  "line_prefix": "# ",
+  "line_suffix": "",
+  "block_prefix": "",
+  "block_suffix": ""
 }
 ```
 
-NDJSON emits one record per processor and per unbound file type:
+NDJSON emits one record per processor:
 
 ```jsonc
 {"kind":"processor","meta":{...},"processor":{ /* ProcessorEntry */ }}
+```
+
+Canonical schemas/builders live in `topmark.registry.machine.*`.
+
+### `topmark registry bindings`
+
+JSON envelope:
+
+```jsonc
+{
+  "meta": { /* MetaPayload */ },
+  "bindings": {
+    "bindings": [ /* BindingEntry ... */ ],
+    "unbound_filetypes": [ /* FileTypeRef ... */ ],
+    "unused_processors": [ /* ProcessorRef ... */ ]
+  }
+}
+```
+
+Binding entry (brief):
+
+```jsonc
+{
+  "file_type_key": "topmark:python",
+  "processor_key": "topmark:python"
+}
+```
+
+Binding entry (detailed, `--show-details`):
+
+```jsonc
+{
+  "file_type_key": "topmark:python",
+  "file_type_local_key": "python",
+  "file_type_namespace": "topmark",
+  "processor_key": "topmark:python",
+  "processor_local_key": "python",
+  "processor_namespace": "topmark",
+  "file_type_description": "Python source file",
+  "processor_description": "Python-style line comment processor"
+}
+```
+
+Auxiliary lists:
+
+- `unbound_filetypes` contains file types that currently have no effective processor binding.
+  - brief mode: qualified file type keys as strings
+  - long mode: expanded `FileTypeRefEntry` objects
+- `unused_processors` contains registered processors that do not currently participate in any
+  effective binding.
+  - brief mode: qualified processor keys as strings
+  - long mode: expanded processor reference objects containing identity and description fields
+
+NDJSON emits:
+
+```jsonc
+{"kind":"binding","meta":{...},"binding":{ /* BindingEntry */ }}
 {"kind":"unbound_filetype","meta":{...},"unbound_filetype":{ /* FileTypeRef */ }}
+{"kind":"unused_processor","meta":{...},"unused_processor":{ /* ProcessorRef */ }}
 ```
 
 Canonical schemas/builders live in `topmark.registry.machine.*`.

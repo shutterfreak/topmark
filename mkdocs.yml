@@ -168,12 +168,15 @@ nav:
           - "config dump": usage/commands/config/dump.md
           - "config defaults": usage/commands/config/defaults.md
           - "config init": usage/commands/config/init.md
+          - "registry": usage/commands/registry.md
           - "registry filetypes": usage/commands/registry/filetypes.md
           - "registry processors": usage/commands/registry/processors.md
+          - "registry bindings": usage/commands/registry/bindings.md
           - "version": usage/commands/version.md
       - Guides:
           - "Supported file types (generated)": usage/generated/filetypes.md
-          - "Supported header processors (generated)": usage/generated/processors.md
+          - "Registered processors (generated)": usage/generated/processors.md
+          - "Registered bindings (generated)": usage/generated/bindings.md
           - "Filtering recipes": usage/filtering.md
           - "Header placement": usage/header-placement.md
           - "Pre-commit": usage/pre-commit.md

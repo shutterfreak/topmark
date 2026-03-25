@@ -88,35 +88,48 @@ flowchart TB
     LOOKUP --> PROC["Bound HeaderProcessor instance"]
 ```
 
-Registries are split into three conceptual layers:
+Registry data is now split into three conceptual layers:
+
+- **FileType registry**: defines canonical file type identities and matching metadata.
+- **HeaderProcessor registry**: defines canonical processor identities and comment-delimiter
+  capabilities.
+- **Binding registry**: defines effective file-type-to-processor relationships.
+
+The first two registries describe *what exists*; the binding registry describes *how those
+identities are wired together*.
 
 ```mermaid
 graph TD
     %% Base registries (built-ins + entry points)
     BFT["<b>Base FileType registry</b><br/><code>topmark.filetypes.instances.get_base_file_type_registry()</code><br/><br/>• built-ins + entry points<br/>• discovered once<br/>• cached (LRU / process lifetime)<br/>• never mutated"]
-    BHP["<b>Base HeaderProcessor registry</b><br/><code>topmark.processors.instances.get_base_header_processor_registry()</code><br/><br/>• explicit built-in bindings<br/>• constructed once<br/>• cached (LRU / process lifetime)<br/>• never mutated"]
+    BHP["<b>Base HeaderProcessor registry</b><br/><code>topmark.processors.instances.get_base_header_processor_registry()</code><br/><br/>• explicit built-in processor identities<br/>• constructed once<br/>• cached (LRU / process lifetime)<br/>• never mutated"]
+    BBD["<b>Base Binding registry</b><br/><code>topmark.processors.instances.get_base_processor_binding_registry()</code><br/><br/>• built-in file-type ↔ processor bindings<br/>• constructed once<br/>• cached (LRU / process lifetime)<br/>• never mutated"]
 
     %% Overlay state (process-local)
     OFT["<b>FileTypeRegistry overlays</b><br/><code>topmark.registry.filetypes.FileTypeRegistry</code><br/><br/>• additions: <code>register()</code><br/>• removals: <code>unregister()</code><br/>• process-local<br/>• thread-safe"]
     OHP["<b>HeaderProcessorRegistry overlays</b><br/><code>topmark.registry.processors.HeaderProcessorRegistry</code><br/><br/>• additions: <code>register()</code><br/>• removals: <code>unregister()</code><br/>• process-local<br/>• thread-safe"]
+    OBD["<b>BindingRegistry overlays</b><br/><code>topmark.registry.bindings.BindingRegistry</code><br/><br/>• additions: <code>register()</code><br/>• removals: <code>unregister()</code><br/>• process-local<br/>• thread-safe"]
 
     %% Composed effective views
     EFT["<b>Effective FileType view</b><br/><code>FileTypeRegistry.as_mapping()</code><br/><br/><i>= base + overlays − removals</i><br/>• cached composed view<br/>• exposed as <code>MappingProxyType</code>"]
     EHP["<b>Effective HeaderProcessor view</b><br/><code>HeaderProcessorRegistry.as_mapping()</code><br/><br/><i>= base + overlays − removals</i><br/>• cached composed view<br/>• exposed as <code>MappingProxyType</code>"]
+    EBD["<b>Effective Binding view</b><br/><code>BindingRegistry.as_mapping()</code><br/><br/><i>= base + overlays − removals</i><br/>• cached composed view<br/>• exposed as <code>MappingProxyType</code>"]
 
     %% Composition flow
     BFT --> OFT
     BHP --> OHP
+    BBD --> OBD
     OFT --> EFT
     OHP --> EHP
+    OBD --> EBD
 
     classDef base fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000;
     classDef overlay fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000;
     classDef view fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px,color:#000;
 
-    class BFT,BHP base;
-    class OFT,OHP overlay;
-    class EFT,EHP view;
+    class BFT,BHP,BBD base;
+    class OFT,OHP,OBD overlay;
+    class EFT,EHP,EBD view;
 ```
 
 ### Public Facade vs. Advanced Registries
@@ -130,7 +143,8 @@ integration point for tooling and downstream consumers.
 
 Characteristics:
 
-- Immutable mappings
+- Immutable mappings / effective snapshots
+- Read-only access to file types, processors, and bindings
 - No mutation helpers
 - Snapshot-tracked for API stability
 
@@ -138,8 +152,9 @@ Characteristics:
 
 - \[`topmark.registry.filetypes.FileTypeRegistry`\][topmark.registry.filetypes.FileTypeRegistry]
 - \[`topmark.registry.processors.HeaderProcessorRegistry`\][topmark.registry.processors.HeaderProcessorRegistry]
+- \[`topmark.registry.bindings.BindingRegistry`\][topmark.registry.bindings.BindingRegistry]
 
-These classes provide **overlay mutation helpers**:
+These classes provide **overlay mutation helpers** for identities and wiring:
 
 - `register(...)`
 - `unregister(...)`
@@ -290,9 +305,12 @@ existing configuration or CLI usage. For the path-based winner-selection and amb
 ### Practical Implications for Contributors
 
 - Prefer `Registry` (facade) when reading registry contents.
+- Treat file types, processors, and bindings as separate concerns:
+  - file types / processors describe identities
+  - bindings describe relationships
 - Use overlay mutation helpers only in tests or plugin code.
 - Always reset overlay state in tests that register/unregister entries.
-- Treat registry internals (`_compose`, `_overrides`, caches) as private.
+- Treat registry internals (`_compose`, overlays, caches) as private.
 
 ______________________________________________________________________
 

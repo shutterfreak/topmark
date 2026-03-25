@@ -157,6 +157,13 @@ def generate_cli_reference_pages() -> None:
         "--output-format",
         "markdown",
     )
+    bindings_md: str = _run_topmark_markdown(
+        "registry",
+        "bindings",
+        "--long",
+        "--output-format",
+        "markdown",
+    )
 
     def _write_generated_page(dest: str, title: str, body: str) -> None:
         """Write a standalone generated Markdown page under `docs/`.
@@ -182,6 +189,11 @@ def generate_cli_reference_pages() -> None:
         "usage/generated/processors.md",
         "Registered processors (generated)",
         processors_md,
+    )
+    _write_generated_page(
+        "usage/generated/bindings.md",
+        "Registered bindings (generated)",
+        bindings_md,
     )
 
 

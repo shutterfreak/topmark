@@ -45,7 +45,7 @@ To run only these tests locally:
 ```bash
 TOPMARK_VALIDATE=1 pytest -q
 # or when running the CLI during development
-TOPMARK_VALIDATE=1 topmark processors --output-format json
+TOPMARK_VALIDATE=1 topmark registry processors --output-format json
 # or:
 pytest -m dev_validation
 # or run the QA session and select the marker:

@@ -12,11 +12,13 @@ topmark:header:end
 
 # TopMark `registry processors` Command Guide
 
-**Purpose:** Display all header processors and the registered file types.
+**Purpose:** Display registered header processor identities.
 
-The `registry processors` subcommand lists registered **header processors** and the **file types**
-they handle, as well as file types that aren't registered to a header processor (such types are
-recognized but left alone). Use it to verify how file types are mapped to their processing logic.
+The `registry processors` subcommand lists registered **header processors** and their
+comment/delimiter capabilities. Use it to understand what processing logic is available in the
+system.
+
+To see which processor is used for a given file type, use [`registry bindings`](./bindings.md).
 
 ______________________________________________________________________
 
@@ -58,19 +60,23 @@ The `--long` flag controls the level of detail for **all** formats.
 
 ______________________________________________________________________
 
+Unlike [`registry bindings`](./bindings.md), this command focuses on **processor identities**, not
+their relationships.
+
 ## What it shows
 
 ### Brief (default)
 
-- **Processor** — class name
-- **Module** — fully‑qualified module path
-- **File Types** — names handled by this processor
+- **Qualified key** — unique processor identifier
+- **Description** — short description of the processor
 
 ### Detailed (`--long`)
 
-- Same as brief, plus: for each file type, its **description**
-
-You’ll also see a separate section for **file types without a registered processor**.
+- **Qualified key**
+- **Local key / namespace**
+- **Description**
+- **Delimiter / comment capabilities** (if applicable)
+- **Bound** (`true`/`false`) — whether the processor is referenced by any binding
 
 ______________________________________________________________________
 
@@ -102,6 +108,8 @@ ______________________________________________________________________
 
 ## Notes
 
-- The mapping between file types and processors is established at registration time.
-- Unbound file types may be intentional (e.g., skip processing) or indicate a missing
-  implementation.
+- Processors define how headers are parsed, rendered and stripped.
+- Whether a processor is actually used is determined by bindings (see
+  [`registry bindings`](./bindings.md)).
+- Prefer [`registry bindings`](./bindings.md) when investigating which processor handles a file
+  type.

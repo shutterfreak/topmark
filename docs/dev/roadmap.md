@@ -139,8 +139,10 @@ goals.
 - Moved verbosity (`-v`) and color (`--color/--no-color`) options from the root CLI group to
   individual commands.
 - Added a convenience decorator to consistently attach common verbosity/color options per command.
-- Clarified and centralized CLI initialization state in `cli.cmd_common`.
-- Reorganized console/runtime support under \[`topmark.cli.console`\]\[topmark.cli.console\]:
+- Clarified and centralized CLI initialization state in `cli.cmd_common`, while keeping
+  machine-output metadata derivation explicit at the command boundary.
+- Reorganized console/runtime support under
+  \[`topmark.cli.console`\]$begin:math:display$topmark.cli.console$end:math:display$:
   - `ConsoleProtocol` as the minimal console contract
   - Click-backed `Console` and stdlib `StdConsole`
   - `resolve_console()` for safe context-aware console resolution
@@ -155,7 +157,8 @@ goals.
   - pure serializers (no console, no Click)
   - pure human renderers (no console, no I/O)
   - CLI output/runtime helpers (console-only, Click-aware)
-- Centralized `build_meta_payload()` at CLI initialization (computed once per process and reused).
+- Kept `build_meta_payload()` as a cached, process-stable machine metadata helper and introduced
+  command-local enrichment (for example `detail_level`) when machine output is emitted.
 - Introduced `compute_version_text()` in `utils.version` and later `VersionHumanReport` /
   `render_*()` flow to unify version rendering across CLI and machine formats.
 
@@ -235,18 +238,32 @@ goals.
 ### Registry output formats: qualified identifiers in machine and human output
 
 - Updated \[`topmark.registry.machine`\][topmark.registry.machine] payloads and schemas so registry
-  machine formats now emit namespace-aware identity data:
-  - file type entries now include `name`, `namespace`, and `qualified_key`
-  - processor entries now include `namespace`, `key`, and `qualified_key`
-  - processor-bound and unbound file type references use qualified file type identifiers in brief
-    output and expanded identity fields in detailed output
-- Aligned machine payload grouping around processor identity rather than just `(module, class)`.
-- Updated human-facing registry emitters (text and Markdown) and the shared Click-free registry
-  report builders so file types are shown as qualified identifiers in human output as well.
+  machine formats now emit namespace-aware, identity-focused data:
+  - file type entries now use `local_key`, `namespace`, and `qualified_key`
+  - processor entries now use `local_key`, `namespace`, and `qualified_key`
+  - bindings are now exposed as a first-class machine format via `topmark registry bindings`
+- Refactored registry machine formats to align with the split registry model:
+  - `filetypes` reports file type identities and matching/policy metadata
+  - `processors` reports processor identities and delimiter capabilities
+  - `bindings` reports effective file-type-to-processor relationships plus auxiliary lists for
+    unbound file types and unused processors
+- Extended machine metadata with `detail_level` so JSON and NDJSON explicitly distinguish brief vs
+  long projections instead of requiring consumers to infer shape.
+- Updated human-facing registry renderers and shared Click-free registry report builders so registry
+  output is now split cleanly along the same three concerns:
+  - file types → identity-focused
+  - processors → identity-focused
+  - bindings → relationship-focused
+- Fixed file type policy handling in registry output:
+  - header policy metadata is now exposed and rendered as structured fields rather than via raw
+    `str(...)` conversion of policy objects
+  - file type policy defaults are now initialized consistently in the model/factory so built-in file
+    type modules compose reliably during registry startup
 - Updated plugin/API-facing documentation to explain:
   - qualified vs unqualified file type identifiers
   - ambiguity of unqualified names once multiple namespaces are present
   - runtime processor overlay registration against qualified file type identifiers
+  - the split between file type identities, processor identities, and effective bindings
 
 ### Human output formats
 
@@ -258,9 +275,11 @@ goals.
   - `topmark.presentation.shared.*` → report models and preparation helpers
   - `topmark.presentation.text.*` → TEXT renderers
   - `topmark.presentation.markdown.*` → MARKDOWN renderers
-- Completed migration away from legacy CLI emitters:
-  - removed \*topmark.cli.emitters\` and *topmark.cli_shared.emitters* for migrated domains
-  - replaced `emit_*()` functions with pure `render_*()` helpers returning strings
+- Completed migration away from legacy CLI emitters for version, config, diagnostic, pipeline, and
+  registry-related human output paths:
+  - removed migrated `topmark.cli.emitters.*` / `topmark.cli_shared.emitters.*` paths in favor of
+    `topmark.presentation.*`
+  - replaced `emit_*()` helpers with pure `render_*()` helpers returning strings
 - Standardized the rendering pipeline across commands:
   - API/domain → presentation report (`*HumanReport`) → `render_*()` → CLI prints
 - Ensured all renderers are:
@@ -272,6 +291,10 @@ goals.
 - Removed console abstractions from rendering logic:
   - styling is now applied via semantic roles (`StyleRole`) and helper functions
   - console is only responsible for final output (`console.print(...)`)
+- Completed the registry human-output split along the three registry concerns:
+  - `registry filetypes` → file type identity and policy-oriented output
+  - `registry processors` → processor identity and delimiter-oriented output
+  - `registry bindings` → effective relationship-oriented output
 - Improved consistency of wording and structure across commands by reusing shared presentation
   helpers
 
@@ -310,8 +333,8 @@ Completed work:
   - \[`topmark.config.machine`\][topmark.config.machine] (config-related shapes and serializers)
   - \[`topmark.pipeline.machine`\][topmark.pipeline.machine] (processing results shapes and
     serializers)
-  - \[`topmark.registry.machine`\][topmark.registry.machine] (filetype and processor registry shapes
-    and serializers)
+  - \[`topmark.registry.machine`\][topmark.registry.machine] (filetype, processor and binding
+    registry shapes and serializers)
 - Removed ad-hoc JSON construction from CLI command modules (`check`, `strip`, `config_*`,
   `filetypes`, `processors`, `version`).
 - Standardized naming conventions:
@@ -324,11 +347,14 @@ Completed work:
 - Centralized machine keys and canonical values in
   \[`topmark.core.machine.schemas`\][topmark.core.machine.schemas], eliminating circular imports and
   key drift.
-- Added explicit `MachineMeta` keys and extended the `meta` payload with `platform` information.
+- Added explicit machine keys/kinds and extended the `meta` payload with:
+  - `platform` runtime information
+  - `detail_level` (`"brief"` / `"long"`) as part of the machine contract
 - Introduced typed `TypedDict` schemas for:
   - outcome summary entries and records (pipeline)
-  - filetype registry entries
+  - file type registry entries
   - processor registry entries
+  - binding registry entries and auxiliary reference rows
 - Documented the stable envelope and key conventions in `docs/dev/machine-formats.md` (and updated
   command pages accordingly).
 
@@ -584,16 +610,20 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
 - Registry mutation and registration errors now use TopMark-specific core errors instead of generic
   `ValueError` / `RuntimeError` in the refactored code paths.
 - Registry machine and human outputs now expose qualified identifiers and namespace metadata for
-  file types/processors. Downstream tooling or snapshots expecting unqualified-only registry output
-  may need to be updated.
+  file types/processors and add a first-class bindings view. Downstream tooling or snapshots
+  expecting unqualified-only or processor-grouped registry output may need to be updated.
 - Public API registry metadata in \[`topmark.api`\][topmark.api] was reshaped to align with the
   split filetype / processor / binding model:
   - `FileTypeInfo.name` was removed in favor of `local_key`, `namespace`, and `qualified_key`
   - `FileTypeInfo.processor_name` was removed
   - `FileTypeInfo.supported` was replaced by `bound`
+  - `FileTypeInfo.policy` is now structured metadata rather than an opaque rendered object
   - `ProcessorInfo.name` was removed in favor of `local_key`, `namespace`, and `qualified_key`
+  - `ProcessorInfo` is now identity-focused and includes `bound` plus delimiter capability fields
+  - `BindingInfo` was added / stabilized as the explicit relationship-oriented API shape
   - `list_bindings()` was added as the explicit relationship-oriented API entry point
-  - downstream callers consuming the old TypedDict field names must be updated
+  - downstream callers consuming the old TypedDict field names or binding-flavored processor views
+    must be updated
 - File type resolution ambiguity is now an explicitly documented resolver concern:
   - overlapping `FileType` definitions are permitted
   - deterministic tie-breaks are part of the resolver contract
@@ -967,7 +997,8 @@ Before 1.0, aim for:
 Additional progress:
 
 - Machine-format serializers are fully API-usable (no Click dependency).
-- CLI initialization computes `meta` once and passes it into serializers.
+- Base machine metadata is cached in shared helpers, while command-specific machine metadata
+  enrichment (for example `detail_level`) now happens explicitly at the command boundary.
 - API remains free of CLI-specific meta concerns unless machine output is explicitly requested.
 - Introduced `topmark.presentation` as the Click-free, human-facing presentation layer between
   API/domain data and CLI printing.
@@ -1016,14 +1047,20 @@ Completed work:
 
 - Pipeline commands (`check`, `strip`) use \[`topmark.pipeline.machine`\][topmark.pipeline.machine]
   shape builders and serializers.
-- Registry commands (`filetypes`, `processors`) use
+- Registry commands (`filetypes`, `processors`, `bindings`) use
   \[`topmark.registry.machine`\][topmark.registry.machine].
 - Config commands (`init`, `defaults`, `dump`, `check`) use
   \[`topmark.config.machine`\][topmark.config.machine].
 - Version command uses \[`topmark.core.machine`\][topmark.core.machine] serializers with shared meta
   handling.
-- All commands emit identical envelope structures for JSON and NDJSON.
+- All commands emit consistent JSON/NDJSON envelopes with machine-facing metadata.
 - CLI modules no longer construct machine payloads directly.
+- Registry machine formats are now split cleanly into:
+  - file type identities
+  - processor identities
+  - effective bindings
+- `detail_level` is now part of the machine contract instead of being inferred only from payload
+  shape.
 
 Remaining work before 1.0:
 
@@ -1043,8 +1080,8 @@ helpers returning strings.
 
 Remaining work before 1.0:
 
-- Complete migration of the remaining human-output domains (notably registry) from legacy
-  `cli.emitters.*` / `cli_shared.*` modules into `topmark.presentation`.
+- Complete migration of any remaining human-output domains from legacy `cli.emitters.*` /
+  `cli_shared.*` modules into `topmark.presentation` and remove the final stale compatibility paths.
 - Ensure `OutputFormat.TEXT` and `OutputFormat.MARKDOWN` are consistent across commands.
 - Ensure verbosity semantics are consistent (`-v`, `-vv`, `-q`) and documented.
 - Keep all formatting logic out of CLI command functions; commands should only orchestrate, render,
@@ -1080,32 +1117,13 @@ Recommendation: keep Click through 1.0 unless there is a strong feature need.
 
 Recent refactoring introduced semantic styling via `StyleRole`, significantly reducing direct
 `yachalk` usage in human-output code and enabling a cleaner separation between core logic,
-presentation rendering, and CLI output policy. Remaining work focuses on fully eliminating or
-strictly confining `yachalk` usage to CLI-only modules.
+presentation rendering, and CLI output policy. The only place where `yachalk` is still imported, is
+`topmark.cli.presentation`.
 
-Open question: remove `yachalk` fully or enforce a strict boundary (CLI-only usage).
+Remaining work focuses on:
 
-Current imports to eliminate or relocate:
-
-```sh
-% grep "from yachalk" src/topmark/**/*py
-src/topmark/cli/emitters/text/pipeline.py:from yachalk import chalk
-src/topmark/cli_shared/outcomes.py:from yachalk import chalk
-src/topmark/config/logging.py:from yachalk import chalk
-src/topmark/core/presentation.py:    from yachalk import chalk
-src/topmark/diagnostic/model.py:from yachalk import chalk
-src/topmark/pipeline/hints.py:from yachalk import chalk
-src/topmark/pipeline/status.py:from yachalk import chalk
-src/topmark/pipeline/steps/patcher.py:from yachalk import chalk
-src/topmark/utils/diff.py:from yachalk import chalk
-```
-
-If the goal is to remove all color-aware code from non-CLI modules, this likely requires:
-
-- representing colors as semantic tokens in core layers (e.g., status categories)
-- mapping those tokens to ANSI styles only in the CLI/presentation text-rendering boundary
-
-Alternative: keep `yachalk` but enforce a strict boundary (CLI-only usage).
+- fully eliminating or strictly confining `yachalk` usage to CLI-only modules;
+- replacing Click-flavored styling in `ClickConsole` with semantic styling.
 
 ### Configuration format: schema evolution and versioning
 
@@ -1193,23 +1211,25 @@ This checklist defines the minimum criteria for cutting TopMark 1.0.
 - [x] JSON and NDJSON schemas fully aligned across all commands
 - [x] Identical envelope structure (metadata + data) everywhere
 - [x] Machine payload construction removed from CLI command modules
-- [x] Registry machine formats include namespace-aware identity fields (`namespace`,
-  `qualified_key`, processor `key`)
+- [x] Registry machine formats include namespace-aware identity fields and a first-class bindings
+  format (`filetypes`, `processors`, `bindings`)
 - [x] Documented examples for processing summary rows in `docs/dev/machine-formats.md` /
   `docs/dev/machine-output.md`
 - [ ] Documented examples for each remaining command category in `docs/dev/machine-formats.md`
 - [ ] No presentation leakage (color text, human wording) in machine output
-- [ ] Machine outputs are covered by tests for registry commands (`filetypes`, `processors`) and
-  pipeline commands (`check`, `strip`) in both JSON and NDJSON modes
+- [ ] Machine outputs are covered by tests for registry commands (`filetypes`, `processors`,
+  `bindings`) and pipeline commands (`check`, `strip`) in both JSON and NDJSON modes
 - [ ] Final schema freeze review before 1.0 (including `(outcome, reason, count)` summary rows)
+- [ ] Final review/freeze of `detail_level` semantics and brief vs long machine projections across
+  all command categories
 
 ### Human formats
 
 - [ ] `OutputFormat.TEXT` and `OutputFormat.MARKDOWN` consistent across commands
-  - [ ] Config commands
-  - [x] Pipeline commands (check, strip)
-  - [ ] Registry commands
-  - [x] Version command
+  - [ ] Config commands (`check`, `defaults`, `dump`, `init`)
+  - [x] Pipeline commands (`check`, `strip`)
+  - [ ] Registry commands (`filetypes`, `processors`, `bindings`)
+  - [x] Version command (`version`)
 - [x] Semantic styling implemented via `StyleRole` and consistently applied across emitters
 - [ ] Human-facing registry outputs reviewed/frozen for qualified identifier presentation
 - [ ] Verbosity levels (`-v`, `-vv`, `-q`) documented and behave consistently
@@ -1225,7 +1245,8 @@ This checklist defines the minimum criteria for cutting TopMark 1.0.
 - [ ] Exit codes documented and stable (audit after preview/apply status changes and bucketing
   fixes)
 - [ ] Help output accurate and aligned with implemented behavior
-- [x] Meta payload initialized once per process and reused across commands
+- [x] Base machine metadata is cached and reused, while command-specific machine metadata is added
+  explicitly where needed
 
 ### Configuration
 

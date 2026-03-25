@@ -60,6 +60,9 @@ All machine output includes a `meta` object:
 - `tool`: the tool name (always `"topmark"`)
 - `version`: the TopMark package version (PEP 440)
 - `platform`: short runtime identifier (e.g. `sys.platform`)
+- `detail_level`: optional machine-facing projection level for some commands:
+  - `"brief"` for default machine output
+  - `"long"` when `--long` / detailed projection is requested
 
 In JSON, `meta` appears once at the top level.
 
@@ -69,6 +72,9 @@ Canonical keys, kinds, and helper builders for machine output live under
 \[`topmark.core.machine`\][topmark.core.machine]. Domain packages (for example
 \[`topmark.config.machine`\][topmark.config.machine] and
 \[`topmark.pipeline.machine`\][topmark.pipeline.machine]) build on these shared primitives.
+
+Unlike human-facing verbosity, `detail_level` is part of the machine contract. Consumers should
+prefer this field over inferring the projection from payload shape alone.
 
 ## NDJSON envelope contract
 
@@ -94,6 +100,12 @@ Common NDJSON kinds include:
 - `result` (per-file result)
 - `summary` (aggregated `(outcome, reason)` summary entry)
 - `version`
+- registry-specific kinds:
+  - `filetype`
+  - `processor`
+  - `binding`
+  - `unbound_filetype`
+  - `unused_processor`
 
 Individual commands may emit subsets of these kinds.
 
@@ -175,4 +187,5 @@ Config commands are file-agnostic and emit config-centric payloads:
 - `config dump`, `config defaults`, `config init`: config snapshot (no diagnostics)
 - `config check`: config snapshot plus diagnostics and a config-check status payload
 
-Refer to each command’s documentation for its emitted keys and shapes.
+Refer to each command’s documentation for its emitted keys and shapes. Registry commands are
+documented in the schema reference and now include the separate `registry bindings` machine format.
