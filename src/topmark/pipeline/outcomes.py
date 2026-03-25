@@ -23,7 +23,7 @@ Design goals:
 
 Notes:
     Styling is layered on top in frontend modules such as
-    [`topmark.cli_shared.outcomes`][topmark.cli_shared.outcomes],
+    [`topmark.presentation.shared.outcomes`][topmark.presentation.shared.outcomes],
     [`topmark.core.presentation`][topmark.core.presentation] and
     [`topmark.cli.presentation`][topmark.cli.presentation].
 """

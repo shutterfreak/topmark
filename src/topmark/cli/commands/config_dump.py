@@ -33,8 +33,6 @@ from topmark.cli.cmd_common import build_config_for_plan
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.cmd_common import maybe_route_console_to_stderr
 from topmark.cli.emitters.machine import emit_config_machine
-from topmark.cli.emitters.text.config import emit_config_dump_text
-from topmark.cli.emitters.text.diagnostic import render_diagnostics_text
 from topmark.cli.io import plan_cli_inputs
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
@@ -48,15 +46,17 @@ from topmark.cli.options import common_output_format_options
 from topmark.cli.options import common_ui_options
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import validate_stdin_dash_requires_piped_input
-from topmark.cli_shared.emitters.markdown.config import emit_config_dump_markdown
-from topmark.cli_shared.emitters.shared.config import ConfigDumpPrepared
-from topmark.cli_shared.emitters.shared.config import prepare_config_dump
 from topmark.constants import TOML_BLOCK_END
 from topmark.constants import TOML_BLOCK_START
 from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
 from topmark.core.logging import get_logger
+from topmark.presentation.markdown.config import render_config_dump_markdown
+from topmark.presentation.shared.config import ConfigDumpHumanReport
+from topmark.presentation.shared.config import build_config_dump_human_report
+from topmark.presentation.text.config import render_config_dump_text
+from topmark.presentation.text.diagnostic import render_diagnostics_text
 from topmark.utils.file import safe_unlink
 
 if TYPE_CHECKING:
@@ -268,22 +268,21 @@ def config_dump_command(
         _exit()
 
     # Human formats
-    prepared: ConfigDumpPrepared = prepare_config_dump(config=config)
+    report: ConfigDumpHumanReport = build_config_dump_human_report(
+        config=config,
+        verbosity_level=verbosity_level,
+        styled=enable_color,
+    )
 
     if fmt == OutputFormat.MARKDOWN:
-        md: str = emit_config_dump_markdown(
-            prepared=prepared,
-            verbosity_level=verbosity_level,
+        console.print(
+            render_config_dump_markdown(report),
+            nl=False,
         )
-        console.print(md, nl=False)
         _exit()
 
     if fmt == OutputFormat.TEXT:
-        emit_config_dump_text(
-            console=console,
-            prepared=prepared,
-            verbosity_level=verbosity_level,
-        )
+        console.print(render_config_dump_text(report))
         _exit()
 
     # Defensive guard in case OutputFormat gains new members

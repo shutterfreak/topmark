@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : outcomes.py
-#   file_relpath : src/topmark/cli_shared/outcomes.py
+#   file_relpath : src/topmark/presentation/shared/outcomes.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

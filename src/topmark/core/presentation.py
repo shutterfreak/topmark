@@ -84,6 +84,7 @@ class StyleRole(str, Enum):
     HEADING_TITLE = "heading_title"
     MARKER_LINE = "marker_line"
     CONFIG_FILE = "config_file"
+    ITALIC = "italic"
 
     # No style
     NO_STYLE = "no_style"

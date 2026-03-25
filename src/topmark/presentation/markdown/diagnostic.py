@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : diagnostic.py
-#   file_relpath : src/topmark/cli_shared/emitters/markdown/diagnostic.py
+#   file_relpath : src/topmark/presentation/markdown/diagnostic.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -13,12 +13,6 @@
 This module contains Click-free helpers that render diagnostics as Markdown for
 human-facing output (`OutputFormat.MARKDOWN`). These helpers are intentionally
 kept independent from machine formats.
-
-Notes:
-    - This module is Click-free: it does not read from `click.Context` and does
-      not print. It returns Markdown text to be emitted by a caller.
-    - Machine formats must not call these helpers; use domain serializers and
-      machine shapes/serializers instead.
 """
 
 from __future__ import annotations
@@ -33,8 +27,8 @@ from topmark.diagnostic.model import FrozenDiagnosticLog
 from topmark.diagnostic.model import compute_diagnostic_stats
 
 if TYPE_CHECKING:
-    from topmark.cli_shared.emitters.shared.config import HumanDiagnosticLine
-    from topmark.cli_shared.emitters.shared.diagnostic import HumanDiagnosticCounts
+    from topmark.presentation.shared.config import HumanDiagnosticLine
+    from topmark.presentation.shared.diagnostic import HumanDiagnosticCounts
 
 
 def render_human_diagnostics_markdown(

@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : diagnostic.py
-#   file_relpath : src/topmark/cli_shared/emitters/shared/diagnostic.py
+#   file_relpath : src/topmark/presentation/shared/diagnostic.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

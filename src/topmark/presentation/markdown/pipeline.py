@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : pipeline.py
-#   file_relpath : src/topmark/cli_shared/emitters/markdown/pipeline.py
+#   file_relpath : src/topmark/presentation/markdown/pipeline.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -15,7 +15,7 @@ Click-free helpers that prepare Markdown for pipeline-oriented commands
 
 Notes:
     - TEXT (ANSI) output lives in
-      [`topmark.cli.emitters.text.pipeline`][topmark.cli.emitters.text.pipeline].
+      [`topmark.presentation.text.pipeline`][topmark.presentation.text.pipeline].
     - Machine output is handled via domain machine serializers.
 """
 
@@ -24,12 +24,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.cli.keys import CliShortOpt
-from topmark.cli_shared.emitters.markdown.diagnostic import render_diagnostics_markdown
-from topmark.cli_shared.emitters.markdown.utils import render_markdown_table
 from topmark.pipeline.outcomes import OutcomeReasonCount
 from topmark.pipeline.outcomes import ResultBucket
 from topmark.pipeline.outcomes import collect_outcome_reason_counts
 from topmark.pipeline.outcomes import map_bucket
+from topmark.presentation.markdown.diagnostic import render_diagnostics_markdown
+from topmark.presentation.markdown.utils import render_markdown_table
 from topmark.rendering.unified_diff import format_patch_plain
 
 if TYPE_CHECKING:
@@ -279,7 +279,7 @@ def render_file_summary_line_markdown(
     return f"`{ctx.path}` ({ft}) — `{key}`: {label}{suffix}"
 
 
-def emit_pipeline_diffs_markdown(
+def render_pipeline_diffs_markdown(
     *,
     results: list[ProcessingContext],
     show_line_numbers: bool = False,

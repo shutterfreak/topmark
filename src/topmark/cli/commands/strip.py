@@ -51,9 +51,6 @@ from topmark.cli.cmd_common import init_common_state
 from topmark.cli.cmd_common import maybe_exit_on_error
 from topmark.cli.cmd_common import maybe_route_console_to_stderr
 from topmark.cli.emitters.machine import emit_processing_results_machine
-from topmark.cli.emitters.text.diagnostic import render_diagnostics_text
-from topmark.cli.emitters.utils import emit_pipeline_apply_summary_human
-from topmark.cli.emitters.utils import emit_pipeline_human_output
 from topmark.cli.errors import TopmarkCliIOError
 from topmark.cli.io import plan_cli_inputs
 from topmark.cli.keys import CliCmd
@@ -75,8 +72,6 @@ from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import validate_diff_policy_for_output_format
 from topmark.cli.validators import validate_stdin_dash_requires_piped_input
 from topmark.cli.validators import warn_if_report_scope_ignored
-from topmark.cli_shared.emitters.shared.pipeline import strip_msg_markdown
-from topmark.cli_shared.emitters.shared.pipeline import strip_msg_text
 from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
@@ -84,6 +79,11 @@ from topmark.core.logging import get_logger
 from topmark.pipeline.context.policy import effective_would_strip
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.status import WriteStatus
+from topmark.presentation.shared.pipeline import render_pipeline_apply_summary_human
+from topmark.presentation.shared.pipeline import render_pipeline_human_output
+from topmark.presentation.shared.pipeline import strip_msg_markdown
+from topmark.presentation.shared.pipeline import strip_msg_text
+from topmark.presentation.text.diagnostic import render_diagnostics_text
 from topmark.utils.file import safe_unlink
 
 if TYPE_CHECKING:
@@ -312,10 +312,12 @@ def strip_command(
 
     # Display Config diagnostics before resolving files
     if fmt == OutputFormat.TEXT and verbosity_level > 0:
-        render_diagnostics_text(
-            diagnostics=config.diagnostics,
-            verbosity_level=verbosity_level,
-            color=enable_color,
+        console.print(
+            render_diagnostics_text(
+                diagnostics=config.diagnostics,
+                verbosity_level=verbosity_level,
+                color=enable_color,
+            )
         )
 
     temp_path: Path | None = plan.temp_path  # for cleanup/STDIN-apply branch
@@ -373,20 +375,21 @@ def strip_command(
             summary_mode=summary_mode,
         )
     else:
-        emit_pipeline_human_output(
-            console=console,
-            cmd=CliCmd.STRIP,
-            file_list_total=len(file_list),
-            view_results=human_results,
-            report=report,
-            unsupported_count=unsupported_count,
-            fmt=fmt,
-            verbosity_level=verbosity_level,
-            summary_mode=summary_mode,
-            show_diffs=diff,
-            make_message=strip_msg_markdown if fmt == OutputFormat.MARKDOWN else strip_msg_text,
-            apply_changes=apply_changes,
-            enable_color=enable_color,
+        console.print(
+            render_pipeline_human_output(
+                cmd=CliCmd.STRIP,
+                file_list_total=len(file_list),
+                view_results=human_results,
+                report=report,
+                unsupported_count=unsupported_count,
+                fmt=fmt,
+                verbosity_level=verbosity_level,
+                summary_mode=summary_mode,
+                show_diffs=diff,
+                make_message=strip_msg_markdown if fmt == OutputFormat.MARKDOWN else strip_msg_text,
+                apply_changes=apply_changes,
+                enable_color=enable_color,
+            )
         )
 
     if apply_changes:
@@ -403,12 +406,14 @@ def strip_command(
             written: int = sum(1 for r in results if r.status.write == WriteStatus.WRITTEN)
             failed: int = sum(1 for r in results if r.status.write == WriteStatus.FAILED)
 
-            emit_pipeline_apply_summary_human(
-                console=console,
-                fmt=fmt,
-                command_path=ctx.command_path,
-                written=written,
-                failed=failed,
+            console.print(
+                render_pipeline_apply_summary_human(
+                    fmt=fmt,
+                    command_path=ctx.command_path,
+                    written=written,
+                    failed=failed,
+                    styled=enable_color,
+                )
             )
 
             if failed:

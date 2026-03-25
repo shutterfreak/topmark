@@ -33,7 +33,6 @@ import click
 
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.emitters.machine import emit_config_check_machine
-from topmark.cli.emitters.text.config import emit_config_check_text
 from topmark.cli.keys import CliCmd
 from topmark.cli.options import GROUP_CONTEXT_SETTINGS
 from topmark.cli.options import common_config_resolution_options
@@ -42,9 +41,6 @@ from topmark.cli.options import common_ui_options
 from topmark.cli.options import config_strict_checking_options
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import apply_ignore_positional_paths_policy
-from topmark.cli_shared.emitters.markdown.config import emit_config_check_markdown
-from topmark.cli_shared.emitters.shared.config import ConfigCheckPrepared
-from topmark.cli_shared.emitters.shared.config import prepare_config_check
 from topmark.config.machine.payloads import build_config_diagnostics_payload
 from topmark.config.model import Config
 from topmark.config.model import MutableConfig
@@ -52,6 +48,10 @@ from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
 from topmark.core.logging import get_logger
+from topmark.presentation.markdown.config import render_config_check_markdown
+from topmark.presentation.shared.config import ConfigCheckHumanReport
+from topmark.presentation.shared.config import build_config_check_human_report
+from topmark.presentation.text.config import render_config_check_text
 
 if TYPE_CHECKING:
     from topmark.cli.console.color import ColorMode
@@ -147,6 +147,7 @@ def config_check_command(
     fmt: OutputFormat = output_format or OutputFormat.TEXT
 
     apply_color_policy_for_output_format(ctx, fmt=fmt)
+    enable_color: bool = ctx.obj[ArgKey.COLOR_ENABLED]
 
     # `config check` is file-agnostic w.r.t. positional PATHS and STDIN content mode ('-').
     # However, we still accept `*_from` options so callers can validate pattern/path sources.
@@ -186,29 +187,23 @@ def config_check_command(
         _exit(ctx, fail=fail)
 
     # Human formats: prepare shared data once for TEXT/MARKDOWN emitters.
-    prepared: ConfigCheckPrepared = prepare_config_check(
+    report: ConfigCheckHumanReport = build_config_check_human_report(
         config=config,
+        ok=not fail,
+        strict=strict_config_checking,
         verbosity_level=verbosity_level,
+        styled=enable_color,
     )
 
     if fmt == OutputFormat.MARKDOWN:
-        md: str = emit_config_check_markdown(
-            ok=not fail,
-            strict=strict_config_checking,
-            prepared=prepared,
-            verbosity_level=verbosity_level,
+        console.print(
+            render_config_check_markdown(report),
+            nl=False,
         )
-        console.print(md, nl=False)
         _exit(ctx, fail=fail)
 
     if fmt == OutputFormat.TEXT:
-        emit_config_check_text(
-            console=console,
-            ok=not fail,
-            strict=strict_config_checking,
-            prepared=prepared,
-            verbosity_level=verbosity_level,
-        )
+        console.print(render_config_check_text(report))
         _exit(ctx, fail=fail)
 
     # Defensive guard in case OutputFormat gains new members

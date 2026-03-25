@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : config.py
-#   file_relpath : src/topmark/cli_shared/emitters/shared/config.py
+#   file_relpath : src/topmark/presentation/shared/config.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -16,8 +16,8 @@ This module contains Click-free helpers that *prepare* domain data for human-fac
 It intentionally sits between:
 
 - configuration I/O helpers in [`topmark.config.io`][topmark.config.io], and
-- renderer/emitters in [`topmark.cli.emitters`][topmark.cli.emitters] (ANSI) and
-  [`topmark.cli_shared.emitters`][topmark.cli_shared.emitters] (Markdown).
+- renderer in [`topmark.presentation.text.config`][topmark.presentation.text.config] (ANSI) and
+  [`topmark.presentation.markdown.config`][topmark.presentation.markdown.config] (Markdown).
 
 Notes:
     These helpers may perform I/O (e.g. loading bundled resources). They do not print to
@@ -29,9 +29,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from topmark.cli_shared.emitters.shared.diagnostic import HumanDiagnosticCounts
-from topmark.cli_shared.emitters.shared.diagnostic import HumanDiagnosticLine
-from topmark.cli_shared.emitters.shared.diagnostic import prepare_human_diagnostics
 from topmark.config.io.loaders import load_default_config_template_toml_text
 from topmark.config.io.render import to_toml
 from topmark.config.io.surgery import set_root_flag
@@ -40,6 +37,9 @@ from topmark.config.io.template_surgery import ensure_pyproject_header
 from topmark.config.io.template_surgery import set_root_flag_in_template_text
 from topmark.config.io.template_surgery import validate_toml_for_config_init
 from topmark.config.model import MutableConfig
+from topmark.presentation.shared.diagnostic import HumanDiagnosticCounts
+from topmark.presentation.shared.diagnostic import HumanDiagnosticLine
+from topmark.presentation.shared.diagnostic import prepare_human_diagnostics
 
 if TYPE_CHECKING:
     from topmark.config.model import Config
@@ -49,7 +49,7 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True, slots=True)
-class ConfigInitPrepared:
+class ConfigInitHumanReport:
     """Prepared payload for `topmark config init` (human formats).
 
     Attributes:
@@ -57,17 +57,23 @@ class ConfigInitPrepared:
         error: Optional exception raised while reading the bundled template. When set, callers may
             render a warning and still proceed with the returned TOML text (which may be a
             synthesized fallback).
+        verbosity_level: Effective verbosity for gating extra details.
+        styled: Whether to style text output (OutputFormat.TEXT)
     """
 
     toml_text: str
     error: Exception | None
+    verbosity_level: int
+    styled: bool
 
 
-def prepare_config_init(
+def build_config_init_human_report(
     *,
     for_pyproject: bool,
     root: bool,
-) -> ConfigInitPrepared:
+    verbosity_level: int,
+    styled: bool,
+) -> ConfigInitHumanReport:
     """Prepare human-facing data for `topmark config init`.
 
     Uses the annotated packaged template when available; otherwise falls back to generated defaults
@@ -76,6 +82,8 @@ def prepare_config_init(
     Args:
         for_pyproject: If True, nest under [tool.topmark].
         root: If True, set `root = true` (top-level or tool.topmark.root).
+        verbosity_level: Effective verbosity for gating extra details.
+        styled: Whether to style text output (OutputFormat.TEXT)
 
     Returns:
         Prepared TOML text plus optional template read error.
@@ -102,11 +110,16 @@ def prepare_config_init(
         root_expected=root,
     )
 
-    return ConfigInitPrepared(toml_text=toml_text, error=err)
+    return ConfigInitHumanReport(
+        toml_text=toml_text,
+        error=err,
+        verbosity_level=verbosity_level,
+        styled=styled,
+    )
 
 
 @dataclass(frozen=True, slots=True)
-class ConfigDefaultsPrepared:
+class ConfigDefaultsHumanReport:
     """Prepared TOML payload for `topmark config defaults`.
 
     This is the *cleaned* default configuration (copy/paste friendly).
@@ -114,16 +127,23 @@ class ConfigDefaultsPrepared:
     Attributes:
         toml_text: Cleaned TOML text. When prepared with `for_pyproject=True`, the TOML is nested
             under `[tool.topmark]`.
+        verbosity_level: Effective verbosity for gating extra details.
+        styled: Whether to style text output (OutputFormat.TEXT)
+
     """
 
     toml_text: str
+    verbosity_level: int
+    styled: bool
 
 
-def prepare_config_defaults(
+def build_config_defaults_human_report(
     *,
     for_pyproject: bool,
     root: bool,
-) -> ConfigDefaultsPrepared:
+    verbosity_level: int,
+    styled: bool,
+) -> ConfigDefaultsHumanReport:
     """Prepare human-facing data for `topmark config defaults`.
 
     Loads the packaged default TOML *template* as text, optionally nests it under `[tool.topmark]`
@@ -137,6 +157,8 @@ def prepare_config_defaults(
     Args:
         for_pyproject: If True, nest the TOML under `[tool.topmark]`.
         root: If True, set `root = true` (top-level or tool.topmark.root).
+        verbosity_level: Effective verbosity for gating extra details.
+        styled: Whether to style text output (OutputFormat.TEXT)
 
     Returns:
         Prepared cleaned TOML text.
@@ -147,28 +169,41 @@ def prepare_config_defaults(
         toml_text = set_root_flag(toml_text, for_pyproject=for_pyproject, root=True)
 
     cleaned: str = MutableConfig.to_cleaned_toml(toml_text)
-    return ConfigDefaultsPrepared(toml_text=cleaned)
+    return ConfigDefaultsHumanReport(
+        toml_text=cleaned,
+        verbosity_level=verbosity_level,
+        styled=styled,
+    )
 
 
 # --- Check a resolved Config
 
 
 @dataclass(frozen=True, slots=True)
-class ConfigCheckPrepared:
+class ConfigCheckHumanReport:
     """Prepared human-facing data for `topmark config check`.
 
     Attributes:
         config_files: Config files contributing to the effective config (stringified paths).
+        ok: Whether the configuration passed validation.
+        strict: Whether strict checking was enabled.
         merged_toml: Effective merged configuration as TOML, or None when not requested
             (typically only included at verbosity >= 2).
         counts: Human diagnostic counts.
         diagnostics: Human diagnostic lines (ordered).
+        verbosity_level: Effective verbosity for gating extra details.
+        styled: Whether to style text output (OutputFormat.TEXT)
+
     """
 
     config_files: list[str]
+    ok: bool
+    strict: bool
     merged_toml: str | None
     counts: HumanDiagnosticCounts
     diagnostics: list[HumanDiagnosticLine]
+    verbosity_level: int
+    styled: bool
 
 
 def _stringify_config_files(config: Config) -> list[str]:
@@ -180,11 +215,14 @@ def _stringify_config_files(config: Config) -> list[str]:
     return [str(p) for p in config.config_files]
 
 
-def prepare_config_check(
+def build_config_check_human_report(
     *,
     config: Config,
+    ok: bool,
+    strict: bool,
     verbosity_level: int,
-) -> ConfigCheckPrepared:
+    styled: bool,
+) -> ConfigCheckHumanReport:
     """Prepare human-facing data for `topmark config check`.
 
     This helper is Click-free and may perform light computation (counts, string normalization).
@@ -192,7 +230,10 @@ def prepare_config_check(
 
     Args:
         config: Effective frozen configuration.
+        ok: Whether the configuration passed validation.
+        strict: Whether strict checking was enabled.
         verbosity_level: Effective verbosity (used for gating heavy/verbose sections).
+        styled: Whether to style text output (OutputFormat.TEXT)
 
     Returns:
         Prepared config file list, optional merged TOML (verbosity > 1), plus human diagnostic
@@ -204,11 +245,15 @@ def prepare_config_check(
 
     counts, lines = prepare_human_diagnostics(config.diagnostics)
 
-    return ConfigCheckPrepared(
+    return ConfigCheckHumanReport(
         config_files=_stringify_config_files(config),
+        ok=ok,
+        strict=strict,
         merged_toml=merged_toml,
         counts=counts,
         diagnostics=lines,
+        styled=styled,
+        verbosity_level=verbosity_level,
     )
 
 
@@ -216,34 +261,44 @@ def prepare_config_check(
 
 
 @dataclass(frozen=True, slots=True)
-class ConfigDumpPrepared:
+class ConfigDumpHumanReport:
     """Prepared human-facing data for `topmark config dump`.
 
     Attributes:
         config_files: Config files contributing to the effective config (stringified paths).
         merged_toml: Effective merged configuration rendered as TOML.
+        verbosity_level: Effective verbosity for gating extra details.
+        styled: Whether to style text output (OutputFormat.TEXT)
     """
 
     config_files: list[str]
     merged_toml: str
+    verbosity_level: int
+    styled: bool
 
 
-def prepare_config_dump(
+def build_config_dump_human_report(
     *,
     config: Config,
-) -> ConfigDumpPrepared:
+    styled: bool,
+    verbosity_level: int,
+) -> ConfigDumpHumanReport:
     """Prepare human-facing data for `topmark config dump`.
 
     This helper is Click-free: it performs serialization to TOML but does not print.
 
     Args:
         config: Effective frozen configuration.
+        styled: Whether to style text output (OutputFormat.TEXT)
+        verbosity_level: Effective verbosity for gating extra details.
 
     Returns:
         Prepared config file list and merged TOML text.
     """
     merged_toml: str = to_toml(config.to_toml_dict())
-    return ConfigDumpPrepared(
+    return ConfigDumpHumanReport(
         config_files=_stringify_config_files(config),
         merged_toml=merged_toml,
+        styled=styled,
+        verbosity_level=verbosity_level,
     )

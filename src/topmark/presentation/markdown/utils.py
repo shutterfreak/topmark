@@ -2,32 +2,73 @@
 #
 #   project      : TopMark
 #   file         : utils.py
-#   file_relpath : src/topmark/cli_shared/emitters/markdown/utils.py
+#   file_relpath : src/topmark/presentation/markdown/utils.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""Markdown rendering utilities shared by CLI emitters.
+"""Shared presentation utilities for MARKDOWN.
 
-This module provides Click-free helpers to render Markdown fragments that are
-used by TopMark's human-facing output formats (e.g. ``OutputFormat.MARKDOWN``).
+This module provides helpers to render Markdown fragments.
 
 Scope:
 - Pure string rendering only (no I/O, no Click/Rich console usage).
 - Safe to import from any frontend (CLI, API tests, etc.).
 
 The helpers here are intentionally small and composable; command-specific
-formatting belongs in the command's emitter module.
+formatting belongs in the command's presentation module.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import re
+import typing
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from collections.abc import Mapping
     from collections.abc import Sequence
+
+
+def markdown_code_span(text: str) -> str:
+    """Render `text` as a Markdown inline code span.
+
+    This chooses a backtick fence that is one longer than the longest run of
+    backticks in `text`, which safely supports filenames that contain backticks.
+
+    Args:
+        text: Raw text to wrap.
+
+    Returns:
+        Markdown inline code span.
+    """
+    max_run: int = 0
+    run: int = 0
+    for ch in text:
+        if ch == "`":
+            run += 1
+            if run > max_run:
+                max_run = run
+        else:
+            run = 0
+
+    fence: str = "`" * (max_run + 1)
+    return f"{fence}{text}{fence}"
+
+
+def markdown_escape(text: str) -> str:
+    """Safely render `text` as backticked str."""
+    # Find the longest sequence of backticks in the input
+    backtick_sequences = re.findall(r"`+", text)
+    max_backticks: int = len(max(backtick_sequences, key=len)) if backtick_sequences else 0
+
+    # Use one more backtick than the max sequence found
+    fence: str = "`" * (max_backticks + 1)
+
+    # Add padding spaces if the text starts or ends with a backtick
+    padding: str = " " if text.startswith("`") or text.endswith("`") else ""
+
+    return f"{fence}{padding}{text}{padding}{fence}"
 
 
 def render_markdown_table(
@@ -104,20 +145,35 @@ def render_markdown_table(
     )
 
 
-def render_toml_markdown(*, heading: str, toml_text: str) -> str:
-    """Render a Markdown H1 heading followed by a fenced TOML code block.
+def render_toml_markdown(
+    *,
+    toml_text: str,
+    heading: str | None,
+    heading_level: int = 2,
+) -> str:
+    """Render a Markdown heading followed by a fenced TOML code block.
 
     Args:
-        heading: Heading text without the leading ``#``.
         toml_text: TOML content to place inside the fenced code block.
+        heading: Optional heading text without the leading '#'.
+        heading_level: Heading level (normalized to 1..6).
 
     Returns:
         A Markdown string ending with a newline.
     """
     lines: list[str] = []
-    lines.append(f"# {heading}")
-    lines.append("")
-    lines.append("```toml")
-    lines.append(toml_text.rstrip("\n"))
-    lines.append("```")
-    return "\n".join(lines).rstrip() + "\n"
+
+    if heading:
+        level: int = max(1, min(heading_level, 6))
+        lines.append(f"{'#' * level} {heading}\n")
+
+    # Handle nested fences: find the longest backtick chain
+    backtick_matches = re.findall(r"`{3,}", toml_text)
+    fence_len: int = max([len(m) for m in backtick_matches] + [2]) + 1
+    fence: str = "`" * fence_len
+
+    lines.append(f"{fence}toml")
+    lines.append(toml_text.strip("\n"))
+    lines.append(fence)
+
+    return "\n".join(lines) + "\n"

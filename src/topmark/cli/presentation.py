@@ -115,6 +115,7 @@ DEFAULT_STYLE_ROLE_MAPPING: dict[StyleRole, TextStyler] = {
     StyleRole.OK: chalk.green,
     StyleRole.MUTED: chalk.gray,
     StyleRole.EMPHASIS: chalk.bold,
+    StyleRole.ITALIC: chalk.italic,
     # Change semantics
     StyleRole.UNCHANGED: chalk.green,
     StyleRole.WOULD_CHANGE: chalk.yellow_bright.bold,

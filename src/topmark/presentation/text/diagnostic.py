@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : diagnostic.py
-#   file_relpath : src/topmark/cli/emitters/text/diagnostic.py
+#   file_relpath : src/topmark/presentation/text/diagnostic.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -10,25 +10,16 @@
 
 """ANSI (TEXT) diagnostic rendering helpers for CLI commands.
 
-This module contains Click-dependent helpers that render diagnostics for
-human-facing output formats (primarily `OutputFormat.TEXT`). These helpers
-are intentionally kept out of machine-format code paths.
-
-Notes:
-    - This module is Click-bound: it reads from `click.Context.obj` to resolve
-      the active console and to determine effective verbosity.
-    - Machine formats must not call these helpers; use domain serializers
-      instead.
+This module contains helpers that render diagnostics for human-facing TEXT output formats.
+These generate no I/O.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.cli.console.context import resolve_console
 from topmark.cli.keys import CliShortOpt
 from topmark.cli.presentation import TextStyler
-from topmark.cli.presentation import maybe_style
 from topmark.cli.presentation import style_for_role
 from topmark.core.presentation import StyleRole
 from topmark.diagnostic.model import DiagnosticLog
@@ -37,9 +28,8 @@ from topmark.diagnostic.model import FrozenDiagnosticLog
 from topmark.diagnostic.model import compute_diagnostic_stats
 
 if TYPE_CHECKING:
-    from topmark.cli.console.protocols import ConsoleProtocol
-    from topmark.cli_shared.emitters.shared.config import HumanDiagnosticLine
-    from topmark.cli_shared.emitters.shared.diagnostic import HumanDiagnosticCounts
+    from topmark.presentation.shared.config import HumanDiagnosticLine
+    from topmark.presentation.shared.diagnostic import HumanDiagnosticCounts
 
 
 def render_human_diagnostics_text(
@@ -47,26 +37,30 @@ def render_human_diagnostics_text(
     counts: HumanDiagnosticCounts,
     diagnostics: list[HumanDiagnosticLine],
     verbosity_level: int,
-) -> None:
-    """Render prepared human diagnostics to ConsoleLike (TEXT).
+) -> str:
+    """Render prepared human diagnostics as text for human output.
 
     Args:
         counts: HumanDiagnosticCounts (object with .error, .warning, .info).
         diagnostics: List of HumanDiagnosticLine (object with .level, .message).
         verbosity_level: Controls detail.
+
+    Returns:
+        Text document as single string.
     """
     if not diagnostics:
-        return
+        return ""
+    parts: list[str] = []
 
-    console: ConsoleProtocol = resolve_console()
-    console.print(
+    parts.append(
         f"Diagnostics: {counts.error} error(s), "
         f"{counts.warning} warning(s), "
         f"{counts.info} information(s)"
     )
     if verbosity_level > 0:
         for d in diagnostics:
-            console.print(f"- {d.level}: {d.message}")
+            parts.append(f"- {d.level}: {d.message}")
+    return "\n".join(parts)
 
 
 def render_diagnostics_text(
@@ -74,10 +68,8 @@ def render_diagnostics_text(
     diagnostics: FrozenDiagnosticLog | DiagnosticLog,
     verbosity_level: int,
     color: bool,
-) -> None:
-    """Render diagnostics to the console for human output.
-
-    It is intended for human-facing output only (TEXT/ANSI), not for machine formats.
+) -> str:
+    """Render diagnostics as text for human output.
 
     Behavior:
         - If there are no diagnostics, do nothing.
@@ -90,12 +82,15 @@ def render_diagnostics_text(
         color: Render in color if True, as plain text otherwise.
 
     Returns:
-        None. Output is written to the configured console.
+        Text document as single string.
     """
     if len(diagnostics.items) == 0:
-        return
+        return ""
 
-    console: ConsoleProtocol = resolve_console()
+    # Note: the stylers already check `report.styled` so we don't need `maybe_style()`
+    info_styler: TextStyler = style_for_role(StyleRole.INFO, styled=color)
+
+    parts: list[str] = []
 
     # Aggregate counts per level once (used for triage summary and verbosity gating).
     stats: DiagnosticStats = compute_diagnostic_stats(diagnostics)
@@ -104,45 +99,40 @@ def render_diagnostics_text(
     n_err: int = stats.n_error
 
     # Compact triage summary like "1 error, 2 warnings".
-    parts: list[str] = []
+    diag_parts: list[str] = []
     if n_err:
-        parts.append(f"{n_err} error" + ("s" if n_err != 1 else ""))
+        diag_parts.append(f"{n_err} error" + ("s" if n_err != 1 else ""))
     if n_warn:
-        parts.append(f"{n_warn} warning" + ("s" if n_warn != 1 else ""))
+        diag_parts.append(f"{n_warn} warning" + ("s" if n_warn != 1 else ""))
     # Only mention info when there are no higher-severity diagnostics.
     if n_info and not (n_err or n_warn):
-        parts.append(f"{n_info} info" + ("s" if n_info != 1 else ""))
+        diag_parts.append(f"{n_info} info" + ("s" if n_info != 1 else ""))
 
-    triage: str = ", ".join(parts) if parts else "info"
+    triage: str = ", ".join(diag_parts) if diag_parts else "info"
 
-    info_styler: TextStyler = style_for_role(StyleRole.INFO, styled=color)
     if verbosity_level <= 0:
         # Keep verbosity 0 output intentionally compact.
-        console.print(
-            maybe_style(
-                info_styler,
+        parts.append(
+            info_styler(
                 f"ℹ️  Diagnostics: {triage} (use '{CliShortOpt.VERBOSE}' to view details)",
-                styled=color,
             )
         )
-        return
+        return "\n".join(parts)
 
     # Display diagnostics triage info.
-    console.print(
-        maybe_style(
-            info_styler,
+    parts.append(
+        info_styler(
             f"ℹ️  Diagnostics: {triage}",
-            styled=color,
         )
     )
 
     # Display diagnostics log.
     for d in diagnostics:
         styler: TextStyler = style_for_role(d.level.role, styled=color)
-        console.print(
-            maybe_style(
-                styler,
+        parts.append(
+            styler(
                 f"  [{d.level.value}] {d.message}",
-                styled=color,
             )
         )
+
+    return "\n".join(parts)

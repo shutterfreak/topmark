@@ -124,12 +124,13 @@ goals.
 
 ### CLI output architecture
 
-- Introduced a clearer split between:
-  - \[`topmark.cli.emitters.*`\][topmark.cli.emitters] (Click-facing, console printing)
-  - \[`topmark.cli_shared.*`\][topmark.cli_shared] (Click-free CLI concerns: presentation helpers,
-    color policy, small shared utilities)
-- Refactored many commands to share the same conceptual pipeline:
-  - prepare Click-free model → render (text/markdown) → print
+- Replaced the older split between *topmark.cli.emitters* and *topmark.cli_shared* with a clearer
+  three-layer structure:
+  - `topmark.presentation.*` → Click-free, human-facing report preparation and rendering
+  - `topmark.cli.console.*` → console/runtime concerns (printing, color policy, width helpers)
+  - `topmark.cli.commands.*` → command orchestration and final output
+- Refactored many commands to follow the same conceptual pipeline:
+  - prepare Click-free report/model → render string (TEXT/MARKDOWN) → print via console
 - Introduced shared Click-layer validators/policies
   (\[`topmark.cli.validators`\][topmark.cli.validators]) to centralize:
   - output-format policies (e.g., diff restrictions, machine-format limitations)
@@ -139,14 +140,24 @@ goals.
   individual commands.
 - Added a convenience decorator to consistently attach common verbosity/color options per command.
 - Clarified and centralized CLI initialization state in `cli.cmd_common`.
-- Moved all machine-format generation out of `cli_shared` into domain-specific `*.machine` packages.
+- Reorganized console/runtime support under \[`topmark.cli.console`\]\[topmark.cli.console\]:
+  - `ConsoleProtocol` as the minimal console contract
+  - Click-backed `Console` and stdlib `StdConsole`
+  - `resolve_console()` for safe context-aware console resolution
+  - `ColorMode` / `resolve_color_mode()` and terminal width helpers
+- Removed console abstractions from human renderers:
+  - renderers no longer print directly
+  - console usage is now confined to command modules and console/runtime helpers
+- Moved all machine-format generation out of CLI-shared helpers into domain-specific `*.machine`
+  packages.
 - Replaced legacy "emitters" with explicit `serializers` in core/config/pipeline/registry layers.
 - Introduced a clear separation between:
   - pure serializers (no console, no Click)
-  - CLI emitters (console-only, Click-aware)
+  - pure human renderers (no console, no I/O)
+  - CLI output/runtime helpers (console-only, Click-aware)
 - Centralized `build_meta_payload()` at CLI initialization (computed once per process and reused).
-- Introduced `compute_version_text()` in `utils.version` to unify SemVer conversion and fallback
-  logic across CLI and machine formats.
+- Introduced `compute_version_text()` in `utils.version` and later `VersionHumanReport` /
+  `render_*()` flow to unify version rendering across CLI and machine formats.
 
 ### Semantic styling and unified rendering
 
@@ -240,15 +251,29 @@ goals.
 ### Human output formats
 
 - Consolidated human formats under:
-  - `OutputFormat.TEXT` (label `"text"`)
+  - `OutputFormat.TEXT` (label "text")
   - `OutputFormat.MARKDOWN`
-- Renamed emitter package *topmark.cli.emitters.default* to
-  \[`topmark.presentation.text`\][topmark.presentation.text] to align naming with
-  `OutputFormat.TEXT`.
-- Extracted shared pipeline rendering primitives (diff rendering, per-command guidance) into
-  \[`topmark.presentation.pipeline`\][topmark.presentation.pipeline].
-- Improved consistency of wording across commands by reusing shared helpers for registry/config
-  outputs.
+- Introduced the new `topmark.presentation` package as the canonical home for **Click-free,
+  human-facing rendering**:
+  - `topmark.presentation.shared.*` → report models and preparation helpers
+  - `topmark.presentation.text.*` → TEXT renderers
+  - `topmark.presentation.markdown.*` → MARKDOWN renderers
+- Completed migration away from legacy CLI emitters:
+  - removed \*topmark.cli.emitters\` and *topmark.cli_shared.emitters* for migrated domains
+  - replaced `emit_*()` functions with pure `render_*()` helpers returning strings
+- Standardized the rendering pipeline across commands:
+  - API/domain → presentation report (`*HumanReport`) → `render_*()` → CLI prints
+- Ensured all renderers are:
+  - Click-free (no console dependency)
+  - side-effect free (no I/O)
+  - reusable from tests and API contexts
+- Moved shared formatting utilities into `topmark.presentation.formatters.*` and format-specific
+  `utils` modules
+- Removed console abstractions from rendering logic:
+  - styling is now applied via semantic roles (`StyleRole`) and helper functions
+  - console is only responsible for final output (`console.print(...)`)
+- Improved consistency of wording and structure across commands by reusing shared presentation
+  helpers
 
 ### Command output consistency improvements
 
@@ -580,7 +605,7 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
 - Emitter package rename: *topmark.cli.emitters.default* →
   \[`topmark.presentation.text`\][topmark.presentation.text].
 - Shared pipeline helpers moved to
-  \[`topmark.presentation.pipeline`\][topmark.presentation.pipeline].
+  \[`topmark.presentation.shared.pipeline`\][topmark.presentation.shared.pipeline].
 - Verbosity and color options were moved from the root CLI group to individual commands. Global
   invocation patterns may need to be updated.
 - Color behavior tightened:
@@ -935,7 +960,8 @@ Some CLI-oriented concerns still leak into API-facing modules (notably in
 Before 1.0, aim for:
 
 - A clean API surface usable without Click
-- CLI modules acting strictly as orchestration and presentation layers
+- CLI modules acting strictly as orchestration and final output layers
+- Human-facing rendering isolated in `topmark.presentation`
 - No CLI-specific behavior (verbosity, coloring, formatting decisions) inside core logic
 
 Additional progress:
@@ -943,11 +969,22 @@ Additional progress:
 - Machine-format serializers are fully API-usable (no Click dependency).
 - CLI initialization computes `meta` once and passes it into serializers.
 - API remains free of CLI-specific meta concerns unless machine output is explicitly requested.
+- Introduced `topmark.presentation` as the Click-free, human-facing presentation layer between
+  API/domain data and CLI printing.
+- Migrated `version`, config, diagnostic, and pipeline human-output paths to presentation report
+  builders plus pure `render_*()` helpers.
+- Refactored CLI command modules so human output now follows a clearer pipeline: prepare report →
+  render string → `console.print(...)`.
 
 #### Remaining work
 
 - Remove remaining Click-facing concerns from non-CLI modules.
-- Ensure formatting/verbosity/color decisions remain strictly CLI-side.
+- Finish migrating the remaining human-output domains (notably registry) onto
+  `topmark.presentation`.
+- Ensure formatting/verbosity/color decisions remain strictly split between:
+  - CLI policy/orchestration (`topmark.cli`)
+  - human-facing rendering (`topmark.presentation`)
+  - core/domain logic (Click-free and presentation-free)
 - Clarify ownership of `meta` in the API only when machine output becomes part of the API surface.
 
 ### Config override application boundary
@@ -1000,30 +1037,34 @@ Remaining work before 1.0:
 
 ### Human-facing output formats
 
-Text (ANSI) and Markdown output formats have been refactored for most commands, with shared
-Click-free renderers and centralized CLI policy enforcement.
+Text (ANSI) and Markdown output formats are now being consolidated under the new
+`topmark.presentation` package, with shared Click-free report preparation and pure `render_*()`
+helpers returning strings.
 
 Remaining work before 1.0:
 
+- Complete migration of the remaining human-output domains (notably registry) from legacy
+  `cli.emitters.*` / `cli_shared.*` modules into `topmark.presentation`.
 - Ensure `OutputFormat.TEXT` and `OutputFormat.MARKDOWN` are consistent across commands.
 - Ensure verbosity semantics are consistent (`-v`, `-vv`, `-q`) and documented.
-- Keep all formatting logic out of CLI command functions.
+- Keep all formatting logic out of CLI command functions; commands should only orchestrate, render,
+  and print.
 - Finalize hint ordering strategy (newest-first vs oldest-first) and ensure consistency across text
-  and Markdown emitters.
+  and Markdown renderers.
 - Decide whether the “primary hint” concept (shown at `-v`) should remain explicit or be generalized
   to multi-hint display.
 - Evaluate whether Markdown output should remain structurally equivalent to text output or evolve
   toward more document-oriented layouts (e.g., tables or grouped sections).
 - Decide whether semantic style roles should be exposed/configurable (themes, CI/no-color modes).
 - Further clarify boundary between pipeline outcome computation (`map_bucket()`) and presentation
-  logic in emitters.
+  logic in renderers.
 
 ### Pipeline commands: complete human + machine format refactor
 
 - Finish aligning `check` and `strip` outputs with the established pattern:
-  - shared Click-free preparation
-  - text emitter (`cli.emitters.text.*`)
-  - Markdown emitter (`cli_shared.emitters.markdown.*`)
+  - shared Click-free preparation in `topmark.presentation.shared.*`
+  - text renderers in `topmark.presentation.text.*`
+  - Markdown renderers in `topmark.presentation.markdown.*`
   - machine serializers for JSON/NDJSON
 - Confirm and document verbosity semantics consistently across all commands:
   - `-v`: show per-file guidance / extra hints
@@ -1038,9 +1079,9 @@ Recommendation: keep Click through 1.0 unless there is a strong feature need.
 ### Color output and dependency on yachalk
 
 Recent refactoring introduced semantic styling via `StyleRole`, significantly reducing direct
-`yachalk` usage in emitters and enabling a cleaner separation between core logic and CLI
-presentation. Remaining work focuses on fully eliminating or strictly confining `yachalk` usage to
-CLI-only modules.
+`yachalk` usage in human-output code and enabling a cleaner separation between core logic,
+presentation rendering, and CLI output policy. Remaining work focuses on fully eliminating or
+strictly confining `yachalk` usage to CLI-only modules.
 
 Open question: remove `yachalk` fully or enforce a strict boundary (CLI-only usage).
 
@@ -1062,7 +1103,7 @@ src/topmark/utils/diff.py:from yachalk import chalk
 If the goal is to remove all color-aware code from non-CLI modules, this likely requires:
 
 - representing colors as semantic tokens in core layers (e.g., status categories)
-- mapping those tokens to ANSI styles only in the text emitter
+- mapping those tokens to ANSI styles only in the CLI/presentation text-rendering boundary
 
 Alternative: keep `yachalk` but enforce a strict boundary (CLI-only usage).
 
