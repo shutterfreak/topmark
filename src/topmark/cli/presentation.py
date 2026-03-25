@@ -91,12 +91,13 @@ from __future__ import annotations
 from collections.abc import Callable
 from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import TypeAlias
 
 from yachalk import chalk
 
 from topmark.core.presentation import StyleRole
 
-TextStyler = Callable[[str], str]
+TextStyler: TypeAlias = Callable[[str], str]
 """Callable which styles a str."""
 
 
@@ -129,6 +130,10 @@ DEFAULT_STYLE_ROLE_MAPPING: dict[StyleRole, TextStyler] = {
     StyleRole.DIFF_ADD: chalk.bold.green,
     StyleRole.DIFF_DEL: chalk.bold.red,
     StyleRole.DIFF_LINE_NO: chalk.white.dim,
+    # Generic formats
+    StyleRole.HEADING_TITLE: chalk.bold.underline,
+    StyleRole.MARKER_LINE: chalk.cyan.dim,
+    StyleRole.CONFIG_FILE: chalk.cyan,
 }
 
 
@@ -189,15 +194,20 @@ def style_for_role(
     return theme.styler_for(role) if styled else no_style_for_role
 
 
-def maybe_style(styler: TextStyler, text: str, *, styled: bool) -> str:
+def maybe_style(
+    text: str,
+    *,
+    styler: TextStyler,
+    styled: bool,
+) -> str:
     """Conditionally apply a styling function.
 
     This is a tiny helper used by TEXT emitters to avoid scattering `if color:` checks throughout
     rendering code.
 
     Args:
-        styler: Callable that applies styling to a string (for example, a `chalk.*` function).
         text: Input text to render.
+        styler: Callable that applies styling to a string (for example, a `chalk.*` function).
         styled: When False, return `text` unchanged.
 
     Returns:

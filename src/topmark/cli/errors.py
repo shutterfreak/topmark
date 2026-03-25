@@ -121,7 +121,7 @@ class TopmarkCliPipelineError(TopmarkCliError):
     exit_code = ExitCode.PIPELINE_ERROR
 
 
-class TopmarkCliVersionConverionError(TopmarkCliError):
+class TopmarkCliVersionConversionError(TopmarkCliError):
     """Error for PEP440-to-SemVer version converion."""
 
     exit_code = ExitCode.VERSION_CONVERSION_ERROR

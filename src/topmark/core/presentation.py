@@ -80,6 +80,11 @@ class StyleRole(str, Enum):
     DIFF_DEL = "diff_del"
     DIFF_LINE_NO = "diff_line_no"
 
+    # Other style roles
+    HEADING_TITLE = "heading_title"
+    MARKER_LINE = "marker_line"
+    CONFIG_FILE = "config_file"
+
     # No style
     NO_STYLE = "no_style"
 

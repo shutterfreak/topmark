@@ -21,8 +21,6 @@ import click
 
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.emitters.machine import emit_machine
-from topmark.cli.emitters.text.version import emit_version_text
-from topmark.cli.errors import TopmarkCliVersionConverionError
 from topmark.cli.keys import CliCmd
 from topmark.cli.options import GROUP_CONTEXT_SETTINGS
 from topmark.cli.options import common_output_format_options
@@ -30,10 +28,12 @@ from topmark.cli.options import common_ui_options
 from topmark.cli.options import version_format_options
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import apply_ignore_positional_paths_policy
-from topmark.cli_shared.emitters.markdown.version import emit_version_markdown
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
-from topmark.utils.version import compute_version_text
+from topmark.presentation.markdown.version import render_version_markdown
+from topmark.presentation.shared.version import VersionHumanReport
+from topmark.presentation.shared.version import make_version_human_report
+from topmark.presentation.text.version import render_version_text
 from topmark.version.machine.serializers import serialize_version
 
 if TYPE_CHECKING:
@@ -77,7 +77,6 @@ def version_command(
         output_format: Output format to use (``text``, ``markdown``, ``json``, or ``ndjson``).
 
     Raises:
-        TopmarkCliVersionConverionError: If the SemVer conversion of the TopMark version failed.
         ValueError: If an unsupported output format is requested.
     """
     ctx: click.Context = click.get_current_context()
@@ -105,6 +104,7 @@ def version_command(
     fmt: OutputFormat = output_format or OutputFormat.TEXT
 
     apply_color_policy_for_output_format(ctx, fmt=fmt)
+    enable_color: bool = ctx.obj[ArgKey.COLOR_ENABLED]
 
     # version_command() is file-agnostic: ignore positional PATHS
     apply_ignore_positional_paths_policy(ctx, warn_stdin_dash=True)
@@ -121,28 +121,18 @@ def version_command(
         emit_machine(serialized, nl=nl)
         return
 
-    version_text, version_format, err = compute_version_text(semver=semver)
-
-    if err:
-        raise TopmarkCliVersionConverionError(message=str(err))
+    report: VersionHumanReport = make_version_human_report(
+        verbosity_level=verbosity_level,
+        styled=enable_color,
+        semver=semver,
+    )
 
     if fmt == OutputFormat.TEXT:
-        emit_version_text(
-            console=console,
-            version_text=version_text,
-            version_format=version_format,
-            verbosity_level=verbosity_level,
-            error=err,
-        )
+        console.print(render_version_text(report))
         return
 
     if fmt == OutputFormat.MARKDOWN:
-        md: str = emit_version_markdown(
-            version_text=version_text,
-            version_format=version_format,
-            error=err,
-        )
-        console.print(md, nl=False)
+        console.print(render_version_markdown(report), nl=False)
         return
 
     # Defensive guard
