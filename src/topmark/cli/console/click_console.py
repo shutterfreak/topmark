@@ -17,7 +17,6 @@ user-facing output. It is intentionally separate from the logging subsystem.
 from __future__ import annotations
 
 import sys
-from typing import Any
 from typing import TextIO
 from typing import TypedDict
 
@@ -97,18 +96,3 @@ class Console(ConsoleProtocol):
             nl: If True, append a newline.
         """
         click.secho(text, nl=nl, file=self.err, color=self.enable_color, fg="bright_red")
-
-    def styled(self, text: str, **style_kwargs: Any) -> str:
-        """Return a styled string using click.style.
-
-        Args:
-            text: Text to style.
-            **style_kwargs: Subset of keyword arguments supported by click.style.
-                Expected keys are documented by `ClickStyleKwargs`.
-
-        Returns:
-            The styled text (or plain text if color is disabled).
-        """
-        if not self.enable_color:
-            return text
-        return click.style(text, **style_kwargs)

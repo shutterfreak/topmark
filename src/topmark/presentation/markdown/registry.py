@@ -24,15 +24,18 @@ See Also:
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from topmark.constants import TOPMARK_VERSION
 from topmark.presentation.formatters.filetypes import filetype_policy_to_display_pairs
 from topmark.presentation.markdown.utils import render_markdown_table
-from topmark.presentation.shared.registry import FileTypeHumanItem
-from topmark.presentation.shared.registry import FileTypePolicyHumanItem
-from topmark.presentation.shared.registry import FileTypesHumanReport
-from topmark.presentation.shared.registry import ProcessorFileTypeHumanItem
-from topmark.presentation.shared.registry import ProcessorsHumanReport
-from topmark.presentation.shared.registry import UnboundFileTypeHumanItem
+
+if TYPE_CHECKING:
+    from topmark.presentation.shared.registry import BindingsHumanReport
+    from topmark.presentation.shared.registry import FileTypeHumanItem
+    from topmark.presentation.shared.registry import FileTypePolicyHumanItem
+    from topmark.presentation.shared.registry import FileTypesHumanReport
+    from topmark.presentation.shared.registry import ProcessorsHumanReport
 
 
 def render_filetype_policy_markdown(policy: FileTypePolicyHumanItem) -> str:
@@ -142,65 +145,129 @@ def render_processors_markdown(report: ProcessorsHumanReport) -> str:
     lines: list[str] = []
     lines.append("# Supported Header Processors\n")
     lines.append(
-        f"TopMark version **{TOPMARK_VERSION}** supports the following header processors "
-        f"and bound qualified file type identifiers:\n"
+        f"TopMark version **{TOPMARK_VERSION}** supports "
+        "the following registered header processors "
+        f"(shown as canonical qualified identifiers):\n"
     )
 
     if report.show_details:
         lines.append("## Legend\n")
+        lines.append("- **Qualified Key**: Canonical processor identifier used in machine output.")
+        lines.append("- **Local Key / Namespace**: Canonical identity components.")
         lines.append(
-            "- This section groups qualified file type identifiers by the "
-            "**header processor** class handling them."
+            "- **Bound**: Whether the processor currently participates in "
+            "at least one effective binding."
         )
         lines.append(
-            "- See `topmark filetypes --output-format=markdown --long` for per-type matching rules "
-            "and policy details.\n"
+            "- **Line / Block Prefix/Suffix**: Comment delimiters emitted by this processor.\n"
         )
-        for proc in report.processors:
-            lines.append(f"\n## **{proc.class_name}** _({proc.module})_\n")
-            lines.append("File types handled by this processor:\n")
-            headers: list[str] = ["File Types", "Description"]
-            rows: list[list[str]] = []
-            for ft in proc.filetypes:
-                if isinstance(ft, ProcessorFileTypeHumanItem):
-                    rows.append([f"`{ft.name}`", ft.description])
-            lines.append(render_markdown_table(headers, rows))
-    else:
-        lines.append(
-            "_This table lists header processors and the qualified file type identifiers "
-            "they handle. "
-            "Use `--long` to expand  per-processor file type listings into separate tables._\n"
-        )
-        headers = ["Processor", "Module", "File Types"]
+
+        headers = [
+            "Qualified Key",
+            "Local Key",
+            "Namespace",
+            "Bound",
+            "Line Indent",
+            "Line Prefix",
+            "Line Suffix",
+            "Block Prefix",
+            "Block Suffix",
+            "Description",
+        ]
         rows: list[list[str]] = []
         for proc in report.processors:
-            ft_names: list[str] = [ft for ft in proc.filetypes if isinstance(ft, str)]
             rows.append(
                 [
-                    f"`{proc.class_name}`",
-                    f"`{proc.module}`",
-                    ", ".join(f"`{n}`" for n in ft_names),
+                    f"`{proc.qualified_key}`",
+                    f"`{proc.local_key}`",
+                    f"`{proc.namespace}`",
+                    "**yes**" if proc.bound else "no",
+                    proc.line_indent,
+                    proc.line_prefix,
+                    proc.line_suffix,
+                    proc.block_prefix,
+                    proc.block_suffix,
+                    proc.description,
                 ]
             )
         lines.append(render_markdown_table(headers, rows))
+    else:
+        lines.append(
+            "_This table lists canonical header processor identifiers and a short description. "
+            "Use `--long` for identity and delimiter details._\n"
+        )
+        headers = ["Qualified Key", "Description"]
+        rows = [[f"`{proc.qualified_key}`", proc.description] for proc in report.processors]
+        lines.append(render_markdown_table(headers, rows))
+
+    lines.append("\n---\n")
+    lines.append(f"_Generated with TopMark v{TOPMARK_VERSION}_\n")
+
+    return "\n".join(lines)
+
+
+def render_bindings_markdown(report: BindingsHumanReport) -> str:
+    """Render the `bindings` registry report as Markdown.
+
+    Args:
+        report: Prepared Click-free report model produced by
+            `build_bindings_human_report`.
+
+    Returns:
+        A Markdown document suitable for printing to stdout.
+    """
+    lines: list[str] = []
+    lines.append("# Effective File Type Bindings\n")
+    lines.append(
+        f"TopMark version **{TOPMARK_VERSION}** currently resolves the following effective "
+        f"file-type-to-processor bindings:\n"
+    )
+
+    if report.show_details:
+        headers = [
+            "File Type",
+            "Processor",
+            "File Type Local Key",
+            "File Type Namespace",
+            "Processor Local Key",
+            "Processor Namespace",
+            "File Type Description",
+            "Processor Description",
+        ]
+        rows: list[list[str]] = []
+        for binding in report.bindings:
+            rows.append(
+                [
+                    f"`{binding.file_type_key}`",
+                    f"`{binding.processor_key}`",
+                    f"`{binding.file_type_local_key}`",
+                    f"`{binding.file_type_namespace}`",
+                    f"`{binding.processor_local_key}`",
+                    f"`{binding.processor_namespace}`",
+                    binding.file_type_description,
+                    binding.processor_description,
+                ]
+            )
+        lines.append(render_markdown_table(headers, rows))
+    else:
+        headers = ["File Type", "Processor"]
+        rows = [
+            [f"`{binding.file_type_key}`", f"`{binding.processor_key}`"]
+            for binding in report.bindings
+        ]
+        lines.append(render_markdown_table(headers, rows))
 
     if report.unbound_filetypes:
-        lines.append("\n## File types without a registered processor\n")
-        lines.append(
-            "These qualified file type identifiers are recognized by TopMark but "
-            "currently have no header processor bound. They will be listed, but not processed.\n"
-        )
-        if report.show_details:
-            headers = ["File Types", "Description"]
-            rows: list[list[str]] = []
-            for uft in report.unbound_filetypes:
-                if isinstance(uft, UnboundFileTypeHumanItem):
-                    rows.append([f"`{uft.name}`", uft.description])
-            lines.append(render_markdown_table(headers, rows))
-        else:
-            for uft in report.unbound_filetypes:
-                if isinstance(uft, str):
-                    lines.append(f"  - `{uft}`")
+        lines.append("\n## Unbound File Types\n")
+        headers = ["Qualified Key", "Description"]
+        rows = [[f"`{item.name}`", item.description] for item in report.unbound_filetypes]
+        lines.append(render_markdown_table(headers, rows))
+
+    if report.unused_processors:
+        lines.append("\n## Unused Processors\n")
+        headers = ["Qualified Key", "Description"]
+        rows = [[f"`{item.qualified_key}`", item.description] for item in report.unused_processors]
+        lines.append(render_markdown_table(headers, rows))
 
     lines.append("\n---\n")
     lines.append(f"_Generated with TopMark v{TOPMARK_VERSION}_\n")

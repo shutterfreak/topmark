@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING
 
 import click
 
+from topmark.cli.commands.registry_bindings import registry_bindings_command
 from topmark.cli.commands.registry_filetypes import registry_filetypes_command
 from topmark.cli.commands.registry_processors import registry_processors_command
 from topmark.cli.keys import CliCmd
@@ -48,6 +49,7 @@ def registry_command() -> None:
 
       * ``filetypes``: show the registered filetypes.
       * ``processors``: show the registered processors.
+      * ``bindings``: show the registered bindings.
     """
     # No-op: behavior is provided by subcommands only.
 
@@ -55,3 +57,4 @@ def registry_command() -> None:
 # Attach existing commands as subcommands of `topmark config`
 registry_command.add_command(registry_filetypes_command, name=CliCmd.REGISTRY_FILETYPES)
 registry_command.add_command(registry_processors_command, name=CliCmd.REGISTRY_PROCESSORS)
+registry_command.add_command(registry_bindings_command, name=CliCmd.REGISTRY_BINDINGS)

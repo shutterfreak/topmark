@@ -11,7 +11,8 @@
 """Registry machine-output schema types.
 
 This module defines the *typing surface* for machine-readable output emitted by
-registry-related commands (currently `topmark filetypes` and `topmark processors`).
+registry-related commands (currently `topmark registry filetypes`, `topmark registry processors`
+and `topmark registry bindings`).
 
 These are schema-only types:
 - They describe the JSON/NDJSON payload shapes.
@@ -36,7 +37,23 @@ Envelope/record shaping lives in
 
 from __future__ import annotations
 
+from typing import TypeAlias
 from typing import TypedDict
+
+
+class FileTypePolicyEntry(TypedDict):
+    """Structured file type policy entry for machine output.
+
+    This mirrors the public API policy shape and keeps machine output stable and
+    self-describing.
+    """
+
+    supports_shebang: bool
+    encoding_line_regex: str | None
+    pre_header_blank_after_block: int
+    ensure_blank_after_header: bool
+    blank_collapse_mode: str
+    blank_collapse_extra: str
 
 
 class FileTypeBriefEntry(TypedDict):
@@ -56,24 +73,25 @@ class FileTypeDetailEntry(TypedDict):
     qualified_key: str
     description: str
 
+    bound: bool
     extensions: list[str]
     filenames: list[str]
     patterns: list[str]
     skip_processing: bool
     has_content_matcher: bool
     has_insert_checker: bool
-    header_policy: str
+    policy: FileTypePolicyEntry
 
 
-FileTypeEntry = FileTypeBriefEntry | FileTypeDetailEntry
+FileTypeEntry: TypeAlias = FileTypeBriefEntry | FileTypeDetailEntry
 """Single file type entry (brief or detailed)."""
 
-FileTypesPayload = list[FileTypeEntry]
-"""Payload for `topmark filetypes`: a list of entries sorted by file type key."""
+FileTypesPayload: TypeAlias = list[FileTypeEntry]
+"""Payload for `topmark registry filetypes`: a list of entries sorted by file type key."""
 
 
 class FileTypeRefEntry(TypedDict):
-    """Expanded file type reference used inside processor detail entries."""
+    """Expanded file type reference used in auxiliary registry listings."""
 
     local_key: str
     namespace: str
@@ -81,7 +99,7 @@ class FileTypeRefEntry(TypedDict):
     description: str
 
 
-FileTypeRef = str | FileTypeRefEntry
+FileTypeRef: TypeAlias = str | FileTypeRefEntry
 """Reference to a file type.
 
 - In brief mode: a string containing the qualified file type identifier.
@@ -90,44 +108,94 @@ FileTypeRef = str | FileTypeRefEntry
 
 
 class ProcessorBriefEntry(TypedDict):
-    """Brief header-processor entry.
-
-    In brief mode, `filetypes` is a list of file type names.
-    """
+    """Brief header-processor entry used when `--show-details` is not requested."""
 
     local_key: str
     namespace: str
     qualified_key: str
-    module: str
-    class_name: str
-    filetypes: list[str]
+    description: str
 
 
 class ProcessorDetailEntry(TypedDict):
-    """Detailed header-processor entry.
-
-    In detail mode, `filetypes` is a list of expanded file type references.
-    """
+    """Detailed header-processor entry used when `--show-details` is enabled."""
 
     local_key: str
     namespace: str
     qualified_key: str
-    module: str
-    class_name: str
-    filetypes: list[FileTypeRefEntry]
+    description: str
+    bound: bool
+    line_indent: str
+    line_prefix: str
+    line_suffix: str
+    block_prefix: str
+    block_suffix: str
 
 
-ProcessorEntry = ProcessorBriefEntry | ProcessorDetailEntry
+ProcessorEntry: TypeAlias = ProcessorBriefEntry | ProcessorDetailEntry
 """Single processor entry (brief or detailed)."""
 
 
 class ProcessorsPayload(TypedDict):
-    """Payload for `topmark processors`.
+    """Payload for `topmark registry processors`.
 
-    Attributes:
-        processors: One entry per concrete header processor class, with associated file types.
-        unbound_filetypes: File types that have no registered header processor.
+    This payload is now identity-focused: it lists registered processors rather
+    than grouping file types under each processor.
     """
 
     processors: list[ProcessorEntry]
+
+
+class BindingBriefEntry(TypedDict):
+    """Brief binding entry used when `--show-details` is not requested."""
+
+    file_type_key: str
+    processor_key: str
+
+
+class BindingDetailEntry(TypedDict):
+    """Detailed binding entry used when `--show-details` is enabled."""
+
+    file_type_key: str
+    file_type_local_key: str
+    file_type_namespace: str
+    processor_key: str
+    processor_local_key: str
+    processor_namespace: str
+    file_type_description: str
+    processor_description: str
+
+
+BindingEntry: TypeAlias = BindingBriefEntry | BindingDetailEntry
+"""Single binding entry (brief or detailed)."""
+
+
+class ProcessorRefEntry(TypedDict):
+    """Expanded processor reference used for unused processor listings."""
+
+    local_key: str
+    namespace: str
+    qualified_key: str
+    description: str
+
+
+ProcessorRef: TypeAlias = str | ProcessorRefEntry
+"""Reference to a processor.
+
+- In brief mode: a string containing the qualified processor identifier.
+- In detail mode: an object containing identity and description fields.
+"""
+
+
+class BindingsPayload(TypedDict):
+    """Payload for `topmark registry bindings`.
+
+    Attributes:
+        bindings: Effective file-type-to-processor bindings.
+        unbound_filetypes: File types that have no effective processor binding.
+        unused_processors: Registered processors that do not currently participate
+            in an effective binding.
+    """
+
+    bindings: list[BindingEntry]
     unbound_filetypes: list[FileTypeRef]
+    unused_processors: list[ProcessorRef]

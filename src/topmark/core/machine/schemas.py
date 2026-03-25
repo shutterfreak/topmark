@@ -104,6 +104,8 @@ class MachineKey:
     FILETYPES: Final[str] = "filetypes"
     PROCESSORS: Final[str] = "processors"
     UNBOUND_FILETYPES: Final[str] = "unbound_filetypes"
+    BINDINGS: Final[str] = "bindings"
+    UNUSED_PROCESSORS: Final[str] = "unused_processors"
 
 
 class MachineKind:
@@ -120,6 +122,8 @@ class MachineKind:
     FILETYPE: Final[str] = "filetype"
     PROCESSOR: Final[str] = "processor"
     UNBOUND_FILETYPE: Final[str] = "unbound_filetype"
+    BINDING: Final[str] = "binding"
+    UNUSED_PROCESSOR: Final[str] = "unused_processor"
 
 
 class MachineMeta:
@@ -138,12 +142,60 @@ class MachineDomain:
     REGISTRY: Final[str] = "registry"
 
 
-class MetaPayload(TypedDict):
-    """Metadata describing the TopMark runtime environment for machine output."""
+class MetaPayload(TypedDict, total=True):
+    """Base metadata describing the TopMark runtime environment for machine output.
+
+    This payload is process-stable and shared across all machine-output commands.
+
+    Attributes:
+        tool: Name of the tool (e.g. "topmark").
+        version: Tool version string.
+        platform: Execution platform (e.g. "darwin", "linux").
+    """
 
     tool: str
     version: str
     platform: str
+
+
+class DetailedMetaPayload(MetaPayload, total=True):
+    """Extended metadata for machine output envelopes and records.
+
+    This structure extends [`MetaPayload`] with fields that vary per command
+    invocation (e.g. `--long`).
+
+    Attributes:
+        detail_level: Indicates whether the payload represents a brief or
+            detailed projection of the underlying data.
+
+    Notes:
+        Inherits the base metadata fields from `MetaPayload`:
+        `tool`, `version`, and `platform`.
+    """
+
+    detail_level: DetailLevel
+
+
+class DetailLevel(str, Enum):
+    """Enumeration of supported machine-output detail levels.
+
+    These values describe how much information is included in a payload and are
+    intended for **machine consumers**.
+
+    Attributes:
+        BRIEF: Minimal representation (default CLI behavior).
+        LONG: Expanded representation including additional identity and
+            descriptive fields (triggered via `--long`).
+
+    Notes:
+        - This is a machine-facing concept; it should not be confused with
+          human-facing verbosity levels.
+        - Consumers should rely on this field instead of inferring structure
+          from payload shape.
+    """
+
+    BRIEF = "brief"
+    LONG = "long"
 
 
 # --- Validation helpers ---
@@ -176,6 +228,8 @@ _KNOWN_KEYS: Final[set[str]] = {
     MachineKey.FILETYPES,
     MachineKey.PROCESSORS,
     MachineKey.UNBOUND_FILETYPES,
+    MachineKey.BINDINGS,
+    MachineKey.UNUSED_PROCESSORS,
 }
 _KNOWN_KINDS: Final[set[str]] = {
     MachineKind.CONFIG,
@@ -187,6 +241,8 @@ _KNOWN_KINDS: Final[set[str]] = {
     MachineKind.FILETYPE,
     MachineKind.PROCESSOR,
     MachineKind.UNBOUND_FILETYPE,
+    MachineKind.BINDING,
+    MachineKind.UNUSED_PROCESSOR,
 }
 
 

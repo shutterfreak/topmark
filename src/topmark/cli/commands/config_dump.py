@@ -52,6 +52,7 @@ from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
 from topmark.core.logging import get_logger
+from topmark.core.machine.payloads import build_meta_payload
 from topmark.presentation.markdown.config import render_config_dump_markdown
 from topmark.presentation.shared.config import ConfigDumpHumanReport
 from topmark.presentation.shared.config import build_config_dump_human_report
@@ -179,7 +180,7 @@ def config_dump_command(
     verbosity_level: int = ctx.obj[ArgKey.VERBOSITY_LEVEL]
 
     # Machine metadata
-    meta: MetaPayload = ctx.obj[ArgKey.META]
+    meta: MetaPayload = build_meta_payload()
 
     # Output format
     fmt: OutputFormat = output_format or OutputFormat.TEXT

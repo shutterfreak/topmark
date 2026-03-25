@@ -76,6 +76,7 @@ from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
 from topmark.core.logging import get_logger
+from topmark.core.machine.payloads import build_meta_payload
 from topmark.pipeline.context.policy import effective_would_strip
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.status import WriteStatus
@@ -230,7 +231,7 @@ def strip_command(
     verbosity_level: int = ctx.obj[ArgKey.VERBOSITY_LEVEL]
 
     # Machine metadata
-    meta: MetaPayload = ctx.obj[ArgKey.META]
+    meta: MetaPayload = build_meta_payload()
 
     # Output format
     fmt: OutputFormat = output_format or OutputFormat.TEXT
@@ -331,7 +332,7 @@ def strip_command(
     # Use Click's text stream for stdin so CliRunner/invoke input is read reliably
     # stdin_stream = click.get_text_stream("stdin") if stdin_text else None
 
-    if exit_if_no_files(file_list):
+    if exit_if_no_files(file_list, styled=enable_color):
         # Nothing to do
         return
 

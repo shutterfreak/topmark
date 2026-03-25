@@ -23,12 +23,11 @@ from topmark.cli.presentation import TextStyler
 from topmark.cli.presentation import style_for_role
 from topmark.core.presentation import StyleRole
 from topmark.presentation.formatters.filetypes import filetype_policy_to_display_pairs
-from topmark.presentation.shared.registry import FileTypePolicyHumanItem
-from topmark.presentation.shared.registry import ProcessorFileTypeHumanItem
-from topmark.presentation.shared.registry import UnboundFileTypeHumanItem
 
 if TYPE_CHECKING:
+    from topmark.presentation.shared.registry import BindingsHumanReport
     from topmark.presentation.shared.registry import FileTypeHumanItem
+    from topmark.presentation.shared.registry import FileTypePolicyHumanItem
     from topmark.presentation.shared.registry import FileTypesHumanReport
     from topmark.presentation.shared.registry import ProcessorsHumanReport
 
@@ -113,7 +112,7 @@ def render_filetypes_text(
 def render_processors_text(
     report: ProcessorsHumanReport,
 ) -> str:
-    """Render TEXT output for `topmark processors`.
+    """Render TEXT output for `topmark registry processors`.
 
     Args:
         report: Precomputed Click-free report model.
@@ -124,77 +123,83 @@ def render_processors_text(
     vlevel: int = report.verbosity_level
     heading_styler: TextStyler = style_for_role(StyleRole.HEADING_TITLE, styled=report.styled)
     dim_styler: TextStyler = style_for_role(StyleRole.DIFF_LINE_NO, styled=report.styled)
-    emphasis_styler: TextStyler = style_for_role(StyleRole.EMPHASIS, styled=report.styled)
 
     parts: list[str] = []
 
     if vlevel > 0:
-        parts.append(
-            heading_styler(
-                "\nSupported Header Processors (with qualified file type identifiers):\n",
-            )
-        )
+        parts.append(heading_styler("Registered header processors:"))
+        parts.append("")
 
     total_proc: int = len(report.processors)
     num_proc_width: int = len(str(total_proc)) if total_proc > 0 else 1
-
-    # Width for filetype numbering in detailed mode
-    num_ft_width: int = 1
-    if report.show_details:
-        max_ft_per_proc: int = max(
-            (
-                sum(1 for ft in p.filetypes if isinstance(ft, ProcessorFileTypeHumanItem))
-                for p in report.processors
-            ),
-            default=1,
-        )
-        num_ft_width = len(str(max_ft_per_proc))
+    k_len: int = max(1, max((len(proc.qualified_key) for proc in report.processors), default=1))
 
     for proc_idx, proc in enumerate(report.processors, start=1):
-        module: str = dim_styler(
-            "(" + proc.module + ")",
-        )
-
-        class_name: str = emphasis_styler(
-            proc.class_name,
-        )
+        descr: str = dim_styler(proc.description)
         if report.show_details:
-            parts.append(f"{proc_idx:>{num_proc_width}}. {proc.class_name} {module}")
-            for ft_idx, ft in enumerate(proc.filetypes, start=1):
-                if not isinstance(ft, ProcessorFileTypeHumanItem):
-                    continue
-                descr: str = dim_styler(
-                    ft.description,
-                )
-                parts.append(f"    {ft_idx:>{num_ft_width}}. {ft.name} - {descr}")
+            parts.append(f"{proc_idx:>{num_proc_width}}. {proc.qualified_key} — {descr}")
+            parts.append(f"      local key       : {proc.local_key}")
+            parts.append(f"      namespace       : {proc.namespace}")
+            parts.append(f"      bound           : {'yes' if proc.bound else 'no'}")
+            parts.append(f"      line indent     : {proc.line_indent}")
+            parts.append(f"      line prefix     : {proc.line_prefix}")
+            parts.append(f"      line suffix     : {proc.line_suffix}")
+            parts.append(f"      block prefix    : {proc.block_prefix}")
+            parts.append(f"      block suffix    : {proc.block_suffix}")
         else:
-            ft_names: list[str] = [ft for ft in proc.filetypes if isinstance(ft, str)]
-            proc_ft_count: int = len(ft_names)
-            parts.append(
-                f"{proc_idx:>{num_proc_width}}. {class_name} {module} (total: {proc_ft_count})"
-            )
-            parts.append(f"    - {', '.join(ft_names)}")
+            parts.append(f"{proc_idx:>{num_proc_width}}. {proc.qualified_key:<{k_len}} {descr}")
 
-        if vlevel > 0:
-            parts.append("")
+    return "\n".join(parts)
+
+
+def render_bindings_text(
+    report: BindingsHumanReport,
+) -> str:
+    """Render TEXT output for `topmark registry bindings`.
+
+    Args:
+        report: Precomputed Click-free report model.
+
+    Returns:
+        Rendered TEXT output.
+    """
+    vlevel: int = report.verbosity_level
+    heading_styler: TextStyler = style_for_role(StyleRole.HEADING_TITLE, styled=report.styled)
+    dim_styler: TextStyler = style_for_role(StyleRole.DIFF_LINE_NO, styled=report.styled)
+
+    parts: list[str] = []
+
+    if vlevel > 0:
+        parts.append(heading_styler("Effective file type to processor bindings:"))
+        parts.append("")
+
+    total: int = len(report.bindings)
+    num_width: int = len(str(total)) if total > 0 else 1
+
+    for idx, binding in enumerate(report.bindings, start=1):
+        if report.show_details:
+            parts.append(f"{idx:>{num_width}}. {binding.file_type_key} -> {binding.processor_key}")
+            parts.append(f"      file type local key : {binding.file_type_local_key}")
+            parts.append(f"      file type namespace : {binding.file_type_namespace}")
+            parts.append(f"      processor local key : {binding.processor_local_key}")
+            parts.append(f"      processor namespace : {binding.processor_namespace}")
+            parts.append(f"      file type desc      : {dim_styler(binding.file_type_description)}")
+            parts.append(f"      processor desc      : {dim_styler(binding.processor_description)}")
+        else:
+            parts.append(f"{idx:>{num_width}}. {binding.file_type_key} -> {binding.processor_key}")
 
     if report.unbound_filetypes:
-        hdr_no_processor: str = emphasis_styler(
-            "File types without a registered processor (qualified identifiers):",
-        )
-        if report.show_details:
-            parts.append(hdr_no_processor)
-            for uft_idx, uft in enumerate(report.unbound_filetypes, start=1):
-                if not isinstance(uft, UnboundFileTypeHumanItem):
-                    continue
-                unbound_ft_descr: str = dim_styler(
-                    uft.description,
-                )
-                parts.append(f"    {uft_idx:>{num_ft_width}}. {uft.name} - {unbound_ft_descr}")
-        else:
-            names: list[str] = [uft for uft in report.unbound_filetypes if isinstance(uft, str)]
-            unreg_ft_count: int = len(names)
-            parts.append(f"{hdr_no_processor} (total: {unreg_ft_count})")
-            parts.append(f"    - {', '.join(names)}")
+        parts.append("")
+        parts.append(heading_styler("Unbound file types:"))
+        for idx, item in enumerate(report.unbound_filetypes, start=1):
+            parts.append(f"{idx:>{num_width}}. {item.name} — {dim_styler(item.description)}")
+
+    if report.unused_processors:
+        parts.append("")
+        parts.append(heading_styler("Unused processors:"))
+        for idx, item in enumerate(report.unused_processors, start=1):
+            parts.append(
+                f"{idx:>{num_width}}. {item.qualified_key} — {dim_styler(item.description)}"
+            )
 
     return "\n".join(parts)

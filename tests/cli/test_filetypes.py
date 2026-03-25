@@ -10,7 +10,7 @@
 
 """CLI test: `filetypes` command output.
 
-Ensures that invoking `topmark filetypes` exits successfully and produces
+Ensures that invoking `topmark registry filetypes` exits successfully and produces
 non-empty output, typically including the phrase "Supported file types".
 """
 

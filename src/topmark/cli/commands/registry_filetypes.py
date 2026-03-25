@@ -31,6 +31,8 @@ from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import apply_ignore_positional_paths_policy
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
+from topmark.core.machine.payloads import build_meta_payload
+from topmark.core.machine.payloads import with_detail_level
 from topmark.presentation.markdown.registry import render_filetypes_markdown
 from topmark.presentation.shared.registry import FileTypesHumanReport
 from topmark.presentation.shared.registry import build_filetypes_human_report
@@ -39,7 +41,7 @@ from topmark.presentation.text.registry import render_filetypes_text
 if TYPE_CHECKING:
     from topmark.cli.console.color import ColorMode
     from topmark.cli.console.protocols import ConsoleProtocol
-    from topmark.core.machine.schemas import MetaPayload
+    from topmark.core.machine.schemas import DetailedMetaPayload
 
 
 @click.command(
@@ -101,8 +103,11 @@ def registry_filetypes_command(
     # Select the console
     console: ConsoleProtocol = ctx.obj[ArgKey.CONSOLE]
 
-    # Machine metadata
-    meta: MetaPayload = ctx.obj[ArgKey.META]
+    # Machine metadata: extend with show_details:
+    meta: DetailedMetaPayload = with_detail_level(
+        build_meta_payload(),
+        show_details=show_details,
+    )
 
     # Output format
     fmt: OutputFormat = output_format or OutputFormat.TEXT

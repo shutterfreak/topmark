@@ -10,6 +10,6 @@
   "get_version_info": "(*, semver: 'bool' = False) -> 'VersionInfo'",
   "get_version_text": "() -> 'str'",
   "list_filetypes": "() -> 'list[FileTypeInfo]'",
-  "list_processors": "(show_details: 'bool' = False) -> 'list[ProcessorInfo]'",
+  "list_processors": "() -> 'list[ProcessorInfo]'",
   "strip": "(paths: 'Iterable[Path | str]', *, apply: 'bool' = False, diff: 'bool' = False, config: 'Mapping[str, Any] | None' = None, policy: 'PublicPolicy | None' = None, policy_by_type: 'Mapping[str, PublicPolicy] | None' = None, include_file_types: 'Sequence[str] | None' = None, exclude_file_types: 'Sequence[str] | None' = None, skip_compliant: 'bool' = False, skip_unsupported: 'bool' = False, prune: 'bool' = False) -> 'RunResult'"
 }

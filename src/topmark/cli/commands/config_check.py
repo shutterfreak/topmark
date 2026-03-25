@@ -48,6 +48,7 @@ from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
 from topmark.core.logging import get_logger
+from topmark.core.machine.payloads import build_meta_payload
 from topmark.presentation.markdown.config import render_config_check_markdown
 from topmark.presentation.shared.config import ConfigCheckHumanReport
 from topmark.presentation.shared.config import build_config_check_human_report
@@ -141,7 +142,7 @@ def config_check_command(
     console: ConsoleProtocol = ctx.obj[ArgKey.CONSOLE]
 
     # Machine metadata
-    meta: MetaPayload = ctx.obj[ArgKey.META]
+    meta: MetaPayload = build_meta_payload()
 
     # Output format
     fmt: OutputFormat = output_format or OutputFormat.TEXT

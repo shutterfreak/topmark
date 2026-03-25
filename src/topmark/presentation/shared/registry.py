@@ -34,17 +34,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from topmark.api.commands.registry import list_bindings
 from topmark.api.commands.registry import list_filetypes
-from topmark.registry.bindings import BindingRegistry
-from topmark.registry.filetypes import FileTypeRegistry
+from topmark.api.commands.registry import list_processors
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
-
+    from topmark.api.types import BindingInfo
     from topmark.api.types import FileTypeInfo
     from topmark.api.types import FileTypePolicyInfo
-    from topmark.filetypes.model import FileType
-    from topmark.registry.types import ProcessorDefinition
+    from topmark.api.types import ProcessorInfo
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,7 +122,7 @@ class FileTypeHumanItem:
 
 @dataclass(frozen=True, slots=True)
 class FileTypesHumanReport:
-    """Click-free, human-facing report for `topmark filetypes`."""
+    """Click-free, human-facing report for `topmark registry filetypes`."""
 
     show_details: bool
     verbosity_level: int
@@ -133,37 +131,66 @@ class FileTypesHumanReport:
 
 
 @dataclass(frozen=True, slots=True)
-class ProcessorFileTypeHumanItem:
-    """Click-free, human-facing view of a processor-bound file type entry.
+class BindingHumanItem:
+    """Click-free, human-facing view of one effective binding.
 
     Attributes:
-        name: Qualified file type identifier shown under the processor.
-        description: Human-readable file type description.
+        file_type_key: Canonical file type key.
+        file_type_local_key: File type local key.
+        file_type_namespace: Namespace that owns the file type.
+        processor_key: Canonical processor key.
+        processor_local_key: Processor local key.
+        processor_namespace: Namespace that owns the processor.
+        file_type_description: Human-readable file type description.
+        processor_description: Human-readable processor description.
     """
 
-    name: str
-    description: str
+    file_type_key: str
+    file_type_local_key: str
+    file_type_namespace: str
+
+    processor_key: str
+    processor_local_key: str
+    processor_namespace: str
+
+    file_type_description: str
+    processor_description: str
 
 
 @dataclass(frozen=True, slots=True)
 class ProcessorHumanItem:
-    """Click-free, human-facing view of one header processor binding group.
+    """Click-free, human-facing view of one header processor.
 
     Attributes:
-        module: Fully-qualified module path of the processor class.
-        class_name: Processor class name.
-        filetypes: Either qualified file type identifiers (brief mode) or
-            expanded processor/file-type items (detail mode).
+        local_key: Processor local key.
+        namespace: Namespace that owns the processor.
+        qualified_key: Canonical processor key.
+        description: Human-readable processor description.
+        bound: Whether the processor currently participates in at least one
+            effective binding.
+        line_indent: Line comment indent (if applicable).
+        line_prefix: Line comment prefix (if applicable).
+        line_suffix: Line comment suffix (if applicable).
+        block_prefix: Block comment prefix (if applicable).
+        block_suffix: Block comment suffix (if applicable).
     """
 
-    module: str
-    class_name: str
-    filetypes: tuple[str, ...] | tuple[ProcessorFileTypeHumanItem, ...]
+    local_key: str
+    namespace: str
+    qualified_key: str
+    description: str
+    bound: bool
+
+    line_indent: str
+    line_prefix: str
+    line_suffix: str
+    block_prefix: str
+    block_suffix: str
 
 
 @dataclass(frozen=True, slots=True)
 class UnboundFileTypeHumanItem:
-    """Click-free, human-facing view of an unbound file type entry.
+    """Click-free, human-facing view of an unbound file type.
 
     Attributes:
         name: Qualified file type identifier shown in human-facing output.
@@ -176,12 +203,23 @@ class UnboundFileTypeHumanItem:
 
 @dataclass(frozen=True, slots=True)
 class ProcessorsHumanReport:
-    """Click-free, human-facing report for `topmark processors`."""
+    """Click-free, human-facing report for `topmark registry processors`."""
 
     show_details: bool
     verbosity_level: int
     processors: tuple[ProcessorHumanItem, ...]
-    unbound_filetypes: tuple[str, ...] | tuple[UnboundFileTypeHumanItem, ...]
+    styled: bool
+
+
+@dataclass(frozen=True, slots=True)
+class BindingsHumanReport:
+    """Click-free, human-facing report for `topmark registry bindings`."""
+
+    show_details: bool
+    verbosity_level: int
+    bindings: tuple[BindingHumanItem, ...]
+    unbound_filetypes: tuple[UnboundFileTypeHumanItem, ...]
+    unused_processors: tuple[ProcessorHumanItem, ...]
     styled: bool
 
 
@@ -262,81 +300,101 @@ def build_processors_human_report(
         styled: Whether to render styled text output.
 
     Returns:
-        A `ProcessorsHumanReport` grouping qualified file type identifiers by
-        header processor identity and listing unbound file types.
+        A `ProcessorsHumanReport` with one item per registered processor.
     """
-    from topmark.registry.processors import HeaderProcessorRegistry
+    raw_items: list[ProcessorInfo] = list_processors()
 
-    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping_by_local_key()
-    hp_registry: Mapping[str, ProcessorDefinition] = HeaderProcessorRegistry.as_mapping()
-    binding_registry: Mapping[str, str] = BindingRegistry.as_mapping()
-
-    # Build a helper map of file types by qualified key:
-    ft_by_qk: dict[str, FileType] = {ft.qualified_key: ft for ft in ft_registry.values()}
-
-    # Group by processor qualified key using binding_registry.items()
-    groups: dict[str, tuple[ProcessorDefinition, list[FileType]]] = {}
-
-    for filetype_qk, processor_qk in binding_registry.items():
-        file_type: FileType | None = ft_by_qk.get(filetype_qk)
-        if file_type is None:
-            continue
-        proc_definition: ProcessorDefinition | None = hp_registry.get(processor_qk)
-        if proc_definition is None:
-            continue
-
-        if processor_qk not in groups:
-            groups[processor_qk] = (proc_definition, [])
-        groups[processor_qk][1].append(file_type)
-
-    processors: list[ProcessorHumanItem] = []
-    for _key, (proc_definition, bound_file_types_list) in sorted(groups.items()):
-        sorted_file_types: list[FileType] = sorted(
-            bound_file_types_list,
-            key=lambda ft: ft.qualified_key,
+    processors: list[ProcessorHumanItem] = [
+        ProcessorHumanItem(
+            local_key=item["local_key"],
+            namespace=item["namespace"],
+            qualified_key=item["qualified_key"],
+            description=item["description"],
+            bound=item["bound"],
+            line_indent=item["line_indent"],
+            line_prefix=item["line_prefix"],
+            line_suffix=item["line_suffix"],
+            block_prefix=item["block_prefix"],
+            block_suffix=item["block_suffix"],
         )
-        if show_details:
-            processors.append(
-                ProcessorHumanItem(
-                    module=proc_definition.processor_class.__module__,
-                    class_name=proc_definition.processor_class.__name__,
-                    filetypes=tuple(
-                        ProcessorFileTypeHumanItem(
-                            name=ft.qualified_key,
-                            description=ft.description,
-                        )
-                        for ft in sorted_file_types
-                    ),
-                )
-            )
-        else:
-            processors.append(
-                ProcessorHumanItem(
-                    module=proc_definition.processor_class.__module__,
-                    class_name=proc_definition.processor_class.__name__,
-                    filetypes=tuple(ft.qualified_key for ft in sorted_file_types),
-                )
-            )
-
-    unbound_filetypes_list: list[FileType] = sorted(
-        [ft for ft in ft_registry.values() if ft.qualified_key not in binding_registry],
-        key=lambda ft: ft.qualified_key,
-    )
-    if show_details:
-        unbound_filetypes: tuple[str, ...] | tuple[UnboundFileTypeHumanItem, ...] = tuple(
-            UnboundFileTypeHumanItem(
-                name=ft.qualified_key,
-                description=ft.description,
-            )
-            for ft in unbound_filetypes_list
-        )
-    else:
-        unbound_filetypes = tuple(ft.qualified_key for ft in unbound_filetypes_list)
+        for item in sorted(raw_items, key=lambda it: str(it["qualified_key"]))
+    ]
 
     return ProcessorsHumanReport(
         show_details=show_details,
         verbosity_level=verbosity_level,
         processors=tuple(processors),
-        unbound_filetypes=unbound_filetypes,
+        styled=styled,
+    )
+
+
+def build_bindings_human_report(
+    *,
+    show_details: bool,
+    verbosity_level: int,
+    styled: bool,
+) -> BindingsHumanReport:
+    """Build a Click-free report used by TEXT and MARKDOWN for `bindings`.
+
+    Args:
+        show_details: Whether consumers intend to display extended details.
+        verbosity_level: Effective verbosity (consumers may ignore).
+        styled: Whether to render styled text output.
+
+    Returns:
+        A `BindingsHumanReport` with effective bindings, unbound file types, and
+        currently unused processors.
+    """
+    raw_bindings: list[BindingInfo] = list_bindings()
+    raw_filetypes: list[FileTypeInfo] = list_filetypes()
+    raw_processors: list[ProcessorInfo] = list_processors()
+
+    bindings: list[BindingHumanItem] = [
+        BindingHumanItem(
+            file_type_key=item["file_type_key"],
+            file_type_local_key=item["file_type_local_key"],
+            file_type_namespace=item["file_type_namespace"],
+            processor_key=item["processor_key"],
+            processor_local_key=item["processor_local_key"],
+            processor_namespace=item["processor_namespace"],
+            file_type_description=item["file_type_description"],
+            processor_description=item["processor_description"],
+        )
+        for item in sorted(raw_bindings, key=lambda it: str(it["file_type_key"]))
+    ]
+
+    bound_filetype_keys: set[str] = {item.file_type_key for item in bindings}
+    unbound_filetypes: list[UnboundFileTypeHumanItem] = [
+        UnboundFileTypeHumanItem(
+            name=item["qualified_key"],
+            description=item["description"],
+        )
+        for item in sorted(raw_filetypes, key=lambda it: str(it["qualified_key"]))
+        if item["qualified_key"] not in bound_filetype_keys
+    ]
+
+    unused_processors: list[ProcessorHumanItem] = [
+        ProcessorHumanItem(
+            local_key=item["local_key"],
+            namespace=item["namespace"],
+            qualified_key=item["qualified_key"],
+            description=item["description"],
+            bound=item["bound"],
+            line_indent=item["line_indent"],
+            line_prefix=item["line_prefix"],
+            line_suffix=item["line_suffix"],
+            block_prefix=item["block_prefix"],
+            block_suffix=item["block_suffix"],
+        )
+        for item in sorted(raw_processors, key=lambda it: str(it["qualified_key"]))
+        if not item["bound"]
+    ]
+
+    return BindingsHumanReport(
+        show_details=show_details,
+        verbosity_level=verbosity_level,
+        bindings=tuple(bindings),
+        unbound_filetypes=tuple(unbound_filetypes),
+        unused_processors=tuple(unused_processors),
         styled=styled,
     )

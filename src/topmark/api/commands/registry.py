@@ -28,15 +28,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from topmark.api.types import BindingInfo
 from topmark.api.types import FileTypeInfo
 from topmark.api.types import FileTypePolicyInfo
+from topmark.api.types import ProcessorInfo
 from topmark.registry.registry import Registry
 
 if TYPE_CHECKING:
-    from topmark.api.types import BindingInfo
-    from topmark.api.types import ProcessorInfo
     from topmark.filetypes.policy import FileTypeHeaderPolicy
     from topmark.processors.base import HeaderProcessor
+    from topmark.registry.types import ProcessorMeta
 
 __all__ = (
     "list_bindings",
@@ -87,12 +88,8 @@ def list_filetypes() -> list[FileTypeInfo]:
     ]
 
 
-def list_processors(show_details: bool = False) -> list[ProcessorInfo]:
+def list_processors() -> list[ProcessorInfo]:
     """Return metadata about registered header processors.
-
-    Args:
-        show_details: If `True`, include extended details for line/block
-            delimiters.
 
     Returns:
         A list of `ProcessorInfo` dicts (stable, serializable metadata).
@@ -102,25 +99,26 @@ def list_processors(show_details: bool = False) -> list[ProcessorInfo]:
         [`topmark.registry`][]. This function returns metadata rather than the
         registry objects themselves.
     """
+    bound_processor_keys: set[str] = {
+        binding.processor.qualified_key
+        for binding in Registry.bindings()
+        if binding.processor is not None
+    }
     items: list[ProcessorInfo] = []
     for qualified_key, proc_def in Registry.processors().items():
         proc_obj: HeaderProcessor = proc_def.processor_class()
-        info: ProcessorInfo = {
-            "local_key": getattr(proc_def, "local_key", ""),
-            "namespace": getattr(proc_def, "namespace", ""),
-            "qualified_key": qualified_key,
-            "description": getattr(proc_obj, "description", ""),
-        }
-        if show_details:
-            info.update(
-                {
-                    "line_indent": getattr(proc_obj, "line_indent", "") or "",
-                    "line_prefix": getattr(proc_obj, "line_prefix", "") or "",
-                    "line_suffix": getattr(proc_obj, "line_suffix", "") or "",
-                    "block_prefix": getattr(proc_obj, "block_prefix", "") or "",
-                    "block_suffix": getattr(proc_obj, "block_suffix", "") or "",
-                }
-            )
+        info: ProcessorInfo = ProcessorInfo(
+            local_key=getattr(proc_def, "local_key", ""),
+            namespace=getattr(proc_def, "namespace", ""),
+            qualified_key=qualified_key,
+            description=getattr(proc_obj, "description", ""),
+            bound=qualified_key in bound_processor_keys,
+            line_indent=getattr(proc_obj, "line_indent", "") or "",
+            line_prefix=getattr(proc_obj, "line_prefix", "") or "",
+            line_suffix=getattr(proc_obj, "line_suffix", "") or "",
+            block_prefix=getattr(proc_obj, "block_prefix", "") or "",
+            block_suffix=getattr(proc_obj, "block_suffix", "") or "",
+        )
         items.append(info)
     return items
 
@@ -137,18 +135,18 @@ def list_bindings() -> list[BindingInfo]:
     """
     items: list[BindingInfo] = []
     for binding in Registry.bindings():
-        processor = binding.processor
+        processor: ProcessorMeta | None = binding.processor
         if processor is None:
             continue
-        info: BindingInfo = {
-            "file_type_key": binding.filetype.qualified_key,
-            "file_type_local_key": binding.filetype.local_key,
-            "file_type_namespace": binding.filetype.namespace,
-            "processor_key": processor.qualified_key,
-            "processor_local_key": processor.local_key,
-            "processor_namespace": processor.namespace,
-            "file_type_description": binding.filetype.description,
-            "processor_description": processor.description,
-        }
+        info: BindingInfo = BindingInfo(
+            file_type_key=binding.filetype.qualified_key,
+            file_type_local_key=binding.filetype.local_key,
+            file_type_namespace=binding.filetype.namespace,
+            processor_key=processor.qualified_key,
+            processor_local_key=processor.local_key,
+            processor_namespace=processor.namespace,
+            file_type_description=binding.filetype.description,
+            processor_description=processor.description,
+        )
         items.append(info)
     return items

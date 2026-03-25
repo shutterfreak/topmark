@@ -30,6 +30,7 @@ from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import apply_ignore_positional_paths_policy
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
+from topmark.core.machine.payloads import build_meta_payload
 from topmark.presentation.markdown.version import render_version_markdown
 from topmark.presentation.shared.version import VersionHumanReport
 from topmark.presentation.shared.version import make_version_human_report
@@ -98,7 +99,7 @@ def version_command(
     console: ConsoleProtocol = ctx.obj[ArgKey.CONSOLE]
 
     # Machine metadata
-    meta: MetaPayload = ctx.obj[ArgKey.META]
+    meta: MetaPayload = build_meta_payload()
 
     # Output format
     fmt: OutputFormat = output_format or OutputFormat.TEXT

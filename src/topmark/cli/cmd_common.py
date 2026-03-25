@@ -33,11 +33,13 @@ from topmark.cli.console.color import resolve_color_mode
 from topmark.cli.console.context import resolve_console
 from topmark.cli.options import ColorMode
 from topmark.cli.options import resolve_verbosity
+from topmark.cli.presentation import TextStyler
+from topmark.cli.presentation import style_for_role
 from topmark.cli.validators import validate_verbose_quiet_exclusivity
 from topmark.core.keys import ArgKey
 from topmark.core.logging import resolve_env_log_level
 from topmark.core.logging import setup_logging
-from topmark.core.machine.payloads import build_meta_payload
+from topmark.core.presentation import StyleRole
 from topmark.resolution.files import resolve_file_list
 
 if TYPE_CHECKING:
@@ -60,14 +62,11 @@ def init_common_state(
 ) -> None:
     """Initialize shared UI/runtime state on the Click context.
 
-    This is the per-command equivalent of the former group-level initializer.
     It populates `ctx.obj` with:
-
     - `ArgKey.VERBOSITY_LEVEL`
     - `ArgKey.LOG_LEVEL` (from environment)
     - `ArgKey.COLOR_MODE` and `ArgKey.COLOR_ENABLED`
     - `ArgKey.CONSOLE`
-    - `ArgKey.META`
 
     Args:
         ctx: Current Click context; will have ``obj`` and ``color`` set.
@@ -105,9 +104,6 @@ def init_common_state(
     console = Console(enable_color=enable_color)
     ctx.obj[ArgKey.CONSOLE] = console
 
-    # Machine metadata payload.
-    ctx.obj[ArgKey.META] = build_meta_payload()
-
 
 def build_file_list(config: Config, *, stdin_mode: bool, temp_path: Path | None) -> list[Path]:
     """Return the files to process, respecting STDIN content mode.
@@ -123,11 +119,12 @@ def build_file_list(config: Config, *, stdin_mode: bool, temp_path: Path | None)
     return resolve_file_list(config)
 
 
-def exit_if_no_files(file_list: list[Path]) -> bool:
+def exit_if_no_files(file_list: list[Path], *, styled: bool) -> bool:
     """Echo a friendly message and return True if there is nothing to process."""
     if not file_list:
         console: ConsoleProtocol = resolve_console()
-        console.print(console.styled("\nℹ️  No files to process.\n", fg="blue"))
+        info_styler: TextStyler = style_for_role(StyleRole.INFO, styled=styled)
+        console.print(info_styler("\nℹ️  No files to process.\n"))
         return True
     return False
 

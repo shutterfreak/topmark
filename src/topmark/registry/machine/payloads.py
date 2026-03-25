@@ -13,8 +13,9 @@
 This module builds JSON-serializable payload *objects* (plain Python dicts/lists)
 for registry-focused CLI commands:
 
-- `topmark filetypes`
-- `topmark processors`
+- `topmark registry filetypes`
+- `topmark registry processors`
+- `topmark registry bindings`
 
 The builders here are:
 - Click-free and console-free.
@@ -31,212 +32,222 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.filetypes.model import FileType
-from topmark.registry.filetypes import FileTypeRegistry
+from topmark.api.commands.registry import list_bindings
+from topmark.api.commands.registry import list_filetypes
+from topmark.api.commands.registry import list_processors
+from topmark.registry.machine.schemas import BindingBriefEntry
+from topmark.registry.machine.schemas import BindingDetailEntry
+from topmark.registry.machine.schemas import BindingsPayload
 from topmark.registry.machine.schemas import FileTypeBriefEntry
 from topmark.registry.machine.schemas import FileTypeDetailEntry
+from topmark.registry.machine.schemas import FileTypePolicyEntry
 from topmark.registry.machine.schemas import FileTypeRefEntry
 from topmark.registry.machine.schemas import FileTypesPayload
 from topmark.registry.machine.schemas import ProcessorBriefEntry
 from topmark.registry.machine.schemas import ProcessorDetailEntry
+from topmark.registry.machine.schemas import ProcessorRefEntry
 from topmark.registry.machine.schemas import ProcessorsPayload
-from topmark.registry.types import ProcessorDefinition
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from topmark.api.types import BindingInfo
+    from topmark.api.types import FileTypeInfo
+    from topmark.api.types import FileTypePolicyInfo
+    from topmark.api.types import ProcessorInfo
 
-    from topmark.filetypes.model import FileType
-    from topmark.registry.machine.schemas import FileTypeRef
-    from topmark.registry.types import ProcessorDefinition
 
-
-def _policy_name(obj: object | None) -> str:
-    """Return a stable, human/machine-friendly name for a policy object.
-
-    The registry output may include a file type's header policy. The policy object
-    might expose a `.name` attribute; otherwise we fall back to the class name.
+def _serialize_filetype_policy(policy: FileTypePolicyInfo) -> FileTypePolicyEntry:
+    """Serialize structured file type policy metadata for machine output.
 
     Args:
-        obj: Policy object or None.
+        policy: File type policy metadata returned by the public API.
 
     Returns:
-        A stable string suitable for machine output.
+        A `FileTypePolicyEntry` dict preserving the stable API field names.
     """
-    if obj is None:
-        return ""
-    name: str | None = getattr(obj, "name", None)
-    if name:
-        return str(name)
-    return obj.__class__.__name__
-
-
-def _serialize_filetype_ref(ft: FileType) -> FileTypeRefEntry:
-    """Serialize a file type reference entry for machine payloads.
-
-    Args:
-        ft: File type runtime object.
-
-    Returns:
-        A `FileTypeRefEntry` dict containing stable identity fields.
-    """
-    return FileTypeRefEntry(
-        local_key=ft.local_key,
-        namespace=ft.namespace,
-        qualified_key=ft.qualified_key,
-        description=ft.description,
+    return FileTypePolicyEntry(
+        supports_shebang=policy["supports_shebang"],
+        encoding_line_regex=policy["encoding_line_regex"],
+        pre_header_blank_after_block=policy["pre_header_blank_after_block"],
+        ensure_blank_after_header=policy["ensure_blank_after_header"],
+        blank_collapse_mode=policy["blank_collapse_mode"],
+        blank_collapse_extra=policy["blank_collapse_extra"],
     )
 
 
-def _serialize_filetype_details(ft: FileType) -> FileTypeDetailEntry:
-    """Serialize the detailed machine payload for a single file type.
+def _serialize_processor_ref(item: ProcessorInfo) -> ProcessorRefEntry:
+    """Serialize a processor reference entry for machine payloads.
 
     Args:
-        ft: File type runtime object.
+        item: Processor metadata returned by the public API.
 
     Returns:
-        A `FileTypeDetailEntry` dict.
+        A `ProcessorRefEntry` dict containing stable identity fields.
     """
-    policy_name: str = _policy_name(ft.header_policy)
-    return FileTypeDetailEntry(
-        local_key=ft.local_key,
-        namespace=ft.namespace,
-        qualified_key=ft.qualified_key,
-        description=ft.description,
-        extensions=list(ft.extensions or []),
-        filenames=list(ft.filenames or []),
-        patterns=list(ft.patterns or []),
-        skip_processing=bool(ft.skip_processing),
-        has_content_matcher=ft.content_matcher is not None,
-        has_insert_checker=ft.pre_insert_checker is not None,
-        header_policy=policy_name,
+    return ProcessorRefEntry(
+        local_key=item["local_key"],
+        namespace=item["namespace"],
+        qualified_key=item["qualified_key"],
+        description=item["description"],
     )
 
 
 def build_filetypes_payload(*, show_details: bool) -> FileTypesPayload:
-    """Build the registry payload for `topmark filetypes`.
+    """Build the registry payload for `topmark registry filetypes`.
 
     Args:
-        show_details: If True, include matching rules and capability flags.
+        show_details: If True, include matching rules, binding state, and
+            structured policy metadata.
 
     Returns:
-        List of file type entries, sorted by file type key.
-
-    Notes:
-        - The returned structure is JSON-serializable.
-        - Sorting is by the registry key to ensure stable output.
+        List of file type entries, sorted by canonical file type key.
     """
-    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping_by_local_key()
+    raw_items: list[FileTypeInfo] = list_filetypes()
 
     payload: list[FileTypeBriefEntry | FileTypeDetailEntry] = []
-    if show_details:
-        for _key, ft in sorted(ft_registry.items()):
-            payload.append(_serialize_filetype_details(ft))
-    else:
-        for _key, ft in sorted(ft_registry.items()):
-            brief = FileTypeBriefEntry(
-                local_key=ft.local_key,
-                namespace=ft.namespace,
-                qualified_key=ft.qualified_key,
-                description=ft.description,
+    for item in sorted(raw_items, key=lambda it: str(it["qualified_key"])):
+        if show_details:
+            payload.append(
+                FileTypeDetailEntry(
+                    local_key=item["local_key"],
+                    namespace=item["namespace"],
+                    qualified_key=item["qualified_key"],
+                    description=item["description"],
+                    bound=item["bound"],
+                    extensions=list(item["extensions"]),
+                    filenames=list(item["filenames"]),
+                    patterns=list(item["patterns"]),
+                    skip_processing=item["skip_processing"],
+                    has_content_matcher=item["has_content_matcher"],
+                    has_insert_checker=item["has_insert_checker"],
+                    policy=_serialize_filetype_policy(item["policy"]),
+                )
             )
-            payload.append(brief)
+        else:
+            payload.append(
+                FileTypeBriefEntry(
+                    local_key=item["local_key"],
+                    namespace=item["namespace"],
+                    qualified_key=item["qualified_key"],
+                    description=item["description"],
+                )
+            )
 
     return payload
 
 
 def build_processors_payload(*, show_details: bool) -> ProcessorsPayload:
-    """Build the registry payload for `topmark processors`.
+    """Build the registry payload for `topmark registry processors`.
+
+    Args:
+        show_details: If True, include expanded identity and delimiter fields.
+
+    Returns:
+        A `ProcessorsPayload` dict sorted by canonical processor key.
+    """
+    raw_items: list[ProcessorInfo] = list_processors()
+
+    processors: list[ProcessorBriefEntry | ProcessorDetailEntry] = []
+    for item in sorted(raw_items, key=lambda it: str(it["qualified_key"])):
+        if show_details:
+            processors.append(
+                ProcessorDetailEntry(
+                    local_key=item["local_key"],
+                    namespace=item["namespace"],
+                    qualified_key=item["qualified_key"],
+                    description=item["description"],
+                    bound=item["bound"],
+                    line_indent=item["line_indent"],
+                    line_prefix=item["line_prefix"],
+                    line_suffix=item["line_suffix"],
+                    block_prefix=item["block_prefix"],
+                    block_suffix=item["block_suffix"],
+                )
+            )
+        else:
+            processors.append(
+                ProcessorBriefEntry(
+                    local_key=item["local_key"],
+                    namespace=item["namespace"],
+                    qualified_key=item["qualified_key"],
+                    description=item["description"],
+                )
+            )
+
+    return ProcessorsPayload(processors=processors)
+
+
+def build_bindings_payload(*, show_details: bool) -> BindingsPayload:
+    """Build the registry payload for `topmark registry bindings`.
 
     Shape:
         {
-          "processors": [
-            {"module": "...", "class_name": "...", "filetypes": [...]},
-            ...
-          ],
-          "unbound_filetypes": [...]
+          "bindings": [...],
+          "unbound_filetypes": [...],
+          "unused_processors": [...],
         }
 
     Args:
-        show_details: If True, expand file type references with description objects.
+        show_details: If True, expand bindings and reference entries with
+            identity/description objects.
 
     Returns:
-        A `ProcessorsPayload` dict whose lists are deterministically sorted.
-
-    Notes:
-        - Processors are grouped by concrete processor class (module + class name).
-        - `unbound_filetypes` are registry file types that do not have a bound processor.
+        A `BindingsPayload` dict whose lists are deterministically sorted.
     """
-    from topmark.registry.bindings import BindingRegistry
-    from topmark.registry.processors import HeaderProcessorRegistry
+    raw_bindings: list[BindingInfo] = list_bindings()
+    raw_filetypes: list[FileTypeInfo] = list_filetypes()
+    raw_processors: list[ProcessorInfo] = list_processors()
 
-    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping_by_local_key()
-    hp_registry: Mapping[str, ProcessorDefinition] = HeaderProcessorRegistry.as_mapping()
-    binding_registry: Mapping[str, str] = BindingRegistry.as_mapping()
-    ft_by_qk: dict[str, FileType] = {ft.qualified_key: ft for ft in ft_registry.values()}
-
-    # Group by processor_qk
-
-    groups: dict[str, tuple[ProcessorDefinition, list[FileType]]] = {}
-
-    for filetype_qk, processor_qk in binding_registry.items():
-        file_type: FileType | None = ft_by_qk.get(filetype_qk)
-        if file_type is None:
-            continue
-        proc_definition: ProcessorDefinition | None = hp_registry.get(processor_qk)
-        if proc_definition is None:
-            continue
-
-        if processor_qk not in groups:
-            groups[processor_qk] = (proc_definition, [])
-        groups[processor_qk][1].append(file_type)
-
-    # File types without a bound processor
-    unbound_filetypes: list[FileType] = sorted(
-        [ft for ft in ft_registry.values() if ft.qualified_key not in binding_registry],
-        key=lambda ft: ft.qualified_key,
-    )
-
-    processors: list[ProcessorBriefEntry | ProcessorDetailEntry] = []
-    for _key, (proc_definition, bound_file_types_list) in sorted(groups.items()):
-        sorted_file_types: list[FileType] = sorted(
-            bound_file_types_list,
-            key=lambda ft: ft.qualified_key,
-        )
+    bindings: list[BindingBriefEntry | BindingDetailEntry] = []
+    for item in sorted(raw_bindings, key=lambda it: str(it["file_type_key"])):
         if show_details:
-            ft_refs: list[FileTypeRefEntry] = [
-                _serialize_filetype_ref(ft) for ft in sorted_file_types
-            ]
-            entry_d = ProcessorDetailEntry(
-                namespace=proc_definition.namespace,
-                local_key=proc_definition.local_key,
-                qualified_key=proc_definition.qualified_key,
-                module=proc_definition.processor_class.__module__,
-                class_name=proc_definition.processor_class.__name__,
-                filetypes=ft_refs,
+            bindings.append(
+                BindingDetailEntry(
+                    file_type_key=item["file_type_key"],
+                    file_type_local_key=item["file_type_local_key"],
+                    file_type_namespace=item["file_type_namespace"],
+                    processor_key=item["processor_key"],
+                    processor_local_key=item["processor_local_key"],
+                    processor_namespace=item["processor_namespace"],
+                    file_type_description=item["file_type_description"],
+                    processor_description=item["processor_description"],
+                )
             )
-            processors.append(entry_d)
         else:
-            ft_names: list[str] = [ft.qualified_key for ft in sorted_file_types]
-
-            entry_b = ProcessorBriefEntry(
-                namespace=proc_definition.namespace,
-                local_key=proc_definition.local_key,
-                qualified_key=proc_definition.qualified_key,
-                module=proc_definition.processor_class.__module__,
-                class_name=proc_definition.processor_class.__name__,
-                filetypes=ft_names,
+            bindings.append(
+                BindingBriefEntry(
+                    file_type_key=item["file_type_key"],
+                    processor_key=item["processor_key"],
+                )
             )
-            processors.append(entry_b)
 
-    unbound_payload: list[FileTypeRef] = []
-    for file_type in unbound_filetypes:
+    bound_filetype_keys: set[str] = {item["file_type_key"] for item in raw_bindings}
+    unbound_filetypes: list[str | FileTypeRefEntry] = []
+    for item in sorted(raw_filetypes, key=lambda it: str(it["qualified_key"])):
+        if item["qualified_key"] in bound_filetype_keys:
+            continue
         if show_details:
-            ref: FileTypeRefEntry = _serialize_filetype_ref(file_type)
-            unbound_payload.append(ref)
+            unbound_filetypes.append(
+                FileTypeRefEntry(
+                    local_key=item["local_key"],
+                    namespace=item["namespace"],
+                    qualified_key=item["qualified_key"],
+                    description=item["description"],
+                )
+            )
         else:
-            unbound_payload.append(file_type.qualified_key)
+            unbound_filetypes.append(item["qualified_key"])
 
-    return ProcessorsPayload(
-        processors=processors,
-        unbound_filetypes=unbound_payload,
+    unused_processors: list[str | ProcessorRefEntry] = []
+    for item in sorted(raw_processors, key=lambda it: str(it["qualified_key"])):
+        if item["bound"]:
+            continue
+        if show_details:
+            unused_processors.append(_serialize_processor_ref(item))
+        else:
+            unused_processors.append(item["qualified_key"])
+
+    return BindingsPayload(
+        bindings=bindings,
+        unbound_filetypes=unbound_filetypes,
+        unused_processors=unused_processors,
     )

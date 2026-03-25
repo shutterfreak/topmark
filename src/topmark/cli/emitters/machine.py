@@ -27,6 +27,7 @@ from topmark.config.machine.serializers import serialize_config_diagnostics
 from topmark.core.formats import OutputFormat
 from topmark.core.formats import is_machine_format
 from topmark.pipeline.machine.serializers import serialize_processing_results
+from topmark.registry.machine.serializers import serialize_bindings
 from topmark.registry.machine.serializers import serialize_filetypes
 from topmark.registry.machine.serializers import serialize_processors
 
@@ -224,12 +225,13 @@ def emit_filetypes_machine(
     fmt: OutputFormat,
     show_details: bool,
 ) -> None:
-    """Emit filetypes to ConsoleLike.
+    """Emit `topmark registry filetypes` machine output.
 
     Args:
         meta: The machine metadata payload.
-        fmt: The output format.
-        show_details: If True, show additional details.
+        fmt: Target machine format (`json` or `ndjson`).
+        show_details: If True, include expanded identity, matching, binding,
+            and policy fields.
     """
     serialized: str | Iterator[str] = serialize_filetypes(
         meta=meta,
@@ -248,14 +250,40 @@ def emit_processors_machine(
     fmt: OutputFormat,
     show_details: bool,
 ) -> None:
-    """Emit processors to ConsoleLike.
+    """Emit `topmark registry processors` machine output.
 
     Args:
         meta: The machine metadata payload.
-        fmt: The output format.
-        show_details: If True, show additional details.
+        fmt: Target machine format (`json` or `ndjson`).
+        show_details: If True, include expanded identity, binding, and
+            delimiter fields.
     """
     serialized: str | Iterator[str] = serialize_processors(
+        meta=meta,
+        fmt=fmt,
+        show_details=show_details,
+    )
+
+    # Do not emit trailing newline for JSON
+    nl: bool = fmt != OutputFormat.JSON
+    emit_machine(serialized, nl=nl)
+
+
+def emit_bindings_machine(
+    *,
+    meta: MetaPayload,
+    fmt: OutputFormat,
+    show_details: bool,
+) -> None:
+    """Emit `topmark registry bindings` machine output.
+
+    Args:
+        meta: The machine metadata payload.
+        fmt: Target machine format (`json` or `ndjson`).
+        show_details: If True, include expanded file type and processor
+            identity metadata for each binding plus structured auxiliary lists.
+    """
+    serialized: str | Iterator[str] = serialize_bindings(
         meta=meta,
         fmt=fmt,
         show_details=show_details,

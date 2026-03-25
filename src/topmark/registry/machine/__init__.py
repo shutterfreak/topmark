@@ -13,8 +13,9 @@
 This package implements the machine-readable JSON/NDJSON output shapes for
 commands that expose TopMark’s internal registries, such as:
 
-- `topmark filetypes`
-- `topmark processors`
+- `topmark registry filetypes`
+- `topmark registry processors`
+- `topmark registry bindings`
 
 The design follows TopMark’s general machine-output layering:
 

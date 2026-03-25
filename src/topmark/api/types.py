@@ -276,14 +276,16 @@ class FileTypeInfo(TypedDict, total=True):
     policy: FileTypePolicyInfo
 
 
-class ProcessorInfo(TypedDict, total=False):
+class ProcessorInfo(TypedDict, total=True):
     """Stable metadata about a registered header processor.
 
     Attributes:
-        local_key: Processor local key.
+        local_key: Processor local key (compatibility identifier).
         namespace: Namespace that owns the processor.
         qualified_key: Canonical processor key.
         description: Human description.
+        bound: Whether the processor currently participates in at least one
+            effective file-type binding.
         line_indent: Line comment indent (if applicable).
         line_prefix: Line comment prefix (if applicable).
         line_suffix: Line comment suffix (if applicable).
@@ -297,6 +299,8 @@ class ProcessorInfo(TypedDict, total=False):
 
     description: str
 
+    bound: bool
+
     line_indent: str
     line_prefix: str
     line_suffix: str
@@ -304,7 +308,7 @@ class ProcessorInfo(TypedDict, total=False):
     block_suffix: str
 
 
-class BindingInfo(TypedDict, total=False):
+class BindingInfo(TypedDict, total=True):
     """Stable metadata about an effective file-type-to-processor binding.
 
     Attributes:

@@ -1,17 +1,17 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : registry_processors.py
-#   file_relpath : src/topmark/cli/commands/registry_processors.py
+#   file         : registry_bindings.py
+#   file_relpath : src/topmark/cli/commands/registry_bindings.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""CLI command to list registered header processors.
+"""CLI command to list effective file type to processor bindings.
 
-This module defines a command-line interface (CLI) command that lists all header processors
-registered in TopMark, along with the file types they handle. It supports various output formats,
+This module defines a command-line interface (CLI) command that lists all bindings
+registered in TopMark. It supports various output formats,
 including JSON, NDJSON, Markdown, and a default human-readable format.
 """
 
@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING
 import click
 
 from topmark.cli.cmd_common import init_common_state
-from topmark.cli.emitters.machine import emit_processors_machine
+from topmark.cli.emitters.machine import emit_bindings_machine
 from topmark.cli.keys import CliCmd
 from topmark.cli.options import GROUP_CONTEXT_SETTINGS
 from topmark.cli.options import common_output_format_options
@@ -34,10 +34,10 @@ from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
 from topmark.core.machine.payloads import build_meta_payload
 from topmark.core.machine.payloads import with_detail_level
-from topmark.presentation.markdown.registry import render_processors_markdown
-from topmark.presentation.shared.registry import ProcessorsHumanReport
-from topmark.presentation.shared.registry import build_processors_human_report
-from topmark.presentation.text.registry import render_processors_text
+from topmark.presentation.markdown.registry import render_bindings_markdown
+from topmark.presentation.shared.registry import BindingsHumanReport
+from topmark.presentation.shared.registry import build_bindings_human_report
+from topmark.presentation.text.registry import render_bindings_text
 
 if TYPE_CHECKING:
     from topmark.cli.console.color import ColorMode
@@ -46,18 +46,18 @@ if TYPE_CHECKING:
 
 
 @click.command(
-    name=CliCmd.REGISTRY_PROCESSORS,
+    name=CliCmd.REGISTRY_BINDINGS,
     context_settings=GROUP_CONTEXT_SETTINGS,
-    help="List registered header processors.",
+    help="List registered header bindings.",
     epilog="""
-Lists all header processors currently registered in TopMark, along with the file types they handle.
-Use this command to see which processors are available and which file types they support.""",
+Lists all effective file type to processor bindings resolved by TopMark.
+Use this command to inspect how file types are mapped to header processors.""",
 )
 # Common option decorators
 @common_ui_options
 @registry_details_options
 @common_output_format_options
-def registry_processors_command(
+def registry_bindings_command(
     *,
     # common_ui_options (verbosity, color):
     verbose: int,
@@ -69,18 +69,17 @@ def registry_processors_command(
     # common_output_format_options:
     output_format: OutputFormat | None,
 ) -> None:
-    """List registered header processors.
+    """List registered bindings.
 
-    Prints all header processors supported by TopMark, including the file types they handle.
+    Prints all bindings supported by TopMark, including the file types they handle.
     Useful for reference when configuring file type filters.
 
     Args:
         verbose: Incements the verbosity level,
-        quiet: Decrements  the verbosity level,
+        quiet: Decrements the verbosity level,
         color_mode: Set the color mode (derfault: autp),
         no_color: bool: If set, disable color mode.
-        show_details: Whether to show extended information about each processor,
-            including associated file types and their descriptions.
+        show_details: Whether to show extended information about each binding.
         output_format: Output format to use (``text``, ``markdown``, ``json``, or ``ndjson``).
 
     Raises:
@@ -124,7 +123,7 @@ def registry_processors_command(
 
     # Machine formats
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
-        emit_processors_machine(
+        emit_bindings_machine(
             meta=meta,
             fmt=fmt,
             show_details=show_details,
@@ -132,18 +131,18 @@ def registry_processors_command(
         return
 
     # Human-facing formats (Markdown / Default) share a single Click-free preparer.
-    report: ProcessorsHumanReport = build_processors_human_report(
+    report: BindingsHumanReport = build_bindings_human_report(
         show_details=show_details,
         verbosity_level=verbosity_level,
         styled=enable_color,
     )
 
     if fmt == OutputFormat.MARKDOWN:
-        console.print(render_processors_markdown(report=report))
+        console.print(render_bindings_markdown(report=report))
         return
 
     if fmt == OutputFormat.TEXT:
-        console.print(render_processors_text(report=report))
+        console.print(render_bindings_text(report=report))
         return
 
     # Defensive guard

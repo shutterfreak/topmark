@@ -46,7 +46,3 @@ class StdConsole(ConsoleProtocol):
     def error(self, text: str, *, nl: bool = True) -> None:
         """Write an error message to stderr."""
         self.err.write(text + ("\n" if nl else ""))
-
-    def styled(self, text: str, **style_kwargs: object) -> str:
-        """Return a styled string (no-op if styling is disabled)."""
-        return text
