@@ -23,7 +23,6 @@ from typing import Final
 
 from topmark.constants import TOPMARK_NAMESPACE
 from topmark.core.errors import ProcessorBindingError
-from topmark.processors.base import HeaderProcessor
 from topmark.processors.bindings import ProcessorBinding
 from topmark.processors.bindings import bindings_for
 from topmark.processors.builtins.cblock import CBlockHeaderProcessor
@@ -125,6 +124,37 @@ def get_builtin_processor_bindings() -> tuple[ProcessorBinding, ...]:
     return _BUILTIN_PROCESSOR_BINDINGS
 
 
+def _resolve_filetypes_by_local_key(
+    registry: dict[str, FileType],
+) -> dict[str, FileType]:
+    """Build a local-key lookup from base file type registry values.
+
+    Args:
+        registry: Base file type registry returned by
+            `get_base_file_type_registry()`.
+
+    Returns:
+        Mapping of file type local key to `FileType`.
+
+    Raises:
+        ProcessorBindingError: If multiple file types resolve to the same local
+            key.
+    """
+    lookup: dict[str, FileType] = {}
+    for file_type in registry.values():
+        local_key: str = file_type.local_key
+        existing: FileType | None = lookup.get(local_key)
+        if existing is not None and existing is not file_type:
+            raise ProcessorBindingError(
+                message=(
+                    f"Duplicate file type local key while composing processor bindings: {local_key}"
+                ),
+                file_type=local_key,
+            )
+        lookup[local_key] = file_type
+    return lookup
+
+
 @lru_cache(maxsize=1)
 def get_base_processor_binding_registry() -> dict[str, str]:
     """Build and cache the base binding registry from explicit declarations.
@@ -142,11 +172,12 @@ def get_base_processor_binding_registry() -> dict[str, str]:
     from topmark.filetypes.instances import get_base_file_type_registry
 
     ft_registry: dict[str, FileType] = get_base_file_type_registry()
+    ft_by_local_key: dict[str, FileType] = _resolve_filetypes_by_local_key(ft_registry)
     registry: dict[str, str] = {}
 
     for binding in get_builtin_processor_bindings():
         file_type_name: str = binding.file_type_name
-        file_type: FileType | None = ft_registry.get(file_type_name)
+        file_type: FileType | None = ft_by_local_key.get(file_type_name)
         if file_type is None:
             raise ProcessorBindingError(
                 message=f"Unknown file type in processor binding: {file_type_name}",
@@ -243,11 +274,12 @@ def get_base_header_processor_registry() -> dict[str, HeaderProcessor]:
     from topmark.filetypes.instances import get_base_file_type_registry
 
     ft_registry: dict[str, FileType] = get_base_file_type_registry()
+    ft_by_local_key: dict[str, FileType] = _resolve_filetypes_by_local_key(ft_registry)
     registry: dict[str, HeaderProcessor] = {}
 
     for binding in get_builtin_processor_bindings():
         file_type_name: str = binding.file_type_name
-        file_type: FileType | None = ft_registry.get(file_type_name)
+        file_type: FileType | None = ft_by_local_key.get(file_type_name)
         if file_type is None:
             raise ProcessorBindingError(
                 message=f"Unknown file type in processor binding: {file_type_name}",

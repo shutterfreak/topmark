@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from dataclasses import field
 from enum import Enum
 from typing import TYPE_CHECKING
 from typing import Any
@@ -31,6 +32,7 @@ from typing import TypedDict
 from typing import runtime_checkable
 
 from topmark.core.logging import get_logger
+from topmark.filetypes.policy import FileTypeHeaderPolicy
 from topmark.registry.identity import make_qualified_key
 from topmark.registry.identity import owner_label
 from topmark.registry.identity import require_and_validate_registry_identity
@@ -41,7 +43,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.core.logging import TopmarkLogger
-    from topmark.filetypes.policy import FileTypeHeaderPolicy
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -275,7 +276,7 @@ class FileType:
     content_matcher: ContentMatcher | None = None
     # Gate defining when the matcher should trigger a match
     content_gate: ContentGate = ContentGate.NEVER
-    header_policy: FileTypeHeaderPolicy | None = None
+    header_policy: FileTypeHeaderPolicy = field(default_factory=FileTypeHeaderPolicy)
     # Optional pre-insert checker: “may we add a TopMark header here?”
     pre_insert_checker: InsertChecker | None = None
 

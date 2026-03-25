@@ -23,7 +23,6 @@ import click
 
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.emitters.machine import emit_processors_machine
-from topmark.cli.emitters.text.registry import emit_processors_text
 from topmark.cli.keys import CliCmd
 from topmark.cli.options import GROUP_CONTEXT_SETTINGS
 from topmark.cli.options import common_output_format_options
@@ -31,11 +30,12 @@ from topmark.cli.options import common_ui_options
 from topmark.cli.options import registry_details_options
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import apply_ignore_positional_paths_policy
-from topmark.cli_shared.emitters.markdown.registry import render_processors_markdown
-from topmark.cli_shared.emitters.shared.registry import ProcessorsHumanReport
-from topmark.cli_shared.emitters.shared.registry import build_processors_human_report
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
+from topmark.presentation.markdown.registry import render_processors_markdown
+from topmark.presentation.shared.registry import ProcessorsHumanReport
+from topmark.presentation.shared.registry import build_processors_human_report
+from topmark.presentation.text.registry import render_processors_text
 
 if TYPE_CHECKING:
     from topmark.cli.console.color import ColorMode
@@ -109,6 +109,7 @@ def registry_processors_command(
     fmt: OutputFormat = output_format or OutputFormat.TEXT
 
     apply_color_policy_for_output_format(ctx, fmt=fmt)
+    enable_color: bool = ctx.obj[ArgKey.COLOR_ENABLED]
 
     # config_check_command() is file-agnostic: ignore positional PATHS
     apply_ignore_positional_paths_policy(
@@ -129,6 +130,7 @@ def registry_processors_command(
     report: ProcessorsHumanReport = build_processors_human_report(
         show_details=show_details,
         verbosity_level=verbosity_level,
+        styled=enable_color,
     )
 
     if fmt == OutputFormat.MARKDOWN:
@@ -136,7 +138,7 @@ def registry_processors_command(
         return
 
     if fmt == OutputFormat.TEXT:
-        emit_processors_text(console=console, report=report)
+        console.print(render_processors_text(report=report))
         return
 
     # Defensive guard

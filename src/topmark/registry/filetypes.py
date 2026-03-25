@@ -384,9 +384,7 @@ class FileTypeRegistry:
                     patterns=tuple(ft.patterns or ()),
                     skip_processing=ft.skip_processing,
                     content_matcher=ft.content_matcher is not None,
-                    header_policy=ft.header_policy.to_dict()
-                    if ft.header_policy is not None
-                    else {},
+                    header_policy=ft.header_policy.to_dict(),
                 )
 
     @classmethod
@@ -409,9 +407,7 @@ class FileTypeRegistry:
                     patterns=tuple(ft.patterns or ()),
                     skip_processing=ft.skip_processing,
                     content_matcher=ft.content_matcher is not None,
-                    header_policy=ft.header_policy.to_dict()
-                    if ft.header_policy is not None
-                    else {},
+                    header_policy=ft.header_policy.to_dict(),
                 )
 
     @classmethod

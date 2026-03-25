@@ -11,7 +11,8 @@
 """Registry introspection helpers (public API).
 
 This module exposes small, serializable metadata views over TopMark's registries. It is the
-supported API layer for "what is available?" queries and is used by the CLI emitters for
+supported API layer for "what is available?" queries and is used by the
+[`topmark.presentation`][topmark.presentation] presentation layer for
 human-facing reports.
 
 The functions here:
@@ -27,12 +28,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from topmark.api.types import FileTypeInfo
+from topmark.api.types import FileTypePolicyInfo
 from topmark.registry.registry import Registry
 
 if TYPE_CHECKING:
     from topmark.api.types import BindingInfo
-    from topmark.api.types import FileTypeInfo
     from topmark.api.types import ProcessorInfo
+    from topmark.filetypes.policy import FileTypeHeaderPolicy
     from topmark.processors.base import HeaderProcessor
 
 __all__ = (
@@ -42,12 +45,20 @@ __all__ = (
 )
 
 
-def list_filetypes(show_details: bool = False) -> list[FileTypeInfo]:
-    """Return metadata about registered file types.
+def _build_filetype_policy_info(policy: FileTypeHeaderPolicy) -> FileTypePolicyInfo:
+    """Build a `FileTypePolicyInfo` object for a given file type header policy."""
+    return FileTypePolicyInfo(
+        supports_shebang=policy.supports_shebang,
+        encoding_line_regex=policy.encoding_line_regex,
+        pre_header_blank_after_block=policy.pre_header_blank_after_block,
+        ensure_blank_after_header=policy.ensure_blank_after_header,
+        blank_collapse_mode=policy.blank_collapse_mode.value.lower(),
+        blank_collapse_extra=policy.blank_collapse_extra,
+    )
 
-    Args:
-        show_details: If `True`, include extended metadata such as patterns and
-            policy.
+
+def list_filetypes() -> list[FileTypeInfo]:
+    """Return metadata about registered file types.
 
     Returns:
         A list of `FileTypeInfo` dicts (stable, serializable metadata).
@@ -57,28 +68,23 @@ def list_filetypes(show_details: bool = False) -> list[FileTypeInfo]:
         [`topmark.registry`][]. This function returns metadata rather than the
         registry objects themselves.
     """
-    items: list[FileTypeInfo] = []
-    for local_key, ft in Registry.filetypes_by_local_key().items():
-        info: FileTypeInfo = {
-            "local_key": local_key,
-            "namespace": getattr(ft, "namespace", ""),
-            "qualified_key": getattr(ft, "qualified_key", ""),
-            "description": getattr(ft, "description", ""),
-        }
-        if show_details:
-            info.update(
-                {
-                    "bound": Registry.is_filetype_bound(file_type_id=local_key),
-                    "extensions": tuple(getattr(ft, "extensions", ()) or ()),
-                    "filenames": tuple(getattr(ft, "filenames", ()) or ()),
-                    "patterns": tuple(getattr(ft, "patterns", ()) or ()),
-                    "skip_processing": bool(getattr(ft, "skip_processing", False)),
-                    "content_matcher": bool(getattr(ft, "has_content_matcher", False)),
-                    "header_policy": str(getattr(ft, "header_policy_name", "")),
-                }
-            )
-        items.append(info)
-    return items
+    return [
+        FileTypeInfo(
+            local_key=ft.local_key,
+            namespace=ft.namespace,
+            qualified_key=ft.qualified_key,
+            description=ft.description,
+            bound=Registry.is_filetype_bound(file_type_id=ft.qualified_key),
+            extensions=tuple(ft.extensions),
+            filenames=tuple(ft.filenames),
+            patterns=tuple(ft.patterns),
+            skip_processing=ft.skip_processing,
+            has_content_matcher=bool(ft.content_matcher),
+            has_insert_checker=bool(ft.pre_insert_checker),
+            policy=_build_filetype_policy_info(ft.header_policy),
+        )
+        for ft in Registry.filetypes().values()
+    ]
 
 
 def list_processors(show_details: bool = False) -> list[ProcessorInfo]:

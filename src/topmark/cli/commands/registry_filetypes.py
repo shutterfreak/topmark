@@ -22,7 +22,6 @@ import click
 
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.emitters.machine import emit_filetypes_machine
-from topmark.cli.emitters.text.registry import emit_filetypes_text
 from topmark.cli.keys import CliCmd
 from topmark.cli.options import GROUP_CONTEXT_SETTINGS
 from topmark.cli.options import common_output_format_options
@@ -30,11 +29,12 @@ from topmark.cli.options import common_ui_options
 from topmark.cli.options import registry_details_options
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import apply_ignore_positional_paths_policy
-from topmark.cli_shared.emitters.markdown.registry import render_filetypes_markdown
-from topmark.cli_shared.emitters.shared.registry import FileTypesHumanReport
-from topmark.cli_shared.emitters.shared.registry import build_filetypes_human_report
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
+from topmark.presentation.markdown.registry import render_filetypes_markdown
+from topmark.presentation.shared.registry import FileTypesHumanReport
+from topmark.presentation.shared.registry import build_filetypes_human_report
+from topmark.presentation.text.registry import render_filetypes_text
 
 if TYPE_CHECKING:
     from topmark.cli.console.color import ColorMode
@@ -108,6 +108,7 @@ def registry_filetypes_command(
     fmt: OutputFormat = output_format or OutputFormat.TEXT
 
     apply_color_policy_for_output_format(ctx, fmt=fmt)
+    enable_color: bool = ctx.obj[ArgKey.COLOR_ENABLED]
 
     # config_check_command() is file-agnostic: ignore positional PATHS
     apply_ignore_positional_paths_policy(
@@ -124,20 +125,21 @@ def registry_filetypes_command(
         )
         return
 
+    # Human-facing formats (Markdown / Default) share a single Click-free preparer.
+    report: FileTypesHumanReport = build_filetypes_human_report(
+        show_details=show_details,
+        verbosity_level=verbosity_level,
+        styled=enable_color,
+    )
     if fmt == OutputFormat.MARKDOWN:
-        report: FileTypesHumanReport = build_filetypes_human_report(
-            show_details=show_details,
-            verbosity_level=verbosity_level,
+        console.print(
+            render_filetypes_markdown(report=report),
         )
-        console.print(render_filetypes_markdown(report=report))
         return
 
     if fmt == OutputFormat.TEXT:
-        report = build_filetypes_human_report(
-            show_details=show_details,
-            verbosity_level=verbosity_level,
-        )
-        emit_filetypes_text(console=console, report=report)
+        console.print(render_filetypes_text(report))
+
         return
 
     # Defensive guard

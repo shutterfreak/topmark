@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : registry.py
-#   file_relpath : src/topmark/cli_shared/emitters/shared/registry.py
+#   file_relpath : src/topmark/presentation/shared/registry.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -13,10 +13,10 @@
 This module prepares typed, human-facing report models for registry-related CLI commands. The
 prepared data is intentionally presentation-agnostic and reused by:
 
-- TEXT output emitters under [`topmark.cli.emitters.text`][topmark.cli.emitters.text]
+- TEXT renderers under [`topmark.presentation.text`][topmark.presentation.text]
   (ANSI/console styling), and
 - Markdown renderers under
-  [`topmark.cli_shared.emitters.markdown`][topmark.cli_shared.emitters.markdown]
+  [`topmark.presentation.markdown`][topmark.presentation.markdown]
   (documentation-friendly output).
 
 Notes:
@@ -31,28 +31,59 @@ See Also:
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from topmark.filetypes.model import FileType
+from topmark.api.commands.registry import list_filetypes
 from topmark.registry.bindings import BindingRegistry
 from topmark.registry.filetypes import FileTypeRegistry
-from topmark.registry.types import ProcessorDefinition
-from topmark.utils.introspection import format_callable_pretty
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
+    from topmark.api.types import FileTypeInfo
+    from topmark.api.types import FileTypePolicyInfo
     from topmark.filetypes.model import FileType
     from topmark.registry.types import ProcessorDefinition
 
 
-def _policy_name(obj: object | None) -> str:
-    if obj is None:
-        return ""
-    name: str | None = getattr(obj, "name", None)
-    return str(name) if name else obj.__class__.__name__
+@dataclass(frozen=True, slots=True)
+class FileTypePolicyHumanItem:
+    r"""Stable metadata describing header insertion/stripping policy for a file type.
+
+    These attributes are optional; processors read them to adapt behavior without
+    hard-coding language specifics. Defaults are conservative and aim to preserve
+    user-authored whitespace while keeping round-trips stable.
+
+    Attributes:
+        supports_shebang: Whether this file type commonly starts with a POSIX
+            shebang (e.g., ``#!/usr/bin/env bash``). When ``True``, processors may
+            skip a leading shebang during placement.
+        encoding_line_regex: Optional regex (string) that matches an
+            encoding declaration line *immediately after* a shebang (e.g., Python
+            PEP 263). When provided and a shebang was skipped, a matching line is
+            also skipped for placement.
+        pre_header_blank_after_block: Number of blank lines to place between a
+            preamble block (shebang/encoding or similar) and the header. Typically 1.
+        ensure_blank_after_header: Ensure exactly one blank line follows the
+            header when body content follows. No extra blank is added at EOF.
+        blank_collapse_mode: How to identify and collapse *blank*
+            lines around the header during insert/strip repairs. See
+            `BlankCollapseMode` for semantics. Defaults to ``STRICT``.
+        blank_collapse_extra: Additional characters to treat as blank **in
+            addition** to those covered by ``blank_collapse_mode``. For example,
+            set to ``\"\\x0c\"`` to consider form-feed collapsible for a given type.
+    """
+
+    supports_shebang: bool
+    encoding_line_regex: str | None
+
+    pre_header_blank_after_block: int
+    ensure_blank_after_header: bool
+
+    # How to identify and collapse “blank” lines around the header during insert/strip repairs.
+    blank_collapse_mode: str
+    blank_collapse_extra: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,28 +91,35 @@ class FileTypeHumanItem:
     """Click-free, human-facing view of one file type.
 
     Attributes:
-        name: Qualified file type identifier shown in human-facing output.
+        local_key: File type local key.
+        namespace: Namespace that owns the file type.
+        qualified_key: Canonical qualified file type key.
         description: Human-readable file type description.
+        bound: Whether the file type currently has an effective processor binding.
         extensions: Registered filename extensions.
         filenames: Exact registered filenames.
         patterns: Registered path or glob patterns.
         skip_processing: Whether TopMark recognizes but never mutates this type.
-        content_matcher_name: Pretty-printed content matcher name, if present.
-        insert_checker_name: Pretty-printed insert-checker name, if present.
-        header_policy_name: Human-readable header policy identifier.
+        has_content_matcher: Whether a content matcher is configured.
+        has_insert_checker: Whether a pre-insert checker is configured.
+        policy: Structured header policy metadata for human-facing rendering.
     """
 
-    name: str
+    local_key: str
+    namespace: str
+    qualified_key: str
     description: str
+    bound: bool
 
     extensions: tuple[str, ...]
     filenames: tuple[str, ...]
     patterns: tuple[str, ...]
 
     skip_processing: bool
-    content_matcher_name: str | None
-    insert_checker_name: str | None
-    header_policy_name: str
+    has_content_matcher: bool
+    has_insert_checker: bool
+
+    policy: FileTypePolicyHumanItem
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,6 +128,7 @@ class FileTypesHumanReport:
 
     show_details: bool
     verbosity_level: int
+    styled: bool
     items: tuple[FileTypeHumanItem, ...]
 
 
@@ -143,50 +182,69 @@ class ProcessorsHumanReport:
     verbosity_level: int
     processors: tuple[ProcessorHumanItem, ...]
     unbound_filetypes: tuple[str, ...] | tuple[UnboundFileTypeHumanItem, ...]
+    styled: bool
+
+
+def _build_filetype_policy_human_item(policy: FileTypePolicyInfo) -> FileTypePolicyHumanItem:
+    """Build a Click-free file type policy human item used by TEXT and MARKDOWN.
+
+    Args:
+        policy: The file type policy info object.
+
+    Returns:
+        A `FileTypePolicyHumanItem` object representing the policy info object.
+    """
+    return FileTypePolicyHumanItem(
+        supports_shebang=policy["supports_shebang"],
+        encoding_line_regex=policy["encoding_line_regex"],
+        pre_header_blank_after_block=policy["pre_header_blank_after_block"],
+        ensure_blank_after_header=policy["ensure_blank_after_header"],
+        blank_collapse_mode=policy["blank_collapse_mode"],
+        blank_collapse_extra=policy["blank_collapse_extra"],
+    )
 
 
 def build_filetypes_human_report(
-    *, show_details: bool, verbosity_level: int
+    *,
+    show_details: bool,
+    verbosity_level: int,
+    styled: bool,
 ) -> FileTypesHumanReport:
     """Build a Click-free report used by TEXT and MARKDOWN.
 
     Args:
         show_details: Whether consumers intend to display extended details.
         verbosity_level: Effective verbosity (consumers may ignore).
+        styled: Whether to render styled text output.
 
     Returns:
         A `FileTypesHumanReport` with one item per file type.
     """
-    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping_by_local_key()
+    raw_items: list[FileTypeInfo] = list_filetypes()
 
-    items: list[FileTypeHumanItem] = []
-    for _, file_type in sorted(ft_registry.items()):
-        items.append(
-            FileTypeHumanItem(
-                name=file_type.qualified_key,
-                description=file_type.description,
-                extensions=tuple(file_type.extensions),
-                filenames=tuple(file_type.filenames),
-                patterns=tuple(file_type.patterns),
-                skip_processing=file_type.skip_processing,
-                content_matcher_name=(
-                    format_callable_pretty(file_type.content_matcher)
-                    if file_type.content_matcher is not None
-                    else None
-                ),
-                insert_checker_name=(
-                    format_callable_pretty(file_type.pre_insert_checker)
-                    if file_type.pre_insert_checker is not None
-                    else None
-                ),
-                header_policy_name=_policy_name(file_type.header_policy),
-            )
+    items: list[FileTypeHumanItem] = [
+        FileTypeHumanItem(
+            local_key=item["local_key"],
+            namespace=item["namespace"],
+            qualified_key=item["qualified_key"],
+            description=item["description"],
+            bound=item["bound"],
+            extensions=tuple(item["extensions"]),
+            filenames=tuple(item["filenames"]),
+            patterns=tuple(item["patterns"]),
+            skip_processing=item["skip_processing"],
+            has_content_matcher=item["has_content_matcher"],
+            has_insert_checker=item["has_insert_checker"],
+            policy=_build_filetype_policy_human_item(item["policy"]),
         )
+        for item in sorted(raw_items, key=lambda it: str(it["qualified_key"]))
+    ]
 
     return FileTypesHumanReport(
         show_details=show_details,
         verbosity_level=verbosity_level,
         items=tuple(items),
+        styled=styled,
     )
 
 
@@ -194,12 +252,14 @@ def build_processors_human_report(
     *,
     show_details: bool,
     verbosity_level: int,
+    styled: bool,
 ) -> ProcessorsHumanReport:
     """Build a Click-free report used by TEXT and MARKDOWN for `processors`.
 
     Args:
         show_details: Whether consumers intend to display extended details.
         verbosity_level: Effective verbosity (consumers may ignore).
+        styled: Whether to render styled text output.
 
     Returns:
         A `ProcessorsHumanReport` grouping qualified file type identifiers by
@@ -278,4 +338,5 @@ def build_processors_human_report(
         verbosity_level=verbosity_level,
         processors=tuple(processors),
         unbound_filetypes=unbound_filetypes,
+        styled=styled,
     )

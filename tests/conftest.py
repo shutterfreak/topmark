@@ -53,13 +53,13 @@ from topmark.filetypes.model import ContentGate
 from topmark.filetypes.model import ContentMatcher
 from topmark.filetypes.model import FileType
 from topmark.filetypes.model import InsertChecker
+from topmark.filetypes.policy import FileTypeHeaderPolicy
 from topmark.processors.base import HeaderProcessor
 from topmark.registry.types import ProcessorDefinition
 from topmark.resolution.filetypes import resolve_binding_for_path
 
 if TYPE_CHECKING:
     from topmark.config.model import Config
-    from topmark.filetypes.policy import FileTypeHeaderPolicy
 
 AnyCallable = Callable[..., object]
 DecoratorType = Callable[[AnyCallable], AnyCallable]
@@ -436,7 +436,7 @@ def make_file_type(
             skip_processing=skip_processing,
             content_matcher=content_matcher,
             content_gate=content_gate,
-            header_policy=header_policy,
+            header_policy=header_policy or FileTypeHeaderPolicy(),
             pre_insert_checker=pre_insert_checker,
         )
     return FileType(
@@ -449,7 +449,7 @@ def make_file_type(
         skip_processing=skip_processing,
         content_matcher=content_matcher,
         content_gate=content_gate,
-        header_policy=header_policy,
+        header_policy=header_policy or FileTypeHeaderPolicy(),
         pre_insert_checker=pre_insert_checker,
     )
 

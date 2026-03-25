@@ -32,11 +32,10 @@ from topmark.filetypes.model import ContentGate
 from topmark.filetypes.model import ContentMatcher
 from topmark.filetypes.model import FileType
 from topmark.filetypes.model import InsertChecker
+from topmark.filetypes.policy import FileTypeHeaderPolicy
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-
-    from topmark.filetypes.policy import FileTypeHeaderPolicy
 
 
 def make_filetype_factory(*, namespace: str) -> Callable[..., FileType]:
@@ -78,7 +77,7 @@ def make_filetype_factory(*, namespace: str) -> Callable[..., FileType]:
             filenames=filenames if filenames is not None else [],
             patterns=patterns if patterns is not None else [],
             description=description,
-            header_policy=header_policy,
+            header_policy=header_policy or FileTypeHeaderPolicy(),
             skip_processing=skip_processing,
             content_matcher=content_matcher,
             content_gate=content_gate,

@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : registry.py
-#   file_relpath : src/topmark/cli_shared/emitters/markdown/registry.py
+#   file_relpath : src/topmark/presentation/markdown/registry.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -18,24 +18,31 @@ Notes:
     outputs remain equivalent by construction.
 
 See Also:
-- [`topmark.cli_shared.emitters.shared.registry`][topmark.cli_shared.emitters.shared.registry]
+- [`topmark.presentation.shared.registry`][topmark.presentation.shared.registry]
 - [`topmark.core.machine`][topmark.core.machine]: canonical machine-output primitives and contracts
 """
 
 from __future__ import annotations
 
-from topmark.cli_shared.emitters.markdown.utils import render_markdown_table
-from topmark.cli_shared.emitters.shared.registry import FileTypeHumanItem
-from topmark.cli_shared.emitters.shared.registry import FileTypesHumanReport
-from topmark.cli_shared.emitters.shared.registry import ProcessorFileTypeHumanItem
-from topmark.cli_shared.emitters.shared.registry import ProcessorsHumanReport
-from topmark.cli_shared.emitters.shared.registry import UnboundFileTypeHumanItem
-from topmark.cli_shared.emitters.shared.registry import build_filetypes_human_report
-from topmark.cli_shared.emitters.shared.registry import build_processors_human_report
 from topmark.constants import TOPMARK_VERSION
+from topmark.presentation.formatters.filetypes import filetype_policy_to_display_pairs
+from topmark.presentation.markdown.utils import render_markdown_table
+from topmark.presentation.shared.registry import FileTypeHumanItem
+from topmark.presentation.shared.registry import FileTypePolicyHumanItem
+from topmark.presentation.shared.registry import FileTypesHumanReport
+from topmark.presentation.shared.registry import ProcessorFileTypeHumanItem
+from topmark.presentation.shared.registry import ProcessorsHumanReport
+from topmark.presentation.shared.registry import UnboundFileTypeHumanItem
 
 
-def render_filetypes_markdown(*, report: FileTypesHumanReport) -> str:
+def render_filetype_policy_markdown(policy: FileTypePolicyHumanItem) -> str:
+    """Render a file type header policy for MARKDOWN output."""
+    return ", ".join(
+        f"**{key}**={value}" for key, value in filetype_policy_to_display_pairs(policy)
+    )
+
+
+def render_filetypes_markdown(report: FileTypesHumanReport) -> str:
     """Render the `filetypes` registry report as Markdown.
 
     Args:
@@ -51,29 +58,33 @@ def render_filetypes_markdown(*, report: FileTypesHumanReport) -> str:
     lines.append("# Supported File Types\n")
     lines.append(
         f"TopMark version **{TOPMARK_VERSION}** supports the following file types "
-        f"(shown as qualified identifiers):\n"
+        f"(shown as canonical qualified identifiers):\n"
     )
 
     if report.show_details:
         lines.append("## Legend\n")
         lines.append(
-            "- **Identifier**: Qualified file type identifier used in configuration "
+            "- **Qualified Key**: Canonical file type identifier used in configuration "
             "and machine output."
+        )
+        lines.append("- **Local Key / Namespace**: Canonical identity components.")
+        lines.append(
+            "- **Bound**: Whether the file type currently has an effective processor binding."
         )
         lines.append("- **Extensions/Filenames/Patterns**: How files are matched on disk.")
         lines.append(
             "- **Skip Processing**: "
             "If **yes**, the file type is recognized but never modified by TopMark."
         )
-        lines.append("- **Content Matcher**: Content-based detector refining detection.")
-        lines.append("- **Insert Checker**: Decides if a header may be added for concrete content.")
-        lines.append(
-            "- **Header Policy**: "
-            "Formatting/spacing policy applied by the header processor for this type.\n"
-        )
+        lines.append("- **Content Matcher**: Whether a content-based matcher is configured.")
+        lines.append("- **Insert Checker**: Whether a pre-insert checker is configured.")
+        lines.append("- **Header Policy**: Formatting/spacing policy applied to this file type.\n")
 
         headers = [
-            "Identifier",
+            "Qualified Key",
+            "Local Key",
+            "Namespace",
+            "Bound",
             "Extensions",
             "Filenames",
             "Patterns",
@@ -85,16 +96,21 @@ def render_filetypes_markdown(*, report: FileTypesHumanReport) -> str:
         ]
         rows: list[list[str]] = []
         for it in items:
+            policy_str: str = render_filetype_policy_markdown(it.policy)
+
             rows.append(
                 [
-                    f"`{it.name}`",
+                    f"`{it.qualified_key}`",
+                    f"`{it.local_key}`",
+                    f"`{it.namespace}`",
+                    "**yes**" if it.bound else "no",
                     ", ".join(it.extensions),
                     ", ".join(it.filenames),
                     ", ".join(it.patterns),
                     "**yes**" if it.skip_processing else "no",
-                    "**yes**" if (it.content_matcher_name is not None) else "no",
-                    "**yes**" if (it.insert_checker_name is not None) else "no",
-                    it.header_policy_name,
+                    "**yes**" if it.has_content_matcher else "no",
+                    "**yes**" if it.has_insert_checker else "no",
+                    policy_str,
                     it.description,
                 ]
             )
@@ -104,8 +120,8 @@ def render_filetypes_markdown(*, report: FileTypesHumanReport) -> str:
             "_This list shows the qualified file type identifiers and a short description. "
             "Use `--long` for details._\n"
         )
-        headers: list[str] = ["File Type", "Description"]
-        rows = [[f"`{it.name}`", it.description] for it in items]
+        headers: list[str] = ["Qualified Key", "Description"]
+        rows = [[f"`{it.qualified_key}`", it.description] for it in items]
         lines.append(render_markdown_table(headers, rows))
 
     lines.append("\n---\n")
@@ -113,24 +129,7 @@ def render_filetypes_markdown(*, report: FileTypesHumanReport) -> str:
     return "\n".join(lines)
 
 
-def build_and_render_filetypes_markdown(*, show_details: bool, verbosity_level: int) -> str:
-    """Build and render the filetypes report as Markdown.
-
-    Args:
-        show_details: Whether to include extended information.
-        verbosity_level: Effective verbosity (kept for symmetry; currently unused by Markdown).
-
-    Returns:
-        Rendered Markdown document.
-    """
-    report: FileTypesHumanReport = build_filetypes_human_report(
-        show_details=show_details,
-        verbosity_level=verbosity_level,
-    )
-    return render_filetypes_markdown(report=report)
-
-
-def render_processors_markdown(*, report: ProcessorsHumanReport) -> str:
+def render_processors_markdown(report: ProcessorsHumanReport) -> str:
     """Render the `processors` registry report as Markdown.
 
     Args:
@@ -205,21 +204,5 @@ def render_processors_markdown(*, report: ProcessorsHumanReport) -> str:
 
     lines.append("\n---\n")
     lines.append(f"_Generated with TopMark v{TOPMARK_VERSION}_\n")
+
     return "\n".join(lines)
-
-
-def build_and_render_processors_markdown(*, show_details: bool, verbosity_level: int) -> str:
-    """Build and render the processors report as Markdown.
-
-    Args:
-        show_details: Whether to include extended information.
-        verbosity_level: Effective verbosity (kept for symmetry; currently unused by Markdown).
-
-    Returns:
-        Rendered Markdown document.
-    """
-    report: ProcessorsHumanReport = build_processors_human_report(
-        show_details=show_details,
-        verbosity_level=verbosity_level,
-    )
-    return render_processors_markdown(report=report)
