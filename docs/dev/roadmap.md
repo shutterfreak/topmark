@@ -243,10 +243,10 @@ goals.
   - `OutputFormat.TEXT` (label `"text"`)
   - `OutputFormat.MARKDOWN`
 - Renamed emitter package *topmark.cli.emitters.default* to
-  \[`topmark.cli.emitters.text`\][topmark.cli.emitters.text] to align naming with
+  \[`topmark.presentation.text`\][topmark.presentation.text] to align naming with
   `OutputFormat.TEXT`.
 - Extracted shared pipeline rendering primitives (diff rendering, per-command guidance) into
-  \[`topmark.cli_shared.emitters.shared.pipeline`\][topmark.cli_shared.emitters.shared.pipeline].
+  \[`topmark.presentation.pipeline`\][topmark.presentation.pipeline].
 - Improved consistency of wording across commands by reusing shared helpers for registry/config
   outputs.
 
@@ -578,9 +578,9 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
 
 - Output format rename: `DEFAULT` was removed and replaced by `TEXT` (label now `"text"`).
 - Emitter package rename: *topmark.cli.emitters.default* →
-  \[`topmark.cli.emitters.text`\][topmark.cli.emitters.text].
+  \[`topmark.presentation.text`\][topmark.presentation.text].
 - Shared pipeline helpers moved to
-  \[`topmark.cli_shared.emitters.shared.pipeline`\][topmark.cli_shared.emitters.shared.pipeline].
+  \[`topmark.presentation.pipeline`\][topmark.presentation.pipeline].
 - Verbosity and color options were moved from the root CLI group to individual commands. Global
   invocation patterns may need to be updated.
 - Color behavior tightened:

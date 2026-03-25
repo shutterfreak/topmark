@@ -125,7 +125,8 @@ The `Registry` facade composes these layers and provides convenience read-only a
 - `Registry.processors_by_qualified_key()` → processor definitions by qualified key
 - `Registry.bindings()` → effective bindings
 
-This separation ensures that identity and relationships remain decoupled, and avoids implicit side effects when registering or binding components.
+This separation ensures that identity and relationships remain decoupled, and avoids implicit side
+effects when registering or binding components.
 
 Most users should interact with registries through this facade and treat them as
 **introspection-only**.
@@ -159,7 +160,8 @@ For cleanup, reverse the same steps explicitly:
 - `HeaderProcessorRegistry.unregister(proc_def.qualified_key)`
 - `FileTypeRegistry.unregister(ft.qualified_key)`
 
-Note that all mutation helpers operate on **overlay state only**. They do not mutate the built-in registry definitions and are intended for runtime extensions (e.g. plugins or tests).
+Note that all mutation helpers operate on **overlay state only**. They do not mutate the built-in
+registry definitions and are intended for runtime extensions (e.g. plugins or tests).
 
 These mutation helpers apply **overlay-only changes**: they do not mutate the internal base
 registries used to construct the effective views. Overlays are process-local and thread-safe (via an
