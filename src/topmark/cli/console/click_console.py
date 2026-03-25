@@ -1,18 +1,17 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : console.py
-#   file_relpath : src/topmark/cli/console.py
+#   file         : click_console.py
+#   file_relpath : src/topmark/cli/console/click_console.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""Console abstraction for user-facing program output.
+"""Click-backed console implementation for TopMark CLI output.
 
-This module provides a `Console` class that separates CLI output from
-internal logging. Use this for messages intended for end users, while
-reserving `logging` for diagnostics.
+This module provides the primary concrete console used by CLI commands for
+user-facing output. It is intentionally separate from the logging subsystem.
 """
 
 from __future__ import annotations
@@ -24,12 +23,12 @@ from typing import TypedDict
 
 import click
 
-from topmark.cli_shared.console_api import ConsoleLike
+from topmark.cli.console.protocols import ConsoleProtocol
 
 
 # This TypedDict is for documentation and type-checking on the *caller* side.
-class StyleKwargs(TypedDict, total=False):
-    """Keyword arguments accepted by click.style()."""
+class ClickStyleKwargs(TypedDict, total=False):
+    """Documented subset of keyword arguments accepted by `click.style()`."""
 
     fg: str
     bg: str
@@ -42,7 +41,7 @@ class StyleKwargs(TypedDict, total=False):
     # Ensure all valid arguments from click.style() are included here
 
 
-class ClickConsole(ConsoleLike):
+class Console(ConsoleProtocol):
     """Program-output console, independent from the logger.
 
     Args:
@@ -105,7 +104,7 @@ class ClickConsole(ConsoleLike):
         Args:
             text: Text to style.
             **style_kwargs: Subset of keyword arguments supported by click.style.
-                Expected keys are defined in the StyleKwargs TypedDict.
+                Expected keys are documented by `ClickStyleKwargs`.
 
         Returns:
             The styled text (or plain text if color is disabled).

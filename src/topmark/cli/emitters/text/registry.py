@@ -32,13 +32,13 @@ from topmark.cli_shared.emitters.shared.registry import ProcessorFileTypeHumanIt
 from topmark.cli_shared.emitters.shared.registry import UnboundFileTypeHumanItem
 
 if TYPE_CHECKING:
-    from topmark.cli_shared.console_api import ConsoleLike
+    from topmark.cli.console.protocols import ConsoleProtocol
     from topmark.cli_shared.emitters.shared.registry import FileTypeHumanItem
     from topmark.cli_shared.emitters.shared.registry import FileTypesHumanReport
     from topmark.cli_shared.emitters.shared.registry import ProcessorsHumanReport
 
 
-def emit_filetypes_text(*, console: ConsoleLike, report: FileTypesHumanReport) -> None:
+def emit_filetypes_text(*, console: ConsoleProtocol, report: FileTypesHumanReport) -> None:
     """Emit TEXT output for `topmark filetypes`.
 
     Args:
@@ -90,7 +90,7 @@ def emit_filetypes_text(*, console: ConsoleLike, report: FileTypesHumanReport) -
             console.print(f"{idx:>{num_width}}. {it.name:<{k_len}} {descr}")
 
 
-def emit_processors_text(*, console: ConsoleLike, report: ProcessorsHumanReport) -> None:
+def emit_processors_text(*, console: ConsoleProtocol, report: ProcessorsHumanReport) -> None:
     """Emit TEXT output for `topmark processors`.
 
     Args:

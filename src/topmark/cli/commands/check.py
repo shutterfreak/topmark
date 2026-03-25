@@ -97,9 +97,9 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
+    from topmark.cli.console.color import ColorMode
+    from topmark.cli.console.protocols import ConsoleProtocol
     from topmark.cli.io import InputPlan
-    from topmark.cli_shared.color import ColorMode
-    from topmark.cli_shared.console_api import ConsoleLike
     from topmark.config.model import Config
     from topmark.config.model import MutableConfig
     from topmark.core.logging import TopmarkLogger
@@ -304,7 +304,7 @@ def check_command(
     # diagnostics) to stderr.
     #
     # Console selection must happen after planning inputs because stdin mode affects routing.
-    console: ConsoleLike = maybe_route_console_to_stderr(
+    console: ConsoleProtocol = maybe_route_console_to_stderr(
         ctx,
         enable_color=enable_color,
         apply_changes=apply_changes,

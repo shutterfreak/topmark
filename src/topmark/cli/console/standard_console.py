@@ -1,31 +1,31 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : console_std.py
-#   file_relpath : src/topmark/cli/console_std.py
+#   file         : standard_console.py
+#   file_relpath : src/topmark/cli/console/standard_console.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""Stdlib-based console implementation (no Click)."""
+"""Stdlib-based console implementation used outside Click contexts."""
 
 from __future__ import annotations
 
 import sys
 from typing import TextIO
 
-from topmark.cli_shared.console_api import ConsoleLike
+from topmark.cli.console.protocols import ConsoleProtocol
 
 
-class StdConsole(ConsoleLike):
-    """Simple console without colors.
+class StdConsole(ConsoleProtocol):
+    """Simple console implementation backed by stdlib text streams.
 
     Args:
-        enable_color: Ignored for this implementation. Present only to keep the signature compatible
-            with other ConsoleLike implementations.
-        out: Stream for normal output. Defaults to sys.stdout.
-        err: Stream for error/warning output. Defaults to sys.stderr.
+        enable_color: Ignored for this implementation. Present only to keep the
+            constructor shape aligned with the Click-backed console.
+        out: Stream for normal output. Defaults to `sys.stdout`.
+        err: Stream for warning/error output. Defaults to `sys.stderr`.
     """
 
     def __init__(

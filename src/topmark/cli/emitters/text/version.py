@@ -23,12 +23,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from topmark.cli_shared.console_api import ConsoleLike
+    from topmark.cli.console.protocols import ConsoleProtocol
 
 
 def emit_version_text(
     *,
-    console: ConsoleLike,
+    console: ConsoleProtocol,
     version_text: str,
     version_format: str,
     verbosity_level: int,

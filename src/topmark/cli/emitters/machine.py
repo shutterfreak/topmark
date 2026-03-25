@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.cli.console_helpers import get_console_safely
+from topmark.cli.console.context import resolve_console
 from topmark.config.machine.serializers import serialize_config
 from topmark.config.machine.serializers import serialize_config_check
 from topmark.config.machine.serializers import serialize_config_diagnostics
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
     from collections.abc import Iterator
 
-    from topmark.cli_shared.console_api import ConsoleLike
+    from topmark.cli.console.protocols import ConsoleProtocol
     from topmark.config.model import Config
     from topmark.core.machine.schemas import MetaPayload
     from topmark.pipeline.context.model import ProcessingContext
@@ -55,7 +55,7 @@ def emit_machine(
         # Nothing to print
         return
 
-    console: ConsoleLike = get_console_safely()
+    console: ConsoleProtocol = resolve_console()
     if isinstance(serialized, str):
         console.print(serialized, nl=nl)
     else:

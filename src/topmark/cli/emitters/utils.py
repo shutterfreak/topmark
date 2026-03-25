@@ -41,7 +41,7 @@ from topmark.core.logging import get_logger
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from topmark.cli_shared.console_api import ConsoleLike
+    from topmark.cli.console.protocols import ConsoleProtocol
     from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
 
@@ -53,7 +53,7 @@ logger: TopmarkLogger = get_logger(__name__)
 
 def emit_toml_block(
     *,
-    console: ConsoleLike,
+    console: ConsoleProtocol,
     title: str,
     toml_text: str,
     verbosity_level: int,
@@ -106,7 +106,7 @@ def emit_toml_block(
 
 def emit_pipeline_human_output(
     *,
-    console: ConsoleLike,
+    console: ConsoleProtocol,
     cmd: str,
     file_list_total: int,
     view_results: list[ProcessingContext],
@@ -209,7 +209,7 @@ def emit_pipeline_human_output(
 
 def emit_pipeline_hidden_unsupported_footer_human(
     *,
-    console: ConsoleLike,
+    console: ConsoleProtocol,
     fmt: OutputFormat,
     unsupported_count: int,
 ) -> None:
@@ -231,7 +231,7 @@ def emit_pipeline_hidden_unsupported_footer_human(
 
 def emit_pipeline_apply_summary_human(
     *,
-    console: ConsoleLike,
+    console: ConsoleProtocol,
     fmt: OutputFormat,
     command_path: str,
     written: int,

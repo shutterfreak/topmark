@@ -33,10 +33,10 @@ from typing import TypeVar
 
 import click
 
-from topmark.cli.console_helpers import get_console_safely
+from topmark.cli.console.color import ColorMode
+from topmark.cli.console.context import resolve_console
 from topmark.cli.errors import TopmarkCliUsageError
 from topmark.cli.keys import CliOpt
-from topmark.cli_shared.color import ColorMode
 from topmark.core.formats import OutputFormat
 from topmark.core.formats import is_machine_format
 from topmark.core.keys import ArgKey
@@ -48,8 +48,8 @@ if TYPE_CHECKING:
 
     from click.core import ParameterSource
 
+    from topmark.cli.console.protocols import ConsoleProtocol
     from topmark.cli.reporting import ReportScope
-    from topmark.cli_shared.console_api import ConsoleLike
     from topmark.core.logging import TopmarkLogger
 
 
@@ -169,7 +169,7 @@ def warn_and_clear(
     Returns:
         The cleared value.
     """
-    console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
+    console: ConsoleProtocol = ctx.obj[ArgKey.CONSOLE]
     console.warn(message)
     ctx.obj[obj_key] = cleared_value
     return cleared_value
@@ -220,7 +220,7 @@ def warn_if_report_scope_ignored(
     if not msgs:
         return
 
-    console: ConsoleLike = get_console_safely()
+    console: ConsoleProtocol = resolve_console()
     for msg in msgs:
         console.warn(msg)
 
@@ -303,7 +303,7 @@ def apply_ignore_positional_paths_policy(
     Returns:
         None. This helper mutates ``ctx.args`` in-place.
     """
-    console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
+    console: ConsoleProtocol = ctx.obj[ArgKey.CONSOLE]
     cmd: str = ctx.command_path
 
     original_args: list[str] = list(ctx.args)

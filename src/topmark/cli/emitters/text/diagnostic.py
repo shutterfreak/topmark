@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.cli.console_helpers import get_console_safely
+from topmark.cli.console.context import resolve_console
 from topmark.cli.keys import CliShortOpt
 from topmark.cli.presentation import TextStyler
 from topmark.cli.presentation import maybe_style
@@ -37,7 +37,7 @@ from topmark.diagnostic.model import FrozenDiagnosticLog
 from topmark.diagnostic.model import compute_diagnostic_stats
 
 if TYPE_CHECKING:
-    from topmark.cli_shared.console_api import ConsoleLike
+    from topmark.cli.console.protocols import ConsoleProtocol
     from topmark.cli_shared.emitters.shared.config import HumanDiagnosticLine
     from topmark.cli_shared.emitters.shared.diagnostic import HumanDiagnosticCounts
 
@@ -58,7 +58,7 @@ def render_human_diagnostics_text(
     if not diagnostics:
         return
 
-    console: ConsoleLike = get_console_safely()
+    console: ConsoleProtocol = resolve_console()
     console.print(
         f"Diagnostics: {counts.error} error(s), "
         f"{counts.warning} warning(s), "
@@ -95,7 +95,7 @@ def render_diagnostics_text(
     if len(diagnostics.items) == 0:
         return
 
-    console: ConsoleLike = get_console_safely()
+    console: ConsoleProtocol = resolve_console()
 
     # Aggregate counts per level once (used for triage summary and verbosity gating).
     stats: DiagnosticStats = compute_diagnostic_stats(diagnostics)

@@ -43,7 +43,7 @@ serialization logic. Its role is limited to selecting the appropriate serializer
 based on CLI options and emitting the resulting text to the console.
 
 All printing goes through `ConsoleLike` instances obtained via
-[`topmark.cli.console_helpers.get_console_safely`][topmark.cli.console_helpers.get_console_safely].
+[`topmark.cli.console.context.resolve_console`][topmark.cli.console.context.resolve_console].
 keeping Click-style concerns isolated from core logic.
 """
 

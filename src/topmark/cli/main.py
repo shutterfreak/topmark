@@ -35,7 +35,7 @@ from topmark.core.keys import ArgKey
 from topmark.utils.version import check_python_version
 
 if TYPE_CHECKING:
-    from topmark.cli_shared.console_api import ConsoleLike
+    from topmark.cli.console.protocols import ConsoleProtocol
 
 
 @click.group(
@@ -67,7 +67,7 @@ def cli(
             color_mode=None,
             no_color=False,
         )
-    console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
+    console: ConsoleProtocol = ctx.obj[ArgKey.CONSOLE]
 
     if ctx.invoked_subcommand is None:
         console.print(f"Hint: use 'topmark {CliCmd.CHECK} [PATHS...]' to validate headers.")

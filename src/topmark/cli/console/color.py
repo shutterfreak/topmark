@@ -2,22 +2,17 @@
 #
 #   project      : TopMark
 #   file         : color.py
-#   file_relpath : src/topmark/cli_shared/color.py
+#   file_relpath : src/topmark/cli/console/color.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""Click-independent color helpers for TopMark.
+"""Color-resolution helpers for TopMark CLI console output.
 
-This module provides utility functions that are shared across CLI frontends
-but do not depend on Click or console instances, including:
-
-- ColorMode enum.
-- Color-mode resolution based on CLI flags, environment, and output format.
-
-These helpers are deliberately kept Click-free so they can be reused from
-both command-line entry points and other potential frontends or tests.
+This module is intentionally independent from Click and concrete console
+instances. It resolves whether ANSI color should be enabled based on CLI
+options, environment variables, terminal state, and selected output format.
 """
 
 from __future__ import annotations
@@ -25,15 +20,6 @@ from __future__ import annotations
 import os
 import sys
 from enum import Enum
-from typing import TYPE_CHECKING
-
-from topmark.core.logging import get_logger
-
-if TYPE_CHECKING:
-    from topmark.core.logging import TopmarkLogger
-
-
-logger: TopmarkLogger = get_logger(__name__)
 
 
 class ColorMode(str, Enum):
@@ -51,9 +37,9 @@ class ColorMode(str, Enum):
           indicating whether to emit ANSI styles.
 
     Example:
-        >>> resolve_color_mode(cli_mode=ColorMode.AUTO, output_format=None)
+        >>> resolve_color_mode(color_mode_override=ColorMode.AUTO, output_format=None)
         True  # on an interactive terminal
-        >>> resolve_color_mode(cli_mode=ColorMode.AUTO, output_format="json")
+        >>> resolve_color_mode(color_mode_override=ColorMode.AUTO, output_format="json")
         False  # machine formats are always colorless
     """
 
@@ -65,7 +51,7 @@ class ColorMode(str, Enum):
 def resolve_color_mode(
     *,
     color_mode_override: ColorMode | None,
-    output_format: str | None,  # "text" | "json" | "ndjson" | None
+    output_format: str | None,
     stdout_isatty: bool | None = None,
 ) -> bool:
     """Determine whether color output should be enabled.
@@ -89,11 +75,11 @@ def resolve_color_mode(
         True if ANSI color should be enabled; False otherwise.
 
     Examples:
-        >>> resolve_color_mode(cli_mode=ColorMode.NEVER, output_format=None)
+        >>> resolve_color_mode(color_mode_override=ColorMode.NEVER, output_format=None)
         False
-        >>> resolve_color_mode(cli_mode=None, output_format="ndjson")
+        >>> resolve_color_mode(color_mode_override=None, output_format="ndjson")
         False
-        >>> resolve_color_mode(cli_mode=None, output_format=None, stdout_isatty=True)
+        >>> resolve_color_mode(color_mode_override=None, output_format=None, stdout_isatty=True)
         True
     """
     # 1) Machine formats and MarkDown never use color

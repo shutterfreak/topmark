@@ -39,8 +39,8 @@ from topmark.version.machine.serializers import serialize_version
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from topmark.cli_shared.color import ColorMode
-    from topmark.cli_shared.console_api import ConsoleLike
+    from topmark.cli.console.color import ColorMode
+    from topmark.cli.console.protocols import ConsoleProtocol
     from topmark.core.machine.schemas import MetaPayload
 
 
@@ -96,7 +96,7 @@ def version_command(
     verbosity_level: int = ctx.obj[ArgKey.VERBOSITY_LEVEL]
 
     # Select the console
-    console: ConsoleLike = ctx.obj[ArgKey.CONSOLE]
+    console: ConsoleProtocol = ctx.obj[ArgKey.CONSOLE]
 
     # Machine metadata
     meta: MetaPayload = ctx.obj[ArgKey.META]

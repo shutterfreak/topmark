@@ -28,12 +28,12 @@ from typing import TYPE_CHECKING
 import click
 
 from topmark.cli.config_resolver import resolve_config_from_click
-from topmark.cli.console import ClickConsole
-from topmark.cli.console_helpers import get_console_safely
+from topmark.cli.console.click_console import Console
+from topmark.cli.console.color import resolve_color_mode
+from topmark.cli.console.context import resolve_console
 from topmark.cli.options import ColorMode
 from topmark.cli.options import resolve_verbosity
 from topmark.cli.validators import validate_verbose_quiet_exclusivity
-from topmark.cli_shared.color import resolve_color_mode
 from topmark.core.keys import ArgKey
 from topmark.core.logging import resolve_env_log_level
 from topmark.core.logging import setup_logging
@@ -43,8 +43,8 @@ from topmark.resolution.files import resolve_file_list
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from topmark.cli.console.protocols import ConsoleProtocol
     from topmark.cli.io import InputPlan
-    from topmark.cli_shared.console_api import ConsoleLike
     from topmark.config.model import Config
     from topmark.config.model import MutableConfig
     from topmark.core.exit_codes import ExitCode
@@ -102,7 +102,7 @@ def init_common_state(
     ctx.color = enable_color
 
     # Respect the resolved color policy (may differ from the raw --no-color flag).
-    console = ClickConsole(enable_color=enable_color)
+    console = Console(enable_color=enable_color)
     ctx.obj[ArgKey.CONSOLE] = console
 
     # Machine metadata payload.
@@ -126,7 +126,7 @@ def build_file_list(config: Config, *, stdin_mode: bool, temp_path: Path | None)
 def exit_if_no_files(file_list: list[Path]) -> bool:
     """Echo a friendly message and return True if there is nothing to process."""
     if not file_list:
-        console: ConsoleLike = get_console_safely()
+        console: ConsoleProtocol = resolve_console()
         console.print(console.styled("\nℹ️  No files to process.\n", fg="blue"))
         return True
     return False
@@ -139,7 +139,7 @@ def maybe_route_console_to_stderr(
     apply_changes: bool,
     stdin_mode: bool,
     write_mode: str | None,
-) -> ConsoleLike:
+) -> ConsoleProtocol:
     """Route human-facing console output to stderr when stdout carries file content.
 
     TopMark can emit rewritten file content to STDOUT in two situations:
@@ -167,7 +167,7 @@ def maybe_route_console_to_stderr(
     emits_content_to_stdout: bool = bool(apply_changes) and (stdin_mode or (write_mode == "stdout"))
 
     if emits_content_to_stdout:
-        console = ClickConsole(
+        console = Console(
             enable_color=enable_color,
             out=sys.stderr,
             err=sys.stderr,
@@ -176,7 +176,7 @@ def maybe_route_console_to_stderr(
         return console
 
     # Fall back to the console initialized by `init_common_state`.
-    return get_console_safely()
+    return resolve_console()
 
 
 def maybe_exit_on_error(*, code: ExitCode | None, temp_path: Path | None) -> None:

@@ -27,7 +27,7 @@ from topmark.cli.emitters.text.diagnostic import render_human_diagnostics_text
 from topmark.cli.emitters.utils import emit_toml_block
 
 if TYPE_CHECKING:
-    from topmark.cli_shared.console_api import ConsoleLike
+    from topmark.cli.console.protocols import ConsoleProtocol
     from topmark.cli_shared.emitters.shared.config import ConfigCheckPrepared
     from topmark.cli_shared.emitters.shared.config import ConfigDefaultsPrepared
     from topmark.cli_shared.emitters.shared.config import ConfigDumpPrepared
@@ -41,7 +41,7 @@ if TYPE_CHECKING:
 
 def emit_config_init_text(
     *,
-    console: ConsoleLike,
+    console: ConsoleProtocol,
     prepared: ConfigInitPrepared,
     verbosity_level: int,
 ) -> None:
@@ -73,7 +73,7 @@ def emit_config_init_text(
 
 def emit_config_defaults_text(
     *,
-    console: ConsoleLike,
+    console: ConsoleProtocol,
     prepared: ConfigDefaultsPrepared,
     verbosity_level: int,
 ) -> None:
@@ -100,7 +100,7 @@ def emit_config_defaults_text(
 
 def emit_config_check_text(
     *,
-    console: ConsoleLike,
+    console: ConsoleProtocol,
     ok: bool,
     strict: bool,
     prepared: ConfigCheckPrepared,
@@ -153,7 +153,7 @@ def emit_config_check_text(
 
 def emit_config_dump_text(
     *,
-    console: ConsoleLike,
+    console: ConsoleProtocol,
     prepared: ConfigDumpPrepared,
     verbosity_level: int,
 ) -> None:

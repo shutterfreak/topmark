@@ -15,7 +15,7 @@ pipeline-oriented commands (for example, `check` and `strip`).
 
 Notes:
     - These helpers print to the active `ConsoleLike` obtained via
-      [`get_console_safely()`][topmark.cli.console_helpers.get_console_safely].
+      [`get_console_safely()`][topmark.cli.console.context.resolve_console].
     - ANSI styling primitives (for example, conditional colorization) live in
       [`topmark.cli.presentation`][topmark.cli.presentation].
     - Machine formats (JSON/NDJSON) are handled elsewhere.
@@ -28,14 +28,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from typing import Final
 
-from topmark.cli.console_helpers import get_console_safely
+from topmark.cli.console.context import resolve_console
+from topmark.cli.console.protocols import ConsoleProtocol
+from topmark.cli.console.utils import get_console_line_width
 from topmark.cli.emitters.text.diagnostic import render_diagnostics_text
 from topmark.cli.keys import CliShortOpt
 from topmark.cli.presentation import TextStyler
 from topmark.cli.presentation import maybe_style
 from topmark.cli.presentation import style_for_role
 from topmark.cli.rendering.unified_diff import format_patch_styled
-from topmark.cli_shared.console_api import ConsoleLike
 from topmark.cli_shared.outcomes import collect_outcome_counts_styled
 from topmark.cli_shared.outcomes import get_outcome_style_role
 from topmark.core.presentation import StyleRole
@@ -50,7 +51,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
     from collections.abc import Sequence
 
-    from topmark.cli_shared.console_api import ConsoleLike
+    from topmark.cli.console.protocols import ConsoleProtocol
     from topmark.diagnostic.model import DiagnosticStats
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.outcomes import OutcomeReasonCount
@@ -90,7 +91,7 @@ def emit_pipeline_banner_text(
         cmd: Command name.
         n_files: Number of files to be processed.
     """
-    console: ConsoleLike = get_console_safely()
+    console: ConsoleProtocol = resolve_console()
     console.print(console.styled(f"\n🔍 Processing {n_files} file(s):\n", fg="blue"))
     console.print(console.styled(f"📋 TopMark {cmd} Results:", bold=True, underline=True))
 
@@ -101,7 +102,7 @@ def emit_pipeline_summary_counts_text(
     total: int,
 ) -> None:
     """Emit summary counts grouped by `(outcome, reason)` (TEXT format)."""
-    console: ConsoleLike = get_console_safely()
+    console: ConsoleProtocol = resolve_console()
     console.print()
     console.print(console.styled("Summary by outcome:", bold=True, underline=True))
 
@@ -155,8 +156,8 @@ def emit_pipeline_per_file_guidance_text(
     color: bool,
 ) -> None:
     """Emit per-file detailed guidance (TEXT format)."""
-    console: ConsoleLike = get_console_safely()
-    line_width: Final[int] = console.get_line_width()
+    console: ConsoleProtocol = resolve_console()
+    line_width: Final[int] = get_console_line_width()
 
     muted_styler: TextStyler = style_for_role(StyleRole.MUTED, styled=color)
     emphasis_styler: TextStyler = style_for_role(StyleRole.EMPHASIS, styled=color)
@@ -454,8 +455,8 @@ def emit_pipeline_diffs_text(
         - Diffs are only printed in human (TEXT) output mode.
         - Files with no changes do not emit a diff.
     """
-    console: ConsoleLike = get_console_safely()
-    line_width: Final[int] = console.get_line_width()
+    console: ConsoleProtocol = resolve_console()
+    line_width: Final[int] = get_console_line_width()
 
     # Use the Box Drawing Light Horizontal character (U+2500) for a solid line
     diffs_start_fence: Final[str] = " diffs - start ".center(line_width, "─")
@@ -496,7 +497,7 @@ def emit_updated_content_to_stdout(
     Args:
         results: the processing results.
     """
-    console: ConsoleLike = get_console_safely()
+    console: ConsoleProtocol = resolve_console()
     for r in results:
         updated_view: UpdatedView | None = r.views.updated
         if updated_view:

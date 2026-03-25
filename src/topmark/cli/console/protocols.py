@@ -1,8 +1,8 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : console_api.py
-#   file_relpath : src/topmark/cli_shared/console_api.py
+#   file         : protocols.py
+#   file_relpath : src/topmark/cli/console/protocols.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -17,13 +17,16 @@ user-facing output, separate from internal logging.
 from __future__ import annotations
 
 from typing import Protocol
+from typing import runtime_checkable
 
 
-class ConsoleLike(Protocol):
-    """Minimal interface for a console used by CLI commands.
+@runtime_checkable
+class ConsoleProtocol(Protocol):
+    """Minimal protocol for user-facing CLI console output.
 
-    Implementations may use Click, Rich, or plain stdlib streams. The purpose
-    is to decouple program output from the logging subsystem.
+    Implementations may be backed by Click, Rich, or plain stdlib streams. The
+    protocol intentionally stays small so commands depend only on core output
+    behavior, not on framework-specific details.
     """
 
     def print(self, text: str = "", *, nl: bool = True) -> None:
@@ -41,12 +44,3 @@ class ConsoleLike(Protocol):
     def styled(self, text: str, **style_kwargs: object) -> str:
         """Return a styled string (no-op if styling is disabled)."""
         ...
-
-    def get_line_width(self, default: int = 80, max_width: int = 100) -> int:
-        """Return the line width of the console."""
-        import shutil
-
-        # Get terminal size
-        columns, _ = shutil.get_terminal_size(fallback=(default, 24))
-        # Return the smaller of the terminal width or your preferred max
-        return min(columns, max_width)

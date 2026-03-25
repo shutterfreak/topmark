@@ -41,11 +41,11 @@ from typing_extensions import NotRequired
 from typing_extensions import Unpack
 
 from topmark.cli.cli_types import EnumChoiceParam
+from topmark.cli.console.color import ColorMode
 from topmark.cli.errors import TopmarkCliUsageError
 from topmark.cli.keys import CliOpt
 from topmark.cli.keys import CliShortOpt
 from topmark.cli.reporting import ReportScope
-from topmark.cli_shared.color import ColorMode
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
 from topmark.core.logging import get_logger
