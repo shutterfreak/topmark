@@ -139,6 +139,10 @@ class Toml:
                 KEY_POLICY_CHECK_ADD_ONLY,
                 KEY_POLICY_CHECK_UPDATE_ONLY,
                 KEY_POLICY_ALLOW_HEADER_IN_EMPTIES,
+                KEY_POLICY_EMPTIES_INSERT_MODE,
+                KEY_POLICY_ALLOW_EMPTY_HEADER,
+                KEY_POLICY_ALLOW_REFLOW,
+                KEY_POLICY_ALLOW_CONTENT_PROBE,
             }
         ),
         # [policy_by_type] contains arbitrary file type keys -> policy tables.
@@ -164,5 +168,9 @@ class Toml:
             KEY_POLICY_CHECK_ADD_ONLY,
             KEY_POLICY_CHECK_UPDATE_ONLY,
             KEY_POLICY_ALLOW_HEADER_IN_EMPTIES,
+            KEY_POLICY_EMPTIES_INSERT_MODE,
+            KEY_POLICY_ALLOW_EMPTY_HEADER,
+            KEY_POLICY_ALLOW_REFLOW,
+            KEY_POLICY_ALLOW_CONTENT_PROBE,
         }
     )

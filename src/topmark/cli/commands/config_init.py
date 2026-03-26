@@ -31,7 +31,7 @@ from topmark.cli.options import config_root_options
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import apply_ignore_positional_paths_policy
 from topmark.cli.validators import validate_human_only_config_flags_for_machine_format
-from topmark.config.model import MutableConfig
+from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
 from topmark.core.machine.payloads import build_meta_payload
@@ -43,6 +43,7 @@ from topmark.presentation.text.config import render_config_init_text
 if TYPE_CHECKING:
     from topmark.cli.console.color import ColorMode
     from topmark.cli.console.protocols import ConsoleProtocol
+    from topmark.config.model import MutableConfig
     from topmark.core.machine.schemas import MetaPayload
 
 
@@ -145,7 +146,7 @@ def config_init_command(
 
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         # Machine-readable formats: emit JSON/NDJSON without human banners
-        mutable_config: MutableConfig = MutableConfig.from_defaults()
+        mutable_config: MutableConfig = mutable_config_from_defaults()
         emit_config_machine(
             meta=meta,
             config=mutable_config.freeze(),

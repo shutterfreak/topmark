@@ -24,8 +24,7 @@ from typing import TYPE_CHECKING
 from tests.pipeline.conftest import make_pipeline_context
 from tests.pipeline.conftest import run_insert
 from tests.pipeline.conftest import run_steps
-from topmark.config.model import Config
-from topmark.config.model import MutableConfig
+from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
 from topmark.pipeline.status import ComparisonStatus
@@ -42,6 +41,8 @@ from topmark.pipeline.views import RenderView
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from topmark.config.model import Config
+    from topmark.config.model import MutableConfig
     from topmark.pipeline.context.model import ProcessingContext
 
 
@@ -62,7 +63,7 @@ def test_e2e_content_change_detected(tmp_path: Path) -> None:
     )
 
     # cfg: Config = MutableConfig.from_defaults().freeze()
-    draft: MutableConfig = MutableConfig.from_defaults()
+    draft: MutableConfig = mutable_config_from_defaults()
     draft.header_fields = ["file", "file_relpath"]
     draft.policy.render_empty_header_when_no_fields = True
     cfg: Config = draft.freeze()
@@ -102,7 +103,7 @@ def test_e2e_formatting_only_change_detected(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    cfg: Config = MutableConfig.from_defaults().freeze()
+    cfg: Config = mutable_config_from_defaults().freeze()
 
     ctx: ProcessingContext = make_pipeline_context(file, cfg)
 
@@ -123,7 +124,7 @@ def test_e2e_formatting_only_change_detected(tmp_path: Path) -> None:
     ctx.status.render = RenderStatus.RENDERED
 
     # Prepare a render-config that expresses the canonical order for the fields.
-    draft_cfg_for_render: MutableConfig = MutableConfig.from_defaults()
+    draft_cfg_for_render: MutableConfig = mutable_config_from_defaults()
     draft_cfg_for_render.header_fields = ["license", "project"]
     cfg_for_render: Config = draft_cfg_for_render.freeze()
 

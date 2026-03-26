@@ -28,13 +28,10 @@ from typing import Any
 from typing import Generic
 from typing import NoReturn
 from typing import Protocol
-from typing import TypedDict
 from typing import TypeVar
 from typing import cast
 
 import click
-
-from topmark.core.keys import ArgKey
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -52,142 +49,6 @@ else:
 
 # Type variable bounded to Enum for generic EnumParam
 E = TypeVar("E", bound=Enum)
-
-
-class ArgsNamespace(TypedDict, total=False):
-    """Namespace for parsed CLI arguments and options in TopMark.
-
-    This TypedDict is used to represent all relevant CLI arguments and options
-    passed through TopMark commands and subcommands. It facilitates type-safe
-    access and transfer of parsed CLI state, including global options, config
-    file overrides, file selection, filtering, and formatting flags.
-
-
-    Attributes:
-        verbosity_level: Program-output verbosity (0=terse, 1=verbose).
-        apply_changes: Whether to apply the changed (dry-run if not set ot False).
-        write_mode: Whether to use safe atomic writing, faster in-place writing or writing to
-            STDOUT (default: atomic writer).
-        strict_config_checking: If True, enforce strict TOML config checking (fail on errors).
-        no_config: Whether to ignore local config files.
-        config_files: List of extra config file paths.
-        files: List of file paths to process.
-        files_from: List of files containing newline-delimited paths.
-        stdin_mode: Whether to read file paths from stdin.
-        stdin_filename: The filename to use when in STDIN mode.
-        include_patterns: Glob patterns of files to include.
-        include_from: Files containing include patterns.
-        exclude_patterns: Glob patterns of files to exclude.
-        exclude_from: Files containing exclude patterns.
-        include_file_types: Restrict to given file types.
-        exclude_file_types: Exclude given file types.
-        align_fields: Align header fields with colons.
-        relative_to: Root directory for relative paths (for header fields).
-    """
-
-    # Global options: retrieve from ctx.obj
-    verbosity_level: int | None
-
-    # Runtime intent: whether to actually write changes (apply) or preview only
-    # None = inherit/unspecified, False = dry-run/preview, True = apply
-    apply_changes: bool | None
-
-    write_mode: str | None
-
-    # Command options: config
-    strict_config_checking: bool | None
-    no_config: bool | None
-    config_files: list[str] | None
-
-    # Command arguments
-    files: list[str]
-    files_from: list[str]
-
-    # Command options: common_file_and_filtering_options
-    stdin_mode: bool | None
-    stdin_filename: str | None
-    include_patterns: list[str] | None
-    include_from: list[str] | None
-    exclude_patterns: list[str] | None
-    exclude_from: list[str] | None
-    include_file_types: list[str] | None
-    exclude_file_types: list[str] | None
-
-    # Command options: formatting
-    align_fields: bool | None
-    relative_to: str | None
-
-
-def build_args_namespace(
-    *,
-    verbosity_level: int | None = None,
-    apply_changes: bool | None = None,
-    write_mode: str | None = None,
-    no_config: bool | None = None,
-    config_files: list[str] | None = None,
-    strict_config_checking: bool | None = None,
-    files: list[str] | None = None,
-    files_from: list[str] | None = None,
-    stdin_mode: bool | None = None,
-    stdin_filename: str | None = None,
-    include_patterns: list[str] | None = None,
-    include_from: list[str] | None = None,
-    exclude_patterns: list[str] | None = None,
-    exclude_from: list[str] | None = None,
-    include_file_types: list[str] | None = None,
-    exclude_file_types: list[str] | None = None,
-    align_fields: bool | None = None,
-    relative_to: str | None = None,
-) -> ArgsNamespace:
-    """Build an ArgsNamespace dictionary for CLI argument passing.
-
-    Args:
-        verbosity_level: Program-output verbosity (0=terse, 1=verbose).
-        apply_changes: Whether to apply the changed (dry-run if not set ot False).
-        write_mode: Whether to use safe atomic writing, faster in-place writing or writing to
-            STDOUT (default: atomic writer).
-        no_config: Whether to ignore local config files.
-        config_files: List of extra config file paths.
-        strict_config_checking: If True, enforce strict TOML config checking (fail on errors).
-        files: List of file paths to process.
-        files_from: List of files containing newline-delimited paths.
-        stdin_mode: Whether to read file paths from stdin.
-        stdin_filename: The filename to use when in STDIN mode.
-        include_patterns: Glob patterns of files to include.
-        include_from: Files containing include patterns.
-        exclude_patterns: Glob patterns of files to exclude.
-        exclude_from: Files containing exclude patterns.
-        include_file_types: Restrict to given file types.
-        exclude_file_types: Exclude processing for given File types.
-        align_fields: Align header fields with colons.
-        relative_to: Root directory for relative paths.
-
-    Returns:
-        Dictionary of CLI argument values for use throughout the CLI.
-    """
-    return cast(
-        "ArgsNamespace",
-        {
-            ArgKey.VERBOSITY_LEVEL: verbosity_level,
-            ArgKey.APPLY_CHANGES: apply_changes,
-            ArgKey.WRITE_MODE: write_mode,
-            ArgKey.NO_CONFIG: no_config,
-            ArgKey.CONFIG_FILES: config_files,
-            ArgKey.STRICT_CONFIG_CHECKING: strict_config_checking,
-            ArgKey.FILES: files if files is not None else [],
-            ArgKey.FILES_FROM: files_from if files_from is not None else [],
-            ArgKey.STDIN_MODE: stdin_mode,
-            ArgKey.STDIN_FILENAME: stdin_filename,
-            ArgKey.INCLUDE_PATTERNS: include_patterns,
-            ArgKey.INCLUDE_FROM: include_from,
-            ArgKey.EXCLUDE_PATTERNS: exclude_patterns,
-            ArgKey.EXCLUDE_FROM: exclude_from,
-            ArgKey.INCLUDE_FILE_TYPES: include_file_types,
-            ArgKey.EXCLUDE_FILE_TYPES: exclude_file_types,
-            ArgKey.RELATIVE_TO: relative_to,
-            ArgKey.ALIGN_FIELDS: align_fields,
-        },
-    )
 
 
 # --- Custom Click parameter types and validators for TopMark CLI ---

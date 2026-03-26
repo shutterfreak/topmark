@@ -28,8 +28,7 @@ from tests.pipeline.conftest import run_comparer
 from tests.pipeline.conftest import run_reader
 from tests.pipeline.conftest import run_resolver
 from tests.pipeline.conftest import run_scanner
-from topmark.config.model import Config
-from topmark.config.model import MutableConfig
+from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
 from topmark.pipeline.status import ComparisonStatus
@@ -45,13 +44,14 @@ from topmark.processors.base import HeaderProcessor
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from topmark.config.model import Config
     from topmark.pipeline.context.model import ProcessingContext
 
 
 def test_comparer_precomputed_lines_set_changed(tmp_path: Path) -> None:
     """Mark CHANGED when an updated view differs from the original image."""
     file: Path = tmp_path / "x.py"
-    cfg: Config = MutableConfig.from_defaults().freeze()
+    cfg: Config = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = make_pipeline_context(file, cfg)
 
     # Provide original image and a precomputed updated image via views
@@ -77,7 +77,7 @@ def test_comparer_precomputed_lines_set_changed(tmp_path: Path) -> None:
 def test_comparer_precomputed_lines_set_unchanged(tmp_path: Path) -> None:
     """Mark UNCHANGED when `updated_file_lines` is identical to `file_lines`."""
     file: Path = tmp_path / "y.py"
-    cfg: Config = MutableConfig.from_defaults().freeze()
+    cfg: Config = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = make_pipeline_context(file, cfg)
 
     original: list[str] = ["same\n", "lines\n"]
@@ -130,7 +130,7 @@ def test_formatting_only_changes_are_detected(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    cfg: Config = MutableConfig.from_defaults().freeze()
+    cfg: Config = mutable_config_from_defaults().freeze()
 
     # Bootstrap a context and run reader+scanner to populate existing header
     ctx: ProcessingContext = make_pipeline_context(file, cfg)

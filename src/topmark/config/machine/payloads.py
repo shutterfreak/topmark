@@ -28,6 +28,7 @@ from typing import Any
 from typing import cast
 
 from topmark.cli.keys import CliCmd
+from topmark.config.io.serializers import config_to_toml_dict
 from topmark.config.machine.schemas import ConfigCheckSummary
 from topmark.config.machine.schemas import ConfigDiagnosticsPayload
 from topmark.config.machine.schemas import ConfigPayload
@@ -53,7 +54,7 @@ def build_config_payload(config: Config) -> ConfigPayload:
         ConfigPayload: JSON-serializable representation of the Config, without
             diagnostics.
     """
-    base: TomlTable = config.to_toml_dict(include_files=False)  # TomlTable ~ dict[str, Any]
+    base: TomlTable = config_to_toml_dict(config, include_files=False)  # TomlTable ~ dict[str, Any]
 
     writer = base.get("writer", {})
     # Make sure Enums become simple strings

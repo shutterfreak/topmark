@@ -68,7 +68,7 @@
 #
 # Built-in field names (computed in `topmark.pipeline.steps.builder.BuilderStep`):
 #   - file         : base file name (no path)
-#   - file_relpath : file path relative to `files.relative_to` (or CWD if `files.relative_to` is unset)
+#   - file_relpath : file path relative to `header.relative_to` (or CWD if `header.relative_to` is unset)
 #   - file_abspath : absolute file path
 #   - relpath      : parent directory of `file_relpath`
 #   - abspath      : parent directory of `file_abspath`
@@ -162,6 +162,38 @@ update_only = false
 #   This is disabled by default to avoid surprising diffs in empty placeholders.
 allow_header_in_empty_files = false
 
+# empty_insert_mode:
+#   Controls which files count as "empty" when
+#   `allow_header_in_empty_files = true`.
+#
+#   Allowed values:
+#     "bytes_empty"      → only true 0-byte files
+#     "logical_empty"    → 0-byte files plus placeholder images such as
+#                            BOM-only, newline-only, or optional horizontal
+#                            whitespace with at most one trailing newline
+#     "whitespace_empty" → any decoded image containing no non-whitespace
+#                            characters
+#
+#   Recommended default:
+#     "logical_empty"
+empty_insert_mode = "logical_empty"
+
+# render_empty_header_when_no_fields:
+#   Allow TopMark to insert an otherwise empty header block when no header
+#   fields are configured. This is disabled by default.
+render_empty_header_when_no_fields = false
+
+# allow_reflow:
+#   Permit reflowing file content while inserting a header. This may break
+#   strict insert → strip → insert idempotence and is therefore disabled by
+#   default.
+allow_reflow = false
+
+# allow_content_probe:
+#   Allow resolver-side content-based file-type detection when names/extensions
+#   are insufficient. Disable this to force name/extension-only resolution.
+allow_content_probe = true
+
 # Per‑file‑type policy overrides.
 # Define sub‑tables under `[policy_by_type.<file_type_id>]` to fine‑tune behavior.
 #
@@ -169,6 +201,7 @@ allow_header_in_empty_files = false
 #
 # [policy_by_type.python]
 # allow_header_in_empty_files = true
+# empty_insert_mode = "logical_empty"
 
 
 # ===================

@@ -33,8 +33,7 @@ from tests.pipeline.conftest import expected_block_lines_for
 from tests.pipeline.conftest import find_line
 from tests.pipeline.conftest import materialize_updated_lines
 from tests.pipeline.conftest import run_insert
-from topmark.config.model import Config
-from topmark.config.model import MutableConfig
+from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.policy import PolicyRegistry
 from topmark.config.policy import make_policy_registry
 from topmark.constants import TOPMARK_END_MARKER
@@ -47,6 +46,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
+    from topmark.config.model import Config
     from topmark.pipeline.protocols import Step
 
 
@@ -61,7 +61,7 @@ def test_jsonc_insert_at_top_with_no_pre_prefix_indent(tmp_path: Path) -> None:
     file: Path = tmp_path / "settings.json"
     file.write_text('// user note\n{\n  "a": 1\n}\n', encoding="utf-8")
 
-    cfg: Config = MutableConfig.from_defaults().freeze()
+    cfg: Config = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -101,7 +101,7 @@ def test_jsonc_replace_preserves_pre_prefix_indent(tmp_path: Path) -> None:
     )
     file.write_text(seeded, encoding="utf-8")
 
-    cfg: Config = MutableConfig.from_defaults().freeze()
+    cfg: Config = mutable_config_from_defaults().freeze()
     # Run the full check pipeline to exercise scan + replace
     policy_registry: PolicyRegistry = make_policy_registry(cfg)
     ctx: ProcessingContext = ProcessingContext.bootstrap(
@@ -156,7 +156,7 @@ def test_jsonc_replace_keeps_crlf_and_indent(tmp_path: Path) -> None:
             '{\n  "x": 2\n}\n'
         )
 
-    ctx: ProcessingContext = run_insert(file, MutableConfig.from_defaults().freeze())
+    ctx: ProcessingContext = run_insert(file, mutable_config_from_defaults().freeze())
     out: list[str] = materialize_updated_lines(ctx)
 
     # Preserve CRLF

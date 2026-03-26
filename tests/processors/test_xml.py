@@ -28,8 +28,7 @@ from tests.pipeline.conftest import find_line
 from tests.pipeline.conftest import make_pipeline_context
 from tests.pipeline.conftest import materialize_updated_lines
 from tests.pipeline.conftest import run_insert
-from topmark.config.model import Config
-from topmark.config.model import MutableConfig
+from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
 from topmark.core.logging import TopmarkLogger
@@ -49,6 +48,8 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
+    from topmark.config.model import Config
+    from topmark.config.model import MutableConfig
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.protocols import Step
     from topmark.processors.base import HeaderProcessor
@@ -67,7 +68,7 @@ def test_xml_processor_basics(tmp_path: Path) -> None:
     file: Path = tmp_path / "sample.html"
     file.write_text("<html>\n<body><p>Hello.</p></body></html>")
 
-    cfg: Config = MutableConfig.from_defaults().freeze()
+    cfg: Config = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = make_pipeline_context(file, cfg)
 
     pipeline: Sequence[Step[ProcessingContext]] = Pipeline.CHECK.steps
@@ -89,7 +90,7 @@ def test_html_top_of_file_with_trailing_blank(tmp_path: Path) -> None:
     file: Path = tmp_path / "index.html"
     file.write_text("<!DOCTYPE html>\n<html></html>\n")
 
-    cfg: Config = MutableConfig.from_defaults().freeze()
+    cfg: Config = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -115,7 +116,7 @@ def test_xml_with_declaration_only(tmp_path: Path) -> None:
     file: Path = tmp_path / "doc.xml"
     file.write_text('<?xml version="1.0"?>\n<root/>\n')
 
-    cfg: Config = MutableConfig.from_defaults().freeze()
+    cfg: Config = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -141,7 +142,7 @@ def test_xml_with_declaration_and_doctype(tmp_path: Path) -> None:
     file: Path = tmp_path / "doc2.xml"
     file.write_text('<?xml version="1.0"?>\n<!DOCTYPE note SYSTEM "Note.dtd">\n<note/>\n')
 
-    cfg: Config = MutableConfig.from_defaults().freeze()
+    cfg: Config = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -169,7 +170,7 @@ def test_svg_with_declaration(tmp_path: Path) -> None:
         '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"></svg>\n'
     )
 
-    cfg: Config = MutableConfig.from_defaults().freeze()
+    cfg: Config = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -191,7 +192,7 @@ def test_vue_top_of_file(tmp_path: Path) -> None:
     file: Path = tmp_path / "App.vue"
     file.write_text("<template>\n  <div/>\n</template>\n")
 
-    cfg: Config = MutableConfig.from_defaults().freeze()
+    cfg: Config = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -213,7 +214,7 @@ def test_svelte_top_of_file(tmp_path: Path) -> None:
     file: Path = tmp_path / "Widget.svelte"
     file.write_text("<script>\n  let x = 1;\n</script>\n")
 
-    cfg: Config = MutableConfig.from_defaults().freeze()
+    cfg: Config = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -238,7 +239,7 @@ def test_xml_single_line_declaration(tmp_path: Path) -> None:
     # No newline between declaration and root element
     file.write_text('<?xml version="1.0"?><root/>\n')
 
-    cfg: Config = MutableConfig.from_defaults().freeze()
+    cfg: Config = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     # Strict XML InsertChecker flags this as unsupported due to reflow:
@@ -254,7 +255,7 @@ def test_xml_prolog_and_body_on_same_line_blocked_by_policy(tmp_path: Path) -> N
     original = '<?xml version="1.0"?><root/>'  # no trailing newline
     file.write_text(original, encoding="utf-8")
 
-    cfg: Config = MutableConfig.from_defaults().freeze()
+    cfg: Config = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     # Strict XML InsertChecker flags this as unsupported due to reflow:
@@ -270,7 +271,7 @@ def test_xml_prolog_and_body_on_same_line_alllowed_by_policy(tmp_path: Path) -> 
     original = '<?xml version="1.0"?><root/>'  # no trailing newline
     file.write_text(original, encoding="utf-8")
 
-    draft: MutableConfig = MutableConfig.from_defaults()
+    draft: MutableConfig = mutable_config_from_defaults()
     draft.policy.allow_reflow = True
     cfg: Config = draft.freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
@@ -317,7 +318,7 @@ def test_xml_single_line_decl_and_doctype(tmp_path: Path) -> None:
     # XML declaration, DOCTYPE, and root all on a single line
     file.write_text('<?xml version="1.0"?><!DOCTYPE note SYSTEM "Note.dtd"><note/>\n')
 
-    cfg: Config = MutableConfig.from_defaults().freeze()
+    cfg: Config = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     # Strict XML InsertChecker flags this as unsupported due to reflow:
@@ -337,7 +338,7 @@ def test_html_with_existing_banner_comment(tmp_path: Path) -> None:
     file: Path = tmp_path / "banner.html"
     file.write_text("<!-- existing:license banner -->\n<html></html>\n")
 
-    cfg: Config = MutableConfig.from_defaults().freeze()
+    cfg: Config = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -367,7 +368,7 @@ def test_xml_decl_then_existing_banner_comment(tmp_path: Path) -> None:
     file: Path = tmp_path / "doc_with_banner.xml"
     file.write_text('<?xml version="1.0"?>\n<!-- xml:banner -->\n<root/>\n')
 
-    cfg: Config = MutableConfig.from_defaults().freeze()
+    cfg: Config = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -400,7 +401,7 @@ def test_xml_decl_doctype_then_existing_banner_comment(tmp_path: Path) -> None:
         "<note/>\n"
     )
 
-    cfg: Config = MutableConfig.from_defaults().freeze()
+    cfg: Config = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -473,7 +474,7 @@ def test_xml_doctype_with_internal_subset(tmp_path: Path) -> None:
     file.write_text(
         '<?xml version="1.0"?>\n<!DOCTYPE root [\n  <!ELEMENT root EMPTY>\n]>\n<root/>\n'
     )
-    cfg: Config = MutableConfig.from_defaults().freeze()
+    cfg: Config = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
     lines: list[str] = materialize_updated_lines(ctx)
 
@@ -499,7 +500,7 @@ def test_xml_bom_preserved_text_insert(tmp_path: Path) -> None:
     """
     file: Path = tmp_path / "bom.xml"
     file.write_bytes(b"\xef\xbb\xbf<?xml version='1.0'?>\n<root/>\n")
-    ctx: ProcessingContext = run_insert(file, MutableConfig.from_defaults().freeze())
+    ctx: ProcessingContext = run_insert(file, mutable_config_from_defaults().freeze())
 
     updated_lines: list[str] = materialize_updated_lines(ctx)
 

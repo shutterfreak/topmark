@@ -25,8 +25,7 @@ from typing import TYPE_CHECKING
 from tests.conftest import resolve_processor_for_path
 from tests.pipeline.conftest import materialize_updated_lines
 from tests.pipeline.conftest import run_insert
-from topmark.config.model import Config
-from topmark.config.model import MutableConfig
+from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
 from topmark.processors.types import StripDiagKind
@@ -35,6 +34,7 @@ from topmark.processors.types import StripDiagnostic
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from topmark.config.model import Config
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.processors.base import HeaderProcessor
 
@@ -50,7 +50,7 @@ def test_insert_preserves_no_final_newline_pound(tmp_path: Path) -> None:
     # No final newline on purpose.
     f.write_text("print('x')", encoding="utf-8")
 
-    cfg: Config = MutableConfig.from_defaults().freeze()
+    cfg: Config = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -63,7 +63,7 @@ def test_insert_preserves_final_newline_slash(tmp_path: Path) -> None:
     f: Path = tmp_path / "a.ts"
     f.write_text("console.log(1);\n", encoding="utf-8")
 
-    cfg: Config = MutableConfig.from_defaults().freeze()
+    cfg: Config = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)

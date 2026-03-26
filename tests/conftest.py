@@ -46,7 +46,7 @@ from typing import cast
 
 import pytest
 
-from topmark.config.model import MutableConfig
+from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.types import PatternSource
 from topmark.core import logging
 from topmark.filetypes.model import ContentGate
@@ -60,6 +60,7 @@ from topmark.resolution.filetypes import resolve_binding_for_path
 
 if TYPE_CHECKING:
     from topmark.config.model import Config
+    from topmark.config.model import MutableConfig
 
 AnyCallable = Callable[..., object]
 DecoratorType = Callable[[AnyCallable], AnyCallable]
@@ -283,7 +284,7 @@ def make_mutable_config(**overrides: Any) -> MutableConfig:
     Returns:
         A mutable configuration object ready to be frozen or further edited.
     """
-    m: MutableConfig = MutableConfig.from_defaults()
+    m: MutableConfig = mutable_config_from_defaults()
 
     # Coerce path-to-file overrides to PatternSource where needed
     if "include_from" in overrides:

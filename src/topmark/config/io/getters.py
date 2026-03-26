@@ -231,10 +231,7 @@ def get_string_value_or_none_checked(
     where: str,
     diagnostics: DiagnosticLog,
 ) -> str | None:
-    """Return an optional string value, warning when present but not `str`.
-
-    Mirrors [`topmark.config.args_io.get_arg_string_or_none_checked`][].
-    """
+    """Return an optional string value, warning when present but not `str`."""
     value: Any | None = table.get(key)
     if value is None:
         return None
@@ -277,10 +274,7 @@ def get_bool_value_or_none_checked(
     where: str,
     diagnostics: DiagnosticLog,
 ) -> bool | None:
-    """Return an optional boolean value, warning when present but not `bool`.
-
-    Mirrors [`topmark.config.args_io.get_arg_bool_or_none_checked`][].
-    """
+    """Return an optional boolean value, warning when present but not `bool`."""
     value: Any | None = table.get(key)
     if value is None:
         return None
@@ -300,8 +294,6 @@ def get_int_value_or_none_checked(
     diagnostics: DiagnosticLog,
 ) -> int | None:
     """Return an optional int value, warning when present but not `int`.
-
-    Mirrors [`topmark.config.args_io.get_arg_int_or_none_checked`][].
 
     Notes:
         - Missing key / None -> None
@@ -336,8 +328,6 @@ def get_string_list_value_checked(
     diagnostics: DiagnosticLog,
 ) -> list[str]:
     """Extract a list of strings from a TOML table, recording a warning when the type is incorrect.
-
-    Mirrors [`topmark.config.args_io.get_arg_string_list_checked`][].
 
     By using `get_string_list_value()` we enforce "list of strings" for header field
     selection in TOML, drop non-strings with a warning + diagnostic, and give uniform,
@@ -393,8 +383,6 @@ def get_enum_value_checked(
     diagnostics: DiagnosticLog,
 ) -> E | None:
     """Parse an enum value from TOML.
-
-    Mirrors [`topmark.config.args_io.get_arg_enum_checked`][].
 
     Expected input is a `str` matching one of the Enum values.
 

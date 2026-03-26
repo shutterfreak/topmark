@@ -52,22 +52,22 @@ logger: TopmarkLogger = get_logger(__name__)
 
 
 # Internal helpers for normalization
-def abs_path_from(base: Path, raw: str | PathLike[str]) -> Path:
+def abs_path_from(base: Path, *, raw: str | PathLike[str]) -> Path:
     """Return an absolute Path for *raw* using *base* if *raw* is relative."""
     s = str(raw)
     p = Path(s)
     return (base / p).resolve() if not p.is_absolute() else p.resolve()
 
 
-def ps_from_config(raw: str, config_dir: Path) -> PatternSource:
+def pattern_source_from_config(raw: str, config_dir: Path) -> PatternSource:
     """Create PatternSource from a config-file-declared path using that file's directory."""
-    p: Path = abs_path_from(config_dir, raw)
+    p: Path = abs_path_from(config_dir, raw=raw)
     return PatternSource(path=p, base=p.parent)
 
 
-def ps_from_cli(raw: str, cwd: Path) -> PatternSource:
+def pattern_source_from_cwd(raw: str, cwd: Path) -> PatternSource:
     """Create PatternSource from a CLI-declared path using CWD (invocation site)."""
-    p: Path = abs_path_from(cwd, raw)
+    p: Path = abs_path_from(cwd, raw=raw)
     return PatternSource(path=p, base=p.parent)
 
 

@@ -20,13 +20,13 @@ import pytest
 from tests.pipeline.conftest import materialize_updated_lines
 from tests.pipeline.conftest import run_insert
 from tests.pipeline.conftest import run_strip
-from topmark.config.model import Config
-from topmark.config.model import MutableConfig
+from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.constants import TOPMARK_END_MARKER
 
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from topmark.config.model import Config
     from topmark.pipeline.context.model import ProcessingContext
 
 
@@ -51,7 +51,7 @@ def test_idempotent_double_insert(tmp_path: Path, filename: str, content: str) -
     f: Path = tmp_path / filename
     f.write_text(content)
 
-    cfg: Config = MutableConfig.from_defaults().freeze()
+    cfg: Config = mutable_config_from_defaults().freeze()
 
     # First run inserts a header (if not present yet)
     ctx1: ProcessingContext = run_insert(f, cfg)
@@ -85,7 +85,7 @@ def test_blank_line_after_header_for_line_and_block(
     f: Path = tmp_path / filename
     f.write_text(content)
 
-    cfg: Config = MutableConfig.from_defaults().freeze()
+    cfg: Config = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -128,7 +128,7 @@ def test_idempotent_insert_strip(tmp_path: Path, filename: str, content: str) ->
     ) as f_initial:
         lines: list[str] = list(f_initial)
 
-    cfg: Config = MutableConfig.from_defaults().freeze()
+    cfg: Config = mutable_config_from_defaults().freeze()
 
     # First run inserts a header (if not present yet)
     ctx1: ProcessingContext = run_insert(f, cfg)

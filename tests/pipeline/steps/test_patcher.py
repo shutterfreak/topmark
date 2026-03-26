@@ -28,8 +28,7 @@ from tests.pipeline.conftest import run_reader
 from tests.pipeline.conftest import run_renderer
 from tests.pipeline.conftest import run_resolver
 from tests.pipeline.conftest import run_scanner
-from topmark.config.model import Config
-from topmark.config.model import MutableConfig
+from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
 from topmark.rendering.unified_diff import format_patch_plain
@@ -37,6 +36,7 @@ from topmark.rendering.unified_diff import format_patch_plain
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from topmark.config.model import Config
     from topmark.pipeline.context.model import ProcessingContext
 
 
@@ -65,7 +65,7 @@ def test_patcher_diff_preserves_crlf_and_render_markers(tmp_path: Path) -> None:
             f"// {TOPMARK_START_MARKER}\n// test:header\n// {TOPMARK_END_MARKER}\nconsole.log(1)\n"
         )
 
-    cfg: Config = MutableConfig.from_defaults().freeze()
+    cfg: Config = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = _run_to_patcher(path, cfg)
 
     # We expect a change (strip/replace) to have produced a diff.

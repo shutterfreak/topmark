@@ -43,44 +43,18 @@ Testing guidance:
 from __future__ import annotations
 
 import functools
-import os
-
-# For runtime type checks, prefer collections.abc
 from dataclasses import dataclass
 from dataclasses import field
-from pathlib import Path
 from typing import TYPE_CHECKING
-from typing import Any
-from typing import Final
-from typing import cast
+from typing import TypeVar
 
-from topmark.cli.keys import CliOpt
-from topmark.config.args_io import get_arg_bool_or_none_checked
-from topmark.config.args_io import get_arg_int_or_none_checked
-from topmark.config.args_io import get_arg_string_list_checked
-from topmark.config.args_io import get_arg_string_or_none_checked
-from topmark.config.io.getters import get_bool_value_or_none_checked
-from topmark.config.io.getters import get_string_list_value_checked
-from topmark.config.io.getters import get_string_value_checked
-from topmark.config.io.getters import get_string_value_or_none_checked
-from topmark.config.io.guards import as_toml_table_map
-from topmark.config.io.guards import get_table_value
-from topmark.config.io.loaders import load_defaults_dict
-from topmark.config.io.loaders import load_toml_dict
 from topmark.config.io.loaders import render_runtime_defaults_toml_text
 from topmark.config.io.render import clean_toml
 from topmark.config.keys import Toml
-from topmark.config.paths import abs_path_from
-from topmark.config.paths import extend_pattern_sources
-from topmark.config.paths import ps_from_cli
-from topmark.config.paths import ps_from_config
 from topmark.config.policy import MutablePolicy
 from topmark.config.policy import Policy
-from topmark.config.types import ArgsLike
 from topmark.config.types import FileWriteStrategy
 from topmark.config.types import OutputTarget
-from topmark.constants import CLI_OVERRIDE_STR
-from topmark.core.keys import ArgKey
 from topmark.core.logging import get_logger
 from topmark.diagnostic.model import DiagnosticLog
 from topmark.diagnostic.model import DiagnosticStats
@@ -92,15 +66,75 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
     from collections.abc import Mapping
     from datetime import datetime
+    from pathlib import Path
 
-    from topmark.config.io.types import TomlTable
-    from topmark.config.io.types import TomlTableMap
     from topmark.config.types import PatternSource
     from topmark.core.logging import TopmarkLogger
     from topmark.filetypes.model import FileType
 
 
 logger: TopmarkLogger = get_logger(__name__)
+
+
+# ------------------ Helpers ------------------
+
+T = TypeVar("T")
+
+
+# --- List Helpers ---
+
+
+def merge_unique(current: Iterable[T] | None, incoming: Iterable[T] | None) -> list[T]:
+    """Returns a new list with unique items from current and incoming.
+
+    Preserves order. Always returns a list (empty if both are None).
+    """
+    # Use a set for O(1) lookups to avoid O(N^2) performance hits
+    result: list[T] = []
+    seen: set[T] = set()
+
+    for item in current or []:
+        if item not in seen:
+            result.append(item)
+            seen.add(item)
+
+    if incoming:
+        for item in incoming:
+            if item not in seen:
+                result.append(item)
+                seen.add(item)
+
+    return result
+
+
+def merge_unique_or_none(
+    current: Iterable[T] | None, incoming: Iterable[T] | None
+) -> list[T] | None:
+    """Returns None if both inputs are None, otherwise merges uniquely."""
+    if current is None and incoming is None:
+        return None
+    return merge_unique(current, incoming)
+
+
+# --- Dict Helpers ---
+
+
+def merge_dicts(current: dict[str, T] | None, incoming: dict[str, T] | None) -> dict[str, T]:
+    """Merges two dicts (incoming overrides current).
+
+    Always returns a dict (empty if both are None).
+    """
+    # Python 3.9+ merge operator (|) handles the copy and update logic cleanly
+    return (current or {}) | (incoming or {})
+
+
+def merge_dicts_or_none(
+    current: dict[str, T] | None, incoming: dict[str, T] | None
+) -> dict[str, T] | None:
+    """Returns None if both inputs are None, otherwise merges dicts."""
+    if current is None and incoming is None:
+        return None
+    return merge_dicts(current, incoming)
 
 
 # ------------------ Immutable runtime config ------------------
@@ -116,7 +150,7 @@ class Config:
     Use `Config.thaw` to obtain a mutable builder for edits, and `MutableConfig.freeze`
     to return to an immutable runtime snapshot.
 
-    Layered merging with clear precedence is provided by `MutableConfig.load_merged()`.
+    Layered merging with clear precedence is provided by `load_resolved_config()`.
 
     Attributes:
         timestamp: Timestamp when the Config instance was created.
@@ -238,80 +272,6 @@ class Config:
             return False
         # Can't proceed with warnings in strict mode
         return not (self.strict_config_checking is True and stats.n_warning > 0)
-
-    def to_toml_dict(self, *, include_files: bool = False) -> TomlTable:
-        """Convert this immutable Config into a TOML-serializable dict.
-
-        Args:
-            include_files: Whether to include the `files` list in the output.
-                Defaults to False to avoid spamming the output with potentially
-                large file lists. Set to True for full export.
-
-        Returns:
-            The TOML-serializable dict representing the Config
-
-        Note:
-            Export-only convenience for documentation/snapshots. Parsing and
-            loading live on the **mutable** side (see `MutableConfig` and
-            [`topmark.config.io`][topmark.config.io]).
-        """
-        # Normalize writer strategy for TOML (map enum to a stable, config-friendly token)
-        if self.file_write_strategy is None:
-            writer_strategy: str | None = None
-        else:
-            # FileWriteStrategy names are things like "ATOMIC" / "INPLACE";
-            # map them back to lowercase tokens used in config.
-            writer_strategy = self.file_write_strategy.name.lower()
-
-        toml_dict: TomlTable = {
-            Toml.SECTION_FIELDS: dict(self.field_values),
-            Toml.SECTION_HEADER: {
-                Toml.KEY_FIELDS: list(self.header_fields),
-                Toml.KEY_RELATIVE_TO: self.relative_to_raw,
-            },
-            Toml.SECTION_FORMATTING: {
-                Toml.KEY_ALIGN_FIELDS: self.align_fields,
-            },
-            Toml.SECTION_WRITER: {
-                # self.output_target is an Enum type
-                Toml.KEY_TARGET: self.output_target.value if self.output_target else None,
-                Toml.KEY_STRATEGY: writer_strategy,
-            },
-            Toml.SECTION_FILES: {
-                Toml.KEY_INCLUDE_FILE_TYPES: list(self.include_file_types),
-                Toml.KEY_EXCLUDE_FILE_TYPES: list(self.exclude_file_types),
-                Toml.KEY_FILES_FROM: [str(ps.path) for ps in self.files_from],
-                Toml.KEY_INCLUDE_FROM: [str(ps.path) for ps in self.include_from],
-                Toml.KEY_EXCLUDE_FROM: [str(ps.path) for ps in self.exclude_from],
-                Toml.KEY_INCLUDE_PATTERNS: list(self.include_patterns),
-                Toml.KEY_EXCLUDE_PATTERNS: list(self.exclude_patterns),
-                Toml.KEY_CONFIG_FILES: [
-                    str(p) if isinstance(p, Path) else str(p) for p in self.config_files
-                ],
-            },
-        }
-
-        # Policy serialization (global and per-type)
-        toml_dict[Toml.SECTION_POLICY] = {
-            Toml.KEY_POLICY_CHECK_ADD_ONLY: self.policy.add_only,
-            Toml.KEY_POLICY_CHECK_UPDATE_ONLY: self.policy.update_only,
-            Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES: self.policy.allow_header_in_empty_files,
-        }
-        if self.policy_by_type:
-            toml_dict[Toml.SECTION_POLICY_BY_TYPE] = {
-                ft: {
-                    Toml.KEY_POLICY_CHECK_ADD_ONLY: p.add_only,
-                    Toml.KEY_POLICY_CHECK_UPDATE_ONLY: p.update_only,
-                    Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES: p.allow_header_in_empty_files,
-                }
-                for ft, p in self.policy_by_type.items()
-            }
-
-        # Include files in TOML export
-        if include_files and self.files:
-            toml_dict[Toml.SECTION_FILES][Toml.KEY_FILES] = list(self.files)
-
-        return toml_dict
 
     def thaw(self) -> MutableConfig:
         """Return a mutable copy of this frozen config.
@@ -562,597 +522,6 @@ class MutableConfig:
         """
         return clean_toml(toml_doc)
 
-    @classmethod
-    def from_defaults(cls) -> MutableConfig:
-        """Load the default configuration from TopMark's runtime defaults.
-
-        Returns:
-            A `MutableConfig` instance populated with default values.
-        """
-        default_toml_data: TomlTable = load_defaults_dict()
-
-        # Note: `config_file` is set to None because this is a package resource,
-        # not a user-specified filesystem path.
-        return cls.from_toml_dict(
-            default_toml_data,
-            config_file=None,
-            use_defaults=True,  # We ONLY include defaults when loading from defaults!
-        )
-
-    @classmethod
-    def from_toml_file(cls, path: Path) -> MutableConfig | None:
-        """Load configuration from a single TOML file.
-
-        This method reads the TOML file, extracts the relevant configuration section,
-        and returns a Config instance. Supports both topmark.toml and pyproject.toml files,
-        extracting the [tool.topmark] section from pyproject.toml.
-
-        Args:
-            path: Path to the TOML file.
-
-        Returns:
-            The Config instance if successful; None if required sections are missing.
-        """
-        logger.debug("Creating MutableConfig from TOML config: %s", path)
-
-        toml_data: TomlTable = load_toml_dict(path)
-
-        if path.name == "pyproject.toml":
-            # Extract [tool.topmark] subsection from pyproject.toml
-            tool_section: TomlTable = toml_data.get("tool", {}).get("topmark", {})
-            if not tool_section:
-                logger.error("[tool.topmark] section missing or malformed in %s", path)
-                return None
-            else:
-                toml_data = tool_section
-
-        # Parse the extracted TOML data into a MutableConfig;
-        # pass the config file path so the dict parser knows the base directory
-        draft: MutableConfig = cls.from_toml_dict(toml_data, config_file=path)
-        draft.config_files = [path]
-        logger.debug("Generated MutableConfig: %s", draft)
-        return draft
-
-    @classmethod
-    def discover_local_config_files(cls, start: Path) -> list[Path]:
-        """Return config files discovered by walking upward from ``start``.
-
-        Layered discovery semantics:
-          * We traverse from the anchor directory up to the filesystem root and
-            collect config files in **root-most → nearest** order.
-          * In a given directory, we consider **both** `pyproject.toml` (with
-            `[tool.topmark]`) and `topmark.toml`. When **both** are present, we
-            append **`pyproject.toml` first and `topmark.toml` second** so that a
-            later merge (nearest-last-wins) gives same-directory precedence to
-            `topmark.toml`.
-          * If a discovered config sets ``root = true`` (top-level key in
-            `topmark.toml`, or within `[tool.topmark]` for `pyproject.toml`), we
-            stop traversing further up after collecting the current directory's
-            files.
-
-        Args:
-            start: The Path instance where discovery starts.
-
-        Returns:
-            Discovered config file paths ordered for stable merging
-            (root-most first, nearest last; within a directory: pyproject → topmark).
-        """
-        # Collect per-directory entries preserving same-dir precedence (pyproject → topmark)
-        per_dir: list[list[Path]] = []
-        cur: Path = start.resolve()  # Resolve symlinks and get absolute path
-        seen: set[Path] = set()
-
-        # Ensure we start from a directory anchor
-        if cur.is_file():
-            cur = cur.parent
-
-        # Walk up to filesystem root, recording entries per directory
-        while True:
-            root_stop_here = False
-            dir_entries: list[Path] = []
-
-            # Same-directory precedence: add pyproject first, then topmark (local order)
-            for name in ("pyproject.toml", "topmark.toml"):
-                p: Path = cur / name
-                if p.exists() and p.is_file() and p not in seen:
-                    dir_entries.append(p)
-                    seen.add(p)
-                    logger.debug("Discovered config file: %s", p)
-                    # Check for `root = true` to stop traversal after this dir
-                    data: TomlTable = load_toml_dict(p)
-                    # load_toml_dict() does a best-effort discovery; it returns {} on errors.
-                    if data:
-                        if name == "pyproject.toml":
-                            tool: TomlTable = data.get("tool", {})
-                            topmark_tbl: TomlTable = tool.get("topmark", {})
-                            if bool(topmark_tbl.get(Toml.KEY_ROOT, False)):
-                                root_stop_here = True
-                        else:  # topmark.toml
-                            if bool(data.get(Toml.KEY_ROOT, False)):
-                                root_stop_here = True
-                    else:
-                        # Best-effort discovery; ignore parse errors here.
-                        logger.debug("Ignoring empty TOML dict from reading %s", p)
-
-            if dir_entries:
-                # Keep entries grouped per directory: [pyproject, topmark]
-                per_dir.append(dir_entries)
-
-            parent: Path = cur.parent
-            if parent == cur:
-                break
-            if root_stop_here:
-                logger.debug(
-                    "Stopping upward config discovery at %s due to %s=true",
-                    cur,
-                    Toml.KEY_ROOT,
-                )
-                break
-            cur = parent
-
-        # Flatten per-directory lists in root→current order, preserving local precedence
-        ordered: list[Path] = []
-        for dir_list in reversed(per_dir):  # root-most first
-            # Within a directory: pyproject then topmark (tool file overrides)
-            ordered.extend(dir_list)  # pyproject then topmark within the directory
-
-        return ordered
-
-    @classmethod
-    def discover_user_config_file(cls) -> Path | None:
-        """Return a user-scoped config path if it exists.
-
-        Looks under XDG config (``$XDG_CONFIG_HOME/topmark/topmark.toml``) and a legacy
-        fallback (``~/.topmark.toml``). The first existing path is returned.
-        """
-        xdg: str | None = os.environ.get("XDG_CONFIG_HOME")
-        base: Path = Path(xdg) if xdg else Path.home() / ".config"
-        xdg_path: Path = base / "topmark" / "topmark.toml"
-        legacy: Path = Path.home() / ".topmark.toml"
-        for p in (xdg_path, legacy):
-            if p.exists() and p.is_file():
-                return p
-        return None
-
-    @classmethod
-    def from_toml_dict(
-        cls,
-        data: TomlTable,
-        config_file: Path | None = None,
-        use_defaults: bool = False,
-    ) -> MutableConfig:
-        """Create a draft config from a parsed TOML dict.
-
-        - Path-to-file entries declared in the config are normalized to absolute paths
-          using the *config file's* directory (config-local base).
-        - Glob strings are kept as-is (evaluated later against `relative_to`).
-        - `[fields]` is a free-form mapping of field_name -> field_value; only names listed
-          in `[header].fields` are rendered later by `BuilderStep`.
-
-        Args:
-            data: The parsed TOML data as a dictionary.
-            config_file: Optional path to the source TOML file.
-            use_defaults: Whether to treat this data as default config (affects behavior).
-
-        Returns:
-            The resulting MutableConfig instance.
-        """
-        tool_tbl: TomlTable = data  # top-level tool configuration dictionary
-
-        # Start from a fresh draft early so we can attach diagnostics while parsing.
-        draft: MutableConfig = cls()
-
-        # Config file's directory for relative path resolution
-        cfg_dir: Path | None = config_file.parent.resolve() if config_file else None
-
-        # ------------------------- Unknown key validation -------------------------
-        def _warn_unknown(where: str, keys: set[str]) -> None:
-            if not keys:
-                return
-            msg: str = f"Unknown TOML key(s) in {where} (ignored): " + ", ".join(sorted(keys))
-            draft.diagnostics.add_warning(msg)
-
-        # Validate top-level keys
-        _warn_unknown(
-            "top-level",
-            set(tool_tbl.keys()) - set(Toml.ALLOWED_TOP_LEVEL_KEYS),
-        )
-
-        # Validate known sections (tables)
-        for section_name, allowed_keys in Toml.ALLOWED_SECTION_KEYS.items():
-            if section_name not in tool_tbl:
-                continue
-            section_val: Any = tool_tbl.get(section_name)
-            if not isinstance(section_val, dict):
-                msg: str = (
-                    f"TOML section [{section_name}] must be a table; "
-                    f"got {type(section_val).__name__} (ignored)."
-                )
-                draft.diagnostics.add_warning(msg)
-                continue
-
-            section_tbl: TomlTable = cast("TomlTable", section_val)
-            _warn_unknown(f"[{section_name}]", set(section_tbl.keys()) - set(allowed_keys))
-
-        # Validate [policy_by_type.<filetype>] subtables (their keys are fixed)
-        pbt_val: Any = tool_tbl.get(Toml.SECTION_POLICY_BY_TYPE)
-        if isinstance(pbt_val, dict):
-            pbt_tbl: TomlTable = cast("TomlTable", pbt_val)
-            for ft_name, ft_tbl_any in pbt_tbl.items():
-                ft: str = str(ft_name)
-                if not isinstance(ft_tbl_any, dict):
-                    msg = (
-                        f"TOML section [{Toml.SECTION_POLICY_BY_TYPE}.{ft}] "
-                        f"must be a table; got {type(ft_tbl_any).__name__} (ignored)."
-                    )
-                    draft.diagnostics.add_warning(msg)
-                    continue
-
-                ft_tbl: TomlTable = cast("TomlTable", ft_tbl_any)
-                _warn_unknown(
-                    f"[{Toml.SECTION_POLICY_BY_TYPE}.{ft}]",
-                    set(ft_tbl.keys()) - set(Toml.ALLOWED_POLICY_KEYS),
-                )
-
-        # Extract sub-tables for specific config sections; fallback to empty dicts.
-        #
-        # NOTE: `[fields]` is an *arbitrary* user-defined mapping of name -> value.
-        #       It may contain keys that are not rendered. The rendered/ordered subset
-        #       is controlled by `[header].fields` and applied later by
-        #       `topmark.pipeline.steps.builder.BuilderStep`.
-        field_tbl: TomlTable = get_table_value(tool_tbl, Toml.SECTION_FIELDS)
-        logger.trace("TOML [%s]: %s", Toml.SECTION_FIELDS, field_tbl)
-
-        header_tbl: TomlTable = get_table_value(tool_tbl, Toml.SECTION_HEADER)
-        logger.trace("TOML [%s]: %s", Toml.SECTION_HEADER, header_tbl)
-
-        formatting_tbl: TomlTable = get_table_value(tool_tbl, Toml.SECTION_FORMATTING)
-        logger.trace("TOML [%s]: %s", Toml.SECTION_FORMATTING, formatting_tbl)
-
-        files_tbl: TomlTable = get_table_value(tool_tbl, Toml.SECTION_FILES)
-        logger.trace("TOML [%s]: %s", Toml.SECTION_FILES, files_tbl)
-
-        policy_tbl: TomlTable = get_table_value(tool_tbl, Toml.SECTION_POLICY)
-        logger.trace("TOML [%s]: %s", Toml.SECTION_POLICY, policy_tbl)
-
-        policy_by_type_raw: TomlTable = get_table_value(tool_tbl, Toml.SECTION_POLICY_BY_TYPE)
-        policy_by_type_tbl: TomlTableMap = as_toml_table_map(policy_by_type_raw)
-        logger.trace("TOML [%s]: %s", Toml.SECTION_POLICY_BY_TYPE, policy_by_type_tbl)
-
-        writer_tbl: TomlTable = get_table_value(tool_tbl, Toml.SECTION_WRITER)
-        logger.trace("TOML [%s]: %s", Toml.SECTION_WRITER, writer_tbl)
-
-        # ----- config_files: normalize to absolute paths if possible -----
-        config_files: tuple[list[Path]] = ([config_file] if config_file else [],)
-        draft.config_files = [str(p) for p in config_files[0]] if config_files[0] else []
-
-        # ----- Writer settings -----
-        where_writer: Final[str] = f"[{Toml.SECTION_WRITER}]"
-
-        # target
-        raw_target: str | None = get_string_value_or_none_checked(
-            writer_tbl,
-            Toml.KEY_TARGET,
-            where=where_writer,
-            diagnostics=draft.diagnostics,
-        )
-        if raw_target is not None:
-            parsed_target: OutputTarget | None = OutputTarget.parse(raw_target)
-            if parsed_target is None:
-                allowed_targets = ", ".join(t.value for t in OutputTarget)
-                msg = (
-                    f"Invalid value for {where_writer}.{Toml.KEY_TARGET}: "
-                    f"{raw_target!r} (allowed: {allowed_targets})"
-                )
-                draft.diagnostics.add_warning(msg)
-            else:
-                draft.output_target = parsed_target
-
-        # strategy
-        raw_strategy: str | None = get_string_value_or_none_checked(
-            writer_tbl,
-            Toml.KEY_STRATEGY,
-            where=where_writer,
-            diagnostics=draft.diagnostics,
-        )
-        if raw_strategy is not None:
-            parsed_strategy: FileWriteStrategy | None = FileWriteStrategy.parse(raw_strategy)
-            if parsed_strategy is None:
-                allowed_strategies = ", ".join(s.value for s in FileWriteStrategy)
-                msg = (
-                    f"Invalid value for {where_writer}.{Toml.KEY_STRATEGY}: "
-                    f"{raw_strategy!r} (allowed: {allowed_strategies})"
-                )
-                draft.diagnostics.add_warning(msg)
-            else:
-                draft.file_write_strategy = parsed_strategy
-
-        # ----- Global policy -----
-        where_policy: Final[str] = f"[{Toml.SECTION_POLICY}]"
-        for key in Toml.ALLOWED_POLICY_KEYS:
-            # Pre-validate the shapes before calling MutablePolicy.from_toml_table()
-            # to add diagnostics for wrong policy types
-            _ = get_bool_value_or_none_checked(
-                policy_tbl,
-                key,
-                where=where_policy,
-                diagnostics=draft.diagnostics,
-            )
-        draft.policy = MutablePolicy.from_toml_table(policy_tbl)
-
-        # ----- Policy by FileType -----
-
-        for ft, tbl in policy_by_type_tbl.items():
-            where: str = f"[{Toml.SECTION_POLICY_BY_TYPE}.{ft}]"
-            for key in Toml.ALLOWED_POLICY_KEYS:
-                # Pre-validate the shapes before calling MutablePolicy.from_toml_table()
-                # to add diagnostics for wrong policy types
-                _ = get_bool_value_or_none_checked(
-                    tbl,
-                    key,
-                    where=where,
-                    diagnostics=draft.diagnostics,
-                )
-        draft.policy_by_type = {
-            str(ft): MutablePolicy.from_toml_table(tbl) for ft, tbl in policy_by_type_tbl.items()
-        }
-
-        # ----- files: normalize to absolute paths against the config file dir (when known) -----
-        where_files: Final[str] = f"[{Toml.SECTION_FILES}]"
-        raw_files: list[str] = get_string_list_value_checked(
-            files_tbl,
-            Toml.KEY_FILES,
-            where=where_files,
-            diagnostics=draft.diagnostics,
-        )
-        if raw_files:
-            if cfg_dir is not None:
-                for f in raw_files:
-                    absf: Path = abs_path_from(cfg_dir, f)
-                    draft.files.append(str(absf))
-                    logger.debug("Normalized config files entry against %s: %s", cfg_dir, absf)
-            else:
-                draft.files.extend(raw_files)
-
-        # ----- include_from / exclude_from / files_from: convert to PatternSource now -----
-        def _normalize_sources(key: str) -> None:
-            # List-valued keys under [files] (include_from/exclude_from/files_from) should be
-            # a list of strings. Wrong types are treated as empty; mixed types drop non-strings.
-            # Enforce "list of strings" for field selection in TOML:
-            vals: list[str] = get_string_list_value_checked(
-                files_tbl,
-                key,
-                where=where_files,
-                diagnostics=draft.diagnostics,
-            )
-
-            if not vals:
-                return
-
-            if cfg_dir is not None:
-                extend_pattern_sources(
-                    getattr(draft, key),
-                    vals,
-                    ps_from_config,
-                    f"config {where_files}.{key}",
-                    cfg_dir,
-                )
-            else:
-                # Rare fallback: without a config file path, use CWD to avoid losing info
-                extend_pattern_sources(
-                    getattr(draft, key),
-                    vals,
-                    ps_from_cli,
-                    f"config {where_files}.{key}",
-                    Path.cwd().resolve(),
-                )
-
-        for _k in (Toml.KEY_INCLUDE_FROM, Toml.KEY_EXCLUDE_FROM, Toml.KEY_FILES_FROM):
-            _normalize_sources(_k)
-
-        # ----- glob arrays remain raw strings (evaluated later vs relative_to) -----
-        # List-valued glob keys under [files] should contain strings. Wrong types are treated
-        # as empty; mixed types drop non-strings with a warning + diagnostic.
-        def _extend_glob_list(attr: str, key: str) -> None:
-            # Enforce "list of strings" for field selection in TOML:
-            vals: list[str] = get_string_list_value_checked(
-                files_tbl,
-                key,
-                where=where_files,
-                diagnostics=draft.diagnostics,
-            )
-
-            if vals:
-                getattr(draft, attr).extend(vals)
-
-        _extend_glob_list("include_patterns", Toml.KEY_INCLUDE_PATTERNS)
-        _extend_glob_list("exclude_patterns", Toml.KEY_EXCLUDE_PATTERNS)
-
-        # Coerce `[fields]` values to strings (the table is user-defined and may include
-        # unused keys). Unsupported types are ignored with a warning.
-        field_values: dict[str, str] = {}
-        for k, v in field_tbl.items():
-            if isinstance(v, str | int | float | bool):
-                field_values[k] = str(v)
-            else:
-                # [fields] is a free-form table; include the TOML location for consistency.
-                loc: str = f"[{Toml.SECTION_FIELDS}].{k}"
-                draft.diagnostics.add_warning(f"Ignoring unsupported field value for {loc}: {v}")
-        draft.field_values = field_values
-
-        # `[header].fields`: ordered list of field names to render (built-ins and/or
-        # keys from `[fields]`).
-        #
-        # Enforce "list of strings" for header field selection in TOML:
-        draft.header_fields = get_string_list_value_checked(
-            header_tbl,
-            Toml.KEY_FIELDS,
-            where=f"[{Toml.SECTION_HEADER}]",
-            diagnostics=draft.diagnostics,
-        )
-
-        # NOTE: If the user did not specify any header fields, this results in an empty header.
-        # Fallback: if no explicit header field order is provided, use the keys of
-        # the field_values table in their declared order. This preserves intuitive
-        # behavior (headers render when values are present).
-        if not draft.header_fields:
-            draft.diagnostics.add_warning(
-                f"{Toml.SECTION_HEADER}.{Toml.KEY_FIELDS} is not set (empty TopMark header)"
-            )
-
-        # Parse relative_to path if present, resolve to absolute path
-        draft.relative_to_raw = get_string_value_checked(
-            header_tbl,
-            Toml.KEY_RELATIVE_TO,
-            where=where_files,
-            diagnostics=draft.diagnostics,
-            default="",
-        )
-        if draft.relative_to_raw:
-            p = Path(draft.relative_to_raw)
-            if p.is_absolute():
-                draft.relative_to = p.resolve()
-            else:
-                if cfg_dir is not None:
-                    # Resolve relative-to against the CONFIG FILE’s directory
-                    draft.relative_to = (cfg_dir / p).resolve()
-                else:
-                    # Defaults or synthetic dicts: don’t bind to CWD; let the resolver
-                    # pick the project root later.
-                    draft.relative_to = None
-        else:
-            draft.relative_to = None
-
-        # ---- Header Formatting ----
-
-        where_fmt: Final[str] = f"[{Toml.SECTION_FORMATTING}]"
-        # align_fields --  NOTE: do not set a default value if not set
-        draft.align_fields = get_bool_value_or_none_checked(
-            formatting_tbl,
-            Toml.KEY_ALIGN_FIELDS,
-            where=where_fmt,
-            diagnostics=draft.diagnostics,
-        )
-
-        # ---- File-related settings ----
-
-        # include_file_types
-        include_file_types: list[str] = get_string_list_value_checked(
-            files_tbl,
-            Toml.KEY_INCLUDE_FILE_TYPES,
-            where=where_files,
-            diagnostics=draft.diagnostics,
-        )
-        draft.include_file_types = set(include_file_types)
-
-        if include_file_types and len(include_file_types) != len(draft.include_file_types):
-            draft.diagnostics.add_warning(
-                "Duplicate included file types found in config "
-                f"(key: {Toml.KEY_INCLUDE_FILE_TYPES}): "
-                ", ".join(include_file_types),
-            )
-
-        # exclude_file_types
-        exclude_file_types: list[str] = get_string_list_value_checked(
-            files_tbl,
-            Toml.KEY_EXCLUDE_FILE_TYPES,
-            where=where_files,
-            diagnostics=draft.diagnostics,
-        )
-        draft.exclude_file_types = set(exclude_file_types)
-
-        if exclude_file_types and len(exclude_file_types) != len(draft.exclude_file_types):
-            draft.diagnostics.add_warning(
-                "Duplicate excluded file types found in config "
-                f"(key: {Toml.KEY_EXCLUDE_FILE_TYPES}): "
-                ", ".join(exclude_file_types),
-            )
-
-        # stdin_mode
-        draft.stdin_mode = (
-            False  # Default to False unless explicitly set later -- TODO: False or None?
-        )
-
-        return draft
-
-    @classmethod
-    def load_merged(
-        cls,
-        *,
-        input_paths: Iterable[Path] | None = None,
-        extra_config_files: Iterable[Path] | None = None,
-        strict_config_checking: bool | None = None,
-        no_config: bool = False,
-        include_file_types: Iterable[str] | None = None,
-        exclude_file_types: Iterable[str] | None = None,
-    ) -> MutableConfig:
-        """Discover and merge configuration layers into a draft `MutableConfig`.
-
-        Merge order (lowest → highest precedence):
-            1) Built-in defaults
-            2) User config (XDG / legacy)
-            3) Project configs discovered upward **root → current**; within a directory
-               `pyproject.toml` is merged first, then `topmark.toml` (tool file overrides)
-            4) Extra config files passed explicitly via ``--config`` (in the order provided)
-
-        Args:
-            input_paths: Discovery anchor(s). The first path (or CWD if none) is used as
-                the starting directory for upward discovery. If it is a file, its parent directory
-                is used.
-            extra_config_files: Explicit additional config files to merge **after** discovery
-                (their given order).
-            strict_config_checking: If True, enforce strict TOML config checking (fail on errors).
-            no_config: If True, skip user and project discovery.
-            include_file_types: Optional filter to seed the draft for parity with CLI.
-            exclude_file_types: Optional filter to seed the draft for parity with CLI.
-
-        Returns:
-            A mutable configuration draft ready to be frozen or further edited.
-        """
-        # 1) Start from defaults
-        draft: MutableConfig = cls.from_defaults()
-
-        # Determine discovery anchor
-        anchor: Path = list(input_paths)[0] if input_paths else Path.cwd()
-        if anchor.is_file():
-            anchor = anchor.parent
-
-        # Optionally seed include_file_types for parity with CLI flags
-        if include_file_types:
-            draft.include_file_types = set(include_file_types)
-        # Optionally seed exlude_file_types for parity with CLI flags
-        if exclude_file_types:
-            draft.exclude_file_types = set(exclude_file_types)
-
-        # Only set strict config checking if not None
-        if strict_config_checking is not None:
-            draft.strict_config_checking = strict_config_checking
-
-        if not no_config:
-            # 2) Merge user config (if present)
-            user_cfg_path: Path | None = cls.discover_user_config_file()
-            if user_cfg_path is not None:
-                user_cfg: MutableConfig | None = cls.from_toml_file(user_cfg_path)
-                if user_cfg is not None:
-                    draft = draft.merge_with(user_cfg)
-
-            # 3) Discover project configs upward from anchor and merge **root → current**
-            discovered: list[Path] = cls.discover_local_config_files(anchor)
-            # `discover_local_config_files` already returns root-most → nearest; within a directory
-            # it yields `pyproject.toml` then `topmark.toml`.
-            for cfg_path in discovered:
-                mc: MutableConfig | None = cls.from_toml_file(cfg_path)
-                if mc is not None:
-                    draft = draft.merge_with(mc)
-
-        # 4) Merge extra config files (e.g., --config), in the given order
-        for extra in extra_config_files or ():  # explicit files override discovered ones
-            mc = cls.from_toml_file(Path(extra))
-            if mc is not None:
-                draft = draft.merge_with(mc)
-
-        return draft
-
     # ------------------------------- Merging -------------------------------
 
     def merge_with(self, other: MutableConfig) -> MutableConfig:
@@ -1244,299 +613,6 @@ class MutableConfig:
         merged.policy_by_type = merged_by_type
 
         return merged
-
-    def apply_args(
-        self,
-        args: ArgsLike,
-        *,
-        config_only: bool = False,
-    ) -> MutableConfig:
-        """Update Config fields based on an arguments mapping (CLI or API).
-
-        Accepts CLI or API-provided argument mappings and applies validated overrides.
-
-        This method applies overrides from a parsed arguments mapping to the current
-        MutableConfig instance. It does not handle flags that influence config file
-        discovery (e.g., --no-config, --config).
-
-        Args:
-            args: Parsed arguments mapping (from CLI or API).
-            config_only: If True, only process config-related CLI inputs (disregard all other
-                CLI inputs)
-
-        Returns:
-            The updated MutableConfig instance with CLI overrides applied.
-
-        Note:
-            CLI path-to-file options (``--include-from``, ``--exclude-from``,
-            ``--files-from``) are normalized against the **current working
-            directory** (invocation site). Glob arrays remain as strings and
-            are later evaluated relative to ``relative_to``.
-        """
-        # NOTE: ArgsLike is not typed as strictly as ArgsNamespace so we should check type
-        # when reading from args
-
-        logger.debug("Applying ArgsLike arguments to MutableConfig: %s", args)
-
-        # strict_config_checking
-        strict: bool | None = get_arg_bool_or_none_checked(
-            args,
-            ArgKey.STRICT_CONFIG_CHECKING.value,  # StrEnum
-            diagnostics=self.diagnostics,
-        )
-        if strict is not None:
-            self.strict_config_checking = strict
-
-        # Append or initialize config_files list with CLI override marker;
-        # use a special marker to indicate CLI overrides in config_files list
-        if self.config_files:
-            self.config_files.append(CLI_OVERRIDE_STR)
-        else:
-            self.config_files = [CLI_OVERRIDE_STR]
-
-        # Note: CLI config paths are already merged elsewhere
-        # so we don't extend self.config_files here.
-
-        # Policy flags (add_only, update_only)
-        add_only: bool | None = get_arg_bool_or_none_checked(
-            args,
-            ArgKey.POLICY_CHECK_ADD_ONLY.value,  # StrEnum
-            diagnostics=self.diagnostics,
-        )
-        if add_only is not None:
-            self.policy.add_only = add_only
-
-        update_only: bool | None = get_arg_bool_or_none_checked(
-            args,
-            ArgKey.POLICY_CHECK_UPDATE_ONLY.value,  # StrEnum
-            diagnostics=self.diagnostics,
-        )
-        if update_only is not None:
-            self.policy.update_only = update_only
-        # ... but do not zero-out policy_by_type when ArgsLike says nothing
-
-        # Files to process (enforce list[str])
-        if ArgKey.FILES in args:
-            self.files = get_arg_string_list_checked(
-                args,
-                ArgKey.FILES.value,  # StrEnum
-                diagnostics=self.diagnostics,
-            )
-            if any(not s for s in self.files):
-                empties: list[str] = [s for s in self.files if not s]
-                self.diagnostics.add_warning(
-                    f"Ignoring empty string entries in {ArgKey.FILES.value}: {empties!r}"
-                )
-                self.files = [s for s in self.files if s]
-            if self.files:
-                self.stdin_mode = False
-
-        # Glob patterns: include_patterns / exclude_patterns (extend)
-        if ArgKey.INCLUDE_PATTERNS in args:
-            vals = get_arg_string_list_checked(
-                args,
-                ArgKey.INCLUDE_PATTERNS.value,  # StrEnum
-                diagnostics=self.diagnostics,
-            )
-            vals = [s for s in vals if s]
-            if vals:
-                self.include_patterns.extend(vals)
-        if ArgKey.EXCLUDE_PATTERNS in args:
-            vals = get_arg_string_list_checked(
-                args,
-                ArgKey.EXCLUDE_PATTERNS.value,  # StrEnum
-                diagnostics=self.diagnostics,
-            )
-            vals = [s for s in vals if s]
-            if vals:
-                self.exclude_patterns.extend(vals)
-
-        # Override include/exclude patterns and files if specified
-        cwd: Path = Path.cwd().resolve()
-
-        # Path-to-file options: include_from, exclude_from, files_from (validate list[str])
-        if ArgKey.INCLUDE_FROM in args:
-            vals: list[str] = get_arg_string_list_checked(
-                args,
-                ArgKey.INCLUDE_FROM.value,  # StrEnum
-                diagnostics=self.diagnostics,
-            )
-            vals = [s for s in vals if s]
-            extend_pattern_sources(
-                self.include_from,
-                vals,
-                ps_from_cli,
-                f"CLI {CliOpt.INCLUDE_FROM}",
-                cwd,
-            )
-        if ArgKey.EXCLUDE_FROM in args:
-            vals = get_arg_string_list_checked(
-                args,
-                ArgKey.EXCLUDE_FROM.value,  # StrEnum
-                diagnostics=self.diagnostics,
-            )
-            vals = [s for s in vals if s]
-            extend_pattern_sources(
-                self.exclude_from,
-                vals,
-                ps_from_cli,
-                f"CLI {CliOpt.EXCLUDE_FROM}",
-                cwd,
-            )
-        if ArgKey.FILES_FROM in args:
-            vals = get_arg_string_list_checked(
-                args,
-                ArgKey.FILES_FROM.value,  # StrEnum
-                diagnostics=self.diagnostics,
-            )
-            vals = [s for s in vals if s]
-            extend_pattern_sources(
-                self.files_from,
-                vals,
-                ps_from_cli,
-                f"CLI {CliOpt.FILES_FROM}",
-                cwd,
-            )
-
-        # relative_to: string or None, only override if non-empty string (not just whitespace)
-        if ArgKey.RELATIVE_TO in args:
-            rel: str | None = get_arg_string_or_none_checked(
-                args,
-                ArgKey.RELATIVE_TO.value,  # StrEnum
-                diagnostics=self.diagnostics,
-            )
-            if rel is not None and rel.strip() != "":
-                rel_str: str = rel.strip()
-                self.relative_to_raw = rel_str
-                self.relative_to = Path(rel_str).resolve()
-
-        # If key not present or value is None, **keep** whatever came from discovery/TOML.
-
-        # include_file_types / exclude_file_types: set of strings, only override if present
-        raw: Any | None = args.get(ArgKey.INCLUDE_FILE_TYPES)
-        if raw not in (None, ()):
-            # Only override when the user actually passes a value
-            # TODO decide whether `()` clears the property or whether we always extend the set
-            vals = get_arg_string_list_checked(
-                args,
-                ArgKey.INCLUDE_FILE_TYPES.value,  # StrEnum
-                diagnostics=self.diagnostics,
-            )
-            filtered: list[str] = [s for s in vals if s]  # drop empty strings
-            deduped: set[str] = set(filtered)
-            self.include_file_types = deduped
-            dup_count: int = len(filtered) - len(deduped)
-            if dup_count:
-                self.diagnostics.add_info(
-                    f"Ignored {dup_count} duplicate values for {ArgKey.INCLUDE_FILE_TYPES.value}"
-                )
-
-        raw: Any | None = args.get(ArgKey.EXCLUDE_FILE_TYPES)
-        if raw not in (None, ()):
-            # Only override when the user actually passes a value
-            # TODO decide whether `()` clears the property or whether we always extend the set
-            vals = get_arg_string_list_checked(
-                args,
-                ArgKey.EXCLUDE_FILE_TYPES.value,  # StrEnum
-                diagnostics=self.diagnostics,
-            )
-            filtered: list[str] = [s for s in vals if s]  # drop empty strings
-            deduped: set[str] = set(filtered)
-            self.exclude_file_types = deduped
-            dup_count: int = len(filtered) - len(deduped)
-            if dup_count:
-                self.diagnostics.add_info(
-                    f"Ignored {dup_count} duplicate values for {ArgKey.EXCLUDE_FILE_TYPES.value}"
-                )
-
-        # Apply CLI flags that require explicit True to activate or to explicitly disable
-
-        # stdin_mode: checked bool
-
-        # Apply CLI flags that require explicit True to activate or to explicitly disable
-        stdin_mode: bool | None = get_arg_bool_or_none_checked(
-            args,
-            ArgKey.STDIN_MODE.value,  # StrEnum
-            diagnostics=self.diagnostics,
-        )
-        if stdin_mode is not None:
-            # honor False explicitly
-            self.stdin_mode = stdin_mode
-
-        stdin_filename: str | None = get_arg_string_or_none_checked(
-            args,
-            ArgKey.STDIN_FILENAME.value,  # StrEnum
-            diagnostics=self.diagnostics,
-        )
-        if stdin_filename:
-            # `stdin_filename`` must be nonempty
-            self.stdin_filename = stdin_filename
-
-        # align_fields: checked bool
-        if ArgKey.ALIGN_FIELDS in args:
-            af: bool | None = get_arg_bool_or_none_checked(
-                args,
-                ArgKey.ALIGN_FIELDS.value,  # StrEnum
-                diagnostics=self.diagnostics,
-            )
-            if af is not None:
-                self.align_fields = af
-
-        # verbosity_level: not part of MutableConfig
-        if ArgKey.VERBOSITY_LEVEL in args:
-            v: int | None = get_arg_int_or_none_checked(
-                args,
-                ArgKey.VERBOSITY_LEVEL.value,  # StrEnum
-                diagnostics=self.diagnostics,
-            )
-            if v is None:
-                self.diagnostics.add_warning(
-                    f"Invalid verbosity_level={args[ArgKey.VERBOSITY_LEVEL]} (expected int); "
-                    f"found {args.get(ArgKey.VERBOSITY_LEVEL.value)!r}",
-                )
-
-        if ArgKey.APPLY_CHANGES in args and args[ArgKey.APPLY_CHANGES] is not None:
-            self.apply_changes = bool(args[ArgKey.APPLY_CHANGES])
-
-        # write_mode: checked string, then parse
-        if ArgKey.WRITE_MODE in args:
-            # CLI uses ArgKey.WRITE_MODE as a convenience selector:
-            #   - "stdout" -> output to STDOUT (no file strategy)
-            #   - "atomic"/"inplace" -> output to FILE + set strategy
-            logger.debug("CLI ARGS: write_mode=%r", args[ArgKey.WRITE_MODE])
-            write_mode: str = str(args[ArgKey.WRITE_MODE]).lower()
-
-            raw_write_mode: str | None = get_arg_string_or_none_checked(
-                args,
-                ArgKey.WRITE_MODE.value,  # StrEnum
-                diagnostics=self.diagnostics,
-            )
-            if raw_write_mode is None:
-                # present but wrong type already diagnosed; do not override
-                raw_write_mode = ""
-            write_mode: str = raw_write_mode.lower()
-            if write_mode:
-                if write_mode == "stdout":
-                    self.output_target = OutputTarget.STDOUT
-                    self.file_write_strategy = None
-                else:
-                    self.output_target = OutputTarget.FILE
-                    file_write_strategy: FileWriteStrategy | None = FileWriteStrategy.parse(
-                        write_mode
-                    )
-                    if file_write_strategy is None:
-                        self.diagnostics.add_warning(
-                            f"Invalid '{ArgKey.WRITE_MODE.value}' value specified "
-                            f"in the arguments: {raw_write_mode} - "
-                            "using defaults: output to file, atomic file write strategy."
-                        )
-                        file_write_strategy = FileWriteStrategy.ATOMIC
-                    self.file_write_strategy = file_write_strategy
-
-        logger.debug("Patched MutableConfig: %s", self)
-        logger.info("Applied argument mapping overrides to MutableConfig")
-        logger.debug("apply_args(): finalized _mode=%s files=%s", self.stdin_mode, self.files)
-        return self
 
     def _validate_policy_flags(self) -> None:
         """Schema-level validation for mutually exclusive policy flags.

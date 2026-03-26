@@ -1,0 +1,121 @@
+# topmark:header:start
+#
+#   project      : TopMark
+#   file         : serializers.py
+#   file_relpath : src/topmark/config/io/serializers.py
+#   license      : MIT
+#   copyright    : (c) 2025 Olivier Biot
+#
+# topmark:header:end
+
+"""Serialize TopMark configuration objects to TOML-compatible structures.
+
+This module provides helpers to convert immutable `Config` instances into
+TOML-serializable dictionaries for export, debugging, or documentation.
+
+Responsibilities:
+    - convert `Config` into TOML-shaped dictionaries
+    - normalize enum values into stable string tokens
+    - control inclusion of optional sections (e.g. large file lists)
+
+Design notes:
+    - This module is the inverse of
+      [`topmark.config.io.deserializers`][topmark.config.io.deserializers].
+    - Serialization is intentionally kept out of `config.model` to preserve
+      a clean separation between data structures and I/O concerns.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+from topmark.config.keys import Toml
+
+if TYPE_CHECKING:
+    from topmark.config.io.types import TomlTable
+    from topmark.config.model import Config
+
+
+def config_to_toml_dict(config: Config, *, include_files: bool = False) -> TomlTable:
+    """Convert this immutable Config into a TOML-serializable dict.
+
+    Args:
+        config: Config object to serialize to TOML dict.
+        include_files: Whether to include the `files` list in the output.
+            Defaults to False to avoid spamming the output with potentially
+            large file lists. Set to True for full export.
+
+    Returns:
+        The TOML-serializable dict representing the Config
+
+    Note:
+        Export-only convenience for documentation/snapshots. Parsing and
+        loading live on the **mutable** side (see `MutableConfig` and
+        [`topmark.config.io`][topmark.config.io]).
+    """
+    # Normalize writer strategy for TOML (map enum to a stable, config-friendly token)
+    if config.file_write_strategy is None:
+        writer_strategy: str | None = None
+    else:
+        # FileWriteStrategy names are things like "ATOMIC" / "INPLACE";
+        # map them back to lowercase tokens used in config.
+        writer_strategy = config.file_write_strategy.name.lower()
+
+    toml_dict: TomlTable = {
+        Toml.SECTION_FIELDS: dict(config.field_values),
+        Toml.SECTION_HEADER: {
+            Toml.KEY_FIELDS: list(config.header_fields),
+            Toml.KEY_RELATIVE_TO: config.relative_to_raw,
+        },
+        Toml.SECTION_FORMATTING: {
+            Toml.KEY_ALIGN_FIELDS: config.align_fields,
+        },
+        Toml.SECTION_WRITER: {
+            # self.output_target is an Enum type
+            Toml.KEY_TARGET: config.output_target.value if config.output_target else None,
+            Toml.KEY_STRATEGY: writer_strategy,
+        },
+        Toml.SECTION_FILES: {
+            Toml.KEY_INCLUDE_FILE_TYPES: list(config.include_file_types),
+            Toml.KEY_EXCLUDE_FILE_TYPES: list(config.exclude_file_types),
+            Toml.KEY_FILES_FROM: [str(ps.path) for ps in config.files_from],
+            Toml.KEY_INCLUDE_FROM: [str(ps.path) for ps in config.include_from],
+            Toml.KEY_EXCLUDE_FROM: [str(ps.path) for ps in config.exclude_from],
+            Toml.KEY_INCLUDE_PATTERNS: list(config.include_patterns),
+            Toml.KEY_EXCLUDE_PATTERNS: list(config.exclude_patterns),
+            Toml.KEY_CONFIG_FILES: [
+                str(p) if isinstance(p, Path) else str(p) for p in config.config_files
+            ],
+        },
+    }
+
+    # Policy serialization (global and per-type)
+    toml_dict[Toml.SECTION_POLICY] = {
+        Toml.KEY_POLICY_CHECK_ADD_ONLY: config.policy.add_only,
+        Toml.KEY_POLICY_CHECK_UPDATE_ONLY: config.policy.update_only,
+        Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES: config.policy.allow_header_in_empty_files,
+        Toml.KEY_POLICY_EMPTIES_INSERT_MODE: config.policy.empty_insert_mode.value,
+        Toml.KEY_POLICY_ALLOW_EMPTY_HEADER: config.policy.render_empty_header_when_no_fields,
+        Toml.KEY_POLICY_ALLOW_REFLOW: config.policy.allow_reflow,
+        Toml.KEY_POLICY_ALLOW_CONTENT_PROBE: config.policy.allow_content_probe,
+    }
+    if config.policy_by_type:
+        toml_dict[Toml.SECTION_POLICY_BY_TYPE] = {
+            ft: {
+                Toml.KEY_POLICY_CHECK_ADD_ONLY: p.add_only,
+                Toml.KEY_POLICY_CHECK_UPDATE_ONLY: p.update_only,
+                Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES: p.allow_header_in_empty_files,
+                Toml.KEY_POLICY_EMPTIES_INSERT_MODE: p.empty_insert_mode.value,
+                Toml.KEY_POLICY_ALLOW_EMPTY_HEADER: p.render_empty_header_when_no_fields,
+                Toml.KEY_POLICY_ALLOW_REFLOW: p.allow_reflow,
+                Toml.KEY_POLICY_ALLOW_CONTENT_PROBE: p.allow_content_probe,
+            }
+            for ft, p in config.policy_by_type.items()
+        }
+
+    # Include files in TOML export
+    if include_files and config.files:
+        toml_dict[Toml.SECTION_FILES][Toml.KEY_FILES] = list(config.files)
+
+    return toml_dict

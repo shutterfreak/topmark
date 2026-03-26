@@ -31,6 +31,7 @@ from typing import TYPE_CHECKING
 
 from topmark.config.io.loaders import load_default_config_template_toml_text
 from topmark.config.io.render import to_toml
+from topmark.config.io.serializers import config_to_toml_dict
 from topmark.config.io.surgery import set_root_flag
 from topmark.config.io.template_surgery import TemplateEditResult
 from topmark.config.io.template_surgery import ensure_pyproject_header
@@ -241,7 +242,12 @@ def build_config_check_human_report(
     """
     merged_toml: str | None = None
     if verbosity_level > 1:
-        merged_toml = to_toml(config.to_toml_dict())
+        merged_toml = to_toml(
+            config_to_toml_dict(
+                config,
+                include_files=False,
+            )
+        )
 
     counts, lines = prepare_human_diagnostics(config.diagnostics)
 
@@ -295,7 +301,12 @@ def build_config_dump_human_report(
     Returns:
         Prepared config file list and merged TOML text.
     """
-    merged_toml: str = to_toml(config.to_toml_dict())
+    merged_toml: str = to_toml(
+        config_to_toml_dict(
+            config,
+            include_files=False,
+        )
+    )
     return ConfigDumpHumanReport(
         config_files=_stringify_config_files(config),
         merged_toml=merged_toml,

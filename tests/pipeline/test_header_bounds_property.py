@@ -32,8 +32,7 @@ from tests.pipeline.conftest import materialize_updated_lines
 from tests.pipeline.conftest import run_insert
 from tests.pipeline.conftest import run_strip
 from tests.strategies_topmark import s_source_envelope_for_ext
-from topmark.config.model import Config
-from topmark.config.model import MutableConfig
+from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.constants import TOPMARK_START_MARKER
 
 if TYPE_CHECKING:
@@ -42,6 +41,8 @@ if TYPE_CHECKING:
 
     from _pytest.tmpdir import TempPathFactory
 
+    from topmark.config.model import Config
+    from topmark.config.model import MutableConfig
     from topmark.pipeline.context.model import ProcessingContext
 
 # If resolve depends on path suffix, we’ll simulate by extension choice.
@@ -101,7 +102,7 @@ def test_insert_strip_idempotent_roundtrip(
         fh.write(content)
 
     # Use a config that allows inserting headers into empty files (for property tests)
-    mcfg: MutableConfig = MutableConfig.from_defaults()
+    mcfg: MutableConfig = mutable_config_from_defaults()
     mcfg.policy.allow_header_in_empty_files = True
     cfg: Config = mcfg.freeze()
 

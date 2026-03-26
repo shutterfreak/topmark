@@ -12,7 +12,7 @@
 """Tests for configuration discovery, precedence, and TOML parsing.
 
 These tests exercise:
-- discovery and merge ordering (`MutableConfig.load_merged`),
+- discovery and merge ordering (`load_resolved_config`),
 - file-based loading for both `topmark.toml` and `[tool.topmark]` in `pyproject.toml`,
 - TOML parsing/normalization in `MutableConfig.from_toml_dict`,
 - and that user-facing warnings are mirrored into `MutableConfig.diagnostics`.
@@ -26,14 +26,19 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from topmark.config.io.deserializers import mutable_config_from_defaults
+from topmark.config.io.deserializers import mutable_config_from_toml_dict
+from topmark.config.io.deserializers import mutable_config_from_toml_file
+from topmark.config.io.resolution import load_resolved_config
 from topmark.config.keys import Toml
-from topmark.config.model import MutableConfig
+from topmark.config.overrides import apply_config_overrides
 from topmark.resolution.files import resolve_file_list
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.config.model import Config
+    from topmark.config.model import MutableConfig
     from topmark.config.types import PatternSource
 
 
@@ -68,7 +73,7 @@ def test_relative_to_resolves_against_config_dir(
     )
 
     # Anchor discovery under nested path
-    draft: MutableConfig = MutableConfig.load_merged(input_paths=[src])
+    draft: MutableConfig = load_resolved_config(input_paths=[src])
     assert draft.relative_to is not None
     assert draft.relative_to == proj.resolve()
 
@@ -94,7 +99,7 @@ def test_same_dir_precedence_topmark_over_pyproject(tmp_path: Path) -> None:
         """,
     )
 
-    draft: MutableConfig = MutableConfig.load_merged(input_paths=[proj])
+    draft: MutableConfig = load_resolved_config(input_paths=[proj])
     # topmark.toml should win within the same directory
     assert draft.align_fields is True
 
@@ -128,7 +133,7 @@ def test_root_true_stops_traversal(tmp_path: Path) -> None:
         """,
     )
 
-    draft: MutableConfig = MutableConfig.load_merged(input_paths=[child])
+    draft: MutableConfig = load_resolved_config(input_paths=[child])
     # Should see settings from `root`, not from `above`
     assert draft.align_fields is True
 
@@ -148,7 +153,7 @@ def test_include_from_normalized_to_patternsources(tmp_path: Path) -> None:
         """,
     )
 
-    draft: MutableConfig | None = MutableConfig.from_toml_file(proj / "pyproject.toml")
+    draft: MutableConfig | None = mutable_config_from_toml_file(proj / "pyproject.toml")
     assert draft is not None
     assert draft.include_from, "include_from should not be empty"
     ps: PatternSource = draft.include_from[0]
@@ -167,8 +172,11 @@ def test_cli_path_options_resolve_from_cwd(tmp_path: Path, monkeypatch: pytest.M
     gi: Path = cwd / ".gitignore"
     gi.write_text("*.log\n", encoding="utf-8")
 
-    draft: MutableConfig = MutableConfig.from_defaults()
-    draft.apply_args({"include_from": [".gitignore"]})
+    draft: MutableConfig = mutable_config_from_defaults()
+    apply_config_overrides(
+        draft,
+        include_from=[".gitignore"],
+    )
 
     assert draft.include_from, "CLI include_from should be normalized"
     ps: PatternSource = draft.include_from[0]
@@ -195,7 +203,7 @@ def test_globs_evaluated_relative_to_relative_to(tmp_path: Path) -> None:
         """,
     )
 
-    draft: MutableConfig = MutableConfig.load_merged(input_paths=[proj])
+    draft: MutableConfig = load_resolved_config(input_paths=[proj])
     # `resolve_file_list` should include our file based on the glob evaluated from proj
     paths: list[Path] = resolve_file_list(draft.freeze())
     assert py.resolve() in paths
@@ -227,7 +235,7 @@ def test_relative_to_inheritance_across_multiple_discovered_configs(
         """,
     )
 
-    draft: MutableConfig = MutableConfig.load_merged(input_paths=[child])
+    draft: MutableConfig = load_resolved_config(input_paths=[child])
     assert draft.relative_to is not None
     assert draft.relative_to == root.resolve()
 
@@ -255,7 +263,7 @@ def test_child_overrides_relative_to_with_its_own_dir(tmp_path: Path) -> None:
         """,
     )
 
-    draft: MutableConfig = MutableConfig.load_merged(input_paths=[child])
+    draft: MutableConfig = load_resolved_config(input_paths=[child])
     assert draft.relative_to is not None
     assert draft.relative_to == sub.resolve()
 
@@ -286,7 +294,7 @@ def test_parent_include_from_and_child_exclude_from_normalized_with_proper_bases
         """,
     )
 
-    draft: MutableConfig = MutableConfig.load_merged(input_paths=[child])
+    draft: MutableConfig = load_resolved_config(input_paths=[child])
     # include_from normalized to root base
     assert draft.include_from
     assert draft.include_from[0].base == root.resolve()
@@ -309,9 +317,12 @@ def test_cli_overrides_merge_last(tmp_path: Path) -> None:
         """,
     )
 
-    draft: MutableConfig = MutableConfig.load_merged(input_paths=[proj])
+    draft: MutableConfig = load_resolved_config(input_paths=[proj])
     # Simulate CLI override
-    draft.apply_args({"align_fields": True})
+    apply_config_overrides(
+        draft,
+        align_fields=True,
+    )
     assert draft.align_fields is True
 
 
@@ -336,7 +347,7 @@ def test_config_seeding_globs_when_no_inputs_and_cwd_differs(
 
     # Build merged config anchored under "elsewhere"
     monkeypatch.chdir(elsewhere)
-    draft: MutableConfig = MutableConfig.load_merged(
+    draft: MutableConfig = load_resolved_config(
         input_paths=[elsewhere],
         extra_config_files=[proj / "pyproject.toml"],
     )
@@ -364,7 +375,7 @@ def test_files_from_declared_in_config_normalizes_to_patternsource(tmp_path: Pat
         """,
     )
 
-    draft: MutableConfig | None = MutableConfig.from_toml_file(proj / "pyproject.toml")
+    draft: MutableConfig | None = mutable_config_from_toml_file(proj / "pyproject.toml")
     assert draft is not None
     assert draft.files_from
     ps: PatternSource = draft.files_from[0]
@@ -390,7 +401,7 @@ def test_malformed_toml_in_discovered_config_is_ignored(tmp_path: Path) -> None:
         """,
     )
 
-    draft: MutableConfig = MutableConfig.load_merged(input_paths=[child])
+    draft: MutableConfig = load_resolved_config(input_paths=[child])
     assert draft.align_fields is True
 
 
@@ -452,7 +463,7 @@ def assert_not_warned(
 @pytest.mark.pipeline
 def test_header_fields_wrong_type_is_treated_as_empty() -> None:
     """Wrong-type [header].fields is treated as empty (must not crash)."""
-    draft: MutableConfig = MutableConfig.from_toml_dict(
+    draft: MutableConfig = mutable_config_from_toml_dict(
         {Toml.SECTION_HEADER: {Toml.KEY_FIELDS: True}},
     )
     assert draft.header_fields == []
@@ -465,7 +476,7 @@ def test_header_fields_mixed_types_ignores_non_strings(
     """Non-string entries in [header].fields are ignored with a warning."""
     caplog.set_level("WARNING")
 
-    draft: MutableConfig = MutableConfig.from_toml_dict(
+    draft: MutableConfig = mutable_config_from_toml_dict(
         {Toml.SECTION_HEADER: {Toml.KEY_FIELDS: ["file", 123, "file_relpath"]}},
     )
 
@@ -483,7 +494,7 @@ def test_header_fields_mixed_types_ignores_non_strings(
 def test_unknown_top_level_keys_warn_and_are_recorded(caplog: pytest.LogCaptureFixture) -> None:
     """Unknown top-level TOML keys are warned about and recorded in diagnostics."""
     caplog.set_level("WARNING")
-    draft: MutableConfig = MutableConfig.from_toml_dict({"unknown_root_key": 123})
+    draft: MutableConfig = mutable_config_from_toml_dict({"unknown_root_key": 123})
 
     assert_warned_and_diagnosed(
         caplog=caplog,
@@ -496,7 +507,7 @@ def test_unknown_top_level_keys_warn_and_are_recorded(caplog: pytest.LogCaptureF
 def test_unknown_top_level_table_warns_and_is_recorded(caplog: pytest.LogCaptureFixture) -> None:
     """Unknown top-level tables (unknown sections) are warned about and recorded."""
     caplog.set_level("WARNING")
-    draft: MutableConfig = MutableConfig.from_toml_dict({"bogus": {"x": 1}})
+    draft: MutableConfig = mutable_config_from_toml_dict({"bogus": {"x": 1}})
 
     assert_warned_and_diagnosed(
         caplog=caplog,
@@ -509,7 +520,7 @@ def test_unknown_top_level_table_warns_and_is_recorded(caplog: pytest.LogCapture
 def test_unknown_keys_are_reported_in_sorted_order(caplog: pytest.LogCaptureFixture) -> None:
     """Unknown-key diagnostics list keys in sorted order for stable output."""
     caplog.set_level("WARNING")
-    draft: MutableConfig = MutableConfig.from_toml_dict(
+    draft: MutableConfig = mutable_config_from_toml_dict(
         {Toml.SECTION_FILES: {Toml.KEY_INCLUDE_PATTERNS: ["src/**"], "z": True, "a": True}}
     )
 
@@ -520,7 +531,7 @@ def test_unknown_keys_are_reported_in_sorted_order(caplog: pytest.LogCaptureFixt
 @pytest.mark.pipeline
 def test_policy_by_type_section_wrong_type_is_ignored() -> None:
     """Non-table [policy_by_type] values are ignored (must not crash)."""
-    draft: MutableConfig = MutableConfig.from_toml_dict({Toml.SECTION_POLICY_BY_TYPE: 123})
+    draft: MutableConfig = mutable_config_from_toml_dict({Toml.SECTION_POLICY_BY_TYPE: 123})
     assert draft.policy_by_type == {}
 
 
@@ -549,7 +560,7 @@ def test_files_list_valued_keys_wrong_type_is_treated_as_empty(
     expect_empty: object,
 ) -> None:
     """Wrong-type list values in [files] are treated as empty (must not crash)."""
-    draft: MutableConfig = MutableConfig.from_toml_dict({Toml.SECTION_FILES: {key: bad_value}})
+    draft: MutableConfig = mutable_config_from_toml_dict({Toml.SECTION_FILES: {key: bad_value}})
 
     assert getattr(draft, attr) == expect_empty
 
@@ -566,7 +577,7 @@ def test_include_from_mixed_types_ignores_non_strings(
     proj.mkdir()
     (proj / "a.txt").write_text("*.tmp\n", encoding="utf-8")
 
-    draft: MutableConfig = MutableConfig.from_toml_dict(
+    draft: MutableConfig = mutable_config_from_toml_dict(
         {Toml.SECTION_FILES: {Toml.KEY_INCLUDE_FROM: ["a.txt", 123]}},
         config_file=proj / "topmark.toml",
     )
@@ -597,7 +608,7 @@ def test_glob_patterns_mixed_types_ignores_non_strings(
     """Non-string entries in [files].(include|exclude)_patterns are ignored with a warning."""
     caplog.set_level("WARNING")
 
-    draft: MutableConfig = MutableConfig.from_toml_dict(
+    draft: MutableConfig = mutable_config_from_toml_dict(
         {Toml.SECTION_FILES: {key: ["src/**/*.py", 123]}},
     )
 
@@ -627,7 +638,7 @@ def test_glob_patterns_all_non_strings_results_in_empty_list(
     """If all entries are non-strings, the patterns list becomes empty (and warnings emitted)."""
     caplog.set_level("WARNING")
 
-    draft: MutableConfig = MutableConfig.from_toml_dict(
+    draft: MutableConfig = mutable_config_from_toml_dict(
         {Toml.SECTION_FILES: {key: [True, 123]}},
     )
 
@@ -645,7 +656,7 @@ def test_glob_patterns_all_non_strings_results_in_empty_list(
 def test_unknown_section_keys_warn_and_are_recorded(caplog: pytest.LogCaptureFixture) -> None:
     """Unknown keys inside known sections are warned about and recorded."""
     caplog.set_level("WARNING")
-    draft: MutableConfig = MutableConfig.from_toml_dict(
+    draft: MutableConfig = mutable_config_from_toml_dict(
         {
             Toml.SECTION_FILES: {
                 Toml.KEY_INCLUDE_PATTERNS: ["src/**/*.py"],
@@ -666,7 +677,7 @@ def test_section_wrong_type_warns_and_is_ignored(caplog: pytest.LogCaptureFixtur
     """If a known section is not a table, TopMark warns and ignores it."""
     caplog.set_level("WARNING")
     # [files] must be a table; provide a scalar to trigger the warning.
-    draft: MutableConfig = MutableConfig.from_toml_dict({Toml.SECTION_FILES: "not-a-table"})
+    draft: MutableConfig = mutable_config_from_toml_dict({Toml.SECTION_FILES: "not-a-table"})
 
     assert_warned_and_diagnosed(
         caplog=caplog,
@@ -679,7 +690,7 @@ def test_section_wrong_type_warns_and_is_ignored(caplog: pytest.LogCaptureFixtur
 def test_policy_by_type_unknown_keys_warn(caplog: pytest.LogCaptureFixture) -> None:
     """Unknown keys inside [policy_by_type.<ft>] are warned about and recorded."""
     caplog.set_level("WARNING")
-    draft: MutableConfig = MutableConfig.from_toml_dict(
+    draft: MutableConfig = mutable_config_from_toml_dict(
         {
             Toml.SECTION_POLICY_BY_TYPE: {
                 "python": {
@@ -701,7 +712,7 @@ def test_policy_by_type_unknown_keys_warn(caplog: pytest.LogCaptureFixture) -> N
 def test_policy_by_type_entry_wrong_type_warns(caplog: pytest.LogCaptureFixture) -> None:
     """Non-table entries in [policy_by_type] are warned about and ignored."""
     caplog.set_level("WARNING")
-    draft: MutableConfig = MutableConfig.from_toml_dict(
+    draft: MutableConfig = mutable_config_from_toml_dict(
         {Toml.SECTION_POLICY_BY_TYPE: {"python": 123}}
     )
 
@@ -744,7 +755,7 @@ def test_unknown_keys_reported_via_from_toml_file(
             encoding="utf-8",
         )
 
-    draft: MutableConfig | None = MutableConfig.from_toml_file(p)
+    draft: MutableConfig | None = mutable_config_from_toml_file(p)
     assert draft is not None
 
     # We should see a warning for the unknown key inside [files]
@@ -764,7 +775,7 @@ def test_fields_scalar_values_are_stringified_and_unsupported_are_ignored(
     Unsupported values are ignored with location.
     """
     caplog.set_level("WARNING")
-    draft: MutableConfig = MutableConfig.from_toml_dict(
+    draft: MutableConfig = mutable_config_from_toml_dict(
         {
             Toml.SECTION_FIELDS: {
                 "project": "TopMark",
@@ -809,7 +820,7 @@ def test_fields_table_is_free_form_and_not_subject_to_unknown_key_validation(
 ) -> None:
     """[fields] is intentionally free-form and must not be subject to unknown-key validation."""
     caplog.set_level("WARNING")
-    draft: MutableConfig = MutableConfig.from_toml_dict(
+    draft: MutableConfig = mutable_config_from_toml_dict(
         {
             Toml.SECTION_FIELDS: {"totally_custom": "x"},
             Toml.SECTION_FILES: {Toml.KEY_INCLUDE_PATTERNS: ["src/**"], "bogus": True},
@@ -831,7 +842,7 @@ def test_fields_table_is_free_form_and_not_subject_to_unknown_key_validation(
 @pytest.mark.pipeline
 def test_header_fields_can_reference_missing_custom_fields_without_error() -> None:
     """header.fields may reference names not present in [fields] and should not crash."""
-    draft: MutableConfig = MutableConfig.from_toml_dict(
+    draft: MutableConfig = mutable_config_from_toml_dict(
         {
             Toml.SECTION_HEADER: {Toml.KEY_FIELDS: ["file", "project", "missing_custom"]},
             Toml.SECTION_FIELDS: {"project": "TopMark"},
@@ -847,7 +858,7 @@ def test_policy_by_type_valid_keys_parse_and_unknown_keys_are_ignored(
 ) -> None:
     """Valid [policy_by_type] entries parse; unknown keys are warned and ignored."""
     caplog.set_level("WARNING")
-    draft: MutableConfig = MutableConfig.from_toml_dict(
+    draft: MutableConfig = mutable_config_from_toml_dict(
         {
             Toml.SECTION_POLICY_BY_TYPE: {
                 "python": {
@@ -875,7 +886,7 @@ def test_header_fields_wrong_type_falls_back_to_empty_list(bad_val: object) -> N
     # NOTE: If you want warnings for that, add them later in one place
     #       and update this test accordingly
 
-    draft: MutableConfig = MutableConfig.from_toml_dict(
+    draft: MutableConfig = mutable_config_from_toml_dict(
         {Toml.SECTION_HEADER: {Toml.KEY_FIELDS: bad_val}}
     )
     assert draft.header_fields == []
@@ -900,7 +911,7 @@ def test_unknown_key_in_known_section_warns_and_is_recorded(
 ) -> None:
     """Unknown keys inside closed sections are warned about and recorded."""
     caplog.set_level("WARNING")
-    draft: MutableConfig = MutableConfig.from_toml_dict(
+    draft: MutableConfig = mutable_config_from_toml_dict(
         {section: {valid_key: valid_value, "bogus": True}}
     )
 
@@ -914,14 +925,14 @@ def test_unknown_key_in_known_section_warns_and_is_recorded(
 def test_extend_pattern_sources_resolves_relative_paths_against_base(tmp_path: Path) -> None:
     """extend_pattern_sources() resolves relative paths against the provided base."""
     from topmark.config.paths import extend_pattern_sources
-    from topmark.config.paths import ps_from_config
+    from topmark.config.paths import pattern_source_from_config
 
     cfg_dir: Path = tmp_path / "cfg"
     cfg_dir.mkdir()
     (cfg_dir / "a.txt").write_text("x", encoding="utf-8")
 
     dst: list[PatternSource] = []
-    extend_pattern_sources(dst, ["a.txt"], ps_from_config, "include_from", cfg_dir)
+    extend_pattern_sources(dst, ["a.txt"], pattern_source_from_config, "include_from", cfg_dir)
 
     assert len(dst) == 1
     assert dst[0].path == (cfg_dir / "a.txt").resolve()
@@ -934,7 +945,7 @@ def test_duplicate_include_file_types_warns_and_is_recorded(
 ) -> None:
     """Duplicate include_file_types entries produce a warning and a diagnostic."""
     caplog.set_level("WARNING")
-    draft: MutableConfig = MutableConfig.from_toml_dict(
+    draft: MutableConfig = mutable_config_from_toml_dict(
         {Toml.SECTION_FILES: {Toml.KEY_INCLUDE_FILE_TYPES: ["python", "python"]}}
     )
     assert_warned_and_diagnosed(
@@ -951,7 +962,7 @@ def test_duplicate_exclude_file_types_warns_and_is_recorded(
 ) -> None:
     """Duplicate exclude_file_types entries produce a warning and a diagnostic."""
     caplog.set_level("WARNING")
-    draft: MutableConfig = MutableConfig.from_toml_dict(
+    draft: MutableConfig = mutable_config_from_toml_dict(
         {Toml.SECTION_FILES: {Toml.KEY_EXCLUDE_FILE_TYPES: ["python", "python"]}}
     )
     assert_warned_and_diagnosed(
@@ -965,7 +976,7 @@ def test_duplicate_exclude_file_types_warns_and_is_recorded(
 @pytest.mark.pipeline
 def test_should_proceed_false_on_errors_even_when_not_strict() -> None:
     """Errors always prevent proceeding, regardless of strict mode."""
-    draft: MutableConfig = MutableConfig.from_defaults()
+    draft: MutableConfig = mutable_config_from_defaults()
     draft.strict_config_checking = False
     draft.diagnostics.add_error("boom")
     assert draft.should_proceed is False
@@ -977,7 +988,7 @@ def test_should_proceed_false_on_errors_even_when_not_strict() -> None:
 @pytest.mark.pipeline
 def test_should_proceed_true_on_warnings_when_not_strict() -> None:
     """Warnings do not block proceeding when strict mode is disabled."""
-    draft: MutableConfig = MutableConfig.from_defaults()
+    draft: MutableConfig = mutable_config_from_defaults()
     draft.strict_config_checking = False
     draft.diagnostics.add_warning("warn")
     assert draft.should_proceed is True
@@ -989,7 +1000,7 @@ def test_should_proceed_true_on_warnings_when_not_strict() -> None:
 @pytest.mark.pipeline
 def test_should_proceed_false_on_warnings_when_strict() -> None:
     """Warnings block proceeding when strict mode is enabled."""
-    draft: MutableConfig = MutableConfig.from_defaults()
+    draft: MutableConfig = mutable_config_from_defaults()
     draft.strict_config_checking = True
     draft.diagnostics.add_warning("warn")
     assert draft.should_proceed is False
@@ -1005,7 +1016,7 @@ def test_writer_target_invalid_enum_warns_and_keeps_default(
 ) -> None:
     """Invalid writer.target enum value is warned about and does not override defaults."""
     caplog.set_level("WARNING")
-    draft: MutableConfig = MutableConfig.from_toml_dict(
+    draft: MutableConfig = mutable_config_from_toml_dict(
         {Toml.SECTION_WRITER: {Toml.KEY_TARGET: "nope"}},
     )
 
@@ -1024,7 +1035,7 @@ def test_writer_target_invalid_enum_warns_and_keeps_default(
 @pytest.mark.pipeline
 def test_freeze_preserves_diagnostics() -> None:
     """freeze() must preserve diagnostics when producing an immutable Config."""
-    draft: MutableConfig = MutableConfig.from_defaults()
+    draft: MutableConfig = mutable_config_from_defaults()
     draft.diagnostics.add_warning("hello")
     c: Config = draft.freeze()
     assert len(c.diagnostics.items) == 1
@@ -1038,7 +1049,7 @@ def test_strict_config_checking_freeze_bool_semantics(val: object, expected: boo
 
     strict_config_checking defaults to False when not explicitly True.
     """
-    draft: MutableConfig = MutableConfig.from_defaults()
+    draft: MutableConfig = mutable_config_from_defaults()
     draft.strict_config_checking = val  # type: ignore[assignment]
     c: Config = draft.freeze()
     assert c.strict_config_checking is expected

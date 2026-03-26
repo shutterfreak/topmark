@@ -53,6 +53,10 @@ class ArgKey(str, Enum):
     NO_CONFIG = "no_config"
     CONFIG_FOR_PYPROJECT = "for_pyproject"
 
+    # Header fields (NOTE: NOT YET EXPOSED IN CLI OPTIONS)
+    HEADER_FIELDS = "header_fields"
+    FIELD_VALUES = "field_values"
+
     # Header rendering
     ALIGN_FIELDS = "align_fields"
     RELATIVE_TO = "relative_to"

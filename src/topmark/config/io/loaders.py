@@ -162,6 +162,7 @@ def load_defaults_dict() -> TomlTable:
             Toml.KEY_POLICY_CHECK_ADD_ONLY: False,
             Toml.KEY_POLICY_CHECK_UPDATE_ONLY: False,
             Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES: False,
+            Toml.KEY_POLICY_EMPTIES_INSERT_MODE: "logical_empty",
         },
         Toml.SECTION_FILES: {
             # Pattern sources / explicit lists are empty by default.

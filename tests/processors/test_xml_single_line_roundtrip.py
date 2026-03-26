@@ -25,8 +25,7 @@ from typing import TYPE_CHECKING
 from tests.conftest import resolve_processor_for_path
 from tests.pipeline.conftest import materialize_updated_lines
 from tests.pipeline.conftest import run_insert
-from topmark.config.model import Config
-from topmark.config.model import MutableConfig
+from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.constants import TOPMARK_START_MARKER
 from topmark.pipeline.status import ComparisonStatus
 from topmark.pipeline.status import ContentStatus
@@ -37,6 +36,8 @@ from topmark.processors.types import StripDiagnostic
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from topmark.config.model import Config
+    from topmark.config.model import MutableConfig
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.processors.base import HeaderProcessor
 
@@ -47,7 +48,7 @@ def test_xml_prolog_and_body_on_same_line_blocked_by_policy(tmp_path: Path) -> N
     original = '<?xml version="1.0"?><root/>'  # no trailing newline
     f.write_text(original, encoding="utf-8")
 
-    cfg: Config = MutableConfig.from_defaults().freeze()
+    cfg: Config = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
     assert ctx.status.content == ContentStatus.SKIPPED_REFLOW
@@ -60,7 +61,7 @@ def test_xml_prolog_and_body_on_same_line_alllowed_by_policy(tmp_path: Path) -> 
     original = '<?xml version="1.0"?><root/>'  # no trailing newline
     f.write_text(original, encoding="utf-8")
 
-    draft: MutableConfig = MutableConfig.from_defaults()
+    draft: MutableConfig = mutable_config_from_defaults()
     draft.policy.allow_reflow = True
     cfg: Config = draft.freeze()
     ctx: ProcessingContext = run_insert(f, cfg)

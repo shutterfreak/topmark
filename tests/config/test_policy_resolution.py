@@ -29,15 +29,20 @@ from __future__ import annotations
 
 from dataclasses import fields
 from dataclasses import replace
+from typing import TYPE_CHECKING
 from typing import Any
 
 import pytest
 
-from topmark.config.model import Config
-from topmark.config.model import MutableConfig
+from topmark.config.io.deserializers import mutable_config_from_defaults
+from topmark.config.io.deserializers import mutable_config_from_toml_dict
 from topmark.config.policy import MutablePolicy
 from topmark.config.policy import Policy
 from topmark.config.policy import effective_policy
+
+if TYPE_CHECKING:
+    from topmark.config.model import Config
+    from topmark.config.model import MutableConfig
 
 
 def _assert_policy_fields(
@@ -62,7 +67,7 @@ def _assert_policy_fields(
 
 def test_global_policy_only_resolves_correctly() -> None:
     """Global MutablePolicy resolves into a fully-concrete Policy."""
-    mc: MutableConfig = MutableConfig.from_defaults()
+    mc: MutableConfig = mutable_config_from_defaults()
     # Override only a subset of fields; others inherit defaults.
     mc.policy = MutablePolicy(
         add_only=True,
@@ -85,7 +90,7 @@ def test_global_policy_only_resolves_correctly() -> None:
 
 def test_per_type_override_inherits_global_policy() -> None:
     """Per-type policy inherits unspecified fields from the resolved global policy."""
-    mc: MutableConfig = MutableConfig.from_defaults()
+    mc: MutableConfig = mutable_config_from_defaults()
     # Global: add_only=True, allow_content_probe=False
     mc.policy = MutablePolicy(
         add_only=True,
@@ -121,7 +126,7 @@ def test_per_type_override_inherits_global_policy() -> None:
 
 def test_effective_policy_prefers_per_type_over_global() -> None:
     """effective_policy should select per-type policy when available."""
-    mc: MutableConfig = MutableConfig.from_defaults()
+    mc: MutableConfig = mutable_config_from_defaults()
     mc.policy = MutablePolicy(
         add_only=True,
         allow_content_probe=False,
@@ -154,7 +159,7 @@ def test_mutable_config_policy_merge_global_and_per_type() -> None:
     combination (add_only=True and update_only=True) must be rejected by
     `MutableConfig.freeze`, which is covered by dedicated tests below.
     """
-    base: MutableConfig = MutableConfig.from_defaults()
+    base: MutableConfig = mutable_config_from_defaults()
     base.policy = MutablePolicy(add_only=True)  # base global: add_only=True
     base.policy_by_type = {
         "python": MutablePolicy(
@@ -162,7 +167,7 @@ def test_mutable_config_policy_merge_global_and_per_type() -> None:
         ),
     }
 
-    override: MutableConfig = MutableConfig.from_defaults()
+    override: MutableConfig = mutable_config_from_defaults()
     override.policy = MutablePolicy(update_only=True)  # override global: update_only=True
     override.policy_by_type = {
         "python": MutablePolicy(
@@ -191,7 +196,7 @@ def test_mutable_config_policy_merge_global_and_per_type() -> None:
 
 def test_freeze_rejects_conflicting_global_policy() -> None:
     """freeze() must reject a global policy that sets both add_only and update_only."""
-    mc: MutableConfig = MutableConfig.from_defaults()
+    mc: MutableConfig = mutable_config_from_defaults()
     mc.policy = MutablePolicy(
         add_only=True,
         update_only=True,
@@ -202,7 +207,7 @@ def test_freeze_rejects_conflicting_global_policy() -> None:
 
 def test_freeze_rejects_conflicting_per_type_policy() -> None:
     """freeze() must reject a per-type policy that sets both add_only and update_only."""
-    mc: MutableConfig = MutableConfig.from_defaults()
+    mc: MutableConfig = mutable_config_from_defaults()
     mc.policy = MutablePolicy(
         add_only=True,
         update_only=False,
@@ -238,7 +243,7 @@ def test_policy_loaded_from_toml_tables() -> None:
             },
         },
     }
-    mc: MutableConfig = MutableConfig.from_toml_dict(toml_root)
+    mc: MutableConfig = mutable_config_from_toml_dict(toml_root)
     cfg: Config = mc.freeze()
 
     # Global values from [policy]
@@ -266,12 +271,12 @@ def test_policy_precedence_across_merged_configs() -> None:
     * Per-type policies inherit from the resolved global policy while layering
       per-type overrides from multiple sources.
     """
-    base: MutableConfig = MutableConfig.from_defaults()
-    project: MutableConfig = MutableConfig.from_defaults()
+    base: MutableConfig = mutable_config_from_defaults()
+    project: MutableConfig = mutable_config_from_defaults()
     project.policy = MutablePolicy(add_only=True)
     project.policy_by_type = {"python": MutablePolicy(allow_content_probe=False)}
 
-    local: MutableConfig = MutableConfig.from_defaults()
+    local: MutableConfig = mutable_config_from_defaults()
     local.policy = MutablePolicy(add_only=False, update_only=True)
     local.policy_by_type = {"python": MutablePolicy(allow_header_in_empty_files=True)}
 

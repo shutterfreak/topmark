@@ -31,4 +31,4 @@ Start here:
 Also see:
 
 - `src/topmark/config/topmark-example.toml` (example configuration with extensive comments)
-- API docs: `MutableConfig.load_merged()`, `Config`, `MutableConfig`
+- API docs: `load_resolved_config()`, `Config`, `MutableConfig`

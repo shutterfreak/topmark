@@ -30,6 +30,9 @@ from typing import TYPE_CHECKING
 from typing import Any
 from typing import Literal
 
+from topmark.config.io.deserializers import mutable_config_from_defaults
+from topmark.config.io.deserializers import mutable_config_from_toml_dict
+from topmark.config.io.resolution import load_resolved_config
 from topmark.config.model import Config
 from topmark.config.model import MutableConfig
 from topmark.config.policy import MutablePolicy
@@ -74,7 +77,7 @@ def ensure_mutable_config(
     """
     if config is None:
         logger.debug("No config provided - returning MutableConfig.from_defaults()")
-        return MutableConfig.from_defaults()
+        return mutable_config_from_defaults()
     if isinstance(config, MutableConfig):
         logger.debug("Supplied config is MutableConfig - returning as is")
         return config
@@ -104,7 +107,7 @@ def ensure_mutable_config(
         )
     # Accept plain dict-like, normalize to internal MutableConfig via TOML-like dict
     logger.debug("Supplied config is TOML Mapping - returning MutableConfig.from_toml_dict(config)")
-    return MutableConfig.from_toml_dict(dict(config))
+    return mutable_config_from_toml_dict(dict(config))
 
 
 def build_cfg_and_files_via_cli_helpers(
@@ -164,7 +167,7 @@ def build_cfg_and_files_via_cli_helpers(
     # Only the provided config is honored, and project config is NOT merged.
     if base_config is not None:
         # Start from defaults so that header fields/values are present unless overridden
-        draft_defaults: MutableConfig = MutableConfig.from_defaults()
+        draft_defaults: MutableConfig = mutable_config_from_defaults()
         draft = draft_defaults.merge_with(draft)
 
         # Assign normalized paths to draft.files for consistency
@@ -187,7 +190,7 @@ def build_cfg_and_files_via_cli_helpers(
     # If input paths are empty, anchor discovery at CWD.
     # If the first path is a file, use its parent.
     anchor_inputs: list[Path] = [Path(p) for p in paths_str] or [Path.cwd()]
-    draft = MutableConfig.load_merged(
+    draft = load_resolved_config(
         input_paths=tuple(anchor_inputs),
         extra_config_files=(),  # none here; API parity with "no --config"
     )

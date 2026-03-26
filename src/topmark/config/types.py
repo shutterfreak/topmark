@@ -32,7 +32,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
-from typing import Any
 
 from topmark.core.enum_mixins import KeyedStrEnum
 from topmark.core.logging import get_logger
@@ -45,7 +44,7 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 # ArgsLike: generic mapping accepted by config loaders (works for CLI namespaces and API dicts).
-ArgsLike = Mapping[str, Any]
+ArgsLike = Mapping[str, object]
 # We use ArgsLike (Mapping[str, Any]) instead of a CLI-specific namespace to
 # keep the config layer decoupled from the CLI. The implementation uses .get()
 # and key lookups, so Mapping is the right structural type. This allows the

@@ -23,11 +23,11 @@ command group.
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import click
 
-from topmark.cli.config_resolver import resolve_config_from_click
 from topmark.cli.console.click_console import Console
 from topmark.cli.console.color import resolve_color_mode
 from topmark.cli.console.context import resolve_console
@@ -36,6 +36,8 @@ from topmark.cli.options import resolve_verbosity
 from topmark.cli.presentation import TextStyler
 from topmark.cli.presentation import style_for_role
 from topmark.cli.validators import validate_verbose_quiet_exclusivity
+from topmark.config.io.resolution import load_resolved_config
+from topmark.config.overrides import apply_config_overrides
 from topmark.core.keys import ArgKey
 from topmark.core.logging import resolve_env_log_level
 from topmark.core.logging import setup_logging
@@ -43,8 +45,6 @@ from topmark.core.presentation import StyleRole
 from topmark.resolution.files import resolve_file_list
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from topmark.cli.console.protocols import ConsoleProtocol
     from topmark.cli.io import InputPlan
     from topmark.config.model import Config
@@ -196,16 +196,66 @@ def build_config_for_plan(
     align_fields: bool | None,
     relative_to: str | None,
 ) -> MutableConfig:
-    """Materialize Config from an input plan (no file list resolution).
+    """Build a config draft for an input plan using config-layer helpers only.
 
-    Uses layered config discovery:
-      * defaults → user → project chain (root→cwd; pyproject.toml then topmark.toml per dir)
-        → extra files → CLI.
-      * The discovery anchor is the first provided path (or CWD if none/STDIN).
+    The CLI layer stays intentionally thin:
+
+    1. Compute a discovery anchor from the input plan.
+    2. Delegate layered config discovery/merge to
+       `topmark.config.io.resolution.load_resolved_config()`.
+    3. Apply CLI overrides via `topmark.config.overrides.apply_config_overrides()`.
+
+    Resolution order remains:
+
+        defaults -> discovered config layers -> explicit config files -> CLI overrides
+
+    Args:
+        ctx: Click context carrying normalized command options in `ctx.obj`.
+        plan: Input plan containing paths, stdin metadata, and pattern-source options.
+        no_config: Whether to skip discovered config files.
+        config_paths: Explicit extra config files passed on the CLI.
+        include_file_types: CLI include file-type filters.
+        exclude_file_types: CLI exclude file-type filters.
+        align_fields: Optional CLI override for header alignment.
+        relative_to: Optional CLI override for header-relative path rendering.
+
+    Returns:
+        Mutable configuration draft ready to be frozen.
     """
-    draft: MutableConfig = resolve_config_from_click(
-        ctx=ctx,
-        verbosity_level=ctx.obj.get(ArgKey.VERBOSITY_LEVEL),
+
+    def _resolve_discovery_inputs() -> list[Path] | None:
+        """Return input paths used only to select the discovery anchor.
+
+        In STDIN mode, `stdin_filename` can still provide a directory hint
+        (for example `pkg/module.py`). Otherwise, use the normal path list,
+        or let the config layer fall back to CWD.
+        """
+        if plan.stdin_mode is True:
+            stdin_name: str | None = plan.stdin_filename
+            if stdin_name:
+                sf: Path = Path(stdin_name)
+                if sf.parent != Path():
+                    if sf.is_absolute():
+                        return [sf.parent]
+                    return [(Path.cwd() / sf.parent).resolve()]
+            return None
+
+        resolved: list[Path] = [Path(p) for p in plan.paths if p and p != "-"]
+        return resolved or None
+
+    discovery_inputs: list[Path] | None = _resolve_discovery_inputs()
+    extra_config_files: list[Path] = [Path(p) for p in config_paths]
+
+    draft: MutableConfig = load_resolved_config(
+        input_paths=discovery_inputs,
+        extra_config_files=extra_config_files,
+        no_config=no_config,
+    )
+
+    draft = apply_config_overrides(
+        draft,
+        add_only=ctx.obj.get(ArgKey.POLICY_CHECK_ADD_ONLY),
+        update_only=ctx.obj.get(ArgKey.POLICY_CHECK_UPDATE_ONLY),
         apply_changes=ctx.obj.get(ArgKey.APPLY_CHANGES),
         write_mode=ctx.obj.get(ArgKey.WRITE_MODE),
         files=plan.paths,
@@ -218,8 +268,6 @@ def build_config_for_plan(
         exclude_from=plan.exclude_from,
         include_file_types=include_file_types,
         exclude_file_types=exclude_file_types,
-        no_config=no_config,
-        config_paths=config_paths,
         align_fields=align_fields,
         relative_to=relative_to,
     )

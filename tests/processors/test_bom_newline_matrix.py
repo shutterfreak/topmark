@@ -34,7 +34,7 @@ import pytest
 from tests.conftest import resolve_processor_for_path
 from tests.pipeline.conftest import materialize_updated_lines
 from tests.pipeline.conftest import run_insert
-from topmark.config.model import MutableConfig
+from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
 from topmark.processors.types import StripDiagKind
@@ -79,7 +79,7 @@ def test_insert_preserves_newline_style(
     with f.open("w", encoding="utf-8", newline=newline) as fp:
         fp.write(f"{pre}seed{post}")
 
-    ctx: ProcessingContext = run_insert(f, MutableConfig.from_defaults().freeze())
+    ctx: ProcessingContext = run_insert(f, mutable_config_from_defaults().freeze())
     lines: list[str] = materialize_updated_lines(ctx)
     for i, ln in enumerate(lines):
         if i < len(lines) - 1:

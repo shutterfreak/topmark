@@ -24,8 +24,8 @@ import textwrap
 from typing import TYPE_CHECKING
 
 from topmark import api
+from topmark.config.io.resolution import load_resolved_config
 from topmark.config.keys import Toml
-from topmark.config.model import MutableConfig
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.pipelines import Pipeline
 from topmark.resolution.files import resolve_file_list
@@ -37,6 +37,7 @@ if TYPE_CHECKING:
     import pytest
 
     from topmark.config.model import Config
+    from topmark.config.model import MutableConfig
     from topmark.core.exit_codes import ExitCode
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.protocols import Step
@@ -72,7 +73,7 @@ def _run_cli_like(
     exclude_file_types: tuple[str, ...] = (),
 ) -> tuple[MutableConfig, list[Path], list[ProcessingContext]]:
     """Build config via authoritative loader to model CLI behavior."""
-    draft: MutableConfig = MutableConfig.load_merged(input_paths=(anchor,))
+    draft: MutableConfig = load_resolved_config(input_paths=(anchor,))
     draft.files = [str(anchor)]  # seed positional inputs
     if include_file_types:
         draft.include_file_types = set(include_file_types)
