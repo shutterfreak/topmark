@@ -19,7 +19,7 @@ ______________________________________________________________________
 
 ## Discovery order
 
-Configuration is discoverd as follows (lowest → highest precedence):
+Configuration is discovered as follows (lowest → highest precedence):
 
 1. **Built-in defaults**\
    Builtin runtime defaults.
@@ -131,6 +131,7 @@ TopMark applies **effective policies** by merging global and per-file-type rules
 add_only = false
 update_only = false
 allow_header_in_empty_files = false
+empty_insert_mode = "logical_empty"
 
 [tool.topmark.policy_by_type."python"]
 allow_header_in_empty_files = true
@@ -142,28 +143,48 @@ The effective policy is computed as:
 effective = merge(global_policy, policy_by_type[file_type])
 ```
 
-| Policy key                    | Description                                                 |
-| ----------------------------- | ----------------------------------------------------------- |
-| `add_only`                    | Only allow header insertion (no updates)                    |
-| `update_only`                 | Only allow header updates (no new insertions)               |
-| `allow_header_in_empty_files` | Permit header addition to empty files (e.g., `__init__.py`) |
+### Empty file semantics
+
+The meaning of "empty" is controlled by `empty_insert_mode`:
+
+| Mode               | Description                                                        |
+| ------------------ | ------------------------------------------------------------------ |
+| `bytes_empty`      | Only true 0-byte files                                             |
+| `logical_empty`    | 0-byte files + placeholders (BOM, optional whitespace, ≤1 newline) |
+| `whitespace_empty` | Any file containing only whitespace / newlines                     |
+
+This classification is used when evaluating `allow_header_in_empty_files`.
+
+### Policy keys
+
+| Policy key                           | Description                                                |
+| ------------------------------------ | ---------------------------------------------------------- |
+| `add_only`                           | Only allow header insertion (no updates)                   |
+| `update_only`                        | Only allow header updates (no new insertions)              |
+| `allow_header_in_empty_files`        | Permit header insertion in empty-like files                |
+| `empty_insert_mode`                  | Defines how "empty" is interpreted (see above)             |
+| `render_empty_header_when_no_fields` | Allow inserting empty headers when no fields are defined   |
+| `allow_reflow`                       | Allow content reflow (may break idempotence)               |
+| `allow_content_probe`                | Allow resolver to inspect file contents for type detection |
 
 ______________________________________________________________________
 
 ## Gatekeeping & Pipeline
 
 Each pipeline step (`ResolverStep`, `SnifferStep`, `ReaderStep`, `ScannerStep`, `BuilderStep`,
-`RendererStep`, `ComparerStep`, `StripperStep`, `PatcherStep`,`PlannerStep`, `WriterStep`) is
-protected by a `may_proceed(ctx)` **gating helper**.\
-These consider:
+`RendererStep`, `ComparerStep`, `StripperStep`, `PatcherStep`, `PlannerStep`, `WriterStep`) is
+protected by a `may_proceed(ctx)` gating helper.
 
-- File system status
-- Comparison result
-- Strip vs insert/update mode
-- Policy permissions (`permitted_by_policy`)
+These gates consider:
+
+- File system status (including empty vs empty-like classification)
+- Content status (readability, encoding, newline policy)
+- Comparison result and update intent
+- Policy permissions (for example `allow_insert_into_empty_like`)
 - Feasibility (`can_change`)
 
-This ensures TopMark won’t modify files unless explicitly permitted by configuration and policy.
+This ensures TopMark only mutates files when explicitly permitted by both policy and pipeline
+feasibility rules.
 
 ______________________________________________________________________
 
@@ -196,5 +217,5 @@ ______________________________________________________________________
 - Default configuration: `src/topmark/config/topmark-example.toml`
 - Implementation: \[`load_resolved_config()`\][topmark.config.io.resolution.load_resolved_config]
   and \[`effective_policy()`\][topmark.config.policy.effective_policy] in
-  \[`topmark.config.model`\][topmark.config.model]
+  \[`topmark.config`\][topmark.config]
 - Related doc: `README.md`

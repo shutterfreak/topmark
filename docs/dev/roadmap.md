@@ -203,6 +203,36 @@ goals.
 - Updated human summaries (`ProcessingContext.format_summary`) so dry-run output is no longer
   misleading (e.g., “would strip header” without claiming it was removed).
 
+### Config package refactor: layered resolution, deserializers, and API/CLI parity
+
+- Continued the split of `topmark.config` into clearer responsibility layers:
+  - `topmark.config.model` now focuses on config data shapes, merge behavior, and freeze/thaw
+  - `topmark.config.io.deserializers` owns TOML-backed and mapping-backed draft construction
+  - `topmark.config.io.resolution` owns layered config discovery and merge
+  - `topmark.config.io.serializers` owns TOML-shaped export helpers
+  - `topmark.config.overrides` owns highest-precedence CLI/API override application
+- Removed duplicated config resolution logic from the CLI path:
+  - deleted `topmark.cli.config_resolver`
+  - updated `topmark.cli.cmd_common.build_config_for_plan()` to call config-layer helpers directly
+  - made `--no-config` behavior consistent with the intended semantics of skipping all discovered
+    config layers
+- Added `mutable_config_from_mapping()` so API/runtime code no longer routes generic Python mappings
+  through TOML-named helpers.
+- Updated `topmark.api.runtime` so API-side config/file preparation now mirrors the same
+  resolution/override split as the CLI:
+  - layered discovery via `load_resolved_config()` when no explicit config seed is supplied
+  - explicit seeded mode when API callers provide a mapping or frozen `Config`
+  - final file/file-type intent applied through `apply_config_overrides()` before freezing and
+    resolving files
+- Removed remaining non-model TOML/render convenience methods from `MutableConfig` and moved call
+  sites to dedicated config I/O helpers.
+- Renamed `ArgsLike` to `ConfigMapping` and moved it to `topmark.api.types` so the accepted public
+  API mapping shape is named from the API/config domain rather than from CLI argument handling.
+- Moved generic merge helpers out of `topmark.config.model` into shared utility code, further
+  reducing coupling between config data models and reusable collection-merging helpers.
+- Updated documentation and tests so the refactored config-layer module layout and helper names are
+  reflected consistently across CLI, API, and config-resolution paths.
+
 ### Policy model, empty-file semantics, and outcome summaries
 
 - Introduced a clearer runtime distinction between:
@@ -629,6 +659,20 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
   - deterministic tie-breaks are part of the resolver contract
   - the policy is documented in `docs/dev/resolution.md`
 
+### Config package / Python helper surface changes
+
+- Several config-construction and TOML-rendering helpers were removed from `Config` /
+  `MutableConfig` and relocated into dedicated config I/O modules.
+- `topmark.cli.config_resolver` was removed after CLI config building was switched to the shared
+  config-layer helpers.
+- `topmark.config.args_io` was removed as part of the config package refactor.
+- Generic API/CLI mapping input is now represented as `ConfigMapping` in `topmark.api.types` instead
+  of `ArgsLike` in `topmark.config.types`.
+- API/runtime config coercion now distinguishes generic mapping input from TOML-backed
+  deserialization via `mutable_config_from_mapping()`.
+- Downstream Python callers importing moved/removed config helpers from older module locations must
+  update their imports to the new `topmark.config.io.*` / `topmark.config.overrides` layout.
+
 ### CLI / output format changes
 
 - Output format rename: `DEFAULT` was removed and replaced by `TEXT` (label now `"text"`).
@@ -1006,6 +1050,11 @@ Additional progress:
   builders plus pure `render_*()` helpers.
 - Refactored CLI command modules so human output now follows a clearer pipeline: prepare report →
   render string → `console.print(...)`.
+- CLI config building now delegates layered discovery/merge to `topmark.config.io.resolution` and
+  final override application to `topmark.config.overrides` instead of maintaining a separate
+  CLI-local resolver path.
+- API runtime config/file preparation now mirrors the same config-layer split and no longer builds
+  config state through TOML-named helpers when given a generic Python mapping.
 
 #### Remaining work
 
@@ -1017,21 +1066,29 @@ Additional progress:
   - human-facing rendering (`topmark.presentation`)
   - core/domain logic (Click-free and presentation-free)
 - Clarify ownership of `meta` in the API only when machine output becomes part of the API surface.
+- Decide whether the current API-side convenience helpers for seeded config/file preparation should
+  remain in `topmark.api.runtime` long-term or be slimmed further around a smaller config-layer
+  façade.
 
 ### Config override application boundary
 
-Today, `MutableConfig.apply_args()` lives in \[`topmark.config.model`\][topmark.config.model] and
-applies a generic `ArgsLike` mapping (CLI or API) directly onto the config. This keeps CLI and API
-behavior aligned, but it also introduces CLI-shaped concepts (argument keys and CLI option
-semantics) into a core module.
+The config package now has a much clearer split between:
+
+- layered discovery / merge in `topmark.config.io.resolution`
+- highest-precedence override application in `topmark.config.overrides`
+
+Additional progress:
+
+- removed duplicate CLI-local config resolution logic and switched CLI config building to the shared
+  config-layer helpers
+- introduced `ConfigMapping` as the public API-facing mapping alias in `topmark.api.types`
+- added `mutable_config_from_mapping()` so generic API mappings are no longer routed through a
+  TOML-named helper
 
 Decision to make before 1.0:
 
-- Keep `MutableConfig.apply_args()` in core config (but narrow the surface and decouple from CLI
-  keys), or
-- Move override application to a CLI-shared semantics layer (Click-free), or
-- Introduce a typed overrides model (e.g., *topmark.config.overrides*) that CLI/API construct, and
-  core applies.
+- Keep override application as a mapping-driven helper (`apply_config_overrides(...)`), or
+- Introduce a typed overrides model that CLI/API construct and the config layer applies.
 
 Desired outcome:
 
@@ -1197,6 +1254,8 @@ This checklist defines the minimum criteria for cutting TopMark 1.0.
 ### Architecture & boundaries
 
 - [ ] Clear separation between CLI layer and API/core modules
+  - [x] CLI config resolution no longer duplicates layered config discovery/merge logic
+  - [x] API runtime config/file preparation now reuses config-layer resolution/override helpers
 - [ ] No CLI-specific concerns (verbosity, color, formatting) in core logic
 - [x] Path-based file resolution and file type / processor resolution are separated into the
   `topmark.resolution` package instead of being split across pipeline and registry helpers
@@ -1255,8 +1314,10 @@ This checklist defines the minimum criteria for cutting TopMark 1.0.
   resolver-style API helpers, and file-type compatibility views are documented and considered stable
 - [ ] Decision made on schema versioning (explicit key vs implicit evolution)
 - [ ] `config init`, `defaults`, `check`, `dump` produce aligned outputs (text, markdown, machine)
-- [ ] Decision made and documented on where config overrides (`MutableConfig.apply_args`) live and
-  how API callers apply overrides
+- [ ] Decision made and documented on the final public override model (mapping-driven vs typed
+  overrides) and how API callers apply overrides
+- [x] Layered config discovery/merge and final CLI/API override application are separated into
+  dedicated config modules
 - [ ] Packaging/project metadata policy documented and considered stable (license metadata, URLs,
   classifiers, README rendering)
 - [x] `uv.lock` is established as the canonical lock artifact and the repository no longer depends

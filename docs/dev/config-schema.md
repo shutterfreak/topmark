@@ -45,6 +45,11 @@ topmark:
       default: true
       description: Align header field labels/colons.
 
+    relative_to:
+      type: path
+      default: "."
+      description: Affects header metadata (file_relpath), not discovery.
+
   writer:
     target:
       type: str
@@ -134,9 +139,4 @@ topmark:
       type: list[path]
       default: []
       description: Input paths (files/directories) to scan; commonly provided via CLI.
-
-    relative_to:
-      type: path
-      default: "."
-      description: Affects header metadata (file_relpath), not discovery.
 ```
