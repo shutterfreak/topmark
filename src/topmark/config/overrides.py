@@ -237,10 +237,10 @@ def apply_config_overrides(
                 f"Ignored {dup_count} duplicate values for {ArgKey.EXCLUDE_FILE_TYPES.value}"
             )
 
-    if header_fields:
+    if header_fields is not None:
         config.header_fields = header_fields
 
-    if field_values:
+    if field_values is not None:
         config.field_values = field_values
 
     # STDIN mode flags must preserve explicit False as an override, so apply
