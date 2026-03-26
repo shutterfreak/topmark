@@ -90,7 +90,7 @@ def to_toml(toml_dict: TomlTable) -> str:
     return _tomlkit_dumps(toml_dict)
 
 
-def clean_toml(text: str) -> str:
+def clean_toml_text(text: str) -> str:
     """Normalize a TOML document, removing comments and formatting noise.
 
     This function round-trips the input through the TOML parser and dumper, dropping comments and

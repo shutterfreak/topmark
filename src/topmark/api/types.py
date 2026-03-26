@@ -20,6 +20,7 @@ are allowed to evolve independently (e.g., internal diagnostics or pipeline view
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
@@ -31,12 +32,26 @@ from topmark.core.logging import TopmarkLogger
 from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
     from collections.abc import Sequence
     from pathlib import Path
 
 
 logger: TopmarkLogger = get_logger(__name__)
+
+
+ConfigMapping = Mapping[str, object]
+"""ConfigMapping: TOML-tool-table-shaped mapping used by the public API.
+
+This is a generic mapping accepted by config loaders (works for API dicts).
+Values are `object` intentionally to prevent leaking `Any` and to force explicit
+validation/parsing at the config boundary.
+
+This mapping represents the effective `[tool.topmark]` table (as in TOML), not the
+full pyproject document. It is the public API shape for config input/overrides.
+The implementation uses .get() and key lookups, so Mapping is the right structural type.
+This allows the API/tests to pass plain dicts.
+"""
+
 
 DiagnosticLevelLiteral = Literal["info", "warning", "error"]
 """Allowed diagnostic severity levels in the public API."""

@@ -63,6 +63,8 @@ from topmark.config.types import OutputTarget
 from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from topmark.config.io.types import TomlTable
     from topmark.config.io.types import TomlTableMap
     from topmark.core.logging import TopmarkLogger
@@ -605,3 +607,36 @@ def mutable_config_from_toml_file(path: Path) -> MutableConfig | None:
     draft.config_files = [path]
     logger.debug("Generated MutableConfig: %s", draft)
     return draft
+
+
+def mutable_config_from_mapping(data: Mapping[str, object]) -> MutableConfig:
+    """Create a mutable config draft from a generic Python mapping.
+
+    This helper is intended for API-facing configuration inputs that are already
+    available as Python mappings rather than TOML documents read from disk.
+
+    The accepted shape currently mirrors the TOML-backed config structure, so the
+    implementation delegates to `mutable_config_from_toml_dict()` after copying
+    the input into a plain dictionary. The separate helper keeps the public/API
+    coercion boundary explicit and avoids treating generic mappings as if they
+    were inherently TOML documents.
+
+    Args:
+        data: Generic mapping containing configuration data.
+
+    Returns:
+        A mutable configuration draft parsed from the supplied mapping.
+
+    Notes:
+        - This helper is conceptually distinct from TOML deserialization even
+          though the current mapping shape matches the TOML-backed structure.
+        - The mapping is copied to a plain `dict` before delegation so parsing
+          code can work with a mutable concrete mapping type.
+        - If the API-facing config shape later diverges from raw TOML structure,
+          this helper is the right place to absorb that change without affecting
+          TOML loaders.
+    """
+    # Current API mapping shape mirrors the TOML-backed config structure.
+    # Keep the API-facing coercion boundary explicit here so callers do not need
+    # to route generic mappings through a TOML-named helper directly.
+    return mutable_config_from_toml_dict(dict(data))

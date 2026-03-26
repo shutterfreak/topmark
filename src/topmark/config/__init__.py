@@ -16,7 +16,7 @@ resolve paths and pattern sources. The implementation is split for clarity:
 - [`topmark.config.model`][topmark.config.model] - immutable `Config` and mutable builder
   `MutableConfig`, including merge policy and freeze/thaw.
 - [`topmark.config.types`][topmark.config.types] - small value objects and aliases
-  (`PatternSource`, `ArgsLike`).
+  (`PatternSource`).
 - [`topmark.config.paths`][topmark.config.paths] - pure path normalization helpers
   used by loaders/CLI.
 

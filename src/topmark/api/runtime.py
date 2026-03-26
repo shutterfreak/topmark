@@ -31,10 +31,11 @@ from typing import Any
 from typing import Literal
 
 from topmark.config.io.deserializers import mutable_config_from_defaults
-from topmark.config.io.deserializers import mutable_config_from_toml_dict
+from topmark.config.io.deserializers import mutable_config_from_mapping
 from topmark.config.io.resolution import load_resolved_config
 from topmark.config.model import Config
 from topmark.config.model import MutableConfig
+from topmark.config.overrides import apply_config_overrides
 from topmark.config.policy import MutablePolicy
 from topmark.constants import TOPMARK_VERSION
 from topmark.core.logging import get_logger
@@ -106,106 +107,71 @@ def ensure_mutable_config(
             exclude_file_types=set(config.exclude_file_types),
         )
     # Accept plain dict-like, normalize to internal MutableConfig via TOML-like dict
-    logger.debug("Supplied config is TOML Mapping - returning MutableConfig.from_toml_dict(config)")
-    return mutable_config_from_toml_dict(dict(config))
+    logger.debug("Supplied config is TOML Mapping - returning mutable_config_from_mapping(config)")
+    return mutable_config_from_mapping(config)
 
 
-def build_cfg_and_files_via_cli_helpers(
+def build_config_and_files(
     paths: Iterable[Path | str],
     *,
     base_config: Mapping[str, Any] | Config | None,
     include_file_types: Sequence[str] | None,
     exclude_file_types: Sequence[str] | None,
 ) -> tuple[Config, list[Path]]:
-    """Build a frozen `Config` and resolve files using the same rules as the CLI.
+    """Build the frozen config and resolved file list for an API run.
 
-    Two modes are supported:
+    This helper mirrors the CLI/config-layer split without depending on CLI
+    modules:
 
-    * Seeded mode (`base_config` provided):
-        - Normalize `paths` from the current working directory (CLI parity).
-        - Start from defaults, merge the provided `base_config` (mapping or frozen `Config`)
-          using the same merge semantics as the CLI, and **do not** discover project configs.
-        - Resolve the file list with `resolve_file_list(cfg)`.
-
-    * Discovery mode (`base_config` is `None`):
-        - Perform layered discovery via `MutableConfig.load_merged`, starting from the
-          first `paths` element (its parent if it is a file) or CWD when `paths` is empty.
-        - Discovery order: defaults → user → project (root→current; per-dir: pyproject then topmark)
-          → extra config files (none here) → CLI-like overrides.
-        - Evaluate globs declared in discovered configs relative to each config file's directory.
+    - when `base_config is None`, use layered discovery via
+      `load_resolved_config()`
+    - when `base_config` is provided, honor it as an explicit seed and skip
+      discovery
+    - in both modes, apply final high-precedence file/file-type overrides via
+      `apply_config_overrides()` before freezing and resolving files
 
     Args:
-        paths: Files and/or directories to process. Items are normalized to strings early for
-            stability and logging. Empty input falls back to CWD as the discovery anchor in
-            discovery mode.
-        base_config: Optional mapping or frozen `Config` to seed from. When provided, discovery
-            is skipped and only the provided configuration is honored.
-        include_file_types: Optional whitelist of file type identifiers to seed the draft
-            for parity with CLI behavior.
-        exclude_file_types: Optional blacklist of file type identifiers to seed the draft
-            for parity with CLI behavior.
+        paths: Files and/or directories to process.
+        base_config: Optional explicit config seed. When omitted, layered config
+            discovery is used. When provided, discovery is skipped.
+        include_file_types: Optional file-type allowlist override.
+        exclude_file_types: Optional file-type denylist override.
 
     Returns:
-        A 2-tuple `(cfg, files)` where `cfg` is the frozen configuration used to resolve files
-        and `files` is the resolved/filtered list.
-
-    Notes:
-        * In both modes, input `paths` are normalized to strings, assigned to the draft's
-          `files`, then the final `cfg` is frozen prior to calling `resolve_file_list`.
-        * This helper deliberately avoids side effects beyond logging. All config
-          discovery and merge logic is delegated to `MutableConfig`.
+        A 2-tuple `(cfg, files)` where `cfg` is the frozen configuration used to
+        resolve files and `files` is the resolved/filtered file list.
     """
-    # Start from a mutable draft; we only build the frozen Config right before use
-    draft: MutableConfig = ensure_mutable_config(base_config)
-
     logger.debug("Normalizing input paths: %s", paths)
 
-    # Normalize input paths to strings from CWD for stability and logging parity with CLI.
+    # Normalize input paths to strings for stable downstream override handling.
     paths_str: list[str] = [str(Path(p)) for p in paths]
 
-    # If the caller supplied a mapping/Config, discovery is intentionally skipped.
-    # Only the provided config is honored, and project config is NOT merged.
-    if base_config is not None:
-        # Start from defaults so that header fields/values are present unless overridden
-        draft_defaults: MutableConfig = mutable_config_from_defaults()
-        draft = draft_defaults.merge_with(draft)
+    if base_config is None:
+        # Layered discovery mode: defaults -> discovered config -> explicit config
+        # files (none here). Use the first input as the discovery anchor, or CWD
+        # when no explicit paths were supplied.
+        anchor_inputs: list[Path] = [Path(p) for p in paths_str] or [Path.cwd()]
+        draft: MutableConfig = load_resolved_config(
+            input_paths=tuple(anchor_inputs),
+            extra_config_files=(),
+        )
+    else:
+        # Explicit seed mode: start from defaults, merge the supplied mapping /
+        # frozen Config on top, and skip all config discovery.
+        seeded: MutableConfig = ensure_mutable_config(base_config)
+        draft = mutable_config_from_defaults().merge_with(seeded)
 
-        # Assign normalized paths to draft.files for consistency
-        draft.files = list(paths_str)
-        logger.debug("Found %d input paths", len(draft.files))
-
-        if include_file_types:
-            draft.include_file_types = set(include_file_types)
-        if exclude_file_types:
-            draft.exclude_file_types = set(exclude_file_types)
-
-        # Freeze the config before resolving files,
-        # as resolve_file_list expects an immutable Config.
-        cfg: Config = draft.freeze()
-        file_list: list[Path] = resolve_file_list(cfg)
-        logger.debug("Files found: %s", len(file_list))
-        return cfg, file_list
-
-    # Otherwise, perform project-config discovery & merge using the authoritative loader.
-    # If input paths are empty, anchor discovery at CWD.
-    # If the first path is a file, use its parent.
-    anchor_inputs: list[Path] = [Path(p) for p in paths_str] or [Path.cwd()]
-    draft = load_resolved_config(
-        input_paths=tuple(anchor_inputs),
-        extra_config_files=(),  # none here; API parity with "no --config"
+    # Apply final file/file-type intent consistently with the config override
+    # layer, then freeze for file resolution.
+    draft = apply_config_overrides(
+        draft,
+        files=paths_str,
+        include_file_types=list(include_file_types) if include_file_types is not None else None,
+        exclude_file_types=list(exclude_file_types) if exclude_file_types is not None else None,
     )
 
-    # Assign normalized paths to draft.files for CLI-like override semantics.
-    draft.files = list(paths_str)
-
-    if include_file_types:
-        draft.include_file_types = set(include_file_types)
-    if exclude_file_types:
-        draft.exclude_file_types = set(exclude_file_types)
-
-    # Freeze the config before resolving files, as resolve_file_list expects an immutable Config.
-    cfg = draft.freeze()
-    file_list = resolve_file_list(cfg)
+    cfg: Config = draft.freeze()
+    file_list: list[Path] = resolve_file_list(cfg)
     logger.debug("Files found: %s", len(file_list))
     return cfg, file_list
 
@@ -300,13 +266,13 @@ def run_pipeline(
     #    This performs discovery when base_config is None; otherwise it honors mapping/Config.
     cfg: Config
     file_list: list[Path]
-    cfg, file_list = build_cfg_and_files_via_cli_helpers(
+    cfg, file_list = build_config_and_files(
         paths,
         base_config=base_config,
         include_file_types=include_file_types,
         exclude_file_types=exclude_file_types,
     )
-    logger.debug("cfg for run (1 - after build_cfg_and_files_via_cli_helpers): %s", cfg)
+    logger.debug("cfg for run (1 - after build_config_and_files): %s", cfg)
 
     # 2) Apply public policy overlays AFTER discovery, then materialize apply intent.
     draft: MutableConfig = cfg.thaw()

@@ -30,6 +30,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from topmark.config.io.loaders import load_default_config_template_toml_text
+from topmark.config.io.loaders import render_runtime_defaults_toml_text
+from topmark.config.io.render import clean_toml_text
 from topmark.config.io.render import to_toml
 from topmark.config.io.serializers import config_to_toml_dict
 from topmark.config.io.surgery import set_root_flag
@@ -37,7 +39,6 @@ from topmark.config.io.template_surgery import TemplateEditResult
 from topmark.config.io.template_surgery import ensure_pyproject_header
 from topmark.config.io.template_surgery import set_root_flag_in_template_text
 from topmark.config.io.template_surgery import validate_toml_for_config_init
-from topmark.config.model import MutableConfig
 from topmark.presentation.shared.diagnostic import HumanDiagnosticCounts
 from topmark.presentation.shared.diagnostic import HumanDiagnosticLine
 from topmark.presentation.shared.diagnostic import prepare_human_diagnostics
@@ -164,12 +165,12 @@ def build_config_defaults_human_report(
     Returns:
         Prepared cleaned TOML text.
     """
-    toml_text: str = MutableConfig.get_default_config_toml(for_pyproject=for_pyproject)
+    toml_text: str = render_runtime_defaults_toml_text(for_pyproject=for_pyproject)
 
     if root:
         toml_text = set_root_flag(toml_text, for_pyproject=for_pyproject, root=True)
 
-    cleaned: str = MutableConfig.to_cleaned_toml(toml_text)
+    cleaned: str = clean_toml_text(toml_text)
     return ConfigDefaultsHumanReport(
         toml_text=cleaned,
         verbosity_level=verbosity_level,

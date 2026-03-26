@@ -19,9 +19,10 @@ Scope:
     - *In scope*: data shapes, defaulting rules at the field level, merge policy
       (`MutableConfig.merge_with`), and freeze/thaw mechanics.
     - *Out of scope*: filesystem discovery and TOML I/O. Those belong in
-      dedicated modules (e.g., ``discovery.py`` and ``loader.py``) to keep this
-      model import-light and avoid cycles. The project may re-export such helpers
-      from [`topmark.config`][topmark.config] for a stable public API.
+      dedicated modules (e.g.,
+      [`topmark.config.io.resolution`][topmark.config.io.resolution] and
+      [`topmark.config.io.loaders`][topmark.config.io.loaders])
+      to keep this model import-light and avoid import cycles.
 
 Immutability:
     - `Config` stores tuples/frozensets and is ``frozen=True`` to prevent
@@ -42,14 +43,10 @@ Testing guidance:
 
 from __future__ import annotations
 
-import functools
 from dataclasses import dataclass
 from dataclasses import field
 from typing import TYPE_CHECKING
-from typing import TypeVar
 
-from topmark.config.io.loaders import render_runtime_defaults_toml_text
-from topmark.config.io.render import clean_toml
 from topmark.config.keys import Toml
 from topmark.config.policy import MutablePolicy
 from topmark.config.policy import Policy
@@ -63,7 +60,6 @@ from topmark.diagnostic.model import compute_diagnostic_stats
 from topmark.utils.timestamp import get_utc_now
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
     from collections.abc import Mapping
     from datetime import datetime
     from pathlib import Path
@@ -74,67 +70,6 @@ if TYPE_CHECKING:
 
 
 logger: TopmarkLogger = get_logger(__name__)
-
-
-# ------------------ Helpers ------------------
-
-T = TypeVar("T")
-
-
-# --- List Helpers ---
-
-
-def merge_unique(current: Iterable[T] | None, incoming: Iterable[T] | None) -> list[T]:
-    """Returns a new list with unique items from current and incoming.
-
-    Preserves order. Always returns a list (empty if both are None).
-    """
-    # Use a set for O(1) lookups to avoid O(N^2) performance hits
-    result: list[T] = []
-    seen: set[T] = set()
-
-    for item in current or []:
-        if item not in seen:
-            result.append(item)
-            seen.add(item)
-
-    if incoming:
-        for item in incoming:
-            if item not in seen:
-                result.append(item)
-                seen.add(item)
-
-    return result
-
-
-def merge_unique_or_none(
-    current: Iterable[T] | None, incoming: Iterable[T] | None
-) -> list[T] | None:
-    """Returns None if both inputs are None, otherwise merges uniquely."""
-    if current is None and incoming is None:
-        return None
-    return merge_unique(current, incoming)
-
-
-# --- Dict Helpers ---
-
-
-def merge_dicts(current: dict[str, T] | None, incoming: dict[str, T] | None) -> dict[str, T]:
-    """Merges two dicts (incoming overrides current).
-
-    Always returns a dict (empty if both are None).
-    """
-    # Python 3.9+ merge operator (|) handles the copy and update logic cleanly
-    return (current or {}) | (incoming or {})
-
-
-def merge_dicts_or_none(
-    current: dict[str, T] | None, incoming: dict[str, T] | None
-) -> dict[str, T] | None:
-    """Returns None if both inputs are None, otherwise merges dicts."""
-    if current is None and incoming is None:
-        return None
-    return merge_dicts(current, incoming)
 
 
 # ------------------ Immutable runtime config ------------------
@@ -311,7 +246,7 @@ class Config:
         )
 
 
-def sanitize_config(config: Config) -> Config:
+def sanitized_config(config: Config) -> Config:
     """Sanitize a Config object.
 
     Thaws the Config into a MutableConfig, sanitizes and freezes again.
@@ -498,29 +433,6 @@ class MutableConfig:
             exclude_file_types=frozenset(self.exclude_file_types),
             diagnostics=self.diagnostics.freeze(),
         )
-
-    # --------------------------- Loaders/parsers --------------------------
-    @classmethod
-    @functools.cache
-    def get_default_config_toml(
-        cls,
-        *,
-        for_pyproject: bool,
-    ) -> str:
-        """Return TopMark runtime defaults as TOML (I/O-free)."""
-        return render_runtime_defaults_toml_text(for_pyproject=for_pyproject)
-
-    @classmethod
-    def to_cleaned_toml(cls, toml_doc: str) -> str:
-        """Return a cleaned TOML string with comments and extraneous whitespace removed.
-
-        Args:
-            toml_doc: The raw TOML document string.
-
-        Returns:
-            The cleaned TOML string.
-        """
-        return clean_toml(toml_doc)
 
     # ------------------------------- Merging -------------------------------
 

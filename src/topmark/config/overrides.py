@@ -136,7 +136,7 @@ def apply_config_overrides(
         config.policy.add_only = add_only
     if update_only is not None:
         config.policy.update_only = update_only
-    # ... but do not zero-out policy_by_type when ArgsLike says nothing
+    # ... but do not zero-out policy_by_type when ConfigMapping says nothing
 
     if apply_changes is not None:
         config.apply_changes = apply_changes
