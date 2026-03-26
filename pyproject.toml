@@ -14,7 +14,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "topmark"
-version = "0.12.0.dev10" # PEP 440: "X.Y.Z.devN", "X.Y.ZrcN", or "X.Y.Z"
+version = "0.12.0.dev11" # PEP 440: "X.Y.Z.devN", "X.Y.ZrcN", or "X.Y.Z"
 description = "A Python CLI to inspect, validate, and manage license and copyright headers."
 readme = { file = "README.md", content-type = "text/markdown" }
 keywords = [
@@ -132,10 +132,14 @@ dependencies = [
     "typing-extensions>=4.15.0,<5.0.0",
   ]
   test = [
+    # Coverage testing framework:
+    "coverage[toml]>=7.6,<8.0",
     # Property-based testing library:
     "hypothesis>=6.148.2,<7.0.0",
     # Unit testing framework:
     "pytest>=9.0.1,<10.0.0",
+    # Coverage.py support in pytest:
+    "pytest-cov>=7.1.0,<8.0.0",
     # Parallel test execution:
     "pytest-xdist>=3.8.0,<4.0.0",
   ]
@@ -153,6 +157,35 @@ dependencies = [
   CI            = "https://github.com/shutterfreak/topmark/actions"
   Changelog     = "https://github.com/shutterfreak/topmark/releases"
 
+# Coverage testing configuration
+[tool.coverage.run]
+branch         = true
+source         = ["topmark"]
+relative_files = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+precision = 1
+fail_under = 0
+exclude_also = [
+  "if TYPE_CHECKING:",
+  "if __name__ == .__main__.:",
+  "raise NotImplementedError",
+  "raise AssertionError",
+  "class .*\\bProtocol\\):",
+  "@(abc\\.)?abstractmethod",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.coverage.xml]
+output = "coverage.xml"
+
+[tool.coverage.json]
+output       = "coverage.json"
+pretty_print = true
 
 # Pre-commit configuration
 # Coordinates with VS Code settings to ensure consistent formatting and linting across environments

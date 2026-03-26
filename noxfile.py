@@ -441,6 +441,27 @@ def test_entrypoints(session: nox.Session) -> None:
     )
 
 
+@nox.session(python=CURRENT_PYTHON_VERSION)
+def coverage(session: nox.Session) -> None:
+    """Run tests with coverage and generate reports."""
+    session.install("-e", DEPS_DEV)
+
+    session.run(
+        "pytest",
+        "-q",
+        "tests",
+        "-m",
+        "not slow and not hypothesis_slow",
+        "--cov=topmark",
+        "--cov-branch",
+        "--cov-report=term-missing",
+        "--cov-report=html",
+        "--cov-report=xml",
+        "--cov-report=json",
+        *session.posargs,
+    )
+
+
 @nox.session
 def lint(session: nox.Session) -> None:
     """Static analysis and custom validation."""

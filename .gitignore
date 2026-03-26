@@ -71,6 +71,9 @@ dist/
 # Coverage
 .coverage
 .coverage.*
+coverage.xml
+coverage.json
+htmlcov/
 
 # PyPI config
 .pypirc
@@ -83,3 +86,6 @@ dist/
 
 # Property tests (hypothesis)
 .hypothesis/
+
+# AppleDouble files
+._*

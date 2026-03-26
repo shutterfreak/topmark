@@ -11,6 +11,7 @@
 .PHONY: \
 	api-snapshot api-snapshot-dev api-snapshot-ensure-clean api-snapshot-update \
 	check-lychee check-uv check-venv \
+	coverage coverage-erase \
 	docstring-links \
 	docs-build docs-clean docs-serve \
 	format format-check format-docstrings \
@@ -51,9 +52,6 @@ help:
 	@echo "Usage: make <target>"
 	@echo ""
 	@echo "Core:"
-	@echo "  test            Run the test suite (nox: qa)"
-	@echo "  pytest          Run tests with current interpreter (no nox), skipping slow tests; supports PYTEST_PAR=-n auto"
-	@echo "  pytest-full     Run all tests with current interpreter (no nox); supports PYTEST_PAR=-n auto"
 	@echo "  verify          Run formatting checks, lint, and one typecheck env"
 	@echo "  lint            Run ruff + pydoclint + mbake"
 	@echo "  lint-fixall     Run ruff with --fix (auto-fix lint issues)"
@@ -61,6 +59,12 @@ help:
 	@echo "  format          Format code/markdown/toml/Makefile (auto-fix)"
 	@echo "  format-docstrings  Auto-format docstrings using pydocstringformatter"
 	@echo "  docstring-links Enforce docstring link style (tools/docs/check_docstring_links.py)"
+	@echo "Tests:"
+	@echo "  test            Run the test suite (nox: qa)"
+	@echo "  pytest          Run tests with current interpreter (no nox), skipping slow tests; supports PYTEST_PAR=-n auto"
+	@echo "  pytest-full     Run all tests with current interpreter (no nox); supports PYTEST_PAR=-n auto"
+	@echo "  coverage        Run coverage testing"
+	@echo "  coverage-erase  Erase coverage testing output (.coverage coverage.xml coverage.json htmlcov .coverage.*)"
 	@echo "  property-test   Run Hypothesis hardening tests (manual, opt-in)"
 	@echo ""
 	@echo "  release-check   Run the deterministic pre-release gate (nox: release_check)"
@@ -100,6 +104,12 @@ test: check-venv
 	# We pass -- followed by the variable.
 	# If PYTEST_PAR is empty, it does nothing; if it has "-n auto", pytest receives it.
 	$(NOX) $(NOX_FLAGS) -s qa -- $(PYTEST_PAR)
+
+coverage: check-venv
+	$(NOX) $(NOX_FLAGS) -s coverage
+
+coverage-erase:
+	@rm -rf .coverage coverage.xml coverage.json htmlcov .coverage.*
 
 verify: check-venv
 	@echo "Running non-destructive checks via nox..."
