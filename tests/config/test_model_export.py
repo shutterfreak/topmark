@@ -18,7 +18,6 @@ These tests cover:
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from typing import Any
 
 import pytest
 
@@ -26,12 +25,12 @@ from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.io.render import to_toml
 from topmark.config.io.serializers import config_to_toml_dict
 from topmark.config.keys import Toml
-from topmark.config.model import Config
 from topmark.config.types import FileWriteStrategy
 from topmark.config.types import OutputTarget
 from topmark.core.keys import ArgKey
 
 if TYPE_CHECKING:
+    from topmark.config.io.types import TomlTable
     from topmark.config.model import Config
     from topmark.config.model import MutableConfig
 
@@ -47,11 +46,12 @@ def test_config_to_toml_dict_serializes_enums_as_strings() -> None:
     draft.file_write_strategy = FileWriteStrategy.ATOMIC
     c: Config = draft.freeze()
 
-    d: dict[str, Any] = config_to_toml_dict(
+    d: TomlTable = config_to_toml_dict(
         c,
         include_files=False,
     )
     writer = d[Toml.SECTION_WRITER]
+    assert isinstance(writer, dict)
     assert writer[Toml.KEY_TARGET] == "file"
     assert writer[Toml.KEY_STRATEGY] == "atomic"
 
@@ -66,11 +66,13 @@ def test_to_toml_strips_none_entries() -> None:
     c: Config = draft.freeze()
 
     # Create a dict with explicit None where TOML doesn't allow it
-    td: dict[str, Any] = config_to_toml_dict(
+    td: TomlTable = config_to_toml_dict(
         c,
         include_files=False,
     )
-    td[Toml.SECTION_FORMATTING][Toml.KEY_ALIGN_FIELDS] = None
+    formatting_tbl = td[Toml.SECTION_FORMATTING]
+    assert isinstance(formatting_tbl, dict)
+    formatting_tbl[Toml.KEY_ALIGN_FIELDS] = None
 
-    s: str = to_toml(td)
+    s: str = to_toml(formatting_tbl)
     assert ArgKey.ALIGN_FIELDS not in s  # or whatever your stripper does

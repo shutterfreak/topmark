@@ -27,8 +27,8 @@ Notes:
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import TYPE_CHECKING
-from typing import Any
 from typing import cast
 
 import tomlkit
@@ -40,7 +40,6 @@ from tomlkit.items import Table
 
 if TYPE_CHECKING:
     from _collections_abc import dict_items
-    from collections.abc import Iterable
 
     from tomlkit.container import Container
 
@@ -228,19 +227,32 @@ def nest_toml_under_section(
     # We consider it "already nested" only when each level along the path is the
     # sole keyed table at that level (so we don't accidentally skip wrapping
     # when sibling keys exist).
-    def _only_keyed_table_at_level(container: tomlkit.TOMLDocument | Table, expected: str) -> bool:
-        # tomlkit is untyped enough that pyright treats keys() as Unknown.
-        keys_iter = cast("Iterable[object]", cast("Any", container).keys())
-        keys_list: list[object] = list(keys_iter)
+    def _container_keys(container: tomlkit.TOMLDocument | Table) -> list[str]:
+        """Return stringified keys for a TOML container.
 
+        tomlkit's typing for mapping-style container access is incomplete, so this
+        helper performs a small runtime probe rather than relying on `Any`.
+        """
+        keys_attr: object = getattr(container, "keys", None)
+        if not callable(keys_attr):
+            return []
+
+        raw_keys: object = keys_attr()
+        if not isinstance(raw_keys, Iterable):
+            return []
+
+        iterable_keys: Iterable[object] = cast("Iterable[object]", raw_keys)
+        return [str(key) for key in iterable_keys]
+
+    def _only_keyed_table_at_level(container: tomlkit.TOMLDocument | Table, expected: str) -> bool:
+        keys_list: list[str] = _container_keys(container)
         if len(keys_list) != 1:
             return False
-
-        return (
-            str(keys_list[0]) == expected
-            and expected in cast("Any", container)
-            and isinstance(cast("Any", container)[expected], Table)
-        )
+        if keys_list[0] != expected:
+            return False
+        if expected not in container:
+            return False
+        return isinstance(container[expected], Table)
 
     already_nested: bool = True
     cur: tomlkit.TOMLDocument | Table = doc

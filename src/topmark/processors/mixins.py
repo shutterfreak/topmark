@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import re
 from typing import TYPE_CHECKING
-from typing import Any
 from typing import Final
 from typing import cast
 
@@ -33,8 +32,22 @@ from topmark.pipeline.policy_whitespace import is_pure_spacer
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from typing import Protocol
 
     from topmark.filetypes.policy import FileTypeHeaderPolicy
+
+if TYPE_CHECKING:
+
+    class _EnsureBlockPadding(Protocol):
+        """Callable protocol for block-padding helpers on processors."""
+
+        def __call__(
+            self,
+            rendered_lines: list[str],
+            *,
+            newline: str,
+        ) -> list[str]: ...
+
 
 _RE_SHEBANG: Final[re.Pattern[str]] = re.compile(r"^#!")
 _RE_XML_DECL: Final[re.Pattern[str]] = re.compile(r"^\s*<\?xml\b", re.IGNORECASE)
@@ -437,6 +450,7 @@ class XmlPositionalMixin:
         # If BlockCommentMixin is in the MRO, use its helper to ensure a final newline.
         ensure_block_padding = getattr(self, "ensure_block_padding", None)
         if callable(ensure_block_padding):
-            out = cast("list[str]", cast("Any", ensure_block_padding)(out, newline=newline_style))
+            ensure_block_padding_fn = cast("_EnsureBlockPadding", ensure_block_padding)
+            out = ensure_block_padding_fn(out, newline=newline_style)
 
         return out

@@ -20,26 +20,30 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
-from typing import Any
 from typing import cast
 
 import tomlkit
 
+from topmark.config.io.guards import as_object_dict
+from topmark.config.io.guards import toml_table_from_mapping
 from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
+    from topmark.config.io.types import TomlTable
     from topmark.core.logging import TopmarkLogger
-
-    from .types import TomlTable
 
 logger: TopmarkLogger = get_logger(__name__)
 
 
 def _tomlkit_dumps(data: TomlTable) -> str:
-    """Typed wrapper around tomlkit.dumps() for strict type checking."""
-    cleaned: Any = _strip_none_for_toml(data)
-    # tomlkit expects a Mapping; tomlkit itself is treated as untyped here.
-    return cast("str", cast("Any", tomlkit).dumps(cast("Mapping[str, Any]", cleaned)))
+    """Render a TOML table via tomlkit behind a small typed boundary."""
+    cleaned: object = _strip_none_for_toml(data)
+    cleaned_mapping: dict[str, object] = as_object_dict(cleaned)
+
+    # A targeted Pyright suppression is appropriate here because the third-party
+    # tomlkit stub exposes `dumps` with partially unknown Mapping parameter types.
+    rendered: str = tomlkit.dumps(cleaned_mapping)  # pyright: ignore[reportUnknownMemberType]
+    return rendered
 
 
 def _strip_none_for_toml(value: object) -> object:
@@ -103,6 +107,6 @@ def clean_toml_text(text: str) -> str:
         A normalized TOML string produced by round-tripping.
     """
     doc: tomlkit.TOMLDocument = tomlkit.parse(text)
-    data_any: Any = doc.unwrap()
-    data: TomlTable = cast("TomlTable", data_any) if isinstance(data_any, dict) else {}
+    unwrapped: dict[str, object] = doc.unwrap()
+    data: TomlTable = toml_table_from_mapping(as_object_dict(unwrapped))
     return _tomlkit_dumps(data)

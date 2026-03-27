@@ -24,11 +24,15 @@ This module performs no I/O and does not shape envelopes/records.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from typing import Any
-from typing import cast
 
 from topmark.cli.keys import CliCmd
+from topmark.config.io.guards import as_object_dict
+from topmark.config.io.guards import get_object_dict_value
+from topmark.config.io.guards import get_string_dict_value
+from topmark.config.io.guards import get_string_list_dict_value
+from topmark.config.io.guards import get_table_value
 from topmark.config.io.serializers import config_to_toml_dict
+from topmark.config.keys import Toml
 from topmark.config.machine.schemas import ConfigCheckSummary
 from topmark.config.machine.schemas import ConfigDiagnosticsPayload
 from topmark.config.machine.schemas import ConfigPayload
@@ -54,29 +58,35 @@ def build_config_payload(config: Config) -> ConfigPayload:
         ConfigPayload: JSON-serializable representation of the Config, without
             diagnostics.
     """
-    base: TomlTable = config_to_toml_dict(config, include_files=False)  # TomlTable ~ dict[str, Any]
+    base: TomlTable = config_to_toml_dict(
+        config,
+        include_files=False,
+    )
 
-    writer = base.get("writer", {})
-    # Make sure Enums become simple strings
-    target = config.output_target.name if config.output_target is not None else None
-    strategy = config.file_write_strategy.name if config.file_write_strategy is not None else None
-    base["writer"] = {**writer, "target": target, "strategy": strategy}
+    writer_tbl: TomlTable = get_table_value(base, Toml.SECTION_WRITER)
 
-    json_safe_base: Any = normalize_payload(base)
-    if isinstance(json_safe_base, dict):
-        # Keep pyright happy
-        data: dict[str, Any] = cast("dict[str, Any]", json_safe_base)
-    else:
-        data = {}
+    # Make sure Enums become simple strings.
+    target: str | None = config.output_target.name if config.output_target is not None else None
+    strategy: str | None = (
+        config.file_write_strategy.name if config.file_write_strategy is not None else None
+    )
+    base["writer"] = {
+        **writer_tbl,
+        "target": target,
+        "strategy": strategy,
+    }
+
+    normalized_base: object = normalize_payload(base)
+    normalized_dict: dict[str, object] = as_object_dict(normalized_base)
 
     return ConfigPayload(
-        fields=data.get("fields", {}),
-        header=data.get("header", {}),
-        formatting=data.get("formatting", {}),
-        writer=data.get("writer", {}),
-        files=data.get("files", {}),
-        policy=data.get("policy", {}),
-        policy_by_type=data.get("policy_by_type", {}),
+        fields=get_string_dict_value(normalized_dict, "fields"),
+        header=get_string_list_dict_value(normalized_dict, "header"),
+        formatting=get_object_dict_value(normalized_dict, "formatting"),
+        writer=get_object_dict_value(normalized_dict, "writer"),
+        files=get_object_dict_value(normalized_dict, "files"),
+        policy=get_object_dict_value(normalized_dict, "policy"),
+        policy_by_type=get_object_dict_value(normalized_dict, "policy_by_type"),
     )
 
 

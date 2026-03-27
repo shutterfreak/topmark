@@ -26,9 +26,8 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from topmark.core.logging import TopmarkLogger
-
-    from .context.model import ProcessingContext
-    from .protocols import Step
+    from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.protocols import Step
 
 logger: TopmarkLogger = get_logger(__name__)
 

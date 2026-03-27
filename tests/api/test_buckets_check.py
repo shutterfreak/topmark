@@ -13,7 +13,6 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from typing import Any
 
 from topmark import api
 from topmark.api.protocols import PublicPolicy
@@ -62,7 +61,7 @@ def test_bucket_no_fields_when_header_fields_empty(tmp_path: Path) -> None:
     f.write_text("print('x')\n", encoding="utf-8")
 
     # Minimal TOML config that results in GenerationStatus.NO_FIELDS
-    cfg: Mapping[str, Any] = {"header": {"fields": []}}
+    cfg: Mapping[str, object] = {"header": {"fields": []}}
     r: api.RunResult = api.check(
         [f],
         apply=False,

@@ -39,16 +39,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
-from typing import Any
 from typing import Final
-from typing import cast
 
 from topmark.config.io.getters import get_bool_value_or_none_checked
 from topmark.config.io.getters import get_string_list_value_checked
 from topmark.config.io.getters import get_string_value_checked
 from topmark.config.io.getters import get_string_value_or_none_checked
 from topmark.config.io.guards import as_toml_table_map
+from topmark.config.io.guards import get_pyproject_topmark_table
 from topmark.config.io.guards import get_table_value
+from topmark.config.io.guards import toml_table_from_mapping
 from topmark.config.io.loaders import load_defaults_dict
 from topmark.config.io.loaders import load_toml_dict
 from topmark.config.keys import Toml
@@ -67,6 +67,7 @@ if TYPE_CHECKING:
 
     from topmark.config.io.types import TomlTable
     from topmark.config.io.types import TomlTableMap
+    from topmark.config.io.types import TomlValue
     from topmark.core.logging import TopmarkLogger
 
 
@@ -435,7 +436,7 @@ def mutable_config_from_toml_dict(
         for section_name, allowed_keys in Toml.ALLOWED_SECTION_KEYS.items():
             if section_name not in tool_tbl:
                 continue
-            section_val: Any = tool_tbl.get(section_name)
+            section_val: TomlValue = tool_tbl.get(section_name)
             if not isinstance(section_val, dict):
                 msg: str = (
                     f"TOML section [{section_name}] must be a table; "
@@ -444,13 +445,13 @@ def mutable_config_from_toml_dict(
                 draft.diagnostics.add_warning(msg)
                 continue
 
-            section_tbl: TomlTable = cast("TomlTable", section_val)
+            section_tbl: TomlTable = section_val
             _warn_unknown(f"[{section_name}]", set(section_tbl.keys()) - set(allowed_keys))
 
         # Validate [policy_by_type.<filetype>] subtables (their keys are fixed)
-        pbt_val: Any = tool_tbl.get(Toml.SECTION_POLICY_BY_TYPE)
+        pbt_val: TomlValue = tool_tbl.get(Toml.SECTION_POLICY_BY_TYPE)
         if isinstance(pbt_val, dict):
-            pbt_tbl: TomlTable = cast("TomlTable", pbt_val)
+            pbt_tbl: TomlTable = pbt_val
             for ft_name, ft_tbl_any in pbt_tbl.items():
                 ft: str = str(ft_name)
                 if not isinstance(ft_tbl_any, dict):
@@ -461,7 +462,7 @@ def mutable_config_from_toml_dict(
                     draft.diagnostics.add_warning(msg)
                     continue
 
-                ft_tbl: TomlTable = cast("TomlTable", ft_tbl_any)
+                ft_tbl: TomlTable = ft_tbl_any
                 _warn_unknown(
                     f"[{Toml.SECTION_POLICY_BY_TYPE}.{ft}]",
                     set(ft_tbl.keys()) - set(Toml.ALLOWED_POLICY_KEYS),
@@ -593,13 +594,13 @@ def mutable_config_from_toml_file(path: Path) -> MutableConfig | None:
     toml_data: TomlTable = load_toml_dict(path)
 
     if path.name == "pyproject.toml":
-        # Extract [tool.topmark] subsection from pyproject.toml
-        tool_section: TomlTable = toml_data.get("tool", {}).get("topmark", {})
-        if not tool_section:
+        # Extract [tool.topmark] subsection from pyproject.toml.
+        topmark_tool_section: TomlTable | None = get_pyproject_topmark_table(toml_data)
+        if topmark_tool_section is None:
             logger.error("[tool.topmark] section missing or malformed in %s", path)
             return None
-        else:
-            toml_data = tool_section
+
+        toml_data = topmark_tool_section
 
     # Parse the extracted TOML data into a MutableConfig;
     # pass the config file path so the dict parser knows the base directory
@@ -639,4 +640,5 @@ def mutable_config_from_mapping(data: Mapping[str, object]) -> MutableConfig:
     # Current API mapping shape mirrors the TOML-backed config structure.
     # Keep the API-facing coercion boundary explicit here so callers do not need
     # to route generic mappings through a TOML-named helper directly.
-    return mutable_config_from_toml_dict(dict(data))
+    toml_data: TomlTable = toml_table_from_mapping(data)
+    return mutable_config_from_toml_dict(toml_data)

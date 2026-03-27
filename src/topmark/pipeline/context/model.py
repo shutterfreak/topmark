@@ -31,7 +31,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from dataclasses import field
 from typing import TYPE_CHECKING
-from typing import Any
 
 from topmark.config.policy import make_policy_registry
 from topmark.core.logging import get_logger
@@ -404,7 +403,7 @@ class ProcessingContext:
         cluster: Cluster | str | None = None,
         terminal: bool = False,
         reason: str | None = None,
-        meta: dict[str, Any] | None = None,
+        meta: dict[str, object] | None = None,
     ) -> None:
         """Create and attach a normalized `Hint` to this context.
 

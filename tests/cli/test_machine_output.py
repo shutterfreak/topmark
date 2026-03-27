@@ -37,7 +37,6 @@ from __future__ import annotations
 
 import json
 from typing import TYPE_CHECKING
-from typing import Any
 from typing import cast
 
 import pytest
@@ -69,7 +68,7 @@ def test_config_dump_json_includes_meta() -> None:
     )
     assert_SUCCESS(result)
 
-    payload: dict[str, Any] = json.loads(result.output)
+    payload: dict[str, object] = json.loads(result.output)
 
     # Top-level keys
     assert "meta" in payload
@@ -116,7 +115,7 @@ def test_processing_json_includes_meta(tmp_path: Path, command: str) -> None:
     )
     assert_SUCCESS_or_WOULD_CHANGE(result)
 
-    payload: dict[str, Any] = json.loads(result.output)
+    payload: dict[str, object] = json.loads(result.output)
     assert "meta" in payload
 
     meta_obj = payload.get("meta")
@@ -165,7 +164,7 @@ def test_processing_json_detail_shape(tmp_path: Path, command: str) -> None:
 
     payload_raw: object = json.loads(result.output)
     assert isinstance(payload_raw, dict)
-    payload: dict[str, Any] = cast("dict[str, Any]", payload_raw)
+    payload: dict[str, object] = cast("dict[str, object]", payload_raw)
 
     # Top-level wrapper keys
     assert "meta" in payload
@@ -180,7 +179,7 @@ def test_processing_json_detail_shape(tmp_path: Path, command: str) -> None:
 
     first_raw: object = results_list[0]
     assert isinstance(first_raw, dict)
-    first: dict[str, Any] = cast("dict[str, Any]", first_raw)
+    first: dict[str, object] = cast("dict[str, object]", first_raw)
 
     # Basic per-file keys
     for key in ("path", "file_type", "steps", "step_axes", "status", "views", "outcome"):
@@ -197,7 +196,7 @@ def test_processing_json_detail_shape(tmp_path: Path, command: str) -> None:
     # step_axes: mapping step name -> list of axes
     step_axes_raw: object = first["step_axes"]
     assert isinstance(step_axes_raw, dict)
-    step_axes: dict[str, Any] = cast("dict[str, Any]", step_axes_raw)
+    step_axes: dict[str, object] = cast("dict[str, object]", step_axes_raw)
     assert step_axes  # some step axes present
 
     # At least one entry maps to a non-empty list of axis names
@@ -211,12 +210,12 @@ def test_processing_json_detail_shape(tmp_path: Path, command: str) -> None:
     # status: axis -> {axis, name, label}
     status_obj = first["status"]
     assert isinstance(status_obj, dict)
-    status: dict[str, Any] = cast("dict[str, Any]", status_obj)
+    status: dict[str, object] = cast("dict[str, object]", status_obj)
     # We expect at least the "resolve" axis entry
     assert "resolve" in status
     resolve_status_obj = status["resolve"]
     assert isinstance(resolve_status_obj, dict)
-    resolve_status: dict[str, Any] = cast("dict[str, Any]", resolve_status_obj)
+    resolve_status: dict[str, object] = cast("dict[str, object]", resolve_status_obj)
     assert resolve_status.get("axis") == "resolve"
     assert isinstance(resolve_status.get("name"), str)
     assert isinstance(resolve_status.get("label"), str)
@@ -264,7 +263,7 @@ def test_processing_json_summary_shape(tmp_path: Path, command: str) -> None:
 
     payload_obj: object = json.loads(result.output)
     assert isinstance(payload_obj, dict)
-    payload: dict[str, Any] = cast("dict[str, Any]", payload_obj)
+    payload: dict[str, object] = cast("dict[str, object]", payload_obj)
 
     # Top-level wrapper still includes meta/config/config_diagnostics
     assert "meta" in payload
@@ -280,7 +279,7 @@ def test_processing_json_summary_shape(tmp_path: Path, command: str) -> None:
 
     first_obj: object = summary_rows[0]
     assert isinstance(first_obj, dict)
-    first: dict[str, Any] = cast("dict[str, Any]", first_obj)
+    first: dict[str, object] = cast("dict[str, object]", first_obj)
     assert isinstance(first.get("outcome"), str)
     assert isinstance(first.get("reason"), str)
     assert isinstance(first.get("count"), int)
@@ -308,7 +307,7 @@ def test_config_dump_ndjson_kinds() -> None:
     for line in lines:
         record_obj: object = json.loads(line)
         assert isinstance(record_obj, dict)
-        record: dict[str, Any] = cast("dict[str, Any]", record_obj)
+        record: dict[str, object] = cast("dict[str, object]", record_obj)
         kind_obj = record.get("kind")
         assert isinstance(kind_obj, str)
         kinds.add(kind_obj)
@@ -360,7 +359,7 @@ def test_processing_ndjson_kinds_with_summary(tmp_path: Path, command: str) -> N
     for line in lines:
         record_obj: object = json.loads(line)
         assert isinstance(record_obj, dict)
-        record: dict[str, Any] = cast("dict[str, Any]", record_obj)
+        record: dict[str, object] = cast("dict[str, object]", record_obj)
         kind_obj = record.get("kind")
         assert isinstance(kind_obj, str)
         kinds.append(kind_obj)
@@ -368,7 +367,7 @@ def test_processing_ndjson_kinds_with_summary(tmp_path: Path, command: str) -> N
         if kind_obj == "summary":
             summary_obj = record.get("summary")
             assert isinstance(summary_obj, dict)
-            summary: dict[str, Any] = cast("dict[str, Any]", summary_obj)
+            summary: dict[str, object] = cast("dict[str, object]", summary_obj)
 
             outcome_obj = summary.get("outcome")
             reason_obj = summary.get("reason")

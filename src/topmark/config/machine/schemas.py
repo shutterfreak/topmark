@@ -25,7 +25,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
-from typing import Any
 
 from topmark.core.machine.schemas import MachineKey
 
@@ -61,13 +60,13 @@ class ConfigPayload:
     # loosely mirrors to_toml_dict structure with JSON-friendly types
     fields: dict[str, str]
     header: dict[str, list[str]]
-    formatting: dict[str, Any]
-    writer: dict[str, Any]
-    files: dict[str, Any]
-    policy: dict[str, Any]
-    policy_by_type: dict[str, Any]
+    formatting: dict[str, object]
+    writer: dict[str, object]
+    files: dict[str, object]
+    policy: dict[str, object]
+    policy_by_type: dict[str, object]
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> dict[str, object]:
         """Return a JSON-friendly dict of the `ConfigPayload` instance."""
         return {
             "fields": self.fields,

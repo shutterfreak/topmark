@@ -17,7 +17,6 @@ and small utilities that are reused across tests under `tests/api/`.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from typing import Any
 
 import pytest
 
@@ -39,6 +38,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
 
+    from topmark.config.io.types import TomlValue
     from topmark.filetypes.model import FileType
     from topmark.processors.base import HeaderProcessor
     from topmark.registry.types import ProcessorDefinition
@@ -55,7 +55,7 @@ def read_text(path: Path) -> str:
 # --- Config-related helpers ---
 
 
-def cfg(**overrides: Any) -> dict[str, Any]:
+def cfg(**overrides: TomlValue) -> dict[str, TomlValue]:
     """Build a minimal **mapping** for API calls that accept a config dict.
 
     This helper intentionally returns a plain dictionary shaped like the
@@ -72,22 +72,26 @@ def cfg(**overrides: Any) -> dict[str, Any]:
           using `tests.conftest.make_config` / `tests.conftest.make_mutable_config`.
 
     Args:
-        **overrides: Arbitrary keyword arguments collected into a ``dict[str, Any]``. Keys
+        **overrides: Arbitrary keyword arguments collected into a ``dict[str, object]``. Keys
             correspond to top-level TOML tables (e.g., ``files``), and values may be nested
             mappings.
 
     Returns:
         A TOML-shaped mapping suitable for ``api.check(..., config=...)``.
     """
-    base: dict[str, Any] = {
+    base: dict[str, TomlValue] = {
         Toml.SECTION_FILES: {
             # When provided, discovery should consider only these types
             Toml.KEY_INCLUDE_FILE_TYPES: ["python"],
         },
     }
     for k, v in overrides.items():
-        if isinstance(v, dict) and isinstance(base.get(k), dict):
-            base[k].update(v)  # shallow merge for convenience in tests
+        existing: TomlValue = base.get(k)
+
+        # We use 'existing' as a local variable so Pyright can safely narrow
+        # the type to dict[str, TomlValue] after the isinstance check.
+        if isinstance(v, dict) and isinstance(existing, dict):
+            existing.update(v)  # shallow merge for convenience in tests
         else:
             base[k] = v
     return base

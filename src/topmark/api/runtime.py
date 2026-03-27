@@ -27,7 +27,6 @@ from __future__ import annotations
 from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING
-from typing import Any
 from typing import Literal
 
 from topmark.config.io.deserializers import mutable_config_from_defaults
@@ -58,11 +57,11 @@ logger: TopmarkLogger = get_logger(__name__)
 
 
 def ensure_mutable_config(
-    config: Mapping[str, Any] | MutableConfig | Config | None,
+    config: Mapping[str, object] | MutableConfig | Config | None,
 ) -> MutableConfig:
     """Return a **MutableConfig** from a mapping or a frozen `Config`.
 
-    This adapter normalizes public inputs (``Mapping[str, Any]`` or frozen ``Config``)
+    This adapter normalizes public inputs (``Mapping[str, object]`` or frozen ``Config``)
     to a **mutable** builder for merging and final ``freeze()`` before pipeline execution.
 
     Args:
@@ -114,7 +113,7 @@ def ensure_mutable_config(
 def build_config_and_files(
     paths: Iterable[Path | str],
     *,
-    base_config: Mapping[str, Any] | Config | None,
+    base_config: Mapping[str, object] | Config | None,
     include_file_types: Sequence[str] | None,
     exclude_file_types: Sequence[str] | None,
 ) -> tuple[Config, list[Path]]:
@@ -220,7 +219,7 @@ def run_pipeline(
     *,
     pipeline: Sequence[Step[ProcessingContext]],
     paths: Iterable[Path | str],
-    base_config: Mapping[str, Any] | Config | None,
+    base_config: Mapping[str, object] | Config | None,
     include_file_types: Sequence[str] | None = None,
     exclude_file_types: Sequence[str] | None = None,
     apply_changes: bool,

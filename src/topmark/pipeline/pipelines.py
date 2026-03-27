@@ -57,18 +57,17 @@ from typing import Final
 
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.protocols import Step
-
-from .steps import builder
-from .steps import comparer
-from .steps import patcher
-from .steps import planner
-from .steps import reader
-from .steps import renderer
-from .steps import resolver
-from .steps import scanner
-from .steps import sniffer
-from .steps import stripper
-from .steps import writer
+from topmark.pipeline.steps import builder
+from topmark.pipeline.steps import comparer
+from topmark.pipeline.steps import patcher
+from topmark.pipeline.steps import planner
+from topmark.pipeline.steps import reader
+from topmark.pipeline.steps import renderer
+from topmark.pipeline.steps import resolver
+from topmark.pipeline.steps import scanner
+from topmark.pipeline.steps import sniffer
+from topmark.pipeline.steps import stripper
+from topmark.pipeline.steps import writer
 
 # Perform basic TopMark header scanning:
 SCAN_PIPELINE: Final[tuple[Step[ProcessingContext], ...]] = (

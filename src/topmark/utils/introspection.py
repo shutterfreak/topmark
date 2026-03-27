@@ -13,7 +13,6 @@
 from __future__ import annotations
 
 from inspect import getmodule
-from typing import Any
 
 from topmark.core.logging import TopmarkLogger
 from topmark.core.logging import get_logger
@@ -21,7 +20,7 @@ from topmark.core.logging import get_logger
 logger: TopmarkLogger = get_logger(__name__)
 
 
-def format_callable_pretty(obj: Any) -> str:
+def format_callable_pretty(obj: object) -> str:
     """Return a human-friendly (module.qualname) for any callable.
 
     Handles functions, bound methods, callable instances, and partials. Falls

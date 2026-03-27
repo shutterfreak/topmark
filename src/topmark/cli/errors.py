@@ -57,6 +57,8 @@ class TopmarkCliError(click.ClickException):
         return msg
 
     def show(self, file: IO[Any] | None = None) -> None:  # pragma: no cover - Click prints errors
+        # Click defines `ClickException.show()` with `IO[Any] | None`; keep the
+        # same signature to satisfy override compatibility with third-party stubs.
         """Display the error using the project console if available.
 
         Falls back to Click’s default error display when no console is present.

@@ -43,6 +43,7 @@ from typing import TYPE_CHECKING
 
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.io.deserializers import mutable_config_from_toml_file
+from topmark.config.io.guards import get_pyproject_topmark_table
 from topmark.config.io.loaders import load_toml_dict
 from topmark.config.keys import Toml
 from topmark.core.logging import get_logger
@@ -112,9 +113,8 @@ def discover_local_config_files(start: Path) -> list[Path]:
                 # load_toml_dict() does a best-effort discovery; it returns {} on errors.
                 if data:
                     if name == "pyproject.toml":
-                        tool: TomlTable = data.get("tool", {})
-                        topmark_tbl: TomlTable = tool.get("topmark", {})
-                        if bool(topmark_tbl.get(Toml.KEY_ROOT, False)):
+                        topmark_tbl: TomlTable | None = get_pyproject_topmark_table(data)
+                        if topmark_tbl is not None and bool(topmark_tbl.get(Toml.KEY_ROOT, False)):
                             root_stop_here = True
                     else:  # topmark.toml
                         if bool(data.get(Toml.KEY_ROOT, False)):
@@ -122,7 +122,6 @@ def discover_local_config_files(start: Path) -> list[Path]:
                 else:
                     # Best-effort discovery; ignore parse errors here.
                     logger.debug("Ignoring empty TOML dict from reading %s", p)
-
         if dir_entries:
             # Keep entries grouped per directory: [pyproject, topmark]
             per_dir.append(dir_entries)

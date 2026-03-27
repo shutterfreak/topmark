@@ -25,19 +25,17 @@ from __future__ import annotations
 
 from enum import Enum
 from typing import TYPE_CHECKING
-from typing import Any
 from typing import Final
 from typing import TypeVar
 
+from topmark.config.io.guards import is_any_list
 from topmark.core.logging import get_logger
 
-from .guards import is_any_list
-
 if TYPE_CHECKING:
+    from topmark.config.io.types import TomlTable
+    from topmark.config.io.types import TomlValue
     from topmark.core.logging import TopmarkLogger
     from topmark.diagnostic.model import DiagnosticLog
-
-    from .types import TomlTable
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -60,7 +58,7 @@ def get_string_value(table: TomlTable, key: str, default: str = "") -> str:
         The extracted or coerced string value, or ``default``.
     """
     # Coerce various types to string if possible; fallback to default
-    value: Any | None = table.get(key)
+    value: TomlValue = table.get(key)
     if isinstance(value, str):
         return value
     if isinstance(value, int | float | bool):
@@ -89,7 +87,7 @@ def get_string_value_or_none(table: TomlTable, key: str) -> str | None:
         The extracted or coerced string value, or ``None`` when absent or not coercible.
     """
     # Coerce various types to string if possible
-    value: Any | None = table.get(key)
+    value: TomlValue = table.get(key)
     if value is None:
         return None
     if isinstance(value, str):
@@ -110,9 +108,8 @@ def get_bool_value(
 ) -> bool:
     """Extract a boolean value from a TOML table.
 
-    If the value is a ``bool``, it is returned as is. If the value is an integer,
-    it is coerced via ``bool(value)``. When the key is missing or the value is not
-    coercible, ``default`` is returned.
+    If the value is a ``bool``, it is returned as is. If the value is missing or
+    not of type ``bool``, ``default`` is returned.
 
     Args:
         table: Table to query.
@@ -120,17 +117,16 @@ def get_bool_value(
         default: Default value if the key is not found or not coercible.
 
     Returns:
-        The extracted or coerced boolean value, or ``default``.
+        The extracted boolean value, or ``default``.
     """
     # Extract boolean value, coercing int to bool if needed; fallback to default
-    value: Any | None = table.get(key)
+    value: TomlValue = table.get(key)
     if isinstance(value, bool):
         return value
-    if isinstance(value, int):
-        return bool(value)
     logger.debug(
-        "Cannot coerce %r to bool, returning default (%r)",
+        "Expecting bool value, found %r of type %r, returning default (%r)",
         value,
+        type(value),
         default,
     )
     return default
@@ -139,41 +135,34 @@ def get_bool_value(
 def get_bool_value_or_none(table: TomlTable, key: str) -> bool | None:
     """Extract an optional boolean value from a TOML table.
 
-    If the value is a ``bool``, it is returned as is. If the value is an integer,
-    it is coerced via ``bool(value)``. When the key is missing, ``None`` is returned.
-    If the key is present but not coercible, ``None`` is returned.
+    If the value is a ``bool``, it is returned as is. If the value is missing or
+    not of type ``bool``, ``None`` is returned.
 
     Args:
         table: Table to query.
         key: Key to extract.
 
     Returns:
-        The extracted or coerced boolean value, or ``None`` when absent or not coercible.
+        The extracted boolean value, or ``None`` when absent or not of type ``bool``.
     """
-    # Extract boolean value, coercing int to bool if needed
-    value: Any | None = table.get(key)
+    value: TomlValue = table.get(key)
     if value is None:
         return None
     if isinstance(value, bool):
         return value
-    if isinstance(value, int):
-        return bool(value)
-    logger.debug(
-        "Cannot coerce %r to bool, returning None",
-        value,
-    )
+    logger.debug("Expecting bool value, found %r of type %r, returning None", value, type(value))
     return None
 
 
 def get_list_value(
     table: TomlTable,
     key: str,
-    default: list[Any] | None = None,
-) -> list[Any]:
+    default: list[object] | None = None,
+) -> list[object]:
     """Extract a list value from a TOML table.
 
-    If the key is present and the value is a list, it is returned (shallow copy;
-    no item-level validation).
+    If the key is present and the value is a list, a shallow copy is returned
+    without item-level validation.
     Otherwise, ``default`` is returned (or ``[]`` when ``default`` is ``None``).
 
     Args:
@@ -182,12 +171,12 @@ def get_list_value(
         default: Default list when the key is missing or not a list.
 
     Returns:
-        The list value, ``default``, or an empty list.
+        A shallow copy of the list value, ``default``, or an empty list.
     """
-    # Extract list value, ensure list type or fallback to default
-    value: Any | None = table.get(key)
+    value: TomlValue = table.get(key)
     if is_any_list(value):
-        return value
+        return list(value)  # Return a copy
+
     logger.debug(
         "Expected list for key %s, got %r; using default (%r)",
         key,
@@ -213,7 +202,7 @@ def get_string_value_checked(
     Unlike `get_string_value()`, this helper does **not** coerce ints/bools/floats
     to strings. If the key is missing, `default` is returned.
     """
-    value: Any | None = table.get(key)
+    value: TomlValue = table.get(key)
     if value is None:
         return default
     if isinstance(value, str):
@@ -232,7 +221,7 @@ def get_string_value_or_none_checked(
     diagnostics: DiagnosticLog,
 ) -> str | None:
     """Return an optional string value, warning when present but not `str`."""
-    value: Any | None = table.get(key)
+    value: TomlValue = table.get(key)
     if value is None:
         return None
     if isinstance(value, str):
@@ -256,7 +245,7 @@ def get_bool_value_checked(
     Unlike `get_bool_value()`, this helper does **not** coerce integers.
     If the key is missing, `default` is returned.
     """
-    value: Any | None = table.get(key)
+    value: TomlValue = table.get(key)
     if value is None:
         return default
     if isinstance(value, bool):
@@ -275,7 +264,7 @@ def get_bool_value_or_none_checked(
     diagnostics: DiagnosticLog,
 ) -> bool | None:
     """Return an optional boolean value, warning when present but not `bool`."""
-    value: Any | None = table.get(key)
+    value: TomlValue = table.get(key)
     if value is None:
         return None
     if isinstance(value, bool):
@@ -299,7 +288,7 @@ def get_int_value_or_none_checked(
         - Missing key / None -> None
         - `bool` is rejected (since `bool` is a subclass of `int`).
     """
-    value: Any | None = table.get(key)
+    value: TomlValue = table.get(key)
     if value is None:
         return None
 
@@ -329,9 +318,10 @@ def get_string_list_value_checked(
 ) -> list[str]:
     """Extract a list of strings from a TOML table, recording a warning when the type is incorrect.
 
-    By using `get_string_list_value()` we enforce "list of strings" for header field
-    selection in TOML, drop non-strings with a warning + diagnostic, and give uniform,
-    stable warning locations like: "Ignoring non-string entry in [header].fields: ..."
+    This helper enforces a “list of strings” shape for TOML list fields.
+
+    Non-string values in the list are dropped with a diagnostic with a uniform,
+    stable warning location like: "Ignoring non-string entry in [header].fields: ..."
 
     Behavior:
         - If the key is missing or not a list, returns [].
@@ -347,7 +337,7 @@ def get_string_list_value_checked(
     Returns:
         Filtered list containing only string entries.
     """
-    value: Any | None = table.get(key)
+    value: TomlValue = table.get(key)
     if value is None:
         return []
 
@@ -357,7 +347,7 @@ def get_string_list_value_checked(
         diagnostics.add_warning(f"Expected list in {loc}, got {type(value).__name__}: {value!r}")
         return []
 
-    vals_any: list[Any] = value
+    vals_any: list[object] = value
     if not vals_any:
         return []
 
@@ -392,7 +382,7 @@ def get_enum_value_checked(
 
     This is intended for schema-level validation (e.g. `[writer].target`).
     """
-    raw: Any | None = table.get(key)
+    raw: TomlValue = table.get(key)
     if raw is None:
         return None
 

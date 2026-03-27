@@ -29,6 +29,8 @@ from topmark.diagnostic.model import DiagnosticLog
 if TYPE_CHECKING:
     import pytest
 
+    from topmark.config.io.types import TomlTable
+
 
 def test_nest_toml_under_section_basic() -> None:
     """Ensure preamble preserved after nesting TOML document under [tool.topmark].
@@ -115,7 +117,7 @@ def test_get_string_list_value_filters_and_records_warnings(
     caplog.set_level("WARNING")
     diagnostics = DiagnosticLog()
 
-    table = {"k": ["a", 1, True, "b"]}
+    table: TomlTable = {"k": ["a", 1, True, "b"]}
     out: list[str] = get_string_list_value_checked(
         table,
         "k",
@@ -156,7 +158,7 @@ def test_get_string_list_value_wrong_type_returns_empty_and_records_warning(
     caplog.set_level("WARNING")
     diagnostics = DiagnosticLog()
 
-    table: dict[str, Any] = {"k": True}  # wrong shape
+    table: TomlTable = {"k": True}  # wrong shape
     out: list[str] = get_string_list_value_checked(
         table,
         "k",

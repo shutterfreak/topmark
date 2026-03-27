@@ -37,6 +37,8 @@ from topmark.resolution.files import resolve_file_list
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from topmark.config.io.types import TomlTable
+    from topmark.config.io.types import TomlValue
     from topmark.config.model import Config
     from topmark.config.model import MutableConfig
     from topmark.config.types import PatternSource
@@ -555,12 +557,13 @@ _empty_str_set: set[str] = set()
 )
 def test_files_list_valued_keys_wrong_type_is_treated_as_empty(
     key: str,
-    bad_value: object,
+    bad_value: TomlValue,
     attr: str,
     expect_empty: object,
 ) -> None:
     """Wrong-type list values in [files] are treated as empty (must not crash)."""
-    draft: MutableConfig = mutable_config_from_toml_dict({Toml.SECTION_FILES: {key: bad_value}})
+    toml_dict: TomlTable = {Toml.SECTION_FILES: {key: bad_value}}
+    draft: MutableConfig = mutable_config_from_toml_dict(toml_dict)
 
     assert getattr(draft, attr) == expect_empty
 
@@ -881,7 +884,7 @@ def test_policy_by_type_valid_keys_parse_and_unknown_keys_are_ignored(
 
 @pytest.mark.pipeline
 @pytest.mark.parametrize("bad_val", ["x", 123, {"a": 1}, None])
-def test_header_fields_wrong_type_falls_back_to_empty_list(bad_val: object) -> None:
+def test_header_fields_wrong_type_falls_back_to_empty_list(bad_val: TomlValue) -> None:
     """Wrong-type list values should be treated as empty lists (parsing must not crash)."""
     # NOTE: If you want warnings for that, add them later in one place
     #       and update this test accordingly
@@ -907,7 +910,7 @@ def test_unknown_key_in_known_section_warns_and_is_recorded(
     caplog: pytest.LogCaptureFixture,
     section: str,
     valid_key: str,
-    valid_value: object,
+    valid_value: TomlValue,
 ) -> None:
     """Unknown keys inside closed sections are warned about and recorded."""
     caplog.set_level("WARNING")

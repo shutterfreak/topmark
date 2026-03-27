@@ -28,7 +28,6 @@ Notes:
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from typing import Any
 
 from topmark.api.runtime import run_pipeline
 from topmark.api.runtime import select_pipeline
@@ -59,7 +58,7 @@ def check(
     *,
     apply: bool = False,
     diff: bool = False,
-    config: Mapping[str, Any] | None = None,
+    config: Mapping[str, object] | None = None,
     policy: PublicPolicy | None = None,
     policy_by_type: Mapping[str, PublicPolicy] | None = None,
     include_file_types: Sequence[str] | None = None,
@@ -141,7 +140,7 @@ def strip(
     *,
     apply: bool = False,
     diff: bool = False,
-    config: Mapping[str, Any] | None = None,
+    config: Mapping[str, object] | None = None,
     policy: PublicPolicy | None = None,
     policy_by_type: Mapping[str, PublicPolicy] | None = None,
     include_file_types: Sequence[str] | None = None,

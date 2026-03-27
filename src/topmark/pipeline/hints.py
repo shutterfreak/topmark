@@ -42,7 +42,6 @@ from dataclasses import dataclass
 from dataclasses import field
 from enum import Enum
 from typing import TYPE_CHECKING
-from typing import Any
 
 from topmark.core.enum_mixins import EnumIntrospectionMixin
 from topmark.core.logging import get_logger
@@ -286,7 +285,7 @@ class Hint:
     cluster: str | None = None
     terminal: bool = False
     reason: str | None = None
-    meta: dict[str, Any] | None = None
+    meta: dict[str, object] | None = None
 
 
 def make_hint(
@@ -298,7 +297,7 @@ def make_hint(
     cluster: Cluster | str | None = None,
     terminal: bool = False,
     reason: str | None = None,
-    meta: dict[str, Any] | None = None,
+    meta: dict[str, object] | None = None,
 ) -> Hint:
     """Create a normalized `Hint` with light validation and defaults.
 

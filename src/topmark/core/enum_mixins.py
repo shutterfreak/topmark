@@ -47,7 +47,6 @@ from __future__ import annotations
 from enum import Enum
 from functools import cached_property
 from typing import TYPE_CHECKING
-from typing import Any
 from typing import TypeVar
 from typing import cast
 
@@ -83,7 +82,7 @@ def enum_from_name(
     if key_name is None:
         return None
     target: str = key_name.upper() if case_insensitive else key_name
-    member: Any | None = getattr(enum_cls, "__members__", {}).get(target)
+    member: object | None = getattr(enum_cls, "__members__", {}).get(target)
     return cast("_E | None", member)
 
 

@@ -24,7 +24,6 @@ import glob
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING
-from typing import Any
 from typing import Generic
 from typing import NoReturn
 from typing import Protocol
@@ -134,7 +133,7 @@ class EnumChoiceParam(ParamTypeBase, Generic[E]):
 def FileTypeParam(
     ctx: click.Context,  # pylint: disable=unused-argument
     param: click.Parameter,  # pylint: disable=unused-argument
-    value: Any,
+    value: object,
 ) -> Path | None:
     """Validator: Ensure a CLI argument is a valid file path.
 
@@ -154,7 +153,7 @@ def FileTypeParam(
     """
     if value is None:
         return None
-    path = Path(value)
+    path: Path = Path(str(value))
     # Check if the path exists and is a file.
     if not path.exists() or not path.is_file():
         raise click.BadParameter(f"File not found or not a file: {value}")
@@ -164,7 +163,7 @@ def FileTypeParam(
 def GlobParam(
     ctx: click.Context,  # pylint: disable=unused-argument
     param: click.Parameter,  # pylint: disable=unused-argument
-    value: Any,
+    value: object,
 ) -> list[Path]:
     """Validator: Expand a glob pattern CLI argument to a list of file paths.
 

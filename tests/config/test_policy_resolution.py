@@ -30,7 +30,6 @@ from __future__ import annotations
 from dataclasses import fields
 from dataclasses import replace
 from typing import TYPE_CHECKING
-from typing import Any
 
 import pytest
 
@@ -41,6 +40,7 @@ from topmark.config.policy import Policy
 from topmark.config.policy import effective_policy
 
 if TYPE_CHECKING:
+    from topmark.config.io.types import TomlTable
     from topmark.config.model import Config
     from topmark.config.model import MutableConfig
 
@@ -232,7 +232,7 @@ def test_policy_loaded_from_toml_tables() -> None:
     * `cfg.policy_by_type["python"]` inherits unset fields from the global
       policy while applying per-type overrides.
     """
-    toml_root: dict[str, Any] = {
+    toml_root: TomlTable = {
         "policy": {
             "add_only": True,
             "allow_content_probe": False,

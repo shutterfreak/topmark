@@ -21,12 +21,12 @@ from __future__ import annotations
 
 from importlib.resources import files
 from typing import TYPE_CHECKING
-from typing import Any
-from typing import cast
 
 import tomlkit
 from tomlkit.exceptions import ParseError as TomlkitParseError
 
+from topmark.config.io.guards import as_object_dict
+from topmark.config.io.guards import toml_table_from_mapping
 from topmark.config.io.render import to_toml
 from topmark.config.io.surgery import nest_toml_under_section
 from topmark.config.keys import Toml
@@ -46,9 +46,8 @@ if TYPE_CHECKING:
         # Python 3.14+: Traversable moved here
         from importlib.resources.abc import Traversable
 
+    from topmark.config.io.types import TomlTable
     from topmark.core.logging import TopmarkLogger
-
-    from .types import TomlTable
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -216,8 +215,8 @@ def load_toml_dict(path: Path) -> TomlTable:
     try:
         text: str = path.read_text(encoding="utf-8")
         doc: tomlkit.TOMLDocument = tomlkit.parse(text)
-        data_any: Any = doc.unwrap()
-        return cast("TomlTable", data_any) if isinstance(data_any, dict) else {}
+        unwrapped: object = doc.unwrap()
+        return toml_table_from_mapping(as_object_dict(unwrapped))
     except OSError as e:
         logger.error("Error loading TOML from %s: %s", path, e)
         return {}

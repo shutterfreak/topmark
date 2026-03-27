@@ -43,7 +43,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
-from typing import Any
 from typing import Protocol
 
 from topmark.config.keys import Toml
@@ -120,7 +119,7 @@ class Policy:
             allow_content_probe=self.allow_content_probe,
         )
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> dict[str, object]:
         """Serialize this resolved policy to a TOML-friendly dictionary.
 
         Returns:
@@ -244,7 +243,7 @@ class MutablePolicy:
         return self.resolve(Policy())
 
     @classmethod
-    def from_toml_table(cls, tbl: Mapping[str, Any] | None) -> MutablePolicy:
+    def from_toml_table(cls, tbl: Mapping[str, object] | None) -> MutablePolicy:
         """Create a MutablePolicy from a TOML table.
 
         Unspecified keys remain `None` so they can inherit from the base policy during `resolve()`.
@@ -291,7 +290,7 @@ class MutablePolicy:
         )
 
 
-def policy_to_dict(policy: Policy) -> dict[str, Any]:
+def policy_to_dict(policy: Policy) -> dict[str, object]:
     """Serialize a resolved or tri-state policy to a TOML-friendly dictionary.
 
     Args:
@@ -301,7 +300,7 @@ def policy_to_dict(policy: Policy) -> dict[str, Any]:
         Dictionary containing all policy fields as TOML-friendly primitives. Enum values are
         serialized via `.value`.
     """
-    out: dict[str, Any] = {}
+    out: dict[str, object] = {}
     out[Toml.KEY_POLICY_CHECK_ADD_ONLY] = policy.add_only
     out[Toml.KEY_POLICY_CHECK_UPDATE_ONLY] = policy.update_only
     out[Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES] = policy.allow_header_in_empty_files

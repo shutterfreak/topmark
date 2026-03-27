@@ -33,8 +33,8 @@ axes_written : tuple[str, ...]
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from typing import Any
 from typing import Protocol
+from typing import TypeAlias
 from typing import TypeVar
 
 if TYPE_CHECKING:
@@ -111,15 +111,18 @@ class Step(Protocol[Ctx]):
         ...
 
 
+AnyStep: TypeAlias = Step[object]
+
+
 class StepContext(Protocol):
     """Minimum context surface required by the step lifecycle (BaseStep/runner)."""
 
     @property
-    def steps(self) -> Sequence[Step[Any]]:
+    def steps(self) -> Sequence[AnyStep]:
         """Executed steps (context type not relevant here)."""
         ...
 
-    def request_halt(self, reason: str, at_step: Step[Any]) -> None:
+    def request_halt(self, reason: str, at_step: AnyStep) -> None:
         """Record an early halt requested by a step."""
         ...
 

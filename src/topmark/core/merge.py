@@ -32,7 +32,6 @@ from __future__ import annotations
 
 from enum import Enum
 from typing import TYPE_CHECKING
-from typing import Any
 from typing import TypeVar
 
 if TYPE_CHECKING:
@@ -59,7 +58,7 @@ def overlay(*, current: T | None, override: T | None) -> T | None:
     return override if override is not None else current
 
 
-def opt_bool(tbl: Mapping[str, Any] | None, *, key: str) -> bool | None:
+def opt_bool(tbl: Mapping[str, object] | None, *, key: str) -> bool | None:
     """Return an optional bool value from a mapping.
 
     Args:
@@ -80,7 +79,7 @@ def opt_bool(tbl: Mapping[str, Any] | None, *, key: str) -> bool | None:
     return bool(tbl[key])
 
 
-def opt_enum(tbl: Mapping[str, Any] | None, *, key: str, enum_cls: type[E]) -> E | None:
+def opt_enum(tbl: Mapping[str, object] | None, *, key: str, enum_cls: type[E]) -> E | None:
     """Return an optional Enum member from a mapping.
 
     Args:

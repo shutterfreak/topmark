@@ -21,7 +21,7 @@ Exports:
 Design notes:
     - Keep side effects out of this module; it should stay dependency-free
       (stdlib only) to remain safe for low-level imports.
-    - Prefer structural typing (``Mapping[str, Any]``) for CLI/API inputs so the
+    - Prefer structural typing (``Mapping[str, object]``) for CLI/API inputs so the
       config layer remains decoupled from any specific CLI framework.
 """
 

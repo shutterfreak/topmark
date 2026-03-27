@@ -37,7 +37,6 @@ from importlib import import_module
 from importlib.metadata import EntryPoints
 from importlib.metadata import entry_points
 from typing import TYPE_CHECKING
-from typing import Any
 from typing import Final
 from typing import cast
 
@@ -46,7 +45,6 @@ from topmark.filetypes.model import FileType
 
 if TYPE_CHECKING:
     from collections.abc import Generator
-    from collections.abc import Sequence
     from types import ModuleType
 
     from topmark.core.logging import TopmarkLogger
@@ -75,12 +73,14 @@ def _iter_builtin_filetypes() -> Iterable[FileType]:
     for modname in _BUILTIN_MODULES:
         try:
             mod: ModuleType = import_module(modname)
-            filetypes: Any = getattr(mod, "FILETYPES", None)
-            if not isinstance(filetypes, list):
+            filetypes_obj: object = getattr(mod, "FILETYPES", None)
+            if not isinstance(filetypes_obj, list):
                 logger.warning("Module %s has no FILETYPES list; skipping", modname)
                 continue
-            # Iterate as generic objects to keep types precise for Pyright
-            for obj in cast("Sequence[object]", filetypes):
+
+            filetypes_list: list[object] = cast("list[object]", filetypes_obj)
+            filetypes_items: tuple[object, ...] = tuple(filetypes_list)
+            for obj in filetypes_items:
                 if isinstance(obj, FileType):
                     yield obj
                 else:
@@ -107,16 +107,19 @@ def _iter_plugin_filetypes() -> Generator[FileType, None, None]:
 
     for ep in candidates:
         try:
-            provider: Any = ep.load()
-            provided: Any = provider() if callable(provider) else provider
-            if not isinstance(provided, Iterable):
+            provider_obj: object = ep.load()
+            provided_obj: object = provider_obj() if callable(provider_obj) else provider_obj
+            if isinstance(provided_obj, str | bytes) or not isinstance(provided_obj, Iterable):
                 logger.warning(
                     "Entry point %s did not return an iterable of FileType objects: %r",
                     getattr(ep, "name", ep),
-                    provided,
+                    provided_obj,
                 )
                 continue
-            for obj in cast("Iterable[object]", provided):
+
+            provided_iterable: Iterable[object] = cast("Iterable[object]", provided_obj)
+            provided_items: tuple[object, ...] = tuple(provided_iterable)
+            for obj in provided_items:
                 if isinstance(obj, FileType):
                     yield obj
                 else:
