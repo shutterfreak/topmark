@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING
 from typing import Protocol
 
 from topmark.config.policy import EmptyInsertMode
+from topmark.config.policy import HeaderMutationMode
 from topmark.config.policy import Policy
 from topmark.core.logging import TopmarkLogger
 from topmark.core.logging import get_logger
@@ -333,12 +334,11 @@ def check_permitted_by_policy(ctx: PolicyContext) -> bool | None:
 
     Returns:
         - True  : policy allows the intended change (insert/replace)
-        - False : policy forbids it (e.g., add_only forbids replace)
+        - False : policy forbids it (e.g., header_mutation_mode=add_only forbids replace)
         - None  : indeterminate (no clear intent yet)
     """
     pol: Policy | None = ctx.get_effective_policy()
-    pol_check_add_only: bool = pol.add_only if pol else False
-    pol_check_update_only: bool = pol.update_only if pol else False
+    pol_header_mutation_mode: HeaderMutationMode = pol.header_mutation_mode
 
     if ctx.status.strip != StripStatus.PENDING:
         # StripperStep did run
@@ -348,8 +348,8 @@ def check_permitted_by_policy(ctx: PolicyContext) -> bool | None:
         # ScannerStep did not run
         return None
 
-    # Insert path (missing header)
-    if pol_check_add_only:
+    if pol_header_mutation_mode == HeaderMutationMode.ADD_ONLY:
+        # Insert path (missing header)
         if (
             ctx.status.header
             in {
@@ -362,43 +362,42 @@ def check_permitted_by_policy(ctx: PolicyContext) -> bool | None:
         ):
             logger.debug(
                 "permitted_by_policy: header: %s, comparison: %s "
-                "-- pol_check_add_only: %s, will return False",
+                "-- pol_header_mutation_mode: %s, will return False",
                 ctx.status.header,
                 ctx.status.comparison,
-                pol_check_add_only,
+                pol_header_mutation_mode,
             )
             return False  # forbidden when add-only
         else:
             logger.debug(
                 "permitted_by_policy: header: %s, comparison: %s "
-                "-- pol_check_add_only: %s, will return True",
+                "-- pol_header_mutation_mode: %s, will return True",
                 ctx.status.header,
                 ctx.status.comparison,
-                pol_check_add_only,
+                pol_header_mutation_mode,
             )
             return True
-
-    # Replace path (existing but different)
-    if pol_check_update_only:
+    elif pol_header_mutation_mode == HeaderMutationMode.UPDATE_ONLY:
+        # Replace path (existing but different)
         if (
             ctx.status.header == HeaderStatus.MISSING
             # and ctx.status.comparison == ComparisonStatus.CHANGED
         ):
             logger.debug(
                 "permitted_by_policy: header: %s, comparison: %s "
-                "-- pol_check_update_only: %s, will return False",
+                "-- pol_header_mutation_mode: %s, will return False",
                 ctx.status.header,
                 ctx.status.comparison,
-                pol_check_update_only,
+                pol_header_mutation_mode,
             )
             return False  # forbidden when update-only
         else:
             logger.debug(
                 "permitted_by_policy: header: %s, comparison: %s "
-                "-- pol_check_update_only: %s, will return True",
+                "-- pol_header_mutation_mode: %s, will return True",
                 ctx.status.header,
                 ctx.status.comparison,
-                pol_check_update_only,
+                pol_header_mutation_mode,
             )
             return True
 

@@ -101,8 +101,7 @@ def config_to_toml_dict(config: Config, *, include_files: bool = False) -> TomlT
 
     # Policy serialization (global and per-type)
     policy_tbl: TomlTable = {
-        Toml.KEY_POLICY_CHECK_ADD_ONLY: config.policy.add_only,
-        Toml.KEY_POLICY_CHECK_UPDATE_ONLY: config.policy.update_only,
+        Toml.KEY_POLICY_HEADER_MUTATION_MODE: config.policy.header_mutation_mode.value,
         Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES: config.policy.allow_header_in_empty_files,
         Toml.KEY_POLICY_EMPTIES_INSERT_MODE: config.policy.empty_insert_mode.value,
         Toml.KEY_POLICY_ALLOW_EMPTY_HEADER: config.policy.render_empty_header_when_no_fields,
@@ -115,8 +114,7 @@ def config_to_toml_dict(config: Config, *, include_files: bool = False) -> TomlT
     if config.policy_by_type:
         policy_by_type_tbl: TomlTable = {
             ft: {
-                Toml.KEY_POLICY_CHECK_ADD_ONLY: p.add_only,
-                Toml.KEY_POLICY_CHECK_UPDATE_ONLY: p.update_only,
+                Toml.KEY_POLICY_HEADER_MUTATION_MODE: p.header_mutation_mode.value,
                 Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES: p.allow_header_in_empty_files,
                 Toml.KEY_POLICY_EMPTIES_INSERT_MODE: p.empty_insert_mode.value,
                 Toml.KEY_POLICY_ALLOW_EMPTY_HEADER: p.render_empty_header_when_no_fields,

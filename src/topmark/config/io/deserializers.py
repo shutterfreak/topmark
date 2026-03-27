@@ -42,6 +42,7 @@ from typing import TYPE_CHECKING
 from typing import Final
 
 from topmark.config.io.getters import get_bool_value_or_none_checked
+from topmark.config.io.getters import get_enum_value_checked
 from topmark.config.io.getters import get_string_list_value_checked
 from topmark.config.io.getters import get_string_value_checked
 from topmark.config.io.getters import get_string_value_or_none_checked
@@ -57,6 +58,8 @@ from topmark.config.paths import abs_path_from
 from topmark.config.paths import extend_pattern_sources
 from topmark.config.paths import pattern_source_from_config
 from topmark.config.paths import pattern_source_from_cwd
+from topmark.config.policy import EmptyInsertMode
+from topmark.config.policy import HeaderMutationMode
 from topmark.config.policy import MutablePolicy
 from topmark.config.types import FileWriteStrategy
 from topmark.config.types import OutputTarget
@@ -142,15 +145,10 @@ def mutable_config_from_toml_dict(
         stay focused on parsing/merging. Boolean policy fields are checked as
         booleans, while `empty_insert_mode` is checked as a string token.
         """
-        _ = get_bool_value_or_none_checked(
+        _ = get_enum_value_checked(
             tbl,
-            Toml.KEY_POLICY_CHECK_ADD_ONLY,
-            where=where,
-            diagnostics=draft.diagnostics,
-        )
-        _ = get_bool_value_or_none_checked(
-            tbl,
-            Toml.KEY_POLICY_CHECK_UPDATE_ONLY,
+            Toml.KEY_POLICY_HEADER_MUTATION_MODE,
+            enum_cls=HeaderMutationMode,
             where=where,
             diagnostics=draft.diagnostics,
         )
@@ -160,9 +158,10 @@ def mutable_config_from_toml_dict(
             where=where,
             diagnostics=draft.diagnostics,
         )
-        _ = get_string_value_or_none_checked(
+        _ = get_enum_value_checked(
             tbl,
             Toml.KEY_POLICY_EMPTIES_INSERT_MODE,
+            enum_cls=EmptyInsertMode,
             where=where,
             diagnostics=draft.diagnostics,
         )

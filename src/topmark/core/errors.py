@@ -378,3 +378,29 @@ class UnsupportedFileTypeError(TopmarkError):
             )
         )
         self.file_type: Final[str] = file_type
+
+
+class InvalidPolicyError(TopmarkError):
+    """Raised when a supplied policy value is invalid or malformed.
+
+    This is intended for API-facing policy overlays and other policy parsing
+    boundaries where invalid scalar values should be rejected explicitly.
+
+    Args:
+        message: Human-readable error message.
+        policy_key: Optional policy key associated with the invalid value.
+    """
+
+    def __init__(
+        self,
+        *,
+        message: str,
+        policy_key: str | None = None,
+    ) -> None:
+        super().__init__(
+            ErrorContext(
+                message=message,
+                qualified_key=policy_key,
+            )
+        )
+        self.policy_key: Final[str | None] = policy_key

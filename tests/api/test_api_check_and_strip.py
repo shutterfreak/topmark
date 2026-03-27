@@ -58,7 +58,7 @@ def test_check_apply_add_only_inserts_header_for_missing(
         repo_py_with_and_without_header,
         apply=True,
         policy=PublicPolicy(
-            add_only=True,
+            header_mutation_mode="add_only",
         ),
     )  # only add missing
     assert r.had_errors is False
@@ -81,7 +81,7 @@ def test_check_apply_update_only_does_not_add_new_headers(
         repo_py_with_and_without_header,
         apply=True,
         policy=PublicPolicy(
-            update_only=True,
+            header_mutation_mode="update_only",
         ),
         prune=False,
     )

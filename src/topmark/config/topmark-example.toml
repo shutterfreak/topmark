@@ -147,16 +147,16 @@ strategy = "atomic"
 [policy]
 # Global policy that governs whether TopMark may add or update headers.
 #
-# add_only:
-#   * true  → Only insert missing headers; do not update existing headers.
-#   * false → Allow both insert and update (subject to other policy flags).
-add_only = false
+# header_mutation_mode:
+#   Controls whether TopMark processes all files, only files missing a header,
+#   or only files that already contain a header.
 #
-# update_only:
-#   * true  → Only update existing headers; do not insert missing headers.
-#   * false → Allow both update and insert (subject to other policy flags).
-update_only = false
-#
+#   Allowed values:
+#     "all"         → allow both insert and update (default)
+#     "add_only"    → only insert missing headers; do not update existing headers
+#     "update_only" → only update existing headers; do not insert missing headers
+header_mutation_mode = "all"
+
 # allow_header_in_empty_files:
 #   Permit inserting a header into an otherwise empty file (e.g., `__init__.py`).
 #   This is disabled by default to avoid surprising diffs in empty placeholders.
@@ -200,6 +200,7 @@ allow_content_probe = true
 # Example (uncomment to allow headers in empty Python files only):
 #
 # [policy_by_type.python]
+# header_mutation_mode = "add_only"
 # allow_header_in_empty_files = true
 # empty_insert_mode = "logical_empty"
 

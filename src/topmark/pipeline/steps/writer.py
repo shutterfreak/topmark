@@ -16,7 +16,7 @@ and public API.
 
 This step is responsible for the final I/O after all other steps have computed
 `ctx.views.updated` and selected the intended `WriteStatus` (INSERTED, REPLACED, REMOVED).
-It also applies policy gates (e.g., add-only / update-only) so that command-line intent
+It also applies policy gates (e.g., header mutation mode) so that command-line intent
 and config policies are centralized here.
 
 Sinks
@@ -41,6 +41,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from typing import Protocol
 
+from topmark.config.policy import HeaderMutationMode
 from topmark.config.types import FileWriteStrategy
 from topmark.config.types import OutputTarget
 from topmark.core.logging import get_logger
@@ -445,14 +446,20 @@ class WriterStep(BaseStep):
         pol: Policy = ctx.get_effective_policy()
 
         # Only gate insert/replace (check mode) — strip/removal is not governed by add/update.
-        if ctx.status.plan == PlanStatus.INSERTED and pol.update_only:
+        if (
+            ctx.status.plan == PlanStatus.INSERTED
+            and pol.header_mutation_mode == HeaderMutationMode.UPDATE_ONLY
+        ):
             ctx.status.write = WriteStatus.SKIPPED
-            ctx.info("Skipped by policy: --update-only")
+            ctx.info("Skipped by policy: header_mutation_mode=update_only")
             return
 
-        if ctx.status.plan == PlanStatus.REPLACED and pol.add_only:
+        if (
+            ctx.status.plan == PlanStatus.REPLACED
+            and pol.header_mutation_mode == HeaderMutationMode.ADD_ONLY
+        ):
             ctx.status.write = WriteStatus.SKIPPED
-            ctx.info("Skipped by policy: --add-only")
+            ctx.info("Skipped by policy: header_mutation_mode=add_only")
             return
 
         # Defensive: nothing to write if updater did not produce an updated image

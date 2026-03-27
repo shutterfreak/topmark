@@ -230,7 +230,7 @@ def repo_py_with_and_without_header(tmp_path: Path) -> Path:
         config=None,
         include_file_types=["python"],
         policy=PublicPolicy(
-            add_only=True
+            header_mutation_mode="add_only",
         ),  # ensure header is inserted/normalized if missing/drifting
     )
 
@@ -257,7 +257,8 @@ def repo_py_with_header(tmp_path: Path) -> Path:
         config=None,
         include_file_types=["python"],
         policy=PublicPolicy(
-            add_only=True,  # ensure header is inserted/normalized if missing/drifting
+            header_mutation_mode="add_only",
+            # ensure header is inserted/normalized if missing/drifting
         ),
     )
 
@@ -285,7 +286,8 @@ def repo_py_with_header_and_xyz(tmp_path: Path) -> Path:
         config=None,
         include_file_types=["python"],
         policy=PublicPolicy(
-            add_only=True,  # ensure header is inserted/normalized if missing/drifting
+            header_mutation_mode="add_only",
+            # ensure header is inserted/normalized if missing/drifting
         ),
     )
 

@@ -389,19 +389,10 @@ class MutableConfig:
         # Resolve global policy against an all-false base
         global_policy_frozen: Policy = self.policy.resolve(Policy())
 
-        # Validate mutual exclusivity on resolved global policy
-        if global_policy_frozen.add_only and global_policy_frozen.update_only:
-            raise ValueError("Policy invalid: `add_only` and `update_only` cannot both be True.")
-
         # Resolve per-type policies against the resolved global policy
         frozen_by_type: dict[str, Policy] = {}
         for ft, mp in self.policy_by_type.items():
             resolved: Policy = mp.resolve(global_policy_frozen)
-            if resolved.add_only and resolved.update_only:
-                raise ValueError(
-                    f"Policy invalid for type '{ft}': "
-                    "`add_only` and `update_only` cannot both be True."
-                )
             frozen_by_type[ft] = resolved
 
         # Set strict_config_checking to True only if self.strict_config_checking === True
@@ -525,28 +516,6 @@ class MutableConfig:
         merged.policy_by_type = merged_by_type
 
         return merged
-
-    def _validate_policy_flags(self) -> None:
-        """Schema-level validation for mutually exclusive policy flags.
-
-        Records an error diagnostic when `add_only` and `update_only` are both True.
-        """
-
-        def _check(where: str, add_only: bool | None, update_only: bool | None) -> None:
-            if add_only is True and update_only is True:
-                msg = (
-                    f"Invalid policy in {where}: "
-                    f"{Toml.KEY_POLICY_CHECK_ADD_ONLY}=true and "
-                    f"{Toml.KEY_POLICY_CHECK_UPDATE_ONLY}=true cannot both be set."
-                )
-                self.diagnostics.add_error(msg)
-
-        # Global policy
-        _check(f"[{Toml.SECTION_POLICY}]", self.policy.add_only, self.policy.update_only)
-
-        # Per-type policy
-        for ft, p in self.policy_by_type.items():
-            _check(f"[{Toml.SECTION_POLICY_BY_TYPE}.{ft}]", p.add_only, p.update_only)
 
     def sanitize(self) -> None:
         """Normalize and validate draft config in-place.
@@ -685,6 +654,3 @@ class MutableConfig:
                 self.diagnostics.add_warning(msg)
 
             self.file_write_strategy = None
-
-        # Validate the policy flags
-        self._validate_policy_flags()

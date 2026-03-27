@@ -34,6 +34,11 @@ from typing import Literal
 from typing import Protocol
 from typing import TypedDict
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from collections.abc import Sequence
+    from pathlib import Path
+
 PublicEmptyInsertModeLiteral = Literal[
     "bytes_empty",
     "logical_empty",
@@ -44,10 +49,15 @@ for insertion. These values intentionally mirror the internal `EmptyInsertMode.v
 strings without exposing the internal enum class as part of the public API.
 """
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
-    from collections.abc import Sequence
-    from pathlib import Path
+PublicHeaderMutationModeLiteral = Literal[
+    "all",
+    "add_only",
+    "update_only",
+]
+"""Public, JSON-friendly tokens for configuring which file headers TopMark processes
+for insertion. These values intentionally mirror the internal `HeaderMutationMode.value`
+strings without exposing the internal enum class as part of the public API.
+"""
 
 
 class PublicFileType(Protocol):
@@ -90,34 +100,39 @@ class PublicFileType(Protocol):
 class PublicPolicy(TypedDict, total=False):
     """Public, JSON-friendly policy overlay.
 
-    This structure mirrors a subset of the internal policy and can be passed
-    to `topmark.api.check()` / `topmark.api.strip()` to refine intent. All keys
-    are optional; unspecified options inherit from project/default config.
+    This structure mirrors the stable, public subset of TopMark's internal
+    policy model and can be passed to `topmark.api.check()` /
+    `topmark.api.strip()` to refine runtime behavior. All keys are optional;
+    unspecified options inherit from project/default config.
 
     Keys:
-        add_only: Only add missing headers; do not update existing ones.
-        update_only: Only update existing headers; do not add new ones.
+        header_mutation_mode: Defines how headers may be mutated: process all
+            files (`"all"`, default); only add headers when no header is
+            present (`"add_only"`); only update existing headers
+            (`"update_only"`).
         allow_header_in_empty_files: Allow inserting headers into files that are
             classified as empty under the effective `empty_insert_mode`.
-        empty_insert_mode: Public, JSON-friendly token controlling which files are
-            considered “empty” for insertion. Allowed values are:
-            `"bytes_empty"`, `"logical_empty"`, and `"whitespace_empty"`.
-        render_empty_header_when_no_fields: Allow inserting empty headers when no
-            fields are defined.
-        allow_reflow: If True, allow reflowing file content when inserting a header.
-            This potentially breaks check/strip idempotence.
-        allow_content_probe: Whether the resolver may consult file contents during
-            file-type detection. True allows content-based probes, False forces
-            name/extension-only resolution.
+        empty_insert_mode: Public, JSON-friendly token controlling which files
+            are considered “empty” for insertion. Allowed values are:
+            `"bytes_empty"`, `"logical_empty"`, and
+            `"whitespace_empty"`.
+        render_empty_header_when_no_fields: Allow inserting an empty header when
+            no fields are defined.
+        allow_reflow: If `True`, allow reflowing file content when inserting a
+            header. This can break check/strip idempotence.
+        allow_content_probe: Whether the resolver may consult file contents
+            during file-type detection. `True` allows content-based probes;
+            `False` forces name/extension-only resolution.
 
     Notes:
         This is a stable public contract. Public APIs use JSON/TOML-friendly
-        primitive values, so `empty_insert_mode` is exposed as a string-literal
-        token rather than the internal enum class. Unknown keys are ignored.
+        primitive values, so enum-backed internal policy values are exposed as
+        string-literal tokens rather than internal enum classes. Public policy
+        overlays are converted into structured internal `PolicyOverrides`
+        before being applied to the resolved config.
     """
 
-    add_only: bool
-    update_only: bool
+    header_mutation_mode: PublicHeaderMutationModeLiteral
     allow_header_in_empty_files: bool
     empty_insert_mode: PublicEmptyInsertModeLiteral
     render_empty_header_when_no_fields: bool
@@ -128,7 +143,7 @@ class PublicPolicy(TypedDict, total=False):
 class PublicPolicyByType(TypedDict, total=False):
     """Per-file-type public policy overlays.
 
-    A mapping from file type identifier (e.g., `"python"`) to a
+    A mapping from file type identifier (for example, `"python"`) to a
     `PublicPolicy` overlay that applies only to that type.
 
     Example:
@@ -136,10 +151,12 @@ class PublicPolicyByType(TypedDict, total=False):
 
     Notes:
         Keys must match registered file type identifiers.
+        Values use the same stable `PublicPolicy` structure as the global
+        overlay and are converted through the same internal policy-override
+        path before being applied.
     """
 
-    # keys are file type identifiers (e.g., "python"); values are PublicPolicy
-    # e.g. {"python": {"allow_header_in_empty_files": True}}
+    __extra_items__: PublicPolicy
 
 
 class PublicHeaderProcessor(Protocol):

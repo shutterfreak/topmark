@@ -30,6 +30,7 @@ from topmark.config.io.guards import toml_table_from_mapping
 from topmark.config.io.render import to_toml
 from topmark.config.io.surgery import nest_toml_under_section
 from topmark.config.keys import Toml
+from topmark.config.policy import HeaderMutationMode
 from topmark.constants import DEFAULT_TOML_CONFIG_NAME
 from topmark.constants import DEFAULT_TOML_CONFIG_PACKAGE
 from topmark.constants import TOPMARK_END_MARKER
@@ -158,8 +159,7 @@ def load_defaults_dict() -> TomlTable:
             Toml.KEY_STRATEGY: "atomic",
         },
         Toml.SECTION_POLICY: {
-            Toml.KEY_POLICY_CHECK_ADD_ONLY: False,
-            Toml.KEY_POLICY_CHECK_UPDATE_ONLY: False,
+            Toml.KEY_POLICY_HEADER_MUTATION_MODE: HeaderMutationMode.ALL.value,
             Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES: False,
             Toml.KEY_POLICY_EMPTIES_INSERT_MODE: "logical_empty",
         },

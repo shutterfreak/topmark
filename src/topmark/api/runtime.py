@@ -34,9 +34,13 @@ from topmark.config.io.deserializers import mutable_config_from_mapping
 from topmark.config.io.resolution import load_resolved_config
 from topmark.config.model import Config
 from topmark.config.model import MutableConfig
+from topmark.config.overrides import ConfigOverrides
+from topmark.config.overrides import PolicyOverrides
 from topmark.config.overrides import apply_config_overrides
-from topmark.config.policy import MutablePolicy
+from topmark.config.policy import EmptyInsertMode
+from topmark.config.policy import HeaderMutationMode
 from topmark.constants import TOPMARK_VERSION
+from topmark.core.errors import InvalidPolicyError
 from topmark.core.logging import get_logger
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.pipelines import Pipeline
@@ -162,11 +166,14 @@ def build_config_and_files(
 
     # Apply final file/file-type intent consistently with the config override
     # layer, then freeze for file resolution.
-    draft = apply_config_overrides(
-        draft,
+    overrides = ConfigOverrides(
         files=paths_str,
         include_file_types=list(include_file_types) if include_file_types is not None else None,
         exclude_file_types=list(exclude_file_types) if exclude_file_types is not None else None,
+    )
+    draft = apply_config_overrides(
+        draft,
+        overrides=overrides,
     )
 
     cfg: Config = draft.freeze()
@@ -213,6 +220,79 @@ def select_pipeline(
         if diff
         else Pipeline.STRIP.steps
     )
+
+
+def _resolve_public_header_mutation_mode(value: str) -> HeaderMutationMode:
+    """Return the internal enum for a public header-mutation token."""
+    try:
+        return HeaderMutationMode(value)
+    except ValueError as exc:
+        raise InvalidPolicyError(
+            message=f"Invalid value for header_mutation_mode: {value!r}",
+            policy_key="header_mutation_mode",
+        ) from exc
+
+
+def _resolve_public_empty_insert_mode(value: str) -> EmptyInsertMode:
+    """Return the internal enum for a public empty-insert token."""
+    try:
+        return EmptyInsertMode(value)
+    except ValueError as exc:
+        raise InvalidPolicyError(
+            message=f"Invalid value for empty_insert_mode: {value!r}",
+            policy_key="empty_insert_mode",
+        ) from exc
+
+
+def _build_public_policy_overrides(policy: PublicPolicy) -> PolicyOverrides:
+    """Convert a public policy mapping into structured internal overrides.
+
+    Args:
+        policy: Public policy overlay.
+
+    Returns:
+        Structured internal policy overrides.
+    """
+    return PolicyOverrides(
+        header_mutation_mode=(
+            _resolve_public_header_mutation_mode(policy["header_mutation_mode"])
+            if "header_mutation_mode" in policy
+            else None
+        ),
+        allow_header_in_empty_files=(
+            bool(policy["allow_header_in_empty_files"])
+            if "allow_header_in_empty_files" in policy
+            else None
+        ),
+        empty_insert_mode=(
+            _resolve_public_empty_insert_mode(policy["empty_insert_mode"])
+            if "empty_insert_mode" in policy
+            else None
+        ),
+        render_empty_header_when_no_fields=(
+            bool(policy["render_empty_header_when_no_fields"])
+            if "render_empty_header_when_no_fields" in policy
+            else None
+        ),
+        allow_reflow=(bool(policy["allow_reflow"]) if "allow_reflow" in policy else None),
+        allow_content_probe=(
+            bool(policy["allow_content_probe"]) if "allow_content_probe" in policy else None
+        ),
+    )
+
+
+def _build_public_policy_by_type_overrides(
+    policy_by_type: Mapping[str, PublicPolicy],
+) -> dict[str, PolicyOverrides]:
+    """Convert public per-file-type policy overlays into internal overrides.
+
+    Args:
+        policy_by_type: Per-file-type public policy overlays.
+
+    Returns:
+        Structured internal per-file-type policy overrides.
+    """
+    return {ft: _build_public_policy_overrides(spec) for ft, spec in policy_by_type.items()}
 
 
 def run_pipeline(
@@ -274,28 +354,28 @@ def run_pipeline(
     logger.debug("cfg for run (1 - after build_config_and_files): %s", cfg)
 
     # 2) Apply public policy overlays AFTER discovery, then materialize apply intent.
-    draft: MutableConfig = cfg.thaw()
-    if policy is not None:
-        # Merge a shallow public policy into the tri-state MutablePolicy
-        if "add_only" in policy:
-            draft.policy.add_only = bool(policy["add_only"])
-        if "update_only" in policy:
-            draft.policy.update_only = bool(policy["update_only"])
-        if "allow_header_in_empty_files" in policy:
-            draft.policy.allow_header_in_empty_files = bool(policy["allow_header_in_empty_files"])
+    has_policy_overlay: bool = policy is not None or policy_by_type is not None
+    if has_policy_overlay:
+        draft: MutableConfig = cfg.thaw()
 
-    if policy_by_type is not None:
-        for ft, spec in policy_by_type.items():
-            mp: MutablePolicy = draft.policy_by_type.get(ft) or MutablePolicy()
-            if "add_only" in spec:
-                mp.add_only = bool(spec["add_only"])
-            if "update_only" in spec:
-                mp.update_only = bool(spec["update_only"])
-            if "allow_header_in_empty_files" in spec:
-                mp.allow_header_in_empty_files = bool(spec["allow_header_in_empty_files"])
-            draft.policy_by_type[ft] = mp
+        policy_overrides: PolicyOverrides = (
+            _build_public_policy_overrides(policy) if policy is not None else PolicyOverrides()
+        )
+        policy_by_type_overrides: dict[str, PolicyOverrides] = (
+            _build_public_policy_by_type_overrides(policy_by_type)
+            if policy_by_type is not None
+            else {}
+        )
 
-    cfg = draft.freeze()  # (No mutation of cfg - Config is frozen)
+        draft = apply_config_overrides(
+            draft,
+            ConfigOverrides(
+                policy=policy_overrides,
+                policy_by_type=policy_by_type_overrides,
+            ),
+        )
+
+        cfg = draft.freeze()  # (No mutation of cfg - Config is frozen)
     logger.debug("cfg for run (2 - after applying policy overlays): %s", cfg)
 
     if not file_list:

@@ -19,8 +19,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from tests.api.conftest import has_header
 from topmark import api
 from topmark.api.protocols import PublicPolicy
@@ -67,16 +65,6 @@ def test_skip_compliant_and_unsupported(repo_py_with_header_and_xyz: Path) -> No
     assert len(r2.files) <= len(r1.files) <= len(r0.files)
 
 
-def test_add_only_and_update_only_conflict(tmp_path: Path) -> None:
-    """Mutually exclusive flags (add_only & update_only) raise ValueError."""
-    with pytest.raises(ValueError):
-        api.check(
-            [tmp_path],
-            apply=False,
-            policy=PublicPolicy(add_only=True, update_only=True),
-        )
-
-
 def test_apply_check_writes_when_needed(
     repo_py_with_and_without_header: Path, proc_py: HeaderProcessor
 ) -> None:
@@ -87,7 +75,9 @@ def test_apply_check_writes_when_needed(
         [target],
         apply=False,
         include_file_types=["python"],
-        policy=PublicPolicy(add_only=True),
+        policy=PublicPolicy(
+            header_mutation_mode="add_only",
+        ),
     )
     assert any(
         fr.outcome in {api.Outcome.WOULD_INSERT, api.Outcome.WOULD_UPDATE} for fr in r0.files
@@ -96,7 +86,9 @@ def test_apply_check_writes_when_needed(
         [target],
         apply=True,
         include_file_types=["python"],
-        policy=PublicPolicy(add_only=True),
+        policy=PublicPolicy(
+            header_mutation_mode="add_only",
+        ),
     )
     assert r1.written >= 1
     assert has_header(target.read_text(encoding="utf-8"), proc_py, "\n")

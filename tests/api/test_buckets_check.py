@@ -111,7 +111,9 @@ def test_bucket_blocked_policy_update_only_blocks_insert(tmp_path: Path) -> None
     """When update_only is True and header is missing, expect `blocked:policy`."""
     f: Path = tmp_path / "no_header.py"
     f.write_text("print('x')\n", encoding="utf-8")
-    policy = PublicPolicy(add_only=False, update_only=True)
+    policy = PublicPolicy(
+        header_mutation_mode="update_only",
+    )
     r: api.RunResult = api.check(
         [f],
         apply=False,

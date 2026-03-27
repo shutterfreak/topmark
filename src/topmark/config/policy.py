@@ -27,8 +27,7 @@ TOML mapping:
 
     ```toml
     [policy]
-    add_only = false
-    update_only = false
+    header_mutation_mode = "all"
     allow_header_in_empty_files = false
     empty_insert_mode = "logical_empty"
     allow_content_probe = true
@@ -52,6 +51,20 @@ from topmark.core.merge import overlay
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+
+
+class HeaderMutationMode(str, Enum):
+    """Defines how headers may be mutated.
+
+    Attributes:
+        ALL: Process all files (default).
+        ADD_ONLY: Only add headers when no header present.
+        UPDATE_ONLY: Only update existing headers.
+    """
+
+    ALL = "all"
+    ADD_ONLY = "add_only"
+    UPDATE_ONLY = "update_only"
 
 
 class EmptyInsertMode(str, Enum):
@@ -79,8 +92,9 @@ class Policy:
     """Immutable, runtime policy used by processing steps.
 
     Attributes:
-        add_only: Only add missing headers; do not update existing ones.
-        update_only: Only update existing headers; do not add new ones.
+        header_mutation_mode: Defines how headers may be mutated: process all files if (`ALL`,
+            default); only add headers when no header present (ADD_ONLY); only update existing
+            headers (`UPDATE_ONLY`).
         allow_header_in_empty_files: Allow inserting headers into files that are
             classified as empty under `empty_insert_mode`.
         empty_insert_mode: Defines which files are considered “empty” for
@@ -94,8 +108,7 @@ class Policy:
             `False` forces name/extension-only resolution.
     """
 
-    add_only: bool = False
-    update_only: bool = False
+    header_mutation_mode: HeaderMutationMode = HeaderMutationMode.ALL
     allow_header_in_empty_files: bool = False
     empty_insert_mode: EmptyInsertMode = EmptyInsertMode.LOGICAL_EMPTY
     render_empty_header_when_no_fields: bool = False
@@ -110,8 +123,7 @@ class Policy:
             A tri-state mutable policy.
         """
         return MutablePolicy(
-            add_only=self.add_only,
-            update_only=self.update_only,
+            header_mutation_mode=self.header_mutation_mode,
             allow_header_in_empty_files=self.allow_header_in_empty_files,
             empty_insert_mode=self.empty_insert_mode,
             render_empty_header_when_no_fields=self.render_empty_header_when_no_fields,
@@ -139,8 +151,7 @@ class MutablePolicy:
     This class is merged in a **last-wins** manner when reading multiple config files.
 
     Attributes:
-        add_only: See `Policy`. `None` means "inherit".
-        update_only: See `Policy`. `None` means "inherit".
+        header_mutation_mode: See `Policy`. `None` means "inherit".
         allow_header_in_empty_files: See `Policy`. `None` means "inherit".
         empty_insert_mode: See `Policy`. `None` means "inherit".
         render_empty_header_when_no_fields: See `Policy`. `None` means "inherit".
@@ -148,8 +159,7 @@ class MutablePolicy:
         allow_content_probe: See `Policy`. `None` means "inherit".
     """
 
-    add_only: bool | None = None
-    update_only: bool | None = None
+    header_mutation_mode: HeaderMutationMode | None = None
     allow_header_in_empty_files: bool | None = None
     empty_insert_mode: EmptyInsertMode | None = None
     render_empty_header_when_no_fields: bool | None = None
@@ -168,13 +178,9 @@ class MutablePolicy:
             Merged policy.
         """
         return MutablePolicy(
-            add_only=overlay(
-                override=other.add_only,
-                current=self.add_only,
-            ),
-            update_only=overlay(
-                override=other.update_only,
-                current=self.update_only,
+            header_mutation_mode=overlay(
+                override=other.header_mutation_mode,
+                current=self.header_mutation_mode,
             ),
             allow_header_in_empty_files=overlay(
                 override=other.allow_header_in_empty_files,
@@ -208,8 +214,11 @@ class MutablePolicy:
             A fully-resolved immutable policy with plain booleans.
         """
         return Policy(
-            add_only=(base.add_only if self.add_only is None else self.add_only),
-            update_only=(base.update_only if self.update_only is None else self.update_only),
+            header_mutation_mode=(
+                base.header_mutation_mode
+                if self.header_mutation_mode is None
+                else self.header_mutation_mode
+            ),
             allow_header_in_empty_files=(
                 base.allow_header_in_empty_files
                 if self.allow_header_in_empty_files is None
@@ -258,13 +267,10 @@ class MutablePolicy:
             return cls()
 
         return cls(
-            add_only=opt_bool(
+            header_mutation_mode=opt_enum(
                 tbl,
-                key=Toml.KEY_POLICY_CHECK_ADD_ONLY,
-            ),
-            update_only=opt_bool(
-                tbl,
-                key=Toml.KEY_POLICY_CHECK_UPDATE_ONLY,
+                key=Toml.KEY_POLICY_HEADER_MUTATION_MODE,
+                enum_cls=HeaderMutationMode,
             ),
             allow_header_in_empty_files=opt_bool(
                 tbl,
@@ -301,10 +307,9 @@ def policy_to_dict(policy: Policy) -> dict[str, object]:
         serialized via `.value`.
     """
     out: dict[str, object] = {}
-    out[Toml.KEY_POLICY_CHECK_ADD_ONLY] = policy.add_only
-    out[Toml.KEY_POLICY_CHECK_UPDATE_ONLY] = policy.update_only
+    out[Toml.KEY_POLICY_HEADER_MUTATION_MODE] = policy.header_mutation_mode.value  # StrEnum
     out[Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES] = policy.allow_header_in_empty_files
-    out[Toml.KEY_POLICY_EMPTIES_INSERT_MODE] = policy.empty_insert_mode.value
+    out[Toml.KEY_POLICY_EMPTIES_INSERT_MODE] = policy.empty_insert_mode.value  # StrEnum
     out[Toml.KEY_POLICY_ALLOW_EMPTY_HEADER] = policy.render_empty_header_when_no_fields
     out[Toml.KEY_POLICY_ALLOW_REFLOW] = policy.allow_reflow
     out[Toml.KEY_POLICY_ALLOW_CONTENT_PROBE] = policy.allow_content_probe

@@ -31,7 +31,9 @@ from topmark.config.io.deserializers import mutable_config_from_toml_dict
 from topmark.config.io.deserializers import mutable_config_from_toml_file
 from topmark.config.io.resolution import load_resolved_config
 from topmark.config.keys import Toml
+from topmark.config.overrides import ConfigOverrides
 from topmark.config.overrides import apply_config_overrides
+from topmark.config.policy import HeaderMutationMode
 from topmark.resolution.files import resolve_file_list
 
 if TYPE_CHECKING:
@@ -175,9 +177,12 @@ def test_cli_path_options_resolve_from_cwd(tmp_path: Path, monkeypatch: pytest.M
     gi.write_text("*.log\n", encoding="utf-8")
 
     draft: MutableConfig = mutable_config_from_defaults()
+    overrides = ConfigOverrides(
+        include_from=[".gitignore"],
+    )
     apply_config_overrides(
         draft,
-        include_from=[".gitignore"],
+        overrides,
     )
 
     assert draft.include_from, "CLI include_from should be normalized"
@@ -321,9 +326,12 @@ def test_cli_overrides_merge_last(tmp_path: Path) -> None:
 
     draft: MutableConfig = load_resolved_config(input_paths=[proj])
     # Simulate CLI override
+    overrides = ConfigOverrides(
+        align_fields=True,
+    )
     apply_config_overrides(
         draft,
-        align_fields=True,
+        overrides,
     )
     assert draft.align_fields is True
 
@@ -697,7 +705,7 @@ def test_policy_by_type_unknown_keys_warn(caplog: pytest.LogCaptureFixture) -> N
         {
             Toml.SECTION_POLICY_BY_TYPE: {
                 "python": {
-                    Toml.KEY_POLICY_CHECK_ADD_ONLY: True,
+                    Toml.KEY_POLICY_HEADER_MUTATION_MODE: HeaderMutationMode.ADD_ONLY.value,
                     "unknown_policy_key": False,
                 }
             }
@@ -865,7 +873,7 @@ def test_policy_by_type_valid_keys_parse_and_unknown_keys_are_ignored(
         {
             Toml.SECTION_POLICY_BY_TYPE: {
                 "python": {
-                    Toml.KEY_POLICY_CHECK_ADD_ONLY: True,
+                    Toml.KEY_POLICY_HEADER_MUTATION_MODE: HeaderMutationMode.ADD_ONLY.value,
                     "bogus": False,
                 }
             }
@@ -873,7 +881,7 @@ def test_policy_by_type_valid_keys_parse_and_unknown_keys_are_ignored(
     )
 
     assert "python" in draft.policy_by_type
-    assert draft.policy_by_type["python"].add_only is True
+    assert draft.policy_by_type["python"].header_mutation_mode == HeaderMutationMode.ADD_ONLY
 
     assert_warned_and_diagnosed(
         caplog=caplog,
@@ -903,7 +911,11 @@ def test_header_fields_wrong_type_falls_back_to_empty_list(bad_val: TomlValue) -
         (Toml.SECTION_FILES, Toml.KEY_INCLUDE_PATTERNS, ["src/**"]),
         (Toml.SECTION_WRITER, Toml.KEY_TARGET, "file"),
         (Toml.SECTION_FORMATTING, Toml.KEY_ALIGN_FIELDS, True),
-        (Toml.SECTION_POLICY, Toml.KEY_POLICY_CHECK_ADD_ONLY, True),
+        (
+            Toml.SECTION_POLICY,
+            Toml.KEY_POLICY_HEADER_MUTATION_MODE,
+            HeaderMutationMode.ADD_ONLY.value,
+        ),
     ],
 )
 def test_unknown_key_in_known_section_warns_and_is_recorded(

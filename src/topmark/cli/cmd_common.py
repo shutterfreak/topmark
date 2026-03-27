@@ -37,7 +37,12 @@ from topmark.cli.presentation import TextStyler
 from topmark.cli.presentation import style_for_role
 from topmark.cli.validators import validate_verbose_quiet_exclusivity
 from topmark.config.io.resolution import load_resolved_config
+from topmark.config.overrides import ConfigOverrides
+from topmark.config.overrides import PolicyOverrides
 from topmark.config.overrides import apply_config_overrides
+from topmark.config.policy import HeaderMutationMode
+from topmark.config.types import FileWriteStrategy
+from topmark.config.types import OutputTarget
 from topmark.core.keys import ArgKey
 from topmark.core.logging import resolve_env_log_level
 from topmark.core.logging import setup_logging
@@ -252,12 +257,36 @@ def build_config_for_plan(
         no_config=no_config,
     )
 
-    draft = apply_config_overrides(
-        draft,
-        add_only=ctx.obj.get(ArgKey.POLICY_CHECK_ADD_ONLY),
-        update_only=ctx.obj.get(ArgKey.POLICY_CHECK_UPDATE_ONLY),
+    header_mutation_mode: HeaderMutationMode | None
+    if ctx.obj.get(ArgKey.POLICY_CHECK_ADD_ONLY):
+        header_mutation_mode = HeaderMutationMode.ADD_ONLY
+    elif ctx.obj.get(ArgKey.POLICY_CHECK_UPDATE_ONLY):
+        header_mutation_mode = HeaderMutationMode.UPDATE_ONLY
+    else:
+        header_mutation_mode = None
+
+    output_target: OutputTarget | None = None
+    file_write_strategy: FileWriteStrategy | None = None
+    write_mode_obj: object = ctx.obj.get(ArgKey.WRITE_MODE)
+    write_mode: str | None = None if write_mode_obj is None else str(write_mode_obj)
+
+    if write_mode == OutputTarget.STDOUT.value:
+        output_target = OutputTarget.STDOUT
+        file_write_strategy = None
+    elif write_mode == FileWriteStrategy.ATOMIC.value:
+        output_target = OutputTarget.FILE
+        file_write_strategy = FileWriteStrategy.ATOMIC
+    elif write_mode == FileWriteStrategy.INPLACE.value:
+        output_target = OutputTarget.FILE
+        file_write_strategy = FileWriteStrategy.INPLACE
+
+    overrides: ConfigOverrides = ConfigOverrides(
+        policy=PolicyOverrides(
+            header_mutation_mode=header_mutation_mode,
+        ),
         apply_changes=ctx.obj.get(ArgKey.APPLY_CHANGES),
-        write_mode=ctx.obj.get(ArgKey.WRITE_MODE),
+        output_target=output_target,
+        file_write_strategy=file_write_strategy,
         files=plan.paths,
         files_from=plan.files_from,
         stdin_mode=plan.stdin_mode,
@@ -271,5 +300,7 @@ def build_config_for_plan(
         align_fields=align_fields,
         relative_to=relative_to,
     )
+
+    draft = apply_config_overrides(draft, overrides=overrides)
 
     return draft

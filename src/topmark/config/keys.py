@@ -76,8 +76,7 @@ class Toml:
     SECTION_POLICY: Final[str] = "policy"
     SECTION_POLICY_BY_TYPE: Final[str] = "policy_by_type"
 
-    KEY_POLICY_CHECK_ADD_ONLY: Final[str] = "add_only"
-    KEY_POLICY_CHECK_UPDATE_ONLY: Final[str] = "update_only"
+    KEY_POLICY_HEADER_MUTATION_MODE: Final[str] = "header_mutation_mode"
     KEY_POLICY_ALLOW_HEADER_IN_EMPTIES: Final[str] = "allow_header_in_empty_files"
     KEY_POLICY_EMPTIES_INSERT_MODE: Final[str] = "empty_insert_mode"
     KEY_POLICY_ALLOW_EMPTY_HEADER: Final[str] = "render_empty_header_when_no_fields"
@@ -136,8 +135,7 @@ class Toml:
         ),
         SECTION_POLICY: frozenset(
             {
-                KEY_POLICY_CHECK_ADD_ONLY,
-                KEY_POLICY_CHECK_UPDATE_ONLY,
+                KEY_POLICY_HEADER_MUTATION_MODE,
                 KEY_POLICY_ALLOW_HEADER_IN_EMPTIES,
                 KEY_POLICY_EMPTIES_INSERT_MODE,
                 KEY_POLICY_ALLOW_EMPTY_HEADER,
@@ -165,8 +163,7 @@ class Toml:
     # Allowed keys inside each [policy_by_type.<filetype>] table.
     ALLOWED_POLICY_KEYS: Final[frozenset[str]] = frozenset(
         {
-            KEY_POLICY_CHECK_ADD_ONLY,
-            KEY_POLICY_CHECK_UPDATE_ONLY,
+            KEY_POLICY_HEADER_MUTATION_MODE,
             KEY_POLICY_ALLOW_HEADER_IN_EMPTIES,
             KEY_POLICY_EMPTIES_INSERT_MODE,
             KEY_POLICY_ALLOW_EMPTY_HEADER,
