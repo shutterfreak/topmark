@@ -91,6 +91,21 @@ Notes:
 
 ______________________________________________________________________
 
+## Policy options (strip)
+
+The `strip` command supports only shared policy options.
+
+### Shared policy
+
+- `--allow-content-probe / --no-allow-content-probe`
+
+Controls whether file-type detection may inspect file contents.
+
+Header insertion and update policies (such as mutation mode or empty-file behavior) do not apply to
+`strip`.
+
+______________________________________________________________________
+
 ## Machine-readable output
 
 Use `--output-format json` or `--output-format ndjson` to emit output suitable for tooling:
@@ -182,20 +197,21 @@ Notes:
 
 ## Options (subset)
 
-| Option               | Description                                                       |
-| -------------------- | ----------------------------------------------------------------- |
-| `--apply`            | Write changes to files (off by default).                          |
-| `--diff`             | Show unified diffs (human output only).                           |
-| `--summary`          | Show outcome counts instead of per‑file details.                  |
-| `--files-from`       | Read newline‑delimited paths from file (use '-' for STDIN).       |
-| `--include`          | Add paths by glob (can be used multiple times).                   |
-| `--include-from`     | File of patterns to include (one per line, `#` comments allowed). |
-| `--exclude`          | Exclude paths by glob (can be used multiple times).               |
-| `--exclude-from`     | File of patterns to exclude.                                      |
-| `--file-type`        | Restrict to specific TopMark file type identifiers.               |
-| `--skip-compliant`   | Don't report compliant files.                                     |
-| `--skip-unsupported` | Don't report unsupported files.                                   |
-| `--stdin-filename`   | Assumed filename when PATH is '-' (content from STDIN).           |
+| Option                                               | Description                                                       |
+| ---------------------------------------------------- | ----------------------------------------------------------------- |
+| `--apply`                                            | Write changes to files (off by default).                          |
+| `--diff`                                             | Show unified diffs (human output only).                           |
+| `--summary`                                          | Show outcome counts instead of per‑file details.                  |
+| `--files-from`                                       | Read newline‑delimited paths from file (use '-' for STDIN).       |
+| `--include`                                          | Add paths by glob (can be used multiple times).                   |
+| `--include-from`                                     | File of patterns to include (one per line, `#` comments allowed). |
+| `--exclude`                                          | Exclude paths by glob (can be used multiple times).               |
+| `--exclude-from`                                     | File of patterns to exclude.                                      |
+| `--include-file-types` / `-t`                        | Restrict to specific TopMark file type identifiers.               |
+| `--exclude-file-types` / `-T`                        | Exclude specific TopMark file type identifiers.                   |
+| `--report`                                           | Control reporting scope: actionable, noncompliant, or all.        |
+| `--allow-content-probe` / `--no-allow-content-probe` | Shared policy override for file-type detection.                   |
+| `--stdin-filename`                                   | Assumed filename when PATH is '-' (content from STDIN).           |
 
 > Run `topmark strip -h` for the full list of options and help text.
 
@@ -223,7 +239,8 @@ ______________________________________________________________________
 
 - Use `-` (with `--stdin-filename`) to read a single file’s content from STDIN.
 
-- Use `--skip-compliant` and `--skip-unsupported` to tailor output and speed in CI.
+- Use `--report actionable` to focus CI output on files that would change, or
+  `--report noncompliant` to also include unsupported file types in the report.
 
 - Diffs (`--diff`) are only shown in human mode; machine formats never include diffs.
 

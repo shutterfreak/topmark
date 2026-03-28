@@ -74,14 +74,26 @@ class CliOpt:
     # Config: provenance of include/exclude lists/patterns
     SHOW_ORIGIN: Final = "--show-origin"
 
+    # Header fields
+    HEADER_FIELDS: Final = "--header-fields"
+    FIELD_VALUES: Final = "--field-values"
+
     # Header rendering
     ALIGN_FIELDS: Final = "--align-fields"
     NO_ALIGN_FIELDS: Final = "--no-align-fields"
     RELATIVE_TO: Final = "--relative-to"
 
     # Policy
-    POLICY_CHECK_ADD_ONLY: Final = "--add-only"
-    POLICY_CHECK_UPDATE_ONLY: Final = "--update-only"
+    POLICY_HEADER_MUTATION_MODE: Final = "--header-mutation-mode"
+    POLICY_ALLOW_HEADER_IN_EMPTY_FILES: Final = "--allow-header-in-empty-files"
+    POLICY_NO_ALLOW_HEADER_IN_EMPTY_FILES: Final = "--no-allow-header-in-empty-files"
+    POLICY_EMPTY_INSERT_MODE: Final = "--empty-insert-mode"
+    POLICY_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS: Final = "--render-empty-header-when-no-fields"
+    POLICY_NO_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS: Final = "--no-render-empty-header-when-no-fields"
+    POLICY_ALLOW_REFLOW: Final = "--allow-reflow"
+    POLICY_NO_ALLOW_REFLOW: Final = "--no-allow-reflow"
+    POLICY_ALLOW_CONTENT_PROBE: Final = "--allow-content-probe"
+    POLICY_NO_ALLOW_CONTENT_PROBE: Final = "--no-allow-content-probe"
 
     # Pipeline result reporting
     REPORT: Final = "--report"

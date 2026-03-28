@@ -128,8 +128,7 @@ TopMark applies **effective policies** by merging global and per-file-type rules
 
 ```toml
 [tool.topmark.policy]
-add_only = false
-update_only = false
+header_mutation_mode = "all"
 allow_header_in_empty_files = false
 empty_insert_mode = "logical_empty"
 
@@ -155,17 +154,21 @@ The meaning of "empty" is controlled by `empty_insert_mode`:
 
 This classification is used when evaluating `allow_header_in_empty_files`.
 
+For `topmark check`, these policy values may also be overridden from the CLI via
+`--header-mutation-mode`, `--allow-header-in-empty-files`, `--empty-insert-mode`,
+`--render-empty-header-when-no-fields`, `--allow-reflow`, and the shared `--allow-content-probe`
+option.
+
 ### Policy keys
 
-| Policy key                           | Description                                                |
-| ------------------------------------ | ---------------------------------------------------------- |
-| `add_only`                           | Only allow header insertion (no updates)                   |
-| `update_only`                        | Only allow header updates (no new insertions)              |
-| `allow_header_in_empty_files`        | Permit header insertion in empty-like files                |
-| `empty_insert_mode`                  | Defines how "empty" is interpreted (see above)             |
-| `render_empty_header_when_no_fields` | Allow inserting empty headers when no fields are defined   |
-| `allow_reflow`                       | Allow content reflow (may break idempotence)               |
-| `allow_content_probe`                | Allow resolver to inspect file contents for type detection |
+| Policy key                           | Description                                                           |
+| ------------------------------------ | --------------------------------------------------------------------- |
+| `header_mutation_mode`               | Controls insertion/update behavior (`all`, `add_only`, `update_only`) |
+| `allow_header_in_empty_files`        | Permit header insertion in empty-like files                           |
+| `empty_insert_mode`                  | Defines how "empty" is interpreted (see above)                        |
+| `render_empty_header_when_no_fields` | Allow inserting empty headers when no fields are defined              |
+| `allow_reflow`                       | Allow content reflow (may break idempotence)                          |
+| `allow_content_probe`                | Allow resolver to inspect file contents for type detection            |
 
 ______________________________________________________________________
 

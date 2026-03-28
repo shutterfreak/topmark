@@ -8,7 +8,7 @@
 #
 # topmark:header:end
 
-"""Default TopMark operation (check/apply).
+"""TopMark `check` command.
 
 Checks whether the TopMark header is present, needs updating or complies.
 Performs a dry‑run check by default and applies changes when ``--apply`` is given.
@@ -72,10 +72,10 @@ from topmark.cli.options import common_stdin_content_mode_options
 from topmark.cli.options import common_ui_options
 from topmark.cli.options import pipeline_reporting_options
 from topmark.cli.options import render_diff_options
+from topmark.cli.options import shared_policy_options
 from topmark.cli.reporting import ReportScope
 from topmark.cli.reporting import filter_results_for_report
 from topmark.cli.validators import apply_color_policy_for_output_format
-from topmark.cli.validators import validate_check_add_update_policy_exclusivity
 from topmark.cli.validators import validate_diff_policy_for_output_format
 from topmark.cli.validators import validate_stdin_dash_requires_piped_input
 from topmark.cli.validators import warn_if_report_scope_ignored
@@ -103,6 +103,8 @@ if TYPE_CHECKING:
     from topmark.cli.io import InputPlan
     from topmark.config.model import Config
     from topmark.config.model import MutableConfig
+    from topmark.config.policy import EmptyInsertMode
+    from topmark.config.policy import HeaderMutationMode
     from topmark.core.logging import TopmarkLogger
     from topmark.core.machine.schemas import MetaPayload
     from topmark.pipeline.context.model import ProcessingContext
@@ -114,16 +116,19 @@ logger: TopmarkLogger = get_logger(__name__)
 @click.command(
     name=CliCmd.CHECK,
     context_settings=PATH_COMMAND_CONTEXT_SETTINGS,
-    help="Validate headers (dry-run). Use --apply to add or update.",
+    help="Check headers in dry-run mode, or add/update them with --apply.",
     epilog=f"""\
-Adds or updates TopMark header blocks in files (in-place with {CliOpt.APPLY_CHANGES}).
+Checks TopMark header blocks and, with {CliOpt.APPLY_CHANGES}, adds or updates them in place.
 Examples:
 
   # Preview which files would change (dry-run)
   topmark {CliCmd.CHECK} src
 
-  # Apply: remove headers in-place
+  # Apply header updates in place
   topmark {CliCmd.CHECK} {CliOpt.APPLY_CHANGES} .
+
+  # Restrict check/apply to adding missing headers only
+  topmark {CliCmd.CHECK} {CliOpt.POLICY_HEADER_MUTATION_MODE} add-only src
 """,
 )
 @common_ui_options
@@ -133,6 +138,7 @@ Examples:
 @common_file_filtering_options
 @common_file_type_filtering_options
 @check_policy_options
+@shared_policy_options
 @common_apply_and_write_options
 @render_diff_options
 @pipeline_reporting_options
@@ -160,9 +166,14 @@ def check_command(
     # common_file_type_filtering_options:
     include_file_types: list[str],
     exclude_file_types: list[str],
-    # check_policy_options:
-    add_only: bool,
-    update_only: bool,
+    # policy_options (only for `check`):
+    header_mutation_mode: HeaderMutationMode | None,
+    allow_header_in_empty_files: bool | None,
+    empty_insert_mode: EmptyInsertMode | None,
+    render_empty_header_when_no_fields: bool | None,
+    allow_reflow: bool | None,
+    # policy_options (shared):
+    allow_content_probe: bool | None,
     # common_apply_and_write_options
     apply_changes: bool,
     write_mode: str | None,
@@ -177,7 +188,7 @@ def check_command(
     # common_output_format_options:
     output_format: OutputFormat | None,
 ) -> None:
-    """Run the unified default command (check/apply).
+    """Run the header check pipeline in dry-run or apply mode.
 
     The command receives options parsed at the group level and reads positional
     paths from ``click.get_current_context().args`` (Black‑style). It supports
@@ -206,8 +217,21 @@ def check_command(
         exclude_patterns: Glob patterns to *exclude* (subtraction).
         include_file_types: Restrict processing to the given file type identifiers.
         exclude_file_types: Exclude processing for the given file type identifiers.
-        add_only: Only add headers where missing (no updates).
-        update_only: Only update existing non‑compliant headers (no additions).
+        header_mutation_mode: Check-only header mutation mode override for this
+            run (`all`, `add-only`, or `update-only`).
+        allow_header_in_empty_files: Check-only override controlling whether
+            headers may be inserted into files classified as empty under the
+            effective empty insert mode.
+        empty_insert_mode: Check-only override for how TopMark classifies files
+            as empty for header insertion policy (`bytes-empty`,
+            `logical-empty`, or `whitespace-empty`).
+        render_empty_header_when_no_fields: Check-only override controlling
+            whether an otherwise empty header may be inserted when no fields are
+            configured.
+        allow_reflow: Check-only override controlling whether content reflow is
+            allowed during header insertion or update.
+        allow_content_probe: Shared policy override controlling whether
+            file-type detection may consult file contents when needed.
         apply_changes: Write changes to files; otherwise perform a dry run.
         write_mode: Whether to use safe atomic writing, faster in-place writing
             or writing to STDOUT (default: atomic writer).
@@ -267,8 +291,6 @@ def check_command(
 
     validate_diff_policy_for_output_format(ctx, diff=diff, fmt=fmt)
 
-    validate_check_add_update_policy_exclusivity(ctx, add_only=add_only, update_only=update_only)
-
     warn_if_report_scope_ignored(
         ctx,
         output_format=output_format or OutputFormat.TEXT,
@@ -284,6 +306,14 @@ def check_command(
     # Add apply_changes and write_mode to Click context
     ctx.obj[ArgKey.APPLY_CHANGES] = apply_changes
     ctx.obj[ArgKey.WRITE_MODE] = write_mode
+
+    # Add policy option values to Click context for ConfigOverrides construction.
+    ctx.obj[ArgKey.POLICY_HEADER_MUTATION_MODE] = header_mutation_mode
+    ctx.obj[ArgKey.POLICY_ALLOW_HEADER_IN_EMPTY_FILES] = allow_header_in_empty_files
+    ctx.obj[ArgKey.POLICY_EMPTY_INSERT_MODE] = empty_insert_mode
+    ctx.obj[ArgKey.POLICY_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS] = render_empty_header_when_no_fields
+    ctx.obj[ArgKey.POLICY_ALLOW_REFLOW] = allow_reflow
+    ctx.obj[ArgKey.POLICY_ALLOW_CONTENT_PROBE] = allow_content_probe
 
     # === Build Config (layered discovery) and file list ===
     plan: InputPlan = plan_cli_inputs(

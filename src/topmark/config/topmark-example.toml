@@ -168,10 +168,10 @@ allow_header_in_empty_files = false
 #
 #   Allowed values:
 #     "bytes_empty"      → only true 0-byte files
-#     "logical_empty"    → 0-byte files plus placeholder images such as
+#     "logical_empty"    → 0-byte files plus placeholder inputs such as
 #                            BOM-only, newline-only, or optional horizontal
 #                            whitespace with at most one trailing newline
-#     "whitespace_empty" → any decoded image containing no non-whitespace
+#     "whitespace_empty" → any decoded text containing no non-whitespace
 #                            characters
 #
 #   Recommended default:
@@ -195,6 +195,7 @@ allow_reflow = false
 allow_content_probe = true
 
 # Per‑file‑type policy overrides.
+# These inherit from `[policy]` and override only the keys specified here.
 # Define sub‑tables under `[policy_by_type.<file_type_id>]` to fine‑tune behavior.
 #
 # Example (uncomment to allow headers in empty Python files only):

@@ -29,7 +29,7 @@ repos:
       - id: topmark-check
         # Optional: limit scope to supported text types
         # files: '\.(py|md|toml|ya?ml|sh|Makefile)$'
-        args: ["--skip-compliant", "--skip-unsupported", "--summary"]
+        args: ["--report", "actionable", "--summary"]
 ```
 
 Install and run:
@@ -65,8 +65,12 @@ Teams that want formatter-like behavior (similar to Black or Prettier) may choos
 `topmark-apply` at `pre-commit` once the repository is clean.
 
 The hook manifest intentionally uses minimal defaults. All behavioral flags (such as `--summary`,
-`--skip-compliant`, `--skip-unsupported`, or output mode) should be supplied by consuming
-repositories via the hook’s `args:` configuration.
+`--report`, policy options, or output mode) should be supplied by consuming repositories via the
+hook’s `args:` configuration.
+
+For the `topmark-check` hook (which runs `topmark check`), consumers may also pass policy options
+such as `--header-mutation-mode`, `--allow-header-in-empty-files`, or `--empty-insert-mode` when
+they need command-specific behavior on top of the resolved config.
 
 Invoke the manual hook locally:
 
@@ -111,14 +115,14 @@ repos:
     rev: v0.10.1
     hooks:
       - id: topmark-check
-        args: ["--skip-compliant", "--skip-unsupported", "--output-format=ndjson"]
+        args: ["--report", "noncompliant", "--output-format=ndjson"]
 ```
 
 For the manual hook:
 
 ```yaml
 - id: topmark-apply
-  args: ["--skip-compliant", "--skip-unsupported"]
+  args: ["--report", "actionable"]
 ```
 
 Notes:
@@ -136,8 +140,8 @@ ______________________________________________________________________
 ### CI-friendly checks
 
 ```bash
-# Only show issues; ignore unsupported-but-recognized formats (e.g., strict JSON)
-topmark check --skip-compliant --skip-unsupported
+# Focus output on files that would change
+topmark check --report actionable
 ```
 
 You can also pass `--summary` to only receive a summary instead of per-file diagnostics.
@@ -148,7 +152,7 @@ You can also pass `--summary` to only receive a summary instead of per-file diag
 hooks:
   - id: topmark-check
     files: '\.(py|md|toml|ya?ml|sh|Makefile)$'
-    args: ["--skip-compliant", "--skip-unsupported"]
+    args: ["--report", "actionable"]
 ```
 
 ______________________________________________________________________

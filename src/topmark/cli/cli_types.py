@@ -54,18 +54,36 @@ E = TypeVar("E", bound=Enum)
 
 
 class EnumChoiceParam(ParamTypeBase, Generic[E]):
-    """A Click parameter type that converts a string to a member of a given Enum."""
+    """A Click parameter type that converts a string to a member of a given Enum.
+
+    The parameter can optionally accept case-insensitive input and present/accept
+    kebab-case spellings for string-valued enum members whose internal values use
+    underscores.
+    """
 
     # Add instance variable annotations for maximum clarity
     enum_cls: type[E]
     name: str
     choices: list[str]
+    case_sensitive: bool
+    kebab_case: bool
 
-    def __init__(self, enum_cls: type[E]) -> None:
+    def __init__(
+        self,
+        enum_cls: type[E],
+        *,
+        case_sensitive: bool = False,
+        kebab_case: bool = False,
+    ) -> None:
         self.enum_cls = enum_cls
         self.name = self.enum_cls.__name__.lower()
-        # Assume the enum exposes string-valued members (e.g., OutputFormat)
-        self.choices = [cast("str", getattr(e, "value", str(e))) for e in self.enum_cls]
+        self.case_sensitive = case_sensitive
+        self.kebab_case = kebab_case
+        # Assume the enum exposes string-valued members (e.g., OutputFormat).
+        # `choices` contains the user-facing spellings shown in help/errors.
+        self.choices = [
+            self._display_value(cast("str", getattr(e, "value", str(e)))) for e in self.enum_cls
+        ]
 
     def _fail_noreturn(
         self,
@@ -75,6 +93,21 @@ class EnumChoiceParam(ParamTypeBase, Generic[E]):
     ) -> NoReturn:
         """Raise a BadParameter with a NoReturn signature (clear to type checkers)."""
         raise click.BadParameter(message, param=param, ctx=ctx)
+
+    def _display_value(self, raw: str) -> str:
+        """Return the user-facing spelling for an enum value."""
+        display: str = raw.replace("_", "-") if self.kebab_case else raw
+        return display
+
+    def _normalize_input(self, raw: str) -> str:
+        """Normalize CLI input for lookup against enum member values.
+
+        When `kebab_case` is enabled, both kebab-case and snake_case inputs are
+        accepted by normalizing `-` to `_`. When `case_sensitive` is disabled,
+        the normalized input is lower-cased.
+        """
+        normalized: str = raw.replace("-", "_") if self.kebab_case else raw
+        return normalized if self.case_sensitive else normalized.lower()
 
     def convert(
         self,
@@ -86,13 +119,12 @@ class EnumChoiceParam(ParamTypeBase, Generic[E]):
         if value is None:
             return None
 
-        # Case-insensitive lookup by the enum's string value
         lookup: dict[str, E] = {
-            cast("str", getattr(choice, "value", str(choice))).lower(): choice
+            self._normalize_input(cast("str", getattr(choice, "value", str(choice)))): choice
             for choice in cast("Iterable[E]", self.enum_cls)
         }
 
-        key: str = value.lower()
+        key: str = self._normalize_input(value)
         if key in lookup:
             return lookup[key]
 
@@ -105,8 +137,8 @@ class EnumChoiceParam(ParamTypeBase, Generic[E]):
 
     def shell_complete(
         self,
-        ctx: click.Context,  # pylint: disable=unused-argument
-        param: click.Parameter,  # pylint: disable=unused-argument
+        ctx: click.Context,
+        param: click.Parameter,
         incomplete: str,
     ) -> list[ClickCompletionItem]:
         """Tab completion for Click.
@@ -114,25 +146,29 @@ class EnumChoiceParam(ParamTypeBase, Generic[E]):
         Bash: `eval "$(_TOPMARK_COMPLETE=bash_source topmark)"`
         Zsh: `eval "$(_TOPMARK_COMPLETE=zsh_source topmark)"`
         """
+        _, _ = ctx, param
+
         # Runtime import to avoid import-time dependency for non-completion paths
         from click.shell_completion import CompletionItem as RuntimeCompletionItem  # Click 8.x
 
-        prefix: str = (incomplete or "").lower()
+        prefix: str = self._normalize_input(incomplete or "")
         items: list[ClickCompletionItem] = []
         for e in cast("Iterable[E]", self.enum_cls):
-            val = str(getattr(e, "value", e))
-            if val.lower().startswith(prefix):
-                items.append(RuntimeCompletionItem(val))
+            raw_value: str = cast("str", getattr(e, "value", str(e)))
+            display_value: str = self._display_value(raw_value)
+            normalized_value: str = self._normalize_input(raw_value)
+            if normalized_value.startswith(prefix):
+                items.append(RuntimeCompletionItem(display_value))
         return items
 
     def __repr__(self) -> str:
         """Return a string representation."""
-        return f"EnumParam({self.enum_cls.__name__})"
+        return f"EnumChoiceParam({self.enum_cls.__name__})"
 
 
 def FileTypeParam(
-    ctx: click.Context,  # pylint: disable=unused-argument
-    param: click.Parameter,  # pylint: disable=unused-argument
+    ctx: click.Context,
+    param: click.Parameter,
     value: object,
 ) -> Path | None:
     """Validator: Ensure a CLI argument is a valid file path.
@@ -151,6 +187,8 @@ def FileTypeParam(
     Raises:
         click.BadParameter: If the file does not exist or is not a file.
     """
+    _, _ = ctx, param
+
     if value is None:
         return None
     path: Path = Path(str(value))
@@ -161,8 +199,8 @@ def FileTypeParam(
 
 
 def GlobParam(
-    ctx: click.Context,  # pylint: disable=unused-argument
-    param: click.Parameter,  # pylint: disable=unused-argument
+    ctx: click.Context,
+    param: click.Parameter,
     value: object,
 ) -> list[Path]:
     """Validator: Expand a glob pattern CLI argument to a list of file paths.
@@ -184,6 +222,8 @@ def GlobParam(
     Returns:
         Paths matching the glob pattern, or an empty list if `value` is None.
     """
+    _, _ = ctx, param
+
     if value is None:
         return []
 

@@ -64,33 +64,61 @@ topmark:
       description: How file writes are performed when target="file".
 
   policy:
-    add_only:
-      type: bool
-      default: false
-      description: Insert missing headers only (do not update existing).
-
-    update_only:
-      type: bool
-      default: false
-      description: Update existing headers only (do not insert missing).
+    header_mutation_mode:
+      type: str
+      default: "all"
+      enum: ["all", "add_only", "update_only"]
+      description: Control whether TopMark inserts and updates headers, only inserts missing headers, or only updates existing headers.
 
     allow_header_in_empty_files:
       type: bool
       default: false
-      description: Allow inserting headers into otherwise empty files.
+      description: Allow inserting headers into files considered empty under the effective empty insertion policy.
+
+    empty_insert_mode:
+      type: str
+      default: "logical_empty"
+      enum: ["bytes_empty", "logical_empty", "whitespace_empty"]
+      description: Control how TopMark classifies files as empty for header insertion.
+
+    render_empty_header_when_no_fields:
+      type: bool
+      default: false
+      description: Allow inserting an empty header when no header fields are configured.
+
+    allow_reflow:
+      type: bool
+      default: false
+      description: Allow content reflow during header insertion or update.
+
+    allow_content_probe:
+      type: bool
+      default: true
+      description: Allow file-type detection to inspect file contents when needed.
 
   policy_by_type:
     type: table
     default: {}
     description: Per-file-type policy overrides, keyed by file type identifier.
     additionalProperties:
+      header_mutation_mode:
+        type: str
+        optional: true
+        enum: ["all", "add_only", "update_only"]
       allow_header_in_empty_files:
         type: bool
         optional: true
-      add_only:
+      empty_insert_mode:
+        type: str
+        optional: true
+        enum: ["bytes_empty", "logical_empty", "whitespace_empty"]
+      render_empty_header_when_no_fields:
         type: bool
         optional: true
-      update_only:
+      allow_reflow:
+        type: bool
+        optional: true
+      allow_content_probe:
         type: bool
         optional: true
 

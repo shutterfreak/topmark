@@ -8,7 +8,7 @@
 #
 # topmark:header:end
 
-"""TopMark ``strip`` command.
+"""TopMark `strip` command.
 
 Removes the entire TopMark header from targeted files.
 Performs a dry‑run check by default and applies changes when ``--apply`` is given.
@@ -66,6 +66,7 @@ from topmark.cli.options import common_stdin_content_mode_options
 from topmark.cli.options import common_ui_options
 from topmark.cli.options import pipeline_reporting_options
 from topmark.cli.options import render_diff_options
+from topmark.cli.options import shared_policy_options
 from topmark.cli.reporting import ReportScope
 from topmark.cli.reporting import filter_results_for_report
 from topmark.cli.validators import apply_color_policy_for_output_format
@@ -126,6 +127,7 @@ Examples:
 @common_from_sources_options
 @common_file_filtering_options
 @common_file_type_filtering_options
+@shared_policy_options
 @common_apply_and_write_options
 @render_diff_options
 @pipeline_reporting_options
@@ -152,6 +154,8 @@ def strip_command(
     # common_file_type_filtering_options:
     include_file_types: list[str],
     exclude_file_types: list[str],
+    # policy_options (shared):
+    allow_content_probe: bool | None,
     # common_apply_and_write_options
     apply_changes: bool,
     write_mode: str | None,
@@ -174,6 +178,9 @@ def strip_command(
     3. Lists-on-STDIN for one of the "...-from" options: ``--files-from -``,
        ``--include-from -``, or ``--exclude-from -`` (exactly one may consume STDIN).
 
+    Only shared policy options apply to `strip`. Header insertion/update policy
+    options are intentionally not exposed for this command.
+
     Args:
         verbose: Incements the verbosity level,
         quiet: Decrements  the verbosity level,
@@ -192,6 +199,8 @@ def strip_command(
         exclude_patterns: Glob patterns to *exclude* (subtraction).
         include_file_types: Restrict processing to the given file type identifiers.
         exclude_file_types: Exclude processing for the given file type identifiers.
+        allow_content_probe: Shared policy override controlling whether
+            file-type detection may consult file contents when needed.
         apply_changes: Write changes to files; otherwise perform a dry run.
         write_mode: Whether to use safe atomic writing, faster in-place writing
             or writing to STDOUT (default: atomic writer).
@@ -264,6 +273,9 @@ def strip_command(
     # Add apply_changes and write_mode to Click context
     ctx.obj[ArgKey.APPLY_CHANGES] = apply_changes
     ctx.obj[ArgKey.WRITE_MODE] = write_mode
+
+    # Add policy option values to Click context for ConfigOverrides construction.
+    ctx.obj[ArgKey.POLICY_ALLOW_CONTENT_PROBE] = allow_content_probe
 
     # === Build Config (layered discovery) and file list ===
     plan: InputPlan = plan_cli_inputs(

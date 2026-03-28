@@ -40,6 +40,7 @@ from topmark.config.io.resolution import load_resolved_config
 from topmark.config.overrides import ConfigOverrides
 from topmark.config.overrides import PolicyOverrides
 from topmark.config.overrides import apply_config_overrides
+from topmark.config.policy import EmptyInsertMode
 from topmark.config.policy import HeaderMutationMode
 from topmark.config.types import FileWriteStrategy
 from topmark.config.types import OutputTarget
@@ -190,6 +191,43 @@ def maybe_exit_on_error(*, code: ExitCode | None, temp_path: Path | None) -> Non
         click.get_current_context().exit(code)
 
 
+def build_cli_policy_overrides_from_ctx(ctx: click.Context) -> PolicyOverrides:
+    """Build structured policy overrides from parsed CLI option values."""
+    header_mutation_mode_obj: object = ctx.obj.get(ArgKey.POLICY_HEADER_MUTATION_MODE)
+    allow_header_in_empty_files_obj: object = ctx.obj.get(ArgKey.POLICY_ALLOW_HEADER_IN_EMPTY_FILES)
+    empty_insert_mode_obj: object = ctx.obj.get(ArgKey.POLICY_EMPTY_INSERT_MODE)
+    render_empty_header_when_no_fields_obj: object = ctx.obj.get(
+        ArgKey.POLICY_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS
+    )
+    allow_reflow_obj: object = ctx.obj.get(ArgKey.POLICY_ALLOW_REFLOW)
+    allow_content_probe_obj: object = ctx.obj.get(ArgKey.POLICY_ALLOW_CONTENT_PROBE)
+
+    return PolicyOverrides(
+        header_mutation_mode=(
+            header_mutation_mode_obj
+            if isinstance(header_mutation_mode_obj, HeaderMutationMode)
+            else None
+        ),
+        allow_header_in_empty_files=(
+            allow_header_in_empty_files_obj
+            if isinstance(allow_header_in_empty_files_obj, bool)
+            else None
+        ),
+        empty_insert_mode=(
+            empty_insert_mode_obj if isinstance(empty_insert_mode_obj, EmptyInsertMode) else None
+        ),
+        render_empty_header_when_no_fields=(
+            render_empty_header_when_no_fields_obj
+            if isinstance(render_empty_header_when_no_fields_obj, bool)
+            else None
+        ),
+        allow_reflow=(allow_reflow_obj if isinstance(allow_reflow_obj, bool) else None),
+        allow_content_probe=(
+            allow_content_probe_obj if isinstance(allow_content_probe_obj, bool) else None
+        ),
+    )
+
+
 def build_config_for_plan(
     *,
     ctx: click.Context,
@@ -257,14 +295,6 @@ def build_config_for_plan(
         no_config=no_config,
     )
 
-    header_mutation_mode: HeaderMutationMode | None
-    if ctx.obj.get(ArgKey.POLICY_CHECK_ADD_ONLY):
-        header_mutation_mode = HeaderMutationMode.ADD_ONLY
-    elif ctx.obj.get(ArgKey.POLICY_CHECK_UPDATE_ONLY):
-        header_mutation_mode = HeaderMutationMode.UPDATE_ONLY
-    else:
-        header_mutation_mode = None
-
     output_target: OutputTarget | None = None
     file_write_strategy: FileWriteStrategy | None = None
     write_mode_obj: object = ctx.obj.get(ArgKey.WRITE_MODE)
@@ -280,10 +310,9 @@ def build_config_for_plan(
         output_target = OutputTarget.FILE
         file_write_strategy = FileWriteStrategy.INPLACE
 
+    policy_overrides: PolicyOverrides = build_cli_policy_overrides_from_ctx(ctx)
     overrides: ConfigOverrides = ConfigOverrides(
-        policy=PolicyOverrides(
-            header_mutation_mode=header_mutation_mode,
-        ),
+        policy=policy_overrides,
         apply_changes=ctx.obj.get(ArgKey.APPLY_CHANGES),
         output_target=output_target,
         file_write_strategy=file_write_strategy,

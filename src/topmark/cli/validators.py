@@ -349,32 +349,6 @@ def validate_verbose_quiet_exclusivity(
     # Raises: TopmarkCliUsageError: If both flags are enabled.
 
 
-def validate_check_add_update_policy_exclusivity(
-    ctx: click.Context,
-    *,
-    add_only: bool,
-    update_only: bool,
-) -> None:
-    """Validate the CLI add_only / update_only exclusivity policy for the `check` command.
-
-    The `--add-only` and `--update-only` options represent incompatible operation modes. If both are
-    enabled, raise a `TopmarkCliUsageError` explaining that the options are mutually exclusive.
-
-    Args:
-        ctx: Active Click context containing CLI state and console.
-        add_only: Whether we should only add nonexistent headers.
-        update_only: Whether we should only update existing headers.
-    """
-    validate_mutually_exclusive(
-        ctx,
-        flags={
-            CliOpt.POLICY_CHECK_ADD_ONLY: add_only,
-            CliOpt.POLICY_CHECK_UPDATE_ONLY: update_only,
-        },
-    )
-    # Raises: TopmarkCliUsageError: If both flags are enabled.
-
-
 def validate_diff_policy_for_output_format(
     ctx: click.Context,
     *,

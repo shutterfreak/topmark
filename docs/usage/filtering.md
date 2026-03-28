@@ -105,15 +105,15 @@ Then:
 topmark check --files-from files.txt --apply
 ```
 
-## Recipe: Show only files that would change
+## Recipe: Show only actionable files (would change)
 
 ```bash
-topmark check --skip-compliant .
+topmark check --report actionable .
 ```
 
-## Recipe: Skip unsupported files (recognized but unheaderable)
+## Recipe: Include unsupported files in reporting
 
 ```bash
-topmark check --skip-unsupported .
-topmark strip --skip-unsupported .
+topmark check --report noncompliant .
+topmark strip --report noncompliant .
 ```

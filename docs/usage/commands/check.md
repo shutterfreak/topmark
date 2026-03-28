@@ -17,7 +17,7 @@ topmark:header:end
 The `check` command verifies the presence and correctness of TopMark headers in targeted files. It
 does not modify files (dry‑run) but reports which files would need updates. In this mode summaries
 end with `- previewed`. When run with `--apply`, files are actually modified and summaries end with
-`- inserted`, `- replaced` or other terminal statuses.dates.
+`- inserted`, `- replaced`, or other terminal statuses.
 
 ______________________________________________________________________
 
@@ -89,6 +89,40 @@ Notes:
 - Path-based filters are evaluated **before** file-type filters.
 - Exclude rules win over include rules when both match a path.
 - File-type filters are applied after path-based include/exclude filtering.
+
+______________________________________________________________________
+
+## Policy options (check only)
+
+The `check` command supports policy overrides that control how headers are inserted or updated.
+
+### Header mutation mode
+
+Use `--header-mutation-mode` to control which files may be modified:
+
+- `all` (default): insert and update headers
+- `add-only`: only insert missing headers
+- `update-only`: only update existing headers
+
+### Empty file behavior
+
+- `--allow-header-in-empty-files / --no-allow-header-in-empty-files`
+- `--empty-insert-mode`
+
+Control how TopMark classifies empty files and whether headers may be inserted.
+
+### Formatting and safety
+
+- `--allow-reflow / --no-allow-reflow`
+- `--render-empty-header-when-no-fields / --no-render-empty-header-when-no-fields`
+
+These options influence rendering behavior and idempotence.
+
+### Shared policy
+
+- `--allow-content-probe / --no-allow-content-probe`
+
+Controls whether file-type detection may inspect file contents.
 
 ______________________________________________________________________
 
@@ -185,20 +219,22 @@ Notes:
 
 ## Options (subset)
 
-| Option               | Description                                                       |
-| -------------------- | ----------------------------------------------------------------- |
-| `--apply`            | Write changes to files (off by default).                          |
-| `--diff`             | Show unified diffs (human output only).                           |
-| `--summary`          | Show outcome counts instead of per‑file details.                  |
-| `--files-from`       | Read newline‑delimited paths from file (use '-' for STDIN).       |
-| `--include`          | Add paths by glob (can be used multiple times).                   |
-| `--include-from`     | File of patterns to include (one per line, `#` comments allowed). |
-| `--exclude`          | Exclude paths by glob (can be used multiple times).               |
-| `--exclude-from`     | File of patterns to exclude.                                      |
-| `--file-type`        | Restrict to specific TopMark file type identifiers.               |
-| `--skip-compliant`   | Don't report compliant files.                                     |
-| `--skip-unsupported` | Don't report unsupported files.                                   |
-| `--stdin-filename`   | Assumed filename when PATH is '-' (content from STDIN).           |
+| Option                        | Description                                                       |
+| ----------------------------- | ----------------------------------------------------------------- |
+| `--apply`                     | Write changes to files (off by default).                          |
+| `--diff`                      | Show unified diffs (human output only).                           |
+| `--summary`                   | Show outcome counts instead of per‑file details.                  |
+| `--files-from`                | Read newline‑delimited paths from file (use '-' for STDIN).       |
+| `--include`                   | Add paths by glob (can be used multiple times).                   |
+| `--include-from`              | File of patterns to include (one per line, `#` comments allowed). |
+| `--exclude`                   | Exclude paths by glob (can be used multiple times).               |
+| `--exclude-from`              | File of patterns to exclude.                                      |
+| `--include-file-types` / `-t` | Restrict to specific TopMark file type identifiers.               |
+| `--exclude-file-types` / `-T` | Exclude specific TopMark file type identifiers.                   |
+| `--report`                    | Control reporting scope: actionable, noncompliant, or all.        |
+| `--header-mutation-mode`      | Check-only policy override: `all`, `add-only`, or `update-only`.  |
+| `--empty-insert-mode`         | Check-only policy override controlling empty-file classification. |
+| `--stdin-filename`            | Assumed filename when PATH is '-' (content from STDIN).           |
 
 > Run `topmark check -h` for the full list of options and help text.
 
@@ -226,7 +262,8 @@ ______________________________________________________________________
 
 - Use `-` (with `--stdin-filename`) to read a single file’s content from STDIN.
 
-- Use `--skip-compliant` and `--skip-unsupported` to tailor output and speed in CI.
+- Use `--report actionable` to focus CI output on files that would change, or
+  `--report noncompliant` to also include unsupported file types in the report.
 
 - Diffs (`--diff`) are only shown in human mode; machine formats never include diffs.
 
@@ -298,7 +335,7 @@ TopMark provides two hooks:
 # .pre-commit-config.yaml (consumer repo)
 repos:
   - repo: https://github.com/shutterfreak/topmark
-    rev: v0.6.0  # Or latest version
+    rev: v0.12.0  # Or latest version
     hooks:
       - id: topmark-check
       - id: topmark-apply    # manual; invoke explicitly when desired

@@ -46,6 +46,8 @@ from topmark.cli.errors import TopmarkCliUsageError
 from topmark.cli.keys import CliOpt
 from topmark.cli.keys import CliShortOpt
 from topmark.cli.reporting import ReportScope
+from topmark.config.policy import EmptyInsertMode
+from topmark.config.policy import HeaderMutationMode
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
 from topmark.core.logging import get_logger
@@ -507,9 +509,40 @@ def common_output_format_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
     f = option_with_underscore_traps(
         CliOpt.OUTPUT_FORMAT,
         ArgKey.OUTPUT_FORMAT,
-        type=EnumChoiceParam(OutputFormat),
+        type=EnumChoiceParam(
+            OutputFormat,
+            case_sensitive=False,
+            kebab_case=True,
+        ),
         default=None,
         help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
+    )(f)
+    return f
+
+
+def common_header_field_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
+    """Apply common header field selection and definition options.
+
+    Adds the folloiwng header field options: ``--header-fields``,
+    ``--field-values``.
+
+    Args:
+        f: The Click command function to decorate.
+
+    Returns:
+        The decorated function.
+    """
+    f = option_with_underscore_traps(
+        CliOpt.HEADER_FIELDS,
+        ArgKey.HEADER_FIELDS,
+        default=None,
+        help="Header fields (ordered list of built-in or custom header fields).",
+    )(f)
+    f = option_with_underscore_traps(
+        CliOpt.FIELD_VALUES,
+        ArgKey.FIELD_VALUES,
+        default=None,
+        help="Define or override header field values (for example header_field=field_value pairs).",
     )(f)
     return f
 
@@ -741,7 +774,11 @@ def pipeline_reporting_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
     f = option_with_underscore_traps(
         CliOpt.REPORT,
         ArgKey.REPORT,
-        type=EnumChoiceParam(ReportScope),
+        type=EnumChoiceParam(
+            ReportScope,
+            case_sensitive=False,
+            kebab_case=True,
+        ),
         default=ReportScope.ACTIONABLE,
         show_default=True,
         help=(
@@ -863,7 +900,7 @@ def common_header_formatting_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
         ArgKey.ALIGN_FIELDS,
         is_flag=True,
         default=None,
-        help="Align header fields with colons.",
+        help="Override whether header fields are aligned with colons.",
     )(f)
 
     f = option_with_underscore_traps(
@@ -876,22 +913,118 @@ def common_header_formatting_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
 
 
 def check_policy_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
-    """Apply ``--add-only`` and ``update-only`` policy options to `check`.
+    """Attach check-only policy options.
 
-    These are mutually exclusive.
+    These options control header insertion/update behavior and are only
+    meaningful for the `topmark check` pipeline.
+
+    Exposed options:
+        - `--header-mutation-mode`
+        - `--allow-header-in-empty-files` / `--no-allow-header-in-empty-files`
+        - `--empty-insert-mode`
+        - `--render-empty-header-when-no-fields` /
+          `--no-render-empty-header-when-no-fields`
+        - `--allow-reflow` / `--no-allow-reflow`
+
+    Args:
+        f: Click command function to decorate.
+
+    Returns:
+        Decorated Click command function.
     """
     f = option_with_underscore_traps(
-        CliOpt.POLICY_CHECK_ADD_ONLY,
-        ArgKey.POLICY_CHECK_ADD_ONLY,
+        f"{CliOpt.POLICY_ALLOW_REFLOW}/{CliOpt.POLICY_NO_ALLOW_REFLOW}",
+        ArgKey.POLICY_ALLOW_REFLOW,
         is_flag=True,
-        help="Only add headers where missing (no updates).",
+        default=None,
+        help=(
+            "Override whether content reflow is allowed during header insertion or "
+            "update in the check pipeline."
+        ),
+    )(f)
+    f = option_with_underscore_traps(
+        (
+            f"{CliOpt.POLICY_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS}/"
+            f"{CliOpt.POLICY_NO_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS}"
+        ),
+        ArgKey.POLICY_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS,
+        is_flag=True,
+        default=None,
+        help=(
+            "Override whether an empty header may be inserted when no fields are "
+            "configured in the check pipeline."
+        ),
+    )(f)
+    f = click.option(
+        CliOpt.POLICY_EMPTY_INSERT_MODE,
+        ArgKey.POLICY_EMPTY_INSERT_MODE,
+        type=EnumChoiceParam(
+            EmptyInsertMode,
+            case_sensitive=False,
+            kebab_case=True,
+        ),
+        default=None,
+        help=(
+            "Define which inputs count as empty for header insertion in the check "
+            "pipeline: bytes-empty, logical-empty, or whitespace-empty. "
+            "Overrides config policy for this run."
+        ),
+    )(f)
+    f = option_with_underscore_traps(
+        (
+            f"{CliOpt.POLICY_ALLOW_HEADER_IN_EMPTY_FILES}/"
+            f"{CliOpt.POLICY_NO_ALLOW_HEADER_IN_EMPTY_FILES}"
+        ),
+        ArgKey.POLICY_ALLOW_HEADER_IN_EMPTY_FILES,
+        is_flag=True,
+        default=None,
+        help=(
+            "Override whether headers may be inserted into files considered empty "
+            "by the effective empty insert mode in the check pipeline."
+        ),
+    )(f)
+    f = click.option(
+        CliOpt.POLICY_HEADER_MUTATION_MODE,
+        ArgKey.POLICY_HEADER_MUTATION_MODE,
+        type=EnumChoiceParam(
+            HeaderMutationMode,
+            case_sensitive=False,
+            kebab_case=True,
+        ),
+        default=None,
+        help=(
+            "Control which files `topmark check` may mutate: all, add-only, or "
+            "update-only. Overrides config policy for this run."
+        ),
     )(f)
 
+    return f
+
+
+def shared_policy_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
+    """Attach policy options shared by multiple pipeline commands.
+
+    These options affect common pipeline behavior such as file-type resolution
+    and are meaningful for both `topmark check` and `topmark strip`.
+
+    Exposed options:
+        - `--allow-content-probe` / `--no-allow-content-probe`
+
+    Args:
+        f: Click command function to decorate.
+
+    Returns:
+        Decorated Click command function.
+    """
     f = option_with_underscore_traps(
-        CliOpt.POLICY_CHECK_UPDATE_ONLY,
-        ArgKey.POLICY_CHECK_UPDATE_ONLY,
+        f"{CliOpt.POLICY_ALLOW_CONTENT_PROBE}/{CliOpt.POLICY_NO_ALLOW_CONTENT_PROBE}",
+        ArgKey.POLICY_ALLOW_CONTENT_PROBE,
         is_flag=True,
-        help="Only update existing non-compliant headers (no additions).",
+        default=None,
+        help=(
+            "Override whether file-type detection may consult file contents when "
+            "needed. Applies to both check and strip."
+        ),
     )(f)
 
     return f

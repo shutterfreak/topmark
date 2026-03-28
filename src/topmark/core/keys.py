@@ -62,8 +62,12 @@ class ArgKey(str, Enum):
     RELATIVE_TO = "relative_to"
 
     # Policy
-    POLICY_CHECK_ADD_ONLY = "add_only"
-    POLICY_CHECK_UPDATE_ONLY = "update_only"
+    POLICY_HEADER_MUTATION_MODE = "header_mutation_mode"
+    POLICY_ALLOW_HEADER_IN_EMPTY_FILES = "allow_header_in_empty_files"
+    POLICY_EMPTY_INSERT_MODE = "empty_insert_mode"
+    POLICY_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS = "render_empty_header_when_no_fields"
+    POLICY_ALLOW_REFLOW = "allow_reflow"
+    POLICY_ALLOW_CONTENT_PROBE = "allow_content_probe"
 
     # Pipeline result reporting
     REPORT = "report"

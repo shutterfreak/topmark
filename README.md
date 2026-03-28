@@ -243,8 +243,7 @@ fields = ["file", "file_relpath", "project", "license", "copyright"]
 relative_to = "."
 
 [tool.topmark.policy]
-add_only = false
-update_only = false
+header_mutation_mode = "all"
 allow_header_in_empty_files = false
 
 [tool.topmark.policy_by_type."python"]
@@ -261,11 +260,10 @@ exclude_from = [".gitignore"]
 
 ### Policy semantics
 
-| Setting                       | Meaning                                                                 |
-| ----------------------------- | ----------------------------------------------------------------------- |
-| `add_only = true`             | Only insert headers into files without one; skip updating existing ones |
-| `update_only = true`          | Only update existing headers; skip inserting new ones                   |
-| `allow_header_in_empty_files` | Allow adding headers to empty files (useful for e.g. `__init__.py`)     |
+| Setting                       | Meaning                                                             |
+| ----------------------------- | ------------------------------------------------------------------- |
+| `header_mutation_mode`        | Controls mutation: `all`, `add_only`, or `update_only`              |
+| `allow_header_in_empty_files` | Allow adding headers to empty files (useful for e.g. `__init__.py`) |
 
 Per-type overrides under `[tool.topmark.policy_by_type."filetype"]` can adjust specific behavior.
 

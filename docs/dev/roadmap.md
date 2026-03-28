@@ -232,6 +232,18 @@ goals.
   reducing coupling between config data models and reusable collection-merging helpers.
 - Updated documentation and tests so the refactored config-layer module layout and helper names are
   reflected consistently across CLI, API, and config-resolution paths.
+- Completed the config override model refactor around typed override objects instead of ad-hoc
+  CLI/API keyword plumbing:
+  - introduced `PolicyOverrides` / `ConfigOverrides` in `topmark.config.overrides`
+  - refactored `apply_config_overrides(...)` to consume structured overrides
+  - aligned CLI and API override application on the same config-layer helper path
+- Replaced the older boolean header-mutation policy flags (`add_only`, `update_only`) with the
+  scalar `header_mutation_mode` policy model:
+  - updated mutable/frozen policy models
+  - updated TOML deserialization/serialization and documented example config
+  - updated CLI/API-facing policy overlay handling
+- Strengthened TOML/config typing boundaries by introducing recursive TOML value/table typing and
+  centralizing validation/narrowing helpers in config I/O support modules.
 
 ### Policy model, empty-file semantics, and outcome summaries
 
@@ -264,6 +276,16 @@ goals.
   human-facing summary output.
 - Renamed machine summary/data wrapper terminology from `shapes.py` to `envelopes.py` where
   appropriate to better match responsibility.
+- Replaced the legacy mutually-exclusive `add_only` / `update_only` booleans with the scalar
+  `HeaderMutationMode` runtime/config model:
+  - `all`
+  - `add_only`
+  - `update_only`
+- Unified policy override routing so both CLI and API public policy overlays now flow through the
+  same `ConfigOverrides` / `PolicyOverrides` application path before freezing the config.
+- Added shared policy documentation and clarified command applicability:
+  - `check` exposes mutation/insertion policy options plus shared resolver policy
+  - `strip` exposes only the shared resolver/content-probe policy
 
 ### Registry output formats: qualified identifiers in machine and human output
 
@@ -672,6 +694,10 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
   deserialization via `mutable_config_from_mapping()`.
 - Downstream Python callers importing moved/removed config helpers from older module locations must
   update their imports to the new `topmark.config.io.*` / `topmark.config.overrides` layout.
+- Policy override application is now centered on typed override objects (`PolicyOverrides` /
+  `ConfigOverrides`) rather than the older wide keyword-argument surface.
+- Public/config-facing policy representation changed from the boolean pair `add_only` /
+  `update_only` to the scalar `header_mutation_mode` token.
 
 ### CLI / output format changes
 
@@ -709,6 +735,13 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
 - Introduction of `would_change` vs `changed` outcome distinction in CLI output (check vs apply).
 - Removal of legacy diff utilities (`topmark.utils.diff`) in favor of unified diff rendering
   modules.
+- Reporting CLI flags were simplified and renamed:
+  - `--skip-compliant` was removed in favor of `--report actionable`
+  - `--skip-unsupported` was removed in favor of `--report noncompliant`
+- Header-mutation policy CLI/config surface changed:
+  - removed `--add-only` / `--update-only`
+  - introduced `--header-mutation-mode`
+  - config policy now uses `header_mutation_mode` instead of `add_only` / `update_only`
 
 ### Documentation build behavior
 
@@ -1087,8 +1120,11 @@ Additional progress:
 
 Decision to make before 1.0:
 
-- Keep override application as a mapping-driven helper (`apply_config_overrides(...)`), or
-- Introduce a typed overrides model that CLI/API construct and the config layer applies.
+- Freeze and document the typed override model (`PolicyOverrides` / `ConfigOverrides`) as the stable
+  long-term override boundary, or slim it further if parts of the current structure are still too
+  CLI/API-shaped.
+- Decide how much of the typed override model should be treated as public/stable for Python callers
+  versus as an internal config-layer contract used by the CLI and API runtime.
 
 Desired outcome:
 
@@ -1242,6 +1278,15 @@ Open questions for 1.0:
   or whether a dedicated public enum should exist post-1.0.
 - Decide whether summary bucketing reason strings should be treated as stable integration surface or
   only as presentation-facing labels.
+- Freeze the final CLI policy surface and command applicability rules:
+  - `check`-only mutation/insertion policy options
+  - shared resolver/content-probe policy options
+- Decide whether a dedicated public API enum should ever be exposed for policy tokens, or whether
+  public API callers should continue to use stable string literals while internal CLI/config code
+  uses the internal enum types directly.
+- Complete documentation alignment so there are no remaining stale references to:
+  - removed reporting flags (`--skip-compliant`, `--skip-unsupported`)
+  - removed policy flags (`--add-only`, `--update-only`)
 
 Any change here should preserve backward compatibility unless explicitly gated.
 
@@ -1306,6 +1351,8 @@ This checklist defines the minimum criteria for cutting TopMark 1.0.
 - [ ] Help output accurate and aligned with implemented behavior
 - [x] Base machine metadata is cached and reused, while command-specific machine metadata is added
   explicitly where needed
+- [ ] Final CLI policy option surface documented and stable (`check`-only vs shared policy options)
+- [ ] No legacy CLI policy/report flags remain in help text or docs
 
 ### Configuration
 
@@ -1323,6 +1370,9 @@ This checklist defines the minimum criteria for cutting TopMark 1.0.
 - [x] `uv.lock` is established as the canonical lock artifact and the repository no longer depends
   on exported requirements/constraints files for normal operation
 - [ ] `EmptyInsertMode` tokens and semantics documented and considered stable
+- [ ] Typed override model (`PolicyOverrides` / `ConfigOverrides`) documented and considered stable
+- [ ] `header_mutation_mode` fully replaces legacy `add_only` / `update_only` references in docs,
+  examples, and config schema references
 
 ### Pipeline & testing
 
@@ -1342,6 +1392,7 @@ This checklist defines the minimum criteria for cutting TopMark 1.0.
   summaries)
 - [ ] API surface clarified for in-memory pipeline inputs (either implemented or deferred with
   rationale)
+- [ ] API and CLI policy override behavior covered by focused tests for valid and invalid overlays
 
 ### Dependency & ecosystem
 
