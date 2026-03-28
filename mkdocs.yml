@@ -76,6 +76,10 @@ markdown_extensions:
   # Collapsible blocks (??? note)
   - pymdownx.details
 
+  # Task lists
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
   # Allows adding classes to elements, e.g., {: .api-symbol }
   - attr_list
 
