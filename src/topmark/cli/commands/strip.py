@@ -71,6 +71,7 @@ from topmark.cli.reporting import ReportScope
 from topmark.cli.reporting import filter_results_for_report
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import validate_diff_policy_for_output_format
+from topmark.cli.validators import validate_forbidden_options_in_extra_args
 from topmark.cli.validators import validate_stdin_dash_requires_piped_input
 from topmark.cli.validators import warn_if_report_scope_ignored
 from topmark.core.exit_codes import ExitCode
@@ -238,6 +239,23 @@ def strip_command(
 
     # Retrieve effective human facing program-output verbosity for gating extra details
     verbosity_level: int = ctx.obj[ArgKey.VERBOSITY_LEVEL]
+
+    # Reject check-only policy options that would otherwise slip through due to
+    # permissive path-command parsing.
+    _forbidden_option_reason: str = "Use this only with `topmark check`."
+    validate_forbidden_options_in_extra_args(
+        ctx,
+        forbidden_opts={
+            CliOpt.POLICY_HEADER_MUTATION_MODE: _forbidden_option_reason,
+            CliOpt.POLICY_ALLOW_HEADER_IN_EMPTY_FILES: _forbidden_option_reason,
+            CliOpt.POLICY_NO_ALLOW_HEADER_IN_EMPTY_FILES: _forbidden_option_reason,
+            CliOpt.POLICY_EMPTY_INSERT_MODE: _forbidden_option_reason,
+            CliOpt.POLICY_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS: _forbidden_option_reason,
+            CliOpt.POLICY_NO_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS: _forbidden_option_reason,
+            CliOpt.POLICY_ALLOW_REFLOW: _forbidden_option_reason,
+            CliOpt.POLICY_NO_ALLOW_REFLOW: _forbidden_option_reason,
+        },
+    )
 
     # Machine metadata
     meta: MetaPayload = build_meta_payload()

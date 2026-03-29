@@ -71,6 +71,25 @@ LOG_LEVELS: dict[str, int] = {
 # ---- Reusable validators ----
 
 
+def validate_forbidden_options_in_extra_args(
+    ctx: click.Context,
+    *,
+    forbidden_opts: Mapping[str, str],
+) -> None:
+    """Reject known-but-forbidden options that remain in `ctx.args`.
+
+    This is used for commands that enable Click's permissive path-oriented parsing
+    (`ignore_unknown_options=True` / `allow_extra_args=True`), where unsupported
+    options would otherwise be silently accepted as extra arguments.
+    """
+    extra_args: list[str] = list(ctx.args)
+    for opt, reason in forbidden_opts.items():
+        if opt in extra_args:
+            raise TopmarkCliUsageError(
+                f"{ctx.command_path}: {opt} is not supported for this command. {reason}"
+            )
+
+
 def validate_mutually_exclusive(
     ctx: click.Context,
     *,
