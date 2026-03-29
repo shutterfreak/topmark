@@ -65,10 +65,12 @@ if TYPE_CHECKING:
     from topmark.pipeline.views import Views
 
 
-class ConfigLike(Protocol):
-    """Minimum config surface required by HeaderProcessor.render_header_lines.
+class RuntimeConfigLike(Protocol):
+    """Minimal structural subset of `Config` required by `HeaderProcessor`.
 
-    This breaks circular imports of [`topmark.config.model.Config`][].
+    This protocol keeps `topmark.processors.base` independent from the full
+    runtime config model and avoids import cycles. Only the fields actually
+    consumed by `render_header_lines()` are included here.
     """
 
     @property
@@ -82,8 +84,13 @@ class ConfigLike(Protocol):
         ...
 
 
-class ProcessorContext(Protocol):
-    """Minimum context surface required by HeaderProcessor methods."""
+class ProcessingContextLike(Protocol):
+    """Minimal structural subset of `ProcessingContext` required by `HeaderProcessor`.
+
+    This protocol keeps `topmark.processors.base` independent from the full
+    pipeline context model and avoids import cycles. Only the views bundle and
+    diagnostic sink methods needed by processor helpers are included here.
+    """
 
     views: Views
 
@@ -305,7 +312,7 @@ class HeaderProcessor:
         self._encoding_pattern: re.Pattern[str] | None = None
         self._encoding_pattern_src: str | None = None
 
-    def parse_fields(self, context: ProcessorContext) -> HeaderParseResult:
+    def parse_fields(self, context: ProcessingContextLike) -> HeaderParseResult:
         """Parse key-value pairs from the detected header block (*view-based*).
 
         This implementation expects the scanner to have populated
@@ -626,7 +633,7 @@ class HeaderProcessor:
     def render_header_lines(
         self,
         header_values: dict[str, str],
-        config: ConfigLike,
+        config: RuntimeConfigLike,
         newline_style: str,
         block_prefix_override: str | None = None,
         block_suffix_override: str | None = None,
