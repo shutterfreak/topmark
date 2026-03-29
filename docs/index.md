@@ -29,7 +29,8 @@ topmark check --apply src/
 
 ```python
 from topmark import api
-res = api.check(["src"])          # dry-run
+
+res = api.check(["src"], report="actionable")  # dry-run
 res2 = api.check(["src"], apply=True)
 ```
 
@@ -127,6 +128,7 @@ relative_to = "."
 - **Install:** [Installation guide](install.md)
 - **Usage:** Pre‑commit integration ([usage/pre-commit.md](usage/pre-commit.md))
 - **CI/CD:** Release workflow ([ci/release-workflow.md](ci/release-workflow.md))
+- **Policies:** Guide ([usage/policies.md](usage/policies.md))
 - **Public API:** Reference ([api/public.md](api/public.md))
 - **Internals:** Reference ([api/internals.md](api/internals.md))
 - **Contributing:** [Guidelines](contributing.md)

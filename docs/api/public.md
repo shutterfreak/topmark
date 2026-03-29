@@ -66,13 +66,19 @@ config = {
     }
 }
 
-run: api.runResult = api.check(
+run: api.RunResult = api.check(
     ["src"],
     config=config,
     diff=True,
-    skip_compliant=True,
+    report="actionable",
 )
+```
 
+For the public API, the returned view is controlled via
+`report="all" | "actionable" | "noncompliant"`. This replaces the older `skip_compliant` /
+`skip_unsupported` booleans.
+
+```python
 assert run.summary.get("unchanged", 0) >= 0
 ```
 
@@ -87,7 +93,7 @@ configuration.
   `BindingRegistry` to a registered processor definition in `HeaderProcessorRegistry`.
 - A file may be *recognized* but still *unbound* (and therefore not supported). In that case:
   - it participates in discovery and filtering
-  - it may appear in results (unless `skip_unsupported=True`)
+  - it may appear in results depending on the selected `report` scope
   - no header insertion or removal is attempted
 
 File type identifiers may be provided either as an unqualified name (`"python"`) or as a qualified

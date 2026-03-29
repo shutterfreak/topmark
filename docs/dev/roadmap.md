@@ -228,6 +228,9 @@ goals.
   sites to dedicated config I/O helpers.
 - Renamed `ArgsLike` to `ConfigMapping` and moved it to `topmark.api.types` so the accepted public
   API mapping shape is named from the API/config domain rather than from CLI argument handling.
+- Removed the legacy `ArgsLike` alias entirely and standardized all API/config entry points on
+  `ConfigMapping`, eliminating ambiguity between CLI argument shapes and generic configuration
+  mappings.
 - Moved generic merge helpers out of `topmark.config.model` into shared utility code, further
   reducing coupling between config data models and reusable collection-merging helpers.
 - Updated documentation and tests so the refactored config-layer module layout and helper names are
@@ -237,6 +240,9 @@ goals.
   - introduced `PolicyOverrides` / `ConfigOverrides` in `topmark.config.overrides`
   - refactored `apply_config_overrides(...)` to consume structured overrides
   - aligned CLI and API override application on the same config-layer helper path
+  - Clarified the separation between CLI argument parsing and config-layer application by ensuring
+    that CLI-specific argument namespaces are no longer propagated into config models, reinforcing a
+    clean API/CLI boundary.
 - Replaced the older boolean header-mutation policy flags (`add_only`, `update_only`) with the
   scalar `header_mutation_mode` policy model:
   - updated mutable/frozen policy models
@@ -690,6 +696,8 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
 - `topmark.config.args_io` was removed as part of the config package refactor.
 - Generic API/CLI mapping input is now represented as `ConfigMapping` in `topmark.api.types` instead
   of `ArgsLike` in `topmark.config.types`.
+- The legacy `ArgsLike` alias was removed entirely; downstream callers should use `ConfigMapping`
+  (or plain `Mapping[str, object]`-compatible inputs) for generic API/config mappings.
 - API/runtime config coercion now distinguishes generic mapping input from TOML-backed
   deserialization via `mutable_config_from_mapping()`.
 - Downstream Python callers importing moved/removed config helpers from older module locations must
@@ -698,6 +706,8 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
   `ConfigOverrides`) rather than the older wide keyword-argument surface.
 - Public/config-facing policy representation changed from the boolean pair `add_only` /
   `update_only` to the scalar `header_mutation_mode` token.
+- Public API result-view filtering changed from legacy `skip_compliant` / `skip_unsupported`
+  booleans to the scalar `report` selection (`"all"`, `"actionable"`, `"noncompliant"`).
 
 ### CLI / output format changes
 
@@ -742,6 +752,10 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
   - removed `--add-only` / `--update-only`
   - introduced `--header-mutation-mode`
   - config policy now uses `header_mutation_mode` instead of `add_only` / `update_only`
+- Policy option applicability is now enforced more strictly:
+  - `strip` accepts only shared resolver/content-probe policy options
+  - check-only mutation/insertion policy options are rejected at the CLI layer for `strip`, even
+    under permissive path-command parsing
 
 ### Documentation build behavior
 
@@ -754,6 +768,9 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
   etc.).
 - Formatter configuration for Markdown and TOML is now sourced from dedicated tool config files
   (`.mdformat.toml`, `.taplo.toml`) rather than mixed into `pyproject.toml`.
+- User-facing documentation now includes a dedicated policy guide and command/configuration
+  cross-links to it; older docs that referred to legacy skip/report and add/update flags were
+  updated to the new report/policy model.
 
 ### Developer tooling / CI
 
@@ -821,7 +838,7 @@ This section lists remaining 1.0 decisions and implementation work. Items are gr
 
 ### Namespace-based registry completion
 
-#### Status
+#### Registry completion status
 
 - Identity model: implemented
 - Canonical processor/binding storage: implemented
@@ -861,7 +878,7 @@ Recommended direction:
 
 ### In-memory pipeline (Option A)
 
-#### Status
+#### In-memory pipeline status
 
 - Design: drafted and reviewed
 - Implementation: not started
@@ -1059,7 +1076,7 @@ Open follow-up work before 1.0:
 
 ### API vs CLI separation
 
-#### Status
+#### API vs CLI separation status
 
 Some CLI-oriented concerns still leak into API-facing modules (notably in
 \[`topmark.config`\][topmark.config] and parts of pipeline orchestration).
@@ -1132,7 +1149,7 @@ Desired outcome:
 - CLI parsing/normalization produces a clear override structure.
 - The same override structure remains usable by API callers (without importing Click).
 
-### Machine output formats
+### Machine output formats: remaining work
 
 Machine formats are now fully centralized and domain-scoped.
 
@@ -1236,7 +1253,7 @@ Comparable tools vary:
 Recommendation for 1.0: document and stabilize key semantics. Consider adding a schema version only
 when the first non-additive change is planned (post-1.0), paired with migration tooling.
 
-### Human output formats and verbosity levels
+### Output format strategy and verbosity
 
 Open questions:
 
@@ -1283,6 +1300,9 @@ Open questions for 1.0:
   - shared resolver/content-probe policy options
   - `strip` explicitly rejects check-only policy options at the CLI layer (validated despite
     permissive parsing)
+- Confirm that the public API `report` model (`"all"`, `"actionable"`, `"noncompliant"`) is the
+  final, stable replacement for legacy skip-based filtering and document its guarantees as part of
+  the public API contract.
 - Decide whether a dedicated public API enum should ever be exposed for policy tokens, or whether
   public API callers should continue to use stable string literals while internal CLI/config code
   uses the internal enum types directly.
@@ -1291,6 +1311,8 @@ Open questions for 1.0:
   - removed policy flags (`--add-only`, `--update-only`)
   - ensure cross-linking to the policy guide (`docs/usage/policies.md`) from command and
     configuration docs
+- verify that API documentation and examples consistently use `report` and no longer reference
+  `skip_*` parameters
 
 Any change here should preserve backward compatibility unless explicitly gated.
 
@@ -1298,123 +1320,113 @@ ______________________________________________________________________
 
 ## 1.0 readiness checklist
 
-This checklist defines the minimum criteria for cutting TopMark 1.0.
+TopMark 1.0 follows a “contract-first” release strategy: all externally observable behavior (API
+surface, configuration semantics, machine formats, and CLI exit/status behavior) must be stable and
+well-tested. Items in the “Must finish before 1.0” section are considered release blockers unless
+explicitly deferred with a documented rationale; other items are tracked as post-1.0 polish or
+follow-up work.
 
-### Architecture & boundaries
+This checklist defines the minimum criteria for cutting TopMark 1.0, grouped by priority.
+
+### Must finish before 1.0
+
+#### [Must] Architecture & boundaries
 
 - [ ] Clear separation between CLI layer and API/core modules
   - [x] CLI config resolution no longer duplicates layered config discovery/merge logic
   - [x] API runtime config/file preparation now reuses config-layer resolution/override helpers
 - [ ] No CLI-specific concerns (verbosity, color, formatting) in core logic
-- [x] Path-based file resolution and file type / processor resolution are separated into the
-  `topmark.resolution` package instead of being split across pipeline and registry helpers
-- [x] File type resolution ambiguity policy is documented and deterministic (score + namespace +
-  local key tie-breaks)
-- [x] All machine-format payloads built outside CLI command modules
-- [x] Color handling fully confined to CLI (semantic style roles implemented; remaining yachalk
-  usage to be eliminated or isolated)
 
-### Machine formats
+#### [Must] Machine formats
 
-- [x] JSON and NDJSON schemas fully aligned across all commands
-- [x] Identical envelope structure (metadata + data) everywhere
-- [x] Machine payload construction removed from CLI command modules
-- [x] Registry machine formats include namespace-aware identity fields and a first-class bindings
-  format (`filetypes`, `processors`, `bindings`)
-- [x] Documented examples for processing summary rows in `docs/dev/machine-formats.md` /
-  `docs/dev/machine-output.md`
-- [ ] Documented examples for each remaining command category in `docs/dev/machine-formats.md`
 - [ ] No presentation leakage (color text, human wording) in machine output
 - [ ] Machine outputs are covered by tests for registry commands (`filetypes`, `processors`,
   `bindings`) and pipeline commands (`check`, `strip`) in both JSON and NDJSON modes
 - [ ] Final schema freeze review before 1.0 (including `(outcome, reason, count)` summary rows)
-- [ ] Final review/freeze of `detail_level` semantics and brief vs long machine projections across
-  all command categories
+- [ ] Final review/freeze of `detail_level` semantics and brief vs long machine projections
 
-### Human formats
+#### [Must] Human formats
 
 - [ ] `OutputFormat.TEXT` and `OutputFormat.MARKDOWN` consistent across commands
   - [ ] Config commands (`check`, `defaults`, `dump`, `init`)
   - [x] Pipeline commands (`check`, `strip`)
-  - [ ] Registry commands (`filetypes`, `processors`, `bindings`)
+  - [x] Registry commands (`filetypes`, `processors`, `bindings`)
   - [x] Version command (`version`)
-- [x] Semantic styling implemented via `StyleRole` and consistently applied across emitters
-- [ ] Human-facing registry outputs reviewed/frozen for qualified identifier presentation
-- [ ] Verbosity levels (`-v`, `-vv`, `-q`) documented and behave consistently
-- [ ] Diff rendering policy consistent across pipeline commands
 - [ ] Warnings and error phrasing consistent across CLI
-- [x] Summary mode renders stable `(outcome, reason, count)` rows in both text and Markdown
-- [x] CLI summary rendering unified via `map_bucket()` and consistent across pipelines and emitters
 
-### CLI behavior
+#### [Must] CLI behavior
 
-- [x] Global options correctly scoped to commands (verbosity, color)
-- [x] Validators centralized and consistently applied
-- [ ] Exit codes documented and stable (audit after preview/apply status changes and bucketing
-  fixes)
-- [ ] Help output accurate and aligned with implemented behavior
-- [x] Base machine metadata is cached and reused, while command-specific machine metadata is added
-  explicitly where needed
-- [ ] Final CLI policy option surface documented and stable (`check`-only vs shared policy options)
-- [ ] No legacy CLI policy/report flags remain in help text or docs
+- [ ] Exit codes documented and stable
 
-### Configuration
+#### [Must] Configuration
 
 - [ ] Config keys and semantics documented and considered stable
-- [ ] Qualified and unqualified file type identifier semantics in config include/exclude filters,
-  resolver-style API helpers, and file-type compatibility views are documented and considered stable
-- [ ] Decision made on schema versioning (explicit key vs implicit evolution)
-- [ ] `config init`, `defaults`, `check`, `dump` produce aligned outputs (text, markdown, machine)
-- [ ] Decision made and documented on the final public override model (mapping-driven vs typed
-  overrides) and how API callers apply overrides
-- [x] Layered config discovery/merge and final CLI/API override application are separated into
-  dedicated config modules
-- [ ] Packaging/project metadata policy documented and considered stable (license metadata, URLs,
-  classifiers, README rendering)
-- [x] `uv.lock` is established as the canonical lock artifact and the repository no longer depends
-  on exported requirements/constraints files for normal operation
+- [ ] Qualified and unqualified file type identifier semantics documented and considered stable
+- [ ] `config init`, `defaults`, `check`, `dump` produce aligned outputs
+- [ ] Decision made and documented on the final public override model
 - [ ] `EmptyInsertMode` tokens and semantics documented and considered stable
 - [ ] Typed override model (`PolicyOverrides` / `ConfigOverrides`) documented and considered stable
-- [ ] `header_mutation_mode` fully replaces legacy `add_only` / `update_only` references in docs,
-  examples, and config schema references
+- [x] Layered config discovery/merge and final CLI/API override application are separated into
+  dedicated config modules
+- [x] `header_mutation_mode` fully replaces legacy `add_only` / `update_only` references
 
-### Pipeline & testing
+#### [Must] Pipeline & testing
 
 - [ ] Decision taken on in-memory pipeline support (implemented or deferred)
-- [x] CI validates docs integrity at both source and built-site levels (including generated API
-  pages)
-- [x] Docs pipeline robust against mdformat normalization of GitHub alerts/callouts
 - [ ] Clear split between unit (memory-based) and integration (filesystem) tests
-- [ ] Namespace-aware registry lookup and deterministic ambiguity behavior covered by tests across
-  config, registry, and resolution layers
-- [ ] High-coverage tests for edge cases (encoding, synthetic names, and remaining empty-like
-  variants)
-- [x] Empty and empty-like file handling is explicit and idempotent (BOM-only, newline-only,
-  whitespace-only placeholder cases)
-- [x] Resolver treats content matcher exceptions as safe misses (does not abort resolution)
-- [x] Preview vs apply semantics are consistent end-to-end (write statuses, bucketing, and
-  summaries)
+- [ ] Namespace-aware registry lookup and deterministic ambiguity behavior covered by tests
 - [ ] API surface clarified for in-memory pipeline inputs (either implemented or deferred with
   rationale)
-- [ ] API and CLI policy override behavior covered by focused tests for valid and invalid overlays
+- [x] Empty and empty-like file handling is explicit and idempotent
+- [x] Resolver treats content matcher exceptions as safe misses
+- [x] Preview vs apply semantics are consistent end-to-end
+- [x] API and CLI policy override behavior covered by focused tests for valid and invalid overlays
   - [x] CLI policy override behavior
-  - [ ] API policy override behavior
+  - [x] API policy override behavior
 
-### Dependency & ecosystem
+#### [Must] Dependency & ecosystem
 
-- [ ] Decision made on long-term CLI framework (Click vs alternative)
 - [ ] Decision made on color backend (`yachalk` confinement or removal)
-- [x] Canonical dependency workflow migrated to `pyproject.toml` + `uv.lock` with no remaining
-  dependence on exported requirements/constraints files for normal development, CI, or release flows
-- [ ] Decide whether the explicit local-key compatibility view in `FileTypeRegistry` should remain a
-  supported 1.0 feature or be reduced further in favor of canonical qualified-key-only operation
-- [ ] Decide whether duplicated built-site docs/linkcheck steps in CI and release workflows should
-  remain inline or eventually be factored into a reusable workflow
-- [ ] Formatter/tool configuration split stabilized and documented (.mdformat.toml, .taplo.toml,
-  pyproject ownership boundaries)
+- [ ] Formatter/tool configuration split stabilized and documented (.mdformat.toml, .taplo.toml)
 - [ ] Tooling environments (Nox, pre-commit, local venv, editor) verified to consume the same
   formatter plugin set
-- [x] Read the Docs uv-based installation/build path verified and documented as stable
 
-Only when all checklist items are either completed or explicitly deferred with rationale should 1.0
-be tagged.
+______________________________________________________________________
+
+### Strongly recommended (but not blockers)
+
+#### [Recommended] Human formats
+
+- [ ] Human-facing registry outputs reviewed/frozen for qualified identifier presentation
+- [ ] Diff rendering policy consistent across pipeline commands
+- [ ] Verbosity levels (`-v`, `-vv`, `-q`) documented and behave consistently
+
+#### [Recommended] Machine formats
+
+- [ ] Documented examples for each remaining command category in `docs/dev/machine-formats.md`
+- [ ] Sufficient edge-case test coverage to trust core behaviors
+
+#### [Recommended] Dependency & ecosystem
+
+- [ ] Decide whether the explicit local-key compatibility view in `FileTypeRegistry` should remain a
+  supported 1.0 feature
+- [ ] Decide whether duplicated built-site docs/linkcheck steps in CI and release workflows should
+  remain inline or be factored into a reusable workflow
+
+______________________________________________________________________
+
+### Post-1.0 follow-up (nice-to-have)
+
+#### [Post-1.0] Human formats
+
+- [ ] Further Markdown layout evolution (tables, grouped sections, richer structures)
+- [ ] Generalize or refine the “primary hint” concept
+- [ ] Evaluate theme/style configurability (semantic roles)
+
+#### [Post-1.0] Dependency & ecosystem
+
+- [ ] Decision made on long-term CLI framework (Click vs alternative)
+- [ ] Workflow refactoring into reusable GitHub workflows
+
+Only when all items in the “Must finish before 1.0” section are completed or explicitly deferred
+with rationale should 1.0 be tagged.

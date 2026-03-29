@@ -242,11 +242,15 @@ copyright = "(c) 2025 Olivier Biot"
 fields = ["file", "file_relpath", "project", "license", "copyright"]
 relative_to = "."
 
-[tool.topmark.policy]
+[policy]
 header_mutation_mode = "all"
 allow_header_in_empty_files = false
+empty_insert_mode = "logical_empty"
+render_empty_header_when_no_fields = false
+allow_reflow = false
+allow_content_probe = true
 
-[tool.topmark.policy_by_type."python"]
+[policy_by_type."python"]
 allow_header_in_empty_files = true
 
 [formatting]
@@ -260,16 +264,20 @@ exclude_from = [".gitignore"]
 
 ### Policy semantics
 
-| Setting                       | Meaning                                                             |
-| ----------------------------- | ------------------------------------------------------------------- |
-| `header_mutation_mode`        | Controls mutation: `all`, `add_only`, or `update_only`              |
-| `allow_header_in_empty_files` | Allow adding headers to empty files (useful for e.g. `__init__.py`) |
+| Setting                              | Meaning                                                                 |
+| ------------------------------------ | ----------------------------------------------------------------------- |
+| `header_mutation_mode`               | Controls mutation: `all`, `add_only`, or `update_only`                  |
+| `allow_header_in_empty_files`        | Allow adding headers to empty-like files                                |
+| `empty_insert_mode`                  | Controls how TopMark classifies files as empty for insertion            |
+| `render_empty_header_when_no_fields` | Allow inserting an otherwise empty header when no fields are configured |
+| `allow_reflow`                       | Allow content reflow during header insertion/update                     |
+| `allow_content_probe`                | Allow file-type detection to inspect file contents when needed          |
 
 Per-type overrides under `[tool.topmark.policy_by_type."filetype"]` can adjust specific behavior.
 
 These policy options apply equally to the **CLI** and the **public API**.
 
-> See `docs/configuration/discovery.md` for more detail on config precedence and path semantics.
+For CLI usage, see the dedicated [Policy Guide](docs/usage/policies.md).
 
 ______________________________________________________________________
 
@@ -299,8 +307,9 @@ ______________________________________________________________________
 
 ## 🔒 Public API
 
-The public API now an optional `policy` argument (global or per-type) that integrates with the same
-resolution mechanism used by the CLI.
+The public API accepts optional `policy` and `policy_by_type` arguments (global or per-type) that
+integrate with the same resolution mechanism used by the CLI. The returned result view is controlled
+via `report="all" | "actionable" | "noncompliant"`.
 
 ### Example
 
@@ -311,7 +320,7 @@ from topmark import api
 paths: list[Path] = [Path("src")]
 
 policy: dict[str, object] = {
-    "add_only": True,
+    "header_mutation_mode": "add_only",
 }
 
 # Dry-run (apply=False) header checks
@@ -319,6 +328,7 @@ result = api.check(
     paths,
     apply=False,
     policy=policy,
+    report="actionable",
 )
 
 print(result.summary)
