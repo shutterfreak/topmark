@@ -126,6 +126,8 @@ ______________________________________________________________________
 
 TopMark applies **effective policies** by merging global and per-file-type rules:
 
+See also: [TopMark Policy Guide](../usage/policies.md).
+
 ```toml
 [tool.topmark.policy]
 header_mutation_mode = "all"

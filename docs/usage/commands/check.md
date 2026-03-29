@@ -96,6 +96,8 @@ ______________________________________________________________________
 
 The `check` command supports policy overrides that control how headers are inserted or updated.
 
+See also: [TopMark Policy Guide](../policies.md).
+
 ### Header mutation mode
 
 Use `--header-mutation-mode` to control which files may be modified:

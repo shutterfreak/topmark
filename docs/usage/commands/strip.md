@@ -95,6 +95,8 @@ ______________________________________________________________________
 
 The `strip` command supports only shared policy options.
 
+See also: [TopMark Policy Guide](../policies.md).
+
 ### Shared policy
 
 - `--allow-content-probe / --no-allow-content-probe`

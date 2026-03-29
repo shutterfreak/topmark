@@ -1281,12 +1281,16 @@ Open questions for 1.0:
 - Freeze the final CLI policy surface and command applicability rules:
   - `check`-only mutation/insertion policy options
   - shared resolver/content-probe policy options
+  - `strip` explicitly rejects check-only policy options at the CLI layer (validated despite
+    permissive parsing)
 - Decide whether a dedicated public API enum should ever be exposed for policy tokens, or whether
   public API callers should continue to use stable string literals while internal CLI/config code
   uses the internal enum types directly.
 - Complete documentation alignment so there are no remaining stale references to:
   - removed reporting flags (`--skip-compliant`, `--skip-unsupported`)
   - removed policy flags (`--add-only`, `--update-only`)
+  - ensure cross-linking to the policy guide (`docs/usage/policies.md`) from command and
+    configuration docs
 
 Any change here should preserve backward compatibility unless explicitly gated.
 
@@ -1393,6 +1397,8 @@ This checklist defines the minimum criteria for cutting TopMark 1.0.
 - [ ] API surface clarified for in-memory pipeline inputs (either implemented or deferred with
   rationale)
 - [ ] API and CLI policy override behavior covered by focused tests for valid and invalid overlays
+  - [x] CLI policy override behavior
+  - [ ] API policy override behavior
 
 ### Dependency & ecosystem
 

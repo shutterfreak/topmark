@@ -183,6 +183,7 @@ nav:
           - "Registered bindings (generated)": usage/generated/bindings.md
           - "Filtering recipes": usage/filtering.md
           - "Header placement": usage/header-placement.md
+          - "Policies": usage/policies.md
           - "Pre-commit": usage/pre-commit.md
   - Configuration:
       - Overview: configuration/index.md
