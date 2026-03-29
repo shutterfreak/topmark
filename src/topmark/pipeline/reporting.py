@@ -2,16 +2,16 @@
 #
 #   project      : TopMark
 #   file         : reporting.py
-#   file_relpath : src/topmark/cli/reporting.py
+#   file_relpath : src/topmark/pipeline/reporting.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""CLI reporting scope helpers.
+"""Pipeline reporting scope helpers.
 
-This module defines small, Click-agnostic helpers that decide which per-file
-pipeline results should be included in the human-facing per-file listing.
+This module defines small helpers that decide which per-file pipeline results should be included
+in the human-facing per-file listing.
 
 Notes:
     - `--summary` remains "summary only" and bypasses per-file listing.
@@ -22,6 +22,7 @@ Notes:
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -73,6 +74,15 @@ class ReportScope(str, Enum):
     ALL = "all"
 
 
+@dataclass(frozen=True)
+class ReportFilterResult:
+    """Result of applying a report scope to pipeline contexts."""
+
+    view_results: list[ProcessingContext]
+    skipped_count: int
+    unsupported_count_all: int
+
+
 _UNSUPPORTED_RESOLVE: frozenset[ResolveStatus] = frozenset(
     {
         ResolveStatus.UNSUPPORTED,
@@ -120,7 +130,7 @@ def filter_results_for_report(
     *,
     report: ReportScope,
     would_change: Callable[[ProcessingContext], bool],
-) -> tuple[list[ProcessingContext], int]:
+) -> ReportFilterResult:
     """Filter raw pipeline results for human per-file rendering.
 
     This helper is intentionally scoped to **human per-file output**. Callers
@@ -148,18 +158,35 @@ def filter_results_for_report(
             it can still be summarized even when hidden from the per-file list.
     """
     unsupported_count: int = sum(1 for r in results if _is_unsupported(r))
+    count: int = len(results)
+    skipped_count: int
 
     if report == ReportScope.ALL:
-        return results, unsupported_count
+        skipped_count = 0
+        return ReportFilterResult(
+            view_results=results,
+            skipped_count=skipped_count,
+            unsupported_count_all=unsupported_count,
+        )
 
     def is_noncompliant(r: ProcessingContext) -> bool:
         return would_change(r) or _needs_attention(r)
 
     if report == ReportScope.NONCOMPLIANT:
         view: list[ProcessingContext] = [r for r in results if is_noncompliant(r)]
-        return view, unsupported_count
+        skipped_count = count - len(view)
+        return ReportFilterResult(
+            view_results=view,
+            skipped_count=skipped_count,
+            unsupported_count_all=unsupported_count,
+        )
 
     # ACTIONABLE (default): only entries that require user action (would change) plus problems,
     # but keep unsupported out of the per-file list (summarize instead).
     view = [r for r in results if is_noncompliant(r) and not _is_unsupported(r)]
-    return view, unsupported_count
+    skipped_count = count - len(view)
+    return ReportFilterResult(
+        view_results=view,
+        skipped_count=skipped_count,
+        unsupported_count_all=unsupported_count,
+    )

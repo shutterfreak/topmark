@@ -36,9 +36,9 @@ from tests.cli.conftest import run_cli
 from tests.cli.conftest import run_cli_in
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
-from topmark.cli.reporting import ReportScope
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
+from topmark.pipeline.reporting import ReportScope
 from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.status import StripStatus
 

@@ -73,8 +73,6 @@ from topmark.cli.options import common_ui_options
 from topmark.cli.options import pipeline_reporting_options
 from topmark.cli.options import render_diff_options
 from topmark.cli.options import shared_policy_options
-from topmark.cli.reporting import ReportScope
-from topmark.cli.reporting import filter_results_for_report
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import validate_diff_policy_for_output_format
 from topmark.cli.validators import validate_stdin_dash_requires_piped_input
@@ -86,6 +84,9 @@ from topmark.core.logging import get_logger
 from topmark.core.machine.payloads import build_meta_payload
 from topmark.pipeline.context.policy import effective_would_add_or_update
 from topmark.pipeline.engine import run_steps_for_files
+from topmark.pipeline.reporting import ReportFilterResult
+from topmark.pipeline.reporting import ReportScope
+from topmark.pipeline.reporting import filter_results_for_report
 from topmark.pipeline.status import WriteStatus
 from topmark.presentation.shared.pipeline import check_msg_markdown
 from topmark.presentation.shared.pipeline import check_msg_text
@@ -409,13 +410,13 @@ def check_command(
     # - Human summary mode must also use the full raw result set so aggregated
     #   counts are not distorted by per-file report filtering.
     # - Human non-summary output uses the filtered per-file view.
-    view_results, unsupported_count = filter_results_for_report(
+    filtered: ReportFilterResult = filter_results_for_report(
         results,
         report=report,
         would_change=effective_would_add_or_update,
     )
 
-    human_results: list[ProcessingContext] = results if summary_mode else view_results
+    human_results: list[ProcessingContext] = results if summary_mode else filtered.view_results
 
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         emit_processing_results_machine(
@@ -432,7 +433,7 @@ def check_command(
                 file_list_total=len(file_list),
                 view_results=human_results,
                 report=report,
-                unsupported_count=unsupported_count,
+                unsupported_count=filtered.unsupported_count_all,
                 fmt=fmt,
                 verbosity_level=verbosity_level,
                 summary_mode=summary_mode,

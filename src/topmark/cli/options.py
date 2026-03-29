@@ -45,12 +45,12 @@ from topmark.cli.console.color import ColorMode
 from topmark.cli.errors import TopmarkCliUsageError
 from topmark.cli.keys import CliOpt
 from topmark.cli.keys import CliShortOpt
-from topmark.cli.reporting import ReportScope
 from topmark.config.policy import EmptyInsertMode
 from topmark.config.policy import HeaderMutationMode
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
 from topmark.core.logging import get_logger
+from topmark.pipeline.reporting import ReportScope
 
 if TYPE_CHECKING:
     from collections.abc import Callable

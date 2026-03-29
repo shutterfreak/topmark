@@ -59,6 +59,15 @@ for insertion. These values intentionally mirror the internal `HeaderMutationMod
 strings without exposing the internal enum class as part of the public API.
 """
 
+PublicReportScopeLiteral = Literal[
+    "actionable",
+    "noncompliant",
+    "all",
+]
+"""Public, JSON-friendly tokens for configuring how returned run results should be filtered.
+These values intentionally mirror the internal `ReportScope.value` strings without exposing
+the internal enum class as part of the public API."""
+
 
 class PublicFileType(Protocol):
     """Minimal public contract for a file type.

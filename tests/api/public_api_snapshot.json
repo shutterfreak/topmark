@@ -6,10 +6,10 @@
   "ProcessorInfo": "<class>",
   "RunResult": "<class>",
   "VersionInfo": "<class>",
-  "check": "(paths: 'Iterable[Path | str]', *, apply: 'bool' = False, diff: 'bool' = False, config: 'Mapping[str, object] | None' = None, policy: 'PublicPolicy | None' = None, policy_by_type: 'Mapping[str, PublicPolicy] | None' = None, include_file_types: 'Sequence[str] | None' = None, exclude_file_types: 'Sequence[str] | None' = None, skip_compliant: 'bool' = False, skip_unsupported: 'bool' = False, prune: 'bool' = False) -> 'RunResult'",
+  "check": "(paths: 'Iterable[Path | str]', *, apply: 'bool' = False, diff: 'bool' = False, config: 'Mapping[str, object] | None' = None, policy: 'PublicPolicy | None' = None, policy_by_type: 'Mapping[str, PublicPolicy] | None' = None, include_file_types: 'Sequence[str] | None' = None, exclude_file_types: 'Sequence[str] | None' = None, report: 'PublicReportScopeLiteral' = 'all', prune: 'bool' = False) -> 'RunResult'",
   "get_version_info": "(*, semver: 'bool' = False) -> 'VersionInfo'",
   "get_version_text": "() -> 'str'",
   "list_filetypes": "() -> 'list[FileTypeInfo]'",
   "list_processors": "() -> 'list[ProcessorInfo]'",
-  "strip": "(paths: 'Iterable[Path | str]', *, apply: 'bool' = False, diff: 'bool' = False, config: 'Mapping[str, object] | None' = None, policy: 'PublicPolicy | None' = None, policy_by_type: 'Mapping[str, PublicPolicy] | None' = None, include_file_types: 'Sequence[str] | None' = None, exclude_file_types: 'Sequence[str] | None' = None, skip_compliant: 'bool' = False, skip_unsupported: 'bool' = False, prune: 'bool' = False) -> 'RunResult'"
+  "strip": "(paths: 'Iterable[Path | str]', *, apply: 'bool' = False, diff: 'bool' = False, config: 'Mapping[str, object] | None' = None, policy: 'PublicPolicy | None' = None, policy_by_type: 'Mapping[str, PublicPolicy] | None' = None, include_file_types: 'Sequence[str] | None' = None, exclude_file_types: 'Sequence[str] | None' = None, report: 'PublicReportScopeLiteral' = 'all', prune: 'bool' = False) -> 'RunResult'"
 }

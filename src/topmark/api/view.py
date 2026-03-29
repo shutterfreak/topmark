@@ -35,15 +35,14 @@ from topmark.pipeline.outcomes import NO_REASON_PROVIDED
 from topmark.pipeline.outcomes import ResultBucket
 from topmark.pipeline.outcomes import classify_outcome
 from topmark.pipeline.outcomes import map_bucket
-from topmark.pipeline.status import ComparisonStatus
-from topmark.pipeline.status import ContentStatus
-from topmark.pipeline.status import GenerationStatus
+from topmark.pipeline.reporting import ReportFilterResult
+from topmark.pipeline.reporting import ReportScope
+from topmark.pipeline.reporting import filter_results_for_report
 from topmark.pipeline.status import PlanStatus
-from topmark.pipeline.status import ResolveStatus
-from topmark.pipeline.status import StripStatus
 from topmark.pipeline.status import WriteStatus
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from collections.abc import Mapping
     from collections.abc import Sequence
 
@@ -82,87 +81,6 @@ def to_file_result(ctx: ProcessingContext, *, apply: bool) -> FileResult:
         bucket_key=key,
         bucket_label=label,
     )
-
-
-# --- View filtering helpers ---------------------------------------------------
-
-
-def filter_view_results(
-    results: list[ProcessingContext],
-    *,
-    skip_compliant: bool,
-    skip_unsupported: bool,
-) -> list[ProcessingContext]:
-    """Apply --skip-compliant and --skip-unsupported filters to a results list.
-
-    Args:
-        results: Full list of ProcessingContext results.
-        skip_compliant: If True, filter out files that are compliant/unchanged.
-        skip_unsupported: If True, filter out files that were skipped as unsupported.
-
-    Returns:
-        Filtered list of ProcessingContext results.
-    """
-    view: list[ProcessingContext] = results
-    if skip_compliant:
-        view = [
-            r
-            for r in view
-            if not (
-                r.status.resolve == ResolveStatus.RESOLVED
-                and r.status.content == ContentStatus.OK
-                and (
-                    # “check/update” style: rendered or no-fields and unchanged
-                    (
-                        r.status.comparison == ComparisonStatus.UNCHANGED
-                        and r.status.generation
-                        in {
-                            GenerationStatus.GENERATED,
-                            GenerationStatus.NO_FIELDS,
-                        }
-                    )
-                    # “strip” style: nothing to strip (image unchanged is implied)
-                    or r.status.strip == StripStatus.NOT_NEEDED
-                )
-            )
-        ]
-
-    if skip_unsupported:
-        view = [
-            r
-            for r in view
-            if r.status.resolve
-            not in {
-                ResolveStatus.UNSUPPORTED,
-                ResolveStatus.TYPE_RESOLVED_HEADERS_UNSUPPORTED,
-                ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED,
-            }
-        ]
-
-    return view
-
-
-def apply_view_filter(
-    results: list[ProcessingContext],
-    *,
-    skip_compliant: bool,
-    skip_unsupported: bool,
-) -> tuple[list[ProcessingContext], int]:
-    """Apply view filtering and return `(filtered_results, skipped_count)`.
-
-    Args:
-        results: Raw pipeline results.
-        skip_compliant: If `True`, hide compliant files.
-        skip_unsupported: If `True`, hide unsupported files.
-
-    Returns:
-        The filtered results and the number of results excluded by view-level filtering.
-    """
-    view_results: list[ProcessingContext] = filter_view_results(
-        results, skip_compliant=skip_compliant, skip_unsupported=skip_unsupported
-    )
-    skipped: int = len(results) - len(view_results)
-    return view_results, skipped
 
 
 def summarize(files: Sequence[FileResult]) -> Mapping[str, int]:
@@ -260,24 +178,25 @@ def finalize_run_result(
     results: list[ProcessingContext],
     file_list: list[Path],
     apply: bool,
-    skip_compliant: bool,
-    skip_unsupported: bool,
+    report: ReportScope,
+    would_change: Callable[[ProcessingContext], bool],
     update_statuses: set[PlanStatus],
     encountered_error_code: ExitCode | None,
 ) -> RunResult:
-    """Assemble a `RunResult` from pipeline results with consistent view filtering.
+    """Assemble a `RunResult` from pipeline results with consistent report filtering.
 
     This helper centralizes common post-run logic used by `check()` and `strip()`
-    to avoid duplication and drift (filtering, summarization, diagnostics, and
-    write/failed counts).
+    to avoid duplication and drift (report filtering, summarization, diagnostics,
+    and write/failed counts).
 
     Args:
         results: Raw pipeline results (unfiltered).
         file_list: Resolved input files for the run.
         apply: Whether the run was in apply mode (affects counting).
-        skip_compliant: If `True`, hide compliant files in the returned view.
-        skip_unsupported: If `True`, hide unsupported files in the view.
-        update_statuses: Which `UpdateStatus` values count as "updated".
+        report: Public report-scope selection for the returned view.
+        would_change: Predicate describing whether a result represents a file
+            TopMark would change (or did change, depending on caller context).
+        update_statuses: Which `PlanStatus` values count as written/updated.
         encountered_error_code: Fatal exit code if any was encountered.
 
     Returns:
@@ -286,11 +205,12 @@ def finalize_run_result(
     if not file_list:
         return RunResult(files=(), summary={}, had_errors=False)
 
-    view_results: list[ProcessingContext]
-    skipped: int
-    view_results, skipped = apply_view_filter(
-        results, skip_compliant=skip_compliant, skip_unsupported=skip_unsupported
+    filtered: ReportFilterResult = filter_results_for_report(
+        results,
+        report=report,
+        would_change=would_change,
     )
+    view_results: list[ProcessingContext] = filtered.view_results
     files: tuple[FileResult, ...] = tuple(to_file_result(r, apply=apply) for r in view_results)
     summary: Mapping[str, int] = summarize(files)
 
@@ -317,11 +237,11 @@ def finalize_run_result(
     return RunResult(
         files=files,
         summary=summary,
-        bucket_summary=bucket_summary,
         had_errors=had_errors,
-        skipped=skipped,
+        skipped=filtered.skipped_count,
         written=written,
         failed=failed,
+        bucket_summary=bucket_summary,
         diagnostics=diagnostics,
         diagnostic_totals=diagnostic_totals,
         diagnostic_totals_all=diagnostic_totals_all,

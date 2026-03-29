@@ -17,6 +17,7 @@ config/policy resolution helpers. They verify that public overlays are:
 * applied globally
 * applied per file type
 * able to override policy coming from an explicit config mapping
+* accepted by `strip()` for shared policy fields
 """
 
 from __future__ import annotations
@@ -129,3 +130,109 @@ def test_api_public_policy_overlay_overrides_explicit_config_policy(
     assert r.had_errors is False
     assert r.written >= 1
     assert has_header(read_text(target), proc_py, "\n")
+
+
+def test_api_allow_header_in_empty_files_enables_empty_file_insertion(
+    tmp_path: Path,
+    proc_py: HeaderProcessor,
+) -> None:
+    """Global API policy overlays should allow insertion into an empty file."""
+    target: Path = tmp_path / "empty.py"
+    target.write_text("", encoding="utf-8")
+
+    # Default policy should leave the truly empty file untouched.
+    r_default: api.RunResult = api.check(
+        [target],
+        apply=True,
+        include_file_types=["python"],
+    )
+    assert r_default.had_errors is False
+    assert r_default.written == 0
+    assert read_text(target) == ""
+
+    # Public policy overlay should allow insertion into the empty file.
+    target.write_text("", encoding="utf-8")
+    r_allowed: api.RunResult = api.check(
+        [target],
+        apply=True,
+        include_file_types=["python"],
+        policy=PublicPolicy(
+            allow_header_in_empty_files=True,
+        ),
+    )
+    assert r_allowed.had_errors is False
+    assert r_allowed.written >= 1
+    assert has_header(read_text(target), proc_py, "\n")
+
+
+def test_api_empty_insert_mode_whitespace_empty_affects_whitespace_only_input(
+    tmp_path: Path,
+    proc_py: HeaderProcessor,
+) -> None:
+    """Global API empty-insert policy should affect whitespace-only input."""
+    target: Path = tmp_path / "whitespace_only.py"
+    whitespace_only: str = " \n \n"
+
+    # Under the default empty-insert mode, this input is not treated as empty,
+    # so normal insertion may proceed.
+    target.write_text(whitespace_only, encoding="utf-8")
+    r_default: api.RunResult = api.check(
+        [target],
+        apply=True,
+        include_file_types=["python"],
+    )
+    assert r_default.had_errors is False
+    assert has_header(read_text(target), proc_py, "\n")
+
+    # Under whitespace-empty mode, the same input is classified as empty and the
+    # default policy still forbids insertion into empty files.
+    target.write_text(whitespace_only, encoding="utf-8")
+    r_whitespace_empty: api.RunResult = api.check(
+        [target],
+        apply=True,
+        include_file_types=["python"],
+        policy=PublicPolicy(
+            empty_insert_mode="whitespace_empty",
+        ),
+    )
+    assert r_whitespace_empty.had_errors is False
+    assert r_whitespace_empty.written == 0
+    assert read_text(target) == whitespace_only
+    assert not has_header(read_text(target), proc_py, "\n")
+
+
+def test_api_strip_accepts_shared_policy_overlay(
+    repo_py_with_header: Path,
+    proc_py: HeaderProcessor,
+) -> None:
+    """`strip()` should accept shared policy overlays without changing strip semantics."""
+    target: Path = repo_py_with_header / "src" / "with_header.py"
+    assert has_header(read_text(target), proc_py, "\n")
+
+    r: api.RunResult = api.strip(
+        [target],
+        apply=True,
+        include_file_types=["python"],
+        policy=PublicPolicy(
+            allow_content_probe=False,
+        ),
+    )
+
+    assert r.had_errors is False
+    assert r.written >= 1
+    assert not has_header(read_text(target), proc_py, "\n")
+
+
+def test_api_invalid_policy_by_type_header_mutation_mode_raises_invalid_policy_error(
+    repo_py_with_and_without_header: Path,
+) -> None:
+    """Invalid per-type public `header_mutation_mode` values must be rejected."""
+    with pytest.raises(InvalidPolicyError):
+        _ = api.check(
+            [repo_py_with_and_without_header / "src"],
+            apply=False,
+            include_file_types=["python"],
+            policy_by_type={
+                "python": unsafe_public_policy({"header_mutation_mode": "bogus"}),
+            },
+        )

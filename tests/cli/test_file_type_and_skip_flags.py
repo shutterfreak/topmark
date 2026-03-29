@@ -29,9 +29,9 @@ from tests.cli.conftest import assert_SUCCESS_or_WOULD_CHANGE
 from tests.cli.conftest import run_cli
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
-from topmark.cli.reporting import ReportScope
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
+from topmark.pipeline.reporting import ReportScope
 from topmark.pipeline.status import ResolveStatus
 from topmark.pipeline.status import StripStatus
 

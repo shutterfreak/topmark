@@ -49,8 +49,8 @@ if TYPE_CHECKING:
     from click.core import ParameterSource
 
     from topmark.cli.console.protocols import ConsoleProtocol
-    from topmark.cli.reporting import ReportScope
     from topmark.core.logging import TopmarkLogger
+    from topmark.pipeline.reporting import ReportScope
 
 
 logger: TopmarkLogger = get_logger(__name__)

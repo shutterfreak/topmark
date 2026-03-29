@@ -24,6 +24,7 @@ from tests.conftest import make_file_type
 from tests.conftest import registry_processor_class
 from topmark import api
 from topmark.api.protocols import PublicPolicy
+from topmark.api.protocols import PublicReportScopeLiteral
 from topmark.config.keys import Toml
 from topmark.processors.types import BoundsKind
 from topmark.processors.types import HeaderBounds
@@ -110,8 +111,7 @@ def api_check_dir(
     *,
     apply: bool = False,
     policy: PublicPolicy | None = None,
-    skip_compliant: bool = False,
-    skip_unsupported: bool = False,
+    report: PublicReportScopeLiteral = "all",
     include_file_types: Iterable[str] | None = None,
     exclude_file_types: Iterable[str] | None = None,
     prune: bool = False,
@@ -119,6 +119,18 @@ def api_check_dir(
     """Run [`topmark.api.check`][topmark.api.check] against `root / 'src'` with common defaults.
 
     By default, does not exclude any file types (no blacklist).
+
+    Args:
+        root: Repository-like temporary root whose `src/` subtree should be processed.
+        apply: Whether to run in apply mode.
+        policy: Optional public policy overlay.
+        report: Report-scope selection for the returned API view.
+        include_file_types: Optional whitelist of file type identifiers.
+        exclude_file_types: Optional blacklist of file type identifiers.
+        prune: Whether to prune heavy views in the returned `RunResult`.
+
+    Returns:
+        Result of `api.check(...)` over `root / "src"`.
     """
     paths: list[Path] = [root / "src"]
     return api.check(
@@ -128,8 +140,7 @@ def api_check_dir(
         include_file_types=list(include_file_types) if include_file_types else None,
         exclude_file_types=list(exclude_file_types) if exclude_file_types else None,
         policy=policy,
-        skip_compliant=skip_compliant,
-        skip_unsupported=skip_unsupported,
+        report=report,
         prune=prune,
     )
 
@@ -139,8 +150,7 @@ def api_strip_dir(
     *,
     apply: bool = False,
     policy: PublicPolicy | None = None,
-    skip_compliant: bool = False,
-    skip_unsupported: bool = False,
+    report: PublicReportScopeLiteral = "all",
     include_file_types: Iterable[str] | None = None,
     exclude_file_types: Iterable[str] | None = None,
     prune: bool = False,
@@ -148,6 +158,18 @@ def api_strip_dir(
     """Run [`topmark.api.strip`][topmark.api.strip] against `root / 'src'` with common defaults.
 
     By default, does not exclude any file types (no blacklist).
+
+    Args:
+        root: Repository-like temporary root whose `src/` subtree should be processed.
+        apply: Whether to run in apply mode.
+        policy: Optional public policy overlay.
+        report: Report-scope selection for the returned API view.
+        include_file_types: Optional whitelist of file type identifiers.
+        exclude_file_types: Optional blacklist of file type identifiers.
+        prune: Whether to prune heavy views in the returned `RunResult`.
+
+    Returns:
+        Result of `api.strip(...)` over `root / "src"`.
     """
     paths: list[Path] = [root / "src"]
     return api.strip(
@@ -157,8 +179,7 @@ def api_strip_dir(
         include_file_types=list(include_file_types) if include_file_types else None,
         exclude_file_types=list(exclude_file_types) if exclude_file_types else None,
         policy=policy,
-        skip_compliant=skip_compliant,
-        skip_unsupported=skip_unsupported,
+        report=report,
         prune=prune,
     )
 

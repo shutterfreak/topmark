@@ -174,15 +174,13 @@ class RunResult:
     output formats.
 
     Attributes:
-        files: Ordered sequence of per-file results
-            **after view filtering** (e.g. respecting ``skip_compliant`` or
-            ``skip_unsupported``).
+        files: Ordered sequence of per-file results **after report-scope filtering**.
         summary: Mapping from public outcome values
             (``Outcome.value``) to counts for the returned ``files``.
         had_errors: ``True`` if any file encountered an error during
             processing, computed from the **unfiltered** result set so that
-            real errors are not hidden by view filters.
-        skipped: Number of results excluded by view filtering.
+            real errors are not hidden by report filtering.
+        skipped: Number of results excluded by report-scope filtering.
         written: Number of files successfully written
             (only meaningful when ``apply=True``; otherwise ``0``).
         failed: Number of files that failed to write
@@ -195,7 +193,7 @@ class RunResult:
         diagnostic_totals: Aggregate diagnostic counts
             across the returned (filtered) view.
         diagnostic_totals_all: Aggregate diagnostic
-            counts across the entire run (pre view filtering).
+            counts across the entire run (pre report filtering).
 
     Notes:
         - ``summary`` is strictly derived from ``files`` and reflects only the

@@ -26,13 +26,13 @@ from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.cli.presentation import TextStyler
 from topmark.cli.presentation import style_for_role
-from topmark.cli.reporting import ReportScope
 from topmark.core.formats import OutputFormat
 from topmark.core.presentation import StyleRole
 from topmark.pipeline.context.policy import effective_would_add_or_update
 from topmark.pipeline.context.policy import effective_would_strip
 from topmark.pipeline.outcomes import Intent
 from topmark.pipeline.outcomes import determine_intent
+from topmark.pipeline.reporting import ReportScope
 from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.status import WriteStatus
 from topmark.presentation.markdown.pipeline import render_pipeline_banner_markdown

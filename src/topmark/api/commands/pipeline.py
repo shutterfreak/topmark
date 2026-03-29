@@ -20,9 +20,8 @@ Call styles:
 Notes:
 - These functions orchestrate selection of a pipeline variant and delegate execution to
   `topmark.api.runtime.run_pipeline`.
-- View flags (`skip_compliant`, `skip_unsupported`) affect only what is returned, not what
-  is eligible to be written when `apply=True`.
-- Machine output is returned as a `RunResult` and contains no colorized/human rendering.
+- Returned results are filtered via the public reporting knob exposed by the API result/view layer,
+  not via legacy `skip_*` booleans.
 """
 
 from __future__ import annotations
@@ -32,6 +31,10 @@ from typing import TYPE_CHECKING
 from topmark.api.runtime import run_pipeline
 from topmark.api.runtime import select_pipeline
 from topmark.api.view import finalize_run_result
+from topmark.core.errors import InvalidReportScopeError
+from topmark.pipeline.context.policy import effective_would_add_or_update
+from topmark.pipeline.context.policy import effective_would_strip
+from topmark.pipeline.reporting import ReportScope
 from topmark.pipeline.status import PlanStatus
 
 if TYPE_CHECKING:
@@ -41,6 +44,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.api.protocols import PublicPolicy
+    from topmark.api.protocols import PublicReportScopeLiteral
     from topmark.api.types import RunResult
     from topmark.config.model import Config
     from topmark.core.exit_codes import ExitCode
@@ -53,6 +57,17 @@ __all__ = (
 )
 
 
+def _resolve_public_report_scope(value: PublicReportScopeLiteral) -> ReportScope:
+    """Return the internal enum for a public report-scope token."""
+    try:
+        return ReportScope(value)
+    except ValueError as exc:
+        raise InvalidReportScopeError(
+            message=f"Invalid value for report: {value!r}",
+            report_value=value,
+        ) from exc
+
+
 def check(
     paths: Iterable[Path | str],
     *,
@@ -63,8 +78,7 @@ def check(
     policy_by_type: Mapping[str, PublicPolicy] | None = None,
     include_file_types: Sequence[str] | None = None,
     exclude_file_types: Sequence[str] | None = None,
-    skip_compliant: bool = False,
-    skip_unsupported: bool = False,
+    report: PublicReportScopeLiteral = "all",
     prune: bool = False,
 ) -> RunResult:
     """Validate or apply TopMark headers for the given paths.
@@ -86,17 +100,15 @@ def check(
         policy_by_type: Optional per-type policy overrides (public shape) merged after discovery.
         include_file_types: Optional whitelist of file type identifiers to restrict discovery.
         exclude_file_types: Optional blacklist of file type identifiers to exclude from discovery.
-        skip_compliant: Exclude already-compliant files from the returned view.
-        skip_unsupported: Exclude unsupported files from the returned view.
+        report: Reporting scope for the returned API view (`actionable`, `noncompliant`, or `all`).
         prune: If `True`, trim heavy views after the run (keeps summaries).
 
     Returns:
         Filtered per-file outcomes, counts, diagnostics, and write stats.
 
     Notes:
-        The `skip_compliant` and `skip_unsupported` flags affect only the **returned view** (which
-        files appear and how counts are summarized). They do not change which files are *eligible*
-        to be written when `apply=True`.
+        Reporting/view filtering is handled by the public result/view layer. It does not change
+        which files are *eligible* to be written when `apply=True`.
     """
     # Choose the concrete pipeline variant
     pipeline: Sequence[Step[ProcessingContext]] = select_pipeline("check", apply=apply, diff=diff)
@@ -124,12 +136,15 @@ def check(
         PlanStatus.REPLACED,
         PlanStatus.REMOVED,
     }
+
+    report_scope: ReportScope = _resolve_public_report_scope(report)
+
     return finalize_run_result(
         results=results,
         file_list=file_list,
         apply=apply,
-        skip_compliant=skip_compliant,
-        skip_unsupported=skip_unsupported,
+        report=report_scope,
+        would_change=effective_would_add_or_update,
         update_statuses=update_statuses,
         encountered_error_code=encountered_error_code,
     )
@@ -145,8 +160,7 @@ def strip(
     policy_by_type: Mapping[str, PublicPolicy] | None = None,
     include_file_types: Sequence[str] | None = None,
     exclude_file_types: Sequence[str] | None = None,
-    skip_compliant: bool = False,
-    skip_unsupported: bool = False,
+    report: PublicReportScopeLiteral = "all",
     prune: bool = False,
 ) -> RunResult:
     """Remove TopMark headers from files (dry-run or apply).
@@ -167,15 +181,14 @@ def strip(
         policy_by_type: Optional per-type policy overrides (public shape).
         include_file_types: Optional whitelist of file type identifiers to restrict discovery.
         exclude_file_types: Optional blacklist of file type identifiers to exclude from discovery.
-        skip_compliant: Exclude already-compliant files from the returned view.
-        skip_unsupported: Exclude unsupported files from the returned view.
+        report: Reporting scope for the returned API view (`actionable`, `noncompliant`, or `all`).
         prune: If `True`, trim heavy views after the run (keeps summaries).
 
     Returns:
         Filtered per-file outcomes, counts, diagnostics, and write stats.
 
     Notes:
-        The `skip_*` flags affect only the **returned view** and do not modify
+        Reporting/view filtering is handled by the public result/view layer and does not modify
         pipeline write decisions.
     """
     # Choose the concrete pipeline variant
@@ -202,12 +215,15 @@ def strip(
     update_statuses: set[PlanStatus] = {
         PlanStatus.REMOVED,
     }
+
+    report_scope: ReportScope = _resolve_public_report_scope(report)
+
     return finalize_run_result(
         results=results,
         file_list=file_list,
         apply=apply,
-        skip_compliant=skip_compliant,
-        skip_unsupported=skip_unsupported,
+        report=report_scope,
+        would_change=effective_would_strip,
         update_statuses=update_statuses,
         encountered_error_code=encountered_error_code,
     )

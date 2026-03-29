@@ -404,3 +404,29 @@ class InvalidPolicyError(TopmarkError):
             )
         )
         self.policy_key: Final[str | None] = policy_key
+
+
+class InvalidReportScopeError(TopmarkError):
+    """Raised when a supplied report-scope value is invalid or malformed.
+
+    This is intended for API-facing reporting/view boundaries where invalid
+    scalar values should be rejected explicitly.
+
+    Args:
+        message: Human-readable error message.
+        report_value: Optional invalid public report-scope token.
+    """
+
+    def __init__(
+        self,
+        *,
+        message: str,
+        report_value: str | None = None,
+    ) -> None:
+        super().__init__(
+            ErrorContext(
+                message=message,
+                qualified_key=report_value,
+            )
+        )
+        self.report_value: Final[str | None] = report_value

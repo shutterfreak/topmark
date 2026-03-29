@@ -92,17 +92,21 @@ def test_check_apply_update_only_does_not_add_new_headers(
     assert has_header(read_text(a), proc_py, "\n") is False
 
 
-def test_skip_compliant_filters_out_b_py_in_view(repo_py_with_and_without_header: Path) -> None:
-    """skip_compliant: b.py filtered out, a.py remains."""
+def test_report_actionable_filters_out_compliant_b_py_in_view(
+    repo_py_with_and_without_header: Path,
+) -> None:
+    """`report=actionable` filters out compliant files while keeping actionable ones."""
     r: api.RunResult = api_check_dir(
-        repo_py_with_and_without_header, apply=False, skip_compliant=True
+        repo_py_with_and_without_header,
+        apply=False,
+        report="actionable",
     )
     returned_paths: set[Path] = {fr.path for fr in r.files}
     a: Path = repo_py_with_and_without_header / "src" / "without_header.py"
     b: Path = repo_py_with_and_without_header / "src" / "with_header.py"
 
-    assert a in returned_paths  # non-compliant remains visible
-    assert b not in returned_paths  # compliant filtered out
+    assert a in returned_paths  # actionable file remains visible
+    assert b not in returned_paths  # compliant file is filtered out
     assert r.skipped >= 1
 
 
