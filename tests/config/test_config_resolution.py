@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.conftest import group_patterns
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.io.deserializers import mutable_config_from_toml_dict
 from topmark.config.io.deserializers import mutable_config_from_toml_file
@@ -552,28 +553,40 @@ _empty_str_set: set[str] = set()
 
 @pytest.mark.pipeline
 @pytest.mark.parametrize(
-    "key,bad_value,attr,expect_empty",
+    "key,_kind,expect_empty",
     [
-        (Toml.KEY_INCLUDE_PATTERNS, True, "include_patterns", _empty_str_list),
-        (Toml.KEY_EXCLUDE_PATTERNS, True, "exclude_patterns", _empty_str_list),
-        (Toml.KEY_INCLUDE_FROM, True, "include_from", _empty_str_list),
-        (Toml.KEY_EXCLUDE_FROM, True, "exclude_from", _empty_str_list),
-        (Toml.KEY_FILES_FROM, True, "files_from", _empty_str_list),
-        (Toml.KEY_INCLUDE_FILE_TYPES, True, "include_file_types", _empty_str_set),
-        (Toml.KEY_EXCLUDE_FILE_TYPES, True, "exclude_file_types", _empty_str_set),
+        (Toml.KEY_INCLUDE_PATTERNS, "pattern_groups", _empty_str_list),
+        (Toml.KEY_EXCLUDE_PATTERNS, "pattern_groups", _empty_str_list),
+        (Toml.KEY_INCLUDE_FROM, "attr", _empty_str_list),
+        (Toml.KEY_EXCLUDE_FROM, "attr", _empty_str_list),
+        (Toml.KEY_FILES_FROM, "attr", _empty_str_list),
+        (Toml.KEY_INCLUDE_FILE_TYPES, "attr", _empty_str_set),
+        (Toml.KEY_EXCLUDE_FILE_TYPES, "attr", _empty_str_set),
     ],
 )
 def test_files_list_valued_keys_wrong_type_is_treated_as_empty(
     key: str,
-    bad_value: TomlValue,
-    attr: str,
+    _kind: str,
     expect_empty: object,
 ) -> None:
     """Wrong-type list values in [files] are treated as empty (must not crash)."""
-    toml_dict: TomlTable = {Toml.SECTION_FILES: {key: bad_value}}
+    toml_dict: TomlTable = {Toml.SECTION_FILES: {key: True}}
     draft: MutableConfig = mutable_config_from_toml_dict(toml_dict)
 
-    assert getattr(draft, attr) == expect_empty
+    if key == Toml.KEY_INCLUDE_PATTERNS:
+        assert group_patterns(draft.include_pattern_groups) == expect_empty
+    elif key == Toml.KEY_EXCLUDE_PATTERNS:
+        assert group_patterns(draft.exclude_pattern_groups) == expect_empty
+    elif key == Toml.KEY_INCLUDE_FROM:
+        assert draft.include_from == expect_empty
+    elif key == Toml.KEY_EXCLUDE_FROM:
+        assert draft.exclude_from == expect_empty
+    elif key == Toml.KEY_FILES_FROM:
+        assert draft.files_from == expect_empty
+    elif key == Toml.KEY_INCLUDE_FILE_TYPES:
+        assert draft.include_file_types == expect_empty
+    else:
+        assert draft.exclude_file_types == expect_empty
 
 
 @pytest.mark.pipeline
@@ -605,16 +618,16 @@ def test_include_from_mixed_types_ignores_non_strings(
 
 @pytest.mark.pipeline
 @pytest.mark.parametrize(
-    "key,attr",
+    "key,is_include",
     [
-        (Toml.KEY_INCLUDE_PATTERNS, "include_patterns"),
-        (Toml.KEY_EXCLUDE_PATTERNS, "exclude_patterns"),
+        (Toml.KEY_INCLUDE_PATTERNS, True),
+        (Toml.KEY_EXCLUDE_PATTERNS, False),
     ],
 )
 def test_glob_patterns_mixed_types_ignores_non_strings(
     caplog: pytest.LogCaptureFixture,
     key: str,
-    attr: str,
+    is_include: bool,
 ) -> None:
     """Non-string entries in [files].(include|exclude)_patterns are ignored with a warning."""
     caplog.set_level("WARNING")
@@ -623,7 +636,10 @@ def test_glob_patterns_mixed_types_ignores_non_strings(
         {Toml.SECTION_FILES: {key: ["src/**/*.py", 123]}},
     )
 
-    assert getattr(draft, attr) == ["src/**/*.py"]
+    patterns: list[str] = group_patterns(
+        draft.include_pattern_groups if is_include else draft.exclude_pattern_groups
+    )
+    assert patterns == ["src/**/*.py"]
 
     assert_warned_and_diagnosed(
         caplog=caplog,
@@ -635,16 +651,16 @@ def test_glob_patterns_mixed_types_ignores_non_strings(
 
 @pytest.mark.pipeline
 @pytest.mark.parametrize(
-    "key,attr",
+    "key,is_include",
     [
-        (Toml.KEY_INCLUDE_PATTERNS, "include_patterns"),
-        (Toml.KEY_EXCLUDE_PATTERNS, "exclude_patterns"),
+        (Toml.KEY_INCLUDE_PATTERNS, True),
+        (Toml.KEY_EXCLUDE_PATTERNS, False),
     ],
 )
 def test_glob_patterns_all_non_strings_results_in_empty_list(
     caplog: pytest.LogCaptureFixture,
     key: str,
-    attr: str,
+    is_include: str,
 ) -> None:
     """If all entries are non-strings, the patterns list becomes empty (and warnings emitted)."""
     caplog.set_level("WARNING")
@@ -653,7 +669,10 @@ def test_glob_patterns_all_non_strings_results_in_empty_list(
         {Toml.SECTION_FILES: {key: [True, 123]}},
     )
 
-    assert getattr(draft, attr) == []
+    patterns: list[str] = group_patterns(
+        draft.include_pattern_groups if is_include else draft.exclude_pattern_groups
+    )
+    assert patterns == []
 
     assert_warned_and_diagnosed(
         caplog=caplog,
@@ -947,7 +966,13 @@ def test_extend_pattern_sources_resolves_relative_paths_against_base(tmp_path: P
     (cfg_dir / "a.txt").write_text("x", encoding="utf-8")
 
     dst: list[PatternSource] = []
-    extend_pattern_sources(dst, ["a.txt"], pattern_source_from_config, "include_from", cfg_dir)
+    extend_pattern_sources(
+        ["a.txt"],
+        dst=dst,
+        mk=pattern_source_from_config,
+        kind="include_from",
+        base=cfg_dir,
+    )
 
     assert len(dst) == 1
     assert dst[0].path == (cfg_dir / "a.txt").resolve()

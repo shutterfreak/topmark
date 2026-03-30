@@ -430,3 +430,10 @@ class InvalidReportScopeError(TopmarkError):
             )
         )
         self.report_value: Final[str | None] = report_value
+
+
+class TomlRenderError(TopmarkError):
+    """Raised when TOML rendering fails due to invalid inputs or internal invariants."""
+
+    def __init__(self, *, message: str, details: tuple[str, ...] = ()) -> None:
+        super().__init__(ErrorContext(message=message, details=details))

@@ -47,6 +47,7 @@ from typing import cast
 import pytest
 
 from topmark.config.io.deserializers import mutable_config_from_defaults
+from topmark.config.types import PatternGroup
 from topmark.config.types import PatternSource
 from topmark.core import logging
 from topmark.filetypes.model import ContentGate
@@ -251,6 +252,47 @@ def to_pattern_sources(values: Sequence[str | Path | PatternSource]) -> list[Pat
     return out
 
 
+def to_pattern_groups(
+    values: Sequence[str | PatternGroup],
+    *,
+    base: Path | None = None,
+) -> list[PatternGroup]:
+    """Coerce a sequence of strings or PatternGroup into PatternGroup list.
+
+    Plain string entries are grouped into a single `PatternGroup` whose base defaults to the
+    current working directory. Existing `PatternGroup` instances are preserved as-is.
+
+    Args:
+        values: Items to coerce.
+        base: Optional base directory for plain string pattern entries.
+
+    Returns:
+        Coerced list of `PatternGroup` instances.
+    """
+    if not values:
+        return []
+
+    group_base: Path = (base or Path.cwd()).resolve()
+    out: list[PatternGroup] = []
+    raw_patterns: list[str] = []
+
+    for item in values:
+        if isinstance(item, PatternGroup):
+            out.append(item)
+            continue
+        raw_patterns.append(item)
+
+    if raw_patterns:
+        out.insert(0, PatternGroup(patterns=tuple(raw_patterns), base=group_base))
+
+    return out
+
+
+def group_patterns(groups: Sequence[PatternGroup]) -> list[str]:
+    """Flatten pattern strings from provenance-aware pattern groups."""
+    return [pattern for group in groups for pattern in group.patterns]
+
+
 def make_config(**overrides: Any) -> Config:
     """Return a frozen `Config` built from defaults and overrides.
 
@@ -280,6 +322,9 @@ def make_mutable_config(**overrides: Any) -> MutableConfig:
         **overrides: Keyword overrides to apply to the mutable builder.
             Keys `include_from`, `exclude_from`, and `files_from` may be sequences of
             strings, `Path`, or `PatternSource`; these are coerced to `PatternSource`.
+            Keys `include_patterns` and `exclude_patterns` may be sequences of strings or
+            `PatternGroup`; plain strings are grouped into a single provenance-aware
+            `PatternGroup` rooted at the current working directory.
 
     Returns:
         A mutable configuration object ready to be frozen or further edited.
@@ -294,7 +339,19 @@ def make_mutable_config(**overrides: Any) -> MutableConfig:
     if "files_from" in overrides:
         m.files_from = to_pattern_sources(overrides.pop("files_from"))
 
-    # Apply remaining overrides verbatim (files, patterns, types, etc.)
+    # Coerce flattened pattern overrides to provenance-aware groups.
+    if "include_patterns" in overrides:
+        m.include_pattern_groups = to_pattern_groups(overrides.pop("include_patterns"))
+    if "exclude_patterns" in overrides:
+        m.exclude_pattern_groups = to_pattern_groups(overrides.pop("exclude_patterns"))
+
+    # Allow direct group overrides for tests that want explicit provenance bases.
+    if "include_pattern_groups" in overrides:
+        m.include_pattern_groups = to_pattern_groups(overrides.pop("include_pattern_groups"))
+    if "exclude_pattern_groups" in overrides:
+        m.exclude_pattern_groups = to_pattern_groups(overrides.pop("exclude_pattern_groups"))
+
+    # Apply remaining overrides verbatim (files, types, config_files, etc.)
     for k, v in overrides.items():
         setattr(m, k, v)  # still allow direct overrides for convenience
 

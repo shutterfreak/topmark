@@ -64,6 +64,7 @@ if TYPE_CHECKING:
     from datetime import datetime
     from pathlib import Path
 
+    from topmark.config.types import PatternGroup
     from topmark.config.types import PatternSource
     from topmark.core.logging import TopmarkLogger
     from topmark.filetypes.model import FileType
@@ -105,7 +106,7 @@ class Config:
         field_values: Mapping of field names to their string values
             from [fields].
         align_fields: Whether to align fields, from [formatting].
-        relative_to_raw: Original string from config or CLI
+        relative_to_raw: Original string from config, API or CLI.
         relative_to: Base path used only for header metadata (e.g., file_relpath).
             Note: Glob expansion and filtering are resolved relative to their declaring source
             (config file dir or CWD for CLI), not relative_to.
@@ -117,8 +118,8 @@ class Config:
         exclude_from: Files containing exclude patterns.
         files_from: Paths to files that list newline-delimited candidate
             file paths to add before filtering.
-        include_patterns: Glob patterns to include.
-        exclude_patterns: Glob patterns to exclude.
+        include_pattern_groups: Glob patterns to include.
+        exclude_pattern_groups: Glob patterns to exclude.
         include_file_types: Whitelist of file type identifiers to restrict
             file discovery.
         exclude_file_types: Blacklist of file type identifiers to exclude from
@@ -178,8 +179,8 @@ class Config:
     exclude_from: tuple[PatternSource, ...]
     files_from: tuple[PatternSource, ...]
 
-    include_patterns: tuple[str, ...]
-    exclude_patterns: tuple[str, ...]
+    include_pattern_groups: tuple[PatternGroup, ...]
+    exclude_pattern_groups: tuple[PatternGroup, ...]
 
     # File types (linked to file extensions) to process (filter)
     include_file_types: frozenset[str]
@@ -235,10 +236,10 @@ class Config:
             stdin_mode=self.stdin_mode,
             stdin_filename=self.stdin_filename,
             files=list(self.files),
-            include_patterns=list(self.include_patterns),
             include_from=list(self.include_from),
-            exclude_patterns=list(self.exclude_patterns),
             exclude_from=list(self.exclude_from),
+            include_pattern_groups=list(self.include_pattern_groups),
+            exclude_pattern_groups=list(self.exclude_pattern_groups),
             files_from=list(self.files_from),
             include_file_types=set(self.include_file_types),
             exclude_file_types=set(self.exclude_file_types),
@@ -297,8 +298,8 @@ class MutableConfig:
         exclude_from: Files containing exclude patterns.
         files_from: Paths to files that list newline-delimited
             candidate file paths to add before filtering.
-        include_patterns: Glob patterns to include.
-        exclude_patterns: Glob patterns to exclude.
+        include_pattern_groups: Glob patterns to include.
+        exclude_pattern_groups: Glob patterns to exclude.
         include_file_types: file type identifiers to process.
         exclude_file_types: file type identifiers to exclude.
         diagnostics: Warnings or errors encountered while loading,
@@ -347,8 +348,8 @@ class MutableConfig:
     exclude_from: list[PatternSource] = field(default_factory=lambda: [])
     files_from: list[PatternSource] = field(default_factory=lambda: [])
 
-    include_patterns: list[str] = field(default_factory=lambda: [])
-    exclude_patterns: list[str] = field(default_factory=lambda: [])
+    include_pattern_groups: list[PatternGroup] = field(default_factory=lambda: [])
+    exclude_pattern_groups: list[PatternGroup] = field(default_factory=lambda: [])
 
     # File types filter
     include_file_types: set[str] = field(default_factory=lambda: set[str]())
@@ -418,8 +419,8 @@ class MutableConfig:
             include_from=tuple(self.include_from),
             exclude_from=tuple(self.exclude_from),
             files_from=tuple(self.files_from),
-            include_patterns=tuple(self.include_patterns),
-            exclude_patterns=tuple(self.exclude_patterns),
+            include_pattern_groups=tuple(self.include_pattern_groups),
+            exclude_pattern_groups=tuple(self.exclude_pattern_groups),
             include_file_types=frozenset(self.include_file_types),
             exclude_file_types=frozenset(self.exclude_file_types),
             diagnostics=self.diagnostics.freeze(),
@@ -493,11 +494,11 @@ class MutableConfig:
             else self.align_fields,
             stdin_mode=other.stdin_mode if other.stdin_mode is not None else self.stdin_mode,
             files=other.files or self.files,
-            include_patterns=other.include_patterns or self.include_patterns,
-            include_from=other.include_from or self.include_from,
-            exclude_patterns=other.exclude_patterns or self.exclude_patterns,
-            exclude_from=other.exclude_from or self.exclude_from,
             files_from=other.files_from or self.files_from,
+            include_from=other.include_from or self.include_from,
+            exclude_from=other.exclude_from or self.exclude_from,
+            include_pattern_groups=[*self.include_pattern_groups, *other.include_pattern_groups],
+            exclude_pattern_groups=[*self.exclude_pattern_groups, *other.exclude_pattern_groups],
             include_file_types=other.include_file_types or self.include_file_types,
             exclude_file_types=other.exclude_file_types or self.exclude_file_types,
             apply_changes=other.apply_changes

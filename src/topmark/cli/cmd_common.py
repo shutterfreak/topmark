@@ -44,6 +44,7 @@ from topmark.config.policy import EmptyInsertMode
 from topmark.config.policy import HeaderMutationMode
 from topmark.config.types import FileWriteStrategy
 from topmark.config.types import OutputTarget
+from topmark.constants import CLI_OVERRIDE_STR
 from topmark.core.keys import ArgKey
 from topmark.core.logging import resolve_env_log_level
 from topmark.core.logging import setup_logging
@@ -312,6 +313,7 @@ def build_config_for_plan(
 
     policy_overrides: PolicyOverrides = build_cli_policy_overrides_from_ctx(ctx)
     overrides: ConfigOverrides = ConfigOverrides(
+        config_origin=Path(CLI_OVERRIDE_STR),
         policy=policy_overrides,
         apply_changes=ctx.obj.get(ArgKey.APPLY_CHANGES),
         output_target=output_target,

@@ -51,6 +51,9 @@ class Toml:
     # Root / discovery
     KEY_ROOT: Final[str] = "root"
 
+    # Strict TOML config checking (fail on warnings)
+    KEY_STRICT_CONFIG_CHECKING: Final[str] = "strict_config_checking"
+
     # [header]
     SECTION_HEADER: Final[str] = "header"
 
@@ -96,6 +99,18 @@ class Toml:
     KEY_CONFIG_FILES: Final[str] = "config_files"
     KEY_FILES: Final[str] = "files"
 
+    # dump/provenance-only keys (emitted by config dump -–show-origin)
+    KEY_INCLUDE_PATTERN_GROUPS: Final[str] = "include_pattern_groups"
+    KEY_EXCLUDE_PATTERN_GROUPS: Final[str] = "exclude_pattern_groups"
+    KEY_INCLUDE_FROM_SOURCES: Final[str] = "include_from_sources"
+    KEY_EXCLUDE_FROM_SOURCES: Final[str] = "exclude_from_sources"
+    KEY_FILES_FROM_SOURCES: Final[str] = "files_from_sources"
+
+    # Keys used inside dump/provenance-only structured tables
+    KEY_BASE: Final[str] = "base"
+    KEY_PATH: Final[str] = "path"
+    KEY_PATTERNS: Final[str] = "patterns"
+
     # ---------------------------- Schema helpers ----------------------------
 
     # Allowed top-level keys under [tool.topmark] / topmark.toml.
@@ -103,6 +118,7 @@ class Toml:
     ALLOWED_TOP_LEVEL_KEYS: Final[frozenset[str]] = frozenset(
         {
             KEY_ROOT,
+            KEY_STRICT_CONFIG_CHECKING,
             SECTION_HEADER,
             SECTION_FIELDS,
             SECTION_FORMATTING,
@@ -169,5 +185,16 @@ class Toml:
             KEY_POLICY_ALLOW_EMPTY_HEADER,
             KEY_POLICY_ALLOW_REFLOW,
             KEY_POLICY_ALLOW_CONTENT_PROBE,
+        }
+    )
+
+    # dump/provenance-only keys (emitted by config dump -–show-origin)
+    DUMP_ONLY_FILES_KEYS: Final[frozenset[str]] = frozenset(
+        {
+            KEY_INCLUDE_PATTERN_GROUPS,
+            KEY_EXCLUDE_PATTERN_GROUPS,
+            KEY_INCLUDE_FROM_SOURCES,
+            KEY_EXCLUDE_FROM_SOURCES,
+            KEY_FILES_FROM_SOURCES,
         }
     )

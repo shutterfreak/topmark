@@ -26,6 +26,7 @@ from topmark.config.model import MutableConfig
 from topmark.config.paths import extend_pattern_sources
 from topmark.config.paths import pattern_source_from_cwd
 from topmark.config.policy import MutablePolicy
+from topmark.config.types import PatternGroup
 from topmark.constants import CLI_OVERRIDE_STR
 from topmark.core.logging import get_logger
 
@@ -61,7 +62,47 @@ class ConfigOverrides:
 
     `None` means "no override provided". Empty collections are meaningful and
     should therefore be preserved.
+
+    Attributes:
+        config_origin: provenance marker or path
+        config_base: real filesystem base for relative patterns and sources
+        strict_config_checking: If True, enforce strict config checking
+            (fail on warnings and errors).
+        policy: Global, resolved, immutable runtime policy (plain booleans),
+            applied after discovery.
+        policy_by_type: Per-file-type resolved policy overrides
+            (plain booleans), applied after discovery.
+        apply_changes: Runtime intent: whether to actually write changes (apply)
+            or preview only. None = inherit/unspecified, False = dry-run/preview, True = apply.
+        output_target: Where to send output: `"file"` or `"stdout"`.
+        file_write_strategy: How to write when `output_target == "file"`:
+            `"atomic"` (safe default) or `"inplace"` (fast, less safe).
+        stdin_mode: Whether to read from stdin; requires explicit True to activate.
+        stdin_filename: empty strings are ignored; only non-empty values are applied
+        files: List of files to process.
+        files_from: Paths to files that list newline-delimited candidate
+            file paths to add before filtering.
+        include_from: Files containing include patterns.
+        exclude_from: Files containing exclude patterns.
+        include_patterns: Glob patterns to include.
+        exclude_patterns: Glob patterns to exclude.
+        include_file_types: Whitelist of file type identifiers to restrict
+            file discovery.
+        exclude_file_types: Blacklist of file type identifiers to exclude from
+            file discovery.
+        header_fields: List of header fields from the [header] section.
+        field_values: Mapping of field names to their string values
+            from [fields].
+        align_fields: Whether to align fields, from [formatting].
+        relative_to: Base path used only for header metadata (e.g., file_relpath).
+            Note: Glob expansion and filtering are resolved relative to their declaring source
+            (config file dir or CWD for CLI), not relative_to.
     """
+
+    # Config-related options
+    config_origin: Path | str = CLI_OVERRIDE_STR
+    config_base: Path = field(default_factory=lambda: Path.cwd().resolve())
+    strict_config_checking: bool | None = None
 
     # Policy (global and overrides by file type)
     policy: PolicyOverrides = field(default_factory=PolicyOverrides)
@@ -96,9 +137,6 @@ class ConfigOverrides:
     align_fields: bool | None = None
     relative_to: str | None = None
 
-    # Config-related options
-    strict_config_checking: bool | None = None
-
 
 def _apply_policy_overrides(dst: MutablePolicy, src: PolicyOverrides) -> None:
     """Apply structured policy overrides to a mutable policy in place.
@@ -127,10 +165,10 @@ def apply_config_overrides(
 ) -> MutableConfig:
     """Apply CLI/API override intent to an existing mutable config draft.
 
-    This helper updates an already-resolved `MutableConfig` with the final
-    highest-precedence override layer. It intentionally does **not** handle
-    config discovery concerns such as `--no-config` or `--config`; those belong
-    to `topmark.config.io.resolution`.
+    This helper updates an already-resolved `MutableConfig` with the final highest-precedence
+    override layer. It intentionally does **not** handle config discovery concerns such as
+    `--no-config` or `--config`; those belong to
+    [`topmark.config.io.resolution`][topmark.config.io.resolution].
 
     Args:
         config: Mutable config draft to mutate in place.
@@ -140,15 +178,13 @@ def apply_config_overrides(
         The same `MutableConfig` instance after in-place mutation.
 
     Notes:
-        - Path-to-file options (`--include-from`, `--exclude-from`,
-          `--files-from`) are normalized against the current working directory,
-          because they originate from the invocation site rather than a config
-          file directory.
-        - `relative_to` influences only header metadata generation. It does not
-          change how config-declared glob sources are interpreted.
-        - The special `CLI_OVERRIDE_STR` provenance marker is appended to
-          `config.config_files` so downstream views can show that a highest-
-          precedence override layer was applied.
+        - Path-to-file options (`--include-from`, `--exclude-from`, `--files-from`) are normalized
+          against `overrides.config_base`, which defaults to the invocation working directory
+          but may differ for API callers.
+        - `relative_to` influences only header metadata generation. It does not change how
+          config-declared glob sources are interpreted.
+        - Provenance information is appended to `overrides.config_origin` so downstream views
+          can show that a highest-precedence override layer was applied.
     """
     # strict_config_checking
     if overrides.strict_config_checking is not None:
@@ -158,9 +194,9 @@ def apply_config_overrides(
     # This is provenance-only; explicit `--config` files are merged earlier by
     # the resolution layer.
     if config.config_files:
-        config.config_files.append(CLI_OVERRIDE_STR)
+        config.config_files.append(overrides.config_origin)
     else:
-        config.config_files = [CLI_OVERRIDE_STR]
+        config.config_files = [overrides.config_origin]
 
     # Note: CLI config paths are already merged elsewhere
     # so we don't extend config.config_files here.
@@ -189,48 +225,65 @@ def apply_config_overrides(
         if config.files:
             config.stdin_mode = False
 
-    # CLI/API include/exclude sources are normalized against the invocation CWD.
-    cwd: Path = Path.cwd().resolve()
+    # CLI/API override paths and pattern groups are interpreted against the override base.
+    base_dir: Path = overrides.config_base.resolve()
 
-    # Glob patterns: include_patterns / exclude_patterns (extend)
     if overrides.include_patterns is not None:
-        vals: list[str] = [s for s in overrides.include_patterns if s]
-        if vals:
-            config.include_patterns.extend(vals)
+        include_patterns: tuple[str, ...] = tuple(s for s in overrides.include_patterns if s)
+        if include_patterns:
+            config.include_pattern_groups = [
+                PatternGroup(
+                    patterns=include_patterns,
+                    base=base_dir,
+                )
+            ]
+        else:
+            config.include_pattern_groups = []
 
     if overrides.exclude_patterns is not None:
-        vals = [s for s in overrides.exclude_patterns if s]
-        if vals:
-            config.exclude_patterns.extend(vals)
+        exclude_patterns: tuple[str, ...] = tuple(s for s in overrides.exclude_patterns if s)
+        if exclude_patterns:
+            config.exclude_pattern_groups = [
+                PatternGroup(
+                    patterns=exclude_patterns,
+                    base=base_dir,
+                )
+            ]
+        else:
+            config.exclude_pattern_groups = []
 
     # Path-to-file options: include_from, exclude_from, files_from (validate list[str])
+    # Strategy: replace-or-clear
     if overrides.include_from is not None:
-        vals = [s for s in overrides.include_from if s]
+        config.include_from = []
+        vals: list[str] = [s for s in overrides.include_from if s]
         extend_pattern_sources(
-            config.include_from,
             vals,
-            pattern_source_from_cwd,
-            "override include_from",
-            cwd,
+            dst=config.include_from,
+            mk=pattern_source_from_cwd,
+            kind="override include_from",
+            base=base_dir,
         )
     if overrides.exclude_from is not None:
+        config.exclude_from = []
         vals = [s for s in overrides.exclude_from if s]
         extend_pattern_sources(
-            config.exclude_from,
             vals,
-            pattern_source_from_cwd,
-            "override exclude_from",
-            cwd,
+            dst=config.exclude_from,
+            mk=pattern_source_from_cwd,
+            kind="override exclude_from",
+            base=base_dir,
         )
 
     if overrides.files_from is not None:
+        config.files_from = []
         vals = [s for s in overrides.files_from if s]
         extend_pattern_sources(
-            config.files_from,
             vals,
-            pattern_source_from_cwd,
-            "override files_from",
-            cwd,
+            dst=config.files_from,
+            mk=pattern_source_from_cwd,
+            kind="override files_from",
+            base=base_dir,
         )
 
     # Header-building overrides apply only when explicitly provided.
@@ -238,7 +291,10 @@ def apply_config_overrides(
     # relative_to: string or None, only override if non-empty string (not just whitespace)
     if overrides.relative_to and (rel_str := overrides.relative_to.strip()):
         config.relative_to_raw = rel_str
-        config.relative_to = Path(rel_str).resolve()
+        rel_path = Path(rel_str)
+        config.relative_to = (
+            rel_path.resolve() if rel_path.is_absolute() else (base_dir / rel_path).resolve()
+        )
 
     # align_fields: checked bool
     if overrides.align_fields is not None:
@@ -248,9 +304,8 @@ def apply_config_overrides(
     # config discovery / TOML resolution.
 
     # include_file_types / exclude_file_types: set of strings, only override if present
-    if overrides.include_file_types:
-        # Only override when the user actually passes a value
-        # TODO decide whether `()` clears the property or whether we always extend the set
+    if overrides.include_file_types is not None:
+        # Only override when the user actually passes a value; `()` clears the property
         filtered: list[str] = [s for s in overrides.include_file_types if s]  # drop empty strings
         deduped: set[str] = set(filtered)
         config.include_file_types = deduped
@@ -260,9 +315,8 @@ def apply_config_overrides(
                 f"Ignored {dup_count} duplicate values for override include_file_types"
             )
 
-    if overrides.exclude_file_types:
-        # Only override when the user actually passes a value
-        # TODO decide whether `()` clears the property or whether we always extend the set
+    if overrides.exclude_file_types is not None:
+        # Only override when the user actually passes a value; `()` clears the property
         filtered: list[str] = [s for s in overrides.exclude_file_types if s]  # drop empty strings
         deduped: set[str] = set(filtered)
         config.exclude_file_types = deduped
@@ -272,9 +326,9 @@ def apply_config_overrides(
                 f"Ignored {dup_count} duplicate values for override exclude_file_types"
             )
 
+    # NOTE: header_fields and field_values still bypass any provenance-aware normalization
     if overrides.header_fields is not None:
         config.header_fields = overrides.header_fields
-
     if overrides.field_values is not None:
         config.field_values = overrides.field_values
 
@@ -284,9 +338,15 @@ def apply_config_overrides(
         # honor False explicitly
         config.stdin_mode = overrides.stdin_mode
 
-    if overrides.stdin_filename:
+    if overrides.stdin_filename is not None:
         # `stdin_filename` is only meaningful when non-empty.
-        config.stdin_filename = overrides.stdin_filename
+        stdin_name: str = overrides.stdin_filename.strip()
+        if stdin_name:
+            config.stdin_filename = stdin_name
+        else:
+            config.diagnostics.add_warning(
+                f"Ignoring empty value for `stdin_filename` (origin: {overrides.config_origin})"
+            )
 
     # Write mode logic: OutputTarget and FileWriteStrategy
     if overrides.output_target is not None:

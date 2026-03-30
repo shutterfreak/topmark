@@ -101,9 +101,9 @@ def ensure_mutable_config(
             relative_to=config.relative_to,
             stdin_mode=config.stdin_mode,
             files=list(config.files),
-            include_patterns=list(config.include_patterns),
+            include_pattern_groups=list(config.include_pattern_groups),
             include_from=list(config.include_from),
-            exclude_patterns=list(config.exclude_patterns),
+            exclude_pattern_groups=list(config.exclude_pattern_groups),
             exclude_from=list(config.exclude_from),
             files_from=list(config.files_from),
             include_file_types=set(config.include_file_types),
@@ -167,6 +167,8 @@ def build_config_and_files(
     # Apply final file/file-type intent consistently with the config override
     # layer, then freeze for file resolution.
     overrides = ConfigOverrides(
+        config_origin="<API overrides>",
+        config_base=Path.cwd().resolve(),
         files=paths_str,
         include_file_types=list(include_file_types) if include_file_types is not None else None,
         exclude_file_types=list(exclude_file_types) if exclude_file_types is not None else None,
@@ -370,6 +372,8 @@ def run_pipeline(
         draft = apply_config_overrides(
             draft,
             ConfigOverrides(
+                config_origin="<API policy overrides>",
+                config_base=Path.cwd().resolve(),
                 policy=policy_overrides,
                 policy_by_type=policy_by_type_overrides,
             ),

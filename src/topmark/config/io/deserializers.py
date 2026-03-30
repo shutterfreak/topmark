@@ -63,6 +63,7 @@ from topmark.config.policy import HeaderMutationMode
 from topmark.config.policy import MutablePolicy
 from topmark.config.types import FileWriteStrategy
 from topmark.config.types import OutputTarget
+from topmark.config.types import PatternGroup
 from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
@@ -275,48 +276,119 @@ def mutable_config_from_toml_dict(
                 where=where_files,
                 diagnostics=draft.diagnostics,
             )
-
             if not vals:
                 return
 
             if cfg_dir is not None:
                 extend_pattern_sources(
-                    getattr(draft, key),
                     vals,
-                    pattern_source_from_config,
-                    f"config {where_files}.{key}",
-                    cfg_dir,
+                    dst=getattr(draft, key),
+                    mk=pattern_source_from_config,
+                    kind=f"config {where_files}.{key}",
+                    base=cfg_dir,
                 )
             else:
                 # Rare fallback: without a config file path, use CWD to avoid losing info
                 extend_pattern_sources(
-                    getattr(draft, key),
                     vals,
-                    pattern_source_from_cwd,
-                    f"config {where_files}.{key}",
-                    Path.cwd().resolve(),
+                    dst=getattr(draft, key),
+                    mk=pattern_source_from_cwd,
+                    kind=f"config {where_files}.{key}",
+                    base=Path.cwd().resolve(),
                 )
 
         for _k in (Toml.KEY_INCLUDE_FROM, Toml.KEY_EXCLUDE_FROM, Toml.KEY_FILES_FROM):
             _normalize_sources(_k)
 
-        # ---- glob arrays remain raw strings (evaluated later vs relative_to) ----
+        # ---- glob arrays remain raw strings, but carry their declaring base ----
         # List-valued glob keys under [files] should contain strings. Wrong types are treated
         # as empty; mixed types drop non-strings with a warning + diagnostic.
-        def _extend_glob_list(attr: str, key: str) -> None:
-            # Enforce "list of strings" for field selection in TOML:
-            vals: list[str] = get_string_list_value_checked(
-                files_tbl,
-                key,
-                where=where_files,
-                diagnostics=draft.diagnostics,
+
+        base: Path = cfg_dir if cfg_dir is not None else Path.cwd().resolve()
+
+        include_patterns: list[str] = get_string_list_value_checked(
+            files_tbl,
+            Toml.KEY_INCLUDE_PATTERNS,
+            where=where_files,
+            diagnostics=draft.diagnostics,
+        )
+        if include_patterns:
+            draft.include_pattern_groups.append(
+                PatternGroup(
+                    patterns=tuple(include_patterns),
+                    base=base,
+                )
             )
 
-            if vals:
-                getattr(draft, attr).extend(vals)
+        exclude_patterns: list[str] = get_string_list_value_checked(
+            files_tbl,
+            Toml.KEY_EXCLUDE_PATTERNS,
+            where=where_files,
+            diagnostics=draft.diagnostics,
+        )
+        if exclude_patterns:
+            draft.exclude_pattern_groups.append(
+                PatternGroup(
+                    patterns=tuple(exclude_patterns),
+                    base=base,
+                )
+            )
 
-        _extend_glob_list("include_patterns", Toml.KEY_INCLUDE_PATTERNS)
-        _extend_glob_list("exclude_patterns", Toml.KEY_EXCLUDE_PATTERNS)
+        include_pattern_groups_tbl: list[TomlTable] = []
+        include_pattern_groups_raw: TomlValue = files_tbl.get(Toml.KEY_INCLUDE_PATTERN_GROUPS)
+        if isinstance(include_pattern_groups_raw, list):
+            include_pattern_groups_tbl = [
+                item for item in include_pattern_groups_raw if isinstance(item, dict)
+            ]
+        for item in include_pattern_groups_tbl:
+            base_raw: str = get_string_value_checked(
+                item,
+                Toml.KEY_BASE,
+                where=f"{where_files}.{Toml.KEY_INCLUDE_PATTERN_GROUPS}",
+                diagnostics=draft.diagnostics,
+                default="",
+            )
+            patterns: list[str] = get_string_list_value_checked(
+                item,
+                Toml.KEY_PATTERNS,
+                where=f"{where_files}.{Toml.KEY_INCLUDE_PATTERN_GROUPS}",
+                diagnostics=draft.diagnostics,
+            )
+            if base_raw and patterns:
+                draft.include_pattern_groups.append(
+                    PatternGroup(
+                        patterns=tuple(patterns),
+                        base=Path(base_raw).resolve(),
+                    )
+                )
+
+        exclude_pattern_groups_tbl: list[TomlTable] = []
+        exclude_pattern_groups_raw: TomlValue = files_tbl.get(Toml.KEY_EXCLUDE_PATTERN_GROUPS)
+        if isinstance(exclude_pattern_groups_raw, list):
+            exclude_pattern_groups_tbl = [
+                item for item in exclude_pattern_groups_raw if isinstance(item, dict)
+            ]
+        for item in exclude_pattern_groups_tbl:
+            base_raw = get_string_value_checked(
+                item,
+                Toml.KEY_BASE,
+                where=f"{where_files}.{Toml.KEY_EXCLUDE_PATTERN_GROUPS}",
+                diagnostics=draft.diagnostics,
+                default="",
+            )
+            patterns: list[str] = get_string_list_value_checked(
+                item,
+                Toml.KEY_PATTERNS,
+                where=f"{where_files}.{Toml.KEY_EXCLUDE_PATTERN_GROUPS}",
+                diagnostics=draft.diagnostics,
+            )
+            if base_raw and patterns:
+                draft.exclude_pattern_groups.append(
+                    PatternGroup(
+                        patterns=tuple(patterns),
+                        base=Path(base_raw).resolve(),
+                    )
+                )
 
         # Coerce `[fields]` values to strings (the table is user-defined and may include
         # unused keys). Unsupported types are ignored with a warning.

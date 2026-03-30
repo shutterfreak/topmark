@@ -52,28 +52,39 @@ logger: TopmarkLogger = get_logger(__name__)
 
 
 # Internal helpers for normalization
-def abs_path_from(base: Path, *, raw: str | PathLike[str]) -> Path:
+def abs_path_from(
+    base: Path,
+    *,
+    raw: str | PathLike[str],
+) -> Path:
     """Return an absolute Path for *raw* using *base* if *raw* is relative."""
     s = str(raw)
     p = Path(s)
     return (base / p).resolve() if not p.is_absolute() else p.resolve()
 
 
-def pattern_source_from_config(raw: str, config_dir: Path) -> PatternSource:
+def pattern_source_from_config(
+    raw: str,
+    config_dir: Path,
+) -> PatternSource:
     """Create PatternSource from a config-file-declared path using that file's directory."""
     p: Path = abs_path_from(config_dir, raw=raw)
     return PatternSource(path=p, base=p.parent)
 
 
-def pattern_source_from_cwd(raw: str, cwd: Path) -> PatternSource:
+def pattern_source_from_cwd(
+    raw: str,
+    cwd: Path,
+) -> PatternSource:
     """Create PatternSource from a CLI-declared path using CWD (invocation site)."""
     p: Path = abs_path_from(cwd, raw=raw)
     return PatternSource(path=p, base=p.parent)
 
 
 def extend_pattern_sources(
-    dst: list[PatternSource],
     items: Iterable[str],
+    *,
+    dst: list[PatternSource],
     mk: Callable[[str, Path], PatternSource],
     kind: str,
     base: Path,
@@ -81,8 +92,8 @@ def extend_pattern_sources(
     """Append pattern sources created from ``items`` to ``dst``.
 
     Args:
-        dst: Destination list to extend in-place.
         items: Raw pattern declarations to normalize; skipped if falsy.
+        dst: Destination list to extend in-place.
         mk: Factory that materializes a ``PatternSource`` given the raw entry and resolution base.
         kind: Human-readable label used for debug logging.
         base: Directory against which relative entries are resolved.

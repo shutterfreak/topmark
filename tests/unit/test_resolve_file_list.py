@@ -25,6 +25,7 @@ import topmark.resolution.files as file_resolver_mod
 # Import the module under test
 from tests.conftest import make_config
 from tests.conftest import make_file_type
+from topmark.config.types import PatternGroup
 from topmark.filetypes.model import ContentGate
 from topmark.registry.filetypes import FileTypeRegistry
 
@@ -132,7 +133,12 @@ def test_fallback_to_include_seed_when_no_positional(
         m.chdir(tmp_path)
         cfg: Config = make_config(
             config_files=[str(cfg_file)],
-            include_patterns=["src/**/*"],
+            include_pattern_groups=[
+                PatternGroup(
+                    patterns=("src/**/*",),
+                    base=cfg_file.parent.resolve(),
+                ),
+            ],
         )
         files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
         # Results may contain absolute paths (from seeding). Normalize to tmp_path-relative.
@@ -145,7 +151,7 @@ def test_fallback_to_include_seed_when_no_positional(
 def test_include_intersection_filters_candidates(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Apply include_patterns as an intersection filter on candidates."""
+    """Apply include pattern groups as an intersection filter on candidates."""
     write(tmp_path / "a.py", "x")
     write(tmp_path / "b.txt", "x")
 
@@ -153,7 +159,12 @@ def test_include_intersection_filters_candidates(
         m.chdir(tmp_path)
         cfg: Config = make_config(
             files=["."],
-            include_patterns=["**/*.py"],
+            include_pattern_groups=[
+                PatternGroup(
+                    patterns=("**/*.py",),
+                    base=tmp_path.resolve(),
+                ),
+            ],
         )
         files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
         rel: list[str] = sorted(p.as_posix() for p in files)
@@ -164,7 +175,7 @@ def test_include_intersection_filters_candidates(
 def test_exclude_subtraction_filters_candidates(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Apply exclude_patterns as a subtraction filter on candidates."""
+    """Apply exclude pattern groups as a subtraction filter on candidates."""
     write(tmp_path / "a.py", "x")
     write(tmp_path / "b.md", "x")
     write(tmp_path / "c.txt", "x")
@@ -173,7 +184,12 @@ def test_exclude_subtraction_filters_candidates(
         m.chdir(tmp_path)
         cfg: Config = make_config(
             files=["."],
-            exclude_patterns=["**/*.md"],
+            exclude_pattern_groups=[
+                PatternGroup(
+                    patterns=("**/*.md",),
+                    base=tmp_path.resolve(),
+                ),
+            ],
         )
         files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
         rel: list[str] = sorted(p.as_posix() for p in files)
@@ -270,8 +286,18 @@ def test_include_and_exclude_together(tmp_path: Path, monkeypatch: pytest.Monkey
         m.chdir(tmp_path)
         cfg: Config = make_config(
             files=["."],
-            include_patterns=["keep/**/*.py"],
-            exclude_patterns=["**/no.py"],
+            include_pattern_groups=[
+                PatternGroup(
+                    patterns=("keep/**/*.py",),
+                    base=tmp_path.resolve(),
+                ),
+            ],
+            exclude_pattern_groups=[
+                PatternGroup(
+                    patterns=("**/no.py",),
+                    base=tmp_path.resolve(),
+                ),
+            ],
         )
         files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
         rel: list[str] = sorted(p.as_posix() for p in files)
@@ -293,7 +319,12 @@ def test_include_no_matches_yields_empty(tmp_path: Path, monkeypatch: pytest.Mon
     monkeypatch.chdir(tmp_path)
     cfg: Config = make_config(
         files=["."],
-        include_patterns=["**/*.md"],
+        include_pattern_groups=[
+            PatternGroup(
+                patterns=("**/*.md",),
+                base=tmp_path.resolve(),
+            ),
+        ],
     )
     assert file_resolver_mod.resolve_file_list(cfg) == []
 
@@ -304,8 +335,18 @@ def test_exclude_wins_over_include(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     monkeypatch.chdir(tmp_path)
     cfg: Config = make_config(
         files=["."],
-        include_patterns=["**/*.md"],
-        exclude_patterns=["**/*.md"],
+        include_pattern_groups=[
+            PatternGroup(
+                patterns=("**/*.md",),
+                base=tmp_path.resolve(),
+            ),
+        ],
+        exclude_pattern_groups=[
+            PatternGroup(
+                patterns=("**/*.md",),
+                base=tmp_path.resolve(),
+            ),
+        ],
     )
     assert file_resolver_mod.resolve_file_list(cfg) == []
 
@@ -351,7 +392,12 @@ def test_includes_dotfiles_and_dotdirs_by_default(
     monkeypatch.chdir(tmp_path)
     cfg: Config = make_config(
         files=["."],
-        include_patterns=["**/*.py"],
+        include_pattern_groups=[
+            PatternGroup(
+                patterns=("**/*.py",),
+                base=tmp_path.resolve(),
+            ),
+        ],
     )
     rel: list[str] = [p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg)]
     assert rel == [".hidden/.x.py"]
@@ -423,7 +469,12 @@ def test_config_files_respected_by_filters(tmp_path: Path, monkeypatch: pytest.M
 
     cfg: Config = make_config(
         config_files=[str(cfg_file)],
-        include_patterns=["src/**/*.py"],
+        include_pattern_groups=[
+            PatternGroup(
+                patterns=("src/**/*.py",),
+                base=tmp_path.resolve(),
+            ),
+        ],
     )
     files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
     rel: list[str] = sorted(
@@ -464,7 +515,12 @@ def test_no_seeding_when_files_from_present(
 
     monkeypatch.chdir(tmp_path)
     cfg: Config = make_config(
-        include_patterns=["src/**/*.py"],  # would seed if no inputs
+        include_pattern_groups=[
+            PatternGroup(
+                patterns=("src/**/*.py",),
+                base=tmp_path.resolve(),
+            ),
+        ],  # would seed if no inputs
         files_from=[str(lst)],
         include_from=[str(inc)],  # irrelevant here
     )
@@ -476,10 +532,11 @@ def test_no_seeding_when_files_from_present(
 def test_config_declared_globs_match_under_config_dir_even_if_cwd_diff(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Config-declared glob bases vs CWD; both bases are tried.
+    """Config-declared include globs are evaluated relative to the declaring config directory.
 
-    Put a pyproject.toml in proj/ and run from a sibling directory;
-    confirm files under proj/src/ match via config base even though CWD doesn’t match.
+    Put a `pyproject.toml` in `proj/` and run from a sibling directory. Confirm files under
+    `proj/src/` match via the config-declared base even though the current working directory
+    doesn’t match.
     """
     proj: Path = tmp_path / "proj"
     (proj / "src").mkdir(parents=True)
@@ -492,7 +549,12 @@ def test_config_declared_globs_match_under_config_dir_even_if_cwd_diff(
     monkeypatch.chdir(tmp_path / "elsewhere")
     cfg: Config = make_config(
         config_files=[str(cfg_file)],
-        include_patterns=["src/**/*.py"],
+        include_pattern_groups=[
+            PatternGroup(
+                patterns=("src/**/*.py",),
+                base=proj,
+            )
+        ],
     )
     files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
     # Normalize relative to tmp_path for stability
@@ -548,7 +610,12 @@ def test_include_intersection_mixed_sources(
     monkeypatch.chdir(tmp_path)
     cfg: Config = make_config(
         files=["."],
-        include_patterns=["src/**/*.py"],
+        include_pattern_groups=[
+            PatternGroup(
+                patterns=("src/**/*.py",),
+                base=tmp_path,
+            )
+        ],
         include_from=[str(inc_file)],
     )
     rel: list[str] = sorted(p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg))
@@ -569,7 +636,12 @@ def test_exclude_from_overrides_include_patterns(
     monkeypatch.chdir(tmp_path)
     cfg: Config = make_config(
         files=["."],
-        include_patterns=["src/**/*.py"],
+        include_pattern_groups=[
+            PatternGroup(
+                patterns=("src/**/*.py",),
+                base=tmp_path,
+            )
+        ],
         exclude_from=[str(exc_file)],
     )
     rel: list[str] = sorted(p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg))
@@ -675,7 +747,18 @@ def test_exclude_dotfiles_with_pattern(tmp_path: Path, monkeypatch: pytest.Monke
     cfg: Config = make_config(
         files=["."],
         include_patterns=["**/*.py"],
-        exclude_patterns=["**/.*"],
+        include_pattern_groups=[
+            PatternGroup(
+                patterns=("**/*.py",),
+                base=tmp_path,
+            )
+        ],
+        exclude_pattern_groups=[
+            PatternGroup(
+                patterns=("**/.*",),
+                base=tmp_path,
+            )
+        ],
     )
     rel: list[str] = [p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg)]
     assert rel == []
