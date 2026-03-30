@@ -141,7 +141,7 @@ class ComparerStep(BaseStep):
         }:
             ctx.status.comparison = ComparisonStatus.SKIPPED
             reason = f"Skipped: {ctx.status.header.value}"
-            ctx.warn(reason)
+            ctx.diagnostics.add_warning(reason)
             ctx.request_halt(reason=reason, at_step=self)
             return
 
@@ -201,15 +201,14 @@ class ComparerStep(BaseStep):
         # scanner. Only applies when we actually detected a header and have a render.
         render_view: RenderView | None = ctx.views.render
         if (
-            ctx.status.comparison is ComparisonStatus.UNCHANGED
+            ctx.status.comparison == ComparisonStatus.UNCHANGED
             and header_view
             and header_view.block is not None
             and render_view
             and render_view.block is not None
         ) and header_view.block != render_view.block:
-            logger.debug(
-                "Header dicts equal but block text differs for %s → formatting change",
-                ctx.path,
+            ctx.diagnostics.add_info(
+                "Header fields unchanged, rendered header block text differs → formatting change",
             )
             ctx.status.comparison = ComparisonStatus.CHANGED
 

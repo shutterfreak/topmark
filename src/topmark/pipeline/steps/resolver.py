@@ -122,10 +122,11 @@ class ResolverStep(BaseStep):
                 )
                 ctx.status.resolve = ResolveStatus.TYPE_RESOLVED_HEADERS_UNSUPPORTED
                 reason: str = (
-                    f"File type '{file_type.local_key}' recognized; "
+                    f"File type '{file_type.local_key}' "
+                    f"(namespace: {file_type.namespace}) recognized; "
                     "headers are not supported for this format."
                 )
-                ctx.info(reason)
+                ctx.diagnostics.add_info(reason)
                 ctx.request_halt(reason=reason, at_step=self)
                 return
 
@@ -137,7 +138,7 @@ class ResolverStep(BaseStep):
                 )
                 ctx.status.resolve = ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED
                 reason = f"No header processor registered for file type '{file_type.local_key}'."
-                ctx.info(reason)
+                ctx.diagnostics.add_info(reason)
                 ctx.request_halt(reason=reason, at_step=self)
                 return
 
@@ -156,7 +157,7 @@ class ResolverStep(BaseStep):
         logger.info("Unsupported file type for '%s' (no matcher)", ctx.path)
         ctx.status.resolve = ResolveStatus.UNSUPPORTED
         reason = "No file type associated with this file."
-        ctx.info(reason)
+        ctx.diagnostics.add_info(reason)
         ctx.request_halt(reason=reason, at_step=self)
         return
 

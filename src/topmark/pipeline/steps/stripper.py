@@ -156,18 +156,16 @@ class StripperStep(BaseStep):
             # Respect content policy: do not attempt to strip when content was refused
             ctx.status.strip = StripStatus.NOT_NEEDED
             if ctx.status.fs == FsStatus.EMPTY:
-                logger.debug("Stripper: skipping (file status=%s)", ctx.status.fs.value)
                 reason: str = "Could not strip header from empty file."
             else:
-                logger.debug("Stripper: skipping (content status=%s)", ctx.status.content.value)
                 reason = f"Could not strip header from file (status: {ctx.status.content.value})."
-            ctx.info(reason)
+            ctx.diagnostics.add_info(reason)
             return
 
         if ctx.status.header is HeaderStatus.MISSING:
             ctx.status.strip = StripStatus.NOT_NEEDED
             reason = "No header to be stripped."
-            ctx.info(reason)
+            ctx.diagnostics.add_info(reason)
             return
         if ctx.status.header not in [HeaderStatus.EMPTY, HeaderStatus.DETECTED]:
             if ctx.status.header in {
@@ -177,13 +175,13 @@ class StripperStep(BaseStep):
                 # TODO: enable stripping based on future policy
                 ctx.status.strip = StripStatus.FAILED
                 reason = f"No header to be stripped: {ctx.status.header}"
-                ctx.info(reason)
+                ctx.diagnostics.add_info(reason)
                 ctx.request_halt(reason=reason, at_step=self)
             else:
                 # No header to be stripped
                 ctx.status.strip = StripStatus.FAILED
                 reason = f"No header to be stripped: {ctx.status.header}"
-                ctx.info(reason)
+                ctx.diagnostics.add_info(reason)
                 ctx.request_halt(reason=reason, at_step=self)
             return
 
@@ -192,7 +190,7 @@ class StripperStep(BaseStep):
             # Empty file
             ctx.status.strip = StripStatus.NOT_NEEDED
             reason = "Empty file, stripping not needed."
-            ctx.info(reason)
+            ctx.diagnostics.add_info(reason)
             return
 
         # Prefer the span detected by the scanner; fall back to processor logic otherwise.
@@ -210,32 +208,32 @@ class StripperStep(BaseStep):
 
         # Surface any additional diagnostic notes from the processor
         for note in getattr(diag, "notes", []) or []:
-            ctx.info(note)
+            ctx.diagnostics.add_info(note)
 
         # Handle diagnostic outcome explicitly before continuing.
         if diag.kind is StripDiagKind.NOT_FOUND:
             ctx.status.strip = StripStatus.NOT_NEEDED
             reason = diag.reason or "No header detected."
-            ctx.info(reason)
+            ctx.diagnostics.add_info(reason)
             return
 
         if diag.kind is StripDiagKind.NOOP_EMPTY:
             ctx.status.strip = StripStatus.NOT_NEEDED
             reason = diag.reason or "Empty file, nothing to strip."
-            ctx.info(reason)
+            ctx.diagnostics.add_info(reason)
             return
 
         if diag.kind is StripDiagKind.MALFORMED_REFUSED:
             ctx.status.strip = StripStatus.NOT_NEEDED
             reason = diag.reason or "Malformed header detected; removal refused by policy."
-            ctx.error(reason)
+            ctx.diagnostics.add_error(reason)
             ctx.request_halt(reason=reason, at_step=self)
             return
 
         if diag.kind is StripDiagKind.ERROR:
             ctx.status.strip = StripStatus.NOT_NEEDED
             reason = diag.reason or "Error while analyzing header for stripping."
-            ctx.error(reason)
+            ctx.diagnostics.add_error(reason)
             ctx.request_halt(reason=reason, at_step=self)
             return
 
@@ -244,7 +242,7 @@ class StripperStep(BaseStep):
         if removed is None or new_lines == original_lines:
             ctx.status.strip = StripStatus.NOT_NEEDED
             reason = diag.reason or "Nothing to strip."
-            ctx.info(reason)
+            ctx.diagnostics.add_info(reason)
             return
 
         # Optionally remove a single trailing blank line that TopMark inserted after the header.

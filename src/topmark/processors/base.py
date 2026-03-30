@@ -59,6 +59,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from topmark.core.logging import TopmarkLogger
+    from topmark.diagnostic.model import DiagnosticLog
     from topmark.filetypes.model import FileType
     from topmark.filetypes.policy import FileTypeHeaderPolicy
     from topmark.pipeline.views import HeaderView
@@ -93,18 +94,7 @@ class ProcessingContextLike(Protocol):
     """
 
     views: Views
-
-    def info(self, message: str) -> None:
-        """Record an informational diagnostic for this context."""
-        ...
-
-    def warn(self, message: str) -> None:
-        """Record a warning diagnostic for this context."""
-        ...
-
-    def error(self, message: str) -> None:
-        """Record an error diagnostic for this context."""
-        ...
+    diagnostics: DiagnosticLog
 
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -356,7 +346,9 @@ class HeaderProcessor:
         start_rel, end_rel = self._find_inner_marker_indices(lines)
         if start_rel is None or end_rel is None or end_rel <= start_rel:
             # Keep scanner as the single authority for MALFORMED; just surface a diagnostic.
-            context.error("parse_fields(): could not locate a valid START/END marker pair.")
+            context.diagnostics.add_error(
+                "parse_fields(): could not locate a valid START/END marker pair."
+            )
             return empty_result
 
         # 2) Extract payload (strictly between markers).
@@ -382,7 +374,9 @@ class HeaderProcessor:
 
             if ":" not in cleaned:
                 # Header line has no colon
-                context.error(f"Malformed header at line {abs_line_no} (no colon found): {raw!r}")
+                context.diagnostics.add_error(
+                    f"Malformed header at line {abs_line_no} (no colon found): {raw!r}"
+                )
                 cnt_header_error += 1
                 continue
 
@@ -393,7 +387,7 @@ class HeaderProcessor:
             v: str = value.strip()
             if not k:
                 # Header line has colon but empty text before colon
-                context.error(
+                context.diagnostics.add_error(
                     f"Malformed header at line {abs_line_no} (empty text before colon): {raw!r}"
                 )
                 cnt_header_error += 1

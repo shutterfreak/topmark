@@ -225,7 +225,7 @@ def _sniff_stream(ctx: ProcessingContext) -> FsStatus | None:
         prefix: bytes = bf.read(4096)
         # Binary heuristic: NUL anywhere in prefix → not text
         if b"\0" in prefix:
-            ctx.error("NUL byte detected; treating this as a binary file.")
+            ctx.diagnostics.add_error("NUL byte detected; treating this as a binary file.")
             return FsStatus.BINARY
 
         # Initialize a strict UTF-8 incremental decoder to catch invalid sequences
@@ -242,8 +242,8 @@ def _sniff_stream(ctx: ProcessingContext) -> FsStatus | None:
         )
         supports_shebang: bool = bool(policy and getattr(policy, "supports_shebang", False))
         if shebang_after_bom and supports_shebang:
-            ctx.error(
-                "UTF-8 BOM appears before the shebang; POSIX requires '#!' at byte 0. "
+            ctx.diagnostics.add_error(
+                "Policy: UTF-8 BOM appears before the shebang; POSIX requires '#!' at byte 0. "
                 "TopMark will not modify this file by default."
             )
             return FsStatus.BOM_BEFORE_SHEBANG
@@ -259,7 +259,9 @@ def _sniff_stream(ctx: ProcessingContext) -> FsStatus | None:
                 # Attempt to decode the current chunk strictly as UTF-8
                 decoder.decode(chunk)
             except UnicodeDecodeError:
-                ctx.error("Invalid UTF-8 byte sequence detected; treating as non-text file.")
+                ctx.diagnostics.add_error(
+                    "Invalid UTF-8 byte sequence detected; treating as non-text file."
+                )
                 return FsStatus.UNICODE_DECODE_ERROR
 
             # Proceed with newline counting on the raw bytes
@@ -282,7 +284,9 @@ def _sniff_stream(ctx: ProcessingContext) -> FsStatus | None:
         try:
             decoder.decode(b"", final=True)
         except UnicodeDecodeError:
-            ctx.error("Invalid UTF-8 sequence at end-of-file; treating as non-text file.")
+            ctx.diagnostics.add_error(
+                "Invalid UTF-8 sequence at end-of-file; treating as non-text file."
+            )
             return FsStatus.UNICODE_DECODE_ERROR
 
         if carry_cr:
@@ -295,7 +299,7 @@ def _sniff_stream(ctx: ProcessingContext) -> FsStatus | None:
             lf: int = ctx.newline_hist.get("\n", 0)
             crlf: int = ctx.newline_hist.get("\r\n", 0)
             cr: int = ctx.newline_hist.get("\r", 0)
-            ctx.error(
+            ctx.diagnostics.add_error(
                 "Mixed line endings detected during sniff "
                 f"(LF={lf}, CRLF={crlf}, CR={cr}). "
                 "Strict policy refuses to process files with mixed line endings."
@@ -382,7 +386,7 @@ class SnifferStep(BaseStep):
         except PermissionError as e:
             ctx.status.fs = FsStatus.NO_READ_PERMISSION
             reason = f"Permission denied: {e}"
-            ctx.error(reason)
+            ctx.diagnostics.add_error(reason)
             ctx.request_halt(reason=reason, at_step=self)
             return
 
@@ -392,7 +396,7 @@ class SnifferStep(BaseStep):
         # Apply mode: check write permission upfront
         if apply is True and not os.access(ctx.path, os.W_OK):
             ctx.status.fs = FsStatus.NO_WRITE_PERMISSION
-            ctx.error("Permission denied: cannot write to file")
+            ctx.diagnostics.add_error("Permission denied: cannot write to file")
             return
 
         if st.st_size == 0:
@@ -420,7 +424,7 @@ class SnifferStep(BaseStep):
                     terminal=False,
                 )
             else:
-                ctx.info("File is empty.")
+                ctx.diagnostics.add_info("File is empty.")
 
             return
 
@@ -434,19 +438,19 @@ class SnifferStep(BaseStep):
         except FileNotFoundError:
             ctx.status.fs = FsStatus.NOT_FOUND
             reason = f"File not found: {ctx.path}"
-            ctx.error(reason)
+            ctx.diagnostics.add_error(reason)
             ctx.request_halt(reason=reason, at_step=self)
             return
         except PermissionError as e:
             ctx.status.fs = FsStatus.NO_READ_PERMISSION
             reason = f"Permission denied: {e}"
-            ctx.error(reason)
+            ctx.diagnostics.add_error(reason)
             ctx.request_halt(reason=reason, at_step=self)
             return
         except (OSError, UnicodeError, ValueError) as e:
             ctx.status.fs = FsStatus.UNREADABLE
             reason = f"Error while sniffing: {e}"
-            ctx.error(reason)
+            ctx.diagnostics.add_error(reason)
             ctx.request_halt(reason=reason, at_step=self)
             return
 

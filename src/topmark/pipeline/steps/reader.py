@@ -206,7 +206,7 @@ class ReaderStep(BaseStep):
             else:
                 ctx.status.content = ContentStatus.SKIPPED_POLICY_BOM_BEFORE_SHEBANG
                 reason: str = "BOM appears before shebang; policy forbids proceeding"
-                ctx.error(reason)
+                ctx.diagnostics.add_error(reason)
                 ctx.request_halt(reason=reason, at_step=self)
                 return
 
@@ -219,7 +219,7 @@ class ReaderStep(BaseStep):
             else:
                 ctx.status.content = ContentStatus.SKIPPED_MIXED_LINE_ENDINGS
                 reason = "Mixed line endings refused by policy"
-                ctx.error(reason)
+                ctx.diagnostics.add_error(reason)
                 ctx.request_halt(reason=reason, at_step=self)
                 return
 
@@ -307,7 +307,7 @@ class ReaderStep(BaseStep):
                 # Non-empty on disk but yielded no decoded lines: treat as unreadable.
                 ctx.status.content = ContentStatus.UNREADABLE
                 reason = "Could not decode file to text (no decoded lines)."
-                ctx.error(reason)
+                ctx.diagnostics.add_error(reason)
                 ctx.request_halt(reason=reason, at_step=self)
                 return
 
@@ -364,7 +364,7 @@ class ReaderStep(BaseStep):
                 lf: int = ctx.newline_hist.get("\n", 0)
                 crlf: int = ctx.newline_hist.get("\r\n", 0)
                 cr: int = ctx.newline_hist.get("\r", 0)
-                ctx.error(
+                ctx.diagnostics.add_error(
                     f"Mixed line endings detected (LF={lf}, CRLF={crlf}, CR={cr}). "
                     "Strict policy refuses to process mixed files."
                 )
@@ -416,12 +416,12 @@ class ReaderStep(BaseStep):
                                 f"Strict policy: {ctx.pre_insert_capability.value} "
                                 "- overridden (OK to proceed)"
                             )
-                            ctx.info(reason)
+                            ctx.diagnostics.add_info(reason)
                             return
                         else:
                             ctx.status.content = ContentStatus.SKIPPED_REFLOW
                             reason = f"Strict policy: {ctx.pre_insert_capability.value}"
-                            ctx.info(reason)
+                            ctx.diagnostics.add_info(reason)
                             ctx.request_halt(reason=reason, at_step=self)
 
                 except (ValueError, TypeError, AttributeError, OSError, UnicodeError) as e:
@@ -436,7 +436,7 @@ class ReaderStep(BaseStep):
             logger.error("Error reading file %s: %s", ctx.path, e)
             ctx.status.content = ContentStatus.UNREADABLE
             reason = f"Error reading file: {e}"
-            ctx.error(reason)
+            ctx.diagnostics.add_error(reason)
             ctx.request_halt(reason=reason, at_step=self)
             return
 

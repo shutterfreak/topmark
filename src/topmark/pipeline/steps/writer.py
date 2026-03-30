@@ -220,7 +220,7 @@ class InplaceFileSink(WriteSink):
                     path.chmod(mode)
             return WriteResult(status=WriteStatus.WRITTEN)
         except (OSError, UnicodeError) as e:
-            ctx.error(f"In-place write failed: {e}")
+            ctx.diagnostics.add_error(f"In-place write failed: {e}")
             return WriteResult(status=WriteStatus.FAILED)
 
 
@@ -303,7 +303,7 @@ class AtomicFileSink(WriteSink):
                     tmp.unlink()
             except OSError:
                 logger.debug("AtomicFileSink: failed to clean up temp file %s", tmp, exc_info=True)
-            ctx.error(f"Atomic write failed: {e}")
+            ctx.diagnostics.add_error(f"Atomic write failed: {e}")
             return WriteResult(status=WriteStatus.FAILED)
 
 
@@ -451,7 +451,7 @@ class WriterStep(BaseStep):
             and pol.header_mutation_mode == HeaderMutationMode.UPDATE_ONLY
         ):
             ctx.status.write = WriteStatus.SKIPPED
-            ctx.info("Skipped by policy: header_mutation_mode=update_only")
+            ctx.diagnostics.add_info("Skipped by policy: header_mutation_mode=update_only")
             return
 
         if (
@@ -459,13 +459,13 @@ class WriterStep(BaseStep):
             and pol.header_mutation_mode == HeaderMutationMode.ADD_ONLY
         ):
             ctx.status.write = WriteStatus.SKIPPED
-            ctx.info("Skipped by policy: header_mutation_mode=add_only")
+            ctx.diagnostics.add_info("Skipped by policy: header_mutation_mode=add_only")
             return
 
         # Defensive: nothing to write if updater did not produce an updated image
         updated_view: UpdatedView | None = ctx.views.updated
         if updated_view is None or updated_view.lines is None:
-            ctx.info("File unchanged - nothing to write.")
+            ctx.diagnostics.add_info("File unchanged - nothing to write.")
             return
 
         sink: WriteSink = _select_sink(ctx)

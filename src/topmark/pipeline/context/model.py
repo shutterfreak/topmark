@@ -381,18 +381,6 @@ class ProcessingContext:
             },
         }
 
-    def info(self, message: str) -> None:
-        """Record an informational diagnostic for this context."""
-        self.diagnostics.add_info(message)
-
-    def warn(self, message: str) -> None:
-        """Record a warning diagnostic for this context."""
-        self.diagnostics.add_warning(message)
-
-    def error(self, message: str) -> None:
-        """Record an error diagnostic for this context."""
-        self.diagnostics.add_error(message)
-
     def hint(
         self,
         *,

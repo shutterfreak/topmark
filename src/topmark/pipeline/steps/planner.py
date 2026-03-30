@@ -179,7 +179,7 @@ def _prepend_bom_to_lines_if_needed(
     if ctx.has_shebang:
         # Do not re-add the BOM which was stripped in reader.read(); a valid shebang
         # must start at byte 0 on POSIX systems.
-        ctx.error(
+        ctx.diagnostics.add_error(
             "UTF-8 BOM appears before the shebang; POSIX requires '#!' at byte 0. "
             "TopMark will not modify this file by default. Consider removing the BOM "
             "or using a future '--fix-bom' option to resolve this conflict."
@@ -284,10 +284,9 @@ class PlannerStep(BaseStep):
         original_lines: list[str] = list(ctx.iter_image_lines())
 
         if ctx.status.content != ContentStatus.OK and not allow_insert_into_empty_like(ctx):
-            logger.debug("planner: skipping (content status=%s)", ctx.status.content.value)
             ctx.status.plan = PlanStatus.SKIPPED
             reason: str = f"Could not update file (status: {ctx.status.content.value})."
-            ctx.info(reason)
+            ctx.diagnostics.add_info(reason)
             ctx.request_halt(reason=reason, at_step=self)
             return
 
@@ -299,7 +298,7 @@ class PlannerStep(BaseStep):
             ctx.status.plan = PlanStatus.SKIPPED
             ctx.views.updated = UpdatedView(lines=original_lines)
             reason = "Existing header has malformed fields; TopMark will not update it."
-            ctx.warn(reason)
+            ctx.diagnostics.add_warning(reason)
             ctx.request_halt(reason=reason, at_step=self)
             return
 
@@ -348,7 +347,7 @@ class PlannerStep(BaseStep):
         if render_view is None or render_view.lines is None:
             ctx.status.plan = PlanStatus.FAILED
             reason = "Cannot update header: no rendered header available"
-            ctx.error(reason)
+            ctx.diagnostics.add_error(reason)
             ctx.request_halt(reason=reason, at_step=self)
             return
 
@@ -357,7 +356,7 @@ class PlannerStep(BaseStep):
         if ctx.header_processor is None:
             ctx.status.plan = PlanStatus.FAILED
             reason = "Cannot update header: no header processor assigned"
-            ctx.error(reason)
+            ctx.diagnostics.add_error(reason)
             ctx.request_halt(reason=reason, at_step=self)
             return
 
@@ -399,7 +398,7 @@ class PlannerStep(BaseStep):
                     ctx.views.updated = UpdatedView(lines=original_lines)
                     ctx.status.plan = PlanStatus.SKIPPED
                     reason = f"{pre_insert_reason} (origin: {origin})"
-                    ctx.warn(reason)
+                    ctx.diagnostics.add_warning(reason)
                     ctx.request_halt(reason=reason, at_step=self)
                     return
 
@@ -422,7 +421,7 @@ class PlannerStep(BaseStep):
                     ctx.views.updated = UpdatedView(lines=original_lines)
                     ctx.status.plan = PlanStatus.SKIPPED
                     reason = f"{pre_insert_reason} (origin: {origin})"
-                    ctx.warn(reason)
+                    ctx.diagnostics.add_warning(reason)
                     ctx.request_halt(reason=reason, at_step=self)
                     return
 
@@ -442,7 +441,7 @@ class PlannerStep(BaseStep):
                 ctx.views.updated = UpdatedView(lines=original_lines)
                 ctx.status.plan = PlanStatus.SKIPPED
                 reason = f"{pre_insert_reason} (origin: {origin})"
-                ctx.warn(reason)
+                ctx.diagnostics.add_warning(reason)
                 ctx.request_halt(reason=reason, at_step=self)
                 return
 
@@ -553,7 +552,7 @@ class PlannerStep(BaseStep):
         if insert_index == NO_LINE_ANCHOR:
             ctx.status.plan = PlanStatus.FAILED
             reason = f"No line-based insertion anchor for file: {ctx.path}"
-            ctx.error(reason)
+            ctx.diagnostics.add_error(reason)
             ctx.request_halt(reason=reason, at_step=self)
             return
 

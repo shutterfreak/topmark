@@ -167,7 +167,7 @@ class ScannerStep(BaseStep):
                 )
             ctx.status.header = HeaderStatus.MALFORMED
             reason: str = hb.reason or "Malformed header markers"
-            ctx.warn(reason)
+            ctx.diagnostics.add_warning(reason)
             ctx.hint(
                 axis=Axis.HEADER,
                 code=KnownCode.HEADER_MALFORMED,
@@ -237,18 +237,21 @@ class ScannerStep(BaseStep):
             if header_view.success_count == 0:
                 # All header lines in the header block are malformed
                 ctx.status.header = HeaderStatus.MALFORMED_ALL_FIELDS
-                ctx.warn(f"{reason} - header contains no valid header lines.")
+                ctx.diagnostics.add_warning(f"{reason} - header contains no valid header lines.")
                 return
             else:
                 # At least one remaining valid header line
                 ctx.status.header = HeaderStatus.MALFORMED_SOME_FIELDS
-                ctx.warn(f"{reason} - header contains valid and invalid header lines.")
+                ctx.diagnostics.add_warning(
+                    f"{reason} - header contains valid and invalid header lines."
+                )
                 return
 
         if not header_view.mapping:
             ctx.status.header = HeaderStatus.EMPTY
-            logger.info("Header markers present but no fields in '%s'", ctx.path)
-            ctx.warn(f"Header markers present at line {s_excl + 1} and {e_excl + 1} but no fields.")
+            ctx.diagnostics.add_warning(
+                f"Header markers present at line {s_excl + 1} and {e_excl + 1} but no fields."
+            )
         else:
             ctx.status.header = HeaderStatus.DETECTED
 
