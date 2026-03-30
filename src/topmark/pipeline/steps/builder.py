@@ -113,6 +113,27 @@ class BuilderStep(BaseStep):
         Notes:
             Diagnostic messages are added if unknown header fields are referenced in
             `Config.header_fields` or when built‑ins are overridden by `Config.field_values`.
+
+        Path semantics:
+            - `file_path` is `ctx.path` as provided by config resolution.
+              It may be relative or absolute depending on how the file was discovered.
+            - `file_abspath` is computed from the logical header path and is therefore an
+              absolute, normalized path. In stdin mode this means it reflects the logical
+              `stdin_filename`, not the materialized temporary file path.
+            - `file_relpath` and `relpath` are computed by calling
+              `compute_relpath(file_path, relative_to)`. Note that this uses the
+              original `file_path` (not `file_path.resolve()`), so the relative
+              path is derived from the discovery spelling.
+            - `relative_to` defaults to `Path.cwd()` when no explicit root is configured.
+              If `Config.relative_to` is set, it is resolved to an absolute path via
+              `Path(config.relative_to).resolve()`.
+            - `relpath` becomes "." at repo root.
+
+            This behavior intentionally keeps `file_relpath` stable for common cases
+            like running TopMark from the repository root (so `pyproject.toml` yields
+            `file_relpath = "pyproject.toml"`). If you need `file_relpath` computed
+            relative to a specific root, set `Config.relative_to` (via config or CLI/API
+            overrides).
         """
         logger.debug("ctx: %s", ctx)
 
@@ -121,38 +142,64 @@ class BuilderStep(BaseStep):
         if check_permitted_by_policy(ctx) is False:
             ctx.status.generation = GenerationStatus.SKIPPED
             reason = "header field generation skipped by policy"
-            logger.debug(reason)
-            ctx.info(reason)
+            ctx.diagnostics.add_info(reason)
             ctx.request_halt(reason=reason, at_step=self)
+            return
 
         if not config.header_fields:
             # No header fields specified in the configuration
             ctx.status.generation = GenerationStatus.NO_FIELDS
-            logger.debug("No header fields specified.")
+            ctx.diagnostics.add_info("No header fields specified.")
             return
 
         file_path: Path = ctx.path
-        result: dict[str, str] = {}
 
-        # Prepare built-in fields related to the file system
-        # Resolve absolute paths first for consistency
-        absolute_path: Path = file_path.resolve(strict=True)
+        # Prepare built-in fields related to the file system.
+        #
+        # STDIN content mode needs special care:
+        #   - `ctx.path` is the *materialized* temp file that TopMark can read/write.
+        #   - `config.stdin_filename` is a user-supplied *logical* filename that may not exist
+        #     on disk (it is used only for metadata and discovery anchoring).
+        #
+        # Therefore:
+        #   - `file` / `file_relpath` / `file_abspath` / `relpath` are derived from the logical
+        #     header path.
+        #   - `abspath` is still derived from the on-disk content path, since it represents the
+        #     containing directory of the actual processed content.
+
+        content_path: Path = file_path
+
+        # In stdin mode, use `stdin_filename` (if provided) for logical header metadata.
+        header_path: Path = (
+            Path(ctx.config.stdin_filename)
+            if (ctx.config.stdin_mode and ctx.config.stdin_filename)
+            else content_path
+        )
+
+        # File absolute path is derived from the logical header path so stdin mode reports the
+        # user-facing logical filename rather than the ephemeral materialized temp file.
+        absolute_path: Path = header_path.resolve()
+        content_absolute_path: Path = content_path.resolve(strict=True)
+
+        # Relative paths are computed against `relative_to` using the logical header path.
+        # Note: `header_path` may not exist, so `compute_relpath()` must not rely on
+        # strict filesystem resolution.
         relative_to: Path = Path(config.relative_to).resolve() if config.relative_to else Path.cwd()
         # Determine relative path from the file to the root path
         # Default to the current working directory if 'relative_to' is not configured
-        relative_path: Path = compute_relpath(file_path, relative_to)
+        relative_path: Path = compute_relpath(header_path, relative_to)
 
         builtin_fields: dict[str, str] = {
             # Base file name (without any path)
-            "file": file_path.name,
+            "file": header_path.name,
             # File name with its relative path
             "file_relpath": relative_path.as_posix(),
             # File name with its absolute path
             "file_abspath": absolute_path.as_posix(),
             # Parent directory path (relative)
             "relpath": relative_path.parent.as_posix() if relative_path else "",
-            # Parent directory path (absolute)
-            "abspath": absolute_path.parent.as_posix() if absolute_path else "",
+            # Parent directory path (absolute, of actual content)
+            "abspath": content_absolute_path.parent.as_posix(),
         }
 
         # Merge in any additional fields from the configuration (may override built‑ins).
@@ -165,11 +212,7 @@ class BuilderStep(BaseStep):
                 builtin_overlap_repr: str = ", ".join(
                     key for key in config.field_values if key in builtin_fields
                 )
-                logger.warning(
-                    "Config.field_values contains keys that overlap with builtin fields: %s",
-                    builtin_overlap_repr,
-                )
-                ctx.warn(f"Redefined built-in fields: {builtin_overlap_repr}")
+                ctx.diagnostics.add_warning(f"Redefined built-in fields: {builtin_overlap_repr}")
 
         # Merge built‑ins with configuration‑defined values; allow overrides; restrict
         # to header_fields.
@@ -178,11 +221,12 @@ class BuilderStep(BaseStep):
             **config.field_values,
         }
 
+        result: dict[str, str] = {}
+
         for key in config.header_fields:
             value: str | None = all_fields.get(key)
             if value is None:
-                logger.warning("Unknown header field: %s", key)
-                ctx.error(f"Unknown header field: {key}")
+                ctx.diagnostics.add_error(f"Unknown header field: {key}")
             else:
                 result[key] = value
 
