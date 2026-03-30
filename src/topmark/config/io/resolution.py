@@ -8,16 +8,18 @@
 #
 # topmark:header:end
 
-"""Layered configuration discovery and resolution for TopMark.
+"""Layered configuration discovery and compatibility flattening for TopMark.
 
-This module resolves the effective mutable configuration draft by combining
-multiple configuration sources in precedence order.
+This module discovers configuration provenance layers in precedence order and
+provides a compatibility path that merges those layers into a single effective
+`MutableConfig` draft.
 
 Responsibilities:
     - discover user-scoped and project-scoped config files
-    - apply TopMark's layered precedence rules
+    - represent discovered sources as `ConfigLayer`
+    - preserve TopMark's layered precedence rules
     - load TOML-backed config fragments into `MutableConfig`
-    - merge those fragments into a single resolved draft
+    - flatten discovered layers into a compatibility `MutableConfig` draft
 
 Typical precedence (lowest -> highest):
     1. built-in defaults
@@ -29,10 +31,11 @@ This module is intentionally separate from `topmark.config.model`:
 
 - `topmark.config.model` defines the configuration data structures and merge
   behavior
-- this module performs discovery, ordering, and orchestration across sources
+- this module performs discovery, ordering, provenance tracking, and
+  compatibility flattening across config sources
 
-The result of resolution is a `MutableConfig` draft that can still be adjusted
-by callers before being frozen into an immutable `Config`.
+The result of compatibility flattening is a `MutableConfig` draft that can still
+be adjusted by callers before being frozen into an immutable `Config`.
 """
 
 from __future__ import annotations
@@ -45,6 +48,8 @@ from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.io.deserializers import mutable_config_from_toml_file
 from topmark.config.io.guards import get_pyproject_topmark_table
 from topmark.config.io.loaders import load_toml_dict
+from topmark.config.io.types import ConfigLayer
+from topmark.config.io.types import ConfigLayerKind
 from topmark.config.keys import Toml
 from topmark.core.logging import get_logger
 
@@ -57,6 +62,65 @@ if TYPE_CHECKING:
 
 
 logger: TopmarkLogger = get_logger(__name__)
+
+
+def _make_config_layer(
+    *,
+    origin: Path | str,
+    kind: ConfigLayerKind,
+    precedence: int,
+    config: MutableConfig,
+    scope_root: Path | None = None,
+) -> ConfigLayer:
+    """Return a normalized config provenance layer."""
+    normalized_origin: Path | str = origin.resolve() if isinstance(origin, Path) else origin
+    normalized_scope_root: Path | None = scope_root
+
+    if normalized_scope_root is None and isinstance(normalized_origin, Path):
+        normalized_scope_root = normalized_origin.parent.resolve()
+    elif normalized_scope_root is not None:
+        normalized_scope_root = normalized_scope_root.resolve()
+
+    return ConfigLayer(
+        origin=normalized_origin,
+        scope_root=normalized_scope_root,
+        precedence=precedence,
+        kind=kind,
+        config=config,
+    )
+
+
+def _load_layer_from_file(
+    path: Path,
+    *,
+    kind: ConfigLayerKind,
+    precedence: int,
+) -> ConfigLayer | None:
+    """Load a config provenance layer from a TOML-backed config file."""
+    resolved_path: Path = path.resolve()
+    config: MutableConfig | None = mutable_config_from_toml_file(resolved_path)
+    if config is None:
+        logger.debug("Skipping unreadable or invalid config layer file: %s", resolved_path)
+        return None
+
+    return _make_config_layer(
+        origin=resolved_path,
+        kind=kind,
+        precedence=precedence,
+        scope_root=resolved_path.parent,
+        config=config,
+    )
+
+
+def _default_config_layer() -> ConfigLayer:
+    """Return the built-in defaults as the first config provenance layer."""
+    return _make_config_layer(
+        origin="<defaults>",
+        kind=ConfigLayerKind.DEFAULT,
+        precedence=0,
+        scope_root=None,
+        config=mutable_config_from_defaults(),
+    )
 
 
 def discover_local_config_files(start: Path) -> list[Path]:
@@ -169,6 +233,137 @@ def discover_user_config_file() -> Path | None:
     return None
 
 
+def discover_config_layers(
+    input_paths: Iterable[Path] | None = None,
+    extra_config_files: Iterable[Path] | None = None,
+    strict_config_checking: bool | None = None,
+    no_config: bool = False,
+) -> list[ConfigLayer]:
+    """Discover config provenance layers in stable precedence order.
+
+    Layer order (lowest -> highest precedence):
+        1. built-in defaults
+        2. discovered user config
+        3. discovered project config files (root-most -> nearest)
+        4. explicit extra config files (in the order provided)
+
+    Args:
+        input_paths: Optional discovery anchors. The first path is used to pick
+            the project-discovery starting directory. If it points to a file,
+            its parent directory is used. If omitted, discovery falls back to
+            the current working directory.
+        extra_config_files: Explicit config files to append after discovered
+            layers. Later files have higher precedence than earlier ones.
+        strict_config_checking: Reserved compatibility argument. Discovery does
+            not currently materialize this runtime override as a provenance
+            layer.
+        no_config: If True, skip all discovered config layers (user + project)
+            and only return built-in defaults plus any explicit extra config
+            files.
+
+    Returns:
+        Config provenance layers ordered from lowest to highest precedence.
+    """
+    # Avoid premature modeling of runtime-only overrides as layers:
+    del strict_config_checking
+
+    layers: list[ConfigLayer] = []
+    precedence: int = 0
+
+    default_layer: ConfigLayer = _default_config_layer()
+    layers.append(default_layer)
+    logger.debug(
+        "Added config layer: kind=%s precedence=%d origin=%s scope_root=%s",
+        default_layer.kind,
+        default_layer.precedence,
+        default_layer.origin,
+        default_layer.scope_root,
+    )
+
+    input_path_list: list[Path] = list(input_paths) if input_paths is not None else []
+    anchor: Path = input_path_list[0] if input_path_list else Path.cwd()
+    if anchor.is_file():
+        anchor = anchor.parent
+    anchor = anchor.resolve()
+    logger.debug("Config layer discovery anchor: %s", anchor)
+
+    precedence = 1
+
+    if not no_config:
+        user_cfg_path: Path | None = discover_user_config_file()
+        if user_cfg_path is not None:
+            user_layer: ConfigLayer | None = _load_layer_from_file(
+                user_cfg_path,
+                kind=ConfigLayerKind.USER,
+                precedence=precedence,
+            )
+            if user_layer is not None:
+                layers.append(user_layer)
+                logger.debug(
+                    "Added config layer: kind=%s precedence=%d origin=%s scope_root=%s",
+                    user_layer.kind,
+                    user_layer.precedence,
+                    user_layer.origin,
+                    user_layer.scope_root,
+                )
+                precedence += 1
+
+        discovered: list[Path] = discover_local_config_files(anchor)
+        for cfg_path in discovered:
+            discovered_layer: ConfigLayer | None = _load_layer_from_file(
+                cfg_path,
+                kind=ConfigLayerKind.DISCOVERED,
+                precedence=precedence,
+            )
+            if discovered_layer is not None:
+                layers.append(discovered_layer)
+                logger.debug(
+                    "Added config layer: kind=%s precedence=%d origin=%s scope_root=%s",
+                    discovered_layer.kind,
+                    discovered_layer.precedence,
+                    discovered_layer.origin,
+                    discovered_layer.scope_root,
+                )
+                precedence += 1
+    else:
+        logger.debug("Skipping discovered config layers because no_config=True")
+
+    for extra in extra_config_files or ():
+        explicit_layer: ConfigLayer | None = _load_layer_from_file(
+            Path(extra),
+            kind=ConfigLayerKind.EXPLICIT,
+            precedence=precedence,
+        )
+        if explicit_layer is not None:
+            layers.append(explicit_layer)
+            logger.debug(
+                "Added config layer: kind=%s precedence=%d origin=%s scope_root=%s",
+                explicit_layer.kind,
+                explicit_layer.precedence,
+                explicit_layer.origin,
+                explicit_layer.scope_root,
+            )
+            precedence += 1
+
+    return layers
+
+
+def merge_layers_globally(layers: Iterable[ConfigLayer]) -> MutableConfig:
+    """Merge discovered config provenance layers into one compatibility draft."""
+    merged: MutableConfig = mutable_config_from_defaults()
+    layer_list: list[ConfigLayer] = list(layers)
+
+    logger.debug("Merging %d config layer(s) into compatibility draft", len(layer_list))
+    # Apply defaults
+    merged = layer_list[0].config
+
+    # Apply additional configurations
+    for layer in layer_list[1:]:
+        merged = merged.merge_with(layer.config)
+
+    return merged
+
+
 def load_resolved_config(
     input_paths: Iterable[Path] | None = None,
     extra_config_files: Iterable[Path] | None = None,
@@ -204,42 +399,15 @@ def load_resolved_config(
         A mutable configuration draft ready for later override application and
         eventual freezing.
     """
-    # 1) Start from defaults
-    draft: MutableConfig = mutable_config_from_defaults()
+    layers: list[ConfigLayer] = discover_config_layers(
+        input_paths=input_paths,
+        extra_config_files=extra_config_files,
+        strict_config_checking=None,
+        no_config=no_config,
+    )
+    draft: MutableConfig = merge_layers_globally(layers)
 
-    # Determine discovery anchor
-    anchor: Path = list(input_paths)[0] if input_paths else Path.cwd()
-    if anchor.is_file():
-        anchor = anchor.parent
-
-    # Only set strict config checking if not None
     if strict_config_checking is not None:
         draft.strict_config_checking = strict_config_checking
-
-    # 2) Config file discovery (unless `no_config` disables discovered layers)
-    if not no_config:
-        # 2a) Merge user config (if present)
-        user_cfg_path: Path | None = discover_user_config_file()
-        if user_cfg_path is not None:
-            user_cfg: MutableConfig | None = mutable_config_from_toml_file(user_cfg_path)
-            if user_cfg is not None:
-                draft = draft.merge_with(user_cfg)
-
-        # 2b) Discover project configs upward from the anchor directory and
-        # merge them in root-most -> nearest order.
-        discovered: list[Path] = discover_local_config_files(anchor)
-        # `discover_local_config_files()` already returns the correct stable
-        # merge order: root-most -> nearest, and within a directory
-        # `pyproject.toml` before `topmark.toml`.
-        for cfg_path in discovered:
-            mc: MutableConfig | None = mutable_config_from_toml_file(cfg_path)
-            if mc is not None:
-                draft = draft.merge_with(mc)
-
-    # 3) Merge extra config files (e.g., --config), in the given order
-    for extra in extra_config_files or ():  # explicit files override discovered ones
-        mc = mutable_config_from_toml_file(Path(extra))
-        if mc is not None:
-            draft = draft.merge_with(mc)
 
     return draft
