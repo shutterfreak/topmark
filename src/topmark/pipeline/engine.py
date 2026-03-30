@@ -48,6 +48,7 @@ from topmark.pipeline import runner
 from topmark.pipeline.context.model import ProcessingContext
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from collections.abc import Sequence
     from pathlib import Path
 
@@ -63,6 +64,7 @@ def run_steps_for_files(
     file_list: list[Path],
     pipeline: Sequence[Step[ProcessingContext]],
     config: Config,
+    path_configs: Mapping[Path, Config] | None = None,
     prune: bool = True,
 ) -> tuple[list[ProcessingContext], ExitCode | None]:
     """Run a pipeline for each file and return (results, encountered_error_code).
@@ -72,7 +74,9 @@ def run_steps_for_files(
     Args:
         file_list: List of file Path instances to be processed in the run.
         pipeline: The pipeline steps to execute for the run.
-        config: The TopMark configuration for the run.
+        config: Default TopMark configuration for the run.
+        path_configs: Optional per-path effective configs. When provided, a path-specific
+            config is used for bootstrap; otherwise the shared `config` is used.
         prune: If `True`, trim heavy views after the run (keeps summaries). Default: `True`.
 
     Returns:
@@ -101,15 +105,21 @@ def run_steps_for_files(
     """
     results: list[ProcessingContext] = []
     encountered_error_code: ExitCode | None = None
-    policy_registry: PolicyRegistry = make_policy_registry(config)
+    default_policy_registry: PolicyRegistry = make_policy_registry(config)
 
     # Process each path independently; collect contexts and degrade gracefully
     # on non-fatal errors (recording the first encountered exit code).
     for path in file_list:
         try:
+            effective_config: Config = path_configs[path] if path_configs is not None else config
+            policy_registry: PolicyRegistry = (
+                make_policy_registry(effective_config)
+                if path_configs is not None
+                else default_policy_registry
+            )
             ctx_obj: ProcessingContext = ProcessingContext.bootstrap(
                 path=path,
-                config=config,
+                config=effective_config,
                 policy_registry_override=policy_registry,
             )
             ctx_obj = runner.run(ctx_obj, pipeline, prune=prune)

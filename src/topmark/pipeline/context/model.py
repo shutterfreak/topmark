@@ -443,9 +443,9 @@ class ProcessingContext:
         Args:
             path: File system path for the file to process.
             config: Effective configuration to attach to the context.
-            policy_registry_override: Optional policy registry override providing precomputed
-                effective policies per file type for this run. If not set, then the policy
-                registry
+            policy_registry_override: Optional precomputed policy registry for the
+                supplied effective config. When omitted, the registry is derived
+                from `config` during bootstrap.
 
         Returns:
             Newly created context instance.

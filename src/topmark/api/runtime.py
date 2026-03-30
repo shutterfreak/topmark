@@ -31,6 +31,8 @@ from typing import Literal
 
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.io.deserializers import mutable_config_from_mapping
+from topmark.config.io.resolution import build_effective_config_for_path
+from topmark.config.io.resolution import discover_config_layers
 from topmark.config.io.resolution import load_resolved_config
 from topmark.config.model import Config
 from topmark.config.model import MutableConfig
@@ -52,6 +54,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from topmark.api.protocols import PublicPolicy
+    from topmark.config.io.types import ConfigLayer
     from topmark.core.exit_codes import ExitCode
     from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
@@ -114,24 +117,26 @@ def ensure_mutable_config(
     return mutable_config_from_mapping(config)
 
 
-def build_config_and_files(
+# ---- Config and file resolution helpers ----
+
+
+def _build_effective_config(
     paths: Iterable[Path | str],
     *,
     base_config: Mapping[str, object] | Config | None,
     include_file_types: Sequence[str] | None,
     exclude_file_types: Sequence[str] | None,
-) -> tuple[Config, list[Path]]:
-    """Build the frozen config and resolved file list for an API run.
+) -> Config:
+    """Build the frozen effective config for an API run.
 
-    This helper mirrors the CLI/config-layer split without depending on CLI
-    modules:
+    This helper is responsible only for config construction:
 
     - when `base_config is None`, use layered discovery via
       `load_resolved_config()`
     - when `base_config` is provided, honor it as an explicit seed and skip
       discovery
     - in both modes, apply final high-precedence file/file-type overrides via
-      `apply_config_overrides()` before freezing and resolving files
+      `apply_config_overrides()` before freezing
 
     Args:
         paths: Files and/or directories to process.
@@ -141,8 +146,8 @@ def build_config_and_files(
         exclude_file_types: Optional file-type denylist override.
 
     Returns:
-        A 2-tuple `(cfg, files)` where `cfg` is the frozen configuration used to
-        resolve files and `files` is the resolved/filtered file list.
+        The frozen configuration used for file resolution and later pipeline
+        execution.
     """
     logger.debug("Normalizing input paths: %s", paths)
 
@@ -165,7 +170,7 @@ def build_config_and_files(
         draft = mutable_config_from_defaults().merge_with(seeded)
 
     # Apply final file/file-type intent consistently with the config override
-    # layer, then freeze for file resolution.
+    # layer, then freeze for downstream use.
     overrides = ConfigOverrides(
         config_origin="<API overrides>",
         config_base=Path.cwd().resolve(),
@@ -178,9 +183,120 @@ def build_config_and_files(
         overrides=overrides,
     )
 
-    cfg: Config = draft.freeze()
+    return draft.freeze()
+
+
+def _resolve_files_for_config(cfg: Config) -> list[Path]:
+    """Resolve the candidate file list for a frozen config."""
     file_list: list[Path] = resolve_file_list(cfg)
     logger.debug("Files found: %s", len(file_list))
+    return file_list
+
+
+def _discover_layers_for_api_run(
+    paths: Iterable[Path | str],
+    *,
+    base_config: Mapping[str, object] | Config | None,
+) -> list[ConfigLayer] | None:
+    """Return discovered config layers for an API run when discovery is active.
+
+    Explicit `base_config` seeds intentionally bypass layered discovery, so this
+    helper returns `None` in that mode.
+    """
+    if base_config is not None:
+        return None
+
+    path_list: list[Path] = [Path(p) for p in paths] or [Path.cwd()]
+    return discover_config_layers(
+        input_paths=tuple(path_list),
+        extra_config_files=(),
+        strict_config_checking=None,
+        no_config=False,
+    )
+
+
+def _build_path_configs(
+    *,
+    layers: Sequence[ConfigLayer] | None,
+    file_list: Sequence[Path],
+    cfg_for_run: Config,
+) -> dict[Path, Config]:
+    """Build per-path effective configs for a run.
+
+    When provenance layers are available, each path receives a config derived
+    from the subset of layers whose scope applies to that path. Runtime-only
+    intent from `cfg_for_run` (for example `apply_changes`) is then copied onto
+    the per-path effective config. When no layers are available, this falls back
+    to the single global run config for every path.
+
+    Args:
+        layers: Optional discovered config provenance layers for the run.
+        file_list: Files that will be processed.
+        cfg_for_run: Final frozen run config carrying runtime-only intent.
+
+    Returns:
+        Mapping from file path to the effective frozen config that should be used
+        when bootstrapping that file's processing context.
+    """
+    if layers is None:
+        return dict.fromkeys(file_list, cfg_for_run)
+
+    path_configs: dict[Path, Config] = {}
+    for path in file_list:
+        per_path_cfg: Config = build_effective_config_for_path(layers, path).freeze()
+        path_configs[path] = replace(
+            per_path_cfg,
+            timestamp=cfg_for_run.timestamp,
+            apply_changes=cfg_for_run.apply_changes,
+            policy=cfg_for_run.policy,
+            policy_by_type=cfg_for_run.policy_by_type,
+        )
+
+    return path_configs
+
+
+def build_config_and_files(
+    paths: Iterable[Path | str],
+    *,
+    base_config: Mapping[str, object] | Config | None,
+    include_file_types: Sequence[str] | None,
+    exclude_file_types: Sequence[str] | None,
+) -> tuple[Config, list[Path]]:
+    """Build the frozen config and resolved file list for an API run.
+
+    This helper composes two narrower internal steps without depending on CLI
+    modules:
+
+    - build the frozen effective config for the run
+    - resolve the candidate file list from that config
+
+    The config-construction step still mirrors the CLI/config-layer split:
+
+    - when `base_config is None`, use layered discovery via
+      `load_resolved_config()`
+    - when `base_config` is provided, honor it as an explicit seed and skip
+      discovery
+    - in both modes, apply final high-precedence file/file-type overrides via
+      `apply_config_overrides()` before freezing
+
+    Args:
+        paths: Files and/or directories to process.
+        base_config: Optional explicit config seed. When omitted, layered config
+            discovery is used. When provided, discovery is skipped.
+        include_file_types: Optional file-type allowlist override.
+        exclude_file_types: Optional file-type denylist override.
+
+    Returns:
+        A 2-tuple `(cfg, files)` where `cfg` is the frozen configuration used to
+        resolve files and `files` is the resolved/filtered file list.
+    """
+    cfg: Config = _build_effective_config(
+        paths,
+        base_config=base_config,
+        include_file_types=include_file_types,
+        exclude_file_types=exclude_file_types,
+    )
+    file_list: list[Path] = _resolve_files_for_config(cfg)
     return cfg, file_list
 
 
@@ -343,12 +459,18 @@ def run_pipeline(
     """
     logger.info("Building config and file list for paths: %s", paths)
 
+    path_inputs: list[Path | str] = list(paths)
+    discovered_layers: list[ConfigLayer] | None = _discover_layers_for_api_run(
+        path_inputs,
+        base_config=base_config,
+    )
+
     # 1) Build config + resolve files using the same helpers as the CLI.
     #    This performs discovery when base_config is None; otherwise it honors mapping/Config.
     cfg: Config
     file_list: list[Path]
     cfg, file_list = build_config_and_files(
-        paths,
+        path_inputs,
         base_config=base_config,
         include_file_types=include_file_types,
         exclude_file_types=exclude_file_types,
@@ -388,6 +510,12 @@ def run_pipeline(
     # 3) Final immutable snapshot for this run, carrying apply intent.
     cfg_for_run: Config = replace(cfg, apply_changes=apply_changes)
 
+    path_configs: dict[Path, Config] = _build_path_configs(
+        layers=discovered_layers,
+        file_list=file_list,
+        cfg_for_run=cfg_for_run,
+    )
+
     logger.debug("cfg_for_run for run (3): %s", cfg_for_run)
 
     results: list[ProcessingContext] = []
@@ -396,6 +524,7 @@ def run_pipeline(
         file_list=file_list,
         pipeline=pipeline,
         config=cfg_for_run,
+        path_configs=path_configs,
         prune=prune,
     )
 
