@@ -105,18 +105,21 @@ def run_steps_for_files(
     """
     results: list[ProcessingContext] = []
     encountered_error_code: ExitCode | None = None
-    default_policy_registry: PolicyRegistry = make_policy_registry(config)
+    default_policy_registry: PolicyRegistry | None = (
+        None if path_configs is not None else make_policy_registry(config)
+    )
 
     # Process each path independently; collect contexts and degrade gracefully
     # on non-fatal errors (recording the first encountered exit code).
     for path in file_list:
         try:
             effective_config: Config = path_configs[path] if path_configs is not None else config
-            policy_registry: PolicyRegistry = (
+            policy_registry: PolicyRegistry | None = (
                 make_policy_registry(effective_config)
                 if path_configs is not None
                 else default_policy_registry
             )
+            # When no precomputed registry is supplied, bootstrap() derives one from config.
             ctx_obj: ProcessingContext = ProcessingContext.bootstrap(
                 path=path,
                 config=effective_config,
