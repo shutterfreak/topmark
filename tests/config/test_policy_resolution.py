@@ -196,6 +196,25 @@ def test_mutable_config_policy_merge_global_and_per_type() -> None:
     assert md_mut.allow_content_probe is False
 
 
+def test_mutable_config_policy_by_type_merge_preserves_unrelated_parent_keys() -> None:
+    """policy_by_type should merge by key instead of replacing the whole mapping."""
+    base: MutableConfig = mutable_config_from_defaults()
+    base.policy_by_type = {
+        "python": MutablePolicy(header_mutation_mode=HeaderMutationMode.ADD_ONLY),
+    }
+
+    override: MutableConfig = mutable_config_from_defaults()
+    override.policy_by_type = {
+        "markdown": MutablePolicy(allow_content_probe=False),
+    }
+
+    merged: MutableConfig = base.merge_with(override)
+
+    assert set(merged.policy_by_type.keys()) == {"python", "markdown"}
+    assert merged.policy_by_type["python"].header_mutation_mode == HeaderMutationMode.ADD_ONLY
+    assert merged.policy_by_type["markdown"].allow_content_probe is False
+
+
 def test_freeze_resolves_global_header_mutation_mode() -> None:
     """freeze() must preserve an explicit global header-mutation mode."""
     mc: MutableConfig = mutable_config_from_defaults()

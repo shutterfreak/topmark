@@ -30,7 +30,11 @@ from tests.conftest import group_patterns
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.io.deserializers import mutable_config_from_toml_dict
 from topmark.config.io.deserializers import mutable_config_from_toml_file
+from topmark.config.io.resolution import build_effective_config_for_path
+from topmark.config.io.resolution import discover_config_layers
 from topmark.config.io.resolution import load_resolved_config
+from topmark.config.io.resolution import merge_layers_globally
+from topmark.config.io.resolution import select_applicable_layers
 from topmark.config.keys import Toml
 from topmark.config.overrides import ConfigOverrides
 from topmark.config.overrides import apply_config_overrides
@@ -40,6 +44,7 @@ from topmark.resolution.files import resolve_file_list
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from topmark.config.io.types import ConfigLayer
     from topmark.config.io.types import TomlTable
     from topmark.config.io.types import TomlValue
     from topmark.config.model import Config
@@ -309,6 +314,192 @@ def test_parent_include_from_and_child_exclude_from_normalized_with_proper_bases
     # exclude_from normalized to child base
     assert draft.exclude_from
     assert draft.exclude_from[0].base == child.resolve()
+
+
+# --- Inserted tests ---
+
+
+@pytest.mark.pipeline
+def test_include_from_accumulates_across_multiple_applicable_layers(tmp_path: Path) -> None:
+    """include_from sources accumulate across applicable discovered config layers."""
+    root: Path = tmp_path / "root"
+    child: Path = root / "pkg"
+    child.mkdir(parents=True)
+    _write(root / ".gitignore", "*.tmp\n")
+    _write(child / ".include", "src/**/*.py\n")
+
+    _write(
+        root / "pyproject.toml",
+        """
+        [tool.topmark.files]
+        include_from = [".gitignore"]
+        """,
+    )
+    _write(
+        child / "topmark.toml",
+        """
+        [files]
+        include_from = [".include"]
+        """,
+    )
+
+    draft: MutableConfig = load_resolved_config(input_paths=[child])
+    paths: list[Path] = [ps.path for ps in draft.include_from]
+
+    assert paths == [
+        (root / ".gitignore").resolve(),
+        (child / ".include").resolve(),
+    ]
+
+
+@pytest.mark.pipeline
+def test_files_nearest_non_empty_list_wins_across_layers(tmp_path: Path) -> None:
+    """Explicit files lists use nearest-wins semantics across applicable layers."""
+    root: Path = tmp_path / "root"
+    child: Path = root / "pkg"
+    child.mkdir(parents=True)
+
+    _write(
+        root / "pyproject.toml",
+        """
+        [tool.topmark.files]
+        files = ["README.md"]
+        """,
+    )
+    _write(
+        child / "topmark.toml",
+        """
+        [files]
+        files = ["module.py"]
+        """,
+    )
+
+    draft: MutableConfig = load_resolved_config(input_paths=[child])
+    assert draft.files == [str((child / "module.py").resolve())]
+
+
+@pytest.mark.pipeline
+def test_include_file_types_nearest_non_empty_set_wins_across_layers(tmp_path: Path) -> None:
+    """include_file_types uses nearest-wins semantics rather than set union."""
+    root: Path = tmp_path / "root"
+    child: Path = root / "pkg"
+    child.mkdir(parents=True)
+
+    _write(
+        root / "pyproject.toml",
+        """
+        [tool.topmark.files]
+        include_file_types = ["python"]
+        """,
+    )
+    _write(
+        child / "topmark.toml",
+        """
+        [files]
+        include_file_types = ["markdown"]
+        """,
+    )
+
+    draft: MutableConfig = load_resolved_config(input_paths=[child])
+    assert draft.include_file_types == {"markdown"}
+
+
+@pytest.mark.pipeline
+def test_select_applicable_layers_filters_child_scoped_layer(tmp_path: Path) -> None:
+    """select_applicable_layers keeps global layers and filters file-backed layers by scope."""
+    root: Path = tmp_path / "root"
+    child: Path = root / "pkg"
+    sibling: Path = root / "docs"
+    child.mkdir(parents=True)
+    sibling.mkdir(parents=True)
+
+    _write(
+        root / "pyproject.toml",
+        """
+        [tool.topmark.formatting]
+        align_fields = false
+        """,
+    )
+    _write(
+        child / "topmark.toml",
+        """
+        [formatting]
+        align_fields = true
+        """,
+    )
+
+    layers: list[ConfigLayer] = discover_config_layers(input_paths=[child])
+
+    child_file: Path = child / "module.py"
+    sibling_file: Path = sibling / "guide.md"
+    child_file.write_text("x\n", encoding="utf-8")
+    sibling_file.write_text("x\n", encoding="utf-8")
+
+    child_layers: list[ConfigLayer] = select_applicable_layers(layers, child_file)
+    sibling_layers: list[ConfigLayer] = select_applicable_layers(layers, sibling_file)
+
+    assert any(layer.scope_root == child.resolve() for layer in child_layers)
+    assert not any(layer.scope_root == child.resolve() for layer in sibling_layers)
+
+
+@pytest.mark.pipeline
+def test_build_effective_config_for_path_merges_only_applicable_layers(tmp_path: Path) -> None:
+    """Per-path effective configs should merge only the layers whose scope applies."""
+    root: Path = tmp_path / "root"
+    child: Path = root / "pkg"
+    sibling: Path = root / "docs"
+    child.mkdir(parents=True)
+    sibling.mkdir(parents=True)
+
+    _write(
+        root / "pyproject.toml",
+        """
+        [tool.topmark.header]
+        fields = ["project", "license"]
+
+        [tool.topmark.fields]
+        project = "TopMark"
+        license = "MIT"
+        """,
+    )
+    _write(
+        child / "topmark.toml",
+        """
+        [header]
+        fields = ["project", "file"]
+
+        [fields]
+        file = "pkg/module.py"
+        """,
+    )
+
+    child_file: Path = child / "module.py"
+    sibling_file: Path = sibling / "guide.md"
+    child_file.write_text("x\n", encoding="utf-8")
+    sibling_file.write_text("x\n", encoding="utf-8")
+
+    layers: list[ConfigLayer] = discover_config_layers(input_paths=[child])
+    child_cfg: Config = build_effective_config_for_path(layers, child_file).freeze()
+    sibling_cfg: Config = build_effective_config_for_path(layers, sibling_file).freeze()
+
+    assert child_cfg.header_fields == ("project", "file")
+    assert child_cfg.field_values["project"] == "TopMark"
+    assert child_cfg.field_values["file"] == "pkg/module.py"
+
+    assert sibling_cfg.header_fields == ("project", "license")
+    assert sibling_cfg.field_values["project"] == "TopMark"
+    assert "file" not in sibling_cfg.field_values
+
+
+@pytest.mark.pipeline
+def test_merge_layers_globally_empty_returns_defaults() -> None:
+    """Merging an empty layer sequence should fall back to defaults."""
+    draft: MutableConfig = merge_layers_globally(())
+    default_draft: MutableConfig = mutable_config_from_defaults()
+
+    assert draft.header_fields == default_draft.header_fields
+    assert draft.include_from == default_draft.include_from
+    assert draft.include_pattern_groups == default_draft.include_pattern_groups
 
 
 @pytest.mark.pipeline

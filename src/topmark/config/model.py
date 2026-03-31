@@ -429,93 +429,192 @@ class MutableConfig:
     # ------------------------------- Merging -------------------------------
 
     def merge_with(self, other: MutableConfig) -> MutableConfig:
-        """Return a new draft where values from ``other`` override this draft.
+        """Return a new draft that merges ``self`` with a higher-precedence ``other`` draft.
 
-        This method performs a last-wins merge across all fields. For the policy
-        layer, it delegates to ``MutablePolicy.merge_with`` so that tri-state
-        fields (``bool | None``) are combined without losing information.
+        Merge behavior is field-specific rather than uniformly "last wins". The
+        current policy follows TopMark's layered-config mental model:
+
+        - provenance and diagnostics **accumulate**
+        - behavioral/configuration fields usually use **nearest-wins** semantics
+        - mapping fields usually **overlay keys**
+        - discovery pattern groups **accumulate** across layers
+        - some runtime-oriented fields are still carried through for compatibility,
+          even though they are not primarily intended to be sourced from file-backed
+          config layers
+
+        Current merge groups:
+            Provenance and diagnostics:
+                - `config_files`: append
+                - `diagnostics`: append
+
+            Strictness / runtime gates:
+                - `strict_config_checking`: replace only when explicitly set in `other`
+
+            Behavioral config:
+                - `header_fields`: replace when `other` provides a non-empty list
+                - `align_fields`: replace only when explicitly set in `other`
+                - `relative_to_raw`, `relative_to`: replace only when explicitly set in `other`
+
+            Policy:
+                - `policy`: tri-state field merge via `MutablePolicy.merge_with()`
+                - `policy_by_type`: key-wise merge, then tri-state merge per key
+
+            Field values:
+                - `field_values`: key-wise overlay; `other` wins on overlapping keys
+
+            Discovery inputs:
+                - `include_pattern_groups`, `exclude_pattern_groups`: append
+                - `include_from`, `exclude_from`, `files_from`: append
+                - `files`: replace when `other` provides a non-empty list
+
+            Discovery filters:
+                - `include_file_types`, `exclude_file_types`: replace when `other`
+                  provides a non-empty set
+
+            Runtime-oriented compatibility fields:
+                - `stdin_mode`, `stdin_filename`: replace only when explicitly set in `other`
+                - `apply_changes`: replace only when explicitly set in `other`
+                - `output_target`, `file_write_strategy`: replace only when explicitly set
+                  in `other`
+                - `timestamp`: preserve the base draft timestamp
 
         Args:
-            other: The config whose values override those of this draft.
+            other: Higher-precedence config whose values should be merged on top
+                of this draft.
 
         Returns:
             A new mutable configuration representing the merged result.
         """
-        # --- merge global policy (tri-state) ---
-        # Prefer `other`'s explicitly-set policy fields over `self`'s.
+        # --------------------------- Provenance and policies ---------------------------
+        # Merge global policy using tri-state semantics so explicit child values override
+        # matching parent values without collapsing `None` too early.
         merged_global: MutablePolicy = self.policy.merge_with(other.policy)
 
-        # --- merge per-type policy (key-wise union; tri-state per field) ---
+        # Merge per-type policies key-wise, then tri-state merge per shared key.
         merged_by_type: dict[str, MutablePolicy] = {}
-        all_keys: set[str] = set(self.policy_by_type.keys()) | set(other.policy_by_type.keys())
-        for key in all_keys:
+        all_policy_keys: set[str] = set(self.policy_by_type.keys()) | set(
+            other.policy_by_type.keys()
+        )
+        for key in all_policy_keys:
             base: MutablePolicy | None = self.policy_by_type.get(key)
             override: MutablePolicy | None = other.policy_by_type.get(key)
             if base is None:
                 if override is not None:
-                    merged_by_type[key] = override  # take as-is
+                    merged_by_type[key] = override
             elif override is None:
-                merged_by_type[key] = base  # keep base
+                merged_by_type[key] = base
             else:
                 merged_by_type[key] = base.merge_with(override)
 
-        # --- Merge diagnostics ---
+        # Provenance and diagnostics always accumulate across layers.
+        merged_config_files: list[Path | str] = [*self.config_files, *other.config_files]
         merged_diags: DiagnosticLog = DiagnosticLog(
             items=[*self.diagnostics.items, *other.diagnostics.items]
         )
 
+        # ------------------------ Strictness / behavioral config ------------------------
+        merged_strict_config_checking: bool | None = (
+            other.strict_config_checking
+            if other.strict_config_checking is not None
+            else self.strict_config_checking
+        )
+        merged_header_fields: list[str] = other.header_fields or self.header_fields
+        merged_align_fields: bool | None = (
+            other.align_fields if other.align_fields is not None else self.align_fields
+        )
+        merged_relative_to_raw: str | None = (
+            other.relative_to_raw if other.relative_to_raw is not None else self.relative_to_raw
+        )
+        merged_relative_to: Path | None = (
+            other.relative_to if other.relative_to is not None else self.relative_to
+        )
+
+        # ----------------------------- Mapping-style overlays ----------------------------
+        # Field values use key-wise overlay semantics: unrelated parent keys remain
+        # inherited while matching child keys override.
+        merged_field_values: dict[str, str] = {
+            **self.field_values,
+            **other.field_values,
+        }
+
+        # -------------------------------- Discovery inputs -------------------------------
+        # Discovery pattern groups always accumulate across applicable layers.
+        merged_include_pattern_groups: list[PatternGroup] = [
+            *self.include_pattern_groups,
+            *other.include_pattern_groups,
+        ]
+        merged_exclude_pattern_groups: list[PatternGroup] = [
+            *self.exclude_pattern_groups,
+            *other.exclude_pattern_groups,
+        ]
+
+        # Path-to-file discovery sources now accumulate across layers as well.
+        merged_include_from: list[PatternSource] = [*self.include_from, *other.include_from]
+        merged_exclude_from: list[PatternSource] = [*self.exclude_from, *other.exclude_from]
+        merged_files_from: list[PatternSource] = [*self.files_from, *other.files_from]
+
+        # Explicit file lists remain authoritative: nearest applicable non-empty list wins.
+        merged_files: list[str] = other.files or self.files
+
+        # File-type filters express a nearest-scope decision rather than a union.
+        merged_include_file_types: set[str] = other.include_file_types or self.include_file_types
+        merged_exclude_file_types: set[str] = other.exclude_file_types or self.exclude_file_types
+
+        # ---------------------- Runtime-oriented compatibility fields ---------------------
+        # These fields are still merged here for compatibility, even though they are
+        # primarily intended to be supplied by CLI/API runtime overlays.
+        merged_stdin_mode: bool | None = (
+            other.stdin_mode if other.stdin_mode is not None else self.stdin_mode
+        )
+        merged_stdin_filename: str | None = (
+            other.stdin_filename if other.stdin_filename is not None else self.stdin_filename
+        )
+        merged_apply_changes: bool | None = (
+            other.apply_changes if other.apply_changes is not None else self.apply_changes
+        )
+        merged_output_target: OutputTarget | None = (
+            other.output_target if other.output_target is not None else self.output_target
+        )
+        merged_file_write_strategy: FileWriteStrategy | None = (
+            other.file_write_strategy
+            if other.file_write_strategy is not None
+            else self.file_write_strategy
+        )
+
         logger.info(
-            "Adding %r to self.config_files = %r",
+            "Merging config layers: adding %r to existing config_files %r",
             other.config_files,
             self.config_files,
         )
 
         merged = MutableConfig(
+            # Preserve the base draft timestamp; runtime code may replace it later for a run.
             timestamp=self.timestamp,
-            # Append config files
-            config_files=self.config_files + other.config_files,
-            # strict_config_checking: preserve tri-state strict flag
-            strict_config_checking=(
-                other.strict_config_checking
-                if other.strict_config_checking is not None
-                else self.strict_config_checking
-            ),
-            # diagnostics must be carried forward:
+            config_files=merged_config_files,
             diagnostics=merged_diags,
-            # Default " last wins" merge strategy:
-            header_fields=other.header_fields or self.header_fields,
-            relative_to_raw=other.relative_to_raw
-            if other.relative_to_raw is not None
-            else self.relative_to_raw,
-            relative_to=other.relative_to if other.relative_to is not None else self.relative_to,
-            field_values=other.field_values or self.field_values,
-            align_fields=other.align_fields
-            if other.align_fields is not None
-            else self.align_fields,
-            stdin_mode=other.stdin_mode if other.stdin_mode is not None else self.stdin_mode,
-            files=other.files or self.files,
-            files_from=other.files_from or self.files_from,
-            include_from=other.include_from or self.include_from,
-            exclude_from=other.exclude_from or self.exclude_from,
-            include_pattern_groups=[*self.include_pattern_groups, *other.include_pattern_groups],
-            exclude_pattern_groups=[*self.exclude_pattern_groups, *other.exclude_pattern_groups],
-            include_file_types=other.include_file_types or self.include_file_types,
-            exclude_file_types=other.exclude_file_types or self.exclude_file_types,
-            apply_changes=other.apply_changes
-            if other.apply_changes is not None
-            else self.apply_changes,
-            output_target=other.output_target
-            if other.output_target is not None
-            else self.output_target,
-            file_write_strategy=other.file_write_strategy
-            if other.file_write_strategy is not None
-            else self.file_write_strategy,
+            strict_config_checking=merged_strict_config_checking,
+            header_fields=merged_header_fields,
+            field_values=merged_field_values,
+            align_fields=merged_align_fields,
+            relative_to_raw=merged_relative_to_raw,
+            relative_to=merged_relative_to,
+            stdin_mode=merged_stdin_mode,
+            stdin_filename=merged_stdin_filename,
+            files=merged_files,
+            include_from=merged_include_from,
+            exclude_from=merged_exclude_from,
+            files_from=merged_files_from,
+            include_pattern_groups=merged_include_pattern_groups,
+            exclude_pattern_groups=merged_exclude_pattern_groups,
+            include_file_types=merged_include_file_types,
+            exclude_file_types=merged_exclude_file_types,
+            apply_changes=merged_apply_changes,
+            output_target=merged_output_target,
+            file_write_strategy=merged_file_write_strategy,
         )
 
-        # Attach merged policies
         merged.policy = merged_global
         merged.policy_by_type = merged_by_type
-
         return merged
 
     def sanitize(self) -> None:
