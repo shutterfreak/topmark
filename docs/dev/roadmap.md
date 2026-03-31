@@ -271,6 +271,14 @@ goals.
   behavior.
 - Optimized pipeline engine to avoid constructing unused shared `PolicyRegistry` instances when
   path-specific configs are provided.
+- Clarified the conceptual split between:
+  - file-backed layered configuration (provenance-aware, per-path)
+  - runtime execution intent (CLI/API overlays such as `apply_changes`, `stdin_*`, output settings)
+- Introduced API/runtime helpers that apply runtime overlays **after** layered config resolution,
+  rather than mixing them into config merging.
+- Established direction for a follow-up refactor to explicitly separate:
+  - resolved layered config objects
+  - runtime overlay / execution intent objects
 
 ### Policy model, empty-file semantics, and outcome summaries
 
@@ -1175,10 +1183,10 @@ Desired outcome:
 - Core config loading/merging stays reusable and independent of CLI concerns.
 - CLI parsing/normalization produces a clear override structure.
 - The same override structure remains usable by API callers (without importing Click).
-- Clarify long-term handling of runtime-only fields (e.g. `stdin_mode`, `apply_changes`):
-  - current behavior merges them alongside config fields
-  - consider moving to a dedicated runtime overlay phase post-merge for clearer separation of
-    concerns
+- Clarify and refactor handling of runtime-only fields (e.g. `stdin_mode`, `apply_changes`):
+  - current behavior still partially merges them alongside config fields
+  - planned refactor will move these into a dedicated runtime overlay layer applied after config
+    resolution
 
 ### Machine output formats: remaining work
 
@@ -1418,6 +1426,8 @@ This checklist defines the minimum criteria for cutting TopMark 1.0, grouped by 
   - [x] CLI policy override behavior
   - [x] API policy override behavior
 - [x] Engine correctly applies per-path configs and policy registries (covered by integration tests)
+- [ ] Explicit separation between layered config and runtime overlays (no runtime fields in config
+  merge semantics)
 
 #### [Must] Dependency & ecosystem
 
