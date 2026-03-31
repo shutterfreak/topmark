@@ -120,34 +120,41 @@ def ensure_mutable_config(
 # ---- Config and file resolution helpers ----
 
 
-def _build_effective_config(
+def _build_resolved_config_for_run(
     paths: Iterable[Path | str],
     *,
     base_config: Mapping[str, object] | Config | None,
     include_file_types: Sequence[str] | None,
     exclude_file_types: Sequence[str] | None,
 ) -> Config:
-    """Build the frozen effective config for an API run.
+    """Build the resolved configuration for an API run before runtime overlays.
 
-    This helper is responsible only for config construction:
+    This helper is responsible only for producing the file-backed, layer-resolved
+    configuration that drives candidate discovery. It intentionally stops short
+    of applying runtime overlays such as `apply_changes` or public API policy
+    overrides.
 
-    - when `base_config is None`, use layered discovery via
-      `load_resolved_config()`
-    - when `base_config` is provided, honor it as an explicit seed and skip
+    Resolution mode:
+
+    - when `base_config is None`, perform normal layered discovery via
+      `load_resolved_config()` using the supplied paths as discovery anchors
+    - when `base_config` is provided, treat it as an explicit seed and skip
       discovery
-    - in both modes, apply final high-precedence file/file-type overrides via
+    - in both modes, apply final file/file-type intent via
       `apply_config_overrides()` before freezing
 
     Args:
         paths: Files and/or directories to process.
         base_config: Optional explicit config seed. When omitted, layered config
             discovery is used. When provided, discovery is skipped.
-        include_file_types: Optional file-type allowlist override.
-        exclude_file_types: Optional file-type denylist override.
+        include_file_types: Optional file-type allowlist override used during
+            candidate resolution.
+        exclude_file_types: Optional file-type denylist override used during
+            candidate resolution.
 
     Returns:
-        The frozen configuration used for file resolution and later pipeline
-        execution.
+        The frozen resolved configuration that serves as the base for file
+        discovery and later runtime overlay application.
     """
     logger.debug("Normalizing input paths: %s", paths)
 
@@ -169,8 +176,9 @@ def _build_effective_config(
         seeded: MutableConfig = ensure_mutable_config(base_config)
         draft = mutable_config_from_defaults().merge_with(seeded)
 
-    # Apply final file/file-type intent consistently with the config override
-    # layer, then freeze for downstream use.
+    # Apply file/file-type intent needed for candidate resolution. This remains
+    # part of the resolved config because it directly affects which files are
+    # considered by the resolver.
     overrides = ConfigOverrides(
         config_origin="<API overrides>",
         config_base=Path.cwd().resolve(),
@@ -186,8 +194,25 @@ def _build_effective_config(
     return draft.freeze()
 
 
-def _resolve_files_for_config(cfg: Config) -> list[Path]:
-    """Resolve the candidate file list for a frozen config."""
+# ---- Candidate file resolution helpers ----
+
+
+def _resolve_candidate_files(cfg: Config) -> list[Path]:
+    """Resolve the candidate file list for a resolved frozen config.
+
+    This helper exists to make the API runtime split explicit:
+
+    - first build the resolved config used for discovery
+    - then resolve the candidate file list from that config
+    - only afterwards apply runtime overlays for execution
+
+    Args:
+        cfg: Resolved frozen config whose discovery-related fields should be used
+            to build the candidate file list.
+
+    Returns:
+        The resolved and filtered candidate file list.
+    """
     file_list: list[Path] = resolve_file_list(cfg)
     logger.debug("Files found: %s", len(file_list))
     return file_list
@@ -223,11 +248,10 @@ def _build_path_configs(
 ) -> dict[Path, Config]:
     """Build per-path effective configs for a run.
 
-    When provenance layers are available, each path receives a config derived
-    from the subset of layers whose scope applies to that path. Runtime-only
-    intent from `cfg_for_run` (for example `apply_changes`) is then copied onto
-    the per-path effective config. When no layers are available, this falls back
-    to the single global run config for every path.
+    When provenance layers are available, each path receives a config derived from the subset of
+    layers whose scope applies to that path. Runtime overlays from `cfg_for_run` (for example
+    `apply_changes` and public policy overlays) are then copied onto the per-path effective config.
+    When no layers are available, this falls back to the single global run config for every path.
 
     Args:
         layers: Optional discovered config provenance layers for the run.
@@ -235,8 +259,8 @@ def _build_path_configs(
         cfg_for_run: Final frozen run config carrying runtime-only intent.
 
     Returns:
-        Mapping from file path to the effective frozen config that should be used
-        when bootstrapping that file's processing context.
+        Mapping from file path to the effective frozen config that should be used when
+        bootstrapping that file's processing context.
     """
     if layers is None:
         return dict.fromkeys(file_list, cfg_for_run)
@@ -255,49 +279,51 @@ def _build_path_configs(
     return path_configs
 
 
-def build_config_and_files(
-    paths: Iterable[Path | str],
+def _apply_runtime_overlays(
+    cfg: Config,
     *,
-    base_config: Mapping[str, object] | Config | None,
-    include_file_types: Sequence[str] | None,
-    exclude_file_types: Sequence[str] | None,
-) -> tuple[Config, list[Path]]:
-    """Build the frozen config and resolved file list for an API run.
+    apply_changes: bool,
+    policy: PublicPolicy | None,
+    policy_by_type: Mapping[str, PublicPolicy] | None,
+) -> Config:
+    """Apply runtime overlays to an already-resolved config.
 
-    This helper composes two narrower internal steps without depending on CLI
-    modules:
-
-    - build the frozen effective config for the run
-    - resolve the candidate file list from that config
-
-    The config-construction step still mirrors the CLI/config-layer split:
-
-    - when `base_config is None`, use layered discovery via
-      `load_resolved_config()`
-    - when `base_config` is provided, honor it as an explicit seed and skip
-      discovery
-    - in both modes, apply final high-precedence file/file-type overrides via
-      `apply_config_overrides()` before freezing
+    Runtime overlays are applied after layered config resolution and file
+    discovery. This keeps layered config composition separate from execution
+    intent such as apply mode and API policy overrides.
 
     Args:
-        paths: Files and/or directories to process.
-        base_config: Optional explicit config seed. When omitted, layered config
-            discovery is used. When provided, discovery is skipped.
-        include_file_types: Optional file-type allowlist override.
-        exclude_file_types: Optional file-type denylist override.
+        cfg: The resolved config to overlay.
+        apply_changes: Run-level apply/preview intent.
+        policy: Optional global public policy overlay.
+        policy_by_type: Optional per-type public policy overlays.
 
     Returns:
-        A 2-tuple `(cfg, files)` where `cfg` is the frozen configuration used to
-        resolve files and `files` is the resolved/filtered file list.
+        The final frozen config for the run, including runtime overlays.
     """
-    cfg: Config = _build_effective_config(
-        paths,
-        base_config=base_config,
-        include_file_types=include_file_types,
-        exclude_file_types=exclude_file_types,
-    )
-    file_list: list[Path] = _resolve_files_for_config(cfg)
-    return cfg, file_list
+    draft: MutableConfig = cfg.thaw()
+
+    if policy is not None or policy_by_type is not None:
+        policy_overrides: PolicyOverrides = (
+            _build_public_policy_overrides(policy) if policy is not None else PolicyOverrides()
+        )
+        policy_by_type_overrides: dict[str, PolicyOverrides] = (
+            _build_public_policy_by_type_overrides(policy_by_type)
+            if policy_by_type is not None
+            else {}
+        )
+        draft = apply_config_overrides(
+            draft,
+            ConfigOverrides(
+                config_origin="<API policy overrides>",
+                config_base=Path.cwd().resolve(),
+                policy=policy_overrides,
+                policy_by_type=policy_by_type_overrides,
+            ),
+        )
+
+    runtime_cfg: Config = draft.freeze()
+    return replace(runtime_cfg, apply_changes=apply_changes)
 
 
 def select_pipeline(
@@ -465,50 +491,28 @@ def run_pipeline(
         base_config=base_config,
     )
 
-    # 1) Build config + resolve files using the same helpers as the CLI.
-    #    This performs discovery when base_config is None; otherwise it honors mapping/Config.
-    cfg: Config
-    file_list: list[Path]
-    cfg, file_list = build_config_and_files(
+    # 1) Build the resolved config used for discovery, then resolve candidate
+    #    files from that config. Runtime overlays are intentionally deferred.
+    cfg: Config = _build_resolved_config_for_run(
         path_inputs,
         base_config=base_config,
         include_file_types=include_file_types,
         exclude_file_types=exclude_file_types,
     )
-    logger.debug("cfg for run (1 - after build_config_and_files): %s", cfg)
+    file_list: list[Path] = _resolve_candidate_files(cfg)
+    logger.debug("cfg for run (1 - resolved config before runtime overlays): %s", cfg)
 
-    # 2) Apply public policy overlays AFTER discovery, then materialize apply intent.
-    has_policy_overlay: bool = policy is not None or policy_by_type is not None
-    if has_policy_overlay:
-        draft: MutableConfig = cfg.thaw()
-
-        policy_overrides: PolicyOverrides = (
-            _build_public_policy_overrides(policy) if policy is not None else PolicyOverrides()
-        )
-        policy_by_type_overrides: dict[str, PolicyOverrides] = (
-            _build_public_policy_by_type_overrides(policy_by_type)
-            if policy_by_type is not None
-            else {}
-        )
-
-        draft = apply_config_overrides(
-            draft,
-            ConfigOverrides(
-                config_origin="<API policy overrides>",
-                config_base=Path.cwd().resolve(),
-                policy=policy_overrides,
-                policy_by_type=policy_by_type_overrides,
-            ),
-        )
-
-        cfg = draft.freeze()  # (No mutation of cfg - Config is frozen)
-    logger.debug("cfg for run (2 - after applying policy overlays): %s", cfg)
+    # 2) Apply runtime overlays AFTER layered config resolution and file discovery.
+    cfg_for_run: Config = _apply_runtime_overlays(
+        cfg,
+        apply_changes=apply_changes,
+        policy=policy,
+        policy_by_type=policy_by_type,
+    )
+    logger.debug("cfg_for_run for run (2 - after runtime overlays): %s", cfg_for_run)
 
     if not file_list:
-        return cfg, file_list, [], None
-
-    # 3) Final immutable snapshot for this run, carrying apply intent.
-    cfg_for_run: Config = replace(cfg, apply_changes=apply_changes)
+        return cfg_for_run, file_list, [], None
 
     path_configs: dict[Path, Config] = _build_path_configs(
         layers=discovered_layers,
@@ -516,7 +520,7 @@ def run_pipeline(
         cfg_for_run=cfg_for_run,
     )
 
-    logger.debug("cfg_for_run for run (3): %s", cfg_for_run)
+    logger.debug("cfg_for_run for run (3 - path configs prepared): %s", cfg_for_run)
 
     results: list[ProcessingContext] = []
     encountered_error_code: ExitCode | None
@@ -530,4 +534,4 @@ def run_pipeline(
 
     logger.info("Processing %d files with TopMark %s", len(file_list), TOPMARK_VERSION)
 
-    return cfg, file_list, results, encountered_error_code
+    return cfg_for_run, file_list, results, encountered_error_code
