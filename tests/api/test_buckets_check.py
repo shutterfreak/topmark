@@ -15,7 +15,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark import api
-from topmark.api.protocols import PublicPolicy
+from topmark.api.types import PublicPolicy
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
 

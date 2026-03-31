@@ -21,7 +21,7 @@ from tests.api.conftest import by_path_outcome
 from tests.api.conftest import has_header
 from tests.api.conftest import read_text
 from topmark import api
-from topmark.api.protocols import PublicPolicy
+from topmark.api.types import PublicPolicy
 
 if TYPE_CHECKING:
     from pathlib import Path

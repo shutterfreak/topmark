@@ -43,8 +43,8 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-    from topmark.api.protocols import PublicPolicy
-    from topmark.api.protocols import PublicReportScopeLiteral
+    from topmark.api.types import PublicPolicy
+    from topmark.api.types import PublicReportScopeLiteral
     from topmark.api.types import RunResult
     from topmark.config.model import Config
     from topmark.core.exit_codes import ExitCode

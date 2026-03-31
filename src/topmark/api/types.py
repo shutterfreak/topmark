@@ -8,14 +8,22 @@
 #
 # topmark:header:end
 
-"""Stable public types for the TopMark API.
+"""Stable public value types for the TopMark API.
 
-This module defines enums, dataclasses, and TypedDicts that appear in:
-- public function signatures in [`topmark.api`][topmark.api]
-- public return values (e.g., `RunResult`)
+This module centralizes the public, non-protocol type surface used by
+`topmark.api`. It contains:
 
-These shapes follow the project's semver policy. Internal domain objects may be richer and
-are allowed to evolve independently (e.g., internal diagnostics or pipeline views).
+- public config-input mapping aliases
+- literal token types used in public function signatures
+- JSON-friendly TypedDict shapes for diagnostics and registry metadata
+- frozen dataclasses returned by public API helpers
+
+These shapes follow the project's semver policy. Internal domain objects may be
+richer and are allowed to evolve independently (for example, internal
+pipeline-only diagnostics, views, and runtime context objects).
+
+Use this module for stable public value shapes. Structural plugin contracts
+belong in [`topmark.api.protocols`][topmark.api.protocols].
 """
 
 from __future__ import annotations
@@ -26,6 +34,7 @@ from enum import Enum
 from typing import TYPE_CHECKING
 from typing import Final
 from typing import Literal
+from typing import TypeAlias
 from typing import TypedDict
 
 from topmark.core.logging import TopmarkLogger
@@ -39,22 +48,28 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-ConfigMapping = Mapping[str, object]
-"""ConfigMapping: TOML-tool-table-shaped mapping used by the public API.
+# ---- Public config input and token literals ----
 
-This is a generic mapping accepted by config loaders (works for API dicts).
-Values are `object` intentionally to prevent leaking `Any` and to force explicit
-validation/parsing at the config boundary.
+ConfigMapping: TypeAlias = Mapping[str, object]
+"""TOML-tool-table-shaped mapping accepted by the public API.
 
-This mapping represents the effective `[tool.topmark]` table (as in TOML), not the
-full pyproject document. It is the public API shape for config input/overrides.
-The implementation uses .get() and key lookups, so Mapping is the right structural type.
-This allows the API/tests to pass plain dicts.
+This is the public config-input shape for API entrypoints. It represents the
+resolved `[tool.topmark]` table (or equivalent mapping), not the full
+`pyproject.toml` document.
+
+Values are typed as `object` intentionally so the public boundary does not leak
+`Any`. Validation and narrowing happen explicitly inside the config-loading
+layer.
 """
 
-
 DiagnosticLevelLiteral = Literal["info", "warning", "error"]
-"""Allowed diagnostic severity levels in the public API."""
+"""Allowed public diagnostic severity tokens."""
+
+PipelineKindLiteral = Literal["check", "strip"]
+"""Allowed public pipeline-family tokens."""
+
+
+# ---- Public diagnostics and run-result shapes ----
 
 
 class DiagnosticEntry(TypedDict):
@@ -85,15 +100,12 @@ class DiagnosticTotals(TypedDict):
     total: int
 
 
-PipelineKindLiteral = Literal["check", "strip"]
-"""Allowed public pipeline families."""
-
-
 class Outcome(str, Enum):
-    """Per-file outcome bucket.
+    """Stable per-file outcome bucket used by the public API.
 
-    Values mirror CLI semantics. Consumers should use `Outcome` (and `.value`) for
-    programmatic decisions rather than relying on human labels.
+    Values mirror the high-level outcome categories exposed by the CLI and API.
+    Consumers should prefer `Outcome` (and `Outcome.value`) for programmatic
+    decisions rather than relying on human-facing labels.
     """
 
     PENDING = "pending"
@@ -114,6 +126,7 @@ class Outcome(str, Enum):
     STRIPPED = "stripped"
 
 
+# Stable presentation/aggregation order for public outcomes.
 OUTCOME_ORDER: Final[tuple[Outcome, ...]] = (
     Outcome.PENDING,
     Outcome.SKIPPED,
@@ -220,31 +233,34 @@ class RunResult:
     diagnostic_totals_all: DiagnosticTotals | None = None
 
 
-class FileTypePolicyInfo(TypedDict, total=True):
-    r"""Stable metadata describing header insertion/stripping policy for a file type.
+# ---- Public registry / metadata shapes ----
 
-    This typed dict represents a
+
+class FileTypePolicyInfo(TypedDict, total=True):
+    r"""Stable metadata describing header placement policy for a file type.
+
+    This typed dict is the public, JSON-friendly representation of a
     [`topmark.filetypes.policy.FileTypeHeaderPolicy`][topmark.filetypes.policy.FileTypeHeaderPolicy]
     instance.
 
     Attributes:
         supports_shebang: Whether this file type commonly starts with a POSIX
-            shebang (e.g., ``#!/usr/bin/env bash``). When ``True``, processors may
-            skip a leading shebang during placement.
-        encoding_line_regex: Optional regex (string) that matches an
-            encoding declaration line *immediately after* a shebang (e.g., Python
-            PEP 263). When provided and a shebang was skipped, a matching line is
-            also skipped for placement.
+            shebang (for example, ``#!/usr/bin/env bash``). When `True`,
+            processors may skip a leading shebang during placement.
+        encoding_line_regex: Optional regex string that matches an encoding
+            declaration line immediately after a shebang (for example, Python
+            PEP 263). When provided and a shebang was skipped, a matching line
+            is also skipped for placement.
         pre_header_blank_after_block: Number of blank lines to place between a
-            preamble block (shebang/encoding or similar) and the header. Typically 1.
-        ensure_blank_after_header: Ensure exactly one blank line follows the
-            header when body content follows. No extra blank is added at EOF.
-        blank_collapse_mode: How to identify and collapse *blank*
-            lines around the header during insert/strip repairs. See
-            [`BlankCollapseMode`][topmark.filetypes.policy.BlankCollapseMode] for semantics.
-        blank_collapse_extra: Additional characters to treat as blank **in
-            addition** to those covered by ``blank_collapse_mode``. For example,
-            set to ``\"\\x0c\"`` to consider form-feed collapsible for a given type.
+            preamble block (shebang/encoding or similar) and the header.
+        ensure_blank_after_header: Whether exactly one blank line should follow
+            the header when body content follows.
+        blank_collapse_mode: How blank lines around the header are identified
+            and collapsed during insert/strip repairs. See
+            [`BlankCollapseMode`][topmark.filetypes.policy.BlankCollapseMode]
+            for semantics.
+        blank_collapse_extra: Additional characters to treat as blank in
+            addition to those covered by `blank_collapse_mode`.
     """
 
     supports_shebang: bool
@@ -261,14 +277,19 @@ class FileTypePolicyInfo(TypedDict, total=True):
 class FileTypeInfo(TypedDict, total=True):
     """Stable metadata about a registered file type.
 
+    This is the JSON-friendly public view returned by registry-facing API
+    helpers. It describes discovery metadata, binding state, and the effective
+    placement policy for the file type.
+
     Attributes:
         local_key: File type local key (compatibility identifier).
         namespace: Namespace that owns the file type.
         qualified_key: Canonical file type key.
         description: Human description.
-        bound: Whether the file type currently has an effective processor binding.
+        bound: Whether the file type currently has an effective processor
+            binding.
         extensions: Known filename extensions (without dots).
-        filenames: Exact filenames matched (e.g., ``"Makefile"``).
+        filenames: Exact filenames matched (for example, ``"Makefile"``).
         patterns: Full-match regular-expression patterns.
         skip_processing: Whether the type is discoverable but not processed.
         has_content_matcher: Whether a content matcher exists.
@@ -295,6 +316,10 @@ class FileTypeInfo(TypedDict, total=True):
 
 class ProcessorInfo(TypedDict, total=True):
     """Stable metadata about a registered header processor.
+
+    This is the JSON-friendly public view returned by registry-facing API
+    helpers. It describes the processor's identity, binding state, and comment
+    delimiter metadata.
 
     Attributes:
         local_key: Processor local key (compatibility identifier).
@@ -328,6 +353,9 @@ class ProcessorInfo(TypedDict, total=True):
 class BindingInfo(TypedDict, total=True):
     """Stable metadata about an effective file-type-to-processor binding.
 
+    This is the JSON-friendly public view returned by registry-facing API
+    helpers for effective bindings.
+
     Attributes:
         file_type_key: Canonical file type key.
         file_type_local_key: File type local key.
@@ -349,3 +377,97 @@ class BindingInfo(TypedDict, total=True):
 
     file_type_description: str
     processor_description: str
+
+
+# ---- Public policy / reporting tokens ----
+
+
+PublicEmptyInsertModeLiteral = Literal[
+    "bytes_empty",
+    "logical_empty",
+    "whitespace_empty",
+]
+"""Public token type for configuring how TopMark classifies “empty” files.
+
+These values intentionally mirror the internal `EmptyInsertMode.value` strings
+without exposing the internal enum class as part of the public API.
+"""
+
+PublicHeaderMutationModeLiteral = Literal[
+    "all",
+    "add_only",
+    "update_only",
+]
+"""Public token type for configuring which header mutations are allowed.
+
+These values intentionally mirror the internal `HeaderMutationMode.value`
+strings without exposing the internal enum class as part of the public API.
+"""
+
+PublicReportScopeLiteral = Literal[
+    "actionable",
+    "noncompliant",
+    "all",
+]
+"""Public token type for selecting the returned run-result scope.
+
+These values intentionally mirror the internal `ReportScope.value` strings
+without exposing the internal enum class as part of the public API.
+"""
+
+
+# ---- Public policy shapes ----
+
+
+class PublicPolicy(TypedDict, total=False):
+    """Public, JSON-friendly policy overlay.
+
+    This structure mirrors the stable, public subset of TopMark's internal
+    policy model and can be passed to public API helpers to refine runtime
+    behavior. All keys are optional; unspecified options inherit from the
+    resolved config/defaults.
+
+    Keys:
+        header_mutation_mode: Defines how headers may be mutated: process all
+            files (`"all"`, default), only add headers when no header is
+            present (`"add_only"`), or only update existing headers
+            (`"update_only"`).
+        allow_header_in_empty_files: Allow inserting headers into files that are
+            classified as empty under the effective `empty_insert_mode`.
+        empty_insert_mode: Public token controlling which files are considered
+            empty for insertion.
+        render_empty_header_when_no_fields: Allow inserting an empty header when
+            no fields are defined.
+        allow_reflow: If `True`, allow reflowing file content when inserting a
+            header. This can break check/strip idempotence.
+        allow_content_probe: Whether the resolver may consult file contents
+            during file-type detection.
+
+    Notes:
+        This is a stable public contract. Public APIs use JSON/TOML-friendly
+        primitive values, so enum-backed internal policy values are exposed as
+        string tokens rather than internal enum classes.
+    """
+
+    header_mutation_mode: PublicHeaderMutationModeLiteral
+    allow_header_in_empty_files: bool
+    empty_insert_mode: PublicEmptyInsertModeLiteral
+    render_empty_header_when_no_fields: bool
+    allow_reflow: bool
+    allow_content_probe: bool
+
+
+class PublicPolicyByType(TypedDict, total=False):
+    """Per-file-type public policy overlays.
+
+    This mapping applies a `PublicPolicy` overlay to a specific file type key.
+
+    Example mapping:
+        {"python": {"allow_header_in_empty_files": True}}
+
+    Notes:
+        Keys must match registered file type identifiers. Values use the same
+        stable `PublicPolicy` structure as the global overlay.
+    """
+
+    __extra_items__: PublicPolicy

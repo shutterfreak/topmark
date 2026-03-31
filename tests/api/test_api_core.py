@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING
 
 from tests.api.conftest import has_header
 from topmark import api
-from topmark.api.protocols import PublicPolicy
+from topmark.api.types import PublicPolicy
 from topmark.config.keys import Toml
 
 if TYPE_CHECKING:

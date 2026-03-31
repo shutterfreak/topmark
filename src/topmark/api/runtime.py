@@ -53,8 +53,8 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
     from collections.abc import Sequence
 
-    from topmark.api.protocols import PublicPolicy
     from topmark.api.types import PipelineKindLiteral
+    from topmark.api.types import PublicPolicy
     from topmark.config.io.types import ConfigLayer
     from topmark.core.exit_codes import ExitCode
     from topmark.core.logging import TopmarkLogger

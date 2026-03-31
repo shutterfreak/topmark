@@ -23,8 +23,8 @@ import pytest
 from tests.conftest import make_file_type
 from tests.conftest import registry_processor_class
 from topmark import api
-from topmark.api.protocols import PublicPolicy
-from topmark.api.protocols import PublicReportScopeLiteral
+from topmark.api.types import PublicPolicy
+from topmark.api.types import PublicReportScopeLiteral
 from topmark.config.keys import Toml
 from topmark.processors.types import BoundsKind
 from topmark.processors.types import HeaderBounds
