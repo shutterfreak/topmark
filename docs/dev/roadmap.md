@@ -251,6 +251,27 @@ goals.
 - Strengthened TOML/config typing boundaries by introducing recursive TOML value/table typing and
   centralizing validation/narrowing helpers in config I/O support modules.
 
+### Config layering: provenance-aware merge semantics and per-path resolution
+
+- Introduced provenance-aware config layering using explicit config layers and per-field merge
+  semantics.
+- Refactored `MutableConfig.merge_with()` to implement field-specific behavior:
+  - accumulate: provenance (`config_files`), diagnostics, discovery inputs (`include_from`,
+    `exclude_from`, `files_from`)
+  - nearest-non-empty wins: scalar and list fields (e.g. `header_fields`, `files`, file-type
+    filters)
+  - key-wise overlay: mapping fields (`field_values`, `policy_by_type`)
+- Added explicit pattern provenance via `PatternSource` and pattern groups, enabling correct scoping
+  of include/exclude logic.
+- Introduced per-path effective config resolution:
+  - layered discovery → applicable layer selection → per-path merge
+  - engine now consumes path-specific effective configs instead of a single flattened config
+- Added focused regression tests to lock down merge semantics invariants and prevent regressions.
+- Added engine-level tests to verify correct application of per-path configs and policy registry
+  behavior.
+- Optimized pipeline engine to avoid constructing unused shared `PolicyRegistry` instances when
+  path-specific configs are provided.
+
 ### Policy model, empty-file semantics, and outcome summaries
 
 - Introduced a clearer runtime distinction between:
@@ -708,6 +729,12 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
   `update_only` to the scalar `header_mutation_mode` token.
 - Public API result-view filtering changed from legacy `skip_compliant` / `skip_unsupported`
   booleans to the scalar `report` selection (`"all"`, `"actionable"`, `"noncompliant"`).
+- Config merge semantics are no longer uniformly "last-wins":
+  - `field_values` now merge key-wise instead of being replaced wholesale
+  - `include_from`, `exclude_from`, and `files_from` now accumulate across layers instead of
+    replacing
+- Layered config resolution now produces per-path effective configs rather than a single flattened
+  configuration, which may change behavior for nested config setups
 
 ### CLI / output format changes
 
@@ -1148,6 +1175,10 @@ Desired outcome:
 - Core config loading/merging stays reusable and independent of CLI concerns.
 - CLI parsing/normalization produces a clear override structure.
 - The same override structure remains usable by API callers (without importing Click).
+- Clarify long-term handling of runtime-only fields (e.g. `stdin_mode`, `apply_changes`):
+  - current behavior merges them alongside config fields
+  - consider moving to a dedicated runtime overlay phase post-merge for clearer separation of
+    concerns
 
 ### Machine output formats: remaining work
 
@@ -1369,6 +1400,9 @@ This checklist defines the minimum criteria for cutting TopMark 1.0, grouped by 
 - [x] Layered config discovery/merge and final CLI/API override application are separated into
   dedicated config modules
 - [x] `header_mutation_mode` fully replaces legacy `add_only` / `update_only` references
+- [x] Field-specific config merge semantics are defined, implemented, and covered by regression
+  tests
+- [x] Per-path effective config resolution is implemented and used by the pipeline engine
 
 #### [Must] Pipeline & testing
 
@@ -1383,6 +1417,7 @@ This checklist defines the minimum criteria for cutting TopMark 1.0, grouped by 
 - [x] API and CLI policy override behavior covered by focused tests for valid and invalid overlays
   - [x] CLI policy override behavior
   - [x] API policy override behavior
+- [x] Engine correctly applies per-path configs and policy registries (covered by integration tests)
 
 #### [Must] Dependency & ecosystem
 
