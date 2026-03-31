@@ -28,7 +28,6 @@ from __future__ import annotations
 from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING
-from typing import Literal
 
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.io.deserializers import mutable_config_from_mapping
@@ -55,6 +54,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from topmark.api.protocols import PublicPolicy
+    from topmark.api.types import PipelineKindLiteral
     from topmark.config.io.types import ConfigLayer
     from topmark.core.exit_codes import ExitCode
     from topmark.core.logging import TopmarkLogger
@@ -343,7 +343,7 @@ def _apply_runtime_overlays(
 
 
 def select_pipeline(
-    kind: Literal["check", "strip"],
+    kind: PipelineKindLiteral,
     *,
     apply: bool,
     diff: bool,

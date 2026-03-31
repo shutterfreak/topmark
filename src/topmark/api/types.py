@@ -85,6 +85,10 @@ class DiagnosticTotals(TypedDict):
     total: int
 
 
+PipelineKindLiteral = Literal["check", "strip"]
+"""Allowed public pipeline families."""
+
+
 class Outcome(str, Enum):
     """Per-file outcome bucket.
 
