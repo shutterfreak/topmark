@@ -16,7 +16,7 @@ Responsibilities:
     - parse already-loaded TOML mappings into `MutableConfig`
     - validate section/key shapes and attach config diagnostics
     - normalize config-local filesystem references against the source TOML file
-    - deserialize global and per-file-type policy tables
+    - deserialize layered config sections such as policy, files, header, and formatting
     - load default and file-backed config documents into mutable draft configs
 
 Design notes:
@@ -25,6 +25,8 @@ Design notes:
       while this module handles TOML-aware deserialization and normalization.
     - The result of deserialization is a `MutableConfig`, not a frozen `Config`.
       Callers may still merge, override, sanitize, and finally freeze the draft.
+    - Execution-only runtime intent is intentionally out of scope here and is
+      handled separately via [`topmark.runtime.model.RunOptions`][topmark.runtime.model.RunOptions].
     - Parsing is diagnostics-friendly: invalid shapes/types are reported through
       the draft config's diagnostic log instead of failing fast on first issue.
 
@@ -45,7 +47,6 @@ from topmark.config.io.getters import get_bool_value_or_none_checked
 from topmark.config.io.getters import get_enum_value_checked
 from topmark.config.io.getters import get_string_list_value_checked
 from topmark.config.io.getters import get_string_value_checked
-from topmark.config.io.getters import get_string_value_or_none_checked
 from topmark.config.io.guards import as_toml_table_map
 from topmark.config.io.guards import get_pyproject_topmark_table
 from topmark.config.io.guards import get_table_value
@@ -61,8 +62,6 @@ from topmark.config.paths import pattern_source_from_cwd
 from topmark.config.policy import EmptyInsertMode
 from topmark.config.policy import HeaderMutationMode
 from topmark.config.policy import MutablePolicy
-from topmark.config.types import FileWriteStrategy
-from topmark.config.types import OutputTarget
 from topmark.config.types import PatternGroup
 from topmark.core.logging import get_logger
 
@@ -95,7 +94,6 @@ class _TomlTables:
     files_tbl: TomlTable
     policy_tbl: TomlTable
     policy_by_type_tbl: TomlTableMap
-    writer_tbl: TomlTable
 
 
 def mutable_config_from_toml_dict(
@@ -202,48 +200,6 @@ def mutable_config_from_toml_dict(
         draft.policy_by_type = {
             str(ft): MutablePolicy.from_toml_table(tbl) for ft, tbl in policy_by_type_tbl.items()
         }
-
-    def _parse_writer_table(writer_tbl: TomlTable) -> None:
-        """Parse `[writer]` settings into the draft config."""
-        where_writer: Final[str] = f"[{Toml.SECTION_WRITER}]"
-
-        # target
-        raw_target: str | None = get_string_value_or_none_checked(
-            writer_tbl,
-            Toml.KEY_TARGET,
-            where=where_writer,
-            diagnostics=draft.diagnostics,
-        )
-        if raw_target is not None:
-            parsed_target: OutputTarget | None = OutputTarget.parse(raw_target)
-            if parsed_target is None:
-                allowed_targets = ", ".join(t.value for t in OutputTarget)
-                msg = (
-                    f"Invalid value for {where_writer}.{Toml.KEY_TARGET}: "
-                    f"{raw_target!r} (allowed: {allowed_targets})"
-                )
-                draft.diagnostics.add_warning(msg)
-            else:
-                draft.output_target = parsed_target
-
-        # strategy
-        raw_strategy: str | None = get_string_value_or_none_checked(
-            writer_tbl,
-            Toml.KEY_STRATEGY,
-            where=where_writer,
-            diagnostics=draft.diagnostics,
-        )
-        if raw_strategy is not None:
-            parsed_strategy: FileWriteStrategy | None = FileWriteStrategy.parse(raw_strategy)
-            if parsed_strategy is None:
-                allowed_strategies = ", ".join(s.value for s in FileWriteStrategy)
-                msg = (
-                    f"Invalid value for {where_writer}.{Toml.KEY_STRATEGY}: "
-                    f"{raw_strategy!r} (allowed: {allowed_strategies})"
-                )
-                draft.diagnostics.add_warning(msg)
-            else:
-                draft.file_write_strategy = parsed_strategy
 
     def _parse_files_table(files_tbl: TomlTable) -> None:
         """Parse `[files]` settings into the draft config."""
@@ -568,9 +524,6 @@ def mutable_config_from_toml_dict(
         policy_by_type_tbl: TomlTableMap = as_toml_table_map(policy_by_type_raw)
         logger.trace("TOML [%s]: %s", Toml.SECTION_POLICY_BY_TYPE, policy_by_type_tbl)
 
-        writer_tbl: TomlTable = get_table_value(tool_tbl, Toml.SECTION_WRITER)
-        logger.trace("TOML [%s]: %s", Toml.SECTION_WRITER, writer_tbl)
-
         return _TomlTables(
             field_tbl=field_tbl,
             header_tbl=header_tbl,
@@ -578,7 +531,6 @@ def mutable_config_from_toml_dict(
             files_tbl=files_tbl,
             policy_tbl=policy_tbl,
             policy_by_type_tbl=policy_by_type_tbl,
-            writer_tbl=writer_tbl,
         )
 
     def _initialize_config_file_provenance() -> None:
@@ -601,9 +553,6 @@ def mutable_config_from_toml_dict(
     # ---- config_files: normalize to absolute paths if possible ----
     _initialize_config_file_provenance()
 
-    # ---- Writer settings ----
-    _parse_writer_table(toml_tables.writer_tbl)
-
     # ---- Global / per-type policy ----
     _parse_policy_tables(
         policy_tbl=toml_tables.policy_tbl,
@@ -623,9 +572,6 @@ def mutable_config_from_toml_dict(
     _parse_formatting_table(toml_tables.formatting_tbl)
 
     # ---- File-related settings ----
-
-    # stdin_mode
-    draft.stdin_mode = False  # Default to False unless explicitly set later -- TODO: False or None?
 
     return draft
 

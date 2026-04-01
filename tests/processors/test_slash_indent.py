@@ -41,6 +41,7 @@ from topmark.constants import TOPMARK_START_MARKER
 from topmark.pipeline import runner
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.pipelines import Pipeline
+from topmark.runtime.model import RunOptions
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -102,11 +103,14 @@ def test_jsonc_replace_preserves_pre_prefix_indent(tmp_path: Path) -> None:
     file.write_text(seeded, encoding="utf-8")
 
     cfg: Config = mutable_config_from_defaults().freeze()
+    run_options: RunOptions = RunOptions(apply_changes=False)
+
     # Run the full check pipeline to exercise scan + replace
     policy_registry: PolicyRegistry = make_policy_registry(cfg)
     ctx: ProcessingContext = ProcessingContext.bootstrap(
         path=file,
         config=cfg,
+        run_options=run_options,
         policy_registry_override=policy_registry,
     )
 

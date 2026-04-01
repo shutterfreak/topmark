@@ -49,7 +49,6 @@ class ConfigPayload:
         fields: Available header fields.
         header: TODO.
         formatting: TODO.
-        writer: TODO.
         files: List of files to process.
         policy: Global, resolved, immutable runtime policy (plain booleans),
             applied after discovery.
@@ -61,7 +60,6 @@ class ConfigPayload:
     fields: dict[str, str]
     header: dict[str, list[str]]
     formatting: dict[str, object]
-    writer: dict[str, object]
     files: dict[str, object]
     policy: dict[str, object]
     policy_by_type: dict[str, object]
@@ -72,7 +70,6 @@ class ConfigPayload:
             "fields": self.fields,
             "header": self.header,
             "formatting": self.formatting,
-            "writer": self.writer,
             "files": self.files,
             "policy": self.policy,
             "policy_by_type": self.policy_by_type,

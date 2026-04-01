@@ -1242,28 +1242,6 @@ def test_should_proceed_false_on_warnings_when_strict() -> None:
 
 
 @pytest.mark.pipeline
-def test_writer_target_invalid_enum_warns_and_keeps_default(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    """Invalid writer.target enum value is warned about and does not override defaults."""
-    caplog.set_level("WARNING")
-    draft: MutableConfig = mutable_config_from_toml_dict(
-        {Toml.SECTION_WRITER: {Toml.KEY_TARGET: "nope"}},
-    )
-
-    # Should NOT crash; should warn; output_target should remain unset (None) at draft level
-    # or inherit defaults later (depending on your defaults layering design).
-    assert draft.output_target is None
-
-    assert_warned_and_diagnosed(
-        caplog=caplog,
-        draft=draft,
-        needle=f"Invalid value for [{Toml.SECTION_WRITER}].{Toml.KEY_TARGET}",
-        min_count=1,
-    )
-
-
-@pytest.mark.pipeline
 def test_freeze_preserves_diagnostics() -> None:
     """freeze() must preserve diagnostics when producing an immutable Config."""
     draft: MutableConfig = mutable_config_from_defaults()

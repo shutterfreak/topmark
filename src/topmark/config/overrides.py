@@ -34,8 +34,6 @@ if TYPE_CHECKING:
     from topmark.config.model import MutableConfig
     from topmark.config.policy import EmptyInsertMode
     from topmark.config.policy import HeaderMutationMode
-    from topmark.config.types import FileWriteStrategy
-    from topmark.config.types import OutputTarget
     from topmark.core.logging import TopmarkLogger
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -72,13 +70,6 @@ class ConfigOverrides:
             applied after discovery.
         policy_by_type: Per-file-type resolved policy overrides
             (plain booleans), applied after discovery.
-        apply_changes: Runtime intent: whether to actually write changes (apply)
-            or preview only. None = inherit/unspecified, False = dry-run/preview, True = apply.
-        output_target: Where to send output: `"file"` or `"stdout"`.
-        file_write_strategy: How to write when `output_target == "file"`:
-            `"atomic"` (safe default) or `"inplace"` (fast, less safe).
-        stdin_mode: Whether to read from stdin; requires explicit True to activate.
-        stdin_filename: empty strings are ignored; only non-empty values are applied
         files: List of files to process.
         files_from: Paths to files that list newline-delimited candidate
             file paths to add before filtering.
@@ -107,17 +98,6 @@ class ConfigOverrides:
     # Policy (global and overrides by file type)
     policy: PolicyOverrides = field(default_factory=PolicyOverrides)
     policy_by_type: dict[str, PolicyOverrides] = field(default_factory=lambda: {})
-
-    # Pipeline intent
-    apply_changes: bool | None = None
-
-    # Write options
-    output_target: OutputTarget | None = None
-    file_write_strategy: FileWriteStrategy | None = None
-
-    # STDIN mode
-    stdin_mode: bool | None = None
-    stdin_filename: str | None = None
 
     # Files
     files: list[str] | None = None
@@ -185,6 +165,9 @@ def apply_config_overrides(
           config-declared glob sources are interpreted.
         - Provenance information is appended to `overrides.config_origin` so downstream views
           can show that a highest-precedence override layer was applied.
+        - Execution-only runtime intent (apply mode, STDIN routing, output target, file write
+          strategy, pruning) is out of scope here and must be handled separately via
+          [`topmark.runtime.model.RunOptions`][topmark.runtime.model.RunOptions].
     """
     # strict_config_checking
     if overrides.strict_config_checking is not None:
@@ -209,9 +192,6 @@ def apply_config_overrides(
         _apply_policy_overrides(dst, policy_override)
         config.policy_by_type[ft] = dst
 
-    if overrides.apply_changes is not None:
-        config.apply_changes = overrides.apply_changes
-
     # Explicit file inputs replace any previously resolved file list.
     if overrides.files is not None:
         raw_files: list[str] = overrides.files
@@ -222,8 +202,6 @@ def apply_config_overrides(
             )
         # Keep only the non-empty entries
         config.files = [s for s in raw_files if s]
-        if config.files:
-            config.stdin_mode = False
 
     # CLI/API override paths and pattern groups are interpreted against the override base.
     base_dir: Path = overrides.config_base.resolve()
@@ -332,31 +310,8 @@ def apply_config_overrides(
     if overrides.field_values is not None:
         config.field_values = overrides.field_values
 
-    # STDIN mode flags must preserve explicit False as an override, so apply
-    # them only when the caller provided a concrete value.
-    if overrides.stdin_mode is not None:
-        # honor False explicitly
-        config.stdin_mode = overrides.stdin_mode
-
-    if overrides.stdin_filename is not None:
-        # `stdin_filename` is only meaningful when non-empty.
-        stdin_name: str = overrides.stdin_filename.strip()
-        if stdin_name:
-            config.stdin_filename = stdin_name
-        else:
-            config.diagnostics.add_warning(
-                f"Ignoring empty value for `stdin_filename` (origin: {overrides.config_origin})"
-            )
-
-    # Write mode logic: OutputTarget and FileWriteStrategy
-    if overrides.output_target is not None:
-        config.output_target = overrides.output_target
-
-    if overrides.file_write_strategy is not None:
-        config.file_write_strategy = overrides.file_write_strategy
-
     logger.debug("Patched MutableConfig: %s", config)
     logger.info("Applied argument mapping overrides to MutableConfig")
-    logger.debug("Finalized _mode=%s files=%s", config.stdin_mode, config.files)
+    logger.debug("Finalized override application for files=%s", config.files)
 
     return config

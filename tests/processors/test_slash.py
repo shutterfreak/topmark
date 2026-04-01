@@ -42,6 +42,7 @@ from topmark.pipeline.pipelines import Pipeline
 from topmark.pipeline.status import HeaderStatus
 from topmark.processors.types import StripDiagKind
 from topmark.processors.types import StripDiagnostic
+from topmark.runtime.model import RunOptions
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -123,10 +124,13 @@ def test_slash_detect_existing_header(tmp_path: Path) -> None:
         "#pragma once\n"
     )
     cfg: Config = mutable_config_from_defaults().freeze()
+    run_options: RunOptions = RunOptions(apply_changes=False)
+
     policy_registry: PolicyRegistry = make_policy_registry(cfg)
     ctx: ProcessingContext = ProcessingContext.bootstrap(
         path=file,
         config=cfg,
+        run_options=run_options,
         policy_registry_override=policy_registry,
     )
 
@@ -181,10 +185,13 @@ def test_slash_malformed_header_fields(
         f"// {TOPMARK_START_MARKER}\n// {header_fields}// {TOPMARK_END_MARKER}\nexport {{}}\n"
     )
     cfg: Config = mutable_config_from_defaults().freeze()
+    run_options: RunOptions = RunOptions(apply_changes=False)
+
     policy_registry: PolicyRegistry = make_policy_registry(cfg)
     ctx: ProcessingContext = ProcessingContext.bootstrap(
         path=file,
         config=cfg,
+        run_options=run_options,
         policy_registry_override=policy_registry,
     )
 

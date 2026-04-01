@@ -16,6 +16,7 @@ and small utilities that are reused across tests under `tests/api/`.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -23,24 +24,36 @@ import pytest
 from tests.conftest import make_file_type
 from tests.conftest import registry_processor_class
 from topmark import api
+from topmark.api.runtime import select_pipeline
+from topmark.api.types import PipelineKindLiteral
 from topmark.api.types import PublicPolicy
 from topmark.api.types import PublicReportScopeLiteral
+from topmark.config.io.resolution import load_resolved_config
 from topmark.config.keys import Toml
+from topmark.pipeline.engine import run_steps_for_files
 from topmark.processors.types import BoundsKind
 from topmark.processors.types import HeaderBounds
 from topmark.registry.bindings import BindingRegistry
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
 from topmark.registry.registry import Registry
+from topmark.resolution.files import resolve_file_list
+from topmark.runtime.model import RunOptions
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from collections.abc import Iterable
     from collections.abc import Iterator
+    from collections.abc import Sequence
     from pathlib import Path
 
     from topmark.config.io.types import TomlValue
+    from topmark.config.model import Config
+    from topmark.config.model import MutableConfig
+    from topmark.core.exit_codes import ExitCode
     from topmark.filetypes.model import FileType
+    from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.protocols import Step
     from topmark.processors.base import HeaderProcessor
     from topmark.registry.types import ProcessorDefinition
 
@@ -141,7 +154,7 @@ def api_check_dir(
         exclude_file_types=list(exclude_file_types) if exclude_file_types else None,
         policy=policy,
         report=report,
-        prune=prune,
+        prune_views=prune,
     )
 
 
@@ -180,7 +193,7 @@ def api_strip_dir(
         exclude_file_types=list(exclude_file_types) if exclude_file_types else None,
         policy=policy,
         report=report,
-        prune=prune,
+        prune_views=prune,
     )
 
 
@@ -230,6 +243,8 @@ def proc_py() -> HeaderProcessor:
 def repo_py_with_and_without_header(tmp_path: Path) -> Path:
     """Tiny repo with two Python files: one without header, one with canonical header.
 
+    We use the API apply mode to add the header to the file.
+
     Layout:
       src/without_header.py -> Python (supported) without TopMark header
       src/with_header.py -> Python (supported) with TopMark header
@@ -262,6 +277,8 @@ def repo_py_with_and_without_header(tmp_path: Path) -> Path:
 def repo_py_with_header(tmp_path: Path) -> Path:
     """Tiny repo with one Python file that has a canonical TopMark header.
 
+    We use the API apply mode to add the header to the file.
+
     Layout:
       src/with_header.py  -> will receive a canonical header via api.check(..., apply=True)
     """
@@ -289,6 +306,8 @@ def repo_py_with_header(tmp_path: Path) -> Path:
 @pytest.fixture()
 def repo_py_with_header_and_xyz(tmp_path: Path) -> Path:
     """Tiny repo with one headered Python file plus an unsupported '.xyz' file.
+
+    We use the API apply mode to add the header to the file.
 
     Layout:
       src/with_header.py -> Python (supported)
@@ -364,3 +383,44 @@ def has_header(text: str, processor: HeaderProcessor, newline_style: str) -> boo
         and bounds.end is not None
         and bounds.start < bounds.end  # exclusive end; guarantees non-empty span
     )
+
+
+def run_cli_like(
+    anchor: Path,
+    kind: PipelineKindLiteral,
+    apply: bool = False,
+    diff: bool = False,
+    prune_views: bool = False,
+    include_file_types: tuple[str, ...] = (),
+    exclude_file_types: tuple[str, ...] = (),
+) -> tuple[MutableConfig, list[Path], list[ProcessingContext]]:
+    """Build config via authoritative loader to model CLI behavior.
+
+    This helper exercises the engine using the same layered-config loading path
+    as the CLI while supplying explicit invocation-wide runtime options.
+    """
+    draft: MutableConfig = load_resolved_config(input_paths=(anchor,))
+    draft.files = [str(anchor)]  # seed positional inputs
+    if include_file_types:
+        draft.include_file_types = set(include_file_types)
+    if exclude_file_types:
+        draft.exclude_file_types = set(exclude_file_types)
+
+    cfg: Config = draft.freeze()
+    files: list[Path] = resolve_file_list(cfg)
+    run_options: RunOptions = RunOptions(
+        apply_changes=apply,
+        prune_views=prune_views,
+    )
+
+    results: list[ProcessingContext]
+    _exit_code: ExitCode | None
+    pipeline: Sequence[Step[ProcessingContext]] = select_pipeline(kind, apply=apply, diff=diff)
+    results, _exit_code = run_steps_for_files(
+        run_options=run_options,
+        config=cfg,
+        path_configs=None,
+        pipeline=pipeline,
+        file_list=files,
+    )
+    return draft, files, results

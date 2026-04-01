@@ -585,7 +585,40 @@ def test_pattern_file_base_outside_cwd(tmp_path: Path, monkeypatch: pytest.Monke
         include_from=[str(inc)],
     )
     files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
-    assert [p.as_posix() for p in files] == ["pkg/a.py"]
+    assert files == []
+
+
+def test_pattern_file_base_outside_cwd_matches_within_pattern_base(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Pattern-file bases are respected when matching files under that base.
+
+    Store a pattern file outside CWD and create matching files beneath that
+    pattern file's directory. Matching should occur relative to the pattern
+    file's own base directory, not rebased onto the current working directory.
+    """
+    root: Path = tmp_path / "root"
+    ext: Path = tmp_path / "ext"
+    (root / "pkg").mkdir(parents=True)
+    (root / "pkg" / "a.py").write_text("x", encoding="utf-8")
+    (ext / "pkg").mkdir(parents=True)
+    (ext / "pkg" / "b.py").write_text("x", encoding="utf-8")
+
+    inc: Path = ext / "inc.txt"
+    inc.write_text("pkg/**/*.py\n", encoding="utf-8")
+
+    monkeypatch.chdir(root)
+    cfg: Config = make_config(
+        files=[".", str(ext.resolve())],
+        include_from=[str(inc)],
+    )
+    files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+    rel: list[str] = sorted(
+        (p if not p.is_absolute() else p.relative_to(tmp_path)).as_posix() for p in files
+    )
+
+    assert rel == ["ext/pkg/b.py"]
 
 
 def test_include_intersection_mixed_sources(

@@ -157,7 +157,7 @@ class PatcherStep(BaseStep):
                 fromfiledate=format_gnu_diff_timestamp(dt=ctx.timestamp),
                 n=3,
                 lineterm=ctx.newline_style,
-                tofiledate=format_gnu_diff_timestamp(dt=ctx.config.timestamp),
+                tofiledate=format_gnu_diff_timestamp(dt=ctx.run_options.started_at),
             )
         )
         if len(patch_lines) == 0:
@@ -190,7 +190,7 @@ class PatcherStep(BaseStep):
         Args:
             ctx: The processing context.
         """
-        apply: bool = ctx.config.apply_changes is True
+        apply: bool = ctx.run_options.apply_changes is True
         st: PatchStatus = ctx.status.patch
 
         # May proceed to next step (always):

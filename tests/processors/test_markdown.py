@@ -34,12 +34,6 @@ if TYPE_CHECKING:
 
 
 @mark_pipeline
-# @pytest.mark.skip(
-#     reason=(
-#         "TODO: add MarkDown-specific header insertion checker to check whether "
-#         "the header is in a codefenced block"
-#     )
-# )
 def test_markdown_fenced_code_no_insertion_inside(tmp_path: Path) -> None:
     """Do not insert inside Markdown fenced code blocks.
 

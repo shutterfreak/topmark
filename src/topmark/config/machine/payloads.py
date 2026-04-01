@@ -30,9 +30,7 @@ from topmark.config.io.guards import as_object_dict
 from topmark.config.io.guards import get_object_dict_value
 from topmark.config.io.guards import get_string_dict_value
 from topmark.config.io.guards import get_string_list_dict_value
-from topmark.config.io.guards import get_table_value
 from topmark.config.io.serializers import config_to_toml_dict
-from topmark.config.keys import Toml
 from topmark.config.machine.schemas import ConfigCheckSummary
 from topmark.config.machine.schemas import ConfigDiagnosticsPayload
 from topmark.config.machine.schemas import ConfigPayload
@@ -52,29 +50,16 @@ def build_config_payload(config: Config) -> ConfigPayload:
     """Build a JSON-friendly payload capturing a Config snapshot.
 
     Args:
-        config: Immutable runtime configuration instance.
+        config: Immutable layered configuration instance.
 
     Returns:
-        ConfigPayload: JSON-serializable representation of the Config, without
-            diagnostics.
+        ConfigPayload: JSON-serializable representation of the layered Config,
+            without diagnostics.
     """
     base: TomlTable = config_to_toml_dict(
         config,
         include_files=False,
     )
-
-    writer_tbl: TomlTable = get_table_value(base, Toml.SECTION_WRITER)
-
-    # Make sure Enums become simple strings.
-    target: str | None = config.output_target.name if config.output_target is not None else None
-    strategy: str | None = (
-        config.file_write_strategy.name if config.file_write_strategy is not None else None
-    )
-    base["writer"] = {
-        **writer_tbl,
-        "target": target,
-        "strategy": strategy,
-    }
 
     normalized_base: object = normalize_payload(base)
     normalized_dict: dict[str, object] = as_object_dict(normalized_base)
@@ -83,7 +68,6 @@ def build_config_payload(config: Config) -> ConfigPayload:
         fields=get_string_dict_value(normalized_dict, "fields"),
         header=get_string_list_dict_value(normalized_dict, "header"),
         formatting=get_object_dict_value(normalized_dict, "formatting"),
-        writer=get_object_dict_value(normalized_dict, "writer"),
         files=get_object_dict_value(normalized_dict, "files"),
         policy=get_object_dict_value(normalized_dict, "policy"),
         policy_by_type=get_object_dict_value(normalized_dict, "policy_by_type"),
@@ -150,7 +134,7 @@ def build_config_check_summary_payload(
       - NDJSON: emitted as a single record with kind `summary`.
 
     Args:
-        config: Immutable runtime configuration.
+        config: Immutable layered configuration.
         cfg_diag_payload: Optional precomputed diagnostics payload to avoid recomputation.
         strict: Whether warnings are treated as failures.
         ok: Whether the config passed validation.

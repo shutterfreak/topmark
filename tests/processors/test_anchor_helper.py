@@ -20,7 +20,7 @@ class _FakeLine(HeaderProcessor):
     """Stub that returns a fixed line index from get_header_insertion_index."""
 
     namespace = "test"
-    key = "fake_line"
+    local_key = "fake_line"
 
     def get_header_insertion_index(self, file_lines: list[str]) -> int:
         return 3
@@ -30,7 +30,7 @@ class _FakeNoLine(HeaderProcessor):
     """Stub that signals char-offset insertion via NO_LINE_ANCHOR."""
 
     namespace = "test"
-    key = "fake_no_line"
+    local_key = "fake_no_line"
 
     def get_header_insertion_index(self, file_lines: list[str]) -> int:
         return NO_LINE_ANCHOR

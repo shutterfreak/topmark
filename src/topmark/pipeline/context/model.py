@@ -66,6 +66,7 @@ if TYPE_CHECKING:
     from topmark.filetypes.model import FileType
     from topmark.pipeline.protocols import Step
     from topmark.processors.base import HeaderProcessor
+    from topmark.runtime.model import RunOptions
 
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -103,10 +104,12 @@ class ProcessingContext:
     policy- and feasibility-related decisions.
 
     Attributes:
+        config: Effective layered configuration for this file.
+        run_options: Invocation-wide execution-only runtime options for the current run.
         path: The file path to process (absolute or relative to the working directory).
-        config: Effective configuration at the time of processing.
         policy_registry: The policy registry (global + file type specific overrides).
-        timestamp: The file path's modification timestamp.
+        timestamp: The file path's modification timestamp. This is distinct from
+            `run_options.started_at`, which records when the invocation began.
         steps: Ordered list of pipeline steps that have been executed for this context.
         file_type: Resolved file type for the file (for example, a Python or Markdown file type),
             if applicable.
@@ -148,8 +151,11 @@ class ProcessingContext:
             runner may prune heavy views after processing.
     """
 
+    config: Config  # Effective layered config for this file
+    run_options: RunOptions  # Invocation-wide runtime options for the current run
+
     path: Path  # The file path to process (absolute or relative to working directory)
-    config: Config  # Active config at time of processing
+
     policy_registry: PolicyRegistry
 
     timestamp: datetime | None = None
@@ -267,7 +273,8 @@ class ProcessingContext:
         """
         return self.halt_state is not None
 
-    # TODO: decide to keep or always refer to FileImageViewiter_lines() instead.
+    # TODO: decide whether to keep this helper or always refer to
+    # `FileImageView.iter_lines()` instead.
     def iter_image_lines(self) -> Iterable[str]:
         """Iterate the current file image without materializing.
 
@@ -436,13 +443,15 @@ class ProcessingContext:
         *,
         path: Path,
         config: Config,
+        run_options: RunOptions,
         policy_registry_override: PolicyRegistry | None = None,
     ) -> ProcessingContext:
         """Create a fresh context with no derived state.
 
         Args:
             path: File system path for the file to process.
-            config: Effective configuration to attach to the context.
+            config: Effective layered configuration to attach to the context.
+            run_options: Invocation-wide execution-only runtime options.
             policy_registry_override: Optional precomputed policy registry for the
                 supplied effective config. When omitted, the registry is derived
                 from `config` during bootstrap.
@@ -454,4 +463,9 @@ class ProcessingContext:
             reg: PolicyRegistry = make_policy_registry(config)
         else:
             reg = policy_registry_override
-        return cls(path=path, config=config, policy_registry=reg)
+        return cls(
+            path=path,
+            config=config,
+            run_options=run_options,
+            policy_registry=reg,
+        )

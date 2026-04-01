@@ -82,6 +82,7 @@ def load_patterns_from_file(
         s: str = line.strip()
         if not s or s.startswith("#"):
             continue
+        logger.debug("Source %s - appending %s", source, s)
         patterns.append(s)
     logger.debug("Loaded %d pattern(s) from %s (base=%s)", len(patterns), source.path, source.base)
     return patterns
@@ -116,37 +117,49 @@ def _read_input_paths_from_source(
             continue
         p: Path = Path(s)
         p = (source.base / p).resolve() if not p.is_absolute() else p.resolve()
+        logger.debug("Source %s - appending %s", source, s)
         out.append(p)
     logger.debug("Loaded %d path(s) from %s (base=%s)", len(out), source.path, source.base)
     return out
 
 
-def _relative_posix_for_match(
+def _candidate_match_strings(
     path: Path,
     base: Path,
-) -> str:
-    """Return a POSIX-style path suitable for PathSpec matching.
+) -> tuple[str, ...]:
+    """Return normalized gitignore-style candidate strings for a path.
 
-    The path is made relative to `base` when possible. If `path` does not lie under `base`, the
-    absolute POSIX path is returned instead.
+    Matching is performed relative to the matcher base when possible. Directory
+    candidates are checked both without and with a trailing slash so patterns
+    such as ``__pycache__/`` keep their directory-only semantics.
 
     Args:
-        path: Path to test.
-        base: Base directory against which the path is relativized.
+        path: Candidate path to test.
+        base: Base directory against which the candidate should be relativized.
 
     Returns:
-        POSIX-style relative path for matching, or an absolute POSIX path as a fallback.
+        One or more POSIX-style candidate strings to test against a compiled
+        gitignore matcher.
     """
     try:
         rel: Path = path.resolve().relative_to(base.resolve())
-        return rel.as_posix()
+        normalized: str = rel.as_posix()
     except (OSError, ValueError):
-        return path.as_posix()
+        normalized = path.resolve().as_posix()
+
+    # PathSpec gitignore matching is path-string based. Directory-only rules such
+    # as ``__pycache__/`` are most reliably honored when we also try a trailing
+    # slash form for directory candidates.
+    if path.is_dir() and normalized:
+        slash_form: str = normalized.rstrip("/") + "/"
+        if slash_form != normalized:
+            return (normalized, slash_form)
+    return (normalized,)
 
 
 def _compile_matchers(
-    groups: tuple[PatternGroup, ...],
-    sources: tuple[PatternSource, ...],
+    pattern_groups: tuple[PatternGroup, ...],
+    pattern_sources: tuple[PatternSource, ...],
 ) -> list[tuple[PathSpec, Path]]:
     """Compile matchers from pattern groups and pattern sources.
 
@@ -159,16 +172,18 @@ def _compile_matchers(
     """
     specs: list[tuple[PathSpec, Path]] = []
 
-    for grp in groups:
-        if grp.is_empty():
+    for pattern_group in pattern_groups:
+        if pattern_group.is_empty():
+            logger.debug("Skipping empty pattern group.")
             continue
-        specs.append((grp.to_pathspec(), grp.base.resolve()))
+        specs.append((pattern_group.to_pathspec(), pattern_group.base.resolve()))
 
-    for psrc in sources:
-        pats: list[str] = load_patterns_from_file(psrc)
+    for pattern_source in pattern_sources:
+        pats: list[str] = load_patterns_from_file(pattern_source)
+        logger.debug("Pattern source %s contains %d patterns.", pattern_source, len(pats))
         if not pats:
             continue
-        specs.append((compile_gitignore_pathspec(pats), psrc.base.resolve()))
+        specs.append((compile_gitignore_pathspec(pats), pattern_source.base.resolve()))
 
     return specs
 
@@ -177,8 +192,24 @@ def _matches_any(
     specs: list[tuple[PathSpec, Path]],
     path: Path,
 ) -> bool:
-    """Return True if `path` matches any compiled (spec, base) matcher."""
-    return any(spec.match_file(_relative_posix_for_match(path, base)) for spec, base in specs)
+    """Return True if `path` matches any compiled ``(spec, base)`` matcher.
+
+    Each matcher evaluates the candidate relative to its own base directory.
+    Directory candidates are also tested with a trailing slash form so
+    gitignore-style directory rules continue to behave as expected.
+    """
+    logger.debug("Matching %s to %r", path, specs)
+    for spec, base in specs:
+        for candidate in _candidate_match_strings(path, base):
+            if spec.match_file(candidate):
+                logger.debug(
+                    "Matched path %s against base %s using candidate %s",
+                    path,
+                    base,
+                    candidate,
+                )
+                return True
+    return False
 
 
 # def _iter_config_base_dirs(
@@ -263,7 +294,7 @@ def resolve_file_list(
       6. Returns a **sorted** list of Path objects for deterministic output.
 
     Args:
-        config: Configuration values influencing path collection and filters.
+        config: Effective layered configuration.
 
     Returns:
         Sorted list of files selected for processing.
@@ -288,8 +319,6 @@ def resolve_file_list(
 
     files_from_sources: tuple[PatternSource, ...] = config.files_from
 
-    stdin_flag: bool = config.stdin_mode or False
-
     workspace_root: Path | None = config.relative_to
     # Defensive fallback only; in normal operation resolve_config_from_click() sets this.
     if workspace_root is None:
@@ -310,7 +339,6 @@ def resolve_file_list(
     exclude_file_types: %s
     files_from_sources: %s
     workspace_root: %s
-    stdin_flag: %s
     config: %s
 """,
             positional_paths,
@@ -323,7 +351,6 @@ def resolve_file_list(
             exclude_file_types,
             files_from_sources,
             workspace_root,
-            stdin_flag,
             config,
         )
 

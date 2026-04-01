@@ -248,37 +248,6 @@ def test_merge_invariant_policy_by_type_merges_by_key() -> None:
     assert merged.policy_by_type["html"].header_mutation_mode == HeaderMutationMode.UPDATE_ONLY
 
 
-@pytest.mark.pipeline
-def test_merge_invariant_runtime_compat_fields_use_explicit_child_values() -> None:
-    """Runtime-oriented compatibility fields replace only when explicitly set."""
-    base: MutableConfig = mutable_config_from_defaults()
-    base.stdin_mode = False
-    base.stdin_filename = "stdin.py"
-    base.apply_changes = False
-
-    override: MutableConfig = mutable_config_from_defaults()
-    override.stdin_mode = True
-    override.stdin_filename = "override.py"
-    override.apply_changes = True
-
-    merged: MutableConfig = base.merge_with(override)
-
-    assert merged.stdin_mode is True
-    assert merged.stdin_filename == "override.py"
-    assert merged.apply_changes is True
-
-
-@pytest.mark.pipeline
-def test_merge_invariant_timestamp_preserves_base_draft() -> None:
-    """Timestamp should remain the base draft timestamp across merge_with()."""
-    base: MutableConfig = mutable_config_from_defaults()
-    override: MutableConfig = mutable_config_from_defaults()
-
-    merged: MutableConfig = base.merge_with(override)
-
-    assert merged.timestamp == base.timestamp
-
-
 # --- Additional three-layer invariants ---
 
 

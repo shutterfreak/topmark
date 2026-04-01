@@ -30,7 +30,7 @@ class _P(HeaderProcessor):
     """Stub processor for registry overlay tests."""
 
     namespace = "test"
-    key = "p"
+    local_key = "p"
 
     def process(self, text: str) -> str:  # one-line stub
         return text

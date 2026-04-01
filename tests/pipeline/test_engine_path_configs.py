@@ -28,23 +28,15 @@ from typing import Any
 
 import pytest
 
-from topmark.config.io.deserializers import mutable_config_from_defaults
+from tests.conftest import make_config
 from topmark.pipeline import engine
+from topmark.runtime.model import RunOptions
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.config.model import Config
-    from topmark.config.model import MutableConfig
     from topmark.config.policy import PolicyRegistry
-
-
-def _make_cfg(*, header_fields: list[str], apply_changes: bool | None = None) -> Config:
-    """Create a small frozen config for engine tests."""
-    draft: MutableConfig = mutable_config_from_defaults()
-    draft.header_fields = header_fields
-    draft.apply_changes = apply_changes
-    return draft.freeze()
 
 
 @pytest.mark.pipeline
@@ -58,16 +50,16 @@ def test_run_steps_for_files_uses_path_specific_configs_when_provided(
     file_a.write_text("print('a')\n", encoding="utf-8")
     file_b.write_text("print('b')\n", encoding="utf-8")
 
-    shared_cfg: Config = _make_cfg(header_fields=["project"])
-    cfg_a: Config = _make_cfg(header_fields=["file"], apply_changes=True)
-    cfg_b: Config = _make_cfg(header_fields=["license"], apply_changes=False)
+    shared_cfg: Config = make_config(header_fields=["project"])
+    cfg_a: Config = make_config(header_fields=["file"])
+    cfg_b: Config = make_config(header_fields=["license"])
 
     path_configs: dict[Path, Config] = {
         file_a: cfg_a,
         file_b: cfg_b,
     }
 
-    bootstrap_calls: list[tuple[Path, Config, object]] = []
+    bootstrap_calls: list[tuple[Path, Config, RunOptions, object]] = []
     policy_calls: list[Config] = []
 
     class FakeProcessingContext:
@@ -79,10 +71,11 @@ def test_run_steps_for_files_uses_path_specific_configs_when_provided(
             *,
             path: Path,
             config: Config,
+            run_options: RunOptions,
             policy_registry_override: PolicyRegistry | None = None,
         ) -> Any:
-            bootstrap_calls.append((path, config, policy_registry_override))
-            return SimpleNamespace(path=path, config=config)
+            bootstrap_calls.append((path, config, run_options, policy_registry_override))
+            return SimpleNamespace(path=path, config=config, run_options=run_options)
 
     def fake_make_policy_registry(config: Config) -> object:
         policy_calls.append(config)
@@ -95,12 +88,14 @@ def test_run_steps_for_files_uses_path_specific_configs_when_provided(
     monkeypatch.setattr(engine, "make_policy_registry", fake_make_policy_registry)
     monkeypatch.setattr(engine.runner, "run", fake_runner_run)
 
+    run_options: RunOptions = RunOptions(apply_changes=False)
+
     results, encountered_error = engine.run_steps_for_files(
-        file_list=[file_a, file_b],
-        pipeline=(),
+        run_options=run_options,
         config=shared_cfg,
         path_configs=path_configs,
-        prune=True,
+        pipeline=(),
+        file_list=[file_a, file_b],
     )
 
     assert encountered_error is None
@@ -112,12 +107,15 @@ def test_run_steps_for_files_uses_path_specific_configs_when_provided(
     assert bootstrap_calls[1][0] == file_b
     assert bootstrap_calls[1][1] is cfg_b
 
+    assert bootstrap_calls[0][2] is run_options
+    assert bootstrap_calls[1][2] is run_options
+
     # With path_configs, the engine should build registries only for the effective
     # per-path configs and skip the unused shared-config registry.
     assert policy_calls == [cfg_a, cfg_b]
 
-    assert bootstrap_calls[0][2] == {"header_fields": ("file",)}
-    assert bootstrap_calls[1][2] == {"header_fields": ("license",)}
+    assert bootstrap_calls[0][3] == {"header_fields": ("file",)}
+    assert bootstrap_calls[1][3] == {"header_fields": ("license",)}
 
 
 @pytest.mark.pipeline
@@ -131,9 +129,9 @@ def test_run_steps_for_files_falls_back_to_shared_config_without_path_configs(
     file_a.write_text("print('a')\n", encoding="utf-8")
     file_b.write_text("print('b')\n", encoding="utf-8")
 
-    shared_cfg: Config = _make_cfg(header_fields=["project", "file"])
+    shared_cfg: Config = make_config(header_fields=["project", "file"])
 
-    bootstrap_calls: list[tuple[Path, Config, object]] = []
+    bootstrap_calls: list[tuple[Path, Config, RunOptions, object]] = []
     policy_calls: list[Config] = []
 
     class FakeProcessingContext:
@@ -145,10 +143,11 @@ def test_run_steps_for_files_falls_back_to_shared_config_without_path_configs(
             *,
             path: Path,
             config: Config,
+            run_options: RunOptions,
             policy_registry_override: PolicyRegistry | None = None,
         ) -> Any:
-            bootstrap_calls.append((path, config, policy_registry_override))
-            return SimpleNamespace(path=path, config=config)
+            bootstrap_calls.append((path, config, run_options, policy_registry_override))
+            return SimpleNamespace(path=path, config=config, run_options=run_options)
 
     def fake_make_policy_registry(config: Config) -> object:
         policy_calls.append(config)
@@ -161,12 +160,14 @@ def test_run_steps_for_files_falls_back_to_shared_config_without_path_configs(
     monkeypatch.setattr(engine, "make_policy_registry", fake_make_policy_registry)
     monkeypatch.setattr(engine.runner, "run", fake_runner_run)
 
+    run_options: RunOptions = RunOptions(apply_changes=False)
+
     results, encountered_error = engine.run_steps_for_files(
-        file_list=[file_a, file_b],
-        pipeline=(),
+        run_options=run_options,
         config=shared_cfg,
         path_configs=None,
-        prune=True,
+        pipeline=(),
+        file_list=[file_a, file_b],
     )
 
     assert encountered_error is None
@@ -176,7 +177,10 @@ def test_run_steps_for_files_falls_back_to_shared_config_without_path_configs(
     assert bootstrap_calls[0][1] is shared_cfg
     assert bootstrap_calls[1][1] is shared_cfg
 
+    assert bootstrap_calls[0][2] is run_options
+    assert bootstrap_calls[1][2] is run_options
+
     # Without path_configs, one shared registry should be built and reused.
     assert policy_calls == [shared_cfg]
-    assert bootstrap_calls[0][2] == {"header_fields": ("project", "file")}
-    assert bootstrap_calls[1][2] == {"header_fields": ("project", "file")}
+    assert bootstrap_calls[0][3] == {"header_fields": ("project", "file")}
+    assert bootstrap_calls[1][3] == {"header_fields": ("project", "file")}

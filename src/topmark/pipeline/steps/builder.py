@@ -158,7 +158,7 @@ class BuilderStep(BaseStep):
         #
         # STDIN content mode needs special care:
         #   - `ctx.path` is the *materialized* temp file that TopMark can read/write.
-        #   - `config.stdin_filename` is a user-supplied *logical* filename that may not exist
+        #   - `run_options.stdin_filename` is a user-supplied *logical* filename that may not exist
         #     on disk (it is used only for metadata and discovery anchoring).
         #
         # Therefore:
@@ -171,8 +171,8 @@ class BuilderStep(BaseStep):
 
         # In stdin mode, use `stdin_filename` (if provided) for logical header metadata.
         header_path: Path = (
-            Path(ctx.config.stdin_filename)
-            if (ctx.config.stdin_mode and ctx.config.stdin_filename)
+            Path(ctx.run_options.stdin_filename)
+            if (ctx.run_options.stdin_mode and ctx.run_options.stdin_filename)
             else content_path
         )
 

@@ -34,6 +34,11 @@ T = TypeVar("T")
 # --- List Helpers ---
 
 
+def none_if_empty(items: Iterable[T]) -> list[T] | None:
+    """Return `None` if an Iterable is empty."""
+    return list(items) if items else None
+
+
 def merge_unique_iterables(
     current: Iterable[T] | None,
     incoming: Iterable[T] | None,

@@ -37,10 +37,13 @@ if TYPE_CHECKING:
     from topmark.config.model import Config
     from topmark.pipeline.protocols import Step
     from topmark.pipeline.views import RenderView
+    from topmark.runtime.model import RunOptions
 
 
 def render_header_for_path(
+    *,
     config: Config,
+    run_options: RunOptions,
     path: Path,
     header_overrides: dict[str, str] | None = None,
     field_order_override: list[str] | None = None,
@@ -54,6 +57,7 @@ def render_header_for_path(
 
     Args:
         config: Effective TopMark configuration to use.
+        run_options: Runtime options for the current invocation.
         path: Target file path whose file type determines the processor.
         header_overrides: Optional mapping of field overrides to inject into the header.
         field_order_override: Optional explicit field order to render instead of the default.
@@ -91,6 +95,7 @@ def render_header_for_path(
     context: ProcessingContext = ProcessingContext.bootstrap(
         path=path,
         config=eff_config,
+        run_options=run_options,
         policy_registry_override=policy_registry,
     )
     # Run the pipeline

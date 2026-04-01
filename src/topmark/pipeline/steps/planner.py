@@ -276,9 +276,11 @@ class PlannerStep(BaseStep):
             ``ctx.status.write`` for downstream patch/apply steps.
         """
         logger.debug("ctx: %s", ctx)
-        logger.debug("ctx.config.apply_changes = %s", ctx.config.apply_changes)
+        logger.debug("ctx.run_options.apply_changes = %s", ctx.run_options.apply_changes)
 
-        apply: bool = False if ctx.config.apply_changes is None else ctx.config.apply_changes
+        apply: bool = (
+            False if ctx.run_options.apply_changes is None else ctx.run_options.apply_changes
+        )
 
         # Materialize original image once (list[str]) for splice operations.
         original_lines: list[str] = list(ctx.iter_image_lines())
@@ -621,7 +623,7 @@ class PlannerStep(BaseStep):
         Args:
             ctx: The processing context.
         """
-        apply: bool = ctx.config.apply_changes is True
+        apply: bool = ctx.run_options.apply_changes is True
         ft: FileType | None = ctx.file_type
         checker: InsertChecker | None = ft.pre_insert_checker if ft else None
         st: PlanStatus = ctx.status.plan

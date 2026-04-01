@@ -11,9 +11,10 @@
 """Configuration model and merge policy.
 
 This module defines:
-    - `Config`: an immutable, runtime snapshot used by processing steps.
-    - `MutableConfig`: a mutable builder used during discovery/merge; it
-      can be frozen into `Config` and thawed back for edits.
+    - `Config`: an immutable layered configuration snapshot used by processing
+      steps.
+    - `MutableConfig`: a mutable builder used during discovery/merge; it can
+      be frozen into `Config` and thawed back for edits.
 
 Scope:
     - *In scope*: data shapes, defaulting rules at the field level, merge policy
@@ -50,18 +51,14 @@ from typing import TYPE_CHECKING
 from topmark.config.keys import Toml
 from topmark.config.policy import MutablePolicy
 from topmark.config.policy import Policy
-from topmark.config.types import FileWriteStrategy
-from topmark.config.types import OutputTarget
 from topmark.core.logging import get_logger
 from topmark.diagnostic.model import DiagnosticLog
 from topmark.diagnostic.model import DiagnosticStats
 from topmark.diagnostic.model import FrozenDiagnosticLog
 from topmark.diagnostic.model import compute_diagnostic_stats
-from topmark.utils.timestamp import get_utc_now
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
-    from datetime import datetime
     from pathlib import Path
 
     from topmark.config.types import PatternGroup
@@ -73,28 +70,21 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-# ------------------ Immutable runtime config ------------------
+# ------------------ Immutable layered config ------------------
 
 
 @dataclass(frozen=True, slots=True)
 class Config:
-    """Immutable runtime configuration for TopMark.
+    """Immutable layered configuration for TopMark.
 
-    This snapshot is produced by `MutableConfig.freeze` after merging defaults,
-    project files, extra config files, and CLI overrides. Collections are immutable
-    (``tuple``/``frozenset``) to prevent accidental mutation during processing.
-    Use `Config.thaw` to obtain a mutable builder for edits, and `MutableConfig.freeze`
-    to return to an immutable runtime snapshot.
+    This snapshot is produced by `MutableConfig.freeze` after merging defaults, project files, extra
+    config files, and config-like API overrides. Collections are immutable (``tuple``/``frozenset``)
+    to prevent accidental mutation during processing. Use `Config.thaw` to obtain a mutable builder
+    for edits, and `MutableConfig.freeze` to return to an immutable layered snapshot.
 
     Layered merging with clear precedence is provided by `load_resolved_config()`.
 
     Attributes:
-        timestamp: Timestamp when the Config instance was created.
-        apply_changes: Runtime intent: whether to actually write changes (apply)
-            or preview only. None = inherit/unspecified, False = dry-run/preview, True = apply.
-        output_target: Where to send output: `"file"` or `"stdout"`.
-        file_write_strategy: How to write when `output_target == "file"`:
-            `"atomic"` (safe default) or `"inplace"` (fast, less safe).
         policy: Global, resolved, immutable runtime policy (plain booleans),
             applied after discovery.
         policy_by_type: Per-file-type resolved policy overrides
@@ -110,9 +100,6 @@ class Config:
         relative_to: Base path used only for header metadata (e.g., file_relpath).
             Note: Glob expansion and filtering are resolved relative to their declaring source
             (config file dir or CWD for CLI), not relative_to.
-        stdin_mode: Whether to read from stdin; requires explicit True to activate.
-        stdin_filename: File name to use when reading file contents from stdin (used when building
-            headers).
         files: List of files to process.
         include_from: Files containing include patterns.
         exclude_from: Files containing exclude patterns.
@@ -138,17 +125,6 @@ class Config:
             without further merging.
     """
 
-    # Initialization timestamp for the config instance
-    timestamp: datetime
-
-    # Runtime intent: whether to actually write changes (apply) or preview only
-    apply_changes: bool | None
-
-    # Output target for writing (file, stdout)
-    output_target: OutputTarget | None
-    # File writer (atomic, in-place)
-    file_write_strategy: FileWriteStrategy | None
-
     # Policy containers
     policy: Policy
     policy_by_type: Mapping[str, Policy]  # e.g., {"python": Policy(...)}
@@ -171,8 +147,6 @@ class Config:
     relative_to: Path | None
 
     # File processing options
-    stdin_mode: bool | None
-    stdin_filename: str | None
     files: tuple[str, ...]
 
     include_from: tuple[PatternSource, ...]
@@ -220,10 +194,6 @@ class Config:
             A mutable builder initialized from this snapshot.
         """
         return MutableConfig(
-            timestamp=self.timestamp,
-            apply_changes=self.apply_changes,
-            output_target=self.output_target,
-            file_write_strategy=self.file_write_strategy,
             policy=self.policy.thaw(),
             policy_by_type={k: v.thaw() for k, v in self.policy_by_type.items()},
             config_files=list(self.config_files),
@@ -233,8 +203,6 @@ class Config:
             align_fields=self.align_fields,
             relative_to_raw=self.relative_to_raw,
             relative_to=self.relative_to,
-            stdin_mode=self.stdin_mode,
-            stdin_filename=self.stdin_filename,
             files=list(self.files),
             include_from=list(self.include_from),
             exclude_from=list(self.exclude_from),
@@ -263,23 +231,17 @@ def sanitized_config(config: Config) -> Config:
     return m.freeze()
 
 
-# -------------------------- Mutable builder --------------------------
+# -------------------------- Mutable layered builder --------------------------
 @dataclass
 class MutableConfig:
     """Mutable configuration used during discovery and merging.
 
-    This builder collects config from defaults, project files, extra files, and CLI
-    overrides. It remains convenient to mutate (``list``/``set``), then produces
-    an immutable `Config` via `freeze`. TOML I/O is delegated to
+    This builder collects layered config from defaults, project files, extra files,
+    and config-like API overrides. It remains convenient to mutate (``list``/``set``),
+    then produces an immutable `Config` via `freeze`. TOML I/O is delegated to
     [`topmark.config.io`][topmark.config.io] to keep this class focused on merge policy.
 
     Attributes:
-        timestamp: Timestamp when the MutableConfig instance was created.
-        apply_changes: Runtime intent: whether to actually write changes (apply)
-            or preview only. None = inherit/unspecified, False = dry-run/preview, True = apply.
-        output_target: Where to send output: `"file"` or `"stdout"`.
-        file_write_strategy: How to write when `output_target == "file"`:
-            `"atomic"` (safe default) or `"inplace"` (fast, less safe).
         policy: Optional global policy overrides (public shape).
         policy_by_type: Optional per-type policy.
         config_files: List of paths or identifiers for config sources used.
@@ -290,9 +252,6 @@ class MutableConfig:
         align_fields: Whether to align fields, from [formatting].
         relative_to_raw: Original string from config or CLI
         relative_to: Base path used only for resolving header metadata (e.g., `file_relpath`).
-        stdin_mode: Whether to read from stdin; requires explicit True to activate.
-        stdin_filename: File name to use when reading file contents from stdin (used when building
-            headers).
         files: List of files to process.
         include_from: Files containing include patterns.
         exclude_from: Files containing exclude patterns.
@@ -305,17 +264,6 @@ class MutableConfig:
         diagnostics: Warnings or errors encountered while loading,
             merging or sanitizing config.
     """
-
-    # Initialization timestamp for the draft instance
-    timestamp: datetime = field(default_factory=get_utc_now)
-
-    # Runtime intent: whether to actually write changes (apply) or preview only
-    apply_changes: bool | None = None
-
-    # Output target for writing (file, stdout)
-    output_target: OutputTarget | None = None
-    # File writer (atomic, in-place)
-    file_write_strategy: FileWriteStrategy | None = None
 
     # Policy containers:
     policy: MutablePolicy = field(default_factory=MutablePolicy)
@@ -339,9 +287,6 @@ class MutableConfig:
     relative_to: Path | None = None  # resolved version (used at runtime)
 
     # File processing options
-    stdin_mode: bool | None = None  # Explicit True required to enable reading from stdin
-    stdin_filename: str | None = None
-
     files: list[str] = field(default_factory=lambda: [])
 
     include_from: list[PatternSource] = field(default_factory=lambda: [])
@@ -400,10 +345,6 @@ class MutableConfig:
         strict_config_checking = bool(self.strict_config_checking)
 
         return Config(
-            timestamp=self.timestamp,
-            apply_changes=self.apply_changes,
-            output_target=self.output_target,
-            file_write_strategy=self.file_write_strategy,
             policy=global_policy_frozen,
             policy_by_type=frozen_by_type,
             config_files=tuple(self.config_files),
@@ -413,8 +354,6 @@ class MutableConfig:
             align_fields=self.align_fields,
             relative_to_raw=self.relative_to_raw,
             relative_to=self.relative_to,
-            stdin_mode=self.stdin_mode,
-            stdin_filename=self.stdin_filename,
             files=tuple(self.files),
             include_from=tuple(self.include_from),
             exclude_from=tuple(self.exclude_from),
@@ -438,9 +377,7 @@ class MutableConfig:
         - behavioral/configuration fields usually use **nearest-wins** semantics
         - mapping fields usually **overlay keys**
         - discovery pattern groups **accumulate** across layers
-        - some runtime-oriented fields are still carried through for compatibility,
-          even though they are not primarily intended to be sourced from file-backed
-          config layers
+        - runtime/execution intent is out of scope for layered config merging
 
         Current merge groups:
             Provenance and diagnostics:
@@ -470,13 +407,6 @@ class MutableConfig:
             Discovery filters:
                 - `include_file_types`, `exclude_file_types`: replace when `other`
                   provides a non-empty set
-
-            Runtime-oriented compatibility fields:
-                - `stdin_mode`, `stdin_filename`: replace only when explicitly set in `other`
-                - `apply_changes`: replace only when explicitly set in `other`
-                - `output_target`, `file_write_strategy`: replace only when explicitly set
-                  in `other`
-                - `timestamp`: preserve the base draft timestamp
 
         Args:
             other: Higher-precedence config whose values should be merged on top
@@ -560,27 +490,6 @@ class MutableConfig:
         merged_include_file_types: set[str] = other.include_file_types or self.include_file_types
         merged_exclude_file_types: set[str] = other.exclude_file_types or self.exclude_file_types
 
-        # ---------------------- Runtime-oriented compatibility fields ---------------------
-        # These fields are still merged here for compatibility, even though they are
-        # primarily intended to be supplied by CLI/API runtime overlays.
-        merged_stdin_mode: bool | None = (
-            other.stdin_mode if other.stdin_mode is not None else self.stdin_mode
-        )
-        merged_stdin_filename: str | None = (
-            other.stdin_filename if other.stdin_filename is not None else self.stdin_filename
-        )
-        merged_apply_changes: bool | None = (
-            other.apply_changes if other.apply_changes is not None else self.apply_changes
-        )
-        merged_output_target: OutputTarget | None = (
-            other.output_target if other.output_target is not None else self.output_target
-        )
-        merged_file_write_strategy: FileWriteStrategy | None = (
-            other.file_write_strategy
-            if other.file_write_strategy is not None
-            else self.file_write_strategy
-        )
-
         logger.info(
             "Merging config layers: adding %r to existing config_files %r",
             other.config_files,
@@ -588,8 +497,6 @@ class MutableConfig:
         )
 
         merged = MutableConfig(
-            # Preserve the base draft timestamp; runtime code may replace it later for a run.
-            timestamp=self.timestamp,
             config_files=merged_config_files,
             diagnostics=merged_diags,
             strict_config_checking=merged_strict_config_checking,
@@ -598,8 +505,6 @@ class MutableConfig:
             align_fields=merged_align_fields,
             relative_to_raw=merged_relative_to_raw,
             relative_to=merged_relative_to,
-            stdin_mode=merged_stdin_mode,
-            stdin_filename=merged_stdin_filename,
             files=merged_files,
             include_from=merged_include_from,
             exclude_from=merged_exclude_from,
@@ -608,9 +513,6 @@ class MutableConfig:
             exclude_pattern_groups=merged_exclude_pattern_groups,
             include_file_types=merged_include_file_types,
             exclude_file_types=merged_exclude_file_types,
-            apply_changes=merged_apply_changes,
-            output_target=merged_output_target,
-            file_write_strategy=merged_file_write_strategy,
         )
 
         merged.policy = merged_global
@@ -726,31 +628,3 @@ class MutableConfig:
             self.diagnostics.add_warning(msg)
             # Remove overlaps (blacklisted wins from whitelisted):
             self.include_file_types.difference_update(overlap)
-
-        # STDIN content mode: force stdout destination.
-        # We treat content-on-STDIN as "emit updated content"; file strategies are irrelevant.
-        if self.stdin_mode is True:
-            if self.output_target is None:
-                msg = (
-                    f"STDIN mode: Setting {Toml.KEY_TARGET} to {OutputTarget.STDOUT.label} "
-                    "(was not set)"
-                )
-                self.diagnostics.add_info(msg)
-            elif self.output_target != OutputTarget.STDOUT:
-                msg = (
-                    f"STDIN mode: Setting {Toml.KEY_TARGET} "
-                    f"from {self.output_target.key} ({self.output_target.label}) "
-                    f"to {OutputTarget.STDOUT.key} ({OutputTarget.STDOUT.label})"
-                )
-                self.diagnostics.add_warning(msg)
-
-            self.output_target = OutputTarget.STDOUT
-
-            if self.file_write_strategy is not None:
-                msg = (
-                    f"STDIN mode: Clearing file_write_strategy "
-                    f"(was: {self.file_write_strategy.key} ({self.file_write_strategy.label}))"
-                )
-                self.diagnostics.add_warning(msg)
-
-            self.file_write_strategy = None

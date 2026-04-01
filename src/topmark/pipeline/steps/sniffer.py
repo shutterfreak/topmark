@@ -372,7 +372,9 @@ class SnifferStep(BaseStep):
         - Does **not** populate `ctx.file_lines`; that is the reader's job.
         - If this step sets a non-RESOLVED file status, later steps will early-return.
         """
-        apply: bool = False if ctx.config.apply_changes is None else ctx.config.apply_changes
+        apply: bool = (
+            False if ctx.run_options.apply_changes is None else ctx.run_options.apply_changes
+        )
         ctx.status.fs = FsStatus.PENDING
 
         # Existence / permission

@@ -21,26 +21,22 @@ same discovery/precedence model as the CLI:
 from __future__ import annotations
 
 import textwrap
+from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
+
+from tests.api.conftest import run_cli_like
 from topmark import api
-from topmark.config.io.resolution import load_resolved_config
 from topmark.config.keys import Toml
-from topmark.pipeline.engine import run_steps_for_files
-from topmark.pipeline.pipelines import Pipeline
-from topmark.resolution.files import resolve_file_list
+from topmark.config.model import MutableConfig
+from topmark.pipeline.context.model import ProcessingContext
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
     from pathlib import Path
 
-    import pytest
-
-    from topmark.config.model import Config
     from topmark.config.model import MutableConfig
-    from topmark.core.exit_codes import ExitCode
     from topmark.pipeline.context.model import ProcessingContext
-    from topmark.pipeline.protocols import Step
 
 
 def _write(p: Path, s: str) -> None:
@@ -67,35 +63,10 @@ def _contains_unaligned_fields(diff: str) -> bool:
     return ("file:" in diff) and ("file         :" not in diff)
 
 
-def _run_cli_like(
-    anchor: Path,
-    include_file_types: tuple[str, ...] = (),
-    exclude_file_types: tuple[str, ...] = (),
-) -> tuple[MutableConfig, list[Path], list[ProcessingContext]]:
-    """Build config via authoritative loader to model CLI behavior."""
-    draft: MutableConfig = load_resolved_config(input_paths=(anchor,))
-    draft.files = [str(anchor)]  # seed positional inputs
-    if include_file_types:
-        draft.include_file_types = set(include_file_types)
-    if exclude_file_types:
-        draft.exclude_file_types = set(exclude_file_types)
-    cfg: Config = draft.freeze()
-    files: list[Path] = resolve_file_list(cfg)
-    results: list[ProcessingContext]
-    _exit_code: ExitCode | None
-    pipeline: Sequence[Step[ProcessingContext]] = Pipeline.CHECK_APPLY_PATCH.steps
-    results, _exit_code = run_steps_for_files(
-        file_list=files,
-        pipeline=pipeline,
-        config=cfg,
-        prune=False,
-    )
-    return draft, files, results
-
-
-def test_same_dir_precedence_topmark_over_pyproject(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+@pytest.mark.api
+@pytest.mark.cli
+@pytest.mark.integration
+def test_same_dir_precedence_topmark_over_pyproject(tmp_path: Path) -> None:
     """Nearest directory: topmark.toml should override pyproject.toml in the same dir."""
     proj: Path = tmp_path / "proj"
     src: Path = proj / "src"
@@ -124,12 +95,15 @@ def test_same_dir_precedence_topmark_over_pyproject(
         + "\n",
     )
 
+    apply: bool = False
+    diff: bool = True
+
     # API run (anchor = project dir)
     rr: api.RunResult = api.check(
         [str(proj)],
-        apply=False,
-        diff=True,
-        prune=False,
+        apply=apply,
+        diff=diff,
+        prune_views=False,
         include_file_types=("python",),
     )
     assert rr.files, "API produced no files to check"
@@ -139,7 +113,14 @@ def test_same_dir_precedence_topmark_over_pyproject(
     _draft: MutableConfig
     files: list[Path]
     results: list[ProcessingContext]
-    _draft, files, results = _run_cli_like(proj, include_file_types=("python",))
+    _draft, files, results = run_cli_like(
+        proj,
+        kind="check",
+        apply=apply,
+        diff=diff,
+        prune_views=False,
+        include_file_types=("python",),
+    )
     assert files, "CLI-like resolver produced no files"
 
     # The aligned form must be present (topmark.toml overrides pyproject.toml)
@@ -149,6 +130,9 @@ def test_same_dir_precedence_topmark_over_pyproject(
     assert _contains_aligned_fields(cli_diff), "CLI-like did not reflect topmark.toml override"
 
 
+@pytest.mark.api
+@pytest.mark.cli
+@pytest.mark.integration
 def test_discovery_anchor_subdir_nearest_wins(tmp_path: Path) -> None:
     """Anchor in subdir: parent pyproject.toml, child topmark.toml — child wins."""
     proj: Path = tmp_path / "proj"
@@ -177,12 +161,15 @@ def test_discovery_anchor_subdir_nearest_wins(tmp_path: Path) -> None:
         + "\n",
     )
 
+    apply: bool = False
+    diff: bool = True
+
     # API run with anchor at child dir
     rr: api.RunResult = api.check(
         [str(child)],
-        apply=False,
-        diff=True,
-        prune=False,
+        apply=apply,
+        diff=diff,
+        prune_views=False,
         include_file_types=("python",),
     )
     assert rr.files
@@ -193,12 +180,22 @@ def test_discovery_anchor_subdir_nearest_wins(tmp_path: Path) -> None:
     _draft: MutableConfig
     files: list[Path]
     results: list[ProcessingContext]
-    _draft, files, results = _run_cli_like(child, include_file_types=("python",))
+    _draft, files, results = run_cli_like(
+        child,
+        kind="check",
+        apply=apply,
+        diff=diff,
+        prune_views=False,
+        include_file_types=("python",),
+    )
     assert files
     cli_diff: str = results[0].views.diff.text or "" if results[0].views.diff else ""
     assert _contains_aligned_fields(cli_diff), "CLI-like did not honor nearest (child) config"
 
 
+@pytest.mark.api
+@pytest.mark.cli
+@pytest.mark.integration
 def test_root_true_stops_traversal(tmp_path: Path) -> None:
     """root=true in parent prevents overrides from ancestors."""
     root: Path = tmp_path / "root"
@@ -232,11 +229,15 @@ def test_root_true_stops_traversal(tmp_path: Path) -> None:
         + "\n",
     )
 
+    apply: bool = False
+    diff: bool = True
+
     # API run anchored at sub (should stop at root because of root=true)
     rr: api.RunResult = api.check(
         [str(sub)],
-        apply=False,
-        diff=True,
+        apply=apply,
+        diff=diff,
+        prune_views=False,
         include_file_types=("python",),
     )
     assert rr.files
@@ -247,7 +248,70 @@ def test_root_true_stops_traversal(tmp_path: Path) -> None:
     _draft: MutableConfig
     files: list[Path]
     results: list[ProcessingContext]
-    _draft, files, results = _run_cli_like(sub, include_file_types=("python",))
+    _draft, files, results = run_cli_like(
+        sub,
+        kind="check",
+        apply=apply,
+        diff=diff,
+        prune_views=False,
+        include_file_types=("python",),
+    )
     assert files
     cli_diff: str = results[0].views.diff.text or "" if results[0].views.diff else ""
     assert _contains_unaligned_fields(cli_diff), "CLI-like did not stop at root=true boundary"
+
+
+@pytest.mark.api
+@pytest.mark.cli
+@pytest.mark.integration
+def test_cli_like_positional_paths_preserve_discovered_exclude_from_gitignore(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """CLI-like overrides must not wipe discovered ``exclude_from`` patterns.
+
+    Regression coverage for a bug where positional CLI paths were applied via
+    `ConfigOverrides(files=...)`, but other list-valued CLI fields were also
+    forwarded as empty lists. That caused discovered values such as
+    ``exclude_from = [".gitignore"]`` to be replaced with empty collections,
+    so ignored subtrees like ``__pycache__/`` leaked into file discovery.
+    """
+    repo: Path = tmp_path / "repo"
+    pkg: Path = repo / "src" / "pkg"
+    cache_dir: Path = pkg / "__pycache__"
+    pkg.mkdir(parents=True)
+    cache_dir.mkdir(parents=True)
+
+    (repo / ".gitignore").write_text("__pycache__/\n*.py[cod]\n", encoding="utf-8")
+    (pkg / "good.py").write_text("print('ok')\n", encoding="utf-8")
+    (cache_dir / "bad.cpython-312.pyc").write_bytes(b"\x00\x00pyc")
+
+    (repo / "pyproject.toml").write_text(
+        textwrap.dedent(
+            """
+            [tool.topmark]
+            root = true
+
+            [tool.topmark.files]
+            exclude_from = [".gitignore"]
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.chdir(repo)
+
+    _draft, files, _results = run_cli_like(
+        pkg,
+        kind="check",
+        diff=True,
+        include_file_types=("python",),
+    )
+
+    file_names: set[str] = {path.name for path in files}
+    file_texts: set[str] = {path.as_posix() for path in files}
+
+    assert file_names == {"good.py"}
+    assert all("__pycache__" not in text for text in file_texts)
+    assert all(not text.endswith(".pyc") for text in file_texts)

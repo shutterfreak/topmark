@@ -55,29 +55,31 @@ if TYPE_CHECKING:
     from topmark.config.model import Config
     from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.protocols import Step
+    from topmark.runtime.model import RunOptions
 
 logger: TopmarkLogger = get_logger(__name__)
 
 
 def run_steps_for_files(
     *,
-    file_list: list[Path],
-    pipeline: Sequence[Step[ProcessingContext]],
+    run_options: RunOptions,
     config: Config,
     path_configs: Mapping[Path, Config] | None = None,
-    prune: bool = True,
+    pipeline: Sequence[Step[ProcessingContext]],
+    file_list: list[Path],
 ) -> tuple[list[ProcessingContext], ExitCode | None]:
     """Run a pipeline for each file and return (results, encountered_error_code).
 
     Catches common filesystem/encoding errors so command bodies don’t duplicate try/except.
 
     Args:
-        file_list: List of file Path instances to be processed in the run.
+        run_options: Invocation-wide runtime options shared by all files in the run.
+        config: Default layered TopMark configuration for the run.
+        path_configs: Optional per-path effective layered configs. When provided, a
+            path-specific config is used for bootstrap; otherwise the shared `config`
+            is used.
         pipeline: The pipeline steps to execute for the run.
-        config: Default TopMark configuration for the run.
-        path_configs: Optional per-path effective configs. When provided, a path-specific
-            config is used for bootstrap; otherwise the shared `config` is used.
-        prune: If `True`, trim heavy views after the run (keeps summaries). Default: `True`.
+        file_list: List of file Path instances to be processed in the run.
 
     Returns:
         tuple[list[ProcessingContext], ExitCode | None]: A pair ``(results, error_code)`` where:
@@ -123,9 +125,10 @@ def run_steps_for_files(
             ctx_obj: ProcessingContext = ProcessingContext.bootstrap(
                 path=path,
                 config=effective_config,
+                run_options=run_options,
                 policy_registry_override=policy_registry,
             )
-            ctx_obj = runner.run(ctx_obj, pipeline, prune=prune)
+            ctx_obj = runner.run(ctx_obj, pipeline, prune=run_options.prune_views)
             results.append(ctx_obj)
         except (FileNotFoundError, PermissionError, IsADirectoryError) as e:
             logger.error("Filesystem error while processing %s: %s", path, e)

@@ -357,7 +357,7 @@ class StripperStep(BaseStep):
         Args:
             ctx: The processing context.
         """
-        apply: bool = ctx.config.apply_changes is True
+        apply: bool = ctx.run_options.apply_changes is True
         st: StripStatus = ctx.status.strip
 
         # May proceed to next step (always):

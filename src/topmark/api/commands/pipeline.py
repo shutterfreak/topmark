@@ -36,6 +36,7 @@ from topmark.pipeline.context.policy import effective_would_add_or_update
 from topmark.pipeline.context.policy import effective_would_strip
 from topmark.pipeline.reporting import ReportScope
 from topmark.pipeline.status import PlanStatus
+from topmark.runtime.model import RunOptions
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -79,7 +80,7 @@ def check(
     include_file_types: Sequence[str] | None = None,
     exclude_file_types: Sequence[str] | None = None,
     report: PublicReportScopeLiteral = "all",
-    prune: bool = False,
+    prune_views: bool = False,
 ) -> RunResult:
     """Validate or apply TopMark headers for the given paths.
 
@@ -101,7 +102,7 @@ def check(
         include_file_types: Optional whitelist of file type identifiers to restrict discovery.
         exclude_file_types: Optional blacklist of file type identifiers to exclude from discovery.
         report: Reporting scope for the returned API view (`actionable`, `noncompliant`, or `all`).
-        prune: If `True`, trim heavy views after the run (keeps summaries).
+        prune_views: If `True`, trim heavy views after the run (keeps summaries).
 
     Returns:
         Filtered per-file outcomes, counts, diagnostics, and write stats.
@@ -113,21 +114,26 @@ def check(
     # Choose the concrete pipeline variant
     pipeline: Sequence[Step[ProcessingContext]] = select_pipeline("check", apply=apply, diff=diff)
 
-    # Run the pipeline; `_run_pipeline` handles discovery and applies policy overlays
+    # Run the pipeline; `run_pipeline(...)` handles discovery and policy overlays.
     _cfg: Config
     file_list: list[Path]
     results: list[ProcessingContext]
     encountered_error_code: ExitCode | None
+
+    run_options: RunOptions = RunOptions(
+        apply_changes=apply,
+        prune_views=prune_views,
+    )
+
     _cfg, file_list, results, encountered_error_code = run_pipeline(
         pipeline=pipeline,
         paths=paths,
+        run_options=run_options,
         base_config=config,  # `None` preserves discovery; mapping/Config is honored
         include_file_types=include_file_types,
         exclude_file_types=exclude_file_types,
-        apply_changes=apply,
         policy=policy,
         policy_by_type=policy_by_type,
-        prune=prune,
     )
 
     # Use common post-run assembly with the write-status set for "check"
@@ -161,7 +167,7 @@ def strip(
     include_file_types: Sequence[str] | None = None,
     exclude_file_types: Sequence[str] | None = None,
     report: PublicReportScopeLiteral = "all",
-    prune: bool = False,
+    prune_views: bool = False,
 ) -> RunResult:
     """Remove TopMark headers from files (dry-run or apply).
 
@@ -182,7 +188,7 @@ def strip(
         include_file_types: Optional whitelist of file type identifiers to restrict discovery.
         exclude_file_types: Optional blacklist of file type identifiers to exclude from discovery.
         report: Reporting scope for the returned API view (`actionable`, `noncompliant`, or `all`).
-        prune: If `True`, trim heavy views after the run (keeps summaries).
+        prune_views: If `True`, trim heavy views after the run (keeps summaries).
 
     Returns:
         Filtered per-file outcomes, counts, diagnostics, and write stats.
@@ -194,21 +200,26 @@ def strip(
     # Choose the concrete pipeline variant
     pipeline: Sequence[Step[ProcessingContext]] = select_pipeline("strip", apply=apply, diff=diff)
 
-    # Run the pipeline; `_run_pipeline` handles discovery and applies policy overlays
+    # Run the pipeline; `run_pipeline(...)` handles discovery and policy overlays.
     _cfg: Config
     file_list: list[Path] = []
     results: list[ProcessingContext] = []
     encountered_error_code: ExitCode | None = None
+
+    run_options: RunOptions = RunOptions(
+        apply_changes=apply,
+        prune_views=prune_views,
+    )
+
     _cfg, file_list, results, encountered_error_code = run_pipeline(
         pipeline=pipeline,
         paths=paths,
+        run_options=run_options,
         base_config=config,  # `None` preserves discovery; mapping/Config is honored
         include_file_types=include_file_types,
         exclude_file_types=exclude_file_types,
-        apply_changes=apply,
         policy=policy,
         policy_by_type=policy_by_type,
-        prune=prune,
     )
 
     # Use common post-run assembly with the write-status set for "strip"

@@ -366,7 +366,7 @@ def render_file_summary_line_text(
 
     # Resolve the public bucket for this context and style the summary from its
     # semantic outcome role.
-    apply_changes: bool = ctx.config.apply_changes is True
+    apply_changes: bool = ctx.run_options.apply_changes is True
     bucket: ResultBucket = map_bucket(ctx, apply=apply_changes)
     key: str = bucket.outcome.value
     label: str = bucket.reason or "(no reason provided)"

@@ -43,6 +43,7 @@ from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.pipelines import Pipeline
 from topmark.processors.types import StripDiagKind
 from topmark.processors.types import StripDiagnostic
+from topmark.runtime.model import RunOptions
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -60,12 +61,15 @@ def test_cblock_processor_basics(tmp_path: Path) -> None:
     path.write_text("body { margin: 0; }\n")
 
     cfg: Config = mutable_config_from_defaults().freeze()
+    run_options: RunOptions = RunOptions(apply_changes=False)
+
     # Use the short insert helper which runs resolver+reader+scanner, but we only
     # need to assert the basics exposed by the scan results.
     policy_registry: PolicyRegistry = make_policy_registry(cfg)
     ctx: ProcessingContext = ProcessingContext.bootstrap(
         path=path,
         config=cfg,
+        run_options=run_options,
         policy_registry_override=policy_registry,
     )
 
@@ -124,6 +128,7 @@ def test_cblock_detect_existing_header_with_star_prefix(tmp_path: Path) -> None:
     )  # No header yet
 
     cfg: Config = mutable_config_from_defaults().freeze()
+    run_options: RunOptions = RunOptions(apply_changes=False)
 
     # 1) Insert a canonical header using the updater path
     ctx_insert: ProcessingContext = run_insert(path, cfg)
@@ -138,6 +143,7 @@ def test_cblock_detect_existing_header_with_star_prefix(tmp_path: Path) -> None:
     ctx_check: ProcessingContext = ProcessingContext.bootstrap(
         path=path,
         config=cfg,
+        run_options=run_options,
         policy_registry_override=policy_registry,
     )
 
@@ -165,6 +171,8 @@ def test_cblock_detect_existing_header_without_star_on_directives(tmp_path: Path
     )
 
     cfg: Config = mutable_config_from_defaults().freeze()
+    run_options: RunOptions = RunOptions(apply_changes=False)
+
     policy_registry: PolicyRegistry = make_policy_registry(cfg)
 
     # Generate a canonical header
@@ -190,6 +198,7 @@ def test_cblock_detect_existing_header_without_star_on_directives(tmp_path: Path
     ctx2: ProcessingContext = ProcessingContext.bootstrap(
         path=path,
         config=cfg,
+        run_options=run_options,
         policy_registry_override=policy_registry,
     )
     pipeline: Sequence[Step[ProcessingContext]] = Pipeline.CHECK.steps

@@ -131,7 +131,7 @@ class ComparerStep(BaseStep):
         """
         logger.debug("ctx: %s", ctx)
 
-        logger.debug("ctx.config.apply_changes = %s", ctx.config.apply_changes)
+        logger.debug("ctx.run_options.apply_changes = %s", ctx.run_options.apply_changes)
 
         # Skip comparison if malformed header fields
         # TODO: enable comparing based on future policy:
@@ -231,7 +231,7 @@ class ComparerStep(BaseStep):
 
         # May proceed to next step (always):
         if st == ComparisonStatus.CHANGED:
-            if ctx.config.apply_changes is True:
+            if ctx.run_options.apply_changes is True:
                 ctx.hint(
                     axis=Axis.COMPARISON,
                     code=KnownCode.COMPARE_CHANGED,

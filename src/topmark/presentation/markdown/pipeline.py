@@ -252,7 +252,7 @@ def render_file_summary_line_markdown(
     ft: str = ctx.file_type.local_key if ctx.file_type is not None else "<unknown>"
 
     # Resolve the public bucket for this context.
-    apply_changes: bool = ctx.config.apply_changes is True
+    apply_changes: bool = ctx.run_options.apply_changes is True
     bucket: ResultBucket = map_bucket(ctx, apply=apply_changes)
     key: str = bucket.outcome.value
     label: str = bucket.reason or "(no reason provided)"

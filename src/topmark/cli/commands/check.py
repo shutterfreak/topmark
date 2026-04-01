@@ -50,6 +50,7 @@ import click
 from topmark.api.runtime import select_pipeline
 from topmark.cli.cmd_common import build_config_for_plan
 from topmark.cli.cmd_common import build_file_list
+from topmark.cli.cmd_common import build_run_options
 from topmark.cli.cmd_common import exit_if_no_files
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.cmd_common import maybe_exit_on_error
@@ -110,6 +111,7 @@ if TYPE_CHECKING:
     from topmark.core.machine.schemas import MetaPayload
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.protocols import Step
+    from topmark.runtime.model import RunOptions
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -302,7 +304,7 @@ def check_command(
     prune_override: bool | None = ctx.obj.get(
         "prune"
     )  # injected by tests via CliRunner.invoke(..., obj=...)
-    prune: bool = bool(prune_override) if prune_override else False
+    prune_views: bool = bool(prune_override) if prune_override else False
 
     # Add apply_changes and write_mode to Click context
     ctx.obj[ArgKey.APPLY_CHANGES] = apply_changes
@@ -316,7 +318,7 @@ def check_command(
     ctx.obj[ArgKey.POLICY_ALLOW_REFLOW] = allow_reflow
     ctx.obj[ArgKey.POLICY_ALLOW_CONTENT_PROBE] = allow_content_probe
 
-    # === Build Config (layered discovery) and file list ===
+    # === Build layered config, runtime options, and file list ===
     plan: InputPlan = plan_cli_inputs(
         ctx=ctx,
         files_from=files_from,
@@ -325,23 +327,6 @@ def check_command(
         include_patterns=include_patterns,
         exclude_patterns=exclude_patterns,
         stdin_filename=stdin_filename,
-    )
-
-    # Content-to-STDOUT modes: keep stdout clean for the rewritten file content.
-    #
-    # - STDIN content mode emits the updated file to stdout when --apply is set.
-    # - write_mode="stdout" also emits updated content to stdout.
-    #
-    # In both cases, route all human-facing console output (summaries, warnings,
-    # diagnostics) to stderr.
-    #
-    # Console selection must happen after planning inputs because stdin mode affects routing.
-    console: ConsoleProtocol = maybe_route_console_to_stderr(
-        ctx,
-        enable_color=enable_color,
-        apply_changes=apply_changes,
-        stdin_mode=plan.stdin_mode,
-        write_mode=write_mode,
     )
 
     draft_config: MutableConfig = build_config_for_plan(
@@ -355,12 +340,34 @@ def check_command(
         relative_to=relative_to,
     )
 
-    # Propagate runtime intent for updater (terminal vs preview write status)
-    draft_config.apply_changes = bool(apply_changes)
+    run_options: RunOptions = build_run_options(
+        apply_changes=apply_changes,
+        write_mode=write_mode,
+        stdin_mode=plan.stdin_mode,
+        stdin_filename=plan.stdin_filename,
+        prune_views=prune_views,
+    )
+
+    logger.debug("run options: %s", run_options)
+
+    # Content-to-STDOUT modes: keep stdout clean for the rewritten file content.
+    #
+    # - STDIN content mode emits the updated file to stdout when --apply is set.
+    # - write_mode="stdout" also emits updated content to stdout.
+    #
+    # In both cases, route all human-facing console output (summaries, warnings,
+    # diagnostics) to stderr.
+    #
+    # Console selection must happen after planning inputs because stdin mode affects routing.
+    console: ConsoleProtocol = maybe_route_console_to_stderr(
+        ctx,
+        run_options=run_options,
+        enable_color=enable_color,
+    )
 
     config: Config = draft_config.freeze()
 
-    logger.trace("Config after merging args and resolving file list: %s", config)
+    logger.trace("Run config after layered CLI overrides: %s", config)
 
     # Display Config diagnostics before resolving files
     if fmt == OutputFormat.TEXT and verbosity_level > 0:
@@ -373,10 +380,9 @@ def check_command(
         )
 
     temp_path: Path | None = plan.temp_path  # for cleanup/STDIN-apply branch
-    stdin_mode: bool = plan.stdin_mode
     file_list: list[Path] = build_file_list(
-        config,
-        stdin_mode=stdin_mode,
+        run_options=run_options,
+        config=config,
         temp_path=temp_path,
     )
 
@@ -398,10 +404,11 @@ def check_command(
     encountered_error_code: ExitCode | None = None
 
     results, encountered_error_code = run_steps_for_files(
-        file_list=file_list,
-        pipeline=pipeline,
+        run_options=run_options,
         config=config,
-        prune=prune,
+        path_configs=None,
+        pipeline=pipeline,
+        file_list=file_list,
     )
 
     # Report scope is a human per-file listing policy only.
@@ -446,7 +453,7 @@ def check_command(
 
     if apply_changes:
         # Writes (only when --apply is set)
-        if stdin_mode:
+        if run_options.stdin_mode:
             # For STDIN content mode, the modified file content is emitted to stdout in WriterStep.
             # So we do not have to output it here.
             #

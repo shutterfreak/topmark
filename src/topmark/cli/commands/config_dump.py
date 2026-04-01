@@ -30,6 +30,7 @@ from typing import TYPE_CHECKING
 import click
 
 from topmark.cli.cmd_common import build_config_for_plan
+from topmark.cli.cmd_common import build_run_options
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.cmd_common import maybe_route_console_to_stderr
 from topmark.cli.emitters.machine import emit_config_machine
@@ -70,6 +71,7 @@ if TYPE_CHECKING:
     from topmark.config.model import MutableConfig
     from topmark.core.logging import TopmarkLogger
     from topmark.core.machine.schemas import MetaPayload
+    from topmark.runtime.model import RunOptions
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -209,23 +211,6 @@ def config_dump_command(
         allow_empty_paths=True,  # We ignore paths in `config dump`
     )
 
-    # Content-to-STDOUT modes: keep stdout clean for the rewritten file content.
-    #
-    # - STDIN content mode emits the updated file to stdout when --apply is set.
-    # - write_mode="stdout" also emits updated content to stdout.
-    #
-    # In both cases, route all human-facing console output (summaries, warnings,
-    # diagnostics) to stderr.
-    #
-    # Console selection must happen after planning inputs because stdin mode affects routing.
-    console: ConsoleProtocol = maybe_route_console_to_stderr(
-        ctx,
-        enable_color=enable_color,
-        apply_changes=False,  # Not relevant for `config dump``
-        stdin_mode=plan.stdin_mode,
-        write_mode=None,  # Not relevant for `config dump``
-    )
-
     draft_config: MutableConfig = build_config_for_plan(
         ctx=ctx,
         plan=plan,
@@ -237,7 +222,33 @@ def config_dump_command(
         relative_to=relative_to,
     )
 
+    run_options: RunOptions = build_run_options(
+        apply_changes=False,  # Not relevant for `config dump``
+        write_mode=None,  # Not relevant for `config dump``
+        stdin_mode=plan.stdin_mode,
+        stdin_filename=plan.stdin_filename,
+    )
+
+    logger.debug("run options: %s", run_options)
+
+    # Content-to-STDOUT modes: keep stdout clean for the rewritten file content.
+    #
+    # - STDIN content mode emits the updated file to stdout when --apply is set.
+    # - write_mode="stdout" also emits updated content to stdout.
+    #
+    # In both cases, route all human-facing console output (summaries, warnings,
+    # diagnostics) to stderr.
+    #
+    # Console selection must happen after planning inputs because stdin mode affects routing.
+    console: ConsoleProtocol = maybe_route_console_to_stderr(
+        ctx,
+        run_options=run_options,
+        enable_color=enable_color,
+    )
+
     config: Config = draft_config.freeze()
+
+    logger.trace("Run config after layered CLI overrides: %s", config)
 
     # Display Config diagnostics before resolving files
     if fmt == OutputFormat.TEXT:

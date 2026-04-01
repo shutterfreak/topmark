@@ -37,6 +37,7 @@ from topmark.cli.presentation import TextStyler
 from topmark.cli.presentation import style_for_role
 from topmark.cli.validators import validate_verbose_quiet_exclusivity
 from topmark.config.io.resolution import load_resolved_config
+from topmark.config.model import MutableConfig
 from topmark.config.overrides import ConfigOverrides
 from topmark.config.overrides import PolicyOverrides
 from topmark.config.overrides import apply_config_overrides
@@ -50,6 +51,8 @@ from topmark.core.logging import resolve_env_log_level
 from topmark.core.logging import setup_logging
 from topmark.core.presentation import StyleRole
 from topmark.resolution.files import resolve_file_list
+from topmark.runtime.model import RunOptions
+from topmark.utils.merge import none_if_empty
 
 if TYPE_CHECKING:
     from topmark.cli.console.protocols import ConsoleProtocol
@@ -112,18 +115,78 @@ def init_common_state(
     ctx.obj[ArgKey.CONSOLE] = console
 
 
-def build_file_list(config: Config, *, stdin_mode: bool, temp_path: Path | None) -> list[Path]:
-    """Return the files to process, respecting STDIN content mode.
+def build_file_list(
+    *,
+    run_options: RunOptions,
+    config: Config,
+    temp_path: Path | None,
+) -> list[Path]:
+    """Return the files to process, respecting content-on-STDIN mode.
 
-    - If content-on-STDIN mode, return the single temp path.
+    - In content-on-STDIN mode, return the single temp path created for the
+      staged input content.
     - Otherwise, delegate to the unified resolver that uses `config.files`,
       `files_from`, include/exclude patterns, and file types.
+
+    Args:
+        run_options: Invocation-wide runtime options for the current run.
+        config: Effective run config used for file discovery.
+        temp_path: Temporary file path created for content-on-STDIN mode, if any.
+
+    Returns:
+        The ordered list of files to process for the CLI invocation.
+
+    Raises:
+        RuntimeError: If `temp_path` is undefined in `stdin_mode`.
     """
-    if stdin_mode:
+    if run_options.stdin_mode:
         if temp_path is None:
             raise RuntimeError("temp_path should not be undefined in stdin_mode")
         return [temp_path]
     return resolve_file_list(config)
+
+
+def build_run_options(
+    *,
+    apply_changes: bool,
+    write_mode: str | None,
+    stdin_mode: bool,
+    stdin_filename: str | None,
+    prune_views: bool = True,
+) -> RunOptions:
+    """Build invocation-wide runtime options for a CLI command.
+
+    Args:
+        apply_changes: Whether the command should write changes.
+        write_mode: Effective CLI write mode (`stdout`, `atomic`, or `inplace`).
+        stdin_mode: Whether the command is operating in content-on-STDIN mode.
+        stdin_filename: Synthetic file name associated with STDIN content, if any.
+        prune_views: If `True`, trim heavy views after the run (keeps summaries). Default: `True`.
+
+    Returns:
+        The execution-only runtime options for the current CLI invocation.
+    """
+    output_target: OutputTarget | None = None
+    file_write_strategy: FileWriteStrategy | None = None
+
+    if stdin_mode and apply_changes or write_mode == OutputTarget.STDOUT.value:
+        output_target = OutputTarget.STDOUT
+        file_write_strategy = None
+    elif write_mode == FileWriteStrategy.ATOMIC.value:
+        output_target = OutputTarget.FILE
+        file_write_strategy = FileWriteStrategy.ATOMIC
+    elif write_mode == FileWriteStrategy.INPLACE.value:
+        output_target = OutputTarget.FILE
+        file_write_strategy = FileWriteStrategy.INPLACE
+
+    return RunOptions(
+        apply_changes=apply_changes,
+        output_target=output_target,
+        file_write_strategy=file_write_strategy,
+        stdin_mode=stdin_mode,
+        stdin_filename=stdin_filename,
+        prune_views=prune_views,
+    )
 
 
 def exit_if_no_files(file_list: list[Path], *, styled: bool) -> bool:
@@ -139,10 +202,8 @@ def exit_if_no_files(file_list: list[Path], *, styled: bool) -> bool:
 def maybe_route_console_to_stderr(
     ctx: click.Context,
     *,
+    run_options: RunOptions,
     enable_color: bool,
-    apply_changes: bool,
-    stdin_mode: bool,
-    write_mode: str | None,
 ) -> ConsoleProtocol:
     """Route human-facing console output to stderr when stdout carries file content.
 
@@ -160,15 +221,15 @@ def maybe_route_console_to_stderr(
 
     Args:
         ctx: Current Click context.
+        run_options: Invocation-wide runtime options for the current run.
         enable_color: Whether color output is enabled for this invocation.
-        apply_changes: Whether ``--apply`` is set (only then can content be emitted).
-        stdin_mode: Whether the invocation is in content-on-STDIN mode.
-        write_mode: Effective write mode (``"stdout"`` emits content to STDOUT).
 
     Returns:
         The effective console instance to use for human-facing output.
     """
-    emits_content_to_stdout: bool = bool(apply_changes) and (stdin_mode or (write_mode == "stdout"))
+    emits_content_to_stdout: bool = bool(run_options.apply_changes) and (
+        run_options.stdin_mode or (run_options.output_target == OutputTarget.STDOUT)
+    )
 
     if emits_content_to_stdout:
         console = Console(
@@ -247,7 +308,7 @@ def build_config_for_plan(
     1. Compute a discovery anchor from the input plan.
     2. Delegate layered config discovery/merge to
        `topmark.config.io.resolution.load_resolved_config()`.
-    3. Apply CLI overrides via `topmark.config.overrides.apply_config_overrides()`.
+    3. Apply layered CLI overrides via `topmark.config.overrides.apply_config_overrides()`.
 
     Resolution order remains:
 
@@ -296,36 +357,16 @@ def build_config_for_plan(
         no_config=no_config,
     )
 
-    output_target: OutputTarget | None = None
-    file_write_strategy: FileWriteStrategy | None = None
-    write_mode_obj: object = ctx.obj.get(ArgKey.WRITE_MODE)
-    write_mode: str | None = None if write_mode_obj is None else str(write_mode_obj)
-
-    if write_mode == OutputTarget.STDOUT.value:
-        output_target = OutputTarget.STDOUT
-        file_write_strategy = None
-    elif write_mode == FileWriteStrategy.ATOMIC.value:
-        output_target = OutputTarget.FILE
-        file_write_strategy = FileWriteStrategy.ATOMIC
-    elif write_mode == FileWriteStrategy.INPLACE.value:
-        output_target = OutputTarget.FILE
-        file_write_strategy = FileWriteStrategy.INPLACE
-
     policy_overrides: PolicyOverrides = build_cli_policy_overrides_from_ctx(ctx)
     overrides: ConfigOverrides = ConfigOverrides(
         config_origin=Path(CLI_OVERRIDE_STR),
         policy=policy_overrides,
-        apply_changes=ctx.obj.get(ArgKey.APPLY_CHANGES),
-        output_target=output_target,
-        file_write_strategy=file_write_strategy,
         files=plan.paths,
-        files_from=plan.files_from,
-        stdin_mode=plan.stdin_mode,
-        stdin_filename=plan.stdin_filename,
-        include_patterns=plan.include_patterns,
-        include_from=plan.include_from,
-        exclude_patterns=plan.exclude_patterns,
-        exclude_from=plan.exclude_from,
+        files_from=none_if_empty(plan.files_from),
+        include_from=none_if_empty(plan.include_from),
+        exclude_from=none_if_empty(plan.exclude_from),
+        include_patterns=none_if_empty(plan.include_patterns),
+        exclude_patterns=none_if_empty(plan.exclude_patterns),
         include_file_types=include_file_types,
         exclude_file_types=exclude_file_types,
         align_fields=align_fields,

@@ -42,6 +42,7 @@ from topmark.pipeline.status import HeaderStatus
 from topmark.processors.builtins.pound import PoundHeaderProcessor
 from topmark.processors.types import StripDiagKind
 from topmark.processors.types import StripDiagnostic
+from topmark.runtime.model import RunOptions
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -66,10 +67,13 @@ def test_pound_processor_basics(tmp_path: Path) -> None:
     file.write_text("#!/usr/bin/env python3\n\nprint('hello')\n")
 
     cfg: Config = mutable_config_from_defaults().freeze()
+    run_options: RunOptions = RunOptions(apply_changes=False)
+
     policy_registry: PolicyRegistry = make_policy_registry(cfg)
     ctx: ProcessingContext = ProcessingContext.bootstrap(
         path=file,
         config=cfg,
+        run_options=run_options,
         policy_registry_override=policy_registry,
     )
     pipeline: Sequence[Step[ProcessingContext]] = Pipeline.CHECK.steps
@@ -106,10 +110,13 @@ def test_pound_processor_detects_existing_header(tmp_path: Path) -> None:
     )
 
     cfg: Config = mutable_config_from_defaults().freeze()
+    run_options: RunOptions = RunOptions(apply_changes=False)
+
     policy_registry: PolicyRegistry = make_policy_registry(cfg)
     ctx: ProcessingContext = ProcessingContext.bootstrap(
         path=file,
         config=cfg,
+        run_options=run_options,
         policy_registry_override=policy_registry,
     )
 
@@ -144,10 +151,13 @@ def test_pound_processor_missing_header(tmp_path: Path) -> None:
     path.write_text("#!/usr/bin/env python3\n\nprint('no header here')\n")
 
     cfg: Config = mutable_config_from_defaults().freeze()
+    run_options: RunOptions = RunOptions(apply_changes=False)
+
     policy_registry: PolicyRegistry = make_policy_registry(cfg)
     ctx: ProcessingContext = ProcessingContext.bootstrap(
         path=path,
         config=cfg,
+        run_options=run_options,
         policy_registry_override=policy_registry,
     )
 
@@ -198,10 +208,13 @@ def test_pound_malformed_header_fields(
     )
 
     cfg: Config = mutable_config_from_defaults().freeze()
+    run_options: RunOptions = RunOptions(apply_changes=False)
+
     policy_registry: PolicyRegistry = make_policy_registry(cfg)
     ctx: ProcessingContext = ProcessingContext.bootstrap(
         path=path,
         config=cfg,
+        run_options=run_options,
         policy_registry_override=policy_registry,
     )
 

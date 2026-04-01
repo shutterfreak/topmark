@@ -11,7 +11,7 @@
 """Tests for config model export and TOML rendering.
 
 These tests cover:
-- `Config.to_toml_dict()` serialization (including enum stringification), and
+- layered `Config` TOML serialization, and
 - `to_toml()` behavior around TOML-incompatible values like `None`.
 """
 
@@ -25,8 +25,6 @@ from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.io.render import to_toml
 from topmark.config.io.serializers import config_to_toml_dict
 from topmark.config.keys import Toml
-from topmark.config.types import FileWriteStrategy
-from topmark.config.types import OutputTarget
 from topmark.core.keys import ArgKey
 
 if TYPE_CHECKING:
@@ -35,27 +33,6 @@ if TYPE_CHECKING:
     from topmark.config.io.types import TomlTable
     from topmark.config.model import Config
     from topmark.config.model import MutableConfig
-
-
-@pytest.mark.pipeline
-def test_config_to_toml_dict_serializes_enums_as_strings() -> None:
-    """Enums serialize to strings, not iterables/char arrays.
-
-    This guards against the earlier “['f', 'i', 'l', 'e']” failure.
-    """
-    draft: MutableConfig = mutable_config_from_defaults()
-    draft.output_target = OutputTarget.FILE
-    draft.file_write_strategy = FileWriteStrategy.ATOMIC
-    c: Config = draft.freeze()
-
-    d: TomlTable = config_to_toml_dict(
-        c,
-        include_files=False,
-    )
-    writer = d[Toml.SECTION_WRITER]
-    assert isinstance(writer, dict)
-    assert writer[Toml.KEY_TARGET] == "file"
-    assert writer[Toml.KEY_STRATEGY] == "atomic"
 
 
 @pytest.mark.pipeline

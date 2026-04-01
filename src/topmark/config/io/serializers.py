@@ -16,8 +16,8 @@ TOML-serializable dictionaries for export, debugging, or documentation.
 TOML has no `null` value, so `None` entries are stripped during rendering.
 
 Responsibilities:
-    - convert `Config` into TOML-shaped dictionaries
-    - normalize enum values into stable string tokens
+    - convert layered `Config` into TOML-shaped dictionaries
+    - normalize config values into stable TOML-compatible tokens
     - control inclusion of optional sections (e.g. large file lists)
 
 Design notes:
@@ -25,6 +25,8 @@ Design notes:
       [`topmark.config.io.deserializers`][topmark.config.io.deserializers].
     - Serialization is intentionally kept out of `config.model` to preserve
       a clean separation between data structures and I/O concerns.
+    - Execution-only runtime intent is intentionally out of scope here and is
+      modeled separately via [`topmark.runtime.model.RunOptions`][topmark.runtime.model.RunOptions].
 """
 
 from __future__ import annotations
@@ -102,16 +104,8 @@ def config_to_toml_dict(
 
         Pattern groups and pattern-source bases are serialized based on the value of
         `files_serialization_mode`. When set to `FilesSerializationMode.ORIGIN`, provenance-rich
-        structures will be provided for serlaialization.
+        structures are emitted for serialization.
     """
-    # Normalize writer strategy for TOML (map enum to a stable, config-friendly token)
-    if config.file_write_strategy is None:
-        writer_strategy: str | None = None
-    else:
-        # FileWriteStrategy names are things like "ATOMIC" / "INPLACE";
-        # map them back to lowercase tokens used in config.
-        writer_strategy = config.file_write_strategy.name.lower()
-
     # Header fields to render in headers
     fields_tbl: TomlTable = dict(config.field_values)
 
@@ -237,13 +231,6 @@ def config_to_toml_dict(
             details=("render_config_to_toml_dict",),
         )
 
-    # Writer settings
-    writer_tbl: TomlTable = {
-        # self.output_target is an Enum type
-        Toml.KEY_TARGET: config.output_target.value if config.output_target else None,
-        Toml.KEY_STRATEGY: writer_strategy,
-    }
-
     # Policy serialization (global and per-type)
     policy_tbl: TomlTable = {
         Toml.KEY_POLICY_HEADER_MUTATION_MODE: config.policy.header_mutation_mode.value,
@@ -275,7 +262,6 @@ def config_to_toml_dict(
         Toml.SECTION_HEADER: header_tbl,
         Toml.SECTION_FORMATTING: formatting_tbl,
         Toml.SECTION_POLICY: policy_tbl,
-        Toml.SECTION_WRITER: writer_tbl,
         Toml.SECTION_FILES: files_tbl,
     }
 

@@ -165,6 +165,8 @@ def config_check_command(
     # Freeze ensures sanitize + schema validation runs (and produces diagnostics)
     config: Config = draft_config.freeze()
 
+    logger.trace("Run config after layered CLI overrides: %s", config)
+
     # Diagnostics payload;
     diag_payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
     counts: MachineDiagnosticCounts = diag_payload.diagnostic_counts

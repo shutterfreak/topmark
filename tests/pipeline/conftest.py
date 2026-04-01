@@ -53,6 +53,7 @@ from topmark.pipeline.steps.sniffer import SnifferStep
 from topmark.pipeline.steps.stripper import StripperStep
 from topmark.pipeline.steps.writer import WriterStep
 from topmark.pipeline.views import ListFileImageView
+from topmark.runtime.model import RunOptions
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -120,11 +121,19 @@ def run_writer(ctx: ProcessingContext) -> ProcessingContext:
 
 
 def make_pipeline_context(path: Path, cfg: Config) -> ProcessingContext:
-    """Return a ProcessingContext seeded with a PolicyRegistry for a given path."""
+    """Return a ProcessingContext seeded with policy and runtime defaults.
+
+    Test helpers that bootstrap contexts directly should provide both the
+    effective layered config and invocation-wide runtime options. Most unit
+    tests do not care about custom runtime behavior, so this helper supplies
+    a default dry-run `RunOptions` instance.
+    """
     policy_registry: PolicyRegistry = make_policy_registry(cfg)
+    run_options: RunOptions = RunOptions(apply_changes=False)
     return ProcessingContext.bootstrap(
         path=path,
         config=cfg,
+        run_options=run_options,
         policy_registry_override=policy_registry,
     )
 
@@ -142,7 +151,8 @@ def make_context_from_text(
     through the full resolver/sniffer/reader chain on disk.
 
     The helper:
-      * Creates a fresh ProcessingContext via ``ProcessingContext.bootstrap``.
+      * Creates a fresh ProcessingContext via ``make_pipeline_context()``, which
+        supplies both policy registry state and default dry-run runtime options.
       * Resolves and attaches the appropriate ``HeaderProcessor`` using the
         normal test-time registry helpers.
       * Marks ``resolve/fs/content`` axes as successfully completed.
@@ -158,7 +168,7 @@ def make_context_from_text(
 
     Args:
         text: In-memory file contents to expose via ``ctx.views.image``.
-        cfg: Frozen configuration snapshot used to bootstrap the context.
+        cfg: Frozen layered configuration snapshot used to bootstrap the context.
         path: Synthetic path used for the context and processor lookup.
 
     Returns:
@@ -259,8 +269,9 @@ def run_steps(
 ) -> ProcessingContext:
     """Run a list of class-based steps against a context and return it.
 
-    This helper mirrors the engine's simple sequential execution. It does not     short-circuit on
-    `may_proceed()`—each step enforces its own gating, as in production.
+    This helper mirrors the engine's simple sequential execution. It does not
+    short-circuit on `may_proceed()`; each step enforces its own gating, as in
+    production.
     """
     for step in steps:
         step(ctx)
@@ -298,7 +309,7 @@ def run_insert(path: Path, cfg: Config) -> ProcessingContext:
         cfg: TopMark configuration used for rendering.
 
     Returns:
-        The updated ``ProcessingContext`` with ``updated_file_lines`` set.
+        The updated ``ProcessingContext`` after the summary pipeline and planning step.
     """
     ctx: ProcessingContext = make_pipeline_context(path=path, cfg=cfg)
     run_steps(ctx, CHECK_SUMMMARY_PIPELINE + (PlannerStep(),))
@@ -318,7 +329,7 @@ def run_insert_diff(path: Path, cfg: Config) -> ProcessingContext:
         cfg: TopMark configuration used for rendering.
 
     Returns:
-        The updated ``ProcessingContext`` with ``updated_file_lines`` set.
+        The updated ``ProcessingContext`` after the patch pipeline and planning step.
     """
     ctx: ProcessingContext = make_pipeline_context(path=path, cfg=cfg)
     run_steps(ctx, CHECK_PATCH_PIPELINE + (PlannerStep(),))
@@ -334,7 +345,7 @@ def run_strip(path: Path, cfg: Config) -> ProcessingContext:
         cfg: TopMark configuration (not used for stripping, but kept for symmetry).
 
     Returns:
-        The updated ``ProcessingContext`` with ``updated_file_lines`` set to the stripped content.
+        The updated ``ProcessingContext`` after the strip and planning flow.
     """
     ctx: ProcessingContext = make_pipeline_context(path=path, cfg=cfg)
     run_steps(ctx, STRIP_STEPS)

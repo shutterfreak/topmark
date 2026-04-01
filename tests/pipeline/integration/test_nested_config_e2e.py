@@ -19,6 +19,7 @@ import pytest
 
 from topmark.api.runtime import run_pipeline
 from topmark.pipeline.pipelines import Pipeline
+from topmark.runtime.model import RunOptions
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -70,22 +71,22 @@ def test_nested_config_applies_only_within_its_subtree(tmp_path: Path) -> None:
     pkg_file.write_text("print('pkg')\n", encoding="utf-8")
     docs_file.write_text("print('docs')\n", encoding="utf-8")
 
-    cfg: Config
+    _cfg: Config
     file_list: list[Path]
     results: list[ProcessingContext]
     exit_code: ExitCode | None
 
-    cfg, file_list, results, exit_code = run_pipeline(
+    run_options = RunOptions(apply_changes=False)
+    _cfg, file_list, results, exit_code = run_pipeline(
         pipeline=Pipeline.CHECK.steps,
         paths=[pkg_file, docs_file],
+        run_options=run_options,
         base_config=None,
         include_file_types=["python"],
-        apply_changes=False,
-        prune=False,
     )
 
     assert exit_code is None
-    assert cfg.apply_changes is False
+    assert run_options.apply_changes is False
     # Limit discovery to Python files so the config files themselves are not part
     # of the processed candidate set for this end-to-end behavior check.
     assert set(file_list) == {pkg_file.resolve(), docs_file.resolve()}

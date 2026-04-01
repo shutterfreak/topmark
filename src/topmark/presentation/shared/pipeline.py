@@ -75,7 +75,7 @@ def display_path_label_markdown(r: ProcessingContext) -> str:
     path: str = display_path(r)
     code: str = markdown_code_span(path)
 
-    if r.config.stdin_mode and r.config.stdin_filename:
+    if r.run_options.stdin_mode and r.run_options.stdin_filename:
         return f"{code} _(via STDIN)_"
 
     return code
@@ -132,8 +132,8 @@ def display_path(r: ProcessingContext) -> str:
     Returns:
         The logical filename in STDIN content mode, otherwise the actual file path.
     """
-    if r.config.stdin_mode and r.config.stdin_filename:
-        return r.config.stdin_filename
+    if r.run_options.stdin_mode and r.run_options.stdin_filename:
+        return r.run_options.stdin_filename
     return str(r.path)
 
 
@@ -154,7 +154,7 @@ def display_path_label(r: ProcessingContext) -> str:
         A short label suitable for TEXT messages.
     """
     path: str = display_path(r)
-    if r.config.stdin_mode and r.config.stdin_filename:
+    if r.run_options.stdin_mode and r.run_options.stdin_filename:
         return f"'{path}' (via STDIN)"
 
     return f"'{path}'"
@@ -186,7 +186,7 @@ def check_msg_text(
             else f"✏️  Updating header in {path_label}"
         )
 
-    if r.config.stdin_mode and r.config.stdin_filename:
+    if r.run_options.stdin_mode and r.run_options.stdin_filename:
         apply_cmd: str = (
             f"topmark {CliCmd.CHECK} {CliOpt.APPLY_CHANGES} {CliOpt.STDIN_FILENAME} '{path_name}' -"
         )
@@ -226,7 +226,7 @@ def strip_msg_text(
 
         return f"🧹 Stripping header in {path_label}"
 
-    if r.config.stdin_mode and r.config.stdin_filename:
+    if r.run_options.stdin_mode and r.run_options.stdin_filename:
         apply_cmd: str = (
             f"topmark {CliCmd.STRIP} {CliOpt.APPLY_CHANGES} {CliOpt.STDIN_FILENAME} '{path_name}' -"
         )
@@ -266,7 +266,7 @@ def check_msg_markdown(
             else f"✏️  Updating header in {path_label}"
         )
 
-    if r.config.stdin_mode and r.config.stdin_filename:
+    if r.run_options.stdin_mode and r.run_options.stdin_filename:
         apply_cmd: str = (
             f"topmark {CliCmd.CHECK} {CliOpt.APPLY_CHANGES} {CliOpt.STDIN_FILENAME} '{path_name}' -"
         )
@@ -304,7 +304,7 @@ def strip_msg_markdown(
 
         return f"🧹 Stripping header in {path_label}"
 
-    if r.config.stdin_mode and r.config.stdin_filename:
+    if r.run_options.stdin_mode and r.run_options.stdin_filename:
         apply_cmd: str = (
             f"topmark {CliCmd.STRIP} {CliOpt.APPLY_CHANGES} {CliOpt.STDIN_FILENAME} '{path_name}' -"
         )

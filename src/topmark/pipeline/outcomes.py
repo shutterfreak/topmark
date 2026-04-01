@@ -480,7 +480,7 @@ def collect_outcome_reason_counts(
     """
     counts: dict[tuple[Outcome, str], int] = {}
     for r in results:
-        apply: bool = r.config.apply_changes is True
+        apply: bool = r.run_options.apply_changes is True
         bucket: ResultBucket = map_bucket(r, apply=apply)
         outcome: Outcome = bucket.outcome
         reason: str = bucket.reason or NO_REASON_PROVIDED
