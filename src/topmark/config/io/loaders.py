@@ -32,13 +32,13 @@ from __future__ import annotations
 from importlib.resources import files
 from typing import TYPE_CHECKING
 
-from topmark.config.io.render import to_toml
 from topmark.config.policy import HeaderMutationMode
 from topmark.constants import DEFAULT_TOML_CONFIG_NAME
 from topmark.constants import DEFAULT_TOML_CONFIG_PACKAGE
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.core.logging import get_logger
 from topmark.toml.keys import Toml
+from topmark.toml.render import to_toml
 from topmark.toml.surgery import nest_toml_under_section
 
 if TYPE_CHECKING:

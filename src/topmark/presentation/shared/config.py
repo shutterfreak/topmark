@@ -31,8 +31,6 @@ from typing import TYPE_CHECKING
 
 from topmark.config.io.loaders import load_default_config_template_toml_text
 from topmark.config.io.loaders import render_runtime_defaults_toml_text
-from topmark.config.io.render import clean_toml_text
-from topmark.config.io.render import to_toml
 from topmark.config.io.serializers import config_to_toml_dict
 from topmark.config.io.template_surgery import TemplateEditResult
 from topmark.config.io.template_surgery import ensure_pyproject_header
@@ -41,6 +39,8 @@ from topmark.config.io.template_surgery import validate_toml_for_config_init
 from topmark.presentation.shared.diagnostic import HumanDiagnosticCounts
 from topmark.presentation.shared.diagnostic import HumanDiagnosticLine
 from topmark.presentation.shared.diagnostic import prepare_human_diagnostics
+from topmark.toml.render import clean_toml_text
+from topmark.toml.render import to_toml
 from topmark.toml.surgery import set_root_flag
 
 if TYPE_CHECKING:

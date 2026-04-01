@@ -22,10 +22,10 @@ from typing import TYPE_CHECKING
 import pytest
 
 from topmark.config.io.deserializers import mutable_config_from_defaults
-from topmark.config.io.render import to_toml
 from topmark.config.io.serializers import config_to_toml_dict
 from topmark.core.keys import ArgKey
 from topmark.toml.keys import Toml
+from topmark.toml.render import to_toml
 
 if TYPE_CHECKING:
     from pathlib import Path
