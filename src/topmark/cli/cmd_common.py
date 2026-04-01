@@ -25,6 +25,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
+from typing import Final
 
 import click
 
@@ -52,6 +53,11 @@ from topmark.core.logging import setup_logging
 from topmark.core.presentation import StyleRole
 from topmark.resolution.files import resolve_file_list
 from topmark.runtime.model import RunOptions
+from topmark.runtime.writer_options import WriterOptions
+from topmark.runtime.writer_options import apply_resolved_writer_options
+from topmark.toml.guards import as_object_dict
+from topmark.toml.resolution import ResolvedTopmarkTomlSources
+from topmark.toml.resolution import resolve_topmark_toml_sources
 from topmark.utils.merge import none_if_empty
 
 if TYPE_CHECKING:
@@ -60,6 +66,8 @@ if TYPE_CHECKING:
     from topmark.config.model import Config
     from topmark.config.model import MutableConfig
     from topmark.core.exit_codes import ExitCode
+
+_CTX_RESOLVED_WRITER_OPTIONS_KEY: Final[str] = "_topmark_resolved_writer_options"
 
 
 def init_common_state(
@@ -165,6 +173,11 @@ def build_run_options(
 
     Returns:
         The execution-only runtime options for the current CLI invocation.
+
+    When available on the current Click context, resolved persisted writer
+    preferences from TopMark TOML discovery are overlaid unless explicit
+    runtime intent already selected a conflicting output mode or file write
+    strategy.
     """
     output_target: OutputTarget | None = None
     file_write_strategy: FileWriteStrategy | None = None
@@ -179,7 +192,7 @@ def build_run_options(
         output_target = OutputTarget.FILE
         file_write_strategy = FileWriteStrategy.INPLACE
 
-    return RunOptions(
+    run_options = RunOptions(
         apply_changes=apply_changes,
         output_target=output_target,
         file_write_strategy=file_write_strategy,
@@ -187,6 +200,17 @@ def build_run_options(
         stdin_filename=stdin_filename,
         prune_views=prune_views,
     )
+
+    ctx: click.Context | None = click.get_current_context(silent=True)
+    writer_options: WriterOptions | None = None
+    if ctx is not None:
+        ctx_obj_raw: object = ctx.obj
+        ctx_obj: dict[str, object] = as_object_dict(ctx_obj_raw)
+        candidate: object | None = ctx_obj.get(_CTX_RESOLVED_WRITER_OPTIONS_KEY)
+        if isinstance(candidate, WriterOptions):
+            writer_options = candidate
+
+    return apply_resolved_writer_options(run_options, writer_options)
 
 
 def exit_if_no_files(file_list: list[Path], *, styled: bool) -> bool:
@@ -314,6 +338,10 @@ def build_config_for_plan(
 
         defaults -> discovered config layers -> explicit config files -> CLI overrides
 
+    As a side effect, this helper also resolves persisted TOML writer
+    preferences for the same discovery inputs and stores them on `ctx.obj` for
+    later runtime-option assembly.
+
     Args:
         ctx: Click context carrying normalized command options in `ctx.obj`.
         plan: Input plan containing paths, stdin metadata, and pattern-source options.
@@ -350,6 +378,14 @@ def build_config_for_plan(
 
     discovery_inputs: list[Path] | None = _resolve_discovery_inputs()
     extra_config_files: list[Path] = [Path(p) for p in config_paths]
+
+    resolved_toml: ResolvedTopmarkTomlSources = resolve_topmark_toml_sources(
+        input_paths=discovery_inputs,
+        extra_config_files=extra_config_files,
+        strict_config_checking=None,
+        no_config=no_config,
+    )
+    ctx.obj[_CTX_RESOLVED_WRITER_OPTIONS_KEY] = resolved_toml.writer_options
 
     draft: MutableConfig = load_resolved_config(
         input_paths=discovery_inputs,

@@ -42,8 +42,11 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
+from typing import Literal
+from typing import TypeAlias
 
 from topmark.core.logging import get_logger
+from topmark.runtime.writer_options import WriterOptions
 from topmark.toml.loaders import load_topmark_toml_source
 
 if TYPE_CHECKING:
@@ -56,13 +59,38 @@ if TYPE_CHECKING:
 
 logger: TopmarkLogger = get_logger(__name__)
 
+TomlSourceKind: TypeAlias = Literal["user", "discovered", "explicit"]
+"""Discovery kind for one resolved TopMark TOML source.
+
+Allowed values:
+    - `"user"`: discovered from the user-scoped config location
+    - `"discovered"`: found by upward project/local TOML discovery
+    - `"explicit"`: provided explicitly by the caller
+"""
+
+
+@dataclass(frozen=True, slots=True)
+class ResolvedTopmarkTomlSource:
+    """One successfully loaded TopMark TOML source.
+
+    Attributes:
+        path: Resolved filesystem path of the TOML source.
+        parsed: Split-parsed TOML source contents.
+        kind: Discovery class of the source. Allowed values are `"user"`,
+            `"discovered"`, and `"explicit"`.
+    """
+
+    path: Path
+    parsed: ParsedTopmarkToml
+    kind: TomlSourceKind
+
 
 @dataclass(frozen=True, slots=True)
 class ResolvedTopmarkTomlSources:
     """Resolved TOML-side state across discovered TopMark TOML sources.
 
     Attributes:
-        sources: Loaded and split-parsed TopMark TOML sources in stable
+        sources: Loaded and split-parsed TopMark TOML source records in stable
             precedence order (lowest -> highest), excluding built-in defaults.
         writer_options: Resolved non-layered writer preferences using
             highest-precedence non-`None` wins.
@@ -71,7 +99,7 @@ class ResolvedTopmarkTomlSources:
             explicit function argument to `resolve_topmark_toml_sources()`.
     """
 
-    sources: list[tuple[Path, ParsedTopmarkToml]]
+    sources: list[ResolvedTopmarkTomlSource]
     writer_options: WriterOptions | None
     strict_config_checking: bool | None
 
@@ -227,7 +255,7 @@ def resolve_topmark_toml_sources(
     Returns:
         The resolved TOML-side state across all successfully loaded sources.
     """
-    source_entries: list[tuple[Path, ParsedTopmarkToml]] = []
+    source_entries: list[ResolvedTopmarkTomlSource] = []
 
     input_path_list: list[Path] = list(input_paths) if input_paths is not None else []
     anchor: Path = input_path_list[0] if input_path_list else Path.cwd()
@@ -238,15 +266,15 @@ def resolve_topmark_toml_sources(
     if not no_config:
         user_cfg_path: Path | None = discover_user_config_file()
         if user_cfg_path is not None:
-            _append_loaded_source(source_entries, user_cfg_path)
+            _append_loaded_source(source_entries, user_cfg_path, kind="user")
 
         for cfg_path in discover_local_config_files(anchor):
-            _append_loaded_source(source_entries, cfg_path)
+            _append_loaded_source(source_entries, cfg_path, kind="discovered")
     else:
         logger.debug("Skipping discovered TOML sources because no_config=True")
 
     for extra in extra_config_files or ():
-        _append_loaded_source(source_entries, Path(extra))
+        _append_loaded_source(source_entries, Path(extra), kind="explicit")
 
     resolved_writer: WriterOptions | None = _resolve_writer_options(source_entries)
     resolved_strict: bool | None = _resolve_strict_config_checking(
@@ -262,8 +290,10 @@ def resolve_topmark_toml_sources(
 
 
 def _append_loaded_source(
-    dst: list[tuple[Path, ParsedTopmarkToml]],
+    dst: list[ResolvedTopmarkTomlSource],
     path: Path,
+    *,
+    kind: TomlSourceKind,
 ) -> None:
     """Load one TOML source and append it when split parsing succeeds."""
     resolved_path: Path = path.resolve()
@@ -274,30 +304,36 @@ def _append_loaded_source(
         )
         return
 
-    dst.append((resolved_path, parsed))
+    dst.append(
+        ResolvedTopmarkTomlSource(
+            path=resolved_path,
+            parsed=parsed,
+            kind=kind,
+        )
+    )
 
 
 def _resolve_writer_options(
-    sources: list[tuple[Path, ParsedTopmarkToml]],
+    sources: list[ResolvedTopmarkTomlSource],
 ) -> WriterOptions | None:
     """Resolve writer options using highest-precedence non-`None` wins."""
     resolved: WriterOptions | None = None
-    for _, parsed in sources:
-        writer_options = parsed.writer_options
+    for source in sources:
+        writer_options: WriterOptions | None = source.parsed.writer_options
         if writer_options is not None and writer_options.file_write_strategy is not None:
             resolved = writer_options
     return resolved
 
 
 def _resolve_strict_config_checking(
-    sources: list[tuple[Path, ParsedTopmarkToml]],
+    sources: list[ResolvedTopmarkTomlSource],
     *,
     explicit_override: bool | None,
 ) -> bool | None:
     """Resolve config-loading strictness using precedence order."""
     resolved: bool | None = None
-    for _, parsed in sources:
-        value: bool | None = parsed.discovery_options.strict_config_checking
+    for source in sources:
+        value: bool | None = source.parsed.discovery_options.strict_config_checking
         if value is not None:
             resolved = value
 

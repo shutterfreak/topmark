@@ -50,16 +50,16 @@ from topmark.config.io.deserializers import mutable_config_from_toml_dict
 from topmark.config.layers import ConfigLayer
 from topmark.config.layers import ConfigLayerKind
 from topmark.core.logging import get_logger
-from topmark.toml.loaders import load_topmark_toml_source
-from topmark.toml.resolution import discover_local_config_files
-from topmark.toml.resolution import discover_user_config_file
+from topmark.toml.resolution import ResolvedTopmarkTomlSource
+from topmark.toml.resolution import ResolvedTopmarkTomlSources
+from topmark.toml.resolution import resolve_topmark_toml_sources
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from topmark.config.model import MutableConfig
     from topmark.core.logging import TopmarkLogger
-    from topmark.toml.parse import ParsedTopmarkToml
+    from topmark.toml.types import TomlTable
 
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -105,27 +105,29 @@ def _default_config_layer() -> ConfigLayer:
     )
 
 
-def _load_layer_from_file(
+def _make_layer_from_toml_table(
     path: Path,
     *,
+    data: TomlTable,
     kind: ConfigLayerKind,
     precedence: int,
-) -> ConfigLayer | None:
-    """Load a config provenance layer from a TOML-backed config file.
+) -> ConfigLayer:
+    """Build one config provenance layer from a layered TOML table.
 
-    Note:
-        This transitional helper now split-loads one TopMark TOML source,
-        deserializes only its layered TOML table into a `MutableConfig`, and
-        then wraps that draft in a `ConfigLayer`.
+    Args:
+        path: Source TOML file path used for provenance and path-relative
+            normalization.
+        data: Layered TOML table extracted from one split-parsed TopMark TOML
+            source.
+        kind: Provenance kind for the resulting config layer.
+        precedence: Stable merge precedence for the resulting config layer.
+
+    Returns:
+        Normalized config provenance layer built from the layered TOML table.
     """
     resolved_path: Path = path.resolve()
-    parsed: ParsedTopmarkToml | None = load_topmark_toml_source(resolved_path)
-    if parsed is None:
-        logger.debug("Skipping unreadable or invalid config layer file: %s", resolved_path)
-        return None
-
     config: MutableConfig = mutable_config_from_toml_dict(
-        parsed.layered_config,
+        data,
         config_file=resolved_path,
     )
 
@@ -150,6 +152,52 @@ def _is_within_scope(path: Path, scope_root: Path) -> bool:
         result = False
 
     return result
+
+
+def _kind_from_resolved_toml_source(source: ResolvedTopmarkTomlSource) -> ConfigLayerKind:
+    """Map TOML-source discovery kind to `ConfigLayerKind`."""
+    if source.kind == "user":
+        return ConfigLayerKind.USER
+    if source.kind == "explicit":
+        return ConfigLayerKind.EXPLICIT
+    return ConfigLayerKind.DISCOVERED
+
+
+def _build_layers_from_resolved_toml_sources(
+    sources: list[ResolvedTopmarkTomlSource],
+) -> list[ConfigLayer]:
+    """Build config provenance layers from resolved TOML source records."""
+    layers: list[ConfigLayer] = []
+
+    default_layer: ConfigLayer = _default_config_layer()
+    layers.append(default_layer)
+    logger.debug(
+        "Added config layer: kind=%s precedence=%d origin=%s scope_root=%s",
+        default_layer.kind,
+        default_layer.precedence,
+        default_layer.origin,
+        default_layer.scope_root,
+    )
+
+    precedence: int = 1
+    for source in sources:
+        layer: ConfigLayer = _make_layer_from_toml_table(
+            source.path,
+            data=source.parsed.layered_config,
+            kind=_kind_from_resolved_toml_source(source),
+            precedence=precedence,
+        )
+        layers.append(layer)
+        logger.debug(
+            "Added config layer: kind=%s precedence=%d origin=%s scope_root=%s",
+            layer.kind,
+            layer.precedence,
+            layer.origin,
+            layer.scope_root,
+        )
+        precedence += 1
+
+    return layers
 
 
 # ---- Layer discovery ----
@@ -186,88 +234,18 @@ def discover_config_layers(
     Returns:
         Config provenance layers ordered from lowest to highest precedence.
     """
-    # Avoid premature modeling of runtime-only overrides as layers:
+    # Avoid premature modeling of config-loading strictness as a provenance
+    # layer. Strictness is resolved on the TOML side and may later be applied
+    # to the merged compatibility draft.
     del strict_config_checking
 
-    layers: list[ConfigLayer] = []
-    precedence: int = 0
-
-    default_layer: ConfigLayer = _default_config_layer()
-    layers.append(default_layer)
-    logger.debug(
-        "Added config layer: kind=%s precedence=%d origin=%s scope_root=%s",
-        default_layer.kind,
-        default_layer.precedence,
-        default_layer.origin,
-        default_layer.scope_root,
+    resolved: ResolvedTopmarkTomlSources = resolve_topmark_toml_sources(
+        input_paths=input_paths,
+        extra_config_files=extra_config_files,
+        strict_config_checking=None,
+        no_config=no_config,
     )
-
-    input_path_list: list[Path] = list(input_paths) if input_paths is not None else []
-    anchor: Path = input_path_list[0] if input_path_list else Path.cwd()
-    if anchor.is_file():
-        anchor = anchor.parent
-    anchor = anchor.resolve()
-    logger.debug("Config layer discovery anchor: %s", anchor)
-
-    precedence = 1
-
-    if not no_config:
-        user_cfg_path: Path | None = discover_user_config_file()
-        if user_cfg_path is not None:
-            user_layer: ConfigLayer | None = _load_layer_from_file(
-                user_cfg_path,
-                kind=ConfigLayerKind.USER,
-                precedence=precedence,
-            )
-            if user_layer is not None:
-                layers.append(user_layer)
-                logger.debug(
-                    "Added config layer: kind=%s precedence=%d origin=%s scope_root=%s",
-                    user_layer.kind,
-                    user_layer.precedence,
-                    user_layer.origin,
-                    user_layer.scope_root,
-                )
-                precedence += 1
-
-        discovered: list[Path] = discover_local_config_files(anchor)
-        for cfg_path in discovered:
-            discovered_layer: ConfigLayer | None = _load_layer_from_file(
-                cfg_path,
-                kind=ConfigLayerKind.DISCOVERED,
-                precedence=precedence,
-            )
-            if discovered_layer is not None:
-                layers.append(discovered_layer)
-                logger.debug(
-                    "Added config layer: kind=%s precedence=%d origin=%s scope_root=%s",
-                    discovered_layer.kind,
-                    discovered_layer.precedence,
-                    discovered_layer.origin,
-                    discovered_layer.scope_root,
-                )
-                precedence += 1
-    else:
-        logger.debug("Skipping discovered config layers because no_config=True")
-
-    for extra in extra_config_files or ():
-        explicit_layer: ConfigLayer | None = _load_layer_from_file(
-            Path(extra),
-            kind=ConfigLayerKind.EXPLICIT,
-            precedence=precedence,
-        )
-        if explicit_layer is not None:
-            layers.append(explicit_layer)
-            logger.debug(
-                "Added config layer: kind=%s precedence=%d origin=%s scope_root=%s",
-                explicit_layer.kind,
-                explicit_layer.precedence,
-                explicit_layer.origin,
-                explicit_layer.scope_root,
-            )
-            precedence += 1
-
-    return layers
+    return _build_layers_from_resolved_toml_sources(resolved.sources)
 
 
 # ---- Layer merge and applicability ----
@@ -387,15 +365,16 @@ def load_resolved_config(
         A mutable configuration draft ready for later override application and
         eventual freezing.
     """
-    layers: list[ConfigLayer] = discover_config_layers(
+    resolved: ResolvedTopmarkTomlSources = resolve_topmark_toml_sources(
         input_paths=input_paths,
         extra_config_files=extra_config_files,
-        strict_config_checking=None,
+        strict_config_checking=strict_config_checking,
         no_config=no_config,
     )
+    layers: list[ConfigLayer] = _build_layers_from_resolved_toml_sources(resolved.sources)
     draft: MutableConfig = merge_layers_globally(layers)
 
-    if strict_config_checking is not None:
-        draft.strict_config_checking = strict_config_checking
+    if resolved.strict_config_checking is not None:
+        draft.strict_config_checking = resolved.strict_config_checking
 
     return draft

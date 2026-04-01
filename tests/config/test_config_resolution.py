@@ -1215,6 +1215,45 @@ def test_duplicate_exclude_file_types_warns_and_is_recorded(
 
 
 @pytest.mark.pipeline
+def test_load_resolved_config_applies_strictness_from_config_table(tmp_path: Path) -> None:
+    """Resolved TOML strictness is applied to the merged compatibility draft."""
+    proj: Path = tmp_path / "proj"
+    proj.mkdir()
+
+    _write(
+        proj / "topmark.toml",
+        """
+        [config]
+        strict_config_checking = true
+        """,
+    )
+
+    draft: MutableConfig = load_resolved_config(input_paths=[proj])
+    assert draft.strict_config_checking is True
+
+
+@pytest.mark.pipeline
+def test_load_resolved_config_explicit_strictness_override_wins(tmp_path: Path) -> None:
+    """Explicit strictness override wins over resolved TOML strictness."""
+    proj: Path = tmp_path / "proj"
+    proj.mkdir()
+
+    _write(
+        proj / "topmark.toml",
+        """
+        [config]
+        strict_config_checking = true
+        """,
+    )
+
+    draft: MutableConfig = load_resolved_config(
+        input_paths=[proj],
+        strict_config_checking=False,
+    )
+    assert draft.strict_config_checking is False
+
+
+@pytest.mark.pipeline
 def test_should_proceed_false_on_errors_even_when_not_strict() -> None:
     """Errors always prevent proceeding, regardless of strict mode."""
     draft: MutableConfig = mutable_config_from_defaults()

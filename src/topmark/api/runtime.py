@@ -49,6 +49,10 @@ from topmark.diagnostic.model import DiagnosticLog
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.pipelines import Pipeline
 from topmark.resolution.files import resolve_file_list
+from topmark.runtime.writer_options import WriterOptions
+from topmark.runtime.writer_options import apply_resolved_writer_options
+from topmark.toml.resolution import ResolvedTopmarkTomlSources
+from topmark.toml.resolution import resolve_topmark_toml_sources
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -251,6 +255,38 @@ def _discover_layers_for_api_run(
         strict_config_checking=None,
         no_config=False,
     )
+
+
+def _resolve_writer_options_for_api_run(
+    paths: Iterable[Path | str],
+    *,
+    base_config: Mapping[str, object] | Config | None,
+):
+    """Resolve persisted writer preferences for an API run.
+
+    Explicit `base_config` seeds intentionally bypass layered TOML discovery, so
+    this helper returns `None` in that mode.
+
+    Args:
+        paths: Input paths for the run. The first path is used as the discovery
+            anchor, mirroring normal config discovery behavior.
+        base_config: Optional explicit config seed supplied by the caller.
+
+    Returns:
+        The resolved persisted writer preferences for the run, or `None` when
+        layered discovery is intentionally bypassed.
+    """
+    if base_config is not None:
+        return None
+
+    path_list: list[Path] = [Path(p) for p in paths] or [Path.cwd()]
+    resolved: ResolvedTopmarkTomlSources = resolve_topmark_toml_sources(
+        input_paths=tuple(path_list),
+        extra_config_files=(),
+        strict_config_checking=None,
+        no_config=False,
+    )
+    return resolved.writer_options
 
 
 def _build_path_configs(
@@ -504,6 +540,11 @@ def run_pipeline(
         base_config=base_config,
     )
 
+    resolved_writer_options: None | WriterOptions = _resolve_writer_options_for_api_run(
+        path_inputs,
+        base_config=base_config,
+    )
+
     # 1) Build the resolved layered config used for discovery. Runtime policy overlays,
     # caller-supplied run options, and candidate resolution are handled below.
     cfg: Config = _build_resolved_config_for_run(
@@ -522,7 +563,10 @@ def run_pipeline(
     )
     logger.debug("(2) Effective config after runtime policy overlays: %s", effective_cfg)
 
-    # 3) Consume execution-only run options supplied by the caller.
+    # 3) Consume execution-only run options supplied by the caller and overlay
+    # resolved persisted writer preferences when they do not conflict with
+    # explicit runtime intent.
+    run_options = apply_resolved_writer_options(run_options, resolved_writer_options)
     logger.debug("(3) Run options for invocation: %s", run_options)
 
     # 4) Resolve the candidate file list after policy overlays.
