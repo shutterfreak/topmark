@@ -25,7 +25,7 @@ from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.io.serializers import config_to_toml_dict
 from topmark.core.keys import ArgKey
 from topmark.toml.keys import Toml
-from topmark.toml.render import to_toml
+from topmark.toml.render import render_toml_table
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -54,7 +54,7 @@ def test_to_toml_strips_none_entries() -> None:
 
     formatting_tbl.pop(Toml.KEY_ALIGN_FIELDS, None)
 
-    s: str = to_toml(formatting_tbl)
+    s: str = render_toml_table(formatting_tbl)
     assert ArgKey.ALIGN_FIELDS not in s  # or whatever your stripper does
 
 

@@ -40,7 +40,7 @@ from topmark.presentation.shared.diagnostic import HumanDiagnosticCounts
 from topmark.presentation.shared.diagnostic import HumanDiagnosticLine
 from topmark.presentation.shared.diagnostic import prepare_human_diagnostics
 from topmark.toml.render import clean_toml_text
-from topmark.toml.render import to_toml
+from topmark.toml.render import render_toml_table
 from topmark.toml.surgery import set_root_flag
 
 if TYPE_CHECKING:
@@ -243,7 +243,7 @@ def build_config_check_human_report(
     """
     merged_toml: str | None = None
     if verbosity_level > 1:
-        merged_toml = to_toml(
+        merged_toml = render_toml_table(
             config_to_toml_dict(
                 config,
                 include_files=False,
@@ -302,7 +302,7 @@ def build_config_dump_human_report(
     Returns:
         Prepared config file list and merged TOML text.
     """
-    merged_toml: str = to_toml(
+    merged_toml: str = render_toml_table(
         config_to_toml_dict(
             config,
             include_files=False,

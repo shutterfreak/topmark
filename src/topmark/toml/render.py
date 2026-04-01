@@ -95,7 +95,7 @@ def _tomlkit_dumps(data: TomlTable) -> str:
     return rendered
 
 
-def to_toml(toml_dict: TomlTable) -> str:
+def render_toml_table(toml_dict: TomlTable) -> str:
     """Render a TOML table to TOML text.
 
     Args:

@@ -38,7 +38,7 @@ from topmark.constants import DEFAULT_TOML_CONFIG_PACKAGE
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.core.logging import get_logger
 from topmark.toml.keys import Toml
-from topmark.toml.render import to_toml
+from topmark.toml.render import render_toml_table
 from topmark.toml.surgery import nest_toml_under_section
 
 if TYPE_CHECKING:
@@ -111,7 +111,7 @@ def load_default_config_template_toml_text() -> tuple[str, Exception | None]:
         err = exc
         logger.warning("Cannot read packaged default config template %s: %s", resource, exc)
 
-        generated: str = to_toml(load_defaults_dict())
+        generated: str = render_toml_table(load_defaults_dict())
 
         # Make the fallback explicit in the generated output, without breaking TOML.
         notice: str = (
@@ -204,7 +204,7 @@ def render_runtime_defaults_toml_text(
     Returns:
         TOML document text.
     """
-    toml_text: str = to_toml(load_defaults_dict())
+    toml_text: str = render_toml_table(load_defaults_dict())
     if for_pyproject:
         toml_text = nest_toml_under_section(toml_text, "tool.topmark")
     return toml_text
