@@ -8,13 +8,11 @@
 #
 # topmark:header:end
 
-"""TopMark TOML source discovery helpers.
+"""TopMark TOML source discovery and per-run TOML resolution helpers.
 
 This module discovers TopMark-relevant TOML settings files in stable
-same-directory and upward-traversal precedence order. It is responsible only
-for finding candidate TOML sources; it does not deserialize layered config into
-`MutableConfig`, construct `ConfigLayer` objects, or flatten resolved settings
-into a compatibility draft.
+same-directory and upward-traversal precedence order, then optionally resolves
+those sources into a per-run TOML result.
 
 Responsibilities:
     - discover user-scoped TopMark TOML sources
@@ -22,34 +20,60 @@ Responsibilities:
     - preserve same-directory precedence between `pyproject.toml` and
       `topmark.toml`
     - honor per-directory `root = true` stop markers while discovering sources
+    - load discovered TOML sources through split parse
+    - resolve non-layered TOML settings such as writer preferences and config
+      loading strictness using precedence rules
 
-Typical discovery precedence (lowest -> highest, once later loaded/resolved):
+Typical discovery precedence (lowest -> highest, once later resolved):
     1. built-in defaults
     2. user-scoped TOML source
     3. project/local TOML sources discovered upward from an anchor path
     4. explicitly provided extra TOML sources
 
-The actual layered config merge and effective per-path config construction live
-in [`topmark.config.resolution`][topmark.config.resolution].
+This module is intentionally separate from
+[`topmark.config.resolution`][topmark.config.resolution]. That module owns
+layered config provenance layers and `MutableConfig` merge behavior; this
+module owns TOML-source discovery and TOML-side per-run resolution.
 """
 
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from topmark.core.logging import get_logger
-from topmark.toml.keys import Toml
-from topmark.toml.loaders import load_toml_table
-from topmark.toml.pyproject import extract_pyproject_topmark_table
+from topmark.toml.loaders import load_topmark_toml_source
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from topmark.core.logging import TopmarkLogger
-    from topmark.toml.types import TomlTable
+    from topmark.runtime.writer_options import WriterOptions
+    from topmark.toml.parse import ParsedTopmarkToml
 
 
 logger: TopmarkLogger = get_logger(__name__)
+
+
+@dataclass(frozen=True, slots=True)
+class ResolvedTopmarkTomlSources:
+    """Resolved TOML-side state across discovered TopMark TOML sources.
+
+    Attributes:
+        sources: Loaded and split-parsed TopMark TOML sources in stable
+            precedence order (lowest -> highest), excluding built-in defaults.
+        writer_options: Resolved non-layered writer preferences using
+            highest-precedence non-`None` wins.
+        strict_config_checking: Resolved config-loading strictness using
+            highest-precedence non-`None` wins, optionally overridden by the
+            explicit function argument to `resolve_topmark_toml_sources()`.
+    """
+
+    sources: list[tuple[Path, ParsedTopmarkToml]]
+    writer_options: WriterOptions | None
+    strict_config_checking: bool | None
 
 
 # ---- User-scoped discovery ----
@@ -130,19 +154,17 @@ def discover_local_config_files(start: Path) -> list[Path]:
                 # Check whether this directory declares itself as the config
                 # discovery root. If so, we still keep the current directory's
                 # entries, then stop traversing further upward.
-                data: TomlTable | None = load_toml_table(p)
-                # load_toml_dict() does a best-effort discovery; it returns {} on errors.
-                if data:
-                    if name == "pyproject.toml":
-                        topmark_tbl: TomlTable | None = extract_pyproject_topmark_table(data)
-                        if topmark_tbl is not None and bool(topmark_tbl.get(Toml.KEY_ROOT, False)):
-                            root_stop_here = True
-                    else:  # topmark.toml
-                        if bool(data.get(Toml.KEY_ROOT, False)):
-                            root_stop_here = True
+                parsed: ParsedTopmarkToml | None = load_topmark_toml_source(p)
+                if parsed is not None:
+                    if parsed.discovery_options.root is True:
+                        root_stop_here = True
                 else:
-                    # Best-effort discovery; ignore parse errors here.
-                    logger.debug("Ignoring empty / undefined TOML dict from reading %s", p)
+                    # Best-effort discovery; ignore unreadable or malformed TOML
+                    # sources here and continue traversing upward.
+                    logger.debug(
+                        "Ignoring unreadable or invalid TOML source during discovery: %s",
+                        p,
+                    )
         if dir_entries:
             # Keep entries grouped per directory: [pyproject, topmark]
             per_dir.append(dir_entries)
@@ -152,9 +174,8 @@ def discover_local_config_files(start: Path) -> list[Path]:
             break
         if root_stop_here:
             logger.debug(
-                "Stopping upward config discovery at %s due to %s=true",
+                "Stopping upward TOML source discovery at %s due to root=true",
                 cur,
-                Toml.KEY_ROOT,
             )
             break
         cur = parent
@@ -167,3 +188,120 @@ def discover_local_config_files(start: Path) -> list[Path]:
         ordered.extend(dir_list)  # pyproject then topmark within the directory
 
     return ordered
+
+
+# ---- TOML-side resolution across discovered sources ----
+
+
+def resolve_topmark_toml_sources(
+    input_paths: Iterable[Path] | None = None,
+    extra_config_files: Iterable[Path] | None = None,
+    strict_config_checking: bool | None = None,
+    no_config: bool = False,
+) -> ResolvedTopmarkTomlSources:
+    """Discover, load, and resolve TopMark TOML sources for one run.
+
+    This helper resolves TOML-side settings only. It does not construct
+    `ConfigLayer` objects and does not merge layered config into a
+    `MutableConfig`.
+
+    Precedence order (lowest -> highest):
+        1. user-scoped TOML source
+        2. discovered project/local TOML sources (root-most -> nearest)
+        3. explicit extra TOML sources (in the order provided)
+        4. explicit `strict_config_checking` function argument, if provided
+
+    Args:
+        input_paths: Optional discovery anchors. The first path is used to pick
+            the project-discovery starting directory. If it points to a file,
+            its parent directory is used. If omitted, discovery falls back to
+            the current working directory.
+        extra_config_files: Explicit TOML source files to append after
+            discovered sources. Later files have higher precedence than earlier
+            ones.
+        strict_config_checking: Optional explicit override for resolved config
+            loading strictness.
+        no_config: If `True`, skip all discovered TOML sources (user + project)
+            and only consider explicit extra TOML sources.
+
+    Returns:
+        The resolved TOML-side state across all successfully loaded sources.
+    """
+    source_entries: list[tuple[Path, ParsedTopmarkToml]] = []
+
+    input_path_list: list[Path] = list(input_paths) if input_paths is not None else []
+    anchor: Path = input_path_list[0] if input_path_list else Path.cwd()
+    if anchor.is_file():
+        anchor = anchor.parent
+    anchor = anchor.resolve()
+
+    if not no_config:
+        user_cfg_path: Path | None = discover_user_config_file()
+        if user_cfg_path is not None:
+            _append_loaded_source(source_entries, user_cfg_path)
+
+        for cfg_path in discover_local_config_files(anchor):
+            _append_loaded_source(source_entries, cfg_path)
+    else:
+        logger.debug("Skipping discovered TOML sources because no_config=True")
+
+    for extra in extra_config_files or ():
+        _append_loaded_source(source_entries, Path(extra))
+
+    resolved_writer: WriterOptions | None = _resolve_writer_options(source_entries)
+    resolved_strict: bool | None = _resolve_strict_config_checking(
+        source_entries,
+        explicit_override=strict_config_checking,
+    )
+
+    return ResolvedTopmarkTomlSources(
+        sources=source_entries,
+        writer_options=resolved_writer,
+        strict_config_checking=resolved_strict,
+    )
+
+
+def _append_loaded_source(
+    dst: list[tuple[Path, ParsedTopmarkToml]],
+    path: Path,
+) -> None:
+    """Load one TOML source and append it when split parsing succeeds."""
+    resolved_path: Path = path.resolve()
+    parsed: ParsedTopmarkToml | None = load_topmark_toml_source(resolved_path)
+    if parsed is None:
+        logger.debug(
+            "Skipping unreadable or invalid TOML source during resolution: %s", resolved_path
+        )
+        return
+
+    dst.append((resolved_path, parsed))
+
+
+def _resolve_writer_options(
+    sources: list[tuple[Path, ParsedTopmarkToml]],
+) -> WriterOptions | None:
+    """Resolve writer options using highest-precedence non-`None` wins."""
+    resolved: WriterOptions | None = None
+    for _, parsed in sources:
+        writer_options = parsed.writer_options
+        if writer_options is not None and writer_options.file_write_strategy is not None:
+            resolved = writer_options
+    return resolved
+
+
+def _resolve_strict_config_checking(
+    sources: list[tuple[Path, ParsedTopmarkToml]],
+    *,
+    explicit_override: bool | None,
+) -> bool | None:
+    """Resolve config-loading strictness using precedence order."""
+    resolved: bool | None = None
+    for _, parsed in sources:
+        value: bool | None = parsed.discovery_options.strict_config_checking
+        if value is not None:
+            resolved = value
+
+    if explicit_override is not None:
+        resolved = explicit_override
+
+    return resolved

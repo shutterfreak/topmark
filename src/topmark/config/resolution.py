@@ -46,10 +46,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from topmark.config.io.deserializers import mutable_config_from_defaults
-from topmark.config.io.deserializers import mutable_config_from_toml_file
+from topmark.config.io.deserializers import mutable_config_from_toml_dict
 from topmark.config.layers import ConfigLayer
 from topmark.config.layers import ConfigLayerKind
 from topmark.core.logging import get_logger
+from topmark.toml.loaders import load_topmark_toml_source
 from topmark.toml.resolution import discover_local_config_files
 from topmark.toml.resolution import discover_user_config_file
 
@@ -58,6 +59,7 @@ if TYPE_CHECKING:
 
     from topmark.config.model import MutableConfig
     from topmark.core.logging import TopmarkLogger
+    from topmark.toml.parse import ParsedTopmarkToml
 
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -112,15 +114,20 @@ def _load_layer_from_file(
     """Load a config provenance layer from a TOML-backed config file.
 
     Note:
-        This transitional helper still loads directly from a TOML file into a
-        `MutableConfig`. It will likely be replaced or reshaped so that it
-        consumes split-parsed layered TOML fragments instead.
+        This transitional helper now split-loads one TopMark TOML source,
+        deserializes only its layered TOML table into a `MutableConfig`, and
+        then wraps that draft in a `ConfigLayer`.
     """
     resolved_path: Path = path.resolve()
-    config: MutableConfig | None = mutable_config_from_toml_file(resolved_path)
-    if config is None:
+    parsed: ParsedTopmarkToml | None = load_topmark_toml_source(resolved_path)
+    if parsed is None:
         logger.debug("Skipping unreadable or invalid config layer file: %s", resolved_path)
         return None
+
+    config: MutableConfig = mutable_config_from_toml_dict(
+        parsed.layered_config,
+        config_file=resolved_path,
+    )
 
     return _make_config_layer(
         origin=resolved_path,

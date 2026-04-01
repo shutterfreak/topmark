@@ -32,7 +32,6 @@ Design notes:
 
 Typical entry points:
     - `mutable_config_from_toml_dict()`
-    - `mutable_config_from_toml_file()`
     - `mutable_config_from_defaults()`
 """
 
@@ -62,8 +61,6 @@ from topmark.toml.getters import get_table_value
 from topmark.toml.guards import as_toml_table_map
 from topmark.toml.guards import toml_table_from_mapping
 from topmark.toml.keys import Toml
-from topmark.toml.loaders import load_toml_table
-from topmark.toml.pyproject import extract_pyproject_topmark_table
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -595,44 +592,6 @@ def mutable_config_from_defaults() -> MutableConfig:
         config_file=None,
         use_defaults=True,  # We ONLY include defaults when loading from defaults!
     )
-
-
-def mutable_config_from_toml_file(path: Path) -> MutableConfig | None:
-    """Load configuration from a single TOML file.
-
-    This method reads the TOML file, extracts the relevant configuration section,
-    and returns a Config instance. Supports both topmark.toml and pyproject.toml files,
-    extracting the [tool.topmark] section from pyproject.toml.
-
-    Args:
-        path: Path to the TOML file.
-
-    Returns:
-        The Config instance if successful; None if required sections are missing.
-    """
-    logger.debug("Creating MutableConfig from TOML config: %s", path)
-
-    toml_data: TomlTable | None = load_toml_table(path)
-
-    if toml_data is None:
-        logger.error("Could not load configuration from %s", path)
-        return None
-
-    if path.name == "pyproject.toml":
-        # Extract [tool.topmark] subsection from pyproject.toml.
-        topmark_tool_section: TomlTable | None = extract_pyproject_topmark_table(toml_data)
-        if topmark_tool_section is None:
-            logger.error("[tool.topmark] section missing or malformed in %s", path)
-            return None
-
-        toml_data = topmark_tool_section
-
-    # Parse the extracted TOML data into a MutableConfig;
-    # pass the config file path so the dict parser knows the base directory
-    draft: MutableConfig = mutable_config_from_toml_dict(toml_data, config_file=path)
-    draft.config_files = [path]
-    logger.debug("Generated MutableConfig: %s", draft)
-    return draft
 
 
 def mutable_config_from_mapping(data: Mapping[str, object]) -> MutableConfig:

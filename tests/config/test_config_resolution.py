@@ -29,7 +29,6 @@ import pytest
 from tests.conftest import group_patterns
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.io.deserializers import mutable_config_from_toml_dict
-from topmark.config.io.deserializers import mutable_config_from_toml_file
 from topmark.config.overrides import ConfigOverrides
 from topmark.config.overrides import apply_config_overrides
 from topmark.config.policy import HeaderMutationMode
@@ -40,6 +39,7 @@ from topmark.config.resolution import merge_layers_globally
 from topmark.config.resolution import select_applicable_layers
 from topmark.resolution.files import resolve_file_list
 from topmark.toml.keys import Toml
+from topmark.toml.loaders import load_topmark_toml_source
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -61,6 +61,26 @@ def _write(path: Path, content: str) -> None:
     path.write_text(
         textwrap.dedent(content).lstrip("\n"),
         encoding="utf-8",
+    )
+
+
+def _load_draft_from_topmark_toml(path: Path) -> MutableConfig:
+    """Load one TopMark TOML source and deserialize only its layered config.
+
+    Args:
+        path: Path to `topmark.toml` or `pyproject.toml`.
+
+    Returns:
+        Layered config draft deserialized from the split-parsed TOML source.
+
+    Raises:
+        AssertionError: If the TOML source cannot be loaded or split-parsed.
+    """
+    parsed = load_topmark_toml_source(path)
+    assert parsed is not None, f"Expected valid TopMark TOML source: {path}"
+    return mutable_config_from_toml_dict(
+        parsed.layered_config,
+        config_file=path,
     )
 
 
@@ -163,8 +183,7 @@ def test_include_from_normalized_to_patternsources(tmp_path: Path) -> None:
         """,
     )
 
-    draft: MutableConfig | None = mutable_config_from_toml_file(proj / "pyproject.toml")
-    assert draft is not None
+    draft: MutableConfig = _load_draft_from_topmark_toml(proj / "pyproject.toml")
     assert draft.include_from, "include_from should not be empty"
     ps: PatternSource = draft.include_from[0]
     assert ps.path.is_absolute()
@@ -577,8 +596,7 @@ def test_files_from_declared_in_config_normalizes_to_patternsource(tmp_path: Pat
         """,
     )
 
-    draft: MutableConfig | None = mutable_config_from_toml_file(proj / "pyproject.toml")
-    assert draft is not None
+    draft: MutableConfig = _load_draft_from_topmark_toml(proj / "pyproject.toml")
     assert draft.files_from
     ps: PatternSource = draft.files_from[0]
     assert ps.path == lst.resolve()
@@ -951,7 +969,7 @@ def test_unknown_keys_reported_via_from_toml_file(
     caplog: pytest.LogCaptureFixture,
     filename: str,
 ) -> None:
-    """Unknown keys are also reported when loading from a TOML file."""
+    """Unknown keys are also reported when loading from a split-parsed TOML source."""
     caplog.set_level("WARNING")
     p: Path = tmp_path / filename
 
@@ -976,8 +994,7 @@ def test_unknown_keys_reported_via_from_toml_file(
             encoding="utf-8",
         )
 
-    draft: MutableConfig | None = mutable_config_from_toml_file(p)
-    assert draft is not None
+    draft: MutableConfig = _load_draft_from_topmark_toml(p)
 
     # We should see a warning for the unknown key inside [files]
     assert_warned_and_diagnosed(
