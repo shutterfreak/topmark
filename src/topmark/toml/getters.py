@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : getters.py
-#   file_relpath : src/topmark/config/io/getters.py
+#   file_relpath : src/topmark/toml/getters.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -27,15 +27,21 @@ from enum import Enum
 from typing import TYPE_CHECKING
 from typing import Final
 from typing import TypeVar
+from typing import cast
 
-from topmark.config.io.guards import is_any_list
 from topmark.core.logging import get_logger
+from topmark.toml.guards import is_any_list
+from topmark.toml.guards import is_str_list
+from topmark.toml.guards import is_toml_table
+from topmark.toml.types import TomlTable
 
 if TYPE_CHECKING:
-    from topmark.config.io.types import TomlTable
-    from topmark.config.io.types import TomlValue
+    from collections.abc import Mapping
+
     from topmark.core.logging import TopmarkLogger
     from topmark.diagnostic.model import DiagnosticLog
+    from topmark.toml.types import TomlTable
+    from topmark.toml.types import TomlValue
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -58,7 +64,7 @@ def get_string_value(table: TomlTable, key: str, default: str = "") -> str:
         The extracted or coerced string value, or ``default``.
     """
     # Coerce various types to string if possible; fallback to default
-    value: TomlValue = table.get(key)
+    value: TomlValue | None = table.get(key)
     if isinstance(value, str):
         return value
     if isinstance(value, int | float | bool):
@@ -87,7 +93,7 @@ def get_string_value_or_none(table: TomlTable, key: str) -> str | None:
         The extracted or coerced string value, or ``None`` when absent or not coercible.
     """
     # Coerce various types to string if possible
-    value: TomlValue = table.get(key)
+    value: TomlValue | None = table.get(key)
     if value is None:
         return None
     if isinstance(value, str):
@@ -120,7 +126,7 @@ def get_bool_value(
         The extracted boolean value, or ``default``.
     """
     # Extract boolean value, coercing int to bool if needed; fallback to default
-    value: TomlValue = table.get(key)
+    value: TomlValue | None = table.get(key)
     if isinstance(value, bool):
         return value
     logger.debug(
@@ -145,7 +151,7 @@ def get_bool_value_or_none(table: TomlTable, key: str) -> bool | None:
     Returns:
         The extracted boolean value, or ``None`` when absent or not of type ``bool``.
     """
-    value: TomlValue = table.get(key)
+    value: TomlValue | None = table.get(key)
     if value is None:
         return None
     if isinstance(value, bool):
@@ -173,7 +179,7 @@ def get_list_value(
     Returns:
         A shallow copy of the list value, ``default``, or an empty list.
     """
-    value: TomlValue = table.get(key)
+    value: TomlValue | None = table.get(key)
     if is_any_list(value):
         return list(value)  # Return a copy
 
@@ -202,7 +208,7 @@ def get_string_value_checked(
     Unlike `get_string_value()`, this helper does **not** coerce ints/bools/floats
     to strings. If the key is missing, `default` is returned.
     """
-    value: TomlValue = table.get(key)
+    value: TomlValue | None = table.get(key)
     if value is None:
         return default
     if isinstance(value, str):
@@ -221,7 +227,7 @@ def get_string_value_or_none_checked(
     diagnostics: DiagnosticLog,
 ) -> str | None:
     """Return an optional string value, warning when present but not `str`."""
-    value: TomlValue = table.get(key)
+    value: TomlValue | None = table.get(key)
     if value is None:
         return None
     if isinstance(value, str):
@@ -245,7 +251,7 @@ def get_bool_value_checked(
     Unlike `get_bool_value()`, this helper does **not** coerce integers.
     If the key is missing, `default` is returned.
     """
-    value: TomlValue = table.get(key)
+    value: TomlValue | None = table.get(key)
     if value is None:
         return default
     if isinstance(value, bool):
@@ -264,7 +270,7 @@ def get_bool_value_or_none_checked(
     diagnostics: DiagnosticLog,
 ) -> bool | None:
     """Return an optional boolean value, warning when present but not `bool`."""
-    value: TomlValue = table.get(key)
+    value: TomlValue | None = table.get(key)
     if value is None:
         return None
     if isinstance(value, bool):
@@ -288,7 +294,7 @@ def get_int_value_or_none_checked(
         - Missing key / None -> None
         - `bool` is rejected (since `bool` is a subclass of `int`).
     """
-    value: TomlValue = table.get(key)
+    value: TomlValue | None = table.get(key)
     if value is None:
         return None
 
@@ -337,7 +343,7 @@ def get_string_list_value_checked(
     Returns:
         Filtered list containing only string entries.
     """
-    value: TomlValue = table.get(key)
+    value: TomlValue | None = table.get(key)
     if value is None:
         return []
 
@@ -382,7 +388,7 @@ def get_enum_value_checked(
 
     This is intended for schema-level validation (e.g. `[writer].target`).
     """
-    raw: TomlValue = table.get(key)
+    raw: TomlValue | None = table.get(key)
     if raw is None:
         return None
 
@@ -399,3 +405,67 @@ def get_enum_value_checked(
         allowed: str = ", ".join(str(e.value) for e in enum_cls)
         diagnostics.add_warning(f"Invalid value for {loc}: {raw!r} (allowed: {allowed})")
         return None
+
+
+def get_table_value(table: TomlTable, key: str) -> TomlTable:
+    """Extract a sub-table from a TOML table.
+
+    Returns a new empty dict if the sub-table is missing or not a mapping.
+
+    Args:
+        table: Parent table mapping.
+        key: Sub-table key.
+
+    Returns:
+        The sub-table if present and a mapping, otherwise an empty dict.
+    """
+    # Safely extract a sub-table (dict) from the TOML data
+    value: TomlValue | None = table.get(key)
+    return value if is_toml_table(value) else {}
+
+
+def get_object_dict_value(mapping: Mapping[str, object], key: str) -> dict[str, object]:
+    """Return a shallow `dict[str, object]` value for `key` when present."""
+    value: object = mapping.get(key)
+
+    # Standard narrowing: value is now 'dict[Unknown, Unknown]' or 'object'
+    if not isinstance(value, dict):
+        return {}
+
+    # Tell Pyright this is a dict, treat the keys/values as base objects:
+    items = cast("Mapping[object, object]", value).items()
+
+    return {str(key): value for key, value in items}
+
+
+def get_string_dict_value(mapping: Mapping[str, object], key: str) -> dict[str, str]:
+    """Return a `dict[str, str]` value for `key`, filtering non-string items."""
+    value: object = mapping.get(key)
+    if not isinstance(value, dict):
+        return {}
+
+    # Tell Pyright this is a dict, treat the keys/values as base objects:
+    items = cast("Mapping[object, object]", value).items()
+
+    result: dict[str, str] = {}
+    for item_key, item_value in items:
+        if isinstance(item_key, str) and isinstance(item_value, str):
+            result[item_key] = item_value
+    return result
+
+
+def get_string_list_dict_value(mapping: Mapping[str, object], key: str) -> dict[str, list[str]]:
+    """Return a `dict[str, list[str]]` value for `key`, filtering invalid items."""
+    value: object = mapping.get(key)
+    if not isinstance(value, dict):
+        return {}
+
+    # Tell Pyright this is a dict, treat the keys/values as base objects:
+    items = cast("Mapping[object, object]", value).items()
+
+    result: dict[str, list[str]] = {}
+    for item_key, item_value in items:
+        if not isinstance(item_key, str) or not is_str_list(item_value):
+            continue
+        result[item_key] = list(item_value)
+    return result

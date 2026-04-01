@@ -24,15 +24,15 @@ import pytest
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.io.render import to_toml
 from topmark.config.io.serializers import config_to_toml_dict
-from topmark.config.keys import Toml
 from topmark.core.keys import ArgKey
+from topmark.toml.keys import Toml
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.config.io.types import TomlTable
     from topmark.config.model import Config
     from topmark.config.model import MutableConfig
+    from topmark.toml.types import TomlTable
 
 
 @pytest.mark.pipeline
@@ -51,7 +51,8 @@ def test_to_toml_strips_none_entries() -> None:
     )
     formatting_tbl = td[Toml.SECTION_FORMATTING]
     assert isinstance(formatting_tbl, dict)
-    formatting_tbl[Toml.KEY_ALIGN_FIELDS] = None
+
+    formatting_tbl.pop(Toml.KEY_ALIGN_FIELDS, None)
 
     s: str = to_toml(formatting_tbl)
     assert ArgKey.ALIGN_FIELDS not in s  # or whatever your stripper does
@@ -62,7 +63,7 @@ def test_config_to_toml_dict_origin_mode_preserves_pattern_group_and_source_tabl
     tmp_path: Path,
 ) -> None:
     """Origin-mode serialization should keep provenance-rich pattern/source tables."""
-    from topmark.config.io.serializers import FilesSerializationMode
+    from topmark.config.io.enums import FilesSerializationMode
     from topmark.config.types import PatternGroup
     from topmark.config.types import PatternSource
 

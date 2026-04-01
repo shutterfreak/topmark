@@ -118,20 +118,14 @@ align_fields = true
 # ====================
 # Writer configuration
 # ====================
+#
+# Writer options are non-layered preferences persisted in TOML.
+# They do not participate in Config merging and are resolved separately
+# from the layered config model.
 
 [writer]
-# Writer options.
 
-# Where to emit results:
-#   "file"   → write updates to the original files (default)
-#   "stdout" → write updated content to stdout (no file writes)
-#
-# CLI equivalent:
-#   --write-mode file
-#   --write-mode stdout
-target = "file"
-
-# Strategy used when writing to files (ignored when target="stdout"):
+# Strategy used when writing to files (ignored when writing to STDOUT):
 #   "atomic"  → write to a temporary file and replace the original (safe, default)
 #   "inplace" → overwrite the original file in place (faster, less safe)
 #

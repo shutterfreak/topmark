@@ -41,8 +41,8 @@ from topmark.cli.options import common_ui_options
 from topmark.cli.options import config_strict_checking_options
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import apply_ignore_positional_paths_policy
-from topmark.config.io.resolution import load_resolved_config
 from topmark.config.machine.payloads import build_config_diagnostics_payload
+from topmark.config.resolution import load_resolved_config
 from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey

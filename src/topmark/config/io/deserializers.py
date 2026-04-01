@@ -43,17 +43,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Final
 
-from topmark.config.io.getters import get_bool_value_or_none_checked
-from topmark.config.io.getters import get_enum_value_checked
-from topmark.config.io.getters import get_string_list_value_checked
-from topmark.config.io.getters import get_string_value_checked
-from topmark.config.io.guards import as_toml_table_map
-from topmark.config.io.guards import get_pyproject_topmark_table
-from topmark.config.io.guards import get_table_value
-from topmark.config.io.guards import toml_table_from_mapping
 from topmark.config.io.loaders import load_defaults_dict
-from topmark.config.io.loaders import load_toml_dict
-from topmark.config.keys import Toml
 from topmark.config.model import MutableConfig
 from topmark.config.paths import abs_path_from
 from topmark.config.paths import extend_pattern_sources
@@ -64,14 +54,24 @@ from topmark.config.policy import HeaderMutationMode
 from topmark.config.policy import MutablePolicy
 from topmark.config.types import PatternGroup
 from topmark.core.logging import get_logger
+from topmark.toml.getters import get_bool_value_or_none_checked
+from topmark.toml.getters import get_enum_value_checked
+from topmark.toml.getters import get_string_list_value_checked
+from topmark.toml.getters import get_string_value_checked
+from topmark.toml.getters import get_table_value
+from topmark.toml.guards import as_toml_table_map
+from topmark.toml.guards import toml_table_from_mapping
+from topmark.toml.keys import Toml
+from topmark.toml.loaders import load_toml_table
+from topmark.toml.pyproject import extract_pyproject_topmark_table
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from topmark.config.io.types import TomlTable
-    from topmark.config.io.types import TomlTableMap
-    from topmark.config.io.types import TomlValue
     from topmark.core.logging import TopmarkLogger
+    from topmark.toml.types import TomlTable
+    from topmark.toml.types import TomlTableMap
+    from topmark.toml.types import TomlValue
 
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -81,7 +81,7 @@ logger: TopmarkLogger = get_logger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
-class _TomlTables:
+class _LayeredTomlTables:
     """Structured bundle of well-known TOML subtables extracted from a config document.
 
     This avoids fragile position-based tuple unpacking in `MutableConfig.from_toml_dict()` and
@@ -291,7 +291,9 @@ def mutable_config_from_toml_dict(
             )
 
         include_pattern_groups_tbl: list[TomlTable] = []
-        include_pattern_groups_raw: TomlValue = files_tbl.get(Toml.KEY_INCLUDE_PATTERN_GROUPS)
+        include_pattern_groups_raw: TomlValue | None = files_tbl.get(
+            Toml.KEY_INCLUDE_PATTERN_GROUPS
+        )
         if isinstance(include_pattern_groups_raw, list):
             include_pattern_groups_tbl = [
                 item for item in include_pattern_groups_raw if isinstance(item, dict)
@@ -319,7 +321,9 @@ def mutable_config_from_toml_dict(
                 )
 
         exclude_pattern_groups_tbl: list[TomlTable] = []
-        exclude_pattern_groups_raw: TomlValue = files_tbl.get(Toml.KEY_EXCLUDE_PATTERN_GROUPS)
+        exclude_pattern_groups_raw: TomlValue | None = files_tbl.get(
+            Toml.KEY_EXCLUDE_PATTERN_GROUPS
+        )
         if isinstance(exclude_pattern_groups_raw, list):
             exclude_pattern_groups_tbl = [
                 item for item in exclude_pattern_groups_raw if isinstance(item, dict)
@@ -463,7 +467,7 @@ def mutable_config_from_toml_dict(
         for section_name, allowed_keys in Toml.ALLOWED_SECTION_KEYS.items():
             if section_name not in tool_tbl:
                 continue
-            section_val: TomlValue = tool_tbl.get(section_name)
+            section_val: TomlValue | None = tool_tbl.get(section_name)
             if not isinstance(section_val, dict):
                 msg: str = (
                     f"TOML section [{section_name}] must be a table; "
@@ -476,7 +480,7 @@ def mutable_config_from_toml_dict(
             _warn_unknown(f"[{section_name}]", set(section_tbl.keys()) - set(allowed_keys))
 
         # Validate [policy_by_type.<filetype>] subtables (their keys are fixed)
-        pbt_val: TomlValue = tool_tbl.get(Toml.SECTION_POLICY_BY_TYPE)
+        pbt_val: TomlValue | None = tool_tbl.get(Toml.SECTION_POLICY_BY_TYPE)
         if isinstance(pbt_val, dict):
             pbt_tbl: TomlTable = pbt_val
             for ft_name, ft_tbl_any in pbt_tbl.items():
@@ -497,7 +501,7 @@ def mutable_config_from_toml_dict(
 
     def _extract_toml_tables(
         tool_tbl: TomlTable,
-    ) -> _TomlTables:
+    ) -> _LayeredTomlTables:
         """Extract well-known TOML subtables into a typed bundle."""
         # Extract sub-tables for specific config sections; fallback to empty dicts.
         #
@@ -524,7 +528,7 @@ def mutable_config_from_toml_dict(
         policy_by_type_tbl: TomlTableMap = as_toml_table_map(policy_by_type_raw)
         logger.trace("TOML [%s]: %s", Toml.SECTION_POLICY_BY_TYPE, policy_by_type_tbl)
 
-        return _TomlTables(
+        return _LayeredTomlTables(
             field_tbl=field_tbl,
             header_tbl=header_tbl,
             formatting_tbl=formatting_tbl,
@@ -548,7 +552,7 @@ def mutable_config_from_toml_dict(
     #       It may contain keys that are not rendered. The rendered/ordered subset
     #       is controlled by `[header].fields` and applied later by
     #       `topmark.pipeline.steps.builder.BuilderStep`.
-    toml_tables: _TomlTables = _extract_toml_tables(tool_tbl)
+    toml_tables: _LayeredTomlTables = _extract_toml_tables(tool_tbl)
 
     # ---- config_files: normalize to absolute paths if possible ----
     _initialize_config_file_provenance()
@@ -608,11 +612,15 @@ def mutable_config_from_toml_file(path: Path) -> MutableConfig | None:
     """
     logger.debug("Creating MutableConfig from TOML config: %s", path)
 
-    toml_data: TomlTable = load_toml_dict(path)
+    toml_data: TomlTable | None = load_toml_table(path)
+
+    if toml_data is None:
+        logger.error("Could not load configuration from %s", path)
+        return None
 
     if path.name == "pyproject.toml":
         # Extract [tool.topmark] subsection from pyproject.toml.
-        topmark_tool_section: TomlTable | None = get_pyproject_topmark_table(toml_data)
+        topmark_tool_section: TomlTable | None = extract_pyproject_topmark_table(toml_data)
         if topmark_tool_section is None:
             logger.error("[tool.topmark] section missing or malformed in %s", path)
             return None

@@ -20,10 +20,13 @@ Scope:
     - *In scope*: data shapes, defaulting rules at the field level, merge policy
       (`MutableConfig.merge_with`), and freeze/thaw mechanics.
     - *Out of scope*: filesystem discovery and TOML I/O. Those belong in
-      dedicated modules (e.g.,
-      [`topmark.config.io.resolution`][topmark.config.io.resolution] and
-      [`topmark.config.io.loaders`][topmark.config.io.loaders])
-      to keep this model import-light and avoid import cycles.
+      dedicated modules to keep this model import-light and avoid import cycles, e.g.:
+      - TOML document handling
+        - [`topmark.toml.resolution`][topmark.toml.resolution]
+        - [`topmark.config.resolution`][topmark.config.resolution]
+      - Layered config handling:
+        - [`topmark.toml.loaders`][topmark.toml.loaders]
+        - [`topmark.config.io.loaders`][topmark.config.io.loaders]
 
 Immutability:
     - `Config` stores tuples/frozensets and is ``frozen=True`` to prevent
@@ -48,7 +51,6 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import TYPE_CHECKING
 
-from topmark.config.keys import Toml
 from topmark.config.policy import MutablePolicy
 from topmark.config.policy import Policy
 from topmark.core.logging import get_logger
@@ -56,6 +58,7 @@ from topmark.diagnostic.model import DiagnosticLog
 from topmark.diagnostic.model import DiagnosticStats
 from topmark.diagnostic.model import FrozenDiagnosticLog
 from topmark.diagnostic.model import compute_diagnostic_stats
+from topmark.toml.keys import Toml
 
 if TYPE_CHECKING:
     from collections.abc import Mapping

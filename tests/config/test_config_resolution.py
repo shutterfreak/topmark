@@ -30,26 +30,26 @@ from tests.conftest import group_patterns
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.io.deserializers import mutable_config_from_toml_dict
 from topmark.config.io.deserializers import mutable_config_from_toml_file
-from topmark.config.io.resolution import build_effective_config_for_path
-from topmark.config.io.resolution import discover_config_layers
-from topmark.config.io.resolution import load_resolved_config
-from topmark.config.io.resolution import merge_layers_globally
-from topmark.config.io.resolution import select_applicable_layers
-from topmark.config.keys import Toml
 from topmark.config.overrides import ConfigOverrides
 from topmark.config.overrides import apply_config_overrides
 from topmark.config.policy import HeaderMutationMode
+from topmark.config.resolution import build_effective_config_for_path
+from topmark.config.resolution import discover_config_layers
+from topmark.config.resolution import load_resolved_config
+from topmark.config.resolution import merge_layers_globally
+from topmark.config.resolution import select_applicable_layers
 from topmark.resolution.files import resolve_file_list
+from topmark.toml.keys import Toml
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.config.io.types import ConfigLayer
-    from topmark.config.io.types import TomlTable
-    from topmark.config.io.types import TomlValue
+    from topmark.config.layers import ConfigLayer
     from topmark.config.model import Config
     from topmark.config.model import MutableConfig
     from topmark.config.types import PatternSource
+    from topmark.toml.types import TomlTable
+    from topmark.toml.types import TomlValue
 
 
 def _write(path: Path, content: str) -> None:
@@ -1005,7 +1005,6 @@ def test_fields_scalar_values_are_stringified_and_unsupported_are_ignored(
                 "flag": True,
                 "bad": {"nested": "nope"},
                 "bad_list": [1, 2],
-                "bad_none": None,
             }
         }
     )
@@ -1016,7 +1015,6 @@ def test_fields_scalar_values_are_stringified_and_unsupported_are_ignored(
     assert draft.field_values["flag"] == "True"
     assert "bad" not in draft.field_values
     assert "bad_list" not in draft.field_values
-    assert "bad_none" not in draft.field_values
 
     assert_warned_and_diagnosed(
         caplog=caplog,
@@ -1027,11 +1025,6 @@ def test_fields_scalar_values_are_stringified_and_unsupported_are_ignored(
         caplog=caplog,
         draft=draft,
         needle="Ignoring unsupported field value for [fields].bad_list",
-    )
-    assert_warned_and_diagnosed(
-        caplog=caplog,
-        draft=draft,
-        needle="Ignoring unsupported field value for [fields].bad_none",
     )
 
 
@@ -1119,7 +1112,7 @@ def test_header_fields_wrong_type_falls_back_to_empty_list(bad_val: TomlValue) -
     [
         (Toml.SECTION_HEADER, Toml.KEY_FIELDS, ["file"]),
         (Toml.SECTION_FILES, Toml.KEY_INCLUDE_PATTERNS, ["src/**"]),
-        (Toml.SECTION_WRITER, Toml.KEY_TARGET, "file"),
+        (Toml.SECTION_WRITER, Toml.KEY_STRATEGY, "file"),
         (Toml.SECTION_FORMATTING, Toml.KEY_ALIGN_FIELDS, True),
         (
             Toml.SECTION_POLICY,

@@ -44,10 +44,10 @@ from enum import Enum
 from typing import TYPE_CHECKING
 from typing import Protocol
 
-from topmark.config.keys import Toml
 from topmark.core.merge import opt_bool
 from topmark.core.merge import opt_enum
 from topmark.core.merge import overlay
+from topmark.toml.keys import Toml
 
 if TYPE_CHECKING:
     from collections.abc import Mapping

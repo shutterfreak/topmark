@@ -34,20 +34,21 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from topmark.config.io.types import FilesSerializationMode
-from topmark.config.keys import Toml
+from topmark.config.io.enums import FilesSerializationMode
 from topmark.core.errors import TomlRenderError
 from topmark.core.logging import get_logger
+from topmark.toml.keys import Toml
+from topmark.toml.utils import insert_if_present
 from topmark.utils.file import rebase_glob_patterns
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from topmark.config.io.types import TomlTable
-    from topmark.config.io.types import TomlValue
     from topmark.config.model import Config
     from topmark.core.logging import TopmarkLogger
     from topmark.diagnostic.model import DiagnosticLog
+    from topmark.toml.types import TomlTable
+    from topmark.toml.types import TomlValue
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -113,13 +114,19 @@ def config_to_toml_dict(
     header_tbl: TomlTable = {
         Toml.KEY_FIELDS: list(config.header_fields),
     }
-    if config.relative_to_raw:
-        header_tbl[Toml.KEY_RELATIVE_TO] = config.relative_to_raw
+    insert_if_present(
+        header_tbl,
+        Toml.KEY_RELATIVE_TO,
+        config.relative_to_raw,
+    )
 
     # Header formatting
-    formatting_tbl: TomlTable = {
-        Toml.KEY_ALIGN_FIELDS: config.align_fields,
-    }
+    formatting_tbl: TomlTable = {}
+    insert_if_present(
+        formatting_tbl,
+        Toml.KEY_ALIGN_FIELDS,
+        config.align_fields,
+    )
 
     # ---- Files ----
 
@@ -135,13 +142,22 @@ def config_to_toml_dict(
     files_tbl: TomlTable = {
         Toml.KEY_INCLUDE_FILE_TYPES: include_file_types_sorted,
         Toml.KEY_EXCLUDE_FILE_TYPES: exclude_file_types_sorted,
-        Toml.KEY_RELATIVE_TO: config.relative_to_raw,
         Toml.KEY_CONFIG_FILES: _toml_string_list(
             str(p) if isinstance(p, Path) else str(p) for p in config.config_files
         ),
     }
+    insert_if_present(
+        files_tbl,
+        Toml.KEY_RELATIVE_TO,
+        config.relative_to_raw,
+    )
+
     if include_files and config.files:
-        files_tbl[Toml.KEY_FILES] = _toml_string_list(config.files)
+        insert_if_present(
+            files_tbl,
+            Toml.KEY_FILES,
+            _toml_string_list(config.files),
+        )
 
     # Patterns/Groups serialization
     if files_serialization_mode == FilesSerializationMode.REBASED:
@@ -256,7 +272,7 @@ def config_to_toml_dict(
             for ft, p in config.policy_by_type.items()
         }
 
-    # Assemble the TOML shape representing the confgiguration
+    # Assemble the TOML shape representing the configuration
     toml_dict: TomlTable = {
         Toml.SECTION_FIELDS: fields_tbl,
         Toml.SECTION_HEADER: header_tbl,
@@ -268,9 +284,5 @@ def config_to_toml_dict(
     # If defined, add the per-type policy
     if config.policy_by_type:
         toml_dict[Toml.SECTION_POLICY_BY_TYPE] = policy_by_type_tbl
-
-    # Include files in TOML export
-    if include_files and config.files:
-        files_tbl[Toml.KEY_FILES] = _toml_string_list(str(path) for path in config.files)
 
     return toml_dict

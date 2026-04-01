@@ -2,37 +2,39 @@
 #
 #   project      : TopMark
 #   file         : resolution.py
-#   file_relpath : src/topmark/config/io/resolution.py
+#   file_relpath : src/topmark/config/resolution.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""Layered configuration discovery and compatibility flattening for TopMark.
+"""Layered config resolution for TopMark.
 
-This module discovers configuration provenance layers in precedence order and
-provides a compatibility path that merges those layers into a single effective
-`MutableConfig` draft.
+This module converts layered TopMark TOML config fragments into
+[`ConfigLayer`][topmark.config.layers.ConfigLayer] objects, merges those layers
+in stable precedence order, and builds effective per-path `MutableConfig`
+drafts.
 
 Responsibilities:
-    - discover user-scoped and project-scoped config files
-    - represent discovered sources as `ConfigLayer`
+    - represent resolved layered config sources as `ConfigLayer`
+    - load layered TOML-backed config fragments into `MutableConfig`
     - preserve TopMark's layered precedence rules
-    - load TOML-backed config fragments into `MutableConfig`
-    - flatten discovered layers into a compatibility `MutableConfig` draft
+    - merge discovered config layers into compatibility drafts
+    - select applicable layers for a target path and build an effective config
 
-Typical precedence (lowest -> highest):
+Typical layered precedence (lowest -> highest):
     1. built-in defaults
-    2. user config
-    3. project config files discovered upward from an anchor path
-    4. explicitly provided extra config files
+    2. discovered user config layer
+    3. discovered project/local config layers (root-most -> nearest)
+    4. explicitly provided extra config layers
 
-This module is intentionally separate from `topmark.config.model`:
+This module is intentionally separate from
+[`topmark.toml.resolution`][topmark.toml.resolution]:
 
-- `topmark.config.model` defines the configuration data structures and merge
-  behavior
-- this module performs discovery, ordering, provenance tracking, and
-  compatibility flattening across config sources
+- [`topmark.toml.resolution`][topmark.toml.resolution] discovers TopMark
+  TOML settings files
+- this module turns layered TOML config fragments into config provenance layers
+  and merges them into effective mutable config drafts
 
 The result of compatibility flattening is a `MutableConfig` draft that can still
 be adjusted by callers before being frozen into an immutable `Config`.
@@ -40,28 +42,28 @@ be adjusted by callers before being frozen into an immutable `Config`.
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.io.deserializers import mutable_config_from_toml_file
-from topmark.config.io.guards import get_pyproject_topmark_table
-from topmark.config.io.loaders import load_toml_dict
-from topmark.config.io.types import ConfigLayer
-from topmark.config.io.types import ConfigLayerKind
-from topmark.config.keys import Toml
+from topmark.config.layers import ConfigLayer
+from topmark.config.layers import ConfigLayerKind
 from topmark.core.logging import get_logger
+from topmark.toml.resolution import discover_local_config_files
+from topmark.toml.resolution import discover_user_config_file
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from topmark.config.io.types import TomlTable
     from topmark.config.model import MutableConfig
     from topmark.core.logging import TopmarkLogger
 
 
 logger: TopmarkLogger = get_logger(__name__)
+
+
+# ---- Internal layer construction helpers ----
 
 
 def _make_config_layer(
@@ -90,13 +92,30 @@ def _make_config_layer(
     )
 
 
+def _default_config_layer() -> ConfigLayer:
+    """Return the built-in defaults as the first config provenance layer."""
+    return _make_config_layer(
+        origin="<defaults>",
+        kind=ConfigLayerKind.DEFAULT,
+        precedence=0,
+        scope_root=None,
+        config=mutable_config_from_defaults(),
+    )
+
+
 def _load_layer_from_file(
     path: Path,
     *,
     kind: ConfigLayerKind,
     precedence: int,
 ) -> ConfigLayer | None:
-    """Load a config provenance layer from a TOML-backed config file."""
+    """Load a config provenance layer from a TOML-backed config file.
+
+    Note:
+        This transitional helper still loads directly from a TOML file into a
+        `MutableConfig`. It will likely be replaced or reshaped so that it
+        consumes split-parsed layered TOML fragments instead.
+    """
     resolved_path: Path = path.resolve()
     config: MutableConfig | None = mutable_config_from_toml_file(resolved_path)
     if config is None:
@@ -109,17 +128,6 @@ def _load_layer_from_file(
         precedence=precedence,
         scope_root=resolved_path.parent,
         config=config,
-    )
-
-
-def _default_config_layer() -> ConfigLayer:
-    """Return the built-in defaults as the first config provenance layer."""
-    return _make_config_layer(
-        origin="<defaults>",
-        kind=ConfigLayerKind.DEFAULT,
-        precedence=0,
-        scope_root=None,
-        config=mutable_config_from_defaults(),
     )
 
 
@@ -137,114 +145,7 @@ def _is_within_scope(path: Path, scope_root: Path) -> bool:
     return result
 
 
-def discover_local_config_files(start: Path) -> list[Path]:
-    """Return config files discovered by walking upward from ``start``.
-
-    Layered discovery semantics:
-        * We traverse from the anchor directory up to the filesystem root and
-        collect config files in **root-most → nearest** order.
-        * In a given directory, we consider **both** `pyproject.toml` (with
-        `[tool.topmark]`) and `topmark.toml`. When **both** are present, we
-        append **`pyproject.toml` first and `topmark.toml` second** so that a
-        later merge (nearest-last-wins) gives same-directory precedence to
-        `topmark.toml`.
-        * If a discovered config sets ``root = true`` (top-level key in
-        `topmark.toml`, or within `[tool.topmark]` for `pyproject.toml`), we
-        stop traversing further up after collecting the current directory's
-        files.
-
-    Args:
-        start: The Path instance where discovery starts.
-
-    Returns:
-        Discovered config file paths ordered for stable merging: root-most first,
-        nearest last; within a directory, `pyproject.toml` is returned before
-        `topmark.toml` so the latter has higher same-directory precedence.
-    """
-    # Collect per-directory entries preserving same-dir precedence (pyproject → topmark)
-    per_dir: list[list[Path]] = []
-    cur: Path = start.resolve()  # Resolve symlinks and get absolute path
-    seen: set[Path] = set()
-
-    # Ensure we start from a directory anchor
-    if cur.is_file():
-        cur = cur.parent
-
-    # Walk up to filesystem root, recording entries per directory
-    while True:
-        root_stop_here = False
-        dir_entries: list[Path] = []
-
-        # Same-directory precedence: add `pyproject.toml` first, then
-        # `topmark.toml`, so later merge order gives `topmark.toml` the final say
-        # within the same directory.
-        for name in ("pyproject.toml", "topmark.toml"):
-            p: Path = cur / name
-            if p.exists() and p.is_file() and p not in seen:
-                dir_entries.append(p)
-                seen.add(p)
-                logger.debug("Discovered config file: %s", p)
-                # Check whether this directory declares itself as the config
-                # discovery root. If so, we still keep the current directory's
-                # entries, then stop traversing further upward.
-                data: TomlTable = load_toml_dict(p)
-                # load_toml_dict() does a best-effort discovery; it returns {} on errors.
-                if data:
-                    if name == "pyproject.toml":
-                        topmark_tbl: TomlTable | None = get_pyproject_topmark_table(data)
-                        if topmark_tbl is not None and bool(topmark_tbl.get(Toml.KEY_ROOT, False)):
-                            root_stop_here = True
-                    else:  # topmark.toml
-                        if bool(data.get(Toml.KEY_ROOT, False)):
-                            root_stop_here = True
-                else:
-                    # Best-effort discovery; ignore parse errors here.
-                    logger.debug("Ignoring empty TOML dict from reading %s", p)
-        if dir_entries:
-            # Keep entries grouped per directory: [pyproject, topmark]
-            per_dir.append(dir_entries)
-
-        parent: Path = cur.parent
-        if parent == cur:
-            break
-        if root_stop_here:
-            logger.debug(
-                "Stopping upward config discovery at %s due to %s=true",
-                cur,
-                Toml.KEY_ROOT,
-            )
-            break
-        cur = parent
-
-    # Flatten per-directory lists in root -> current order while preserving the
-    # within-directory precedence (`pyproject.toml` then `topmark.toml`).
-    ordered: list[Path] = []
-    for dir_list in reversed(per_dir):  # root-most first
-        # Within a directory: pyproject then topmark (tool file overrides)
-        ordered.extend(dir_list)  # pyproject then topmark within the directory
-
-    return ordered
-
-
-def discover_user_config_file() -> Path | None:
-    """Return the first existing user-scoped TopMark config file.
-
-    Lookup order:
-        1. `$XDG_CONFIG_HOME/topmark/topmark.toml` (or `~/.config/...` fallback)
-        2. legacy `~/.topmark.toml`
-
-    Returns:
-        The first existing user config path, or `None` if no user-scoped config
-        file is present.
-    """
-    xdg: str | None = os.environ.get("XDG_CONFIG_HOME")
-    base: Path = Path(xdg) if xdg else Path.home() / ".config"
-    xdg_path: Path = base / "topmark" / "topmark.toml"
-    legacy: Path = Path.home() / ".topmark.toml"
-    for p in (xdg_path, legacy):
-        if p.exists() and p.is_file():
-            return p
-    return None
+# ---- Layer discovery ----
 
 
 def discover_config_layers(
@@ -268,9 +169,9 @@ def discover_config_layers(
             the current working directory.
         extra_config_files: Explicit config files to append after discovered
             layers. Later files have higher precedence than earlier ones.
-        strict_config_checking: Reserved compatibility argument. Discovery does
-            not currently materialize this runtime override as a provenance
-            layer.
+        strict_config_checking: Reserved compatibility argument. Layer
+            discovery does not currently materialize this config-loading
+            strictness override as a provenance layer.
         no_config: If True, skip all discovered config layers (user + project)
             and only return built-in defaults plus any explicit extra config
             files.
@@ -362,6 +263,9 @@ def discover_config_layers(
     return layers
 
 
+# ---- Layer merge and applicability ----
+
+
 def merge_layers_globally(layers: Iterable[ConfigLayer]) -> MutableConfig:
     """Merge discovered config provenance layers into one compatibility draft."""
     layer_list: list[ConfigLayer] = list(layers)
@@ -438,6 +342,9 @@ def build_effective_config_for_path(
     return draft
 
 
+# ---- Compatibility facade ----
+
+
 def load_resolved_config(
     input_paths: Iterable[Path] | None = None,
     extra_config_files: Iterable[Path] | None = None,
@@ -452,8 +359,8 @@ def load_resolved_config(
         3. discovered project config files (root-most -> nearest)
         4. explicit extra config files (in the order provided)
 
-    This helper is responsible only for layered config discovery and merge. It
-    does **not** apply CLI/API override intent such as write mode, stdin mode,
+    This helper is responsible only for layered config layer discovery and
+    merge. It does **not** apply CLI/API override intent such as write mode, stdin mode,
     include/exclude filters, or header-formatting overrides; those belong in the
     dedicated override layer.
 

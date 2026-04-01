@@ -1,0 +1,129 @@
+# topmark:header:start
+#
+#   project      : TopMark
+#   file         : loaders.py
+#   file_relpath : src/topmark/toml/loaders.py
+#   license      : MIT
+#   copyright    : (c) 2025 Olivier Biot
+#
+# topmark:header:end
+
+"""Load and split-parse TopMark TOML documents.
+
+This module provides low-level file I/O helpers for reading TOML documents from
+the filesystem, normalizing them to plain-Python TOML tables, and turning a
+single TopMark TOML source into a split parse result.
+
+Responsibilities:
+- read raw TOML documents from disk
+- normalize `tomlkit` output into [`TomlTable`][topmark.toml.types.TomlTable]
+- extract `[tool.topmark]` from `pyproject.toml` sources when needed
+- delegate per-source split parsing to
+  [`parse_topmark_toml_table`][topmark.toml.parse.parse_topmark_toml_table]
+
+This module does not deserialize layered config into `MutableConfig` and does
+not resolve precedence across multiple sources.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import tomlkit
+from tomlkit.exceptions import ParseError as TomlkitParseError
+
+from topmark.core.logging import get_logger
+from topmark.toml.guards import as_object_dict
+from topmark.toml.guards import toml_table_from_mapping
+from topmark.toml.parse import ParsedTopmarkToml
+from topmark.toml.parse import parse_topmark_toml_table
+from topmark.toml.pyproject import extract_pyproject_topmark_table
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from topmark.core.logging import TopmarkLogger
+    from topmark.toml.types import TomlTable
+
+logger: TopmarkLogger = get_logger(__name__)
+
+
+def load_toml_table(path: Path) -> TomlTable | None:
+    """Load and parse a TOML file from the filesystem.
+
+    Args:
+        path: Path to a TOML document (e.g., ``topmark.toml`` or ``pyproject.toml``).
+
+    Returns:
+        The parsed TOML content.
+
+    Notes:
+        - Errors are logged and an empty dict is returned on failure.
+        - Encoding is assumed to be UTF-8.
+    """
+    try:
+        text: str = path.read_text(encoding="utf-8")
+        doc: tomlkit.TOMLDocument = tomlkit.parse(text)
+        unwrapped: object = doc.unwrap()
+        return toml_table_from_mapping(as_object_dict(unwrapped))
+    except OSError as e:
+        logger.error("Error loading TOML from %s: %s", path, e)
+        return None
+    except TomlkitParseError as e:
+        logger.error("Error parsing TOML from %s: %s", path, e)
+        return None
+    except (TypeError, ValueError) as e:
+        logger.error("Unknown error while reading TOML from %s: %s", path, e)
+        return None
+
+
+def load_topmark_toml_source(path: Path) -> ParsedTopmarkToml | None:
+    """Load and split-parse a single TopMark TOML source file.
+
+    Args:
+        path: Path to a TopMark TOML source file.
+
+    Returns:
+        The per-source split parse result, or `None` when the file could not be
+        loaded or does not contain a valid TopMark TOML table.
+    """
+    data: TomlTable | None = load_toml_table(path)
+    if data is None:
+        return None
+
+    return load_topmark_toml_table(
+        data,
+        source_path=path,
+        from_pyproject=path.name == "pyproject.toml",
+    )
+
+
+def load_topmark_toml_table(
+    data: TomlTable,
+    *,
+    source_path: Path | None = None,
+    from_pyproject: bool = False,
+) -> ParsedTopmarkToml | None:
+    """Split-parse an in-memory TopMark TOML table.
+
+    Args:
+        data: In-memory TOML table.
+        source_path: Optional source path used only for diagnostics/logging.
+        from_pyproject: If `True`, first extract `[tool.topmark]` from the TOML
+            document before split parsing.
+
+    Returns:
+        The per-source split parse result, or `None` when `from_pyproject=True`
+        and no valid `[tool.topmark]` table is present.
+    """
+    topmark_tbl: TomlTable | None = (
+        extract_pyproject_topmark_table(data) if from_pyproject else data
+    )
+    if topmark_tbl is None:
+        logger.debug(
+            "No [tool.topmark] table found in %s",
+            source_path if source_path is not None else "<in-memory TOML>",
+        )
+        return None
+
+    return parse_topmark_toml_table(topmark_tbl)

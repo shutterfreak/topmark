@@ -2,25 +2,25 @@
 #
 #   project      : TopMark
 #   file         : keys.py
-#   file_relpath : src/topmark/config/keys.py
+#   file_relpath : src/topmark/toml/keys.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""Canonical TOML section and key names for TopMark configuration.
+"""Canonical TOML section and key names for TopMark documents.
 
 This module defines the authoritative string constants used when reading,
-writing, and validating TopMark configuration from TOML sources
-(``topmark.toml`` and ``[tool.topmark]`` in ``pyproject.toml``).
+writing, and validating TopMark TOML documents, including layered
+configuration tables, discovery metadata, and persisted writer options.
 
 Centralizing TOML keys:
-    - Avoids hard-coded strings scattered across the config layer
-    - Ensures consistency between defaults, parsing, validation, and docs
-    - Makes configuration schema changes explicit and reviewable
+    - Avoids hard-coded strings scattered across parsing and serialization code.
+    - Ensures consistency between defaults, validation, documentation, and dumps.
+    - Makes schema changes explicit and reviewable.
 
 Design notes:
-    - Keys defined here represent *external configuration API*.
+    - Keys defined here represent the external TOML document schema.
     - Renaming or removing keys is a breaking change.
     - CLI keys and TOML keys are intentionally kept separate.
 """
@@ -31,16 +31,15 @@ from typing import Final
 
 
 class Toml:
-    """TOML section names and keys used by TopMark configuration.
+    """TOML section names and keys used by TopMark documents.
 
-    This file is the single source of truth for the external configuration schema.
+    This file is the single source of truth for the external TOML document schema.
 
-    The constants in this namespace define TopMark’s external configuration
-    schema as it appears in `topmark.toml` and in `[tool.topmark]` inside
-    `pyproject.toml`.
+    The constants in this namespace define TopMark's external TOML document schema
+    as it appears in `topmark.toml` and in `[tool.topmark]` inside `pyproject.toml`.
 
-    The ordering of constants mirrors `topmark-example.toml` to make it easy to
-    audit schema changes and keep defaults/docs/parsing aligned.
+    The ordering of constants mirrors `topmark-example.toml` to make it easier to
+    audit schema changes and keep defaults, documentation, and parsing aligned.
 
     Notes:
         - Values must match user-facing TOML keys exactly.
@@ -48,7 +47,10 @@ class Toml:
         - CLI keys are defined separately in [`topmark.cli.keys`][topmark.cli.keys].
     """
 
+    # [config]
+    SECTION_CONFIG: Final[str] = "config"
     # Root / discovery
+
     KEY_ROOT: Final[str] = "root"
 
     # Strict TOML config checking (fail on warnings)
@@ -71,8 +73,7 @@ class Toml:
     # [writer]
     SECTION_WRITER: Final[str] = "writer"
 
-    # [writer] Output destination key ("file" or "stdout").
-    KEY_TARGET: Final[str] = "target"
+    # [writer] File write strategy
     KEY_STRATEGY: Final[str] = "strategy"
 
     # [policy] and [policy_by_type]
@@ -113,12 +114,11 @@ class Toml:
 
     # ---------------------------- Schema helpers ----------------------------
 
-    # Allowed top-level keys under [tool.topmark] / topmark.toml.
-    # Used for validation and friendly diagnostics.
+    # Allowed top-level tables under [tool.topmark] / topmark.toml.
+    # Used for validation and friendly diagnostics of whole TOML documents.
     ALLOWED_TOP_LEVEL_KEYS: Final[frozenset[str]] = frozenset(
         {
-            KEY_ROOT,
-            KEY_STRICT_CONFIG_CHECKING,
+            SECTION_CONFIG,
             SECTION_HEADER,
             SECTION_FIELDS,
             SECTION_FORMATTING,
@@ -129,9 +129,15 @@ class Toml:
         }
     )
 
-    # Allowed keys per section. Only includes sections that are TOML tables.
-    # Note: [fields] is intentionally omitted (arbitrary user-defined keys).
+    # Allowed keys per named table. Only includes tables with a fixed key set.
+    # Note: [fields] is intentionally omitted because it allows arbitrary user-defined keys.
     ALLOWED_SECTION_KEYS: Final[dict[str, frozenset[str]]] = {
+        SECTION_CONFIG: frozenset(
+            {
+                KEY_ROOT,
+                KEY_STRICT_CONFIG_CHECKING,
+            }
+        ),
         SECTION_HEADER: frozenset(
             {
                 KEY_FIELDS,
@@ -145,7 +151,6 @@ class Toml:
         ),
         SECTION_WRITER: frozenset(
             {
-                KEY_TARGET,
                 KEY_STRATEGY,
             }
         ),
@@ -159,8 +164,8 @@ class Toml:
                 KEY_POLICY_ALLOW_CONTENT_PROBE,
             }
         ),
-        # [policy_by_type] contains arbitrary file type keys -> policy tables.
-        # Validation for those subtables is handled separately.
+        # [policy_by_type] contains arbitrary file type identifiers that map to
+        # policy tables. Validation for those subtables is handled separately.
         SECTION_FILES: frozenset(
             {
                 KEY_INCLUDE_FILE_TYPES,
@@ -170,7 +175,6 @@ class Toml:
                 KEY_INCLUDE_PATTERNS,
                 KEY_EXCLUDE_PATTERNS,
                 KEY_FILES_FROM,
-                KEY_CONFIG_FILES,
                 KEY_FILES,
             }
         ),
@@ -188,7 +192,7 @@ class Toml:
         }
     )
 
-    # dump/provenance-only keys (emitted by config dump -–show-origin)
+    # Dump/provenance-only keys emitted by `config dump --show-origin`.
     DUMP_ONLY_FILES_KEYS: Final[frozenset[str]] = frozenset(
         {
             KEY_INCLUDE_PATTERN_GROUPS,
@@ -196,5 +200,10 @@ class Toml:
             KEY_INCLUDE_FROM_SOURCES,
             KEY_EXCLUDE_FROM_SOURCES,
             KEY_FILES_FROM_SOURCES,
+        }
+    )
+    DUMP_ONLY_CONFIG_KEYS: Final[frozenset[str]] = frozenset(
+        {
+            KEY_CONFIG_FILES,
         }
     )

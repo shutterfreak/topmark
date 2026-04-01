@@ -36,13 +36,13 @@ from topmark.cli.options import resolve_verbosity
 from topmark.cli.presentation import TextStyler
 from topmark.cli.presentation import style_for_role
 from topmark.cli.validators import validate_verbose_quiet_exclusivity
-from topmark.config.io.resolution import load_resolved_config
 from topmark.config.model import MutableConfig
 from topmark.config.overrides import ConfigOverrides
 from topmark.config.overrides import PolicyOverrides
 from topmark.config.overrides import apply_config_overrides
 from topmark.config.policy import EmptyInsertMode
 from topmark.config.policy import HeaderMutationMode
+from topmark.config.resolution import load_resolved_config
 from topmark.config.types import FileWriteStrategy
 from topmark.config.types import OutputTarget
 from topmark.constants import CLI_OVERRIDE_STR
@@ -307,7 +307,7 @@ def build_config_for_plan(
 
     1. Compute a discovery anchor from the input plan.
     2. Delegate layered config discovery/merge to
-       `topmark.config.io.resolution.load_resolved_config()`.
+       `topmark.config.resolution.load_resolved_config()`.
     3. Apply layered CLI overrides via `topmark.config.overrides.apply_config_overrides()`.
 
     Resolution order remains:

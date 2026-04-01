@@ -22,14 +22,14 @@ from typing import Any
 
 import tomlkit
 
-from topmark.config.io.getters import get_string_list_value_checked
-from topmark.config.io.surgery import nest_toml_under_section
 from topmark.diagnostic.model import DiagnosticLog
+from topmark.toml.getters import get_string_list_value_checked
+from topmark.toml.surgery import nest_toml_under_section
 
 if TYPE_CHECKING:
     import pytest
 
-    from topmark.config.io.types import TomlTable
+    from topmark.toml.types import TomlTable
 
 
 def test_nest_toml_under_section_basic() -> None:

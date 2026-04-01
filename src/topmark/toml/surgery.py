@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : surgery.py
-#   file_relpath : src/topmark/config/io/surgery.py
+#   file_relpath : src/topmark/toml/surgery.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

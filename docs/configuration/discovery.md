@@ -291,7 +291,7 @@ ______________________________________________________________________
 ## See also
 
 - Default configuration: `src/topmark/config/topmark-example.toml`
-- Implementation: \[`load_resolved_config()`\][topmark.config.io.resolution.load_resolved_config]
-  and \[`effective_policy()`\][topmark.config.policy.effective_policy] in
+- Implementation: \[`load_resolved_config()`\][topmark.config.resolution.load_resolved_config] and
+  \[`effective_policy()`\][topmark.config.policy.effective_policy] in
   \[`topmark.config`\][topmark.config]
 - Related doc: `README.md`

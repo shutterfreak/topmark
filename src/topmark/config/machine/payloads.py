@@ -26,10 +26,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.cli.keys import CliCmd
-from topmark.config.io.guards import as_object_dict
-from topmark.config.io.guards import get_object_dict_value
-from topmark.config.io.guards import get_string_dict_value
-from topmark.config.io.guards import get_string_list_dict_value
 from topmark.config.io.serializers import config_to_toml_dict
 from topmark.config.machine.schemas import ConfigCheckSummary
 from topmark.config.machine.schemas import ConfigDiagnosticsPayload
@@ -40,10 +36,14 @@ from topmark.diagnostic.machine.schemas import MachineDiagnosticCounts
 from topmark.diagnostic.machine.schemas import MachineDiagnosticEntry
 from topmark.diagnostic.model import DiagnosticStats
 from topmark.diagnostic.model import compute_diagnostic_stats
+from topmark.toml.getters import get_object_dict_value
+from topmark.toml.getters import get_string_dict_value
+from topmark.toml.getters import get_string_list_dict_value
+from topmark.toml.guards import as_object_dict
 
 if TYPE_CHECKING:
-    from topmark.config.io.types import TomlTable
     from topmark.config.model import Config
+    from topmark.toml.types import TomlTable
 
 
 def build_config_payload(config: Config) -> ConfigPayload:

@@ -107,7 +107,7 @@ ______________________________________________________________________
 ## TOML I/O and tomlkit internals
 
 The helper
-\[`topmark.config.io.surgery.nest_toml_under_section`\][topmark.config.io.surgery.nest_toml_under_section]
+\[`topmark.toml.surgery.nest_toml_under_section`\][topmark.toml.surgery.nest_toml_under_section]
 uses `tomlkit`’s `TOMLDocument` and its `.body` layout to preserve comments and whitespace when
 nesting an existing document under a dotted section (for example `tool.topmark` when generating a
 `pyproject.toml` block).

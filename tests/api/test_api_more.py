@@ -15,7 +15,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark import api
-from topmark.config.keys import Toml
+from topmark.toml.keys import Toml
 
 if TYPE_CHECKING:
     from pathlib import Path

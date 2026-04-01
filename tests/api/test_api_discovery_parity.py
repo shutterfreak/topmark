@@ -28,9 +28,9 @@ import pytest
 
 from tests.api.conftest import run_cli_like
 from topmark import api
-from topmark.config.keys import Toml
 from topmark.config.model import MutableConfig
 from topmark.pipeline.context.model import ProcessingContext
+from topmark.toml.keys import Toml
 
 if TYPE_CHECKING:
     from pathlib import Path

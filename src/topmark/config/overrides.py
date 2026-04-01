@@ -8,11 +8,16 @@
 #
 # topmark:header:end
 
-"""Apply external override intent to a resolved `MutableConfig` draft.
+"""Apply config-like override intent to a resolved `MutableConfig` draft.
 
 This module sits *after* layered config discovery/resolution. Its job is to
-apply the highest-precedence override layer coming from CLI or API inputs
-without reimplementing config-file discovery.
+apply the highest-precedence config-like override layer coming from CLI or API
+inputs without reimplementing config-file discovery.
+
+Execution-only runtime intent such as apply mode, stdin routing, output target,
+file write strategy, pruning, and timestamps is intentionally out of scope and
+must be handled separately via
+[`RunOptions`][topmark.runtime.model.RunOptions].
 """
 
 from __future__ import annotations
@@ -64,8 +69,9 @@ class ConfigOverrides:
     Attributes:
         config_origin: provenance marker or path
         config_base: real filesystem base for relative patterns and sources
-        strict_config_checking: If True, enforce strict config checking
-            (fail on warnings and errors).
+        strict_config_checking: Config-loading strictness override.
+            This remains config-like override intent and is separate from
+            execution-only runtime options.
         policy: Global, resolved, immutable runtime policy (plain booleans),
             applied after discovery.
         policy_by_type: Per-file-type resolved policy overrides
@@ -148,7 +154,8 @@ def apply_config_overrides(
     This helper updates an already-resolved `MutableConfig` with the final highest-precedence
     override layer. It intentionally does **not** handle config discovery concerns such as
     `--no-config` or `--config`; those belong to
-    [`topmark.config.io.resolution`][topmark.config.io.resolution].
+    [`topmark.toml.resolution`][topmark.toml.resolution] and
+    [`topmark.config.resolution`][topmark.config.resolution].
 
     Args:
         config: Mutable config draft to mutate in place.
@@ -166,8 +173,8 @@ def apply_config_overrides(
         - Provenance information is appended to `overrides.config_origin` so downstream views
           can show that a highest-precedence override layer was applied.
         - Execution-only runtime intent (apply mode, STDIN routing, output target, file write
-          strategy, pruning) is out of scope here and must be handled separately via
-          [`topmark.runtime.model.RunOptions`][topmark.runtime.model.RunOptions].
+          strategy, pruning, timestamps) is out of scope here and must be handled separately via
+          [`RunOptions`][topmark.runtime.model.RunOptions].
     """
     # strict_config_checking
     if overrides.strict_config_checking is not None:

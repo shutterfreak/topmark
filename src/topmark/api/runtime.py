@@ -32,9 +32,6 @@ from typing import TYPE_CHECKING
 
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.io.deserializers import mutable_config_from_mapping
-from topmark.config.io.resolution import build_effective_config_for_path
-from topmark.config.io.resolution import discover_config_layers
-from topmark.config.io.resolution import load_resolved_config
 from topmark.config.model import Config
 from topmark.config.model import MutableConfig
 from topmark.config.overrides import ConfigOverrides
@@ -42,6 +39,9 @@ from topmark.config.overrides import PolicyOverrides
 from topmark.config.overrides import apply_config_overrides
 from topmark.config.policy import EmptyInsertMode
 from topmark.config.policy import HeaderMutationMode
+from topmark.config.resolution import build_effective_config_for_path
+from topmark.config.resolution import discover_config_layers
+from topmark.config.resolution import load_resolved_config
 from topmark.constants import TOPMARK_VERSION
 from topmark.core.errors import InvalidPolicyError
 from topmark.core.logging import get_logger
@@ -57,7 +57,7 @@ if TYPE_CHECKING:
 
     from topmark.api.types import PipelineKindLiteral
     from topmark.api.types import PublicPolicy
-    from topmark.config.io.types import ConfigLayer
+    from topmark.config.layers import ConfigLayer
     from topmark.core.exit_codes import ExitCode
     from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext

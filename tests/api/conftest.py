@@ -28,8 +28,7 @@ from topmark.api.runtime import select_pipeline
 from topmark.api.types import PipelineKindLiteral
 from topmark.api.types import PublicPolicy
 from topmark.api.types import PublicReportScopeLiteral
-from topmark.config.io.resolution import load_resolved_config
-from topmark.config.keys import Toml
+from topmark.config.resolution import load_resolved_config
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.processors.types import BoundsKind
 from topmark.processors.types import HeaderBounds
@@ -39,6 +38,7 @@ from topmark.registry.processors import HeaderProcessorRegistry
 from topmark.registry.registry import Registry
 from topmark.resolution.files import resolve_file_list
 from topmark.runtime.model import RunOptions
+from topmark.toml.keys import Toml
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -47,7 +47,6 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-    from topmark.config.io.types import TomlValue
     from topmark.config.model import Config
     from topmark.config.model import MutableConfig
     from topmark.core.exit_codes import ExitCode
@@ -56,6 +55,7 @@ if TYPE_CHECKING:
     from topmark.pipeline.protocols import Step
     from topmark.processors.base import HeaderProcessor
     from topmark.registry.types import ProcessorDefinition
+    from topmark.toml.types import TomlValue
 
 
 # --- File reading ---
@@ -100,7 +100,7 @@ def cfg(**overrides: TomlValue) -> dict[str, TomlValue]:
         },
     }
     for k, v in overrides.items():
-        existing: TomlValue = base.get(k)
+        existing: TomlValue | None = base.get(k)
 
         # We use 'existing' as a local variable so Pyright can safely narrow
         # the type to dict[str, TomlValue] after the isinstance check.

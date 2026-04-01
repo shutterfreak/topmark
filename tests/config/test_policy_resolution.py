@@ -47,9 +47,9 @@ from topmark.config.policy import Policy
 from topmark.config.policy import effective_policy
 
 if TYPE_CHECKING:
-    from topmark.config.io.types import TomlTable
     from topmark.config.model import Config
     from topmark.config.model import MutableConfig
+    from topmark.toml.types import TomlTable
 
 
 def _assert_policy_fields(

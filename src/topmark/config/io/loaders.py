@@ -8,13 +8,23 @@
 #
 # topmark:header:end
 
-"""Load TOML configuration sources.
+"""Helpers for TopMark's bundled/default TOML documents.
 
-This module provides I/O helpers for reading TopMark configuration from:
-- the packaged default TOML resource, and
-- on-disk TOML files (`topmark.toml` / `pyproject.toml`).
+This module is intentionally separate from
+[`topmark.toml.loaders`][topmark.toml.loaders]. It does not load TOML from
+arbitrary on-disk user config files. Instead, it owns the bundled template and
+the code-defined default TopMark TOML document used when the annotated template
+is unavailable.
 
-Parsing is done with `tomlkit` and returned as plain `dict` structures.
+Today, `load_defaults_dict()` assembles one complete TOML-serializable default
+TopMark document in a single place. Over time, this should evolve toward
+merging smaller domain-scoped default fragments such as:
+- layered config defaults
+- persisted writer-option defaults
+- config-resolution/discovery defaults (for example strict mode)
+
+The current helper remains the single centralized assembly point for those
+partial defaults until that split is implemented.
 """
 
 from __future__ import annotations
@@ -22,23 +32,17 @@ from __future__ import annotations
 from importlib.resources import files
 from typing import TYPE_CHECKING
 
-import tomlkit
-from tomlkit.exceptions import ParseError as TomlkitParseError
-
-from topmark.config.io.guards import as_object_dict
-from topmark.config.io.guards import toml_table_from_mapping
 from topmark.config.io.render import to_toml
-from topmark.config.io.surgery import nest_toml_under_section
-from topmark.config.keys import Toml
 from topmark.config.policy import HeaderMutationMode
 from topmark.constants import DEFAULT_TOML_CONFIG_NAME
 from topmark.constants import DEFAULT_TOML_CONFIG_PACKAGE
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.core.logging import get_logger
+from topmark.toml.keys import Toml
+from topmark.toml.surgery import nest_toml_under_section
 
 if TYPE_CHECKING:
     import sys
-    from pathlib import Path
 
     if sys.version_info < (3, 14):
         # Python <=3.13
@@ -47,8 +51,8 @@ if TYPE_CHECKING:
         # Python 3.14+: Traversable moved here
         from importlib.resources.abc import Traversable
 
-    from topmark.config.io.types import TomlTable
     from topmark.core.logging import TopmarkLogger
+    from topmark.toml.types import TomlTable
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -66,7 +70,7 @@ def load_default_config_template_toml_text() -> tuple[str, Exception | None]:
     comments and formatting (when the packaged resource is available).
 
     If the packaged template cannot be read, the function falls back to a
-    generated TOML document built from TopMark's **runtime defaults**
+    generated TOML document built from TopMark's default TOML document
     (`load_defaults_dict`). The returned ``error`` is the exception
     raised while reading the packaged template.
 
@@ -103,7 +107,7 @@ def load_default_config_template_toml_text() -> tuple[str, Exception | None]:
                 break
     except OSError as exc:
         # Fallback: the packaged annotated template is missing/unreadable.
-        # Generate a usable document from the runtime defaults dict.
+        # Generate a usable document from the centralized default TOML dict.
         err = exc
         logger.warning("Cannot read packaged default config template %s: %s", resource, exc)
 
@@ -124,26 +128,29 @@ def load_default_config_template_toml_text() -> tuple[str, Exception | None]:
 
 
 def load_defaults_dict() -> TomlTable:
-    """Return TopMark's **runtime defaults** as a Python dict.
+    """Return TopMark's default TOML document as a plain-Python table.
 
-    This function intentionally performs **no I/O**.
+    This helper intentionally performs **no I/O**.
 
-    The bundled file ``topmark-example.toml`` is an *annotated* template intended
-    for human-facing output (e.g. ``topmark config init``). Runtime defaults,
-    however, are defined in code so TopMark can operate even if the packaged
-    template is missing or unreadable.
+    The bundled file `topmark-example.toml` is an annotated template intended
+    for human-facing output (for example `topmark config init`). The actual
+    default TopMark TOML document is assembled in code so TopMark can still
+    operate when the packaged template is missing or unreadable.
 
-    If you need the annotated template (comments/formatting preserved), use
-    `load_default_config_template_toml_text`.
+    Today, this helper assembles one centralized TOML-serializable default
+    document that includes both layered config defaults and persisted writer
+    defaults. In the future, the implementation may delegate to smaller
+    domain-scoped helpers and then merge those partial TOML tables here.
+
+    If you need the annotated template with comments and formatting preserved,
+    use `load_default_config_template_toml_text()`.
 
     Returns:
-        A TOML-table-compatible dict containing the runtime defaults.
-
-    Notes:
-        The returned value is a new dict so callers can mutate it safely.
+        A new TOML-table-compatible dictionary containing the default TopMark
+        TOML document.
     """
-    # Keep this dict small and stable: it is the base layer for config merging.
-    # Sections/keys align with `topmark.config.keys.Toml`.
+    # Keep this document small and stable: it is the centralized default
+    # TopMark TOML document assembled in code.
     return {
         Toml.SECTION_HEADER: {
             Toml.KEY_FIELDS: ["file", "file_relpath"],
@@ -155,7 +162,6 @@ def load_defaults_dict() -> TomlTable:
             Toml.KEY_ALIGN_FIELDS: True,
         },
         Toml.SECTION_WRITER: {
-            Toml.KEY_TARGET: "file",
             Toml.KEY_STRATEGY: "atomic",
         },
         Toml.SECTION_POLICY: {
@@ -182,13 +188,18 @@ def render_runtime_defaults_toml_text(
     *,
     for_pyproject: bool,
 ) -> str:
-    """Render TopMark runtime defaults as TOML text.
+    """Render the centralized default TopMark TOML document as text.
 
-    This is I/O-free: it serializes the dict returned by `load_defaults_dict()`.
-    It does not preserve the annotated template comments/formatting.
+    This helper is I/O-free: it serializes the TOML table returned by
+    `load_defaults_dict()`. It does not preserve the annotated template's
+    comments or formatting.
+
+    Note:
+        The function name is transitional. The rendered content is the default
+        TopMark TOML document, not execution-only `RunOptions`.
 
     Args:
-        for_pyproject: If True, nest the output under ``[tool.topmark]``.
+        for_pyproject: If `True`, nest the output under `[tool.topmark]`.
 
     Returns:
         TOML document text.
@@ -197,32 +208,3 @@ def render_runtime_defaults_toml_text(
     if for_pyproject:
         toml_text = nest_toml_under_section(toml_text, "tool.topmark")
     return toml_text
-
-
-def load_toml_dict(path: Path) -> TomlTable:
-    """Load and parse a TOML file from the filesystem.
-
-    Args:
-        path: Path to a TOML document (e.g., ``topmark.toml`` or ``pyproject.toml``).
-
-    Returns:
-        The parsed TOML content.
-
-    Notes:
-        - Errors are logged and an empty dict is returned on failure.
-        - Encoding is assumed to be UTF-8.
-    """
-    try:
-        text: str = path.read_text(encoding="utf-8")
-        doc: tomlkit.TOMLDocument = tomlkit.parse(text)
-        unwrapped: object = doc.unwrap()
-        return toml_table_from_mapping(as_object_dict(unwrapped))
-    except OSError as e:
-        logger.error("Error loading TOML from %s: %s", path, e)
-        return {}
-    except TomlkitParseError as e:
-        logger.error("Error decoding TOML from %s: %s", path, e)
-        return {}
-    except (TypeError, ValueError) as e:
-        logger.error("Unknown error while reading TOML from %s: %s", path, e)
-        return {}

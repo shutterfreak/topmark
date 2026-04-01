@@ -24,13 +24,13 @@ from typing import cast
 
 import tomlkit
 
-from topmark.config.io.guards import as_object_dict
-from topmark.config.io.guards import toml_table_from_mapping
 from topmark.core.logging import get_logger
+from topmark.toml.guards import as_object_dict
+from topmark.toml.guards import toml_table_from_mapping
 
 if TYPE_CHECKING:
-    from topmark.config.io.types import TomlTable
     from topmark.core.logging import TopmarkLogger
+    from topmark.toml.types import TomlTable
 
 logger: TopmarkLogger = get_logger(__name__)
 
