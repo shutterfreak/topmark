@@ -51,11 +51,11 @@ from topmark.core.keys import ArgKey
 from topmark.core.logging import resolve_env_log_level
 from topmark.core.logging import setup_logging
 from topmark.core.presentation import StyleRole
+from topmark.core.typing_guards import as_object_dict
 from topmark.resolution.files import resolve_file_list
 from topmark.runtime.model import RunOptions
 from topmark.runtime.writer_options import WriterOptions
 from topmark.runtime.writer_options import apply_resolved_writer_options
-from topmark.toml.guards import as_object_dict
 from topmark.toml.resolution import ResolvedTopmarkTomlSources
 from topmark.toml.resolution import resolve_topmark_toml_sources
 from topmark.utils.merge import none_if_empty

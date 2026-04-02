@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True, slots=True)
-class DiscoveryTomlOptions:
+class SourceTomlOptions:
     """Discovery and config-loading metadata parsed from TOML.
 
     This is a pure per-source metadata carrier. These options do not
@@ -69,36 +69,16 @@ class ParsedTopmarkToml:
             merging.
         writer_options: Non-layered writer preferences parsed from the
             `[writer]` table, if present.
-        discovery_options: Discovery and config-loading metadata parsed from
+        source_options: Discovery and config-loading metadata parsed from
             the `[config]` table.
     """
 
     layered_config: TomlTable
     writer_options: WriterOptions | None
-    discovery_options: DiscoveryTomlOptions
+    source_options: SourceTomlOptions
 
 
-def parse_topmark_toml_table(data: TomlTable) -> ParsedTopmarkToml:
-    """Split a TopMark TOML table into its semantic domains.
-
-    Args:
-        data: A TopMark TOML table, already normalized to plain-Python TOML
-            structures.
-
-    Returns:
-        The per-source split parse result.
-    """
-    config_tbl: TomlTable | None = _get_table(data, Toml.SECTION_CONFIG)
-    writer_tbl: TomlTable | None = _get_table(data, Toml.SECTION_WRITER)
-
-    return ParsedTopmarkToml(
-        layered_config=extract_layered_config_toml(data),
-        writer_options=parse_writer_options(writer_tbl),
-        discovery_options=parse_discovery_toml_options(config_tbl),
-    )
-
-
-def parse_discovery_toml_options(config_tbl: TomlTable | None) -> DiscoveryTomlOptions:
+def _parse_source_toml_options(config_tbl: TomlTable | None) -> SourceTomlOptions:
     """Parse discovery/config-loading metadata from the `[config]` table.
 
     Args:
@@ -108,18 +88,18 @@ def parse_discovery_toml_options(config_tbl: TomlTable | None) -> DiscoveryTomlO
         Parsed discovery/config-loading metadata.
     """
     if config_tbl is None:
-        return DiscoveryTomlOptions()
+        return SourceTomlOptions()
 
     root_value: object = config_tbl.get(Toml.KEY_ROOT)
     strict_value: object = config_tbl.get(Toml.KEY_STRICT_CONFIG_CHECKING)
 
-    return DiscoveryTomlOptions(
+    return SourceTomlOptions(
         root=root_value if isinstance(root_value, bool) else None,
         strict_config_checking=strict_value if isinstance(strict_value, bool) else None,
     )
 
 
-def parse_writer_options(writer_tbl: TomlTable | None) -> WriterOptions | None:
+def _parse_writer_options(writer_tbl: TomlTable | None) -> WriterOptions | None:
     """Parse persisted writer preferences from the `[writer]` table.
 
     Args:
@@ -144,7 +124,7 @@ def parse_writer_options(writer_tbl: TomlTable | None) -> WriterOptions | None:
     return WriterOptions(file_write_strategy=strategy)
 
 
-def extract_layered_config_toml(data: TomlTable) -> TomlTable:
+def _extract_layered_config_toml(data: TomlTable) -> TomlTable:
     """Return only the layered-config sections from a TopMark TOML table.
 
     Args:
@@ -175,3 +155,23 @@ def _get_table(data: TomlTable, section: str) -> TomlTable | None:
     """Return a named TOML subtable when present and well-formed."""
     value: object = data.get(section)
     return dict(value) if isinstance(value, dict) else None
+
+
+def parse_topmark_toml_table(data: TomlTable) -> ParsedTopmarkToml:
+    """Split a TopMark TOML table into its semantic domains.
+
+    Args:
+        data: A TopMark TOML table, already normalized to plain-Python TOML
+            structures.
+
+    Returns:
+        The per-source split parse result.
+    """
+    config_tbl: TomlTable | None = _get_table(data, Toml.SECTION_CONFIG)
+    writer_tbl: TomlTable | None = _get_table(data, Toml.SECTION_WRITER)
+
+    return ParsedTopmarkToml(
+        layered_config=_extract_layered_config_toml(data),
+        writer_options=_parse_writer_options(writer_tbl),
+        source_options=_parse_source_toml_options(config_tbl),
+    )

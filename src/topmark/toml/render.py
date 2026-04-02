@@ -26,8 +26,8 @@ from typing import cast
 import tomlkit
 
 from topmark.core.logging import get_logger
-from topmark.toml.guards import as_object_dict
-from topmark.toml.guards import toml_table_from_mapping
+from topmark.core.typing_guards import as_object_dict
+from topmark.toml.typing_guards import toml_table_from_mapping
 
 if TYPE_CHECKING:
     from topmark.core.logging import TopmarkLogger

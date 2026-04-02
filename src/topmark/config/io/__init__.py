@@ -8,39 +8,33 @@
 #
 # topmark:header:end
 
-"""TOML I/O helpers for TopMark configuration.
+"""Config-domain I/O helpers for TopMark.
 
-This package centralizes **pure** helpers for reading, validating, and writing TOML
-used by TopMark's configuration layer. Keeping these utilities separate helps avoid
-import cycles and keeps the model classes small and focused.
+This package contains helpers that are specific to TopMark's layered config
+model, rather than generic TOML document handling.
+
+Current responsibilities include:
+    - deserializing layered TOML config tables into `MutableConfig`
+    - serializing `Config` and `MutableConfig` values back into layered TOML
+      tables
+    - providing bundled/default TopMark config-document helpers
+    - supporting config-template editing helpers where needed
+
+This package intentionally does **not** own generic TOML concerns such as:
+    - low-level TOML file loading
+    - TOML source discovery
+    - TOML split parsing
+    - TOML rendering/normalization
+    - TOML document surgery
+
+Those responsibilities now live under [`topmark.toml`][topmark.toml].
 
 Design goals:
-    * Minimal side effects: functions **do not** mutate configuration objects.
-    * Clear typing: public helpers use small aliases (``TomlTable``, ``TomlTableMap``)
-      and TypeGuards where possible to help Pyright catch mistakes.
-    * Reusability: helpers are used by both CLI and API paths.
-
-TOML parsing/formatting:
-    TopMark uses `tomlkit` (not `toml`) for parsing and rendering.
-
-    - `load_toml_dict()` parses on-disk TOML using tomlkit and returns plain dicts.
-    - `to_toml()` renders using tomlkit (after stripping TOML-incompatible values like `None`).
-    - `nest_toml_under_section()` performs *lossless* AST surgery using tomlkit so that
-      comments and whitespace are preserved when nesting under a dotted section path.
-
-Typical flow:
-    1. Load defaults from the packaged resource (``load_defaults_dict``).
-    2. Load project/user TOML files (``load_toml_dict``).
-    3. Read values with typed getters (unchecked or checked variants).
-    4. Serialize back to TOML when needed (``to_toml``).
-    5. Optionally wrap a TOML document under a dotted section using
-       ``nest_toml_under_section`` (e.g., when generating pyproject.toml blocks).
-
-Notes:
-    - We use `tomlkit` instead of other TOML libraries since ``nest_toml_under_section``
-      preserves comments and white space in the existing TOML config document.
-      This helper is used for converting a topmark.toml file for inclusion into pyproject.toml.
-    - No other TOML packages are required, eventhough ``tomllib`` ship with Python 3.11+.
+    - keep config-model interpretation separate from TOML document mechanics
+    - provide strongly typed helpers around `Config`, `MutableConfig`, and
+      layered config tables
+    - support both CLI and API code paths without reintroducing TOML parsing
+      logic into the config model layer
 """
 
 from __future__ import annotations

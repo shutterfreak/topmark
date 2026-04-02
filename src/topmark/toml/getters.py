@@ -30,10 +30,10 @@ from typing import TypeVar
 from typing import cast
 
 from topmark.core.logging import get_logger
-from topmark.toml.guards import is_any_list
-from topmark.toml.guards import is_str_list
-from topmark.toml.guards import is_toml_table
+from topmark.core.typing_guards import is_any_list
+from topmark.core.typing_guards import is_str_list
 from topmark.toml.types import TomlTable
+from topmark.toml.typing_guards import is_toml_table
 
 if TYPE_CHECKING:
     from collections.abc import Mapping

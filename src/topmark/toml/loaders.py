@@ -33,11 +33,11 @@ import tomlkit
 from tomlkit.exceptions import ParseError as TomlkitParseError
 
 from topmark.core.logging import get_logger
-from topmark.toml.guards import as_object_dict
-from topmark.toml.guards import toml_table_from_mapping
+from topmark.core.typing_guards import as_object_dict
 from topmark.toml.parse import ParsedTopmarkToml
 from topmark.toml.parse import parse_topmark_toml_table
 from topmark.toml.pyproject import extract_pyproject_topmark_table
+from topmark.toml.typing_guards import toml_table_from_mapping
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -48,7 +48,7 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-def load_toml_table(path: Path) -> TomlTable | None:
+def _load_toml_table(path: Path) -> TomlTable | None:
     """Load one TOML document from disk as a plain-Python TOML table.
 
     Args:
@@ -78,32 +78,11 @@ def load_toml_table(path: Path) -> TomlTable | None:
         logger.error("Error parsing TOML from %s: %s", path, e)
         return None
     except (TypeError, ValueError) as e:
-        logger.error("Unknown error while reading TOML from %s: %s", path, e)
+        logger.error("Error normalizing TOML from %s: %s", path, e)
         return None
 
 
-def load_topmark_toml_source(path: Path) -> ParsedTopmarkToml | None:
-    """Load and split-parse one TopMark TOML source file.
-
-    Args:
-        path: Path to a TopMark TOML source file.
-
-    Returns:
-        The per-source split parse result, or `None` when the file cannot be
-        loaded or does not contain a valid TopMark TOML source table.
-    """
-    data: TomlTable | None = load_toml_table(path)
-    if data is None:
-        return None
-
-    return load_topmark_toml_table(
-        data,
-        source_path=path,
-        from_pyproject=path.name == "pyproject.toml",
-    )
-
-
-def load_topmark_toml_table(
+def _load_topmark_toml_table(
     data: TomlTable,
     *,
     source_path: Path | None = None,
@@ -136,3 +115,24 @@ def load_topmark_toml_table(
 
     # Delegate semantic splitting of the TOML source to the pure parser layer.
     return parse_topmark_toml_table(topmark_tbl)
+
+
+def load_topmark_toml_source(path: Path) -> ParsedTopmarkToml | None:
+    """Load and split-parse one TopMark TOML source file.
+
+    Args:
+        path: Path to a TopMark TOML source file.
+
+    Returns:
+        The per-source split parse result, or `None` when the file cannot be
+        loaded or does not contain a valid TopMark TOML source table.
+    """
+    data: TomlTable | None = _load_toml_table(path)
+    if data is None:
+        return None
+
+    return _load_topmark_toml_table(
+        data,
+        source_path=path,
+        from_pyproject=path.name == "pyproject.toml",
+    )

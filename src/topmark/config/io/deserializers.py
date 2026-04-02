@@ -58,9 +58,9 @@ from topmark.toml.getters import get_enum_value_checked
 from topmark.toml.getters import get_string_list_value_checked
 from topmark.toml.getters import get_string_value_checked
 from topmark.toml.getters import get_table_value
-from topmark.toml.guards import as_toml_table_map
-from topmark.toml.guards import toml_table_from_mapping
 from topmark.toml.keys import Toml
+from topmark.toml.typing_guards import as_toml_table_map
+from topmark.toml.typing_guards import toml_table_from_mapping
 
 if TYPE_CHECKING:
     from collections.abc import Mapping

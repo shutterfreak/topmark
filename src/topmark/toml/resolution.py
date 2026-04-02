@@ -46,7 +46,6 @@ from typing import Literal
 from typing import TypeAlias
 
 from topmark.core.logging import get_logger
-from topmark.runtime.writer_options import WriterOptions
 from topmark.toml.loaders import load_topmark_toml_source
 
 if TYPE_CHECKING:
@@ -104,10 +103,37 @@ class ResolvedTopmarkTomlSources:
     strict_config_checking: bool | None
 
 
+# ---- Shared helpers ----
+
+
+def _append_loaded_source(
+    dst: list[ResolvedTopmarkTomlSource],
+    path: Path,
+    *,
+    kind: TomlSourceKind,
+) -> None:
+    """Load one TOML source and append it when split parsing succeeds."""
+    resolved_path: Path = path.resolve()
+    parsed: ParsedTopmarkToml | None = load_topmark_toml_source(resolved_path)
+    if parsed is None:
+        logger.debug(
+            "Skipping unreadable or invalid TOML source during resolution: %s", resolved_path
+        )
+        return
+
+    dst.append(
+        ResolvedTopmarkTomlSource(
+            path=resolved_path,
+            parsed=parsed,
+            kind=kind,
+        )
+    )
+
+
 # ---- User-scoped discovery ----
 
 
-def discover_user_config_file() -> Path | None:
+def _discover_user_config_file() -> Path | None:
     """Return the first existing user-scoped TopMark config file.
 
     Lookup order:
@@ -131,7 +157,7 @@ def discover_user_config_file() -> Path | None:
 # ---- Project/local upward discovery ----
 
 
-def discover_local_config_files(start: Path) -> list[Path]:
+def _discover_local_config_files(start: Path) -> list[Path]:
     """Return config files discovered by walking upward from ``start``.
 
     Layered discovery semantics:
@@ -184,7 +210,7 @@ def discover_local_config_files(start: Path) -> list[Path]:
                 # entries, then stop traversing further upward.
                 parsed: ParsedTopmarkToml | None = load_topmark_toml_source(p)
                 if parsed is not None:
-                    if parsed.discovery_options.root is True:
+                    if parsed.source_options.root is True:
                         root_stop_here = True
                 else:
                     # Best-effort discovery; ignore unreadable or malformed TOML
@@ -216,6 +242,39 @@ def discover_local_config_files(start: Path) -> list[Path]:
         ordered.extend(dir_list)  # pyproject then topmark within the directory
 
     return ordered
+
+
+# ---- Resolve TOML-side settings ----
+
+
+def _resolve_writer_options(
+    sources: list[ResolvedTopmarkTomlSource],
+) -> WriterOptions | None:
+    """Resolve writer options using highest-precedence non-`None` wins."""
+    resolved: WriterOptions | None = None
+    for source in sources:
+        writer_options: WriterOptions | None = source.parsed.writer_options
+        if writer_options is not None and writer_options.file_write_strategy is not None:
+            resolved = writer_options
+    return resolved
+
+
+def _resolve_strict_config_checking(
+    sources: list[ResolvedTopmarkTomlSource],
+    *,
+    explicit_override: bool | None,
+) -> bool | None:
+    """Resolve config-loading strictness using precedence order."""
+    resolved: bool | None = None
+    for source in sources:
+        value: bool | None = source.parsed.source_options.strict_config_checking
+        if value is not None:
+            resolved = value
+
+    if explicit_override is not None:
+        resolved = explicit_override
+
+    return resolved
 
 
 # ---- TOML-side resolution across discovered sources ----
@@ -264,11 +323,11 @@ def resolve_topmark_toml_sources(
     anchor = anchor.resolve()
 
     if not no_config:
-        user_cfg_path: Path | None = discover_user_config_file()
+        user_cfg_path: Path | None = _discover_user_config_file()
         if user_cfg_path is not None:
             _append_loaded_source(source_entries, user_cfg_path, kind="user")
 
-        for cfg_path in discover_local_config_files(anchor):
+        for cfg_path in _discover_local_config_files(anchor):
             _append_loaded_source(source_entries, cfg_path, kind="discovered")
     else:
         logger.debug("Skipping discovered TOML sources because no_config=True")
@@ -287,57 +346,3 @@ def resolve_topmark_toml_sources(
         writer_options=resolved_writer,
         strict_config_checking=resolved_strict,
     )
-
-
-def _append_loaded_source(
-    dst: list[ResolvedTopmarkTomlSource],
-    path: Path,
-    *,
-    kind: TomlSourceKind,
-) -> None:
-    """Load one TOML source and append it when split parsing succeeds."""
-    resolved_path: Path = path.resolve()
-    parsed: ParsedTopmarkToml | None = load_topmark_toml_source(resolved_path)
-    if parsed is None:
-        logger.debug(
-            "Skipping unreadable or invalid TOML source during resolution: %s", resolved_path
-        )
-        return
-
-    dst.append(
-        ResolvedTopmarkTomlSource(
-            path=resolved_path,
-            parsed=parsed,
-            kind=kind,
-        )
-    )
-
-
-def _resolve_writer_options(
-    sources: list[ResolvedTopmarkTomlSource],
-) -> WriterOptions | None:
-    """Resolve writer options using highest-precedence non-`None` wins."""
-    resolved: WriterOptions | None = None
-    for source in sources:
-        writer_options: WriterOptions | None = source.parsed.writer_options
-        if writer_options is not None and writer_options.file_write_strategy is not None:
-            resolved = writer_options
-    return resolved
-
-
-def _resolve_strict_config_checking(
-    sources: list[ResolvedTopmarkTomlSource],
-    *,
-    explicit_override: bool | None,
-) -> bool | None:
-    """Resolve config-loading strictness using precedence order."""
-    resolved: bool | None = None
-    for source in sources:
-        value: bool | None = source.parsed.discovery_options.strict_config_checking
-        if value is not None:
-            resolved = value
-
-    if explicit_override is not None:
-        resolved = explicit_override
-
-    return resolved

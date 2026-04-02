@@ -67,12 +67,12 @@ from tools.docs.docs_utils import public_ref_doc_for_symbol
 from tools.docs.docs_utils import rel_href
 from tools.docs.docs_utils import unescape_reference_link_text
 from tools.docs.docs_utils import wrap_actions_blocks_with_raw
-from topmark.config.io.getters import get_string_value_or_none
 
 # NOTE: This hook intentionally depends on TopMark internals so that
 # documentation reflects the exact config semantics used by the tool.
-from topmark.config.io.guards import as_toml_table
-from topmark.config.io.guards import get_table_value
+from topmark.toml.getters import get_string_value_or_none
+from topmark.toml.getters import get_table_value
+from topmark.toml.typing_guards import as_toml_table
 
 logger: PrefixedLogger = get_logger("hooks")
 
