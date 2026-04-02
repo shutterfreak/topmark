@@ -34,13 +34,29 @@ Public API functions accept either a plain **mapping** (that mirrors the TOML st
 `freeze()`s it into an immutable snapshot before running, which prevents accidental mutation and
 keeps results deterministic.
 
-`MutableConfig` is **internal** and not part of the stable API. If you want to “update the config”
-for a single run, pass just the keys you want to override as a mapping:
+The mapping mirrors the TopMark TOML schema. Source‑local options such as `[config].root` and
+`strict_config_checking` can also be provided via the `config` key in the mapping, for example:
+
+```python
+config = {
+    "config": {
+        "root": True,
+        "strict_config_checking": False,
+    },
+    # ... other sections like "fields", "header", "policy", etc.
+}
+```
+
+These options are resolved separately from layered `Config` values during TOML source resolution.
 
 ```python
 from topmark import api
 
 config = {
+    "config": {
+        "root": False,
+        "strict_config_checking": False,
+    },
     "fields": {
         "project": "TopMark",
         "license": "MIT",
@@ -84,6 +100,10 @@ assert run.summary.get("unchanged", 0) >= 0
 
 This design keeps the public surface small and semver-stable while allowing flexible per-call
 configuration.
+
+Internally, TopMark resolves TOML sources and builds a merged mutable config draft before freezing
+it into an immutable `Config`. Advanced users can inspect this process via
+\[`resolve_toml_sources_and_build_config_draft()`\][topmark.config.resolution.resolve_toml_sources_and_build_config_draft].
 
 ### Recognized vs supported file types
 

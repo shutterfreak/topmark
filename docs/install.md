@@ -13,7 +13,7 @@ topmark:header:end
 # Installation
 
 This page is part of the MkDocs site and exists to make the internal link from the docs site work in
-**strict** mode. The canonical installation guide lives at the repository root.
+**strict** mode. The canonical installation guide lives at the repository root (`INSTALL.md`).
 
 👉 **Read the full installation guide on GitHub:**
 

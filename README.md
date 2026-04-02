@@ -178,17 +178,17 @@ topmark [COMMAND] [OPTIONS] [PATHS]...
 
 ### Subcommands
 
-| Command               | Description                                                           |
-| --------------------- | --------------------------------------------------------------------- |
-| `check`               | Add or update TopMark headers                                         |
-| `strip`               | Remove TopMark headers                                                |
-| `config check`        | Check the merged config for errors.                                   |
-| `config defaults`     | Show built-in defaults without merging                                |
-| `config dump`         | Show resolved configuration (merged TOML)                             |
-| `config init`         | Output a starter configuration (TOML with documentation in commments) |
-| `registry filetypes`  | List supported file types from the registry                           |
-| `registry processors` | List header processors and mappings from the registry                 |
-| `version`             | Print version (PEP 440 or SemVer)                                     |
+| Command               | Description                                                         |
+| --------------------- | ------------------------------------------------------------------- |
+| `check`               | Add or update TopMark headers                                       |
+| `strip`               | Remove TopMark headers                                              |
+| `config check`        | Check the merged config for errors.                                 |
+| `config defaults`     | Show the built-in default TopMark TOML document                     |
+| `config dump`         | Show resolved configuration (merged TOML)                           |
+| `config init`         | Output the bundled example TopMark TOML resource with documentation |
+| `registry filetypes`  | List supported file types from the registry                         |
+| `registry processors` | List header processors and mappings from the registry               |
+| `version`             | Print version (PEP 440 or SemVer)                                   |
 
 ### Examples
 
@@ -225,14 +225,16 @@ insert/update behavior.
 
 1. Built-in defaults
 1. User config (`~/.config/topmark/topmark.toml` or `~/.topmark.toml`)
-1. Project config (nearest upward `pyproject.toml` or `topmark.toml`)
+1. Project config chain (root-most → nearest upward `pyproject.toml` or `topmark.toml`)
 1. Explicit `--config` files (merged in order)
 1. CLI flags and options (highest precedence)
 
 ### Example `topmark.toml`
 
 ```toml
+[config]
 root = true
+
 [fields]
 project = "TopMark"
 license = "MIT"
@@ -262,6 +264,10 @@ exclude_file_types = ["html"]
 exclude_from = [".gitignore"]
 ```
 
+Source-local TOML options such as discovery boundaries and config-checking strictness live under
+`[config]` (or `[tool.topmark.config]` in `pyproject.toml`). They are resolved separately from
+layered `Config` values.
+
 ### Policy semantics
 
 | Setting                              | Meaning                                                                 |
@@ -273,7 +279,8 @@ exclude_from = [".gitignore"]
 | `allow_reflow`                       | Allow content reflow during header insertion/update                     |
 | `allow_content_probe`                | Allow file-type detection to inspect file contents when needed          |
 
-Per-type overrides under `[tool.topmark.policy_by_type."filetype"]` can adjust specific behavior.
+Per-type overrides under `[policy_by_type."filetype"]` in `topmark.toml` (or
+`[tool.topmark.policy_by_type."filetype"]` in `pyproject.toml`) can adjust specific behavior.
 
 These policy options apply equally to the **CLI** and the **public API**.
 

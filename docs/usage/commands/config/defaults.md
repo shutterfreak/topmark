@@ -12,11 +12,11 @@ topmark:header:end
 
 # TopMark `config defaults` Command Guide
 
-**Purpose:** Show the default (builtin) config.
+**Purpose:** Show the built-in default TopMark TOML document.
 
 The `config defaults` subcommand (part of the TopMark [`config` Command Family](../config.md))
-prints TopMark’s **built‑in default configuration** as TOML. It uses a cleaned, comment-free TOML
-representation of the runtime default config (no project files are discovered or merged).
+prints TopMark’s **built‑in default TopMark TOML document** as TOML. It uses a cleaned, comment-free
+TOML representation derived from the built-in defaults (no project files are discovered or merged).
 
 - `text` / `markdown` formats: minimal, comment-free TOML.
 - `json` / `ndjson`: a plain Config snapshot, with no diagnostics.
@@ -36,7 +36,7 @@ ______________________________________________________________________
 
 - **Isolated**: ignores project/user config files and CLI overrides.
 - **File‑agnostic**: does not resolve or process any PATHS.
-- **Reference**: useful to understand default header layout and file‑type policies.
+- **Reference**: useful to understand the default header layout, policy behavior, and TOML schema.
 
 > **How config is resolved**
 >
@@ -74,8 +74,8 @@ The canonical schema, stable `kind` values, and shared conventions are documente
 
 Notes:
 
-- `config defaults` is **file-agnostic** and emits a configuration snapshot derived only from
-  TopMark’s built-in defaults (no discovery and no merge with project/user config).
+- `config defaults` is **file-agnostic** and emits a configuration snapshot derived only from the
+  built-in defaults (no discovery and no merge with project/user config).
 - No diagnostics are emitted for this command.
 
 ### JSON schema
@@ -109,4 +109,4 @@ ______________________________________________________________________
 
 - [`topmark config check`](./check.md) — check the *effective merged* configuration for errors.
 - [`topmark config dump`](./dump.md) — show the *effective merged* configuration as TOML.
-- [`topmark config init`](./init.md) — print a *starter* config scaffold template.
+- [`topmark config init`](./init.md) — print the bundled example TopMark TOML resource.

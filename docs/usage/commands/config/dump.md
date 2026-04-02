@@ -158,6 +158,6 @@ ______________________________________________________________________
 
 ## Related commands
 
-- [`topmark config check`](./dump.md) — check the *effective merged* configuration for errors.
-- [`topmark config defaults`](./defaults.md) — show TopMark’s *built-in defaults* as TOML.
-- [`topmark config init`](./init.md) — print a *starter* config scaffold template.
+- [`topmark config check`](./check.md) — check the *effective merged* configuration for errors.
+- [`topmark config defaults`](./defaults.md) — show the *built-in default TopMark TOML document*.
+- [`topmark config init`](./init.md) — print the bundled example TopMark TOML resource.

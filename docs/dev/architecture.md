@@ -18,6 +18,33 @@ usage.
 
 ______________________________________________________________________
 
+## High-level configuration architecture
+
+TopMark separates configuration concerns into three layers:
+
+- **TOML layer** (`topmark.toml`):
+  - discovery of configuration sources
+  - parsing of TOML tables
+  - resolution of source-local options (e.g. `[config].root`, strictness)
+- **Config layer** (`topmark.config`):
+  - construction of layered configuration (`ConfigLayer`)
+  - merging into a mutable config draft
+  - field-level merge semantics and precedence rules
+- **Runtime layer** (`topmark.runtime`):
+  - execution-time options (e.g. writer behavior)
+  - final adjustments before pipeline execution
+
+The main integration point between TOML resolution and config merging is:
+
+- \[`resolve_toml_sources_and_build_config_draft()`\][topmark.config.resolution.resolve_toml_sources_and_build_config_draft]
+
+See also:
+
+- [`Discovery & Precedence`](../configuration/discovery.md)
+- [`Configuration overview`](../configuration/index.md)
+
+______________________________________________________________________
+
 ## Registries: Base + Overlay Design
 
 ### Problem Statement
@@ -262,6 +289,7 @@ TopMark defines centralized constants for:
 
 This reduces accidental drift between CLI help text, config parsing, and runtime logic. Validation
 should occur at “seams” (CLI parsing and TOML loading) so internal code can rely on canonical keys.
+TOML schema details are documented in [`docs/dev/config-schema.md`](config-schema.md).
 
 ## FileType identity and resolution
 
@@ -318,6 +346,11 @@ ______________________________________________________________________
 
 TopMark constructs a `PolicyRegistry` at pipeline bootstrap time and resolves runtime policy from
 **global defaults + per-file-type overrides** before policy queries are used by pipeline steps.
+
+See also:
+
+- [`Configuration discovery`](../configuration/discovery.md)
+- [`Machine output schema`](machine-output.md)
 
 This guarantees:
 
@@ -378,20 +411,43 @@ This matters especially for:
 The practical consequence is that newline semantics and placeholder images are preserved without
 collapsing all empty-like cases to the same filesystem status.
 
+## Configuration and machine output
+
+TopMark exposes configuration state through both human-readable and machine-readable interfaces:
+
+- Human-facing commands:
+  - `config dump` (resolved config)
+  - `config defaults` (built-in default TOML document)
+  - `config init` (bundled example TOML resource)
+- Machine formats:
+  - JSON / NDJSON snapshots described in [`machine-output.md`](machine-output.md)
+
+In machine formats, `config defaults` and `config init` share the same underlying configuration
+snapshot, even though their human-facing output differs.
+
 ______________________________________________________________________
 
-## Future Extensions
+## Related architecture and reference pages
 
-This document may later be extended with sections on:
+This page focuses on cross-cutting architectural decisions such as registry design, configuration
+layering, policy resolution, and the relationship between human-facing and machine-facing
+interfaces.
 
-- Pipeline architecture
-- Content sniffing and normalization
-- Header placement rules
-- Configuration lifecycle (mutable → frozen)
-- Machine summary/reporting schema evolution
+- [`Pipelines (Concepts)`](./pipelines.md) — conceptual overview of pipeline structure, phases, and
+  step responsibilities
+- [`Pipelines (Reference)`](./pipelines-reference.md) — curated entry point into the generated
+  internal API reference for pipelines and steps
+- [`Header placement rules`](../usage/header-placement.md) — user-facing placement behavior and
+  insertion rules
+- [`Configuration overview`](../configuration/index.md) — configuration entry point and links to
+  discovery/merge semantics
+- [`Discovery & Precedence`](../configuration/discovery.md) — layered config discovery, root
+  semantics, and precedence
+- [`Machine output schema`](./machine-output.md) — JSON / NDJSON envelope and payload shapes
+- [`Config schema`](./config-schema.md) — documented TOML schema and key placement
 
-For now, registry design is documented here because it underpins test isolation, plugin
-extensibility, and API stability.
+Registry design is documented here because it underpins test isolation, plugin extensibility, and
+API stability.
 
 ______________________________________________________________________
 

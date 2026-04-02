@@ -184,8 +184,15 @@ ______________________________________________________________________
 
 Config commands are file-agnostic and emit config-centric payloads:
 
-- `config dump`, `config defaults`, `config init`: config snapshot (no diagnostics)
-- `config check`: config snapshot plus diagnostics and a config-check status payload
+- `config dump`: resolved config snapshot (no diagnostics)
+- `config defaults`: built-in default TopMark TOML snapshot (no diagnostics)
+- `config init`: built-in default configuration snapshot in machine formats (no diagnostics)
+- `config check`: resolved config snapshot plus diagnostics and a config-check status payload
+
+In human-facing formats, `config defaults` and `config init` differ noticeably: `config defaults`
+renders a cleaned TOML view of the built-in defaults, while `config init` renders the bundled
+example TopMark TOML resource with extensive comments. In machine formats, both emit the same
+underlying default configuration snapshot shape.
 
 Refer to each command’s documentation for its emitted keys and shapes. Registry commands are
 documented in the schema reference and now include the separate `registry bindings` machine format.

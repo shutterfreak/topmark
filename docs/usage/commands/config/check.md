@@ -137,7 +137,7 @@ A single JSON document is emitted:
   "config_diagnostics": { /* ConfigDiagnosticsPayload */ },
   "config_check": {
     "ok": true,
-    "strict": false,
+    "strict_config_checking": false,
     "diagnostic_counts": { "info": 0, "warning": 0, "error": 0 },
     "config_files": ["..."]
   }
@@ -160,7 +160,7 @@ Example:
 ```jsonc
 {"kind":"config","meta":{...},"config":{...}}
 {"kind":"config_diagnostics","meta":{...},"config_diagnostics":{"diagnostic_counts":{"info":0,"warning":0,"error":0}}}
-{"kind":"config_check","meta":{...},"config_check":{"ok":true,"strict":false,"diagnostic_counts":{...},"config_files":[...]}}
+{"kind":"config_check","meta":{...},"config_check":{"ok":true,"strict_config_checking":false,"diagnostic_counts":{...},"config_files":[...]}}
 {"kind":"diagnostic","meta":{...},"diagnostic":{"domain":"config","level":"warning","message":"..."}}
 ```
 
@@ -169,5 +169,5 @@ ______________________________________________________________________
 ## Related commands
 
 - [`topmark config dump`](./dump.md) — show the *effective merged* configuration as TOML.
-- [`topmark config defaults`](./defaults.md) — show TopMark’s *built-in defaults* as TOML.
-- [`topmark config init`](./init.md) — print a *starter* config scaffold template.
+- [`topmark config defaults`](./defaults.md) — show the *built-in default TopMark TOML document*.
+- [`topmark config init`](./init.md) — print the bundled example TopMark TOML resource.

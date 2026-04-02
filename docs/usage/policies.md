@@ -15,11 +15,21 @@ topmark:header:end
 TopMark policies control how the pipeline detects file types, classifies empty files, and decides
 whether headers may be inserted or updated.
 
+Policy settings are part of the layered configuration (`Config`) and are merged according to
+discovery and precedence rules. See:
+
+- [`Configuration overview`](../configuration/index.md)
+- [`Discovery & Precedence`](../configuration/discovery.md)
+
 Policies can be supplied from:
 
 - discovered config files (`topmark.toml` or `[tool.topmark]` in `pyproject.toml`)
 - command-specific CLI options
 - the Python API via public policy overlays
+
+In `topmark.toml`, policy is defined under `[policy]` and `[policy_by_type.<file_type>]`. In
+`pyproject.toml`, the same settings live under `[tool.topmark.policy]` and
+`[tool.topmark.policy_by_type.<file_type>]`.
 
 Command-line policy options override resolved config for the current run only.
 
@@ -119,6 +129,8 @@ ______________________________________________________________________
 
 Use `policy_by_type.<file_type_id>` to override policy for one file type while inheriting
 unspecified values from the global `policy` section.
+
+In `pyproject.toml`, this section is written as `[tool.topmark.policy_by_type.<file_type>]`.
 
 Example:
 

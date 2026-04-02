@@ -18,15 +18,22 @@ from `topmark.toml` and from `[tool.topmark]` in `pyproject.toml`.
 > [!NOTE]
 >
 > - This is a schema *summary* (not a full JSON Schema).
-> - The ordering mirrors `src/topmark/config/topmark-example.toml`.
-> - Keys are defined authoritatively in `src/topmark/config/keys.py`.
+> - The ordering mirrors `src/topmark/toml/topmark-example.toml`.
+> - Keys are defined authoritatively in `src/topmark/toml/keys.py`.
 
 ```yaml
 topmark:
-  root:
-    type: bool
-    default: false
-    description: Stop upward config discovery when set in a discovered config.
+  config:
+    type: table
+    description: TOML-source-local options resolved separately from layered Config values.
+    root:
+      type: bool
+      default: false
+      description: Stop upward config discovery when set in a discovered config.
+    strict_config_checking:
+      type: bool
+      default: false
+      description: Treat config warnings as errors while checking TOML configuration.
 
   header:
     fields:
@@ -51,17 +58,11 @@ topmark:
       description: Affects header metadata (file_relpath), not discovery.
 
   writer:
-    target:
-      type: str
-      default: "file"
-      enum: ["file", "stdout"]
-      description: Where results are emitted.
-
     strategy:
       type: str
       default: "atomic"
       enum: ["atomic", "inplace"]
-      description: How file writes are performed when target="file".
+      description: How file writes are performed when writing back to files.
 
   policy:
     header_mutation_mode:

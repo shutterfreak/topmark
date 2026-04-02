@@ -12,11 +12,11 @@ topmark:header:end
 
 # TopMark `config init` Command Guide
 
-**Purpose:** Render a fully documented example config.
+**Purpose:** Render the bundled example TopMark TOML resource.
 
 The `config init` subcommand (part of the TopMark [`config` Command Family](../config.md)) prints
-the **annotated default template** that ships with TopMark. This file is heavily commented and is
-intended as a scaffold for a new config file.
+the **bundled example TopMark TOML resource**. This file is heavily commented and is intended as a
+starting point for a new configuration file.
 
 - `text` / `markdown`: full commented template from the bundled resource.
 - `json` / `ndjson`: minimal Config snapshot derived from the same defaults, without comments or
@@ -25,7 +25,7 @@ intended as a scaffold for a new config file.
 Notes:
 
 - Specify `--pyproject` if you want to add the configuration to your project's `pyproject.toml`.
-  This will encapsulate the TopMark TOML config in a `[tool.topmark]` table.
+  This nests the example TOML under a `[tool.topmark]` table.
 - When choosing `json` or `ndjson`, the output is identical to
   [`topmark config defaults`](./defaults.md)
 
@@ -48,13 +48,11 @@ ______________________________________________________________________
 
 ## What it includes
 
-The starter config provides a well‑commented TOML scaffold with the most common sections:
-
+- `[config]` – source-local options such as `root` and strictness behavior
 - `[fields]` – default header fields (`project`, `license`, …)
 - `[header]` – order of fields to render in the header
 - `[formatting]` – layout options (e.g., `align_fields`)
-- `[files]` – file discovery knobs (`include_file_types`, `exclude_file_types`, `relative_to`,
-  include/exclude lists)
+- `[files]` – file discovery knobs (e.g., `include_file_types`, `exclude_file_types`)
 
 You can safely edit the generated file to match your project’s needs.
 
@@ -71,7 +69,7 @@ ______________________________________________________________________
 ## Verbosity
 
 `config init` prints plain TOML to stdout. When run with higher verbosity (e.g., `-v`), the output
-is wrapped between BEGIN/END markers for easy parsing in scripts and tests.
+is wrapped between BEGIN/END markers for easier parsing in scripts and tests.
 
 ______________________________________________________________________
 
@@ -93,7 +91,7 @@ The canonical schema, stable `kind` values, and shared conventions are documente
 
 Notes:
 
-- In machine formats, `config init` emits a machine version of the example configuration snapshot.
+- In machine formats, `config init` emits a built-in default configuration snapshot.
 - No diagnostics are emitted for this command.
 
 ### JSON schema

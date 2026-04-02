@@ -49,12 +49,22 @@ ______________________________________________________________________
 - Preserves a leading **UTF‑8 BOM** if present.
 - Places headers according to file‑type policy (shebang and PEP 263 in Python; XML
   declaration/DOCTYPE in XML/HTML; no insertion inside Markdown fenced code). Uses the same file
-  discovery and filtering as other commands:
-- Read lists from STDIN with `--files-from -` (or `--include-from -` / `--exclude-from -`).
-- To process a *single* file’s **content** from STDIN, pass `-` as the sole PATH and provide
-  `--stdin-filename NAME`.
-- Do **not** mix `-` (content mode) with `--files-from -` / `--include-from -` / `--exclude-from -`
-  (list mode).
+  discovery and filtering as other commands.
+
+### STDIN modes
+
+TopMark supports **two different STDIN modes**:
+
+- **List mode**: read newline-delimited paths or patterns from STDIN using:
+  - `--files-from -`
+  - `--include-from -`
+  - `--exclude-from -`
+- **Content mode**: process one file’s *content* from STDIN by passing `-` as the sole PATH and
+  providing `--stdin-filename NAME`.
+
+These modes are mutually exclusive: do **not** mix `-` (content mode) with `--files-from -`,
+`--include-from -`, or `--exclude-from -` (list mode).
+
 - Idempotent: re‑running on already‑correct files results in **no changes**.
 
 {% include-markdown "\_snippets/config-resolution.md" %}
@@ -132,8 +142,8 @@ ______________________________________________________________________
 
 Use `--output-format json` or `--output-format ndjson` to emit output suitable for tooling:
 
-- **JSON**: a single JSON document containing `meta`, `config`, `config_diagnostics`, and then
-  either `results` (detail mode) or `summary` (summary mode).
+- **JSON**: a single JSON document containing `meta`, the effective `config` snapshot,
+  `config_diagnostics`, and then either `results` (detail mode) or `summary` (summary mode).
 - **NDJSON**: one record (JSON object) per line. Every record includes `kind` and `meta`, and the
   payload is stored under a container key that matches `kind`.
 
@@ -146,6 +156,8 @@ Notes:
 
 - Diffs (`--diff`) are **human-only** and are not included in JSON/NDJSON.
 - Summary mode aggregates outcomes and suppresses per-file guidance lines.
+- The `config` payload in JSON / NDJSON is the resolved config snapshot after discovery, merge, and
+  CLI override application.
 
 ### JSON schema (detail mode)
 
@@ -221,22 +233,23 @@ Notes:
 
 ## Options (subset)
 
-| Option                        | Description                                                       |
-| ----------------------------- | ----------------------------------------------------------------- |
-| `--apply`                     | Write changes to files (off by default).                          |
-| `--diff`                      | Show unified diffs (human output only).                           |
-| `--summary`                   | Show outcome counts instead of per‑file details.                  |
-| `--files-from`                | Read newline‑delimited paths from file (use '-' for STDIN).       |
-| `--include`                   | Add paths by glob (can be used multiple times).                   |
-| `--include-from`              | File of patterns to include (one per line, `#` comments allowed). |
-| `--exclude`                   | Exclude paths by glob (can be used multiple times).               |
-| `--exclude-from`              | File of patterns to exclude.                                      |
-| `--include-file-types` / `-t` | Restrict to specific TopMark file type identifiers.               |
-| `--exclude-file-types` / `-T` | Exclude specific TopMark file type identifiers.                   |
-| `--report`                    | Control reporting scope: actionable, noncompliant, or all.        |
-| `--header-mutation-mode`      | Check-only policy override: `all`, `add-only`, or `update-only`.  |
-| `--empty-insert-mode`         | Check-only policy override controlling empty-file classification. |
-| `--stdin-filename`            | Assumed filename when PATH is '-' (content from STDIN).           |
+| Option                        | Description                                                            |
+| ----------------------------- | ---------------------------------------------------------------------- |
+| `--apply`                     | Write changes to files (off by default).                               |
+| `--diff`                      | Show unified diffs (human output only).                                |
+| `--summary`                   | Show outcome counts instead of per‑file details.                       |
+| `--files-from`                | Read newline‑delimited paths from file (use '-' for STDIN).            |
+| `-` (PATH)                    | Read a single file’s content from STDIN (requires `--stdin-filename`). |
+| `--include`                   | Add paths by glob (can be used multiple times).                        |
+| `--include-from`              | File of patterns to include (one per line, `#` comments allowed).      |
+| `--exclude`                   | Exclude paths by glob (can be used multiple times).                    |
+| `--exclude-from`              | File of patterns to exclude.                                           |
+| `--include-file-types` / `-t` | Restrict to specific TopMark file type identifiers.                    |
+| `--exclude-file-types` / `-T` | Exclude specific TopMark file type identifiers.                        |
+| `--report`                    | Control reporting scope: actionable, noncompliant, or all.             |
+| `--header-mutation-mode`      | Check-only policy override: `all`, `add-only`, or `update-only`.       |
+| `--empty-insert-mode`         | Check-only policy override controlling empty-file classification.      |
+| `--stdin-filename`            | Assumed filename when PATH is '-' (content from STDIN).                |
 
 > Run `topmark check -h` for the full list of options and help text.
 
@@ -260,9 +273,11 @@ ______________________________________________________________________
 - Patterns in `--include`, `--exclude`, and the files passed to `--include-from` / `--exclude-from`
   are also resolved **relative to CWD**. Absolute patterns are not supported.
 
-- Use `--files-from -` (or `--include-from -` / `--exclude-from -`) to read lists from STDIN.
+- STDIN supports two modes:
 
-- Use `-` (with `--stdin-filename`) to read a single file’s content from STDIN.
+  - **list mode** via `--files-from -` (or `--include-from -` / `--exclude-from -`) for newline-
+    delimited paths or patterns
+  - **content mode** via `-` plus `--stdin-filename` for one file’s content
 
 - Use `--report actionable` to focus CI output on files that would change, or
   `--report noncompliant` to also include unsupported file types in the report.
@@ -366,9 +381,20 @@ pre-commit run topmark-apply -- <path/to/file1> <path/to/file2>
 
 ______________________________________________________________________
 
+## Related commands
+
+- [`topmark strip`](./strip.md) — remove detected TopMark headers instead of inserting or updating
+  them.
+- [`topmark config check`](./config/check.md) — validate the effective merged configuration and
+  report diagnostics.
+- [`topmark config dump`](./config/dump.md) — show the effective merged configuration as TOML.
+
+______________________________________________________________________
+
 ## Troubleshooting
 
-- **No files to process**: Ensure you passed positional paths (unless using stdin). Use `-vv` for
+- **No files to process**: Ensure you passed positional paths, or selected the correct STDIN mode
+  (`--files-from -` for list mode, or `-` with `--stdin-filename` for content mode). Use `-vv` for
   debug logs.
 - **Patterns don’t match**: Remember that include/exclude patterns are **relative to CWD**. `cd`
   into the project root before running.

@@ -19,7 +19,7 @@ It is intended for integrators and tooling authors who consume TopMark programma
 Covered command groups:
 
 - **Processing commands**: `check`, `strip`
-- **Registry commands**: `filetypes`, `processors`
+- **Registry commands**: `registry filetypes`, `registry processors`, `registry bindings`
 - **Configuration commands**: `config check`, `config init`, `config defaults`, `config dump`
 - **Version reporting**: `version`
 
@@ -263,7 +263,7 @@ High-level structure (keys may be extended over time):
 - `fields`: header fields and their effective values.
 - `header`: header-related configuration.
 - `formatting`: formatting-related configuration.
-- `writer`: write strategy and related options (enums serialized to strings).
+- `writer`: persisted writer options and related settings (enums serialized to strings).
 - `files`: file resolution/filtering options (paths serialized to strings).
 - `policy`: global resolved policy flags (booleans).
 - `policy_by_type`: per-file-type resolved policy overrides.
@@ -312,9 +312,16 @@ See:
 
 ______________________________________________________________________
 
-## Config-only commands (`config dump`, `config defaults`, `config init`)
+## Config snapshot commands (`config dump`, `config defaults`, `config init`)
 
 These commands produce a config snapshot without running the processing pipeline.
+
+Notes:
+
+- `config dump` emits the resolved config snapshot after discovery and merge.
+- `config defaults` emits the built-in default configuration snapshot.
+- `config init` emits the same built-in default configuration snapshot in machine formats, even
+  though its human-facing output is the bundled example TopMark TOML resource with comments.
 
 ### JSON shape for `config dump`, `config defaults`, `config init`
 
@@ -349,7 +356,7 @@ diagnostics, and a `config_check` status payload.
   "config_diagnostics": { /* ConfigDiagnosticsPayload */ },
   "config_check": {
     "ok": true,
-    "strict": false,
+    "strict_config_checking": false,
     "diagnostic_counts": { "info": 0, "warning": 1, "error": 0 },
     "config_files": ["..."]
   }
@@ -361,7 +368,7 @@ diagnostics, and a `config_check` status payload.
   diagnostics.
 - `config_check`: command-status payload containing:
   - `ok` — whether validation succeeded
-  - `strict` — whether strict validation mode was enabled
+  - `strict_config_checking` — whether strict config-checking mode was enabled
   - `diagnostic_counts` — counts by diagnostic level
   - `config_files` — config files that contributed to the resolved config
 
@@ -415,6 +422,8 @@ Notes:
 
 - `version_format` may be `"pep440"` or `"semver"` depending on `--semver`.
 - If SemVer conversion is requested and fails, TopMark falls back to PEP 440 output.
+- The machine envelope `kind` for this command is `version`, while the JSON payload container key is
+  `version_info`.
 
 ______________________________________________________________________
 

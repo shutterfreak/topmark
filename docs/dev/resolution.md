@@ -21,8 +21,9 @@ It complements the registry architecture described in [`architecture.md`](archit
 - registries define **what exists**
 - the resolver defines **what wins for a concrete path**
 
-In particular, this page describes how TopMark handles cases where multiple `FileType` definitions
-are candidate matches for the same path.
+This resolver operates within the broader TOML → Config → Runtime architecture (see
+[`architecture.md`](architecture.md)). It consumes the effective registry state and does not perform
+configuration discovery itself.
 
 ______________________________________________________________________
 
@@ -43,6 +44,12 @@ The main public entry points are:
 
 - \[`resolve_file_type_for_path()`\][topmark.resolution.filetypes.resolve_file_type_for_path]
 - \[`resolve_binding_for_path()`\][topmark.resolution.filetypes.resolve_binding_for_path]
+
+See also:
+
+- [`Architecture`](architecture.md)
+- [`Pipelines (Concepts)`](pipelines.md)
+- [`Pipelines (Reference)`](pipelines-reference.md)
 
 `resolve_binding_for_path()` first resolves the best matching file type for a path, then looks up
 the bound processor through the registry facade.
@@ -237,7 +244,7 @@ TopMark resolution contract.
 
 ______________________________________________________________________
 
-## Future extensions
+## Possible future extensions
 
 Possible future improvements include:
 
@@ -247,3 +254,11 @@ Possible future improvements include:
 - plugin-defined precedence policies layered on top of the default scoring model
 
 Until then, the documented deterministic policy on this page is the source of truth.
+
+______________________________________________________________________
+
+## See also
+
+- [`Architecture`](architecture.md) — registry design and system overview
+- [`Plugins`](plugins.md) — how file types and processors are registered
+- [`Machine output schema`](machine-output.md) — how resolution results surface in outputs

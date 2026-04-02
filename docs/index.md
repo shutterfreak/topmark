@@ -85,7 +85,7 @@ topmark:header:end
 
 `topmark [COMMAND] ([SUBCOMMAND]) [OPTIONS] [PATHS]...`
 
-Core commands: `check`, `strip`, `config`, `filetypes`, `processors`, `version`.
+Core commands: `check`, `strip`, `config`, `registry`, `version`.
 
 The `config` command has the following subcommands: `check`, `defaults`, `dump`, `init`.
 
@@ -106,13 +106,16 @@ a *single* file’s **content** from STDIN, pass `-` as the sole PATH and provid
 ## Configuration (example)
 
 ```toml
+[config]
 root = true
+
 [fields]
 project = "TopMark"
 license = "MIT"
 
 [header]
 fields = ["file", "file_relpath", "project", "license"]
+relative_to = "."
 
 [formatting]
 align_fields = true
@@ -120,8 +123,10 @@ align_fields = true
 [files]
 include_file_types = ["python", "markdown", "env"]
 exclude_file_types = ["html"]
-relative_to = "."
 ```
+
+In `pyproject.toml`, the same settings live under `[tool.topmark]`, with source-local options such
+as `root` under `[tool.topmark.config]`.
 
 ## Next steps
 

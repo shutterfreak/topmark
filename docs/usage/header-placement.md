@@ -14,14 +14,19 @@ topmark:header:end
 
 TopMark is comment‑aware and places the header block according to the file type and its policy.
 
+Header placement is governed by file type and policy settings. See also:
+
+- [`Policies`](./policies.md)
+- [`Configuration overview`](../configuration/index.md)
+
 ## Pound‑style files (e.g., Python, Shell, Ruby, Makefile, YAML, TOML, Dockerfile)
 
 Rules:
 
 - If a **shebang** is present (e.g., `#!/usr/bin/env python3`), place the header **after** the
   shebang and ensure **exactly one** blank line in‑between.
-- If a **coding/encoding line** follows the shebang (PEP 263 style), place the header **after**
-  shebang **and** encoding line.
+- If a **coding/encoding line** follows the shebang (PEP 263 style), place the header **after** both
+  the shebang and encoding line.
 - Otherwise, place the header **at the top of the file**.
 - Ensure **one trailing blank line** after the header block when the next line is not already blank.
 
@@ -68,3 +73,9 @@ topmark:header:end
   (LF/CRLF/CR).
 - **BOM preservation:** If a UTF‑8 BOM is present, it is preserved.
 - **Idempotency:** Re‑running TopMark on a file with a correct header makes **no changes**.
+
+## See also
+
+- [`Policies`](./policies.md)
+- [`Configuration overview`](../configuration/index.md)
+- [`Architecture`](../dev/architecture.md)

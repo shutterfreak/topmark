@@ -54,6 +54,9 @@ the façade defined by `topmark.api.__all__` is considered part of the stable su
 Overlay state and internal registries are intentionally excluded from the snapshot; only symbols and
 signatures exported via `topmark.api` are tracked.
 
+Configuration layering and TOML source resolution are also internal implementation details and are
+not part of the public API contract.
+
 The comparison is deterministic across Python versions by normalizing class representations and
 ordering.
 
@@ -104,7 +107,7 @@ unintended API drift.
 
 ______________________________________________________________________
 
-## TOML I/O and tomlkit internals
+## TOML I/O and `tomlkit` internals
 
 The helper
 \[`topmark.toml.surgery.nest_toml_under_section`\][topmark.toml.surgery.nest_toml_under_section]
@@ -114,7 +117,7 @@ nesting an existing document under a dotted section (for example `tool.topmark` 
 
 This function is intentionally covered by focused tests (see `tests/config/test_io.py`) so that
 changes in tomlkit’s internal representation (e.g. how comments or whitespace nodes are stored) are
-caught early. If a future tomlkit release breaks these tests, the expected behavior here is the
+caught early. If a future `tomlkit` release breaks these tests, the expected behavior here is the
 reference: preamble and postamble comments must be preserved, and the nested document must remain
 valid TOML.
 
@@ -137,6 +140,11 @@ time. New checks should:
 
 If downstream tools rely on exact error messages or the absence of diagnostics, they should be
 treated as internal integrations rather than stable public API.
+
+See also:
+
+- [`Configuration overview`](../configuration/index.md)
+- [`Discovery & Precedence`](../configuration/discovery.md)
 
 ______________________________________________________________________
 

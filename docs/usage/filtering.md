@@ -21,6 +21,19 @@ Filtering order:
 1. File type filters (`include_file_types`, `exclude_file_types`)
 1. Eligibility (supported vs unsupported)
 
+## STDIN support
+
+TopMark supports two STDIN modes when supplying file lists or content:
+
+- **List mode**: provide newline-delimited paths or patterns via:
+  - `--files-from -`
+  - `--include-from -`
+  - `--exclude-from -`
+- **Content mode**: process a single file's content from STDIN by passing `-` as the sole PATH
+  together with `--stdin-filename NAME`
+
+These modes are mutually exclusive and should not be combined.
+
 ## Recipe: Process only Python and Markdown
 
 CLI:
@@ -69,6 +82,8 @@ include_from = ["include.txt"]
 exclude_from = ["exclude.txt"]
 ```
 
+These files may also be provided via STDIN by using `-` as the file path.
+
 Example `include.txt`:
 
 ```text
@@ -102,7 +117,13 @@ git ls-files > files.txt
 Then:
 
 ```bash
-topmark check --files-from files.txt --apply
+topmark check --files-from files.txt
+```
+
+You can also stream the file list via STDIN:
+
+```bash
+git ls-files | topmark check --files-from -
 ```
 
 ## Recipe: Show only actionable files (would change)

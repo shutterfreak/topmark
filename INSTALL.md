@@ -30,13 +30,13 @@ ______________________________________________________________________
 
 ## Quick install (users)
 
-Install from PyPI:
+Install TopMark from PyPI:
 
 ```bash
 pip install topmark
 ```
 
-Verify the CLI is available:
+Verify that the CLI is available:
 
 ```bash
 topmark version

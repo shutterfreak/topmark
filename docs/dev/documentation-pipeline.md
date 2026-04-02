@@ -26,6 +26,17 @@ ______________________________________________________________________
 
 ## Overview
 
+This pipeline supports both:
+
+- the stable public API documentation (`topmark.api`)
+- internal module documentation (`topmark.*`)
+
+and is aligned with TopMark’s layered architecture:
+
+- TOML → Config → Runtime → Pipeline
+
+See [`Architecture`](./architecture.md) for details.
+
 TopMark’s documentation build consists of **three coordinated layers**:
 
 1. **Hand-written Markdown**
@@ -88,6 +99,9 @@ because generating both a public reference page and an internals page for the sa
 create duplicate `mkdocs-autorefs` anchors.
 
 ### Public reference pages
+
+These pages correspond to the stable API surface defined by `topmark.api.__all__` and are covered by
+the API snapshot stability contract.
 
 Generated under:
 
@@ -193,6 +207,9 @@ and is used identically by:
 - `gen_api_pages.py` (docstring scanning)
 
 ### Why this matters
+
+This ensures that documentation remains navigable and that symbol references stay valid even as
+internal modules evolve.
 
 - mkdocs-autorefs can only resolve symbols that are **properly linked**
 - Backticked-but-unlinked symbols silently break cross-references
@@ -320,7 +337,7 @@ ______________________________________________________________________
 
 The documentation tooling follows a few strict principles:
 
-- **Deterministic** No hidden state, no reliance on import order
+- **Deterministic** — no hidden state, no reliance on import order
 
 - **Fail-late, report-all** Especially in strict mode
 

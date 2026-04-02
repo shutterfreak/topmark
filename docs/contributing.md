@@ -29,6 +29,19 @@ canonical contributor guide lives at the repository root.
 - **.pre-commit-config.yaml** — enabled hooks for this repo
 - **.pre-commit-hooks.yaml** — hook definitions exported to consumer repos
 
+## 🧠 Architecture overview
+
+TopMark uses a layered architecture:
+
+- **TOML layer** (`topmark.toml`) — config discovery and parsing
+- **Config layer** (`topmark.config`) — layered merge into `Config`
+- **Runtime layer** (`topmark.runtime`) — execution-time behavior
+
+See also:
+
+- [`Configuration overview`](./configuration/index.md)
+- [`Architecture`](./dev/architecture.md)
+
 Read the full contributor guide on GitHub:
 [CONTRIBUTING.md](https://github.com/shutterfreak/topmark/blob/main/CONTRIBUTING.md)
 

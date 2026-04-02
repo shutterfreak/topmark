@@ -25,6 +25,10 @@ Pipelines do not make high-level decisions themselves. Instead:
 
 This design guarantees predictability, debuggability, and idempotence.
 
+Pipeline execution consumes a frozen `Config` plus runtime options assembled from the TOML → Config
+→ Runtime flow documented in [`architecture.md`](architecture.md) and
+[`../configuration/discovery.md`](../configuration/discovery.md).
+
 ## Concepts vs Reference
 
 This page explains **how the pipelines work** and how the CLI composes them. For the canonical,
@@ -33,6 +37,7 @@ API-backed definitions of pipelines, steps, and enums, see:
 - **Pipelines (Reference hub):** [`dev/pipelines-reference.md`](./pipelines-reference.md)
 - **Internals (generated):**
   [`api/internals/topmark/pipeline/pipelines.md`](../api/internals/topmark/pipeline/pipelines.md)
+- **Architecture overview:** [`dev/architecture.md`](./architecture.md)
 
 Tip: step names and enum names on this page are written as MkDocStrings/AutoRefs links (e.g.
 \[`topmark.pipeline.steps.resolver.ResolverStep`\][topmark.pipeline.steps.resolver.ResolverStep]).
@@ -89,7 +94,11 @@ ______________________________________________________________________
 
 ## Available Pipelines
 
-Pipelines are defined in `src/topmark/pipeline/pipelines.py` and exposed via the `Pipeline` enum.
+Pipelines are defined in `src/topmark/pipeline/pipelines.py` and exposed via
+\[`topmark.pipeline.pipelines.Pipeline`\][topmark.pipeline.pipelines.Pipeline].
+
+The CLI selects among these immutable pipeline variants based on command intent and flags such as
+`--patch` and `--apply`.
 
 ### SCAN
 
@@ -369,8 +378,16 @@ ______________________________________________________________________
 - **Determinism:** Same input → same outcome
 - **Dry-run safety:** No writes without `--apply`
 - **Separation of concerns:** Steps mutate context, views classify outcomes
+- **Runtime/config separation:** pipeline execution consumes resolved config and runtime options
+  rather than re-running TOML discovery during step execution
 
 ______________________________________________________________________
+
+## See also
+
+- [`Architecture`](./architecture.md) — TOML → Config → Runtime overview
+- [`Pipelines (Reference)`](./pipelines-reference.md) — generated API-backed reference entry points
+- [`Machine output schema`](./machine-output.md) — how pipeline results are exposed in JSON / NDJSON
 
 This pipeline model is the backbone of TopMark’s reliability and extensibility. New behaviors are
 introduced by adding steps or composing new pipelines—never by special-casing control flow.

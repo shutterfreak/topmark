@@ -14,8 +14,8 @@ topmark:header:end
 
 TopMark supports layered configuration with explicit precedence:
 
-- **Defaults** → **User** (e.g. `$HOME/.config/topmark.toml`) → **Project chain** (discovered upward
-  from the discovery anchor) → **`--config`** → **CLI**
+- **Defaults** → **User** (e.g. `$HOME/.config/topmark.toml`) → **Project chain** (root → current) →
+  **`--config`** → **CLI**
 - **Globs declared in config files** are resolved relative to the **directory of that config file**.
 - **Globs declared via CLI** are resolved relative to the **current working directory** (invocation
   site).
@@ -29,11 +29,14 @@ Start here:
 
 - [`Discovery & Precedence`](./discovery.md)
 - [`Merge semantics by field`](./discovery.md#merge-semantics-overview)
-- [`Root semantics`](./discovery.md#root-semantics) for how discovery stops at `root = true`
+- [`Root semantics`](./discovery.md#root-semantics) for how discovery stops at
+  `[config].root = true`
 - [`Policy resolution`](./discovery.md#policy-resolution) for understanding how policy settings are
   defined and overridden at global level and per file type.
 
 Also see:
 
-- `src/topmark/config/topmark-example.toml` (example configuration with extensive comments)
-- API docs: `load_resolved_config()`, `Config`, `MutableConfig`
+- `src/topmark/toml/topmark-example.toml` (bundled example TopMark TOML resource)
+- API docs:
+  - `resolve_toml_sources_and_build_config_draft()`
+  - `Config`, `MutableConfig`

@@ -141,8 +141,7 @@ goals.
 - Added a convenience decorator to consistently attach common verbosity/color options per command.
 - Clarified and centralized CLI initialization state in `cli.cmd_common`, while keeping
   machine-output metadata derivation explicit at the command boundary.
-- Reorganized console/runtime support under
-  \[`topmark.cli.console`\]$begin:math:display$topmark.cli.console$end:math:display$:
+- Reorganized console/runtime support under \[`topmark.cli.console`\]\[topmark.cli.console\]:
   - `ConsoleProtocol` as the minimal console contract
   - Click-backed `Console` and stdlib `StdConsole`
   - `resolve_console()` for safe context-aware console resolution
@@ -188,29 +187,31 @@ goals.
   - switched to numbered result lists
   - aligned structure with text emitter (summary → guidance → diagnostics → hints)
 
-### Pipeline semantics: preview vs apply
+### Runtime split: preview vs apply and execution intent
 
 - Made write-status reporting **honest** and consistent across dry-run and apply pipelines:
   - Dry-run now emits `WriteStatus.PREVIEWED` (no terminal verbs like “removed” / “replaced”).
   - Apply mode (`--apply`) emits terminal statuses (`INSERTED`, `REPLACED`, `REMOVED`) and writers
     perform the actual filesystem updates.
-- Plumbed apply intent end-to-end:
-  - Added `Config.apply_changes` as a tri-state runtime intent and ensured CLI + API set it on the
-    final merged config.
-  - Updated the updater step to gate terminal `WriteStatus` values on `apply_changes`.
-  - Refined bucketing/outcomes so “would change” vs “changed” categories align with apply intent and
-    reasons match the established convention.
+- Plumbed apply intent end-to-end and then completed the runtime split:
+  - runtime-only execution intent no longer lives in layered `Config`
+  - `RunOptions` now carries execution-time behavior such as apply mode and STDIN/content handling
+  - CLI and API now thread `run_options` separately from frozen `Config`
+  - the updater step still gates terminal `WriteStatus` values on apply intent, but that intent is
+    now part of runtime state rather than layered config
+  - bucketing/outcomes now align cleanly with preview vs apply semantics
 - Updated human summaries (`ProcessingContext.format_summary`) so dry-run output is no longer
   misleading (e.g., “would strip header” without claiming it was removed).
 
-### Config package refactor: layered resolution, deserializers, and API/CLI parity
+### Config/TOML/runtime split: layered resolution, source-local TOML options, and API/CLI parity
 
-- Continued the split of `topmark.config` into clearer responsibility layers:
-  - `topmark.config.model` now focuses on config data shapes, merge behavior, and freeze/thaw
-  - `topmark.config.io.deserializers` owns TOML-backed and mapping-backed draft construction
-  - `topmark.config.io.resolution` owns layered config discovery and merge
-  - `topmark.config.io.serializers` owns TOML-shaped export helpers
-  - `topmark.config.overrides` owns highest-precedence CLI/API override application
+- Completed the split of configuration concerns into three clearer layers:
+  - `topmark.toml.*` owns TOML loading, parsing, defaults/template resources, source resolution,
+    rendering, and TOML-specific surgery/helpers
+  - `topmark.config.*` owns layered config data shapes, config-layer construction, merge semantics,
+    and effective per-path config resolution
+  - `topmark.runtime.*` owns execution-only runtime state (`RunOptions`) and persisted writer
+    preferences (`WriterOptions`)
 - Removed duplicated config resolution logic from the CLI path:
   - deleted `topmark.cli.config_resolver`
   - updated `topmark.cli.cmd_common.build_config_for_plan()` to call config-layer helpers directly
@@ -219,11 +220,11 @@ goals.
 - Added `mutable_config_from_mapping()` so API/runtime code no longer routes generic Python mappings
   through TOML-named helpers.
 - Updated `topmark.api.runtime` so API-side config/file preparation now mirrors the same
-  resolution/override split as the CLI:
-  - layered discovery via `load_resolved_config()` when no explicit config seed is supplied
-  - explicit seeded mode when API callers provide a mapping or frozen `Config`
-  - final file/file-type intent applied through `apply_config_overrides()` before freezing and
-    resolving files
+  TOML-resolution / config-merge / runtime-overlay split as the CLI:
+  - TOML sources are resolved first
+  - layered config is built from those resolved TOML sources
+  - explicit seeded mode remains available when API callers provide a mapping or frozen `Config`
+  - final runtime intent is applied separately from layered config merging
 - Removed remaining non-model TOML/render convenience methods from `MutableConfig` and moved call
   sites to dedicated config I/O helpers.
 - Renamed `ArgsLike` to `ConfigMapping` and moved it to `topmark.api.types` so the accepted public
@@ -233,8 +234,8 @@ goals.
   mappings.
 - Moved generic merge helpers out of `topmark.config.model` into shared utility code, further
   reducing coupling between config data models and reusable collection-merging helpers.
-- Updated documentation and tests so the refactored config-layer module layout and helper names are
-  reflected consistently across CLI, API, and config-resolution paths.
+- Updated documentation and tests so the refactored TOML/config/runtime module layout and helper
+  names are reflected consistently across CLI, API, and config-resolution paths.
 - Completed the config override model refactor around typed override objects instead of ad-hoc
   CLI/API keyword plumbing:
   - introduced `PolicyOverrides` / `ConfigOverrides` in `topmark.config.overrides`
@@ -248,10 +249,22 @@ goals.
   - updated mutable/frozen policy models
   - updated TOML deserialization/serialization and documented example config
   - updated CLI/API-facing policy overlay handling
+- Introduced split parsing of TopMark TOML sources:
+  - layered config TOML fragments are extracted separately from source-local TOML options
+  - source-local options such as `[config].root` and `strict_config_checking` are resolved outside
+    `ConfigLayer` merging
+  - normal discovered config loading now behaves as layered-config-only merging, with TOML
+    source-local metadata resolved in parallel
 - Strengthened TOML/config typing boundaries by introducing recursive TOML value/table typing and
   centralizing validation/narrowing helpers in config I/O support modules.
+- Completed relocation of TOML-specific helpers and resources out of `topmark.config`:
+  - default/example TOML resources now live under `topmark.toml`
+  - TOML enums, utilities, typing helpers, template surgery, and defaults/document helpers now live
+    under `topmark.toml.*`
+  - `config.io` is now focused on config deserialization/serialization rather than generic TOML
+    document handling
 
-### Config layering: provenance-aware merge semantics and per-path resolution
+### Config layering: provenance-aware merge semantics, per-path resolution, and TOML-first draft construction
 
 - Introduced provenance-aware config layering using explicit config layers and per-field merge
   semantics.
@@ -276,9 +289,9 @@ goals.
   - runtime execution intent (CLI/API overlays such as `apply_changes`, `stdin_*`, output settings)
 - Introduced API/runtime helpers that apply runtime overlays **after** layered config resolution,
   rather than mixing them into config merging.
-- Established direction for a follow-up refactor to explicitly separate:
-  - resolved layered config objects
-  - runtime overlay / execution intent objects
+- Completed the bridge from TOML-side resolution to config-layer merge through
+  `resolve_toml_sources_and_build_config_draft(...)`, which now acts as the main integration point
+  between TOML source resolution and layered config draft construction.
 
 ### Policy model, empty-file semantics, and outcome summaries
 
@@ -389,8 +402,8 @@ goals.
 
 - `processors` and `filetypes` human output now uses **numbered lists** (right-aligned indices) and
   clearer counts.
-- `dump-config` / `init-config` emit **plain TOML** by default; BEGIN/END markers are shown only at
-  higher verbosity.
+- `config dump`, `config defaults`, and `config init` emit **plain TOML** by default; BEGIN/END
+  markers are shown only at higher verbosity.
 - `version` command output is now script-friendly (prints only the SemVer string, no label).
 - Documentation updated across command pages to match the new verbosity and summary semantics.
 
@@ -404,8 +417,8 @@ keys across commands.
 - Consistent envelope structures (metadata + data) across commands
 - Aligned semantics for config, registry, and version commands
 
-The remaining gaps are primarily in pipeline-oriented commands (`check`, `strip`), where historical
-CLI-specific emitters are still being phased out in favor of shared serializers.
+The remaining gaps are now mostly schema freeze, naming audits, and coverage expansion rather than
+architectural separation work.
 
 The 1.0 goal is full symmetry:
 
@@ -449,7 +462,10 @@ Completed work:
 
 - Strengthened config template handling for `config init` / `config defaults` by applying
   conservative, string-based edits followed by TOML validation.
-- Improved safety around `[tool.topmark]` insertion and `root = true` placement.
+- Fixed the `config init --pyproject` flow so the bundled example TopMark TOML resource is edited in
+  plain TOML shape first, then nested under `[tool.topmark]`.
+- Updated template handling and validation to use `[config]` / `[tool.topmark.config]` for
+  source-local options such as `root`.
 
 ### Documentation and docstring tooling
 
@@ -477,6 +493,13 @@ Completed work:
   base URLs.
 - Clarified the documentation authoring rule: handwritten Markdown must not contain `mkdocstrings`
   directives; generated pages own all `:::` blocks.
+- Completed a broad documentation alignment pass across README, configuration docs, CLI command
+  guides, API docs, internals, architecture, policies, machine-output docs, and contributor docs so
+  they now consistently describe:
+  - the TOML → Config → Runtime architecture
+  - `[config]` / `[tool.topmark.config]` placement for source-local TOML options
+  - `config defaults` as the built-in default TopMark TOML document
+  - `config init` as the bundled example TopMark TOML resource
 
 ### CI + link checking hardening (docs integrity)
 
@@ -716,21 +739,30 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
   - deterministic tie-breaks are part of the resolver contract
   - the policy is documented in `docs/dev/resolution.md`
 
-### Config package / Python helper surface changes
+### Config/TOML/runtime package and Python helper surface changes
 
 - Several config-construction and TOML-rendering helpers were removed from `Config` /
-  `MutableConfig` and relocated into dedicated config I/O modules.
+  `MutableConfig` and relocated into dedicated `topmark.config.io.*` and `topmark.toml.*` modules.
 - `topmark.cli.config_resolver` was removed after CLI config building was switched to the shared
   config-layer helpers.
 - `topmark.config.args_io` was removed as part of the config package refactor.
+- `load_resolved_config()` and `discover_config_layers()` were removed after callers/tests were
+  migrated to the TOML-first resolution flow via `resolve_toml_sources_and_build_config_draft(...)`
+  and `build_config_layers_from_resolved_toml_sources(...)`.
 - Generic API/CLI mapping input is now represented as `ConfigMapping` in `topmark.api.types` instead
   of `ArgsLike` in `topmark.config.types`.
 - The legacy `ArgsLike` alias was removed entirely; downstream callers should use `ConfigMapping`
   (or plain `Mapping[str, object]`-compatible inputs) for generic API/config mappings.
 - API/runtime config coercion now distinguishes generic mapping input from TOML-backed
   deserialization via `mutable_config_from_mapping()`.
+- The layered config / TOML source boundary is now explicit:
+  - source-local TOML options such as `[config].root` and `strict_config_checking` are resolved
+    outside layered `Config` merging
+  - discovered TOML sources are first resolved on the TOML side, then merged into layered config
+    drafts
 - Downstream Python callers importing moved/removed config helpers from older module locations must
-  update their imports to the new `topmark.config.io.*` / `topmark.config.overrides` layout.
+  update their imports to the new `topmark.config.io.*`, `topmark.toml.*`, `topmark.runtime.*`, and
+  `topmark.config.overrides` layout.
 - Policy override application is now centered on typed override objects (`PolicyOverrides` /
   `ConfigOverrides`) rather than the older wide keyword-argument surface.
 - Public/config-facing policy representation changed from the boolean pair `add_only` /
@@ -743,8 +775,16 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
     replacing
 - Layered config resolution now produces per-path effective configs rather than a single flattened
   configuration, which may change behavior for nested config setups
+- The TOML schema changed for source-local options:
+  - `root` no longer lives at top level / `[tool.topmark]`
+  - source-local options now live under `[config]` in `topmark.toml`
+  - and under `[tool.topmark.config]` in `pyproject.toml`
+- Built-in/default TOML resources and helpers were moved out of `topmark.config`:
+  - `topmark-example.toml` now lives under `topmark.toml`
+  - default/template helpers now live under `topmark.toml.defaults`
+  - template-edit helpers now live under `topmark.toml.template_surgery`
 
-### CLI / output format changes
+### CLI / output / runtime behavior changes
 
 - Output format rename: `DEFAULT` was removed and replaced by `TEXT` (label now `"text"`).
 - Emitter package rename: *topmark.cli.emitters.default* →
@@ -753,6 +793,9 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
   \[`topmark.presentation.shared.pipeline`\][topmark.presentation.shared.pipeline].
 - Verbosity and color options were moved from the root CLI group to individual commands. Global
   invocation patterns may need to be updated.
+- Runtime-only execution intent is now separated from layered config:
+  - apply/preview behavior is no longer carried on `Config`
+  - `RunOptions` now carries runtime-only execution state
 - Color behavior tightened:
   - color is only meaningful for `OutputFormat.TEXT`
   - non-text formats ignore color requests and may warn (policy is centralized in validators)
@@ -791,11 +834,20 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
   - `strip` accepts only shared resolver/content-probe policy options
   - check-only mutation/insertion policy options are rejected at the CLI layer for `strip`, even
     under permissive path-command parsing
+- STDIN handling is now documented and modeled more explicitly as two distinct modes:
+  - list mode (`--files-from -`, `--include-from -`, `--exclude-from -`)
+  - content mode (`-` plus `--stdin-filename`)
 
-### Documentation build behavior
+### Documentation and documentation-build behavior
 
-- Documentation build now depends on Markdown output paths for registry/pipeline commands. Missing
-  emitter modules will fail the docs build (`mkdocs build --strict`).
+- User-facing and developer-facing documentation was broadly realigned to the new TOML → Config →
+  Runtime architecture, including:
+  - `[config]` / `[tool.topmark.config]` placement for source-local TOML options
+  - `config defaults` as the built-in default TopMark TOML document
+  - `config init` as the bundled example TopMark TOML resource
+- Documentation build now depends on the generated API/reference pages and on the stabilized
+  presentation/rendering paths for registry/pipeline commands. Missing or stale modules will fail
+  the docs build (`mkdocs build --strict`).
 - CI now performs built-site link checks (`links-site`) during release gating; link validation
   failures may block publishing.
 - GitHub-style alert handling in the docs pipeline no longer attempts to infer custom titles from
@@ -810,6 +862,8 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
 ### Developer tooling / CI
 
 - tox support removed; contributors and CI must use `nox` (and uv-backed envs) going forward.
+- The project now assumes the uv-first workflow and nox-based automation model throughout
+  contributor, CI, and release documentation.
 - Local/editor/Nox/pre-commit environments now assume dedicated mdformat and Taplo tool
   configuration files are present and authoritative.
 - Packaging metadata was modernized in `pyproject.toml` (including SPDX-style `license` and
@@ -837,13 +891,9 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
 
 ### uv workflow follow-up and ecosystem stabilization
 
-The uv migration is functionally complete, but a few follow-up decisions remain before 1.0:
+The uv migration is functionally complete, but a few ecosystem-level follow-up decisions remain
+before 1.0:
 
-- Perform a final documentation wording sweep for stale references to:
-  - tox,
-  - requirements/constraints files,
-  - legacy target names,
-  - older pip-oriented setup language.
 - Decide whether `uv.lock` should be represented in TopMark’s built-in file type registry as a
   recognized-but-header-unsupported generated artifact.
 - Keep validating that local `.venv`, nox, CI, pre-commit, and RTD all continue to reflect the same
@@ -851,7 +901,8 @@ The uv migration is functionally complete, but a few follow-up decisions remain 
 
 ### GitHub Actions follow-up and release-path rehearsal
 
-The workflow refactor is functionally in place, but a few follow-up decisions remain before 1.0:
+The workflow refactor is functionally in place, but a few release-process and maintenance decisions
+remain before 1.0:
 
 - Decide whether to rehearse the positive release path with a dedicated dry-run or a TestPyPI
   publish before 1.0.
@@ -911,7 +962,7 @@ Recommended direction:
 - Preserve fail-fast behavior for duplicate processor registration while keeping overlap between
   file types a resolver concern rather than a registry error.
 
-### In-memory pipeline (Option A)
+### In-memory pipeline (Option A, still undecided)
 
 #### In-memory pipeline status
 
@@ -1077,8 +1128,8 @@ Open decisions:
   - `get_file_type_candidates_for_path(...)`
   - `resolve_file_type_for_path(...)`
   - `resolve_binding_for_path(...)` while keeping candidate scoring helpers private?
-- Should input resolution (`resolve_file_list`) be renamed to something more explicit such as
-  `resolve_files_to_process(...)`, or is the current name stable enough for 1.0?
+- Should input resolution helper names be further tightened for 1.0, or is the current
+  `topmark.resolution.files` public surface stable enough as-is?
 - Should the resolution layer stay decoupled from full config objects and instead continue to accept
   only the specific include/exclude file type filters it actually needs?
 - Should TopMark keep the current deterministic winner-selection policy for overlapping `FileType`
@@ -1104,8 +1155,6 @@ Open follow-up work before 1.0:
   whether authored Markdown should eventually migrate to native MkDocs/Material admonition syntax.
 - Freeze and document the supported Markdown authoring conventions now that formatter normalization
   is part of the pipeline (especially for alerts/callouts, blockquotes, and reference-style links).
-- Decide how much packaging metadata policy should be documented for contributors (e.g. required
-  project URLs, classifiers, and license metadata conventions).
 - Keep validating that Nox, pre-commit, local `.venv`, and editor integrations all install the same
   formatter plugin set and consume the same tool configuration.
 
@@ -1113,8 +1162,8 @@ Open follow-up work before 1.0:
 
 #### API vs CLI separation status
 
-Some CLI-oriented concerns still leak into API-facing modules (notably in
-\[`topmark.config`\][topmark.config] and parts of pipeline orchestration).
+Some CLI-oriented concerns may still leak into API-facing or presentation-adjacent modules, mainly
+around final output policy, verbosity/color handling boundaries, and a few convenience helpers.
 
 Before 1.0, aim for:
 
@@ -1135,11 +1184,11 @@ Additional progress:
   builders plus pure `render_*()` helpers.
 - Refactored CLI command modules so human output now follows a clearer pipeline: prepare report →
   render string → `console.print(...)`.
-- CLI config building now delegates layered discovery/merge to `topmark.config.io.resolution` and
-  final override application to `topmark.config.overrides` instead of maintaining a separate
-  CLI-local resolver path.
-- API runtime config/file preparation now mirrors the same config-layer split and no longer builds
-  config state through TOML-named helpers when given a generic Python mapping.
+- CLI config building now delegates TOML/config resolution to the shared TOML-first resolution
+  helpers and final override application to `topmark.config.overrides` instead of maintaining a
+  separate CLI-local resolver path.
+- API runtime config/file preparation now mirrors the same TOML → Config → Runtime split and no
+  longer builds config state through TOML-named helpers when given a generic Python mapping.
 
 #### Remaining work
 
@@ -1155,17 +1204,19 @@ Additional progress:
   remain in `topmark.api.runtime` long-term or be slimmed further around a smaller config-layer
   façade.
 
-### Config override application boundary
+### Override model and runtime overlay boundary
 
-The config package now has a much clearer split between:
+The configuration/runtime boundary now has a much clearer split between:
 
-- layered discovery / merge in `topmark.config.io.resolution`
+- TOML-side source resolution in `topmark.toml.resolution`
+- layered config construction/merge in `topmark.config.resolution`
 - highest-precedence override application in `topmark.config.overrides`
+- runtime-only execution intent in `topmark.runtime.*`
 
 Additional progress:
 
 - removed duplicate CLI-local config resolution logic and switched CLI config building to the shared
-  config-layer helpers
+  TOML-first resolution helpers
 - introduced `ConfigMapping` as the public API-facing mapping alias in `topmark.api.types`
 - added `mutable_config_from_mapping()` so generic API mappings are no longer routed through a
   TOML-named helper
@@ -1183,10 +1234,10 @@ Desired outcome:
 - Core config loading/merging stays reusable and independent of CLI concerns.
 - CLI parsing/normalization produces a clear override structure.
 - The same override structure remains usable by API callers (without importing Click).
-- Clarify and refactor handling of runtime-only fields (e.g. `stdin_mode`, `apply_changes`):
-  - current behavior still partially merges them alongside config fields
-  - planned refactor will move these into a dedicated runtime overlay layer applied after config
-    resolution
+- Freeze and document the long-term boundary between typed config overrides and runtime-only overlay
+  state.
+- Confirm that runtime-only fields remain outside layered config merging and are applied only after
+  config resolution.
 
 ### Machine output formats: remaining work
 
@@ -1245,19 +1296,6 @@ Remaining work before 1.0:
 - Further clarify boundary between pipeline outcome computation (`map_bucket()`) and presentation
   logic in renderers.
 
-### Pipeline commands: complete human + machine format refactor
-
-- Finish aligning `check` and `strip` outputs with the established pattern:
-  - shared Click-free preparation in `topmark.presentation.shared.*`
-  - text renderers in `topmark.presentation.text.*`
-  - Markdown renderers in `topmark.presentation.markdown.*`
-  - machine serializers for JSON/NDJSON
-- Confirm and document verbosity semantics consistently across all commands:
-  - `-v`: show per-file guidance / extra hints
-  - `-vv`: show detailed diagnostics / expanded sections
-- Confirm that no `yachalk` imports remain outside CLI-facing modules once color-boundary cleanup is
-  completed.
-
 ### CLI framework choice: Click vs Rich
 
 Recommendation: keep Click through 1.0 unless there is a strong feature need.
@@ -1266,8 +1304,8 @@ Recommendation: keep Click through 1.0 unless there is a strong feature need.
 
 Recent refactoring introduced semantic styling via `StyleRole`, significantly reducing direct
 `yachalk` usage in human-output code and enabling a cleaner separation between core logic,
-presentation rendering, and CLI output policy. The only place where `yachalk` is still imported, is
-`topmark.cli.presentation`.
+presentation rendering, and CLI output policy. Remaining work is mainly about deciding whether to
+keep `yachalk` as a confined CLI-only dependency or remove it entirely later.
 
 Remaining work focuses on:
 
@@ -1296,8 +1334,8 @@ when the first non-additive change is planned (post-1.0), paired with migration 
 
 Open questions:
 
-- Do we want a second non-colored format (e.g., `text` vs `plain`), or is a single text format with
-  optional color sufficient?
+- Do we want a second non-colored format (for example `text` vs `plain`), or is a single text format
+  with optional color sufficient?
 - Do we want to keep Markdown as a first-class human format for all commands?
 - Are the current verbosity levels sufficient and consistent across commands?
 
@@ -1345,13 +1383,8 @@ Open questions for 1.0:
 - Decide whether a dedicated public API enum should ever be exposed for policy tokens, or whether
   public API callers should continue to use stable string literals while internal CLI/config code
   uses the internal enum types directly.
-- Complete documentation alignment so there are no remaining stale references to:
-  - removed reporting flags (`--skip-compliant`, `--skip-unsupported`)
-  - removed policy flags (`--add-only`, `--update-only`)
-  - ensure cross-linking to the policy guide (`docs/usage/policies.md`) from command and
-    configuration docs
-- verify that API documentation and examples consistently use `report` and no longer reference
-  `skip_*` parameters
+- keep verifying that API documentation and examples consistently use `report` and no longer
+  reference `skip_*` parameters
 
 Any change here should preserve backward compatibility unless explicitly gated.
 
@@ -1359,11 +1392,11 @@ ______________________________________________________________________
 
 ## 1.0 readiness checklist
 
-TopMark 1.0 follows a “contract-first” release strategy: all externally observable behavior (API
-surface, configuration semantics, machine formats, and CLI exit/status behavior) must be stable and
-well-tested. Items in the “Must finish before 1.0” section are considered release blockers unless
-explicitly deferred with a documented rationale; other items are tracked as post-1.0 polish or
-follow-up work.
+TopMark 1.0 follows a **contract-first** release strategy: all externally observable behavior (API
+surface, configuration semantics, machine formats, and CLI exit/status behavior) must be stable,
+documented, and well-tested. Items in the “Must finish before 1.0” section are considered release
+blockers unless explicitly deferred with a documented rationale; other items are tracked as post-1.0
+polish or follow-up work.
 
 This checklist defines the minimum criteria for cutting TopMark 1.0, grouped by priority.
 
@@ -1374,6 +1407,7 @@ This checklist defines the minimum criteria for cutting TopMark 1.0, grouped by 
 - [ ] Clear separation between CLI layer and API/core modules
   - [x] CLI config resolution no longer duplicates layered config discovery/merge logic
   - [x] API runtime config/file preparation now reuses config-layer resolution/override helpers
+  - [x] Human-facing rendering isolated in `topmark.presentation`
 - [ ] No CLI-specific concerns (verbosity, color, formatting) in core logic
 
 #### [Must] Machine formats
@@ -1396,6 +1430,7 @@ This checklist defines the minimum criteria for cutting TopMark 1.0, grouped by 
 #### [Must] CLI behavior
 
 - [ ] Exit codes documented and stable
+- [ ] CLI command applicability rules (policy options, stdin modes) fully documented and enforced
 
 #### [Must] Configuration
 
@@ -1411,10 +1446,12 @@ This checklist defines the minimum criteria for cutting TopMark 1.0, grouped by 
 - [x] Field-specific config merge semantics are defined, implemented, and covered by regression
   tests
 - [x] Per-path effective config resolution is implemented and used by the pipeline engine
+- [ ] Final documentation of TOML → Config → Runtime split (including source-local options and
+  runtime overlays)
 
 #### [Must] Pipeline & testing
 
-- [ ] Decision taken on in-memory pipeline support (implemented or deferred)
+- [ ] Decision taken on in-memory pipeline support (implemented or explicitly deferred)
 - [ ] Clear split between unit (memory-based) and integration (filesystem) tests
 - [ ] Namespace-aware registry lookup and deterministic ambiguity behavior covered by tests
 - [ ] API surface clarified for in-memory pipeline inputs (either implemented or deferred with
@@ -1432,7 +1469,7 @@ This checklist defines the minimum criteria for cutting TopMark 1.0, grouped by 
 #### [Must] Dependency & ecosystem
 
 - [ ] Decision made on color backend (`yachalk` confinement or removal)
-- [ ] Formatter/tool configuration split stabilized and documented (.mdformat.toml, .taplo.toml)
+- [ ] Formatter/tool configuration split stabilized and documented (`.mdformat.toml`, `.taplo.toml`)
 - [ ] Tooling environments (Nox, pre-commit, local venv, editor) verified to consume the same
   formatter plugin set
 

@@ -43,7 +43,8 @@ Configuration is discovered as follows (lowest → highest precedence):
    - **Same-directory precedence:** `pyproject.toml` is merged first, then `topmark.toml` can
      override it.
    - **Nearest-last wins:** directories are merged **root → current** (the nearest config wins).
-   - **Stopping discovery:** set `root = true` to stop traversal above that directory.
+   - **Stopping discovery:** set `[config].root = true` (or `[tool.topmark.config].root = true` in
+     `pyproject.toml`) to stop traversal above that directory.
 
 1. **Explicit config files**\
    Provided via `--config PATH`, merged **in the order given** (after discovery).
@@ -51,18 +52,19 @@ Configuration is discovered as follows (lowest → highest precedence):
 1. **CLI overrides (highest)**\
    Options and flags on the command line.
 
-> **Summary:** defaults → user → project chain (root→current) → `--config` (in order) → CLI.\
+> **Summary:** defaults → user → project chain (root→current, stop on `[config].root = true`) →
+> `--config` (in order) → CLI.\
 > Use `--no-config` to skip discovery.
 
 ### Summary table
 
-| Layer            | Example location                                      | Notes                                                                                           |
-| ---------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| 1. Defaults      | Builtin runtime defaults                              | lowest precedence                                                                               |
-| 2. User          | `~/.config/topmark/topmark.toml` or `~/.topmark.toml` | personal overrides                                                                              |
-| 3. Project chain | `pyproject.toml` / `topmark.toml`                     | walk **root → current**; same-dir precedence: `pyproject` then `topmark`; stop on `root = true` |
-| 4. `--config`    | paths passed on CLI                                   | merged **in order**                                                                             |
-| 5. CLI           | flags & options                                       | highest precedence                                                                              |
+| Layer            | Example location                                      | Notes                                                                                                    |
+| ---------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| 1. Defaults      | Builtin runtime defaults                              | lowest precedence                                                                                        |
+| 2. User          | `~/.config/topmark/topmark.toml` or `~/.topmark.toml` | personal overrides                                                                                       |
+| 3. Project chain | `pyproject.toml` / `topmark.toml`                     | walk **root → current**; same-dir precedence: `pyproject` then `topmark`; stop on `[config].root = true` |
+| 4. `--config`    | paths passed on CLI                                   | merged **in order**                                                                                      |
+| 5. CLI           | flags & options                                       | highest precedence                                                                                       |
 
 ______________________________________________________________________
 
@@ -153,27 +155,46 @@ ______________________________________________________________________
 
 ## Root semantics
 
-`root = true` stops traversal above the directory where it’s defined.\
+`[config].root = true` stops traversal above the directory where it’s defined.\
 This defines a discovery boundary similar to tools like **Black**, **isort**, or **ruff**.
 
 - Where to put it:
-  - In `topmark.toml`, at the top level.
-  - In `pyproject.toml`, under `[tool.topmark]`.
+
+  - In `topmark.toml`, under `[config]`:
+
+    ```toml
+    [config]
+    root = true
+    ```
+
+  - In `pyproject.toml`, under `[tool.topmark.config]`:
+
+    ```toml
+    [tool.topmark.config]
+    root = true
+    ```
+
 - Effect:
+
   - Directories at or below the marked directory remain eligible (the marked directory can still be
     merged), but parent directories are **not** considered.
   - This ensures a repository (or workspace) boundary for discovery.
+
 - Interaction with explicit `--config`:
-  - `--config` files are merged **after** discovery, so they still apply even if `root = true`
-    stopped discovery.
+
+  - `--config` files are merged **after** discovery, so they still apply even if
+    `[config].root = true` stopped discovery.
+
 - Multiple roots:
-  - If multiple configs on the path specify `root = true`, the *nearest* one wins (since discovery
-    walks **root → current** and the merge order is nearest-last).
+
+  - If multiple configs on the path specify `[config].root = true`, the *nearest* one wins (since
+    discovery walks **root → current** and the merge order is nearest-last).
 
 Example:
 
 ```toml
 # repo/topmark.toml
+[config]
 root = true
 
 [files]
@@ -290,8 +311,11 @@ ______________________________________________________________________
 
 ## See also
 
-- Default configuration: `src/topmark/config/topmark-example.toml`
-- Implementation: \[`load_resolved_config()`\][topmark.config.resolution.load_resolved_config] and
-  \[`effective_policy()`\][topmark.config.policy.effective_policy] in
-  \[`topmark.config`\][topmark.config]
+- Default configuration: `src/topmark/toml/topmark-example.toml`
+- Implementation:
+  - TOML source resolution:
+    \[`resolve_topmark_toml_sources()`\][topmark.toml.resolution.resolve_topmark_toml_sources]
+  - Config draft construction:
+    \[`resolve_toml_sources_and_build_config_draft()`\][topmark.config.resolution.resolve_toml_sources_and_build_config_draft]
+  - Policy evaluation: \[`effective_policy()`\][topmark.config.policy.effective_policy]
 - Related doc: `README.md`

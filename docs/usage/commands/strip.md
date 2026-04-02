@@ -49,11 +49,21 @@ ______________________________________________________________________
 - Honors XML/HTML placement rules and preserves the XML declaration (`<?xml …?>`).
 - Respects Markdown fenced code blocks: header‑like snippets inside fences are ignored. Uses the
   same file discovery and filtering as other commands:
-- Read lists from STDIN with `--files-from -` (or `--include-from -` / `--exclude-from -`).
-- To process a *single* file’s **content** from STDIN, pass `-` as the sole PATH and provide
-  `--stdin-filename NAME`.
-- Do **not** mix `-` (content mode) with `--files-from -` / `--include-from -` / `--exclude-from -`
-  (list mode).
+
+### STDIN modes
+
+TopMark supports **two different STDIN modes**:
+
+- **List mode**: read newline-delimited paths or patterns from STDIN using:
+  - `--files-from -`
+  - `--include-from -`
+  - `--exclude-from -`
+- **Content mode**: process one file’s *content* from STDIN by passing `-` as the sole PATH and
+  providing `--stdin-filename NAME`.
+
+These modes are mutually exclusive: do **not** mix `-` (content mode) with `--files-from -`,
+`--include-from -`, or `--exclude-from -` (list mode).
+
 - Idempotent: re‑running after headers are removed results in **no changes**.
 
 {% include-markdown "\_snippets/config-resolution.md" %}
@@ -126,6 +136,8 @@ Notes:
 
 - Diffs (`--diff`) are **human-only** and are not included in JSON/NDJSON.
 - Summary mode aggregates outcomes and suppresses per-file guidance lines.
+- The `config` payload in JSON / NDJSON is the resolved config snapshot after discovery, merge, and
+  CLI override application.
 
 ### JSON schema (detail mode)
 
@@ -199,21 +211,22 @@ Notes:
 
 ## Options (subset)
 
-| Option                                               | Description                                                       |
-| ---------------------------------------------------- | ----------------------------------------------------------------- |
-| `--apply`                                            | Write changes to files (off by default).                          |
-| `--diff`                                             | Show unified diffs (human output only).                           |
-| `--summary`                                          | Show outcome counts instead of per‑file details.                  |
-| `--files-from`                                       | Read newline‑delimited paths from file (use '-' for STDIN).       |
-| `--include`                                          | Add paths by glob (can be used multiple times).                   |
-| `--include-from`                                     | File of patterns to include (one per line, `#` comments allowed). |
-| `--exclude`                                          | Exclude paths by glob (can be used multiple times).               |
-| `--exclude-from`                                     | File of patterns to exclude.                                      |
-| `--include-file-types` / `-t`                        | Restrict to specific TopMark file type identifiers.               |
-| `--exclude-file-types` / `-T`                        | Exclude specific TopMark file type identifiers.                   |
-| `--report`                                           | Control reporting scope: actionable, noncompliant, or all.        |
-| `--allow-content-probe` / `--no-allow-content-probe` | Shared policy override for file-type detection.                   |
-| `--stdin-filename`                                   | Assumed filename when PATH is '-' (content from STDIN).           |
+| Option                                               | Description                                                            |
+| ---------------------------------------------------- | ---------------------------------------------------------------------- |
+| `--apply`                                            | Write changes to files (off by default).                               |
+| `--diff`                                             | Show unified diffs (human output only).                                |
+| `--summary`                                          | Show outcome counts instead of per‑file details.                       |
+| `--files-from`                                       | Read newline‑delimited paths from file (use '-' for STDIN).            |
+| `-` (PATH)                                           | Read a single file’s content from STDIN (requires `--stdin-filename`). |
+| `--include`                                          | Add paths by glob (can be used multiple times).                        |
+| `--include-from`                                     | File of patterns to include (one per line, `#` comments allowed).      |
+| `--exclude`                                          | Exclude paths by glob (can be used multiple times).                    |
+| `--exclude-from`                                     | File of patterns to exclude.                                           |
+| `--include-file-types` / `-t`                        | Restrict to specific TopMark file type identifiers.                    |
+| `--exclude-file-types` / `-T`                        | Exclude specific TopMark file type identifiers.                        |
+| `--report`                                           | Control reporting scope: actionable, noncompliant, or all.             |
+| `--allow-content-probe` / `--no-allow-content-probe` | Shared policy override for file-type detection.                        |
+| `--stdin-filename`                                   | Assumed filename when PATH is '-' (content from STDIN).                |
 
 > Run `topmark strip -h` for the full list of options and help text.
 
@@ -237,9 +250,11 @@ ______________________________________________________________________
 - Patterns in `--include`, `--exclude`, and the files passed to `--include-from` / `--exclude-from`
   are also resolved **relative to CWD**. Absolute patterns are not supported.
 
-- Use `--files-from -` (or `--include-from -` / `--exclude-from -`) to read lists from STDIN.
+- STDIN supports two modes:
 
-- Use `-` (with `--stdin-filename`) to read a single file’s content from STDIN.
+  - **list mode** via `--files-from -` (or `--include-from -` / `--exclude-from -`) for newline-
+    delimited paths or patterns
+  - **content mode** via `-` plus `--stdin-filename` for one file’s content
 
 - Use `--report actionable` to focus CI output on files that would change, or
   `--report noncompliant` to also include unsupported file types in the report.
@@ -306,9 +321,19 @@ topmark strip --apply <paths>
 
 ______________________________________________________________________
 
+## Related commands
+
+- [`topmark check`](./check.md) — add or update detected TopMark headers.
+- [`topmark config check`](./config/check.md) — validate the effective merged configuration and
+  report diagnostics.
+- [`topmark config dump`](./config/dump.md) — show the effective merged configuration as TOML.
+
+______________________________________________________________________
+
 ## Troubleshooting
 
-- **No files to process**: Ensure you passed positional paths or `--files-from -`. Use `-vv` for
+- **No files to process**: Ensure you passed positional paths, or selected the correct STDIN mode
+  (`--files-from -` for list mode, or `-` with `--stdin-filename` for content mode). Use `-vv` for
   debug logs.
 - **Patterns don’t match**: Remember that include/exclude patterns are **relative to CWD**. `cd`
   into the project root before running.

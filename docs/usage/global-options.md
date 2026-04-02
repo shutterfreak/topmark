@@ -14,7 +14,7 @@ topmark:header:end
 
 ## Output format
 
-TopMark supports 4 output formats:
+TopMark supports four output formats:
 
 ```bash
 --output-format text        # Text output on interactive terminal (default)
@@ -28,9 +28,13 @@ TopMark supports 4 output formats:
   - `text` (default): When using in an interactive terminal; if color-enabled the output will be
     rendered in color by default (disable with `--no-color`).
   - `markdown`: Generate output as MarkDown (can be redirected to a file).
-- Machine formats:
+- Machine-readable formats:
   - `json`: Return a single JSON object, formatted for easier reading.
-  - `ndjson`: Returns a stream of NDJSON objects (1 per line).
+  - `ndjson`: Returns a stream of NDJSON objects (one per line).
+
+See also:
+
+- [`Machine output schema`](../dev/machine-output.md)
 
 ______________________________________________________________________
 

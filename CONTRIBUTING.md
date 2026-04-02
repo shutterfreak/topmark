@@ -82,6 +82,18 @@ Run long-running property-based Hypothesis tests (manual opt-in):
 make property-test
 ```
 
+### Configuration architecture note
+
+TopMark separates configuration into three layers:
+
+- TOML layer (`topmark.toml`) — discovery, parsing, and source-local options (e.g. `[config].root`)
+- Config layer (`topmark.config`) — layered merge into a mutable config draft
+- Runtime layer (`topmark.runtime`) — execution-time options and overrides
+
+The main integration helper is:
+
+- `resolve_toml_sources_and_build_config_draft()`
+
 ### Developer validation (optional)
 
 Enable lightweight registry and strategy checks while developing or debugging:
@@ -228,6 +240,9 @@ Build or serve the docs through tox:
 make docs-build   # strict build (CI)
 make docs-serve   # local live-reload server
 ```
+
+Configuration-related documentation lives under `docs/configuration/` and reflects the TOML → Config
+→ Runtime separation introduced in recent refactors.
 
 MkDocs configuration lives in `mkdocs.yml`, and documentation dependencies are installed from the
 `docs` extra declared in `pyproject.toml` and resolved through `uv.lock`.

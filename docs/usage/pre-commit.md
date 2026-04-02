@@ -165,12 +165,12 @@ Use modern names in the manifest: `pre-commit` and `pre-push`.
 
 ### `FileNotFoundError` when loading `topmark-example.toml`
 
-Ensure the default config is loaded via **package resources** (TopMark already does) and that the
-file is included as package data. In `pyproject.toml`:
+Ensure the bundled example TopMark TOML resource is loaded via **package resources** (TopMark
+already does) and that the file is included as package data. In `pyproject.toml`:
 
 ```toml
 [tool.setuptools.package-data]
-"topmark.config" = ["topmark-example.toml"]
+"topmark.toml" = ["topmark-example.toml"]
 ```
 
 ### Test your hook locally

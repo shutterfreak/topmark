@@ -25,7 +25,7 @@ ______________________________________________________________________
 
 ## Conceptual model
 
-TopMark uses two layers of registries:
+TopMark uses a layered registry model with base registries plus composed overlay views:
 
 - **Base registries** (built-ins + discovered plugins)
 
@@ -35,7 +35,8 @@ TopMark uses two layers of registries:
 
 - **Composed registries** (base + overlays − removals)
 
-  - Exposed for introspection via \[`topmark.registry.*`\][topmark.registry].
+  - Exposed for introspection via \[`topmark.registry.*`\][topmark.registry] and the
+    [`topmark registry *`](../usage/commands/registry.md) CLI commands.
   - Used by CLI and API at runtime.
 
 The separation is intentional: **base registries must remain import-light** to avoid import cycles,
@@ -49,11 +50,9 @@ ______________________________________________________________________
 
 File types are discovered through Python entry points. TopMark loads:
 
-- built-in file types from a small set of internal modules, and
-
-- plugin file types from the entry point group:
-
-- **Entry point group:** \[`topmark.filetypes`\][topmark.filetypes]
+- **built-in file types** from a small set of internal modules, and
+- **plugin file types** from the entry point group:
+  - **Entry point group:** \[`topmark.filetypes`\][topmark.filetypes]
 
 A plugin registers one or more `FileType` objects via that entry point.
 
@@ -248,7 +247,8 @@ explicitly through the runtime registry API when needed.
 
 A typical advanced integration flow is:
 
-1. expose file types through the \[`topmark.filetypes`\][topmark.registry] entry point group;
+1. expose file types through the \[`topmark.registry.filetypes`\][topmark.registry.filetypes] entry
+   point group;
 1. let TopMark discover those file types lazily;
 1. register processor classes explicitly through `Registry.register_processor(...)`,
    `Registry.try_register_processor(...)`, or `HeaderProcessorRegistry.register(...)` during
@@ -325,5 +325,11 @@ These modules are useful if you are extending TopMark deeply:
   and overlay mutations
 - \[`topmark.registry.registry`\][topmark.registry.registry] – stable higher-level registry facade
 
-These composed registries provide read-only views that combine base registrations with configuration
-overlays.
+These composed registries provide effective views that combine base registrations with runtime
+overlays and removals.
+
+## See also
+
+- [`Architecture`](./architecture.md) — high-level overview of registries and runtime composition
+- [`registry.md`](../usage/commands/registry.md) — CLI-facing registry inspection commands
+- [`resolution.md`](./resolution.md) — file-type scoring and ambiguity policy
