@@ -39,9 +39,9 @@ from topmark.config.overrides import PolicyOverrides
 from topmark.config.overrides import apply_config_overrides
 from topmark.config.policy import EmptyInsertMode
 from topmark.config.policy import HeaderMutationMode
+from topmark.config.resolution import build_config_layers_from_resolved_toml_sources
 from topmark.config.resolution import build_effective_config_for_path
-from topmark.config.resolution import discover_config_layers
-from topmark.config.resolution import load_resolved_config
+from topmark.config.resolution import build_resolved_config_from_toml_sources
 from topmark.constants import TOPMARK_VERSION
 from topmark.core.errors import InvalidPolicyError
 from topmark.core.logging import get_logger
@@ -130,6 +130,7 @@ def _build_resolved_config_for_run(
     paths: Iterable[Path | str],
     *,
     base_config: Mapping[str, object] | Config | None,
+    resolved_toml: ResolvedTopmarkTomlSources | None,
     include_file_types: Sequence[str] | None,
     exclude_file_types: Sequence[str] | None,
 ) -> Config:
@@ -142,8 +143,8 @@ def _build_resolved_config_for_run(
 
     Resolution mode:
 
-    - when `base_config is None`, perform normal layered discovery via `load_resolved_config()`
-      using the supplied paths as discovery anchors
+    - when `base_config is None`, consume already-resolved TOML-side state for layered config
+      construction
     - when `base_config` is provided, treat it as an explicit seed and skip discovery
     - in both modes, apply final file/file-type intent via `apply_config_overrides()` before
       freezing
@@ -152,6 +153,7 @@ def _build_resolved_config_for_run(
         paths: Files and/or directories to process.
         base_config: Optional explicit config seed. When omitted, layered config
             discovery is used. When provided, discovery is skipped.
+        resolved_toml: Resolved TOML-side state across discovered TopMark TOML sources.
         include_file_types: Optional file-type allowlist override used during
             candidate resolution.
         exclude_file_types: Optional file-type denylist override used during
@@ -166,15 +168,8 @@ def _build_resolved_config_for_run(
     # Normalize input paths to strings for stable downstream override handling.
     paths_str: list[str] = [str(Path(p)) for p in paths]
 
-    if base_config is None:
-        # Layered discovery mode: defaults -> discovered config -> explicit config
-        # files (none here). Use the first input as the discovery anchor, or CWD
-        # when no explicit paths were supplied.
-        anchor_inputs: list[Path] = [Path(p) for p in paths_str] or [Path.cwd()]
-        draft: MutableConfig = load_resolved_config(
-            input_paths=tuple(anchor_inputs),
-            extra_config_files=(),
-        )
+    if resolved_toml is not None:
+        draft: MutableConfig = build_resolved_config_from_toml_sources(resolved_toml)
     else:
         # Explicit seed mode: start from defaults, merge the supplied mapping /
         # frozen Config on top, and skip all config discovery.
@@ -223,70 +218,41 @@ def _resolve_candidate_files(cfg: Config) -> list[Path]:
     return file_list
 
 
-# ---- Layer discovery / per-path config helpers ----
+# ---- TOML-source resolution helpers ----
 
 
-def _discover_layers_for_api_run(
+def _resolve_toml_sources_for_api_run(
     paths: Iterable[Path | str],
     *,
     base_config: Mapping[str, object] | Config | None,
-) -> list[ConfigLayer] | None:
-    """Discover config layers for an API run when layered discovery is active.
-
-    Explicit `base_config` seeds intentionally bypass layered discovery, so this helper returns
-    `None` in that mode.
-
-    Args:
-        paths: Input paths for the run. The first path is used as the discovery anchor, mirroring
-            the normal config discovery behavior.
-        base_config: Optional explicit config seed supplied by the caller.
-
-    Returns:
-        The discovered config layers for the run, or `None` when layered discovery is intentionally
-        bypassed.
-    """
-    if base_config is not None:
-        return None
-
-    path_list: list[Path] = [Path(p) for p in paths] or [Path.cwd()]
-    return discover_config_layers(
-        input_paths=tuple(path_list),
-        extra_config_files=(),
-        strict_config_checking=None,
-        no_config=False,
-    )
-
-
-def _resolve_writer_options_for_api_run(
-    paths: Iterable[Path | str],
-    *,
-    base_config: Mapping[str, object] | Config | None,
-):
-    """Resolve persisted writer preferences for an API run.
+) -> ResolvedTopmarkTomlSources | None:
+    """Resolve TOML sources for an API run when layered discovery is active.
 
     Explicit `base_config` seeds intentionally bypass layered TOML discovery, so
     this helper returns `None` in that mode.
 
     Args:
         paths: Input paths for the run. The first path is used as the discovery
-            anchor, mirroring normal config discovery behavior.
+            anchor, mirroring the normal config discovery behavior.
         base_config: Optional explicit config seed supplied by the caller.
 
     Returns:
-        The resolved persisted writer preferences for the run, or `None` when
-        layered discovery is intentionally bypassed.
+        The resolved TOML-side state for the run, or `None` when layered
+        discovery is intentionally bypassed.
     """
     if base_config is not None:
         return None
 
     path_list: list[Path] = [Path(p) for p in paths] or [Path.cwd()]
-    resolved: ResolvedTopmarkTomlSources = resolve_topmark_toml_sources(
+    return resolve_topmark_toml_sources(
         input_paths=tuple(path_list),
         extra_config_files=(),
         strict_config_checking=None,
         no_config=False,
     )
-    return resolved.writer_options
+
+
+# ---- Per-path config helpers ----
 
 
 def _build_path_configs(
@@ -535,21 +501,27 @@ def run_pipeline(
     logger.info("Building config and file list for paths: %s", paths)
 
     path_inputs: list[Path | str] = list(paths)
-    discovered_layers: list[ConfigLayer] | None = _discover_layers_for_api_run(
+
+    resolved_toml: ResolvedTopmarkTomlSources | None = _resolve_toml_sources_for_api_run(
         path_inputs,
         base_config=base_config,
     )
-
-    resolved_writer_options: None | WriterOptions = _resolve_writer_options_for_api_run(
-        path_inputs,
-        base_config=base_config,
+    discovered_layers: list[ConfigLayer] | None = (
+        build_config_layers_from_resolved_toml_sources(resolved_toml.sources)
+        if resolved_toml is not None
+        else None
+    )
+    resolved_writer_options: WriterOptions | None = (
+        resolved_toml.writer_options if resolved_toml is not None else None
     )
 
-    # 1) Build the resolved layered config used for discovery. Runtime policy overlays,
-    # caller-supplied run options, and candidate resolution are handled below.
+    # 1) Build the resolved layered config used for discovery from TOML-side resolved state when
+    # available. Runtime policy overlays, caller-supplied run options, and candidate resolution are
+    # handled below.
     cfg: Config = _build_resolved_config_for_run(
         path_inputs,
         base_config=base_config,
+        resolved_toml=resolved_toml,
         include_file_types=include_file_types,
         exclude_file_types=exclude_file_types,
     )

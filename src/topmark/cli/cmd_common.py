@@ -43,7 +43,7 @@ from topmark.config.overrides import PolicyOverrides
 from topmark.config.overrides import apply_config_overrides
 from topmark.config.policy import EmptyInsertMode
 from topmark.config.policy import HeaderMutationMode
-from topmark.config.resolution import load_resolved_config
+from topmark.config.resolution import build_resolved_config_from_toml_sources
 from topmark.config.types import FileWriteStrategy
 from topmark.config.types import OutputTarget
 from topmark.constants import CLI_OVERRIDE_STR
@@ -152,6 +152,9 @@ def build_file_list(
             raise RuntimeError("temp_path should not be undefined in stdin_mode")
         return [temp_path]
     return resolve_file_list(config)
+
+
+# ---- Runtime option assembly ----
 
 
 def build_run_options(
@@ -314,6 +317,9 @@ def build_cli_policy_overrides_from_ctx(ctx: click.Context) -> PolicyOverrides:
     )
 
 
+# ---- Config/TOML preparation for a CLI run ----
+
+
 def build_config_for_plan(
     *,
     ctx: click.Context,
@@ -330,17 +336,15 @@ def build_config_for_plan(
     The CLI layer stays intentionally thin:
 
     1. Compute a discovery anchor from the input plan.
-    2. Delegate layered config discovery/merge to
-       `topmark.config.resolution.load_resolved_config()`.
+    2. Resolve TOML sources once, then build the layered config draft from that resolved TOML state.
     3. Apply layered CLI overrides via `topmark.config.overrides.apply_config_overrides()`.
 
     Resolution order remains:
 
-        defaults -> discovered config layers -> explicit config files -> CLI overrides
+        defaults -> resolved TOML sources -> layered config draft -> CLI overrides
 
-    As a side effect, this helper also resolves persisted TOML writer
-    preferences for the same discovery inputs and stores them on `ctx.obj` for
-    later runtime-option assembly.
+    As a side effect, this helper also resolves persisted TOML writer preferences for the same
+    discovery inputs and stores them on `ctx.obj` for later runtime-option assembly.
 
     Args:
         ctx: Click context carrying normalized command options in `ctx.obj`.
@@ -385,13 +389,11 @@ def build_config_for_plan(
         strict_config_checking=None,
         no_config=no_config,
     )
+
+    ctx.ensure_object(dict)
     ctx.obj[_CTX_RESOLVED_WRITER_OPTIONS_KEY] = resolved_toml.writer_options
 
-    draft: MutableConfig = load_resolved_config(
-        input_paths=discovery_inputs,
-        extra_config_files=extra_config_files,
-        no_config=no_config,
-    )
+    draft: MutableConfig = build_resolved_config_from_toml_sources(resolved_toml)
 
     policy_overrides: PolicyOverrides = build_cli_policy_overrides_from_ctx(ctx)
     overrides: ConfigOverrides = ConfigOverrides(
