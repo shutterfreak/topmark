@@ -389,9 +389,9 @@ def discover_config_layers(
         3. discovered project config files (root-most -> nearest)
         4. explicit extra config files (in the order provided)
 
-    This helper is a compatibility facade over TOML-side source resolution plus
-    config-layer construction. It remains useful for callers that still want
-    resolved `ConfigLayer` objects directly.
+    This helper is an inspection/testing-oriented compatibility facade over TOML-side
+    source resolution plus config-layer construction. It remains useful for callers
+    that still want resolved `ConfigLayer` objects directly, and in tests.
 
     Args:
         input_paths: Optional discovery anchors. The first path is used to pick
@@ -438,8 +438,8 @@ def load_resolved_config(
         3. discovered project config files (root-most -> nearest)
         4. explicit extra config files (in the order provided)
 
-    This helper is a compatibility facade over TOML-side source resolution plus
-    config-layer merge.
+    This helper is a convenience/compatibility facade over TOML-side source resolution
+    plus config-layer merge.
 
     It does **not** apply CLI/API override intent such as write mode,
     stdin mode, include/exclude filters, or header-formatting overrides; those

@@ -40,7 +40,7 @@ class ConfigPayload:
     """JSON-friendly representation of the effective TopMark configuration.
 
     The shape loosely mirrors
-    [`config_to_toml_dict(include_files=False)`][topmark.config.io.serializers.config_to_toml_dict]
+    [`config_to_topmark_toml_table(include_files=False)`][topmark.config.io.serializers.config_to_topmark_toml_table]
     but guarantees JSON-serializable values (paths/enums normalized to strings).
 
     Diagnostics are emitted separately via `ConfigDiagnosticsPayload`.

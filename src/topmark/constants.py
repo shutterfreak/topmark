@@ -137,11 +137,11 @@ PYPROJECT_TOML_PATH: Final = (Path(__file__).parent.parent.parent / "pyproject.t
 
 # --- Global Markers ---
 
-DEFAULT_TOML_CONFIG_PACKAGE: Final = "topmark.config"
-"""Package containing the default config: [`topmark.config`][topmark.config]."""
+EXAMPLE_TOPMARK_TOML_PACKAGE: Final = "topmark.toml"
+"""Package containing the bundled example TopMark TOML document `topmark-example.toml`."""
 
-DEFAULT_TOML_CONFIG_NAME: Final = "topmark-example.toml"
-"""Name of the bundled default config inside the config package."""
+EXAMPLE_TOPMARK_TOML_NAME: Final = "topmark-example.toml"
+"""Resource name of the bundled example TopMark TOML document."""
 
 TOPMARK_START_MARKER: Final = "topmark:header:start"
 """Start marker of TopMark header."""

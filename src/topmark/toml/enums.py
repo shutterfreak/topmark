@@ -2,13 +2,18 @@
 #
 #   project      : TopMark
 #   file         : enums.py
-#   file_relpath : src/topmark/config/io/enums.py
+#   file_relpath : src/topmark/toml/enums.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""Enums used by TopMark configuration import/export helpers."""
+"""Enums for TopMark TOML export and rendering helpers.
+
+This module contains small enums that influence how TopMark TOML documents or
+TOML tables are serialized for export, debugging, or copy/paste-friendly CLI
+output.
+"""
 
 from __future__ import annotations
 

@@ -29,18 +29,18 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from topmark.config.io.loaders import load_default_config_template_toml_text
-from topmark.config.io.loaders import render_default_topmark_toml_text
-from topmark.config.io.serializers import config_to_toml_dict
-from topmark.config.io.template_surgery import set_root_flag_in_template_text
-from topmark.config.io.template_surgery import validate_toml_for_config_init
+from topmark.config.io.serializers import config_to_topmark_toml_table
 from topmark.presentation.shared.diagnostic import HumanDiagnosticCounts
 from topmark.presentation.shared.diagnostic import HumanDiagnosticLine
 from topmark.presentation.shared.diagnostic import prepare_human_diagnostics
+from topmark.toml.defaults import load_default_topmark_template_toml_text
+from topmark.toml.defaults import render_default_topmark_toml_text
 from topmark.toml.render import clean_toml_text
 from topmark.toml.render import render_toml_table
 from topmark.toml.surgery import nest_toml_under_section
 from topmark.toml.surgery import set_root_flag
+from topmark.toml.template_surgery import set_root_flag_in_template_text
+from topmark.toml.template_surgery import validate_toml_for_config_init
 
 if TYPE_CHECKING:
     from topmark.config.model import Config
@@ -94,7 +94,7 @@ def build_config_init_human_report(
     Returns:
         Prepared TOML text plus optional template read error.
     """
-    toml_text, err = load_default_config_template_toml_text()
+    toml_text, err = load_default_topmark_template_toml_text()
 
     changed = False
 
@@ -250,7 +250,7 @@ def build_config_check_human_report(
     merged_toml: str | None = None
     if verbosity_level > 1:
         merged_toml = render_toml_table(
-            config_to_toml_dict(
+            config_to_topmark_toml_table(
                 config,
                 include_files=False,
             )
@@ -309,7 +309,7 @@ def build_config_dump_human_report(
         Prepared config file list and merged TOML text.
     """
     merged_toml: str = render_toml_table(
-        config_to_toml_dict(
+        config_to_topmark_toml_table(
             config,
             include_files=False,
         )

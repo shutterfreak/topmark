@@ -15,63 +15,26 @@ This module contains small TOML-format helpers for:
 - normalizing TOML text by round-tripping through `tomlkit`
 
 TOML has no `null` value, so `None` entries must be omitted during rendering.
+See [`topmark.toml.utils`][topmark.toml.utils] for small TOML-table building
+and normalization helpers used during rendering.
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from typing import TYPE_CHECKING
-from typing import cast
 
 import tomlkit
 
 from topmark.core.logging import get_logger
 from topmark.core.typing_guards import as_object_dict
 from topmark.toml.typing_guards import toml_table_from_mapping
+from topmark.toml.utils import strip_none_for_toml
 
 if TYPE_CHECKING:
     from topmark.core.logging import TopmarkLogger
     from topmark.toml.types import TomlTable
 
 logger: TopmarkLogger = get_logger(__name__)
-
-
-def _strip_none_for_toml(value: object) -> object:
-    """Remove TOML-incompatible `None` values from mappings and lists.
-
-    TOML has no `null`. During rendering, keys with `None` values are omitted
-    and `None` items are dropped from lists.
-
-    Notes:
-        - The input is typed as `object` (not `Any`) so Pyright does not treat
-          mapping/list iterators as `Unknown`.
-        - Mapping keys are defensively normalized to strings, since TOML tables
-          are string-keyed.
-    """
-    # Recursively normalize mappings/lists into TOML-compatible plain-Python
-    # shapes while dropping `None` entries.
-    if isinstance(value, Mapping):
-        out: dict[str, object] = {}
-        m: Mapping[object, object] = cast("Mapping[object, object]", value)
-        for k_any, v_any in m.items():
-            if v_any is None:
-                logger.debug("Ignoring `None` entry in Mapping for key %s", k_any)
-                continue
-            k: str = k_any if isinstance(k_any, str) else str(k_any)
-            out[k] = _strip_none_for_toml(v_any)
-        return out
-
-    if isinstance(value, list):
-        out_list: list[object] = []
-        seq: list[object] = cast("list[object]", value)
-        for v_any in seq:
-            if v_any is None:
-                logger.debug("Ignoring `None` entry in list")
-                continue
-            out_list.append(_strip_none_for_toml(v_any))
-        return out_list
-
-    return value
 
 
 def _tomlkit_dumps(data: TomlTable) -> str:
@@ -85,7 +48,7 @@ def _tomlkit_dumps(data: TomlTable) -> str:
     """
     # Strip TOML-incompatible `None` values first, then normalize to a plain
     # string-keyed mapping acceptable to `tomlkit.dumps()`.
-    cleaned: object = _strip_none_for_toml(data)
+    cleaned: object = strip_none_for_toml(data)
     cleaned_mapping: dict[str, object] = as_object_dict(cleaned)
 
     # A targeted Pyright suppression is appropriate here because the third-party

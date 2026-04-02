@@ -1,8 +1,8 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : loaders.py
-#   file_relpath : src/topmark/config/io/loaders.py
+#   file         : defaults.py
+#   file_relpath : src/topmark/toml/defaults.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -16,8 +16,8 @@ arbitrary on-disk user config files. Instead, it owns the bundled template and
 the code-defined default TopMark TOML document used when the annotated template
 is unavailable.
 
-Today, `load_defaults_dict()` assembles one complete TOML-serializable default
-TopMark document in a single place. Over time, this should evolve toward
+Today, `build_default_topmark_toml_table()` assembles one complete TOML-serializable
+default TopMark document in a single place. Over time, this should evolve toward
 merging smaller domain-scoped default fragments such as:
 - layered config defaults
 - persisted writer-option defaults
@@ -33,8 +33,8 @@ from importlib.resources import files
 from typing import TYPE_CHECKING
 
 from topmark.config.policy import HeaderMutationMode
-from topmark.constants import DEFAULT_TOML_CONFIG_NAME
-from topmark.constants import DEFAULT_TOML_CONFIG_PACKAGE
+from topmark.constants import EXAMPLE_TOPMARK_TOML_NAME
+from topmark.constants import EXAMPLE_TOPMARK_TOML_PACKAGE
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.core.logging import get_logger
 from topmark.toml.keys import Toml
@@ -129,18 +129,18 @@ def _build_default_config_metadata_toml() -> TomlTable:
 # ---- Public template/default document helpers ----
 
 
-def load_default_config_template_toml_text() -> tuple[str, Exception | None]:
+def load_default_topmark_template_toml_text() -> tuple[str, Exception | None]:
     """Load the bundled default TOML config *template* as text.
 
     This reads the annotated template bundled with TopMark
     (``topmark-example.toml``) and returns it as UTF-8 text.
 
-    Unlike `load_defaults_dict`, this helper preserves the template's
+    Unlike `build_default_topmark_toml_table()`, this helper preserves the template's
     comments and formatting (when the packaged resource is available).
 
     If the packaged template cannot be read, the function falls back to a
     generated TOML document built from TopMark's default TOML document
-    (`load_defaults_dict`). The returned ``error`` is the exception
+    (`build_default_topmark_toml_table`). The returned ``error`` is the exception
     raised while reading the packaged template.
 
     Returns:
@@ -157,7 +157,7 @@ def load_default_config_template_toml_text() -> tuple[str, Exception | None]:
     """
     # Attempt to read the annotated bundled template; preserve comments and formatting.
     # This is the preferred source for human-facing outputs.
-    resource: Traversable = files(DEFAULT_TOML_CONFIG_PACKAGE).joinpath(DEFAULT_TOML_CONFIG_NAME)
+    resource: Traversable = files(EXAMPLE_TOPMARK_TOML_PACKAGE).joinpath(EXAMPLE_TOPMARK_TOML_NAME)
     err: Exception | None = None
 
     try:
@@ -180,7 +180,7 @@ def load_default_config_template_toml_text() -> tuple[str, Exception | None]:
         err = exc
         logger.warning("Cannot read packaged default config template %s: %s", resource, exc)
 
-        generated: str = render_toml_table(load_defaults_dict())
+        generated: str = render_toml_table(build_default_topmark_toml_table())
 
         # Make the fallback explicit in the generated output, without breaking TOML.
         notice: str = (
@@ -196,7 +196,7 @@ def load_default_config_template_toml_text() -> tuple[str, Exception | None]:
     return toml_text, err
 
 
-def load_defaults_dict() -> TomlTable:
+def build_default_topmark_toml_table() -> TomlTable:
     """Return TopMark's default TOML document as a plain-Python table.
 
     This helper intentionally performs **no I/O**.
@@ -212,7 +212,7 @@ def load_defaults_dict() -> TomlTable:
     domain-scoped helpers and then merge those partial TOML tables here.
 
     If you need the annotated template with comments and formatting preserved,
-    use `load_default_config_template_toml_text()`.
+    use `load_default_topmark_template_toml_text()`.
 
     Returns:
         A new TOML-table-compatible dictionary containing the default TopMark
@@ -234,11 +234,12 @@ def render_default_topmark_toml_text(
     """Render the centralized default TopMark TOML document as text.
 
     This helper is I/O-free: it serializes the TOML table returned by
-    `load_defaults_dict()`. It does not preserve the annotated template's
+    `build_default_topmark_toml_table()`. It does not preserve the annotated template's
     comments or formatting.
 
     Note:
-        The rendered content is the default TopMark TOML document, not execution-only `RunOptions`.
+        The rendered content is the default TopMark TOML document,
+        not execution-only `RunOptions`.
 
     Args:
         for_pyproject: If `True`, nest the output under `[tool.topmark]`.
@@ -246,7 +247,7 @@ def render_default_topmark_toml_text(
     Returns:
         TOML document text.
     """
-    toml_text: str = render_toml_table(load_defaults_dict())
+    toml_text: str = render_toml_table(build_default_topmark_toml_table())
     if for_pyproject:
         toml_text = nest_toml_under_section(
             toml_text,

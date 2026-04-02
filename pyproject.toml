@@ -359,8 +359,8 @@ package-dir          = { "" = "src" }
 include-package-data = true
 
   [tool.setuptools.package-data]
-  "topmark"        = ["py.typed"]
-  "topmark.config" = ["topmark-example.toml"]
+  "topmark"      = ["py.typed"]
+  "topmark.toml" = ["topmark-example.toml"]
 
   [tool.setuptools.packages.find]
   where = ["src"]

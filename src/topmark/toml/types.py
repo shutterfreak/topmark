@@ -44,6 +44,6 @@ single TOML table ready for validation or serialization.
 TomlTableMap: TypeAlias = dict[str, TomlTable]
 """Mapping of table names to TOML tables.
 
-Used for composing multi-table TOML documents, where each key corresponds to
-a top-level table name and each value is a TOML table.
+Used for mappings whose values are TOML tables, including grouped top-level or nested tables,
+where each key corresponds to a top-level table name and each value is a TOML table.
 """

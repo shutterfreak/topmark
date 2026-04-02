@@ -26,7 +26,6 @@ Scope:
         - [`topmark.config.resolution`][topmark.config.resolution]
       - Layered config handling:
         - [`topmark.toml.loaders`][topmark.toml.loaders]
-        - [`topmark.config.io.loaders`][topmark.config.io.loaders]
 
 Immutability:
     - `Config` stores tuples/frozensets and is ``frozen=True`` to prevent
@@ -85,7 +84,9 @@ class Config:
     to prevent accidental mutation during processing. Use `Config.thaw` to obtain a mutable builder
     for edits, and `MutableConfig.freeze` to return to an immutable layered snapshot.
 
-    Layered merging with clear precedence is provided by `load_resolved_config()`.
+    Layered merging with clear precedence is provided by the config-resolution helpers in
+    [topmark.config.resolution][topmark.config.resolution], including the compatibility facade
+    `load_resolved_config()`.
 
     Attributes:
         policy: Global, resolved, immutable runtime policy (plain booleans),

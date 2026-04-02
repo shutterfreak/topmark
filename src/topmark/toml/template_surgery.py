@@ -2,36 +2,33 @@
 #
 #   project      : TopMark
 #   file         : template_surgery.py
-#   file_relpath : src/topmark/config/io/template_surgery.py
+#   file_relpath : src/topmark/toml/template_surgery.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""Presentation-oriented edits for the bundled config template.
+"""Presentation-oriented edits for the bundled example TopMark TOML resource.
 
-This module performs *text-level* edits on the annotated default configuration
-template (``topmark-example.toml``) for copy/paste-friendly CLI output.
+This module performs text-level edits on the annotated bundled example TopMark
+TOML resource (`topmark-example.toml`) for copy/paste-friendly CLI output.
 
 Supported transformations:
-
-- ``--pyproject``: ensure an explicit ``[tool.topmark]`` header exists so the
-  output can be pasted into ``pyproject.toml``.
-- ``--root``: insert/remove a ``root = true`` setting while preserving the
-  template's comment layout.
+- `--root`: insert or remove `root = true` while preserving the documented
+  layout of the example TOML resource
+- validation of the final plain or pyproject-shaped output used by
+  `topmark config init`
 
 Design goals:
-
-- Preserve the template's original comments and formatting.
-- Make edits idempotent (safe to apply repeatedly).
-- Be conservative when removing content.
-- Provide a TOML-parse backstop and clear error hints.
+- preserve the resource's original comments and formatting
+- make edits idempotent (safe to apply repeatedly)
+- be conservative when removing content
+- provide a TOML-parse backstop and clear validation hints
 
 Rationale:
-
-The annotated template is primarily documentation. Full AST rewriting tends to
-reorder content and strip formatting, which is undesirable for human-facing
-output.
+The bundled example TopMark TOML resource is primarily documentation. Full AST
+rewriting tends to reorder content and strip formatting, which is undesirable
+for human-facing output.
 """
 
 from __future__ import annotations
@@ -76,7 +73,7 @@ class TemplateEditResult:
 
 
 def ensure_pyproject_header(toml_text: str) -> TemplateEditResult:
-    """Ensure the template contains an explicit ``[tool.topmark]`` table header."""
+    """Ensure the example TOML text contains an explicit `[tool.topmark]` header."""
     lines: list[str] = toml_text.splitlines(keepends=True)
 
     # IMPORTANT: avoid false positives from inline documentation mentioning "[tool.topmark]".
@@ -123,10 +120,10 @@ def set_root_flag_in_template_text(
     for_pyproject: bool,
     root: bool,
 ) -> TemplateEditResult:
-    """Insert or remove `root = true` in the template text under `[config]`.
+    """Insert or remove `root = true` in example TOML text under `[config]`.
 
-    This function edits the annotated template as text (not as a TOML AST) so
-    the surrounding documentation and spacing remain intact.
+    This function edits the bundled example TOML resource as text (not as a
+    TOML AST) so the surrounding documentation and spacing remain intact.
 
     Placement when enabling `root`:
 
@@ -152,10 +149,10 @@ def set_root_flag_in_template_text(
       the appropriate config table are removed.
 
     Args:
-        toml_text: TOML document text.
-        for_pyproject: If True, nest under [tool.topmark].
-        root: Whether the target scope is pyproject-style (`[tool.topmark.config]`) rather than
-            plain `[config]`.
+        toml_text: Example TOML document text.
+        for_pyproject: Whether the target scope is pyproject-style
+            (`[tool.topmark.config]`) rather than plain `[config]`.
+        root: Whether to enable the root flag.
 
     Returns:
         TemplateEditResult with edited text and a `changed` flag.
@@ -296,9 +293,10 @@ def validate_toml_for_config_init(
     for_pyproject: bool,
     root_expected: bool,
 ) -> None:
-    """Validate a config-init TOML document.
+    """Validate final TOML output prepared for `topmark config init`.
 
-    This is a defensive backstop for presentation-oriented template edits.
+    This is a defensive backstop for presentation-oriented edits of the bundled
+    example TopMark TOML resource.
 
     Validates:
         - TOML syntax parses.
@@ -306,7 +304,7 @@ def validate_toml_for_config_init(
         - Optional `root` expectation (`[config].root` or `[tool.topmark.config].root`).
 
     Args:
-        toml_text: TOML document text to validate.
+        toml_text: Final TOML document text to validate.
         for_pyproject: If True, the document is expected to contain a `[tool]` table
             with a nested `[tool.topmark]` table.
         root_expected: If True, the document is expected to contain `root = true` in

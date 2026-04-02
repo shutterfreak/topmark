@@ -8,18 +8,22 @@
 #
 # topmark:header:end
 
-"""Type guards and normalization helpers for TopMark TOML handling.
+"""Type guards and TOML-shape normalization helpers for TopMark TOML handling.
 
 This module provides `TypeGuard`-based predicates that help Pyright narrow
 runtime values coming from TOML parsing, including `tomlkit` objects.
 
-It also includes small, side-effect-free normalization helpers such as
-`as_toml_table` and `as_toml_table_map`, used to safely coerce arbitrary parsed
-values into the plain-Python table shapes used by TopMark TOML processing.
+It focuses on:
+- recognizing plain-Python TOML-compatible shapes
+- normalizing parsed objects into the recursive TOML table aliases used across
+  TopMark
+- narrowing nested TOML table mappings such as grouped subtable collections
 
 See Also:
 - [`topmark.core.typing_guards`][topmark.core.typing_guards]: generic type guards and normalization
   helpers for parsing weakly typed objects.
+- [`topmark.toml.utils`][topmark.toml.utils]: small builders and normalization
+  helpers for TOML-compatible values and tables.
 """
 
 from __future__ import annotations
@@ -33,6 +37,7 @@ from tomlkit.items import Table
 from topmark.core.logging import get_logger
 from topmark.core.typing_guards import is_any_list
 from topmark.core.typing_guards import is_mapping
+from topmark.toml.types import TomlTable
 
 if TYPE_CHECKING:
     from collections.abc import Mapping

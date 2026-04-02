@@ -17,7 +17,7 @@ Responsibilities:
     - validate section/key shapes and attach config diagnostics
     - normalize config-local filesystem references against the source TOML file
     - deserialize layered config sections such as policy, files, header, and formatting
-    - load default and file-backed config documents into mutable draft configs
+    - deserialize built-in and caller-provided TopMark TOML tables into mutable draft configs
 
 Design notes:
     - This module is intentionally separate from `topmark.config.model`.
@@ -42,7 +42,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Final
 
-from topmark.config.io.loaders import load_defaults_dict
 from topmark.config.model import MutableConfig
 from topmark.config.paths import abs_path_from
 from topmark.config.paths import extend_pattern_sources
@@ -53,6 +52,7 @@ from topmark.config.policy import HeaderMutationMode
 from topmark.config.policy import MutablePolicy
 from topmark.config.types import PatternGroup
 from topmark.core.logging import get_logger
+from topmark.toml.defaults import build_default_topmark_toml_table
 from topmark.toml.getters import get_bool_value_or_none_checked
 from topmark.toml.getters import get_enum_value_checked
 from topmark.toml.getters import get_string_list_value_checked
@@ -74,15 +74,16 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-# ------------------ Config representation as TOML Tables  ------------------
+# ------------------ Extracted TOML table bundles  ------------------
 
 
 @dataclass(frozen=True, slots=True)
-class _LayeredTomlTables:
-    """Structured bundle of well-known TOML subtables extracted from a config document.
+class ExtractedLayeredTomlTables:
+    """Structured bundle of well-known layered TOML subtables.
 
-    This avoids fragile position-based tuple unpacking in `MutableConfig.from_toml_dict()` and
-    keeps the extraction/parsing flow self-documenting.
+    This keeps the extraction/parsing flow self-documenting and avoids fragile
+    position-based tuple unpacking when deserializing a TopMark TOML table into
+    a `MutableConfig` draft.
     """
 
     field_tbl: TomlTable
@@ -498,7 +499,7 @@ def mutable_config_from_toml_dict(
 
     def _extract_toml_tables(
         tool_tbl: TomlTable,
-    ) -> _LayeredTomlTables:
+    ) -> ExtractedLayeredTomlTables:
         """Extract well-known TOML subtables into a typed bundle."""
         # Extract sub-tables for specific config sections; fallback to empty dicts.
         #
@@ -525,7 +526,7 @@ def mutable_config_from_toml_dict(
         policy_by_type_tbl: TomlTableMap = as_toml_table_map(policy_by_type_raw)
         logger.trace("TOML [%s]: %s", Toml.SECTION_POLICY_BY_TYPE, policy_by_type_tbl)
 
-        return _LayeredTomlTables(
+        return ExtractedLayeredTomlTables(
             field_tbl=field_tbl,
             header_tbl=header_tbl,
             formatting_tbl=formatting_tbl,
@@ -549,7 +550,7 @@ def mutable_config_from_toml_dict(
     #       It may contain keys that are not rendered. The rendered/ordered subset
     #       is controlled by `[header].fields` and applied later by
     #       `topmark.pipeline.steps.builder.BuilderStep`.
-    toml_tables: _LayeredTomlTables = _extract_toml_tables(tool_tbl)
+    toml_tables: ExtractedLayeredTomlTables = _extract_toml_tables(tool_tbl)
 
     # ---- config_files: normalize to absolute paths if possible ----
     _initialize_config_file_provenance()
@@ -578,12 +579,12 @@ def mutable_config_from_toml_dict(
 
 
 def mutable_config_from_defaults() -> MutableConfig:
-    """Load the default configuration from TopMark's runtime defaults.
+    """Load the built-in default TopMark TOML table into a mutable draft.
 
     Returns:
         A `MutableConfig` instance populated with default values.
     """
-    default_toml_data: TomlTable = load_defaults_dict()
+    default_toml_data: TomlTable = build_default_topmark_toml_table()
 
     # Note: `config_file` is set to None because this is a package resource,
     # not a user-specified filesystem path.

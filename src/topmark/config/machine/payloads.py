@@ -26,7 +26,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.cli.keys import CliCmd
-from topmark.config.io.serializers import config_to_toml_dict
+from topmark.config.io.serializers import config_to_topmark_toml_table
 from topmark.config.machine.schemas import ConfigCheckSummary
 from topmark.config.machine.schemas import ConfigDiagnosticsPayload
 from topmark.config.machine.schemas import ConfigPayload
@@ -56,7 +56,7 @@ def build_config_payload(config: Config) -> ConfigPayload:
         ConfigPayload: JSON-serializable representation of the layered Config,
             without diagnostics.
     """
-    base: TomlTable = config_to_toml_dict(
+    base: TomlTable = config_to_topmark_toml_table(
         config,
         include_files=False,
     )

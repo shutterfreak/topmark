@@ -8,17 +8,17 @@
 #
 # topmark:header:end
 
-"""Serialize TopMark configuration objects to TOML-compatible structures.
+"""Serialize TopMark configuration objects to TopMark TOML tables.
 
 This module provides helpers to convert immutable `Config` instances into
-TOML-serializable dictionaries for export, debugging, or documentation.
+TopMark TOML-compatible tables for export, debugging, or documentation.
 
 TOML has no `null` value, so `None` entries are stripped during rendering.
 
 Responsibilities:
-    - convert layered `Config` into TOML-shaped dictionaries
+    - convert layered `Config` into TopMark TOML tables
     - normalize config values into stable TOML-compatible tokens
-    - control inclusion of optional sections (e.g. large file lists)
+    - control inclusion of optional sections (for example large file lists)
 
 Design notes:
     - This module is the inverse of
@@ -34,16 +34,16 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from topmark.config.io.enums import FilesSerializationMode
 from topmark.core.errors import TomlRenderError
 from topmark.core.logging import get_logger
+from topmark.toml.enums import FilesSerializationMode
 from topmark.toml.keys import Toml
+from topmark.toml.utils import as_toml_string_list
+from topmark.toml.utils import as_toml_table_list
 from topmark.toml.utils import insert_if_present
 from topmark.utils.file import rebase_glob_patterns
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
-
     from topmark.config.model import Config
     from topmark.core.logging import TopmarkLogger
     from topmark.diagnostic.model import DiagnosticLog
@@ -53,31 +53,14 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-def _toml_string_list(values: Iterable[str]) -> list[TomlValue]:
-    """Return a TOML-compatible list of strings.
-
-    Pyright treats `list[str]` as incompatible with the recursive `TomlValue`
-    alias because `list` is invariant. Building the list through the wider
-    element type keeps the serializer strict-typing friendly without casts.
-    """
-    result: list[TomlValue] = list(values)
-    return result
-
-
-def _toml_table_list(values: Iterable[TomlTable]) -> list[TomlValue]:
-    """Return a TOML-compatible list of TOML tables."""
-    result: list[TomlValue] = list(values)
-    return result
-
-
-def config_to_toml_dict(
+def config_to_topmark_toml_table(
     config: Config,
     *,
     include_files: bool = False,
     files_serialization_mode: FilesSerializationMode = FilesSerializationMode.REBASED,
     diagnostics: DiagnosticLog | None = None,
 ) -> TomlTable:
-    """Convert this immutable Config into a TOML-serializable dict.
+    """Convert an immutable `Config` into a TopMark TOML table.
 
     Args:
         config: The immutable Config instance to render as TOML.
@@ -93,15 +76,15 @@ def config_to_toml_dict(
             diagnostics if provided.
 
     Returns:
-        The TOML-serializable dict representing the Config.
+        The TopMark TOML table representing the supplied configuration.
 
     Raises:
-        TomlRenderError: When an invalid files serialization mode was specified.
+        TomlRenderError: If an invalid files serialization mode is specified.
 
     Note:
-        Export-only convenience for documentation/snapshots. Parsing and
-        loading live on the **mutable** side (see `MutableConfig` and
-        [`topmark.config.io`][topmark.config.io]).
+        Export-only convenience for documentation and snapshots. Parsing and
+        loading live on the mutable side (see `MutableConfig` and
+        [`topmark.config.io.deserializers`][topmark.config.io.deserializers]).
 
         Pattern groups and pattern-source bases are serialized based on the value of
         `files_serialization_mode`. When set to `FilesSerializationMode.ORIGIN`, provenance-rich
@@ -131,10 +114,10 @@ def config_to_toml_dict(
     # ---- Files ----
 
     # Deterministic ordering for file types
-    include_file_types_sorted: list[TomlValue] = _toml_string_list(
+    include_file_types_sorted: list[TomlValue] = as_toml_string_list(
         sorted(config.include_file_types)
     )
-    exclude_file_types_sorted: list[TomlValue] = _toml_string_list(
+    exclude_file_types_sorted: list[TomlValue] = as_toml_string_list(
         sorted(config.exclude_file_types)
     )
 
@@ -142,7 +125,7 @@ def config_to_toml_dict(
     files_tbl: TomlTable = {
         Toml.KEY_INCLUDE_FILE_TYPES: include_file_types_sorted,
         Toml.KEY_EXCLUDE_FILE_TYPES: exclude_file_types_sorted,
-        Toml.KEY_CONFIG_FILES: _toml_string_list(
+        Toml.KEY_CONFIG_FILES: as_toml_string_list(
             str(p) if isinstance(p, Path) else str(p) for p in config.config_files
         ),
     }
@@ -156,17 +139,19 @@ def config_to_toml_dict(
         insert_if_present(
             files_tbl,
             Toml.KEY_FILES,
-            _toml_string_list(config.files),
+            as_toml_string_list(config.files),
         )
 
     # Patterns/Groups serialization
     if files_serialization_mode == FilesSerializationMode.REBASED:
         # Add files_from, include_from, exclude_from as flattened lists
-        files_tbl[Toml.KEY_FILES_FROM] = _toml_string_list(str(ps.path) for ps in config.files_from)
-        files_tbl[Toml.KEY_INCLUDE_FROM] = _toml_string_list(
+        files_tbl[Toml.KEY_FILES_FROM] = as_toml_string_list(
+            str(ps.path) for ps in config.files_from
+        )
+        files_tbl[Toml.KEY_INCLUDE_FROM] = as_toml_string_list(
             str(ps.path) for ps in config.include_from
         )
-        files_tbl[Toml.KEY_EXCLUDE_FROM] = _toml_string_list(
+        files_tbl[Toml.KEY_EXCLUDE_FROM] = as_toml_string_list(
             str(ps.path) for ps in config.exclude_from
         )
 
@@ -201,39 +186,39 @@ def config_to_toml_dict(
                     diagnostics.add_warning(w)
                 else:
                     logger.warning(w)
-        files_tbl[Toml.KEY_INCLUDE_PATTERNS] = _toml_string_list(include_patterns)
-        files_tbl[Toml.KEY_EXCLUDE_PATTERNS] = _toml_string_list(exclude_patterns)
+        files_tbl[Toml.KEY_INCLUDE_PATTERNS] = as_toml_string_list(include_patterns)
+        files_tbl[Toml.KEY_EXCLUDE_PATTERNS] = as_toml_string_list(exclude_patterns)
     elif files_serialization_mode == FilesSerializationMode.ORIGIN:
         # Omit flattened pattern/path lists, emit provenance-oriented tables
-        files_tbl[Toml.KEY_INCLUDE_PATTERN_GROUPS] = _toml_table_list(
+        files_tbl[Toml.KEY_INCLUDE_PATTERN_GROUPS] = as_toml_table_list(
             {
                 Toml.KEY_BASE: str(group.base),
-                Toml.KEY_PATTERNS: _toml_string_list(group.patterns),
+                Toml.KEY_PATTERNS: as_toml_string_list(group.patterns),
             }
             for group in config.include_pattern_groups
         )
-        files_tbl[Toml.KEY_EXCLUDE_PATTERN_GROUPS] = _toml_table_list(
+        files_tbl[Toml.KEY_EXCLUDE_PATTERN_GROUPS] = as_toml_table_list(
             {
                 Toml.KEY_BASE: str(group.base),
-                Toml.KEY_PATTERNS: _toml_string_list(group.patterns),
+                Toml.KEY_PATTERNS: as_toml_string_list(group.patterns),
             }
             for group in config.exclude_pattern_groups
         )
-        files_tbl[Toml.KEY_INCLUDE_FROM_SOURCES] = _toml_table_list(
+        files_tbl[Toml.KEY_INCLUDE_FROM_SOURCES] = as_toml_table_list(
             {
                 Toml.KEY_BASE: str(ps.base),
                 Toml.KEY_PATH: str(ps.path),
             }
             for ps in config.include_from
         )
-        files_tbl[Toml.KEY_EXCLUDE_FROM_SOURCES] = _toml_table_list(
+        files_tbl[Toml.KEY_EXCLUDE_FROM_SOURCES] = as_toml_table_list(
             {
                 Toml.KEY_BASE: str(ps.base),
                 Toml.KEY_PATH: str(ps.path),
             }
             for ps in config.exclude_from
         )
-        files_tbl[Toml.KEY_FILES_FROM_SOURCES] = _toml_table_list(
+        files_tbl[Toml.KEY_FILES_FROM_SOURCES] = as_toml_table_list(
             {
                 Toml.KEY_BASE: str(ps.base),
                 Toml.KEY_PATH: str(ps.path),

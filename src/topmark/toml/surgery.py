@@ -8,21 +8,27 @@
 #
 # topmark:header:end
 
-"""Lossless TOML edits using tomlkit.
+"""Structural TOML document edits using tomlkit.
 
-This module provides helpers that operate on a TOML *AST* (via tomlkit) to
-preserve formatting and comments as much as possible.
+This module provides helpers that operate on a TOML document (validated via
+`tomlkit`) for structural edits such as:
 
-Use cases:
-- Wrapping an existing TOML document under a dotted section path  (e.g. nesting under
-  ``tool.topmark`` for ``pyproject.toml``).
-- Setting/removing the ``root`` discovery flag structurally.
+- nesting an existing TopMark TOML document under a dotted section path (for
+  example under `tool.topmark` for `pyproject.toml` output)
+- setting or removing the `root` discovery flag structurally
+
+Design intent:
+- use TOML-aware validation before rewriting document structure
+- preserve comments and presentation layout as much as practical for human-
+  facing output
+- keep generic TOML document surgery separate from annotated template editing
 
 Notes:
-- These helpers are intended for structural manipulation.
-- For the annotated config template used by `topmark config init`, prefer the text-based helpers in
-  [`topmark.config.io.template_surgery`][topmark.config.io.template_surgery] to preserve the
-  template's documentation layout.
+- These helpers are intended for structural manipulation of TopMark TOML
+  documents.
+- For presentation-preserving edits of the bundled example TopMark TOML
+  resource (`topmark-example.toml`), prefer the text-based helpers in
+  [`topmark.toml.template_surgery`][topmark.toml.template_surgery].
 """
 
 from __future__ import annotations
@@ -56,7 +62,8 @@ _TomlkitBodyItem = tuple[Key | None, Item]
 def set_root_flag(toml_text: str, *, for_pyproject: bool, root: bool) -> str:
     """Set or remove the `root` flag in a TOML document.
 
-    - For `topmark.toml`: sets `[config].root = true` (or removes it when false).
+    - For a plain TopMark TOML document: sets `[config].root = true` (or
+      removes it when false).
     - For `pyproject.toml`: sets `tool.topmark.config.root`.
 
     Args:
@@ -172,8 +179,9 @@ def nest_toml_under_section(
 ) -> str:
     r"""Return a new TOML document nested under a dotted section path.
 
-    This helper validates the TOML document with `tomlkit`, then preserves presentation-oriented
-    text layout while wrapping the document under a dotted section path, for example:
+    This helper validates the TOML document with `tomlkit`, then preserves
+    presentation-oriented text layout while wrapping the document under a
+    dotted section path, for example:
 
         nest_toml_under_section("a = 1\n", "tool.topmark")
 
@@ -192,13 +200,14 @@ def nest_toml_under_section(
             Empty segments (e.g., ``"tool..topmark"``) are not allowed.
 
     Returns:
-        A new TOML document where the original keyed content lives under the final
-        section table (e.g., ``[tool.topmark]``).
+        A new TOML document where the original keyed content lives under the
+        final section table (for example `[tool.topmark]`).
 
     Raises:
-        ValueError: If ``section_keys`` is empty or only contains dots.
-        TomlParseError: If the TOML document cannot be parsed or if an existing.
-        TomlSurgeryError: If trying to nest a table in a non-table element.
+        ValueError: If `section_keys` is empty or only contains dots.
+        TomlParseError: If the TOML document cannot be parsed.
+        TomlSurgeryError: If structural nesting invariants are violated while
+            checking or applying the requested wrapper path.
     """
     try:
         # 1. Parse the existing document losslessly

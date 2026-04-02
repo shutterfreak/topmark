@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from topmark.config.io.deserializers import mutable_config_from_defaults
-from topmark.config.io.serializers import config_to_toml_dict
+from topmark.config.io.serializers import config_to_topmark_toml_table
 from topmark.core.keys import ArgKey
 from topmark.toml.keys import Toml
 from topmark.toml.render import render_toml_table
@@ -45,7 +45,7 @@ def test_to_toml_strips_none_entries() -> None:
     c: Config = draft.freeze()
 
     # Create a dict with explicit None where TOML doesn't allow it
-    td: TomlTable = config_to_toml_dict(
+    td: TomlTable = config_to_topmark_toml_table(
         c,
         include_files=False,
     )
@@ -63,9 +63,9 @@ def test_config_to_toml_dict_origin_mode_preserves_pattern_group_and_source_tabl
     tmp_path: Path,
 ) -> None:
     """Origin-mode serialization should keep provenance-rich pattern/source tables."""
-    from topmark.config.io.enums import FilesSerializationMode
     from topmark.config.types import PatternGroup
     from topmark.config.types import PatternSource
+    from topmark.toml.enums import FilesSerializationMode
 
     proj: Path = tmp_path / "proj"
     proj.mkdir()
@@ -90,7 +90,7 @@ def test_config_to_toml_dict_origin_mode_preserves_pattern_group_and_source_tabl
     ]
 
     c: Config = draft.freeze()
-    d: TomlTable = config_to_toml_dict(
+    d: TomlTable = config_to_topmark_toml_table(
         c,
         include_files=False,
         files_serialization_mode=FilesSerializationMode.ORIGIN,

@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : topmark-example.toml
-#   file_relpath : src/topmark/config/topmark-example.toml
+#   file_relpath : src/topmark/toml/topmark-example.toml
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
