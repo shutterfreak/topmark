@@ -89,7 +89,7 @@ class MachineKey:
 
     # Config checking
     OK: Final[str] = "ok"
-    STRICT: Final[str] = "strict"
+    STRICT_CONFIG_CHECKING: Final[str] = "strict_config_checking"
 
     # Version
     VERSION: Final[str] = "version"
@@ -219,7 +219,7 @@ _KNOWN_KEYS: Final[set[str]] = {
     MachineKey.SUBCOMMAND,
     MachineKey.DIAGNOSTIC_COUNTS,
     MachineKey.OK,
-    MachineKey.STRICT,
+    MachineKey.STRICT_CONFIG_CHECKING,
     MachineKey.VERSION,
     MachineKey.VERSION_INFO,
     MachineKey.VERSION_FORMAT,

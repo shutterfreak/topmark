@@ -42,7 +42,7 @@ from topmark.cli.options import config_strict_checking_options
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import apply_ignore_positional_paths_policy
 from topmark.config.machine.payloads import build_config_diagnostics_payload
-from topmark.config.resolution import load_resolved_config
+from topmark.config.resolution import resolve_toml_sources_and_build_config_draft
 from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
@@ -58,7 +58,6 @@ if TYPE_CHECKING:
     from topmark.cli.console.protocols import ConsoleProtocol
     from topmark.config.machine.schemas import ConfigDiagnosticsPayload
     from topmark.config.model import Config
-    from topmark.config.model import MutableConfig
     from topmark.core.logging import TopmarkLogger
     from topmark.core.machine.schemas import MetaPayload
     from topmark.diagnostic.machine.schemas import MachineDiagnosticCounts
@@ -156,7 +155,7 @@ def config_check_command(
     apply_ignore_positional_paths_policy(ctx, warn_stdin_dash=True)
 
     # Build a merged draft config (we do not need an InputPlan since we're not processing files)
-    draft_config: MutableConfig = load_resolved_config(
+    _resolved, draft_config = resolve_toml_sources_and_build_config_draft(
         strict_config_checking=strict_config_checking,
         no_config=no_config,
         extra_config_files=[Path(p) for p in config_files],

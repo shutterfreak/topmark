@@ -143,7 +143,7 @@ class ConfigCheckSummary:
             MachineKey.COMMAND: self.command,
             MachineKey.SUBCOMMAND: self.subcommand,
             MachineKey.OK: self.ok,
-            MachineKey.STRICT: self.strict,
+            MachineKey.STRICT_CONFIG_CHECKING: self.strict,
             MachineKey.DIAGNOSTIC_COUNTS: self.diagnostic_counts.to_dict(),
             MachineKey.CONFIG_FILES: self.config_files,
         }

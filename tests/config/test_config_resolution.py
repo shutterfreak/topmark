@@ -12,9 +12,9 @@
 """Tests for configuration discovery, precedence, and TOML parsing.
 
 These tests exercise:
-- discovery and merge ordering (`load_resolved_config`),
+- discovery and merge ordering,
 - file-based loading for both `topmark.toml` and `[tool.topmark]` in `pyproject.toml`,
-- TOML parsing/normalization in `MutableConfig.from_toml_dict`,
+- TOML parsing/normalization,
 - and that user-facing warnings are mirrored into `MutableConfig.diagnostics`.
 """
 
@@ -32,14 +32,16 @@ from topmark.config.io.deserializers import mutable_config_from_toml_dict
 from topmark.config.overrides import ConfigOverrides
 from topmark.config.overrides import apply_config_overrides
 from topmark.config.policy import HeaderMutationMode
+from topmark.config.resolution import build_config_layers_from_resolved_toml_sources
 from topmark.config.resolution import build_effective_config_for_path
-from topmark.config.resolution import discover_config_layers
-from topmark.config.resolution import load_resolved_config
 from topmark.config.resolution import merge_layers_globally
+from topmark.config.resolution import resolve_toml_sources_and_build_config_draft
 from topmark.config.resolution import select_applicable_layers
 from topmark.resolution.files import resolve_file_list
 from topmark.toml.keys import Toml
 from topmark.toml.loaders import load_topmark_toml_source
+from topmark.toml.resolution import ResolvedTopmarkTomlSources
+from topmark.toml.resolution import resolve_topmark_toml_sources
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -103,7 +105,7 @@ def test_relative_to_resolves_against_config_dir(
     )
 
     # Anchor discovery under nested path
-    draft: MutableConfig = load_resolved_config(input_paths=[src])
+    _resolved, draft = resolve_toml_sources_and_build_config_draft(input_paths=[src])
     assert draft.relative_to is not None
     assert draft.relative_to == proj.resolve()
 
@@ -129,7 +131,7 @@ def test_same_dir_precedence_topmark_over_pyproject(tmp_path: Path) -> None:
         """,
     )
 
-    draft: MutableConfig = load_resolved_config(input_paths=[proj])
+    _resolved, draft = resolve_toml_sources_and_build_config_draft(input_paths=[proj])
     # topmark.toml should win within the same directory
     assert draft.align_fields is True
 
@@ -163,7 +165,7 @@ def test_root_true_stops_traversal(tmp_path: Path) -> None:
         """,
     )
 
-    draft: MutableConfig = load_resolved_config(input_paths=[child])
+    _resolved, draft = resolve_toml_sources_and_build_config_draft(input_paths=[child])
     # Should see settings from `root`, not from `above`
     assert draft.align_fields is True
 
@@ -235,7 +237,7 @@ def test_globs_evaluated_relative_to_relative_to(tmp_path: Path) -> None:
         """,
     )
 
-    draft: MutableConfig = load_resolved_config(input_paths=[proj])
+    _resolved, draft = resolve_toml_sources_and_build_config_draft(input_paths=[proj])
     # `resolve_file_list` should include our file based on the glob evaluated from proj
     paths: list[Path] = resolve_file_list(draft.freeze())
     assert py.resolve() in paths
@@ -267,7 +269,7 @@ def test_relative_to_inheritance_across_multiple_discovered_configs(
         """,
     )
 
-    draft: MutableConfig = load_resolved_config(input_paths=[child])
+    _resolved, draft = resolve_toml_sources_and_build_config_draft(input_paths=[child])
     assert draft.relative_to is not None
     assert draft.relative_to == root.resolve()
 
@@ -295,7 +297,7 @@ def test_child_overrides_relative_to_with_its_own_dir(tmp_path: Path) -> None:
         """,
     )
 
-    draft: MutableConfig = load_resolved_config(input_paths=[child])
+    _resolved, draft = resolve_toml_sources_and_build_config_draft(input_paths=[child])
     assert draft.relative_to is not None
     assert draft.relative_to == sub.resolve()
 
@@ -326,7 +328,7 @@ def test_parent_include_from_and_child_exclude_from_normalized_with_proper_bases
         """,
     )
 
-    draft: MutableConfig = load_resolved_config(input_paths=[child])
+    _resolved, draft = resolve_toml_sources_and_build_config_draft(input_paths=[child])
     # include_from normalized to root base
     assert draft.include_from
     assert draft.include_from[0].base == root.resolve()
@@ -362,7 +364,7 @@ def test_include_from_accumulates_across_multiple_applicable_layers(tmp_path: Pa
         """,
     )
 
-    draft: MutableConfig = load_resolved_config(input_paths=[child])
+    _resolved, draft = resolve_toml_sources_and_build_config_draft(input_paths=[child])
     paths: list[Path] = [ps.path for ps in draft.include_from]
 
     assert paths == [
@@ -393,7 +395,7 @@ def test_files_nearest_non_empty_list_wins_across_layers(tmp_path: Path) -> None
         """,
     )
 
-    draft: MutableConfig = load_resolved_config(input_paths=[child])
+    _resolved, draft = resolve_toml_sources_and_build_config_draft(input_paths=[child])
     assert draft.files == [str((child / "module.py").resolve())]
 
 
@@ -419,7 +421,7 @@ def test_include_file_types_nearest_non_empty_set_wins_across_layers(tmp_path: P
         """,
     )
 
-    draft: MutableConfig = load_resolved_config(input_paths=[child])
+    _resolved, draft = resolve_toml_sources_and_build_config_draft(input_paths=[child])
     assert draft.include_file_types == {"markdown"}
 
 
@@ -447,7 +449,8 @@ def test_select_applicable_layers_filters_child_scoped_layer(tmp_path: Path) -> 
         """,
     )
 
-    layers: list[ConfigLayer] = discover_config_layers(input_paths=[child])
+    resolved: ResolvedTopmarkTomlSources = resolve_topmark_toml_sources(input_paths=[child])
+    layers: list[ConfigLayer] = build_config_layers_from_resolved_toml_sources(resolved.sources)
 
     child_file: Path = child / "module.py"
     sibling_file: Path = sibling / "guide.md"
@@ -497,7 +500,9 @@ def test_build_effective_config_for_path_merges_only_applicable_layers(tmp_path:
     child_file.write_text("x\n", encoding="utf-8")
     sibling_file.write_text("x\n", encoding="utf-8")
 
-    layers: list[ConfigLayer] = discover_config_layers(input_paths=[child])
+    resolved: ResolvedTopmarkTomlSources = resolve_topmark_toml_sources(input_paths=[child])
+    layers: list[ConfigLayer] = build_config_layers_from_resolved_toml_sources(resolved.sources)
+
     child_cfg: Config = build_effective_config_for_path(layers, child_file).freeze()
     sibling_cfg: Config = build_effective_config_for_path(layers, sibling_file).freeze()
 
@@ -535,7 +540,7 @@ def test_cli_overrides_merge_last(tmp_path: Path) -> None:
         """,
     )
 
-    draft: MutableConfig = load_resolved_config(input_paths=[proj])
+    _resolved, draft = resolve_toml_sources_and_build_config_draft(input_paths=[proj])
     # Simulate CLI override
     overrides = ConfigOverrides(
         align_fields=True,
@@ -568,7 +573,7 @@ def test_config_seeding_globs_when_no_inputs_and_cwd_differs(
 
     # Build merged config anchored under "elsewhere"
     monkeypatch.chdir(elsewhere)
-    draft: MutableConfig = load_resolved_config(
+    _resolved, draft = resolve_toml_sources_and_build_config_draft(
         input_paths=[elsewhere],
         extra_config_files=[proj / "pyproject.toml"],
     )
@@ -621,7 +626,7 @@ def test_malformed_toml_in_discovered_config_is_ignored(tmp_path: Path) -> None:
         """,
     )
 
-    draft: MutableConfig = load_resolved_config(input_paths=[child])
+    _resolved, draft = resolve_toml_sources_and_build_config_draft(input_paths=[child])
     assert draft.align_fields is True
 
 
@@ -1228,7 +1233,7 @@ def test_load_resolved_config_applies_strictness_from_config_table(tmp_path: Pat
         """,
     )
 
-    draft: MutableConfig = load_resolved_config(input_paths=[proj])
+    _resolved, draft = resolve_toml_sources_and_build_config_draft(input_paths=[proj])
     assert draft.strict_config_checking is True
 
 
@@ -1246,7 +1251,7 @@ def test_load_resolved_config_explicit_strictness_override_wins(tmp_path: Path) 
         """,
     )
 
-    draft: MutableConfig = load_resolved_config(
+    _resolved, draft = resolve_toml_sources_and_build_config_draft(
         input_paths=[proj],
         strict_config_checking=False,
     )

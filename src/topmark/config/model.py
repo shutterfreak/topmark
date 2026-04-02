@@ -85,8 +85,7 @@ class Config:
     for edits, and `MutableConfig.freeze` to return to an immutable layered snapshot.
 
     Layered merging with clear precedence is provided by the config-resolution helpers in
-    [topmark.config.resolution][topmark.config.resolution], including the compatibility facade
-    `load_resolved_config()`.
+    [topmark.config.resolution][topmark.config.resolution].
 
     Attributes:
         policy: Global, resolved, immutable runtime policy (plain booleans),

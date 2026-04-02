@@ -19,7 +19,7 @@ Responsibilities:
     - represent resolved layered config sources as `ConfigLayer`
     - load layered TOML-backed config fragments into `MutableConfig`
     - preserve TopMark's layered precedence rules
-    - merge discovered config layers into compatibility drafts
+    - merge config provenance layers into mutable config drafts
     - select applicable layers for a target path and build an effective config
 
 Typical layered precedence (lowest -> highest):
@@ -31,13 +31,13 @@ Typical layered precedence (lowest -> highest):
 This module is intentionally separate from
 [`topmark.toml.resolution`][topmark.toml.resolution]:
 
-- [`topmark.toml.resolution`][topmark.toml.resolution] discovers TopMark
-  TOML settings files
+- [`topmark.toml.resolution`][topmark.toml.resolution] discovers and resolves
+  TopMark TOML sources
 - this module turns layered TOML config fragments into config provenance layers
-  and merges them into effective mutable config drafts
+  and merges them into mutable config drafts
 
-The result of compatibility flattening is a `MutableConfig` draft that can still
-be adjusted by callers before being frozen into an immutable `Config`.
+The resulting mutable draft can still be adjusted by callers before being
+frozen into an immutable `Config`.
 """
 
 from __future__ import annotations
@@ -83,7 +83,11 @@ def _make_config_layer(
     config: MutableConfig,
     scope_root: Path | None = None,
 ) -> ConfigLayer:
-    """Return a normalized config provenance layer."""
+    """Return a normalized config provenance layer.
+
+    Path origins and scope roots are resolved eagerly so downstream precedence
+    and applicability logic can compare normalized filesystem locations.
+    """
     normalized_origin: Path | str = origin.resolve() if isinstance(origin, Path) else origin
     normalized_scope_root: Path | None = scope_root
 
@@ -222,13 +226,13 @@ def build_config_layers_from_resolved_toml_sources(
 
 
 def merge_layers_globally(layers: Iterable[ConfigLayer]) -> MutableConfig:
-    """Merge config provenance layers into one mutable compatibility draft.
+    """Merge config provenance layers into one mutable config draft.
 
     Args:
         layers: Config provenance layers in stable precedence order.
 
     Returns:
-        A mutable compatibility draft produced by merging the supplied layers in
+        A mutable config draft produced by merging the supplied layers in
         order.
     """
     layer_list: list[ConfigLayer] = list(layers)
@@ -285,8 +289,8 @@ def build_effective_config_for_path(
     """Build the effective mutable config for a specific file path.
 
     This helper selects the config provenance layers whose scope applies to the
-    target path, then merges them in stable precedence order using the existing
-    `MutableConfig.merge_with` compatibility policy.
+    target path, then merges them in stable precedence order using
+    `MutableConfig.merge_with`.
 
     Args:
         layers: Candidate config provenance layers.
@@ -305,27 +309,27 @@ def build_effective_config_for_path(
     return draft
 
 
-# ---- Compatibility discovery / facade helpers ----
+# ---- Resolved TOML -> config draft helpers ----
 
 
 def build_resolved_config_from_toml_sources(
     resolved: ResolvedTopmarkTomlSources,
 ) -> MutableConfig:
-    """Merge resolved TOML sources into one mutable compatibility draft.
+    """Merge resolved TOML sources into one mutable config draft.
 
     This helper consumes already-resolved TOML-side state and performs only the
     config-layer construction and merge step. It does not re-run TOML
     discovery.
 
-    TOML-side strictness is applied after the layer merge so the compatibility
+    TOML-side strictness is applied after the layer merge so the resulting
     draft reflects the final resolved config-loading strictness for the run.
 
     Args:
         resolved: Resolved TOML-side state for the current run.
 
     Returns:
-        Merged mutable configuration draft built from the defaults layer plus
-        all resolved layered TOML sources.
+        Merged mutable config draft built from the defaults layer plus all
+        resolved layered TOML sources.
     """
     layers: list[ConfigLayer] = build_config_layers_from_resolved_toml_sources(resolved.sources)
     draft: MutableConfig = merge_layers_globally(layers)
@@ -347,7 +351,7 @@ def resolve_toml_sources_and_build_config_draft(
 
     This helper is the preferred bridge between TOML-side source resolution and
     config-layer merge for callers that need both the resolved TOML-side state
-    and the merged mutable compatibility draft.
+    and the merged mutable config draft.
 
     Args:
         input_paths: Optional discovery anchors. The first path is used to pick
@@ -364,7 +368,7 @@ def resolve_toml_sources_and_build_config_draft(
 
     Returns:
         A tuple containing the resolved TOML-side state and the merged mutable
-        configuration draft built from it.
+        config draft built from it.
     """
     resolved: ResolvedTopmarkTomlSources = resolve_topmark_toml_sources(
         input_paths=input_paths,
@@ -373,98 +377,3 @@ def resolve_toml_sources_and_build_config_draft(
         no_config=no_config,
     )
     return resolved, build_resolved_config_from_toml_sources(resolved)
-
-
-def discover_config_layers(
-    input_paths: Iterable[Path] | None = None,
-    extra_config_files: Iterable[Path] | None = None,
-    strict_config_checking: bool | None = None,
-    no_config: bool = False,
-) -> list[ConfigLayer]:
-    """Discover config provenance layers in stable precedence order.
-
-    Layer order (lowest -> highest precedence):
-        1. built-in defaults
-        2. discovered user config
-        3. discovered project config files (root-most -> nearest)
-        4. explicit extra config files (in the order provided)
-
-    This helper is an inspection/testing-oriented compatibility facade over TOML-side
-    source resolution plus config-layer construction. It remains useful for callers
-    that still want resolved `ConfigLayer` objects directly, and in tests.
-
-    Args:
-        input_paths: Optional discovery anchors. The first path is used to pick
-            the project-discovery starting directory. If it points to a file,
-            its parent directory is used. If omitted, discovery falls back to
-            the current working directory.
-        extra_config_files: Explicit config files to append after discovered
-            layers. Later files have higher precedence than earlier ones.
-        strict_config_checking: Reserved compatibility argument. Layer
-            discovery does not currently materialize this config-loading
-            strictness override as a provenance layer.
-        no_config: If True, skip all discovered config layers (user + project)
-            and only return built-in defaults plus any explicit extra config
-            files.
-
-    Returns:
-        Config provenance layers ordered from lowest to highest precedence.
-    """
-    # Avoid premature modeling of config-loading strictness as a provenance
-    # layer. Strictness is resolved on the TOML side and may later be applied
-    # to the merged compatibility draft.
-    del strict_config_checking
-
-    resolved: ResolvedTopmarkTomlSources = resolve_topmark_toml_sources(
-        input_paths=input_paths,
-        extra_config_files=extra_config_files,
-        strict_config_checking=None,
-        no_config=no_config,
-    )
-    return build_config_layers_from_resolved_toml_sources(resolved.sources)
-
-
-def load_resolved_config(
-    input_paths: Iterable[Path] | None = None,
-    extra_config_files: Iterable[Path] | None = None,
-    strict_config_checking: bool | None = None,
-    no_config: bool = False,
-) -> MutableConfig:
-    """Discover and merge configuration layers into a mutable draft.
-
-    Merge order (lowest -> highest precedence):
-        1. built-in defaults
-        2. discovered user config
-        3. discovered project config files (root-most -> nearest)
-        4. explicit extra config files (in the order provided)
-
-    This helper is a convenience/compatibility facade over TOML-side source resolution
-    plus config-layer merge.
-
-    It does **not** apply CLI/API override intent such as write mode,
-    stdin mode, include/exclude filters, or header-formatting overrides; those
-    belong in the dedicated override layer.
-
-    Args:
-        input_paths: Optional discovery anchors. The first path is used to pick
-            the project-discovery starting directory. If it points to a file,
-            its parent directory is used. If omitted, discovery falls back to
-            the current working directory.
-        extra_config_files: Explicit config files to merge after discovered
-            layers. Later files override earlier ones.
-        strict_config_checking: Optional explicit override for resolved
-            config-loading strictness on the resulting draft.
-        no_config: If True, skip all discovered config layers (user + project)
-            and only use built-in defaults plus any explicit extra config files.
-
-    Returns:
-        A mutable configuration draft ready for later override application and
-        eventual freezing.
-    """
-    _resolved, draft = resolve_toml_sources_and_build_config_draft(
-        input_paths=input_paths,
-        extra_config_files=extra_config_files,
-        strict_config_checking=strict_config_checking,
-        no_config=no_config,
-    )
-    return draft

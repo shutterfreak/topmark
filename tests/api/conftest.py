@@ -28,7 +28,7 @@ from topmark.api.runtime import select_pipeline
 from topmark.api.types import PipelineKindLiteral
 from topmark.api.types import PublicPolicy
 from topmark.api.types import PublicReportScopeLiteral
-from topmark.config.resolution import load_resolved_config
+from topmark.config.resolution import resolve_toml_sources_and_build_config_draft
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.processors.types import BoundsKind
 from topmark.processors.types import HeaderBounds
@@ -399,7 +399,9 @@ def run_cli_like(
     This helper exercises the engine using the same layered-config loading path
     as the CLI while supplying explicit invocation-wide runtime options.
     """
-    draft: MutableConfig = load_resolved_config(input_paths=(anchor,))
+    _resolved, draft = resolve_toml_sources_and_build_config_draft(
+        input_paths=(anchor,),
+    )
     draft.files = [str(anchor)]  # seed positional inputs
     if include_file_types:
         draft.include_file_types = set(include_file_types)
