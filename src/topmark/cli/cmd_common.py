@@ -43,7 +43,7 @@ from topmark.config.overrides import PolicyOverrides
 from topmark.config.overrides import apply_config_overrides
 from topmark.config.policy import EmptyInsertMode
 from topmark.config.policy import HeaderMutationMode
-from topmark.config.resolution import build_resolved_config_from_toml_sources
+from topmark.config.resolution import resolve_toml_sources_and_build_config_draft
 from topmark.config.types import FileWriteStrategy
 from topmark.config.types import OutputTarget
 from topmark.constants import CLI_OVERRIDE_STR
@@ -56,8 +56,6 @@ from topmark.resolution.files import resolve_file_list
 from topmark.runtime.model import RunOptions
 from topmark.runtime.writer_options import WriterOptions
 from topmark.runtime.writer_options import apply_resolved_writer_options
-from topmark.toml.resolution import ResolvedTopmarkTomlSources
-from topmark.toml.resolution import resolve_topmark_toml_sources
 from topmark.utils.merge import none_if_empty
 
 if TYPE_CHECKING:
@@ -383,7 +381,7 @@ def build_config_for_plan(
     discovery_inputs: list[Path] | None = _resolve_discovery_inputs()
     extra_config_files: list[Path] = [Path(p) for p in config_paths]
 
-    resolved_toml: ResolvedTopmarkTomlSources = resolve_topmark_toml_sources(
+    resolved_toml, draft = resolve_toml_sources_and_build_config_draft(
         input_paths=discovery_inputs,
         extra_config_files=extra_config_files,
         strict_config_checking=None,
@@ -392,8 +390,6 @@ def build_config_for_plan(
 
     ctx.ensure_object(dict)
     ctx.obj[_CTX_RESOLVED_WRITER_OPTIONS_KEY] = resolved_toml.writer_options
-
-    draft: MutableConfig = build_resolved_config_from_toml_sources(resolved_toml)
 
     policy_overrides: PolicyOverrides = build_cli_policy_overrides_from_ctx(ctx)
     overrides: ConfigOverrides = ConfigOverrides(

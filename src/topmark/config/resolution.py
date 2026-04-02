@@ -336,7 +336,43 @@ def build_resolved_config_from_toml_sources(
     return draft
 
 
-# ---- Compatibility discovery / facade helpers ----
+def resolve_toml_sources_and_build_config_draft(
+    *,
+    input_paths: Iterable[Path] | None = None,
+    extra_config_files: Iterable[Path] | None = None,
+    strict_config_checking: bool | None = None,
+    no_config: bool = False,
+) -> tuple[ResolvedTopmarkTomlSources, MutableConfig]:
+    """Resolve TOML sources once and build the merged config draft from them.
+
+    This helper is the preferred bridge between TOML-side source resolution and
+    config-layer merge for callers that need both the resolved TOML-side state
+    and the merged mutable compatibility draft.
+
+    Args:
+        input_paths: Optional discovery anchors. The first path is used to pick
+            the project-discovery starting directory. If it points to a file,
+            its parent directory is used. If omitted, discovery falls back to
+            the current working directory.
+        extra_config_files: Explicit config files to merge after discovered
+            layers. Later files override earlier ones.
+        strict_config_checking: Optional explicit override for resolved
+            config-loading strictness on the resulting draft.
+        no_config: If `True`, skip all discovered config layers (user +
+            project) and only use built-in defaults plus any explicit extra
+            config files.
+
+    Returns:
+        A tuple containing the resolved TOML-side state and the merged mutable
+        configuration draft built from it.
+    """
+    resolved: ResolvedTopmarkTomlSources = resolve_topmark_toml_sources(
+        input_paths=input_paths,
+        extra_config_files=extra_config_files,
+        strict_config_checking=strict_config_checking,
+        no_config=no_config,
+    )
+    return resolved, build_resolved_config_from_toml_sources(resolved)
 
 
 def discover_config_layers(
@@ -425,10 +461,10 @@ def load_resolved_config(
         A mutable configuration draft ready for later override application and
         eventual freezing.
     """
-    resolved: ResolvedTopmarkTomlSources = resolve_topmark_toml_sources(
+    _resolved, draft = resolve_toml_sources_and_build_config_draft(
         input_paths=input_paths,
         extra_config_files=extra_config_files,
         strict_config_checking=strict_config_checking,
         no_config=no_config,
     )
-    return build_resolved_config_from_toml_sources(resolved)
+    return draft

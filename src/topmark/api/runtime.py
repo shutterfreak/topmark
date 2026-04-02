@@ -41,7 +41,7 @@ from topmark.config.policy import EmptyInsertMode
 from topmark.config.policy import HeaderMutationMode
 from topmark.config.resolution import build_config_layers_from_resolved_toml_sources
 from topmark.config.resolution import build_effective_config_for_path
-from topmark.config.resolution import build_resolved_config_from_toml_sources
+from topmark.config.resolution import resolve_toml_sources_and_build_config_draft
 from topmark.constants import TOPMARK_VERSION
 from topmark.core.errors import InvalidPolicyError
 from topmark.core.logging import get_logger
@@ -51,8 +51,6 @@ from topmark.pipeline.pipelines import Pipeline
 from topmark.resolution.files import resolve_file_list
 from topmark.runtime.writer_options import WriterOptions
 from topmark.runtime.writer_options import apply_resolved_writer_options
-from topmark.toml.resolution import ResolvedTopmarkTomlSources
-from topmark.toml.resolution import resolve_topmark_toml_sources
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -67,6 +65,7 @@ if TYPE_CHECKING:
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.protocols import Step
     from topmark.runtime.model import RunOptions
+    from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -130,7 +129,7 @@ def _build_resolved_config_for_run(
     paths: Iterable[Path | str],
     *,
     base_config: Mapping[str, object] | Config | None,
-    resolved_toml: ResolvedTopmarkTomlSources | None,
+    resolved_draft: MutableConfig | None,
     include_file_types: Sequence[str] | None,
     exclude_file_types: Sequence[str] | None,
 ) -> Config:
@@ -153,7 +152,8 @@ def _build_resolved_config_for_run(
         paths: Files and/or directories to process.
         base_config: Optional explicit config seed. When omitted, layered config
             discovery is used. When provided, discovery is skipped.
-        resolved_toml: Resolved TOML-side state across discovered TopMark TOML sources.
+        resolved_draft: Pre-merged mutable config draft built from already
+            resolved TOML-side state, if layered discovery is active.
         include_file_types: Optional file-type allowlist override used during
             candidate resolution.
         exclude_file_types: Optional file-type denylist override used during
@@ -168,8 +168,8 @@ def _build_resolved_config_for_run(
     # Normalize input paths to strings for stable downstream override handling.
     paths_str: list[str] = [str(Path(p)) for p in paths]
 
-    if resolved_toml is not None:
-        draft: MutableConfig = build_resolved_config_from_toml_sources(resolved_toml)
+    if resolved_draft is not None:
+        draft: MutableConfig = resolved_draft
     else:
         # Explicit seed mode: start from defaults, merge the supplied mapping /
         # frozen Config on top, and skip all config discovery.
@@ -221,15 +221,15 @@ def _resolve_candidate_files(cfg: Config) -> list[Path]:
 # ---- TOML-source resolution helpers ----
 
 
-def _resolve_toml_sources_for_api_run(
+def _prepare_toml_and_config_draft_for_api_run(
     paths: Iterable[Path | str],
     *,
     base_config: Mapping[str, object] | Config | None,
-) -> ResolvedTopmarkTomlSources | None:
-    """Resolve TOML sources for an API run when layered discovery is active.
+) -> tuple[ResolvedTopmarkTomlSources | None, MutableConfig | None]:
+    """Resolve TOML sources once and prebuild the merged config draft.
 
     Explicit `base_config` seeds intentionally bypass layered TOML discovery, so
-    this helper returns `None` in that mode.
+    this helper returns `(None, None)` in that mode.
 
     Args:
         paths: Input paths for the run. The first path is used as the discovery
@@ -237,14 +237,15 @@ def _resolve_toml_sources_for_api_run(
         base_config: Optional explicit config seed supplied by the caller.
 
     Returns:
-        The resolved TOML-side state for the run, or `None` when layered
-        discovery is intentionally bypassed.
+        A tuple containing the resolved TOML-side state and the merged mutable
+        config draft built from it, or `(None, None)` when layered discovery is
+        intentionally bypassed.
     """
     if base_config is not None:
-        return None
+        return None, None
 
     path_list: list[Path] = [Path(p) for p in paths] or [Path.cwd()]
-    return resolve_topmark_toml_sources(
+    return resolve_toml_sources_and_build_config_draft(
         input_paths=tuple(path_list),
         extra_config_files=(),
         strict_config_checking=None,
@@ -502,10 +503,11 @@ def run_pipeline(
 
     path_inputs: list[Path | str] = list(paths)
 
-    resolved_toml: ResolvedTopmarkTomlSources | None = _resolve_toml_sources_for_api_run(
+    resolved_toml, resolved_draft = _prepare_toml_and_config_draft_for_api_run(
         path_inputs,
         base_config=base_config,
     )
+
     discovered_layers: list[ConfigLayer] | None = (
         build_config_layers_from_resolved_toml_sources(resolved_toml.sources)
         if resolved_toml is not None
@@ -521,7 +523,7 @@ def run_pipeline(
     cfg: Config = _build_resolved_config_for_run(
         path_inputs,
         base_config=base_config,
-        resolved_toml=resolved_toml,
+        resolved_draft=resolved_draft,
         include_file_types=include_file_types,
         exclude_file_types=exclude_file_types,
     )
