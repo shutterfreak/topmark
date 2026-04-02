@@ -28,7 +28,7 @@
 #        Same-directory precedence: pyproject.toml is merged first,
 #        then topmark.toml overrides it.
 #      * Directories are merged root → current (nearest wins).
-#      * Set `root = true` in a discovered config to stop further upward traversal.
+#      * Set `[config].root = true` in a discovered config to stop further upward traversal.
 #   4. Extra config files passed explicitly via --config (merged in the order provided)
 #   5. CLI overrides (highest precedence)
 #
@@ -42,15 +42,44 @@
 #   * `relative_to` affects only header metadata (e.g., `file_relpath`), not discovery.
 #
 # To mark a directory boundary for discovery, set:
+#   [config]
 #   root = true
-# in `topmark.toml`, or within `[tool.topmark]` in `pyproject.toml`.
+# in `topmark.toml`, or within `[tool.topmark.config]` in `pyproject.toml`.
 # The default is `root = false` (continue traversing parents).
 #
 # Special flags:
 #   * --no-config disables user+project discovery (only defaults → --config → CLI).
+
+
+# =====================
+# Config source options
+# =====================
+
+[config]
+# Options that affect config discovery and config-loading behavior.
 #
-# Example (uncomment to stop discovery above this directory):
+# These settings are TOML-source-local metadata. They do not participate in
+# layered Config merging; instead, they are resolved separately while TopMark
+# discovers and loads TOML sources.
+
+# Stop further upward config discovery above the directory containing this TOML
+# source.
+#
+# Discovery semantics:
+#   - In `topmark.toml`, this lives under `[config]`.
+#   - In `pyproject.toml`, this lives under `[tool.topmark.config]`.
+#
+# Uncomment to mark this TOML source as a discovery boundary:
 # root = true
+
+# Treat config warnings as errors while checking TOML configuration.
+#
+# Resolution semantics:
+#   - This is resolved separately from layered Config values.
+#   - Highest-precedence non-null value wins across discovered TOML sources.
+#   - CLI/API explicit strictness overrides still take final precedence.
+#
+# strict_config_checking = false
 
 
 # ==========================

@@ -27,21 +27,23 @@ Notes:
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable
 from typing import TYPE_CHECKING
 from typing import cast
 
 import tomlkit
 from tomlkit.exceptions import ParseError as TomlkitParseError
-from tomlkit.items import Comment
 from tomlkit.items import Item
 from tomlkit.items import Key
 from tomlkit.items import Table
 
-if TYPE_CHECKING:
-    from _collections_abc import dict_items
+from topmark.core.errors import TomlParseError
+from topmark.core.errors import TomlSurgeryError
 
+if TYPE_CHECKING:
     from tomlkit.container import Container
+
 
 # Alias for items in tomlkit's document body, matching the type used in stubs.
 # At runtime, the second element may be any Item subclass (including comments,
@@ -54,26 +56,27 @@ _TomlkitBodyItem = tuple[Key | None, Item]
 def set_root_flag(toml_text: str, *, for_pyproject: bool, root: bool) -> str:
     """Set or remove the `root` flag in a TOML document.
 
-    - For topmark.toml: top-level `root = true` (or remove when false).
-    - For pyproject.toml: sets `tool.topmark.root`.
+    - For `topmark.toml`: sets `[config].root = true` (or removes it when false).
+    - For `pyproject.toml`: sets `tool.topmark.config.root`.
 
     Args:
         toml_text: TOML document text.
-        for_pyproject: Whether the document is (or will be) a pyproject-style document (i.e. root
-            lives at ``tool.topmark.root``).
+        for_pyproject: Whether the document is (or will be) a pyproject-style
+            document (i.e. root lives at `tool.topmark.config.root`).
         root: Whether to enable the root flag.
 
     Returns:
         Updated TOML document text.
 
     Raises:
-        RuntimeError: If the TOML document cannot be parsed.
-        TypeError: If an existing `tool` or `tool.topmark` key exists but is not a table.
+        TomlParseError: If the TOML document cannot be parsed.
+        TomlSurgeryError: If an existing `tool`, `tool.topmark`, or `config` key
+            exists but is not a table where a table is required.
     """
     try:
         doc: tomlkit.TOMLDocument = tomlkit.parse(toml_text)
     except TomlkitParseError as exc:
-        raise RuntimeError(f"Error parsing TOML document: {exc}") from exc
+        raise TomlParseError(message=f"Error parsing TOML document: {exc}") from exc
 
     if for_pyproject:
         tool_item: Item | None
@@ -88,7 +91,9 @@ def set_root_flag(toml_text: str, *, for_pyproject: bool, root: bool) -> str:
         elif isinstance(tool_item, Table):
             tool_tbl = tool_item
         else:
-            raise TypeError("Cannot set tool.topmark.root: 'tool' exists but is not a TOML table")
+            raise TomlSurgeryError(
+                message="Cannot set tool.topmark.config.root: 'tool' exists but is not a TOML table"
+            )
 
         topmark_item: Item | None
         if "topmark" in tool_tbl:  # noqa: SIM108
@@ -102,46 +107,62 @@ def set_root_flag(toml_text: str, *, for_pyproject: bool, root: bool) -> str:
         elif isinstance(topmark_item, Table):
             topmark_tbl = topmark_item
         else:
-            raise TypeError(
-                "Cannot set tool.topmark.root: 'tool.topmark' exists but is not a TOML table"
+            raise TomlSurgeryError(
+                message="Cannot set tool.topmark.config.root: "
+                "'tool.topmark' exists but is not a TOML table"
             )
 
-        if root:
-            topmark_tbl["root"] = True
+        config_item: Item | None
+        if "config" in topmark_tbl:  # noqa: SIM108
+            config_item = topmark_tbl["config"]
         else:
-            # tomlkit Table supports `in` / del.
-            if "root" in topmark_tbl:
-                del topmark_tbl["root"]
+            config_item = None
+
+        if config_item is None:
+            config_tbl: Table = tomlkit.table()
+            topmark_tbl["config"] = config_tbl
+        elif isinstance(config_item, Table):
+            config_tbl = config_item
+        else:
+            raise TomlSurgeryError(
+                message="Cannot set tool.topmark.config.root: "
+                "'tool.topmark.config' exists but is not a TOML table"
+            )
+
+        if "root" in topmark_tbl:
+            del topmark_tbl["root"]
+
+        if root:
+            config_tbl["root"] = True
+        else:
+            if "root" in config_tbl:
+                del config_tbl["root"]
     else:
-        # Non-pyproject.toml case (topmark.toml)
-        if root:
-            # Attempt a nicer placement when the input document resembles the annotated template.
-            # If we can find a comment item that mentions "# root = true", insert immediately
-            # after that comment. Otherwise, fall back to a normal assignment (which places the
-            # key according to tomlkit's default ordering rules).
-            if "root" in doc:
-                doc["root"] = True
-            else:
-                insert_at: int | None = None
-                for i, (k, item) in enumerate(doc.body):
-                    if k is None and isinstance(item, Comment):
-                        txt: str = str(item)
-                        if "# root = true" in txt:
-                            insert_at = i + 1
-                            break
-
-                if insert_at is None:
-                    # Fallback: append at end if the banner cannot be found.
-                    doc["root"] = True
-                else:
-                    # Insert the key/value pair plus a blank line after it.
-                    doc.body.insert(insert_at, (tomlkit.key("root"), tomlkit.boolean("true")))
-                    doc.body.insert(insert_at + 1, (None, tomlkit.nl()))
+        config_item: Item | None
+        if "config" in doc:  # noqa: SIM108
+            config_item = cast("Item", doc["config"])
         else:
-            if "root" in doc:
-                del doc["root"]
+            config_item = None
 
-    # Prefer the document serializer to avoid tomlkit.dumps typing issues.
+        if config_item is None:
+            config_tbl = tomlkit.table()
+            doc["config"] = config_tbl
+        elif isinstance(config_item, Table):
+            config_tbl = config_item
+        else:
+            raise TomlSurgeryError(
+                message="Cannot set config.root: 'config' exists but is not a TOML table"
+            )
+
+        if "root" in doc:
+            del doc["root"]
+
+        if root:
+            config_tbl["root"] = True
+        else:
+            if "root" in config_tbl:
+                del config_tbl["root"]
+
     return doc.as_string()
 
 
@@ -151,8 +172,8 @@ def nest_toml_under_section(
 ) -> str:
     r"""Return a new TOML document nested under a dotted section path.
 
-    This helper uses tomlkit to *losslessly* wrap an existing TOML document
-    under a nested section, for example:
+    This helper validates the TOML document with `tomlkit`, then preserves presentation-oriented
+    text layout while wrapping the document under a dotted section path, for example:
 
         nest_toml_under_section("a = 1\n", "tool.topmark")
 
@@ -161,9 +182,9 @@ def nest_toml_under_section(
         [tool.topmark]
         a = 1
 
-    Comments/whitespace are preserved by re-using tomlkit nodes. Leading preamble
-    (comments/blank lines before the first keyed entry) and trailing postamble are
-    also preserved.
+    Comments/whitespace are preserved by keeping the original document text and
+    rewriting only the wrapper header plus real table-header lines. Leading
+    preamble comments/blank lines and the full keyed body text are preserved.
 
     Args:
         toml_doc: Original TOML document to nest.
@@ -176,62 +197,28 @@ def nest_toml_under_section(
 
     Raises:
         ValueError: If ``section_keys`` is empty or only contains dots.
-        RuntimeError: If the TOML document cannot be parsed or if an existing
-            key along the path is not a table, making nesting impossible.
-        TypeError: If trying to nest a table in a non-table element.
-
+        TomlParseError: If the TOML document cannot be parsed or if an existing.
+        TomlSurgeryError: If trying to nest a table in a non-table element.
     """
     try:
         # 1. Parse the existing document losslessly
         doc: tomlkit.TOMLDocument = tomlkit.parse(toml_doc)
     except TomlkitParseError as exc:
-        raise RuntimeError(f"Error parsing TOML document: {exc}") from exc
+        raise TomlParseError(message=f"Error parsing TOML document: {exc}") from exc
 
-    # 2. Identify the content slices: preamble (leading unkeyed items) and postamble
-    # (trailing unkeyed items). We find the indices of the first and last items that have
-    # a key (i.e., not a comment/whitespace entry).
-    start_index: int = 0
-    end_index: int = -1  # Index of the last keyed item. -1 means no keyed items found.
+    # 2. Split and validate the section path.
 
-    # Find start_index (the index of the first item with a key)
-    for i, (key, _) in enumerate(doc.body):
-        if key is not None:
-            start_index = i
-            break
-
-    # Find end_index (the index of the last item with a key)
-    # We iterate backward to find the last occurrence efficiently.
-    for i in range(len(doc.body) - 1, -1, -1):
-        key, _ = doc.body[i]
-        if key is not None:
-            end_index = i
-            break
-
-    # Preamble slice: All items before the first keyed item.
-    preamble_items: list[_TomlkitBodyItem] = doc.body[0:start_index]
-
-    # Postamble slice: All items after the last keyed item.
-    # If end_index is -1 (file is all comments/whitespace), end_index + 1 is 0,
-    # so doc.body[0:] is the entire body, which is correct for transfer.
-    postamble_items: list[_TomlkitBodyItem] = doc.body[end_index + 1 :]
-
-    # Split and validate the section path
     keys: list[str] = [k for k in section_keys.split(".") if k]
     if not keys:
         raise ValueError("section_keys must contain at least one non-empty component")
 
-    # Idempotency guard: if the document already represents exactly the requested wrapper
-    # (e.g. it already represents exactly the requested wrapper),
-    # do not wrap again.
-    #
-    # We consider it "already nested" only when each level along the path is the
-    # sole keyed table at that level (so we don't accidentally skip wrapping
-    # when sibling keys exist).
+    # 3. Idempotency guard: if the document already represents exactly the
+    # requested wrapper, do not wrap again.
     def _container_keys(container: tomlkit.TOMLDocument | Table) -> list[str]:
         """Return stringified keys for a TOML container.
 
-        tomlkit's typing for mapping-style container access is incomplete, so this
-        helper performs a small runtime probe rather than relying on `Any`.
+        tomlkit's typing for mapping-style container access is incomplete, so
+        this helper performs a small runtime probe rather than relying on `Any`.
         """
         keys_attr: object = getattr(container, "keys", None)
         if not callable(keys_attr):
@@ -262,58 +249,54 @@ def nest_toml_under_section(
             break
         nxt: Item | Container = cur[k]
         if not isinstance(nxt, Table):
-            raise TypeError(f"Expected '{k}' to be a TOML table while checking nesting")
+            raise TomlSurgeryError(
+                message=f"Expected '{k}' to be a TOML table while checking nesting"
+            )
         cur = nxt
 
     if already_nested:
-        # Preserve original formatting/comments as-is.
         return doc.as_string()
 
-    # 3. Create the wrapper document and prepend the preamble
-    new_doc: tomlkit.TOMLDocument = tomlkit.document()
+    # 4. Rebuild the document text losslessly enough for config-init style
+    # usage: preserve the preamble before the first keyed entry, then inject the
+    # wrapper header and prefix all real table headers with the dotted path.
+    lines: list[str] = toml_doc.splitlines(keepends=True)
 
-    # Prepend the captured preamble items to the new document's body.
-    # We use `cast` to satisfy the type checker by asserting that the list contents
-    # conform to the expected types (Key | None, Item).
-    new_doc.body.extend(preamble_items)
+    def _is_comment_or_blank(line: str) -> bool:
+        stripped: str = line.lstrip()
+        return stripped == "" or stripped.startswith("#")
 
-    # 4. Build nested tables for the full section path
-    current_level: tomlkit.TOMLDocument | Table = new_doc
+    header_re: re.Pattern[str] = re.compile(r"^(\s*)(\[\[?)([^\[\]]+?)(\]\]?)(\s*(?:#.*)?)$")
 
-    # Recursively build nested tables for "tool.topmark"
-    for key in keys:
-        # Ensure a table exists at this level for the key
-        if key not in current_level:
-            # Both TOMLDocument and Table support `.add`
-            current_level.add(key, tomlkit.table())
+    def _prefix_header_line(line: str) -> str:
+        no_newline: str = line[:-1] if line.endswith("\n") else line
+        newline = "\n" if line.endswith("\n") else ""
+        match: re.Match[str] | None = header_re.match(no_newline)
+        if match is None:
+            return line
 
-        # Descend into the nested table; validate the type for Pyright and correctness
-        next_level: Item | Container = current_level[key]
-        if not isinstance(next_level, Table):
-            raise TypeError(
-                f"Cannot nest configuration under [{section_keys}]: "
-                f"intermediate key [{key}] is not a table."
-            )
-        current_level = next_level
+        indent, opener, name, closer, suffix = match.groups()
+        qualified_name: str = f"{section_keys}.{name.strip()}"
+        return f"{indent}{opener}{qualified_name}{closer}{suffix}{newline}"
 
-    # 5. Attach the original document's content inside the final table
-    # At this point, current_level is the Table for the last key in section_keys.
-    if not isinstance(current_level, Table):
-        raise TypeError("Expected final nesting target to be a TOML table")
+    first_keyed_idx: int = len(lines)
+    for i, line in enumerate(lines):
+        if not _is_comment_or_blank(line):
+            first_keyed_idx = i
+            break
 
-    # doc.items() extracts only the key-value pairs (the actual content),
-    # preserving item-level trivia (inline comments, etc.).
-    items: dict_items[str, Item | Container] = cast(
-        "dict_items[str, Item | Container]", doc.items()
-    )
-    for item_key, item_value in items:
-        # The type checker is now happy due to the explicit cast
-        current_level.add(item_key, item_value)
+    preamble_lines: list[str] = lines[:first_keyed_idx]
+    body_lines: list[str] = lines[first_keyed_idx:]
 
-    # 6. Append the postamble to the new document's body, *after* all keyed content.
-    # The postamble elements will appear after the newly created section table.
-    new_doc.body.extend(postamble_items)
+    wrapped_body_lines: list[str] = []
+    for line in body_lines:
+        stripped: str = line.lstrip()
+        if stripped.startswith("[") and not stripped.startswith("#"):
+            wrapped_body_lines.append(_prefix_header_line(line))
+        else:
+            wrapped_body_lines.append(line)
 
-    # 7. Return the wrapped TOML as a string
-    # Use as_string() to get the full formatted output of the Document object
-    return new_doc.as_string()
+    wrapper_header: str = f"[{section_keys}]\n"
+    wrapper_gap: str = "\n" if preamble_lines and preamble_lines[0].strip() != "" else ""
+
+    return "".join([wrapper_header, wrapper_gap, *preamble_lines, *wrapped_body_lines])

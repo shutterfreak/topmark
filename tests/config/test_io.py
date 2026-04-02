@@ -22,6 +22,8 @@ from typing import Any
 
 import tomlkit
 
+from topmark.core.errors import TomlParseError
+from topmark.core.errors import TomlSurgeryError
 from topmark.diagnostic.model import DiagnosticLog
 from topmark.toml.getters import get_string_list_value_checked
 from topmark.toml.surgery import nest_toml_under_section
@@ -66,15 +68,15 @@ def test_nest_toml_under_section_basic() -> None:
 def test_nest_toml_under_section_rejects_empty_section() -> None:
     """Ensure that an empty section path is rejected.
 
-    Passing an empty or dot-only section path would produce an invalid or
-    ambiguous nesting; we guard against this by raising ValueError/RuntimeError.
+    Passing an empty or dot-only section path would produce an invalid or ambiguous nesting;
+    we guard against this by raising ValueError, TomlParseError, TomlSurgeryError.
     """
     source = "a = 1\n"
 
     # Adjust to whatever error type you use in io.py (ValueError/RuntimeError/etc.)
     import pytest
 
-    with pytest.raises((ValueError, RuntimeError)):
+    with pytest.raises((ValueError, TomlParseError, TomlSurgeryError)):
         nest_toml_under_section(source, "")
 
 

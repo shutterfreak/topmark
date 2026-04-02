@@ -168,10 +168,9 @@ def _discover_local_config_files(start: Path) -> list[Path]:
         append **`pyproject.toml` first and `topmark.toml` second** so that a
         later merge (nearest-last-wins) gives same-directory precedence to
         `topmark.toml`.
-        * If a discovered TOML source sets ``root = true`` (top-level key in
-        `topmark.toml`, or within `[tool.topmark]` for `pyproject.toml`), we
-        stop traversing further up after collecting the current directory's
-        files.
+        * If a discovered TOML source sets ``root = true`` in the `[config]`
+        table (or in `[tool.topmark.config]` for `pyproject.toml`), we stop
+        traversing further up after collecting the current directory's files.
 
     Args:
         start: The Path instance where discovery starts.

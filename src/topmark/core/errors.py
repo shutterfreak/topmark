@@ -11,8 +11,8 @@
 """Core TopMark exceptions.
 
 This module defines Click-free exception types that may be raised from any
-layer of TopMark, including registry construction, file-type resolution, I/O,
-and higher-level orchestration code.
+layer of TopMark, including registry construction, file-type resolution, TOML/template
+document handling, and higher-level orchestration code.
 
 Each exception carries structured [`ErrorContext`][topmark.core.errors.ErrorContext]
 metadata so callers can inspect machine-useful details such as the affected
@@ -79,6 +79,92 @@ class TopmarkError(Exception):
             The message stored in the attached `ErrorContext`.
         """
         return self.context.message
+
+
+# ---- Common registry lookup errors ----
+
+
+class ReservedNamespaceError(TopmarkError):
+    """Raised when a reserved namespace is used by an ineligible registry entry.
+
+    This is intended for registry composition and registration APIs where the
+    ``topmark`` namespace is reserved for built-in entities and must not be
+    claimed by external overlays, plugins, or test fixtures unless they are
+    defined from within the TopMark package.
+
+    Args:
+        namespace: Reserved namespace that was used.
+        owner: Human-readable owner label for the offending entry.
+        entities: Registry entity category involved in the violation.
+        owner_module: Optional module path where the offending entry is defined.
+    """
+
+    def __init__(
+        self,
+        *,
+        namespace: str,
+        owner: str,
+        entities: str,
+        owner_module: str | None = None,
+    ) -> None:
+        details: list[str] = [
+            f"namespace={namespace}",
+            f"owner={owner}",
+            f"entities={entities}",
+        ]
+        if owner_module is not None:
+            details.append(f"owner_module={owner_module}")
+
+        message: str = (
+            f"Reserved namespace violation: '{namespace}' is reserved for built-in "
+            f"TopMark {entities} (owner: {owner})"
+        )
+        super().__init__(
+            ErrorContext(
+                message=message,
+                details=tuple(details),
+            )
+        )
+        self.namespace: Final[str] = namespace
+        self.owner: Final[str] = owner
+        self.entities: Final[str] = entities
+        self.owner_module: Final[str | None] = owner_module
+
+
+# ---- File-type / registry lookup errors ----
+
+
+class UnsupportedFileTypeError(TopmarkError):
+    """Raised when a file type is recognized but currently unsupported.
+
+    This distinguishes "unknown file type" from "known file type with no usable
+    processor", which can be useful for diagnostics, reporting, and fallback
+    handling.
+
+    Args:
+        file_type: Recognized file type identifier that is currently unsupported.
+        path: Optional filesystem path associated with the lookup.
+    """
+
+    def __init__(
+        self,
+        *,
+        file_type: str,
+        path: Path | None = None,
+    ) -> None:
+        msg: str = (
+            f"Unsupported file type: {file_type}"
+            if path is None
+            else f"Unsupported file type for {path}: {file_type}"
+        )
+        super().__init__(
+            ErrorContext(
+                message=msg,
+                path=path,
+                qualified_key=file_type,
+            )
+        )
+        self.file_type: Final[str] = file_type
 
 
 class UnknownFileTypeError(TopmarkError):
@@ -188,51 +274,7 @@ class InvalidRegistryIdentityError(TopmarkError):
         self.local_key: Final[str | None] = local_key
 
 
-class ReservedNamespaceError(TopmarkError):
-    """Raised when a reserved namespace is used by an ineligible registry entry.
-
-    This is intended for registry composition and registration APIs where the
-    ``topmark`` namespace is reserved for built-in entities and must not be
-    claimed by external overlays, plugins, or test fixtures unless they are
-    defined from within the TopMark package.
-
-    Args:
-        namespace: Reserved namespace that was used.
-        owner: Human-readable owner label for the offending entry.
-        entities: Registry entity category involved in the violation.
-        owner_module: Optional module path where the offending entry is defined.
-    """
-
-    def __init__(
-        self,
-        *,
-        namespace: str,
-        owner: str,
-        entities: str,
-        owner_module: str | None = None,
-    ) -> None:
-        details: list[str] = [
-            f"namespace={namespace}",
-            f"owner={owner}",
-            f"entities={entities}",
-        ]
-        if owner_module is not None:
-            details.append(f"owner_module={owner_module}")
-
-        message: str = (
-            f"Reserved namespace violation: '{namespace}' is reserved for built-in "
-            f"TopMark {entities} (owner: {owner})"
-        )
-        super().__init__(
-            ErrorContext(
-                message=message,
-                details=tuple(details),
-            )
-        )
-        self.namespace: Final[str] = namespace
-        self.owner: Final[str] = owner
-        self.entities: Final[str] = entities
-        self.owner_module: Final[str | None] = owner_module
+# ---- Processor registration / binding errors ----
 
 
 class ProcessorBindingError(TopmarkError):
@@ -347,37 +389,7 @@ class DuplicateProcessorKeyError(TopmarkError):
         self.new_class: Final[str] = new_class
 
 
-class UnsupportedFileTypeError(TopmarkError):
-    """Raised when a file type is recognized but currently unsupported.
-
-    This distinguishes "unknown file type" from "known file type with no usable
-    processor", which can be useful for diagnostics, reporting, and fallback
-    handling.
-
-    Args:
-        file_type: Recognized file type identifier that is currently unsupported.
-        path: Optional filesystem path associated with the lookup.
-    """
-
-    def __init__(
-        self,
-        *,
-        file_type: str,
-        path: Path | None = None,
-    ) -> None:
-        msg: str = (
-            f"Unsupported file type: {file_type}"
-            if path is None
-            else f"Unsupported file type for {path}: {file_type}"
-        )
-        super().__init__(
-            ErrorContext(
-                message=msg,
-                path=path,
-                qualified_key=file_type,
-            )
-        )
-        self.file_type: Final[str] = file_type
+# ---- Policy / reporting boundary errors ----
 
 
 class InvalidPolicyError(TopmarkError):
@@ -432,8 +444,61 @@ class InvalidReportScopeError(TopmarkError):
         self.report_value: Final[str | None] = report_value
 
 
-class TomlRenderError(TopmarkError):
-    """Raised when TOML rendering fails due to invalid inputs or internal invariants."""
+# ---- TOML document errors ----
 
-    def __init__(self, *, message: str, details: tuple[str, ...] = ()) -> None:
-        super().__init__(ErrorContext(message=message, details=details))
+
+class TomlDocumentError(TopmarkError):
+    """Base class for TOML document parsing, rendering, and surgery errors.
+
+    This groups TOML-specific failures that arise while parsing, rendering, or
+    structurally rewriting TOML documents.
+
+    Args:
+        message: Human-readable error message.
+        details: Optional structured diagnostic details.
+    """
+
+    def __init__(
+        self,
+        *,
+        message: str,
+        details: tuple[str, ...] = (),
+    ) -> None:
+        super().__init__(
+            ErrorContext(
+                message=message,
+                details=details,
+            )
+        )
+
+
+class TomlRenderError(TomlDocumentError):
+    """Raised when TOML rendering fails due to invalid inputs or invariants."""
+
+
+class TomlParseError(TomlDocumentError):
+    """Raised when a TOML document cannot be parsed."""
+
+
+class TomlSurgeryError(TomlDocumentError):
+    """Raised when structural TOML editing fails or required TOML shape invariants are violated."""
+
+
+# ---- Template-specific document errors ----
+
+
+class TemplateError(TomlDocumentError):
+    """Base class for annotated config-template editing and validation errors.
+
+    Template errors are narrower than generic TOML document errors: they refer
+    specifically to the annotated configuration template and the presentation-
+    preserving helpers that edit or validate it.
+    """
+
+
+class TemplateEditError(TemplateError):
+    """Raised when annotated config-template editing fails."""
+
+
+class TemplateValidationError(TemplateError):
+    """Raised when an annotated config-template result fails validation."""

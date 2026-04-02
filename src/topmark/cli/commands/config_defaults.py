@@ -10,7 +10,7 @@
 
 """TopMark `config defaults` command.
 
-Prints TopMark's *runtime* default configuration as TOML.
+Prints TopMark’s built-in default TOML configuration document.
 
 This command is intended as a copy/paste reference for users. It differs from
 `topmark config init`, which emits the annotated packaged template (when
@@ -53,14 +53,14 @@ if TYPE_CHECKING:
     name=CliCmd.CONFIG_DEFAULTS,
     context_settings=GROUP_CONTEXT_SETTINGS,
     help=(
-        "Display TopMark’s built-in runtime default configuration. "
+        "Display TopMark’s built-in default TopMark TOML document. "
         "This command is file-agnostic: positional PATHS are ignored "
         "and --stdin-filename is not allowed. "
         "Use --output-format json/ndjson for a machine-readable config snapshot."
     ),
     epilog=(
         "Notes:\n"
-        "  • text/markdown output is a cleaned TOML view of the runtime defaults (comment-free).\n"
+        "  • text/markdown output is a cleaned TOML view of the built-in defaults (comment-free).\n"
         "  • json/ndjson output emits a minimal Config snapshot (no diagnostics).\n"
         "  • See docs/dev/machine_outputs.md for machine output conventions.\n"
     ),
@@ -83,7 +83,7 @@ def config_defaults_command(
     # common_output_format_options:
     output_format: OutputFormat | None,
 ) -> None:
-    """Display the runtime default configuration.
+    """Display the built-in default configuration document.
 
     Outputs a cleaned TOML document derived from TopMark's built-in defaults.
     This is a reference representation of the defaults that TopMark would apply
@@ -100,7 +100,7 @@ def config_defaults_command(
         no_color: If set, disable color mode.
         for_pyproject: If True, render as subtable under `[tool.topmark]`
             (default: False: plain topmark.toml TOML config format).
-        config_root: If True, set config as root (stops further config resoution).
+        config_root: If True, set config as root (stops further config resolution).
         output_format: Output format to use (``text``, ``markdown``, ``json``, or ``ndjson``).
 
     Raises:

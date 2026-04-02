@@ -16,7 +16,7 @@ This module contains Click-free helpers that *prepare* domain data for human-fac
 It intentionally sits between:
 
 - configuration I/O helpers in [`topmark.config.io`][topmark.config.io], and
-- renderer in [`topmark.presentation.text.config`][topmark.presentation.text.config] (ANSI) and
+- renderers in [`topmark.presentation.text.config`][topmark.presentation.text.config] (ANSI) and
   [`topmark.presentation.markdown.config`][topmark.presentation.markdown.config] (Markdown).
 
 Notes:
@@ -30,10 +30,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from topmark.config.io.loaders import load_default_config_template_toml_text
-from topmark.config.io.loaders import render_runtime_defaults_toml_text
+from topmark.config.io.loaders import render_default_topmark_toml_text
 from topmark.config.io.serializers import config_to_toml_dict
-from topmark.config.io.template_surgery import TemplateEditResult
-from topmark.config.io.template_surgery import ensure_pyproject_header
 from topmark.config.io.template_surgery import set_root_flag_in_template_text
 from topmark.config.io.template_surgery import validate_toml_for_config_init
 from topmark.presentation.shared.diagnostic import HumanDiagnosticCounts
@@ -41,13 +39,14 @@ from topmark.presentation.shared.diagnostic import HumanDiagnosticLine
 from topmark.presentation.shared.diagnostic import prepare_human_diagnostics
 from topmark.toml.render import clean_toml_text
 from topmark.toml.render import render_toml_table
+from topmark.toml.surgery import nest_toml_under_section
 from topmark.toml.surgery import set_root_flag
 
 if TYPE_CHECKING:
     from topmark.config.model import Config
 
 
-# --- Generate initial / default Config ---
+# --- Prepare initial / default configuration documents ---
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,14 +77,19 @@ def build_config_init_human_report(
 ) -> ConfigInitHumanReport:
     """Prepare human-facing data for `topmark config init`.
 
-    Uses the annotated packaged template when available; otherwise falls back to generated defaults
-    with an embedded TOML comment notice.
+    The annotated template is authored in plain `topmark.toml` shape. Template
+    edits therefore happen in that plain shape first:
+
+    1. load the annotated template (or generated fallback)
+    2. optionally set `[config].root = true` in the plain template text
+    3. if `for_pyproject=True`, nest the whole document under `[tool.topmark]`
+    4. validate the final output shape as a defensive backstop
 
     Args:
-        for_pyproject: If True, nest under [tool.topmark].
-        root: If True, set `root = true` (top-level or tool.topmark.root).
+        for_pyproject: If `True`, nest the final document under `[tool.topmark]`.
+        root: If `True`, set `[config].root = true` before any optional nesting.
         verbosity_level: Effective verbosity for gating extra details.
-        styled: Whether to style text output (OutputFormat.TEXT)
+        styled: Whether to style text output (OutputFormat.TEXT).
 
     Returns:
         Prepared TOML text plus optional template read error.
@@ -94,23 +98,29 @@ def build_config_init_human_report(
 
     changed = False
 
-    if for_pyproject:
-        res: TemplateEditResult = ensure_pyproject_header(toml_text)
-        toml_text, changed = res.text, (changed or res.changed)
-
     if root:
         res = set_root_flag_in_template_text(
             toml_text,
+            for_pyproject=False,
             root=True,
         )
         toml_text, changed = res.text, (changed or res.changed)
 
-    # TOML correctness backstop
+    if for_pyproject:
+        nested_text: str = nest_toml_under_section(
+            toml_text,
+            "tool.topmark",
+        )  # Raises ValueError, TomlParseError, TomlSurgeryError.
+
+        changed: bool = changed or (nested_text != toml_text)
+        toml_text: str = nested_text
+
+    # TOML correctness backstop (raises )
     validate_toml_for_config_init(
         toml_text,
         for_pyproject=for_pyproject,
         root_expected=root,
-    )
+    )  # Raises TemplateValidationError.
 
     return ConfigInitHumanReport(
         toml_text=toml_text,
@@ -148,13 +158,8 @@ def build_config_defaults_human_report(
 ) -> ConfigDefaultsHumanReport:
     """Prepare human-facing data for `topmark config defaults`.
 
-    Loads the packaged default TOML *template* as text, optionally nests it under `[tool.topmark]`
-    for `pyproject.toml` usage, then cleans it (removing comments/extraneous whitespace) to make it
-    suitable for copy/paste.
-
-    Important:
-        This uses the bundled template text (not a synthesized `Config`) so the  output remains the
-        canonical reference document.
+    Renders the centralized default TopMark TOML document, optionally nests it under
+    `[tool.topmark]`, then cleans it for copy/paste.
 
     Args:
         for_pyproject: If True, nest the TOML under `[tool.topmark]`.
@@ -165,10 +170,11 @@ def build_config_defaults_human_report(
     Returns:
         Prepared cleaned TOML text.
     """
-    toml_text: str = render_runtime_defaults_toml_text(for_pyproject=for_pyproject)
+    toml_text: str = render_default_topmark_toml_text(for_pyproject=for_pyproject)
 
     if root:
         toml_text = set_root_flag(toml_text, for_pyproject=for_pyproject, root=True)
+        # Raises TomlParseError, TomlSurgeryError.
 
     cleaned: str = clean_toml_text(toml_text)
     return ConfigDefaultsHumanReport(

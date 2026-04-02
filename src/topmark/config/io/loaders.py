@@ -57,7 +57,76 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-# --- TOML file I/O and normalization ---
+# ---- Private helpers ----
+
+
+def _build_default_layered_config_toml() -> TomlTable:
+    """Return only layered config sections.
+
+    Sections:
+    - `[header]`
+    - `[fields]`
+    - `[formatting]`
+    - `[policy]`
+    - `[files]`
+    """
+    return {
+        Toml.SECTION_HEADER: {
+            Toml.KEY_FIELDS: ["file", "file_relpath"],
+            # `relative_to` defaults to empty/unset.
+            Toml.KEY_RELATIVE_TO: "",
+        },
+        Toml.SECTION_FIELDS: {},
+        Toml.SECTION_FORMATTING: {
+            Toml.KEY_ALIGN_FIELDS: True,
+        },
+        Toml.SECTION_POLICY: {
+            Toml.KEY_POLICY_HEADER_MUTATION_MODE: HeaderMutationMode.ALL.value,
+            Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES: False,
+            Toml.KEY_POLICY_EMPTIES_INSERT_MODE: "logical_empty",
+        },
+        Toml.SECTION_FILES: {
+            # Pattern sources / explicit lists are empty by default.
+            Toml.KEY_INCLUDE_FROM: [],
+            Toml.KEY_EXCLUDE_FROM: [],
+            Toml.KEY_FILES_FROM: [],
+            Toml.KEY_INCLUDE_PATTERNS: [],
+            Toml.KEY_EXCLUDE_PATTERNS: [],
+            Toml.KEY_INCLUDE_FILE_TYPES: [],
+            Toml.KEY_EXCLUDE_FILE_TYPES: [],
+            Toml.KEY_FILES: [],
+        },
+        # No policy_by_type defaults.
+    }
+
+
+def _build_default_writer_toml() -> TomlTable:
+    """Return only the writer section.
+
+    Sections:
+    - `[writer]`
+    """
+    return {
+        Toml.SECTION_WRITER: {
+            Toml.KEY_STRATEGY: "atomic",
+        },
+    }
+
+
+def _build_default_config_metadata_toml() -> TomlTable:
+    """Return only config section.
+
+    Sections:
+    - `[config]`
+    """
+    return {
+        Toml.SECTION_CONFIG: {
+            Toml.KEY_STRICT_CONFIG_CHECKING: False,
+        },
+    }
+
+
+# ---- Public template/default document helpers ----
 
 
 def load_default_config_template_toml_text() -> tuple[str, Exception | None]:
@@ -118,7 +187,7 @@ def load_default_config_template_toml_text() -> tuple[str, Exception | None]:
             "# NOTE: The packaged default configuration template 'topmark-example.toml' "
             "could not be read.\n"
             f"# Reason: {exc}\n"
-            "# The content below was generated from TopMark runtime defaults and "
+            "# The content below was generated from TopMark built-in defaults and "
             "may not include the usual comments/formatting.\n\n"
         )
         trailer: str = "\n# NOTE: End of generated defaults (template was missing/unreadable).\n"
@@ -152,39 +221,13 @@ def load_defaults_dict() -> TomlTable:
     # Keep this document small and stable: it is the centralized default
     # TopMark TOML document assembled in code.
     return {
-        Toml.SECTION_HEADER: {
-            Toml.KEY_FIELDS: ["file", "file_relpath"],
-            # `relative_to` defaults to empty/unset.
-            Toml.KEY_RELATIVE_TO: "",
-        },
-        Toml.SECTION_FIELDS: {},
-        Toml.SECTION_FORMATTING: {
-            Toml.KEY_ALIGN_FIELDS: True,
-        },
-        Toml.SECTION_WRITER: {
-            Toml.KEY_STRATEGY: "atomic",
-        },
-        Toml.SECTION_POLICY: {
-            Toml.KEY_POLICY_HEADER_MUTATION_MODE: HeaderMutationMode.ALL.value,
-            Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES: False,
-            Toml.KEY_POLICY_EMPTIES_INSERT_MODE: "logical_empty",
-        },
-        Toml.SECTION_FILES: {
-            # Pattern sources / explicit lists are empty by default.
-            Toml.KEY_INCLUDE_FROM: [],
-            Toml.KEY_EXCLUDE_FROM: [],
-            Toml.KEY_FILES_FROM: [],
-            Toml.KEY_INCLUDE_PATTERNS: [],
-            Toml.KEY_EXCLUDE_PATTERNS: [],
-            Toml.KEY_INCLUDE_FILE_TYPES: [],
-            Toml.KEY_EXCLUDE_FILE_TYPES: [],
-            Toml.KEY_FILES: [],
-        },
-        # No policy_by_type defaults.
+        **_build_default_config_metadata_toml(),
+        **_build_default_layered_config_toml(),
+        **_build_default_writer_toml(),
     }
 
 
-def render_runtime_defaults_toml_text(
+def render_default_topmark_toml_text(
     *,
     for_pyproject: bool,
 ) -> str:
@@ -195,8 +238,7 @@ def render_runtime_defaults_toml_text(
     comments or formatting.
 
     Note:
-        The function name is transitional. The rendered content is the default
-        TopMark TOML document, not execution-only `RunOptions`.
+        The rendered content is the default TopMark TOML document, not execution-only `RunOptions`.
 
     Args:
         for_pyproject: If `True`, nest the output under `[tool.topmark]`.
@@ -206,5 +248,9 @@ def render_runtime_defaults_toml_text(
     """
     toml_text: str = render_toml_table(load_defaults_dict())
     if for_pyproject:
-        toml_text = nest_toml_under_section(toml_text, "tool.topmark")
+        toml_text = nest_toml_under_section(
+            toml_text,
+            "tool.topmark",
+        )  # Raises ValueError, TomlParseError, TomlSurgeryError
+
     return toml_text
