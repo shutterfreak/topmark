@@ -84,17 +84,19 @@ from topmark.pipeline.reporting import ReportFilterResult
 from topmark.pipeline.reporting import ReportScope
 from topmark.pipeline.reporting import filter_results_for_report
 from topmark.pipeline.status import WriteStatus
-from topmark.presentation.shared.pipeline import render_pipeline_apply_summary_human
-from topmark.presentation.shared.pipeline import render_pipeline_human_output
-from topmark.presentation.shared.pipeline import strip_msg_markdown
-from topmark.presentation.shared.pipeline import strip_msg_text
+from topmark.presentation.markdown.diagnostic import render_diagnostics_markdown
+from topmark.presentation.markdown.pipeline import render_pipeline_apply_summary_markdown
+from topmark.presentation.markdown.pipeline import render_pipeline_output_markdown
 from topmark.presentation.text.diagnostic import render_diagnostics_text
+from topmark.presentation.text.pipeline import render_pipeline_apply_summary_text
+from topmark.presentation.text.pipeline import render_pipeline_output_text
 from topmark.utils.file import safe_unlink
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
+    from topmark.api.types import PipelineKindLiteral
     from topmark.cli.console.color import ColorMode
     from topmark.cli.console.protocols import ConsoleProtocol
     from topmark.cli.io import InputPlan
@@ -349,17 +351,26 @@ def strip_command(
 
     logger.trace("Run config after layered CLI overrides: %s", config)
 
-    # Display Config diagnostics before resolving files
-    if fmt == OutputFormat.TEXT and verbosity_level > 0:
-        console.print(
-            render_diagnostics_text(
-                diagnostics=config.diagnostics,
-                verbosity_level=verbosity_level,
-                color=enable_color,
+    if verbosity_level > 0:
+        # Display Config diagnostics before resolving files
+        if fmt == OutputFormat.TEXT:
+            console.print(
+                render_diagnostics_text(
+                    diagnostics=config.diagnostics,
+                    verbosity_level=verbosity_level,
+                    color=enable_color,
+                )
             )
-        )
+        elif fmt == OutputFormat.MARKDOWN:
+            console.print(
+                render_diagnostics_markdown(
+                    diagnostics=config.diagnostics,
+                    verbosity_level=verbosity_level,
+                )
+            )
 
     temp_path: Path | None = plan.temp_path  # for cleanup/STDIN-apply branch
+
     file_list: list[Path] = build_file_list(
         run_options=run_options,
         config=config,
@@ -374,8 +385,9 @@ def strip_command(
         return
 
     # Choose the concrete pipeline variant
+    pipeline_kind: PipelineKindLiteral = "strip"
     pipeline: Sequence[Step[ProcessingContext]] = select_pipeline(
-        "strip",
+        pipeline_kind,
         apply=apply_changes,
         diff=diff,
     )
@@ -413,21 +425,35 @@ def strip_command(
             fmt=fmt,
             summary_mode=summary_mode,
         )
-    else:
+    elif fmt == OutputFormat.TEXT:
         console.print(
-            render_pipeline_human_output(
+            render_pipeline_output_text(
                 cmd=CliCmd.STRIP,
+                pipeline_kind=pipeline_kind,
                 file_list_total=len(file_list),
                 view_results=human_results,
                 report=report,
                 unsupported_count=filtered.unsupported_count_all,
-                fmt=fmt,
                 verbosity_level=verbosity_level,
                 summary_mode=summary_mode,
                 show_diffs=diff,
-                make_message=strip_msg_markdown if fmt == OutputFormat.MARKDOWN else strip_msg_text,
                 apply_changes=apply_changes,
-                enable_color=enable_color,
+                styled=enable_color,
+            )
+        )
+    elif fmt == OutputFormat.MARKDOWN:
+        console.print(
+            render_pipeline_output_markdown(
+                cmd=CliCmd.STRIP,
+                pipeline_kind=pipeline_kind,
+                file_list_total=len(file_list),
+                view_results=human_results,
+                report=report,
+                unsupported_count=filtered.unsupported_count_all,
+                verbosity_level=verbosity_level,
+                summary_mode=summary_mode,
+                show_diffs=diff,
+                apply_changes=apply_changes,
             )
         )
 
@@ -437,7 +463,7 @@ def strip_command(
             # For STDIN content mode, the modified file content is emitted to stdout in WriterStep.
             # So we do not have to output it here.
             #
-            # Cleanup the temp file
+            # Cleanup the temp file.
             safe_unlink(temp_path)
             return
         else:
@@ -445,15 +471,24 @@ def strip_command(
             written: int = sum(1 for r in results if r.status.write == WriteStatus.WRITTEN)
             failed: int = sum(1 for r in results if r.status.write == WriteStatus.FAILED)
 
-            console.print(
-                render_pipeline_apply_summary_human(
-                    fmt=fmt,
-                    command_path=ctx.command_path,
-                    written=written,
-                    failed=failed,
-                    styled=enable_color,
+            # Emit summary of applied changes.
+            if fmt == OutputFormat.TEXT:
+                console.print(
+                    render_pipeline_apply_summary_text(
+                        command_path=ctx.command_path,
+                        written=written,
+                        failed=failed,
+                        styled=enable_color,
+                    )
                 )
-            )
+            elif fmt == OutputFormat.MARKDOWN:
+                console.print(
+                    render_pipeline_apply_summary_markdown(
+                        command_path=ctx.command_path,
+                        written=written,
+                        failed=failed,
+                    )
+                )
 
             if failed:
                 raise TopmarkCliIOError(f"Failed to write {failed} file(s). See log for details.")

@@ -8,7 +8,7 @@
 #
 # topmark:header:end
 
-"""Markdown pipeline rendering helpers for TopMark.
+"""Markdown pipeline rendering helpers for the TopMark CLI.
 
 Click-free helpers that prepare Markdown for pipeline-oriented commands
 (e.g. `check`, `strip`). Callers print the returned strings.
@@ -23,170 +23,66 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from topmark.cli.errors import TopmarkCliPipelineError
+from topmark.cli.keys import CliCmd
+from topmark.cli.keys import CliOpt
 from topmark.cli.keys import CliShortOpt
-from topmark.pipeline.outcomes import OutcomeReasonCount
+from topmark.pipeline.context.policy import effective_would_add_or_update
+from topmark.pipeline.context.policy import effective_would_strip
+from topmark.pipeline.outcomes import Intent
 from topmark.pipeline.outcomes import ResultBucket
 from topmark.pipeline.outcomes import collect_outcome_reason_counts
+from topmark.pipeline.outcomes import determine_intent
 from topmark.pipeline.outcomes import map_bucket
+from topmark.pipeline.reporting import ReportScope
+from topmark.pipeline.status import HeaderStatus
+from topmark.pipeline.status import WriteStatus
 from topmark.presentation.markdown.diagnostic import render_diagnostics_markdown
+from topmark.presentation.markdown.utils import markdown_code_span
 from topmark.presentation.markdown.utils import render_markdown_table
+from topmark.presentation.shared.pipeline import get_display_path
 from topmark.rendering.unified_diff import format_patch_plain
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from topmark.api.types import PipelineKindLiteral
     from topmark.diagnostic.model import DiagnosticStats
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.hints import Hint
+    from topmark.pipeline.outcomes import OutcomeReasonCount
+    from topmark.pipeline.views import DiffView
 
-# Banner
-
-
-def render_pipeline_banner_markdown(
-    *,
-    cmd: str,
-    n_files: int,
-) -> str:
-    """Render the initial MarkDown banner for a pipeline command.
-
-    Args:
-      cmd: Command name.
-      n_files: Number of files to be processed.
-
-    Returns:
-        The initial MarkDown banner for a pipeline command.
-    """
-    return "\n".join(
-        [
-            f"# TopMark {cmd} Results",
-            "",
-            f"Processing **{n_files}** file(s).",
-        ]
-    )
+# ---- Path rendering ----
 
 
-def render_pipeline_summary_counts_markdown(
-    *,
-    view_results: list[ProcessingContext],
-    total: int,
-) -> str:
-    """Render summary counts grouped by `(outcome, reason)` as a Markdown table."""
-    counts: list[OutcomeReasonCount] = collect_outcome_reason_counts(view_results)
+def _render_path_display_markdown(ctx: ProcessingContext) -> str:
+    """Render a short Markdown path label for headings and list items.
 
-    headers: list[str] = ["Outcome", "Reason", "Count"]
-    rows: list[list[str]] = []
-    for row in counts:
-        rows.append([row.outcome.value, row.reason, str(row.count)])
-
-    table: str = render_markdown_table(headers, rows, align={2: "right"}).rstrip()
-
-    return "\n".join(
-        [
-            "## Summary by outcome",
-            "",
-            table,
-            "",
-            f"Total files: **{total}**",
-        ]
-    )
-
-
-def render_pipeline_per_file_guidance_markdown(
-    *,
-    view_results: list[ProcessingContext],
-    make_message: Callable[[ProcessingContext, bool], str | None],
-    apply_changes: bool,
-    show_diffs: bool,
-    verbosity_level: int,
-) -> str:
-    """Render per-file guidance in Markdown.
-
-    The Markdown emitter mirrors the structure of the TEXT emitter:
-
-    1. one summary line per file,
-    2. optional guidance message,
-    3. diagnostics block at verbosity >= 1,
-    4. one hint at `-v`, or the full hint list at `-vv` and above,
-    5. optional diff block.
+    This helper formats
+    [`get_display_path()`][topmark.presentation.shared.pipeline.get_display_path]
+    for Markdown and annotates STDIN-backed content with ``_(via STDIN)_`` when a
+    synthetic filename is available.
 
     Args:
-        view_results: Processing results to render.
-        make_message: Optional per-file guidance message builder.
-        apply_changes: Whether the command is in apply mode.
-        show_diffs: Whether to include unified diffs.
-        verbosity_level: Effective verbosity level controlling diagnostics and hint detail.
+        ctx: Processing context containing the path to display.
 
     Returns:
-        Markdown fragment containing all per-file sections.
+        Short Markdown label for per-file headings and guidance messages.
     """
-    blocks: list[str] = []
-    blocks.append("## Files")
-    blocks.append("")
+    path: str = get_display_path(ctx)
+    code: str = markdown_code_span(path)
 
-    for idx, r in enumerate(view_results, start=1):
-        # At verbosity 0, keep output minimal: one summary line per file.
-        #
-        # 1. summary line
-        blocks.append(
-            f"{idx}. "
-            + render_file_summary_line_markdown(
-                ctx=r,
-                verbosity_level=verbosity_level,
-            )
-        )
+    if ctx.run_options.stdin_mode and bool(ctx.run_options.stdin_filename):
+        return f"{code} _(via STDIN)_"
 
-        # 2. guidance message (in case changes can be applied)
-        msg: str | None = make_message(r, apply_changes)
-        if msg:
-            blocks.append(f"  - {msg}")
-
-        # 3. diagnostics block (shown at verbosity >= 1)
-        if verbosity_level > 0 and len(r.diagnostics) > 0:
-            diag_md: str = render_diagnostics_markdown(
-                diagnostics=r.diagnostics,
-                verbosity_level=verbosity_level,
-            ).rstrip()
-            if diag_md:
-                for line in diag_md.splitlines():
-                    blocks.append(f"  {line}" if line else "")
-
-        # 4. hints (one hint at `-v`, full list at `-vv` and above)
-        hints: list[Hint] = r.diagnostic_hints.items
-        hints_count: int = len(hints)
-        if verbosity_level > 0 and hints_count > 0:
-            extended_hint_info: str = (
-                ""
-                if verbosity_level > 1
-                else f" (use `{CliShortOpt.VERBOSE}{CliShortOpt.VERBOSE[-1]}` to view all hints)"
-            )
-            blocks.append(f"  - Hints: {hints_count}{extended_hint_info}")
-
-            # Only display the last hint when verbosity_level==1
-            hints_to_show: list[Hint] = [hints[-1]] if verbosity_level == 1 else hints
-            hints_to_show_count: int = len(hints_to_show)
-            for idx, h in enumerate(hints_to_show, start=1):
-                blocks.append(
-                    render_hint_markdown(
-                        hint=h,
-                        last=idx == hints_to_show_count,
-                        verbosity_level=verbosity_level,
-                    )
-                )
-
-        # 5. optional diff block
-        if show_diffs and r.views.diff and r.views.diff.text:
-            diff_text: str = format_patch_plain(patch=r.views.diff.text).rstrip("\n")
-            blocks.append("")
-            blocks.append("```diff")
-            blocks.append(diff_text)
-            blocks.append("```")
-
-        blocks.append("")
-
-    return "\n".join(blocks).rstrip() + "\n"
+    return code
 
 
-def render_hint_markdown(
+# ---- Hint rendering ----
+
+
+def _render_hint_markdown(
     hint: Hint,
     *,
     last: bool,
@@ -195,12 +91,12 @@ def render_hint_markdown(
     """Render a single hint as Markdown.
 
     Args:
-        hint: The Hint object.
+        hint: Hint to render.
         last: Whether this is the last/decisive hint in the rendered subset.
-        verbosity_level: Effective verbosity level.
+        verbosity_level: Effective verbosity level controlling detail rendering.
 
     Returns:
-        Markdown fragment for the hint (without trailing blank line).
+        Markdown fragment for one hint entry.
     """
     lines: list[str] = []
 
@@ -222,31 +118,168 @@ def render_hint_markdown(
         else:
             lines.append(
                 f"      (use `{CliShortOpt.VERBOSE}{CliShortOpt.VERBOSE[-1]}` "
-                "to display detailed diagnostics)"
+                "to display detailed hints)"
             )
 
     return "\n".join(lines)
 
 
-def render_file_summary_line_markdown(
+# ---- Banner rendering ----
+
+
+def _render_pipeline_banner_markdown(
+    *,
+    cmd: str,
+    n_files: int,
+) -> str:
+    """Render the Markdown banner for a pipeline command.
+
+    Args:
+        cmd: Command name.
+        n_files: Number of candidate files.
+
+    Returns:
+        Markdown banner shown before the main pipeline output.
+    """
+    return "\n".join(
+        [
+            f"# TopMark {cmd} Results",
+            "",
+            f"Processing **{n_files}** file(s).",
+        ]
+    )
+
+
+# ---- Command guidance rendering ----
+
+
+def _render_check_guidance_message_markdown(
+    ctx: ProcessingContext,
+    apply_changes: bool,
+) -> str | None:
+    """Render per-file guidance for `topmark check` results.
+
+    Args:
+        ctx: Processing context for the file.
+        apply_changes: Whether the command runs in apply mode.
+
+    Returns:
+        Guidance message for this file, or `None` when no check action is relevant.
+
+    Raises:
+        TopmarkCliPipelineError: If the resolved intent is invalid for the `check`
+            pipeline.
+    """
+    if not effective_would_add_or_update(ctx):
+        return None
+
+    path_label: str = _render_path_display_markdown(ctx)
+    path_name: str = get_display_path(ctx)
+    intent: Intent = determine_intent(ctx)
+
+    if apply_changes:
+        if ctx.status.write == WriteStatus.FAILED:
+            return f"❌ Could not {intent.value} header: {ctx.status.write.value}"
+        if ctx.status.write == WriteStatus.SKIPPED:
+            # Defensive: should not happen when effective_would_add_or_update is True,
+            # but keeps CLI honest if a later step halts.
+            return f"⚠️  Could not {intent.value} header (write skipped)."
+
+        return (
+            f"➕ Adding header in {path_label}"
+            if ctx.status.header == HeaderStatus.MISSING
+            else f"✏️  Updating header in {path_label}"
+        )
+
+    if ctx.run_options.stdin_mode and ctx.run_options.stdin_filename:
+        apply_cmd: str = (
+            f"topmark {CliCmd.CHECK} {CliOpt.APPLY_CHANGES} {CliOpt.STDIN_FILENAME} {path_name} -"
+        )
+    else:
+        apply_cmd = f"topmark {CliCmd.CHECK} {CliOpt.APPLY_CHANGES} {path_name}"
+
+    if intent == Intent.INSERT:
+        action: str = "add a TopMark header to this file"
+    elif intent == Intent.UPDATE:
+        action = "update the TopMark header in this file"
+    else:
+        raise TopmarkCliPipelineError(
+            message=f"Unexpected intent {intent.value} in 'check' pipeline.",
+        )
+    cmd_md: str = markdown_code_span(apply_cmd)
+    return f"🛠️  Run {cmd_md} to {action}."
+
+
+def _render_strip_guidance_message_markdown(
+    ctx: ProcessingContext,
+    apply_changes: bool,
+) -> str | None:
+    """Render per-file guidance for `topmark strip` results.
+
+    Args:
+        ctx: Processing context for the file.
+        apply_changes: Whether the command runs in apply mode.
+
+    Returns:
+        Guidance message for this file, or `None` when no strip action is relevant.
+
+    Raises:
+        TopmarkCliPipelineError: If the resolved intent is invalid for the `strip`
+            pipeline.
+    """
+    if not effective_would_strip(ctx):
+        return None
+
+    path_label: str = _render_path_display_markdown(ctx)
+    path_name: str = get_display_path(ctx)
+    intent: Intent = determine_intent(ctx)
+
+    if apply_changes:
+        if ctx.status.write == WriteStatus.FAILED:
+            return f"❌ Could not {intent.value} header: {ctx.status.write.value}"
+        if ctx.status.write == WriteStatus.SKIPPED:
+            # Defensive: should not happen when effective_would_strip is True,
+            # but keeps CLI honest if a later step halts.
+            return f"⚠️  Could not {intent.value} header (write skipped)."
+
+        return f"🧹 Stripping header in {path_label}"
+
+    if ctx.run_options.stdin_mode and ctx.run_options.stdin_filename:
+        apply_cmd: str = (
+            f"topmark {CliCmd.STRIP} {CliOpt.APPLY_CHANGES} {CliOpt.STDIN_FILENAME} {path_name} -"
+        )
+    else:
+        apply_cmd = f"topmark {CliCmd.STRIP} {CliOpt.APPLY_CHANGES} {path_name}"
+
+    if intent == Intent.STRIP:
+        action: str = "strip the TopMark header from this file"
+    else:
+        raise TopmarkCliPipelineError(
+            message=f"Unexpected intent {intent.value} in 'strip' pipeline.",
+        )
+    cmd_md: str = markdown_code_span(apply_cmd)
+    return f"🛠️  Run {cmd_md} to {action}."
+
+
+# ---- Per-file rendering ----
+
+
+def _render_file_summary_line_markdown(
     *,
     ctx: ProcessingContext,
     verbosity_level: int,
 ) -> str:
-    """Render a concise Markdown one-liner for a single file result.
+    """Render a concise one-line Markdown summary for one file.
 
-    This helper mirrors `render_file_summary_line_text()` but emits plain
-    Markdown rather than styled terminal text. The primary summary is driven by
-    `map_bucket()`, and secondary suffixes summarize write status, diff presence,
-    and compact diagnostic triage.
+    The summary is driven by [`map_bucket()`][topmark.pipeline.outcomes.map_bucket]
+    and may append compact write, diff, or diagnostic hints.
 
     Args:
-        ctx: Processing context containing status and configuration.
-        verbosity_level: Effective verbosity level. This only affects the
-            inline diagnostic nudge such as ``"(use '-v' to view)"``.
+        ctx: Processing context containing status and view data.
+        verbosity_level: Effective verbosity level for inline diagnostic nudges.
 
     Returns:
-        Human-readable Markdown one-line summary.
+        One-line Markdown summary for the file.
     """
     # File type, or <unknown> if resolution failed
     ft: str = ctx.file_type.local_key if ctx.file_type is not None else "<unknown>"
@@ -276,41 +309,321 @@ def render_file_summary_line_markdown(
             diag_show_hint = f" (use `{CliShortOpt.VERBOSE}` to view)"
 
     suffix: str = (" — " + " - ".join(parts) + diag_show_hint) if parts else ""
-    return f"`{ctx.path}` ({ft}) — `{key}`: {label}{suffix}"
+    return f"`{get_display_path(ctx)}` ({ft}) — `{key}`: {label}{suffix}"
 
 
-def render_pipeline_diffs_markdown(
+def _render_per_file_guidance_markdown(
+    *,
+    view_results: list[ProcessingContext],
+    make_message: Callable[[ProcessingContext, bool], str | None],
+    apply_changes: bool,
+    show_diffs: bool,
+    verbosity_level: int,
+) -> str:
+    """Render per-file Markdown sections.
+
+    For each file, this includes:
+        1. A summary line.
+        2. An optional guidance message.
+        3. Diagnostics at verbosity >= 1.
+        4. One hint at `-v`, or all hints at `-vv` and above.
+        5. An optional diff block.
+
+    Args:
+        view_results: Processing contexts to render.
+        make_message: Per-file guidance message builder.
+        apply_changes: Whether the command runs in apply mode.
+        show_diffs: Whether to include unified diffs.
+        verbosity_level: Effective verbosity level.
+
+    Returns:
+        Markdown fragment containing all rendered file sections.
+    """
+    blocks: list[str] = []
+    blocks.append("## Files")
+    blocks.append("")
+
+    for idx, ctx in enumerate(view_results, start=1):
+        # At verbosity 0, keep output minimal: one summary line per file.
+        #
+        # 1. summary line
+        blocks.append(
+            f"{idx}. "
+            + _render_file_summary_line_markdown(
+                ctx=ctx,
+                verbosity_level=verbosity_level,
+            )
+        )
+
+        # 2. guidance message (in case changes can be applied)
+        msg: str | None = make_message(ctx, apply_changes)
+        if msg:
+            blocks.append(f"  - {msg}")
+
+        # 3. diagnostics block (shown at verbosity >= 1)
+        if verbosity_level > 0 and len(ctx.diagnostics) > 0:
+            diag_md: str = render_diagnostics_markdown(
+                diagnostics=ctx.diagnostics,
+                verbosity_level=verbosity_level,
+            ).rstrip()
+            if diag_md:
+                for line in diag_md.splitlines():
+                    blocks.append(f"  {line}" if line else "")
+
+        # 4. hints (one hint at `-v`, full list at `-vv` and above)
+        hints: list[Hint] = ctx.diagnostic_hints.items
+        hints_count: int = len(hints)
+        if verbosity_level > 0 and hints_count > 0:
+            extended_hint_info: str = (
+                ""
+                if verbosity_level > 1
+                else f" (use `{CliShortOpt.VERBOSE}{CliShortOpt.VERBOSE[-1]}` to view all hints)"
+            )
+            blocks.append(f"  - Hints: {hints_count}{extended_hint_info}")
+
+            # Only display the last hint when verbosity_level==1
+            hints_to_show: list[Hint] = [hints[-1]] if verbosity_level == 1 else hints
+            hints_to_show_count: int = len(hints_to_show)
+            for i, h in enumerate(hints_to_show, start=1):
+                blocks.append(
+                    _render_hint_markdown(
+                        hint=h,
+                        last=i == hints_to_show_count,
+                        verbosity_level=verbosity_level,
+                    )
+                )
+
+        # 5. optional diff block
+        if show_diffs:
+            diff: str | None = _render_diff_markdown(ctx.views.diff)
+            if diff:
+                blocks.append("")
+                blocks.append("```diff")
+                blocks.append(diff.rstrip("\n"))
+                blocks.append("```")
+
+        blocks.append("")
+
+    return "\n".join(blocks).rstrip() + "\n"
+
+
+# ---- Diff rendering ----
+
+
+def _render_diff_markdown(
+    diff_view: DiffView | None,
+    *,
+    show_line_numbers: bool = False,
+) -> str | None:
+    """Render a unified diff as plain Markdown-friendly text.
+
+    Args:
+        diff_view: Diff view to render.
+        show_line_numbers: Whether to prepend line numbers.
+
+    Returns:
+        Rendered diff text, or `None` when no diff is available.
+    """
+    if diff_view is None:
+        return None
+    diff_text: str | None = diff_view.text
+    if diff_text:
+        return format_patch_plain(
+            patch=diff_text,
+            show_line_numbers=show_line_numbers,
+        )
+    return None
+
+
+def _render_pipeline_diffs_markdown(
     *,
     results: list[ProcessingContext],
     show_line_numbers: bool = False,
 ) -> str:
-    """Print unified diffs for changed files (MarkDown format).
+    """Render a Markdown diff section for all files with diffs.
 
     Args:
-        results: List of processing contexts to inspect.
-        show_line_numbers: Prepend line numbers if True, render patch only (default).
+        results: Processing contexts to inspect.
+        show_line_numbers: Whether to prepend line numbers.
 
     Returns:
-        Unified diffs for all changed files.
-
-    Notes:
-        - Diffs are only printed in human (TEXT) output mode.
-        - Files with no changes do not emit a diff.
+        Markdown diff section.
     """
     # Keep Markdown diffs readable and copyable.
     blocks: list[str] = ["## Diffs", ""]
-    for r in results:
-        if r.views.diff and r.views.diff.text:
-            diff_text: str = format_patch_plain(
-                patch=r.views.diff.text,
-                show_line_numbers=show_line_numbers,
-            ).rstrip("\n")
-            blocks.append(f"### `{r.path}`")
+    for ctx in results:
+        diff: str | None = _render_diff_markdown(
+            ctx.views.diff,
+            show_line_numbers=show_line_numbers,
+        )
+        if diff:
+            blocks.append(f"### {_render_path_display_markdown(ctx)}")
             blocks.append("")
             blocks.append("```diff")
-            blocks.append(diff_text)
+            blocks.append(diff.rstrip("\n"))
             blocks.append("```")
             blocks.append("")
     if len(blocks) > 2:
         blocks.append("")
     return "\n".join(blocks).rstrip()
+
+
+# ---- Summary rendering ----
+
+
+def _render_summary_counts_markdown(
+    *,
+    view_results: list[ProcessingContext],
+    total: int,
+) -> str:
+    """Render summary counts grouped by `(outcome, reason)` as a Markdown table.
+
+    Args:
+        view_results: Processing contexts included in the rendered view.
+        total: Total number of candidate files before view filtering.
+
+    Returns:
+        Markdown summary table with grouped outcome counts.
+    """
+    counts: list[OutcomeReasonCount] = collect_outcome_reason_counts(view_results)
+
+    headers: list[str] = ["Outcome", "Reason", "Count"]
+    rows: list[list[str]] = []
+    for row in counts:
+        rows.append([row.outcome.value, row.reason, str(row.count)])
+
+    table: str = render_markdown_table(headers, rows, align={2: "right"}).rstrip()
+
+    return "\n".join(
+        [
+            "## Summary by outcome",
+            "",
+            table,
+            "",
+            f"Total files: **{total}**",
+        ]
+    )
+
+
+# ---- Public entry points ----
+
+
+def render_pipeline_output_markdown(
+    *,
+    cmd: str,
+    pipeline_kind: PipelineKindLiteral,
+    file_list_total: int,
+    view_results: list[ProcessingContext],
+    report: ReportScope,
+    unsupported_count: int,
+    verbosity_level: int,
+    summary_mode: bool,
+    show_diffs: bool,
+    apply_changes: bool,
+) -> str:
+    """Render human-facing Markdown output for a pipeline command.
+
+    Args:
+        cmd: Command name, such as `check` or `strip`.
+        pipeline_kind: Pipeline kind used to select command-specific guidance.
+        file_list_total: Total number of candidate files before view filtering.
+        view_results: Processing contexts to render.
+        report: Active report scope for the current view.
+        unsupported_count: Number of unsupported files omitted from actionable listings.
+        verbosity_level: Effective verbosity level.
+        summary_mode: Whether to render grouped outcome counts instead of per-file sections.
+        show_diffs: Whether to include unified diffs.
+        apply_changes: Whether the command runs in apply mode.
+
+    Returns:
+        Rendered Markdown output.
+
+    Raises:
+        RuntimeError: If an invalid pipeline kind was selected.
+    """
+    make_message: Callable[[ProcessingContext, bool], str | None] | None = None
+    if pipeline_kind == CliCmd.CHECK:
+        make_message = _render_check_guidance_message_markdown
+    elif pipeline_kind == CliCmd.STRIP:
+        make_message = _render_strip_guidance_message_markdown
+    else:
+        # Defensive guard.
+        raise RuntimeError(f"Invalid pipeline kind selected: {pipeline_kind}")
+
+    parts: list[str] = []
+
+    # Banner (verbosity-gated)
+    if verbosity_level > 0:
+        parts.append(
+            _render_pipeline_banner_markdown(
+                cmd=cmd,
+                n_files=file_list_total,
+            )
+        )
+        parts.append("")
+
+    # Summary mode (grouped by `(outcome, reason)`)
+    if summary_mode:
+        if show_diffs:
+            parts.append(
+                _render_pipeline_diffs_markdown(
+                    results=view_results,
+                )
+            )
+        parts.append(
+            _render_summary_counts_markdown(
+                view_results=view_results,
+                total=file_list_total,
+            )
+        )
+    else:
+        # Per-file guidance
+        parts.append(
+            _render_per_file_guidance_markdown(
+                view_results=view_results,
+                make_message=make_message,
+                apply_changes=apply_changes,
+                show_diffs=show_diffs,
+                verbosity_level=verbosity_level,
+            ),
+        )
+
+    # In actionable mode, unsupported files are hidden from the per-file listing but summarized
+    # for visibility.
+    if (not summary_mode) and (report == ReportScope.ACTIONABLE) and (unsupported_count > 0):
+        parts.append(
+            f"\n> ⚠️ Unsupported: {unsupported_count} file(s) "
+            f"(use {CliOpt.REPORT}={ReportScope.NONCOMPLIANT.value} to list)\n"
+        )
+
+    return "\n".join(parts)
+
+
+def render_pipeline_apply_summary_markdown(
+    *,
+    command_path: str,
+    written: int,
+    failed: int,
+) -> str:
+    """Render the apply-summary footer for Markdown output.
+
+    Args:
+        command_path: Command path, such as `topmark check`.
+        written: Number of files written.
+        failed: Number of files that failed to write.
+
+    Returns:
+        Rendered Markdown footer.
+    """
+    parts: list[str] = []
+    cmd_md: str = markdown_code_span(command_path)
+    if written:
+        parts.append(f"\n✅ {cmd_md}: applied changes to **{written}** file(s).\n")
+    else:
+        parts.append(f"\n✅ {cmd_md}: no changes to apply.\n")
+    if failed:
+        parts.append(
+            f"\n> ⚠️ {cmd_md}: failed to write **{failed}** file(s). See log for details.\n"
+        )
+
+    return "\n".join(parts)

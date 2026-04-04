@@ -16,9 +16,9 @@ This module renders human-facing TEXT output for pipeline-oriented commands
 Notes:
     - ANSI styling primitives (for example, conditional colorization) live in
       [`topmark.cli.presentation`][topmark.cli.presentation].
-    - Machine formats (JSON/NDJSON) are handled elsewhere.
     - Markdown output is implemented in the Click-free package
       [`topmark.presentation.markdown`][topmark.presentation.markdown].
+    - Machine output is handled via domain machine serializers.
 """
 
 from __future__ import annotations
@@ -27,25 +27,36 @@ from typing import TYPE_CHECKING
 from typing import Final
 
 from topmark.cli.console.utils import get_console_line_width
+from topmark.cli.errors import TopmarkCliPipelineError
+from topmark.cli.keys import CliCmd
+from topmark.cli.keys import CliOpt
 from topmark.cli.keys import CliShortOpt
 from topmark.cli.presentation import TextStyler
 from topmark.cli.presentation import style_for_role
 from topmark.cli.rendering.unified_diff import format_patch_styled
 from topmark.core.presentation import StyleRole
-from topmark.pipeline.context.model import ProcessingContext
+from topmark.pipeline.context.policy import effective_would_add_or_update
+from topmark.pipeline.context.policy import effective_would_strip
 from topmark.pipeline.hints import Cluster
-from topmark.pipeline.hints import Hint
+from topmark.pipeline.outcomes import Intent
 from topmark.pipeline.outcomes import ResultBucket
+from topmark.pipeline.outcomes import determine_intent
 from topmark.pipeline.outcomes import map_bucket
+from topmark.pipeline.reporting import ReportScope
+from topmark.pipeline.status import HeaderStatus
+from topmark.pipeline.status import WriteStatus
 from topmark.presentation.shared.outcomes import collect_outcome_counts_styled
 from topmark.presentation.shared.outcomes import get_outcome_style_role
+from topmark.presentation.shared.pipeline import get_display_path
 from topmark.presentation.text.diagnostic import render_diagnostics_text
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from topmark.api.types import PipelineKindLiteral
     from topmark.diagnostic.model import DiagnosticStats
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.hints import Hint
     from topmark.pipeline.outcomes import OutcomeReasonCount
     from topmark.pipeline.views import DiffView
 
@@ -62,30 +73,125 @@ _HINT_CLUSTER_STYLE_ROLE: Final[dict[str, StyleRole]] = {
 }
 
 
+# ---- Path rendering ----
+
+
+def _render_path_display_text(ctx: ProcessingContext) -> str:
+    """Render a short TEXT path label for guidance messages.
+
+    This helper formats
+    [`get_display_path()`][topmark.presentation.shared.pipeline.get_display_path]
+    for human-facing TEXT output and annotates STDIN-backed content with `(via STDIN)`
+    when a synthetic filename is available.
+
+    Args:
+        ctx: Processing context containing the path to display.
+
+    Returns:
+        Short TEXT label for guidance messages.
+    """
+    path: str = get_display_path(ctx)
+    if ctx.run_options.stdin_mode and bool(ctx.run_options.stdin_filename):
+        return f"'{path}' (via STDIN)"
+
+    return f"'{path}'"
+
+
+# ---- Hint rendering ----
+
+
 def _hint_styler(cluster: str | None, *, styled: bool) -> TextStyler:
-    """Return the semantic styler for a hint cluster."""
+    """Return the semantic text styler for a hint cluster.
+
+    Args:
+        cluster: Hint cluster name, if available.
+        styled: Whether ANSI styling is enabled.
+
+    Returns:
+        Text styler for the hint cluster.
+    """
     role: StyleRole = _HINT_CLUSTER_STYLE_ROLE.get(cluster or "", StyleRole.MUTED)
     return style_for_role(role, styled=styled)
 
 
-# Banner
+def _render_hint_text(
+    hint: Hint,
+    *,
+    last: bool,
+    verbosity_level: int,
+    styled: bool,
+) -> str:
+    """Render a single hint as TEXT output.
+
+    Args:
+        hint: Hint to render.
+        last: Whether this is the last hint in the rendered subset.
+        verbosity_level: Effective verbosity level controlling detail rendering.
+        styled: Whether ANSI styling is enabled.
+
+    Returns:
+        Rendered text for one hint entry.
+    """
+    # Note: the stylers already check `report.styled` so we don't need `maybe_style()`
+    muted_styler: TextStyler = style_for_role(StyleRole.MUTED, styled=styled)
+    hint_styler: TextStyler = _hint_styler(hint.cluster, styled=styled)
+
+    lines: list[str] = []
+
+    # Prepend a marker for terminal hints or the last (directive) hint
+    marker: str = "⏹" if hint.terminal else ("▶" if last else "•")
+    axis: str = hint.axis.value
+    cluster: str = hint.cluster or ""
+    code: str = hint.code
+    message: str = hint.message
+    terminal_suffix: str = " (terminal)" if hint.terminal else ""
+    summary: str = (
+        f"   {marker} {axis:10s}: {(cluster or ''):14s} - {code:20s}: {message}{terminal_suffix}"
+    )
+    lines.append(
+        hint_styler(
+            summary,
+        )
+    )
+
+    # Optional detail vs "use -vv" nudge
+    if hint.detail:
+        if verbosity_level > 1:
+            for line in hint.detail.splitlines():
+                lines.append(
+                    hint_styler(
+                        f"         {line}",
+                    )
+                )
+        else:
+            lines.append(
+                muted_styler(
+                    f"         (use '{CliShortOpt.VERBOSE}{CliShortOpt.VERBOSE[-1]}' "
+                    "to display detailed hints)",
+                )
+            )
+
+    return "\n".join(lines)
 
 
-def render_pipeline_banner_text(
+# ---- Banner rendering ----
+
+
+def _render_pipeline_banner_text(
     *,
     cmd: str,
     n_files: int,
     styled: bool,
 ) -> str:
-    """Render the initial banner for a pipeline command (TEXT format).
+    """Render the TEXT banner for a pipeline command.
 
     Args:
         cmd: Command name.
-        n_files: Number of files to be processed.
-        styled: Whether to use ANSI styling.
+        n_files: Number of candidate files.
+        styled: Whether ANSI styling is enabled.
 
     Returns:
-        Text banner as single string.
+        TEXT banner shown before the main pipeline output.
     """
     # Note: the stylers already check `report.styled` so we don't need `maybe_style()`
     heading_styler: TextStyler = style_for_role(StyleRole.HEADING_TITLE, styled=styled)
@@ -93,19 +199,445 @@ def render_pipeline_banner_text(
 
     return "\n".join(
         [
-            info_styler(f"\n🔍 Processing {n_files} file(s):\n"),
-            heading_styler("📋 TopMark {cmd} Results:"),
+            heading_styler(f"📋 TopMark {cmd} Results"),
+            "",
+            info_styler(f"\n🔍 Processing {n_files} file(s):"),
         ]
     )
 
 
-def render_pipeline_summary_counts_text(
+# ---- Command guidance rendering ----
+
+
+def _render_check_guidance_message_text(
+    ctx: ProcessingContext,
+    apply_changes: bool,
+) -> str | None:
+    """Render per-file guidance for `topmark check` results.
+
+    Args:
+        ctx: Processing context for the file.
+        apply_changes: Whether the command runs in apply mode.
+
+    Returns:
+        Guidance message for this file, or `None` when no check action is relevant.
+
+    Raises:
+        TopmarkCliPipelineError: If the resolved intent is invalid for the `check`
+            pipeline.
+    """
+    if not effective_would_add_or_update(ctx):
+        return None
+
+    path_label: str = _render_path_display_text(ctx)
+    path_name: str = get_display_path(ctx)
+    intent: Intent = determine_intent(ctx)
+
+    if apply_changes:
+        if ctx.status.write == WriteStatus.FAILED:
+            return f"❌ Could not {intent.value} header: {ctx.status.write.value}"
+        if ctx.status.write == WriteStatus.SKIPPED:
+            # Defensive: should not happen when effective_would_add_or_update is True,
+            # but keeps CLI honest if a later step halts.
+            return f"⚠️  Could not {intent.value} header (write skipped)."
+
+        return (
+            f"➕ Adding header in {path_label}"
+            if ctx.status.header == HeaderStatus.MISSING
+            else f"✏️  Updating header in {path_label}"
+        )
+
+    if ctx.run_options.stdin_mode and ctx.run_options.stdin_filename:
+        apply_cmd: str = (
+            f"topmark {CliCmd.CHECK} {CliOpt.APPLY_CHANGES} {CliOpt.STDIN_FILENAME} '{path_name}' -"
+        )
+    else:
+        apply_cmd = f"topmark {CliCmd.CHECK} {CliOpt.APPLY_CHANGES} '{path_name}'"
+
+    if intent == Intent.INSERT:
+        action: str = "add a TopMark header to this file"
+    elif intent == Intent.UPDATE:
+        action = "update the TopMark header in this file"
+    else:
+        raise TopmarkCliPipelineError(
+            message=f"Unexpected intent {intent.value} in 'check' pipeline.",
+        )
+    return f"🛠️  Run `{apply_cmd}` to {action}."
+
+
+def _render_strip_guidance_message_text(
+    ctx: ProcessingContext,
+    apply_changes: bool,
+) -> str | None:
+    """Render per-file guidance for `topmark strip` results.
+
+    Args:
+        ctx: Processing context for the file.
+        apply_changes: Whether the command runs in apply mode.
+
+    Returns:
+        Guidance message for this file, or `None` when no strip action is relevant.
+
+    Raises:
+        TopmarkCliPipelineError: If the resolved intent is invalid for the `strip`
+            pipeline.
+    """
+    if not effective_would_strip(ctx):
+        return None
+
+    path_label: str = _render_path_display_text(ctx)
+    path_name: str = get_display_path(ctx)
+    intent: Intent = determine_intent(ctx)
+
+    if apply_changes:
+        if ctx.status.write == WriteStatus.FAILED:
+            return f"❌ Could not {intent.value} header: {ctx.status.write.value}"
+        if ctx.status.write == WriteStatus.SKIPPED:
+            # Defensive: should not happen when effective_would_strip is True,
+            # but keeps CLI honest if a later step halts.
+            return f"⚠️  Could not {intent.value} header (write skipped)."
+
+        return f"🧹 Stripping header in {path_label}"
+
+    if ctx.run_options.stdin_mode and ctx.run_options.stdin_filename:
+        apply_cmd: str = (
+            f"topmark {CliCmd.STRIP} {CliOpt.APPLY_CHANGES} {CliOpt.STDIN_FILENAME} '{path_name}' -"
+        )
+    else:
+        apply_cmd = f"topmark {CliCmd.STRIP} {CliOpt.APPLY_CHANGES} '{path_name}'"
+
+    if intent == Intent.STRIP:
+        action: str = "strip the TopMark header from this file"
+    else:
+        raise TopmarkCliPipelineError(
+            message=f"Unexpected intent {intent.value} in 'strip' pipeline.",
+        )
+    return f"🛠️  Run `{apply_cmd}` to {action}."
+
+
+# ---- Per-file rendering ----
+
+
+def _render_file_summary_line_text(
+    *,
+    ctx: ProcessingContext,
+    verbosity_level: int,
+    styled: bool = True,
+) -> str:
+    """Render a concise one-line TEXT summary for one file.
+
+    The summary is driven by [`map_bucket()`][topmark.pipeline.outcomes.map_bucket]
+    and may append compact write, diff, or diagnostic hints.
+
+    Args:
+        ctx: Processing context containing status and view data.
+        verbosity_level: Effective verbosity level for inline diagnostic nudges.
+        styled: Whether ANSI styling is enabled.
+
+    Returns:
+        One-line TEXT summary for the file.
+    """
+    parts: list[str] = [f"{get_display_path(ctx)}:"]  # TODO FIXME
+
+    # Note: the stylers already check `report.styled` so we don't need `maybe_style()`
+    muted_styler: TextStyler = style_for_role(StyleRole.MUTED, styled=styled)
+
+    # File type (dim), or <unknown> if resolution failed
+    parts.append(
+        muted_styler(
+            ctx.file_type.local_key if ctx.file_type is not None else "<unknown>",
+        )
+    )
+
+    parts.append("-")
+
+    # Resolve the public bucket for this context and style the summary from its
+    # semantic outcome role.
+    apply_changes: bool = ctx.run_options.apply_changes is True
+    bucket: ResultBucket = map_bucket(ctx, apply=apply_changes)
+    key: str = bucket.outcome.value
+    label: str = bucket.reason or "(no reason provided)"
+
+    # Retrieve the bucket's text styler based on the bucket outcome's semantic style role:
+    outcome_styler: TextStyler = style_for_role(
+        get_outcome_style_role(bucket.outcome),
+        styled=styled,
+    )
+
+    parts.append(
+        outcome_styler(
+            f"{key}: {label}",
+        )
+    )
+
+    # Secondary hints: write status > diff marker > diagnostics
+    if ctx.status.has_write_outcome():
+        parts.append("-")
+        write_styler: TextStyler = style_for_role(
+            ctx.status.write.role,
+            styled=styled,
+        )
+        parts.append(
+            write_styler(
+                ctx.status.write.value,
+            )
+        )
+    elif ctx.views.diff and ctx.views.diff.text:
+        parts.append("-")
+        diff_styler: TextStyler = style_for_role(
+            StyleRole.WOULD_CHANGE,
+            styled=styled,
+        )
+        parts.append(
+            diff_styler(
+                "diff",
+            )
+        )
+
+    diag_show_hint: str = ""
+    if ctx.diagnostics:
+        # Compose a compact triage summary such as "1 error, 2 warnings".
+        stats: DiagnosticStats = ctx.diagnostics.stats()
+        triage_summary: str = stats.triage_summary()
+        if triage_summary:
+            parts.append("-")
+            parts.append(triage_summary)
+
+        if verbosity_level <= 0 and stats.total > 0:
+            diag_show_hint = muted_styler(
+                f" (use '{CliShortOpt.VERBOSE}' to view)",
+            )
+
+    result: str = " ".join(parts) + diag_show_hint
+    return result
+
+
+def _render_per_file_guidance_text(
+    *,
+    view_results: list[ProcessingContext],
+    make_message: Callable[[ProcessingContext, bool], str | None],
+    apply_changes: bool,
+    show_diffs: bool,
+    verbosity_level: int,
+    styled: bool,
+) -> str:
+    """Render per-file TEXT sections.
+
+    For each file, this includes:
+        1. A summary line.
+        2. An optional guidance message.
+        3. Diagnostics at verbosity >= 1.
+        4. One hint at `-v`, or all hints at `-vv` and above.
+        5. An optional diff block.
+
+    Args:
+        view_results: Processing contexts to render.
+        make_message: Per-file guidance message builder.
+        apply_changes: Whether the command runs in apply mode.
+        show_diffs: Whether to include unified diffs.
+        verbosity_level: Effective verbosity level.
+        styled: Whether ANSI styling is enabled.
+
+    Returns:
+        TEXT fragment containing all rendered file sections.
+    """
+    line_width: Final[int] = get_console_line_width()
+
+    parts: list[str] = []
+
+    # Note: the stylers already check `report.styled` so we don't need `maybe_style()`
+    muted_styler: TextStyler = style_for_role(StyleRole.MUTED, styled=styled)
+    emphasis_styler: TextStyler = style_for_role(StyleRole.EMPHASIS, styled=styled)
+
+    # Use the Box Drawing Light Horizontal character (U+2500) for a solid line
+    diff_start_fence: Final[str] = " diff - start ".center(line_width, "─")
+    diff_end_fence: Final[str] = " diff - end ".center(line_width, "─")
+
+    for ctx in view_results:
+        # At verbosity 0, keep output minimal: one summary line per file.
+        #
+        # 1. summary line
+        parts.append(
+            _render_file_summary_line_text(
+                ctx=ctx,
+                verbosity_level=verbosity_level,
+            )
+        )
+
+        # 2. guidance message (in case changes can be applied)
+        msg: str | None = make_message(ctx, apply_changes)
+        if msg:
+            parts.append(
+                emphasis_styler(
+                    f"  {msg}",
+                )
+            )
+
+        # 3. diagnostics log (shown at verbosity >= 1)
+        if verbosity_level > 0 and len(ctx.diagnostics) > 0:
+            parts.append(
+                render_diagnostics_text(
+                    diagnostics=ctx.diagnostics,
+                    verbosity_level=verbosity_level,
+                    color=styled,
+                )
+            )
+
+        # 4. hints (one hint at `-v`, full list at `-vv` and above)
+        hints_count: int = len(ctx.diagnostic_hints)
+        if verbosity_level > 0 and hints_count > 0:
+            hints: list[Hint] = ctx.diagnostic_hints.items
+            extended_hint_info: str = (
+                ""
+                if verbosity_level > 1
+                else f" (use {CliShortOpt.VERBOSE}{CliShortOpt.VERBOSE[-1]} to view all hints)"
+            )
+            parts.append(
+                emphasis_styler(
+                    f"  Hints: {len(hints)}{extended_hint_info}",
+                )
+            )
+
+            # Only display the last hint when verbosity_level==1
+            hints_to_show: list[Hint] = [hints[-1]] if verbosity_level == 1 else hints
+            hints_to_show_count: int = len(hints_to_show)
+            for i, h in enumerate(hints_to_show, start=1):
+                parts.append(
+                    _render_hint_text(
+                        h,
+                        last=i == hints_to_show_count,
+                        verbosity_level=verbosity_level,
+                        styled=styled,
+                    )
+                )
+
+        # 5. optional diff block
+        if show_diffs:
+            diff: str | None = _render_diff_text(
+                ctx.views.diff,
+                styled=styled,
+            )
+            if diff:
+                parts.append("")
+                parts.append(
+                    muted_styler(
+                        diff_start_fence,
+                    )
+                )
+                parts.append(diff)
+                parts.append(
+                    muted_styler(
+                        diff_end_fence,
+                    )
+                )
+
+        # 6. blank line between file records
+        parts.append("")
+
+    return "\n".join(parts)
+
+
+# ---- Diff rendering ----
+
+
+def _render_diff_text(
+    diff_view: DiffView | None,
+    *,
+    show_line_numbers: bool = False,
+    styled: bool,
+) -> str | None:
+    """Render a unified diff as TEXT output.
+
+    Args:
+        diff_view: Diff view to render.
+        show_line_numbers: Whether to prepend line numbers.
+        styled: Whether ANSI styling is enabled.
+
+    Returns:
+        Rendered diff text, or `None` when no diff is available.
+    """
+    if diff_view is None:
+        return None
+    diff_text: str | None = diff_view.text
+    if diff_text:
+        return format_patch_styled(
+            patch=diff_text,
+            color=styled,
+            show_line_numbers=show_line_numbers,
+        )
+    return None
+
+
+def _render_pipeline_diffs_text(
+    *,
+    results: list[ProcessingContext],
+    show_line_numbers: bool = False,
+    styled: bool,
+) -> str:
+    """Render a TEXT diff section for all files with diffs.
+
+    Args:
+        results: Processing contexts to inspect.
+        show_line_numbers: Whether to prepend line numbers.
+        styled: Whether ANSI styling is enabled.
+
+    Returns:
+        TEXT diff section.
+    """
+    line_width: Final[int] = get_console_line_width()
+
+    parts: list[str] = []
+
+    # Use the Box Drawing Light Horizontal character (U+2500) for a solid line
+    diffs_start_fence: Final[str] = " diffs - start ".center(line_width, "─")
+    diffs_end_fence: Final[str] = " diffs - end ".center(line_width, "─")
+
+    # Note: the stylers already check `report.styled` so we don't need `maybe_style()`
+    diff_fence_style: TextStyler = style_for_role(StyleRole.DIFF_LINE_NO, styled=styled)
+
+    parts.append(
+        diff_fence_style(
+            f"{diffs_start_fence}",
+        )
+    )
+
+    for ctx in results:
+        diff: str | None = _render_diff_text(
+            ctx.views.diff,
+            styled=styled,
+            show_line_numbers=show_line_numbers,
+        )
+        if diff:
+            parts.append(diff)
+
+    parts.append(
+        diff_fence_style(
+            diffs_end_fence,
+        )
+    )
+
+    return "\n".join(parts)
+
+
+# ---- Summary rendering ----
+
+
+def _render_summary_counts_text(
     *,
     view_results: list[ProcessingContext],
     total: int,
     styled: bool,
 ) -> str:
-    """Render summary counts grouped by `(outcome, reason)` (TEXT format)."""
+    """Render summary counts grouped by `(outcome, reason)` as TEXT output.
+
+    Args:
+        view_results: Processing contexts included in the rendered view.
+        total: Total number of candidate files before view filtering.
+        styled: Whether ANSI styling is enabled.
+
+    Returns:
+        TEXT summary grouped by outcome and reason.
+    """
     # Note: the stylers already check `report.styled` so we don't need `maybe_style()`
     heading_styler: TextStyler = style_for_role(StyleRole.HEADING_TITLE, styled=styled)
     emphasis_styler: TextStyler = style_for_role(StyleRole.EMPHASIS, styled=styled)
@@ -153,362 +685,145 @@ def render_pipeline_summary_counts_text(
     return "\n".join(parts)
 
 
-def render_pipeline_per_file_guidance_text(
+# ---- Public entry points ----
+
+
+def render_pipeline_output_text(
     *,
+    cmd: str,
+    pipeline_kind: PipelineKindLiteral,
+    file_list_total: int,
     view_results: list[ProcessingContext],
-    make_message: Callable[[ProcessingContext, bool], str | None],
-    apply_changes: bool,
-    show_diffs: bool,
+    report: ReportScope,
+    unsupported_count: int,
     verbosity_level: int,
-    color: bool,
+    summary_mode: bool,
+    show_diffs: bool,
+    apply_changes: bool,
+    styled: bool,
 ) -> str:
-    """Render per-file detailed guidance (TEXT format)."""
-    line_width: Final[int] = get_console_line_width()
+    """Render human-facing TEXT output for a pipeline command.
+
+    Args:
+        cmd: Command name, such as `check` or `strip`.
+        pipeline_kind: Pipeline kind used to select command-specific guidance.
+        file_list_total: Total number of candidate files before view filtering.
+        view_results: Processing contexts to render.
+        report: Active report scope for the current view.
+        unsupported_count: Number of unsupported files omitted from actionable listings.
+        verbosity_level: Effective verbosity level.
+        summary_mode: Whether to render grouped outcome counts instead of per-file sections.
+        show_diffs: Whether to include unified diffs.
+        apply_changes: Whether the command runs in apply mode.
+        styled: Whether ANSI styling is enabled.
+
+    Returns:
+        Rendered TEXT output.
+
+    Raises:
+        RuntimeError: If an invalid pipeline kind was selected.
+    """
+    make_message: Callable[[ProcessingContext, bool], str | None] | None = None
+    if pipeline_kind == CliCmd.CHECK:
+        make_message = _render_check_guidance_message_text
+    elif pipeline_kind == CliCmd.STRIP:
+        make_message = _render_strip_guidance_message_text
+    else:
+        # Defensive guard.
+        raise RuntimeError(f"Invalid pipeline kind selected: {pipeline_kind}")
+
+    # Note: the stylers already check `report.styled` so we don't need `maybe_style()`
+    warning_styler: TextStyler = style_for_role(StyleRole.WARNING, styled=styled)
 
     parts: list[str] = []
 
-    # Note: the stylers already check `report.styled` so we don't need `maybe_style()`
-    muted_styler: TextStyler = style_for_role(StyleRole.MUTED, styled=color)
-    emphasis_styler: TextStyler = style_for_role(StyleRole.EMPHASIS, styled=color)
-
-    # Use the Box Drawing Light Horizontal character (U+2500) for a solid line
-    diff_start_fence: Final[str] = " diff - start ".center(line_width, "─")
-    diff_end_fence: Final[str] = " diff - end ".center(line_width, "─")
-
-    for r in view_results:
-        # At verbosity 0, keep output minimal: one summary line per file.
-        #
-        # 1. summary line
+    # Banner (verbosity-gated)
+    if verbosity_level > 0:
         parts.append(
-            render_file_summary_line_text(
-                ctx=r,
-                verbosity_level=verbosity_level,
+            _render_pipeline_banner_text(
+                cmd=cmd,
+                n_files=file_list_total,
+                styled=styled,
             )
         )
 
-        # 2. guidance message (in case changes can be applied)
-        msg: str | None = make_message(r, apply_changes)
-        if msg:
-            parts.append(
-                emphasis_styler(
-                    f"  {msg}",
-                )
-            )
-
-        # 3. diagnostics log (shown at verbosity >= 1)
-        if verbosity_level > 0 and len(r.diagnostics) > 0:
-            parts.append(
-                render_diagnostics_text(
-                    diagnostics=r.diagnostics,
-                    verbosity_level=verbosity_level,
-                    color=color,
-                )
-            )
-
-        # 4. hints (one hint at `-v`, full list at `-vv` and above)
-        hints_count: int = len(r.diagnostic_hints)
-        if verbosity_level > 0 and hints_count > 0:
-            hints: list[Hint] = r.diagnostic_hints.items
-            extended_hint_info: str = (
-                ""
-                if verbosity_level > 1
-                else f" (use {CliShortOpt.VERBOSE}{CliShortOpt.VERBOSE[-1]} to view all hints)"
-            )
-            parts.append(
-                emphasis_styler(
-                    f"  Hints: {len(hints)}{extended_hint_info}",
-                )
-            )
-
-            # Only display the last hint when verbosity_level==1
-            hints_to_show: list[Hint] = [hints[-1]] if verbosity_level == 1 else hints
-            hints_to_show_count: int = len(hints_to_show)
-            for idx, h in enumerate(hints_to_show, start=1):
-                parts.append(
-                    render_hint_text(
-                        h,
-                        last=idx == hints_to_show_count,
-                        verbosity_level=verbosity_level,
-                        color=color,
-                    )
-                )
-
-        # 5. optional diff block
+    # Summary mode (grouped by `(outcome, reason)`)
+    if summary_mode:
         if show_diffs:
-            diff: str | None = render_diff_styled(
-                result=r,
-                color=True,  # TODO: improve color handling in CLI
+            parts.append(
+                _render_pipeline_diffs_text(
+                    results=view_results,
+                    styled=styled,
+                )
             )
-            if diff:
-                parts.append("")
-                parts.append(
-                    muted_styler(
-                        diff_start_fence,
-                    )
-                )
-                parts.append(diff)
-                parts.append(
-                    muted_styler(
-                        diff_end_fence,
-                    )
-                )
+        parts.append(
+            _render_summary_counts_text(
+                view_results=view_results,
+                total=file_list_total,
+                styled=styled,
+            )
+        )
+    else:
+        # Per-file guidance
+        parts.append(
+            _render_per_file_guidance_text(
+                view_results=view_results,
+                make_message=make_message,
+                apply_changes=apply_changes,
+                show_diffs=show_diffs,
+                verbosity_level=verbosity_level,
+                styled=styled,
+            )
+        )
 
-        # 6. blank line between file records
-        parts.append("")
+    # In actionable mode, unsupported files are hidden from the per-file listing but summarized
+    # for visibility.
+
+    if (not summary_mode) and (report == ReportScope.ACTIONABLE) and (unsupported_count > 0):
+        parts.append(
+            warning_styler(
+                f"⚠️  Unsupported: {unsupported_count} file(s) "
+                f"(use {CliOpt.REPORT}={ReportScope.NONCOMPLIANT.value} to list)"
+            )
+        )
 
     return "\n".join(parts)
 
 
-def render_hint_text(
-    hint: Hint,
+def render_pipeline_apply_summary_text(
     *,
-    last: bool,
-    verbosity_level: int,
-    color: bool,
+    command_path: str,
+    written: int,
+    failed: int,
+    styled: bool,
 ) -> str:
-    """Render a hint for human output formats.
+    """Render the apply-summary footer for TEXT output.
 
     Args:
-        hint: The Hint object.
-        last: Whether this is the last/decisive hint in the rendered subset.
-        verbosity_level: Effective verbosity level.
-        color: Render in color if `True`, else as plain text.
+        command_path: Command path, such as `topmark check`.
+        written: Number of files written.
+        failed: Number of files that failed to write.
+        styled: Whether ANSI styling is enabled.
 
     Returns:
-        The rendered Hint.
+        Rendered TEXT footer.
     """
-    # Note: the stylers already check `report.styled` so we don't need `maybe_style()`
-    muted_styler: TextStyler = style_for_role(StyleRole.MUTED, styled=color)
-    hint_styler: TextStyler = _hint_styler(hint.cluster, styled=color)
-
-    lines: list[str] = []
-
-    # Prepend a marker for terminal hints or the last (directive) hint
-    marker: str = "⏹" if hint.terminal else ("▶" if last else "•")
-    summary: str = (
-        f"   {marker} {hint.axis.value:10s}: {(hint.cluster or ''):14s} - {hint.code:20s}: "
-        f"{hint.message}{' (terminal)' if hint.terminal else ''}"
-    )
-    lines.append(
-        hint_styler(
-            summary,
-        )
-    )
-
-    # Optional detail vs "use -vv" nudge
-    if hint.detail:
-        if verbosity_level > 1:
-            for line in hint.detail.splitlines():
-                lines.append(
-                    hint_styler(
-                        f"         {line}",
-                    )
-                )
-        else:
-            lines.append(
-                muted_styler(
-                    f"         (use '{CliShortOpt.VERBOSE}{CliShortOpt.VERBOSE[-1]}' "
-                    "to display detailed diagnostics)",
-                )
-            )
-
-    return "\n".join(lines)
-
-
-def render_file_summary_line_text(
-    *,
-    ctx: ProcessingContext,
-    verbosity_level: int,
-    color: bool = True,
-) -> str:
-    """Return a concise, human-readable one-line summary for this file.
-
-    The summary is aligned with TopMark's public bucketing logic and mirrors
-    the style of comparable tools (for example, *ruff*, *black*, and *prettier*):
-    a clear primary outcome plus a few terse trailing hints.
-
-    Rendering rules:
-        1. The primary outcome comes from `map_bucket()` in
-           [`topmark.pipeline.outcomes`][topmark.pipeline.outcomes].
-        2. If a write outcome is known (for example, `WRITTEN`, `SKIPPED`, or
-           `FAILED`), append it as a trailing hint.
-        3. If there is a diff but no write outcome, append a `diff` hint.
-        4. If diagnostics exist, append a compact triage suffix such as
-           ``"1 error, 2 warnings"``.
-
-    Example-style outputs (colors omitted here):
-        path/to/file.py: python - would insert: header missing, changes found
-        path/to/file.py: python - unchanged: up-to-date
-        path/to/file.py: python - skipped: known file type, headers not supported - 1 info
-
-    Args:
-        ctx: Processing context containing status and configuration.
-        verbosity_level: Effective verbosity level. This only affects the
-            inline diagnostic nudge such as ``"(use '-v' to view)"``.
-        color: Render in color if `True`, else as plain text.
-
-    Returns:
-        Human-readable one-line summary.
-    """
-    parts: list[str] = [f"{ctx.path}:"]
-
-    # Note: the stylers already check `report.styled` so we don't need `maybe_style()`
-    muted_styler: TextStyler = style_for_role(StyleRole.MUTED, styled=color)
-
-    # File type (dim), or <unknown> if resolution failed
-    parts.append(
-        muted_styler(
-            ctx.file_type.local_key if ctx.file_type is not None else "<unknown>",
-        )
-    )
-
-    parts.append("-")
-
-    # Resolve the public bucket for this context and style the summary from its
-    # semantic outcome role.
-    apply_changes: bool = ctx.run_options.apply_changes is True
-    bucket: ResultBucket = map_bucket(ctx, apply=apply_changes)
-    key: str = bucket.outcome.value
-    label: str = bucket.reason or "(no reason provided)"
-
-    # Retrieve the bucket's text styler based on the bucket outcome's semantic style role:
-    outcome_styler: TextStyler = style_for_role(
-        get_outcome_style_role(bucket.outcome),
-        styled=color,
-    )
-
-    parts.append(
-        outcome_styler(
-            f"{key}: {label}",
-        )
-    )
-
-    # Secondary hints: write status > diff marker > diagnostics
-    if ctx.status.has_write_outcome():
-        parts.append("-")
-        write_styler: TextStyler = style_for_role(
-            ctx.status.write.role,
-            styled=color,
-        )
-        parts.append(
-            write_styler(
-                ctx.status.write.value,
-            )
-        )
-    elif ctx.views.diff and ctx.views.diff.text:
-        parts.append("-")
-        diff_styler: TextStyler = style_for_role(
-            StyleRole.WOULD_CHANGE,
-            styled=color,
-        )
-        parts.append(
-            diff_styler(
-                "diff",
-            )
-        )
-
-    diag_show_hint: str = ""
-    if ctx.diagnostics:
-        # Compose a compact triage summary such as "1 error, 2 warnings".
-        stats: DiagnosticStats = ctx.diagnostics.stats()
-        triage_summary: str = stats.triage_summary()
-        if triage_summary:
-            parts.append("-")
-            parts.append(triage_summary)
-
-        if verbosity_level <= 0 and stats.total > 0:
-            diag_show_hint = muted_styler(
-                f" (use '{CliShortOpt.VERBOSE}' to view)",
-            )
-
-    result: str = " ".join(parts) + diag_show_hint
-    return result
-
-
-def render_diff_styled(
-    *,
-    result: ProcessingContext,
-    show_line_numbers: bool = False,
-    color: bool,
-) -> str | None:
-    """Render a unified diff (human formats).
-
-    Args:
-        result: List of processing contexts to inspect.
-        show_line_numbers: Prepend line numbers if True, render patch only (default).
-        color: Render in color if True, as plain text otherwise.
-
-    Returns:
-        The rendered diff or None if no changes / diff in view.
-
-    Notes:
-        - This is only used for human-facing formats (TEXT and MARKDOWN).
-        - Machine formats should not embed diffs.
-        - Files with no changes do not emit a diff.
-    """
-    diff_view: DiffView | None = result.views.diff
-    if diff_view is None:
-        return None
-    diff_text: str | None = diff_view.text
-    if diff_text:
-        return format_patch_styled(
-            patch=diff_text,
-            color=color,
-            show_line_numbers=show_line_numbers,
-        )
-    return None
-
-
-def render_pipeline_diffs_text(
-    *,
-    results: list[ProcessingContext],
-    show_line_numbers: bool = False,
-    color: bool,
-) -> str:
-    """Print unified diffs for changed files (TEXT format).
-
-    Args:
-        results: List of processing contexts to inspect.
-        show_line_numbers: Prepend line numbers if True, render patch only (default).
-        color: Render in color if True, as plain text otherwise.
-
-    Returns:
-        Text document as single string.
-
-    Notes:
-        - Diffs are only printed in human (TEXT) output mode.
-        - Files with no changes do not emit a diff.
-    """
-    line_width: Final[int] = get_console_line_width()
-
     parts: list[str] = []
-
-    # Use the Box Drawing Light Horizontal character (U+2500) for a solid line
-    diffs_start_fence: Final[str] = " diffs - start ".center(line_width, "─")
-    diffs_end_fence: Final[str] = " diffs - end ".center(line_width, "─")
-
     # Note: the stylers already check `report.styled` so we don't need `maybe_style()`
-    diff_fence_style: TextStyler = style_for_role(StyleRole.DIFF_LINE_NO, styled=color)
+    changed_styler: TextStyler = style_for_role(StyleRole.CHANGED, styled=styled)
+    warning_styler: TextStyler = style_for_role(StyleRole.WARNING, styled=styled)
 
-    parts.append(
-        diff_fence_style(
-            f"{diffs_start_fence}",
-        )
-    )
+    if written:
+        msg: str = f"\n✅ {command_path}: applied changes to {written} file(s)."
+    else:
+        msg = f"\n✅ {command_path}: no changes to apply."
+    parts.append(changed_styler(msg))
 
-    for r in results:
-        diff: str | None = render_diff_styled(
-            result=r,
-            color=color,
-            show_line_numbers=show_line_numbers,
+    if failed:
+        parts.append(
+            warning_styler(
+                f"\n⚠️ {command_path}: failed to write {failed} file(s). See log for details.",
+            )
         )
-        if diff:
-            parts.append(diff)
-
-    parts.append(
-        diff_fence_style(
-            diffs_end_fence,
-        )
-    )
 
     return "\n".join(parts)

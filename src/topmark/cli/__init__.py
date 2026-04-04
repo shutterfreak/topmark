@@ -13,13 +13,15 @@
 This package groups all Click command definitions and supporting utilities
 for the TopMark command-line interface.
 
-Typical usage:
-    The console script entry point is defined in ``pyproject.toml`` as::
+Examples:
+    The console script entry point is defined in `pyproject.toml`:
 
-        [project.scripts]
-        topmark = "topmark.cli.main:cli"
+    ```toml
+    [project.scripts]
+    topmark = "topmark.cli.main:cli"
+    ```
 
-All subcommands live in [`topmark.cli.commands`][].
+All subcommands live in [`topmark.cli.commands`][topmark.cli.commands].
 """
 
 from __future__ import annotations
