@@ -266,7 +266,7 @@ def _resolve_strict_config_checking(
     """Resolve config-loading strictness using precedence order."""
     resolved: bool | None = None
     for source in sources:
-        value: bool | None = source.parsed.source_options.strict_config_checking
+        value: bool | None = source.parsed.config_loading_options.strict_config_checking
         if value is not None:
             resolved = value
 

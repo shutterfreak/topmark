@@ -101,7 +101,6 @@ def ensure_mutable_config(
             policy=config.policy.thaw(),
             policy_by_type={k: v.thaw() for k, v in config.policy_by_type.items()},
             config_files=list(config.config_files),
-            strict_config_checking=config.strict_config_checking,
             header_fields=list(config.header_fields),
             field_values=dict(config.field_values),
             align_fields=config.align_fields,
@@ -120,6 +119,71 @@ def ensure_mutable_config(
     # Accept a plain mapping and normalize it through the TOML-like config loader.
     logger.debug("Supplied config is TOML Mapping - returning mutable_config_from_mapping(config)")
     return mutable_config_from_mapping(config)
+
+
+# ---- Config validation ----
+
+
+def is_config_valid(
+    cfg: Config | MutableConfig,
+    *,
+    resolved: ResolvedTopmarkTomlSources,
+    override: bool | None = None,
+) -> bool:
+    """Return whether the config is valid under resolved strictness.
+
+    A config is valid when it has no error diagnostics. Under strict config
+    checking, a config is valid only when it has neither error diagnostics nor
+    warning diagnostics.
+
+    `resolved` supplies strictness resolved from TOML sources. `override` is an
+    optional API/CLI override for that setting. When both are `None`,
+    validation defaults to non-strict mode.
+
+    Args:
+        cfg: Frozen or mutable config to validate.
+        resolved: Resolved TOML-side state for the current run.
+        override: Optional API/CLI override for strict config checking.
+
+    Returns:
+        `True` if the config is valid under the effective strictness, else
+        `False`.
+    """
+    effective_strict: bool | None = (
+        override if override is not None else resolved.strict_config_checking
+    )
+    return cfg.is_valid(strict=effective_strict)
+
+
+def ensure_config_valid(
+    cfg: Config | MutableConfig,
+    *,
+    resolved: ResolvedTopmarkTomlSources,
+    override: bool | None = None,
+) -> None:
+    """Raise `ConfigValidationError` if the config is not valid.
+
+    A config is valid when it has no error diagnostics. Under strict config
+    checking, a config is valid only when it has neither error diagnostics nor
+    warning diagnostics.
+
+    `resolved` supplies strictness resolved from TOML sources. `override` is an
+    optional API/CLI override for that setting. When both are `None`,
+    validation defaults to non-strict mode.
+
+    Args:
+        cfg: Frozen or mutable config to validate.
+        resolved: Resolved TOML-side state for the current run.
+        override: Optional API/CLI override for strict config checking.
+
+    Raises:
+        ConfigValidationError: If the config is invalid under the effective
+            strictness.
+    """  # noqa: DOC502 - documents propagated exceptions from `cfg.ensure_valid()``
+    effective_strict: bool | None = (
+        override if override is not None else resolved.strict_config_checking
+    )
+    cfg.ensure_valid(strict=effective_strict)
 
 
 # ---- Resolved config construction helpers ----

@@ -52,6 +52,7 @@ from typing import TYPE_CHECKING
 
 from topmark.config.policy import MutablePolicy
 from topmark.config.policy import Policy
+from topmark.core.errors import ConfigValidationError
 from topmark.core.logging import get_logger
 from topmark.diagnostic.model import DiagnosticLog
 from topmark.diagnostic.model import DiagnosticStats
@@ -93,8 +94,6 @@ class Config:
         policy_by_type: Per-file-type resolved policy overrides
             (plain booleans), applied after discovery.
         config_files: List of paths or identifiers for config sources used.
-        strict_config_checking: If True, enforce strict config checking
-            (fail on warnings and errors).
         header_fields: List of header fields from the [header] section.
         field_values: Mapping of field names to their string values
             from [fields].
@@ -135,9 +134,6 @@ class Config:
     # Provenance
     config_files: tuple[Path | str, ...]
 
-    # TOML config checking
-    strict_config_checking: bool
-
     # Header configuration
     header_fields: tuple[str, ...]
     field_values: Mapping[str, str]
@@ -166,25 +162,51 @@ class Config:
     # Collected diagnostics while loading / merging / sanitizing config.
     diagnostics: FrozenDiagnosticLog
 
-    @property
-    def should_proceed(self) -> bool:
-        """Return True if processing should proceed based on config diagnostics.
+    def is_valid(
+        self,
+        *,
+        strict: bool | None = None,
+    ) -> bool:
+        """Return whether this config is valid.
 
-        Analyzes `self.diagnostics` and `compute_diagnostic_stats` to decide whether
-        to proceed.
+        A config is valid when it has no error diagnostics. In strict mode, a
+        config is valid only when it has neither error diagnostics nor warning
+        diagnostics.
 
-        A similar helper exists in `MutableConfig`.
+        A similar helper exists on `MutableConfig`.
+
+        Args:
+            strict: Whether to validate the config in strict mode.
 
         Returns:
-            False if errors occurred, or if warnings detected in strict config processing mode,
-            True otherwise.
+            `True` if the config is valid, else `False`.
         """
-        stats: DiagnosticStats = compute_diagnostic_stats(self.diagnostics)
-        if stats.n_error > 0:
-            # Can't proceed with errors
-            return False
-        # Can't proceed with warnings in strict mode
-        return not (self.strict_config_checking is True and stats.n_warning > 0)
+        return _is_config_valid(self, strict=strict)
+
+    def ensure_valid(
+        self,
+        *,
+        strict: bool | None = None,
+    ) -> None:
+        """Raise `ConfigValidationError` if this config is not valid.
+
+        A config is valid when it has no error diagnostics. In strict mode, a
+        config is valid only when it has neither error diagnostics nor warning
+        diagnostics.
+
+        A similar helper exists on `MutableConfig`.
+
+        Args:
+            strict: Whether to validate the config in strict mode.
+
+        Raises:
+            ConfigValidationError: If the config is invalid.
+        """
+        if not self.is_valid(strict=strict):
+            raise ConfigValidationError(
+                diagnostics=self.diagnostics,
+                strict_config_checking=strict,
+            )
 
     def thaw(self) -> MutableConfig:
         """Return a mutable copy of this frozen config.
@@ -200,7 +222,6 @@ class Config:
             policy=self.policy.thaw(),
             policy_by_type={k: v.thaw() for k, v in self.policy_by_type.items()},
             config_files=list(self.config_files),
-            strict_config_checking=self.strict_config_checking,
             header_fields=list(self.header_fields),
             field_values=dict(self.field_values),
             align_fields=self.align_fields,
@@ -235,6 +256,8 @@ def sanitized_config(config: Config) -> Config:
 
 
 # -------------------------- Mutable layered builder --------------------------
+
+
 @dataclass
 class MutableConfig:
     """Mutable configuration used during discovery and merging.
@@ -248,8 +271,6 @@ class MutableConfig:
         policy: Optional global policy overrides (public shape).
         policy_by_type: Optional per-type policy.
         config_files: List of paths or identifiers for config sources used.
-        strict_config_checking: If True, enforce strict config checking
-            (fail on warnings and errors).
         header_fields: List of header fields from the [header] section.
         field_values: Mapping of field names to their string values from [fields].
         align_fields: Whether to align fields, from [formatting].
@@ -274,9 +295,6 @@ class MutableConfig:
 
     # Provenance
     config_files: list[Path | str] = field(default_factory=lambda: [])
-
-    # TOML config checking
-    strict_config_checking: bool | None = None
 
     # Header configuration
     header_fields: list[str] = field(default_factory=lambda: [])
@@ -306,27 +324,54 @@ class MutableConfig:
     # Collected diagnostics while loading / merging / sanitizing config.
     diagnostics: DiagnosticLog = field(default_factory=DiagnosticLog)
 
-    @property
-    def should_proceed(self) -> bool:
-        """Return True if processing should proceed based on config diagnostics.
+    def is_valid(
+        self,
+        *,
+        strict: bool | None = None,
+    ) -> bool:
+        """Return whether this mutable config is valid.
 
-        Analyzes `self.diagnostics` and `compute_diagnostic_stats` to decide whether
-        to proceed.
+        A mutable config is valid when it has no error diagnostics. In strict
+        mode, a mutable config is valid only when it has neither error
+        diagnostics nor warning diagnostics.
 
-        A similar helper exists in `Config`.
+        A similar helper exists on `Config`.
+
+        Args:
+            strict: Whether to validate the mutable config in strict mode.
 
         Returns:
-            False if errors occurred, or if warnings detected in strict config processing
-                mode, True otherwise.
+            `True` if the mutable config is valid, else `False`.
         """
-        stats: DiagnosticStats = compute_diagnostic_stats(self.diagnostics)
-        if stats.n_error > 0:
-            # Can't proceed with errors
-            return False
-        # Can't proceed with warnings in strict mode
-        return not (self.strict_config_checking is True and stats.n_warning > 0)
+        return _is_config_valid(self, strict=strict)
+
+    def ensure_valid(
+        self,
+        *,
+        strict: bool | None = None,
+    ) -> None:
+        """Raise `ConfigValidationError` if this mutable config is not valid.
+
+        A mutable config is valid when it has no error diagnostics. In strict
+        mode, a mutable config is valid only when it has neither error
+        diagnostics nor warning diagnostics.
+
+        A similar helper exists on `Config`.
+
+        Args:
+            strict: Whether to validate the mutable config in strict mode.
+
+        Raises:
+            ConfigValidationError: If the mutable config is invalid.
+        """
+        if not self.is_valid(strict=strict):
+            raise ConfigValidationError(
+                diagnostics=self.diagnostics,
+                strict_config_checking=strict,
+            )
 
     # ---------------------------- Build/freeze ----------------------------
+
     def freeze(self) -> Config:
         """Freeze this mutable builder into an immutable Config.
 
@@ -344,14 +389,10 @@ class MutableConfig:
             resolved: Policy = mp.resolve(global_policy_frozen)
             frozen_by_type[ft] = resolved
 
-        # Set strict_config_checking to True only if self.strict_config_checking === True
-        strict_config_checking = bool(self.strict_config_checking)
-
         return Config(
             policy=global_policy_frozen,
             policy_by_type=frozen_by_type,
             config_files=tuple(self.config_files),
-            strict_config_checking=strict_config_checking,
             header_fields=tuple(self.header_fields),
             field_values=dict(self.field_values),
             align_fields=self.align_fields,
@@ -386,9 +427,6 @@ class MutableConfig:
             Provenance and diagnostics:
                 - `config_files`: append
                 - `diagnostics`: append
-
-            Strictness / runtime gates:
-                - `strict_config_checking`: replace only when explicitly set in `other`
 
             Behavioral config:
                 - `header_fields`: replace when `other` provides a non-empty list
@@ -445,12 +483,7 @@ class MutableConfig:
             items=[*self.diagnostics.items, *other.diagnostics.items]
         )
 
-        # ------------------------ Strictness / behavioral config ------------------------
-        merged_strict_config_checking: bool | None = (
-            other.strict_config_checking
-            if other.strict_config_checking is not None
-            else self.strict_config_checking
-        )
+        # ------------------------ Behavioral config ------------------------
         merged_header_fields: list[str] = other.header_fields or self.header_fields
         merged_align_fields: bool | None = (
             other.align_fields if other.align_fields is not None else self.align_fields
@@ -502,7 +535,6 @@ class MutableConfig:
         merged = MutableConfig(
             config_files=merged_config_files,
             diagnostics=merged_diags,
-            strict_config_checking=merged_strict_config_checking,
             header_fields=merged_header_fields,
             field_values=merged_field_values,
             align_fields=merged_align_fields,
@@ -631,3 +663,32 @@ class MutableConfig:
             self.diagnostics.add_warning(msg)
             # Remove overlaps (blacklisted wins from whitelisted):
             self.include_file_types.difference_update(overlap)
+
+
+# ---- Helpers ----
+
+
+def _is_config_valid(
+    cfg: Config | MutableConfig,
+    *,
+    strict: bool | None = None,
+) -> bool:
+    """Return whether a frozen or mutable config is valid.
+
+    A config is valid when it has no error diagnostics. In strict mode, a
+    config is valid only when it has neither error diagnostics nor warning
+    diagnostics.
+
+    Args:
+        cfg: Frozen or mutable config to validate.
+        strict: Whether to validate the config in strict mode.
+
+    Returns:
+        `True` if the config is valid, else `False`.
+    """
+    strict_config_checking = bool(strict)
+    stats: DiagnosticStats = compute_diagnostic_stats(cfg.diagnostics)
+    if strict_config_checking:
+        return stats.n_error == 0 and stats.n_warning == 0
+    else:
+        return stats.n_error == 0

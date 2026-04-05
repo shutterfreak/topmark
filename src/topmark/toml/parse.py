@@ -37,9 +37,25 @@ if TYPE_CHECKING:
     from topmark.toml.types import TomlTable
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SourceConfigLoadingOptions:
+    """Config-loading behaviour parsed from the `[config]` table.
+
+    This is a pure per-source metadata carrier for config-loading toggles. It
+    does not participate in layered config merging.
+
+    Attributes:
+        strict_config_checking: If `True`, treat config warnings as errors
+            while checking TOML configuration. `None` means that the TOML
+            source does not specify a strictness preference.
+    """
+
+    strict_config_checking: bool | None = None
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class SourceTomlOptions:
-    """Discovery and config-loading metadata parsed from TOML.
+    """Discovery metadata parsed from the `[config]` table.
 
     This is a pure per-source metadata carrier. These options do not
     participate in layered config merging.
@@ -48,54 +64,71 @@ class SourceTomlOptions:
         root: If `True`, stop config discovery above the directory containing
             this TOML source. `None` means that the TOML source does not set a
             discovery boundary.
-        strict_config_checking: If `True`, treat config warnings as errors
-            while checking TOML configuration. `None` means that the TOML
-            source does not specify a strictness preference.
     """
 
     root: bool | None = None
-    strict_config_checking: bool | None = None
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class ParsedTopmarkToml:
     """Per-source split parse result for a TopMark TOML document.
 
     This is not a merged or resolved result.
 
     Attributes:
+        config_loading_options: Config-loading behaviour parsed from the
+            `[config]` table.
         layered_config: Layered TOML fragment extracted from the source. This
             fragment participates in normal config-layer deserialization and
             merging.
         writer_options: Non-layered writer preferences parsed from the
             `[writer]` table, if present.
-        source_options: Discovery and config-loading metadata parsed from
-            the `[config]` table.
+        source_options: Discovery metadata parsed from the `[config]` table.
     """
 
+    config_loading_options: SourceConfigLoadingOptions
     layered_config: TomlTable
     writer_options: WriterOptions | None
     source_options: SourceTomlOptions
 
 
-def _parse_source_toml_options(config_tbl: TomlTable | None) -> SourceTomlOptions:
-    """Parse discovery/config-loading metadata from the `[config]` table.
+def _parse_config_loading_options(
+    config_tbl: TomlTable | None,
+) -> SourceConfigLoadingOptions:
+    """Parse config-loading behaviour from the `[config]` table.
 
     Args:
         config_tbl: Parsed `[config]` table, or `None` when absent.
 
     Returns:
-        Parsed discovery/config-loading metadata.
+        Parsed per-source config-loading behaviour.
+    """
+    if config_tbl is None:
+        return SourceConfigLoadingOptions()
+
+    strict_value: object = config_tbl.get(Toml.KEY_STRICT_CONFIG_CHECKING)
+
+    return SourceConfigLoadingOptions(
+        strict_config_checking=strict_value if isinstance(strict_value, bool) else None,
+    )
+
+
+def _parse_source_toml_options(config_tbl: TomlTable | None) -> SourceTomlOptions:
+    """Parse discovery metadata from the `[config]` table.
+
+    Args:
+        config_tbl: Parsed `[config]` table, or `None` when absent.
+
+    Returns:
+        Parsed per-source discovery metadata.
     """
     if config_tbl is None:
         return SourceTomlOptions()
 
     root_value: object = config_tbl.get(Toml.KEY_ROOT)
-    strict_value: object = config_tbl.get(Toml.KEY_STRICT_CONFIG_CHECKING)
 
     return SourceTomlOptions(
         root=root_value if isinstance(root_value, bool) else None,
-        strict_config_checking=strict_value if isinstance(strict_value, bool) else None,
     )
 
 
@@ -171,6 +204,7 @@ def parse_topmark_toml_table(data: TomlTable) -> ParsedTopmarkToml:
     writer_tbl: TomlTable | None = _get_table(data, Toml.SECTION_WRITER)
 
     return ParsedTopmarkToml(
+        config_loading_options=_parse_config_loading_options(config_tbl),
         layered_config=_extract_layered_config_toml(data),
         writer_options=_parse_writer_options(writer_tbl),
         source_options=_parse_source_toml_options(config_tbl),

@@ -43,9 +43,10 @@ from typing import TYPE_CHECKING
 
 import click
 
+from topmark.api.runtime import ensure_config_valid
 from topmark.api.runtime import select_pipeline
-from topmark.cli.cmd_common import build_config_for_plan
 from topmark.cli.cmd_common import build_file_list
+from topmark.cli.cmd_common import build_resolved_toml_sources_and_config_for_plan
 from topmark.cli.cmd_common import build_run_options
 from topmark.cli.cmd_common import exit_if_no_files
 from topmark.cli.cmd_common import init_common_state
@@ -65,6 +66,7 @@ from topmark.cli.options import common_from_sources_options
 from topmark.cli.options import common_output_format_options
 from topmark.cli.options import common_stdin_content_mode_options
 from topmark.cli.options import common_ui_options
+from topmark.cli.options import config_strict_checking_options
 from topmark.cli.options import pipeline_reporting_options
 from topmark.cli.options import render_diff_options
 from topmark.cli.options import shared_policy_options
@@ -73,6 +75,7 @@ from topmark.cli.validators import validate_diff_policy_for_output_format
 from topmark.cli.validators import validate_forbidden_options_in_extra_args
 from topmark.cli.validators import validate_stdin_dash_requires_piped_input
 from topmark.cli.validators import warn_if_report_scope_ignored
+from topmark.core.errors import ConfigValidationError
 from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
@@ -101,7 +104,6 @@ if TYPE_CHECKING:
     from topmark.cli.console.protocols import ConsoleProtocol
     from topmark.cli.io import InputPlan
     from topmark.config.model import Config
-    from topmark.config.model import MutableConfig
     from topmark.core.logging import TopmarkLogger
     from topmark.core.machine.schemas import MetaPayload
     from topmark.pipeline.context.model import ProcessingContext
@@ -128,6 +130,7 @@ Examples:
 """,
 )
 @common_ui_options
+@config_strict_checking_options
 @common_config_resolution_options
 @common_stdin_content_mode_options
 @common_from_sources_options
@@ -145,6 +148,8 @@ def strip_command(
     quiet: int,
     color_mode: ColorMode | None,
     no_color: bool,
+    # config_strict_checking_options:
+    strict_config_checking: bool | None,
     # common_config_resolution_options:
     no_config: bool,
     config_files: list[str],
@@ -192,6 +197,7 @@ def strip_command(
         quiet: Decrements  the verbosity level,
         color_mode: Set the color mode (derfault: autp),
         no_color: bool: If set, disable color mode.
+        strict_config_checking: if True, report warnings as errors.
         no_config: If True, skip loading project/user configuration files.
         config_files: Additional configuration file paths to load and merge.
         stdin_filename: Assumed filename when  reading content from STDIN).
@@ -311,11 +317,12 @@ def strip_command(
         stdin_filename=stdin_filename,
     )
 
-    draft_config: MutableConfig = build_config_for_plan(
+    resolved, draft_config = build_resolved_toml_sources_and_config_for_plan(
         ctx=ctx,
         plan=plan,
         no_config=no_config,
         config_paths=config_files,
+        strict_config_checking=strict_config_checking,
         include_file_types=include_file_types,
         exclude_file_types=exclude_file_types,
         align_fields=None,  # Not relevant for `strip``
@@ -350,6 +357,16 @@ def strip_command(
     config: Config = draft_config.freeze()
 
     logger.trace("Run config after layered CLI overrides: %s", config)
+
+    # Validate the config
+    try:
+        ensure_config_valid(
+            config,
+            resolved=resolved,
+        )
+    except ConfigValidationError as exc:
+        console.error(f"Processing stopped: {exc}")
+        ctx.exit(ExitCode.CONFIG_ERROR)
 
     if verbosity_level > 0:
         # Display Config diagnostics before resolving files

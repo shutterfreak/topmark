@@ -1233,13 +1233,13 @@ def test_load_resolved_config_applies_strictness_from_config_table(tmp_path: Pat
         """,
     )
 
-    _resolved, draft = resolve_toml_sources_and_build_config_draft(input_paths=[proj])
-    assert draft.strict_config_checking is True
+    resolved, _draft = resolve_toml_sources_and_build_config_draft(input_paths=[proj])
+    assert resolved.strict_config_checking is True
 
 
 @pytest.mark.pipeline
-def test_load_resolved_config_explicit_strictness_override_wins(tmp_path: Path) -> None:
-    """Explicit strictness override wins over resolved TOML strictness."""
+def test_explicit_strictness_override_false_wins_over_resolved_true(tmp_path: Path) -> None:
+    """An explicit strictness override of False wins over resolved TOML strictness."""
     proj: Path = tmp_path / "proj"
     proj.mkdir()
 
@@ -1251,48 +1251,65 @@ def test_load_resolved_config_explicit_strictness_override_wins(tmp_path: Path) 
         """,
     )
 
-    _resolved, draft = resolve_toml_sources_and_build_config_draft(
+    resolved, _draft = resolve_toml_sources_and_build_config_draft(
         input_paths=[proj],
         strict_config_checking=False,
     )
-    assert draft.strict_config_checking is False
+    assert resolved.strict_config_checking is False
 
 
 @pytest.mark.pipeline
-def test_should_proceed_false_on_errors_even_when_not_strict() -> None:
-    """Errors always prevent proceeding, regardless of strict mode."""
+def test_explicit_strictness_override_true_wins_over_resolved_false(tmp_path: Path) -> None:
+    """An explicit strictness override of True wins over resolved TOML strictness."""
+    proj: Path = tmp_path / "proj"
+    proj.mkdir()
+
+    _write(
+        proj / "topmark.toml",
+        """
+        [config]
+        strict_config_checking = false
+        """,
+    )
+
+    resolved, _draft = resolve_toml_sources_and_build_config_draft(
+        input_paths=[proj],
+        strict_config_checking=True,
+    )
+    assert resolved.strict_config_checking is True
+
+
+@pytest.mark.pipeline
+def test_is_valid_false_on_errors() -> None:
+    """Errors always make the config invalid."""
     draft: MutableConfig = mutable_config_from_defaults()
-    draft.strict_config_checking = False
     draft.diagnostics.add_error("boom")
-    assert draft.should_proceed is False
+    assert draft.is_valid() is False
 
     c: Config = draft.freeze()
-    assert c.should_proceed is False
+    assert c.is_valid() is False
 
 
 @pytest.mark.pipeline
-def test_should_proceed_true_on_warnings_when_not_strict() -> None:
-    """Warnings do not block proceeding when strict mode is disabled."""
+def test_is_valid_true_on_warnings() -> None:
+    """Warnings do not make the config invalid by default."""
     draft: MutableConfig = mutable_config_from_defaults()
-    draft.strict_config_checking = False
     draft.diagnostics.add_warning("warn")
-    assert draft.should_proceed is True
+    assert draft.is_valid() is True
 
     c: Config = draft.freeze()
-    assert c.should_proceed is True
+    assert c.is_valid() is True
 
 
 @pytest.mark.pipeline
-def test_should_proceed_false_on_warnings_when_strict() -> None:
-    """Warnings block proceeding when strict mode is enabled."""
+def test_is_valid_false_on_warnings_when_strict() -> None:
+    """Warnings make the config invalid when strict mode is enabled."""
     draft: MutableConfig = mutable_config_from_defaults()
-    draft.strict_config_checking = True
     draft.diagnostics.add_warning("warn")
-    assert draft.should_proceed is False
+    assert draft.is_valid(strict=True) is False
 
     c: Config = draft.freeze()
-    assert c.strict_config_checking is True
-    assert c.should_proceed is False
+    assert c.is_valid(strict=True) is False
 
 
 @pytest.mark.pipeline
@@ -1303,16 +1320,3 @@ def test_freeze_preserves_diagnostics() -> None:
     c: Config = draft.freeze()
     assert len(c.diagnostics.items) == 1
     assert c.diagnostics.items[0].message == "hello"
-
-
-@pytest.mark.pipeline
-@pytest.mark.parametrize("val,expected", [(None, False), (False, False), (True, True)])
-def test_strict_config_checking_freeze_bool_semantics(val: object, expected: bool) -> None:
-    """freeze() normalizes strict_config_checking to a concrete bool.
-
-    strict_config_checking defaults to False when not explicitly True.
-    """
-    draft: MutableConfig = mutable_config_from_defaults()
-    draft.strict_config_checking = val  # type: ignore[assignment]
-    c: Config = draft.freeze()
-    assert c.strict_config_checking is expected

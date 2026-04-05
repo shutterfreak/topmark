@@ -31,6 +31,7 @@ from typing import TYPE_CHECKING
 
 import click
 
+from topmark.api.runtime import is_config_valid
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.emitters.machine import emit_config_check_machine
 from topmark.cli.keys import CliCmd
@@ -41,7 +42,6 @@ from topmark.cli.options import common_ui_options
 from topmark.cli.options import config_strict_checking_options
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import apply_ignore_positional_paths_policy
-from topmark.config.machine.payloads import build_config_diagnostics_payload
 from topmark.config.resolution import resolve_toml_sources_and_build_config_draft
 from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
@@ -56,11 +56,9 @@ from topmark.presentation.text.config import render_config_check_text
 if TYPE_CHECKING:
     from topmark.cli.console.color import ColorMode
     from topmark.cli.console.protocols import ConsoleProtocol
-    from topmark.config.machine.schemas import ConfigDiagnosticsPayload
     from topmark.config.model import Config
     from topmark.core.logging import TopmarkLogger
     from topmark.core.machine.schemas import MetaPayload
-    from topmark.diagnostic.machine.schemas import MachineDiagnosticCounts
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -99,7 +97,7 @@ def config_check_command(
     no_config: bool,
     config_files: list[str],
     # config_strict_checking_options:
-    strict_config_checking: bool,
+    strict_config_checking: bool | None,
     # common_output_format_options:
     output_format: OutputFormat | None,
 ) -> None:
@@ -155,7 +153,7 @@ def config_check_command(
     apply_ignore_positional_paths_policy(ctx, warn_stdin_dash=True)
 
     # Build a merged draft config (we do not need an InputPlan since we're not processing files)
-    _resolved, draft_config = resolve_toml_sources_and_build_config_draft(
+    resolved, draft_config = resolve_toml_sources_and_build_config_draft(
         strict_config_checking=strict_config_checking,
         no_config=no_config,
         extra_config_files=[Path(p) for p in config_files],
@@ -163,37 +161,35 @@ def config_check_command(
 
     # Freeze ensures sanitize + schema validation runs (and produces diagnostics)
     config: Config = draft_config.freeze()
-
     logger.trace("Run config after layered CLI overrides: %s", config)
 
-    # Diagnostics payload;
-    diag_payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
-    counts: MachineDiagnosticCounts = diag_payload.diagnostic_counts
-    n_warn: int = counts.warning
-    n_err: int = counts.error
-    fail: bool = (n_err > 0) or (strict_config_checking and n_warn > 0)
+    # Check config validity:
+    config_valid: bool = is_config_valid(
+        config,
+        resolved=resolved,
+    )
 
     logger.trace("Config after merging CLI and discovered config: %s", draft_config)
 
-    def _exit(ctx: click.Context, *, fail: bool) -> None:
+    def _exit(ctx: click.Context, *, success: bool) -> None:
         """Select exit code depending on outcome."""
-        ctx.exit(ExitCode.FAILURE if fail else 0)
+        ctx.exit(0 if success else ExitCode.FAILURE)
 
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         emit_config_check_machine(
             meta=meta,
             config=config,
-            strict=strict_config_checking,
-            ok=not fail,
+            strict=bool(resolved.strict_config_checking),
+            ok=config_valid,
             fmt=fmt,
         )
-        _exit(ctx, fail=fail)
+        _exit(ctx, success=config_valid)
 
     # Human formats: prepare shared data once for TEXT/MARKDOWN emitters.
     report: ConfigCheckHumanReport = build_config_check_human_report(
         config=config,
-        ok=not fail,
-        strict=strict_config_checking,
+        ok=config_valid,
+        strict=bool(resolved.strict_config_checking),
         verbosity_level=verbosity_level,
         styled=enable_color,
     )
@@ -203,11 +199,11 @@ def config_check_command(
             render_config_check_markdown(report),
             nl=False,
         )
-        _exit(ctx, fail=fail)
+        _exit(ctx, success=config_valid)
 
     if fmt == OutputFormat.TEXT:
         console.print(render_config_check_text(report))
-        _exit(ctx, fail=fail)
+        _exit(ctx, success=config_valid)
 
     # Defensive guard in case OutputFormat gains new members
     raise NotImplementedError(f"Unsupported output format: {fmt!r}")

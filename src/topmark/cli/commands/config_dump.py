@@ -29,7 +29,7 @@ from typing import TYPE_CHECKING
 
 import click
 
-from topmark.cli.cmd_common import build_config_for_plan
+from topmark.cli.cmd_common import build_resolved_toml_sources_and_config_for_plan
 from topmark.cli.cmd_common import build_run_options
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.cmd_common import maybe_route_console_to_stderr
@@ -68,7 +68,6 @@ if TYPE_CHECKING:
     from topmark.cli.console.protocols import ConsoleProtocol
     from topmark.cli.io import InputPlan
     from topmark.config.model import Config
-    from topmark.config.model import MutableConfig
     from topmark.core.logging import TopmarkLogger
     from topmark.core.machine.schemas import MetaPayload
     from topmark.runtime.model import RunOptions
@@ -211,11 +210,12 @@ def config_dump_command(
         allow_empty_paths=True,  # We ignore paths in `config dump`
     )
 
-    draft_config: MutableConfig = build_config_for_plan(
+    _resolved, draft_config = build_resolved_toml_sources_and_config_for_plan(
         ctx=ctx,
         plan=plan,
         no_config=no_config,
         config_paths=config_files,
+        strict_config_checking=None,
         include_file_types=include_file_types,
         exclude_file_types=exclude_file_types,
         align_fields=align_fields,

@@ -64,6 +64,7 @@ if TYPE_CHECKING:
     from topmark.config.model import Config
     from topmark.config.model import MutableConfig
     from topmark.core.exit_codes import ExitCode
+    from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
 _CTX_RESOLVED_WRITER_OPTIONS_KEY: Final[str] = "_topmark_resolved_writer_options"
 
@@ -318,44 +319,57 @@ def build_cli_policy_overrides_from_ctx(ctx: click.Context) -> PolicyOverrides:
 # ---- Config/TOML preparation for a CLI run ----
 
 
-def build_config_for_plan(
+def build_resolved_toml_sources_and_config_for_plan(
     *,
     ctx: click.Context,
     plan: InputPlan,
     no_config: bool,
     config_paths: list[str],
+    strict_config_checking: bool | None,
     include_file_types: list[str],
     exclude_file_types: list[str],
     align_fields: bool | None,
     relative_to: str | None,
-) -> MutableConfig:
-    """Build a config draft for an input plan using config-layer helpers only.
+) -> tuple[
+    ResolvedTopmarkTomlSources,
+    MutableConfig,
+]:
+    """Build resolved TOML sources and a config draft for an input plan.
 
-    The CLI layer stays intentionally thin:
+    This helper keeps the CLI layer intentionally thin:
 
     1. Compute a discovery anchor from the input plan.
-    2. Resolve TOML sources once, then build the layered config draft from that resolved TOML state.
-    3. Apply layered CLI overrides via `topmark.config.overrides.apply_config_overrides()`.
+    2. Resolve TOML sources once.
+    3. Build the layered config draft from that resolved TOML state.
+    4. Apply layered CLI overrides via
+    `topmark.config.overrides.apply_config_overrides()`.
 
     Resolution order remains:
 
-        defaults -> resolved TOML sources -> layered config draft -> CLI overrides
+        defaults -> resolved TOML sources -> config draft -> CLI overrides
 
-    As a side effect, this helper also resolves persisted TOML writer preferences for the same
-    discovery inputs and stores them on `ctx.obj` for later runtime-option assembly.
+    As a side effect, this helper also resolves persisted TOML writer
+    preferences for the same discovery inputs and stores them on `ctx.obj` for
+    later runtime-option assembly.
 
     Args:
         ctx: Click context carrying normalized command options in `ctx.obj`.
-        plan: Input plan containing paths, stdin metadata, and pattern-source options.
+        plan: Input plan containing paths, STDIN metadata, and pattern-source
+            options.
         no_config: Whether to skip discovered config files.
         config_paths: Explicit extra config files passed on the CLI.
+        strict_config_checking: Optional CLI override for strict config
+            checking. `None` means that strictness should be taken from the
+            resolved TOML sources.
         include_file_types: CLI include file-type filters.
         exclude_file_types: CLI exclude file-type filters.
         align_fields: Optional CLI override for header alignment.
         relative_to: Optional CLI override for header-relative path rendering.
 
     Returns:
-        Mutable configuration draft ready to be frozen.
+        A tuple containing:
+            - resolved TOML-side state for the current run
+            - mutable config draft ready to be frozen
     """
 
     def _resolve_discovery_inputs() -> list[Path] | None:
@@ -384,7 +398,7 @@ def build_config_for_plan(
     resolved_toml, draft = resolve_toml_sources_and_build_config_draft(
         input_paths=discovery_inputs,
         extra_config_files=extra_config_files,
-        strict_config_checking=None,
+        strict_config_checking=strict_config_checking,
         no_config=no_config,
     )
 
@@ -409,4 +423,4 @@ def build_config_for_plan(
 
     draft = apply_config_overrides(draft, overrides=overrides)
 
-    return draft
+    return resolved_toml, draft

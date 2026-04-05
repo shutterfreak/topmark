@@ -176,10 +176,6 @@ def apply_config_overrides(
           strategy, pruning, timestamps) is out of scope here and must be handled separately via
           [`RunOptions`][topmark.runtime.model.RunOptions].
     """
-    # strict_config_checking
-    if overrides.strict_config_checking is not None:
-        config.strict_config_checking = overrides.strict_config_checking
-
     # Record that a highest-precedence CLI/API override layer was applied.
     # This is provenance-only; explicit `--config` files are merged earlier by
     # the resolution layer.

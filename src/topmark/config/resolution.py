@@ -334,9 +334,6 @@ def build_resolved_config_from_toml_sources(
     layers: list[ConfigLayer] = build_config_layers_from_resolved_toml_sources(resolved.sources)
     draft: MutableConfig = merge_layers_globally(layers)
 
-    if resolved.strict_config_checking is not None:
-        draft.strict_config_checking = resolved.strict_config_checking
-
     return draft
 
 

@@ -38,6 +38,11 @@ from typing import Final
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from topmark.diagnostic.model import DiagnosticLog
+    from topmark.diagnostic.model import DiagnosticStats
+    from topmark.diagnostic.model import FrozenDiagnosticLog
+    from topmark.toml.resolution import ResolvedTopmarkTomlSources
+
 
 @dataclass(frozen=True, slots=True)
 class ErrorContext:
@@ -48,6 +53,9 @@ class ErrorContext:
         path: Optional filesystem path associated with the failure.
         qualified_key: Optional qualified key associated with the failure.
         encoding: Optional encoding name relevant to the failure.
+        diagnostics: Optional diagnostic log associated with the failure.
+        resolved: Optional resolved TOML-side state associated with the
+            failure.
         details: Optional tuple of additional diagnostic details.
     """
 
@@ -55,6 +63,9 @@ class ErrorContext:
     path: Path | None = None
     qualified_key: str | None = None
     encoding: str | None = None
+    diagnostics: DiagnosticLog | FrozenDiagnosticLog | None = None
+    resolved: ResolvedTopmarkTomlSources | None = None
+
     details: tuple[str, ...] = ()
 
 
@@ -502,3 +513,49 @@ class TemplateEditError(TemplateError):
 
 class TemplateValidationError(TemplateError):
     """Raised when an annotated config-template result fails validation."""
+
+
+# ---- Config validation errors ----
+
+# NOTE:
+# Config validation is a generic domain-level failure and is intentionally not
+# modeled as a TOML-document or template-edit error. Validation may be applied
+# to either frozen or mutable config state after TOML parsing has already
+# completed.
+
+
+class ConfigValidationError(TopmarkError):
+    """Raised when config validation fails.
+
+    A config is valid when it has no error diagnostics. In strict mode, a
+    config is valid only when it has neither error diagnostics nor warning
+    diagnostics.
+
+    This error is used for both frozen `Config` and mutable `MutableConfig`
+    validation helpers.
+
+    Args:
+        diagnostics: Diagnostic log attached to the config being validated.
+        strict_config_checking: Whether validation was performed in strict
+            mode.
+        details: Optional structured diagnostic details.
+    """
+
+    def __init__(
+        self,
+        *,
+        diagnostics: DiagnosticLog | FrozenDiagnosticLog,
+        strict_config_checking: bool | None,
+        details: tuple[str, ...] = (),
+    ) -> None:
+        stats: DiagnosticStats = diagnostics.stats()
+        message: str = (
+            f"Config validation failed (strict = {bool(strict_config_checking)!r}), "
+            f"errors: {stats.n_error}, warnings: {stats.n_warning}"
+        )
+        super().__init__(
+            ErrorContext(
+                message=message,
+                details=details,
+            )
+        )

@@ -818,12 +818,16 @@ def registry_details_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
 
 
 def config_strict_checking_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
-    """Add strict config checking option (treat warnings as failures)."""
+    """Add strict config checking option (treat warnings as failures).
+
+    Use `--strict` to force strict checking, `--no-strict` to disable it,
+    and omit the flag altogether to defer to TOML-defined strictness.
+    """
     f = option_with_underscore_traps(
         f"{CliOpt.STRICT_CONFIG_CHECKING}/{CliOpt.NO_STRICT_CONFIG_CHECKING}",
         ArgKey.STRICT_CONFIG_CHECKING,
-        default=False,
-        show_default=True,
+        is_flag=True,
+        default=None,
         help="Fail if any warnings are present (in addition to errors).",
     )(f)
 
