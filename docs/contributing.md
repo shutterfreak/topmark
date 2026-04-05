@@ -33,7 +33,8 @@ canonical contributor guide lives at the repository root.
 
 TopMark uses a layered architecture:
 
-- **TOML layer** (`topmark.toml`) — config discovery and parsing
+- **TOML layer** (`topmark.toml`) — config discovery, parsing, and source-local options (e.g.
+  `[config].root`, `strict_config_checking`)
 - **Config layer** (`topmark.config`) — layered merge into `Config`
 - **Runtime layer** (`topmark.runtime`) — execution-time behavior
 

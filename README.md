@@ -49,7 +49,7 @@ ______________________________________________________________________
   - `topmark.toml`
   - CLI overrides and `--config`
 - Fine-grained include/exclude rules
-- Selective application via file patterns or `stdin`
+- Selective application via file patterns or STDIN (list mode or single-file content mode)
 - Strict static typing (PEP 604 unions, Pyright)
 - Works well with `pre-commit`, CI, and Git hooks
 - Preserves newline style (LF/CRLF/CR) and BOM
@@ -205,6 +205,9 @@ topmark strip src/
 # Remove headers and apply changes
 topmark strip --apply src/
 
+# Treat config warnings as errors for this run
+topmark check --strict src/
+
 # Show supported file types in Markdown format
 topmark registry filetypes --output-format markdown --long
 
@@ -266,7 +269,11 @@ exclude_from = [".gitignore"]
 
 Source-local TOML options such as discovery boundaries and config-checking strictness live under
 `[config]` (or `[tool.topmark.config]` in `pyproject.toml`). They are resolved separately from
-layered `Config` values.
+layered `Config` values and do not participate in layered config merging.
+
+For example, `strict_config_checking` is resolved from TOML sources and affects configuration
+validation behaviour; it is not a normal layered `Config` field. CLI/API strictness overrides still
+take precedence for the current run.
 
 ### Policy semantics
 

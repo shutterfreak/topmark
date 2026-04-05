@@ -47,7 +47,13 @@ config = {
 }
 ```
 
-These options are resolved separately from layered `Config` values during TOML source resolution.
+Note that `strict_config_checking` is not a layered `Config` field. It is resolved from `[config]` /
+`[tool.topmark.config]`-shaped input during configuration loading and influences validation
+behavior. API helpers such as `ensure_config_valid(...)` apply this effective strictness (including
+optional overrides) when validating a config.
+
+These options are resolved separately from layered `Config` values and do not participate in layered
+config merging.
 
 ```python
 from topmark import api

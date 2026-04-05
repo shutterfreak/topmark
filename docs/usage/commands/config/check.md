@@ -36,6 +36,10 @@ topmark config check
 # Fail if warnings are present (in addition to errors)
 topmark config check --strict
 
+# CLI override wins over TOML strictness
+# (even if topmark.toml contains `[config] strict_config_checking = true`)
+topmark config check --no-strict
+
 # Machine-readable JSON (single document)
 topmark config check --output-format json
 
@@ -52,7 +56,12 @@ ______________________________________________________________________
 - **File-agnostic**: positional PATHS are ignored (a note is printed). `-` (content-on-STDIN) is
   ignored.
 - **CI-friendly**: exit code is non-zero when validation fails.
-- **Strict mode**: `--strict` causes warnings to fail the command (errors always fail).
+- **Strict mode**: effective strictness is determined as:
+  - CLI override (`--strict` / `--no-strict`)
+  - resolved TOML value from `[config].strict_config_checking` /
+    `[tool.topmark.config].strict_config_checking`
+  - default non-strict mode Errors always fail; warnings fail only when strict config checking is
+    enabled.
 
 {% include-markdown "\_snippets/config-resolution.md" %}
 
@@ -68,12 +77,12 @@ ______________________________________________________________________
 
 ## Options (subset)
 
-| Option                 | Description                                           |
-| ---------------------- | ----------------------------------------------------- |
-| `--strict/--no-strict` | Fail on warnings as well as errors.                   |
-| `--output-format`      | Output format (`text`, `markdown`, `json`, `ndjson`). |
-| `--config`             | Merge an explicit TOML config file (can be repeated). |
-| `--no-config`          | Do not discover local project/user config.            |
+| Option                 | Description                                                 |
+| ---------------------- | ----------------------------------------------------------- |
+| `--strict/--no-strict` | Override resolved TOML strict config checking for this run. |
+| `--output-format`      | Output format (`text`, `markdown`, `json`, `ndjson`).       |
+| `--config`             | Merge an explicit TOML config file (can be repeated).       |
+| `--no-config`          | Do not discover local project/user config.                  |
 
 > Run `topmark config check -h` for the full list of options and help text.
 
@@ -84,7 +93,7 @@ ______________________________________________________________________
 - **0**: configuration is valid (no failing diagnostics).
 - **non-zero**: configuration validation failed:
   - errors are present, or
-  - `--strict` is enabled and warnings are present.
+  - effective strict config checking is enabled and warnings are present.
 
 ______________________________________________________________________
 
@@ -103,7 +112,7 @@ ______________________________________________________________________
 `--output-format markdown` emits a report containing:
 
 - overall status (`ok` / `failed`)
-- whether strict mode was enabled
+- whether effective strict config checking was enabled
 - diagnostic counts
 - (optionally) full diagnostic list and processed config files, depending on verbosity
 
@@ -125,6 +134,22 @@ Notes:
 - `config check` is **file-agnostic**, so it does not emit per-file `result` records.
 - `config check` emits **diagnostics only for configuration loading/validation**, not pipeline
   processing diagnostics.
+
+Example (`[config].strict_config_checking = true` resolved from TOML, with no CLI override):
+
+```jsonc
+{
+  "meta": { /* MetaPayload */ },
+  "config": { /* ConfigPayload */ },
+  "config_diagnostics": { /* ConfigDiagnosticsPayload */ },
+  "config_check": {
+    "ok": false,
+    "strict_config_checking": true,
+    "diagnostic_counts": { "info": 0, "warning": 1, "error": 0 },
+    "config_files": ["topmark.toml"]
+  }
+}
+```
 
 ### JSON schema
 

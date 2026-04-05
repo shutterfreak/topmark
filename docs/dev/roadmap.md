@@ -255,6 +255,26 @@ goals.
     `ConfigLayer` merging
   - normal discovered config loading now behaves as layered-config-only merging, with TOML
     source-local metadata resolved in parallel
+  - Introduced explicit config validation semantics and strictness control:
+    - added `Config.is_valid(...)`, `Config.ensure_valid(...)`, and `_is_config_valid(...)` helpers
+      with a consistent validation contract
+    - introduced `ConfigValidationError` and extended `ErrorContext` to carry validation diagnostics
+      and strictness metadata
+    - validation is now always executed, with strictness (`strict_config_checking`) controlling
+      whether violations raise or are only reported
+    - aligned CLI (`config check`) and API validation behavior on the same validation path and error
+      model
+  - Completed migration away from compatibility config-loading facades:
+    - removed `load_resolved_config()` and `discover_config_layers()` in favor of the TOML-first
+      resolution flow
+    - standardized all callers on `resolve_toml_sources_and_build_config_draft(...)` and explicit
+      layer-building helpers
+    - clarified naming and documentation to consistently refer to “mutable config drafts” instead of
+      “compatibility drafts”
+- Config-loading entry points were consolidated around TOML-first resolution:
+  - callers must now explicitly handle the `(resolved_sources, draft_config)` tuple when provenance
+    is needed
+  - direct “flattened config only” helpers are no longer provided
 - Strengthened TOML/config typing boundaries by introducing recursive TOML value/table typing and
   centralizing validation/narrowing helpers in config I/O support modules.
 - Completed relocation of TOML-specific helpers and resources out of `topmark.config`:
@@ -447,6 +467,8 @@ Completed work:
 - Centralized machine keys and canonical values in
   \[`topmark.core.machine.schemas`\][topmark.core.machine.schemas], eliminating circular imports and
   key drift.
+- Renamed machine key `strict` to `strict_config_checking` for config diagnostics payloads to align
+  with CLI/config terminology and avoid ambiguity with other “strict” concepts
 - Added explicit machine keys/kinds and extended the `meta` payload with:
   - `platform` runtime information
   - `detail_level` (`"brief"` / `"long"`) as part of the machine contract
@@ -749,6 +771,10 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
 - `load_resolved_config()` and `discover_config_layers()` were removed after callers/tests were
   migrated to the TOML-first resolution flow via `resolve_toml_sources_and_build_config_draft(...)`
   and `build_config_layers_from_resolved_toml_sources(...)`.
+- Config-loading entry points were consolidated around TOML-first resolution:
+  - callers must now explicitly handle the `(resolved_sources, draft_config)` tuple when provenance
+    is needed
+  - direct “flattened config only” helpers are no longer provided
 - Generic API/CLI mapping input is now represented as `ConfigMapping` in `topmark.api.types` instead
   of `ArgsLike` in `topmark.config.types`.
 - The legacy `ArgsLike` alias was removed entirely; downstream callers should use `ConfigMapping`
@@ -760,6 +786,14 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
     outside layered `Config` merging
   - discovered TOML sources are first resolved on the TOML side, then merged into layered config
     drafts
+- Introduced explicit config validation semantics and strictness control:
+  - validation is now always executed via `Config.is_valid(...)` / `Config.ensure_valid(...)`
+  - `strict_config_checking` now controls whether validation violations raise
+    (`ConfigValidationError`) or are only reported as diagnostics
+  - CLI (`config check`, `--strict`) and API validation now share the same validation path and error
+    model
+  - downstream callers relying on silent acceptance of invalid configs must account for validation
+    diagnostics or exceptions depending on strictness
 - Downstream Python callers importing moved/removed config helpers from older module locations must
   update their imports to the new `topmark.config.io.*`, `topmark.toml.*`, `topmark.runtime.*`, and
   `topmark.config.overrides` layout.
@@ -837,6 +871,15 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
 - STDIN handling is now documented and modeled more explicitly as two distinct modes:
   - list mode (`--files-from -`, `--include-from -`, `--exclude-from -`)
   - content mode (`-` plus `--stdin-filename`)
+- Config validation strictness is now exposed consistently in the CLI:
+  - `config check` and pipeline commands support `--strict` to enforce validation errors
+  - non-strict mode reports diagnostics without failing
+
+### Breaking changes in machine output formats
+
+- Downstream consumers of machine-readable config diagnostics must update field expectations:
+  - the `strict` key is no longer emitted
+  - `strict_config_checking` is now the canonical field name
 
 ### Documentation and documentation-build behavior
 
@@ -1189,12 +1232,13 @@ Additional progress:
   separate CLI-local resolver path.
 - API runtime config/file preparation now mirrors the same TOML → Config → Runtime split and no
   longer builds config state through TOML-named helpers when given a generic Python mapping.
+- Config validation now also follows the same shared path in CLI and API code:
+  - effective strictness is resolved outside layered `Config`
+  - validation helpers and `ConfigValidationError` are shared across runtime entry points
 
 #### Remaining work
 
 - Remove remaining Click-facing concerns from non-CLI modules.
-- Finish migrating the remaining human-output domains (notably registry) onto
-  `topmark.presentation`.
 - Ensure formatting/verbosity/color decisions remain strictly split between:
   - CLI policy/orchestration (`topmark.cli`)
   - human-facing rendering (`topmark.presentation`)
@@ -1220,6 +1264,8 @@ Additional progress:
 - introduced `ConfigMapping` as the public API-facing mapping alias in `topmark.api.types`
 - added `mutable_config_from_mapping()` so generic API mappings are no longer routed through a
   TOML-named helper
+- resolved `strict_config_checking` on the TOML side rather than treating it as a layered config
+  field
 
 Decision to make before 1.0:
 
@@ -1238,6 +1284,8 @@ Desired outcome:
   state.
 - Confirm that runtime-only fields remain outside layered config merging and are applied only after
   config resolution.
+- Keep TOML-source-local config-loading options (for example `strict_config_checking`) outside the
+  layered `Config` contract.
 
 ### Machine output formats: remaining work
 
@@ -1265,10 +1313,10 @@ Completed work:
 Remaining work before 1.0:
 
 - Final audit of field naming consistency across domains.
+- Confirm that config-validation payloads consistently use `strict_config_checking` and no longer
+  refer to legacy `strict` naming.
 - Expand test coverage for machine formats (especially registry + pipeline commands, JSON + NDJSON).
 - Stabilize and freeze machine schema documentation (`docs/dev/machine-formats.md`).
-- Decide whether summary payloads should remain flat row lists everywhere or also expose
-  grouped-by-outcome views in documentation/examples.
 - Review whether pipeline summary rows should eventually expose additional structured fields beyond
   `(outcome, reason, count)`.
 
@@ -1280,8 +1328,6 @@ helpers returning strings.
 
 Remaining work before 1.0:
 
-- Complete migration of any remaining human-output domains from legacy `cli.emitters.*` /
-  `cli_shared.*` modules into `topmark.presentation` and remove the final stale compatibility paths.
 - Ensure `OutputFormat.TEXT` and `OutputFormat.MARKDOWN` are consistent across commands.
 - Ensure verbosity semantics are consistent (`-v`, `-vv`, `-q`) and documented.
 - Keep all formatting logic out of CLI command functions; commands should only orchestrate, render,
@@ -1339,11 +1385,6 @@ Open questions:
 - Do we want to keep Markdown as a first-class human format for all commands?
 - Are the current verbosity levels sufficient and consistent across commands?
 
-Compare with common CLIs:
-
-- ruff/black: minimal default output, `-v` adds more context
-- git: default is concise, verbosity flags and `--porcelain` separate human vs machine
-
 ### Docstring formatting and styling guidelines
 
 We now rely on Ruff, pydoclint, pydocstringformatter, and MkDocs build-time scripts. Remaining work
@@ -1383,8 +1424,8 @@ Open questions for 1.0:
 - Decide whether a dedicated public API enum should ever be exposed for policy tokens, or whether
   public API callers should continue to use stable string literals while internal CLI/config code
   uses the internal enum types directly.
-- keep verifying that API documentation and examples consistently use `report` and no longer
-  reference `skip_*` parameters
+- Keep verifying that API documentation and examples consistently use `report` and no longer
+  reference `skip_*` parameters.
 
 Any change here should preserve backward compatibility unless explicitly gated.
 
@@ -1404,18 +1445,21 @@ This checklist defines the minimum criteria for cutting TopMark 1.0, grouped by 
 
 #### [Must] Architecture & boundaries
 
-- [ ] Clear separation between CLI layer and API/core modules
+- [x] Clear separation between CLI layer and API/core modules
   - [x] CLI config resolution no longer duplicates layered config discovery/merge logic
   - [x] API runtime config/file preparation now reuses config-layer resolution/override helpers
   - [x] Human-facing rendering isolated in `topmark.presentation`
-- [ ] No CLI-specific concerns (verbosity, color, formatting) in core logic
+  - [x] Config validation now follows the same shared path in CLI and API runtime code
+- [x] No CLI-specific concerns (verbosity, color, formatting) in core logic
 
 #### [Must] Machine formats
 
-- [ ] No presentation leakage (color text, human wording) in machine output
+- [x] No presentation leakage (color text, human wording) in machine output
 - [ ] Machine outputs are covered by tests for registry commands (`filetypes`, `processors`,
   `bindings`) and pipeline commands (`check`, `strip`) in both JSON and NDJSON modes
 - [ ] Final schema freeze review before 1.0 (including `(outcome, reason, count)` summary rows)
+- [ ] Confirm that config-validation payloads consistently use `strict_config_checking` and no
+  longer expose legacy `strict` naming
 - [ ] Final review/freeze of `detail_level` semantics and brief vs long machine projections
 
 #### [Must] Human formats
@@ -1430,7 +1474,8 @@ This checklist defines the minimum criteria for cutting TopMark 1.0, grouped by 
 #### [Must] CLI behavior
 
 - [ ] Exit codes documented and stable
-- [ ] CLI command applicability rules (policy options, stdin modes) fully documented and enforced
+- [ ] CLI command applicability rules (policy options, stdin modes, strict config-checking
+  overrides) fully documented and enforced
 
 #### [Must] Configuration
 
@@ -1440,6 +1485,8 @@ This checklist defines the minimum criteria for cutting TopMark 1.0, grouped by 
 - [ ] Decision made and documented on the final public override model
 - [ ] `EmptyInsertMode` tokens and semantics documented and considered stable
 - [ ] Typed override model (`PolicyOverrides` / `ConfigOverrides`) documented and considered stable
+- [ ] `strict_config_checking` documented and considered stable as a TOML-source-local
+  config-loading option (not a layered `Config` field)
 - [x] Layered config discovery/merge and final CLI/API override application are separated into
   dedicated config modules
 - [x] `header_mutation_mode` fully replaces legacy `add_only` / `update_only` references
@@ -1448,6 +1495,10 @@ This checklist defines the minimum criteria for cutting TopMark 1.0, grouped by 
 - [x] Per-path effective config resolution is implemented and used by the pipeline engine
 - [ ] Final documentation of TOML → Config → Runtime split (including source-local options and
   runtime overlays)
+- [ ] Validation semantics documented and considered stable:
+  - validation always runs
+  - `strict_config_checking` controls whether validation violations raise or are only reported
+  - CLI and API validation follow the same path and error model
 
 #### [Must] Pipeline & testing
 
@@ -1463,8 +1514,8 @@ This checklist defines the minimum criteria for cutting TopMark 1.0, grouped by 
   - [x] CLI policy override behavior
   - [x] API policy override behavior
 - [x] Engine correctly applies per-path configs and policy registries (covered by integration tests)
-- [ ] Explicit separation between layered config and runtime overlays (no runtime fields in config
-  merge semantics)
+- [ ] Explicit separation between layered config, TOML-source-local config-loading options, and
+  runtime overlays
 
 #### [Must] Dependency & ecosystem
 
@@ -1486,6 +1537,7 @@ ______________________________________________________________________
 #### [Recommended] Machine formats
 
 - [ ] Documented examples for each remaining command category in `docs/dev/machine-formats.md`
+- [ ] Include stable examples for config-validation payloads using `strict_config_checking`
 - [ ] Sufficient edge-case test coverage to trust core behaviors
 
 #### [Recommended] Dependency & ecosystem
@@ -1511,4 +1563,5 @@ ______________________________________________________________________
 - [ ] Workflow refactoring into reusable GitHub workflows
 
 Only when all items in the “Must finish before 1.0” section are completed or explicitly deferred
-with rationale should 1.0 be tagged.
+with rationale should 1.0 be tagged. In particular, schema/contract freeze must include config
+validation semantics and the TOML-source-local status of `strict_config_checking`.

@@ -23,7 +23,11 @@ It complements the registry architecture described in [`architecture.md`](archit
 
 This resolver operates within the broader TOML → Config → Runtime architecture (see
 [`architecture.md`](architecture.md)). It consumes the effective registry state and does not perform
-configuration discovery itself.
+configuration discovery or config-validation strictness resolution itself.
+
+In particular, source-local TOML options such as `[config].root` and `strict_config_checking` are
+resolved before runtime file-type resolution begins. They influence discovery and validation
+behaviour, but are not part of the resolver's matching or tie-break logic.
 
 ______________________________________________________________________
 
@@ -50,6 +54,7 @@ See also:
 - [`Architecture`](architecture.md)
 - [`Pipelines (Concepts)`](pipelines.md)
 - [`Pipelines (Reference)`](pipelines-reference.md)
+- [`Configuration discovery`](../configuration/discovery.md)
 
 `resolve_binding_for_path()` first resolves the best matching file type for a path, then looks up
 the bound processor through the registry facade.

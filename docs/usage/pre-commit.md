@@ -68,6 +68,10 @@ The hook manifest intentionally uses minimal defaults. All behavioral flags (suc
 `--report`, policy options, or output mode) should be supplied by consuming repositories via the
 hook’s `args:` configuration.
 
+Consumers may also control configuration validation strictness using `--strict` / `--no-strict`.
+This overrides the effective `strict_config_checking` setting resolved from TOML sources for the
+duration of the hook run.
+
 For the `topmark-check` hook (which runs `topmark check`), consumers may also pass policy options
 such as `--header-mutation-mode`, `--allow-header-in-empty-files`, or `--empty-insert-mode` when
 they need command-specific behavior on top of the resolved config.
@@ -142,6 +146,12 @@ ______________________________________________________________________
 ```bash
 # Focus output on files that would change
 topmark check --report actionable
+```
+
+```bash
+# Enforce strict config validation in CI
+# (warnings are treated as errors)
+topmark check --report actionable --strict
 ```
 
 You can also pass `--summary` to only receive a summary instead of per-file diagnostics.

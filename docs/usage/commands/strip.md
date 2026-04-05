@@ -35,6 +35,9 @@ topmark strip --diff src/
 # Summary‑only view (CI‑friendly)
 topmark strip --summary src/
 
+# Treat config warnings as errors for this run
+topmark strip --strict src/
+
 # Read targets from stdin (one path per line) and generate unified diff output
 git ls-files | topmark strip --files-from - --diff
 ```
@@ -65,6 +68,8 @@ These modes are mutually exclusive: do **not** mix `-` (content mode) with `--fi
 `--include-from -`, or `--exclude-from -` (list mode).
 
 - Idempotent: re‑running after headers are removed results in **no changes**.
+- Supports `--strict` / `--no-strict` to override effective config-validation strictness for the
+  run.
 
 {% include-markdown "\_snippets/config-resolution.md" %}
 
@@ -226,6 +231,7 @@ Notes:
 | `--exclude-file-types` / `-T`                        | Exclude specific TopMark file type identifiers.                        |
 | `--report`                                           | Control reporting scope: actionable, noncompliant, or all.             |
 | `--allow-content-probe` / `--no-allow-content-probe` | Shared policy override for file-type detection.                        |
+| `--strict` / `--no-strict`                           | Override effective config-validation strictness for this run.          |
 | `--stdin-filename`                                   | Assumed filename when PATH is '-' (content from STDIN).                |
 
 > Run `topmark strip -h` for the full list of options and help text.
@@ -308,6 +314,14 @@ git ls-files -m -o --exclude-standard | topmark strip --files-from - --diff
 ```bash
 # Print summary only. Exit 2 signals “would change” to fail the job.
 topmark strip --summary
+```
+
+### 4) Run with strict config checking
+
+```bash
+# Fail when config warnings are present
+# (for example malformed or suspicious config inputs)
+topmark strip --strict src/
 ```
 
 ## Pre‑commit integration

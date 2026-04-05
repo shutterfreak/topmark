@@ -89,9 +89,12 @@ Core commands: `check`, `strip`, `config`, `registry`, `version`.
 
 The `config` command has the following subcommands: `check`, `defaults`, `dump`, `init`.
 
-Read lists from STDIN with `--files-from -` (or `--include-from -` / `--exclude-from -`). To process
-a *single* file’s **content** from STDIN, pass `-` as the sole PATH and provide
-`--stdin-filename NAME`.
+TopMark supports two STDIN modes:
+
+- **List mode**: read newline-delimited paths or patterns via `--files-from -` (or
+  `--include-from -` / `--exclude-from -`)
+- **Content mode**: process one file’s content by passing `-` as the sole PATH together with
+  `--stdin-filename NAME`
 
 ## Header placement (short version)
 
@@ -126,7 +129,11 @@ exclude_file_types = ["html"]
 ```
 
 In `pyproject.toml`, the same settings live under `[tool.topmark]`, with source-local options such
-as `root` under `[tool.topmark.config]`.
+as `root` and `strict_config_checking` under `[tool.topmark.config]`.
+
+Source-local options under `[config]` / `[tool.topmark.config]` do not participate in layered config
+merging. For example, `strict_config_checking` affects configuration validation behaviour rather
+than becoming a normal layered `Config` field.
 
 ## Next steps
 

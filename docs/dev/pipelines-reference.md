@@ -22,6 +22,10 @@ pipeline system.
 Pipelines operate on a resolved configuration (`Config`) and runtime options assembled via the TOML
 → Config → Runtime flow. See [`architecture.md`](./architecture.md) for an overview.
 
+Source-local TOML options such as `[config].root` and `strict_config_checking` are resolved before
+pipeline execution. They influence configuration discovery and validation behaviour, but do not
+become layered `Config` fields.
+
 ______________________________________________________________________
 
 ## Canonical reference (generated)
@@ -73,3 +77,4 @@ ______________________________________________________________________
 - [`Architecture`](./architecture.md)
 - [`Pipelines (Concepts)`](./pipelines.md)
 - [`Resolution`](./resolution.md)
+- [`Configuration discovery`](../configuration/discovery.md)

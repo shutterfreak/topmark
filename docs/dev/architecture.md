@@ -25,7 +25,7 @@ TopMark separates configuration concerns into three layers:
 - **TOML layer** (`topmark.toml`):
   - discovery of configuration sources
   - parsing of TOML tables
-  - resolution of source-local options (e.g. `[config].root`, strictness)
+  - resolution of source-local options (e.g. `[config].root`, `strict_config_checking`)
 - **Config layer** (`topmark.config`):
   - construction of layered configuration (`ConfigLayer`)
   - merging into a mutable config draft
@@ -33,6 +33,10 @@ TopMark separates configuration concerns into three layers:
 - **Runtime layer** (`topmark.runtime`):
   - execution-time options (e.g. writer behavior)
   - final adjustments before pipeline execution
+
+Not all TOML-defined values become layered `Config` fields. Source-local options such as
+`[config].root` and `strict_config_checking` are resolved on the TOML side first, then applied to
+config discovery/validation behaviour without participating in layered config merging.
 
 The main integration point between TOML resolution and config merging is:
 
@@ -421,6 +425,9 @@ TopMark exposes configuration state through both human-readable and machine-read
   - `config init` (bundled example TOML resource)
 - Machine formats:
   - JSON / NDJSON snapshots described in [`machine-output.md`](machine-output.md)
+
+For `config check`, machine output reports effective strictness under the key
+`strict_config_checking`, reflecting TOML-resolved strictness plus any CLI/API override.
 
 In machine formats, `config defaults` and `config init` share the same underlying configuration
 snapshot, even though their human-facing output differs.

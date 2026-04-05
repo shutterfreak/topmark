@@ -23,6 +23,10 @@ TopMark supports layered configuration with explicit precedence:
   **declaring config file** (or CWD for CLI-provided values).
 - **Merge semantics vary by field**: behavioral settings usually use nearest-wins semantics, mapping
   fields usually overlay keys, and discovery inputs usually accumulate across applicable layers.
+- **Config-loading behaviour (e.g. `strict_config_checking`) is resolved from TOML sources**
+  (`[config]` / `[tool.topmark.config]`) and applied after layered merging; it is not a regular
+  layered configuration field (see
+  [Config-loading behaviour](./discovery.md#config-loading-behaviour-toml-level)).
 - `relative_to` affects only header metadata (e.g., `file_relpath`), not discovery.
 
 Start here:

@@ -372,6 +372,10 @@ diagnostics, and a `config_check` status payload.
   - `diagnostic_counts` — counts by diagnostic level
   - `config_files` — config files that contributed to the resolved config
 
+The `strict_config_checking` field reflects the **effective validation strictness** used for the
+run. It is derived from TOML source configuration (`[config].strict_config_checking`) and may be
+overridden by CLI or API inputs.
+
 ### NDJSON shape for `config check`
 
 Stream prefix:

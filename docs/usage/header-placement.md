@@ -14,7 +14,13 @@ topmark:header:end
 
 TopMark is comment‑aware and places the header block according to the file type and its policy.
 
-Header placement is governed by file type and policy settings. See also:
+Header placement is governed by file type and policy settings.
+
+Configuration validation strictness (for example via `--strict` or `strict_config_checking`) does
+not affect header placement rules. It only controls whether a run proceeds when configuration
+warnings are present.
+
+See also:
 
 - [`Policies`](./policies.md)
 - [`Configuration overview`](../configuration/index.md)

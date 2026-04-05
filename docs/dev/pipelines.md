@@ -29,6 +29,10 @@ Pipeline execution consumes a frozen `Config` plus runtime options assembled fro
 → Runtime flow documented in [`architecture.md`](architecture.md) and
 [`../configuration/discovery.md`](../configuration/discovery.md).
 
+Source-local TOML options such as `[config].root` and `strict_config_checking` are resolved before
+pipeline execution. They influence configuration discovery and validation behaviour, but do not
+become normal layered `Config` fields.
+
 ## Concepts vs Reference
 
 This page explains **how the pipelines work** and how the CLI composes them. For the canonical,
@@ -352,6 +356,10 @@ ______________________________________________________________________
 
 Some pipelines may terminate early due to **policy or safety constraints**:
 
+Config validation happens before these pipeline steps run. Under effective strict config checking,
+configuration warnings are treated as validation failures and may prevent pipeline execution from
+starting.
+
 - Binary files
 - Mixed line endings
 - BOM before shebang
@@ -388,6 +396,8 @@ ______________________________________________________________________
 - [`Architecture`](./architecture.md) — TOML → Config → Runtime overview
 - [`Pipelines (Reference)`](./pipelines-reference.md) — generated API-backed reference entry points
 - [`Machine output schema`](./machine-output.md) — how pipeline results are exposed in JSON / NDJSON
+- [`Configuration discovery`](../configuration/discovery.md) — source-local TOML options and
+  precedence
 
 This pipeline model is the backbone of TopMark’s reliability and extensibility. New behaviors are
 introduced by adding steps or composing new pipelines—never by special-casing control flow.

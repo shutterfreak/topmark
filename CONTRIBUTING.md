@@ -86,9 +86,14 @@ make property-test
 
 TopMark separates configuration into three layers:
 
-- TOML layer (`topmark.toml`) — discovery, parsing, and source-local options (e.g. `[config].root`)
+- TOML layer (`topmark.toml`) — discovery, parsing, and source-local options (e.g. `[config].root`,
+  `strict_config_checking`)
 - Config layer (`topmark.config`) — layered merge into a mutable config draft
 - Runtime layer (`topmark.runtime`) — execution-time options and overrides
+
+Source-local options such as `strict_config_checking` are resolved during configuration loading and
+influence validation behaviour, but do not become layered `Config` fields. CLI/API overrides
+(`--strict` / `--no-strict`) take precedence for the current run.
 
 The main integration helper is:
 

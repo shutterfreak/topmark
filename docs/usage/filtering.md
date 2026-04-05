@@ -34,6 +34,9 @@ TopMark supports two STDIN modes when supplying file lists or content:
 
 These modes are mutually exclusive and should not be combined.
 
+Note that STDIN handling is independent from configuration validation. Options such as `--strict` /
+`--no-strict` still apply and control how configuration warnings are treated during the run.
+
 ## Recipe: Process only Python and Markdown
 
 CLI:
@@ -138,3 +141,17 @@ topmark check --report actionable .
 topmark check --report noncompliant .
 topmark strip --report noncompliant .
 ```
+
+## Notes on configuration strictness
+
+Filtering determines *which* files are processed, while configuration validation determines whether
+a run is allowed to proceed.
+
+Effective strictness is controlled by:
+
+1. CLI override (`--strict` / `--no-strict`)
+1. TOML setting (`strict_config_checking`)
+1. default non-strict behaviour
+
+When strict config checking is enabled, configuration warnings are treated as errors and may cause
+the command to fail before processing files.

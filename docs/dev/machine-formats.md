@@ -194,5 +194,8 @@ renders a cleaned TOML view of the built-in defaults, while `config init` render
 example TopMark TOML resource with extensive comments. In machine formats, both emit the same
 underlying default configuration snapshot shape.
 
+For `config check`, the machine payload uses `strict_config_checking` to report the effective
+config-validation strictness after applying CLI override precedence over resolved TOML strictness.
+
 Refer to each command’s documentation for its emitted keys and shapes. Registry commands are
 documented in the schema reference and now include the separate `registry bindings` machine format.

@@ -95,23 +95,23 @@ apply. The distinction between configuration and runtime settings is important:
 ### Layered configuration settings
 
 The following settings are defined in configuration files and participate in layered merging across
-config scopes. These fields determine how TopMark behaves for a given file.
+config scopes. These fields determine how TopMark behaves for a given file and participate in
+layered config merging.
 
-| Semantic group             | Field(s)                                           | Current merge behavior                                 | Recommended long-term behavior       | Notes                                                                                                   |
-| -------------------------- | -------------------------------------------------- | ------------------------------------------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------- |
-| Provenance                 | `config_files`                                     | Append                                                 | Append                               | Keep all contributing config origins for observability and diagnostics.                                 |
-| Diagnostics                | `diagnostics`                                      | Append                                                 | Append                               | Diagnostics should accumulate across discovery, parsing, merge, and sanitize steps.                     |
-| Strictness / runtime gates | `strict_config_checking`                           | Replace if explicitly set                              | Replace                              | Tri-state override: child wins only when explicitly set.                                                |
-| Behavioral config          | `header_fields`                                    | Replace                                                | Replace                              | The nearest applicable config defines the effective header field order.                                 |
-| Behavioral config          | `align_fields`                                     | Replace if explicitly set                              | Replace                              | Scalar formatting choice; nearest applicable value should win.                                          |
-| Behavioral config          | `relative_to_raw`, `relative_to`                   | Replace if explicitly set                              | Replace                              | Path base decisions should come from the nearest applicable config.                                     |
-| Policy                     | `policy`                                           | Tri-state field merge via `MutablePolicy.merge_with()` | Replace or tri-state merge           | Field-wise tri-state merging allows layered policy refinement while preserving defaults.                |
-| Policy                     | `policy_by_type`                                   | Key-wise merge + tri-state per field                   | Key-wise merge + tri-state per field | Per-file-type policies overlay the global policy and refine it for specific formats.                    |
-| Field values               | `field_values`                                     | Key-wise merge (overlay)                               | Key-wise merge                       | Future direction: child keys override matching parent keys while preserving unrelated inherited values. |
-| Discovery inputs           | `include_pattern_groups`, `exclude_pattern_groups` | Append                                                 | Append                               | Pattern sources accumulate across layers and remain active within their scope.                          |
-| Discovery inputs           | `include_from`, `exclude_from`, `files_from`       | Replace-wholesale when non-empty                       | Append                               | Future direction: path-based discovery sources accumulate rather than replace.                          |
-| Discovery inputs           | `files`                                            | Replace-wholesale when non-empty                       | Replace                              | Explicit file lists are authoritative and should not silently accumulate across layers.                 |
-| Discovery filters          | `include_file_types`, `exclude_file_types`         | Replace-wholesale when non-empty                       | Replace                              | File-type filters represent a nearest-scope decision rather than a union.                               |
+| Semantic group    | Field(s)                                           | Current merge behavior                                 | Recommended long-term behavior       | Notes                                                                                                   |
+| ----------------- | -------------------------------------------------- | ------------------------------------------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| Provenance        | `config_files`                                     | Append                                                 | Append                               | Keep all contributing config origins for observability and diagnostics.                                 |
+| Diagnostics       | `diagnostics`                                      | Append                                                 | Append                               | Diagnostics should accumulate across discovery, parsing, merge, and sanitize steps.                     |
+| Behavioral config | `header_fields`                                    | Replace                                                | Replace                              | The nearest applicable config defines the effective header field order.                                 |
+| Behavioral config | `align_fields`                                     | Replace if explicitly set                              | Replace                              | Scalar formatting choice; nearest applicable value should win.                                          |
+| Behavioral config | `relative_to_raw`, `relative_to`                   | Replace if explicitly set                              | Replace                              | Path base decisions should come from the nearest applicable config.                                     |
+| Policy            | `policy`                                           | Tri-state field merge via `MutablePolicy.merge_with()` | Replace or tri-state merge           | Field-wise tri-state merging allows layered policy refinement while preserving defaults.                |
+| Policy            | `policy_by_type`                                   | Key-wise merge + tri-state per field                   | Key-wise merge + tri-state per field | Per-file-type policies overlay the global policy and refine it for specific formats.                    |
+| Field values      | `field_values`                                     | Key-wise merge (overlay)                               | Key-wise merge                       | Future direction: child keys override matching parent keys while preserving unrelated inherited values. |
+| Discovery inputs  | `include_pattern_groups`, `exclude_pattern_groups` | Append                                                 | Append                               | Pattern sources accumulate across layers and remain active within their scope.                          |
+| Discovery inputs  | `include_from`, `exclude_from`, `files_from`       | Replace-wholesale when non-empty                       | Append                               | Future direction: path-based discovery sources accumulate rather than replace.                          |
+| Discovery inputs  | `files`                                            | Replace-wholesale when non-empty                       | Replace                              | Explicit file lists are authoritative and should not silently accumulate across layers.                 |
+| Discovery filters | `include_file_types`, `exclude_file_types`         | Replace-wholesale when non-empty                       | Replace                              | File-type filters represent a nearest-scope decision rather than a union.                               |
 
 ### Runtime overlays
 
@@ -124,6 +124,41 @@ CLI or API entrypoints. They represent execution intent rather than layered conf
 | Output behavior  | `output_target`, `file_write_strategy` | Replace if explicitly set | Runtime-only / replace         | Execution strategy, not configuration state.                     |
 | Execution mode   | `apply_changes`                        | Replace if explicitly set | Runtime-only                   | Defines dry-run vs apply; always determined at runtime.          |
 | Runtime metadata | `timestamp`                            | Preserve base timestamp   | Runtime-only                   | Metadata for a run; not part of layered configuration semantics. |
+
+### Config-loading behaviour (TOML-level)
+
+Some options defined under `[config]` (or `[tool.topmark.config]`) do **not** participate in layered
+config merging. Instead, they are resolved once during TOML source discovery and applied after
+layered merging.
+
+Currently, this includes:
+
+| Field                    | Description                                                                           |
+| ------------------------ | ------------------------------------------------------------------------------------- |
+| `strict_config_checking` | Controls how config validation treats warnings (warnings become errors when enabled). |
+
+Key properties:
+
+- These values are resolved from TOML sources before building the config draft.
+- They are **not part of `Config` / `MutableConfig` merge semantics**.
+- Effective strictness is determined as:
+
+```text
+override (CLI/API) > resolved TOML value > default (non-strict)
+```
+
+- Validation helpers (`is_valid`, `ensure_valid`) receive strictness from runtime, not from the
+  config object itself.
+
+Example:
+
+```toml
+[config]
+strict_config_checking = true
+```
+
+This enables strict config validation for the current project scope, causing warnings to be treated
+as errors during config checking.
 
 ### Reading the tables
 

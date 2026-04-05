@@ -21,11 +21,17 @@ from `topmark.toml` and from `[tool.topmark]` in `pyproject.toml`.
 > - The ordering mirrors `src/topmark/toml/topmark-example.toml`.
 > - Keys are defined authoritatively in `src/topmark/toml/keys.py`.
 
+```md
+`strict_config_checking` is a **TOML-source-local config-loading option**, not a
+layered `Config` field. It is resolved from `[config]` / `[tool.topmark.config]`
+during TOML source resolution and applied after layered config merging.
+```
+
 ```yaml
 topmark:
   config:
     type: table
-    description: TOML-source-local options resolved separately from layered Config values.
+    description: TOML-source-local options resolved separately from layered Config merging.
     root:
       type: bool
       default: false
@@ -33,7 +39,7 @@ topmark:
     strict_config_checking:
       type: bool
       default: false
-      description: Treat config warnings as errors while checking TOML configuration.
+      description: Treat config warnings as errors while validating configuration loaded from TOML sources.
 
   header:
     fields:

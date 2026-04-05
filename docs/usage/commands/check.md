@@ -36,6 +36,9 @@ topmark check --diff src/
 # Summary‑only view (CI‑friendly)
 topmark check --summary src/
 
+# Treat config warnings as errors for this run
+topmark check --strict src/
+
 # Read targets from stdin (one path per line) and generate unified diff output
 git ls-files | topmark check --files-from - --diff
 ```
@@ -66,6 +69,8 @@ These modes are mutually exclusive: do **not** mix `-` (content mode) with `--fi
 `--include-from -`, or `--exclude-from -` (list mode).
 
 - Idempotent: re‑running on already‑correct files results in **no changes**.
+- Supports `--strict` / `--no-strict` to override effective config-validation strictness for the
+  run.
 
 {% include-markdown "\_snippets/config-resolution.md" %}
 
@@ -249,6 +254,7 @@ Notes:
 | `--report`                    | Control reporting scope: actionable, noncompliant, or all.             |
 | `--header-mutation-mode`      | Check-only policy override: `all`, `add-only`, or `update-only`.       |
 | `--empty-insert-mode`         | Check-only policy override controlling empty-file classification.      |
+| `--strict` / `--no-strict`    | Override effective config-validation strictness for this run.          |
 | `--stdin-filename`            | Assumed filename when PATH is '-' (content from STDIN).                |
 
 > Run `topmark check -h` for the full list of options and help text.
@@ -334,6 +340,14 @@ git ls-files -m -o --exclude-standard | topmark check --files-from - --diff
 ```bash
 # Print summary only. Exit 2 signals “would change” to fail the job.
 topmark check --summary
+```
+
+### 4) Run with strict config checking
+
+```bash
+# Fail when config warnings are present
+# (for example malformed or suspicious config inputs)
+topmark check --strict src/
 ```
 
 ______________________________________________________________________
