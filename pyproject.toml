@@ -333,6 +333,9 @@ line-length = 100
     "TRY400",
     "TRY401",
   ]
+  external = [
+    "DOC", # pydoclint
+  ]
 
   # Optional rule groups you may enable later if desired:
   # "C90"  # mccabe complexity (enabled separately via [tool.ruff.lint.mccabe])
