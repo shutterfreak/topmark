@@ -404,6 +404,4 @@ root = true # Mark this directory as the root for config discovery
   strategy = "atomic" # Use the safe atomic writer (default)
 
 [tool.uv]
-constraint-dependencies = [
-  "Pygments<2.20", # Pygments 2.20 attribute rendering regression
-]
+constraint-dependencies = []
