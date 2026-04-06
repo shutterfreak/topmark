@@ -22,19 +22,14 @@ to [`topmark.config.machine.payloads`][topmark.config.machine.payloads].
 
 from __future__ import annotations
 
-from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
 from topmark.config.machine.payloads import build_config_check_summary_payload
 from topmark.config.machine.payloads import build_config_diagnostics_payload
 from topmark.config.machine.payloads import build_config_payload
-from topmark.config.machine.schemas import ConfigDiagnosticsPayload
-from topmark.config.machine.schemas import ConfigPayload
-from topmark.config.model import Config
 from topmark.core.machine.schemas import MachineDomain
 from topmark.core.machine.schemas import MachineKey
 from topmark.core.machine.schemas import MachineKind
-from topmark.core.machine.schemas import MetaPayload
 from topmark.core.machine.shapes import build_json_envelope
 from topmark.core.machine.shapes import build_ndjson_record
 from topmark.diagnostic.machine.shapes import iter_diagnostic_ndjson_records
@@ -45,6 +40,7 @@ if TYPE_CHECKING:
     from topmark.config.machine.schemas import ConfigCheckSummary
     from topmark.config.machine.schemas import ConfigDiagnosticsPayload
     from topmark.config.machine.schemas import ConfigPayload
+    from topmark.config.machine.schemas import ConfigProvenancePayload
     from topmark.config.model import Config
     from topmark.core.machine.schemas import MetaPayload
     from topmark.diagnostic.machine.schemas import MachineDiagnosticCounts
@@ -55,40 +51,71 @@ def build_config_json_envelope(
     *,
     config: Config,
     meta: MetaPayload,
+    cfg_provenance_payload: ConfigProvenancePayload | None = None,
 ) -> dict[str, object]:
     """Build the JSON envelope for a Config snapshot.
 
     Shape:
         {"meta": <MetaPayload>, "config": <ConfigPayload>}
+        or, when provenance is requested:
+        {
+            "meta": <MetaPayload>,
+            "config_provenance": <ConfigProvenancePayload>,
+            "config": <ConfigPayload>,
+        }
 
     Args:
         config: Immutable runtime configuration to serialize.
         meta: Machine-output metadata (tool/version).
+        cfg_provenance_payload: Optional machine-readable layered config provenance
+            payload to include before the final flattened config payload.
 
     Returns:
         A JSON-envelope mapping (not yet serialized).
     """
     payload: ConfigPayload = build_config_payload(config)
-    return build_json_envelope(meta=meta, config=payload)
+    if cfg_provenance_payload is None:
+        return build_json_envelope(meta=meta, config=payload)
+
+    return build_json_envelope(
+        meta=meta,
+        config_provenance=cfg_provenance_payload,
+        config=payload,
+    )
 
 
 def iter_config_ndjson_records(
     *,
     config: Config,
     meta: MetaPayload,
+    cfg_provenance_payload: ConfigProvenancePayload | None = None,
 ) -> Iterator[dict[str, object]]:
     """Iterate NDJSON records for a Config snapshot.
 
-    Shape (single record):
-        {"kind": "config", "meta": <MetaPayload>, "config": <ConfigPayload>}
+    Shapes:
+        - without provenance:
+            {"kind": "config", "meta": <MetaPayload>, "config": <ConfigPayload>}
+        - with provenance:
+            1) {"kind": "config_provenance", "meta": ..., "config_provenance": ...}
+            2) {"kind": "config", "meta": ..., "config": ...}
 
     Args:
         config: Immutable runtime configuration to serialize.
         meta: Machine-output metadata (tool/version).
+        cfg_provenance_payload: Optional machine-readable layered config provenance
+            payload to emit before the final flattened config record.
 
     Yields:
         An iterable of NDJSON record mappings (not yet serialized).
     """
+    if cfg_provenance_payload is not None:
+        yield build_ndjson_record(
+            kind=MachineKind.CONFIG_PROVENANCE,
+            meta=meta,
+            container_key=MachineKey.CONFIG_PROVENANCE,
+            payload=cfg_provenance_payload,
+        )
+
     payload: ConfigPayload = build_config_payload(config)
     yield build_ndjson_record(
         kind=MachineKind.CONFIG,

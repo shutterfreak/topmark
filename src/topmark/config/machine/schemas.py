@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from topmark.diagnostic.machine.schemas import MachineDiagnosticEntry
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, kw_only=True)
 class ConfigPayload:
     """JSON-friendly representation of the effective TopMark configuration.
 
@@ -76,7 +76,55 @@ class ConfigPayload:
         }
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, kw_only=True)
+class ConfigProvenanceLayerPayload:
+    """One machine-readable config provenance layer.
+
+    Attributes:
+        origin: Provenance origin label for the layer.
+        kind: Resolved config layer kind value.
+        precedence: Layer precedence (lower applied earlier).
+        toml: Source-local TopMark TOML fragment for this layer.
+        scope_root: Optional scope root associated with the layer.
+    """
+
+    origin: str
+    kind: str
+    precedence: int
+    toml: dict[str, object]
+    scope_root: str | None = None
+
+    def to_dict(self) -> dict[str, object]:
+        """Return a JSON-friendly dict of the layer payload."""
+        out: dict[str, object] = {
+            "origin": self.origin,
+            "kind": self.kind,
+            "precedence": self.precedence,
+            "toml": self.toml,
+        }
+        if self.scope_root is not None:
+            out["scope_root"] = self.scope_root
+        return out
+
+
+@dataclass(slots=True, kw_only=True)
+class ConfigProvenancePayload:
+    """Machine-readable layered TopMark TOML provenance export.
+
+    Attributes:
+        layers: Ordered provenance layers, starting with built-in defaults.
+    """
+
+    layers: list[ConfigProvenanceLayerPayload]
+
+    def to_dict(self) -> dict[str, object]:
+        """Return a JSON-friendly dict of the provenance payload."""
+        return {
+            "layers": [layer.to_dict() for layer in self.layers],
+        }
+
+
+@dataclass(slots=True, kw_only=True)
 class ConfigDiagnosticsPayload:
     """Machine-readable diagnostics collected while building the `Config`.
 
@@ -105,7 +153,7 @@ class ConfigDiagnosticsPayload:
         }
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, kw_only=True)
 class ConfigCheckSummary:
     """Summary payload for `topmark config check` machine output.
 

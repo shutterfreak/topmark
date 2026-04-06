@@ -149,19 +149,40 @@ def render_config_dump_markdown(
     """Render `topmark config dump` output as Markdown.
 
     Args:
-        prepared: Prepared config dump data (files, merged TOML).
+        prepared: Prepared config dump data (files, flattened TOML, optional provenance).
 
     Returns:
         Markdown document string (with trailing newline).
     """
     lines: list[str] = []
-    lines.append(
-        render_toml_markdown(
-            heading="TopMark Config Dump (TOML)",
-            heading_level=1,
-            toml_text=prepared.merged_toml,
-        ).rstrip()
-    )
+
+    if prepared.show_config_layers and prepared.provenance_toml is not None:
+        lines.append(
+            render_toml_markdown(
+                heading="TopMark Config Provenance Layers (TOML)",
+                heading_level=1,
+                toml_text=prepared.provenance_toml,
+            ).rstrip()
+        )
+        lines.append("")
+        if prepared.verbosity_level > 0:
+            lines.append("---")
+            lines.append("")
+        lines.append(
+            render_toml_markdown(
+                heading="TopMark Config Dump (Flattened TOML)",
+                heading_level=1,
+                toml_text=prepared.merged_toml,
+            ).rstrip()
+        )
+    else:
+        lines.append(
+            render_toml_markdown(
+                heading="TopMark Config Dump (TOML)",
+                heading_level=1,
+                toml_text=prepared.merged_toml,
+            ).rstrip()
+        )
 
     if prepared.verbosity_level > 0:
         lines.append("")

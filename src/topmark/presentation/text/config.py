@@ -153,7 +153,7 @@ def render_config_dump_text(
     """Render `topmark config dump` output in the TEXT (ANSI-styled) format.
 
     Args:
-        prepared: Prepared human-facing data (files, optional TOML).
+        prepared: Prepared human-facing data (files, flattened TOML, optional provenance).
 
     Returns:
         Text document as single string.
@@ -163,6 +163,27 @@ def render_config_dump_text(
         parts.append(f"Config files processed: {len(prepared.config_files)}")
         for i, p in enumerate(prepared.config_files, start=1):
             parts.append(f"Loaded config {i}: {p}")
+
+    if prepared.show_config_layers and prepared.provenance_toml is not None:
+        section_verbosity_level: int = max(prepared.verbosity_level, 1)
+        parts.append(
+            render_toml_text(
+                title="TopMark Config Provenance Layers (TOML):",
+                toml_text=prepared.provenance_toml,
+                verbosity_level=section_verbosity_level,
+                styled=prepared.styled,
+            )
+        )
+        parts.append("")
+        parts.append(
+            render_toml_text(
+                title="TopMark Config Dump (Flattened TOML):",
+                toml_text=prepared.merged_toml,
+                verbosity_level=section_verbosity_level,
+                styled=prepared.styled,
+            )
+        )
+        return "\n".join(parts)
 
     parts.append(
         render_toml_text(

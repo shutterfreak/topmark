@@ -27,6 +27,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from topmark.config.machine.payloads import build_config_provenance_payload
 from topmark.config.machine.shapes import build_config_check_json_envelope
 from topmark.config.machine.shapes import build_config_diagnostics_json_envelope
 from topmark.config.machine.shapes import build_config_json_envelope
@@ -41,8 +42,10 @@ from topmark.core.machine.serializers import serialize_json_object
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
+    from topmark.config.machine.schemas import ConfigProvenancePayload
     from topmark.config.model import Config
     from topmark.core.machine.schemas import MetaPayload
+    from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
 
 def serialize_config(
@@ -50,38 +53,57 @@ def serialize_config(
     meta: MetaPayload,
     config: Config,
     fmt: OutputFormat,
+    resolved_toml: ResolvedTopmarkTomlSources | None = None,
+    show_config_layers: bool = False,
 ) -> str | Iterator[str]:
     """Serialize the effective Config snapshot in a machine-readable format.
 
     Shapes:
-      - JSON: one envelope object: {"meta": ..., "config": ...}
-      - NDJSON: one record line: {"kind": "config", "meta": ..., "config": ...}
+      - JSON, default:
+            {"meta": ..., "config": ...}
+      - JSON, with provenance:
+            {"meta": ..., "config_provenance": ..., "config": ...}
+      - NDJSON, default:
+            {"kind": "config", "meta": ..., "config": ...}
+      - NDJSON, with provenance:
+            {"kind": "config_provenance", "meta": ..., "config_provenance": ...}
+            {"kind": "config", "meta": ..., "config": ...}
 
     Args:
         meta: Machine-output metadata (tool/version).
         config: Immutable runtime configuration to serialize.
         fmt: Target machine format (JSON or NDJSON).
+        resolved_toml: Resolved TOML sources for optional provenance export.
+        show_config_layers: If `True`, include layered TOML provenance in the machine output.
 
     Returns:
-        A pretty-printed JSON string, or an iterator of NDJSON lines, depending on `fmt`
-        (no trailing newline).
+        A pretty-printed JSON string, or an iterator of NDJSON lines, depending on
+        `fmt` (no trailing newline).
 
     Raises:
-        ValueError: If `fmt` is not a supported machine format.
+        ValueError: If `fmt` is not a supported machine format, or if `show_config_layers` is `True`
+            but `resolved_toml` is `None`.
     """
     if not is_machine_format(fmt):
         raise ValueError(f"Unsupported machine output format: {fmt!r}")
+
+    if show_config_layers and resolved_toml is None:
+        raise ValueError("resolved_toml is required when show_config_layers=True")
 
     if fmt == OutputFormat.JSON:
         return serialize_config_json(
             meta=meta,
             config=config,
+            resolved_toml=resolved_toml,
+            show_config_layers=show_config_layers,
         )
 
     if fmt == OutputFormat.NDJSON:
         return serialize_config_ndjson(
             meta=meta,
             config=config,
+            resolved_toml=resolved_toml,
+            show_config_layers=show_config_layers,
         )
 
     # Defensive guard
@@ -92,22 +114,43 @@ def serialize_config_json(
     *,
     meta: MetaPayload,
     config: Config,
+    resolved_toml: ResolvedTopmarkTomlSources | None = None,
+    show_config_layers: bool = False,
 ) -> str:
     """Serialize the effective Config snapshot as a JSON envelope.
 
-    Shape:
-        {"meta": <MetaPayload>, "config": <ConfigPayload>}
+    Shapes:
+        - default:
+            {"meta": <MetaPayload>, "config": <ConfigPayload>}
+        - with provenance:
+            {
+                "meta": <MetaPayload>,
+                "config_provenance": <ConfigProvenancePayload>,
+                "config": <ConfigPayload>,
+            }
 
     Args:
         meta: Machine-output metadata (tool/version).
         config: Immutable runtime configuration to serialize.
+        resolved_toml: Resolved TOML sources for optional provenance export.
+        show_config_layers: If `True`, include layered TOML provenance in the JSON envelope.
 
     Returns:
         Pretty-printed JSON string (no trailing newline).
+
+    Raises:
+        ValueError: If `show_config_layers` is `True` but `resolved_toml` is `None`.
     """
+    cfg_provenance_payload: ConfigProvenancePayload | None = None
+    if show_config_layers:
+        if resolved_toml is None:
+            raise ValueError("resolved_toml is required when show_config_layers=True")
+        cfg_provenance_payload = build_config_provenance_payload(resolved_toml)
+
     envelope: dict[str, object] = build_config_json_envelope(
         config=config,
         meta=meta,
+        cfg_provenance_payload=cfg_provenance_payload,
     )
     return serialize_json_object(envelope)
 
@@ -116,22 +159,44 @@ def serialize_config_ndjson(
     *,
     meta: MetaPayload,
     config: Config,
+    resolved_toml: ResolvedTopmarkTomlSources | None = None,
+    show_config_layers: bool = False,
 ) -> Iterator[str]:
     """Serialize the effective Config snapshot as NDJSON.
 
-    Shape (single record line):
-        {"kind": "config", "meta": <MetaPayload>, "config": <ConfigPayload>}
+    Record sequence:
+        - default:
+            1) {"kind": "config", "meta": <MetaPayload>, "config": <ConfigPayload>}
+        - with provenance:
+            1) {
+                   "kind": "config_provenance",
+                   "meta": <MetaPayload>,
+                   "config_provenance": <ConfigProvenancePayload>,
+               }
+            2) {"kind": "config", "meta": <MetaPayload>, "config": <ConfigPayload>}
 
     Args:
         meta: Machine-output metadata (tool/version).
         config: Immutable runtime configuration to serialize.
+        resolved_toml: Resolved TOML sources for optional provenance export.
+        show_config_layers: If `True`, include layered TOML provenance in the NDJSON stream.
 
     Returns:
         Iterator of NDJSON lines (no trailing newline).
+
+    Raises:
+        ValueError: If `show_config_layers` is `True` but `resolved_toml` is `None`.
     """
+    cfg_provenance_payload: ConfigProvenancePayload | None = None
+    if show_config_layers:
+        if resolved_toml is None:
+            raise ValueError("resolved_toml is required when show_config_layers=True")
+        cfg_provenance_payload = build_config_provenance_payload(resolved_toml)
+
     iter_records: Iterator[dict[str, object]] = iter_config_ndjson_records(
         config=config,
         meta=meta,
+        cfg_provenance_payload=cfg_provenance_payload,
     )
     return iter_ndjson_strings(iter_records)
 

@@ -45,6 +45,7 @@ from topmark.cli.options import common_from_sources_options
 from topmark.cli.options import common_header_formatting_options
 from topmark.cli.options import common_output_format_options
 from topmark.cli.options import common_ui_options
+from topmark.cli.options import config_dump_provenance_options
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import validate_stdin_dash_requires_piped_input
 from topmark.constants import TOML_BLOCK_END
@@ -99,6 +100,7 @@ logger: TopmarkLogger = get_logger(__name__)
 )
 @common_ui_options
 @common_config_resolution_options
+@config_dump_provenance_options
 @common_from_sources_options
 @common_file_filtering_options
 @common_file_type_filtering_options
@@ -114,6 +116,8 @@ def config_dump_command(
     # common_config_resolution_options:
     no_config: bool,
     config_files: list[str],
+    # config_dump_provenance_options:
+    show_config_layers: bool,
     # common_from_sources_options:
     files_from: list[str],
     include_from: list[str],
@@ -138,8 +142,9 @@ def config_dump_command(
     that need to consume the resolved configuration.
 
     Notes:
-        - In JSON/NDJSON modes, this command emits only a Config snapshot
-          (no diagnostics).
+        - In JSON/NDJSON modes, this command emits a Config snapshot and,
+          when `--show-layers` is enabled, also emits machine-readable
+          config provenance (still without diagnostics).
 
     Args:
         verbose: Incements the verbosity level,
@@ -148,6 +153,8 @@ def config_dump_command(
         no_color: bool: If set, disable color mode.
         no_config: If True, skip loading project/user configuration files.
         config_files: Additional configuration file paths to load and merge.
+        show_config_layers: If True, include a layered TOML provenance view before
+            the final flattened config dump.
         files_from: Files that contain newline‑delimited *paths* to add to the
             candidate set before filtering. Use ``-`` to read from STDIN.
         include_from: Files that contain include glob patterns (one per line).
@@ -210,7 +217,7 @@ def config_dump_command(
         allow_empty_paths=True,  # We ignore paths in `config dump`
     )
 
-    _resolved, draft_config = build_resolved_toml_sources_and_config_for_plan(
+    resolved_toml, draft_config = build_resolved_toml_sources_and_config_for_plan(
         ctx=ctx,
         plan=plan,
         no_config=no_config,
@@ -276,12 +283,16 @@ def config_dump_command(
             meta=meta,
             config=config,
             fmt=fmt,
+            resolved_toml=resolved_toml,
+            show_config_layers=show_config_layers,
         )
         _exit()
 
     # Human formats
     report: ConfigDumpHumanReport = build_config_dump_human_report(
         config=config,
+        resolved_toml=resolved_toml,
+        show_config_layers=show_config_layers,
         verbosity_level=verbosity_level,
         styled=enable_color,
     )

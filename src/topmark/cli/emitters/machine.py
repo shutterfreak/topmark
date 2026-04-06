@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from topmark.config.model import Config
     from topmark.core.machine.schemas import MetaPayload
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
 
 def emit_machine(
@@ -105,22 +106,40 @@ def emit_config_machine(
     meta: MetaPayload,
     config: Config,
     fmt: OutputFormat,
+    resolved_toml: ResolvedTopmarkTomlSources | None = None,
+    show_config_layers: bool = False,
 ) -> None:
-    """Emit the effective Config snapshot in a machine-readable format to ConsoleLike.
+    """Emit the effective Config snapshot in a machine-readable format.
+
+    When `show_config_layers` is enabled, machine output also includes a
+    `config_provenance` payload that preserves ordered config layers and the
+    corresponding source-local TOML fragments.
 
     Shapes:
-        - JSON: a single object matching ConfigPayload, wrapped as
-          {"meta": ..., "config": ...}.
-        - NDJSON: a single line of the form
-          {"kind": "config", "meta": ..., "config": <ConfigPayload>}.
+        - JSON, default:
+            {"meta": ..., "config": ...}
+        - JSON, with provenance:
+            {"meta": ..., "config_provenance": ..., "config": ...}
+        - NDJSON, default:
+            {"kind": "config", "meta": ..., "config": ...}
+        - NDJSON, with provenance:
+            {"kind": "config_provenance", "meta": ..., "config_provenance": ...}
+            {"kind": "config", "meta": ..., "config": ...}
 
     Args:
         meta: The machine metadata payload.
         config: Immutable runtime configuration to serialize.
         fmt: Target machine format (JSON or NDJSON).
+        resolved_toml: Resolved TOML sources used to build optional machine-readable
+            config provenance.
+        show_config_layers: If `True`, include layered config provenance in the
+            machine output.
 
     Raises:
-        ValueError: if `fmt` is not a supported machine format.
+        ValueError: If `fmt` is not a supported machine format, or if show_config_layers is `True`
+            but resolved_toml is `None`.
+
+
     """
     if not is_machine_format(fmt):
         raise ValueError(f"Unsupported machine output format: {fmt!r}")
@@ -129,6 +148,8 @@ def emit_config_machine(
         meta=meta,
         config=config,
         fmt=fmt,
+        resolved_toml=resolved_toml,
+        show_config_layers=show_config_layers,
     )
 
     # Do not emit trailing newline for JSON

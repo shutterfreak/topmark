@@ -53,6 +53,9 @@ class ArgKey(str, Enum):
     NO_CONFIG = "no_config"
     CONFIG_FOR_PYPROJECT = "for_pyproject"
 
+    # Config: provenance of include/exclude lists/patterns, ...
+    SHOW_CONFIG_LAYERS = "show_config_layers"
+
     # Header fields (NOTE: NOT YET EXPOSED IN CLI OPTIONS)
     HEADER_FIELDS = "header_fields"
     FIELD_VALUES = "field_values"

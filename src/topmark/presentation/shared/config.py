@@ -20,8 +20,9 @@ It intentionally sits between:
   [`topmark.presentation.markdown.config`][topmark.presentation.markdown.config] (Markdown).
 
 Notes:
-    These helpers may perform I/O (e.g. loading bundled resources). They do not print to
-    stdout/stderr; user-facing warnings should be handled by the caller or the emitters.
+    These helpers may perform light serialization work and may load bundled
+    template resources. They do not print to stdout/stderr; user-facing
+    warnings should be handled by the caller or the emitters.
 """
 
 from __future__ import annotations
@@ -30,9 +31,11 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from topmark.config.io.serializers import config_to_topmark_toml_table
+from topmark.config.resolution import build_config_layers_from_resolved_toml_sources
 from topmark.presentation.shared.diagnostic import HumanDiagnosticCounts
 from topmark.presentation.shared.diagnostic import HumanDiagnosticLine
 from topmark.presentation.shared.diagnostic import prepare_human_diagnostics
+from topmark.toml.defaults import build_default_topmark_toml_table
 from topmark.toml.defaults import load_default_topmark_template_toml_text
 from topmark.toml.defaults import render_default_topmark_toml_text
 from topmark.toml.render import clean_toml_text
@@ -41,15 +44,19 @@ from topmark.toml.surgery import nest_toml_under_section
 from topmark.toml.surgery import set_root_flag
 from topmark.toml.template_surgery import set_root_flag_in_template_text
 from topmark.toml.template_surgery import validate_toml_for_config_init
+from topmark.toml.utils import as_toml_table_list
 
 if TYPE_CHECKING:
+    from topmark.config.layers import ConfigLayer
     from topmark.config.model import Config
+    from topmark.toml.resolution import ResolvedTopmarkTomlSources
+    from topmark.toml.types import TomlTable
 
 
 # --- Prepare initial / default configuration documents ---
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class ConfigInitHumanReport:
     """Prepared payload for `topmark config init` (human formats).
 
@@ -130,7 +137,7 @@ def build_config_init_human_report(
     )
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class ConfigDefaultsHumanReport:
     """Prepared TOML payload for `topmark config defaults`.
 
@@ -187,7 +194,7 @@ def build_config_defaults_human_report(
 # --- Check a resolved Config
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class ConfigCheckHumanReport:
     """Prepared human-facing data for `topmark config check`.
 
@@ -273,50 +280,150 @@ def build_config_check_human_report(
 # --- Dump a resolved Config
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class ConfigDumpHumanReport:
     """Prepared human-facing data for `topmark config dump`.
 
     Attributes:
-        config_files: Config files contributing to the effective config (stringified paths).
-        merged_toml: Effective merged configuration rendered as TOML.
+        config_files: Config files contributing to the effective config, rendered
+            as stringified paths.
+        merged_toml: Final flattened effective configuration rendered as TOML.
+        provenance_toml: Optional layered TOML provenance export rendered as
+            TOML. When present, this is an inspection-oriented document whose
+            `[[layers]]` entries preserve provenance metadata and expose each
+            source-local TOML fragment under `[layers.toml.*]`.
+        show_config_layers: Whether layered provenance output was requested.
         verbosity_level: Effective verbosity for gating extra details.
-        styled: Whether to style text output (OutputFormat.TEXT)
+        styled: Whether to style text output (OutputFormat.TEXT).
     """
 
     config_files: list[str]
     merged_toml: str
+    provenance_toml: str | None
+    show_config_layers: bool
     verbosity_level: int
     styled: bool
+
+
+def _build_layer_export_table(
+    *,
+    layer: ConfigLayer,
+    toml_fragment: TomlTable,
+) -> TomlTable:
+    """Return one exported provenance layer as a TOML table.
+
+    Args:
+        layer: One resolved config layer with provenance metadata.
+        toml_fragment: Full source-local TopMark TOML fragment for this layer.
+
+    Returns:
+        A TOML table ready for inclusion in the layered provenance export.
+
+    Notes:
+        The returned table is intentionally export-oriented. It preserves
+        provenance metadata at the layer level and nests the corresponding
+        source-local TOML fragment under the `toml` key so that rendering
+        produces `[layers.toml.*]` tables.
+    """
+    table: TomlTable = {
+        "origin": str(layer.origin),
+        "kind": layer.kind.value,
+        "precedence": layer.precedence,
+        "toml": toml_fragment,
+    }
+    if layer.scope_root is not None:
+        table["scope_root"] = str(layer.scope_root)
+    return table
+
+
+def _build_config_layers_provenance_toml(
+    resolved_toml: ResolvedTopmarkTomlSources,
+) -> str:
+    """Render layered TopMark TOML provenance as a valid export document.
+
+    The export is inspection-oriented rather than directly loadable as a normal
+    `topmark.toml` file. Each `[[layers]]` entry preserves provenance metadata
+    and exposes the source-local TOML fragment under `[layers.toml.*]`.
+
+    Args:
+        resolved_toml: Resolved TOML sources for the current run.
+
+    Returns:
+        The layered provenance document rendered as valid TOML.
+    """
+    layers: list[ConfigLayer] = build_config_layers_from_resolved_toml_sources(
+        resolved_toml.sources
+    )
+
+    exported_layers: list[TomlTable] = []
+
+    if layers:
+        default_layer: ConfigLayer = layers[0]
+        exported_layers.append(
+            _build_layer_export_table(
+                layer=default_layer,
+                toml_fragment=build_default_topmark_toml_table(),
+            )
+        )
+
+    for layer, source in zip(layers[1:], resolved_toml.sources, strict=True):
+        exported_layers.append(
+            _build_layer_export_table(
+                layer=layer,
+                toml_fragment=source.parsed.toml_fragment,
+            )
+        )
+
+    export_doc: TomlTable = {
+        "layers": as_toml_table_list(exported_layers),
+    }
+    return render_toml_table(export_doc)
 
 
 def build_config_dump_human_report(
     *,
     config: Config,
+    resolved_toml: ResolvedTopmarkTomlSources,
+    show_config_layers: bool,
     styled: bool,
     verbosity_level: int,
 ) -> ConfigDumpHumanReport:
     """Prepare human-facing data for `topmark config dump`.
 
-    This helper is Click-free: it performs serialization to TOML but does not print.
+    This helper is Click-free: it performs TOML serialization for the
+    flattened effective config and, when requested, also prepares a layered
+    TOML provenance export.
 
     Args:
         config: Effective frozen configuration.
-        styled: Whether to style text output (OutputFormat.TEXT)
+        resolved_toml: Resolved TOML sources used to build the optional layered
+            provenance export.
+        show_config_layers: If `True`, include a layered TOML provenance export
+            before the flattened config dump.
+        styled: Whether to style text output (OutputFormat.TEXT).
         verbosity_level: Effective verbosity for gating extra details.
 
     Returns:
-        Prepared config file list and merged TOML text.
+        Prepared config file list, flattened TOML text, and optional layered
+        TOML provenance export.
     """
+    # Build the optional inspection-oriented provenance document only when the
+    # caller explicitly requests layered output.
+    provenance_toml: str | None = None
     merged_toml: str = render_toml_table(
         config_to_topmark_toml_table(
             config,
             include_files=False,
         )
     )
+    if show_config_layers:
+        provenance_toml = _build_config_layers_provenance_toml(resolved_toml)
+
     return ConfigDumpHumanReport(
         config_files=_stringify_config_files(config),
         merged_toml=merged_toml,
+        provenance_toml=provenance_toml,
+        show_config_layers=show_config_layers,
         styled=styled,
         verbosity_level=verbosity_level,
     )

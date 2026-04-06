@@ -30,19 +30,24 @@ from topmark.config.io.serializers import config_to_topmark_toml_table
 from topmark.config.machine.schemas import ConfigCheckSummary
 from topmark.config.machine.schemas import ConfigDiagnosticsPayload
 from topmark.config.machine.schemas import ConfigPayload
-from topmark.config.model import Config
+from topmark.config.machine.schemas import ConfigProvenanceLayerPayload
+from topmark.config.machine.schemas import ConfigProvenancePayload
+from topmark.config.resolution import build_config_layers_from_resolved_toml_sources
 from topmark.core.machine.schemas import normalize_payload
 from topmark.core.typing_guards import as_object_dict
 from topmark.diagnostic.machine.schemas import MachineDiagnosticCounts
 from topmark.diagnostic.machine.schemas import MachineDiagnosticEntry
 from topmark.diagnostic.model import DiagnosticStats
 from topmark.diagnostic.model import compute_diagnostic_stats
+from topmark.toml.defaults import build_default_topmark_toml_table
 from topmark.toml.getters import get_object_dict_value
 from topmark.toml.getters import get_string_dict_value
 from topmark.toml.getters import get_string_list_dict_value
 
 if TYPE_CHECKING:
+    from topmark.config.layers import ConfigLayer
     from topmark.config.model import Config
+    from topmark.toml.resolution import ResolvedTopmarkTomlSources
     from topmark.toml.types import TomlTable
 
 
@@ -72,6 +77,73 @@ def build_config_payload(config: Config) -> ConfigPayload:
         policy=get_object_dict_value(normalized_dict, "policy"),
         policy_by_type=get_object_dict_value(normalized_dict, "policy_by_type"),
     )
+
+
+def _normalize_toml_fragment(fragment: TomlTable) -> dict[str, object]:
+    """Normalize one TOML fragment to a JSON-friendly mapping.
+
+    Args:
+        fragment: Source-local TopMark TOML fragment.
+
+    Returns:
+        A JSON-friendly mapping produced by recursively normalizing TOML values
+        (for example, paths and enums) and then narrowing the result to an
+        object-like dict.
+    """
+    normalized: object = normalize_payload(fragment)
+    return as_object_dict(normalized)
+
+
+def build_config_provenance_payload(
+    resolved_toml: ResolvedTopmarkTomlSources,
+) -> ConfigProvenancePayload:
+    """Build a machine-readable layered config provenance payload.
+
+    Args:
+        resolved_toml: Resolved TOML sources for the current run.
+
+    Returns:
+        JSON-friendly provenance payload with ordered layers, starting with the
+        built-in defaults layer when present.
+    """
+    layers: list[ConfigLayer] = build_config_layers_from_resolved_toml_sources(
+        resolved_toml.sources
+    )
+
+    out_layers: list[ConfigProvenanceLayerPayload] = []
+
+    # Preserve the synthetic built-in defaults layer first so that machine
+    # output mirrors the human-facing layered provenance export.
+    if layers:
+        default_layer: ConfigLayer = layers[0]
+        scope_root: str | None = (
+            str(default_layer.scope_root) if default_layer.scope_root is not None else None
+        )
+        out_layers.append(
+            ConfigProvenanceLayerPayload(
+                origin=str(default_layer.origin),
+                kind=default_layer.kind.value,
+                precedence=default_layer.precedence,
+                scope_root=(scope_root),
+                toml=_normalize_toml_fragment(build_default_topmark_toml_table()),
+            )
+        )
+
+    # Then append one payload per resolved TOML source, preserving resolution
+    # order and the corresponding source-local TOML fragment.
+    for layer, source in zip(layers[1:], resolved_toml.sources, strict=True):
+        scope_root = str(layer.scope_root) if layer.scope_root is not None else None
+        out_layers.append(
+            ConfigProvenanceLayerPayload(
+                origin=str(layer.origin),
+                kind=layer.kind.value,
+                precedence=layer.precedence,
+                scope_root=scope_root,
+                toml=_normalize_toml_fragment(source.parsed.toml_fragment),
+            )
+        )
+
+    return ConfigProvenancePayload(layers=out_layers)
 
 
 def build_config_diagnostics_payload(config: Config) -> ConfigDiagnosticsPayload:

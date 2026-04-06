@@ -71,8 +71,8 @@ class CliOpt:
     CONFIG_FILES: Final = "--config"
     NO_CONFIG: Final = "--no-config"
 
-    # Config: provenance of include/exclude lists/patterns
-    SHOW_ORIGIN: Final = "--show-origin"
+    # Config: provenance of include/exclude lists/patterns, ...
+    SHOW_CONFIG_LAYERS: Final = "--show-layers"
 
     # Header fields
     HEADER_FIELDS: Final = "--header-fields"

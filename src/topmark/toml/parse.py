@@ -84,12 +84,14 @@ class ParsedTopmarkToml:
         writer_options: Non-layered writer preferences parsed from the
             `[writer]` table, if present.
         source_options: Discovery metadata parsed from the `[config]` table.
+        toml_fragment: Full source-local TopMark TOML fragment.
     """
 
     config_loading_options: SourceConfigLoadingOptions
     layered_config: TomlTable
     writer_options: WriterOptions | None
     source_options: SourceTomlOptions
+    toml_fragment: TomlTable
 
 
 def _parse_config_loading_options(
@@ -184,6 +186,35 @@ def _extract_layered_config_toml(data: TomlTable) -> TomlTable:
     return out
 
 
+def _extract_toml_fragment(data: TomlTable) -> TomlTable:
+    """Return the full TopMark TOML fragment for one source.
+
+    Args:
+        data: Full TopMark TOML table.
+
+    Returns:
+        A shallow-copy TOML table containing only sections that are valid in a
+        TopMark TOML source.
+    """
+    out: TomlTable = {}
+
+    for section in (
+        Toml.SECTION_CONFIG,
+        Toml.SECTION_HEADER,
+        Toml.SECTION_FIELDS,
+        Toml.SECTION_FORMATTING,
+        Toml.SECTION_POLICY,
+        Toml.SECTION_POLICY_BY_TYPE,
+        Toml.SECTION_FILES,
+        Toml.SECTION_WRITER,
+    ):
+        table: TomlTable | None = _get_table(data, section)
+        if table is not None:
+            out[section] = dict(table)
+
+    return out
+
+
 def _get_table(data: TomlTable, section: str) -> TomlTable | None:
     """Return a named TOML subtable when present and well-formed."""
     value: object = data.get(section)
@@ -208,4 +239,5 @@ def parse_topmark_toml_table(data: TomlTable) -> ParsedTopmarkToml:
         layered_config=_extract_layered_config_toml(data),
         writer_options=_parse_writer_options(writer_tbl),
         source_options=_parse_source_toml_options(config_tbl),
+        toml_fragment=_extract_toml_fragment(data),
     )

@@ -1,36 +1,37 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : test_machine_output.py
-#   file_relpath : tests/cli/test_machine_output.py
+#   file         : test_processing_machine.py
+#   file_relpath : tests/cli/machine/test_processing_machine.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""Machine-output contract tests for TopMark CLI commands.
+"""Machine-output contract tests for TopMark processing CLI commands.
 
-This module verifies the JSON and NDJSON output emitted by TopMark’s
-machine-readable modes (`--output-format json` and `--output-format ndjson`).
+This module verifies the JSON and NDJSON output emitted by processing commands
+such as `topmark check` and `topmark strip` when machine-readable output modes
+are enabled (`--output-format json` and `--output-format ndjson`).
 
 The tests serve as high-level contract checks to ensure that:
 
-- Commands in the `topmark config` family emit a well-formed JSON object
-  containing at least:
+- processing commands emit a well-formed machine payload containing at least:
     - a `meta` block with `tool` and `version`,
-    - a `config` payload.
-
-- Processing commands such as `check` and `strip` emit machine output that also
-  includes the `meta` block and follows the documented schema
+    - a flattened `config` payload,
+    - a `config_diagnostics` payload,
+    - and either detailed per-file `results` or aggregated `summary` rows,
+      depending on the selected output mode;
+- NDJSON summary mode emits the expected record kinds for processing commands;
+- the output follows the documented machine schema
   (see `docs/dev/machine-output.md`).
 
 These tests intentionally avoid checking full schema content
-(e.g. all config fields), focusing instead on structural stability and
-the presence of required top-level keys.
+(e.g. every per-axis status field), focusing instead on structural stability,
+required top-level keys, and representative nested shapes.
 
-All CLI invocations are executed via Click’s `CliRunner`, using the
-helpers in `tests.cli.conftest` to control the working directory and
-assert exit codes.
+All CLI invocations are executed via Click’s `CliRunner`, using the helpers in
+`tests.cli.conftest` to control the working directory and assert exit codes.
 """
 
 from __future__ import annotations
@@ -41,9 +42,7 @@ from typing import cast
 
 import pytest
 
-from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_SUCCESS_or_WOULD_CHANGE
-from tests.cli.conftest import run_cli
 from tests.cli.conftest import run_cli_in
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
@@ -54,38 +53,6 @@ if TYPE_CHECKING:
     from click.testing import Result
 
 # ----- JSON -----
-
-
-def test_config_dump_json_includes_meta() -> None:
-    """Ensure JSON output for `config dump` includes meta/tool/version.
-
-    This is a high-level contract test for machine-readable output: the
-    top-level JSON object must contain a `meta` block with `tool` and
-    `version`, plus a `config` snapshot.
-    """
-    result: Result = run_cli(
-        [CliCmd.CONFIG, CliCmd.CONFIG_DUMP, CliOpt.OUTPUT_FORMAT, "json"],
-    )
-    assert_SUCCESS(result)
-
-    payload: dict[str, object] = json.loads(result.output)
-
-    # Top-level keys
-    assert "meta" in payload
-    assert "config" in payload
-
-    meta_obj = payload.get("meta")
-    assert isinstance(meta_obj, dict)
-    meta: dict[str, object] = cast("dict[str, object]", meta_obj)
-
-    tool_obj = meta.get("tool")
-    assert isinstance(tool_obj, str)
-    assert tool_obj == "topmark"
-
-    # Version should be a non-empty string
-    version_obj = meta.get("version")
-    assert isinstance(version_obj, str)
-    assert version_obj != ""
 
 
 @pytest.mark.parametrize(
@@ -111,7 +78,12 @@ def test_processing_json_includes_meta(tmp_path: Path, command: str) -> None:
 
     result: Result = run_cli_in(
         tmp_path,
-        [command, CliOpt.OUTPUT_FORMAT, "json", "."],
+        [
+            command,
+            CliOpt.OUTPUT_FORMAT,
+            "json",
+            ".",
+        ],
     )
     assert_SUCCESS_or_WOULD_CHANGE(result)
 
@@ -182,7 +154,15 @@ def test_processing_json_detail_shape(tmp_path: Path, command: str) -> None:
     first: dict[str, object] = cast("dict[str, object]", first_raw)
 
     # Basic per-file keys
-    for key in ("path", "file_type", "steps", "step_axes", "status", "views", "outcome"):
+    for key in (
+        "path",
+        "file_type",
+        "steps",
+        "step_axes",
+        "status",
+        "views",
+        "outcome",
+    ):
         assert key in first
 
     # steps: list of strings
@@ -286,36 +266,6 @@ def test_processing_json_summary_shape(tmp_path: Path, command: str) -> None:
 
 
 # ----- NDJSON -----
-
-
-def test_config_dump_ndjson_kinds() -> None:
-    """Ensure NDJSON output for `config dump` emits a config record.
-
-    Verifies that NDJSON output includes at least one `config` record. A
-    `config_diagnostics` record may be added in the future, but is not required
-    at present.
-    """
-    result: Result = run_cli(
-        [CliCmd.CONFIG, CliCmd.CONFIG_DUMP, CliOpt.OUTPUT_FORMAT, "ndjson"],
-    )
-    assert_SUCCESS(result)
-
-    lines: list[str] = [line for line in result.output.splitlines() if line.strip()]
-    assert lines  # at least two lines expected
-
-    kinds: set[str] = set()
-    for line in lines:
-        record_obj: object = json.loads(line)
-        assert isinstance(record_obj, dict)
-        record: dict[str, object] = cast("dict[str, object]", record_obj)
-        kind_obj = record.get("kind")
-        assert isinstance(kind_obj, str)
-        kinds.add(kind_obj)
-
-    # For config dump we currently require a `config` record and allow,
-    # but do not require, a `config_diagnostics` record.
-    assert "config" in kinds
-    assert kinds <= {"config", "config_diagnostics"}
 
 
 @pytest.mark.parametrize(

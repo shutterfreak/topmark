@@ -67,6 +67,7 @@ class MachineKey:
 
     # standard payload container keys
     CONFIG: Final[str] = "config"
+    CONFIG_PROVENANCE: Final[str] = "config_provenance"
     CONFIG_DIAGNOSTICS: Final[str] = "config_diagnostics"
     CONFIG_FILES: Final[str] = "config_files"
     DIAGNOSTIC: Final[str] = "diagnostic"
@@ -112,6 +113,7 @@ class MachineKind:
     """Canonical `kind` values for NDJSON records."""
 
     CONFIG: Final[str] = "config"
+    CONFIG_PROVENANCE: Final[str] = "config_provenance"
     CONFIG_DIAGNOSTICS: Final[str] = "config_diagnostics"
     DIAGNOSTIC: Final[str] = "diagnostic"
     SUMMARY: Final[str] = "summary"
@@ -206,6 +208,7 @@ _KNOWN_KEYS: Final[set[str]] = {
     MachineKey.KIND,
     MachineKey.META,
     MachineKey.CONFIG,
+    MachineKey.CONFIG_PROVENANCE,
     MachineKey.CONFIG_DIAGNOSTICS,
     MachineKey.CONFIG_FILES,
     MachineKey.DIAGNOSTIC,
@@ -233,6 +236,7 @@ _KNOWN_KEYS: Final[set[str]] = {
 }
 _KNOWN_KINDS: Final[set[str]] = {
     MachineKind.CONFIG,
+    MachineKind.CONFIG_PROVENANCE,
     MachineKind.CONFIG_DIAGNOSTICS,
     MachineKind.DIAGNOSTIC,
     MachineKind.SUMMARY,

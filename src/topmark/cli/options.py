@@ -888,6 +888,28 @@ def common_config_resolution_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
     return f
 
 
+def config_dump_provenance_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
+    """Apply config layered dump options.
+
+    Adds ``--show-layers``.
+
+    Args:
+        f: The Click command function to decorate.
+
+    Returns:
+        The decorated function.
+    """
+    f = option_with_underscore_traps(
+        CliOpt.SHOW_CONFIG_LAYERS,
+        ArgKey.SHOW_CONFIG_LAYERS,
+        is_flag=True,
+        default=False,
+        help="Show layered TOML provenance followed by the final flattened config.",
+    )(f)
+
+    return f
+
+
 def common_header_formatting_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
     """Apply common header formatting options.
 

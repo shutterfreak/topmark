@@ -52,8 +52,7 @@ def render_toml_text(
         Rendered TOML text as plain string.
     """
     heading_title_styler: TextStyler = style_for_role(StyleRole.HEADING_TITLE, styled=styled)
-    toml_marker_styler: TextStyler = style_for_role(StyleRole.HEADING_TITLE, styled=styled)
-    config_file_styler: TextStyler = style_for_role(StyleRole.CONFIG_FILE, styled=styled)
+    toml_marker_styler: TextStyler = style_for_role(StyleRole.MARKER_LINE, styled=styled)
 
     parts: list[str] = []
 
@@ -70,11 +69,7 @@ def render_toml_text(
             )
         )
 
-    parts.append(
-        config_file_styler(
-            toml_text,
-        )
-    )
+    parts.append(toml_text)
 
     if verbosity_level > 0:
         parts.append(
