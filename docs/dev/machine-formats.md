@@ -95,6 +95,7 @@ ______________________________________________________________________
 Common NDJSON kinds include:
 
 - `config`
+- `config_provenance`
 - `config_diagnostics` (counts-only in NDJSON prefix records)
 - `diagnostic` (one diagnostic per record; see "Diagnostics" below)
 - `result` (per-file result)
@@ -184,7 +185,8 @@ ______________________________________________________________________
 
 Config commands are file-agnostic and emit config-centric payloads:
 
-- `config dump`: resolved config snapshot (no diagnostics)
+- `config dump`: resolved config snapshot (no diagnostics); when `--show-layers` is used in machine
+  formats, it also emits layered `config_provenance` before the final flattened config snapshot
 - `config defaults`: built-in default TopMark TOML snapshot (no diagnostics)
 - `config init`: built-in default configuration snapshot in machine formats (no diagnostics)
 - `config check`: resolved config snapshot plus diagnostics and a config-check status payload
@@ -196,6 +198,16 @@ underlying default configuration snapshot shape.
 
 For `config check`, the machine payload uses `strict_config_checking` to report the effective
 config-validation strictness after applying CLI override precedence over resolved TOML strictness.
+
+For `config dump --show-layers`, machine output preserves the same logical ordering as the
+human-facing layered export:
+
+- JSON includes `config_provenance` before `config` in the top-level envelope.
+- NDJSON emits a `config_provenance` record first and a `config` record second.
+
+The `config_provenance` payload is inspection-oriented. Each provenance layer preserves metadata
+such as `origin`, `kind`, `precedence`, and optional `scope_root`, and exposes the corresponding
+source-local TopMark TOML fragment under `toml`.
 
 Refer to each command’s documentation for its emitted keys and shapes. Registry commands are
 documented in the schema reference and now include the separate `registry bindings` machine format.

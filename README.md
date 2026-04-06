@@ -48,6 +48,8 @@ ______________________________________________________________________
   - `pyproject.toml` (`[tool.topmark]`)
   - `topmark.toml`
   - CLI overrides and `--config`
+- Inspectable layered config provenance via `topmark config dump --show-layers` and machine-readable
+  `config_provenance` output
 - Fine-grained include/exclude rules
 - Selective application via file patterns or STDIN (list mode or single-file content mode)
 - Strict static typing (PEP 604 unions, Pyright)
@@ -178,17 +180,17 @@ topmark [COMMAND] [OPTIONS] [PATHS]...
 
 ### Subcommands
 
-| Command               | Description                                                         |
-| --------------------- | ------------------------------------------------------------------- |
-| `check`               | Add or update TopMark headers                                       |
-| `strip`               | Remove TopMark headers                                              |
-| `config check`        | Check the merged config for errors.                                 |
-| `config defaults`     | Show the built-in default TopMark TOML document                     |
-| `config dump`         | Show resolved configuration (merged TOML)                           |
-| `config init`         | Output the bundled example TopMark TOML resource with documentation |
-| `registry filetypes`  | List supported file types from the registry                         |
-| `registry processors` | List header processors and mappings from the registry               |
-| `version`             | Print version (PEP 440 or SemVer)                                   |
+| Command               | Description                                                                   |
+| --------------------- | ----------------------------------------------------------------------------- |
+| `check`               | Add or update TopMark headers                                                 |
+| `strip`               | Remove TopMark headers                                                        |
+| `config check`        | Check the merged config for errors.                                           |
+| `config defaults`     | Show the built-in default TopMark TOML document                               |
+| `config dump`         | Show resolved configuration (merged TOML), optionally with layered provenance |
+| `config init`         | Output the bundled example TopMark TOML resource with documentation           |
+| `registry filetypes`  | List supported file types from the registry                                   |
+| `registry processors` | List header processors and mappings from the registry                         |
+| `version`             | Print version (PEP 440 or SemVer)                                             |
 
 ### Examples
 
@@ -207,6 +209,12 @@ topmark strip --apply src/
 
 # Treat config warnings as errors for this run
 topmark check --strict src/
+
+# Inspect merged configuration with layered provenance
+topmark config dump --show-layers
+
+# Emit machine-readable config provenance + flattened config
+topmark config dump --show-layers --output-format json
 
 # Show supported file types in Markdown format
 topmark registry filetypes --output-format markdown --long
@@ -231,6 +239,10 @@ insert/update behavior.
 1. Project config chain (root-most → nearest upward `pyproject.toml` or `topmark.toml`)
 1. Explicit `--config` files (merged in order)
 1. CLI flags and options (highest precedence)
+
+This same ordering is exposed by `topmark config dump --show-layers` as a layered provenance view.
+Human-facing output renders ordered TOML layers before the final flattened config, while
+machine-readable output emits `config_provenance` before the final `config` snapshot.
 
 ### Example `topmark.toml`
 
@@ -274,6 +286,10 @@ layered `Config` values and do not participate in layered config merging.
 For example, `strict_config_checking` is resolved from TOML sources and affects configuration
 validation behaviour; it is not a normal layered `Config` field. CLI/API strictness overrides still
 take precedence for the current run.
+
+In layered provenance output, these source-local TOML fragments remain grouped under their original
+TOML sections (for example `[config]` and `[writer]`) rather than being collapsed into the final
+flattened runtime config payload.
 
 ### Policy semantics
 

@@ -23,11 +23,16 @@ It complements the registry architecture described in [`architecture.md`](archit
 
 This resolver operates within the broader TOML → Config → Runtime architecture (see
 [`architecture.md`](architecture.md)). It consumes the effective registry state and does not perform
-configuration discovery or config-validation strictness resolution itself.
+configuration discovery, layered config provenance export, or config-validation strictness
+resolution itself.
 
 In particular, source-local TOML options such as `[config].root` and `strict_config_checking` are
 resolved before runtime file-type resolution begins. They influence discovery and validation
 behaviour, but are not part of the resolver's matching or tie-break logic.
+
+This distinction is also visible in `topmark config dump --show-layers`: layered provenance exports
+are produced earlier from resolved TOML sources and flattened config state, while file-type
+resolution happens later against the already-effective runtime configuration.
 
 ______________________________________________________________________
 
@@ -49,12 +54,17 @@ The main public entry points are:
 - \[`resolve_file_type_for_path()`\][topmark.resolution.filetypes.resolve_file_type_for_path]
 - \[`resolve_binding_for_path()`\][topmark.resolution.filetypes.resolve_binding_for_path]
 
+These entry points participate only in **path-based runtime resolution**. They do not surface or
+consume layered config provenance payloads such as the human-facing `[[layers]]` export or the
+machine-readable `config_provenance` payload used by `topmark config dump --show-layers`.
+
 See also:
 
 - [`Architecture`](architecture.md)
 - [`Pipelines (Concepts)`](pipelines.md)
 - [`Pipelines (Reference)`](pipelines-reference.md)
 - [`Configuration discovery`](../configuration/discovery.md)
+- [`Configuration index`](../configuration/index.md)
 
 `resolve_binding_for_path()` first resolves the best matching file type for a path, then looks up
 the bound processor through the registry facade.

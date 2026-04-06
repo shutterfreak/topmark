@@ -319,6 +319,8 @@ These commands produce a config snapshot without running the processing pipeline
 Notes:
 
 - `config dump` emits the resolved config snapshot after discovery and merge.
+- `config dump --show-layers` additionally emits a machine-readable `config_provenance` payload
+  before the final flattened config snapshot.
 - `config defaults` emits the built-in default configuration snapshot.
 - `config init` emits the same built-in default configuration snapshot in machine formats, even
   though its human-facing output is the bundled example TopMark TOML resource with comments.
@@ -332,13 +334,88 @@ Notes:
 }
 ```
 
+When `config dump` is invoked with `--show-layers`, the JSON envelope becomes:
+
+```jsonc
+{
+  "meta": { /* MetaPayload */ },
+  "config_provenance": {
+    "layers": [
+      {
+        "origin": "<defaults>",
+        "kind": "default",
+        "precedence": 0,
+        "toml": {
+          "config": { "strict_config_checking": false },
+          "writer": { "strategy": "atomic" }
+        }
+      }
+    ]
+  },
+  "config": { /* ConfigPayload */ }
+}
+```
+
+`config_provenance` is an inspection-oriented payload. Each layer contains:
+
+- `origin` — provenance origin label
+- `kind` — resolved config layer kind
+- `precedence` — numeric layer precedence
+- `scope_root` — optional scope root for discovered layers
+- `toml` — the source-local TopMark TOML fragment contributed by that layer
+
 ### NDJSON shape for `config dump`, `config defaults`, `config init`
 
-A single record:
+Default mode emits a single record:
 
 ```jsonc
 {"kind": "config", "meta": { /* MetaPayload */ }, "config": { /* ConfigPayload */ }}
 ```
+
+When `config dump` is invoked with `--show-layers`, NDJSON emits two records in order:
+
+```jsonc
+{"kind": "config_provenance", "meta": { /* MetaPayload */ }, "config_provenance": { /* ConfigProvenancePayload */ }}
+{"kind": "config", "meta": { /* MetaPayload */ }, "config": { /* ConfigPayload */ }}
+```
+
+## ConfigProvenancePayload
+
+`ConfigProvenancePayload` is a machine-readable layered provenance export used by
+`topmark config dump --show-layers`.
+
+JSON shape:
+
+```jsonc
+{
+  "layers": [
+    {
+      "origin": "<defaults>",
+      "kind": "default",
+      "precedence": 0,
+      "toml": {
+        "config": { "strict_config_checking": false },
+        "header": { "fields": ["file", "file_relpath"] },
+        "writer": { "strategy": "atomic" }
+      }
+    },
+    {
+      "origin": "/repo/pyproject.toml",
+      "kind": "discovered",
+      "precedence": 1,
+      "scope_root": "/repo",
+      "toml": {
+        "fields": { "project": "TopMark" },
+        "writer": { "strategy": "atomic" }
+      }
+    }
+  ]
+}
+```
+
+The payload is inspection-oriented rather than a loadable `topmark.toml` document. It mirrors the
+human-facing layered TOML export by preserving ordered layers and the corresponding source-local
+TopMark TOML fragments.
 
 ______________________________________________________________________
 

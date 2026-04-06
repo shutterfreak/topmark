@@ -55,6 +55,12 @@ optional overrides) when validating a config.
 These options are resolved separately from layered `Config` values and do not participate in layered
 config merging.
 
+This distinction is also visible when inspecting configuration via
+`topmark config dump --show-layers`: source-local TOML fragments are preserved per layer (for
+example under `[[layers]].toml.*` in human output or `config_provenance.layers[].toml` in machine
+output), while the final immutable `Config` represents only the flattened effective configuration
+used at runtime.
+
 ```python
 from topmark import api
 
@@ -106,6 +112,22 @@ assert run.summary.get("unchanged", 0) >= 0
 
 This design keeps the public surface small and semver-stable while allowing flexible per-call
 configuration.
+
+### Configuration resolution and provenance
+
+Internally, TopMark resolves TOML sources into a layered configuration model before producing the
+final immutable `Config` snapshot used by the public API.
+
+This process follows:
+
+1. TOML sources (defaults, user, project, `--config`)
+1. Layered config (merged by precedence)
+1. Flattened effective `Config`
+1. Runtime overlays (API call arguments such as `diff`, `report`, etc.)
+
+The public API only operates on the flattened immutable `Config`. Layered provenance is an
+inspection concern and is exposed via the CLI (`config dump --show-layers`) rather than through the
+stable `topmark.api` surface.
 
 Internally, TopMark resolves TOML sources and builds a merged mutable config draft before freezing
 it into an immutable `Config`. Advanced users can inspect this process via

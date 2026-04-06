@@ -47,6 +47,7 @@ for b in Registry.bindings():
 - Preserves newline style (LF/CRLF/CR) and BOM
 - Provides `strip` to remove headers (also dry‑run by default)
 - Works well in CI and with pre‑commit hooks
+- Inspects **layered configuration provenance** via `topmark config dump --show-layers`
 
 ## Example headers
 
@@ -88,6 +89,9 @@ topmark:header:end
 Core commands: `check`, `strip`, `config`, `registry`, `version`.
 
 The `config` command has the following subcommands: `check`, `defaults`, `dump`, `init`.
+
+Use `config dump --show-layers` to inspect how configuration is built from individual sources and
+how precedence is applied.
 
 TopMark supports two STDIN modes:
 
@@ -134,6 +138,24 @@ as `root` and `strict_config_checking` under `[tool.topmark.config]`.
 Source-local options under `[config]` / `[tool.topmark.config]` do not participate in layered config
 merging. For example, `strict_config_checking` affects configuration validation behaviour rather
 than becoming a normal layered `Config` field.
+
+### Inspecting configuration
+
+Use `topmark config dump` to inspect the effective merged configuration.
+
+For deeper insight into how configuration is constructed, use:
+
+```bash
+topmark config dump --show-layers
+```
+
+This shows:
+
+- the **layered provenance** (defaults → discovered config → `--config` → CLI)
+- the final **flattened effective configuration**
+
+Machine-readable formats (`--output-format json|ndjson`) also expose this provenance via the
+`config_provenance` payload.
 
 ## Next steps
 

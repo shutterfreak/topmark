@@ -25,6 +25,11 @@ layered config merging, but influence discovery and validation behaviour.
   document*.
 - [`topmark config init`](./config/init.md) — print the bundled example TopMark TOML resource.
 
+When using `topmark config dump --show-layers`, the command also exposes **layered configuration
+provenance** in addition to the flattened effective configuration. This layered view reflects how
+configuration was built from individual TOML sources (defaults, discovered config, CLI overrides)
+and includes source-local TOML fragments.
+
 When running `config check`, effective validation strictness is determined by:
 
 1. CLI override (`--strict` / `--no-strict`)
@@ -32,3 +37,7 @@ When running `config check`, effective validation strictness is determined by:
 1. default non-strict behaviour
 
 Warnings are treated as errors only when strict config checking is enabled.
+
+Note that `strict_config_checking` is a **source-local TOML option**, not a layered configuration
+field. It influences validation behaviour but is not part of the final merged config; however, it is
+visible in layered provenance output (`config dump --show-layers`).

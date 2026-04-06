@@ -29,6 +29,26 @@ TopMark supports layered configuration with explicit precedence:
   [Config-loading behaviour](./discovery.md#config-loading-behaviour-toml-level)).
 - `relative_to` affects only header metadata (e.g., `file_relpath`), not discovery.
 
+TopMark also provides an inspection mode via `topmark config dump --show-layers` that exposes
+**layered configuration provenance**. This shows how the final configuration is constructed from
+individual TOML sources and CLI overrides, including their original TOML fragments.
+
+## Configuration flow at a glance
+
+```mermaid
+flowchart LR
+    A["TOML sources<br/>(defaults, user, project, --config)"] --> B["Layered config<br/>(merge by precedence)"]
+    B --> C["Flattened config<br/>(effective Config)"]
+    C --> D["Runtime overlays<br/>(CLI or API execution intent)"]
+```
+
+This reflects the main distinction in TopMark's configuration model:
+
+- TOML sources contribute **layered configuration**.
+- The layered result is resolved into one **flattened effective config**.
+- Runtime overlays are then applied for execution-only concerns such as output mode, apply/dry-run
+  behavior, or stdin handling.
+
 Start here:
 
 - [`Discovery & Precedence`](./discovery.md)
@@ -44,3 +64,5 @@ Also see:
 - API docs:
   - `resolve_toml_sources_and_build_config_draft()`
   - `Config`, `MutableConfig`
+- Usage: [`config dump`](../usage/commands/config/dump.md) for inspecting the effective
+  configuration and layered provenance

@@ -56,6 +56,15 @@ Configuration is discovered as follows (lowest → highest precedence):
 > `--config` (in order) → CLI.\
 > Use `--no-config` to skip discovery.
 
+### Layered provenance (inspection)
+
+When using `topmark config dump --show-layers`, this discovery and merge process is exposed as a
+**layered provenance view**. Each layer corresponds to one of the sources described above (defaults,
+user config, project configs, `--config`, CLI) and includes the original source-local TOML fragment.
+
+This layered view is inspection-oriented and does not change merge semantics; it simply makes the
+effective precedence and contributions of each layer explicit.
+
 ### Summary table
 
 | Layer            | Example location                                      | Notes                                                                                                    |
@@ -156,6 +165,12 @@ Example:
 [config]
 strict_config_checking = true
 ```
+
+This distinction is also visible in layered provenance output:
+
+- In human output (`config dump --show-layers`), source-local TOML fragments are rendered under
+  `[[layers]].toml.*`.
+- In machine output, the same fragments are exposed under `config_provenance.layers[].toml`.
 
 This enables strict config validation for the current project scope, causing warnings to be treated
 as errors during config checking.

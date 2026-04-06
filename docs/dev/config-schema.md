@@ -25,10 +25,19 @@ from `topmark.toml` and from `[tool.topmark]` in `pyproject.toml`.
 `strict_config_checking` is a **TOML-source-local config-loading option**, not a
 layered `Config` field. It is resolved from `[config]` / `[tool.topmark.config]`
 during TOML source resolution and applied after layered config merging.
+
+This distinction matters for `topmark config dump --show-layers`:
+- the human-facing layered TOML export exposes source-local TOML fragments under
+  `[[layers]].toml.*`
+- the machine-readable layered export exposes the same source-local TOML
+  fragments under `config_provenance.layers[].toml`
 ```
 
 ```yaml
 topmark:
+  # In layered provenance exports, source-local TOML fragments preserve their
+  # original TOML grouping, including `[config]` and `[writer]`, rather than
+  # collapsing everything into the final flattened Config payload.
   config:
     type: table
     description: TOML-source-local options resolved separately from layered Config merging.

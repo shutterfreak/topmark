@@ -12,7 +12,7 @@ topmark:header:end
 
 # TopMark `config dump` Command Guide
 
-**Purpose:** Dump the resolved config.
+**Purpose:** Dump the *effective merged* configuration used by TopMark.
 
 The `config dump` subcommand (part of the TopMark [`config` Command Family](../config.md)) prints
 the **effective TopMark configuration** as TOML after applying built-in defaults, discovered
@@ -41,6 +41,9 @@ ______________________________________________________________________
 
 - Shows the **merged** configuration (defaults ⟶ discovered config ⟶ `--config` files ⟶ CLI flags).
 
+- With `--show-layers`, also shows the **layered configuration provenance** before the flattened
+  configuration.
+
 - **File-agnostic**:
 
   - Positional PATHS are **not accepted** (the command fails if provided).
@@ -61,6 +64,35 @@ ______________________________________________________________________
   ...TOML...
 
   \# === END[TOML] ===
+
+### Layered provenance output (`--show-layers`)
+
+When `--show-layers` is used, `config dump` emits two TOML documents in sequence:
+
+1. A **layered provenance export** describing how configuration was constructed.
+1. The final **flattened effective configuration** (unchanged default behaviour).
+
+The layered export is inspection-oriented and uses an array-of-tables structure:
+
+```toml
+[[layers]]
+origin = "<defaults>"
+kind = "default"
+precedence = 0
+
+[layers.toml.config]
+strict_config_checking = false
+```
+
+Each layer includes:
+
+- `origin` — where the configuration came from (e.g. `<defaults>`, file path)
+- `kind` — layer type (e.g. `default`, `discovered`)
+- `precedence` — merge order
+- `scope_root` — optional root for discovered configs
+- `toml` — the source-local TopMark TOML fragment
+
+The second TOML document is identical to the standard flattened output.
 
 {% include-markdown "\_snippets/config-resolution.md" %}
 
@@ -109,6 +141,8 @@ Notes:
 
 - `config dump` is **file-agnostic** and emits the effective configuration after applying defaults →
   discovered config → `--config` files → CLI overrides.
+- With `--show-layers`, machine output also includes a `config_provenance` payload before the
+  flattened config.
 - Diagnostics are not emitted for this command; it is an inspection view of the merged config.
 
 ### JSON schema
@@ -122,17 +156,39 @@ A single JSON document is emitted:
 }
 ```
 
+With `--show-layers`, the JSON envelope becomes:
+
+```jsonc
+{
+  "meta": { /* MetaPayload */ },
+  "config_provenance": { /* ConfigProvenancePayload */ },
+  "config": { /* ConfigPayload */ }
+}
+```
+
 ### NDJSON schema
 
 NDJSON is a stream where each line is a JSON object. Every record includes `kind` and `meta`.
 
-Stream:
+Default mode:
 
 1. `kind="config"` (effective merged config snapshot)
 
 Example:
 
 ```jsonc
+{"kind":"config","meta":{...},"config":{...}}
+```
+
+With `--show-layers`:
+
+1. `kind="config_provenance"` (layered provenance export)
+1. `kind="config"` (effective merged config snapshot)
+
+Example:
+
+```jsonc
+{"kind":"config_provenance","meta":{...},"config_provenance":{...}}
 {"kind":"config","meta":{...},"config":{...}}
 ```
 

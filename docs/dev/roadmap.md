@@ -271,6 +271,14 @@ goals.
       layer-building helpers
     - clarified naming and documentation to consistently refer to “mutable config drafts” instead of
       “compatibility drafts”
+- Added layered configuration provenance export for `config dump`:
+  - `topmark config dump --show-layers` now emits an inspection-oriented layered TOML export before
+    the final flattened effective config
+  - layered human output now preserves source-local TopMark TOML fragments under `[[layers]].toml.*`
+  - machine-readable `config dump` output now supports `config_provenance` in JSON and NDJSON when
+    `--show-layers` is enabled
+  - machine and human layered exports preserve ordering semantics (defaults first, then resolved
+    TOML sources, then the final flattened config snapshot)
 - Config-loading entry points were consolidated around TOML-first resolution:
   - callers must now explicitly handle the `(resolved_sources, draft_config)` tuple when provenance
     is needed
@@ -479,6 +487,14 @@ Completed work:
   - binding registry entries and auxiliary reference rows
 - Documented the stable envelope and key conventions in `docs/dev/machine-formats.md` (and updated
   command pages accordingly).
+- Extended config machine output to support layered provenance inspection:
+  - added `config_provenance` as a stable machine key/kind for `config dump --show-layers`
+  - JSON now emits `config_provenance` before the final flattened `config` payload when layered
+    provenance is requested
+  - NDJSON now emits a `config_provenance` record first and a `config` record second in layered
+    provenance mode
+  - added dedicated contract tests for `config dump` machine output in both JSON and NDJSON modes,
+    including defaults-layer ordering and TOML-fragment shape checks
 
 ### Config template handling
 
@@ -874,6 +890,12 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
 - Config validation strictness is now exposed consistently in the CLI:
   - `config check` and pipeline commands support `--strict` to enforce validation errors
   - non-strict mode reports diagnostics without failing
+- `config dump --show-layers` adds a new inspection mode in both human and machine output:
+  - human output now emits layered TOML provenance before the final flattened config snapshot
+  - machine output now emits `config_provenance` before `config` when layered provenance is
+    requested
+  - downstream tooling that assumed `config dump` machine output always consisted of a single
+    flattened `config` payload/record must be updated when using `--show-layers`
 
 ### Breaking changes in machine output formats
 
@@ -1315,7 +1337,8 @@ Remaining work before 1.0:
 - Final audit of field naming consistency across domains.
 - Confirm that config-validation payloads consistently use `strict_config_checking` and no longer
   refer to legacy `strict` naming.
-- Expand test coverage for machine formats (especially registry + pipeline commands, JSON + NDJSON).
+- Expand test coverage for remaining machine formats (especially registry + pipeline commands, JSON
+  \+ NDJSON); `config dump` layered provenance is now covered in both JSON and NDJSON modes.
 - Stabilize and freeze machine schema documentation (`docs/dev/machine-formats.md`).
 - Review whether pipeline summary rows should eventually expose additional structured fields beyond
   `(outcome, reason, count)`.
@@ -1455,8 +1478,11 @@ This checklist defines the minimum criteria for cutting TopMark 1.0, grouped by 
 #### [Must] Machine formats
 
 - [x] No presentation leakage (color text, human wording) in machine output
-- [ ] Machine outputs are covered by tests for registry commands (`filetypes`, `processors`,
-  `bindings`) and pipeline commands (`check`, `strip`) in both JSON and NDJSON modes
+- [ ] Machine outputs are covered by tests for all commands in both JSON and NDJSON modes
+  - [ ] registry commands (`filetypes`, `processors`, `bindings`)
+  - [ ] pipeline commands (`check`, `strip`)
+  - [ ] config commands (`check`, `defaults`, `dump`, `init`)
+    - [x] `config dump` layered provenance is now covered in both JSON and NDJSON modes
 - [ ] Final schema freeze review before 1.0 (including `(outcome, reason, count)` summary rows)
 - [ ] Confirm that config-validation payloads consistently use `strict_config_checking` and no
   longer expose legacy `strict` naming
@@ -1514,8 +1540,8 @@ This checklist defines the minimum criteria for cutting TopMark 1.0, grouped by 
   - [x] CLI policy override behavior
   - [x] API policy override behavior
 - [x] Engine correctly applies per-path configs and policy registries (covered by integration tests)
-- [ ] Explicit separation between layered config, TOML-source-local config-loading options, and
-  runtime overlays
+- [x] Explicit separation between layered config, TOML-source-local config-loading options, layered
+  provenance export, and runtime overlays
 
 #### [Must] Dependency & ecosystem
 
