@@ -20,7 +20,7 @@ Responsibilities:
 
 Creation of envelopes (adding `meta`/`kind`, selecting container keys, etc.) happens in
 [`topmark.pipeline.machine.envelopes`][topmark.pipeline.machine.envelopes], using shared helpers
-from [`topmark.core.machine.shapes`][topmark.core.machine.shapes].
+from [`topmark.core.machine.envelopes`][topmark.core.machine.envelopes].
 Payload normalization for JSON-compatibility is handled by
 [`topmark.core.machine.schemas.normalize_payload`][topmark.core.machine.schemas.normalize_payload].
 """

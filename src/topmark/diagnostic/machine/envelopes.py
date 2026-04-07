@@ -1,14 +1,14 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : shapes.py
-#   file_relpath : src/topmark/diagnostic/machine/shapes.py
+#   file         : envelopes.py
+#   file_relpath : src/topmark/diagnostic/machine/envelopes.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""NDJSON shape builders for diagnostic machine output.
+"""NDJSON envelope builders for diagnostic machine output.
 
 This module defines shared helpers for emitting diagnostics as **NDJSON records**
 according to TopMark's machine-output contract.
@@ -34,10 +34,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from topmark.core.machine.envelopes import build_ndjson_record
 from topmark.core.machine.schemas import MachineKey
 from topmark.core.machine.schemas import MachineKind
 from topmark.core.machine.schemas import MetaPayload
-from topmark.core.machine.shapes import build_ndjson_record
 from topmark.diagnostic.types import DiagnosticsLike
 
 if TYPE_CHECKING:

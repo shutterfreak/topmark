@@ -29,7 +29,7 @@ Responsibilities:
 See Also:
 - [`topmark.pipeline.machine.payloads`][topmark.pipeline.machine.payloads]:
     domain payload fragments for processing runs.
-- [`topmark.core.machine.shapes`][topmark.core.machine.shapes]:
+- [`topmark.core.machine.envelopes`][topmark.core.machine.envelopes]:
     shared envelope/record helpers (`build_json_envelope`, `build_ndjson_record`,
     config prefix and diagnostic record generators).
 """
@@ -41,13 +41,13 @@ from typing import TYPE_CHECKING
 from topmark.config.machine.envelopes import iter_config_prefix_ndjson_records
 from topmark.config.machine.payloads import build_config_diagnostics_payload
 from topmark.config.machine.payloads import build_config_payload
+from topmark.core.machine.envelopes import build_json_envelope
+from topmark.core.machine.envelopes import build_ndjson_record
 from topmark.core.machine.schemas import MachineDomain
 from topmark.core.machine.schemas import MachineKey
 from topmark.core.machine.schemas import MachineKind
 from topmark.core.machine.schemas import MetaPayload
-from topmark.core.machine.shapes import build_json_envelope
-from topmark.core.machine.shapes import build_ndjson_record
-from topmark.diagnostic.machine.shapes import iter_diagnostic_ndjson_records
+from topmark.diagnostic.machine.envelopes import iter_diagnostic_ndjson_records
 from topmark.pipeline.machine.payloads import build_processing_results_summary_map_payload
 from topmark.pipeline.machine.payloads import iter_processing_results_payload_items
 from topmark.pipeline.machine.payloads import iter_processing_results_summary_entries

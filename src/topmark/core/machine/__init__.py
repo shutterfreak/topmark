@@ -26,7 +26,7 @@ Separation of concerns (naming + placement):
    - Returns: dataclass / dict / TypedDict (not an envelope)
 
 3) Shape builders (envelopes and NDJSON records; still not serialized)
-   - [`topmark.core.machine.shapes`][topmark.core.machine.shapes]
+   - [`topmark.core.machine.envelopes`][topmark.core.machine.envelopes]
    - Naming:
      - `build_json_envelope(...)` -> dict
      - `build_ndjson_record(...)` -> dict

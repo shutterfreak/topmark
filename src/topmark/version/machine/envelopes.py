@@ -1,8 +1,8 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : shapes.py
-#   file_relpath : src/topmark/version/machine/shapes.py
+#   file         : envelopes.py
+#   file_relpath : src/topmark/version/machine/envelopes.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -22,7 +22,7 @@ This module is intentionally:
 Where things live:
 - [`topmark.core.machine.payloads`][topmark.core.machine.payloads]: build *payload* objects
     (domain data).
-- [`topmark.core.machine.shapes`][topmark.core.machine.shapes]: build *envelopes/records*
+- [`topmark.core.machine.envelopes`][topmark.core.machine.envelopes]: build *envelopes/records*
     around payloads.
 - [`topmark.core.machine.serializers`][topmark.core.machine.serializers]: serialize
     envelopes/records to strings.
@@ -36,11 +36,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from topmark.core.machine.envelopes import build_ndjson_record
 from topmark.core.machine.schemas import MachineDomain
 from topmark.core.machine.schemas import MachineKey
 from topmark.core.machine.schemas import MachineKind
 from topmark.core.machine.schemas import MetaPayload
-from topmark.core.machine.shapes import build_ndjson_record
 from topmark.diagnostic.model import DiagnosticLevel
 from topmark.version.machine.payloads import build_version_payload
 

@@ -18,8 +18,8 @@ Layers:
 - **schemas**: Typed schema fragments for version-specific payloads (static typing only)
 - **payloads**: Pure payload builders for the version domain (no `meta`/`kind`, no serialization) -
   [`topmark.version.machine.payloads`][topmark.version.machine.payloads]
-- **shapes**: Composition of domain payloads into full machine shapes -
-  [`topmark.version.machine.shapes`][topmark.version.machine.shapes]:
+- **envelopes**: Composition of domain payloads into full machine envelopes -
+  [`topmark.version.machine.envelopes`][topmark.version.machine.envelopes]:
   - JSON envelope (`meta` + version payloads)
   - NDJSON record stream (Pattern A: every record includes `kind` and `meta`)
 - **serializers**: Pure JSON/NDJSON helpers that turn shaped objects/records into strings

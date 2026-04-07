@@ -1,8 +1,8 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : shapes.py
-#   file_relpath : src/topmark/core/machine/shapes.py
+#   file         : envelopes.py
+#   file_relpath : src/topmark/core/machine/envelopes.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -22,7 +22,7 @@ This module is intentionally:
 Where things live:
 - [`topmark.core.machine.payloads`][topmark.core.machine.payloads]: build *payload* objects
     (domain data).
-- [`topmark.core.machine.shapes`][topmark.core.machine.shapes]: build *envelopes/records*
+- [`topmark.core.machine.envelopes`][topmark.core.machine.envelopes]: build *envelopes/records*
     around payloads.
 - [`topmark.core.machine.serializers`][topmark.core.machine.serializers]: serialize
     envelopes/records to strings.

@@ -21,7 +21,7 @@ Scope:
     - serialize (`json.dumps`) or print.
 
     They only construct the domain payload shapes consumed by shape builders in
-    [`topmark.core.machine.shapes`][topmark.core.machine.shapes] (JSON envelopes and
+    [`topmark.core.machine.envelopes`][topmark.core.machine.envelopes] (JSON envelopes and
     NDJSON records).
 
 Naming conventions:

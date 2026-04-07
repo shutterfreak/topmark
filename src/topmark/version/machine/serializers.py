@@ -21,7 +21,7 @@ It is intentionally:
 Separation of concerns:
 - [`topmark.version.machine.payloads`][topmark.version.machine.payloads] builds payload objects
     (domain data, no envelope).
-- [`topmark.version.machine.shapes`][topmark.version.machine.shapes] builds envelopes/records
+- [`topmark.version.machine.envelopes`][topmark.version.machine.envelopes] builds envelopes/records
     (adds meta/kind/container keys).
 - This module serializes those shapes to JSON/NDJSON strings.
 
@@ -40,8 +40,8 @@ from topmark.core.machine.schemas import MachineKey
 from topmark.core.machine.schemas import MetaPayload
 from topmark.core.machine.serializers import serialize_json_envelope
 from topmark.core.machine.serializers import serialize_ndjson
+from topmark.version.machine.envelopes import iter_version_ndjson_records
 from topmark.version.machine.payloads import build_version_payload
-from topmark.version.machine.shapes import iter_version_ndjson_records
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

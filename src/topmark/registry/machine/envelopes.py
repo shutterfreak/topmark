@@ -33,9 +33,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from topmark.core.machine.envelopes import build_json_envelope
+from topmark.core.machine.envelopes import build_ndjson_record
 from topmark.core.machine.schemas import MachineKind
-from topmark.core.machine.shapes import build_json_envelope
-from topmark.core.machine.shapes import build_ndjson_record
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
