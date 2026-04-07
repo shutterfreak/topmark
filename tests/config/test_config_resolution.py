@@ -32,11 +32,11 @@ from topmark.config.io.deserializers import mutable_config_from_toml_dict
 from topmark.config.overrides import ConfigOverrides
 from topmark.config.overrides import apply_config_overrides
 from topmark.config.policy import HeaderMutationMode
-from topmark.config.resolution import build_config_layers_from_resolved_toml_sources
-from topmark.config.resolution import build_effective_config_for_path
-from topmark.config.resolution import merge_layers_globally
-from topmark.config.resolution import resolve_toml_sources_and_build_config_draft
-from topmark.config.resolution import select_applicable_layers
+from topmark.config.resolution.bridge import resolve_toml_sources_and_build_config_draft
+from topmark.config.resolution.layers import build_config_layers_from_resolved_toml_sources
+from topmark.config.resolution.merge import build_effective_config_for_path
+from topmark.config.resolution.merge import merge_layers_globally
+from topmark.config.resolution.merge import select_applicable_layers
 from topmark.resolution.files import resolve_file_list
 from topmark.toml.keys import Toml
 from topmark.toml.loaders import load_topmark_toml_source
@@ -46,9 +46,9 @@ from topmark.toml.resolution import resolve_topmark_toml_sources
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.config.layers import ConfigLayer
     from topmark.config.model import Config
     from topmark.config.model import MutableConfig
+    from topmark.config.resolution.layers import ConfigLayer
     from topmark.config.types import PatternSource
     from topmark.toml.types import TomlTable
     from topmark.toml.types import TomlValue

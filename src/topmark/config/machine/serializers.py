@@ -33,18 +33,18 @@ from topmark.config.machine.envelopes import build_config_json_envelope
 from topmark.config.machine.envelopes import iter_config_check_ndjson_records
 from topmark.config.machine.envelopes import iter_config_diagnostics_ndjson_records
 from topmark.config.machine.envelopes import iter_config_ndjson_records
-from topmark.config.machine.payloads import build_config_provenance_payload
 from topmark.core.formats import OutputFormat
 from topmark.core.formats import is_machine_format
 from topmark.core.machine.serializers import iter_ndjson_strings
 from topmark.core.machine.serializers import serialize_json_object
+from topmark.toml.machine.payloads import build_toml_provenance_payload
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from topmark.config.machine.schemas import ConfigProvenancePayload
     from topmark.config.model import Config
     from topmark.core.machine.schemas import MetaPayload
+    from topmark.toml.machine.schemas import TomlProvenancePayload
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
 
@@ -125,7 +125,7 @@ def serialize_config_json(
         - with provenance:
             {
                 "meta": <MetaPayload>,
-                "config_provenance": <ConfigProvenancePayload>,
+                "config_provenance": <TomlProvenancePayload>,
                 "config": <ConfigPayload>,
             }
 
@@ -141,11 +141,11 @@ def serialize_config_json(
     Raises:
         ValueError: If `show_config_layers` is `True` but `resolved_toml` is `None`.
     """
-    cfg_provenance_payload: ConfigProvenancePayload | None = None
+    cfg_provenance_payload: TomlProvenancePayload | None = None
     if show_config_layers:
         if resolved_toml is None:
             raise ValueError("resolved_toml is required when show_config_layers=True")
-        cfg_provenance_payload = build_config_provenance_payload(resolved_toml)
+        cfg_provenance_payload = build_toml_provenance_payload(resolved_toml)
 
     envelope: dict[str, object] = build_config_json_envelope(
         config=config,
@@ -171,7 +171,7 @@ def serialize_config_ndjson(
             1) {
                    "kind": "config_provenance",
                    "meta": <MetaPayload>,
-                   "config_provenance": <ConfigProvenancePayload>,
+                   "config_provenance": <TomlProvenancePayload>,
                }
             2) {"kind": "config", "meta": <MetaPayload>, "config": <ConfigPayload>}
 
@@ -187,11 +187,11 @@ def serialize_config_ndjson(
     Raises:
         ValueError: If `show_config_layers` is `True` but `resolved_toml` is `None`.
     """
-    cfg_provenance_payload: ConfigProvenancePayload | None = None
+    cfg_provenance_payload: TomlProvenancePayload | None = None
     if show_config_layers:
         if resolved_toml is None:
             raise ValueError("resolved_toml is required when show_config_layers=True")
-        cfg_provenance_payload = build_config_provenance_payload(resolved_toml)
+        cfg_provenance_payload = build_toml_provenance_payload(resolved_toml)
 
     iter_records: Iterator[dict[str, object]] = iter_config_ndjson_records(
         config=config,

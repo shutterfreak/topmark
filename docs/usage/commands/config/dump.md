@@ -161,7 +161,7 @@ With `--show-layers`, the JSON envelope becomes:
 ```jsonc
 {
   "meta": { /* MetaPayload */ },
-  "config_provenance": { /* ConfigProvenancePayload */ },
+  "config_provenance": { /* TomlProvenancePayload */ },
   "config": { /* ConfigPayload */ }
 }
 ```

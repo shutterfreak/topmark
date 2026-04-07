@@ -28,7 +28,7 @@ from topmark.api.runtime import select_pipeline
 from topmark.api.types import PipelineKindLiteral
 from topmark.api.types import PublicPolicy
 from topmark.api.types import PublicReportScopeLiteral
-from topmark.config.resolution import resolve_toml_sources_and_build_config_draft
+from topmark.config.resolution.bridge import resolve_toml_sources_and_build_config_draft
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.processors.types import BoundsKind
 from topmark.processors.types import HeaderBounds

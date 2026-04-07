@@ -40,7 +40,7 @@ config discovery/validation behaviour without participating in layered config me
 
 The main integration point between TOML resolution and config merging is:
 
-- \[`resolve_toml_sources_and_build_config_draft()`\][topmark.config.resolution.resolve_toml_sources_and_build_config_draft]
+- \[`resolve_toml_sources_and_build_config_draft()`\][topmark.config.resolution.bridge.resolve_toml_sources_and_build_config_draft]
 
 See also:
 

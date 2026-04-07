@@ -131,7 +131,7 @@ stable `topmark.api` surface.
 
 Internally, TopMark resolves TOML sources and builds a merged mutable config draft before freezing
 it into an immutable `Config`. Advanced users can inspect this process via
-\[`resolve_toml_sources_and_build_config_draft()`\][topmark.config.resolution.resolve_toml_sources_and_build_config_draft].
+\[`resolve_toml_sources_and_build_config_draft()`\][topmark.config.resolution.bridge.resolve_toml_sources_and_build_config_draft].
 
 ### Recognized vs supported file types
 

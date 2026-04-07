@@ -39,9 +39,9 @@ from topmark.config.overrides import PolicyOverrides
 from topmark.config.overrides import apply_config_overrides
 from topmark.config.policy import EmptyInsertMode
 from topmark.config.policy import HeaderMutationMode
-from topmark.config.resolution import build_config_layers_from_resolved_toml_sources
-from topmark.config.resolution import build_effective_config_for_path
-from topmark.config.resolution import resolve_toml_sources_and_build_config_draft
+from topmark.config.resolution.bridge import resolve_toml_sources_and_build_config_draft
+from topmark.config.resolution.layers import build_config_layers_from_resolved_toml_sources
+from topmark.config.resolution.merge import build_effective_config_for_path
 from topmark.constants import TOPMARK_VERSION
 from topmark.core.errors import InvalidPolicyError
 from topmark.core.logging import get_logger
@@ -59,7 +59,7 @@ if TYPE_CHECKING:
 
     from topmark.api.types import PipelineKindLiteral
     from topmark.api.types import PublicPolicy
-    from topmark.config.layers import ConfigLayer
+    from topmark.config.resolution.layers import ConfigLayer
     from topmark.core.exit_codes import ExitCode
     from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext

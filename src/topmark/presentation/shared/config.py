@@ -31,7 +31,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from topmark.config.io.serializers import config_to_topmark_toml_table
-from topmark.config.resolution import build_config_layers_from_resolved_toml_sources
+from topmark.config.resolution.layers import build_config_layers_from_resolved_toml_sources
 from topmark.presentation.shared.diagnostic import HumanDiagnosticCounts
 from topmark.presentation.shared.diagnostic import HumanDiagnosticLine
 from topmark.presentation.shared.diagnostic import prepare_human_diagnostics
@@ -47,8 +47,8 @@ from topmark.toml.template_surgery import validate_toml_for_config_init
 from topmark.toml.utils import as_toml_table_list
 
 if TYPE_CHECKING:
-    from topmark.config.layers import ConfigLayer
     from topmark.config.model import Config
+    from topmark.config.resolution.layers import ConfigLayer
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
     from topmark.toml.types import TomlTable
 

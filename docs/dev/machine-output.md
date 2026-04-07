@@ -375,13 +375,13 @@ Default mode emits a single record:
 When `config dump` is invoked with `--show-layers`, NDJSON emits two records in order:
 
 ```jsonc
-{"kind": "config_provenance", "meta": { /* MetaPayload */ }, "config_provenance": { /* ConfigProvenancePayload */ }}
+{"kind": "config_provenance", "meta": { /* MetaPayload */ }, "config_provenance": { /* TomlProvenancePayload */ }}
 {"kind": "config", "meta": { /* MetaPayload */ }, "config": { /* ConfigPayload */ }}
 ```
 
-## ConfigProvenancePayload
+## TomlProvenancePayload
 
-`ConfigProvenancePayload` is a machine-readable layered provenance export used by
+`TomlProvenancePayload` is a machine-readable layered provenance export used by
 `topmark config dump --show-layers`.
 
 JSON shape:

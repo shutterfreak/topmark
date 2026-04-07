@@ -366,6 +366,6 @@ ______________________________________________________________________
   - TOML source resolution:
     \[`resolve_topmark_toml_sources()`\][topmark.toml.resolution.resolve_topmark_toml_sources]
   - Config draft construction:
-    \[`resolve_toml_sources_and_build_config_draft()`\][topmark.config.resolution.resolve_toml_sources_and_build_config_draft]
+    \[`resolve_toml_sources_and_build_config_draft()`\][topmark.config.resolution.bridge.resolve_toml_sources_and_build_config_draft]
   - Policy evaluation: \[`effective_policy()`\][topmark.config.policy.effective_policy]
 - Related doc: `README.md`
