@@ -32,7 +32,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.core.machine.schemas import MachineKey
+from topmark.version.machine.schemas import VersionKey
 from topmark.version.runtime import compute_version_info
 
 if TYPE_CHECKING:
@@ -62,6 +62,6 @@ def build_version_payload(
     version_info: VersionInfo = compute_version_info(semver=semver)
 
     return {
-        MachineKey.VERSION: version_info.version_text,
-        MachineKey.VERSION_FORMAT: version_info.version_format,
+        VersionKey.VERSION.value: version_info.version_text,
+        VersionKey.VERSION_FORMAT.value: version_info.version_format,
     }, version_info.err

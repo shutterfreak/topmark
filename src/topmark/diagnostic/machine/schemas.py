@@ -25,6 +25,7 @@ envelopes, domains typically prebuild lists of `MachineDiagnosticEntry` and a
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 from typing import TYPE_CHECKING
 
 from topmark.diagnostic.model import DiagnosticStats
@@ -34,6 +35,43 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from topmark.diagnostic.model import Diagnostic
+
+
+class DiagnosticKey(str, Enum):
+    """Stable keys used by diagnostic machine-output payloads.
+
+    These keys belong to the shared diagnostic domain and are reused by other
+    machine-output packages when embedding lists of diagnostics or aggregate
+    diagnostic counts.
+
+    Attributes:
+        DIAGNOSTIC_COUNTS: Container key for aggregate per-level counts.
+        DIAGNOSTICS: Container key for a list of diagnostic entries.
+        LEVEL: Severity level field for a single diagnostic entry.
+        MESSAGE: Human-readable diagnostic text for a single entry.
+        INFO: Count key for info-level diagnostics.
+        WARNING: Count key for warning-level diagnostics.
+        ERROR: Count key for error-level diagnostics.
+    """
+
+    # diagnostics (cross-domain)
+    DIAGNOSTIC_COUNTS = "diagnostic_counts"
+    DIAGNOSTICS = "diagnostics"
+    LEVEL = "level"
+    MESSAGE = "message"
+    INFO = "info"
+    WARNING = "warning"
+    ERROR = "error"
+
+
+class DiagnosticKind(str, Enum):
+    """Stable NDJSON record kinds owned by the diagnostic domain.
+
+    Attributes:
+        DIAGNOSTIC: One diagnostic record in an NDJSON stream.
+    """
+
+    DIAGNOSTIC = "diagnostic"
 
 
 @dataclass(slots=True)
@@ -63,8 +101,8 @@ class MachineDiagnosticEntry:
     def to_dict(self) -> dict[str, str]:
         """Return a JSON-friendly dict of this diagnostic entry."""
         return {
-            "level": self.level,
-            "message": self.message,
+            DiagnosticKey.LEVEL.value: self.level,
+            DiagnosticKey.MESSAGE.value: self.message,
         }
 
 
@@ -98,7 +136,7 @@ class MachineDiagnosticCounts:
     def to_dict(self) -> dict[str, int]:
         """Return a JSON-friendly dict of the per-level counts."""
         return {
-            "info": self.info,
-            "warning": self.warning,
-            "error": self.error,
+            DiagnosticKey.INFO.value: self.info,
+            DiagnosticKey.WARNING.value: self.warning,
+            DiagnosticKey.ERROR.value: self.error,
         }

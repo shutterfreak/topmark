@@ -35,7 +35,7 @@ from typing import TYPE_CHECKING
 
 from topmark.core.machine.envelopes import build_json_envelope
 from topmark.core.machine.envelopes import build_ndjson_record
-from topmark.core.machine.schemas import MachineKind
+from topmark.registry.machine.schemas import RegistryKind
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -90,7 +90,7 @@ def iter_filetypes_ndjson_records(
     for item in payload:
         entry: FileTypeEntry = item
         yield build_ndjson_record(
-            kind=MachineKind.FILETYPE,
+            kind=RegistryKind.FILETYPE,
             meta=meta,
             payload=entry,
         )
@@ -136,7 +136,7 @@ def iter_processors_ndjson_records(
     for proc_item in payload["processors"]:
         proc_entry: ProcessorEntry = proc_item
         yield build_ndjson_record(
-            kind=MachineKind.PROCESSOR,
+            kind=RegistryKind.PROCESSOR,
             meta=meta,
             payload=proc_entry,
         )
@@ -184,7 +184,7 @@ def iter_bindings_ndjson_records(
     for binding_item in payload["bindings"]:
         binding_entry: BindingEntry = binding_item
         yield build_ndjson_record(
-            kind=MachineKind.BINDING,
+            kind=RegistryKind.BINDING,
             meta=meta,
             payload=binding_entry,
         )
@@ -192,7 +192,7 @@ def iter_bindings_ndjson_records(
     for uft_item in payload["unbound_filetypes"]:
         uft_entry: FileTypeRef = uft_item
         yield build_ndjson_record(
-            kind=MachineKind.UNBOUND_FILETYPE,
+            kind=RegistryKind.UNBOUND_FILETYPE,
             meta=meta,
             payload=uft_entry,
         )
@@ -200,7 +200,7 @@ def iter_bindings_ndjson_records(
     for unused_item in payload["unused_processors"]:
         proc_entry: ProcessorRef = unused_item
         yield build_ndjson_record(
-            kind=MachineKind.UNUSED_PROCESSOR,
+            kind=RegistryKind.UNUSED_PROCESSOR,
             meta=meta,
             payload=proc_entry,
         )

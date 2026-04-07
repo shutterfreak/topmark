@@ -38,12 +38,93 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Final
 from typing import TypedDict
 from typing import cast
 
 
-@dataclass(slots=True)
+class MachineKey(str, Enum):
+    """Stable keys shared by all machine-output envelopes.
+
+    These keys are intentionally limited to the shared envelope layer and other
+    cross-domain fields that multiple machine-output domains rely on. Domain-
+    specific payload keys belong in the corresponding `*.machine.schemas`
+    module.
+
+    Attributes:
+        KIND: Top-level record kind key used by NDJSON records.
+        META: Top-level metadata key shared by JSON and NDJSON machine output.
+        DOMAIN: Stable diagnostic domain key used by diagnostic payloads.
+        COMMAND: Top-level command name for command-summary style payloads.
+        SUBCOMMAND: Optional subcommand name for command-summary style payloads.
+    """
+
+    KIND = "kind"
+    META = "meta"
+
+    # diagnostics (cross-domain)
+    DOMAIN = "domain"
+
+    # CLI context
+    COMMAND = "command"
+    SUBCOMMAND = "subcommand"
+
+
+class MachineMetaKey(str, Enum):
+    """Stable keys for the shared machine-output metadata payload.
+
+    Attributes:
+        TOOL: Executable/tool name.
+        VERSION: TopMark version string.
+        PLATFORM: Execution platform identifier.
+    """
+
+    TOOL = "tool"
+    VERSION = "version"
+    PLATFORM = "platform"
+
+
+class MachineDomain(str, Enum):
+    """Stable diagnostic domains shared across machine-output emitters.
+
+    These values are used as the payload value for the envelope-level
+    `MachineKey.DOMAIN` key when emitting machine-readable diagnostics.
+
+    Attributes:
+        CONFIG: Diagnostics originating from config discovery or validation.
+        PIPELINE: Diagnostics originating from processing-pipeline execution.
+        REGISTRY: Diagnostics originating from registry inspection commands.
+        VERSION: Diagnostics originating from version computation/rendering.
+    """
+
+    CONFIG = "config"
+    PIPELINE = "pipeline"
+    REGISTRY = "registry"
+    VERSION = "version"
+
+
+class DetailLevel(str, Enum):
+    """Enumeration of supported machine-output detail levels.
+
+    These values describe how much information is included in a payload and are
+    intended for **machine consumers**.
+
+    Attributes:
+        BRIEF: Minimal representation (default CLI behavior).
+        LONG: Expanded representation including additional identity and
+            descriptive fields (triggered via `--long`).
+
+    Notes:
+        - This is a machine-facing concept; it should not be confused with
+          human-facing verbosity levels.
+        - Consumers should rely on this field instead of inferring structure
+          from payload shape.
+    """
+
+    BRIEF = "brief"
+    LONG = "long"
+
+
+@dataclass(slots=True, frozen=True, kw_only=True)
 class CommandSummary:
     """Identifies the TopMark command context for a machine-output record.
 
@@ -54,98 +135,6 @@ class CommandSummary:
 
     command: str
     subcommand: str | None = None
-
-
-class MachineKey:
-    """Canonical keys used in machine-readable JSON/NDJSON envelopes.
-
-    These are shared constants to avoid stringly-typed key drift across emitters.
-    """
-
-    KIND: Final[str] = "kind"
-    META: Final[str] = "meta"
-
-    # standard payload container keys
-    CONFIG: Final[str] = "config"
-    CONFIG_PROVENANCE: Final[str] = "config_provenance"
-    CONFIG_LAYERS: Final[str] = "config_layers"
-    CONFIG_DIAGNOSTICS: Final[str] = "config_diagnostics"
-    CONFIG_FILES: Final[str] = "config_files"
-    CONFIG_CHECK: Final[str] = "config_check"
-    DIAGNOSTIC: Final[str] = "diagnostic"
-    SUMMARY: Final[str] = "summary"
-    # Single processing result (NDJSON)
-    RESULT: Final[str] = "result"
-    # List of processing results (JSON)
-    RESULTS: Final[str] = "results"
-
-    # common fields
-    DOMAIN: Final[str] = "domain"
-    LEVEL: Final[str] = "level"
-    MESSAGE: Final[str] = "message"
-
-    COMMAND: Final[str] = "command"
-    SUBCOMMAND: Final[str] = "subcommand"
-
-    DIAGNOSTICS: Final[str] = "diagnostics"
-    DIAGNOSTIC_COUNTS: Final[str] = "diagnostic_counts"
-
-    # Config checking
-    OK: Final[str] = "ok"
-    STRICT_CONFIG_CHECKING: Final[str] = "strict_config_checking"
-
-    # Version
-    VERSION: Final[str] = "version"
-    VERSION_INFO: Final[str] = "version_info"
-    VERSION_FORMAT: Final[str] = "version_format"
-
-    # Generic result status (optional; command-specific usage)
-    STATUS: Final[str] = "status"
-    ERROR: Final[str] = "error"
-
-    # Registry
-    FILETYPES: Final[str] = "filetypes"
-    PROCESSORS: Final[str] = "processors"
-    UNBOUND_FILETYPES: Final[str] = "unbound_filetypes"
-    BINDINGS: Final[str] = "bindings"
-    UNUSED_PROCESSORS: Final[str] = "unused_processors"
-
-
-class MachineKind:
-    """Canonical `kind` values for NDJSON records."""
-
-    CONFIG: Final[str] = "config"
-    CONFIG_PROVENANCE: Final[str] = "config_provenance"
-    CONFIG_LAYER: Final[str] = "config_layer"
-    CONFIG_DIAGNOSTICS: Final[str] = "config_diagnostics"
-    CONFIG_CHECK: Final[str] = "config_check"
-    DIAGNOSTIC: Final[str] = "diagnostic"
-    SUMMARY: Final[str] = "summary"
-    RESULT: Final[str] = "result"
-    VERSION: Final[str] = "version"
-
-    # Registry
-    FILETYPE: Final[str] = "filetype"
-    PROCESSOR: Final[str] = "processor"
-    UNBOUND_FILETYPE: Final[str] = "unbound_filetype"
-    BINDING: Final[str] = "binding"
-    UNUSED_PROCESSOR: Final[str] = "unused_processor"
-
-
-class MachineMeta:
-    """Canonical keys used in MetaPayload (identified by `MachineKey.META`) (metadata)."""
-
-    TOOL: Final[str] = "tool"
-    VERSION: Final[str] = "version"
-    PLATFORM: Final[str] = "platform"
-
-
-class MachineDomain:
-    """Canonical values for `MachineKey.DOMAIN` (diagnostics)."""
-
-    CONFIG: Final[str] = "config"
-    VERSION: Final[str] = "version"
-    REGISTRY: Final[str] = "registry"
 
 
 class MetaPayload(TypedDict, total=True):
@@ -182,119 +171,7 @@ class DetailedMetaPayload(MetaPayload, total=True):
     detail_level: DetailLevel
 
 
-class DetailLevel(str, Enum):
-    """Enumeration of supported machine-output detail levels.
-
-    These values describe how much information is included in a payload and are
-    intended for **machine consumers**.
-
-    Attributes:
-        BRIEF: Minimal representation (default CLI behavior).
-        LONG: Expanded representation including additional identity and
-            descriptive fields (triggered via `--long`).
-
-    Notes:
-        - This is a machine-facing concept; it should not be confused with
-          human-facing verbosity levels.
-        - Consumers should rely on this field instead of inferring structure
-          from payload shape.
-    """
-
-    BRIEF = "brief"
-    LONG = "long"
-
-
-# --- Validation helpers ---
-
-# These sets are primarily used for guarding against accidental typos in builders.
-# Payload-specific keys are intentionally extensible, so only a core set is listed.
-_KNOWN_KEYS: Final[set[str]] = {
-    MachineKey.KIND,
-    MachineKey.META,
-    MachineKey.CONFIG,
-    MachineKey.CONFIG_PROVENANCE,
-    MachineKey.CONFIG_LAYERS,
-    MachineKey.CONFIG_DIAGNOSTICS,
-    MachineKey.CONFIG_FILES,
-    MachineKey.CONFIG_CHECK,
-    MachineKey.DIAGNOSTIC,
-    MachineKey.SUMMARY,
-    MachineKey.RESULT,
-    MachineKey.RESULTS,
-    MachineKey.DOMAIN,
-    MachineKey.LEVEL,
-    MachineKey.MESSAGE,
-    MachineKey.COMMAND,
-    MachineKey.SUBCOMMAND,
-    MachineKey.DIAGNOSTIC_COUNTS,
-    MachineKey.OK,
-    MachineKey.STRICT_CONFIG_CHECKING,
-    MachineKey.VERSION,
-    MachineKey.VERSION_INFO,
-    MachineKey.VERSION_FORMAT,
-    MachineKey.STATUS,
-    MachineKey.ERROR,
-    MachineKey.FILETYPES,
-    MachineKey.PROCESSORS,
-    MachineKey.UNBOUND_FILETYPES,
-    MachineKey.BINDINGS,
-    MachineKey.UNUSED_PROCESSORS,
-}
-_KNOWN_KINDS: Final[set[str]] = {
-    MachineKind.CONFIG,
-    MachineKind.CONFIG_PROVENANCE,
-    MachineKind.CONFIG_LAYER,
-    MachineKind.CONFIG_DIAGNOSTICS,
-    MachineKind.CONFIG_CHECK,
-    MachineKind.DIAGNOSTIC,
-    MachineKind.SUMMARY,
-    MachineKind.RESULT,
-    MachineKind.VERSION,
-    MachineKind.FILETYPE,
-    MachineKind.PROCESSOR,
-    MachineKind.UNBOUND_FILETYPE,
-    MachineKind.BINDING,
-    MachineKind.UNUSED_PROCESSOR,
-}
-
-
-def validate_machine_key(key: str) -> None:
-    """Validate that `key` looks like a usable machine-output key.
-
-    This is a lightweight guard aimed at catching obvious mistakes (e.g. empty strings).
-    The machine schema is intentionally extensible, so unknown payload keys are not
-    rejected by default.
-
-    Args:
-        key: Candidate key string.
-
-    Raises:
-        ValueError: If `key` is empty.
-    """
-    # NOTE: “keys” are trickier because payload keys are intentionally extensible.
-    # Conwider validating the envelope keys (kind, meta) + a small set of top-level payload names
-    # considered canonical.
-    # if key not in _KNOWN_KEYS:
-    #     raise ValueError(f"Unknown machine key '{key}' - valid choices: {', '.join(_KNOWN_KEYS)}")
-    if not key:
-        raise ValueError("machine key must be a non-empty string")
-
-
-def validate_machine_kind(kind: str) -> None:
-    """Validate that `kind` is a known machine record kind.
-
-    Args:
-        kind: Candidate kind string.
-
-    Raises:
-        ValueError: If `kind` is empty or not a known kind.
-    """
-    if not kind:
-        raise ValueError("machine kind must be a non-empty string")
-    if kind not in _KNOWN_KINDS:
-        raise ValueError(
-            f"Unknown machine kind '{kind}' - valid choices: {', '.join(_KNOWN_KINDS)}"
-        )
+# ---- Payload normalization ----
 
 
 def normalize_payload(obj: object) -> object:
@@ -302,7 +179,9 @@ def normalize_payload(obj: object) -> object:
 
     Conversions:
       - `Path` -> `str`
-      - `Enum` -> `Enum.name`
+      - `Enum`:
+        - `str`-backed Enum (e.g. StrEnum) -> `value`
+        - other Enum -> `name`
       - object with callable `.to_dict()` -> normalize(`.to_dict()`)
       - `Mapping` -> `dict[str, normalized value]`
       - `list/tuple/set/frozenset` -> `list[normalized item]`
@@ -323,6 +202,10 @@ def normalize_payload(obj: object) -> object:
         return str(obj)
 
     if isinstance(obj, Enum):
+        if isinstance(obj, str):
+            # StrEnum → use value (already a str)
+            return obj
+        # non-str Enum → use name
         return obj.name
 
     to_dict_obj: object = getattr(obj, "to_dict", None)

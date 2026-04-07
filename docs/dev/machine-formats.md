@@ -68,10 +68,11 @@ In JSON, `meta` appears once at the top level.
 
 In NDJSON, `meta` appears in **every record**.
 
-Canonical keys, kinds, and helper builders for machine output live under
+Shared envelope keys and helpers for machine output live under
 \[`topmark.core.machine`\][topmark.core.machine]. Domain packages (for example
 \[`topmark.config.machine`\][topmark.config.machine] and
-\[`topmark.pipeline.machine`\][topmark.pipeline.machine]) build on these shared primitives.
+\[`topmark.pipeline.machine`\][topmark.pipeline.machine]) define their own payload keys and NDJSON
+record kinds in their respective `*.machine.schemas` modules.
 
 Unlike human-facing verbosity, `detail_level` is part of the machine contract. Consumers should
 prefer this field over inferring the projection from payload shape alone.
@@ -91,6 +92,12 @@ Each NDJSON line is a JSON object with a stable envelope:
 ______________________________________________________________________
 
 ## Shared `kind` values
+
+NDJSON record kinds are owned by the schema module of the corresponding machine-output domain (for
+example \[`topmark.config.machine.schemas.ConfigKind`\][topmark.config.machine.schemas.ConfigKind]
+or
+\[`topmark.registry.machine.schemas.RegistryKind`\][topmark.registry.machine.schemas.RegistryKind]).
+The list below reflects commonly emitted kinds across commands.
 
 Common NDJSON kinds include:
 
@@ -120,11 +127,13 @@ warnings and errors. For machine output:
 - **JSON** uses stable `{level, message}` entries within domain payloads (for example
   `config_diagnostics.diagnostics`).
 - **NDJSON** emits one `diagnostic` record per diagnostic, with a `domain` field identifying the
-  originating domain (for example `"config"`).
+  originating domain (for example `"config"`, using values from
+  \[`topmark.core.machine.schemas.MachineDomain`\][topmark.core.machine.schemas.MachineDomain]).
 
-The JSON-friendly schema helpers for diagnostics are named with a `Machine*` prefix (for example
-`MachineDiagnosticEntry` and `MachineDiagnosticCounts`) and live under
-\[`topmark.diagnostic.machine.schemas`\][topmark.diagnostic.machine.schemas].
+The JSON-friendly schema helpers and keys for diagnostics are defined under
+\[`topmark.diagnostic.machine.schemas`\][topmark.diagnostic.machine.schemas], including
+\[`DiagnosticKey`\][topmark.diagnostic.machine.schemas.DiagnosticKey] and
+\[`DiagnosticKind`\][topmark.diagnostic.machine.schemas.DiagnosticKind].
 
 ______________________________________________________________________
 
@@ -138,7 +147,8 @@ ______________________________________________________________________
 - NDJSON emits a stable prefix:
   - `config`
   - `config_diagnostics` (counts-only)
-  - zero or more `diagnostic` records (config diagnostics)
+  - zero or more `diagnostic` records (config diagnostics, domain=`"config"` via
+    \[`MachineDomain`\][topmark.core.machine.schemas.MachineDomain])
   - then either per-file `result` records (detail mode) or per-outcome **reason-preserving**
     `summary` records (summary mode)
 
@@ -208,6 +218,12 @@ human-facing layered export:
 The `config_provenance` payload is inspection-oriented. Each provenance layer preserves metadata
 such as `origin`, `kind`, `precedence`, and optional `scope_root`, and exposes the corresponding
 source-local TopMark TOML fragment under `toml`.
+
+Config-specific payload keys and NDJSON kinds are defined in
+\[`topmark.config.machine.schemas.ConfigKey`\][topmark.config.machine.schemas.ConfigKey] and
+\[`topmark.config.machine.schemas.ConfigKind`\][topmark.config.machine.schemas.ConfigKind]. Shared
+diagnostic keys used within config payloads are defined in
+\[`topmark.diagnostic.machine.schemas`\][topmark.diagnostic.machine.schemas].
 
 Refer to each command’s documentation for its emitted keys and shapes. Registry commands are
 documented in the schema reference and now include the separate `registry bindings` machine format.

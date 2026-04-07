@@ -27,12 +27,13 @@ from typing import TYPE_CHECKING
 from topmark.config.machine.payloads import build_config_check_summary_payload
 from topmark.config.machine.payloads import build_config_diagnostics_payload
 from topmark.config.machine.payloads import build_config_payload
+from topmark.config.machine.schemas import ConfigKey
+from topmark.config.machine.schemas import ConfigKind
 from topmark.core.machine.envelopes import build_json_envelope
 from topmark.core.machine.envelopes import build_ndjson_record
 from topmark.core.machine.schemas import MachineDomain
-from topmark.core.machine.schemas import MachineKey
-from topmark.core.machine.schemas import MachineKind
 from topmark.diagnostic.machine.envelopes import iter_diagnostic_ndjson_records
+from topmark.diagnostic.machine.schemas import DiagnosticKey
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -110,15 +111,15 @@ def iter_config_ndjson_records(
     """
     if cfg_provenance_payload is not None:
         yield build_ndjson_record(
-            kind=MachineKind.CONFIG_PROVENANCE,
+            kind=ConfigKind.CONFIG_PROVENANCE,
             meta=meta,
-            container_key=MachineKey.CONFIG_PROVENANCE,
+            container_key=ConfigKey.CONFIG_PROVENANCE,
             payload=cfg_provenance_payload,
         )
 
     payload: ConfigPayload = build_config_payload(config)
     yield build_ndjson_record(
-        kind=MachineKind.CONFIG,
+        kind=ConfigKind.CONFIG,
         meta=meta,
         payload=payload,
     )
@@ -173,10 +174,10 @@ def iter_config_diagnostics_ndjson_records(
     counts: MachineDiagnosticCounts = payload.diagnostic_counts
 
     yield build_ndjson_record(
-        kind=MachineKind.CONFIG_DIAGNOSTICS,
+        kind=ConfigKind.CONFIG_DIAGNOSTICS,
         meta=meta,
         payload={
-            MachineKey.DIAGNOSTIC_COUNTS: counts.to_dict(),
+            DiagnosticKey.DIAGNOSTIC_COUNTS.value: counts.to_dict(),
         },
     )
     # One diagnostic per line
@@ -263,16 +264,16 @@ def iter_config_prefix_ndjson_records(
     counts_only: MachineDiagnosticCounts = diag_payload.diagnostic_counts
 
     yield build_ndjson_record(
-        kind=MachineKind.CONFIG,
+        kind=ConfigKind.CONFIG,
         meta=meta,
         payload=payload,
     )
 
     yield build_ndjson_record(
-        kind=MachineKind.CONFIG_DIAGNOSTICS,
+        kind=ConfigKind.CONFIG_DIAGNOSTICS,
         meta=meta,
         payload={
-            MachineKey.DIAGNOSTIC_COUNTS: counts_only.to_dict(),
+            DiagnosticKey.DIAGNOSTIC_COUNTS.value: counts_only.to_dict(),
         },
     )
 
@@ -322,9 +323,9 @@ def iter_config_check_ndjson_records(
     )
 
     yield build_ndjson_record(
-        kind=MachineKind.CONFIG_CHECK,
+        kind=ConfigKind.CONFIG_CHECK,
         meta=meta,
-        container_key=MachineKey.CONFIG_CHECK,
+        container_key=ConfigKey.CONFIG_CHECK,
         payload=config_check_summary,
     )
 

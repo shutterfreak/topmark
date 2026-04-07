@@ -41,16 +41,17 @@ from typing import TYPE_CHECKING
 from topmark.config.machine.envelopes import iter_config_prefix_ndjson_records
 from topmark.config.machine.payloads import build_config_diagnostics_payload
 from topmark.config.machine.payloads import build_config_payload
+from topmark.config.machine.schemas import ConfigKey
 from topmark.core.machine.envelopes import build_json_envelope
 from topmark.core.machine.envelopes import build_ndjson_record
 from topmark.core.machine.schemas import MachineDomain
-from topmark.core.machine.schemas import MachineKey
-from topmark.core.machine.schemas import MachineKind
 from topmark.core.machine.schemas import MetaPayload
 from topmark.diagnostic.machine.envelopes import iter_diagnostic_ndjson_records
 from topmark.pipeline.machine.payloads import build_processing_results_summary_map_payload
 from topmark.pipeline.machine.payloads import iter_processing_results_payload_items
 from topmark.pipeline.machine.payloads import iter_processing_results_summary_entries
+from topmark.pipeline.machine.schemas import PipelineKey
+from topmark.pipeline.machine.schemas import PipelineKind
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -113,18 +114,18 @@ def build_processing_results_json_envelope(
             results,
         )
         payload: dict[str, object] = {
-            MachineKey.CONFIG: cfg_payload,
-            MachineKey.CONFIG_DIAGNOSTICS: cfg_diag_payload,
-            MachineKey.SUMMARY: summary_list,
+            ConfigKey.CONFIG.value: cfg_payload,
+            ConfigKey.CONFIG_DIAGNOSTICS.value: cfg_diag_payload,
+            PipelineKey.SUMMARY.value: summary_list,
         }
     else:
         results_iter: Iterator[dict[str, object]] = iter_processing_results_payload_items(
             results,
         )
         payload = {
-            MachineKey.CONFIG: cfg_payload,
-            MachineKey.CONFIG_DIAGNOSTICS: cfg_diag_payload,
-            MachineKey.RESULTS: list(results_iter),
+            ConfigKey.CONFIG.value: cfg_payload,
+            ConfigKey.CONFIG_DIAGNOSTICS.value: cfg_diag_payload,
+            PipelineKey.RESULTS.value: list(results_iter),
         }
 
     envelope: dict[str, object] = build_json_envelope(
@@ -184,14 +185,14 @@ def iter_processing_results_ndjson_records(
     if summary_mode:
         for record in iter_processing_results_summary_entries(results):
             yield build_ndjson_record(
-                kind=MachineKind.SUMMARY,
+                kind=PipelineKind.SUMMARY,
                 meta=meta,
                 payload=record,
             )
     else:
         for r in results:
             yield build_ndjson_record(
-                kind=MachineKind.RESULT,
+                kind=PipelineKind.RESULT,
                 meta=meta,
                 payload=r.to_dict(),
             )

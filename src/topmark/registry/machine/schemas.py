@@ -37,8 +37,50 @@ Envelope/record shaping lives in
 
 from __future__ import annotations
 
+from enum import Enum
 from typing import TypeAlias
 from typing import TypedDict
+
+
+class RegistryKey(str, Enum):
+    """Stable registry-domain keys for machine-readable payloads.
+
+    These keys describe the JSON payload containers used by registry-related
+    commands.
+
+    Attributes:
+        BINDINGS: Container key for effective registry bindings.
+        FILETYPES: Container key for file-type listings.
+        PROCESSORS: Container key for processor listings.
+        UNBOUND_FILETYPES: Container key for file types without an effective
+            processor binding.
+        UNUSED_PROCESSORS: Container key for processors not participating in an
+            effective binding.
+    """
+
+    BINDINGS = "bindings"
+    FILETYPES = "filetypes"
+    PROCESSORS = "processors"
+    UNBOUND_FILETYPES = "unbound_filetypes"
+    UNUSED_PROCESSORS = "unused_processors"
+
+
+class RegistryKind(str, Enum):
+    """Stable NDJSON kinds emitted by the registry machine-output domain.
+
+    Attributes:
+        BINDING: One effective binding record.
+        FILETYPE: One file-type record.
+        PROCESSOR: One processor record.
+        UNBOUND_FILETYPE: One record for an unbound file type.
+        UNUSED_PROCESSOR: One record for an unused processor.
+    """
+
+    BINDING = "binding"
+    FILETYPE = "filetype"
+    PROCESSOR = "processor"
+    UNBOUND_FILETYPE = "unbound_filetype"
+    UNUSED_PROCESSOR = "unused_processor"
 
 
 class FileTypePolicyEntry(TypedDict):

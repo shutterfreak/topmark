@@ -103,7 +103,7 @@ def build_filetypes_payload(*, show_details: bool) -> FileTypesPayload:
     """
     raw_items: list[FileTypeInfo] = list_filetypes()
 
-    payload: list[FileTypeBriefEntry | FileTypeDetailEntry] = []
+    payload: list[FileTypeBriefEntry] | list[FileTypeDetailEntry] = []
     for item in sorted(raw_items, key=lambda it: str(it["qualified_key"])):
         if show_details:
             payload.append(
@@ -146,7 +146,7 @@ def build_processors_payload(*, show_details: bool) -> ProcessorsPayload:
     """
     raw_items: list[ProcessorInfo] = list_processors()
 
-    processors: list[ProcessorBriefEntry | ProcessorDetailEntry] = []
+    processors: list[ProcessorBriefEntry] | list[ProcessorDetailEntry] = []
     for item in sorted(raw_items, key=lambda it: str(it["qualified_key"])):
         if show_details:
             processors.append(

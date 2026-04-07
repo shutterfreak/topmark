@@ -53,9 +53,13 @@ def build_json_envelope(
     Returns:
         JSON-serializable envelope dict.
     """
-    out: dict[str, object] = {MachineKey.META: dict(meta)}
+    out: dict[str, object] = {
+        MachineKey.META.value: dict(meta),
+    }
+
     for name, payload in payloads.items():
         out[name] = normalize_payload(payload)
+
     return out
 
 
@@ -87,11 +91,13 @@ def build_ndjson_record(
     """
     # Ensure JSON object keys are strings and keep the envelope uniform.
     resolved_payload_name: str = container_key if container_key else kind
+
     record: dict[str, object] = {
-        MachineKey.KIND: kind,
-        MachineKey.META: dict(meta),
+        MachineKey.KIND.value: kind,
+        MachineKey.META.value: dict(meta),
         resolved_payload_name: normalize_payload(
             payload
         ),  # payload may be a dict or an object with to_dict()
     }
+
     return record

@@ -78,6 +78,11 @@ Notes:
 - `detail_level` (optional) is machine-facing and distinguishes the default projection (`"brief"`)
   from the expanded projection requested via `--long` (`"long"`).
 
+Shared metadata keys are defined in
+\[`topmark.core.machine.schemas.MachineMetaKey`\][topmark.core.machine.schemas.MachineMetaKey].
+Diagnostic-domain identifiers used in diagnostic payloads are defined in
+\[`topmark.core.machine.schemas.MachineDomain`\][topmark.core.machine.schemas.MachineDomain].
+
 Canonical keys are defined in \[`topmark.core.machine.schemas`\][topmark.core.machine.schemas].
 
 ### NDJSON record contract
@@ -98,11 +103,20 @@ Example:
 Consumers should switch on the `kind` field rather than relying on ordering, though TopMark does
 emit a stable prefix for some command families (see below).
 
-Record construction and serialization helpers live under
-\[`topmark.core.machine`\][topmark.core.machine].
+Shared record construction and envelope serialization helpers live under
+\[`topmark.core.machine`\][topmark.core.machine]. Domain-specific payload builders and record kinds
+live in the corresponding `*.machine` packages.
 
-Canonical `kind` strings are defined in
-\[`topmark.core.machine.schemas.MachineKind`\][topmark.core.machine.schemas.MachineKind].
+Canonical `kind` strings are now owned by the schema module for the corresponding machine-output
+package rather than a single monolithic core namespace. Shared envelope keys remain in
+\[`topmark.core.machine.schemas`\][topmark.core.machine.schemas], while record kinds are defined in
+package-local schema modules such as:
+
+- \[`topmark.config.machine.schemas.ConfigKind`\][topmark.config.machine.schemas.ConfigKind]
+- \[`topmark.pipeline.machine.schemas.PipelineKind`\][topmark.pipeline.machine.schemas.PipelineKind]
+- \[`topmark.diagnostic.machine.schemas.DiagnosticKind`\][topmark.diagnostic.machine.schemas.DiagnosticKind]
+- \[`topmark.registry.machine.schemas.RegistryKind`\][topmark.registry.machine.schemas.RegistryKind]
+- \[`topmark.version.machine.schemas.VersionKind`\][topmark.version.machine.schemas.VersionKind]
 
 ______________________________________________________________________
 
@@ -201,7 +215,9 @@ NDJSON rules for processing commands:
 - The stream begins with:
   1. `config`
   1. `config_diagnostics` (**counts-only**)
-  1. zero or more `diagnostic` records (each with `domain="config"`)
+  1. zero or more `diagnostic` records (each with `domain="config"`, using the shared
+     diagnostic-domain value from
+     \[`topmark.core.machine.schemas.MachineDomain`\][topmark.core.machine.schemas.MachineDomain])
 - Then either:
   - detail mode: one `result` record per file
   - summary mode: one `summary` record per `(outcome, reason)` bucket
@@ -271,7 +287,8 @@ High-level structure (keys may be extended over time):
 Normalization rules:
 
 - `Path` → string
-- `Enum` → string token (typically `.name`)
+- `str`-backed `Enum` / `StrEnum` → string value (`.value`)
+- other `Enum` values → enum member name (`.name`)
 - nested mappings/sequences → standard JSON objects/arrays
 
 For the current exact fields, see:
@@ -300,7 +317,7 @@ JSON shape:
 
 - `diagnostic_counts`: counts per level (`info`, `warning`, `error`)
 - `diagnostics`: list of individual diagnostics (stable `{level, message}` entries; see
-  \[`topmark.diagnostic.machine.schemas`\][topmark.diagnostic.machine.schemas])
+  \[`topmark.diagnostic.machine.schemas.DiagnosticKey`\][topmark.diagnostic.machine.schemas.DiagnosticKey])
 
 > [!NOTE] In NDJSON, `config_diagnostics` is **counts-only** and each individual config diagnostic
 > is emitted as a separate `diagnostic` record with `domain="config"` (one record per diagnostic).
@@ -417,6 +434,10 @@ The payload is inspection-oriented rather than a loadable `topmark.toml` documen
 human-facing layered TOML export by preserving ordered layers and the corresponding source-local
 TopMark TOML fragments.
 
+The outer `config_layers` container key belongs to the config machine-output domain, while the inner
+provenance-layer fragment keys (`origin`, `kind`, `precedence`, `toml`, `scope_root`) are owned by
+\[`topmark.toml.machine.schemas.TomlKey`\][topmark.toml.machine.schemas.TomlKey].
+
 ______________________________________________________________________
 
 ## `topmark config check`
@@ -477,6 +498,12 @@ Notes:
 
 (See `topmark.config.machine.*` for canonical builders/serializers.)
 
+Config-specific JSON payload keys and NDJSON kinds are defined in
+\[`topmark.config.machine.schemas.ConfigKey`\][topmark.config.machine.schemas.ConfigKey] and
+\[`topmark.config.machine.schemas.ConfigKind`\][topmark.config.machine.schemas.ConfigKind]. Shared
+config diagnostic entry/count keys are defined in
+\[`topmark.diagnostic.machine.schemas`\][topmark.diagnostic.machine.schemas].
+
 ______________________________________________________________________
 
 ## `topmark version`
@@ -498,6 +525,11 @@ ______________________________________________________________________
 ```jsonc
 {"kind":"version","meta":{ /* MetaPayload */ },"version_info":{ "version":"<package version>", "version_format":"pep440" }}
 ```
+
+The NDJSON `version` record kind is defined in
+\[`topmark.version.machine.schemas.VersionKind`\][topmark.version.machine.schemas.VersionKind],
+while JSON payload keys such as `version_info` are defined in
+\[`topmark.version.machine.schemas.VersionKey`\][topmark.version.machine.schemas.VersionKey].
 
 Notes:
 
@@ -566,6 +598,9 @@ NDJSON emits one record per file type:
 
 Canonical schemas/builders live in `topmark.registry.machine.*`.
 
+The corresponding NDJSON record kind is owned by
+\[`topmark.registry.machine.schemas.RegistryKind`\][topmark.registry.machine.schemas.RegistryKind].
+
 ### `topmark registry processors`
 
 JSON envelope:
@@ -614,6 +649,9 @@ NDJSON emits one record per processor:
 ```
 
 Canonical schemas/builders live in `topmark.registry.machine.*`.
+
+The corresponding NDJSON record kind is owned by
+\[`topmark.registry.machine.schemas.RegistryKind`\][topmark.registry.machine.schemas.RegistryKind].
 
 ### `topmark registry bindings`
 
@@ -673,6 +711,9 @@ NDJSON emits:
 ```
 
 Canonical schemas/builders live in `topmark.registry.machine.*`.
+
+The corresponding NDJSON record kinds are owned by
+\[`topmark.registry.machine.schemas.RegistryKind`\][topmark.registry.machine.schemas.RegistryKind].
 
 ______________________________________________________________________
 

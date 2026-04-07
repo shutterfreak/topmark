@@ -43,7 +43,34 @@ Notes:
 
 from __future__ import annotations
 
+from enum import Enum
 from typing import TypedDict
+
+
+class PipelineKey(str, Enum):
+    """Stable pipeline-domain keys for machine-readable payloads.
+
+    Attributes:
+        RESULT: Container key for a single processing result.
+        RESULTS: Container key for a JSON list of processing results.
+        SUMMARY: Container key for pipeline outcome summaries.
+    """
+
+    RESULT = "result"
+    RESULTS = "results"
+    SUMMARY = "summary"
+
+
+class PipelineKind(str, Enum):
+    """Stable NDJSON kinds emitted by the pipeline machine-output domain.
+
+    Attributes:
+        RESULT: One per-file processing result record.
+        SUMMARY: One summary-bucket record.
+    """
+
+    RESULT = "result"
+    SUMMARY = "summary"
 
 
 class OutcomeSummaryMapEntry(TypedDict):

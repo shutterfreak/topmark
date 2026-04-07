@@ -36,15 +36,16 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.core.formats import OutputFormat
-from topmark.core.machine.schemas import MachineKey
-from topmark.core.machine.schemas import MetaPayload
 from topmark.core.machine.serializers import serialize_json_envelope
 from topmark.core.machine.serializers import serialize_ndjson
 from topmark.version.machine.envelopes import iter_version_ndjson_records
 from topmark.version.machine.payloads import build_version_payload
+from topmark.version.machine.schemas import VersionKey
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+
+    from topmark.core.machine.schemas import MetaPayload
 
 
 def serialize_version(
@@ -103,7 +104,9 @@ def serialize_version_json(
     payload, _err = build_version_payload(semver=semver)
     return serialize_json_envelope(
         meta=meta,
-        **{MachineKey.VERSION_INFO: payload},
+        **{
+            VersionKey.VERSION_INFO.value: payload,
+        },
     )
 
 

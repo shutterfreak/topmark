@@ -36,8 +36,9 @@ from typing import TYPE_CHECKING
 
 from topmark.core.machine.envelopes import build_ndjson_record
 from topmark.core.machine.schemas import MachineKey
-from topmark.core.machine.schemas import MachineKind
 from topmark.core.machine.schemas import MetaPayload
+from topmark.diagnostic.machine.schemas import DiagnosticKey
+from topmark.diagnostic.machine.schemas import DiagnosticKind
 from topmark.diagnostic.types import DiagnosticsLike
 
 if TYPE_CHECKING:
@@ -83,11 +84,11 @@ def iter_diagnostic_ndjson_records(
         level_obj: object = getattr(d, "level", "")
         msg_obj: object = getattr(d, "message", "")
         yield build_ndjson_record(
-            kind=MachineKind.DIAGNOSTIC,
+            kind=DiagnosticKind.DIAGNOSTIC,
             meta=meta,
             payload={
-                MachineKey.DOMAIN: domain,
-                MachineKey.LEVEL: _level_to_str(level_obj),
-                MachineKey.MESSAGE: str(msg_obj),
+                MachineKey.DOMAIN.value: domain,
+                DiagnosticKey.LEVEL.value: _level_to_str(level_obj),
+                DiagnosticKey.MESSAGE.value: str(msg_obj),
             },
         )

@@ -39,10 +39,12 @@ from typing import TYPE_CHECKING
 from topmark.core.machine.envelopes import build_ndjson_record
 from topmark.core.machine.schemas import MachineDomain
 from topmark.core.machine.schemas import MachineKey
-from topmark.core.machine.schemas import MachineKind
 from topmark.core.machine.schemas import MetaPayload
+from topmark.diagnostic.machine.schemas import DiagnosticKey
+from topmark.diagnostic.machine.schemas import DiagnosticKind
 from topmark.diagnostic.model import DiagnosticLevel
 from topmark.version.machine.payloads import build_version_payload
+from topmark.version.machine.schemas import VersionKind
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -65,7 +67,7 @@ def build_version_ndjson_record(
         `{"kind": "version", "meta": {...}, "version": {...}}`
     """
     return build_ndjson_record(
-        kind=MachineKind.VERSION,
+        kind=VersionKind.VERSION,
         meta=meta,
         payload=payload,
         # Prefer omitting container_key so it defaults to kind ("version").
@@ -93,12 +95,12 @@ def build_version_diagnostic_ndjson_record(
         {"kind": "diagnostic", "meta": {...}, "diagnostic": {...}}
     """
     return build_ndjson_record(
-        kind=MachineKind.DIAGNOSTIC,
+        kind=DiagnosticKind.DIAGNOSTIC,
         meta=meta,
         payload={
-            MachineKey.DOMAIN: MachineDomain.VERSION,
-            MachineKey.LEVEL: level.value,
-            MachineKey.MESSAGE: message,
+            MachineKey.DOMAIN.value: MachineDomain.VERSION,
+            DiagnosticKey.LEVEL.value: level.value,
+            DiagnosticKey.MESSAGE.value: message,
         },
     )
 
