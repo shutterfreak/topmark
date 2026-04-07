@@ -36,7 +36,7 @@ class TomlKey(str, Enum):
 
     Attributes:
         CONFIG_LAYERS: Container key for ordered provenance layers.
-        LAYER_KIND: Key describing the resolved provenance-layer kind.
+        KIND: Key describing the resolved provenance-layer kind.
         ORIGIN: Source label for the provenance layer.
         PRECEDENCE: Numeric layer precedence.
         TOML: Nested TopMark TOML fragment for the layer.
@@ -44,7 +44,7 @@ class TomlKey(str, Enum):
     """
 
     CONFIG_LAYERS = "config_layers"
-    LAYER_KIND = "layer_kind"
+    KIND = "kind"
     ORIGIN = "origin"
     PRECEDENCE = "precedence"
     TOML = "toml"
@@ -77,7 +77,7 @@ class TomlProvenanceLayerPayload:
         """
         out: dict[str, object] = {
             TomlKey.ORIGIN.value: self.origin,
-            TomlKey.LAYER_KIND.value: self.kind,
+            TomlKey.KIND.value: self.kind,
             TomlKey.PRECEDENCE.value: self.precedence,
             TomlKey.TOML.value: self.toml,
         }
