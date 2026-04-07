@@ -43,6 +43,7 @@ from topmark.toml.defaults import build_default_topmark_toml_table
 from topmark.toml.getters import get_object_dict_value
 from topmark.toml.getters import get_string_dict_value
 from topmark.toml.getters import get_string_list_dict_value
+from topmark.toml.keys import Toml
 
 if TYPE_CHECKING:
     from topmark.config.layers import ConfigLayer
@@ -70,12 +71,30 @@ def build_config_payload(config: Config) -> ConfigPayload:
     normalized_dict: dict[str, object] = as_object_dict(normalized_base)
 
     return ConfigPayload(
-        fields=get_string_dict_value(normalized_dict, "fields"),
-        header=get_string_list_dict_value(normalized_dict, "header"),
-        formatting=get_object_dict_value(normalized_dict, "formatting"),
-        files=get_object_dict_value(normalized_dict, "files"),
-        policy=get_object_dict_value(normalized_dict, "policy"),
-        policy_by_type=get_object_dict_value(normalized_dict, "policy_by_type"),
+        fields=get_string_dict_value(
+            normalized_dict,
+            Toml.SECTION_FIELDS,
+        ),
+        header=get_string_list_dict_value(
+            normalized_dict,
+            Toml.SECTION_HEADER,
+        ),
+        formatting=get_object_dict_value(
+            normalized_dict,
+            Toml.SECTION_FORMATTING,
+        ),
+        files=get_object_dict_value(
+            normalized_dict,
+            Toml.SECTION_FILES,
+        ),
+        policy=get_object_dict_value(
+            normalized_dict,
+            Toml.SECTION_POLICY,
+        ),
+        policy_by_type=get_object_dict_value(
+            normalized_dict,
+            Toml.SECTION_POLICY_BY_TYPE,
+        ),
     )
 
 

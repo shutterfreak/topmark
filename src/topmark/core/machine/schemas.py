@@ -68,8 +68,10 @@ class MachineKey:
     # standard payload container keys
     CONFIG: Final[str] = "config"
     CONFIG_PROVENANCE: Final[str] = "config_provenance"
+    CONFIG_LAYERS: Final[str] = "config_layers"
     CONFIG_DIAGNOSTICS: Final[str] = "config_diagnostics"
     CONFIG_FILES: Final[str] = "config_files"
+    CONFIG_CHECK: Final[str] = "config_check"
     DIAGNOSTIC: Final[str] = "diagnostic"
     SUMMARY: Final[str] = "summary"
     # Single processing result (NDJSON)
@@ -114,7 +116,9 @@ class MachineKind:
 
     CONFIG: Final[str] = "config"
     CONFIG_PROVENANCE: Final[str] = "config_provenance"
+    CONFIG_LAYER: Final[str] = "config_layer"
     CONFIG_DIAGNOSTICS: Final[str] = "config_diagnostics"
+    CONFIG_CHECK: Final[str] = "config_check"
     DIAGNOSTIC: Final[str] = "diagnostic"
     SUMMARY: Final[str] = "summary"
     RESULT: Final[str] = "result"
@@ -209,8 +213,10 @@ _KNOWN_KEYS: Final[set[str]] = {
     MachineKey.META,
     MachineKey.CONFIG,
     MachineKey.CONFIG_PROVENANCE,
+    MachineKey.CONFIG_LAYERS,
     MachineKey.CONFIG_DIAGNOSTICS,
     MachineKey.CONFIG_FILES,
+    MachineKey.CONFIG_CHECK,
     MachineKey.DIAGNOSTIC,
     MachineKey.SUMMARY,
     MachineKey.RESULT,
@@ -237,7 +243,9 @@ _KNOWN_KEYS: Final[set[str]] = {
 _KNOWN_KINDS: Final[set[str]] = {
     MachineKind.CONFIG,
     MachineKind.CONFIG_PROVENANCE,
+    MachineKind.CONFIG_LAYER,
     MachineKind.CONFIG_DIAGNOSTICS,
+    MachineKind.CONFIG_CHECK,
     MachineKind.DIAGNOSTIC,
     MachineKind.SUMMARY,
     MachineKind.RESULT,

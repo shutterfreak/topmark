@@ -38,9 +38,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from topmark.config.machine.envelopes import iter_config_prefix_ndjson_records
 from topmark.config.machine.payloads import build_config_diagnostics_payload
 from topmark.config.machine.payloads import build_config_payload
-from topmark.config.machine.shapes import iter_config_prefix_ndjson_records
 from topmark.core.machine.schemas import MachineDomain
 from topmark.core.machine.schemas import MachineKey
 from topmark.core.machine.schemas import MachineKind

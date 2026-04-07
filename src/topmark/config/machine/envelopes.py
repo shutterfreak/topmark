@@ -1,16 +1,16 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : shapes.py
-#   file_relpath : src/topmark/config/machine/shapes.py
+#   file         : envelopes.py
+#   file_relpath : src/topmark/config/machine/envelopes.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""Shape builders for config-related machine output.
+"""Envelope builders for config-related machine output.
 
-Shapes are small, JSON-friendly Python mappings that follow TopMark's machine
+Envelopes are small, JSON-friendly Python mappings that follow TopMark's machine
 output conventions:
 
 - JSON: a single envelope object containing `meta` plus one or more named payloads.
@@ -197,7 +197,7 @@ def build_config_check_json_envelope(
     """Build the JSON envelope for `topmark config check`.
 
     Shape:
-        {"meta": ..., "config": ..., "config_diagnostics": ..., "summary": ...}
+        {"meta": ..., "config": ..., "config_diagnostics": ..., "config_check": ...}
 
     Args:
         config: Immutable runtime configuration.
@@ -211,7 +211,7 @@ def build_config_check_json_envelope(
     cfg_diag_payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
     cfg_payload: ConfigPayload = build_config_payload(config)
 
-    summary: ConfigCheckSummary = build_config_check_summary_payload(
+    config_check_summary: ConfigCheckSummary = build_config_check_summary_payload(
         config=config,
         cfg_diag_payload=cfg_diag_payload,
         strict=strict,
@@ -222,7 +222,7 @@ def build_config_check_json_envelope(
         meta=meta,
         config=cfg_payload,
         config_diagnostics=cfg_diag_payload,
-        summary=summary,
+        config_check=config_check_summary,
     )
     return envelope
 
@@ -289,7 +289,7 @@ def iter_config_check_ndjson_records(
     Record sequence:
         1) config
         2) config_diagnostics (counts-only)
-        3) summary
+        3) config_check
         4+) diagnostic (domain="config") one per diagnostic
 
     Args:
@@ -302,11 +302,11 @@ def iter_config_check_ndjson_records(
         NDJSON record mappings (not yet serialized), in this order:
         1) `config`
         2) `config_diagnostics` (counts only)
-        3) `summary`
+        3) `config_check`
         4+) `diagnostic` records (domain=`MachineDomain.CONFIG`), one per diagnostic entry.
     """
     cfg_diag_payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
-    summary: ConfigCheckSummary = build_config_check_summary_payload(
+    config_check_summary: ConfigCheckSummary = build_config_check_summary_payload(
         config=config,
         cfg_diag_payload=cfg_diag_payload,
         strict=strict,
@@ -322,9 +322,10 @@ def iter_config_check_ndjson_records(
     )
 
     yield build_ndjson_record(
-        kind=MachineKind.SUMMARY,
+        kind=MachineKind.CONFIG_CHECK,
         meta=meta,
-        payload=summary,
+        container_key=MachineKey.CONFIG_CHECK,
+        payload=config_check_summary,
     )
 
     # One diagnostic per line

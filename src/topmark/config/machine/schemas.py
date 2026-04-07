@@ -16,7 +16,8 @@ JSON-serializable via `to_dict()`.
 
 Shape construction and serialization are handled by:
   - [`topmark.config.machine.payloads`][topmark.config.machine.payloads] (payload builders)
-  - [`topmark.config.machine.shapes`][topmark.config.machine.shapes] (envelope/record builders)
+  - [`topmark.config.machine.envelopes`][topmark.config.machine.envelopes] (envelope/record
+    builders)
   - [`topmark.config.machine.serializers`][topmark.config.machine.serializers]
     (JSON/NDJSON string rendering)
 """
@@ -98,7 +99,7 @@ class ConfigProvenanceLayerPayload:
         """Return a JSON-friendly dict of the layer payload."""
         out: dict[str, object] = {
             "origin": self.origin,
-            "kind": self.kind,
+            MachineKey.KIND: self.kind,
             "precedence": self.precedence,
             "toml": self.toml,
         }
@@ -120,7 +121,7 @@ class ConfigProvenancePayload:
     def to_dict(self) -> dict[str, object]:
         """Return a JSON-friendly dict of the provenance payload."""
         return {
-            "layers": [layer.to_dict() for layer in self.layers],
+            MachineKey.CONFIG_LAYERS: [layer.to_dict() for layer in self.layers],
         }
 
 
@@ -162,8 +163,8 @@ class ConfigCheckSummary:
     list of config files contributing to the final config.
 
     Emitted as:
-    - JSON: top-level `summary` payload in the JSON envelope.
-    - NDJSON: `kind="summary"` record (payload container `summary`).
+    - JSON: top-level `config_check` payload in the JSON envelope.
+    - NDJSON: `kind="config_check"` record (payload container `config_check`).
 
     Attributes:
         command: Top-level command name (typically "config").

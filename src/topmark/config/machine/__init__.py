@@ -8,34 +8,36 @@
 #
 # topmark:header:end
 
-"""Machine-output helpers for config commands.
+"""Machine-output support for config-related commands.
 
-This package contains the *config domain* implementation of TopMark's
-machine-readable output for config-related commands (for example
-`topmark config dump` and `topmark config check`).
+This package defines the machine-readable payload schemas and envelope builders
+used by TopMark config commands (`config dump`, `config check`, `config init`,
+`config defaults`).
 
-Layers:
-    - **schemas**: Typed schema fragments for config-specific payloads (static typing only).
-    - **payloads**: Pure payload builders for the config domain (no `meta`/`kind`, no
-      serialization).
-    - **shapes**: Composition of domain payloads into full machine shapes:
-      - JSON envelope (`meta` + domain payloads)
-      - NDJSON record stream (Pattern A: every record includes `kind` and `meta`)
-    - **serializers**: Pure JSON/NDJSON helpers that turn shaped objects/records into strings
-      (no Click/Console printing).
+Responsibilities:
 
-Notes:
-    This package intentionally re-exports only the config serializer facades
-    (`serialize_config`, `serialize_config_check`, `serialize_config_diagnostics`).
-    Typed payload schemas, payload builders, and shape builders remain available from:
-    [`topmark.config.machine.schemas`][topmark.config.machine.schemas],
-    [`topmark.config.machine.payloads`][topmark.config.machine.payloads] and
-    [`topmark.config.machine.shapes`][topmark.config.machine.shapes],
-    This keeps call sites explicit about which layer they depend on.
+- Define payload schemas (in `schemas.py`) for:
+  - flattened config (`config`)
+  - layered provenance (`config_provenance`)
+  - config diagnostics (`config_diagnostics`)
+  - config check summary (`config_check`)
+- Build JSON envelopes and NDJSON record streams (in `envelopes.py`)
+- Provide a stable contract for machine-readable output (`json`, `ndjson`)
 
-See Also:
-    - [`topmark.core.machine`][topmark.core.machine]: shared machine-output primitives
-      (keys/kinds/domains, envelopes/records, normalization, JSON/NDJSON serialization helpers).
+Design notes:
+
+- This package belongs to the *config domain*, not the TOML domain.
+  Although provenance payloads may include TOML fragments, the machine
+  schemas represent command outputs rather than TOML documents.
+- The payload structure aligns with `topmark.core.machine.schemas`
+  (MachineKey, MachineKind, MachineDomain).
+- Envelope builders are pure and side-effect free; serialization is handled
+  by higher-level emitters.
+
+Future considerations:
+
+- TOML-fragment normalization helpers may be factored into `topmark.toml.*`
+  over time, but command payload schemas remain defined here.
 """
 
 from __future__ import annotations

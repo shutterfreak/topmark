@@ -114,7 +114,7 @@ def test_config_dump_json_show_layers_includes_config_provenance() -> None:
     assert isinstance(provenance_obj, dict)
     provenance: dict[str, object] = cast("dict[str, object]", provenance_obj)
 
-    layers_obj = provenance.get("layers")
+    layers_obj = provenance.get("config_layers")
     assert isinstance(layers_obj, list)
     layers: list[object] = cast("list[object]", layers_obj)
     assert layers
@@ -152,7 +152,7 @@ def test_config_dump_json_show_layers_defaults_layer_shape() -> None:
     assert isinstance(provenance_obj, dict)
     provenance: dict[str, object] = cast("dict[str, object]", provenance_obj)
 
-    layers_obj = provenance.get("layers")
+    layers_obj = provenance.get("config_layers")
     assert isinstance(layers_obj, list)
     layers: list[object] = cast("list[object]", layers_obj)
     assert layers
@@ -235,7 +235,7 @@ def test_config_dump_ndjson_show_layers_kinds() -> None:
     assert isinstance(provenance_obj, dict)
     provenance: dict[str, object] = cast("dict[str, object]", provenance_obj)
 
-    layers_obj = provenance.get("layers")
+    layers_obj = provenance.get("config_layers")
     assert isinstance(layers_obj, list)
     assert layers_obj
 
@@ -266,7 +266,7 @@ def test_config_dump_ndjson_show_layers_defaults_layer_shape() -> None:
     assert isinstance(provenance_obj, dict)
     provenance: dict[str, object] = cast("dict[str, object]", provenance_obj)
 
-    layers_obj = provenance.get("layers")
+    layers_obj = provenance.get("config_layers")
     assert isinstance(layers_obj, list)
     layers: list[object] = cast("list[object]", layers_obj)
     assert layers

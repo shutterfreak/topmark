@@ -14,8 +14,8 @@ This module turns *shaped* config records/envelopes into JSON or NDJSON strings.
 
 Responsibilities:
   - Validate that the requested format is a supported machine format.
-  - Delegate *shape* construction to
-    [`topmark.config.machine.shapes`][topmark.config.machine.shapes].
+  - Delegate *envelope* construction to
+    [`topmark.config.machine.envelopes`][topmark.config.machine.envelopes].
   - Delegate JSON/NDJSON string rendering to
     [`topmark.core.machine.serializers`][topmark.core.machine.serializers].
 
@@ -27,13 +27,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from topmark.config.machine.envelopes import build_config_check_json_envelope
+from topmark.config.machine.envelopes import build_config_diagnostics_json_envelope
+from topmark.config.machine.envelopes import build_config_json_envelope
+from topmark.config.machine.envelopes import iter_config_check_ndjson_records
+from topmark.config.machine.envelopes import iter_config_diagnostics_ndjson_records
+from topmark.config.machine.envelopes import iter_config_ndjson_records
 from topmark.config.machine.payloads import build_config_provenance_payload
-from topmark.config.machine.shapes import build_config_check_json_envelope
-from topmark.config.machine.shapes import build_config_diagnostics_json_envelope
-from topmark.config.machine.shapes import build_config_json_envelope
-from topmark.config.machine.shapes import iter_config_check_ndjson_records
-from topmark.config.machine.shapes import iter_config_diagnostics_ndjson_records
-from topmark.config.machine.shapes import iter_config_ndjson_records
 from topmark.core.formats import OutputFormat
 from topmark.core.formats import is_machine_format
 from topmark.core.machine.serializers import iter_ndjson_strings

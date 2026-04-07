@@ -488,6 +488,9 @@ Completed work:
 - Documented the stable envelope and key conventions in `docs/dev/machine-formats.md` (and updated
   command pages accordingly).
 - Extended config machine output to support layered provenance inspection:
+  - layered provenance is currently exposed only via `config dump --show-layers`; other config
+    commands (e.g. `config check`) intentionally remain validation-focused and do not emit
+    provenance
   - added `config_provenance` as a stable machine key/kind for `config dump --show-layers`
   - JSON now emits `config_provenance` before the final flattened `config` payload when layered
     provenance is requested
@@ -1269,6 +1272,9 @@ Additional progress:
 - Decide whether the current API-side convenience helpers for seeded config/file preparation should
   remain in `topmark.api.runtime` long-term or be slimmed further around a smaller config-layer
   façade.
+- Confirm that provenance inspection concerns (layered TOML sources) remain scoped to dedicated
+  inspection commands (`config dump --show-layers`) and are not mixed into validation-oriented
+  commands.
 
 ### Override model and runtime overlay boundary
 
@@ -1321,6 +1327,9 @@ Completed work:
   \[`topmark.registry.machine`\][topmark.registry.machine].
 - Config commands (`init`, `defaults`, `dump`, `check`) use
   \[`topmark.config.machine`\][topmark.config.machine].
+  - `topmark.config.machine` remains the canonical home for config command machine payloads;
+    TOML-specific helpers may be factored into `topmark.toml.*` over time, but command payload
+    schemas stay config-domain-owned
 - Version command uses \[`topmark.core.machine`\][topmark.core.machine] serializers with shared meta
   handling.
 - All commands emit consistent JSON/NDJSON envelopes with machine-facing metadata.
@@ -1335,8 +1344,11 @@ Completed work:
 Remaining work before 1.0:
 
 - Final audit of field naming consistency across domains.
-- Confirm that config-validation payloads consistently use `strict_config_checking` and no longer
+- Confirm that config-validation payloads consistently use `strict_config_checking`. They no longer
   refer to legacy `strict` naming.
+- Confirm command responsibilities for machine output:
+  - `config dump` is the single command exposing layered provenance (`config_provenance`)
+  - `config check` remains validation-only and does not emit provenance payloads
 - Expand test coverage for remaining machine formats (especially registry + pipeline commands, JSON
   \+ NDJSON); `config dump` layered provenance is now covered in both JSON and NDJSON modes.
 - Stabilize and freeze machine schema documentation (`docs/dev/machine-formats.md`).
@@ -1481,8 +1493,11 @@ This checklist defines the minimum criteria for cutting TopMark 1.0, grouped by 
 - [ ] Machine outputs are covered by tests for all commands in both JSON and NDJSON modes
   - [ ] registry commands (`filetypes`, `processors`, `bindings`)
   - [ ] pipeline commands (`check`, `strip`)
-  - [ ] config commands (`check`, `defaults`, `dump`, `init`)
+  - [x] config commands (`check`, `defaults`, `dump`, `init`)
+    - [x] `config check` machine output is covered in both JSON and NDJSON modes
+    - [x] `config defaults` machine output is covered in both JSON and NDJSON modes
     - [x] `config dump` layered provenance is now covered in both JSON and NDJSON modes
+    - [x] `config init` machine output is covered in both JSON and NDJSON modes
 - [ ] Final schema freeze review before 1.0 (including `(outcome, reason, count)` summary rows)
 - [ ] Confirm that config-validation payloads consistently use `strict_config_checking` and no
   longer expose legacy `strict` naming
