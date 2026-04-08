@@ -26,10 +26,9 @@ from __future__ import annotations
 import textwrap
 from typing import TYPE_CHECKING
 
-from topmark.config.io.deserializers import mutable_config_from_layered_toml_table
+from tests.helpers.toml import draft_from_parsed_topmark_toml
 from topmark.toml.loaders import load_topmark_toml_source
 from topmark.toml.loaders import load_topmark_toml_table
-from topmark.toml.validation import add_toml_issues
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -48,7 +47,7 @@ def draft_from_topmark_toml_table(
     source_path: Path | None = None,
     from_pyproject: bool = False,
 ) -> MutableConfig:
-    """Build a config draft from one TopMark TOML source table.
+    """Build a config draft from one in-memory TopMark TOML source table.
 
     This helper exercises the TOML/config boundary directly:
         1. validate and split-parse the full TopMark TOML source,
@@ -74,16 +73,14 @@ def draft_from_topmark_toml_table(
     )
     assert parsed is not None, "Expected valid TopMark TOML source table"
 
-    draft: MutableConfig = mutable_config_from_layered_toml_table(
-        parsed.layered_config,
+    return draft_from_parsed_topmark_toml(
+        parsed,
         config_file=source_path,
     )
-    add_toml_issues(draft.diagnostics, parsed.validation_issues)
-    return draft
 
 
-def load_draft_from_topmark_toml(path: Path) -> MutableConfig:
-    """Load one TopMark TOML source file into a layered config draft.
+def draft_from_topmark_toml_file(path: Path) -> MutableConfig:
+    """Build a config draft from one file-backed TopMark TOML source.
 
     This is the file-based companion to `draft_from_topmark_toml_table()` and
     is used by TOML-schema tests that exercise `topmark.toml` loading from the
@@ -102,12 +99,10 @@ def load_draft_from_topmark_toml(path: Path) -> MutableConfig:
     parsed: ParsedTopmarkToml | None = load_topmark_toml_source(path)
     assert parsed is not None, f"Expected valid TopMark TOML source: {path}"
 
-    draft: MutableConfig = mutable_config_from_layered_toml_table(
-        parsed.layered_config,
+    return draft_from_parsed_topmark_toml(
+        parsed,
         config_file=path,
     )
-    add_toml_issues(draft.diagnostics, parsed.validation_issues)
-    return draft
 
 
 def write_toml_document(

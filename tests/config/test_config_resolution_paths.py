@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.toml.conftest import load_draft_from_topmark_toml
+from tests.toml.conftest import draft_from_topmark_toml_file
 from tests.toml.conftest import write_toml_document
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.overrides import ConfigOverrides
@@ -85,7 +85,7 @@ def test_include_from_normalized_to_patternsources(
         """,
     )
 
-    draft: MutableConfig = load_draft_from_topmark_toml(proj / "pyproject.toml")
+    draft: MutableConfig = draft_from_topmark_toml_file(proj / "pyproject.toml")
     assert draft.include_from, "include_from should not be empty"
     ps: PatternSource = draft.include_from[0]
     assert ps.path.is_absolute()
@@ -310,7 +310,7 @@ def test_files_from_declared_in_config_normalizes_to_patternsource(
         """,
     )
 
-    draft: MutableConfig = load_draft_from_topmark_toml(proj / "pyproject.toml")
+    draft: MutableConfig = draft_from_topmark_toml_file(proj / "pyproject.toml")
     assert draft.files_from
     ps: PatternSource = draft.files_from[0]
     assert ps.path == lst.resolve()
