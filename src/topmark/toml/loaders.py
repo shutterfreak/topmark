@@ -37,6 +37,8 @@ from topmark.core.typing_guards import as_object_dict
 from topmark.toml.parse import ParsedTopmarkToml
 from topmark.toml.parse import parse_topmark_toml_table
 from topmark.toml.pyproject import extract_pyproject_topmark_table
+from topmark.toml.schema import TOPMARK_TOML_SCHEMA
+from topmark.toml.schema import TomlValidationMode
 from topmark.toml.typing_guards import toml_table_from_mapping
 
 if TYPE_CHECKING:
@@ -44,6 +46,7 @@ if TYPE_CHECKING:
 
     from topmark.core.logging import TopmarkLogger
     from topmark.toml.types import TomlTable
+    from topmark.toml.validation import TomlValidationIssue
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -113,8 +116,17 @@ def _load_topmark_toml_table(
         )
         return None
 
+    # Validate the TOML schema
+    issues: tuple[TomlValidationIssue, ...] = TOPMARK_TOML_SCHEMA.validate(
+        topmark_tbl,
+        mode=TomlValidationMode.INPUT,
+    )
+
     # Delegate semantic splitting of the TOML source to the pure parser layer.
-    return parse_topmark_toml_table(topmark_tbl)
+    return parse_topmark_toml_table(
+        topmark_tbl,
+        validation_issues=issues,
+    )
 
 
 def load_topmark_toml_source(path: Path) -> ParsedTopmarkToml | None:

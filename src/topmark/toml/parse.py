@@ -35,6 +35,7 @@ from topmark.toml.keys import Toml
 
 if TYPE_CHECKING:
     from topmark.toml.types import TomlTable
+    from topmark.toml.validation import TomlValidationIssue
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -85,6 +86,7 @@ class ParsedTopmarkToml:
             `[writer]` table, if present.
         source_options: Discovery metadata parsed from the `[config]` table.
         toml_fragment: Full source-local TopMark TOML fragment.
+        validation_issues: TOML schema validation issues encountered.
     """
 
     config_loading_options: SourceConfigLoadingOptions
@@ -92,6 +94,7 @@ class ParsedTopmarkToml:
     writer_options: WriterOptions | None
     source_options: SourceTomlOptions
     toml_fragment: TomlTable
+    validation_issues: tuple[TomlValidationIssue, ...] = ()
 
 
 def _parse_config_loading_options(
@@ -221,12 +224,17 @@ def _get_table(data: TomlTable, section: str) -> TomlTable | None:
     return dict(value) if isinstance(value, dict) else None
 
 
-def parse_topmark_toml_table(data: TomlTable) -> ParsedTopmarkToml:
+def parse_topmark_toml_table(
+    data: TomlTable,
+    *,
+    validation_issues: tuple[TomlValidationIssue, ...],
+) -> ParsedTopmarkToml:
     """Split a TopMark TOML table into its semantic domains.
 
     Args:
         data: A TopMark TOML table, already normalized to plain-Python TOML
             structures.
+        validation_issues: The list of TOML schema validaiton issues.
 
     Returns:
         The per-source split parse result.
@@ -240,4 +248,5 @@ def parse_topmark_toml_table(data: TomlTable) -> ParsedTopmarkToml:
         writer_options=_parse_writer_options(writer_tbl),
         source_options=_parse_source_toml_options(config_tbl),
         toml_fragment=_extract_toml_fragment(data),
+        validation_issues=validation_issues,
     )

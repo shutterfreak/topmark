@@ -717,14 +717,18 @@ def test_header_fields_mixed_types_ignores_non_strings(
 
 @pytest.mark.pipeline
 def test_unknown_top_level_keys_warn_and_are_recorded(caplog: pytest.LogCaptureFixture) -> None:
-    """Unknown top-level TOML keys are warned about and recorded in diagnostics."""
+    """Unknown top-level TOML sections are warned about and recorded."""
     caplog.set_level("WARNING")
-    draft: MutableConfig = mutable_config_from_toml_dict({"unknown_root_key": 123})
+    draft: MutableConfig = mutable_config_from_toml_dict(
+        {
+            "unknown_root_key": 123,
+        }
+    )
 
     assert_warned_and_diagnosed(
         caplog=caplog,
         draft=draft,
-        needle="Unknown TOML key(s) in top-level",
+        needle="Unknown top-level key 'unknown_root_key'",
     )
 
 
@@ -732,31 +736,53 @@ def test_unknown_top_level_keys_warn_and_are_recorded(caplog: pytest.LogCaptureF
 def test_unknown_top_level_table_warns_and_is_recorded(caplog: pytest.LogCaptureFixture) -> None:
     """Unknown top-level tables (unknown sections) are warned about and recorded."""
     caplog.set_level("WARNING")
-    draft: MutableConfig = mutable_config_from_toml_dict({"bogus": {"x": 1}})
+    draft: MutableConfig = mutable_config_from_toml_dict(
+        {
+            "bogus": {"x": 1},
+        }
+    )
 
     assert_warned_and_diagnosed(
         caplog=caplog,
         draft=draft,
-        needle="Unknown TOML key(s) in top-level",
+        needle="Unknown TOML section [bogus]",
     )
 
 
 @pytest.mark.pipeline
-def test_unknown_keys_are_reported_in_sorted_order(caplog: pytest.LogCaptureFixture) -> None:
-    """Unknown-key diagnostics list keys in sorted order for stable output."""
+def test_unknown_keys_are_reported_individually(caplog: pytest.LogCaptureFixture) -> None:
+    """Unknown keys in closed sections are reported individually."""
     caplog.set_level("WARNING")
     draft: MutableConfig = mutable_config_from_toml_dict(
-        {Toml.SECTION_FILES: {Toml.KEY_INCLUDE_PATTERNS: ["src/**"], "z": True, "a": True}}
+        {
+            Toml.SECTION_FILES: {
+                Toml.KEY_INCLUDE_PATTERNS: ["src/**"],
+                "z": True,
+                "a": True,
+            }
+        }
     )
 
-    needle: str = f"Unknown TOML key(s) in [{Toml.SECTION_FILES}] (ignored): a, z"
-    assert_warned_and_diagnosed(caplog=caplog, draft=draft, needle=needle)
+    assert_warned_and_diagnosed(
+        caplog=caplog,
+        draft=draft,
+        needle=f'Unknown key "z" in [{Toml.SECTION_FILES}]',
+    )
+    assert_warned_and_diagnosed(
+        caplog=caplog,
+        draft=draft,
+        needle=f'Unknown key "a" in [{Toml.SECTION_FILES}]',
+    )
 
 
 @pytest.mark.pipeline
 def test_policy_by_type_section_wrong_type_is_ignored() -> None:
     """Non-table [policy_by_type] values are ignored (must not crash)."""
-    draft: MutableConfig = mutable_config_from_toml_dict({Toml.SECTION_POLICY_BY_TYPE: 123})
+    draft: MutableConfig = mutable_config_from_toml_dict(
+        {
+            Toml.SECTION_POLICY_BY_TYPE: 123,
+        }
+    )
     assert draft.policy_by_type == {}
 
 
@@ -784,7 +810,11 @@ def test_files_list_valued_keys_wrong_type_is_treated_as_empty(
     expect_empty: object,
 ) -> None:
     """Wrong-type list values in [files] are treated as empty (must not crash)."""
-    toml_dict: TomlTable = {Toml.SECTION_FILES: {key: True}}
+    toml_dict: TomlTable = {
+        Toml.SECTION_FILES: {
+            key: True,
+        },
+    }
     draft: MutableConfig = mutable_config_from_toml_dict(toml_dict)
 
     if key == Toml.KEY_INCLUDE_PATTERNS:
@@ -912,7 +942,7 @@ def test_unknown_section_keys_warn_and_are_recorded(caplog: pytest.LogCaptureFix
     assert_warned_and_diagnosed(
         caplog=caplog,
         draft=draft,
-        needle=f"Unknown TOML key(s) in [{Toml.SECTION_FILES}]",
+        needle=f'Unknown key "bogus" in [{Toml.SECTION_FILES}]',
     )
 
 
@@ -948,7 +978,7 @@ def test_policy_by_type_unknown_keys_warn(caplog: pytest.LogCaptureFixture) -> N
     assert_warned_and_diagnosed(
         caplog=caplog,
         draft=draft,
-        needle=f"Unknown TOML key(s) in [{Toml.SECTION_POLICY_BY_TYPE}.python]",
+        needle=f'Unknown key "unknown_policy_key" in [{Toml.SECTION_POLICY_BY_TYPE}.python]',
     )
 
 
@@ -1005,7 +1035,7 @@ def test_unknown_keys_reported_via_from_toml_file(
     assert_warned_and_diagnosed(
         caplog=caplog,
         draft=draft,
-        needle=f"Unknown TOML key(s) in [{Toml.SECTION_FILES}]",
+        needle=f'Unknown key "unknown_key" in [{Toml.SECTION_FILES}]',
     )
 
 
@@ -1067,10 +1097,10 @@ def test_fields_table_is_free_form_and_not_subject_to_unknown_key_validation(
     assert_warned_and_diagnosed(
         caplog=caplog,
         draft=draft,
-        needle=f"Unknown TOML key(s) in [{Toml.SECTION_FILES}]",
+        needle=f'Unknown key "bogus" in [{Toml.SECTION_FILES}]',
     )
     # Should NOT warn about fields keys being unknown
-    assert_not_warned(caplog=caplog, needle="Unknown TOML key(s) in [fields]")
+    assert_not_warned(caplog=caplog, needle='Unknown key "totally_custom" in [fields]')
 
     assert draft.field_values["totally_custom"] == "x"
 
@@ -1111,7 +1141,7 @@ def test_policy_by_type_valid_keys_parse_and_unknown_keys_are_ignored(
     assert_warned_and_diagnosed(
         caplog=caplog,
         draft=draft,
-        needle=f"Unknown TOML key(s) in [{Toml.SECTION_POLICY_BY_TYPE}.python]",
+        needle=f'Unknown key "bogus" in [{Toml.SECTION_POLICY_BY_TYPE}.python]',
     )
 
 
@@ -1158,7 +1188,7 @@ def test_unknown_key_in_known_section_warns_and_is_recorded(
     assert_warned_and_diagnosed(
         caplog=caplog,
         draft=draft,
-        needle=f"Unknown TOML key(s) in [{section}]",
+        needle=f'Unknown key "bogus" in [{section}]',
     )
 
 

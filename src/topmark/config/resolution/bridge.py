@@ -24,6 +24,7 @@ from topmark.config.resolution.layers import ConfigLayer
 from topmark.config.resolution.layers import build_config_layers_from_resolved_toml_sources
 from topmark.config.resolution.merge import merge_layers_globally
 from topmark.toml.resolution import resolve_topmark_toml_sources
+from topmark.toml.validation import add_toml_issues
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -41,23 +42,32 @@ def build_config_draft_from_resolved_toml_sources(
 ) -> MutableConfig:
     """Merge resolved TOML sources into one mutable config draft.
 
-    This helper consumes already-resolved TOML-side state and performs only the
-    config-layer construction and merge step. It does not re-run TOML
-    discovery.
+    This helper consumes already-resolved TOML-side state and performs the
+    config-layer construction and merge step without re-running TOML discovery.
+
+    In addition to merging the layered config fragments, it replays whole-source
+    TOML schema validation issues collected during TOML loading into the merged
+    draft diagnostics. This ensures that strict config checking sees schema
+    violations outside the layered-config subset, such as invalid top-level
+    keys under `[tool.topmark]` or unknown keys in `[writer]`.
 
     Source-local config-loading options such as `strict_config_checking` are
     resolved on the TOML side. This helper only performs config-layer
-    construction and merging.
+    construction, merging, and diagnostic bridging.
 
     Args:
         resolved: Resolved TOML-side state for the current run.
 
     Returns:
         Merged mutable config draft built from the defaults layer plus all
-        resolved layered TOML sources.
+        resolved layered TOML sources, with source-level TOML schema issues
+        attached to its diagnostics.
     """
     layers: list[ConfigLayer] = build_config_layers_from_resolved_toml_sources(resolved.sources)
     draft: MutableConfig = merge_layers_globally(layers)
+
+    for source in resolved.sources:
+        add_toml_issues(draft.diagnostics, source.parsed.validation_issues)
 
     return draft
 

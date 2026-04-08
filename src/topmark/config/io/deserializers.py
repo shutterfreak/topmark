@@ -59,8 +59,12 @@ from topmark.toml.getters import get_string_list_value_checked
 from topmark.toml.getters import get_string_value_checked
 from topmark.toml.getters import get_table_value
 from topmark.toml.keys import Toml
+from topmark.toml.schema import TOPMARK_TOML_SCHEMA
+from topmark.toml.schema import TomlValidationMode
 from topmark.toml.typing_guards import as_toml_table_map
 from topmark.toml.typing_guards import toml_table_from_mapping
+from topmark.toml.validation import TomlValidationIssue
+from topmark.toml.validation import add_toml_issues
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -122,13 +126,6 @@ def mutable_config_from_toml_dict(
 
     # Config file's directory for relative path resolution
     cfg_dir: Path | None = config_file.parent.resolve() if config_file else None
-
-    # ------------------------- Unknown key validation -------------------------
-    def _warn_unknown(where: str, keys: set[str]) -> None:
-        if not keys:
-            return
-        msg: str = f"Unknown TOML key(s) in {where} (ignored): " + ", ".join(sorted(keys))
-        draft.diagnostics.add_warning(msg)
 
     # ------------------- Policy pre-validation helpers -------------------
     def _prevalidate_policy_table(
@@ -455,47 +452,23 @@ def mutable_config_from_toml_dict(
         )
 
     def _validate_toml_schema(tool_tbl: TomlTable) -> None:
-        """Validate top-level TOML structure and attach unknown-key diagnostics."""
-        _warn_unknown(
-            "top-level",
-            set(tool_tbl.keys()) - set(Toml.ALLOWED_TOP_LEVEL_KEYS),
+        """Validate TOML section/key shape and attach schema diagnostics.
+
+        This performs schema-level validation only:
+            - unknown top-level sections,
+            - wrong section table shapes,
+            - unknown keys in closed sections,
+            - malformed `[policy_by_type.<filetype>]` child tables,
+            - dump-only keys used in ordinary input mode.
+
+        Value/type validation remains the responsibility of the section-specific
+        parsing helpers below.
+        """
+        issues: tuple[TomlValidationIssue, ...] = TOPMARK_TOML_SCHEMA.validate(
+            tool_tbl,
+            mode=TomlValidationMode.INPUT,
         )
-
-        # Validate known sections (tables)
-        for section_name, allowed_keys in Toml.ALLOWED_SECTION_KEYS.items():
-            if section_name not in tool_tbl:
-                continue
-            section_val: TomlValue | None = tool_tbl.get(section_name)
-            if not isinstance(section_val, dict):
-                msg: str = (
-                    f"TOML section [{section_name}] must be a table; "
-                    f"got {type(section_val).__name__} (ignored)."
-                )
-                draft.diagnostics.add_warning(msg)
-                continue
-
-            section_tbl: TomlTable = section_val
-            _warn_unknown(f"[{section_name}]", set(section_tbl.keys()) - set(allowed_keys))
-
-        # Validate [policy_by_type.<filetype>] subtables (their keys are fixed)
-        pbt_val: TomlValue | None = tool_tbl.get(Toml.SECTION_POLICY_BY_TYPE)
-        if isinstance(pbt_val, dict):
-            pbt_tbl: TomlTable = pbt_val
-            for ft_name, ft_tbl_any in pbt_tbl.items():
-                ft: str = str(ft_name)
-                if not isinstance(ft_tbl_any, dict):
-                    msg = (
-                        f"TOML section [{Toml.SECTION_POLICY_BY_TYPE}.{ft}] "
-                        f"must be a table; got {type(ft_tbl_any).__name__} (ignored)."
-                    )
-                    draft.diagnostics.add_warning(msg)
-                    continue
-
-                ft_tbl: TomlTable = ft_tbl_any
-                _warn_unknown(
-                    f"[{Toml.SECTION_POLICY_BY_TYPE}.{ft}]",
-                    set(ft_tbl.keys()) - set(Toml.ALLOWED_POLICY_KEYS),
-                )
+        add_toml_issues(draft.diagnostics, issues)
 
     def _extract_toml_tables(
         tool_tbl: TomlTable,

@@ -175,7 +175,7 @@ class DiagnosticLog:
         """Return an immutable snapshot of this log's diagnostics."""
         return FrozenDiagnosticLog(items=tuple(self.items))
 
-    def _add(self, diagnostic: Diagnostic) -> None:
+    def add(self, diagnostic: Diagnostic) -> None:
         """Add a diagnostic to the diagnostic log.
 
         The diagnostic is appended to the context in place.
@@ -194,7 +194,7 @@ class DiagnosticLog:
         Args:
             message: The diagnostic message.
         """
-        self._add(Diagnostic(DiagnosticLevel.INFO, message))
+        self.add(Diagnostic(DiagnosticLevel.INFO, message))
         logger.info(
             message,
             stacklevel=2,
@@ -206,7 +206,7 @@ class DiagnosticLog:
         Args:
             message: The diagnostic message.
         """
-        self._add(Diagnostic(DiagnosticLevel.WARNING, message))
+        self.add(Diagnostic(DiagnosticLevel.WARNING, message))
         logger.warning(
             message,
             stacklevel=2,
@@ -220,7 +220,7 @@ class DiagnosticLog:
         Args:
             message: The diagnostic message.
         """
-        self._add(Diagnostic(DiagnosticLevel.ERROR, message))
+        self.add(Diagnostic(DiagnosticLevel.ERROR, message))
         logger.error(
             message,
             stacklevel=2,
