@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING
 from typing import Final
 
 from topmark.config.io.deserializers import mutable_config_from_defaults
-from topmark.config.io.deserializers import mutable_config_from_toml_dict
+from topmark.config.io.deserializers import mutable_config_from_layered_toml_table
 from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
@@ -144,7 +144,7 @@ def _make_layer_from_layered_toml_table(
         fragment.
     """
     resolved_path: Path = path.resolve()
-    config: MutableConfig = mutable_config_from_toml_dict(
+    config: MutableConfig = mutable_config_from_layered_toml_table(
         data,
         config_file=resolved_path,
     )

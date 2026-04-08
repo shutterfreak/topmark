@@ -30,6 +30,7 @@ Notes:
 from __future__ import annotations
 
 import re
+import textwrap
 from collections.abc import Callable
 from collections.abc import Collection
 from collections.abc import Iterator
@@ -47,6 +48,7 @@ from typing import cast
 import pytest
 
 from topmark.config.io.deserializers import mutable_config_from_defaults
+from topmark.config.io.deserializers import mutable_config_from_layered_toml_table
 from topmark.config.types import PatternGroup
 from topmark.config.types import PatternSource
 from topmark.core import logging
@@ -58,10 +60,15 @@ from topmark.filetypes.policy import FileTypeHeaderPolicy
 from topmark.processors.base import HeaderProcessor
 from topmark.registry.types import ProcessorDefinition
 from topmark.resolution.filetypes import resolve_binding_for_path
+from topmark.toml.loaders import load_topmark_toml_source
+from topmark.toml.loaders import load_topmark_toml_table
+from topmark.toml.validation import add_toml_issues
 
 if TYPE_CHECKING:
     from topmark.config.model import Config
     from topmark.config.model import MutableConfig
+    from topmark.toml.parse import ParsedTopmarkToml
+    from topmark.toml.types import TomlTable
 
 AnyCallable = Callable[..., object]
 DecoratorType = Callable[[AnyCallable], AnyCallable]
@@ -696,3 +703,159 @@ def resolve_processor_for_path(
         include_file_types=include_file_types,
         exclude_file_types=exclude_file_types,
     ).processor
+
+
+# ---- Shared test helpers ----
+
+
+def _diag_messages(draft: MutableConfig) -> list[str]:
+    """Return all diagnostic messages recorded on `draft`."""
+    return [d.message for d in draft.diagnostics]
+
+
+def _caplog_messages(caplog: pytest.LogCaptureFixture) -> list[str]:
+    """Return all captured log messages."""
+    return [r.message for r in caplog.records]
+
+
+def assert_warned_and_diagnosed(
+    *,
+    caplog: pytest.LogCaptureFixture,
+    draft: MutableConfig,
+    needle: str,
+    min_count: int = 1,
+) -> None:
+    """Assert a warning substring appears in logs and `draft.diagnostics`.
+
+    Args:
+        caplog: Pytest log capture fixture.
+        draft: Parsed draft config with diagnostics attached.
+        needle: Substring expected to appear in warning messages.
+        min_count: Minimum number of matching messages expected in *each*
+            sink (logs and diagnostics). Defaults to 1.
+    """
+    caplog_msgs: list[str] = _caplog_messages(caplog)
+    diag_msgs: list[str] = _diag_messages(draft)
+
+    log_hits: int = sum(1 for m in caplog_msgs if needle in m)
+    diag_hits: int = sum(1 for m in diag_msgs if needle in m)
+
+    assert log_hits >= min_count, (
+        f"Expected at least {min_count} log message(s) containing: {needle!r}.\n"
+        f"Found: {log_hits}.\nCaptured logs:\n- " + "\n- ".join(caplog_msgs)
+    )
+    assert diag_hits >= min_count, (
+        f"Expected at least {min_count} diagnostic(s) containing: {needle!r}.\n"
+        f"Found: {diag_hits}.\nDiagnostics:\n- " + "\n- ".join(diag_msgs)
+    )
+
+
+def assert_not_warned(
+    *,
+    caplog: pytest.LogCaptureFixture,
+    needle: str,
+) -> None:
+    """Assert no captured log message contains `needle`."""
+    caplog_msgs: list[str] = _caplog_messages(caplog)
+    assert not any(needle in m for m in caplog_msgs), (
+        f"Did not expect log message containing: {needle!r}.\n"
+        f"Captured logs:\n- " + "\n- ".join(caplog_msgs)
+    )
+
+
+# ---- TOML / Config helpers ----
+
+
+def draft_from_topmark_toml_table(
+    data: TomlTable,
+    *,
+    source_path: Path | None = None,
+    from_pyproject: bool = False,
+) -> MutableConfig:
+    """Build a config draft from one TopMark TOML source table.
+
+    Transitional helper used by TOML-schema tests after the TOML/config test
+    split. This should eventually move closer to TOML-layer tests or be
+    replaced by a dedicated TOML test fixture.
+
+    This helper exercises the current TOML-layer boundary first:
+        1. validate and split-parse the full TopMark TOML source,
+        2. deserialize only the layered config fragment,
+        3. replay TOML schema validation issues into the draft diagnostics.
+
+    Args:
+        data: In-memory TopMark TOML table or parsed `pyproject.toml` table.
+        source_path: Optional source path used for relative-path normalization.
+        from_pyproject: Whether `data` represents a full `pyproject.toml`
+            document requiring `[tool.topmark]` extraction.
+
+    Returns:
+        Layered config draft with TOML schema diagnostics attached.
+
+    Raises:
+        AssertionError: If the TOML source cannot be split-parsed.
+    """
+    parsed: ParsedTopmarkToml | None = load_topmark_toml_table(
+        data,
+        source_path=source_path,
+        from_pyproject=from_pyproject,
+    )
+    assert parsed is not None, "Expected valid TopMark TOML source table"
+
+    draft: MutableConfig = mutable_config_from_layered_toml_table(
+        parsed.layered_config,
+        config_file=source_path,
+    )
+    add_toml_issues(draft.diagnostics, parsed.validation_issues)
+    return draft
+
+
+def load_draft_from_topmark_toml(path: Path) -> MutableConfig:
+    """Load one TopMark TOML source file into a layered config draft.
+
+    Transitional helper used by TOML-schema tests after the TOML/config test
+    split. This should eventually move closer to TOML-layer tests or be
+    replaced by a dedicated TOML test fixture.
+
+    Args:
+        path: Path to `topmark.toml` or `pyproject.toml`.
+
+    Returns:
+        Layered config draft deserialized from the split-parsed TOML source,
+        with TOML schema diagnostics attached.
+
+    Raises:
+        AssertionError: If the TOML source cannot be loaded or split-parsed.
+    """
+    parsed: ParsedTopmarkToml | None = load_topmark_toml_source(path)
+    assert parsed is not None, f"Expected valid TopMark TOML source: {path}"
+
+    draft: MutableConfig = mutable_config_from_layered_toml_table(
+        parsed.layered_config,
+        config_file=path,
+    )
+    add_toml_issues(draft.diagnostics, parsed.validation_issues)
+    return draft
+
+
+def write_toml_document(
+    *,
+    path: Path,
+    content: str,
+) -> None:
+    """Write a small TOML snippet to `path`, creating parent directories.
+
+    Shared file-writing helper used across config and TOML tests. If the test
+    suite later gains a dedicated temporary-project builder, this helper could
+    be folded into that fixture layer.
+
+    Removes left indentation of TOML content.
+    """
+    path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+    path.write_text(
+        textwrap.dedent(content).lstrip("\n"),
+        encoding="utf-8",
+    )

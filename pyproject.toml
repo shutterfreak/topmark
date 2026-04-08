@@ -256,10 +256,12 @@ reportUnusedVariable               = true
 markers = [
   "api: tests that exercise the API",
   "cli: tests that exercise the CLI",
+  "config: tests for config deserialization, path normalization, strictness, and layer merge behavior",
   "dev_validation: developer validation tests (e.g., registry validation)",
   "hypothesis_slow: long-running property tests (skipped in CI)",
   "integration: environment-dependent integration checks (e.g., shell completion)",
   "pipeline: tests that exercise the processing pipeline",
+  "toml: tests for TopMark TOML loading, extraction, schema validation, and source resolution",
 ]
 testpaths = ["tests"]
 norecursedirs = [

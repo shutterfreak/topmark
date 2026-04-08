@@ -85,13 +85,16 @@ def _load_toml_table(path: Path) -> TomlTable | None:
         return None
 
 
-def _load_topmark_toml_table(
+def load_topmark_toml_table(
     data: TomlTable,
     *,
     source_path: Path | None = None,
     from_pyproject: bool = False,
 ) -> ParsedTopmarkToml | None:
-    """Split-parse an in-memory TopMark TOML source table.
+    """Validate and split-parse an in-memory TopMark TOML source table.
+
+    Validates whether `data` complies with the expected TopMark TOML document schema,
+    and split-parses `data` subsequently.
 
     Args:
         data: In-memory TOML table representing either a full TopMark TOML
@@ -106,15 +109,17 @@ def _load_topmark_toml_table(
     """
     # `pyproject.toml` embeds TopMark settings under `[tool.topmark]`; plain
     # `topmark.toml` already exposes the relevant source table directly.
-    topmark_tbl: TomlTable | None = (
-        extract_pyproject_topmark_table(data) if from_pyproject else data
-    )
-    if topmark_tbl is None:
-        logger.debug(
-            "No [tool.topmark] table found in %s",
-            source_path if source_path is not None else "<in-memory TOML>",
-        )
-        return None
+    source_label: str = str(source_path) if source_path is not None else "<in-memory TOML>"
+
+    if from_pyproject:
+        topmark_tbl: TomlTable | None = extract_pyproject_topmark_table(data)
+        if topmark_tbl is None:
+            logger.debug("No [tool.topmark] table found in %s", source_label)
+            return None
+    else:
+        topmark_tbl = data
+        if not topmark_tbl:
+            logger.debug("Empty TopMark TOML data found in %s", source_label)
 
     # Validate the TOML schema
     issues: tuple[TomlValidationIssue, ...] = TOPMARK_TOML_SCHEMA.validate(
@@ -143,7 +148,7 @@ def load_topmark_toml_source(path: Path) -> ParsedTopmarkToml | None:
     if data is None:
         return None
 
-    return _load_topmark_toml_table(
+    return load_topmark_toml_table(
         data,
         source_path=path,
         from_pyproject=path.name == "pyproject.toml",

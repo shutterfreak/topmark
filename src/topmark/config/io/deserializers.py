@@ -59,12 +59,8 @@ from topmark.toml.getters import get_string_list_value_checked
 from topmark.toml.getters import get_string_value_checked
 from topmark.toml.getters import get_table_value
 from topmark.toml.keys import Toml
-from topmark.toml.schema import TOPMARK_TOML_SCHEMA
-from topmark.toml.schema import TomlValidationMode
 from topmark.toml.typing_guards import as_toml_table_map
 from topmark.toml.typing_guards import toml_table_from_mapping
-from topmark.toml.validation import TomlValidationIssue
-from topmark.toml.validation import add_toml_issues
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -99,6 +95,19 @@ class ExtractedLayeredTomlTables:
 
 
 def mutable_config_from_toml_dict(
+    data: TomlTable,
+    config_file: Path | None = None,
+    use_defaults: bool = False,
+) -> MutableConfig:
+    """Temporary compatibility wrapper."""
+    return mutable_config_from_layered_toml_table(
+        data,
+        config_file=config_file,
+        use_defaults=use_defaults,
+    )
+
+
+def mutable_config_from_layered_toml_table(
     data: TomlTable,
     config_file: Path | None = None,
     use_defaults: bool = False,
@@ -451,25 +460,6 @@ def mutable_config_from_toml_dict(
             diagnostics=draft.diagnostics,
         )
 
-    def _validate_toml_schema(tool_tbl: TomlTable) -> None:
-        """Validate TOML section/key shape and attach schema diagnostics.
-
-        This performs schema-level validation only:
-            - unknown top-level sections,
-            - wrong section table shapes,
-            - unknown keys in closed sections,
-            - malformed `[policy_by_type.<filetype>]` child tables,
-            - dump-only keys used in ordinary input mode.
-
-        Value/type validation remains the responsibility of the section-specific
-        parsing helpers below.
-        """
-        issues: tuple[TomlValidationIssue, ...] = TOPMARK_TOML_SCHEMA.validate(
-            tool_tbl,
-            mode=TomlValidationMode.INPUT,
-        )
-        add_toml_issues(draft.diagnostics, issues)
-
     def _extract_toml_tables(
         tool_tbl: TomlTable,
     ) -> ExtractedLayeredTomlTables:
@@ -513,9 +503,6 @@ def mutable_config_from_toml_dict(
         # ---- config_files: normalize to absolute paths if possible ----
         config_files: tuple[list[Path]] = ([config_file] if config_file else [],)
         draft.config_files = [str(p) for p in config_files[0]] if config_files[0] else []
-
-    # Validate top-level keys / section shapes / unknown keys
-    _validate_toml_schema(tool_tbl)
 
     # Extract sub-tables for specific config sections; fallback to empty dicts.
     #
@@ -561,7 +548,7 @@ def mutable_config_from_defaults() -> MutableConfig:
 
     # Note: `config_file` is set to None because this is a package resource,
     # not a user-specified filesystem path.
-    return mutable_config_from_toml_dict(
+    return mutable_config_from_layered_toml_table(
         default_toml_data,
         config_file=None,
         use_defaults=True,  # We ONLY include defaults when loading from defaults!
@@ -599,4 +586,4 @@ def mutable_config_from_mapping(data: Mapping[str, object]) -> MutableConfig:
     # Keep the API-facing coercion boundary explicit here so callers do not need
     # to route generic mappings through a TOML-named helper directly.
     toml_data: TomlTable = toml_table_from_mapping(data)
-    return mutable_config_from_toml_dict(toml_data)
+    return mutable_config_from_layered_toml_table(toml_data)
