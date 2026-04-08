@@ -23,8 +23,8 @@ from typing import TYPE_CHECKING
 import topmark.resolution.files as file_resolver_mod
 
 # Import the module under test
-from tests.conftest import make_config
-from tests.conftest import make_file_type
+from tests.helpers.config import make_config
+from tests.helpers.registry import make_file_type
 from topmark.config.types import PatternGroup
 from topmark.filetypes.model import ContentGate
 from topmark.registry.filetypes import FileTypeRegistry

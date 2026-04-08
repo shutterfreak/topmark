@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests.api.conftest import cfg
+from tests.helpers.api import config_mapping
 from topmark import api
 from topmark.toml.keys import Toml
 
@@ -35,7 +35,7 @@ def test_check_with_explicit_config_restricts_file_types(repo_py_toml_xyz_no_hea
     r: api.RunResult = api.check(
         [repo_py_toml_xyz_no_header / "src"],
         apply=False,
-        config=cfg(files={Toml.KEY_INCLUDE_FILE_TYPES: ["python"]}),
+        config=config_mapping(files={Toml.KEY_INCLUDE_FILE_TYPES: ["python"]}),
         include_file_types=None,  # rely solely on config mapping here
     )
 

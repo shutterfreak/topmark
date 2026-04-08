@@ -20,8 +20,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests.conftest import make_file_type
-from tests.conftest import registry_processor_class
+from tests.helpers.registry import make_file_type
+from tests.helpers.registry import registry_processor_class
 from topmark.registry.bindings import BindingRegistry
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry

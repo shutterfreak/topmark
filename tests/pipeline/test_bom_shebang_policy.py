@@ -26,9 +26,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.pipeline.conftest import make_pipeline_context
-from tests.pipeline.conftest import materialize_image_lines
-from tests.pipeline.conftest import run_steps
+from tests.helpers.pipeline import make_pipeline_context
+from tests.helpers.pipeline import materialize_image_lines
+from tests.helpers.pipeline import run_steps
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import PlanStatus

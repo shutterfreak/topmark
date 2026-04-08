@@ -22,12 +22,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tests.conftest import make_file_type
-from tests.pipeline.conftest import make_pipeline_context
-from tests.pipeline.conftest import run_comparer
-from tests.pipeline.conftest import run_reader
-from tests.pipeline.conftest import run_resolver
-from tests.pipeline.conftest import run_scanner
+from tests.helpers.pipeline import make_pipeline_context
+from tests.helpers.pipeline import run_comparer
+from tests.helpers.pipeline import run_reader
+from tests.helpers.pipeline import run_resolver
+from tests.helpers.pipeline import run_scanner
+from tests.helpers.registry import make_file_type
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER

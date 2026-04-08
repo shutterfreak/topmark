@@ -19,7 +19,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tests.conftest import resolve_processor_for_path
+from tests.helpers.registry import resolve_processor_for_path
 
 if TYPE_CHECKING:
     from topmark.processors.base import HeaderProcessor

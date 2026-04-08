@@ -15,7 +15,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from typing import ClassVar
 
-from tests.conftest import make_file_type
+from tests.helpers.registry import make_file_type
 from topmark.processors.base import HeaderProcessor
 from topmark.registry.bindings import BindingRegistry
 from topmark.registry.filetypes import FileTypeRegistry

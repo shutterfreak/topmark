@@ -28,7 +28,7 @@ from typing import Any
 
 import pytest
 
-from tests.conftest import make_config
+from tests.helpers.config import make_config
 from topmark.pipeline import engine
 from topmark.runtime.model import RunOptions
 

@@ -22,8 +22,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.conftest import make_file_type
-from tests.conftest import registry_processor_class
+from tests.helpers.registry import make_file_type
+from tests.helpers.registry import registry_processor_class
 from topmark.core.errors import DuplicateProcessorRegistrationError
 from topmark.filetypes.model import FileType
 from topmark.processors.base import HeaderProcessor

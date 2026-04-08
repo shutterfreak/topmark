@@ -21,13 +21,13 @@ import re
 from typing import TYPE_CHECKING
 
 from tests.conftest import mark_pipeline
-from tests.conftest import resolve_processor_for_path
-from tests.pipeline.conftest import BlockSignatures
-from tests.pipeline.conftest import expected_block_lines_for
-from tests.pipeline.conftest import find_line
-from tests.pipeline.conftest import make_pipeline_context
-from tests.pipeline.conftest import materialize_updated_lines
-from tests.pipeline.conftest import run_insert
+from tests.helpers.pipeline import BlockSignatures
+from tests.helpers.pipeline import expected_block_lines_for
+from tests.helpers.pipeline import find_line
+from tests.helpers.pipeline import make_pipeline_context
+from tests.helpers.pipeline import materialize_updated_lines
+from tests.helpers.pipeline import run_insert
+from tests.helpers.registry import resolve_processor_for_path
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER

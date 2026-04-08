@@ -31,11 +31,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tests.conftest import parametrize
-from tests.pipeline.conftest import make_pipeline_context
-from tests.pipeline.conftest import materialize_image_lines
-from tests.pipeline.conftest import run_reader
-from tests.pipeline.conftest import run_resolver
-from tests.pipeline.conftest import run_sniffer
+from tests.helpers.pipeline import make_pipeline_context
+from tests.helpers.pipeline import materialize_image_lines
+from tests.helpers.pipeline import run_reader
+from tests.helpers.pipeline import run_resolver
+from tests.helpers.pipeline import run_sniffer
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER

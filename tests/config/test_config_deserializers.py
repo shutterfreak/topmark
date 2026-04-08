@@ -25,8 +25,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.conftest import assert_warned_and_diagnosed
-from tests.conftest import group_patterns
+from tests.helpers.config import group_patterns
+from tests.helpers.diagnostics import assert_warned_and_diagnosed
 from topmark.config.io.deserializers import mutable_config_from_layered_toml_table
 from topmark.toml.keys import Toml
 

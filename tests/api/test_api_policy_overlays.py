@@ -28,7 +28,7 @@ from typing import cast
 import pytest
 
 from tests.api.conftest import has_header
-from tests.api.conftest import read_text
+from tests.helpers.io import read_text
 from topmark import api
 from topmark.api.types import PublicPolicy
 from topmark.core.errors import InvalidPolicyError

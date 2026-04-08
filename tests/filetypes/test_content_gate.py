@@ -15,7 +15,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tests.conftest import make_file_type
+from tests.helpers.registry import make_file_type
 from topmark.filetypes.model import ContentGate
 from topmark.filetypes.model import FileType
 

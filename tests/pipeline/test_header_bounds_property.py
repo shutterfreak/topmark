@@ -28,9 +28,9 @@ from hypothesis import assume
 from hypothesis import given
 from hypothesis import settings
 
-from tests.pipeline.conftest import materialize_updated_lines
-from tests.pipeline.conftest import run_insert
-from tests.pipeline.conftest import run_strip
+from tests.helpers.pipeline import materialize_updated_lines
+from tests.helpers.pipeline import run_insert
+from tests.helpers.pipeline import run_strip
 from tests.strategies_topmark import s_source_envelope_for_ext
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.constants import TOPMARK_START_MARKER

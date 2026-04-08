@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.conftest import resolve_processor_for_path
+from tests.helpers.registry import resolve_processor_for_path
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
 from topmark.processors.types import StripDiagKind

@@ -26,7 +26,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.api.conftest import run_cli_like
+from tests.helpers.api import run_cli_like
 from topmark import api
 from topmark.config.model import MutableConfig
 from topmark.pipeline.context.model import ProcessingContext

@@ -1,27 +1,26 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : conftest.py
-#   file_relpath : tests/pipeline/conftest.py
+#   file         : pipeline.py
+#   file_relpath : tests/helpers/pipeline.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""Shared test utilities for TopMark header processors.
+"""Shared helpers for processing-pipeline tests.
 
-This module provides helpers used across processor tests to derive canonical
-TopMark header preamble and postamble lines directly from the registered
-`HeaderProcessor` for a given file path. By querying the processor for its
-rendered block structure, tests avoid hard-coding comment syntax (e.g., HTML
-block comments vs. pound-style line comments) and remain resilient to future
-formatting changes.
+This module contains reusable utilities for tests that exercise TopMark's
+step-based processing pipeline directly, without routing through the CLI or
+public API layers.
 
-Key utilities:
-  * BlockSignatures: TypedDict capturing the canonical header block lines.
-  * expected_block_lines_for(path, newline): Renders preamble/postamble lines
-    using the processor’s configured block/line prefixes and returns them as
-    single-line strings (newlines stripped) for straightforward assertions.
+It provides three main groups of helpers:
+    - pipeline/context bootstrap helpers
+    - step-runner and flow helpers for common step chains
+    - block-signature/materialization helpers for robust assertions
+
+The goal is to keep pipeline tests concise while still using the same
+`ProcessingContext`, policy-registry, and step objects as production code.
 """
 
 from __future__ import annotations
@@ -32,7 +31,7 @@ from typing_extensions import NotRequired
 from typing_extensions import Required
 from typing_extensions import TypedDict
 
-from tests.conftest import resolve_processor_for_path
+from tests.helpers.registry import resolve_processor_for_path
 from topmark.config.policy import PolicyRegistry
 from topmark.config.policy import make_policy_registry
 from topmark.pipeline.context.model import ProcessingContext
@@ -63,6 +62,46 @@ if TYPE_CHECKING:
     from topmark.config.model import Config
     from topmark.pipeline.protocols import Step
     from topmark.processors.base import HeaderProcessor
+
+
+# Common step chains used by tests
+SCAN_STEPS: list[Step[ProcessingContext]] = [
+    ResolverStep(),
+    SnifferStep(),
+    ReaderStep(),
+    ScannerStep(),
+]
+STRIP_STEPS: list[Step[ProcessingContext]] = SCAN_STEPS + [
+    StripperStep(),
+    PlannerStep(),
+]
+CHECK_COMPARE_STEPS: list[Step[ProcessingContext]] = SCAN_STEPS + [
+    RendererStep(),
+    ComparerStep(),
+]
+# For insert/update tests that render and compare before updating, test modules
+# can extend SCAN_STEPS with Builder/Renderer/Comparer if needed.
+
+
+# ---- Class-based step runner helpers (tests) ----
+
+
+def run_steps(
+    ctx: ProcessingContext,
+    steps: list[Step[ProcessingContext]] | tuple[Step[ProcessingContext], ...],
+) -> ProcessingContext:
+    """Run a list of class-based steps against a context and return it.
+
+    This helper mirrors the engine's simple sequential execution. It does not
+    short-circuit on `may_proceed()`; each step enforces its own gating, as in
+    production.
+    """
+    for step in steps:
+        step(ctx)
+    return ctx
+
+
+# ---- Individual step runners ----
 
 
 def run_resolver(ctx: ProcessingContext) -> ProcessingContext:
@@ -118,6 +157,9 @@ def run_stripper(ctx: ProcessingContext) -> ProcessingContext:
 def run_writer(ctx: ProcessingContext) -> ProcessingContext:
     """Run the WriterStep."""
     return WriterStep()(ctx)
+
+
+# ---- Context/bootstrap helpers ----
 
 
 def make_pipeline_context(path: Path, cfg: Config) -> ProcessingContext:
@@ -197,7 +239,9 @@ def make_context_from_text(
     return ctx
 
 
-# --- Newline normalization helper for test output ---
+# ---- Materialization/newline helpers ----
+
+
 def coerce_newlines(
     lines: list[str],
     target_nl: str,
@@ -260,41 +304,28 @@ def materialize_updated_lines(ctx: ProcessingContext) -> list[str]:
     return seq if isinstance(seq, list) else list(seq)
 
 
-# --- Class-based step runner helpers (tests) ---
+def find_line(lines: list[str], needle: str) -> int:
+    """Return the index of the first line equal to ``needle``.
 
+    Comparison strips trailing newline characters to be newline-style agnostic.
 
-def run_steps(
-    ctx: ProcessingContext,
-    steps: list[Step[ProcessingContext]] | tuple[Step[ProcessingContext], ...],
-) -> ProcessingContext:
-    """Run a list of class-based steps against a context and return it.
+    Args:
+        lines: Sequence of lines (each typically ending with a newline).
+        needle: The exact content to match (no trailing newline).
 
-    This helper mirrors the engine's simple sequential execution. It does not
-    short-circuit on `may_proceed()`; each step enforces its own gating, as in
-    production.
+    Returns:
+        Zero-based index of the first matching line.
+
+    Raises:
+        AssertionError: If ``needle`` is not found.
     """
-    for step in steps:
-        step(ctx)
-    return ctx
+    for i, ln in enumerate(lines):
+        if ln.rstrip("\r\n") == needle:
+            return i
+    raise AssertionError(f"Line not found: {needle!r}\n\n" + "".join(lines))
 
 
-# Common step chains used by tests
-SCAN_STEPS: list[Step[ProcessingContext]] = [
-    ResolverStep(),
-    SnifferStep(),
-    ReaderStep(),
-    ScannerStep(),
-]
-STRIP_STEPS: list[Step[ProcessingContext]] = SCAN_STEPS + [
-    StripperStep(),
-    PlannerStep(),
-]
-CHECK_COMPARE_STEPS: list[Step[ProcessingContext]] = SCAN_STEPS + [
-    RendererStep(),
-    ComparerStep(),
-]
-# For insert/update tests that render and compare before updating, test modules
-# can extend SCAN_STEPS with Builder/Renderer/Comparer if needed.
+# ---- Flow helpers ----
 
 
 def run_insert(path: Path, cfg: Config) -> ProcessingContext:
@@ -357,27 +388,6 @@ def run_scan(path: Path, cfg: Config) -> ProcessingContext:
     ctx: ProcessingContext = make_pipeline_context(path=path, cfg=cfg)
     run_steps(ctx, SCAN_STEPS)
     return ctx
-
-
-def find_line(lines: list[str], needle: str) -> int:
-    """Return the index of the first line equal to ``needle``.
-
-    Comparison strips trailing newline characters to be newline-style agnostic.
-
-    Args:
-        lines: Sequence of lines (each typically ending with a newline).
-        needle: The exact content to match (no trailing newline).
-
-    Returns:
-        Zero-based index of the first matching line.
-
-    Raises:
-        AssertionError: If ``needle`` is not found.
-    """
-    for i, ln in enumerate(lines):
-        if ln.rstrip("\r\n") == needle:
-            return i
-    raise AssertionError(f"Line not found: {needle!r}\n\n" + "".join(lines))
 
 
 # --- Helper for canonical TopMark block signatures for test assertions ---

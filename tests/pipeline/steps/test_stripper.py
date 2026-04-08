@@ -21,9 +21,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tests.pipeline.conftest import make_pipeline_context
-from tests.pipeline.conftest import materialize_updated_lines
-from tests.pipeline.conftest import run_stripper
+from tests.helpers.pipeline import make_pipeline_context
+from tests.helpers.pipeline import materialize_updated_lines
+from tests.helpers.pipeline import run_stripper
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER

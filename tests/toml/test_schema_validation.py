@@ -27,8 +27,8 @@ from typing import TYPE_CHECKING
 import pytest
 import tomlkit
 
-from tests.conftest import assert_not_warned
-from tests.conftest import assert_warned_and_diagnosed
+from tests.helpers.diagnostics import assert_not_warned
+from tests.helpers.diagnostics import assert_warned_and_diagnosed
 from tests.toml.conftest import draft_from_topmark_toml_file
 from tests.toml.conftest import draft_from_topmark_toml_table
 from tests.toml.conftest import write_toml_document

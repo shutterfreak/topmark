@@ -28,11 +28,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tests.conftest import mark_pipeline
-from tests.pipeline.conftest import BlockSignatures
-from tests.pipeline.conftest import expected_block_lines_for
-from tests.pipeline.conftest import find_line
-from tests.pipeline.conftest import materialize_updated_lines
-from tests.pipeline.conftest import run_insert
+from tests.helpers.pipeline import BlockSignatures
+from tests.helpers.pipeline import expected_block_lines_for
+from tests.helpers.pipeline import find_line
+from tests.helpers.pipeline import materialize_updated_lines
+from tests.helpers.pipeline import run_insert
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.policy import PolicyRegistry
 from topmark.config.policy import make_policy_registry

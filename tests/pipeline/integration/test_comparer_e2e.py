@@ -21,9 +21,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests.pipeline.conftest import make_pipeline_context
-from tests.pipeline.conftest import run_insert
-from tests.pipeline.conftest import run_steps
+from tests.helpers.pipeline import make_pipeline_context
+from tests.helpers.pipeline import run_insert
+from tests.helpers.pipeline import run_steps
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER

@@ -19,15 +19,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests.pipeline.conftest import make_pipeline_context
-from tests.pipeline.conftest import run_builder
-from tests.pipeline.conftest import run_comparer
-from tests.pipeline.conftest import run_patcher
-from tests.pipeline.conftest import run_planner
-from tests.pipeline.conftest import run_reader
-from tests.pipeline.conftest import run_renderer
-from tests.pipeline.conftest import run_resolver
-from tests.pipeline.conftest import run_scanner
+from tests.helpers.pipeline import make_pipeline_context
+from tests.helpers.pipeline import run_builder
+from tests.helpers.pipeline import run_comparer
+from tests.helpers.pipeline import run_patcher
+from tests.helpers.pipeline import run_planner
+from tests.helpers.pipeline import run_reader
+from tests.helpers.pipeline import run_renderer
+from tests.helpers.pipeline import run_resolver
+from tests.helpers.pipeline import run_scanner
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER

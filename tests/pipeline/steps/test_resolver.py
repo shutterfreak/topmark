@@ -25,10 +25,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tests.conftest import EffectiveRegistries
-from tests.conftest import make_file_type
-from tests.pipeline.conftest import make_pipeline_context
-from tests.pipeline.conftest import run_resolver
+from tests.helpers.pipeline import make_pipeline_context
+from tests.helpers.pipeline import run_resolver
+from tests.helpers.registry import make_file_type
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.filetypes.model import ContentGate
 from topmark.filetypes.model import FileType
@@ -40,6 +39,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
     from pathlib import Path
 
+    from tests.conftest import EffectiveRegistries
     from topmark.config.model import Config
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.registry.types import ProcessorDefinition

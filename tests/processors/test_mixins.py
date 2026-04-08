@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests.conftest import make_file_type
+from tests.helpers.registry import make_file_type
 from topmark.filetypes.policy import FileTypeHeaderPolicy
 from topmark.processors.mixins import BlockCommentMixin
 from topmark.processors.mixins import LineCommentMixin

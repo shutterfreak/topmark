@@ -28,9 +28,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.pipeline.conftest import make_pipeline_context
-from tests.pipeline.conftest import run_resolver
-from tests.pipeline.conftest import run_sniffer
+from tests.helpers.pipeline import make_pipeline_context
+from tests.helpers.pipeline import run_resolver
+from tests.helpers.pipeline import run_sniffer
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.pipeline.status import FsStatus
 from topmark.pipeline.steps.sniffer import inspect_bom_shebang
