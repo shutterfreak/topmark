@@ -62,20 +62,27 @@ All pipelines are built from the same core phases:
 
 ```mermaid
 flowchart TD
+
   subgraph Discovery
     R[<tt>ResolverStep</tt>]
-    --> S[<tt>SnifferStep</tt>]
-    --> D[<tt>ReaderStep</tt>]
-    --> N[<tt>ScannerStep</tt>]
+    S[<tt>SnifferStep</tt>]
+    D[<tt>ReaderStep</tt>]
+    N[<tt>ScannerStep</tt>]
+
+    R --> S --> D --> N
   end
 
   subgraph Check
-    N --> B[<tt>BuilderStep</tt>]
-      --> T[<tt>RendererStep</tt>]
+    B[<tt>BuilderStep</tt>]
+    T[<tt>RendererStep</tt>]
+
+    N --> B --> T
   end
 
   subgraph Strip
-    N --> X[<tt>StripperStep</tt>]
+    X[<tt>StripperStep</tt>]
+
+    N --> X
   end
 
   subgraph Comparison
@@ -83,9 +90,13 @@ flowchart TD
   end
 
   subgraph Mutation
-    C --> P[<tt>PlannerStep</tt>]
-    P -->|patch| H[<tt>PatcherStep</tt>]
-    P -->|apply| W[<tt>WriterStep</tt>]
+    P[<tt>PlannerStep</tt>]
+    H[<tt>PatcherStep</tt>]
+    W[<tt>WriterStep</tt>]
+
+    C --> P
+    P -->|patch| H
+    P -->|apply| W
   end
 
   T --> C
@@ -114,7 +125,13 @@ The CLI selects among these immutable pipeline variants based on command intent 
 
 ```mermaid
 flowchart TD
-R[<tt>ResolverStep</tt>] --> S[<tt>SnifferStep</tt>] --> D[<tt>ReaderStep</tt>] --> N[<tt>ScannerStep</tt>]
+
+R[<tt>ResolverStep</tt>]
+S[<tt>SnifferStep</tt>]
+D[<tt>ReaderStep</tt>]
+N[<tt>ScannerStep</tt>]
+
+R --> S --> D --> N
 ```
 
 **End states:**
@@ -138,8 +155,10 @@ ______________________________________________________________________
 flowchart TD
 
 SP(<b>SCAN</b>)
---> B[<tt>BuilderStep</tt>]
---> T[<tt>RendererStep</tt>]
+B[<tt>BuilderStep</tt>]
+T[<tt>RendererStep</tt>]
+
+SP --> B --> T
 ```
 
 **End states:**
@@ -162,8 +181,10 @@ ______________________________________________________________________
 ```mermaid
 flowchart TD
 
-  CR(<b>CHECK_RENDER</b>)
-  --> C[<tt>ComparerStep</tt>]
+CR(<b>CHECK_RENDER</b>)
+C[<tt>ComparerStep</tt>]
+
+CR --> C
 ```
 
 **End states:**
@@ -188,8 +209,10 @@ ______________________________________________________________________
 flowchart TD
 
 CP(<b>CHECK</b>)
---> P[<tt>PlannerStep</tt>]
---> H[<tt>PatcherStep</tt>]
+P[<tt>PlannerStep</tt>]
+H[<tt>PatcherStep</tt>]
+
+CP --> P --> H
 ```
 
 **End states:**
@@ -213,8 +236,10 @@ ______________________________________________________________________
 flowchart TD
 
 CP(<b>CHECK</b>)
---> P[<tt>PlannerStep</tt>]
---> W[<tt>WriterStep</tt>]
+P[<tt>PlannerStep</tt>]
+W[<tt>WriterStep</tt>]
+
+CP --> P --> W
 ```
 
 **End states:**
@@ -239,9 +264,11 @@ ______________________________________________________________________
 flowchart TD
 
 CP(<b>CHECK</b>)
---> P[<tt>PlannerStep</tt>]
---> H[<tt>PatcherStep</tt>]
---> W[<tt>WriterStep</tt>]
+P[<tt>PlannerStep</tt>]
+H[<tt>PatcherStep</tt>]
+W[<tt>WriterStep</tt>]
+
+CP --> P --> H --> W
 ```
 
 Primarily useful for CI or audit workflows.
@@ -260,7 +287,9 @@ ______________________________________________________________________
 flowchart TD
 
 SP(<b>SCAN</b>)
---> X[<tt>StripperStep</tt>]
+X[<tt>StripperStep</tt>]
+
+SP --> X
 ```
 
 **End states:**
@@ -283,9 +312,11 @@ ______________________________________________________________________
 flowchart TD
 
 XP(<b>STRIP</b>)
---> C[<tt>ComparerStep</tt>]
---> P[<tt>PlannerStep</tt>]
---> H[<tt>PatcherStep</tt>]
+C[<tt>ComparerStep</tt>]
+P[<tt>PlannerStep</tt>]
+H[<tt>PatcherStep</tt>]
+
+XP --> C --> P --> H
 ```
 
 ______________________________________________________________________
@@ -302,8 +333,10 @@ ______________________________________________________________________
 flowchart TD
 
 XP(<b>STRIP</b>)
---> P[<tt>PlannerStep</tt>]
---> W[<tt>WriterStep</tt>]
+P[<tt>PlannerStep</tt>]
+W[<tt>WriterStep</tt>]
+
+XP --> P --> W
 ```
 
 ______________________________________________________________________
@@ -320,10 +353,12 @@ ______________________________________________________________________
 flowchart TD
 
 XP(<b>STRIP</b>)
---> C[<tt>ComparerStep</tt>]
---> P[<tt>PlannerStep</tt>]
---> H[<tt>PatcherStep</tt>]
---> W[<tt>WriterStep</tt>]
+C[<tt>ComparerStep</tt>]
+P[<tt>PlannerStep</tt>]
+H[<tt>PatcherStep</tt>]
+W[<tt>WriterStep</tt>]
+
+XP --> C --> P --> H --> W
 ```
 
 ______________________________________________________________________
@@ -556,32 +591,60 @@ These diagrams describe the **user-visible** execution paths behind `topmark che
 
 ```mermaid
 flowchart TD
-  A[User runs: topmark check] --> B[SCAN: resolve + sniff + read + scan]
-  B --> C[CHECK_RENDER: build + render]
-  C --> D[COMPARE]
-  D -->|unchanged| E[Report: unchanged]
-  D -->|would change| F[Plan insert/replace]
-  F -->|no --patch, no --apply| G[Report: would change]
-  F -->|--patch| H[Generate patch]
-  F -->|--apply| I[Write file]
-  H --> J[Report: patch shown]
-  I --> K[Report: written]
-  B --> L[Blocked by policy/fs/content] --> M[Report: skipped/unsupported/error]
+  A[User runs: topmark check]
+  B[SCAN: resolve + sniff + read + scan]
+  C[CHECK_RENDER: build + render]
+  D[COMPARE]
+  E[Report: unchanged]
+  F[Plan insert/replace]
+  G[Report: would change]
+  H[Generate patch]
+  I[Write file]
+  J[Report: patch shown]
+  K[Report: written]
+  L[Blocked by policy/fs/content]
+  M[Report: skipped/unsupported/error]
+
+  A --> B
+  B --> C
+  C --> D
+  D -->|unchanged| E
+  D -->|would change| F
+  F -->|no --patch, no --apply| G
+  F -->|--patch| H
+  F -->|--apply| I
+  H --> J
+  I --> K
+  B --> L --> M
 ```
 
 ### `topmark strip`
 
 ```mermaid
 flowchart TD
-  A[User runs: topmark strip] --> B[SCAN: resolve + sniff + read + scan]
-  B --> C[STRIP: compute removal]
-  C --> D[COMPARE]
-  D -->|nothing to remove| E[Report: no-op]
-  D -->|would remove| F[Plan removal]
-  F -->|no --patch, no --apply| G[Report: would remove]
-  F -->|--patch| H[Generate patch]
-  F -->|--apply| I[Write file]
-  H --> J[Report: patch shown]
-  I --> K[Report: written]
-  B --> L[Blocked by policy/fs/content] --> M[Report: skipped/unsupported/error]
+  A[User runs: topmark strip]
+  B[SCAN: resolve + sniff + read + scan]
+  C[STRIP: compute removal]
+  D[COMPARE]
+  E[Report: no-op]
+  F[Plan removal]
+  G[Report: would remove]
+  H[Generate patch]
+  I[Write file]
+  J[Report: patch shown]
+  K[Report: written]
+  L[Blocked by policy/fs/content]
+  M[Report: skipped/unsupported/error]
+
+  A --> B
+  B --> C
+  C --> D
+  D -->|nothing to remove| E
+  D -->|would remove| F
+  F -->|no --patch, no --apply| G
+  F -->|--patch| H
+  F -->|--apply| I
+  H --> J
+  I --> K
+  B --> L --> M
 ```

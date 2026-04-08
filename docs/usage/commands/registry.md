@@ -31,8 +31,9 @@ flowchart LR
     FT["FileType<br/>(identity)"]
     PR["Processor<br/>(identity)"]
     BD["Binding<br/>(relationship)"]
-
-    FT -->|matched by path| RES[Resolution]
+    RES[Resolution]
+    
+    FT -->|matched by path| RES
     RES -->|selects| BD
     BD -->|maps to| PR
 

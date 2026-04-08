@@ -27,19 +27,38 @@ Mermaid (orientation)
 ---------------------
 ```mermaid
 flowchart TD
+
   subgraph Discovery
-    R[resolver] --> S[sniffer] --> D[reader] --> N[scanner]
+    R[resolver]
+    S[sniffer]
+    D[reader]
+    N[scanner]
+
+    R --> S --> D --> N
   end
+
   subgraph Check
-    N --> B[builder] --> T[renderer] --> C[comparer]
+    B[builder]
+    T[renderer]
+    C[comparer]
+
+    N --> B --> T --> C
   end
+
   subgraph Strip
-    N --> P[stripper] --> C
+    P[stripper]
+
+    N --> P --> C
   end
+
   subgraph Mutations
-    C --> U[updater]
-    U -->|patch| H[patcher]
-    U -->|apply| W[writer]
+    U[updater]
+    H[patcher]
+    W[writer]
+
+    C --> U
+    U -->|patch| H
+    U -->|apply| W
   end
 ```
 
