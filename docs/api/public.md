@@ -34,8 +34,9 @@ Public API functions accept either a plain **mapping** (that mirrors the TOML st
 `freeze()`s it into an immutable snapshot before running, which prevents accidental mutation and
 keeps results deterministic.
 
-The mapping mirrors the TopMark TOML schema. Source‑local options such as `[config].root` and
-`strict_config_checking` can also be provided via the `config` key in the mapping, for example:
+The mapping mirrors the **layered TopMark config fragment** plus TOML-source-local sections such as
+`[config]` and `[writer]`. Source-local options such as `[config].root` and `strict_config_checking`
+can also be provided via the `config` key in the mapping, for example:
 
 ```python
 config = {
@@ -54,6 +55,11 @@ optional overrides) when validating a config.
 
 These options are resolved separately from layered `Config` values and do not participate in layered
 config merging.
+
+Internally, TopMark first performs whole-source TOML-style validation of these sections (unknown
+keys, malformed section shapes, etc.) and then deserializes only the layered fragment into the final
+immutable `Config` snapshot. This is why sections like `[config]` and `[writer]` can influence
+loading/runtime behavior without becoming layered `Config` fields.
 
 This distinction is also visible when inspecting configuration via
 `topmark config dump --show-layers`: source-local TOML fragments are preserved per layer (for
@@ -129,8 +135,9 @@ The public API only operates on the flattened immutable `Config`. Layered proven
 inspection concern and is exposed via the CLI (`config dump --show-layers`) rather than through the
 stable `topmark.api` surface.
 
-Internally, TopMark resolves TOML sources and builds a merged mutable config draft before freezing
-it into an immutable `Config`. Advanced users can inspect this process via
+Internally, TopMark resolves TOML sources, validates each whole-source TOML fragment, and builds a
+merged mutable config draft before freezing it into an immutable `Config`. Advanced users can
+inspect this process via
 \[`resolve_toml_sources_and_build_config_draft()`\][topmark.config.resolution.bridge.resolve_toml_sources_and_build_config_draft].
 
 ### Recognized vs supported file types

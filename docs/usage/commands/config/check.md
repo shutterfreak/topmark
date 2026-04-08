@@ -52,7 +52,10 @@ ______________________________________________________________________
 ## Key properties
 
 - **Validates merged config**: loads defaults → discovered config → `--config` files → CLI
-  overrides, then freezes/validates the final configuration.
+  overrides, performs whole-source TOML schema validation per source, then freezes/validates the
+  final configuration.
+- **Reports TOML schema issues**: unknown sections/keys and malformed TOML structures are surfaced
+  as configuration diagnostics originating from the TOML layer.
 - **File-agnostic**: positional PATHS are ignored (a note is printed). `-` (content-on-STDIN) is
   ignored.
 - **CI-friendly**: exit code is non-zero when validation fails.
@@ -118,6 +121,20 @@ ______________________________________________________________________
 
 This format is designed for CI logs and copy/paste into issues.
 
+### Typical validation flow
+
+```mermaid
+flowchart TD
+    A["Resolve TOML sources<br/>defaults, discovered config, --config, CLI context"]
+    B["Validate each whole-source TOML fragment<br/>unknown sections, unknown keys, malformed shapes"]
+    C["Extract layered config fragment<br/>source-local sections like [config] and [writer] stay TOML-local"]
+    D["Merge layered config into mutable draft<br/>apply precedence and overrides"]
+    E["Freeze and validate final Config<br/>value/type diagnostics, strictness handling"]
+    F["Emit human or machine-readable diagnostics<br/>config check result"]
+
+    A --> B --> C --> D --> E --> F
+```
+
 ______________________________________________________________________
 
 ## Machine-readable output
@@ -131,9 +148,11 @@ The canonical schema, stable `kind` values, and shared conventions are documente
 
 Notes:
 
-- `config check` is **file-agnostic**, so it does not emit per-file `result` records.
-- `config check` emits **diagnostics only for configuration loading/validation**, not pipeline
-  processing diagnostics.
+- `config check` emits diagnostics for both TOML schema validation and configuration
+  loading/validation, but not pipeline processing diagnostics.
+
+- Validation still follows the same staged flow shown above: per-source TOML validation first, then
+  layered config merge, then final config validation.
 
 Example (`[config].strict_config_checking = true` resolved from TOML, with no CLI override):
 

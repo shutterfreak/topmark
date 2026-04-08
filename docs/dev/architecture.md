@@ -25,18 +25,42 @@ TopMark separates configuration concerns into three layers:
 - **TOML layer** (`topmark.toml`):
   - discovery of configuration sources
   - parsing of TOML tables
+  - whole-source TOML schema validation (unknown sections / keys, malformed section shapes)
   - resolution of source-local options (e.g. `[config].root`, `strict_config_checking`)
 - **Config layer** (`topmark.config`):
   - construction of layered configuration (`ConfigLayer`)
+  - deserialization of already-validated layered config fragments into `MutableConfig`
   - merging into a mutable config draft
   - field-level merge semantics and precedence rules
 - **Runtime layer** (`topmark.runtime`):
   - execution-time options (e.g. writer behavior)
   - final adjustments before pipeline execution
 
+```mermaid
+flowchart TD
+    A["Resolve TOML sources<br/>defaults, discovered config, --config, CLI context"]
+    B["Validate each whole-source TOML fragment<br/>unknown sections, unknown keys, malformed shapes"]
+    C["Extract layered config fragment<br/>source-local sections like [config] and [writer] stay TOML-local"]
+    D["Deserialize layered fragment into MutableConfig<br/>defensive value parsing and normalization"]
+    E["Merge layered config into mutable draft<br/>apply precedence and overrides"]
+    F["Freeze and validate final Config<br/>value/type diagnostics, strictness handling"]
+    G["Runtime layer<br/>apply execution-only options before pipeline"]
+
+    A --> B --> C --> D --> E --> F --> G
+```
+
 Not all TOML-defined values become layered `Config` fields. Source-local options such as
 `[config].root` and `strict_config_checking` are resolved on the TOML side first, then applied to
 config discovery/validation behaviour without participating in layered config merging.
+
+Whole-source TOML schema validation now happens before layered config deserialization. The staged
+flow is shown in the diagram above. In other words:
+
+- `topmark.toml` validates the full TopMark TOML source (including `[config]`, `[writer]`, and
+  unknown top-level entries)
+- `topmark.config` only receives the layered config fragment
+- layered config deserializers still perform defensive value parsing so API and test callers can
+  pass malformed layered fragments without crashing
 
 The main integration point between TOML resolution and config merging is:
 
@@ -318,10 +342,13 @@ The resolution path from a user-provided identifier to a bound processor looks l
 
 ```mermaid
 flowchart TD
-    ID["User identifier<br/>(name or namespace:name)"] --> RESOLVE["FileTypeRegistry.resolve_filetype_id(...)"]
-    RESOLVE --> FT["FileType instance<br/>(namespace, name)"]
-    FT --> HPR["HeaderProcessorRegistry<br/>binds processor"]
-    HPR --> PIPE["Pipeline steps<br/>operate on resolved FileType"]
+    ID["User identifier<br/>(name or namespace:name)"]
+    RESOLVE["FileTypeRegistry.resolve_filetype_id(...)"]
+    FT["FileType instance<br/>(namespace, name)"]
+    HPR["HeaderProcessorRegistry<br/>binds processor"]
+    PIPE["Pipeline steps<br/>operate on resolved FileType"]
+
+    ID --> RESOLVE --> FT --> HPR --> PIPE
 ```
 
 Internally:

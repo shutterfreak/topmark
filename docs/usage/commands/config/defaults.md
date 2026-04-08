@@ -18,6 +18,10 @@ The `config defaults` subcommand (part of the TopMark [`config` Command Family](
 prints TopMark’s **built‑in default TopMark TOML document** as TOML. It uses a cleaned, comment-free
 TOML representation derived from the built-in defaults (no project files are discovered or merged).
 
+Because the output is generated from TopMark's built-in defaults, it reflects only the **layered
+default config fragment**. Source-local TOML sections such as `[config]` and `[writer]` are not
+resolved from project files here.
+
 - `text` / `markdown` formats: minimal, comment-free TOML.
 - `json` / `ndjson`: a plain Config snapshot, with no diagnostics.
 
@@ -36,7 +40,8 @@ ______________________________________________________________________
 
 - **Isolated**: ignores project/user config files and CLI overrides.
 - **File‑agnostic**: does not resolve or process any PATHS.
-- **Reference**: useful to understand the default header layout, policy behavior, and TOML schema.
+- **Reference**: useful to understand the default layered config fragment, header layout, policy
+  behavior, and TOML/config split.
 
 > **How config is resolved**
 >
@@ -76,6 +81,8 @@ Notes:
 
 - `config defaults` is **file-agnostic** and emits a configuration snapshot derived only from the
   built-in defaults (no discovery and no merge with project/user config).
+- The output corresponds to the built-in layered config defaults, not to a whole-source TOML
+  document after discovery/resolution.
 - No diagnostics are emitted for this command.
 
 ### JSON schema

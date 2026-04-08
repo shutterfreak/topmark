@@ -15,6 +15,13 @@ topmark:header:end
 TopMark merges configuration from multiple sources with **clear precedence** and now supports
 **policy-based control** over header insertion and updates.
 
+TopMark now distinguishes clearly between:
+
+- **whole-source TOML validation** (`topmark.toml`), which validates unknown sections/keys and
+  malformed section shapes per TOML source
+- **layered config deserialization and merge** (`topmark.config`), which consumes only the validated
+  layered fragment and performs value parsing, normalization, and merge semantics
+
 ______________________________________________________________________
 
 ## Discovery order
@@ -63,7 +70,8 @@ When using `topmark config dump --show-layers`, this discovery and merge process
 user config, project configs, `--config`, CLI) and includes the original source-local TOML fragment.
 
 This layered view is inspection-oriented and does not change merge semantics; it simply makes the
-effective precedence and contributions of each layer explicit.
+effective precedence and contributions of each layer explicit. The stored TOML fragments correspond
+to the source-local TOML view after TOML-layer validation.
 
 ### Summary table
 
@@ -140,6 +148,9 @@ Some options defined under `[config]` (or `[tool.topmark.config]`) do **not** pa
 config merging. Instead, they are resolved once during TOML source discovery and applied after
 layered merging.
 
+These TOML-source-local options are still validated as part of whole-source TOML loading, but they
+do not become layered `Config` fields.
+
 Currently, this includes:
 
 | Field                    | Description                                                                           |
@@ -148,7 +159,8 @@ Currently, this includes:
 
 Key properties:
 
-- These values are resolved from TOML sources before building the config draft.
+- These values are resolved from TOML sources after TOML-layer validation and before building the
+  layered config draft.
 - They are **not part of `Config` / `MutableConfig` merge semantics**.
 - Effective strictness is determined as:
 
@@ -170,7 +182,8 @@ This distinction is also visible in layered provenance output:
 
 - In human output (`config dump --show-layers`), source-local TOML fragments are rendered under
   `[[layers]].toml.*`.
-- In machine output, the same fragments are exposed under `config_provenance.layers[].toml`.
+- In machine output, the same validated source-local fragments are exposed under
+  `config_provenance.layers[].toml`.
 
 This enables strict config validation for the current project scope, causing warnings to be treated
 as errors during config checking.
@@ -365,6 +378,8 @@ ______________________________________________________________________
 - Implementation:
   - TOML source resolution:
     \[`resolve_topmark_toml_sources()`\][topmark.toml.resolution.resolve_topmark_toml_sources]
+  - TOML source loading and validation:
+    \[`load_topmark_toml_source()`\][topmark.toml.loaders.load_topmark_toml_source]
   - Config draft construction:
     \[`resolve_toml_sources_and_build_config_draft()`\][topmark.config.resolution.bridge.resolve_toml_sources_and_build_config_draft]
   - Policy evaluation: \[`effective_policy()`\][topmark.config.policy.effective_policy]

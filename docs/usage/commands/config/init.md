@@ -18,9 +18,13 @@ The `config init` subcommand (part of the TopMark [`config` Command Family](../c
 the **bundled example TopMark TOML resource**. This file is heavily commented and is intended as a
 starting point for a new configuration file.
 
+The example includes both layered-config sections (such as `[header]`, `[fields]`, `[formatting]`,
+and `[files]`) and TOML-source-local sections such as `[config]`. During normal loading, TopMark
+validates the whole source first and then deserializes only the layered fragment into the final
+merged config.
+
 - `text` / `markdown`: full commented template from the bundled resource.
-- `json` / `ndjson`: minimal Config snapshot derived from the same defaults, without comments or
-  diagnostics.
+- `json` / `ndjson`: minimal defaults-derived config snapshot, without comments or diagnostics.
 
 Notes:
 
@@ -62,7 +66,8 @@ ______________________________________________________________________
 
 - **File‑agnostic**: does not inspect any files.
 - **Non‑destructive**: writes nothing; you control redirection.
-- **Self‑documenting**: comments explain each field and reasonable defaults.
+- **Self‑documenting**: comments explain layered config fields, source-local TOML options, and
+  reasonable defaults.
 
 ______________________________________________________________________
 
@@ -91,7 +96,9 @@ The canonical schema, stable `kind` values, and shared conventions are documente
 
 Notes:
 
-- In machine formats, `config init` emits a built-in default configuration snapshot.
+- In machine formats, `config init` emits a built-in defaults-derived config snapshot.
+- The machine output represents the built-in defaults view, not a discovered or merged project
+  configuration.
 - No diagnostics are emitted for this command.
 
 ### JSON schema
@@ -125,4 +132,4 @@ ______________________________________________________________________
 
 - [`topmark config check`](./check.md) — check the *effective merged* configuration for errors.
 - [`topmark config dump`](./dump.md) — show the *effective merged* configuration as TOML.
-- [`topmark config defaults`](./defaults.md) — show TopMark’s *built-in defaults* as TOML.
+- [`topmark config defaults`](./defaults.md) — show TopMark’s built-in layered defaults as TOML.

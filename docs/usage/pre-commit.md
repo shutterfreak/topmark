@@ -68,9 +68,12 @@ The hook manifest intentionally uses minimal defaults. All behavioral flags (suc
 `--report`, policy options, or output mode) should be supplied by consuming repositories via the
 hook’s `args:` configuration.
 
-Consumers may also control configuration validation strictness using `--strict` / `--no-strict`.
-This overrides the effective `strict_config_checking` setting resolved from TOML sources for the
-duration of the hook run.
+TopMark performs whole-source TOML schema validation during hook execution; any TOML-layer
+diagnostics are included in the reported config diagnostics.
+
+Consumers can control configuration validation strictness using `--strict` / `--no-strict`. This
+overrides the effective `strict_config_checking` setting resolved from TOML sources for the duration
+of the hook run.
 
 For the `topmark-check` hook (which runs `topmark check`), consumers may also pass policy options
 such as `--header-mutation-mode`, `--allow-header-in-empty-files`, or `--empty-insert-mode` when
@@ -147,6 +150,9 @@ ______________________________________________________________________
 # Focus output on files that would change
 topmark check --report actionable
 ```
+
+During these runs, configuration loading includes per-source TOML validation before layered config
+merging, so schema issues are surfaced alongside normal check diagnostics.
 
 ```bash
 # Enforce strict config validation in CI

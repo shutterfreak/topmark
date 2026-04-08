@@ -44,7 +44,7 @@ ______________________________________________________________________
 - Configurable header fields and alignment
 - Dry-run by default for safety
 - **Policy-based control** over when headers may be inserted, updated, or added to empty files
-- Layered configuration via:
+- Whole-source TOML validation plus layered configuration via:
   - `pyproject.toml` (`[tool.topmark]`)
   - `topmark.toml`
   - CLI overrides and `--config`
@@ -283,13 +283,18 @@ Source-local TOML options such as discovery boundaries and config-checking stric
 `[config]` (or `[tool.topmark.config]` in `pyproject.toml`). They are resolved separately from
 layered `Config` values and do not participate in layered config merging.
 
+During loading, TopMark first validates each whole-source TOML fragment (unknown sections, unknown
+keys, malformed section shapes, etc.). Only the validated layered config fragment is then passed
+into layered config merging.
+
 For example, `strict_config_checking` is resolved from TOML sources and affects configuration
 validation behaviour; it is not a normal layered `Config` field. CLI/API strictness overrides still
 take precedence for the current run.
 
 In layered provenance output, these source-local TOML fragments remain grouped under their original
 TOML sections (for example `[config]` and `[writer]`) rather than being collapsed into the final
-flattened runtime config payload.
+flattened runtime config payload. The stored TOML fragments correspond to the source-local TOML view
+after TOML-layer validation.
 
 ### Policy semantics
 
@@ -306,6 +311,9 @@ Per-type overrides under `[policy_by_type."filetype"]` in `topmark.toml` (or
 `[tool.topmark.policy_by_type."filetype"]` in `pyproject.toml`) can adjust specific behavior.
 
 These policy options apply equally to the **CLI** and the **public API**.
+
+Policy resolution is fed by the validated layered config fragment only. TOML-source-local sections
+such as `[config]` influence loading behavior but do not participate in policy layering.
 
 For CLI usage, see the dedicated [Policy Guide](docs/usage/policies.md).
 
@@ -340,6 +348,11 @@ ______________________________________________________________________
 The public API accepts optional `policy` and `policy_by_type` arguments (global or per-type) that
 integrate with the same resolution mechanism used by the CLI. The returned result view is controlled
 via `report="all" | "actionable" | "noncompliant"`.
+
+When API callers provide mapping-based configuration, TopMark still follows the same staged model
+internally: whole-source TOML-style validation for source-local sections such as `[config]` /
+`[writer]`, then layered config deserialization and merge into the final immutable `Config`
+snapshot.
 
 ### Example
 

@@ -18,6 +18,10 @@ Source-local options under `[config]` / `[tool.topmark.config]` (such as `root` 
 `strict_config_checking`) are resolved during configuration loading. They do not participate in
 layered config merging, but influence discovery and validation behaviour.
 
+TopMark performs whole-source TOML schema validation during loading. Unknown sections or keys are
+reported as configuration diagnostics before the layered configuration is built. Only the validated
+layered fragment is passed to the config layer for merging.
+
 - [`topmark config check`](./config/check.md) — validate the *effective merged* configuration and
   report diagnostics.
 - [`topmark config dump`](./config/dump.md) — show the *effective merged* configuration.
@@ -28,7 +32,8 @@ layered config merging, but influence discovery and validation behaviour.
 When using `topmark config dump --show-layers`, the command also exposes **layered configuration
 provenance** in addition to the flattened effective configuration. This layered view reflects how
 configuration was built from individual TOML sources (defaults, discovered config, CLI overrides)
-and includes source-local TOML fragments.
+and includes source-local TOML fragments. This includes the original TOML fragments (after schema
+validation) that contributed to each layer.
 
 When running `config check`, effective validation strictness is determined by:
 

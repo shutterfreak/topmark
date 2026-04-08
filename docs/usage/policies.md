@@ -31,6 +31,10 @@ In `topmark.toml`, policy is defined under `[policy]` and `[policy_by_type.<file
 `pyproject.toml`, the same settings live under `[tool.topmark.policy]` and
 `[tool.topmark.policy_by_type.<file_type>]`.
 
+During configuration loading, TopMark first validates each whole-source TOML fragment (unknown
+sections, unknown keys, malformed section shapes, etc.). Only the validated layered config fragment
+contributes to policy resolution.
+
 Command-line policy options override resolved config for the current run only.
 
 ______________________________________________________________________
@@ -43,6 +47,9 @@ TopMark resolves policy in this order:
 1. discovered config files
 1. explicit config overlays
 1. CLI or API overrides
+
+These layers are built after TOML-layer validation. Source-local TOML sections (e.g. `[config]`) do
+not participate in policy layering.
 
 Per-file-type policy in `policy_by_type` is resolved on top of the global `policy` section.
 

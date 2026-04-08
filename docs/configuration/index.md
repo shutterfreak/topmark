@@ -24,8 +24,8 @@ TopMark supports layered configuration with explicit precedence:
 - **Merge semantics vary by field**: behavioral settings usually use nearest-wins semantics, mapping
   fields usually overlay keys, and discovery inputs usually accumulate across applicable layers.
 - **Config-loading behaviour (e.g. `strict_config_checking`) is resolved from TOML sources**
-  (`[config]` / `[tool.topmark.config]`) and applied after layered merging; it is not a regular
-  layered configuration field (see
+  (`[config]` / `[tool.topmark.config]`) during TOML loading and applied after layered merging; it
+  is not a regular layered configuration field (see
   [Config-loading behaviour](./discovery.md#config-loading-behaviour-toml-level)).
 - `relative_to` affects only header metadata (e.g., `file_relpath`), not discovery.
 
@@ -33,19 +33,29 @@ TopMark also provides an inspection mode via `topmark config dump --show-layers`
 **layered configuration provenance**. This shows how the final configuration is constructed from
 individual TOML sources and CLI overrides, including their original TOML fragments.
 
+During loading, TopMark first validates each whole-source TOML fragment (unknown sections, unknown
+keys, malformed section shapes, etc.). Only the validated layered config fragment is then passed
+into layered config merging.
+
 ## Configuration flow at a glance
 
 ```mermaid
 flowchart LR
-    A["TOML sources<br/>(defaults, user, project, --config)"] --> B["Layered config<br/>(merge by precedence)"]
-    B --> C["Flattened config<br/>(effective Config)"]
-    C --> D["Runtime overlays<br/>(CLI or API execution intent)"]
+    A["Resolve TOML sources<br/>(defaults, user, project, --config)"]
+    B["Validate each whole-source TOML fragment<br/>unknown sections, unknown keys, malformed shapes"]
+    C["Extract layered config fragment<br/>source-local sections like [config] and [writer] stay TOML-local"]
+    D["Merge layered config by precedence<br/>effective MutableConfig draft"]
+    E["Freeze effective Config<br/>final config snapshot"]
+    F["Apply runtime overlays<br/>CLI or API execution intent"]
+
+    A --> B --> C --> D --> E
 ```
 
 This reflects the main distinction in TopMark's configuration model:
 
-- TOML sources contribute **layered configuration**.
-- The layered result is resolved into one **flattened effective config**.
+- TOML sources are validated first at the **whole-source TOML layer**.
+- Only the validated **layered config fragment** contributes to config merging.
+- The merged layered result is frozen into one **effective config**.
 - Runtime overlays are then applied for execution-only concerns such as output mode, apply/dry-run
   behavior, or stdin handling.
 

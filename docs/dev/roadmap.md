@@ -219,6 +219,12 @@ goals.
     config layers
 - Added `mutable_config_from_mapping()` so API/runtime code no longer routes generic Python mappings
   through TOML-named helpers.
+- Completed the TOML/config boundary cleanup around layered fragment deserialization:
+  - introduced `mutable_config_from_layered_toml_table()` as the canonical config-layer entry point
+  - removed the older `mutable_config_from_toml_dict()` compatibility path after callers/tests were
+    migrated
+  - clarified in code and docs that whole-source TOML validation belongs to `topmark.toml`, while
+    layered value parsing and defensive normalization belong to `topmark.config`
 - Updated `topmark.api.runtime` so API-side config/file preparation now mirrors the same
   TOML-resolution / config-merge / runtime-overlay split as the CLI:
   - TOML sources are resolved first
@@ -271,6 +277,13 @@ goals.
       layer-building helpers
     - clarified naming and documentation to consistently refer to “mutable config drafts” instead of
       “compatibility drafts”
+  - Added explicit whole-source TOML schema validation before layered config deserialization:
+    - unknown top-level sections/keys, unknown keys in known sections, and malformed section shapes
+      are now validated in `topmark.toml`
+    - source-local TOML sections such as `[config]` and `[writer]` are validated on the TOML side
+      and no longer rely on duplicate config-layer checks
+    - validation issues are propagated into config diagnostics so CLI/API validation paths report
+      TOML schema problems alongside config-layer diagnostics
 - Added layered configuration provenance export for `config dump`:
   - `topmark config dump --show-layers` now emits an inspection-oriented layered TOML export before
     the final flattened effective config
@@ -526,21 +539,35 @@ Completed work:
 ### Documentation: pipeline docs + generated API internals
 
 - Added pipeline documentation under `docs/dev/`:
+
   - `pipelines.md` (concepts): Mermaid diagrams for the pipeline overview, CLI flows (`check` vs
     `strip`), and per-axis lifecycles.
   - `pipelines-reference.md` (reference hub): formatter-safe links into generated internals pages
     (no `mkdocstrings` directives).
+
 - Introduced `mkdocs.linkcheck.yml` to support local/CI link checking without baking production-only
   base URLs.
+
 - Clarified the documentation authoring rule: handwritten Markdown must not contain `mkdocstrings`
   directives; generated pages own all `:::` blocks.
+
 - Completed a broad documentation alignment pass across README, configuration docs, CLI command
   guides, API docs, internals, architecture, policies, machine-output docs, and contributor docs so
   they now consistently describe:
+
   - the TOML → Config → Runtime architecture
+  - whole-source TOML schema validation before layered config deserialization
   - `[config]` / `[tool.topmark.config]` placement for source-local TOML options
-  - `config defaults` as the built-in default TopMark TOML document
+  - layered provenance as the validated source-local TOML view plus the final flattened config
+  - `config defaults` as the built-in layered default config view
   - `config init` as the bundled example TopMark TOML resource
+
+- Reorganized test support code around explicit helper modules instead of accumulating logic in
+  `conftest.py` files:
+
+  - added focused shared helper modules under `tests/helpers/*`
+  - split TOML-layer helpers from pytest-facing wrappers in `tests/toml/conftest.py`
+  - aligned test module structure with the TOML/config/runtime architectural split
 
 ### CI + link checking hardening (docs integrity)
 
@@ -800,11 +827,19 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
   (or plain `Mapping[str, object]`-compatible inputs) for generic API/config mappings.
 - API/runtime config coercion now distinguishes generic mapping input from TOML-backed
   deserialization via `mutable_config_from_mapping()`.
+- The layered config / TOML fragment deserialization boundary is now explicit in the helper surface:
+  - `mutable_config_from_layered_toml_table()` replaced the older `mutable_config_from_toml_dict()`
+    entry point
+  - downstream callers/tests using the old helper name must migrate to the layered-fragment helper
+    or to TOML-layer loading helpers, depending on whether they start from a layered fragment or a
+    whole TOML source
 - The layered config / TOML source boundary is now explicit:
   - source-local TOML options such as `[config].root` and `strict_config_checking` are resolved
     outside layered `Config` merging
-  - discovered TOML sources are first resolved on the TOML side, then merged into layered config
-    drafts
+  - discovered TOML sources are first resolved and whole-source TOML-validated on the TOML side,
+    then merged into layered config drafts
+  - source-local sections such as `[config]` and `[writer]` are validated on the TOML side rather
+    than via duplicate config-layer checks
 - Introduced explicit config validation semantics and strictness control:
   - validation is now always executed via `Config.is_valid(...)` / `Config.ensure_valid(...)`
   - `strict_config_checking` now controls whether validation violations raise
@@ -832,6 +867,13 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
   - `root` no longer lives at top level / `[tool.topmark]`
   - source-local options now live under `[config]` in `topmark.toml`
   - and under `[tool.topmark.config]` in `pyproject.toml`
+- TOML validation behavior is now stricter and earlier in the load path:
+  - unknown top-level sections/keys, unknown keys in known sections, and malformed section shapes
+    are reported during whole-source TOML loading
+  - these TOML-layer diagnostics now surface alongside config-layer diagnostics in CLI/API
+    validation flows
+  - callers that previously relied on such issues being silently ignored or only noticed later in
+    config deserialization must update expectations and tests
 - Built-in/default TOML resources and helpers were moved out of `topmark.config`:
   - `topmark-example.toml` now lives under `topmark.toml`
   - default/template helpers now live under `topmark.toml.defaults`
@@ -910,8 +952,10 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
 
 - User-facing and developer-facing documentation was broadly realigned to the new TOML → Config →
   Runtime architecture, including:
+  - whole-source TOML schema validation before layered config deserialization
   - `[config]` / `[tool.topmark.config]` placement for source-local TOML options
-  - `config defaults` as the built-in default TopMark TOML document
+  - layered provenance as the validated source-local TOML view plus the final flattened config
+  - `config defaults` as the built-in layered default config view
   - `config init` as the bundled example TopMark TOML resource
 - Documentation build now depends on the generated API/reference pages and on the stabilized
   presentation/rendering paths for registry/pipeline commands. Missing or stale modules will fail
@@ -1019,6 +1063,8 @@ Remaining work before 1.0:
   - plugin-facing examples and tests
 - Confirm that canonical key terminology (`file_type_key`, `processor_key`, `file_type_id`,
   `local_key`) is fully stabilized across docs, tests, and public API references.
+- Ensure machine and human output formats consistently use canonical qualified identifiers as the
+  primary identity representation, with local keys treated as optional compatibility input
 - Align CLI commands and API representations with the split registry model (filetypes / processors /
   bindings) and remove remaining binding-flavored coupling from processor-oriented views
 
@@ -1048,6 +1094,8 @@ This refactor should:
 - Introduce an input abstraction that can represent either a filesystem path *or* in-memory content
 - Keep file-based operation as the default and the most optimized path
 - Allow tests (and future integrations) to run the pipeline without touching disk
+- Align in-memory execution with the existing TOML → Config → Runtime flow so runtime overlays and
+  config validation behave identically regardless of input source
 
 #### Scope and non-goals
 
@@ -1207,6 +1255,8 @@ Open decisions:
 Before 1.0, the package should have:
 
 - a documented stable responsibility split between `resolution.files` and `resolution.filetypes`
+- explicit documentation of how resolution integrates with TOML-source-local options and layered
+  config filtering (include/exclude file types)
 - a frozen ambiguity policy for path-based file type resolution, including:
   - deterministic tie-break ordering
   - overlap being treated as a resolver concern rather than a registry error
@@ -1268,6 +1318,8 @@ Additional progress:
   - CLI policy/orchestration (`topmark.cli`)
   - human-facing rendering (`topmark.presentation`)
   - core/domain logic (Click-free and presentation-free)
+- Confirm that TOML validation diagnostics are surfaced consistently in both CLI and API flows
+  without introducing CLI-specific formatting concerns into core validation logic
 - Clarify ownership of `meta` in the API only when machine output becomes part of the API surface.
 - Decide whether the current API-side convenience helpers for seeded config/file preparation should
   remain in `topmark.api.runtime` long-term or be slimmed further around a smaller config-layer
@@ -1312,6 +1364,8 @@ Desired outcome:
   state.
 - Confirm that runtime-only fields remain outside layered config merging and are applied only after
   config resolution.
+- Confirm that TOML-layer validation and config-layer validation remain clearly separated and do not
+  regress into duplicated validation logic across layers
 - Keep TOML-source-local config-loading options (for example `strict_config_checking`) outside the
   layered `Config` contract.
 
@@ -1344,6 +1398,8 @@ Completed work:
 Remaining work before 1.0:
 
 - Final audit of field naming consistency across domains.
+- Confirm that TOML validation diagnostics are consistently represented in machine output alongside
+  config-layer diagnostics where applicable
 - Confirm that config-validation payloads consistently use `strict_config_checking`. They no longer
   refer to legacy `strict` naming.
 - Confirm command responsibilities for machine output:
@@ -1410,6 +1466,9 @@ Comparable tools vary:
 
 Recommendation for 1.0: document and stabilize key semantics. Consider adding a schema version only
 when the first non-additive change is planned (post-1.0), paired with migration tooling.
+
+- Confirm that the current TOML schema validation rules (unknown keys, section shapes, strictness)
+  are considered stable for 1.0 and do not require version gating
 
 ### Output format strategy and verbosity
 
@@ -1491,16 +1550,19 @@ This checklist defines the minimum criteria for cutting TopMark 1.0, grouped by 
 
 - [x] No presentation leakage (color text, human wording) in machine output
 - [ ] Machine outputs are covered by tests for all commands in both JSON and NDJSON modes
-  - [ ] registry commands (`filetypes`, `processors`, `bindings`)
-  - [ ] pipeline commands (`check`, `strip`)
   - [x] config commands (`check`, `defaults`, `dump`, `init`)
     - [x] `config check` machine output is covered in both JSON and NDJSON modes
     - [x] `config defaults` machine output is covered in both JSON and NDJSON modes
     - [x] `config dump` layered provenance is now covered in both JSON and NDJSON modes
     - [x] `config init` machine output is covered in both JSON and NDJSON modes
+  - [ ] pipeline commands (`check`, `strip`)
+  - [ ] registry commands (`filetypes`, `processors`, `bindings`)
+  - [ ] version command (`version`)
 - [ ] Final schema freeze review before 1.0 (including `(outcome, reason, count)` summary rows)
 - [ ] Confirm that config-validation payloads consistently use `strict_config_checking` and no
   longer expose legacy `strict` naming
+- [ ] Confirm that TOML validation diagnostics are represented consistently alongside config-layer
+  diagnostics in machine output where applicable
 - [ ] Final review/freeze of `detail_level` semantics and brief vs long machine projections
 
 #### [Must] Human formats
@@ -1528,14 +1590,16 @@ This checklist defines the minimum criteria for cutting TopMark 1.0, grouped by 
 - [ ] Typed override model (`PolicyOverrides` / `ConfigOverrides`) documented and considered stable
 - [ ] `strict_config_checking` documented and considered stable as a TOML-source-local
   config-loading option (not a layered `Config` field)
+- [ ] Whole-source TOML schema validation rules documented and considered stable (unknown keys,
+  malformed section shapes, source-local section validation)
 - [x] Layered config discovery/merge and final CLI/API override application are separated into
   dedicated config modules
 - [x] `header_mutation_mode` fully replaces legacy `add_only` / `update_only` references
 - [x] Field-specific config merge semantics are defined, implemented, and covered by regression
   tests
 - [x] Per-path effective config resolution is implemented and used by the pipeline engine
-- [ ] Final documentation of TOML → Config → Runtime split (including source-local options and
-  runtime overlays)
+- [ ] Final documentation of TOML → Config → Runtime split (including whole-source TOML validation,
+  source-local options, layered provenance, and runtime overlays)
 - [ ] Validation semantics documented and considered stable:
   - validation always runs
   - `strict_config_checking` controls whether validation violations raise or are only reported
@@ -1546,6 +1610,8 @@ This checklist defines the minimum criteria for cutting TopMark 1.0, grouped by 
 - [ ] Decision taken on in-memory pipeline support (implemented or explicitly deferred)
 - [ ] Clear split between unit (memory-based) and integration (filesystem) tests
 - [ ] Namespace-aware registry lookup and deterministic ambiguity behavior covered by tests
+- [ ] TOML-layer validation paths covered by focused tests for unknown keys/sections, malformed
+  shapes, and propagation into config diagnostics
 - [ ] API surface clarified for in-memory pipeline inputs (either implemented or deferred with
   rationale)
 - [x] Empty and empty-like file handling is explicit and idempotent
@@ -1579,6 +1645,8 @@ ______________________________________________________________________
 
 - [ ] Documented examples for each remaining command category in `docs/dev/machine-formats.md`
 - [ ] Include stable examples for config-validation payloads using `strict_config_checking`
+- [ ] Include stable examples showing TOML-layer diagnostics alongside config-layer diagnostics
+  where applicable
 - [ ] Sufficient edge-case test coverage to trust core behaviors
 
 #### [Recommended] Dependency & ecosystem
@@ -1605,4 +1673,5 @@ ______________________________________________________________________
 
 Only when all items in the “Must finish before 1.0” section are completed or explicitly deferred
 with rationale should 1.0 be tagged. In particular, schema/contract freeze must include config
-validation semantics and the TOML-source-local status of `strict_config_checking`.
+validation semantics, whole-source TOML validation behavior, and the TOML-source-local status of
+`strict_config_checking`.

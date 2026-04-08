@@ -33,6 +33,25 @@ This distinction matters for `topmark config dump --show-layers`:
   fragments under `config_provenance.layers[].toml`
 ```
 
+## Schema validation model
+
+TopMark performs **whole-source TOML schema validation** before any layered configuration is
+deserialized:
+
+- unknown top-level sections (e.g. `[foo]`) are reported as TOML validation issues
+- unknown keys within known sections (e.g. `[config].bogus`) are also reported
+- validation is source-local and happens per TOML file during loading
+
+After this step, only the **layered config fragment** is passed to the config layer
+(`MutableConfig`) for value parsing and normalization.
+
+This means:
+
+- TOML schema validation is handled in `topmark.toml`
+- config value/type validation is handled in `topmark.config`
+- layered config deserialization (`mutable_config_from_layered_toml_table`) assumes schema
+  validation already happened, but still performs defensive parsing for API and test inputs
+
 ```yaml
 topmark:
   # In layered provenance exports, source-local TOML fragments preserve their
@@ -40,7 +59,7 @@ topmark:
   # collapsing everything into the final flattened Config payload.
   config:
     type: table
-    description: TOML-source-local options resolved separately from layered Config merging.
+    description: TOML-source-local options resolved during TOML loading, not part of layered Config merging.
     root:
       type: bool
       default: false
@@ -73,6 +92,8 @@ topmark:
       description: Affects header metadata (file_relpath), not discovery.
 
   writer:
+    type: table
+    description: TOML-source-local writer options (not part of layered Config).
     strategy:
       type: str
       default: "atomic"

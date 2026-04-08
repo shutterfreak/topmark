@@ -18,6 +18,10 @@ The `config dump` subcommand (part of the TopMark [`config` Command Family](../c
 the **effective TopMark configuration** as TOML after applying built-in defaults, discovered
 project/user config, and any CLI overrides.
 
+During loading, TopMark first performs whole-source TOML schema validation for all
+discovered/configured TOML sources. Only the validated layered config fragment contributes to the
+final merged output.
+
 It is **file-agnostic**: it does not resolve or process any files.
 
 ______________________________________________________________________
@@ -39,7 +43,8 @@ ______________________________________________________________________
 
 ## Key properties
 
-- Shows the **merged** configuration (defaults ⟶ discovered config ⟶ `--config` files ⟶ CLI flags).
+- Shows the **merged** configuration (defaults ⟶ discovered config ⟶ `--config` files ⟶ CLI flags),
+  after per-source TOML schema validation.
 
 - With `--show-layers`, also shows the **layered configuration provenance** before the flattened
   configuration.
@@ -59,11 +64,13 @@ ______________________________________________________________________
 - Output is **plain TOML**. When run with higher verbosity (e.g., `-v`), the TOML is wrapped between
   BEGIN/END markers for easy parsing:
 
+  ```text
   \# === BEGIN[TOML] ===
 
   ...TOML...
 
   \# === END[TOML] ===
+  ```
 
 ### Layered provenance output (`--show-layers`)
 
@@ -90,7 +97,7 @@ Each layer includes:
 - `kind` — layer type (e.g. `default`, `discovered`)
 - `precedence` — merge order
 - `scope_root` — optional root for discovered configs
-- `toml` — the source-local TopMark TOML fragment
+- `toml` — the source-local TopMark TOML fragment after TOML-layer validation
 
 The second TOML document is identical to the standard flattened output.
 
@@ -140,7 +147,8 @@ The canonical schema, stable `kind` values, and shared conventions are documente
 Notes:
 
 - `config dump` is **file-agnostic** and emits the effective configuration after applying defaults →
-  discovered config → `--config` files → CLI overrides.
+  discovered config → `--config` files → CLI overrides, with whole-source TOML validation performed
+  per source before layered config merging.
 - With `--show-layers`, machine output also includes a `config_provenance` payload before the
   flattened config.
 - Diagnostics are not emitted for this command; it is an inspection view of the merged config.
@@ -206,7 +214,8 @@ ______________________________________________________________________
 ## Notes
 
 - The output reflects the configuration **TopMark would use** if you ran processing commands
-  (`check`, `strip`) with the same configuration-related flags in the current working directory.
+  (`check`, `strip`) with the same configuration-related flags in the current working directory,
+  after TOML-layer validation and layered config merging.
 - For per-file configuration (e.g., overrides that may depend on path), consider a future option
   like `--for FILE` (not currently implemented), similar to ESLint’s `--print-config`.
 

@@ -70,6 +70,8 @@ These modes are mutually exclusive: do **not** mix `-` (content mode) with `--fi
 - Idempotent: re‑running after headers are removed results in **no changes**.
 - Supports `--strict` / `--no-strict` to override effective config-validation strictness for the
   run.
+- Performs whole-source TOML schema validation during configuration loading; TOML-layer diagnostics
+  are included in the final config diagnostics for the run.
 
 {% include-markdown "\_snippets/config-resolution.md" %}
 
@@ -141,8 +143,8 @@ Notes:
 
 - Diffs (`--diff`) are **human-only** and are not included in JSON/NDJSON.
 - Summary mode aggregates outcomes and suppresses per-file guidance lines.
-- The `config` payload in JSON / NDJSON is the resolved config snapshot after discovery, merge, and
-  CLI override application.
+- The `config` payload in JSON / NDJSON is the resolved config snapshot after per-source TOML
+  validation, layered config merge, and CLI override application.
 
 ### JSON schema (detail mode)
 
@@ -186,7 +188,8 @@ or per-bucket `summary` records (summary mode):
 - Prefix records:
   1. `kind="config"` (effective config snapshot)
   1. `kind="config_diagnostics"` (**counts-only**)
-  1. zero or more `kind="diagnostic"` records (each with `domain="config"`)
+  1. zero or more `kind="diagnostic"` records (each with `domain="config"`; these may originate from
+     TOML schema validation or config-layer validation)
 - Then:
   - detail mode (no `--summary`): one `kind="result"` record per file
   - summary mode (`--summary`): one `kind="summary"` record per outcome bucket
@@ -289,6 +292,9 @@ ______________________________________________________________________
   blank as needed.
 - **Markdown**: ignores code fences for detection; header‑like text inside fences is not removed.
 - **Idempotency**: once stripped, subsequent runs are no‑ops.
+- **Configuration loading**: before any file processing begins, TopMark resolves TOML sources,
+  validates each whole-source TOML fragment, then merges the validated layered config fragments into
+  the effective config for the run.
 
 ______________________________________________________________________
 
