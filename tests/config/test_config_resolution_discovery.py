@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.conftest import write_toml_document
+from tests.toml.conftest import write_toml_document
 from topmark.config.resolution.bridge import resolve_toml_sources_and_build_config_draft
 
 if TYPE_CHECKING:

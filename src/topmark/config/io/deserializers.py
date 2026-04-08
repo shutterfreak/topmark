@@ -31,7 +31,7 @@ Design notes:
       the draft config's diagnostic log instead of failing fast on first issue.
 
 Typical entry points:
-    - `mutable_config_from_toml_dict()`
+    - `mutable_config_from_layered_toml_table()`
     - `mutable_config_from_defaults()`
 """
 
@@ -94,25 +94,12 @@ class ExtractedLayeredTomlTables:
     policy_by_type_tbl: TomlTableMap
 
 
-def mutable_config_from_toml_dict(
-    data: TomlTable,
-    config_file: Path | None = None,
-    use_defaults: bool = False,
-) -> MutableConfig:
-    """Temporary compatibility wrapper."""
-    return mutable_config_from_layered_toml_table(
-        data,
-        config_file=config_file,
-        use_defaults=use_defaults,
-    )
-
-
 def mutable_config_from_layered_toml_table(
     data: TomlTable,
     config_file: Path | None = None,
     use_defaults: bool = False,
 ) -> MutableConfig:
-    """Create a draft config from a parsed TOML dict.
+    """Create a draft config from a layered TopMark TOML fragment.
 
     - Path-to-file entries declared in the config are normalized to absolute paths
       using the *config file's* directory (config-local base).
@@ -562,7 +549,7 @@ def mutable_config_from_mapping(data: Mapping[str, object]) -> MutableConfig:
     available as Python mappings rather than TOML documents read from disk.
 
     The accepted shape currently mirrors the TOML-backed config structure, so the
-    implementation delegates to `mutable_config_from_toml_dict()` after copying
+    implementation delegates to `mutable_config_from_layered_toml_table()` after copying
     the input into a plain dictionary. The separate helper keeps the public/API
     coercion boundary explicit and avoids treating generic mappings as if they
     were inherently TOML documents.

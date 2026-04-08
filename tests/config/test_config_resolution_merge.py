@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.conftest import write_toml_document
+from tests.toml.conftest import write_toml_document
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.overrides import ConfigOverrides
 from topmark.config.overrides import apply_config_overrides

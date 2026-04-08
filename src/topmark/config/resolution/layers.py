@@ -135,7 +135,7 @@ def _make_layer_from_layered_toml_table(
         path: Source TOML file path used for provenance and path-relative
             normalization.
         data: Layered TOML fragment extracted from one split-parsed TopMark
-            TOML source.
+            TOML source and already validated at the TOML layer.
         kind: Provenance kind for the resulting config layer.
         precedence: Stable merge precedence for the resulting config layer.
 

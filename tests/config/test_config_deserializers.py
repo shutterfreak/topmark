@@ -27,7 +27,7 @@ import pytest
 
 from tests.conftest import assert_warned_and_diagnosed
 from tests.conftest import group_patterns
-from topmark.config.io.deserializers import mutable_config_from_toml_dict
+from topmark.config.io.deserializers import mutable_config_from_layered_toml_table
 from topmark.toml.keys import Toml
 
 if TYPE_CHECKING:
@@ -45,7 +45,7 @@ if TYPE_CHECKING:
 @pytest.mark.config
 def test_header_fields_wrong_type_is_treated_as_empty() -> None:
     """Wrong-type [header].fields is treated as empty (must not crash)."""
-    draft: MutableConfig = mutable_config_from_toml_dict(
+    draft: MutableConfig = mutable_config_from_layered_toml_table(
         {
             Toml.SECTION_HEADER: {
                 Toml.KEY_FIELDS: True,
@@ -62,7 +62,7 @@ def test_header_fields_mixed_types_ignores_non_strings(
     """Non-string entries in [header].fields are ignored with a warning."""
     caplog.set_level("WARNING")
 
-    draft: MutableConfig = mutable_config_from_toml_dict(
+    draft: MutableConfig = mutable_config_from_layered_toml_table(
         {
             Toml.SECTION_HEADER: {
                 Toml.KEY_FIELDS: [
@@ -87,7 +87,7 @@ def test_header_fields_mixed_types_ignores_non_strings(
 @pytest.mark.config
 def test_policy_by_type_section_wrong_type_is_ignored() -> None:
     """Non-table [policy_by_type] values are ignored (must not crash)."""
-    draft: MutableConfig = mutable_config_from_toml_dict(
+    draft: MutableConfig = mutable_config_from_layered_toml_table(
         {
             Toml.SECTION_POLICY_BY_TYPE: 123,
         },
@@ -125,7 +125,7 @@ def test_files_list_valued_keys_wrong_type_is_treated_as_empty(
             key: True,
         },
     }
-    draft: MutableConfig = mutable_config_from_toml_dict(toml_dict)
+    draft: MutableConfig = mutable_config_from_layered_toml_table(toml_dict)
 
     if key == Toml.KEY_INCLUDE_PATTERNS:
         assert group_patterns(draft.include_pattern_groups) == expect_empty
@@ -155,7 +155,7 @@ def test_include_from_mixed_types_ignores_non_strings(
     proj.mkdir()
     (proj / "a.txt").write_text("*.tmp\n", encoding="utf-8")
 
-    draft: MutableConfig = mutable_config_from_toml_dict(
+    draft: MutableConfig = mutable_config_from_layered_toml_table(
         {
             Toml.SECTION_FILES: {
                 Toml.KEY_INCLUDE_FROM: [
@@ -193,7 +193,7 @@ def test_glob_patterns_mixed_types_ignores_non_strings(
     """Non-string entries in [files].(include|exclude)_patterns are ignored with a warning."""
     caplog.set_level("WARNING")
 
-    draft: MutableConfig = mutable_config_from_toml_dict(
+    draft: MutableConfig = mutable_config_from_layered_toml_table(
         {
             Toml.SECTION_FILES: {
                 key: [
@@ -233,7 +233,7 @@ def test_glob_patterns_all_non_strings_results_in_empty_list(
     """If all entries are non-strings, the patterns list becomes empty (and warnings emitted)."""
     caplog.set_level("WARNING")
 
-    draft: MutableConfig = mutable_config_from_toml_dict(
+    draft: MutableConfig = mutable_config_from_layered_toml_table(
         {
             Toml.SECTION_FILES: {
                 key: [
@@ -266,7 +266,7 @@ def test_fields_scalar_values_are_stringified_and_unsupported_are_ignored(
     Unsupported values are ignored with location.
     """
     caplog.set_level("WARNING")
-    draft: MutableConfig = mutable_config_from_toml_dict(
+    draft: MutableConfig = mutable_config_from_layered_toml_table(
         {
             Toml.SECTION_FIELDS: {
                 "project": "TopMark",
@@ -306,7 +306,7 @@ def test_fields_scalar_values_are_stringified_and_unsupported_are_ignored(
 @pytest.mark.config
 def test_header_fields_can_reference_missing_custom_fields_without_error() -> None:
     """header.fields may reference names not present in [fields] and should not crash."""
-    draft: MutableConfig = mutable_config_from_toml_dict(
+    draft: MutableConfig = mutable_config_from_layered_toml_table(
         {
             Toml.SECTION_HEADER: {
                 Toml.KEY_FIELDS: [
@@ -333,7 +333,7 @@ def test_header_fields_wrong_type_falls_back_to_empty_list(
     # Layered-config deserialization currently treats wrong-type values as an
     # empty list without emitting a dedicated warning.
 
-    draft: MutableConfig = mutable_config_from_toml_dict(
+    draft: MutableConfig = mutable_config_from_layered_toml_table(
         {
             Toml.SECTION_HEADER: {
                 Toml.KEY_FIELDS: bad_val,
@@ -349,7 +349,7 @@ def test_duplicate_include_file_types_warns_and_is_recorded(
 ) -> None:
     """Duplicate include_file_types entries produce a warning and a diagnostic."""
     caplog.set_level("WARNING")
-    draft: MutableConfig = mutable_config_from_toml_dict(
+    draft: MutableConfig = mutable_config_from_layered_toml_table(
         {
             Toml.SECTION_FILES: {
                 Toml.KEY_INCLUDE_FILE_TYPES: [
@@ -373,7 +373,7 @@ def test_duplicate_exclude_file_types_warns_and_is_recorded(
 ) -> None:
     """Duplicate exclude_file_types entries produce a warning and a diagnostic."""
     caplog.set_level("WARNING")
-    draft: MutableConfig = mutable_config_from_toml_dict(
+    draft: MutableConfig = mutable_config_from_layered_toml_table(
         {
             Toml.SECTION_FILES: {
                 Toml.KEY_EXCLUDE_FILE_TYPES: [

@@ -36,7 +36,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from topmark.config.io.deserializers import mutable_config_from_defaults
-from topmark.config.io.deserializers import mutable_config_from_toml_dict
+from topmark.config.io.deserializers import mutable_config_from_layered_toml_table
 from topmark.config.overrides import ConfigOverrides
 from topmark.config.overrides import PolicyOverrides
 from topmark.config.overrides import apply_config_overrides
@@ -263,7 +263,7 @@ def test_policy_loaded_from_toml_tables() -> None:
             },
         },
     }
-    mc: MutableConfig = mutable_config_from_toml_dict(toml_root)
+    mc: MutableConfig = mutable_config_from_layered_toml_table(toml_root)
     cfg: Config = mc.freeze()
 
     # Global values from [policy]

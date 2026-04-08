@@ -29,8 +29,8 @@ import pytest
 
 from tests.conftest import assert_not_warned
 from tests.conftest import assert_warned_and_diagnosed
-from tests.conftest import draft_from_topmark_toml_table
-from tests.conftest import load_draft_from_topmark_toml
+from tests.toml.conftest import draft_from_topmark_toml_table
+from tests.toml.conftest import load_draft_from_topmark_toml
 from topmark.config.policy import HeaderMutationMode
 from topmark.toml.keys import Toml
 
