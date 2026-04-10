@@ -25,6 +25,7 @@ from topmark.core.logging import TopmarkLogger
 from topmark.core.logging import get_logger
 from topmark.presentation.markdown.diagnostic import render_human_diagnostics_markdown
 from topmark.presentation.markdown.utils import render_toml_markdown
+from topmark.presentation.markdown.version import render_version_footer_markdown
 
 if TYPE_CHECKING:
     from topmark.presentation.shared.config import ConfigCheckHumanReport
@@ -56,14 +57,24 @@ def render_config_init_markdown(
         heading_level=1,
         toml_text=prepared.toml_text,
     )
+
+    parts: list[str] = [
+        md,
+    ]
+
     if prepared.error is None:
         return md
 
-    # Prepend a warning blockquote (keeps the TOML block unchanged)
-    warning: str = (
-        f"> **Warning:** falling back to synthesized default config: {prepared.error}\n\n"
-    )
-    return warning + md
+    if prepared.error:
+        # Prepend a warning blockquote (keeps the TOML block unchanged)
+        warning: str = (
+            f"> **Warning:** falling back to synthesized default config: {prepared.error}\n\n"
+        )
+        parts.append(warning)
+
+    parts.append(render_version_footer_markdown())
+
+    return "\n".join(parts)
 
 
 def render_config_defaults_markdown(
@@ -77,10 +88,18 @@ def render_config_defaults_markdown(
     Returns:
         Markdown document string (with trailing newline).
     """
-    return render_toml_markdown(
+    toml_md: str = render_toml_markdown(
         heading="Default TopMark Configuration (TOML)",
         heading_level=1,
         toml_text=prepared.toml_text,
+    )
+    footer: str = render_version_footer_markdown()
+
+    return "\n".join(
+        [
+            toml_md,
+            footer,
+        ]
     )
 
 
@@ -137,6 +156,8 @@ def render_config_check_markdown(
         lines.append("```")
         lines.append("")
 
+    lines.append(render_version_footer_markdown())
+
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -189,5 +210,7 @@ def render_config_dump_markdown(
         lines.append(f"### Config files processed ({len(prepared.config_files)})\n")
         for i, p in enumerate(prepared.config_files, start=1):
             lines.append(f"{i}. {p}")
+
+    lines.append(render_version_footer_markdown())
 
     return "\n".join(lines).rstrip() + "\n"

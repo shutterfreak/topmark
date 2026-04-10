@@ -196,6 +196,9 @@ This enables strict config validation for the current project scope, causing war
 as errors during config checking. In the current implementation, this strictness applies to the
 aggregated config-resolution/preflight diagnostic pool, not only to TOML parsing in isolation.
 
+For the full generated reference configuration document, see
+[Example TOML document](./generated/example-config.md).
+
 ### Reading the tables
 
 The tables distinguish between **current** behavior and **recommended long-term** behavior:
@@ -380,9 +383,11 @@ Now, even an empty `__init__.py` or `placeholder.py` can receive a header.
 
 ______________________________________________________________________
 
-## See also
+## See Also
 
-- Default configuration: `src/topmark/toml/topmark-example.toml`
+- [Example TOML document](./generated/example-config.md) for the generated reference configuration
+  used by `topmark config init` (rendered from the bundled example TOML resource
+  `src/topmark/toml/topmark-example.toml`)
 - Implementation:
   - TOML source resolution:
     \[`resolve_topmark_toml_sources()`\][topmark.toml.resolution.resolve_topmark_toml_sources]

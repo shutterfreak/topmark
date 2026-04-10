@@ -21,6 +21,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from topmark.constants import TOPMARK_VERSION
+
 if TYPE_CHECKING:
     from topmark.presentation.shared.version import VersionHumanReport
 
@@ -47,3 +49,13 @@ def render_version_markdown(
 
     lines.append("")
     return "\n".join(lines)
+
+
+def render_version_footer_markdown() -> str:
+    """Render a standardized 'Generated with TopMark <version> footer."""
+    return "\n".join(
+        [
+            "---",
+            f"_Generated with TopMark v{TOPMARK_VERSION}_",
+        ]
+    )

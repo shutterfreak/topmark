@@ -90,6 +90,7 @@ from topmark.pipeline.status import WriteStatus
 from topmark.presentation.markdown.diagnostic import render_diagnostics_markdown
 from topmark.presentation.markdown.pipeline import render_pipeline_apply_summary_markdown
 from topmark.presentation.markdown.pipeline import render_pipeline_output_markdown
+from topmark.presentation.markdown.version import render_version_footer_markdown
 from topmark.presentation.text.diagnostic import render_diagnostics_text
 from topmark.presentation.text.pipeline import render_pipeline_apply_summary_text
 from topmark.presentation.text.pipeline import render_pipeline_output_text
@@ -507,10 +508,15 @@ def strip_command(
                     )
                 )
 
+                console.print(render_version_footer_markdown())
+
             if failed:
                 raise TopmarkCliIOError(f"Failed to write {failed} file(s). See log for details.")
 
     else:
+        if fmt == OutputFormat.MARKDOWN:
+            console.print(render_version_footer_markdown())
+
         # Dry-run: determine exit code
         if any(effective_would_strip(r) for r in results):
             ctx.exit(ExitCode.WOULD_CHANGE)

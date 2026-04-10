@@ -188,6 +188,7 @@ nav:
   - Configuration:
       - Overview: configuration/index.md
       - Discovery & Precedence: configuration/discovery.md
+      - Example TOML document: configuration/generated/example-config.md
   - CI/CD:
       - CI workflow: ci/ci-workflow.md
       - Dev validation: ci/dev-validation.md

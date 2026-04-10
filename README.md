@@ -244,6 +244,9 @@ This same ordering is exposed by `topmark config dump --show-layers` as a layere
 Human-facing output renders ordered TOML layers before the final flattened config, while
 machine-readable output emits `config_provenance` before the final `config` snapshot.
 
+For a complete example configuration, see the generated documented
+[Example TOML document](docs/configuration/generated/example-config.md).
+
 ### Example `topmark.toml`
 
 ```toml

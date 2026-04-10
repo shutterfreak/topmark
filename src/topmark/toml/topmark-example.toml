@@ -73,15 +73,16 @@
 # root = true
 
 # Source-local strictness preference for config-resolution / preflight validation.
-# In the current implementation, this affects the aggregated config-resolution
-# diagnostic pool, not only TOML parsing in isolation.
 #
-# Resolution semantics:
-#   - This is resolved separately from layered Config values.
+# Semantics (current implementation):
+#   - Applies to the aggregated config-resolution/preflight diagnostic pool
+#     (TOML validation issues, config-layer diagnostics, sanitization warnings).
+#   - Not limited to TOML parsing or layered-config merge validation.
+#
+# Resolution:
+#   - Resolved separately from layered Config values.
 #   - Highest-precedence non-null value wins across discovered TOML sources.
-#   - The resolved effective value is later used for aggregated
-#     config-resolution/preflight validation.
-#   - CLI/API explicit strictness overrides still take final precedence.
+#   - CLI/API overrides take final precedence for the current run.
 #
 # strict_config_checking = false
 

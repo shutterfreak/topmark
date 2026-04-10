@@ -73,9 +73,11 @@ Start here:
 - [`Policy resolution`](./discovery.md#policy-resolution) for understanding how policy settings are
   defined and overridden at global level and per file type.
 
-Also see:
+See Also:
 
-- `src/topmark/toml/topmark-example.toml` (bundled example TopMark TOML resource)
+- [Example TOML document](./generated/example-config.md) for the generated reference configuration
+  used by `topmark config init` (rendered from the bundled example TOML resource
+  `src/topmark/toml/topmark-example.toml`)
 - API docs:
   - `resolve_toml_sources_and_build_config_draft()`
   - `Config`, `MutableConfig`

@@ -29,6 +29,7 @@ from typing import TYPE_CHECKING
 from topmark.constants import TOPMARK_VERSION
 from topmark.presentation.formatters.filetypes import filetype_policy_to_display_pairs
 from topmark.presentation.markdown.utils import render_markdown_table
+from topmark.presentation.markdown.version import render_version_footer_markdown
 
 if TYPE_CHECKING:
     from topmark.presentation.shared.registry import BindingsHumanReport
@@ -127,8 +128,8 @@ def render_filetypes_markdown(report: FileTypesHumanReport) -> str:
         rows = [[f"`{it.qualified_key}`", it.description] for it in items]
         lines.append(render_markdown_table(headers, rows))
 
-    lines.append("\n---\n")
-    lines.append(f"_Generated with TopMark v{TOPMARK_VERSION}_\n")
+    lines.append(render_version_footer_markdown())
+
     return "\n".join(lines)
 
 
@@ -200,8 +201,7 @@ def render_processors_markdown(report: ProcessorsHumanReport) -> str:
         rows = [[f"`{proc.qualified_key}`", proc.description] for proc in report.processors]
         lines.append(render_markdown_table(headers, rows))
 
-    lines.append("\n---\n")
-    lines.append(f"_Generated with TopMark v{TOPMARK_VERSION}_\n")
+    lines.append(render_version_footer_markdown())
 
     return "\n".join(lines)
 
@@ -269,7 +269,6 @@ def render_bindings_markdown(report: BindingsHumanReport) -> str:
         rows = [[f"`{item.qualified_key}`", item.description] for item in report.unused_processors]
         lines.append(render_markdown_table(headers, rows))
 
-    lines.append("\n---\n")
-    lines.append(f"_Generated with TopMark v{TOPMARK_VERSION}_\n")
+    lines.append(render_version_footer_markdown())
 
     return "\n".join(lines)
