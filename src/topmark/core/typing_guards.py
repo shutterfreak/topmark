@@ -13,8 +13,9 @@
 This module provides `TypeGuard`-based predicates that help Pyright narrow runtime values coming
 from weakly typed objects, e.g. values stored in the Click context.
 
-It also includes small, side-effect-free normalization helpers such as `as_object_dict`, used to
-safely coerce arbitrary parsed values into the plain-Python mapping shapes used by TopMark.
+It also includes small, side-effect-free normalization helpers such as `as_object_dict`, plus
+permissive generic mapping-extraction helpers used by runtime/config payload shaping. These helpers
+are meant for already-normalized Python mappings, not TOML-schema validation.
 
 See Also:
 - [`topmark.toml.typing_guards`][topmark.toml.typing_guards]: type guards and normalization helpers
@@ -95,3 +96,77 @@ def as_object_dict(value: object) -> dict[str, object]:
 
     items: Mapping[object, object] = cast("Mapping[object, object]", value)
     return {str(key): item for key, item in items.items()}
+
+
+# ---- Generic mapping helpers ----
+
+
+def get_object_dict_value(mapping: Mapping[str, object], key: str) -> dict[str, object]:
+    """Return a shallow `dict[str, object]` value for `key` when present.
+
+    This helper is intentionally permissive and is meant for generic mapping
+    extraction from already-normalized runtime/config payloads. It is not a TOML
+    schema-validation helper.
+
+    Args:
+        mapping: Mapping to inspect.
+        key: Key to extract.
+
+    Returns:
+        A shallow dictionary with stringified keys when the value at `key` is a
+        plain `dict`; otherwise ``{}``.
+    """
+    value: object = mapping.get(key)
+    return as_object_dict(value)
+
+
+def get_string_dict_value(mapping: Mapping[str, object], key: str) -> dict[str, str]:
+    """Return a `dict[str, str]` value for `key`, filtering invalid items.
+
+    Args:
+        mapping: Mapping to inspect.
+        key: Key to extract.
+
+    Returns:
+        A dictionary containing only `str -> str` entries from the value stored
+        at `key`, or ``{}`` when the value is absent or not a plain `dict`.
+    """
+    value: object = mapping.get(key)
+    if not isinstance(value, dict):
+        return {}
+
+    # Tell Pyright this is a dict, treat the keys/values as base objects:
+    items = cast("Mapping[object, object]", value)
+
+    result: dict[str, str] = {}
+    for item_key, item_value in items.items():
+        if isinstance(item_key, str) and isinstance(item_value, str):
+            result[item_key] = item_value
+    return result
+
+
+def get_string_list_dict_value(mapping: Mapping[str, object], key: str) -> dict[str, list[str]]:
+    """Return a `dict[str, list[str]]` value for `key`, filtering invalid items.
+
+    Args:
+        mapping: Mapping to inspect.
+        key: Key to extract.
+
+    Returns:
+        A dictionary containing only `str -> list[str]` entries from the value
+        stored at `key`, or ``{}`` when the value is absent or not a plain
+        `dict`.
+    """
+    value: object = mapping.get(key)
+    if not isinstance(value, dict):
+        return {}
+
+    # Tell Pyright this is a dict, treat the keys/values as base objects:
+    items = cast("Mapping[object, object]", value)
+
+    result: dict[str, list[str]] = {}
+    for item_key, item_value in items.items():
+        if not isinstance(item_key, str) or not is_str_list(item_value):
+            continue
+        result[item_key] = list(item_value)
+    return result

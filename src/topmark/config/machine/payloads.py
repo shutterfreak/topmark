@@ -32,13 +32,13 @@ from topmark.config.machine.schemas import ConfigDiagnosticsPayload
 from topmark.config.machine.schemas import ConfigPayload
 from topmark.core.machine.schemas import normalize_payload
 from topmark.core.typing_guards import as_object_dict
+from topmark.core.typing_guards import get_object_dict_value
+from topmark.core.typing_guards import get_string_dict_value
+from topmark.core.typing_guards import get_string_list_dict_value
 from topmark.diagnostic.machine.schemas import MachineDiagnosticCounts
 from topmark.diagnostic.machine.schemas import MachineDiagnosticEntry
 from topmark.diagnostic.model import DiagnosticStats
 from topmark.diagnostic.model import compute_diagnostic_stats
-from topmark.toml.getters import get_object_dict_value
-from topmark.toml.getters import get_string_dict_value
-from topmark.toml.getters import get_string_list_dict_value
 from topmark.toml.keys import Toml
 
 if TYPE_CHECKING:

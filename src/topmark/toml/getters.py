@@ -31,17 +31,13 @@ from enum import Enum
 from typing import TYPE_CHECKING
 from typing import Final
 from typing import TypeVar
-from typing import cast
 
 from topmark.core.logging import get_logger
 from topmark.core.typing_guards import is_any_list
-from topmark.core.typing_guards import is_str_list
 from topmark.toml.types import TomlTable
 from topmark.toml.typing_guards import is_toml_table
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
-
     from topmark.core.logging import TopmarkLogger
     from topmark.diagnostic.model import DiagnosticLog
     from topmark.toml.types import TomlTable
@@ -432,50 +428,3 @@ def get_table_value(table: TomlTable, key: str) -> TomlTable:
     # Safely extract a sub-table (dict) from the TOML data
     value: TomlValue | None = table.get(key)
     return value if is_toml_table(value) else {}
-
-
-def get_object_dict_value(mapping: Mapping[str, object], key: str) -> dict[str, object]:
-    """Return a shallow `dict[str, object]` value for `key` when present."""
-    value: object = mapping.get(key)
-
-    # Standard narrowing: value is now 'dict[Unknown, Unknown]' or 'object'
-    if not isinstance(value, dict):
-        return {}
-
-    # Tell Pyright this is a dict, treat the keys/values as base objects:
-    items = cast("Mapping[object, object]", value).items()
-
-    return {str(key): value for key, value in items}
-
-
-def get_string_dict_value(mapping: Mapping[str, object], key: str) -> dict[str, str]:
-    """Return a `dict[str, str]` value for `key`, filtering non-string items."""
-    value: object = mapping.get(key)
-    if not isinstance(value, dict):
-        return {}
-
-    # Tell Pyright this is a dict, treat the keys/values as base objects:
-    items = cast("Mapping[object, object]", value).items()
-
-    result: dict[str, str] = {}
-    for item_key, item_value in items:
-        if isinstance(item_key, str) and isinstance(item_value, str):
-            result[item_key] = item_value
-    return result
-
-
-def get_string_list_dict_value(mapping: Mapping[str, object], key: str) -> dict[str, list[str]]:
-    """Return a `dict[str, list[str]]` value for `key`, filtering invalid items."""
-    value: object = mapping.get(key)
-    if not isinstance(value, dict):
-        return {}
-
-    # Tell Pyright this is a dict, treat the keys/values as base objects:
-    items = cast("Mapping[object, object]", value).items()
-
-    result: dict[str, list[str]] = {}
-    for item_key, item_value in items:
-        if not isinstance(item_key, str) or not is_str_list(item_value):
-            continue
-        result[item_key] = list(item_value)
-    return result
