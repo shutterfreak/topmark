@@ -25,7 +25,8 @@ TopMark separates configuration concerns into three layers:
 - **TOML layer** (`topmark.toml`):
   - discovery of configuration sources
   - parsing of TOML tables
-  - whole-source TOML schema validation (unknown sections / keys, malformed section shapes)
+  - whole-source TOML schema validation (unknown sections / keys, malformed section shapes, missing
+    known sections as INFO diagnostics)
   - resolution of source-local options (e.g. `[config].root`, `strict_config_checking`)
 - **Config layer** (`topmark.config`):
   - construction of layered configuration (`ConfigLayer`)
@@ -56,11 +57,15 @@ config discovery/validation behaviour without participating in layered config me
 Whole-source TOML schema validation now happens before layered config deserialization. The staged
 flow is shown in the diagram above. In other words:
 
-- `topmark.toml` validates the full TopMark TOML source (including `[config]`, `[writer]`, and
-  unknown top-level entries)
+- `topmark.toml` validates the full TopMark TOML source (including `[config]`, `[writer]`, unknown
+  top-level entries, malformed section shapes, and missing known sections)
 - `topmark.config` only receives the layered config fragment
 - layered config deserializers still perform defensive value parsing so API and test callers can
   pass malformed layered fragments without crashing
+
+At the TOML layer, malformed known sections are treated as **warning-and-ignore** cases, while
+missing known sections are emitted as **INFO diagnostics** so callers can distinguish “not present”
+from “present but malformed” before config/runtime semantics are applied.
 
 The main integration point between TOML resolution and config merging is:
 
@@ -454,7 +459,9 @@ TopMark exposes configuration state through both human-readable and machine-read
   - JSON / NDJSON snapshots described in [`machine-output.md`](machine-output.md)
 
 For `config check`, machine output reports effective strictness under the key
-`strict_config_checking`, reflecting TOML-resolved strictness plus any CLI/API override.
+`strict_config_checking`, reflecting TOML-resolved strictness plus any CLI/API override. In the
+current 1.0 preparation model, this strictness applies to the aggregated config-resolution/preflight
+diagnostic pool rather than only to TOML parsing or layered-config merge validation in isolation.
 
 In machine formats, `config defaults` and `config init` share the same underlying configuration
 snapshot, even though their human-facing output differs.

@@ -17,8 +17,8 @@ TopMark merges configuration from multiple sources with **clear precedence** and
 
 TopMark now distinguishes clearly between:
 
-- **whole-source TOML validation** (`topmark.toml`), which validates unknown sections/keys and
-  malformed section shapes per TOML source
+- **whole-source TOML validation** (`topmark.toml`), which validates unknown sections/keys,
+  malformed section shapes, and emits INFO diagnostics for missing known sections per TOML source
 - **layered config deserialization and merge** (`topmark.config`), which consumes only the validated
   layered fragment and performs value parsing, normalization, and merge semantics
 
@@ -71,7 +71,9 @@ user config, project configs, `--config`, CLI) and includes the original source-
 
 This layered view is inspection-oriented and does not change merge semantics; it simply makes the
 effective precedence and contributions of each layer explicit. The stored TOML fragments correspond
-to the source-local TOML view after TOML-layer validation.
+to the source-local TOML view after TOML-layer validation. TOML-layer diagnostics may therefore
+already distinguish unknown entries, malformed-present sections, and missing known sections before
+layered config merge begins.
 
 ### Summary table
 
@@ -151,6 +153,11 @@ layered merging.
 These TOML-source-local options are still validated as part of whole-source TOML loading, but they
 do not become layered `Config` fields.
 
+The current `strict_config_checking` name comes from the earlier single-"config" architecture. In
+TopMark's current layered TOML → Config → Runtime model, its effective behavior is broader: it acts
+on the aggregated config-resolution/preflight diagnostic pool, which may include replayed TOML
+validation issues, config-layer diagnostics, and sanitization warnings.
+
 Currently, this includes:
 
 | Field                    | Description                                                                           |
@@ -186,7 +193,8 @@ This distinction is also visible in layered provenance output:
   `config_provenance.layers[].toml`.
 
 This enables strict config validation for the current project scope, causing warnings to be treated
-as errors during config checking.
+as errors during config checking. In the current implementation, this strictness applies to the
+aggregated config-resolution/preflight diagnostic pool, not only to TOML parsing in isolation.
 
 ### Reading the tables
 
