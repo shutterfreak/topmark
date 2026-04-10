@@ -175,10 +175,12 @@ class TomlSchema:
             if key not in known_names:
                 suggestion: str | None = _suggest_key(key, known_names)
                 if isinstance(value, dict):
+                    code: TomlDiagnosticCode = TomlDiagnosticCode.UNKNOWN_TOP_LEVEL_SECTION
                     message: str = f"Unknown TOML section [{key}] (ignored)."
                     if suggestion is not None:
                         message = f"{message[:-1]} Did you mean [{suggestion}]?"
                 else:
+                    code = TomlDiagnosticCode.UNKNOWN_TOP_LEVEL_KEY
                     message = f"Unknown top-level key '{key}' in TopMark TOML (ignored)."
                     if suggestion is not None:
                         message = (
@@ -187,7 +189,7 @@ class TomlSchema:
                         )
                 issues.append(
                     TomlValidationIssue(
-                        code=TomlDiagnosticCode.UNKNOWN_TOP_LEVEL_SECTION,
+                        code=code,
                         level=DiagnosticLevel.WARNING,
                         message=message,
                         path=(key,),
