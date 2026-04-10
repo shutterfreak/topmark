@@ -13,7 +13,8 @@
 This module defines the explicit, typed schema used to validate the structure
 of TopMark TOML documents before value-level parsing. It complements
 [`topmark.toml.keys`][topmark.toml.keys], which remains the canonical registry
-for user-facing string keys.
+for user-facing TOML section/key names while this module owns structural schema
+metadata and validation rules.
 
 The schema layer focuses on shape validation:
     - known top-level sections,
