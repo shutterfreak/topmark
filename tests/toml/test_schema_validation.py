@@ -33,9 +33,13 @@ from tests.toml.conftest import draft_from_topmark_toml_file
 from tests.toml.conftest import draft_from_topmark_toml_table
 from tests.toml.conftest import write_toml_document
 from topmark.config.policy import HeaderMutationMode
+from topmark.diagnostic.model import DiagnosticLevel
+from topmark.diagnostic.model import DiagnosticStats
 from topmark.toml.keys import Toml
 from topmark.toml.loaders import load_topmark_toml_source
 from topmark.toml.loaders import load_topmark_toml_table
+from topmark.toml.validation import TomlDiagnosticCode
+from topmark.toml.validation import TomlValidationIssue
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -341,6 +345,72 @@ def test_empty_topmark_toml_table_produces_empty_draft_without_schema_warning(
     assert_not_warned(caplog=caplog, needle="Unknown top-level key")
     assert_not_warned(caplog=caplog, needle="Unknown TOML section")
 
+    stats: DiagnosticStats = draft.diagnostics.stats()
+    assert stats.n_info > 0
+
+
+@pytest.mark.toml
+def test_empty_topmark_toml_table_emits_info_diagnostics_for_missing_sections() -> None:
+    """An empty TopMark TOML table emits INFO issues for each missing known section."""
+    parsed: ParsedTopmarkToml | None = load_topmark_toml_table({})
+    assert parsed is not None
+
+    issues: tuple[TomlValidationIssue, ...] = parsed.validation_issues
+    missing_codes: list[TomlDiagnosticCode] = [
+        issue.code for issue in issues if issue.code is TomlDiagnosticCode.MISSING_SECTION
+    ]
+    missing_sections = {
+        issue.section for issue in issues if issue.code is TomlDiagnosticCode.MISSING_SECTION
+    }
+
+    assert missing_codes
+    assert all(code is TomlDiagnosticCode.MISSING_SECTION for code in missing_codes)
+    assert all(
+        issue.level is DiagnosticLevel.INFO
+        for issue in issues
+        if issue.code is TomlDiagnosticCode.MISSING_SECTION
+    )
+    assert missing_sections == {
+        Toml.SECTION_CONFIG,
+        Toml.SECTION_HEADER,
+        Toml.SECTION_FIELDS,
+        Toml.SECTION_FORMATTING,
+        Toml.SECTION_WRITER,
+        Toml.SECTION_POLICY,
+        Toml.SECTION_POLICY_BY_TYPE,
+        Toml.SECTION_FILES,
+    }
+
+
+@pytest.mark.toml
+def test_present_section_is_not_reported_as_missing_info_diagnostic() -> None:
+    """Present known sections are excluded from missing-section INFO diagnostics."""
+    parsed: ParsedTopmarkToml | None = load_topmark_toml_table(
+        {
+            Toml.SECTION_FILES: {
+                Toml.KEY_INCLUDE_PATTERNS: ["src/**"],
+            }
+        }
+    )
+    assert parsed is not None
+
+    missing_sections = {
+        issue.section
+        for issue in parsed.validation_issues
+        if issue.code is TomlDiagnosticCode.MISSING_SECTION
+    }
+
+    assert Toml.SECTION_FILES not in missing_sections
+    assert {
+        Toml.SECTION_CONFIG,
+        Toml.SECTION_HEADER,
+        Toml.SECTION_FIELDS,
+        Toml.SECTION_FORMATTING,
+        Toml.SECTION_WRITER,
+        Toml.SECTION_POLICY,
+        Toml.SECTION_POLICY_BY_TYPE,
+    }.issubset(missing_sections)
+
 
 @pytest.mark.toml
 def test_load_topmark_toml_table_extracts_tool_topmark_from_pyproject_table() -> None:
@@ -371,7 +441,10 @@ def test_load_topmark_toml_table_extracts_tool_topmark_from_pyproject_table() ->
 def test_load_topmark_toml_source_distinguishes_missing_vs_empty_tool_topmark(
     tmp_path: Path,
 ) -> None:
-    """Missing `[tool.topmark]` returns `None`, while an empty table still parses."""
+    """Missing `[tool.topmark]` returns `None`, while an empty table still parses.
+
+    An empty table parses with missing-section INFO diagnostics.
+    """
     missing_dir: Path = tmp_path / "missing"
     missing_dir.mkdir()
     missing_path: Path = missing_dir / "pyproject.toml"
@@ -399,7 +472,28 @@ def test_load_topmark_toml_source_distinguishes_missing_vs_empty_tool_topmark(
     assert missing_parsed is None
     assert empty_parsed is not None
     assert empty_parsed.layered_config == {}
-    assert empty_parsed.validation_issues == ()
+
+    missing_sections = {
+        issue.section
+        for issue in empty_parsed.validation_issues
+        if issue.code is TomlDiagnosticCode.MISSING_SECTION
+    }
+
+    assert missing_sections == {
+        Toml.SECTION_CONFIG,
+        Toml.SECTION_HEADER,
+        Toml.SECTION_FIELDS,
+        Toml.SECTION_FORMATTING,
+        Toml.SECTION_WRITER,
+        Toml.SECTION_POLICY,
+        Toml.SECTION_POLICY_BY_TYPE,
+        Toml.SECTION_FILES,
+    }
+    assert all(
+        issue.level is DiagnosticLevel.INFO
+        for issue in empty_parsed.validation_issues
+        if issue.code is TomlDiagnosticCode.MISSING_SECTION
+    )
 
 
 # --- Whole-source TOML schema tests - TOML file based ---

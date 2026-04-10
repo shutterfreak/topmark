@@ -46,6 +46,7 @@ class TomlDiagnosticCode(str, Enum):
 
     UNKNOWN_TOP_LEVEL_SECTION = "toml.unknown_top_level_section"
     UNKNOWN_TOP_LEVEL_KEY = "toml.unknown_top_level_key"
+    MISSING_SECTION = "toml.missing_section"
     UNKNOWN_SECTION_KEY = "toml.unknown_section_key"
     INVALID_SECTION_TYPE = "toml.invalid_section_type"
     INVALID_NESTED_SECTION_TYPE = "toml.invalid_nested_section_type"

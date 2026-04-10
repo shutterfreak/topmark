@@ -28,8 +28,8 @@ Malformed-section handling policy:
       required) are reported as warnings and ignored,
     - malformed nested child sections such as `[policy_by_type.<filetype>]`
       follow the same warning-and-ignore policy,
-    - missing sections are not diagnosed by this schema layer and are handled
-      later by config/runtime semantics where relevant.
+    - missing known sections are reported as informational diagnostics so
+      callers can distinguish absent sections from malformed-present sections.
 """
 
 from __future__ import annotations
@@ -169,7 +169,8 @@ class TomlSchema:
 
         Known sections must be TOML tables. When a known section is present with
         the wrong shape, the validator emits a warning and the malformed section
-        is ignored by later parsing. Missing sections are not diagnosed here.
+        is ignored by later parsing. Missing sections are not diagnosed by this
+        helper; they are reported later during full-schema validation.
 
         Args:
             table: Top-level TOML table to validate.
@@ -315,7 +316,7 @@ class TomlSchema:
         The validator is intentionally non-fatal for malformed sections:
         warnings are emitted, malformed sections are ignored by later parsing,
         and validation continues so callers can accumulate a complete issue set.
-        Missing sections are not diagnosed here.
+        Missing known sections are reported as informational diagnostics.
 
         Args:
             table: Top-level TOML table to validate.
@@ -329,10 +330,25 @@ class TomlSchema:
 
         for section in self.sections:
             raw_section: TomlValue | None = table.get(section.value)
-            # Missing sections are intentionally not diagnosed at the TOML schema
-            # layer. Present-but-malformed sections were already recorded by
+            if raw_section is None:
+                issues.append(
+                    TomlValidationIssue(
+                        code=TomlDiagnosticCode.MISSING_SECTION,
+                        level=DiagnosticLevel.INFO,
+                        message=(
+                            f"TOML section [{section.value}] is not present; "
+                            "defaults/empty semantics apply."
+                        ),
+                        path=(section.value,),
+                        section=section.value,
+                        key=None,
+                    )
+                )
+                continue
+
+            # Present-but-malformed sections were already recorded by
             # `validate_top_level_keys()` and are skipped here.
-            if raw_section is None or not isinstance(raw_section, dict):
+            if not isinstance(raw_section, dict):
                 continue
 
             issues.extend(self.validate_section_keys(section, raw_section, mode=mode))
