@@ -214,6 +214,25 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
+## Versioning and intentional API changes
+
+When an intentional public API change is made, the version in `pyproject.toml` should be updated
+using a valid [PEP 440](https://peps.python.org/pep-0440/) identifier.
+
+Typical progression looks like this:
+
+- `1.0.0a1.dev1` → development work toward the first alpha
+- `1.0.0a1` → first alpha release
+- `1.0.0a2.dev1` → development work toward the second alpha
+- `1.0.0b1` → first beta release
+- `1.0.0rc1` → first release candidate
+- `1.0.0` → final release
+
+This matters for API snapshot updates as well: when the public API changes intentionally, update the
+snapshot, bump the version, and keep the version form consistent with the current release stage.
+
+______________________________________________________________________
+
 **Summary:**\
 The API snapshot system protects TopMark’s public interface from unintended breakage while still
 allowing controlled evolution under semantic versioning.

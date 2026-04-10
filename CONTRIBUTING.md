@@ -375,7 +375,32 @@ TopMark uses **Semantic Versioning (SemVer)**:
 Stable API: `topmark.api` and `topmark.registry.registry.Registry`\
 Advanced/internal APIs may change between minor versions.
 
-Before release:
+### PEP 440 version identifiers
+
+TopMark uses [PEP 440](https://peps.python.org/pep-0440/) version identifiers in `pyproject.toml`.
+
+Typical forms used in this project are:
+
+- Development builds for an upcoming release: `X.Y.Z.devN`
+- Development builds for an upcoming pre-release: `X.Y.ZaN.devN`, `X.Y.ZbN.devN`, `X.Y.ZrcN.devN`
+- Alpha, beta, and release candidate releases: `X.Y.ZaN`, `X.Y.ZbN`, `X.Y.ZrcN`
+- Final releases: `X.Y.Z`
+
+Examples:
+
+- `1.0.0a1.dev1` → development work leading to the first `1.0.0` alpha release
+- `1.0.0a1` → first alpha release
+- `1.0.0rc1` → first release candidate
+- `1.0.0` → final release
+
+For GitHub releases, the pushed Git tag is converted to the corresponding PEP 440 version and must
+match `[project].version` in `pyproject.toml` exactly. Examples:
+
+- Git tag `v1.0.0-a1` ↔ `version = "1.0.0a1"`
+- Git tag `v1.0.0-b1` ↔ `version = "1.0.0b1"`
+- Git tag `v1.0.0-rc1` ↔ `version = "1.0.0rc1"`
+
+### Before release
 
 1. Refresh `tests/api/public_api_snapshot.json`
 
