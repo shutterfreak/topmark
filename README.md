@@ -284,12 +284,18 @@ Source-local TOML options such as discovery boundaries and config-checking stric
 layered `Config` values and do not participate in layered config merging.
 
 During loading, TopMark first validates each whole-source TOML fragment (unknown sections, unknown
-keys, malformed section shapes, etc.). Only the validated layered config fragment is then passed
-into layered config merging.
+keys, malformed section shapes, missing known sections, etc.). Only the validated layered config
+fragment is then passed into layered config merging.
+
+At the TOML layer, malformed known sections are handled as warning-and-ignore cases, while missing
+known sections are emitted as INFO diagnostics. This lets callers distinguish absent sections from
+malformed-present sections before config/runtime semantics are applied.
 
 For example, `strict_config_checking` is resolved from TOML sources and affects configuration
-validation behaviour; it is not a normal layered `Config` field. CLI/API strictness overrides still
-take precedence for the current run.
+validation behaviour; it is not a normal layered `Config` field. In the current implementation, it
+governs the aggregated config-resolution/preflight diagnostic pool rather than only TOML parsing or
+layered-config merge validation in isolation. CLI/API strictness overrides still take precedence for
+the current run.
 
 In layered provenance output, these source-local TOML fragments remain grouped under their original
 TOML sections (for example `[config]` and `[writer]`) rather than being collapsed into the final

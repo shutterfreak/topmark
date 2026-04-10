@@ -16,11 +16,14 @@ TopMark exposes a `config` command group to inspect and scaffold configuration:
 
 Source-local options under `[config]` / `[tool.topmark.config]` (such as `root` and
 `strict_config_checking`) are resolved during configuration loading. They do not participate in
-layered config merging, but influence discovery and validation behaviour.
+layered config merging, but influence discovery and validation behaviour. In the current
+implementation, effective strictness applies to the aggregated config-resolution/preflight
+diagnostic pool.
 
-TopMark performs whole-source TOML schema validation during loading. Unknown sections or keys are
-reported as configuration diagnostics before the layered configuration is built. Only the validated
-layered fragment is passed to the config layer for merging.
+TopMark performs whole-source TOML schema validation during loading. Unknown sections or keys,
+malformed section shapes, and missing known sections are reported as configuration diagnostics
+before the layered configuration is built. Only the validated layered fragment is passed to the
+config layer for merging.
 
 - [`topmark config check`](./config/check.md) — validate the *effective merged* configuration and
   report diagnostics.
@@ -41,7 +44,9 @@ When running `config check`, effective validation strictness is determined by:
 1. TOML value (`strict_config_checking`)
 1. default non-strict behaviour
 
-Warnings are treated as errors only when strict config checking is enabled.
+Warnings are treated as errors only when strict config checking is enabled. In the current
+implementation, this applies to the aggregated config-resolution/preflight diagnostic pool, not only
+to TOML parsing or layered-config merge validation in isolation.
 
 Note that `strict_config_checking` is a **source-local TOML option**, not a layered configuration
 field. It influences validation behaviour but is not part of the final merged config; however, it is

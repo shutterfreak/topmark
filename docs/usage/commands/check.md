@@ -36,7 +36,7 @@ topmark check --diff src/
 # Summary‑only view (CI‑friendly)
 topmark check --summary src/
 
-# Treat config warnings as errors for this run
+# Treat aggregated config-resolution/preflight warnings as errors for this run
 topmark check --strict src/
 
 # Read targets from stdin (one path per line) and generate unified diff output
@@ -69,10 +69,11 @@ These modes are mutually exclusive: do **not** mix `-` (content mode) with `--fi
 `--include-from -`, or `--exclude-from -` (list mode).
 
 - Idempotent: re‑running on already‑correct files results in **no changes**.
-- Supports `--strict` / `--no-strict` to override effective config-validation strictness for the
-  run.
+- Supports `--strict` / `--no-strict` to override the effective `strict_config_checking` value for
+  the run.
 - Performs whole-source TOML schema validation during configuration loading; TOML-layer diagnostics
-  are included in the final config diagnostics for the run.
+  (including missing-section INFO diagnostics) are included in the final config diagnostics for the
+  run.
 
 {% include-markdown "\_snippets/config-resolution.md" %}
 
@@ -183,17 +184,17 @@ When `--summary` is **not** set, `topmark check` emits a single JSON object:
 
 ### JSON schema (summary mode)
 
-In summary mode (`--summary`), `results` is omitted and replaced by a `summary` object:
+In summary mode (`--summary`), `results` is omitted and replaced by a flat `summary` list of rows:
 
 ```jsonc
 {
   "meta": { /* MetaPayload */ },
   "config": { /* ConfigPayload */ },
   "config_diagnostics": { /* ConfigDiagnosticsPayload */ },
-  "summary": {
-    "unchanged":    { "count": 30, "label": "up-to-date" },
-    "would insert": { "count":  1, "label": "header missing, changes found" }
-  }
+  "summary": [
+    { "outcome": "unchanged", "reason": "up-to-date", "count": 30 },
+    { "outcome": "would insert", "reason": "header missing, changes found", "count": 1 }
+  ]
 }
 ```
 
@@ -209,14 +210,14 @@ or per-bucket `summary` records (summary mode):
      TOML schema validation or config-layer validation)
 - Then:
   - detail mode (no `--summary`): one `kind="result"` record per file
-  - summary mode (`--summary`): one `kind="summary"` record per outcome bucket
+  - summary mode (`--summary`): one `kind="summary"` record per `(outcome, reason)` bucket
 
 Example (summary mode):
 
 ```jsonc
 {"kind":"config","meta":{...},"config":{...}}
 {"kind":"config_diagnostics","meta":{...},"config_diagnostics":{"diagnostic_counts":{"info":0,"warning":0,"error":0}}}
-{"kind":"summary","meta":{...},"summary":{"key":"would insert","count":1,"label":"header missing, changes found"}}
+{"kind":"summary","meta":{...},"summary":{"outcome":"would insert","reason":"header missing, changes found","count":1}}
 ```
 
 ______________________________________________________________________
@@ -351,8 +352,8 @@ topmark check --summary
 ### 4) Run with strict config checking
 
 ```bash
-# Fail when config warnings are present
-# (for example malformed or suspicious config inputs)
+# Fail when aggregated config-resolution/preflight warnings are present
+# (for example TOML validation issues, suspicious config inputs, or sanitization warnings)
 topmark check --strict src/
 ```
 
