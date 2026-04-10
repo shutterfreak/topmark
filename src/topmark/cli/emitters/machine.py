@@ -205,13 +205,14 @@ def emit_config_check_machine(
     """Emit `topmark config check` results in a machine-readable format.
 
     JSON:
-      - One envelope: meta, config, config_diagnostics (full), summary.
+      - One envelope containing `meta`, `config`, `config_diagnostics`, and
+        `config_check`.
 
     NDJSON:
-      1) config
-      2) config_diagnostics (counts-only)
-      3) summary (command=config, subcommand=check)
-      4+) diagnostic (domain=config) one per diagnostic
+      1) `config`
+      2) `config_diagnostics` (counts-only)
+      3) `config_check` (command=`config`, subcommand=`check`)
+      4+) `diagnostic` (domain=`config`) one per diagnostic
 
     Args:
         meta: The machine metadata payload.
