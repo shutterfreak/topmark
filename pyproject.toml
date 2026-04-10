@@ -103,7 +103,7 @@ dependencies = [
     # Upload distributions to PyPI:
     "twine>=6.2.0,<7.0.0",
     # Fast Python package/project manager used by Nox:
-    "uv>=0.5.0,<0.11.0",
+    "uv>=0.5.0,<0.12.0",
   ]
   docs = [
     # Symbol cross-references in Markdown:
