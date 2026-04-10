@@ -92,6 +92,50 @@ def test_unknown_top_level_table_warns_and_is_recorded(
 
 
 @pytest.mark.toml
+def test_unknown_top_level_scalar_uses_unknown_top_level_key_code() -> None:
+    """Unknown top-level scalar entries use the dedicated key diagnostic code."""
+    parsed: ParsedTopmarkToml | None = load_topmark_toml_table(
+        {
+            "unknown_root_key": 123,
+        }
+    )
+    assert parsed is not None
+
+    matching: list[TomlValidationIssue] = [
+        issue
+        for issue in parsed.validation_issues
+        if issue.code is TomlDiagnosticCode.UNKNOWN_TOP_LEVEL_KEY
+    ]
+
+    assert len(matching) == 1
+    assert matching[0].section is None
+    assert matching[0].key == "unknown_root_key"
+    assert matching[0].path == ("unknown_root_key",)
+
+
+@pytest.mark.toml
+def test_unknown_top_level_table_uses_unknown_top_level_section_code() -> None:
+    """Unknown top-level tables use the dedicated section diagnostic code."""
+    parsed: ParsedTopmarkToml | None = load_topmark_toml_table(
+        {
+            "bogus": {"x": 1},
+        }
+    )
+    assert parsed is not None
+
+    matching: list[TomlValidationIssue] = [
+        issue
+        for issue in parsed.validation_issues
+        if issue.code is TomlDiagnosticCode.UNKNOWN_TOP_LEVEL_SECTION
+    ]
+
+    assert len(matching) == 1
+    assert matching[0].section is None
+    assert matching[0].key == "bogus"
+    assert matching[0].path == ("bogus",)
+
+
+@pytest.mark.toml
 def test_unknown_keys_are_reported_individually(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -158,6 +202,30 @@ def test_section_wrong_type_warns_and_is_ignored(
 
 
 @pytest.mark.toml
+def test_section_wrong_type_uses_invalid_section_type_code_and_is_ignored() -> None:
+    """Malformed known sections emit INVALID_SECTION_TYPE and are ignored."""
+    parsed: ParsedTopmarkToml | None = load_topmark_toml_table(
+        {
+            Toml.SECTION_FILES: "not-a-table",
+        }
+    )
+    assert parsed is not None
+
+    matching: list[TomlValidationIssue] = [
+        issue
+        for issue in parsed.validation_issues
+        if issue.code is TomlDiagnosticCode.INVALID_SECTION_TYPE
+    ]
+
+    assert len(matching) == 1
+    assert matching[0].section == Toml.SECTION_FILES
+    assert matching[0].key is None
+    assert matching[0].path == (Toml.SECTION_FILES,)
+    assert matching[0].level is DiagnosticLevel.WARNING
+    assert parsed.layered_config == {}
+
+
+@pytest.mark.toml
 def test_policy_by_type_unknown_keys_warn(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -196,6 +264,52 @@ def test_policy_by_type_entry_wrong_type_warns(
         draft=draft,
         needle=f"TOML section [{Toml.SECTION_POLICY_BY_TYPE}.python] must be a table",
     )
+
+
+@pytest.mark.toml
+def test_policy_by_type_entry_wrong_type_uses_invalid_nested_section_type_code() -> None:
+    """Malformed nested policy tables emit INVALID_NESTED_SECTION_TYPE and are ignored."""
+    parsed: ParsedTopmarkToml | None = load_topmark_toml_table(
+        {
+            Toml.SECTION_POLICY_BY_TYPE: {
+                "python": 123,
+            }
+        }
+    )
+    assert parsed is not None
+
+    matching: list[TomlValidationIssue] = [
+        issue
+        for issue in parsed.validation_issues
+        if issue.code is TomlDiagnosticCode.INVALID_NESTED_SECTION_TYPE
+    ]
+
+    assert len(matching) == 1
+    assert matching[0].section == Toml.SECTION_POLICY_BY_TYPE
+    assert matching[0].key == "python"
+    assert matching[0].path == (Toml.SECTION_POLICY_BY_TYPE, "python")
+    assert matching[0].level is DiagnosticLevel.WARNING
+
+    # This test is about the TOML validation payload, not about the later effective config outcome.
+    assert parsed.layered_config == {
+        Toml.SECTION_POLICY_BY_TYPE: {
+            "python": 123,
+        }
+    }
+
+
+@pytest.mark.toml
+def test_policy_by_type_entry_wrong_type_does_not_become_effective_policy_override() -> None:
+    """Malformed nested policy entries do not produce effective policy overrides."""
+    draft: MutableConfig = draft_from_topmark_toml_table(
+        {
+            Toml.SECTION_POLICY_BY_TYPE: {
+                "python": 123,
+            }
+        }
+    )
+
+    assert draft.policy_by_type == {}
 
 
 @pytest.mark.toml
@@ -331,6 +445,72 @@ def test_unknown_key_in_writer_section_warns_and_is_recorded(
         draft=draft,
         needle='Unknown key "bogus" in [writer]',
     )
+
+
+@pytest.mark.toml
+@pytest.mark.parametrize(
+    ("section", "dump_only_key"),
+    [
+        (Toml.SECTION_FILES, Toml.KEY_INCLUDE_PATTERN_GROUPS),
+        (Toml.SECTION_CONFIG, Toml.KEY_CONFIG_FILES),
+    ],
+)
+def test_dump_only_keys_in_input_mode_warn_and_are_recorded(
+    caplog: pytest.LogCaptureFixture,
+    section: str,
+    dump_only_key: str,
+) -> None:
+    """Dump/provenance-only keys are warned about when present in ordinary input mode."""
+    caplog.set_level("WARNING")
+    draft: MutableConfig = draft_from_topmark_toml_table(
+        {
+            section: {
+                dump_only_key: [],
+            }
+        }
+    )
+
+    assert_warned_and_diagnosed(
+        caplog=caplog,
+        draft=draft,
+        needle=f'Key "{dump_only_key}" is only valid in [{section}] '
+        "when reading provenance/dump output",
+    )
+
+
+@pytest.mark.toml
+@pytest.mark.parametrize(
+    ("section", "dump_only_key"),
+    [
+        (Toml.SECTION_FILES, Toml.KEY_INCLUDE_PATTERN_GROUPS),
+        (Toml.SECTION_CONFIG, Toml.KEY_CONFIG_FILES),
+    ],
+)
+def test_dump_only_keys_in_input_mode_use_dump_only_code(
+    section: str,
+    dump_only_key: str,
+) -> None:
+    """Dump/provenance-only keys use the dedicated TOML diagnostic code in input mode."""
+    parsed: ParsedTopmarkToml | None = load_topmark_toml_table(
+        {
+            section: {
+                dump_only_key: [],
+            }
+        }
+    )
+    assert parsed is not None
+
+    matching: list[TomlValidationIssue] = [
+        issue
+        for issue in parsed.validation_issues
+        if issue.code is TomlDiagnosticCode.DUMP_ONLY_KEY_IN_INPUT
+    ]
+
+    assert len(matching) == 1
+    assert matching[0].section == section
+    assert matching[0].key == dump_only_key
+    assert matching[0].path == (section, dump_only_key)
+    assert matching[0].level is DiagnosticLevel.WARNING
 
 
 @pytest.mark.toml
