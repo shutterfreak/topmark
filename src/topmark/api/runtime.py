@@ -142,7 +142,7 @@ def is_config_valid(
     The strictness used here is the effective resolved value of
     `strict_config_checking`, derived from:
     - an explicit API/CLI override when provided,
-    - otherwise the TOML-resolved source-local preference,
+    - otherwise the TOML-resolved source-local preference in `resolved`,
     - otherwise non-strict behavior.
 
     Validation is evaluated against the config's aggregated diagnostics, which
@@ -172,18 +172,24 @@ def ensure_config_valid(
 ) -> None:
     """Raise `ConfigValidationError` if the config is not valid.
 
-    A config is valid when it has no error diagnostics. Under strict config
-    checking, a config is valid only when it has neither error diagnostics nor
-    warning diagnostics.
+    A config is valid when it has no error diagnostics. Under effective strict
+    config checking, a config is valid only when it has neither error
+    diagnostics nor warning diagnostics.
 
-    `resolved` supplies strictness resolved from TOML sources. `override` is an
-    optional API/CLI override for that setting. When both are `None`,
-    validation defaults to non-strict mode.
+    The strictness used here is the effective resolved value of
+    `strict_config_checking`, derived from:
+    - an explicit API/CLI override when provided,
+    - otherwise the TOML-resolved source-local preference in `resolved`,
+    - otherwise non-strict behavior.
+
+    Validation is evaluated against the config's aggregated diagnostics, which
+    may include replayed TOML validation issues, config-layer diagnostics, and
+    sanitization warnings.
 
     Args:
         cfg: Frozen or mutable config to validate.
         resolved: Resolved TOML-side state for the current run.
-        override: Optional API/CLI override for strict config checking.
+        override: Optional API/CLI override for `strict_config_checking`.
 
     Raises:
         ConfigValidationError: If the config is invalid under the effective
