@@ -21,6 +21,15 @@ The schema layer focuses on shape validation:
     - open sections such as `[fields]`,
     - nested policy subtables such as `[policy_by_type.<filetype>]`,
     - dump/provenance-only keys that should not appear in ordinary input mode.
+
+Malformed-section handling policy:
+    - unknown sections/keys are reported as warnings and ignored,
+    - known sections with invalid shapes (for example a scalar where a table is
+      required) are reported as warnings and ignored,
+    - malformed nested child sections such as `[policy_by_type.<filetype>]`
+      follow the same warning-and-ignore policy,
+    - missing sections are not diagnosed by this schema layer and are handled
+      later by config/runtime semantics where relevant.
 """
 
 from __future__ import annotations
@@ -158,6 +167,10 @@ class TomlSchema:
         as unknown sections, while unknown non-table entries are reported as
         misplaced top-level keys.
 
+        Known sections must be TOML tables. When a known section is present with
+        the wrong shape, the validator emits a warning and the malformed section
+        is ignored by later parsing. Missing sections are not diagnosed here.
+
         Args:
             table: Top-level TOML table to validate.
             mode: Validation mode controlling context-specific allowances.
@@ -180,6 +193,7 @@ class TomlSchema:
                     if suggestion is not None:
                         message = f"{message[:-1]} Did you mean [{suggestion}]?"
                 else:
+                    # Policy: malformed known sections are warning-and-ignore, not fatal.
                     code = TomlDiagnosticCode.UNKNOWN_TOP_LEVEL_KEY
                     message = f"Unknown top-level key '{key}' in TopMark TOML (ignored)."
                     if suggestion is not None:
@@ -298,6 +312,11 @@ class TomlSchema:
         including top-level entries, fixed-key sections, open sections, and
         nested policy-by-type child tables.
 
+        The validator is intentionally non-fatal for malformed sections:
+        warnings are emitted, malformed sections are ignored by later parsing,
+        and validation continues so callers can accumulate a complete issue set.
+        Missing sections are not diagnosed here.
+
         Args:
             table: Top-level TOML table to validate.
             mode: Validation mode controlling dump-only-key allowances.
@@ -310,6 +329,9 @@ class TomlSchema:
 
         for section in self.sections:
             raw_section: TomlValue | None = table.get(section.value)
+            # Missing sections are intentionally not diagnosed at the TOML schema
+            # layer. Present-but-malformed sections were already recorded by
+            # `validate_top_level_keys()` and are skipped here.
             if raw_section is None or not isinstance(raw_section, dict):
                 continue
 
@@ -335,6 +357,13 @@ class TomlSchema:
     ) -> tuple[TomlValidationIssue, ...]:
         """Validate dynamic child tables inside a nested TOML section.
 
+        This is used for sections such as `[policy_by_type.<filetype>]`, where
+        each child entry must itself be a TOML table with a fixed set of keys.
+
+        Malformed child entries are handled with the same warning-and-ignore
+        policy as malformed top-level sections: a warning is emitted and the
+        offending child section is skipped.
+
         Args:
             table: Parent section table containing dynamic child entries.
             nested: Nested schema metadata.
@@ -351,6 +380,7 @@ class TomlSchema:
         for child_name, child_value in table.items():
             path_prefix: tuple[str, ...] = (nested.parent.value, child_name)
             if not isinstance(child_value, dict):
+                # Policy: malformed nested child sections are warning-and-ignore.
                 issues.append(
                     TomlValidationIssue(
                         code=TomlDiagnosticCode.INVALID_NESTED_SECTION_TYPE,
