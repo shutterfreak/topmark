@@ -122,6 +122,26 @@ def test_config_check_json_summary_shape() -> None:
     assert "strict_config_checking" in config_check_summary
 
 
+def test_config_check_json_uses_config_check_payload_not_legacy_summary_key() -> None:
+    """Ensure JSON output uses `config_check` and not a legacy generic summary key."""
+    result: Result = run_cli(
+        [
+            CliCmd.CONFIG,
+            CliCmd.CONFIG_CHECK,
+            CliOpt.OUTPUT_FORMAT,
+            "json",
+        ]
+    )
+    assert_SUCCESS(result)
+
+    payload_obj: object = json.loads(result.output)
+    assert isinstance(payload_obj, dict)
+    payload: dict[str, object] = cast("dict[str, object]", payload_obj)
+
+    assert "config_check" in payload
+    assert "summary" not in payload
+
+
 def test_config_check_ndjson_record_order() -> None:
     """Ensure NDJSON output for `config check` starts with the expected records."""
     result: Result = run_cli(
@@ -207,3 +227,27 @@ def test_config_check_ndjson_summary_record_uses_strict_config_checking() -> Non
     config_check_summary: dict[str, object] = cast("dict[str, object]", config_check_summary_obj)
 
     assert "strict_config_checking" in config_check_summary
+
+
+def test_config_check_ndjson_third_record_uses_config_check_container_not_summary() -> None:
+    """Ensure the third NDJSON record uses `config_check`, not a legacy summary container."""
+    result: Result = run_cli(
+        [
+            CliCmd.CONFIG,
+            CliCmd.CONFIG_CHECK,
+            CliOpt.OUTPUT_FORMAT,
+            "ndjson",
+        ]
+    )
+    assert_SUCCESS(result)
+
+    lines: list[str] = [line for line in result.output.splitlines() if line.strip()]
+    assert len(lines) >= 3
+
+    record_obj: object = json.loads(lines[2])
+    assert isinstance(record_obj, dict)
+    record: dict[str, object] = cast("dict[str, object]", record_obj)
+
+    assert record.get("kind") == "config_check"
+    assert "config_check" in record
+    assert "summary" not in record

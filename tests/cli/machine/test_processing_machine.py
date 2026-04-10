@@ -265,6 +265,54 @@ def test_processing_json_summary_shape(tmp_path: Path, command: str) -> None:
     assert isinstance(first.get("count"), int)
 
 
+@pytest.mark.parametrize(
+    "command",
+    [
+        CliCmd.CHECK,
+        CliCmd.STRIP,
+    ],
+)
+def test_processing_json_summary_rows_do_not_use_legacy_key_label_shape(
+    tmp_path: Path,
+    command: str,
+) -> None:
+    """Ensure JSON summary rows use outcome/reason/count and not legacy key/label fields."""
+    (tmp_path / "example.py").write_text(
+        "#!/usr/bin/env python3\nprint('hi')\n",
+        encoding="utf-8",
+    )
+
+    result: Result = run_cli_in(
+        tmp_path,
+        [
+            command,
+            CliOpt.OUTPUT_FORMAT,
+            "json",
+            CliOpt.RESULTS_SUMMARY_MODE,
+            ".",
+        ],
+    )
+    assert_SUCCESS_or_WOULD_CHANGE(result)
+
+    payload_obj: object = json.loads(result.output)
+    assert isinstance(payload_obj, dict)
+    payload: dict[str, object] = cast("dict[str, object]", payload_obj)
+
+    summary_obj: object = payload["summary"]
+    assert isinstance(summary_obj, list)
+    summary_rows: list[object] = cast("list[object]", summary_obj)
+    assert summary_rows
+
+    for row_obj in summary_rows:
+        assert isinstance(row_obj, dict)
+        row: dict[str, object] = cast("dict[str, object]", row_obj)
+        assert "outcome" in row
+        assert "reason" in row
+        assert "count" in row
+        assert "key" not in row
+        assert "label" not in row
+
+
 # ----- NDJSON -----
 
 
@@ -330,3 +378,57 @@ def test_processing_ndjson_kinds_with_summary(tmp_path: Path, command: str) -> N
     assert "config" in kinds_set
     assert "config_diagnostics" in kinds_set
     assert "summary" in kinds_set
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        CliCmd.CHECK,
+        CliCmd.STRIP,
+    ],
+)
+def test_processing_ndjson_summary_rows_do_not_use_legacy_key_label_shape(
+    tmp_path: Path,
+    command: str,
+) -> None:
+    """Ensure NDJSON summary rows use outcome/reason/count and not legacy key/label fields."""
+    (tmp_path / "example.py").write_text(
+        "#!/usr/bin/env python3\nprint('hi')\n",
+        encoding="utf-8",
+    )
+
+    result: Result = run_cli_in(
+        tmp_path,
+        [
+            command,
+            CliOpt.OUTPUT_FORMAT,
+            "ndjson",
+            CliOpt.RESULTS_SUMMARY_MODE,
+            ".",
+        ],
+    )
+    assert_SUCCESS_or_WOULD_CHANGE(result)
+
+    lines: list[str] = [line for line in result.output.splitlines() if line.strip()]
+    assert lines
+
+    summary_records_found: int = 0
+    for line in lines:
+        record_obj: object = json.loads(line)
+        assert isinstance(record_obj, dict)
+        record: dict[str, object] = cast("dict[str, object]", record_obj)
+        if record.get("kind") != "summary":
+            continue
+
+        summary_records_found += 1
+        summary_obj: object | None = record.get("summary")
+        assert isinstance(summary_obj, dict)
+        summary: dict[str, object] = cast("dict[str, object]", summary_obj)
+
+        assert "outcome" in summary
+        assert "reason" in summary
+        assert "count" in summary
+        assert "key" not in summary
+        assert "label" not in summary
+
+    assert summary_records_found > 0
