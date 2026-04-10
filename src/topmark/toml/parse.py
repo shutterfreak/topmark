@@ -46,9 +46,11 @@ class SourceConfigLoadingOptions:
     does not participate in layered config merging.
 
     Attributes:
-        strict_config_checking: If `True`, treat config warnings as errors
-            while checking TOML configuration. `None` means that the TOML
-            source does not specify a strictness preference.
+        strict_config_checking: Per-source strictness preference for later
+            config-resolution/preflight validation. If `True`, warnings in the
+            aggregated config-resolution diagnostic pool are treated as
+            failures. `None` means that the TOML source does not specify a
+            strictness preference.
     """
 
     strict_config_checking: bool | None = None
@@ -106,7 +108,9 @@ def _parse_config_loading_options(
         config_tbl: Parsed `[config]` table, or `None` when absent.
 
     Returns:
-        Parsed per-source config-loading behaviour.
+        Parsed per-source config-loading behaviour, including the TOML-local
+        strictness preference later used during aggregated config/preflight
+        validation.
     """
     if config_tbl is None:
         return SourceConfigLoadingOptions()

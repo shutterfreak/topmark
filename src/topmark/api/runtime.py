@@ -130,20 +130,26 @@ def is_config_valid(
     resolved: ResolvedTopmarkTomlSources,
     override: bool | None = None,
 ) -> bool:
-    """Return whether the config is valid under resolved strictness.
+    """Return whether the config is valid under effective resolved strictness.
 
-    A config is valid when it has no error diagnostics. Under strict config
-    checking, a config is valid only when it has neither error diagnostics nor
-    warning diagnostics.
+    A config is valid when it has no error diagnostics. Under effective strict
+    config checking, a config is valid only when it has neither error
+    diagnostics nor warning diagnostics.
 
-    `resolved` supplies strictness resolved from TOML sources. `override` is an
-    optional API/CLI override for that setting. When both are `None`,
-    validation defaults to non-strict mode.
+    The strictness used here is the effective resolved value of
+    `strict_config_checking`, derived from:
+    - an explicit API/CLI override when provided,
+    - otherwise the TOML-resolved source-local preference,
+    - otherwise non-strict behavior.
+
+    Validation is evaluated against the config's aggregated diagnostics, which
+    may include replayed TOML validation issues, config-layer diagnostics, and
+    sanitization warnings.
 
     Args:
         cfg: Frozen or mutable config to validate.
         resolved: Resolved TOML-side state for the current run.
-        override: Optional API/CLI override for strict config checking.
+        override: Optional API/CLI override for `strict_config_checking`.
 
     Returns:
         `True` if the config is valid under the effective strictness, else

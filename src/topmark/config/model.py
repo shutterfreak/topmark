@@ -173,10 +173,15 @@ class Config:
         config is valid only when it has neither error diagnostics nor warning
         diagnostics.
 
+        Here, `strict` is the effective resolved strictness used for
+        config/preflight validation. Callers typically derive it from
+        `strict_config_checking` after applying TOML resolution and any CLI/API
+        override precedence.
+
         A similar helper exists on `MutableConfig`.
 
         Args:
-            strict: Whether to validate the config in strict mode.
+            strict: Effective strictness for config/preflight validation.
 
         Returns:
             `True` if the config is valid, else `False`.
@@ -194,10 +199,15 @@ class Config:
         config is valid only when it has neither error diagnostics nor warning
         diagnostics.
 
+        Here, `strict` is the effective resolved strictness used for
+        config/preflight validation. Callers typically derive it from
+        `strict_config_checking` after applying TOML resolution and any CLI/API
+        override precedence.
+
         A similar helper exists on `MutableConfig`.
 
         Args:
-            strict: Whether to validate the config in strict mode.
+            strict: Effective strictness for config/preflight validation.
 
         Raises:
             ConfigValidationError: If the config is invalid.
@@ -335,10 +345,15 @@ class MutableConfig:
         mode, a mutable config is valid only when it has neither error
         diagnostics nor warning diagnostics.
 
+        Here, `strict` is the effective resolved strictness used for
+        config/preflight validation. Callers typically derive it from
+        `strict_config_checking` after applying TOML resolution and any CLI/API
+        override precedence.
+
         A similar helper exists on `Config`.
 
         Args:
-            strict: Whether to validate the mutable config in strict mode.
+            strict: Effective strictness for config/preflight validation.
 
         Returns:
             `True` if the mutable config is valid, else `False`.
@@ -356,10 +371,15 @@ class MutableConfig:
         mode, a mutable config is valid only when it has neither error
         diagnostics nor warning diagnostics.
 
+        Here, `strict` is the effective resolved strictness used for
+        config/preflight validation. Callers typically derive it from
+        `strict_config_checking` after applying TOML resolution and any CLI/API
+        override precedence.
+
         A similar helper exists on `Config`.
 
         Args:
-            strict: Whether to validate the mutable config in strict mode.
+            strict: Effective strictness for config/preflight validation.
 
         Raises:
             ConfigValidationError: If the mutable config is invalid.
@@ -673,15 +693,19 @@ def _is_config_valid(
     *,
     strict: bool | None = None,
 ) -> bool:
-    """Return whether a frozen or mutable config is valid.
+    """Return whether a config-like object is valid.
 
     A config is valid when it has no error diagnostics. In strict mode, a
     config is valid only when it has neither error diagnostics nor warning
     diagnostics.
 
+    Here, `strict` represents the effective resolved strictness for
+    config/preflight validation, typically derived from
+    `strict_config_checking` after TOML resolution and any CLI/API override.
+
     Args:
-        cfg: Frozen or mutable config to validate.
-        strict: Whether to validate the config in strict mode.
+        cfg: Frozen or mutable config carrying diagnostics.
+        strict: Effective strictness for config/preflight validation.
 
     Returns:
         `True` if the config is valid, else `False`.

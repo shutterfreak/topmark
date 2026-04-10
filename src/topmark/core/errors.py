@@ -536,8 +536,9 @@ class ConfigValidationError(TopmarkError):
 
     Args:
         diagnostics: Diagnostic log attached to the config being validated.
-        strict_config_checking: Whether validation was performed in strict
-            mode.
+        strict_config_checking: Effective resolved strictness for config/preflight
+            validation (typically derived from TOML `strict_config_checking` plus any
+            CLI/API override).
         details: Optional structured diagnostic details.
     """
 
