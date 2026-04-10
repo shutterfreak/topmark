@@ -19,8 +19,9 @@ This module defines:
 Scope:
     - *In scope*: data shapes, defaulting rules at the field level, merge policy
       (`MutableConfig.merge_with`), and freeze/thaw mechanics.
-    - *Out of scope*: filesystem discovery and TOML I/O. Those belong in
-      dedicated modules to keep this model import-light and avoid import cycles, e.g.:
+    - *Out of scope*: filesystem discovery, TOML I/O, and whole-source TOML
+      schema validation. Those belong in dedicated modules to keep this model
+      import-light and avoid import cycles, e.g.:
       - TOML document handling
         - [`topmark.toml.resolution`][topmark.toml.resolution]
         - [`topmark.config.resolution`][topmark.config.resolution]
@@ -253,6 +254,9 @@ def sanitized_config(config: Config) -> Config:
     """Sanitize a Config object.
 
     Thaws the Config into a MutableConfig, sanitizes and freezes again.
+
+    Sanitization may add diagnostics, and those diagnostics participate in later
+    config/preflight validity checks.
 
     Args:
         config: The Config to sanitize.
@@ -575,11 +579,17 @@ class MutableConfig:
         return merged
 
     def sanitize(self) -> None:
-        """Normalize and validate draft config in-place.
+        """Normalize and sanitize draft config in-place.
 
-        This step enforces invariants expected by downstream components
-        (file_resolver, pipeline, CLI). It is intended to be called just before
-        freezing into an immutable `Config`.
+        This step enforces downstream invariants expected by config resolution,
+        runtime processing, and related components such as the file resolver,
+        pipeline, and CLI. It is intended to be called just before freezing into
+        an immutable `Config`.
+
+        Sanitization may drop or rewrite invalid entries and records diagnostics
+        describing those recoveries. Because these diagnostics are added to the
+        config diagnostic log, they participate in config/preflight validity
+        checks, including strict config checking.
 
         Current rules:
             - include_from / exclude_from / files_from entries must refer to
@@ -698,6 +708,9 @@ def _is_config_valid(
     A config is valid when it has no error diagnostics. In strict mode, a
     config is valid only when it has neither error diagnostics nor warning
     diagnostics.
+
+    The diagnostic log may include replayed TOML validation issues,
+    config-layer diagnostics, and sanitization warnings.
 
     Here, `strict` represents the effective resolved strictness for
     config/preflight validation, typically derived from

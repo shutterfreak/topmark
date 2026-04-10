@@ -108,6 +108,10 @@ def mutable_config_from_layered_toml_table(
     already have happened before this helper is called from the normal TOML
     loading pipeline.
 
+    When called from that normal pipeline, this helper assumes TOML section/key
+    shape has already been validated and focuses on layered deserialization,
+    normalization, and config/runtime semantics.
+
     This helper still performs defensive parsing of layered fragments so that
     malformed inputs (e.g. from API mappings or tests) are handled gracefully
     and produce diagnostics instead of raising errors.
@@ -137,12 +141,12 @@ def mutable_config_from_layered_toml_table(
     cfg_dir: Path | None = config_file.parent.resolve() if config_file else None
 
     # ------------------- Policy pre-validation helpers -------------------
-    def _validate_policy_values(
+    def _check_policy_value_shapes(
         tbl: TomlTable,
         *,
         where: str,
     ) -> None:
-        """Validate value types for known policy keys and attach diagnostics.
+        """Check value shapes for known policy keys and attach diagnostics.
 
         This helper performs lightweight value/type checks for the supported
         policy keys in one already-extracted policy table. It intentionally
@@ -208,12 +212,12 @@ def mutable_config_from_layered_toml_table(
         layer and focuses on value parsing and normalization.
         """
         where_policy: Final[str] = f"[{Toml.SECTION_POLICY}]"
-        _validate_policy_values(policy_tbl, where=where_policy)
+        _check_policy_value_shapes(policy_tbl, where=where_policy)
         draft.policy = MutablePolicy.from_toml_table(policy_tbl)
 
         for ft, tbl in policy_by_type_tbl.items():
             where: str = f"[{Toml.SECTION_POLICY_BY_TYPE}.{ft}]"
-            _validate_policy_values(tbl, where=where)
+            _check_policy_value_shapes(tbl, where=where)
 
         draft.policy_by_type = {
             str(ft): MutablePolicy.from_toml_table(tbl) for ft, tbl in policy_by_type_tbl.items()
@@ -488,13 +492,14 @@ def mutable_config_from_layered_toml_table(
             diagnostics=draft.diagnostics,
         )
 
-    def _extract_toml_tables(
+    def _extract_layered_toml_tables(
         layered_tbl: TomlTable,
     ) -> ExtractedLayeredTomlTables:
         """Extract well-known layered TOML subtables into a typed bundle.
 
-        Missing or malformed tables are tolerated and converted to empty
-        mappings so downstream parsing can proceed with diagnostics.
+        Missing or malformed tables are tolerated and converted to empty mappings as
+        a defensive fallback for synthetic/API callers. In the normal TOML loading
+        path, table-shape validation belongs to `topmark.toml.schema`.
         """
         # Extract the layered config subtables contributed by this fragment.
         #
@@ -539,7 +544,7 @@ def mutable_config_from_layered_toml_table(
         config_files: tuple[list[Path]] = ([config_file] if config_file else [],)
         draft.config_files = [str(p) for p in config_files[0]] if config_files[0] else []
 
-    toml_tables: ExtractedLayeredTomlTables = _extract_toml_tables(layered_tbl)
+    toml_tables: ExtractedLayeredTomlTables = _extract_layered_toml_tables(layered_tbl)
 
     # ---- config_files: normalize to absolute paths if possible ----
     _initialize_config_file_provenance()

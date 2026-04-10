@@ -15,6 +15,7 @@ This module contains typed helpers that orchestrate:
 - candidate file resolution
 - config-like runtime policy overlay application
 - execution-only `RunOptions` consumption
+- config/preflight validation using effective resolved strictness
 - pipeline selection and execution
 
 These functions are **internal to the `topmark.api` package**:
@@ -86,7 +87,9 @@ def ensure_mutable_config(
 
     Note:
         Public API functions accept mappings or frozen `Config` instances. Passing a `MutableConfig`
-        is an internal/testing convenience, not part of the public API contract.
+        is an internal/testing convenience, not part of the public API contract. It
+        normalizes config-like inputs, but it is not a TOML schema-validation entry
+        point.
     """
     if config is None:
         logger.debug("No config provided - returning MutableConfig.from_defaults()")
@@ -300,6 +303,9 @@ def _prepare_toml_and_config_draft_for_api_run(
 
     Explicit `base_config` seeds intentionally bypass layered TOML discovery, so
     this helper returns `(None, None)` in that mode.
+
+    In normal discovery mode, TOML schema validation has already happened before
+    the merged draft is returned here.
 
     Args:
         paths: Input paths for the run. The first path is used as the discovery

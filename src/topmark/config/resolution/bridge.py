@@ -14,6 +14,10 @@ This module defines the small public bridge between TOML-side source
 resolution (`topmark.toml.resolution`) and config-side draft construction.
 It performs no per-path applicability checks and no runtime override
 application.
+
+Its diagnostics role is to aggregate source-level TOML validation issues into
+the merged config draft so later config/preflight validation sees the full
+config-resolution diagnostic picture.
 """
 
 from __future__ import annotations
@@ -54,7 +58,8 @@ def build_config_draft_from_resolved_toml_sources(
 
     Source-local config-loading options such as `strict_config_checking` are
     resolved on the TOML side. This helper only performs config-layer
-    construction, merging, and diagnostic bridging.
+    construction, merging, and diagnostic aggregation; it does not re-run TOML
+    schema validation.
 
     Args:
         resolved: Resolved TOML-side state for the current run.

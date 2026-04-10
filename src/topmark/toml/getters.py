@@ -19,6 +19,10 @@ Two families of getters exist:
 
 The checked getters are used when parsing config files so that user mistakes are
 surfaced without crashing or changing defaulting behavior.
+
+These helpers support checked extraction and local value-shape diagnostics during TOML-backed
+parsing. They are **not** the authority for whole-document TOML schema validation; unknown
+sections/keys and malformed section structure belong to `topmark.toml.schema`.
 """
 
 from __future__ import annotations
@@ -192,7 +196,7 @@ def get_list_value(
     return default or []
 
 
-# --- Schema/shape validation helpers (checked): scalar types ---
+# --- Checked value-shape getters: scalar types ---
 
 
 def get_string_value_checked(
@@ -312,7 +316,7 @@ def get_int_value_or_none_checked(
     return None
 
 
-# --- Schema/shape validation helpers (checked): list types ---
+# --- Checked value-shape getters: list types ---
 
 
 def get_string_list_value_checked(
@@ -367,7 +371,7 @@ def get_string_list_value_checked(
     return out
 
 
-# --- Schema/shape validation helpers (checked): enum types ---
+# --- Checked value-shape getters: enum types ---
 
 
 def get_enum_value_checked(
@@ -386,7 +390,9 @@ def get_enum_value_checked(
     - Wrong type -> warning + None
     - Unknown enum value -> error + None
 
-    This is intended for schema-level validation (e.g. `[writer].target`).
+    This is intended for checked extraction of known enum-valued TOML keys during
+    parsing. It does not decide whether a key is allowed in a section; unknown-key
+    and section-shape validation belong to `topmark.toml.schema`.
     """
     raw: TomlValue | None = table.get(key)
     if raw is None:
@@ -411,6 +417,10 @@ def get_table_value(table: TomlTable, key: str) -> TomlTable:
     """Extract a sub-table from a TOML table.
 
     Returns a new empty dict if the sub-table is missing or not a mapping.
+
+    This helper is intentionally lossy and does not record diagnostics; callers
+    that need to distinguish "missing" from "present but malformed" should rely on
+    TOML schema validation before using this accessor.
 
     Args:
         table: Parent table mapping.
