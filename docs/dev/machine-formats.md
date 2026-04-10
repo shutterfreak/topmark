@@ -106,7 +106,7 @@ Common NDJSON kinds include:
 - `config_diagnostics` (counts-only in NDJSON prefix records)
 - `diagnostic` (one diagnostic per record; see "Diagnostics" below)
 - `result` (per-file result)
-- `summary` (aggregated `(outcome, reason)` summary entry)
+- `summary` (one aggregated `(outcome, reason)` summary entry)
 - `version`
 - registry-specific kinds:
   - `filetype`
@@ -165,6 +165,8 @@ This guarantees that machine consumers can distinguish between different causes 
 same high-level outcome.
 
 ### Summary payload shape
+
+In the pipeline machine schema, this row shape is represented by `OutcomeSummaryRow`.
 
 In both JSON and NDJSON machine formats, summary entries follow the same logical structure.
 

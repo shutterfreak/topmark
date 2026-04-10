@@ -14,31 +14,32 @@ This module defines small, stable *shape types* used by TopMark's machine-readab
 outputs for pipeline processing (`check` / `strip`).
 
 These types intentionally model only the **pipeline summary fragments** (not full
-envelopes/records):
+JSON/NDJSON envelopes):
 
-- **JSON envelope (summary mode)** uses a *summary map* keyed by outcome string,
-  where each value is an `OutcomeSummaryMapEntry`::
+- **JSON envelope (summary mode)** uses a flat list of summary rows, where each row
+  is an `OutcomeSummaryRow`::
       ```json
       {
-        "summary": {
-          "unchanged": {"count": 3, "label": "no changes needed"},
-          "would insert": {"count": 1, "label": "header missing, changes found"}
-        }
+        "summary": [
+          {"outcome": "unchanged", "reason": "no changes needed", "count": 3},
+          {"outcome": "would insert", "reason": "header missing, changes found", "count": 1}
+        ]
       }
       ```
 
-- **NDJSON stream (summary mode)** emits one `kind="summary"` record per bucket.
-  The payload under `"summary"` follows `OutcomeSummaryRecordPayload`::
+- **NDJSON stream (summary mode)** emits one `kind="summary"` record per summary row.
+  The payload under `"summary"` follows `OutcomeSummaryRow`::
 
       ```ndjson
       {"kind": "summary", "meta": {...},
-       "summary": {"key": "unchanged", "count": 3, "label": "no changes needed"}}
+       "summary": {"outcome": "unchanged", "reason": "no changes needed", "count": 3}}
       ```
+
 Notes:
     - These are `TypedDict` definitions (static typing only). Runtime validation is
       intentionally out-of-scope.
-    - The `"key"` field uses the string value of `Outcome` (e.g., `"unchanged"`),
-      so producers/consumers should treat keys as stable identifiers.
+    - `outcome` is the stable machine identifier (string value of `Outcome`).
+    - `reason` is the stable bucket reason emitted by the current summary serializer.
 """
 
 from __future__ import annotations
@@ -66,44 +67,29 @@ class PipelineKind(str, Enum):
 
     Attributes:
         RESULT: One per-file processing result record.
-        SUMMARY: One summary-bucket record.
+        SUMMARY: One per-summary-row record.
     """
 
     RESULT = "result"
     SUMMARY = "summary"
 
 
-class OutcomeSummaryMapEntry(TypedDict):
-    """Value object for a JSON processing-summary map.
+class OutcomeSummaryRow(TypedDict):
+    """One pipeline summary row shared by JSON and NDJSON summary output.
 
-    Used as the value type in a JSON envelope summary map keyed by outcome string.
-
-    Shape:
-        `{"count": int, "label": str}`
-
-    Fields:
-        count: Number of files that fell into this outcome bucket.
-        label: Human-oriented bucket label/reason (stable-ish but not guaranteed as an API).
-    """
-
-    count: int
-    label: str
-
-
-class OutcomeSummaryRecordPayload(TypedDict):
-    """Payload object for an NDJSON `kind="summary"` record.
-
-    Used as the payload under the `"summary"` container key in NDJSON summary-mode output.
+    Used both:
+    - as one element of the JSON `"summary"` list, and
+    - as the payload under the `"summary"` container key in NDJSON summary-mode output.
 
     Shape:
-        `{"key": str, "count": int, "label": str}`
+        `{"outcome": str, "reason": str, "count": int}`
 
     Fields:
-        key: Outcome key (string value of `Outcome`, e.g. `"would insert"`).
-        count: Number of files in this bucket.
-        label: Human-oriented bucket label/reason (stable-ish but not guaranteed as an API).
+        outcome: Stable outcome key (string value of `Outcome`, e.g. `"unchanged"`).
+        reason: Stable summary reason/bucket explanation.
+        count: Number of files in this `(outcome, reason)` bucket.
     """
 
-    key: str
+    outcome: str
+    reason: str
     count: int
-    label: str

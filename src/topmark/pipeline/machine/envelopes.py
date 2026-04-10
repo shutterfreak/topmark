@@ -47,7 +47,7 @@ from topmark.core.machine.envelopes import build_ndjson_record
 from topmark.core.machine.schemas import MachineDomain
 from topmark.core.machine.schemas import MetaPayload
 from topmark.diagnostic.machine.envelopes import iter_diagnostic_ndjson_records
-from topmark.pipeline.machine.payloads import build_processing_results_summary_map_payload
+from topmark.pipeline.machine.payloads import build_processing_results_summary_rows_payload
 from topmark.pipeline.machine.payloads import iter_processing_results_payload_items
 from topmark.pipeline.machine.payloads import iter_processing_results_summary_entries
 from topmark.pipeline.machine.schemas import PipelineKey
@@ -60,6 +60,7 @@ if TYPE_CHECKING:
     from topmark.config.machine.schemas import ConfigPayload
     from topmark.config.model import Config
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.machine.schemas import OutcomeSummaryRow
 
 
 def build_processing_results_json_envelope(
@@ -82,14 +83,17 @@ def build_processing_results_json_envelope(
         }
     ```
 
-    Summary mode (`summary_mode=True`) produces an outcome-keyed summary map:
+    Summary mode (`summary_mode=True`) produces a flat summary-row list:
 
     ```json
         {
           "meta": ...,
           "config": <ConfigPayload>,
           "config_diagnostics": <ConfigDiagnosticsPayload>,
-          "summary": { "<outcome>": { "count": int, "label": str }, ... }
+          "summary": [
+            {"outcome": "unchanged", "reason": "no changes needed", "count": 3},
+            {"outcome": "would insert", "reason": "header missing, changes found", "count": 1}
+          ]
         }
     ```
 
@@ -97,7 +101,7 @@ def build_processing_results_json_envelope(
         config: The effective `Config` instance used for the run.
         meta: Shared metadata payload (`tool`/`version`).
         results: Ordered list of per-file processing contexts.
-        summary_mode: If True, emit a summary map instead of per-file results.
+        summary_mode: If True, emit flat summary rows instead of per-file results.
 
     Returns:
         A JSON-serializable envelope mapping (not yet serialized to a JSON string).
@@ -110,7 +114,7 @@ def build_processing_results_json_envelope(
     # OR meta + config + config diagnostics + summary
     # results_payload is {"results": [...]} or {"summary": {...}}
     if summary_mode:
-        summary_list: list[dict[str, object]] = build_processing_results_summary_map_payload(
+        summary_list: list[OutcomeSummaryRow] = build_processing_results_summary_rows_payload(
             results,
         )
         payload: dict[str, object] = {
@@ -151,7 +155,7 @@ def iter_processing_results_ndjson_records(
     2) `kind="config_diagnostics"` record (counts-only)
     3) zero or more `kind="diagnostic"` records for config diagnostics
     4) then either:
-    - summary mode: one `kind="summary"` record per outcome bucket
+    - summary mode: one `kind="summary"` record per `(outcome, reason)` bucket
     - detail mode: one `kind="result"` record per processed file
 
     Args:

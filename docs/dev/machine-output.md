@@ -165,7 +165,8 @@ Summary mode corresponds to `summary_mode = true`.
 ```
 
 - `summary`: a **flat list of summary rows**, each representing a unique `(outcome, reason)` bucket
-  with the number of files that produced that pair.
+  with the number of files that produced that pair. This row shape corresponds to
+  `OutcomeSummaryRow` in \[`topmark.pipeline.machine.schemas`\][topmark.pipeline.machine.schemas].
 
 Important characteristics:
 
