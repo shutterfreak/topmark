@@ -11,8 +11,7 @@
 name: Setup Python + nox
 
 description: >-
-  Shared bootstrap for GitHub Actions jobs that need Python, uv caching,
-  and the nox toolchain.
+  Shared bootstrap for GitHub Actions jobs that need Python, uv caching, and the nox toolchain.
 
 inputs:
   python-version:

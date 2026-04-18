@@ -156,9 +156,33 @@ jobs:
           fetch-depth: 0
           ref: refs/tags/${{ needs.preflight.outputs.tag }}
 
-      - uses: ./.github/actions/setup-python-nox
+      # NOTE: we run in privileged context and hence cannot safely rely on the shared local `setup-python-nox` composite action.
+      # Hence we inline the local composite action (Set up Python -- Set up uv -- Cache uv -- Bootstrap nox):
+
+      - name: Set up Python
+        id: setup-python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@e06108dd0aef18192324c70427afc47652e63a82 # v7.5.0
+        with:
+          version: "0.10.x"
+
+      - name: Cache uv
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('pyproject.toml', 'uv.lock', 'noxfile.py') }}
+          restore-keys: |
+            ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-
+
+      - name: Bootstrap nox
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv pip install --system nox nox-uv
 
       - name: Build artifacts for version validation
         run: |
@@ -225,9 +249,32 @@ jobs:
           fetch-depth: 0
           ref: refs/tags/${{ needs.details.outputs.tag }}
 
-      - uses: ./.github/actions/setup-python-nox
+      # Inline trusted bootstrap steps; avoid repo-local composite actions in this privileged workflow.
+
+      - name: Set up Python
+        id: setup-python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@e06108dd0aef18192324c70427afc47652e63a82 # v7.5.0
+        with:
+          version: "0.10.x"
+
+      - name: Cache uv
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('pyproject.toml', 'uv.lock', 'noxfile.py') }}
+          restore-keys: |
+            ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-
+
+      - name: Bootstrap nox
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv pip install --system nox nox-uv
 
       - name: Build docs (strict via nox)
         run: |
@@ -245,9 +292,32 @@ jobs:
           fetch-depth: 0
           ref: refs/tags/${{ needs.details.outputs.tag }}
 
-      - uses: ./.github/actions/setup-python-nox
+      # Inline trusted bootstrap steps; avoid repo-local composite actions in this privileged workflow.
+
+      - name: Set up Python
+        id: setup-python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@e06108dd0aef18192324c70427afc47652e63a82 # v7.5.0
+        with:
+          version: "0.10.x"
+
+      - name: Cache uv
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('pyproject.toml', 'uv.lock', 'noxfile.py') }}
+          restore-keys: |
+            ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-
+
+      - name: Bootstrap nox
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv pip install --system nox nox-uv
 
       - name: Install docs requirements
         run: |
@@ -261,8 +331,7 @@ jobs:
         uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411 # v2.8.0
         with:
           args: >-
-            --config lychee.toml --no-progress --quiet --root-dir ${{
-            github.workspace }}/site site
+            --config lychee.toml --no-progress --quiet --root-dir ${{ github.workspace }}/site site
 
   publish-package:
     name: Publish to PyPI/TestPyPI
@@ -276,9 +345,32 @@ jobs:
           fetch-depth: 0
           ref: refs/tags/${{ needs.details.outputs.tag }}
 
-      - uses: ./.github/actions/setup-python-nox
+      # Inline trusted bootstrap steps; avoid repo-local composite actions in this privileged workflow.
+
+      - name: Set up Python
+        id: setup-python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@e06108dd0aef18192324c70427afc47652e63a82 # v7.5.0
+        with:
+          version: "0.10.x"
+
+      - name: Cache uv
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('pyproject.toml', 'uv.lock', 'noxfile.py') }}
+          restore-keys: |
+            ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-
+
+      - name: Bootstrap nox
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv pip install --system nox nox-uv
 
       - name: Ensure version not already exists on target index
         shell: bash
@@ -385,8 +477,7 @@ jobs:
 
   github-release:
     needs: [ preflight, details, publish-package ]
-    if: ${{ needs.preflight.outputs.should_release == 'true' &&
-      needs.details.outputs.is_prerelease != 'true' }}
+    if: ${{ needs.preflight.outputs.should_release == 'true' && needs.details.outputs.is_prerelease != 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

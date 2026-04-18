@@ -64,7 +64,9 @@
 
     "[yaml]": {
         "editor.insertSpaces": true,
-        "editor.tabSize": 2
+        "editor.tabSize": 2,
+        "editor.defaultFormatter": "redhat.vscode-yaml",
+        "editor.formatOnSave": true
     },
     // Add custom YAML tags (used in mkdocs.yml)
     "yaml.customTags": [
@@ -76,6 +78,8 @@
         "tag:yaml.org,2002:python/name:pymdownx.superfences.fence_code_format",
         "tag:yaml.org,2002:python/object/apply:pymdownx.slugs.slugify mapping"
     ],
+    // Prevent excessive reflowing (GitHub workflows and actions)
+    "yaml.format.printWidth": 1000,
     // Stop schema-store from attaching random schemas (often causes weird “not accepted” lists):
     "yaml.schemaStore.enable": false,
     // Add mkdocs-material schema
