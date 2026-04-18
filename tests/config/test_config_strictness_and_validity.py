@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.helpers.config import make_mutable_config
 from tests.toml.conftest import write_toml_document
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.resolution.bridge import resolve_toml_sources_and_build_config_draft
@@ -33,6 +34,7 @@ if TYPE_CHECKING:
 
     from topmark.config.model import Config
     from topmark.config.model import MutableConfig
+    from topmark.diagnostic.model import DiagnosticStats
 
 
 @pytest.mark.config
@@ -99,6 +101,86 @@ def test_explicit_strictness_override_true_wins_over_resolved_false(
         strict_config_checking=True,
     )
     assert resolved.strict_config_checking is True
+
+
+@pytest.mark.config
+def test_replayed_toml_warning_is_non_strict_valid_but_strict_invalid(
+    tmp_path: Path,
+) -> None:
+    """Replayed TOML warnings participate in strict validity but not non-strict validity."""
+    proj: Path = tmp_path / "proj"
+    proj.mkdir()
+
+    write_toml_document(
+        path=proj / "topmark.toml",
+        content="""
+            bogus = 123
+        """,
+    )
+
+    _resolved, draft = resolve_toml_sources_and_build_config_draft(input_paths=[proj])
+
+    stats: DiagnosticStats = draft.diagnostics.stats()
+    assert stats.n_warning > 0
+
+    assert draft.is_valid() is True
+    assert draft.is_valid(strict=True) is False
+
+    frozen: Config = draft.freeze()
+    assert frozen.is_valid() is True
+    assert frozen.is_valid(strict=True) is False
+
+
+@pytest.mark.config
+def test_missing_section_info_does_not_fail_even_when_strict(
+    tmp_path: Path,
+) -> None:
+    """Missing-section INFO diagnostics do not fail config validity, even in strict mode."""
+    proj: Path = tmp_path / "proj"
+    proj.mkdir()
+
+    write_toml_document(
+        path=proj / "topmark.toml",
+        content="""
+            [header]
+            fields = ["file"]
+        """,
+    )
+
+    _resolved, draft = resolve_toml_sources_and_build_config_draft(input_paths=[proj])
+
+    stats: DiagnosticStats = draft.diagnostics.stats()
+    assert stats.n_info > 0
+    assert stats.n_warning == 0
+    assert stats.n_error == 0
+
+    assert draft.is_valid() is True
+    assert draft.is_valid(strict=True) is True
+
+    frozen: Config = draft.freeze()
+    assert frozen.is_valid() is True
+    assert frozen.is_valid(strict=True) is True
+
+
+@pytest.mark.config
+def test_sanitization_warning_is_non_strict_valid_but_strict_invalid() -> None:
+    """Sanitization warnings participate in strict validity but not non-strict validity."""
+    draft: MutableConfig = make_mutable_config(include_from=["patterns/*.txt"])
+
+    stats: DiagnosticStats = draft.diagnostics.stats()
+    assert stats.n_warning == 0
+
+    draft.sanitize()
+
+    stats_after: DiagnosticStats = draft.diagnostics.stats()
+    assert stats_after.n_warning > 0
+
+    assert draft.is_valid() is True
+    assert draft.is_valid(strict=True) is False
+
+    frozen: Config = draft.freeze()
+    assert frozen.is_valid() is True
+    assert frozen.is_valid(strict=True) is False
 
 
 @pytest.mark.config
