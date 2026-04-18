@@ -23,6 +23,10 @@ The CI workflow validates all contributions (pushes and pull requests).\
 It ensures **type safety, formatting, linting, documentation integrity, test coverage, and API
 stability**.
 
+The CI pipeline also ensures that builds are compatible with the Git-based versioning model
+(`setuptools-scm`) by fetching full Git history where needed and validating packaging steps used by
+the release workflow.
+
 ### Trigger Conditions
 
 - On **push** to `main`
@@ -138,3 +142,9 @@ ______________________________________________________________________
 
 - Optionally expand the API snapshot check beyond Python 3.14 if needed
 - Upload coverage and/or docs build artifacts for easier debugging
+
+### 🏷️ SCM-based Versioning Compatibility
+
+CI jobs fetch full Git history (`fetch-depth: 0`) where required to ensure that `setuptools-scm` can
+correctly derive package versions from tags. This guarantees that local, CI, and release builds all
+resolve versions consistently.

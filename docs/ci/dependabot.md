@@ -30,6 +30,10 @@ These update flows are intentionally conservative:
 - Python dependency resolution is driven by **`pyproject.toml` + `uv.lock`**
 - maintainers review and merge Dependabot PRs after CI passes
 
+TopMark uses **Git-based versioning (`setuptools-scm`)**, meaning package versions are derived from
+Git tags rather than being declared manually in `pyproject.toml`. Dependency updates therefore do
+not involve version bumps in source files.
+
 ______________________________________________________________________
 
 ## Why TopMark Uses Dependabot
@@ -95,6 +99,9 @@ The roles are:
 - **`pyproject.toml`** — declares supported dependency ranges
 - **`uv.lock`** — committed lockfile and canonical resolved dependency graph
 
+The lockfile (`uv.lock`) is the **authoritative source of resolved dependency versions** and must
+always be committed.
+
 TopMark no longer treats exported `requirements*.txt` files as a primary dependency source. They are
 not part of the normal dependency-management workflow.
 
@@ -108,7 +115,8 @@ ______________________________________________________________________
 
 ## Dependabot and `uv`
 
-Dependabot is configured to track the **`uv` ecosystem** for Python dependency updates.
+Dependabot is configured to track Python dependencies in alignment with the **`uv`-based project
+model**.
 
 That means:
 
@@ -121,6 +129,9 @@ This keeps the project dependency story simple:
 - one declaration source (`pyproject.toml`)
 - one lock source (`uv.lock`)
 - one update bot configuration for Python dependencies
+
+All Dependabot updates are validated through CI, which includes packaging checks aligned with the
+project's SCM-based versioning model.
 
 ______________________________________________________________________
 
@@ -202,6 +213,18 @@ It does **not** decide:
 - whether documentation and contributor guidance should be updated after a tooling change
 
 Dependabot proposes updates. Maintainers still control policy.
+
+______________________________________________________________________
+
+## Versioning Notes
+
+TopMark uses **Git tags as the single source of truth** for versioning.
+
+- Versions are derived at build time via `setuptools-scm`
+- No manual version bumps are performed in `pyproject.toml`
+- Dependency updates do not affect package versioning
+
+Examples assume post-1.0 versioning (e.g. `1.0.0`, `1.1.0`, `1.2.0`).
 
 ______________________________________________________________________
 

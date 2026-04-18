@@ -157,8 +157,8 @@ ______________________________________________________________________
 
   1. **Unintentional change:** fix or revert the code to match the current public API.
   1. **Intentional change:** regenerate the snapshot (`make api-snapshot-update`), commit the new
-     snapshot, and **bump the version** in `pyproject.toml`.\
-     Also add a corresponding entry to the `CHANGELOG.md`.
+     snapshot, and add a corresponding entry to `CHANGELOG.md`. Package versioning is derived from
+     Git tags via `setuptools-scm`, so no manual version bump is performed in `pyproject.toml`.
 
 **Registry note:** Registry access for integrations is provided via the read‑only façade in
 \[`topmark.registry.registry.Registry`\][topmark.registry.registry.Registry]. The registry system
@@ -208,31 +208,42 @@ ______________________________________________________________________
 
 1. Commit the updated `tests/api/public_api_snapshot.json`.
 
-1. Bump the version in `pyproject.toml`.
-
 1. Update `CHANGELOG.md` accordingly.
+
+1. When preparing a release, create the appropriate Git tag for the intended version (for example
+   `v1.0.0a1`, `v1.0.0rc1`, or `v1.0.0`).
 
 ______________________________________________________________________
 
 ## Versioning and intentional API changes
 
-When an intentional public API change is made, the version in `pyproject.toml` should be updated
-using a valid [PEP 440](https://peps.python.org/pep-0440/) identifier.
+When an intentional public API change is made, treat the snapshot update and changelog entry as the
+source-controlled record of that API evolution.
 
-Typical progression looks like this:
+TopMark now uses **Git tags as the single source of truth** for versioning. Package versions are
+resolved at build time via `setuptools-scm` and exposed at runtime from generated package metadata.
+This means intentional API changes do **not** require editing a static version field in
+`pyproject.toml`.
 
-- `1.0.0a1.dev1` → development work toward the first alpha
-- `1.0.0a1` → first alpha release
-- `1.0.0a2.dev1` → development work toward the second alpha
-- `1.0.0b1` → first beta release
-- `1.0.0rc1` → first release candidate
-- `1.0.0` → final release
+Typical tag progression looks like this:
+
+- `v1.0.0a1` → first alpha release
+- `v1.0.0a2` → second alpha release
+- `v1.0.0b1` → first beta release
+- `v1.0.0rc1` → first release candidate
+- `v1.0.0` → final release
+
+During development between tags, TopMark may report SCM-derived development versions such as:
+
+- `1.0.0a1.dev3+g<commit>` (PEP 440)
+- `1.0.0-a.1.dev.3+g<commit>` or equivalent project SemVer rendering, depending on the CLI mode
 
 This matters for API snapshot updates as well: when the public API changes intentionally, update the
-snapshot, bump the version, and keep the version form consistent with the current release stage.
+snapshot, document the change in `CHANGELOG.md`, and ensure the next release tag reflects the
+intended version stage.
 
 ______________________________________________________________________
 
 **Summary:**\
 The API snapshot system protects TopMark’s public interface from unintended breakage while still
-allowing controlled evolution under semantic versioning.
+allowing controlled evolution under the project's Git-tag-driven versioning model.

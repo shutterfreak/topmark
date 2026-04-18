@@ -199,7 +199,9 @@ TopMark enforces a stable public API using a JSON snapshot (`tests/api/public_ap
   make api-snapshot-ensure-clean
   ```
 
-If you **intentionally** changed the public API, commit the updated snapshot and bump the version in
+If you **intentionally** changed the public API, commit the updated snapshot, update `CHANGELOG.md`,
+and ensure the next release tag reflects the intended version stage. TopMark uses Git tags as the
+single source of truth for versioning via `setuptools-scm`, so there is no manual version bump in
 `pyproject.toml`.
 
 ______________________________________________________________________
@@ -208,14 +210,17 @@ ______________________________________________________________________
 
 Releases are triggered by pushing a Git tag.
 
-Release candidate:
+**Release candidate:**
 
 ```bash
-git tag vX.Y.Z-rcN
-git push origin vX.Y.Z-rcN
+git tag vX.Y.ZrcN
+git push origin vX.Y.ZrcN
 ```
 
-Final release:
+Compact PEP 440-style prerelease tags are preferred for new releases; legacy dashed variants remain
+supported for backward compatibility.
+
+**Final release:**
 
 ```bash
 git tag vX.Y.Z
@@ -224,11 +229,12 @@ git push origin vX.Y.Z
 
 The GitHub Actions workflow:
 
-- Validates version in `pyproject.toml`
+- Resolves the package version from Git tags via `setuptools-scm`
+- Validates the SCM-derived artifact version against the release tag
 - Builds docs (strict)
 - Builds sdist and wheel
 - Publishes to:
-  - TestPyPI (for `-rc`, `-a`, `-b`)
+  - TestPyPI (for prereleases such as `rc`, `a`, `b`)
   - PyPI (final releases)
 
 Manual uploads are discouraged and should only be used in exceptional cases.
@@ -261,6 +267,9 @@ twine upload --repository testpypi dist/*
 ```
 
 Releases are typically published by CI when you push a tag (see `CONTRIBUTING.md` for details).
+
+TopMark uses **Git tags as the single source of truth** for package versions. Versions are derived
+at build time via `setuptools-scm`, and built artifacts include generated version metadata.
 
 ______________________________________________________________________
 

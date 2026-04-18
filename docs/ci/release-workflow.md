@@ -21,10 +21,11 @@ ______________________________________________________________________
 
 The release workflow runs automatically when:
 
-- A **tag** matching `v*` is pushed (e.g., `v0.9.1`, `v0.10.0-rc1`), **or**
+- A **tag** matching `v*` is pushed (e.g., `v1.0.0`, `v1.0.0rc1`, `v1.0.0-rc1`), **or**
 - The **CI** workflow completes successfully for a tagged commit
 
-It supports both **final** and **pre-release** (rc/a/b) versions using **PEP 440 normalization**.
+It supports both **final** and **pre-release** (rc/a/b) versions using **PEP 440 normalization**
+derived from Git tags via `setuptools-scm`.
 
 ______________________________________________________________________
 
@@ -90,9 +91,16 @@ This is the only stage where links inside generated API documentation are valida
 
 Before publishing, the workflow ensures:
 
-- `pyproject.toml` version matches the tag.
+- The **SCM-derived version** (via `setuptools-scm`) matches the release tag.
 - Version doesn’t already exist on the target index.
 - (Final releases only) new version > latest final on PyPI.
+
+Version validation is performed on the **built artifacts (wheel + sdist)** rather than by reading
+`pyproject.toml`, ensuring the published package metadata is the source of truth.
+
+TopMark uses **Git tags as the single source of truth** for versioning. The package version is
+derived at build time via `setuptools-scm`, and a generated `topmark._version` module is included in
+built artifacts.
 
 ### 📦 Package Validation
 
@@ -110,13 +118,13 @@ ______________________________________________________________________
 
 ## 🔁 Release Flow
 
-1. Bump version in `pyproject.toml`
+1. Commit changes (no manual version bump required)
 
-1. Commit & tag:
+1. Tag the release (version is derived from Git tags):
 
    ```bash
-   git commit -am "chore(release): 0.9.1"
-   git tag v0.9.1
+   git commit -am "chore(release): 1.0.0"
+   git tag v1.0.0
    git push origin main --tags
    ```
 
@@ -130,18 +138,25 @@ ______________________________________________________________________
 
 ## 🔖 Channels
 
-| Tag           | Channel  | Example           |
-| ------------- | -------- | ----------------- |
-| `v0.10.0`     | PyPI     | Stable            |
-| `v0.10.0-rc1` | TestPyPI | Release candidate |
-| `v0.10.0-a1`  | TestPyPI | Alpha             |
-| `v0.10.0-b1`  | TestPyPI | Beta              |
+| Tag          | Channel  | Example           |
+| ------------ | -------- | ----------------- |
+| `v1.0.0`     | PyPI     | Stable            |
+| `v1.0.0rc1`  | TestPyPI | Release candidate |
+| `v1.0.0-rc1` | TestPyPI | Release candidate |
+| `v1.0.0a1`   | TestPyPI | Alpha             |
+| `v1.0.0-a1`  | TestPyPI | Alpha             |
+| `v1.0.0b1`   | TestPyPI | Beta              |
+| `v1.0.0-b1`  | TestPyPI | Beta              |
 
 ______________________________________________________________________
 
 ## 🧠 Notes for Maintainers
 
-- Keep **pyproject version** aligned with tags.
+- Ensure release tags follow the expected versioning scheme (PEP 440-compatible, e.g. `v1.0.0`,
+  `v1.0.0rc1`, `v1.0.0-a1`).
+
+- Prefer compact PEP 440 tag forms (e.g. `v1.0.0rc1`) for new releases; dashed variants remain
+  supported for backward compatibility.
 
 - Delete stale `.nox`, `*.egg-info` or `.venv` dirs before local build tests.
 

@@ -156,6 +156,9 @@ TopMark uses **`uv` as the canonical dependency manager**. `pyproject.toml` decl
 ranges, `uv.lock` is the committed lock source of truth, and a project-local `.venv` is used as the
 standard environment for editor integration and interactive development.
 
+TopMark’s package version is no longer maintained manually in `pyproject.toml`; installed versions
+are derived from Git tags via `setuptools-scm`.
+
 Run checks to confirm setup:
 
 ```bash
@@ -169,6 +172,9 @@ make test
 topmark version
 topmark --help
 ```
+
+For development builds between release tags, `topmark version` may report SCM-derived development
+versions that include commit-based metadata.
 
 ______________________________________________________________________
 
@@ -416,7 +422,8 @@ ______________________________________________________________________
 
 ## 📦 Packaging & Versioning
 
-TopMark follows **Semantic Versioning (SemVer)**.
+TopMark follows **Semantic Versioning (SemVer)** to describe compatibility intent, while Python
+packaging uses SCM-derived [PEP 440](https://peps.python.org/pep-0440/) versions.
 
 For development and CI, dependency resolution is driven by `uv`:
 
@@ -424,11 +431,27 @@ For development and CI, dependency resolution is driven by `uv`:
 - `uv.lock` is the committed lock file
 - `nox` installs session dependencies from project extras
 
+TopMark uses **Git tags as the single source of truth** for package versions:
+
+- versions are derived at build time via `setuptools-scm`
+- runtime version reporting uses generated package version metadata
+- release automation validates the SCM-derived artifact version against the release tag
+
 | Change Type                   | Version Impact |
 | ----------------------------- | -------------- |
 | `fix:`                        | Patch          |
 | `feat:`                       | Minor          |
 | `feat!:` / `BREAKING CHANGE:` | Major          |
+
+Typical release tag forms are:
+
+- Final releases: `vX.Y.Z`
+- Alpha releases: `vX.Y.ZaN`
+- Beta releases: `vX.Y.ZbN`
+- Release candidates: `vX.Y.ZrcN`
+
+Legacy dashed prerelease tags such as `vX.Y.Z-aN`, `vX.Y.Z-bN`, and `vX.Y.Z-rcN` remain supported
+for backward compatibility, but compact PEP 440 tag forms are preferred for new releases.
 
 Build and validate artifacts locally:
 
@@ -436,7 +459,7 @@ Build and validate artifacts locally:
 make package-check
 ```
 
-Release candidates and final releases are published by CI when you push a tag.
+Release candidates and final releases are published by CI when you push a matching Git tag.
 
 ______________________________________________________________________
 

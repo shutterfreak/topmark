@@ -23,7 +23,7 @@ canonical contributor guide lives at the repository root.
 - **docs/** — MkDocs documentation site
   - **docs/index.md** — docs landing page
   - **docs/usage/** — detailed usage guides (pre-commit, header placement, file types, …)
-  - **docs/ci/** — CI/CD workflows
+  - **docs/ci/** — CI/CD workflows, release automation, Dependabot policy
   - **docs/api/** — API reference
 - **Makefile** — development automation (setup, lint, test, docs, packaging)
 - **.pre-commit-config.yaml** — enabled hooks for this repo
@@ -43,11 +43,16 @@ See also:
 
 - [`Configuration overview`](./configuration/index.md)
 - [`Architecture`](./dev/architecture.md)
+- [`CI workflow`](./ci/ci-workflow.md)
+- [`Release workflow`](./ci/release-workflow.md)
 
 Read the full contributor guide on GitHub:
 [CONTRIBUTING.md](https://github.com/shutterfreak/topmark/blob/main/CONTRIBUTING.md)
 
 - <https://github.com/shutterfreak/topmark/blob/main/CONTRIBUTING.md>
+
+TopMark’s package versioning is Git-tag-driven via `setuptools-scm`; contributor and release
+workflow details are documented in the root `CONTRIBUTING.md` and the CI/release docs linked above.
 
 If you’re viewing this on the published docs site, the link above opens the same document in the
 repository with richer GitHub rendering.

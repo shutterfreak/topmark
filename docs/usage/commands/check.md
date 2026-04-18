@@ -373,7 +373,7 @@ TopMark provides two hooks:
 # .pre-commit-config.yaml (consumer repo)
 repos:
   - repo: https://github.com/shutterfreak/topmark
-    rev: v0.12.0  # Or latest version
+    rev: v1.0.0  # Or latest version
     hooks:
       - id: topmark-check
       - id: topmark-apply    # manual; invoke explicitly when desired

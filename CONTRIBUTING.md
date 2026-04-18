@@ -275,7 +275,9 @@ make api-snapshot-update      # regenerate snapshot (interactive)
 make api-snapshot-ensure-clean  # fail if snapshot differs from Git index
 ```
 
-If the snapshot changes **intentionally**, commit the updated JSON and bump the version in
+If the snapshot changes **intentionally**, commit the updated JSON, update `CHANGELOG.md`, and make
+sure the next release tag reflects the intended version stage. TopMark uses Git tags as the single
+source of truth for versioning via `setuptools-scm`, so there is no manual version bump in
 `pyproject.toml`.
 
 ______________________________________________________________________
@@ -300,6 +302,9 @@ twine upload --repository testpypi dist/*
 ```
 
 Releases are typically handled by GitHub Actions when tags are pushed.
+
+TopMark uses **Git tags as the single source of truth** for package versions. Versions are derived
+at build time via `setuptools-scm`, and built artifacts include generated version metadata.
 
 ______________________________________________________________________
 
@@ -360,13 +365,13 @@ Keep messages short (≤72 chars) and use the body to explain *why*.
 - [ ] `make verify` and `make test` pass
 - [ ] Docs updated if needed
 - [ ] Public API snapshot updated if applicable
-- [ ] Version bumped in `pyproject.toml` for releases
+- [ ] Release tag / changelog plan is correct for release-related PRs
 
 ______________________________________________________________________
 
 ## 🧾 Versioning Policy
 
-TopMark uses **Semantic Versioning (SemVer)**:
+TopMark uses **Semantic Versioning (SemVer)** to describe compatibility intent:
 
 - `fix:` → patch
 - `feat:` → minor
@@ -375,38 +380,48 @@ TopMark uses **Semantic Versioning (SemVer)**:
 Stable API: `topmark.api` and `topmark.registry.registry.Registry`\
 Advanced/internal APIs may change between minor versions.
 
-### PEP 440 version identifiers
+### PEP 440 and Git-tag-based versioning
 
-TopMark uses [PEP 440](https://peps.python.org/pep-0440/) version identifiers in `pyproject.toml`.
+TopMark uses [PEP 440](https://peps.python.org/pep-0440/) version identifiers for packaging, but
+package versions are **not** maintained manually in `pyproject.toml`.
 
-Typical forms used in this project are:
+Instead, TopMark uses **Git tags as the single source of truth**:
 
-- Development builds for an upcoming release: `X.Y.Z.devN`
-- Development builds for an upcoming pre-release: `X.Y.ZaN.devN`, `X.Y.ZbN.devN`, `X.Y.ZrcN.devN`
-- Alpha, beta, and release candidate releases: `X.Y.ZaN`, `X.Y.ZbN`, `X.Y.ZrcN`
-- Final releases: `X.Y.Z`
+- package versions are derived at build time via `setuptools-scm`
+- runtime version reporting uses generated package version metadata
+- release automation validates the SCM-derived artifact version against the release tag
+
+Typical release tag forms used in this project are:
+
+- Final releases: `vX.Y.Z`
+- Alpha releases: `vX.Y.ZaN`
+- Beta releases: `vX.Y.ZbN`
+- Release candidates: `vX.Y.ZrcN`
+
+Legacy dashed prerelease tags such as `vX.Y.Z-aN`, `vX.Y.Z-bN`, and `vX.Y.Z-rcN` remain supported
+for backward compatibility, but compact PEP 440 tag forms are preferred for new releases.
 
 Examples:
 
-- `1.0.0a1.dev1` → development work leading to the first `1.0.0` alpha release
-- `1.0.0a1` → first alpha release
-- `1.0.0rc1` → first release candidate
-- `1.0.0` → final release
+- `v1.0.0a1` → first alpha release
+- `v1.0.0b1` → first beta release
+- `v1.0.0rc1` → first release candidate
+- `v1.0.0` → final release
 
-For GitHub releases, the pushed Git tag is converted to the corresponding PEP 440 version and must
-match `[project].version` in `pyproject.toml` exactly. Examples:
+Between tags, development builds may report SCM-derived versions such as:
 
-- Git tag `v1.0.0-a1` ↔ `version = "1.0.0a1"`
-- Git tag `v1.0.0-b1` ↔ `version = "1.0.0b1"`
-- Git tag `v1.0.0-rc1` ↔ `version = "1.0.0rc1"`
+- `1.0.0a1.dev3+g<commit>` (PEP 440)
+- `1.0.0-dev.3+g<commit>` or equivalent project SemVer rendering, depending on CLI mode
 
 ### Before release
 
-1. Refresh `tests/api/public_api_snapshot.json`
+1. Refresh `tests/api/public_api_snapshot.json` if the public API changed.
 
-1. Bump version in `pyproject.toml`
+1. Update `CHANGELOG.md`.
 
-1. Commit and tag:
+1. Commit the release-ready changes.
+
+1. Create and push the intended release tag:
 
    ```bash
    git tag vX.Y.Z

@@ -72,8 +72,8 @@ Shape:
 
 Notes:
 
-- `version` reflects the installed TopMark package version (PEP 440). Examples are illustrative
-  only.
+- `version` reflects the resolved TopMark package version (normally PEP 440), derived from Git tags
+  via `setuptools-scm`. Examples are illustrative only.
 - `platform` is a short runtime identifier (e.g., from `sys.platform`).
 - `detail_level` (optional) is machine-facing and distinguishes the default projection (`"brief"`)
   from the expanded projection requested via `--long` (`"long"`).
@@ -84,6 +84,10 @@ Diagnostic-domain identifiers used in diagnostic payloads are defined in
 \[`topmark.core.machine.schemas.MachineDomain`\][topmark.core.machine.schemas.MachineDomain].
 
 Canonical keys are defined in \[`topmark.core.machine.schemas`\][topmark.core.machine.schemas].
+
+For version-reporting commands, the machine-output metadata reflects the same runtime-resolved
+package version used by `topmark version`, which is sourced from generated package version metadata
+rather than a static config field.
 
 ### NDJSON record contract
 
@@ -532,12 +536,18 @@ The NDJSON `version` record kind is defined in
 while JSON payload keys such as `version_info` are defined in
 \[`topmark.version.machine.schemas.VersionKey`\][topmark.version.machine.schemas.VersionKey].
 
+The version reported in machine output is derived from the installed package metadata / generated
+version module, not from a manually maintained static field in `pyproject.toml`.
+
 Notes:
 
 - `version_format` may be `"pep440"` or `"semver"` depending on `--semver`.
+- PEP 440 output is the canonical packaging version form used by Python packaging tools.
 - If SemVer conversion is requested and fails, TopMark falls back to PEP 440 output.
 - The machine envelope `kind` for this command is `version`, while the JSON payload container key is
   `version_info`.
+- For development builds between release tags, the reported version may include SCM-derived
+  dev/local segments such as commit identifiers.
 
 ______________________________________________________________________
 

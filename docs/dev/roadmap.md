@@ -704,6 +704,30 @@ Completed work:
   - `uv.lock` as the canonical lock source,
   - `nox` as the isolated QA/automation layer.
 
+### Versioning model: Git-tag-based SCM versioning
+
+- Replaced static version management in `pyproject.toml` with a **single-source-of-truth SCM
+  model**:
+  - removed manually maintained `[project].version`
+  - enabled `dynamic = ["version"]`
+  - integrated `setuptools-scm` for build-time version derivation
+- Configured generation of `topmark/_version.py` during build, embedding:
+  - resolved version string
+  - version tuple
+  - commit identifier
+- Updated runtime version resolution:
+  - `topmark.constants` now prefers `_version.py`
+  - optional fallback to `importlib.metadata` when needed
+- Standardized Git tag conventions:
+  - preferred: compact PEP 440 forms (`vX.Y.Z`, `vX.Y.ZaN`, `vX.Y.ZrcN`)
+  - legacy dashed prerelease tags remain supported for compatibility
+- Refactored release workflow validation:
+  - removed comparison against static `pyproject.toml` version
+  - now validates SCM-derived artifact version against the release tag
+- Updated documentation and contributor guidance:
+  - no manual version bump step remains
+  - release process is fully tag-driven
+
 ### Compatibility and release hygiene
 
 - Fixed a Python < 3.12 incompatibility caused by multiline f-strings in CLI output code paths.
@@ -1135,6 +1159,17 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
 - Release publishing is no longer triggered directly by tag pushes in the release workflow;
   publishing now depends on a successful `CI` `workflow_run` plus a valid release tag resolved from
   the CI head SHA.
+- Package versioning no longer uses a manually maintained static `[project].version` in
+  `pyproject.toml`.
+- TopMark now derives package versions from Git tags via `setuptools-scm`, with a generated
+  `topmark._version` module included in built artifacts.
+- Release validation no longer compares the release tag against `pyproject.toml`; it now validates
+  the SCM-derived artifact version against the resolved release tag.
+- Release/contributor workflows no longer include a manual version-bump step; version progression is
+  now driven by release tags.
+- Compact PEP 440-style prerelease tags (`vX.Y.ZaN`, `vX.Y.ZbN`, `vX.Y.ZrcN`) are now the preferred
+  form for new releases, while legacy dashed prerelease tags remain supported for backward
+  compatibility.
 - GitHub Actions workflow behavior on pull requests is now more aggressively gated by changed-file
   buckets, so some jobs that previously ran for all PRs may now be skipped unless the relevant files
   changed.
@@ -1158,7 +1193,7 @@ The workflow refactor is functionally in place, but a few release-process and ma
 remain before 1.0:
 
 - Decide whether to rehearse the positive release path with a dedicated dry-run or a TestPyPI
-  publish before 1.0.
+  publish before tagging `v1.0.0a1` / before 1.0 final.
 - Decide whether the duplicated built-site docs/linkcheck steps in CI and release should remain
   inline or later be factored into a reusable workflow.
 - Decide whether the `tests` matrix job should eventually reuse the shared setup composite action by
@@ -1205,7 +1240,7 @@ Remaining work before 1.0:
 - Confirm that canonical key terminology (`file_type_key`, `processor_key`, `file_type_id`,
   `local_key`) is fully stabilized across docs, tests, and public API references.
 - Ensure machine and human output formats consistently use canonical qualified identifiers as the
-  primary identity representation, with local keys treated as optional compatibility input
+  primary identity representation, with local keys treated as optional compatibility input.
 - Align CLI commands and API representations with the split registry model (filetypes / processors /
   bindings) and remove remaining binding-flavored coupling from processor-oriented views
 
@@ -1414,8 +1449,8 @@ Open follow-up work before 1.0:
   whether authored Markdown should eventually migrate to native MkDocs/Material admonition syntax.
 - Freeze and document the supported Markdown authoring conventions now that formatter normalization
   is part of the pipeline (especially for alerts/callouts, blockquotes, and reference-style links).
-- Keep validating that Nox, pre-commit, local `.venv`, and editor integrations all install the same
-  formatter plugin set and consume the same tool configuration.
+- Keep validating that Nox, pre-commit, local `.venv`, editor integrations, and CI/release jobs all
+  consume the same formatter plugin set and tool configuration.
 
 ### API vs CLI separation
 
@@ -1490,8 +1525,8 @@ Additional progress:
 - confirmed and documented that the current `strict_config_checking` behavior is an aggregated
   config-resolution/preflight gate rather than a pure layered-config setting
 - explicitly deferred the staged validation/integrity-gates redesign to a dedicated post-alpha
-  refactor; the remaining open decision is whether 1.0 should intentionally freeze the aggregated
-  gate semantics or introduce staged gates before final schema/contract freeze
+  refactor; the remaining open decision is whether 1.0 should intentionally freeze the current
+  aggregated gate semantics or introduce staged gates before final schema/contract freeze
 
 Decision to make before 1.0:
 
@@ -1564,8 +1599,8 @@ Remaining work before 1.0:
   - `config dump` is the single command exposing layered provenance (`config_provenance`)
   - `config check` remains validation-only and does not emit provenance payloads
 - Expand test coverage for the remaining machine formats still missing focused contract tests
-  (especially registry commands and `version`); pipeline summary shape and `config check` payload
-  naming are now covered in JSON and NDJSON modes.
+  (especially registry commands and `version`); pipeline summary shape, `config check` payload
+  naming, and layered `config dump` provenance output are now covered in JSON and NDJSON modes.
 - Stabilize and freeze machine schema documentation (`docs/dev/machine-formats.md`).
 - Review whether pipeline summary rows should eventually expose additional structured fields beyond
   `(outcome, reason, count)`.
@@ -1629,6 +1664,15 @@ Comparable tools vary:
 Recommendation for 1.0: document and stabilize key semantics. Consider adding a schema version only
 when the first non-additive change is planned (post-1.0), paired with migration tooling.
 
+Related versioning note:
+
+- Package/application versioning is now already settled: TopMark uses Git tags as the single source
+  of truth via `setuptools-scm`.
+- This remaining question is only about whether TopMark’s **configuration schema** should gain its
+  own explicit version key in a future evolution.
+
+Remaining pre-1.0 work in this area:
+
 - Confirm that the current TOML schema validation rules (unknown keys, section shapes, strictness)
   are considered stable for 1.0 and do not require version gating
 - Remove or reduce duplicated TOML structure metadata shared between `topmark.toml.keys` and
@@ -1643,6 +1687,9 @@ Open questions:
 - Do we want a second non-colored format (for example `text` vs `plain`), or is a single text format
   with optional color sufficient?
 - Do we want to keep Markdown as a first-class human format for all commands?
+- Now that package versioning is SCM-derived, do we want `version` command examples/docs to show
+  stable release examples only, or also keep representative dev-version examples with commit-based
+  metadata?
 - Are the current verbosity levels sufficient and consistent across commands?
 
 ### Docstring formatting and styling guidelines
@@ -1723,7 +1770,7 @@ This checklist defines the minimum criteria for cutting TopMark 1.0, grouped by 
     - [x] `config init` machine output is covered in both JSON and NDJSON modes
   - [x] pipeline commands (`check`, `strip`)
   - [ ] registry commands (`filetypes`, `processors`, `bindings`)
-  - [ ] version command (`version`)
+  - [x] version command (`version`)
 - [ ] Final schema freeze review before 1.0 (including `(outcome, reason, count)` summary rows)
 - [ ] Remove remaining schema/doc drift in machine output definitions:
   - [x] pipeline machine schemas/docs match the flat summary-row shape already used by
@@ -1760,6 +1807,14 @@ This checklist defines the minimum criteria for cutting TopMark 1.0, grouped by 
 - [ ] Qualified and unqualified file type identifier semantics documented and considered stable
 - [ ] `config init`, `defaults`, `check`, `dump` produce aligned outputs
 - [ ] Decision made and documented on the final public override model
+- [x] Package/application versioning model documented and considered stable:
+  - [x] Git tags are the single source of truth via `setuptools-scm`
+  - [x] static `[project].version` in `pyproject.toml` is no longer used
+  - [x] release validation checks SCM-derived artifact versions against release tags
+  - [x] release/contributor workflow no longer includes a manual version-bump step
+- [x] Preferred release-tag conventions documented and considered stable for 1.0:
+  - [x] compact PEP 440-style prerelease tags (`vX.Y.ZaN`, `vX.Y.ZbN`, `vX.Y.ZrcN`) are preferred
+  - [x] legacy dashed prerelease tags remain supported for backward compatibility
 - [ ] `EmptyInsertMode` tokens and semantics documented and considered stable
 - [ ] Typed override model (`PolicyOverrides` / `ConfigOverrides`) documented and considered stable
 - [x] `strict_config_checking` documented and considered stable as a TOML-source-local
@@ -1818,6 +1873,8 @@ This checklist defines the minimum criteria for cutting TopMark 1.0, grouped by 
 - [ ] Formatter/tool configuration split stabilized and documented (`.mdformat.toml`, `.taplo.toml`)
 - [ ] Tooling environments (Nox, pre-commit, local venv, editor) verified to consume the same
   formatter plugin set
+- [ ] Positive release-path rehearsal completed before the first 1.0 prerelease tag (`v1.0.0a1`) or
+  explicitly deferred with rationale
 
 ______________________________________________________________________
 
@@ -1862,6 +1919,6 @@ ______________________________________________________________________
 - [ ] Workflow refactoring into reusable GitHub workflows
 
 Only when all items in the “Must finish before 1.0” section are completed or explicitly deferred
-with rationale should 1.0 be tagged. In particular, schema/contract freeze must include config
-validation semantics, whole-source TOML validation behavior, and the TOML-source-local status of
-`strict_config_checking`.
+with rationale should the first 1.0 prerelease tag (`v1.0.0a1`) and the eventual 1.0 final tag be
+cut. In particular, schema/contract freeze must include config validation semantics, whole-source
+TOML validation behavior, and the TOML-source-local status of `strict_config_checking`.
