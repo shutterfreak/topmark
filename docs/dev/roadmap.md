@@ -31,7 +31,9 @@ ______________________________________________________________________
 ## Done so far
 
 This section tracks work completed during the 0.12 development series that directly supports the 1.0
-goals.
+goals, including the registry refactor, CLI/presentation architecture cleanup, configuration/runtime
+split, machine-format stabilization, and the transition to SCM-driven versioning and artifact-based
+release workflows.
 
 ### Registry architecture: explicit processor bindings, namespaces, and shared resolution
 
@@ -585,6 +587,26 @@ Completed work:
 - Hardened resolver behavior: exceptions in file type `content_matcher` functions are treated as
   misses (not failures), preserving resolution safety.
 
+### GitHub Actions: artifact-based release pipeline (CI → release split)
+
+- Reworked the GitHub Actions release model to follow an **artifact-based CI → release split**:
+  - `ci.yml` now builds release artifacts (`sdist` and `wheel`) on tag pushes in an **unprivileged
+    context** and uploads them as workflow artifacts.
+  - `release.yml` runs only via `workflow_run` after CI completes successfully and operates in a
+    **privileged context**.
+- Removed repository checkout and build execution from privileged release jobs:
+  - release workflow now downloads CI-produced artifacts instead of rebuilding the project
+  - prevents execution of repository code in privileged contexts
+- Introduced explicit release-artifact metadata and validation:
+  - tag, normalized PEP 440 version, and checksums are generated in CI
+  - release workflow validates artifact version against the tag and verifies integrity before
+    publishing
+- Simplified release responsibilities:
+  - CI is responsible for **build + validation + artifact creation**
+  - release workflow is responsible for **verification + publish + GitHub release creation**
+- Aligned the workflow design with GitHub security best practices and CodeQL recommendations for
+  `workflow_run`-based privileged workflows.
+
 ### GitHub Actions workflow refactor: CI gating, release preflight, and shared setup
 
 - Refactored GitHub Actions into a clearer two-workflow model:
@@ -1125,8 +1147,9 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
 - Documentation build now depends on the generated API/reference pages and on the stabilized
   presentation/rendering paths for registry/pipeline commands. Missing or stale modules will fail
   the docs build (`mkdocs build --strict`).
-- CI now performs built-site link checks (`links-site`) during release gating; link validation
-  failures may block publishing.
+- CI now performs built-site link checks (`links-site`) as part of the unprivileged validation path
+  that gates release-artifact creation on tag pushes; link validation failures block artifact
+  creation and therefore block publishing indirectly.
 - GitHub-style alert handling in the docs pipeline no longer attempts to infer custom titles from
   inline/body text; rendered admonition titles now always come from the alert kind (`Note`, `Tip`,
   etc.).
@@ -1157,8 +1180,20 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
   affect maintainers who previously expected floating-tag behavior.
 - Dependabot now tracks the `uv` ecosystem instead of pip/requirements-file inputs.
 - Release publishing is no longer triggered directly by tag pushes in the release workflow;
-  publishing now depends on a successful `CI` `workflow_run` plus a valid release tag resolved from
-  the CI head SHA.
+  publishing now depends on a successful `CI` `workflow_run`, a valid release tag, and CI-produced
+  release artifacts built on the tag-push run.
+- The GitHub release pipeline now follows an artifact-based CI → release split:
+  - `ci.yml` builds and uploads release artifacts (`sdist`, `wheel`, release metadata) on tag pushes
+    in an unprivileged context
+  - `release.yml` runs in a privileged `workflow_run` context, downloads those artifacts, verifies
+    tag/version/checksum consistency, and publishes them
+  - repository code is no longer checked out and built inside the privileged release workflow
+- Release artifact creation is now a first-class CI responsibility on tag pushes, so maintainers who
+  previously expected the release workflow itself to build docs/site/package artifacts must update
+  their mental model and troubleshooting flow.
+- The shared local composite action (`.github/actions/setup-python-nox`) remains the standard
+  bootstrap path for CI, but privileged release jobs intentionally inline trusted setup steps rather
+  than invoking repo-local actions.
 - Package versioning no longer uses a manually maintained static `[project].version` in
   `pyproject.toml`.
 - TopMark now derives package versions from Git tags via `setuptools-scm`, with a generated
@@ -1173,9 +1208,6 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
 - GitHub Actions workflow behavior on pull requests is now more aggressively gated by changed-file
   buckets, so some jobs that previously ran for all PRs may now be skipped unless the relevant files
   changed.
-- CI/release workflow bootstrap is now centralized through a shared local composite action
-  (`.github/actions/setup-python-nox`). Maintainers changing workflow bootstrap behavior should
-  update that action rather than duplicating edits across workflow files.
 
 ### uv workflow follow-up and ecosystem stabilization
 
@@ -1189,20 +1221,23 @@ before 1.0:
 
 ### GitHub Actions follow-up and release-path rehearsal
 
-The workflow refactor is functionally in place, but a few release-process and maintenance decisions
-remain before 1.0:
+The security and workflow-model refactor is now functionally in place:
 
-- Decide whether to rehearse the positive release path with a dedicated dry-run or a TestPyPI
-  publish before tagging `v1.0.0a1` / before 1.0 final.
-- Decide whether the duplicated built-site docs/linkcheck steps in CI and release should remain
-  inline or later be factored into a reusable workflow.
+- CI builds release artifacts on tag pushes in an unprivileged context
+- the privileged release workflow consumes downloaded artifacts instead of rebuilding the project
+- release publishing now depends on successful CI, a valid tag, and artifact verification
+
+Remaining decisions before 1.0:
+
+- Decide whether the current artifact split between CI and release should be treated as the stable
+  1.0 release architecture, with any further factoring deferred post-1.0.
 - Decide whether the `tests` matrix job should eventually reuse the shared setup composite action by
   adding optional settings such as prerelease-Python support, or whether the current explicit matrix
   setup should remain the clearer implementation.
 - Decide whether workflow-file indentation/style should be enforced only through `.editorconfig` and
   editor policy, or also documented explicitly in contributor-facing CI guidance.
-- Keep validating that workflow trigger coverage and changed-file buckets stay aligned as project
-  tooling and config files evolve.
+- Keep validating that workflow trigger coverage, changed-file buckets, tag-push artifact creation,
+  and release-artifact verification stay aligned as project tooling and config files evolve.
 
 ______________________________________________________________________
 
@@ -1449,8 +1484,8 @@ Open follow-up work before 1.0:
   whether authored Markdown should eventually migrate to native MkDocs/Material admonition syntax.
 - Freeze and document the supported Markdown authoring conventions now that formatter normalization
   is part of the pipeline (especially for alerts/callouts, blockquotes, and reference-style links).
-- Keep validating that Nox, pre-commit, local `.venv`, editor integrations, and CI/release jobs all
-  consume the same formatter plugin set and tool configuration.
+- Keep validating that Nox, pre-commit, local `.venv`, editor integrations, CI jobs, and the
+  artifact-based release workflow all consume the same formatter plugin set and tool configuration.
 
 ### API vs CLI separation
 
@@ -1497,6 +1532,9 @@ Additional progress:
 - Confirm that TOML validation diagnostics are surfaced consistently in both CLI and API flows
   without introducing CLI-specific formatting concerns into core validation logic
 - Clarify ownership of `meta` in the API only when machine output becomes part of the API surface.
+- Confirm that the current artifact-based GitHub release workflow remains a CLI/automation concern
+  only and does not leak release-specific metadata/download assumptions into public Python API
+  surfaces.
 - Decide whether the current API-side convenience helpers for seeded config/file preparation should
   remain in `topmark.api.runtime` long-term or be slimmed further around a smaller config-layer
   façade.
@@ -1599,8 +1637,8 @@ Remaining work before 1.0:
   - `config dump` is the single command exposing layered provenance (`config_provenance`)
   - `config check` remains validation-only and does not emit provenance payloads
 - Expand test coverage for the remaining machine formats still missing focused contract tests
-  (especially registry commands and `version`); pipeline summary shape, `config check` payload
-  naming, and layered `config dump` provenance output are now covered in JSON and NDJSON modes.
+  (especially registry commands); pipeline summary shape, `config check` payload naming, layered
+  `config dump` provenance output, and `version` output are now covered in JSON and NDJSON modes.
 - Stabilize and freeze machine schema documentation (`docs/dev/machine-formats.md`).
 - Review whether pipeline summary rows should eventually expose additional structured fields beyond
   `(outcome, reason, count)`.
@@ -1687,9 +1725,9 @@ Open questions:
 - Do we want a second non-colored format (for example `text` vs `plain`), or is a single text format
   with optional color sufficient?
 - Do we want to keep Markdown as a first-class human format for all commands?
-- Now that package versioning is SCM-derived, do we want `version` command examples/docs to show
-  stable release examples only, or also keep representative dev-version examples with commit-based
-  metadata?
+- Now that package versioning is SCM-derived and the release workflow is artifact-based, do we want
+  `version` command examples/docs to show stable release examples only, or also keep representative
+  dev-version examples with commit-based metadata?
 - Are the current verbosity levels sufficient and consistent across commands?
 
 ### Docstring formatting and styling guidelines
@@ -1734,7 +1772,8 @@ Open questions for 1.0:
 - Keep verifying that API documentation and examples consistently use `report` and no longer
   reference `skip_*` parameters.
 
-Any change here should preserve backward compatibility unless explicitly gated.
+Any change here should preserve backward compatibility unless explicitly gated; release automation
+and artifact-based publishing should remain orthogonal to policy-token and operation-mode contracts.
 
 ______________________________________________________________________
 
@@ -1811,6 +1850,8 @@ This checklist defines the minimum criteria for cutting TopMark 1.0, grouped by 
   - [x] Git tags are the single source of truth via `setuptools-scm`
   - [x] static `[project].version` in `pyproject.toml` is no longer used
   - [x] release validation checks SCM-derived artifact versions against release tags
+  - [x] privileged release workflow consumes CI-built artifacts instead of rebuilding repository
+    code
   - [x] release/contributor workflow no longer includes a manual version-bump step
 - [x] Preferred release-tag conventions documented and considered stable for 1.0:
   - [x] compact PEP 440-style prerelease tags (`vX.Y.ZaN`, `vX.Y.ZbN`, `vX.Y.ZrcN`) are preferred
@@ -1871,10 +1912,10 @@ This checklist defines the minimum criteria for cutting TopMark 1.0, grouped by 
 
 - [ ] Decision made on color backend (`yachalk` confinement or removal)
 - [ ] Formatter/tool configuration split stabilized and documented (`.mdformat.toml`, `.taplo.toml`)
-- [ ] Tooling environments (Nox, pre-commit, local venv, editor) verified to consume the same
-  formatter plugin set
-- [ ] Positive release-path rehearsal completed before the first 1.0 prerelease tag (`v1.0.0a1`) or
-  explicitly deferred with rationale
+- [ ] Tooling environments (Nox, pre-commit, local venv, editor, CI, release workflow) verified to
+  consume the same formatter plugin set
+- [ ] Positive release-path rehearsal completed via the first 1.0 prerelease flow (or otherwise)
+  before `1.0.0` final, or explicitly deferred with rationale
 
 ______________________________________________________________________
 
@@ -1900,8 +1941,8 @@ ______________________________________________________________________
 
 - [ ] Decide whether the explicit local-key compatibility view in `FileTypeRegistry` should remain a
   supported 1.0 feature
-- [ ] Decide whether duplicated built-site docs/linkcheck steps in CI and release workflows should
-  remain inline or be factored into a reusable workflow
+- [ ] Decide whether the current artifact-based CI → release split should remain the stable 1.0
+  release architecture or later be factored into a reusable workflow / shared release-infra pattern
 
 ______________________________________________________________________
 
@@ -1919,6 +1960,7 @@ ______________________________________________________________________
 - [ ] Workflow refactoring into reusable GitHub workflows
 
 Only when all items in the “Must finish before 1.0” section are completed or explicitly deferred
-with rationale should the first 1.0 prerelease tag (`v1.0.0a1`) and the eventual 1.0 final tag be
-cut. In particular, schema/contract freeze must include config validation semantics, whole-source
-TOML validation behavior, and the TOML-source-local status of `strict_config_checking`.
+with rationale should `1.0.0` final be cut. The first 1.0 prerelease tag (`v1.0.0a1`) may itself
+serve as part of the release-path rehearsal and final contract validation. In particular,
+schema/contract freeze must include config validation semantics, whole-source TOML validation
+behavior, and the TOML-source-local status of `strict_config_checking`.

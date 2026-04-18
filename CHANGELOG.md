@@ -16,6 +16,249 @@ All notable changes to this project will be documented in this file. This projec
 [Semantic Versioning](https://semver.org/) and follows a Keep‑a‑Changelog–style structure with the
 sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
+## [1.0.0a1] – 2026-04-18
+
+This first **1.0 alpha release** consolidates the large pre-1.0 refactor series into a coherent
+release candidate for wider testing. It introduces major architectural cleanup across the registry,
+resolution, CLI/presentation, configuration/runtime, machine-output, and release/tooling layers.
+
+The focus of `1.0.0a1` is **contract stabilization**:
+
+- registry identities and bindings are now explicit and namespace-aware,
+- CLI, presentation, and machine-output responsibilities are more cleanly separated,
+- configuration now follows a documented **TOML → Config → Runtime** split,
+- developer and release workflows now use an **uv-first / nox-based** model,
+- package versioning is now derived from **Git tags via `setuptools-scm`**.
+- release automation now follows an **artifact-based CI → release workflow split**, where CI builds
+  and uploads artifacts and the privileged release workflow verifies and publishes them.
+
+This alpha is intended for validation of the new 1.0 architecture and observable contracts before
+the final 1.0 release.
+
+______________________________________________________________________
+
+### ⚠️ BREAKING CHANGES
+
+#### Registry / resolution model
+
+- Built-in processor registration no longer relies on import-time decorators or bootstrap scanning.
+  Processor/file-type relationships now use an explicit **binding model**.
+- Registry responsibilities are now explicitly split across:
+  - file types,
+  - processors,
+  - bindings,
+  - and a thin façade.
+- File types and processors now expose **namespace-aware stable identities** with canonical
+  `qualified_key` values.
+- Unqualified file type identifiers may now be treated as **ambiguous** where multiple namespaces
+  overlap; callers must be prepared for explicit ambiguity handling.
+- Registry machine and human outputs are now **identity-focused** and expose namespace/qualified-key
+  metadata.
+- A first-class `bindings` view is now part of the registry surface.
+
+#### Config / TOML / runtime boundary
+
+- Configuration concerns are now explicitly separated into:
+  - `topmark.toml.*` for TOML loading, source resolution, defaults/templates, and whole-source TOML
+    validation,
+  - `topmark.config.*` for layered config construction, merge semantics, and effective per-path
+    resolution,
+  - `topmark.runtime.*` for execution-only runtime state.
+- Package/runtime behavior no longer depends on conflating layered configuration with execution-time
+  intent.
+- The old boolean mutation policy pair (`add_only` / `update_only`) has been replaced by the scalar
+  `header_mutation_mode` model.
+- Source-local TOML options such as `strict_config_checking` are now treated explicitly as
+  **TOML-source-local config-loading options**, not as layered `Config` fields.
+- Whole-source TOML validation is now stricter and happens earlier in the load path; malformed or
+  unknown TOML structure now surfaces consistently as diagnostics.
+
+#### CLI / output / machine-format contracts
+
+- CLI output architecture has been refactored around a clearer split between:
+  - Click-free human presentation,
+  - CLI console/runtime helpers,
+  - and domain-scoped machine serializers.
+- Machine-output generation is no longer constructed ad hoc in CLI commands.
+- Machine-output contracts were realigned across config, pipeline, registry, and version commands.
+- Pipeline summary machine output now uses explicit flat rows with:
+  - `outcome`
+  - `reason`
+  - `count`
+- `config check` machine output now consistently uses the explicit `config_check` payload/record
+  kind.
+- Human output behavior was also normalized:
+  - dry-run/apply semantics are now explicit,
+  - summary grouping is outcome-driven,
+  - verbosity behavior is more clearly defined.
+
+#### Developer / release workflow
+
+- tox support was removed; contributors and CI now use **nox** with **uv-backed** environments.
+- The project no longer maintains committed `requirements*.txt` / `constraints.txt` as its primary
+  dependency workflow.
+- `uv.lock` is now the canonical committed lock artifact.
+- Package versioning no longer uses a manually maintained static `[project].version` in
+  `pyproject.toml`.
+- TopMark now derives package versions from Git tags via `setuptools-scm`, and release validation
+  checks the **SCM-derived artifact version** against the release tag.
+- The GitHub release pipeline has been restructured to an **artifact-based model**:
+  - CI (`ci.yml`) builds and uploads `sdist` and `wheel` artifacts on tag pushes in an unprivileged
+    context.
+  - The release workflow (`release.yml`) runs in a privileged `workflow_run` context, downloads
+    these artifacts, verifies tag/version consistency and checksums, and publishes them.
+- Repository code is no longer built or executed in the privileged release workflow; only prebuilt
+  CI artifacts are used for publishing.
+- Compact PEP 440-style prerelease tags (`vX.Y.ZaN`, `vX.Y.ZbN`, `vX.Y.ZrcN`) are now the preferred
+  form for new releases, while legacy dashed prerelease tags remain supported for backward
+  compatibility.
+
+______________________________________________________________________
+
+### Highlights
+
+- Explicit, namespace-aware registry architecture with canonical qualified identities
+- Shared resolution layer for file discovery and file-type binding resolution
+- Clean CLI/presentation/machine-output separation
+- Fully documented TOML → Config → Runtime architecture
+- Stable preview vs apply semantics across pipeline and API
+- uv-first / nox-based developer and CI workflow
+- Git-tag-driven SCM versioning via `setuptools-scm`
+- Broad documentation alignment across contributor, CI, machine-output, and command-reference pages
+
+______________________________________________________________________
+
+### Added
+
+- **Registry & resolution**
+
+  - Explicit processor/file-type binding model and canonical binding registry
+  - Namespace-aware file type and processor identities
+  - Dedicated `topmark.resolution` package for:
+    - file-input resolution
+    - file-type / binding resolution
+  - First-class registry bindings command/output
+  - Dedicated resolution documentation for path-based resolution and ambiguity handling
+
+- **Presentation / output**
+
+  - New `topmark.presentation` package for Click-free human-facing rendering
+  - Shared presentation reports and pure `render_*()` helpers
+  - Shared CLI console/runtime helpers and validators
+  - Extended machine metadata including `detail_level`
+
+- **Configuration / machine output**
+
+  - Layered configuration provenance export for `config dump --show-layers`
+  - `config_provenance` machine output for layered dumps
+  - Explicit whole-source TOML validation before layered config deserialization
+  - Stronger typed machine schemas across config, pipeline, and registry domains
+
+- **Tooling / CI / release**
+
+  - Shared local composite GitHub Action for Python + uv + nox bootstrap
+  - Dependabot support for GitHub Actions and uv-managed Python dependencies
+  - Built-site link checking as part of CI/release gating
+  - Generated package version metadata via `topmark/_version.py`
+  - Artifact-based release pipeline using GitHub Actions (`workflow_run`) with CI-produced artifacts
+    (`dist/` + release metadata) consumed by the release workflow
+
+______________________________________________________________________
+
+### Changed
+
+- **Registry architecture**
+
+  - Removed legacy bootstrap/discovery registration flow for built-in processors
+  - Canonical qualified identity is now the default internal model
+  - File-type resolution and binding selection are deterministic and ambiguity-aware
+
+- **CLI / presentation**
+
+  - Replaced the older emitter split with a clearer three-layer output architecture
+  - Moved verbosity/color options from the root CLI group to individual commands
+  - Standardized human rendering flow across commands
+  - Registry human output is now cleanly split into:
+    - file types
+    - processors
+    - bindings
+
+- **Configuration / runtime**
+
+  - Completed the TOML/config/runtime split
+  - Refactored override handling around typed override objects
+  - Unified policy override routing across CLI and API
+  - Clarified and documented current `strict_config_checking` behavior
+  - Per-path effective config resolution is now implemented and used by the pipeline engine
+
+- **Policy / pipeline behavior**
+
+  - Replaced legacy mutually exclusive mutation booleans with `HeaderMutationMode`
+  - Improved empty / empty-like file handling and insert policy semantics
+  - Standardized preview vs apply semantics end-to-end
+  - Outcome summaries now preserve `(outcome, reason, count)` explicitly
+
+- **Developer workflow**
+
+  - Migrated project automation fully from tox to nox
+  - Completed the shift to a uv-first dependency and environment model
+  - Updated Read the Docs, CI, release automation, and contributor docs to match the new workflow
+
+- **Packaging / release**
+
+  - Package versioning is now SCM-derived from Git tags
+  - Release workflow now validates **CI-built artifacts** (wheel + sdist) against the resolved
+    release tag
+  - Release orchestration is now split into explicit preflight/details/publish stages, with a strict
+    separation between build (CI) and publish (release workflow)
+
+______________________________________________________________________
+
+### Removed
+
+- Legacy built-in processor bootstrap / decorator registration path
+- `topmark.processors.bootstrap`
+- `topmark.processors.registry`
+- `topmark.registry.resolver`
+- tox support and `tox.ini`
+- Committed `requirements*.txt` / `constraints.txt` dependency-management workflow
+- Static package version maintenance in `pyproject.toml`
+- Legacy CLI/machine-output construction paths that mixed rendering, serialization, and console I/O
+
+______________________________________________________________________
+
+### Fixed
+
+- Namespace-aware configured file-type filtering in file-input resolution
+- Resolver behavior when include/exclude file type collections are empty
+- Deterministic tie-break handling for overlapping file-type candidates
+- Python < 3.12 compatibility issues in CLI output code paths
+- PathSpec deprecation warnings in file-resolution logic
+- Markdown formatter/plugin alignment across local, CI, and editor environments
+- Taplo configuration layout so CLI/editor integrations consume the same source of truth
+- Schema/doc drift in pipeline and config machine-output documentation
+- `config check` machine-output naming drift (`config_check` vs generic summary wording)
+- Empty-file, empty-like-file, and placeholder handling so insert/strip/apply behavior remains
+  idempotent and understandable
+- Built-site docs/linkcheck reliability in CI and release workflows
+
+______________________________________________________________________
+
+### Notes
+
+- This is the **first 1.0 alpha release**, intended to validate the new architecture and observable
+  contracts before 1.0 final.
+- Public API and machine-output consumers should review the breaking changes above carefully,
+  especially around:
+  - registry identity/output,
+  - config/TOML/runtime boundaries,
+  - machine-format payloads,
+  - release/developer workflow expectations.
+- New prereleases should prefer compact PEP 440-style tags such as `v1.0.0a1`, `v1.0.0b1`, and
+  `v1.0.0rc1`.
+- Some 1.0 freeze/rehearsal items remain tracked in `docs/dev/roadmap.md`; this alpha marks the
+  transition from large-scale refactor work to final contract validation and release-path rehearsal.
+
 ## [0.11.1] – 2026-01-18
 
 This patch release focuses exclusively on **developer tooling, CI reliability, and release
