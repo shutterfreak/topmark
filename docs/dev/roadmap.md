@@ -769,23 +769,64 @@ Completed work:
     ignored during parsing.
   - Nested sections such as `[policy_by_type.<filetype>]` follow the same warning-and-ignore policy
     when malformed.
-  - Missing optional sections are not treated as schema violations.
+  - Missing known sections are now emitted as `INFO` diagnostics, allowing callers to distinguish
+    absent sections from malformed-present sections.
 - Confirmed and documented the current config-validation strictness behavior:
   - `strict_config_checking` acts on the aggregated config-diagnostics set, including replayed TOML
     validation issues, config-layer diagnostics, and sanitization warnings.
   - CLI and API validation paths share the same strictness semantics and validation helpers.
+- Tightened pre-release documentation around generated configuration reference material and Markdown
+  output:
+  - added a generated example TOML configuration page under
+    `docs/configuration/generated/example-config.md` based on `topmark config init`
+  - linked the generated example from configuration documentation and navigation instead of relying
+    only on source-file references
+  - standardized generated Markdown footers so config, registry, and pipeline Markdown output now
+    includes a versioned "Generated with TopMark v..." footer
 - Audited and aligned machine output formats across domains:
   - Confirmed consistent JSON and NDJSON envelope structure across config, pipeline, registry, and
     version commands.
   - Standardized pipeline summary payloads to emit flat rows with `(outcome, reason, count)` in both
     JSON and NDJSON formats.
-  - Identified and prepared fixes for schema/doc drift in pipeline machine schemas and
-    `config check` NDJSON record descriptions.
-- Identified and documented remaining drift and follow-up work:
-  - Duplication between `topmark.toml.keys` and `topmark.toml.schema` as a schema-maintenance risk.
-  - Legacy naming and semantics of `strict_config_checking` after the TOML/config/runtime split.
-  - Future need for staged validation gates (TOML → config → runtime) to replace the current
-    umbrella strictness model.
+  - Fixed schema/doc drift in pipeline machine schemas/payloads/envelopes so code, docs, and typed
+    machine schemas now consistently use flat summary rows rather than legacy outcome-keyed
+    map/`key`/`label` terminology.
+  - Fixed stale `config check` machine-output wording so JSON/NDJSON docs and emitter descriptions
+    consistently refer to the explicit `config_check` payload/record kind rather than a generic
+    `summary` container.
+- Tightened and documented the current `strict_config_checking` contract:
+  - clarified in code and user docs that `strict_config_checking` is a TOML-source-local
+    config-loading option rather than a layered `Config` field
+  - documented that its current effect applies to the aggregated config-resolution/preflight
+    diagnostic pool rather than only to TOML parsing or layered-config merge validation in isolation
+  - aligned CLI/API/runtime wording, example TOML comments, configuration docs, and command docs on
+    the same effective-strictness semantics
+- Clarified validation-boundary ownership across TOML, config, and runtime layers:
+  - `topmark.toml.getters` is now documented as checked TOML value extraction rather than
+    whole-document schema validation
+  - config deserializers and resolution bridge helpers now explicitly document that whole-source
+    TOML schema validation belongs to `topmark.toml`
+  - runtime/config validity helpers now describe aggregated diagnostics and effective resolved
+    strictness consistently
+- Reduced schema-maintenance drift and generic-helper coupling:
+  - removed duplicated structural TOML schema metadata from `topmark.toml.keys`, leaving section/key
+    names in `keys.py` and structural schema/validation rules in `schema.py`
+  - moved generic mapping helpers out of `topmark.toml.getters` into `topmark.core.typing_guards`,
+    clarifying that they operate on generic Python mappings rather than TOML-specific structures
+- Expanded targeted regression coverage for pre-release stabilization:
+  - added focused TOML validation tests for unknown top-level scalar vs table diagnostics, malformed
+    known sections, malformed nested policy sections, dump-only input keys, and missing-section
+    `INFO` diagnostics
+  - added machine-format regression tests to lock in `config_check` payload naming and flat pipeline
+    summary rows without legacy `key` / `label` fields
+  - added strictness-behavior tests confirming the current aggregated gate semantics: replayed TOML
+    warnings and sanitization warnings fail only in strict mode, while missing-section `INFO`
+    diagnostics do not fail either mode
+- Identified and documented remaining follow-up work:
+  - staged validation / integrity gates (TOML → config → runtime) remain intentionally deferred to a
+    dedicated post-alpha refactor
+  - the long-term treatment of sanitization warnings under strictness remains an explicit follow-up
+    decision
 
 ______________________________________________________________________
 
@@ -845,36 +886,50 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
 
 - Several config-construction and TOML-rendering helpers were removed from `Config` /
   `MutableConfig` and relocated into dedicated `topmark.config.io.*` and `topmark.toml.*` modules.
+
 - `topmark.cli.config_resolver` was removed after CLI config building was switched to the shared
   config-layer helpers.
+
 - `topmark.config.args_io` was removed as part of the config package refactor.
+
 - `load_resolved_config()` and `discover_config_layers()` were removed after callers/tests were
   migrated to the TOML-first resolution flow via `resolve_toml_sources_and_build_config_draft(...)`
   and `build_config_layers_from_resolved_toml_sources(...)`.
+
 - Config-loading entry points were consolidated around TOML-first resolution:
+
   - callers must now explicitly handle the `(resolved_sources, draft_config)` tuple when provenance
     is needed
   - direct “flattened config only” helpers are no longer provided
+
 - Generic API/CLI mapping input is now represented as `ConfigMapping` in `topmark.api.types` instead
   of `ArgsLike` in `topmark.config.types`.
+
 - The legacy `ArgsLike` alias was removed entirely; downstream callers should use `ConfigMapping`
   (or plain `Mapping[str, object]`-compatible inputs) for generic API/config mappings.
+
 - API/runtime config coercion now distinguishes generic mapping input from TOML-backed
   deserialization via `mutable_config_from_mapping()`.
+
 - The layered config / TOML fragment deserialization boundary is now explicit in the helper surface:
+
   - `mutable_config_from_layered_toml_table()` replaced the older `mutable_config_from_toml_dict()`
     entry point
   - downstream callers/tests using the old helper name must migrate to the layered-fragment helper
     or to TOML-layer loading helpers, depending on whether they start from a layered fragment or a
     whole TOML source
+
 - The layered config / TOML source boundary is now explicit:
+
   - source-local TOML options such as `[config].root` and `strict_config_checking` are resolved
     outside layered `Config` merging
   - discovered TOML sources are first resolved and whole-source TOML-validated on the TOML side,
     then merged into layered config drafts
   - source-local sections such as `[config]` and `[writer]` are validated on the TOML side rather
     than via duplicate config-layer checks
+
 - Introduced explicit config validation semantics and strictness control:
+
   - validation is now always executed via `Config.is_valid(...)` / `Config.ensure_valid(...)`
   - `strict_config_checking` now controls whether validation violations raise
     (`ConfigValidationError`) or are only reported as diagnostics
@@ -887,26 +942,37 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
     sanitization warnings
   - callers/tests that previously interpreted strictness as a TOML-only or layered-config-only check
     must update expectations to the broader current preflight/config-resolution semantics
+
 - Downstream Python callers importing moved/removed config helpers from older module locations must
   update their imports to the new `topmark.config.io.*`, `topmark.toml.*`, `topmark.runtime.*`, and
   `topmark.config.overrides` layout.
+
 - Policy override application is now centered on typed override objects (`PolicyOverrides` /
   `ConfigOverrides`) rather than the older wide keyword-argument surface.
+
 - Public/config-facing policy representation changed from the boolean pair `add_only` /
   `update_only` to the scalar `header_mutation_mode` token.
+
 - Public API result-view filtering changed from legacy `skip_compliant` / `skip_unsupported`
   booleans to the scalar `report` selection (`"all"`, `"actionable"`, `"noncompliant"`).
+
 - Config merge semantics are no longer uniformly "last-wins":
+
   - `field_values` now merge key-wise instead of being replaced wholesale
   - `include_from`, `exclude_from`, and `files_from` now accumulate across layers instead of
     replacing
+
 - Layered config resolution now produces per-path effective configs rather than a single flattened
   configuration, which may change behavior for nested config setups
+
 - The TOML schema changed for source-local options:
+
   - `root` no longer lives at top level / `[tool.topmark]`
   - source-local options now live under `[config]` in `topmark.toml`
   - and under `[tool.topmark.config]` in `pyproject.toml`
+
 - TOML validation behavior is now stricter and earlier in the load path:
+
   - unknown top-level sections/keys, unknown keys in known sections, and malformed section shapes
     are reported during whole-source TOML loading
   - these TOML-layer diagnostics now surface alongside config-layer diagnostics in CLI/API
@@ -919,10 +985,23 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
   - malformed known sections and malformed nested policy-by-type sections are now explicitly treated
     as TOML-layer warning-and-ignore cases; callers/tests that previously relied on config-layer
     fallback behavior should treat this as a TOML validation concern instead
+  - missing known sections are now emitted as TOML-layer `INFO` diagnostics rather than being
+    treated as completely silent absence; callers/tests that previously expected no diagnostics for
+    empty-but-present TopMark TOML sources must update accordingly
+
 - Built-in/default TOML resources and helpers were moved out of `topmark.config`:
+
   - `topmark-example.toml` now lives under `topmark.toml`
   - default/template helpers now live under `topmark.toml.defaults`
   - template-edit helpers now live under `topmark.toml.template_surgery`
+
+- Generic mapping extraction helpers that were temporarily living in `topmark.toml.getters` were
+  moved to `topmark.core.typing_guards`; downstream Python callers should no longer treat those
+  helpers as TOML-specific utilities.
+
+- Duplicated structural TOML schema metadata was removed from `topmark.toml.keys`; `keys.py` now
+  acts as the canonical registry of external TOML section/key names, while `topmark.toml.schema`
+  owns structural schema metadata and validation rules.
 
 ### CLI / output / runtime behavior changes
 
@@ -993,9 +1072,14 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
 
 - Downstream consumers of pipeline summary machine output must now expect flat summary rows keyed by
   `(outcome, reason, count)` rather than outcome-keyed maps or collapsed per-outcome labels.
+- Legacy pipeline machine summary row terminology (`key` / `label`) is no longer accurate; code,
+  docs, and tests now consistently use `outcome` / `reason` / `count`.
 - `config check` machine output now uses the explicit `config_check` payload/record kind for the
   command summary; downstream tests/docs/tooling that previously referred to a generic `summary`
   record in this path must be updated.
+- Pipeline and `config check` machine-format docs/schemas were aligned with the implemented payloads
+  during pre-release stabilization, so older assumptions about legacy wrapper names or generic
+  summary containers should be treated as obsolete.
 
 ### Documentation and documentation-build behavior
 
@@ -1006,6 +1090,14 @@ These are changes already landed (or expected to land) during the 0.12 refactor 
   - layered provenance as the validated source-local TOML view plus the final flattened config
   - `config defaults` as the built-in layered default config view
   - `config init` as the bundled example TopMark TOML resource
+  - the current meaning of `strict_config_checking` as a TOML-source-local strictness preference for
+    the aggregated config-resolution/preflight diagnostic pool
+  - missing known TOML sections as `INFO` diagnostics and malformed known sections as
+    warning-and-ignore cases at the TOML layer
+- Configuration documentation now links to a generated example TOML document produced from
+  `topmark config init` rather than relying only on source-file references, and generated Markdown
+  output now includes a standardized version footer. Downstream docs tooling or expectations around
+  generated Markdown snapshots may therefore need updating.
 - Documentation build now depends on the generated API/reference pages and on the stabilized
   presentation/rendering paths for registry/pipeline commands. Missing or stale modules will fail
   the docs build (`mkdocs build --strict`).
@@ -1395,14 +1487,11 @@ Additional progress:
   TOML-named helper
 - resolved `strict_config_checking` on the TOML side rather than treating it as a layered config
   field
-- confirmed that the current `strict_config_checking` behavior still reflects the older umbrella
-  “config” concept from before the TOML/config/runtime split, and should therefore be revisited as a
-  staged validation/preflight concern rather than as a pure layered-config setting
-- identified the need to decide whether the current umbrella strictness model should be retained for
-  1.0 or replaced/refined by explicit staged gates for:
-  - TOML/source validation
-  - effective merged config validity
-  - sanitization/runtime applicability
+- confirmed and documented that the current `strict_config_checking` behavior is an aggregated
+  config-resolution/preflight gate rather than a pure layered-config setting
+- explicitly deferred the staged validation/integrity-gates redesign to a dedicated post-alpha
+  refactor; the remaining open decision is whether 1.0 should intentionally freeze the aggregated
+  gate semantics or introduce staged gates before final schema/contract freeze
 
 Decision to make before 1.0:
 
@@ -1412,10 +1501,10 @@ Decision to make before 1.0:
 - Decide how much of the typed override model should be treated as public/stable for Python callers
   versus as an internal config-layer contract used by the CLI and API runtime.
 - Decide whether `strict_config_checking` should remain the stable public/source-local knob for the
-  current aggregated config-resolution diagnostic pool, or whether 1.0 should introduce a more
-  explicit staged validation model.
-- Decide whether sanitization/runtime-applicability warnings should remain in the same strictness
-  gate as TOML validation issues and merged-config diagnostics.
+  current aggregated config-resolution/preflight diagnostic pool for 1.0, or whether final 1.0
+  schema/contract freeze requires a more explicit staged validation model.
+- Decide whether sanitization/runtime-applicability warnings should intentionally remain in the same
+  strictness gate as TOML validation issues and merged-config diagnostics for 1.0.
 
 Desired outcome:
 
@@ -1424,10 +1513,10 @@ Desired outcome:
 - The same override structure remains usable by API callers (without importing Click).
 - Freeze and document the long-term boundary between typed config overrides and runtime-only overlay
   state.
-- Freeze and document whether config-validation strictness is intentionally a single aggregated
-  preflight gate for 1.0 or whether staged validation gates are part of the 1.0 contract.
-- If the aggregated gate is kept for 1.0, document clearly that it may include replayed TOML
-  validation issues, config-layer diagnostics, and sanitization warnings.
+- Freeze the 1.0 contract for config-validation strictness: either keep the current aggregated
+  preflight gate or replace it with staged validation gates before final schema/contract freeze.
+- If the aggregated gate is kept for 1.0, preserve the now-documented behavior that it may include
+  replayed TOML validation issues, config-layer diagnostics, and sanitization warnings.
 - Confirm that runtime-only fields remain outside layered config merging and are applied only after
   config resolution.
 - Confirm that TOML-layer validation and config-layer validation remain clearly separated and do not
@@ -1464,12 +1553,6 @@ Completed work:
 Remaining work before 1.0:
 
 - Final audit of field naming consistency across domains.
-- Remove remaining schema/doc drift in machine output definitions, especially where code/tests/docs
-  already use flat `(outcome, reason, count)` pipeline summary rows but older schema comments or
-  TypedDict names still reflect pre-refactor map/key-label terminology.
-- Normalize terminology for `config check` machine output so all docs, schemas, and emitters refer
-  to the explicit `config_check` payload/record kind rather than any older generic `summary`
-  wording.
 - Confirm that TOML validation diagnostics are consistently represented in machine output alongside
   config-layer diagnostics where applicable
 - Decide whether flattened config diagnostics are sufficient for 1.0 machine contracts, or whether
@@ -1480,11 +1563,15 @@ Remaining work before 1.0:
 - Confirm command responsibilities for machine output:
   - `config dump` is the single command exposing layered provenance (`config_provenance`)
   - `config check` remains validation-only and does not emit provenance payloads
-- Expand test coverage for remaining machine formats (especially registry + pipeline commands, JSON
-  \+ NDJSON); `config dump` layered provenance is now covered in both JSON and NDJSON modes.
+- Expand test coverage for the remaining machine formats still missing focused contract tests
+  (especially registry commands and `version`); pipeline summary shape and `config check` payload
+  naming are now covered in JSON and NDJSON modes.
 - Stabilize and freeze machine schema documentation (`docs/dev/machine-formats.md`).
 - Review whether pipeline summary rows should eventually expose additional structured fields beyond
   `(outcome, reason, count)`.
+- Decide whether the current flattened `{level, message}` config-diagnostics representation is the
+  final 1.0 machine contract, or whether richer TOML-specific issue structure should be preserved
+  for a post-1.0 evolution.
 
 ### Human-facing output formats
 
@@ -1634,16 +1721,16 @@ This checklist defines the minimum criteria for cutting TopMark 1.0, grouped by 
     - [x] `config defaults` machine output is covered in both JSON and NDJSON modes
     - [x] `config dump` layered provenance is now covered in both JSON and NDJSON modes
     - [x] `config init` machine output is covered in both JSON and NDJSON modes
-  - [ ] pipeline commands (`check`, `strip`)
+  - [x] pipeline commands (`check`, `strip`)
   - [ ] registry commands (`filetypes`, `processors`, `bindings`)
   - [ ] version command (`version`)
 - [ ] Final schema freeze review before 1.0 (including `(outcome, reason, count)` summary rows)
 - [ ] Remove remaining schema/doc drift in machine output definitions:
-  - [ ] pipeline machine schemas/docs match the flat summary-row shape already used by
+  - [x] pipeline machine schemas/docs match the flat summary-row shape already used by
     code/tests/docs
-  - [ ] `config check` machine output is described consistently as `config_check` rather than a
+  - [x] `config check` machine output is described consistently as `config_check` rather than a
     generic `summary`
-- [ ] Confirm that config-validation payloads consistently use `strict_config_checking` and no
+- [x] Confirm that config-validation payloads consistently use `strict_config_checking` and no
   longer expose legacy `strict` naming
 - [ ] Confirm that TOML validation diagnostics are represented consistently alongside config-layer
   diagnostics in machine output where applicable
@@ -1675,13 +1762,13 @@ This checklist defines the minimum criteria for cutting TopMark 1.0, grouped by 
 - [ ] Decision made and documented on the final public override model
 - [ ] `EmptyInsertMode` tokens and semantics documented and considered stable
 - [ ] Typed override model (`PolicyOverrides` / `ConfigOverrides`) documented and considered stable
-- [ ] `strict_config_checking` documented and considered stable as a TOML-source-local
+- [x] `strict_config_checking` documented and considered stable as a TOML-source-local
   config-loading option (not a layered `Config` field)
-- [ ] Whole-source TOML schema validation rules documented and considered stable (unknown keys,
+- [x] Whole-source TOML schema validation rules documented and considered stable (unknown keys,
   malformed section shapes, source-local section validation)
-- [ ] Distinction between unknown top-level table sections and unknown top-level scalar keys is
+- [x] Distinction between unknown top-level table sections and unknown top-level scalar keys is
   covered by tests and documented as part of the stable TOML diagnostic contract
-- [ ] Malformed known sections and malformed nested policy-by-type sections are confirmed and frozen
+- [x] Malformed known sections and malformed nested policy-by-type sections are confirmed and frozen
   as TOML-layer warning-and-ignore behavior
 - [x] Layered config discovery/merge and final CLI/API override application are separated into
   dedicated config modules
@@ -1689,16 +1776,16 @@ This checklist defines the minimum criteria for cutting TopMark 1.0, grouped by 
 - [x] Field-specific config merge semantics are defined, implemented, and covered by regression
   tests
 - [x] Per-path effective config resolution is implemented and used by the pipeline engine
-- [ ] Final documentation of TOML → Config → Runtime split (including whole-source TOML validation,
+- [x] Final documentation of TOML → Config → Runtime split (including whole-source TOML validation,
   source-local options, layered provenance, and runtime overlays)
-- [ ] Decide whether duplicated TOML structure metadata in `topmark.toml.keys` vs
+- [x] Decide whether duplicated TOML structure metadata in `topmark.toml.keys` vs
   `topmark.toml.schema` must be cleaned up before 1.0 schema freeze or can be deferred with
   rationale
 - [ ] Validation semantics documented and considered stable:
-  - [ ] validation always runs
-  - [ ] `strict_config_checking` controls whether validation violations raise or are only reported
-  - [ ] CLI and API validation follow the same path and error model
-  - [ ] current strictness semantics are documented as applying to the aggregated
+  - [x] validation always runs
+  - [x] `strict_config_checking` controls whether validation violations raise or are only reported
+  - [x] CLI and API validation follow the same path and error model
+  - [x] current strictness semantics are documented as applying to the aggregated
     config-resolution/preflight diagnostic pool
   - [ ] decision made whether 1.0 keeps the aggregated strictness gate or introduces staged gates
     for TOML/source validation, merged config validity, and sanitization/runtime applicability
@@ -1708,11 +1795,11 @@ This checklist defines the minimum criteria for cutting TopMark 1.0, grouped by 
 - [ ] Decision taken on in-memory pipeline support (implemented or explicitly deferred)
 - [ ] Clear split between unit (memory-based) and integration (filesystem) tests
 - [ ] Namespace-aware registry lookup and deterministic ambiguity behavior covered by tests
-- [ ] TOML-layer validation paths covered by focused tests for:
-  - [ ] unknown top-level sections vs unknown top-level scalar keys
-  - [ ] malformed known section shapes
-  - [ ] malformed nested policy-by-type section shapes
-  - [ ] propagation into config diagnostics / strict config checking behavior
+- [x] TOML-layer validation paths covered by focused tests for:
+  - [x] unknown top-level sections vs unknown top-level scalar keys
+  - [x] malformed known section shapes
+  - [x] malformed nested policy-by-type section shapes
+  - [x] propagation into config diagnostics / strict config checking behavior
 - [ ] API surface clarified for in-memory pipeline inputs (either implemented or deferred with
   rationale)
 - [x] Empty and empty-like file handling is explicit and idempotent
