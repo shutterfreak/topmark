@@ -12,8 +12,8 @@ name: Release to PyPI
 
 on:
   workflow_run:
-    workflows: ["CI"]
-    types: [completed]
+    workflows: [ "CI" ]
+    types: [ completed ]
 
 permissions:
   contents: read
@@ -35,11 +35,19 @@ jobs:
       version_semver: ${{ steps.set.outputs.version_semver }}
       is_prerelease: ${{ steps.set.outputs.is_prerelease }}
       channel: ${{ steps.set.outputs.channel }} # pypi | testpypi
-      release_name: ${{ steps.set.outputs.release_name }} # e.g. v1.2.3 or v1.2.3-rc1
+      release_name: ${{ steps.set.outputs.release_name }} # e.g. v1.2.3, v1.2.3rc1, or v1.2.3-rc1
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: ./.github/actions/setup-python-nox
+        with:
+          python-version: "3.13"
+
+      - name: Install packaging
+        run: uv pip install --system packaging
 
       - id: set
         name: Determine whether this CI run should publish
@@ -63,7 +71,7 @@ jobs:
           # Keep the tag-printing debug log for troubleshooting
           echo "Tags pointing at $SHA:"
           git tag --points-at "$SHA" || true
-          RAW="$(git tag --points-at "$SHA" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+|-a[0-9]+|-b[0-9]+)?$' | head -n1 || true)"
+          RAW="$(git tag --points-at "$SHA" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+((rc|a|b)[0-9]+|-(rc|a|b)[0-9]+)?$' | head -n1 || true)"
 
           if [[ -z "$RAW" ]]; then
             echo "No release tag found for $SHA; skipping publish."
@@ -74,14 +82,28 @@ jobs:
           TAG="$RAW"
           TAG_NO_V="${RAW#v}"
 
-          # Convert tag -rcN/-aN/-bN to PEP 440 (rcN/aN/bN without dash)
-          PEP440="$(echo "$TAG_NO_V" | sed -E 's/-rc([0-9]+)$/rc\1/; s/-a([0-9]+)$/a\1/; s/-b([0-9]+)$/b\1/')"
+          # Normalize release tag to a PEP 440 version while retaining a dash form
+          # for compatibility with existing workflow outputs.
+          PEP440=$(TAG_NO_V="$TAG_NO_V" python - <<-'PY'
+          from os import environ
+          from packaging.version import Version
 
-          # SemVer representation (keeps dash)
+          print(Version(environ["TAG_NO_V"]))
+          PY
+          )
+
+          # SemVer-like representation (keeps dash form if provided on the tag)
           SEMVER="$TAG_NO_V"
 
-          # Pre-release detection → choose TestPyPI vs PyPI
-          if echo "$TAG_NO_V" | grep -Eq -- '-(rc|a|b)[0-9]+$'; then
+          # Pre-release detection -> choose TestPyPI vs PyPI
+          if TAG_NO_V="$TAG_NO_V" python - <<-'PY'
+          from os import environ
+          from packaging.version import Version
+          from sys import exit
+
+          exit(0 if Version(environ["TAG_NO_V"]).is_prerelease else 1)
+          PY
+          then
             IS_PRERELEASE=true
             CHANNEL=testpypi
           else
@@ -105,7 +127,7 @@ jobs:
 
   details:
     name: Validate release metadata
-    needs: [preflight]
+    needs: [ preflight ]
     if: ${{ needs.preflight.outputs.should_release == 'true' }}
     runs-on: ubuntu-latest
     outputs:
@@ -118,30 +140,78 @@ jobs:
       release_name: ${{ needs.preflight.outputs.release_name }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - uses: ./.github/actions/setup-python-nox
         with:
           python-version: "3.13"
 
+      - name: Build artifacts for version validation
+        run: |
+          uv build --out-dir dist-check
+
       - id: check-version
-        name: Ensure pyproject version matches tag (PEP 440)
+        name: Ensure SCM-derived build version matches tag (PEP 440)
         shell: bash
+        env:
+          WANT: ${{ needs.preflight.outputs.version_pep440 }}
         run: |
           set -euo pipefail
-          WANT="${{ needs.preflight.outputs.version_pep440 }}"
-          HAVE="$(python -c 'import tomllib, pathlib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text(encoding="utf-8")).get("project", {}).get("version", ""))')"
-          echo "pyproject.toml version : $HAVE"
-          echo "tag (PEP 440)          : $WANT"
-          test "$HAVE" = "$WANT" || { echo "❌ Version mismatch"; exit 1; }
+          python <<-'PY'
+          import email
+          import os
+          import pathlib
+          import tarfile
+          import zipfile
+
+          want = os.environ["WANT"]
+          dist_dir = pathlib.Path("dist-check")
+
+          wheels = list(dist_dir.glob("*.whl"))
+          sdists = list(dist_dir.glob("*.tar.gz"))
+          if len(wheels) != 1 or len(sdists) != 1:
+              raise SystemExit(
+                  f"Expected exactly one wheel and one sdist in dist-check, got {len(wheels)} wheel(s) and {len(sdists)} sdist(s)"
+              )
+
+          with zipfile.ZipFile(wheels[0]) as wheel_zip:
+              metadata_name = next(
+                  name for name in wheel_zip.namelist() if name.endswith(".dist-info/METADATA")
+              )
+              wheel_meta = email.message_from_bytes(wheel_zip.read(metadata_name))
+              wheel_version = wheel_meta["Version"]
+
+          with tarfile.open(sdists[0], "r:gz") as sdist_tar:
+              pkg_info_member = next(
+                  member for member in sdist_tar.getmembers() if member.name.endswith("/PKG-INFO")
+              )
+              pkg_info_file = sdist_tar.extractfile(pkg_info_member)
+              if pkg_info_file is None:
+                  raise SystemExit("Could not read PKG-INFO from sdist")
+              sdist_meta = email.message_from_bytes(pkg_info_file.read())
+              sdist_version = sdist_meta["Version"]
+
+          print(f"wheel version : {wheel_version}")
+          print(f"sdist version : {sdist_version}")
+          print(f"tag version   : {want}")
+
+          if wheel_version != want or sdist_version != want:
+              raise SystemExit("SCM-derived artifact version does not match release tag")
+          PY
 
   build-docs:
     name: Build docs (strict)
-    needs: [preflight, details]
+    needs: [ preflight, details ]
     if: ${{ needs.preflight.outputs.should_release == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - uses: ./.github/actions/setup-python-nox
         with:
@@ -153,12 +223,15 @@ jobs:
 
   links-site:
     name: Check links (built site)
-    needs: [preflight, details]
+    needs: [ preflight, details ]
     if: ${{ needs.preflight.outputs.should_release == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - uses: ./.github/actions/setup-python-nox
         with:
@@ -176,20 +249,20 @@ jobs:
         uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411 # v2.8.0
         with:
           args: >-
-            --config lychee.toml
-            --no-progress
-            --quiet
-            --root-dir ${{ github.workspace }}/site
-            site
+            --config lychee.toml --no-progress --quiet --root-dir ${{
+            github.workspace }}/site site
 
   publish-package:
     name: Publish to PyPI/TestPyPI
-    needs: [preflight, details, build-docs, links-site]
+    needs: [ preflight, details, build-docs, links-site ]
     if: ${{ needs.preflight.outputs.should_release == 'true' }}
     runs-on: ubuntu-latest
     environment: ${{ needs.details.outputs.channel }} # 'testpypi' for rc/a/b, else 'pypi'
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - uses: ./.github/actions/setup-python-nox
         with:
@@ -257,6 +330,9 @@ jobs:
           ls "dist/topmark-${VER_PEP440}-"*.whl >/dev/null 2>&1 \
             || { echo "❌ Missing wheel dist/topmark-${VER_PEP440}-*.whl"; ls -l dist; exit 1; }
 
+      - name: Install packaging
+        run: uv pip install --system packaging
+
       - name: Ensure new final release is newer than PyPI latest
         if: ${{ needs.details.outputs.is_prerelease != 'true' }}
         shell: bash
@@ -296,13 +372,17 @@ jobs:
           # (optionally omit skip-existing to fail on reuse; or set skip-existing: true if you prefer idempotency)
 
   github-release:
-    needs: [preflight, details, publish-package]
-    if: ${{ needs.preflight.outputs.should_release == 'true' && needs.details.outputs.is_prerelease != 'true' }}
+    needs: [ preflight, details, publish-package ]
+    if: ${{ needs.preflight.outputs.should_release == 'true' &&
+      needs.details.outputs.is_prerelease != 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0

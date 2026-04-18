@@ -38,7 +38,7 @@ on:
       - "CONTRIBUTING.md"
       - "lychee.toml"
   push:
-    branches: [main]
+    branches: [ main ]
     tags:
       - "v*"
 
@@ -116,11 +116,14 @@ jobs:
 
   lint:
     needs: changes
-    if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.python_changed == 'true' }}
+    if: ${{ github.event_name != 'pull_request' ||
+      needs.changes.outputs.python_changed == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
 
       - uses: ./.github/actions/setup-python-nox
         with:
@@ -134,11 +137,14 @@ jobs:
 
   pre-commit:
     needs: changes
-    if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.precommit_changed == 'true' }}
+    if: ${{ github.event_name != 'pull_request' ||
+      needs.changes.outputs.precommit_changed == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
 
       - id: setup-python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
@@ -154,7 +160,8 @@ jobs:
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/.cache/uv
-          key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('.pre-commit-config.yaml', 'pyproject.toml', 'uv.lock') }}
+          key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{
+            hashFiles('.pre-commit-config.yaml', 'pyproject.toml', 'uv.lock') }}
           restore-keys: |
             ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-
 
@@ -169,11 +176,14 @@ jobs:
 
   docs:
     needs: changes
-    if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.docs_changed == 'true' }}
+    if: ${{ github.event_name != 'pull_request' ||
+      needs.changes.outputs.docs_changed == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
 
       - uses: ./.github/actions/setup-python-nox
         with:
@@ -185,14 +195,17 @@ jobs:
 
   tests:
     needs: changes
-    if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.python_changed == 'true' }}
+    if: ${{ github.event_name != 'pull_request' ||
+      needs.changes.outputs.python_changed == 'true' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        python-version: [ "3.10", "3.11", "3.12", "3.13", "3.14" ]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
 
       - id: setup-python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
@@ -209,7 +222,8 @@ jobs:
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/.cache/uv
-          key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('pyproject.toml', 'uv.lock', 'noxfile.py') }}
+          key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{
+            hashFiles('pyproject.toml', 'uv.lock', 'noxfile.py') }}
           restore-keys: |
             ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-
 
@@ -224,11 +238,14 @@ jobs:
   api-snapshot:
     name: API Snapshot
     needs: changes
-    if: ${{ github.event_name == 'pull_request' && needs.changes.outputs.python_changed == 'true' }}
+    if: ${{ github.event_name == 'pull_request' &&
+      needs.changes.outputs.python_changed == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
 
       - uses: ./.github/actions/setup-python-nox
         with:
@@ -241,29 +258,30 @@ jobs:
   links:
     # Use official lychee Action; no cargo needed
     needs: changes
-    if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.markdown_links_changed == 'true' }}
+    if: ${{ github.event_name != 'pull_request' ||
+      needs.changes.outputs.markdown_links_changed == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
 
       - name: Check links in docs and selected top-level Markdown
         uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411 # v2.8.0
         with:
           args: >-
-            --config lychee.toml
-            --no-progress
-            --quiet
-            docs
-            README.md
-            INSTALL.md
+            --config lychee.toml --no-progress --quiet docs README.md INSTALL.md
             CONTRIBUTING.md
 
   links-site:
     needs: changes
-    if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.docs_changed == 'true' }}
+    if: ${{ github.event_name != 'pull_request' ||
+      needs.changes.outputs.docs_changed == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
 
       - uses: ./.github/actions/setup-python-nox
         with:
@@ -281,8 +299,5 @@ jobs:
         uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411 # v2.8.0
         with:
           args: >-
-            --config lychee.toml
-            --no-progress
-            --quiet
-            --root-dir ${{ github.workspace }}/site
-            site
+            --config lychee.toml --no-progress --quiet --root-dir ${{
+            github.workspace }}/site site
