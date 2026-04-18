@@ -9,12 +9,12 @@
 # topmark:header:end
 
 [build-system]
-requires      = ["setuptools>=69", "wheel"]
+requires      = ["setuptools>=69", "setuptools-scm>=10.0.2,<11", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "topmark"
-version = "1.0.0a1.dev1" # PEP 440: e.g.: "X.Y.Z", "X.Y.ZaN", "X.Y.ZrcN", "X.Y.ZrcN.devN"
+dynamic = ["version"]
 description = "A Python CLI to inspect, validate, and manage license and copyright headers."
 readme = { file = "README.md", content-type = "text/markdown" }
 keywords = [
@@ -370,6 +370,8 @@ include-package-data = true
   [tool.setuptools.packages.find]
   where = ["src"]
 
+[tool.setuptools_scm]
+version_file = "src/topmark/_version.py"
 
 [tool.topmark]
 root = true # Mark this directory as the root for config discovery

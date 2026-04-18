@@ -12,10 +12,12 @@
 
 from __future__ import annotations
 
+import contextlib
 from collections import defaultdict
 from importlib.metadata import PackageMetadata
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import metadata
+from importlib.metadata import version as metadata_version
 from pathlib import Path
 from re import Match
 from typing import TYPE_CHECKING
@@ -47,6 +49,18 @@ class DependencyInfo(TypedDict):
     specifier: str
 
 
+def _resolve_topmark_version() -> str:
+    """Resolve the TopMark version from generated code or installed metadata."""
+    with contextlib.suppress(ImportError):
+        from topmark._version import version as generated_version
+
+        return generated_version
+    try:
+        return metadata_version(PACKAGE_NAME)
+    except PackageNotFoundError:
+        return "0.0.0.dev0"
+
+
 try:
     # 2. Fetch metadata once
     _dist_meta: PackageMetadata = metadata(PACKAGE_NAME)
@@ -57,7 +71,7 @@ try:
     _meta_map: Mapping[str, str] = cast("Mapping[str, str]", _dist_meta)
 
     _topmark: str = _meta_map.get("Name") or PACKAGE_NAME
-    _version: str = _meta_map.get("Version") or "0.0.0.unknown"
+    _version: str = _resolve_topmark_version()
     _description: str = _meta_map.get("Summary") or ""
 
     # Resolve License: Try License-Expression (PEP 639), then fallback to License

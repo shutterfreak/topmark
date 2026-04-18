@@ -28,6 +28,9 @@ docs/**/_drafts/
 # Documentation (built)
 site/
 
+# setuptools-scm generated version module
+src/topmark/_version.py
+
 # Virtual environments
 .venv/
 

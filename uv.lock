@@ -1671,7 +1671,6 @@ wheels = [
 
 [[package]]
 name = "topmark"
-version = "1.0.0a1.dev1"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
