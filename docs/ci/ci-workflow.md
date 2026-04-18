@@ -27,6 +27,9 @@ The CI pipeline also ensures that builds are compatible with the Git-based versi
 (`setuptools-scm`) by fetching full Git history where needed and validating packaging steps used by
 the release workflow.
 
+The CI pipeline is also responsible for building **release artifacts on tag pushes**, which are
+later consumed by the release workflow instead of rebuilding the project in a privileged context.
+
 ### Trigger Conditions
 
 - On **push** to `main`
@@ -37,16 +40,17 @@ ______________________________________________________________________
 
 ## Jobs Summary
 
-| Job              | Purpose                                                      | Tools                                                          |
-| ---------------- | ------------------------------------------------------------ | -------------------------------------------------------------- |
-| **changes**      | Detect what changed so we can gate PR-only jobs              | `dorny/paths-filter`                                           |
-| **lint**         | Formatting, linting, type checks, and docstring link checks  | `nox -s format_check`, `nox -s lint`, `nox -s docstring_links` |
-| **pre-commit**   | Validate configured pre-commit hooks                         | `pre-commit`                                                   |
-| **docs**         | Build documentation strictly (warnings = errors)             | `nox -s docs`                                                  |
-| **tests**        | Run test matrix across Python 3.10–3.14                      | `nox -s qa -p py3xx`                                           |
-| **api-snapshot** | Verify public API stability (PR-only; when `src` changed)    | `nox -s api_snapshot -p 3.13`                                  |
-| **links**        | Validate links in source Markdown (docs + top-level)         | `lycheeverse/lychee-action` + `lychee.toml`                    |
-| **links-site**   | Validate links in the built MkDocs site (includes generated) | `mkdocs` + `lycheeverse/lychee-action` + `--root-dir`          |
+| Job                   | Purpose                                                      | Tools                                                          |
+| --------------------- | ------------------------------------------------------------ | -------------------------------------------------------------- |
+| **changes**           | Detect what changed so we can gate PR-only jobs              | `dorny/paths-filter`                                           |
+| **lint**              | Formatting, linting, type checks, and docstring link checks  | `nox -s format_check`, `nox -s lint`, `nox -s docstring_links` |
+| **pre-commit**        | Validate configured pre-commit hooks                         | `pre-commit`                                                   |
+| **docs**              | Build documentation strictly (warnings = errors)             | `nox -s docs`                                                  |
+| **tests**             | Run test matrix across Python 3.10–3.14                      | `nox -s qa -p py3xx`                                           |
+| **api-snapshot**      | Verify public API stability (PR-only; when `src` changed)    | `nox -s api_snapshot -p 3.13`                                  |
+| **links**             | Validate links in source Markdown (docs + top-level)         | `lycheeverse/lychee-action` + `lychee.toml`                    |
+| **links-site**        | Validate links in the built MkDocs site (includes generated) | `mkdocs` + `lycheeverse/lychee-action` + `--root-dir`          |
+| **release-artifacts** | Build and upload release artifacts for tagged commits        | `uv build`, artifact upload                                    |
 
 ______________________________________________________________________
 
@@ -77,6 +81,21 @@ Each job restores the uv cache and keys it from the canonical dependency inputs:
       path: ~/.cache/uv
       key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('pyproject.toml', 'uv.lock', 'noxfile.py') }}
 ```
+
+### 📦 Release Artifact Build (Tag Pushes)
+
+On tag pushes (`v*`), CI builds release artifacts in an **unprivileged context** and uploads them
+for the release workflow:
+
+- Builds `sdist` and `wheel` via `uv build`
+- Generates release metadata (tag, normalized version, checksums)
+- Uploads artifacts (`dist/` + metadata) using `actions/upload-artifact`
+
+The privileged release workflow (`release.yml`) later downloads and verifies these artifacts before
+publishing.
+
+This separation ensures that **repository code is never executed in the privileged release
+workflow**, aligning with GitHub security best practices and CodeQL recommendations.
 
 ### ✅ Pre-commit Validation
 

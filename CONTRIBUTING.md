@@ -303,6 +303,17 @@ twine upload --repository testpypi dist/*
 
 Releases are typically handled by GitHub Actions when tags are pushed.
 
+TopMark uses a two-stage release pipeline:
+
+- CI (`ci.yml`) builds release artifacts (`sdist` and `wheel`) on tag pushes in an **unprivileged
+  context** and uploads them as workflow artifacts.
+- The release workflow (`release.yml`) runs in a **privileged `workflow_run` context**, downloads
+  these artifacts, verifies version/tag consistency and checksums, and publishes them to PyPI or
+  TestPyPI.
+
+This design ensures that repository build logic is never executed in the privileged release workflow
+and aligns with GitHub security best practices and CodeQL recommendations.
+
 TopMark uses **Git tags as the single source of truth** for package versions. Versions are derived
 at build time via `setuptools-scm`, and built artifacts include generated version metadata.
 
@@ -427,6 +438,9 @@ Between tags, development builds may report SCM-derived versions such as:
    git tag vX.Y.Z
    git push origin vX.Y.Z
    ```
+
+> [!NOTE] CI must succeed on the tag push, including artifact upload, before the release workflow
+> runs.
 
 ______________________________________________________________________
 

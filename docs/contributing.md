@@ -54,5 +54,13 @@ Read the full contributor guide on GitHub:
 TopMark’s package versioning is Git-tag-driven via `setuptools-scm`; contributor and release
 workflow details are documented in the root `CONTRIBUTING.md` and the CI/release docs linked above.
 
+The release process uses an artifact-based workflow:
+
+- CI builds and uploads release artifacts on tag pushes
+- The release workflow downloads and verifies these artifacts before publishing
+
+This separation between build (CI) and publish (release workflow) avoids executing repository code
+in privileged contexts and improves supply-chain security.
+
 If you’re viewing this on the published docs site, the link above opens the same document in the
 repository with richer GitHub rendering.

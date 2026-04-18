@@ -31,36 +31,23 @@ ______________________________________________________________________
 
 ## Job Summary
 
-| Job                 | Purpose                                                                |
-| ------------------- | ---------------------------------------------------------------------- |
-| **details**         | Parse the release tag and extract version, channel, and release name   |
-| **build-docs**      | Build docs in strict mode via nox                                      |
-| **links-site**      | Validate links in the built MkDocs site (includes generated API pages) |
-| **publish-package** | Verify, build, and publish to PyPI/TestPyPI                            |
-| **github-release**  | Create a GitHub release for final (non-prerelease) tags                |
+| Job                 | Purpose                                                                  |
+| ------------------- | ------------------------------------------------------------------------ |
+| **preflight**       | Validate workflow trigger, resolve tag, version, and release eligibility |
+| **details**         | Download and verify CI-built artifacts and release metadata              |
+| **publish-package** | Verify and publish prebuilt artifacts to PyPI/TestPyPI                   |
+| **github-release**  | Create a GitHub release for final (non-prerelease) tags                  |
 
 ______________________________________________________________________
 
 ## 🧱 Core Design
 
+The release workflow is intentionally **artifact-only** and does not execute repository build logic.
+
 ### Trusted Publishing via OIDC
 
 No API tokens are stored — PyPI and TestPyPI releases use **Trusted Publishing** with OIDC
 credentials.
-
-### 🧰 Nox-Centric Docs Build
-
-Documentation is built through **nox** for parity with CI and local development:
-
-```yaml
-- uses: ./.github/actions/setup-python-nox
-  with:
-      python-version: "3.13"
-
-- name: Build docs (strict via nox)
-  run: |
-      nox -s docs
-```
 
 ### 🧰 Caching
 
@@ -74,45 +61,16 @@ Each job restores the uv cache and keys it from the canonical dependency inputs:
       key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('pyproject.toml', 'uv.lock', 'noxfile.py') }}
 ```
 
-### 🔗 Built-site Link Checking
-
-Releases are gated by a **built-site** link check:
-
-- Builds the docs with `mkdocs.linkcheck.yml` (to avoid production-only base URLs)
-- Runs `lychee` against the generated `site/` output using `--root-dir` so root-relative links are
-  resolved
-
-This catches broken links in **generated API pages** and theme navigation that source-only checks
-cannot see.
-
-This is the only stage where links inside generated API documentation are validated.
-
 ### 🧩 Version Validation
 
 Before publishing, the workflow ensures:
 
-- The **SCM-derived version** (via `setuptools-scm`) matches the release tag.
-- Version doesn’t already exist on the target index.
-- (Final releases only) new version > latest final on PyPI.
+- The **SCM-derived version** (via `setuptools-scm`) matches the release tag
+- The version does not already exist on the target index
+- (Final releases only) the new version is greater than the latest final on PyPI
 
-Version validation is performed on the **built artifacts (wheel + sdist)** rather than by reading
-`pyproject.toml`, ensuring the published package metadata is the source of truth.
-
-TopMark uses **Git tags as the single source of truth** for versioning. The package version is
-derived at build time via `setuptools-scm`, and a generated `topmark._version` module is included in
-built artifacts.
-
-### 📦 Package Validation
-
-- Builds sdist + wheel with `uv build`
-
-- Verifies filenames and version correctness
-
-- Publishes to PyPI or TestPyPI via:
-
-  ```yaml
-  uses: pypa/gh-action-pypi-publish@release/v1
-  ```
+Version validation is performed on **CI-built artifacts (wheel + sdist)** downloaded from the CI
+workflow, ensuring that published artifacts are exactly those validated during CI.
 
 ______________________________________________________________________
 
@@ -128,9 +86,11 @@ ______________________________________________________________________
    git push origin main --tags
    ```
 
-1. CI runs and passes
+1. CI runs and passes (including building release artifacts)
 
-1. Release workflow builds docs, validates, and publishes
+1. Release workflow downloads and verifies CI-produced artifacts
+
+1. Artifacts are published to PyPI/TestPyPI
 
 1. GitHub release is created automatically (for non-prereleases)
 
