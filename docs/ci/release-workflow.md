@@ -21,11 +21,15 @@ ______________________________________________________________________
 
 The release workflow runs automatically when:
 
-- A **tag** matching `v*` is pushed (e.g., `v1.0.0`, `v1.0.0rc1`, `v1.0.0-rc1`), **or**
-- The **CI** workflow completes successfully for a tagged commit
+- The **CI** workflow completes successfully for a commit that has exactly one matching release tag
+  (for example `v1.0.0`, `v1.0.0rc1`, `v1.0.0-a1`)
 
 It supports both **final** and **pre-release** (rc/a/b) versions using **PEP 440 normalization**
 derived from Git tags via `setuptools-scm`.
+
+If no matching release tag points at the CI commit, the workflow exits cleanly without publishing.
+If multiple matching release tags point at the same commit, preflight fails rather than choosing one
+implicitly.
 
 ______________________________________________________________________
 
@@ -71,6 +75,8 @@ Before publishing, the workflow ensures:
 - The **SCM-derived version** (via `setuptools-scm`) matches the release tag
 - The version does not already exist on the target index
 - (Final releases only) the new version is greater than the latest final on PyPI
+- Exactly **one** matching release tag points at the CI commit; ambiguous multi-tag release commits
+  are rejected during preflight
 
 Version validation is performed on **CI-built artifacts (wheel + sdist)** downloaded from the CI
 workflow, ensuring that the artifacts published to
@@ -83,7 +89,8 @@ ______________________________________________________________________
 
 1. Commit changes (no manual version bump required)
 
-1. Tag the release (version is derived from Git tags):
+1. Tag the release with exactly one release-style tag on the target commit (version is derived from
+   Git tags):
 
    ```bash
    git commit -am "chore(release): 1.0.0"
@@ -120,6 +127,9 @@ ______________________________________________________________________
 
 - Ensure release tags follow the expected versioning scheme (PEP 440-compatible, e.g. `v1.0.0`,
   `v1.0.0rc1`, `v1.0.0-a1`).
+
+- Do not place multiple release-style tags on the same commit. The release workflow now fails
+  preflight rather than choosing between ambiguous matching tags implicitly.
 
 - Prefer compact PEP 440 tag forms (e.g. `v1.0.0rc1`) for new releases; dashed variants remain
   supported for backward compatibility.
