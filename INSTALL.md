@@ -234,8 +234,8 @@ The GitHub Actions workflow:
 - Builds docs (strict)
 - Builds sdist and wheel
 - Publishes to:
-  - TestPyPI (for prereleases such as `rc`, `a`, `b`)
-  - PyPI (final releases)
+  - [TestPyPI](https://test.pypi.org/project/topmark/) (for prereleases such as `a`, `b`, `rc`)
+  - [PyPI](https://pypi.org/project/topmark/) (final releases)
 
 Manual uploads are discouraged and should only be used in exceptional cases.
 

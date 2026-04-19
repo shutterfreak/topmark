@@ -461,6 +461,9 @@ make package-check
 
 Release candidates and final releases are published by CI when you push a matching Git tag.
 
+Prereleases are published to [TestPyPI](https://test.pypi.org/project/topmark/) for validation
+before final releases are published to [PyPI](https://pypi.org/project/topmark/).
+
 ______________________________________________________________________
 
 ## 🧪 Development

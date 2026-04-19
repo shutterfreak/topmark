@@ -308,8 +308,9 @@ TopMark uses a two-stage release pipeline:
 - CI (`ci.yml`) builds release artifacts (`sdist` and `wheel`) on tag pushes in an **unprivileged
   context** and uploads them as workflow artifacts.
 - The release workflow (`release.yml`) runs in a **privileged `workflow_run` context**, downloads
-  these artifacts, verifies version/tag consistency and checksums, and publishes them to PyPI or
-  TestPyPI.
+  these artifacts, verifies version/tag consistency and checksums, and publishes them:
+  - **prereleases** to [TestPyPI](https://test.pypi.org/project/topmark/)
+  - **final releases** to [PyPI](https://pypi.org/project/topmark/)
 
 This design ensures that repository build logic is never executed in the privileged release workflow
 and aligns with GitHub security best practices and CodeQL recommendations.

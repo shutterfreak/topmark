@@ -12,8 +12,8 @@ topmark:header:end
 
 # 🚀 Release Workflow
 
-This document describes the **automated release pipeline** defined in
-`.github/workflows/release.yml`.
+This document describes the **automated package publish pipeline** defined in
+`.github/workflows/release.yml` (`Publish package`).
 
 ______________________________________________________________________
 
@@ -31,18 +31,21 @@ ______________________________________________________________________
 
 ## Job Summary
 
-| Job                 | Purpose                                                                  |
-| ------------------- | ------------------------------------------------------------------------ |
-| **preflight**       | Validate workflow trigger, resolve tag, version, and release eligibility |
-| **details**         | Download and verify CI-built artifacts and release metadata              |
-| **publish-package** | Verify and publish prebuilt artifacts to PyPI/TestPyPI                   |
-| **github-release**  | Create a GitHub release for final (non-prerelease) tags                  |
+| Job                 | Purpose                                                                                                                                 |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **preflight**       | Resolve release context, tag, version, and publish eligibility                                                                          |
+| **details**         | Verify downloaded CI-built artifacts and release metadata                                                                               |
+| **publish-package** | Verify and publish prebuilt artifacts to [PyPI](https://pypi.org/project/topmark/) / [TestPyPI](https://test.pypi.org/project/topmark/) |
+| **github-release**  | Create a GitHub release for final (non-prerelease) tags                                                                                 |
 
 ______________________________________________________________________
 
 ## 🧱 Core Design
 
 The release workflow is intentionally **artifact-only** and does not execute repository build logic.
+
+Prereleases are published to [TestPyPI](https://test.pypi.org/project/topmark/) for validation,
+while final releases are published to [PyPI](https://pypi.org/project/topmark/).
 
 ### Trusted Publishing via OIDC
 
@@ -70,7 +73,9 @@ Before publishing, the workflow ensures:
 - (Final releases only) the new version is greater than the latest final on PyPI
 
 Version validation is performed on **CI-built artifacts (wheel + sdist)** downloaded from the CI
-workflow, ensuring that published artifacts are exactly those validated during CI.
+workflow, ensuring that the artifacts published to
+[TestPyPI](https://test.pypi.org/project/topmark/) or [PyPI](https://pypi.org/project/topmark/) are
+exactly those validated during CI.
 
 ______________________________________________________________________
 
@@ -90,7 +95,8 @@ ______________________________________________________________________
 
 1. Release workflow downloads and verifies CI-produced artifacts
 
-1. Artifacts are published to PyPI/TestPyPI
+1. Artifacts are published to [TestPyPI](https://test.pypi.org/project/topmark/) (prereleases) or
+   [PyPI](https://pypi.org/project/topmark/) (final releases)
 
 1. GitHub release is created automatically (for non-prereleases)
 
