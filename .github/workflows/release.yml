@@ -8,7 +8,7 @@
 #
 # topmark:header:end
 
-name: Release to PyPI
+name: Publish package
 
 on:
   workflow_run:
@@ -138,7 +138,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
   details:
-    name: Validate release metadata
+    name: Verify downloaded release artifacts
     needs: [ preflight ]
     if: ${{ needs.preflight.outputs.should_release == 'true' }}
     runs-on: ubuntu-latest
@@ -184,7 +184,7 @@ jobs:
           test "$HAVE_VERSION" = "$WANT_VERSION" || { echo "❌ Artifact version mismatch"; exit 1; }
 
       - id: check-version
-        name: Ensure SCM-derived build version matches tag (PEP 440)
+        name: Ensure SCM-derived artifact version matches tag (PEP 440)
         shell: bash
         env:
           WANT: ${{ needs.preflight.outputs.version_pep440 }}
@@ -344,7 +344,7 @@ jobs:
           ls "dist/topmark-${VER_PEP440}-"*.whl >/dev/null 2>&1 \
             || { echo "❌ Missing wheel dist/topmark-${VER_PEP440}-*.whl"; ls -l dist; exit 1; }
 
-      - name: Ensure new final release is newer than PyPI latest
+      - name: Ensure final release is newer than latest PyPI final
         if: ${{ needs.details.outputs.is_prerelease != 'true' }}
         shell: bash
         run: |
