@@ -374,7 +374,9 @@ include-package-data = true
 version_file = "src/topmark/_version.py"
 
 [tool.topmark]
-root = true # Mark this directory as the root for config discovery
+  [tool.topmark.config]
+  root                   = true
+  strict_config_checking = true
 
   [tool.topmark.fields]
   project   = "TopMark"
@@ -388,7 +390,7 @@ root = true # Mark this directory as the root for config discovery
   exclude_patterns   = [".git/"]
 
   [tool.topmark.formatting]
-  align_fields = true # Align colons of fields
+  align_fields = true
   [tool.topmark.header]
   fields      = ["project", "file", "file_relpath", "license", "copyright"]
   relative_to = "."
@@ -405,7 +407,7 @@ root = true # Mark this directory as the root for config discovery
   allow_header_in_empty_files = true
 
   [tool.topmark.writer]
-  strategy = "atomic" # Use the safe atomic writer (default)
+  strategy = "atomic"
 
 [tool.uv]
 constraint-dependencies = []
