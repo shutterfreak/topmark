@@ -37,6 +37,7 @@ if TYPE_CHECKING:
 
     from topmark.config.model import Config
     from topmark.config.model import MutableConfig
+    from topmark.diagnostic.model import FrozenDiagnosticLog
 
 
 @pytest.mark.config
@@ -170,7 +171,7 @@ def test_missing_section_info_does_not_fail_even_when_strict(
     assert draft.is_valid(strict=True) is True
 
     assert_diagnostic_level_stats(
-        stats=draft.diagnostics.stats(),
+        stats=draft.validation_logs.flattened().stats(),
         expected_info=NON_EMPTY,
         expected_warning=0,
         expected_error=0,
@@ -200,14 +201,14 @@ def test_sanitization_warning_is_non_strict_valid_but_strict_invalid() -> None:
     draft: MutableConfig = make_mutable_config(include_from=["patterns/*.txt"])
 
     assert_diagnostic_level_stats(
-        stats=draft.diagnostics.stats(),
+        stats=draft.validation_logs.flattened().stats(),
         expected_warning=0,
     )
 
     draft.sanitize()
 
     assert_diagnostic_level_stats(
-        stats=draft.diagnostics.stats(),
+        stats=draft.validation_logs.flattened().stats(),
         expected_warning=NON_EMPTY,
     )
     assert_validation_stage_totals(
@@ -237,7 +238,6 @@ def test_is_valid_false_on_errors() -> None:
     """Merged-config errors always make the config invalid."""
     draft: MutableConfig = mutable_config_from_defaults()
     draft.validation_logs.merged_config.add_error("boom")
-    draft.refresh_diagnostics()
     assert draft.is_valid() is False
 
     c: Config = draft.freeze()
@@ -249,7 +249,6 @@ def test_is_valid_true_on_warnings() -> None:
     """Merged-config warnings do not make the config invalid by default."""
     draft: MutableConfig = mutable_config_from_defaults()
     draft.validation_logs.merged_config.add_warning("warn")
-    draft.refresh_diagnostics()
     assert draft.is_valid() is True
 
     c: Config = draft.freeze()
@@ -261,7 +260,6 @@ def test_is_valid_false_on_warnings_when_strict() -> None:
     """Merged-config warnings make the config invalid when strict mode is enabled."""
     draft: MutableConfig = mutable_config_from_defaults()
     draft.validation_logs.merged_config.add_warning("warn")
-    draft.refresh_diagnostics()
     assert draft.is_valid(strict=True) is False
 
     c: Config = draft.freeze()
@@ -270,13 +268,13 @@ def test_is_valid_false_on_warnings_when_strict() -> None:
 
 @pytest.mark.config
 def test_freeze_preserves_diagnostics() -> None:
-    """freeze() must preserve flattened diagnostics derived from staged logs."""
+    """freeze() must preserve staged diagnostics and their flattened view."""
     draft: MutableConfig = mutable_config_from_defaults()
     draft.validation_logs.merged_config.add_warning("hello")
-    draft.refresh_diagnostics()
     c: Config = draft.freeze()
-    assert len(c.diagnostics.items) == 1
-    assert c.diagnostics.items[0].message == "hello"
+    flattened_diagnostics: FrozenDiagnosticLog = c.validation_logs.flattened()
+    assert len(flattened_diagnostics.items) == 1
+    assert flattened_diagnostics.items[0].message == "hello"
     assert_validation_stage_totals(
         c.validation_logs,
         toml=0,

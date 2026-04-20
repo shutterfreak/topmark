@@ -86,7 +86,7 @@ def test_header_fields_mixed_types_ignores_non_strings(
         min_count=1,
     )
     assert_diagnostic_level_stats(
-        stats=draft.diagnostics.stats(),
+        stats=draft.validation_logs.flattened().stats(),
         expected_warning=NON_EMPTY,
     )
     assert_validation_stage_totals(
@@ -189,7 +189,7 @@ def test_include_from_mixed_types_ignores_non_strings(
         needle=f"Ignoring non-string entry in [{Toml.SECTION_FILES}].{Toml.KEY_INCLUDE_FROM}",
     )
     assert_diagnostic_level_stats(
-        stats=draft.diagnostics.stats(),
+        stats=draft.validation_logs.flattened().stats(),
         expected_warning=NON_EMPTY,
     )
     assert_validation_stage_totals(
@@ -239,7 +239,7 @@ def test_glob_patterns_mixed_types_ignores_non_strings(
         min_count=1,
     )
     assert_diagnostic_level_stats(
-        stats=draft.diagnostics.stats(),
+        stats=draft.validation_logs.flattened().stats(),
         expected_warning=NON_EMPTY,
     )
     assert_validation_stage_totals(
@@ -292,7 +292,7 @@ def test_glob_patterns_all_non_strings_results_in_empty_list(
         min_count=2,
     )
     assert_diagnostic_level_stats(
-        stats=draft.diagnostics.stats(),
+        stats=draft.validation_logs.flattened().stats(),
         expected_warning=2,
     )
     assert_validation_stage_totals(
@@ -351,7 +351,7 @@ def test_fields_scalar_values_are_stringified_and_unsupported_are_ignored(
         needle="Ignoring unsupported field value for [fields].bad_list",
     )
     assert_diagnostic_level_stats(
-        stats=draft.diagnostics.stats(),
+        stats=draft.validation_logs.flattened().stats(),
         expected_warning=2,
     )
     assert_validation_stage_totals(
@@ -425,7 +425,7 @@ def test_duplicate_include_file_types_warns_and_is_recorded(
         f"(key: {Toml.KEY_INCLUDE_FILE_TYPES})",
     )
     assert_diagnostic_level_stats(
-        stats=draft.diagnostics.stats(),
+        stats=draft.validation_logs.flattened().stats(),
         expected_warning=NON_EMPTY,
     )
     assert_validation_stage_totals(
@@ -459,7 +459,7 @@ def test_duplicate_exclude_file_types_warns_and_is_recorded(
         f"(key: {Toml.KEY_EXCLUDE_FILE_TYPES})",
     )
     assert_diagnostic_level_stats(
-        stats=draft.diagnostics.stats(),
+        stats=draft.validation_logs.flattened().stats(),
         expected_warning=NON_EMPTY,
     )
     assert_validation_stage_totals(

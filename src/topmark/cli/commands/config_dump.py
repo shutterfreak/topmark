@@ -56,6 +56,7 @@ from topmark.core.keys import ArgKey
 from topmark.core.logging import get_logger
 from topmark.core.machine.payloads import build_meta_payload
 from topmark.presentation.markdown.config import render_config_dump_markdown
+from topmark.presentation.markdown.diagnostic import render_diagnostics_markdown
 from topmark.presentation.shared.config import ConfigDumpHumanReport
 from topmark.presentation.shared.config import build_config_dump_human_report
 from topmark.presentation.text.config import render_config_dump_text
@@ -71,6 +72,7 @@ if TYPE_CHECKING:
     from topmark.config.model import Config
     from topmark.core.logging import TopmarkLogger
     from topmark.core.machine.schemas import MetaPayload
+    from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.runtime.model import RunOptions
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -95,7 +97,8 @@ logger: TopmarkLogger = get_logger(__name__)
         "  • Use --output-format json / ndjson for machine-readable output.\n"
         "  • In the default (human) format, output is wrapped between "
         f"'{TOML_BLOCK_START}' and '{TOML_BLOCK_END}' markers when verbosity level ≥ 1.\n"
-        "  • In the default (human) format, config diagnostics are shown when verbosity level ≥ 1."
+        "  • In human output formats (`text` and `markdown`), "
+        "config diagnostics are rendered according to the selected verbosity level."
     ),
 )
 @common_ui_options
@@ -257,12 +260,23 @@ def config_dump_command(
 
     logger.trace("Run config after layered CLI overrides: %s", config)
 
-    # Display Config diagnostics before resolving files
+    # Render flattened config validation diagnostics before emitting the final dump.
+    flattened_diagnostics: FrozenDiagnosticLog = config.validation_logs.flattened()
+
     if fmt == OutputFormat.TEXT:
-        render_diagnostics_text(
-            diagnostics=config.diagnostics,
-            verbosity_level=verbosity_level,
-            color=enable_color,
+        console.print(
+            render_diagnostics_text(
+                diagnostics=flattened_diagnostics,
+                verbosity_level=verbosity_level,
+                color=enable_color,
+            )
+        )
+    elif fmt == OutputFormat.MARKDOWN:
+        console.print(
+            render_diagnostics_markdown(
+                diagnostics=flattened_diagnostics,
+                verbosity_level=verbosity_level,
+            )
         )
 
     temp_path: Path | None = plan.temp_path  # for cleanup/STDIN-apply branch

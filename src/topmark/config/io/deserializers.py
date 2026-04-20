@@ -13,7 +13,7 @@
 This module contains the layered-config deserialization layer for TopMark.
 
 Responsibilities:
-    - parse already-validated layered TOML fragments into `MutableConfig`
+    - parse layered TOML fragments into `MutableConfig` drafts
     - normalize config-local filesystem references against the source TOML file
     - deserialize layered config sections such as policy, files, header, and formatting
     - deserialize built-in and caller-provided layered TopMark config fragments
@@ -382,6 +382,7 @@ def mutable_config_from_layered_toml_table(
 
         # Coerce `[fields]` values to strings (the table is user-defined and may include
         # unused keys). Unsupported types are ignored with a warning.
+
         # ---- File-related settings ----
 
         # include_file_types
@@ -569,10 +570,6 @@ def mutable_config_from_layered_toml_table(
 
     # ---- Header Formatting ----
     _parse_formatting_table(toml_tables.formatting_tbl)
-
-    # ---- File-related settings ----
-
-    draft.refresh_diagnostics()
 
     return draft
 

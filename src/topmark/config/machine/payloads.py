@@ -17,6 +17,8 @@ Responsibilities:
   - Convert `Config` / TOML-derived structures into JSON-friendly values.
   - Return schema dataclasses from
     [`topmark.config.machine.schemas`][topmark.config.machine.schemas].
+  - Flatten staged config-validation diagnostics at the machine-output
+    boundary when diagnostics payloads are requested.
 
 This module performs no I/O and does not shape envelopes/records.
 """
@@ -43,6 +45,7 @@ from topmark.toml.keys import Toml
 
 if TYPE_CHECKING:
     from topmark.config.model import Config
+    from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.toml.types import TomlTable
 
 
@@ -95,16 +98,21 @@ def build_config_payload(config: Config) -> ConfigPayload:
 def build_config_diagnostics_payload(config: Config) -> ConfigDiagnosticsPayload:
     """Build a JSON-friendly diagnostics payload for a given Config.
 
+    Staged config-validation logs are flattened here so machine output keeps
+    exposing the current compatibility diagnostics view.
+
     Args:
         config: The Config instance.
 
     Returns:
         JSON-serializable diagnostics metadata for the given `Config`.
     """
+    flattened_diagnostics: FrozenDiagnosticLog = config.validation_logs.flattened()
     diag_entries: list[MachineDiagnosticEntry] = [
-        MachineDiagnosticEntry(level=d.level.value, message=d.message) for d in config.diagnostics
+        MachineDiagnosticEntry(level=d.level.value, message=d.message)
+        for d in flattened_diagnostics
     ]
-    stats: DiagnosticStats = compute_diagnostic_stats(config.diagnostics)
+    stats: DiagnosticStats = compute_diagnostic_stats(flattened_diagnostics)
     diag_counts: MachineDiagnosticCounts = MachineDiagnosticCounts(
         info=stats.n_info,
         warning=stats.n_warning,
@@ -121,7 +129,8 @@ def build_config_diagnostics_counts_payload(config: Config) -> MachineDiagnostic
     """Build a counts-only diagnostics payload for a given Config.
 
     Useful when emitting aggregate diagnostic statistics without duplicating
-    per-diagnostic entries.
+    per-diagnostic entries. Staged config-validation logs are flattened here at
+    the machine-output boundary.
 
     Args:
         config: The Config instance.
@@ -130,7 +139,8 @@ def build_config_diagnostics_counts_payload(config: Config) -> MachineDiagnostic
         JSON-serializable mapping containing only
         ``{"diagnostic_counts": {"info": int, "warning": int, "error": int}}``.
     """
-    stats: DiagnosticStats = compute_diagnostic_stats(config.diagnostics)
+    flattened_diagnostics: FrozenDiagnosticLog = config.validation_logs.flattened()
+    stats: DiagnosticStats = compute_diagnostic_stats(flattened_diagnostics)
     return MachineDiagnosticCounts(
         info=stats.n_info,
         warning=stats.n_warning,

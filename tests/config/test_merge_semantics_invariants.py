@@ -34,6 +34,7 @@ from topmark.config.types import PatternSource
 
 if TYPE_CHECKING:
     from topmark.config.model import MutableConfig
+    from topmark.diagnostic.model import DiagnosticLog
 
 
 @pytest.mark.pipeline
@@ -42,22 +43,21 @@ def test_merge_invariant_provenance_and_diagnostics_accumulate() -> None:
     base: MutableConfig = mutable_config_from_defaults()
     base.config_files = ["<defaults>", "root/topmark.toml"]
     base.validation_logs.merged_config.add_warning("base warning")
-    base.refresh_diagnostics()
 
     override: MutableConfig = mutable_config_from_defaults()
     override.config_files = ["child/topmark.toml"]
     override.validation_logs.merged_config.add_warning("override warning")
-    override.refresh_diagnostics()
 
     merged: MutableConfig = base.merge_with(override)
+    flattened_diagnostics: DiagnosticLog = merged.validation_logs.flattened()
 
     assert_diagnostic_level_stats(
-        stats=merged.diagnostics.stats(),
+        stats=flattened_diagnostics.stats(),
         expected_warning=2,
     )
 
     assert merged.config_files == ["<defaults>", "root/topmark.toml", "child/topmark.toml"]
-    assert [item.message for item in merged.diagnostics.items] == [
+    assert [item.message for item in flattened_diagnostics.items] == [
         "base warning",
         "override warning",
     ]

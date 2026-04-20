@@ -18,6 +18,10 @@ output conventions:
 
 This module is pure (no I/O, no `ConsoleLike`) and delegates payload construction
 to [`topmark.config.machine.payloads`][topmark.config.machine.payloads].
+
+When NDJSON needs one diagnostic per line, this module flattens staged
+config-validation logs at the output boundary and streams the resulting
+compatibility diagnostics.
 """
 
 from __future__ import annotations
@@ -44,6 +48,7 @@ if TYPE_CHECKING:
     from topmark.config.model import Config
     from topmark.core.machine.schemas import MetaPayload
     from topmark.diagnostic.machine.schemas import MachineDiagnosticCounts
+    from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.toml.machine.schemas import TomlProvenancePayload
 
 
@@ -136,7 +141,8 @@ def build_config_diagnostics_json_envelope(
         {"meta": <MetaPayload>, "config_diagnostics": <ConfigDiagnosticsPayload>}
 
     Args:
-        config: Immutable runtime configuration providing diagnostics.
+        config: Immutable runtime configuration providing staged validation
+            logs that are flattened for machine output.
         meta: Machine-output metadata (tool/version).
 
     Returns:
@@ -160,7 +166,8 @@ def iter_config_diagnostics_ndjson_records(
       - one `diagnostic` record per entry (domain="config")
 
     Args:
-        config: Immutable runtime configuration providing diagnostics.
+        config: Immutable runtime configuration providing staged validation
+            logs that are flattened for NDJSON output.
         meta: Machine-output metadata (tool/version).
 
     Yields:
@@ -181,10 +188,11 @@ def iter_config_diagnostics_ndjson_records(
         },
     )
     # One diagnostic per line
+    flattened_diagnostics: FrozenDiagnosticLog = config.validation_logs.flattened()
     yield from iter_diagnostic_ndjson_records(
         meta=meta,
         domain=MachineDomain.CONFIG,
-        diagnostics=config.diagnostics,
+        diagnostics=flattened_diagnostics,
     )
 
 
@@ -291,7 +299,8 @@ def iter_config_check_ndjson_records(
         1) config
         2) config_diagnostics (counts-only)
         3) config_check
-        4+) diagnostic (domain="config") one per diagnostic
+        4+) diagnostic (domain="config") one per flattened compatibility
+            diagnostic
 
     Args:
         config: Immutable runtime configuration.
@@ -330,8 +339,9 @@ def iter_config_check_ndjson_records(
     )
 
     # One diagnostic per line
+    flattened_diagnostics: FrozenDiagnosticLog = config.validation_logs.flattened()
     yield from iter_diagnostic_ndjson_records(
         meta=meta,
         domain=MachineDomain.CONFIG,
-        diagnostics=config.diagnostics,
+        diagnostics=flattened_diagnostics,
     )

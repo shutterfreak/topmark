@@ -311,9 +311,10 @@ def test_override_diagnostics_land_in_merged_config(tmp_path: Path) -> None:
     )
     apply_config_overrides(draft, overrides)
 
+    flattened_diagnostics = draft.validation_logs.flattened()
     # Flat diagnostics reflect the warning
     assert_diagnostic_level_stats(
-        stats=draft.diagnostics.stats(),
+        stats=flattened_diagnostics.stats(),
         expected_warning=NON_EMPTY,
     )
 
@@ -334,5 +335,5 @@ def test_override_diagnostics_land_in_merged_config(tmp_path: Path) -> None:
     )
     assert any(
         "Ignoring empty string entries in override files" in d.message
-        for d in draft.diagnostics.items
+        for d in flattened_diagnostics.items
     )

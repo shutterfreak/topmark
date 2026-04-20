@@ -23,6 +23,8 @@ Notes:
     These helpers may perform light serialization work and may load bundled
     template resources. They do not print to stdout/stderr; user-facing
     warnings should be handled by the caller or the emitters.
+    Where human-facing config diagnostics are prepared, this module flattens
+    staged config-validation logs at the presentation boundary.
 """
 
 from __future__ import annotations
@@ -49,6 +51,7 @@ from topmark.toml.utils import as_toml_table_list
 if TYPE_CHECKING:
     from topmark.config.model import Config
     from topmark.config.resolution.layers import ConfigLayer
+    from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
     from topmark.toml.types import TomlTable
 
@@ -251,8 +254,9 @@ def build_config_check_human_report(
         styled: Whether to style text output (OutputFormat.TEXT)
 
     Returns:
-        Prepared config file list, optional merged TOML (verbosity > 1), plus human diagnostic
-        counts and lines.
+        Prepared config file list, optional merged TOML (verbosity > 1), plus
+        human diagnostic counts and lines derived from the flattened
+        compatibility view of staged config-validation logs.
     """
     merged_toml: str | None = None
     if verbosity_level > 1:
@@ -263,7 +267,10 @@ def build_config_check_human_report(
             )
         )
 
-    counts, lines = prepare_human_diagnostics(config.diagnostics)
+    # Flatten staged validation logs here so human-facing reports keep the
+    # current compatibility diagnostics view.
+    flattened_diagnostics: FrozenDiagnosticLog = config.validation_logs.flattened()
+    counts, lines = prepare_human_diagnostics(flattened_diagnostics)
 
     return ConfigCheckHumanReport(
         config_files=_stringify_config_files(config),

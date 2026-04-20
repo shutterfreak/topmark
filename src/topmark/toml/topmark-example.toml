@@ -75,8 +75,8 @@
 # Source-local strictness preference for config-resolution / preflight validation.
 #
 # Semantics (current implementation):
-#   - Applies to the aggregated config-resolution/preflight diagnostic pool
-#     (TOML validation issues, config-layer diagnostics, sanitization warnings).
+#   - Applies to staged config-loading/preflight validation
+#     (TOML-source, merged-config, and runtime-applicability diagnostics).
 #   - Not limited to TOML parsing or layered-config merge validation.
 #
 # Resolution:

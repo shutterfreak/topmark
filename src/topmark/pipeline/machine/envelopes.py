@@ -26,6 +26,9 @@ Responsibilities:
   with config prefix records and followed by either per-file `result` records
   (detail mode) or per-bucket `summary` records (summary mode).
 
+Where config diagnostics are included, this module exposes the flattened
+compatibility view derived from staged config-validation logs.
+
 See Also:
 - [`topmark.pipeline.machine.payloads`][topmark.pipeline.machine.payloads]:
     domain payload fragments for processing runs.
@@ -59,6 +62,7 @@ if TYPE_CHECKING:
     from topmark.config.machine.schemas import ConfigDiagnosticsPayload
     from topmark.config.machine.schemas import ConfigPayload
     from topmark.config.model import Config
+    from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.machine.schemas import OutcomeSummaryRow
 
@@ -106,7 +110,7 @@ def build_processing_results_json_envelope(
     Returns:
         A JSON-serializable envelope mapping (not yet serialized to a JSON string).
     """
-    # Prepare schema pieces once (display Config diagnostics when processing files)
+    # Prepare config payloads once, including flattened compatibility diagnostics.
     cfg_payload: ConfigPayload = build_config_payload(config)
     cfg_diag_payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
 
@@ -153,7 +157,7 @@ def iter_processing_results_ndjson_records(
 
     1) `kind="config"` record
     2) `kind="config_diagnostics"` record (counts-only)
-    3) zero or more `kind="diagnostic"` records for config diagnostics
+    3) zero or more `kind="diagnostic"` records for flattened compatibility config diagnostics
     4) then either:
     - summary mode: one `kind="summary"` record per `(outcome, reason)` bucket
     - detail mode: one `kind="result"` record per processed file
@@ -168,7 +172,7 @@ def iter_processing_results_ndjson_records(
         Shaped NDJSON record mappings (not yet serialized). Each yielded record
         includes `kind` and `meta` and follows the project’s NDJSON envelope contract.
     """
-    # Prepare schema pieces once (display Config diagnostics when processing files)
+    # Prepare config payloads once, including flattened compatibility diagnostics.
     cfg_payload: ConfigPayload = build_config_payload(config)
     cfg_diag_payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
 
@@ -180,10 +184,11 @@ def iter_processing_results_ndjson_records(
     )
 
     # One diagnostic per line
+    flattened_diagnostics: FrozenDiagnosticLog = config.validation_logs.flattened()
     yield from iter_diagnostic_ndjson_records(
         meta=meta,
         domain=MachineDomain.CONFIG,
-        diagnostics=config.diagnostics,
+        diagnostics=flattened_diagnostics,
     )
 
     if summary_mode:

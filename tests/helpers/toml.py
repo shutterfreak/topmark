@@ -22,7 +22,7 @@ magic.
 Typical responsibilities:
     - take a split-parsed `ParsedTopmarkToml`
     - deserialize its layered config fragment into `MutableConfig`
-    - replay TOML schema validation issues into `draft.diagnostics`
+    - replay TOML schema validation issues into `draft.validation_logs.toml_source`
 
 These helpers complement the higher-level fixtures in
 `tests/toml/conftest.py`, which provide ergonomic test entrypoints for
@@ -56,7 +56,8 @@ def draft_from_parsed_topmark_toml(
     This helper centralizes the shared TOML/config boundary tail used by the
     TOML-layer test fixtures:
         1. deserialize the layered config fragment into `MutableConfig`,
-        2. replay TOML schema validation issues into `draft.diagnostics`.
+        2. replay TOML schema validation issues into
+           `draft.validation_logs.toml_source`.
 
     Args:
         parsed: Already split-parsed TopMark TOML source.
@@ -64,11 +65,12 @@ def draft_from_parsed_topmark_toml(
             and config-file provenance.
 
     Returns:
-        Layered config draft with TOML schema diagnostics attached.
+        Layered config draft with TOML schema diagnostics attached to the
+        TOML-source validation stage.
     """
     draft: MutableConfig = mutable_config_from_layered_toml_table(
         parsed.layered_config,
         config_file=config_file,
     )
-    add_toml_issues(draft.diagnostics, parsed.validation_issues)
+    add_toml_issues(draft.validation_logs.toml_source, parsed.validation_issues)
     return draft

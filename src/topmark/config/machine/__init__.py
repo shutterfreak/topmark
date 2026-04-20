@@ -12,14 +12,15 @@
 
 This package defines the machine-readable payload schemas and envelope builders
 used by TopMark config commands (`config dump`, `config check`, `config init`,
-`config defaults`).
+`config defaults`). Where diagnostics are emitted, this package exposes the
+flattened compatibility view derived from staged config-validation logs.
 
 Responsibilities:
 
 - Define payload schemas (in `schemas.py`) for:
   - flattened config (`config`)
   - layered provenance (`config_provenance`)
-  - config diagnostics (`config_diagnostics`)
+  - flattened compatibility config diagnostics (`config_diagnostics`)
   - config check summary (`config_check`)
 - Build JSON envelopes and NDJSON record streams (in `envelopes.py`)
 - Provide a stable contract for machine-readable output (`json`, `ndjson`)
@@ -33,11 +34,9 @@ Design notes:
   (MachineKey, MachineKind, MachineDomain).
 - Envelope builders are pure and side-effect free; serialization is handled
   by higher-level emitters.
-
-Future considerations:
-
-- TOML-fragment normalization helpers may be factored into `topmark.toml.*`
-  over time, but command payload schemas remain defined here.
+- Config-validation diagnostics are stored internally as staged validation
+  logs (TOML-source, merged-config, runtime-applicability) and flattened only
+  at the machine-output boundary.
 """
 
 from __future__ import annotations

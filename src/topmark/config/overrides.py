@@ -20,8 +20,7 @@ must be handled separately via
 [`RunOptions`][topmark.runtime.model.RunOptions].
 
 Override-application diagnostics belong to the merged-config validation stage.
-During the staged-validation refactor, the flattened compatibility diagnostics
-on `MutableConfig` are refreshed from that staged log before returning.
+Flattening is performed only at reporting and output boundaries.
 """
 
 from __future__ import annotations
@@ -76,7 +75,7 @@ class ConfigOverrides:
         strict_config_checking: Config-loading strictness override.
             This remains config-like override intent and is separate from
             execution-only runtime options. It currently governs strict
-            evaluation of the staged config-loading validation gates.
+            evaluation of staged config-loading validation.
         policy: Global, resolved, immutable runtime policy (plain booleans),
             applied after discovery.
         policy_by_type: Per-file-type resolved policy overrides
@@ -181,8 +180,8 @@ def apply_config_overrides(
           strategy, pruning, timestamps) is out of scope here and must be handled separately via
           [`RunOptions`][topmark.runtime.model.RunOptions].
         - Override-application diagnostics are recorded in the merged-config
-          validation stage and then flattened back into `config.diagnostics`
-          for compatibility with existing validation/reporting code.
+          validation stage. Flattening is now performed only at reporting and
+          output boundaries.
     """
     merged_diagnostics: DiagnosticLog = config.validation_logs.merged_config
 
@@ -322,8 +321,6 @@ def apply_config_overrides(
         config.header_fields = overrides.header_fields
     if overrides.field_values is not None:
         config.field_values = overrides.field_values
-
-    config.refresh_diagnostics()
 
     logger.debug("Patched MutableConfig: %s", config)
     logger.info("Applied argument mapping overrides to MutableConfig")

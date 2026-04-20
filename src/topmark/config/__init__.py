@@ -24,6 +24,11 @@ Higher-level concerns (file discovery, TOML parsing/serialization, multi-layer
 load/merge) may live in dedicated modules (``loader.py``, ``discovery.py``)
 and be re-exported here, keeping callers stable:
 
+Config-validation diagnostics are represented internally as staged validation
+logs (`validation_logs`) on `Config` / `MutableConfig`. Flattened diagnostics
+are no longer stored on the model and are instead derived at reporting and
+output boundaries.
+
 >>> from topmark.config.model import Config, MutableConfig, PatternSource
 
 Path resolution policy (summary):

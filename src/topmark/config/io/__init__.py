@@ -14,7 +14,8 @@ This package contains helpers that are specific to TopMark's layered config
 model, rather than generic TOML document handling.
 
 Current responsibilities include:
-    - deserializing layered TOML config tables into `MutableConfig`
+    - deserializing layered TOML config tables into `MutableConfig`, including
+      recording merged-config validation diagnostics
     - serializing `Config` and `MutableConfig` values back into layered TOML
       tables
     - providing bundled/default TopMark config-document helpers
@@ -35,6 +36,12 @@ Design goals:
       layered config tables
     - support both CLI and API code paths without reintroducing TOML parsing
       logic into the config model layer
+
+Diagnostics model:
+    - Config-loading diagnostics are recorded as staged validation logs on
+      `MutableConfig`
+    - This package does not flatten diagnostics; flattening is performed at
+      presentation and machine-output boundaries
 """
 
 from __future__ import annotations

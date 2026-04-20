@@ -26,16 +26,12 @@ The staged model currently distinguishes three validation stages:
 - `RUNTIME_APPLICABILITY`: sanitization recoveries and other preflight/runtime
   applicability diagnostics.
 
-These containers serve two roles during the staged-validation refactor:
+These containers serve two roles in the current staged config-validation
+model:
 
 - preserve stage-local diagnostics so validation boundaries remain explicit,
-- provide a flattened compatibility view in stage order for existing callers
-  that still consume a single `DiagnosticLog`.
-
-Merge semantics are stage-local: diagnostics append within each stage while
-preserving original insertion order. Message text is not rewritten when logs
-are flattened; any stage-aware presentation should be handled by higher-level
-reporting or rendering code.
+- provide a flattened compatibility view in stage order for callers that still
+  consume a single `DiagnosticLog` at reporting or output boundaries.
 """
 
 from __future__ import annotations
@@ -120,8 +116,8 @@ class ValidationLogs:
         """Return a flattened compatibility view in stage order.
 
         Diagnostics are concatenated without rewriting their messages so the
-        legacy flat diagnostic view remains stable during the staged-validation
-        refactor.
+        flattened compatibility diagnostic view remains stable at reporting and
+        output boundaries.
         """
         return DiagnosticLog.from_iterable(
             list(self.toml_source) + list(self.merged_config) + list(self.runtime_applicability)
@@ -145,7 +141,11 @@ class FrozenValidationLogs:
         )
 
     def flattened(self) -> FrozenDiagnosticLog:
-        """Return a flattened immutable compatibility view in stage order."""
+        """Return a flattened immutable compatibility view in stage order.
+
+        This helper is intended for reporting and output boundaries that still
+        consume a single immutable diagnostic log.
+        """
         return DiagnosticLog.from_iterable(
             list(self.toml_source) + list(self.merged_config) + list(self.runtime_applicability)
         ).freeze()

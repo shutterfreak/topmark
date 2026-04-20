@@ -38,6 +38,8 @@ from typing import Final
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from topmark.config.validation import FrozenValidationLogs
+    from topmark.config.validation import ValidationLogs
     from topmark.diagnostic.model import DiagnosticLog
     from topmark.diagnostic.model import DiagnosticStats
     from topmark.diagnostic.model import FrozenDiagnosticLog
@@ -538,7 +540,8 @@ class ConfigValidationError(TopmarkError):
     validation helpers.
 
     Args:
-        diagnostics: Diagnostic log attached to the config being validated.
+        validation_logs: Staged validation logs attached to the config being
+            validated.
         strict_config_checking: Effective resolved strictness used for staged
             config/preflight validation. This is the boolean strictness that was
             actually applied after TOML resolution and any CLI/API override.
@@ -548,18 +551,24 @@ class ConfigValidationError(TopmarkError):
     def __init__(
         self,
         *,
-        diagnostics: DiagnosticLog | FrozenDiagnosticLog,
+        validation_logs: ValidationLogs | FrozenValidationLogs,
         strict_config_checking: bool,
         details: tuple[str, ...] = (),
     ) -> None:
-        stats: DiagnosticStats = diagnostics.stats()
+        toml_stats: DiagnosticStats = validation_logs.toml_source.stats()
+        config_stats: DiagnosticStats = validation_logs.merged_config.stats()
+        runtime_stats: DiagnosticStats = validation_logs.runtime_applicability.stats()
+        flattened_diagnostics: DiagnosticLog | FrozenDiagnosticLog = validation_logs.flattened()
         message: str = (
             f"Config validation failed (strict = {strict_config_checking!r}), "
-            f"errors: {stats.n_error}, warnings: {stats.n_warning}"
+            f"TOML errors: {toml_stats.n_error}, warnings: {toml_stats.n_warning};"
+            f"Merged-config errors: {config_stats.n_error}, warnings: {config_stats.n_warning};"
+            f"Runtime errors: {runtime_stats.n_error}, warnings: {runtime_stats.n_warning};"
         )
         super().__init__(
             ErrorContext(
                 message=message,
+                diagnostics=flattened_diagnostics,
                 details=details,
             )
         )

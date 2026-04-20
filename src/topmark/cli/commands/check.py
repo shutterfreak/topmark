@@ -114,6 +114,7 @@ if TYPE_CHECKING:
     from topmark.config.policy import HeaderMutationMode
     from topmark.core.logging import TopmarkLogger
     from topmark.core.machine.schemas import MetaPayload
+    from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.protocols import Step
     from topmark.runtime.model import RunOptions
@@ -390,11 +391,13 @@ def check_command(
         ctx.exit(ExitCode.CONFIG_ERROR)
 
     if verbosity_level > 0:
-        # Display Config diagnostics before resolving files
+        # Display flattened config validation diagnostics before resolving files.
+        flattened_diagnostics: FrozenDiagnosticLog = config.validation_logs.flattened()
+
         if fmt == OutputFormat.TEXT:
             console.print(
                 render_diagnostics_text(
-                    diagnostics=config.diagnostics,
+                    diagnostics=flattened_diagnostics,
                     verbosity_level=verbosity_level,
                     color=enable_color,
                 )
@@ -402,7 +405,7 @@ def check_command(
         elif fmt == OutputFormat.MARKDOWN:
             console.print(
                 render_diagnostics_markdown(
-                    diagnostics=config.diagnostics,
+                    diagnostics=flattened_diagnostics,
                     verbosity_level=verbosity_level,
                 )
             )

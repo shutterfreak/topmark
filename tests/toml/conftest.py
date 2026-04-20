@@ -14,7 +14,7 @@ This module hosts TOML-scoped test helpers used by `tests/toml/*` to exercise
 TopMark's TOML loading boundary:
     - validate and split-parse full TopMark TOML sources,
     - deserialize only the layered config fragment,
-    - and replay TOML schema diagnostics into `MutableConfig.diagnostics`.
+    - and replay TOML schema diagnostics into `MutableConfig.validation_logs.toml_source`.
 
 These helpers intentionally sit at the TOML/config boundary so TOML-schema
 validation tests can assert both the loader behavior and the resulting draft
@@ -52,7 +52,8 @@ def draft_from_topmark_toml_table(
     This helper exercises the TOML/config boundary directly:
         1. validate and split-parse the full TopMark TOML source,
         2. deserialize only the layered config fragment,
-        3. replay TOML schema validation issues into the draft diagnostics.
+        3. replay TOML schema validation issues into the draft's TOML-source
+           validation stage.
 
     Args:
         data: In-memory TopMark TOML table or parsed `pyproject.toml` table.
@@ -61,7 +62,8 @@ def draft_from_topmark_toml_table(
             document requiring `[tool.topmark]` extraction.
 
     Returns:
-        Layered config draft with TOML schema diagnostics attached.
+        Layered config draft with TOML schema diagnostics attached to the
+        TOML-source validation stage.
 
     Raises:
         AssertionError: If the TOML source cannot be split-parsed.
@@ -91,7 +93,8 @@ def draft_from_topmark_toml_file(path: Path) -> MutableConfig:
 
     Returns:
         Layered config draft deserialized from the split-parsed TOML source,
-        with TOML schema diagnostics attached.
+        with TOML schema diagnostics attached to the TOML-source validation
+        stage.
 
     Raises:
         AssertionError: If the TOML source cannot be loaded or split-parsed.

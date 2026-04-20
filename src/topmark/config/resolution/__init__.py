@@ -19,6 +19,8 @@ Responsibilities:
     - merge config provenance layers in stable precedence order
     - select which layers apply to a target path
     - build mutable config drafts, including effective per-path drafts
+    - populate staged config-validation logs (TOML-source, merged-config)
+      during layered resolution
 
 This subpackage is intentionally separate from
 [`topmark.toml.resolution`][topmark.toml.resolution]:
@@ -30,6 +32,10 @@ This subpackage is intentionally separate from
 
 Runtime-only override application is handled elsewhere (for example in
 `topmark.config.overrides` and `topmark.runtime.*`).
+
+Config-validation diagnostics are collected as staged validation logs and are
+not flattened within this layer; flattening is performed at reporting and
+output boundaries.
 """
 
 from __future__ import annotations

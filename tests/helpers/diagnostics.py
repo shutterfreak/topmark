@@ -11,7 +11,7 @@
 """Shared assertion helpers for diagnostics and captured warnings.
 
 This module contains small reusable helpers for tests that need to compare
-messages recorded in `MutableConfig.diagnostics` with warnings captured via
+flattened config-validation diagnostic messages with warnings captured via
 pytest's `caplog` fixture.
 
 Keeping these helpers in a dedicated module avoids duplicating message-extract
@@ -45,8 +45,8 @@ DiagnosticCountExpectation: TypeAlias = int | NonEmptyExpectation | None
 
 
 def _diag_messages(draft: MutableConfig) -> list[str]:
-    """Return all diagnostic messages currently recorded on `draft`."""
-    return [d.message for d in draft.diagnostics]
+    """Return flattened diagnostic messages currently derivable from `draft`."""
+    return [d.message for d in draft.validation_logs.flattened()]
 
 
 def _caplog_messages(caplog: pytest.LogCaptureFixture) -> list[str]:
@@ -61,7 +61,7 @@ def assert_warned_and_diagnosed(
     needle: str,
     min_count: int = 1,
 ) -> None:
-    """Assert a warning substring appears in logs and `draft.diagnostics`.
+    """Assert a warning substring appears in logs and flattened draft diagnostics.
 
     Args:
         caplog: Pytest log capture fixture.
@@ -251,8 +251,8 @@ def assert_validation_stage_totals(
 ) -> None:
     """Assert total diagnostic counts for staged validation logs.
 
-    This helper is intentionally small and focused on stage totals during the
-    staged-validation refactor. It supports three expectation modes per stage:
+    This helper is intentionally small and focused on totals for staged
+    validation logs. It supports three expectation modes per stage:
 
     - `None`: do not check this stage.
     - a non-negative integer: require this exact count for the stage.
