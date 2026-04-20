@@ -527,18 +527,21 @@ class TemplateValidationError(TemplateError):
 class ConfigValidationError(TopmarkError):
     """Raised when config validation fails.
 
-    A config is valid when it has no error diagnostics. In strict mode, a
-    config is valid only when it has neither error diagnostics nor warning
-    diagnostics.
+    Config validity follows the staged config-loading validation semantics:
+    TOML-source diagnostics, merged-config diagnostics, and
+    runtime-applicability diagnostics are evaluated together. In non-strict
+    mode, validation fails only when at least one stage contains an error
+    diagnostic. In strict mode, validation fails when any stage contains either
+    a warning or an error diagnostic.
 
     This error is used for both frozen `Config` and mutable `MutableConfig`
     validation helpers.
 
     Args:
         diagnostics: Diagnostic log attached to the config being validated.
-        strict_config_checking: Effective resolved strictness for config/preflight
-            validation (typically derived from TOML `strict_config_checking` plus any
-            CLI/API override).
+        strict_config_checking: Effective resolved strictness used for staged
+            config/preflight validation. This is the boolean strictness that was
+            actually applied after TOML resolution and any CLI/API override.
         details: Optional structured diagnostic details.
     """
 
@@ -546,12 +549,12 @@ class ConfigValidationError(TopmarkError):
         self,
         *,
         diagnostics: DiagnosticLog | FrozenDiagnosticLog,
-        strict_config_checking: bool | None,
+        strict_config_checking: bool,
         details: tuple[str, ...] = (),
     ) -> None:
         stats: DiagnosticStats = diagnostics.stats()
         message: str = (
-            f"Config validation failed (strict = {bool(strict_config_checking)!r}), "
+            f"Config validation failed (strict = {strict_config_checking!r}), "
             f"errors: {stats.n_error}, warnings: {stats.n_warning}"
         )
         super().__init__(

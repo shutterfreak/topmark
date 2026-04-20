@@ -15,7 +15,8 @@ This module contains typed helpers that orchestrate:
 - candidate file resolution
 - config-like runtime policy overlay application
 - execution-only `RunOptions` consumption
-- config/preflight validation using effective resolved strictness
+- config/preflight validation using effective resolved strictness across
+  staged validation logs
 - pipeline selection and execution
 
 These functions are **internal to the `topmark.api` package**:
@@ -46,7 +47,6 @@ from topmark.config.resolution.merge import build_effective_config_for_path
 from topmark.constants import TOPMARK_VERSION
 from topmark.core.errors import InvalidPolicyError
 from topmark.core.logging import get_logger
-from topmark.diagnostic.model import DiagnosticLog
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.pipelines import Pipeline
 from topmark.resolution.files import resolve_file_list
@@ -98,27 +98,10 @@ def ensure_mutable_config(
         logger.debug("Supplied config is MutableConfig - returning as is")
         return config
     if isinstance(config, Config):
-        # Thaw a frozen Config into a mutable draft.
-        logger.debug("Supplied config is Config - returning MutableConfig")
-        return MutableConfig(
-            policy=config.policy.thaw(),
-            policy_by_type={k: v.thaw() for k, v in config.policy_by_type.items()},
-            config_files=list(config.config_files),
-            header_fields=list(config.header_fields),
-            field_values=dict(config.field_values),
-            align_fields=config.align_fields,
-            relative_to_raw=config.relative_to_raw,
-            relative_to=config.relative_to,
-            files=list(config.files),
-            include_from=list(config.include_from),
-            exclude_from=list(config.exclude_from),
-            files_from=list(config.files_from),
-            include_pattern_groups=list(config.include_pattern_groups),
-            exclude_pattern_groups=list(config.exclude_pattern_groups),
-            include_file_types=set(config.include_file_types),
-            exclude_file_types=set(config.exclude_file_types),
-            diagnostics=DiagnosticLog.from_iterable(config.diagnostics),
-        )
+        # Thaw a frozen Config into a mutable draft while preserving staged
+        # validation logs and the flattened compatibility diagnostics.
+        logger.debug("Supplied config is Config - returning config.thaw()")
+        return config.thaw()
     # Accept a plain mapping and normalize it through the TOML-like config loader.
     logger.debug("Supplied config is TOML Mapping - returning mutable_config_from_mapping(config)")
     return mutable_config_from_mapping(config)
@@ -135,9 +118,12 @@ def is_config_valid(
 ) -> bool:
     """Return whether the config is valid under effective resolved strictness.
 
-    A config is valid when it has no error diagnostics. Under effective strict
-    config checking, a config is valid only when it has neither error
-    diagnostics nor warning diagnostics.
+    Config validity follows the staged config-loading validation semantics:
+    TOML-source diagnostics, merged-config diagnostics, and
+    runtime-applicability diagnostics are evaluated together. In non-strict
+    mode, validation fails only when at least one stage contains an error
+    diagnostic. In strict mode, validation fails when any stage contains either
+    a warning or an error diagnostic.
 
     The strictness used here is the effective resolved value of
     `strict_config_checking`, derived from:
@@ -145,9 +131,9 @@ def is_config_valid(
     - otherwise the TOML-resolved source-local preference in `resolved`,
     - otherwise non-strict behavior.
 
-    Validation is evaluated against the config's aggregated diagnostics, which
-    may include replayed TOML validation issues, config-layer diagnostics, and
-    sanitization warnings.
+    The flattened compatibility diagnostics remain available for reporting and
+    exception payloads, but the validity decision itself is evaluated across
+    the staged validation logs.
 
     Args:
         cfg: Frozen or mutable config to validate.
@@ -158,7 +144,7 @@ def is_config_valid(
         `True` if the config is valid under the effective strictness, else
         `False`.
     """
-    effective_strict: bool | None = (
+    effective_strict: bool = bool(
         override if override is not None else resolved.strict_config_checking
     )
     return cfg.is_valid(strict=effective_strict)
@@ -172,9 +158,12 @@ def ensure_config_valid(
 ) -> None:
     """Raise `ConfigValidationError` if the config is not valid.
 
-    A config is valid when it has no error diagnostics. Under effective strict
-    config checking, a config is valid only when it has neither error
-    diagnostics nor warning diagnostics.
+    Config validity follows the staged config-loading validation semantics:
+    TOML-source diagnostics, merged-config diagnostics, and
+    runtime-applicability diagnostics are evaluated together. In non-strict
+    mode, validation fails only when at least one stage contains an error
+    diagnostic. In strict mode, validation fails when any stage contains either
+    a warning or an error diagnostic.
 
     The strictness used here is the effective resolved value of
     `strict_config_checking`, derived from:
@@ -182,9 +171,9 @@ def ensure_config_valid(
     - otherwise the TOML-resolved source-local preference in `resolved`,
     - otherwise non-strict behavior.
 
-    Validation is evaluated against the config's aggregated diagnostics, which
-    may include replayed TOML validation issues, config-layer diagnostics, and
-    sanitization warnings.
+    The flattened compatibility diagnostics remain available for reporting and
+    exception payloads, but the validity decision itself is evaluated across
+    the staged validation logs.
 
     Args:
         cfg: Frozen or mutable config to validate.
@@ -195,7 +184,7 @@ def ensure_config_valid(
         ConfigValidationError: If the config is invalid under the effective
             strictness.
     """  # noqa: DOC502 - documents propagated exceptions from `cfg.ensure_valid()``
-    effective_strict: bool | None = (
+    effective_strict: bool = bool(
         override if override is not None else resolved.strict_config_checking
     )
     cfg.ensure_valid(strict=effective_strict)

@@ -43,6 +43,15 @@ Path semantics:
 Testing guidance:
     - Unit-test merge behavior with synthetic builders (no I/O).
     - Exercise TOML/discovery paths in ``loader``/``discovery`` tests.
+
+Validation semantics:
+    - Config validity is evaluated across staged config-loading validation logs:
+      TOML-source diagnostics, merged-config diagnostics, and
+      runtime-applicability diagnostics.
+    - In non-strict mode, validation fails only when at least one stage
+      contains an error diagnostic.
+    - In strict mode, validation fails when any stage contains either a
+      warning or an error diagnostic.
 """
 
 from __future__ import annotations
@@ -59,7 +68,6 @@ from topmark.core.logging import get_logger
 from topmark.diagnostic.model import DiagnosticLog
 from topmark.diagnostic.model import DiagnosticStats
 from topmark.diagnostic.model import FrozenDiagnosticLog
-from topmark.diagnostic.model import compute_diagnostic_stats
 from topmark.toml.keys import Toml
 
 if TYPE_CHECKING:
@@ -176,9 +184,8 @@ class Config:
     ) -> bool:
         """Return whether this config is valid.
 
-        A config is valid when it has no error diagnostics. In strict mode, a
-        config is valid only when it has neither error diagnostics nor warning
-        diagnostics.
+        Validity follows the staged config-loading validation semantics
+        described in this module.
 
         Here, `strict` is the effective resolved strictness used for
         config/preflight validation. Callers typically derive it from
@@ -193,7 +200,10 @@ class Config:
         Returns:
             `True` if the config is valid, else `False`.
         """
-        return _is_config_valid(self, strict=strict)
+        return _is_validation_logs_valid(
+            self.validation_logs,
+            strict=bool(strict),
+        )
 
     def ensure_valid(
         self,
@@ -202,9 +212,8 @@ class Config:
     ) -> None:
         """Raise `ConfigValidationError` if this config is not valid.
 
-        A config is valid when it has no error diagnostics. In strict mode, a
-        config is valid only when it has neither error diagnostics nor warning
-        diagnostics.
+        Validity follows the staged config-loading validation semantics
+        described in this module.
 
         Here, `strict` is the effective resolved strictness used for
         config/preflight validation. Callers typically derive it from
@@ -222,7 +231,7 @@ class Config:
         if not self.is_valid(strict=strict):
             raise ConfigValidationError(
                 diagnostics=self.diagnostics,
-                strict_config_checking=strict,
+                strict_config_checking=bool(strict),
             )
 
     def thaw(self) -> MutableConfig:
@@ -366,9 +375,8 @@ class MutableConfig:
     ) -> bool:
         """Return whether this mutable config is valid.
 
-        A mutable config is valid when it has no error diagnostics. In strict
-        mode, a mutable config is valid only when it has neither error
-        diagnostics nor warning diagnostics.
+        Validity follows the staged config-loading validation semantics
+        described in this module.
 
         Here, `strict` is the effective resolved strictness used for
         config/preflight validation. Callers typically derive it from
@@ -383,7 +391,10 @@ class MutableConfig:
         Returns:
             `True` if the mutable config is valid, else `False`.
         """
-        return _is_config_valid(self, strict=strict)
+        return _is_validation_logs_valid(
+            self.validation_logs,
+            strict=bool(strict),
+        )
 
     def ensure_valid(
         self,
@@ -392,9 +403,8 @@ class MutableConfig:
     ) -> None:
         """Raise `ConfigValidationError` if this mutable config is not valid.
 
-        A mutable config is valid when it has no error diagnostics. In strict
-        mode, a mutable config is valid only when it has neither error
-        diagnostics nor warning diagnostics.
+        Validity follows the staged config-loading validation semantics
+        described in this module.
 
         Here, `strict` is the effective resolved strictness used for
         config/preflight validation. Callers typically derive it from
@@ -412,7 +422,7 @@ class MutableConfig:
         if not self.is_valid(strict=strict):
             raise ConfigValidationError(
                 diagnostics=self.diagnostics,
-                strict_config_checking=strict,
+                strict_config_checking=bool(strict),
             )
 
     # ---------------------------- Build/freeze ----------------------------
@@ -434,7 +444,7 @@ class MutableConfig:
             resolved: Policy = mp.resolve(global_policy_frozen)
             frozen_by_type[ft] = resolved
 
-        # Derive the flattened compatibility diagnostics from the merged staged logs.
+        # Derive the flattened compatibility diagnostics from the staged logs.
         self.refresh_diagnostics()
 
         return Config(
@@ -729,42 +739,57 @@ class MutableConfig:
             # Remove overlaps (blacklisted wins from whitelisted):
             self.include_file_types.difference_update(overlap)
 
-        # Derive the flattened compatibility diagnostics from the merged staged logs.
+        # Derive the flattened compatibility diagnostics from the staged logs.
         self.refresh_diagnostics()
 
 
-# ---- Helpers ----
+# --------------------------- Validation helpers ---------------------------
 
 
-def _is_config_valid(
-    cfg: Config | MutableConfig,
+def _is_diagnostic_log_valid(
+    diagnostics: DiagnosticLog | FrozenDiagnosticLog,
     *,
-    strict: bool | None = None,
+    strict: bool,
 ) -> bool:
-    """Return whether a config-like object is valid.
+    """Return whether one diagnostic log satisfies the effective strictness.
 
-    A config is valid when it has no error diagnostics. In strict mode, a
-    config is valid only when it has neither error diagnostics nor warning
-    diagnostics.
-
-    The flattened compatibility log may include replayed TOML validation
-    issues, merged-config diagnostics, and runtime-applicability
-    sanitization warnings.
-
-    Here, `strict` represents the effective resolved strictness for
-    config/preflight validation, typically derived from
-    `strict_config_checking` after TOML resolution and any CLI/API override.
+    In non-strict mode, a diagnostic log is valid when it contains no error
+    diagnostics. In strict mode, it is valid only when it contains neither
+    warning nor error diagnostics.
 
     Args:
-        cfg: Frozen or mutable config carrying diagnostics.
+        diagnostics: Mutable or frozen diagnostic log to evaluate.
         strict: Effective strictness for config/preflight validation.
 
     Returns:
-        `True` if the config is valid, else `False`.
+        `True` if the diagnostic log is valid, else `False`.
     """
-    strict_config_checking = bool(strict)
-    stats: DiagnosticStats = compute_diagnostic_stats(cfg.diagnostics)
-    if strict_config_checking:
+    stats: DiagnosticStats = diagnostics.stats()
+    if strict:
         return stats.n_error == 0 and stats.n_warning == 0
-    else:
-        return stats.n_error == 0
+    return stats.n_error == 0
+
+
+def _is_validation_logs_valid(
+    validation_logs: ValidationLogs | FrozenValidationLogs,
+    *,
+    strict: bool,
+) -> bool:
+    """Return whether all staged validation logs satisfy strictness.
+
+    This helper evaluates the three staged config-loading validation logs as a
+    conjunction according to the staged config-loading validation semantics
+    described in this module.
+
+    Args:
+        validation_logs: Mutable or frozen staged validation logs.
+        strict: Effective strictness for config/preflight validation.
+
+    Returns:
+        `True` if all staged validation logs are valid, else `False`.
+    """
+    return (
+        _is_diagnostic_log_valid(validation_logs.toml_source, strict=strict)
+        and _is_diagnostic_log_valid(validation_logs.merged_config, strict=strict)
+        and _is_diagnostic_log_valid(validation_logs.runtime_applicability, strict=strict)
+    )
