@@ -96,6 +96,30 @@ class DiagnosticStats:
         """Return the total count of diagnostics."""
         return self.n_info + self.n_warning + self.n_error
 
+    def get(
+        self,
+        level: DiagnosticLevel,
+    ) -> int:
+        """Return the count for the given diagnostic level.
+
+        Args:
+            level: Diagnostic severity level to retrieve.
+
+        Returns:
+            The aggregated count for the requested diagnostic level.
+
+        Raises:
+            ValueError: If `level` is not a supported `DiagnosticLevel`.
+        """
+        if level == DiagnosticLevel.INFO:
+            return self.n_info
+        if level == DiagnosticLevel.WARNING:
+            return self.n_warning
+        if level == DiagnosticLevel.ERROR:
+            return self.n_error
+        # Defensive guard:
+        raise ValueError(f"Unsupported diagnostic level: {level!r}")
+
     def triage_summary(
         self,
         severity_threshold: DiagnosticLevel = DiagnosticLevel.INFO,
@@ -149,12 +173,10 @@ class DiagnosticStats:
 
 @dataclass
 class DiagnosticLog:
-    """Mutable, per-context collection of diagnostics.
+    """Mutable collection of diagnostics.
 
-    This wrapper keeps track of all diagnostics emitted during processing
-    of a single context. It provides convenience helpers for adding
-    diagnostics at a given level and exposes simple aggregation helpers
-    (`stats`, `to_dict`) for reporting.
+    It provides convenience helpers for adding diagnostics at a given level and exposes simple
+    aggregation helpers (`stats`, `to_dict`) for reporting.
     """
 
     items: list[Diagnostic] = field(default_factory=lambda: [])
@@ -274,11 +296,10 @@ class DiagnosticLog:
 
 @dataclass(frozen=True, slots=True)
 class FrozenDiagnosticLog:
-    """Immutable, per-context diagnostic container.
+    """Immutable diagnostic container.
 
     `FrozenDiagnosticLog` is the immutable counterpart to `DiagnosticLog`. It is
-    intended for storing diagnostics on frozen snapshots (e.g., `Config`) where
-    mutation is not permitted.
+    intended for storing diagnostics on frozen snapshots where mutation is not permitted.
     """
 
     items: tuple[Diagnostic, ...]
@@ -286,6 +307,10 @@ class FrozenDiagnosticLog:
     def __iter__(self) -> Iterator[Diagnostic]:
         """Iterate over contained diagnostics in insertion order."""
         return iter(self.items)
+
+    def thaw(self) -> DiagnosticLog:
+        """Return a mutable copy of this frozen diagnostic log."""
+        return DiagnosticLog(items=list(self.items))
 
     def stats(self) -> DiagnosticStats:
         """Return aggregated per-level counts for the contained diagnostics."""

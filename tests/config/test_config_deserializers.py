@@ -26,6 +26,9 @@ from typing import TYPE_CHECKING
 import pytest
 
 from tests.helpers.config import group_patterns
+from tests.helpers.diagnostics import NON_EMPTY
+from tests.helpers.diagnostics import assert_diagnostic_level_stats
+from tests.helpers.diagnostics import assert_validation_stage_totals
 from tests.helpers.diagnostics import assert_warned_and_diagnosed
 from topmark.config.io.deserializers import mutable_config_from_layered_toml_table
 from topmark.toml.keys import Toml
@@ -81,6 +84,16 @@ def test_header_fields_mixed_types_ignores_non_strings(
         draft=draft,
         needle=f"Ignoring non-string entry in [{Toml.SECTION_HEADER}].{Toml.KEY_FIELDS}",
         min_count=1,
+    )
+    assert_diagnostic_level_stats(
+        stats=draft.diagnostics.stats(),
+        expected_warning=NON_EMPTY,
+    )
+    assert_validation_stage_totals(
+        draft.validation_logs,
+        toml=0,
+        config=NON_EMPTY,
+        runtime=0,
     )
 
 
@@ -175,6 +188,16 @@ def test_include_from_mixed_types_ignores_non_strings(
         draft=draft,
         needle=f"Ignoring non-string entry in [{Toml.SECTION_FILES}].{Toml.KEY_INCLUDE_FROM}",
     )
+    assert_diagnostic_level_stats(
+        stats=draft.diagnostics.stats(),
+        expected_warning=NON_EMPTY,
+    )
+    assert_validation_stage_totals(
+        draft.validation_logs,
+        toml=0,
+        config=NON_EMPTY,
+        runtime=0,
+    )
 
 
 @pytest.mark.config
@@ -215,6 +238,16 @@ def test_glob_patterns_mixed_types_ignores_non_strings(
         needle=f"Ignoring non-string entry in [{Toml.SECTION_FILES}].{key}",
         min_count=1,
     )
+    assert_diagnostic_level_stats(
+        stats=draft.diagnostics.stats(),
+        expected_warning=NON_EMPTY,
+    )
+    assert_validation_stage_totals(
+        draft.validation_logs,
+        toml=0,
+        config=NON_EMPTY,
+        runtime=0,
+    )
 
 
 @pytest.mark.config
@@ -235,6 +268,9 @@ def test_glob_patterns_all_non_strings_results_in_empty_list(
 
     draft: MutableConfig = mutable_config_from_layered_toml_table(
         {
+            Toml.SECTION_HEADER: {
+                Toml.KEY_FIELDS: ["file"],
+            },
             Toml.SECTION_FILES: {
                 key: [
                     True,
@@ -255,6 +291,16 @@ def test_glob_patterns_all_non_strings_results_in_empty_list(
         needle=f"Ignoring non-string entry in [{Toml.SECTION_FILES}].{key}",
         min_count=2,
     )
+    assert_diagnostic_level_stats(
+        stats=draft.diagnostics.stats(),
+        expected_warning=2,
+    )
+    assert_validation_stage_totals(
+        draft.validation_logs,
+        toml=0,
+        config=2,
+        runtime=0,
+    )
 
 
 @pytest.mark.config
@@ -268,6 +314,9 @@ def test_fields_scalar_values_are_stringified_and_unsupported_are_ignored(
     caplog.set_level("WARNING")
     draft: MutableConfig = mutable_config_from_layered_toml_table(
         {
+            Toml.SECTION_HEADER: {
+                Toml.KEY_FIELDS: ["file"],
+            },
             Toml.SECTION_FIELDS: {
                 "project": "TopMark",
                 "year": 2025,
@@ -300,6 +349,16 @@ def test_fields_scalar_values_are_stringified_and_unsupported_are_ignored(
         caplog=caplog,
         draft=draft,
         needle="Ignoring unsupported field value for [fields].bad_list",
+    )
+    assert_diagnostic_level_stats(
+        stats=draft.diagnostics.stats(),
+        expected_warning=2,
+    )
+    assert_validation_stage_totals(
+        draft.validation_logs,
+        toml=0,
+        config=2,
+        runtime=0,
     )
 
 
@@ -365,6 +424,16 @@ def test_duplicate_include_file_types_warns_and_is_recorded(
         needle=f"Duplicate included file types found in config "
         f"(key: {Toml.KEY_INCLUDE_FILE_TYPES})",
     )
+    assert_diagnostic_level_stats(
+        stats=draft.diagnostics.stats(),
+        expected_warning=NON_EMPTY,
+    )
+    assert_validation_stage_totals(
+        draft.validation_logs,
+        toml=0,
+        config=NON_EMPTY,
+        runtime=0,
+    )
 
 
 @pytest.mark.config
@@ -388,6 +457,16 @@ def test_duplicate_exclude_file_types_warns_and_is_recorded(
         draft=draft,
         needle=f"Duplicate excluded file types found in config "
         f"(key: {Toml.KEY_EXCLUDE_FILE_TYPES})",
+    )
+    assert_diagnostic_level_stats(
+        stats=draft.diagnostics.stats(),
+        expected_warning=NON_EMPTY,
+    )
+    assert_validation_stage_totals(
+        draft.validation_logs,
+        toml=0,
+        config=NON_EMPTY,
+        runtime=0,
     )
 
 

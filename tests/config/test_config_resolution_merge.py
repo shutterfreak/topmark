@@ -25,6 +25,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.helpers.diagnostics import NON_EMPTY
+from tests.helpers.diagnostics import assert_diagnostic_level_stats
+from tests.helpers.diagnostics import assert_validation_stage_totals
 from tests.toml.conftest import write_toml_document
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.overrides import ConfigOverrides
@@ -281,3 +284,55 @@ def test_cli_overrides_merge_last(
         overrides,
     )
     assert draft.align_fields is True
+
+
+@pytest.mark.config
+def test_override_diagnostics_land_in_merged_config(tmp_path: Path) -> None:
+    """Override application diagnostics should land in the merged-config stage."""
+    proj: Path = tmp_path / "proj"
+    proj.mkdir()
+
+    # Minimal base config to avoid unrelated header warnings
+    write_toml_document(
+        path=proj / "topmark.toml",
+        content="""
+            [header]
+            fields = ["file"]
+        """,
+    )
+
+    _resolved, draft = resolve_toml_sources_and_build_config_draft(
+        input_paths=[proj],
+    )
+
+    # Trigger an override diagnostic (empty entry in files)
+    overrides = ConfigOverrides(
+        files=["", "README.md"],
+    )
+    apply_config_overrides(draft, overrides)
+
+    # Flat diagnostics reflect the warning
+    assert_diagnostic_level_stats(
+        stats=draft.diagnostics.stats(),
+        expected_warning=NON_EMPTY,
+    )
+
+    # Staged diagnostics: only merged_config should contain entries
+    assert_validation_stage_totals(
+        draft.validation_logs,
+        # Skip TOML-source assertions here: this fixture intentionally defines
+        # only `[header]`, so TOML missing-section INFO diagnostics are expected
+        # and are not relevant to this override-routing test.
+        config=NON_EMPTY,
+        runtime=0,
+    )
+
+    # Sanity: message content present in both views
+    assert any(
+        "Ignoring empty string entries in override files" in d.message
+        for d in draft.validation_logs.merged_config.items
+    )
+    assert any(
+        "Ignoring empty string entries in override files" in d.message
+        for d in draft.diagnostics.items
+    )

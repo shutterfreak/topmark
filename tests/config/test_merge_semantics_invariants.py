@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.helpers.diagnostics import assert_diagnostic_level_stats
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.policy import HeaderMutationMode
 from topmark.config.policy import MutablePolicy
@@ -37,22 +38,35 @@ if TYPE_CHECKING:
 
 @pytest.mark.pipeline
 def test_merge_invariant_provenance_and_diagnostics_accumulate() -> None:
-    """config_files and diagnostics should always accumulate."""
+    """config_files and merged-config diagnostics should always accumulate."""
     base: MutableConfig = mutable_config_from_defaults()
     base.config_files = ["<defaults>", "root/topmark.toml"]
-    base.diagnostics.add_warning("base warning")
+    base.validation_logs.merged_config.add_warning("base warning")
+    base.refresh_diagnostics()
 
     override: MutableConfig = mutable_config_from_defaults()
     override.config_files = ["child/topmark.toml"]
-    override.diagnostics.add_warning("override warning")
+    override.validation_logs.merged_config.add_warning("override warning")
+    override.refresh_diagnostics()
 
     merged: MutableConfig = base.merge_with(override)
+
+    assert_diagnostic_level_stats(
+        stats=merged.diagnostics.stats(),
+        expected_warning=2,
+    )
 
     assert merged.config_files == ["<defaults>", "root/topmark.toml", "child/topmark.toml"]
     assert [item.message for item in merged.diagnostics.items] == [
         "base warning",
         "override warning",
     ]
+    assert [item.message for item in merged.validation_logs.merged_config.items] == [
+        "base warning",
+        "override warning",
+    ]
+    assert list(merged.validation_logs.toml_source.items) == []
+    assert list(merged.validation_logs.runtime_applicability.items) == []
 
 
 @pytest.mark.pipeline

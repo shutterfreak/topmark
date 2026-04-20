@@ -53,6 +53,7 @@ from typing import TYPE_CHECKING
 
 from topmark.config.policy import MutablePolicy
 from topmark.config.policy import Policy
+from topmark.config.validation import ValidationLogs
 from topmark.core.errors import ConfigValidationError
 from topmark.core.logging import get_logger
 from topmark.diagnostic.model import DiagnosticLog
@@ -67,6 +68,7 @@ if TYPE_CHECKING:
 
     from topmark.config.types import PatternGroup
     from topmark.config.types import PatternSource
+    from topmark.config.validation import FrozenValidationLogs
     from topmark.core.logging import TopmarkLogger
     from topmark.filetypes.model import FileType
 
@@ -114,8 +116,11 @@ class Config:
             file discovery.
         exclude_file_types: Blacklist of file type identifiers to exclude from
             file discovery.
-        diagnostics: Warnings or errors encountered while loading,
-            merging or sanitizing config.
+        validation_logs: Stage-aware diagnostics collected during config
+            loading and preflight validation.
+        diagnostics: Flattened compatibility view of `validation_logs` used by
+            existing validation and reporting code during the staged-refactor
+            transition.
 
     Policy resolution:
         - Public/API overlays are applied to a mutable draft **after** discovery and before
@@ -161,6 +166,7 @@ class Config:
     exclude_file_types: frozenset[str]
 
     # Collected diagnostics while loading / merging / sanitizing config.
+    validation_logs: FrozenValidationLogs
     diagnostics: FrozenDiagnosticLog
 
     def is_valid(
@@ -229,6 +235,7 @@ class Config:
         Returns:
             A mutable builder initialized from this snapshot.
         """
+        validation_logs: ValidationLogs = self.validation_logs.thaw()
         return MutableConfig(
             policy=self.policy.thaw(),
             policy_by_type={k: v.thaw() for k, v in self.policy_by_type.items()},
@@ -246,7 +253,8 @@ class Config:
             files_from=list(self.files_from),
             include_file_types=set(self.include_file_types),
             exclude_file_types=set(self.exclude_file_types),
-            diagnostics=DiagnosticLog.from_iterable(self.diagnostics),
+            validation_logs=validation_logs,
+            diagnostics=validation_logs.flattened(),
         )
 
 
@@ -299,8 +307,11 @@ class MutableConfig:
         exclude_pattern_groups: Glob patterns to exclude.
         include_file_types: file type identifiers to process.
         exclude_file_types: file type identifiers to exclude.
-        diagnostics: Warnings or errors encountered while loading,
-            merging or sanitizing config.
+        validation_logs: Stage-aware diagnostics collected during config
+            loading and preflight validation.
+        diagnostics: Flattened compatibility view of `validation_logs` used by
+            existing validation and reporting code during the staged-refactor
+            transition.
     """
 
     # Policy containers:
@@ -336,7 +347,17 @@ class MutableConfig:
     exclude_file_types: set[str] = field(default_factory=lambda: set[str]())
 
     # Collected diagnostics while loading / merging / sanitizing config.
+    validation_logs: ValidationLogs = field(default_factory=ValidationLogs)
     diagnostics: DiagnosticLog = field(default_factory=DiagnosticLog)
+
+    def refresh_diagnostics(self) -> None:
+        """Refresh the flattened compatibility diagnostics from staged logs.
+
+        During the staged-validation refactor, `validation_logs` is the
+        structured source of truth and `diagnostics` remains a derived,
+        flattened compatibility view for existing callers.
+        """
+        self.diagnostics = self.validation_logs.flattened()
 
     def is_valid(
         self,
@@ -413,6 +434,9 @@ class MutableConfig:
             resolved: Policy = mp.resolve(global_policy_frozen)
             frozen_by_type[ft] = resolved
 
+        # Derive the flattened compatibility diagnostics from the merged staged logs.
+        self.refresh_diagnostics()
+
         return Config(
             policy=global_policy_frozen,
             policy_by_type=frozen_by_type,
@@ -430,6 +454,7 @@ class MutableConfig:
             exclude_pattern_groups=tuple(self.exclude_pattern_groups),
             include_file_types=frozenset(self.include_file_types),
             exclude_file_types=frozenset(self.exclude_file_types),
+            validation_logs=self.validation_logs.freeze(),
             diagnostics=self.diagnostics.freeze(),
         )
 
@@ -450,7 +475,8 @@ class MutableConfig:
         Current merge groups:
             Provenance and diagnostics:
                 - `config_files`: append
-                - `diagnostics`: append
+                - `validation_logs`: append within each validation stage
+                - `diagnostics`: derived flattened compatibility view of merged `validation_logs`
 
             Behavioral config:
                 - `header_fields`: replace when `other` provides a non-empty list
@@ -501,11 +527,17 @@ class MutableConfig:
             else:
                 merged_by_type[key] = base.merge_with(override)
 
-        # Provenance and diagnostics always accumulate across layers.
+        # Provenance accumulates across layers. Validation diagnostics also
+        # accumulate, but remain separated by stage so the flattened
+        # compatibility log can be derived afterward.
         merged_config_files: list[Path | str] = [*self.config_files, *other.config_files]
-        merged_diags: DiagnosticLog = DiagnosticLog(
-            items=[*self.diagnostics.items, *other.diagnostics.items]
+
+        merged_validation_logs: ValidationLogs = self.validation_logs.merge_with(
+            other.validation_logs
         )
+
+        # Derive the flattened compatibility diagnostics from the merged staged logs.
+        merged_diags: DiagnosticLog = merged_validation_logs.flattened()
 
         # ------------------------ Behavioral config ------------------------
         merged_header_fields: list[str] = other.header_fields or self.header_fields
@@ -558,6 +590,7 @@ class MutableConfig:
 
         merged = MutableConfig(
             config_files=merged_config_files,
+            validation_logs=merged_validation_logs,
             diagnostics=merged_diags,
             header_fields=merged_header_fields,
             field_values=merged_field_values,
@@ -587,9 +620,11 @@ class MutableConfig:
         an immutable `Config`.
 
         Sanitization may drop or rewrite invalid entries and records diagnostics
-        describing those recoveries. Because these diagnostics are added to the
-        config diagnostic log, they participate in config/preflight validity
-        checks, including strict config checking.
+        describing those recoveries. During the staged-validation refactor,
+        these diagnostics are part of the runtime-applicability validation
+        stage and continue to participate in config/preflight validity checks,
+        including strict config checking. The flattened compatibility
+        diagnostics are refreshed after sanitization completes.
 
         Current rules:
             - include_from / exclude_from / files_from entries must refer to
@@ -617,7 +652,7 @@ class MutableConfig:
                         "(these options expect concrete files; use "
                         "include_patterns / exclude_patterns for globs)."
                     )
-                    self.diagnostics.add_warning(msg)
+                    self.validation_logs.runtime_applicability.add_warning(msg)
                     continue
                 kept.append(ps)
 
@@ -626,7 +661,7 @@ class MutableConfig:
                     f"Sanitized {name}: kept {len(kept)} source(s), "
                     f"dropped {len(sources) - len(kept)} invalid source(s)"
                 )
-                self.diagnostics.add_warning(msg)
+                self.validation_logs.runtime_applicability.add_warning(msg)
 
             sources[:] = kept
 
@@ -668,7 +703,7 @@ class MutableConfig:
             else:
                 msg = f"Unknown included file types specified (ignored): {unknown_str}"
 
-            self.diagnostics.add_warning(msg)
+            self.validation_logs.runtime_applicability.add_warning(msg)
             ids.difference_update(unknown)
 
         _sanitize_file_type_ids(
@@ -690,9 +725,12 @@ class MutableConfig:
                 "File types specified in both include and exclude filters; "
                 f"exclusion wins (removed from include): {overlap_str}"
             )
-            self.diagnostics.add_warning(msg)
+            self.validation_logs.runtime_applicability.add_warning(msg)
             # Remove overlaps (blacklisted wins from whitelisted):
             self.include_file_types.difference_update(overlap)
+
+        # Derive the flattened compatibility diagnostics from the merged staged logs.
+        self.refresh_diagnostics()
 
 
 # ---- Helpers ----
@@ -709,8 +747,9 @@ def _is_config_valid(
     config is valid only when it has neither error diagnostics nor warning
     diagnostics.
 
-    The diagnostic log may include replayed TOML validation issues,
-    config-layer diagnostics, and sanitization warnings.
+    The flattened compatibility log may include replayed TOML validation
+    issues, merged-config diagnostics, and runtime-applicability
+    sanitization warnings.
 
     Here, `strict` represents the effective resolved strictness for
     config/preflight validation, typically derived from

@@ -25,6 +25,9 @@ from typing import TYPE_CHECKING
 import pytest
 
 from tests.helpers.config import make_mutable_config
+from tests.helpers.diagnostics import NON_EMPTY
+from tests.helpers.diagnostics import assert_diagnostic_level_stats
+from tests.helpers.diagnostics import assert_validation_stage_totals
 from tests.toml.conftest import write_toml_document
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.resolution.bridge import resolve_toml_sources_and_build_config_draft
@@ -34,7 +37,6 @@ if TYPE_CHECKING:
 
     from topmark.config.model import Config
     from topmark.config.model import MutableConfig
-    from topmark.diagnostic.model import DiagnosticStats
 
 
 @pytest.mark.config
@@ -115,18 +117,33 @@ def test_replayed_toml_warning_is_non_strict_valid_but_strict_invalid(
         path=proj / "topmark.toml",
         content="""
             bogus = 123
+
+            [header]
+            fields = ["file"]
         """,
     )
 
     _resolved, draft = resolve_toml_sources_and_build_config_draft(input_paths=[proj])
 
-    stats: DiagnosticStats = draft.diagnostics.stats()
-    assert stats.n_warning > 0
+    assert_validation_stage_totals(
+        draft.validation_logs,
+        toml=NON_EMPTY,
+        config=0,
+        runtime=0,
+    )
 
     assert draft.is_valid() is True
     assert draft.is_valid(strict=True) is False
 
     frozen: Config = draft.freeze()
+
+    assert_validation_stage_totals(
+        frozen.validation_logs,
+        toml=NON_EMPTY,
+        config=0,
+        runtime=0,
+    )
+
     assert frozen.is_valid() is True
     assert frozen.is_valid(strict=True) is False
 
@@ -149,17 +166,32 @@ def test_missing_section_info_does_not_fail_even_when_strict(
 
     _resolved, draft = resolve_toml_sources_and_build_config_draft(input_paths=[proj])
 
-    stats: DiagnosticStats = draft.diagnostics.stats()
-    assert stats.n_info > 0
-    assert stats.n_warning == 0
-    assert stats.n_error == 0
-
     assert draft.is_valid() is True
     assert draft.is_valid(strict=True) is True
+
+    assert_diagnostic_level_stats(
+        stats=draft.diagnostics.stats(),
+        expected_info=NON_EMPTY,
+        expected_warning=0,
+        expected_error=0,
+    )
+    assert_validation_stage_totals(
+        draft.validation_logs,
+        toml=NON_EMPTY,
+        config=0,
+        runtime=0,
+    )
 
     frozen: Config = draft.freeze()
     assert frozen.is_valid() is True
     assert frozen.is_valid(strict=True) is True
+
+    assert_validation_stage_totals(
+        frozen.validation_logs,
+        toml=NON_EMPTY,
+        config=0,
+        runtime=0,
+    )
 
 
 @pytest.mark.config
@@ -167,13 +199,23 @@ def test_sanitization_warning_is_non_strict_valid_but_strict_invalid() -> None:
     """Sanitization warnings participate in strict validity but not non-strict validity."""
     draft: MutableConfig = make_mutable_config(include_from=["patterns/*.txt"])
 
-    stats: DiagnosticStats = draft.diagnostics.stats()
-    assert stats.n_warning == 0
+    assert_diagnostic_level_stats(
+        stats=draft.diagnostics.stats(),
+        expected_warning=0,
+    )
 
     draft.sanitize()
 
-    stats_after: DiagnosticStats = draft.diagnostics.stats()
-    assert stats_after.n_warning > 0
+    assert_diagnostic_level_stats(
+        stats=draft.diagnostics.stats(),
+        expected_warning=NON_EMPTY,
+    )
+    assert_validation_stage_totals(
+        draft.validation_logs,
+        toml=0,
+        config=0,
+        runtime=NON_EMPTY,
+    )
 
     assert draft.is_valid() is True
     assert draft.is_valid(strict=True) is False
@@ -182,12 +224,20 @@ def test_sanitization_warning_is_non_strict_valid_but_strict_invalid() -> None:
     assert frozen.is_valid() is True
     assert frozen.is_valid(strict=True) is False
 
+    assert_validation_stage_totals(
+        frozen.validation_logs,
+        toml=0,
+        config=0,
+        runtime=NON_EMPTY,
+    )
+
 
 @pytest.mark.config
 def test_is_valid_false_on_errors() -> None:
-    """Errors always make the config invalid."""
+    """Merged-config errors always make the config invalid."""
     draft: MutableConfig = mutable_config_from_defaults()
-    draft.diagnostics.add_error("boom")
+    draft.validation_logs.merged_config.add_error("boom")
+    draft.refresh_diagnostics()
     assert draft.is_valid() is False
 
     c: Config = draft.freeze()
@@ -196,9 +246,10 @@ def test_is_valid_false_on_errors() -> None:
 
 @pytest.mark.config
 def test_is_valid_true_on_warnings() -> None:
-    """Warnings do not make the config invalid by default."""
+    """Merged-config warnings do not make the config invalid by default."""
     draft: MutableConfig = mutable_config_from_defaults()
-    draft.diagnostics.add_warning("warn")
+    draft.validation_logs.merged_config.add_warning("warn")
+    draft.refresh_diagnostics()
     assert draft.is_valid() is True
 
     c: Config = draft.freeze()
@@ -207,9 +258,10 @@ def test_is_valid_true_on_warnings() -> None:
 
 @pytest.mark.config
 def test_is_valid_false_on_warnings_when_strict() -> None:
-    """Warnings make the config invalid when strict mode is enabled."""
+    """Merged-config warnings make the config invalid when strict mode is enabled."""
     draft: MutableConfig = mutable_config_from_defaults()
-    draft.diagnostics.add_warning("warn")
+    draft.validation_logs.merged_config.add_warning("warn")
+    draft.refresh_diagnostics()
     assert draft.is_valid(strict=True) is False
 
     c: Config = draft.freeze()
@@ -218,9 +270,16 @@ def test_is_valid_false_on_warnings_when_strict() -> None:
 
 @pytest.mark.config
 def test_freeze_preserves_diagnostics() -> None:
-    """freeze() must preserve diagnostics when producing an immutable Config."""
+    """freeze() must preserve flattened diagnostics derived from staged logs."""
     draft: MutableConfig = mutable_config_from_defaults()
-    draft.diagnostics.add_warning("hello")
+    draft.validation_logs.merged_config.add_warning("hello")
+    draft.refresh_diagnostics()
     c: Config = draft.freeze()
     assert len(c.diagnostics.items) == 1
     assert c.diagnostics.items[0].message == "hello"
+    assert_validation_stage_totals(
+        c.validation_logs,
+        toml=0,
+        config=NON_EMPTY,
+        runtime=0,
+    )

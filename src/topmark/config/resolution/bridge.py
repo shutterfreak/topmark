@@ -15,9 +15,9 @@ resolution (`topmark.toml.resolution`) and config-side draft construction.
 It performs no per-path applicability checks and no runtime override
 application.
 
-Its diagnostics role is to aggregate source-level TOML validation issues into
-the merged config draft so later config/preflight validation sees the full
-config-resolution diagnostic picture.
+Its diagnostics role is to replay source-level TOML validation issues into the
+merged config draft's TOML-source validation stage so later config/preflight
+validation sees the full config-resolution diagnostic picture.
 """
 
 from __future__ import annotations
@@ -51,10 +51,12 @@ def build_config_draft_from_resolved_toml_sources(
 
     In addition to merging the layered config fragments, it replays whole-source
     TOML schema validation issues collected during TOML loading into the merged
-    draft diagnostics. This ensures that the effective strictness derived from
-    `strict_config_checking` sees schema issues outside the layered-config
-    subset, such as invalid top-level keys under `[tool.topmark]`, unknown
-    keys in `[writer]`, or TOML-layer missing-section INFO diagnostics.
+    draft's TOML-source validation stage. The flattened compatibility
+    diagnostics are then refreshed from the staged logs. This ensures that the
+    effective strictness derived from `strict_config_checking` sees schema
+    issues outside the layered-config subset, such as invalid top-level keys
+    under `[tool.topmark]`, unknown keys in `[writer]`, or TOML-layer
+    missing-section INFO diagnostics.
 
     Source-local config-loading options such as `strict_config_checking` are
     resolved on the TOML side. This helper only performs config-layer
@@ -67,14 +69,19 @@ def build_config_draft_from_resolved_toml_sources(
     Returns:
         Merged mutable config draft built from the defaults layer plus all
         resolved layered TOML sources, with source-level TOML schema issues
-        aggregated into its diagnostics for later config/preflight validation.
+        replayed into its TOML-source validation stage and flattened into the
+        compatibility diagnostics used by current config/preflight validation.
     """
     layers: list[ConfigLayer] = build_config_layers_from_resolved_toml_sources(resolved.sources)
     draft: MutableConfig = merge_layers_globally(layers)
 
     for source in resolved.sources:
-        add_toml_issues(draft.diagnostics, source.parsed.validation_issues)
+        add_toml_issues(
+            draft.validation_logs.toml_source,
+            source.parsed.validation_issues,
+        )
 
+    draft.refresh_diagnostics()
     return draft
 
 

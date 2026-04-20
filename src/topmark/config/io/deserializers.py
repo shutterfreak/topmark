@@ -28,7 +28,8 @@ Design notes:
     - Execution-only runtime intent is intentionally out of scope here and is
       handled separately via [`topmark.runtime.model.RunOptions`][topmark.runtime.model.RunOptions].
     - Parsing is diagnostics-friendly: invalid shapes/types are reported through
-      the draft config's diagnostic log instead of failing fast on first issue.
+      the draft config's merged-config validation stage instead of failing fast
+      on first issue.
 
 Typical entry points:
     - `mutable_config_from_layered_toml_table()`
@@ -66,6 +67,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from topmark.core.logging import TopmarkLogger
+    from topmark.diagnostic.model import DiagnosticLog
     from topmark.toml.types import TomlTable
     from topmark.toml.types import TomlTableMap
     from topmark.toml.types import TomlValue
@@ -114,7 +116,7 @@ def mutable_config_from_layered_toml_table(
 
     This helper still performs defensive parsing of layered fragments so that
     malformed inputs (e.g. from API mappings or tests) are handled gracefully
-    and produce diagnostics instead of raising errors.
+    and produce merged-config validation diagnostics instead of raising errors.
 
     Path-to-file entries declared in the config are normalized to absolute
     paths using the config file's directory when available. Glob strings are
@@ -136,6 +138,7 @@ def mutable_config_from_layered_toml_table(
 
     # Start from a fresh draft early so we can attach diagnostics while parsing.
     draft: MutableConfig = MutableConfig()
+    merged_diagnostics: DiagnosticLog = draft.validation_logs.merged_config
 
     # Config file's directory for relative path resolution
     cfg_dir: Path | None = config_file.parent.resolve() if config_file else None
@@ -159,19 +162,19 @@ def mutable_config_from_layered_toml_table(
         """
         # Validate each known policy key through the existing TOML getter
         # helpers so type problems are recorded consistently in
-        # `draft.diagnostics`.
+        # `merged_diagnostics`.
         _ = get_enum_value_checked(
             tbl,
             Toml.KEY_POLICY_HEADER_MUTATION_MODE,
             enum_cls=HeaderMutationMode,
             where=where,
-            diagnostics=draft.diagnostics,
+            diagnostics=merged_diagnostics,
         )
         _ = get_bool_value_or_none_checked(
             tbl,
             Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES,
             where=where,
-            diagnostics=draft.diagnostics,
+            diagnostics=merged_diagnostics,
         )
         # Enum-backed policy values are validated as enum tokens rather than
         # generic strings.
@@ -180,25 +183,25 @@ def mutable_config_from_layered_toml_table(
             Toml.KEY_POLICY_EMPTIES_INSERT_MODE,
             enum_cls=EmptyInsertMode,
             where=where,
-            diagnostics=draft.diagnostics,
+            diagnostics=merged_diagnostics,
         )
         _ = get_bool_value_or_none_checked(
             tbl,
             Toml.KEY_POLICY_ALLOW_EMPTY_HEADER,
             where=where,
-            diagnostics=draft.diagnostics,
+            diagnostics=merged_diagnostics,
         )
         _ = get_bool_value_or_none_checked(
             tbl,
             Toml.KEY_POLICY_ALLOW_REFLOW,
             where=where,
-            diagnostics=draft.diagnostics,
+            diagnostics=merged_diagnostics,
         )
         _ = get_bool_value_or_none_checked(
             tbl,
             Toml.KEY_POLICY_ALLOW_CONTENT_PROBE,
             where=where,
-            diagnostics=draft.diagnostics,
+            diagnostics=merged_diagnostics,
         )
 
     def _parse_policy_tables(
@@ -237,7 +240,7 @@ def mutable_config_from_layered_toml_table(
             files_tbl,
             Toml.KEY_FILES,
             where=where_files,
-            diagnostics=draft.diagnostics,
+            diagnostics=merged_diagnostics,
         )
         if raw_files:
             if cfg_dir is not None:
@@ -257,7 +260,7 @@ def mutable_config_from_layered_toml_table(
                 files_tbl,
                 key,
                 where=where_files,
-                diagnostics=draft.diagnostics,
+                diagnostics=merged_diagnostics,
             )
             if not vals:
                 return
@@ -293,7 +296,7 @@ def mutable_config_from_layered_toml_table(
             files_tbl,
             Toml.KEY_INCLUDE_PATTERNS,
             where=where_files,
-            diagnostics=draft.diagnostics,
+            diagnostics=merged_diagnostics,
         )
         if include_patterns:
             draft.include_pattern_groups.append(
@@ -307,7 +310,7 @@ def mutable_config_from_layered_toml_table(
             files_tbl,
             Toml.KEY_EXCLUDE_PATTERNS,
             where=where_files,
-            diagnostics=draft.diagnostics,
+            diagnostics=merged_diagnostics,
         )
         if exclude_patterns:
             draft.exclude_pattern_groups.append(
@@ -330,14 +333,14 @@ def mutable_config_from_layered_toml_table(
                 item,
                 Toml.KEY_BASE,
                 where=f"{where_files}.{Toml.KEY_INCLUDE_PATTERN_GROUPS}",
-                diagnostics=draft.diagnostics,
+                diagnostics=merged_diagnostics,
                 default="",
             )
             patterns: list[str] = get_string_list_value_checked(
                 item,
                 Toml.KEY_PATTERNS,
                 where=f"{where_files}.{Toml.KEY_INCLUDE_PATTERN_GROUPS}",
-                diagnostics=draft.diagnostics,
+                diagnostics=merged_diagnostics,
             )
             if base_raw and patterns:
                 draft.include_pattern_groups.append(
@@ -360,14 +363,14 @@ def mutable_config_from_layered_toml_table(
                 item,
                 Toml.KEY_BASE,
                 where=f"{where_files}.{Toml.KEY_EXCLUDE_PATTERN_GROUPS}",
-                diagnostics=draft.diagnostics,
+                diagnostics=merged_diagnostics,
                 default="",
             )
             patterns: list[str] = get_string_list_value_checked(
                 item,
                 Toml.KEY_PATTERNS,
                 where=f"{where_files}.{Toml.KEY_EXCLUDE_PATTERN_GROUPS}",
-                diagnostics=draft.diagnostics,
+                diagnostics=merged_diagnostics,
             )
             if base_raw and patterns:
                 draft.exclude_pattern_groups.append(
@@ -386,12 +389,12 @@ def mutable_config_from_layered_toml_table(
             files_tbl,
             Toml.KEY_INCLUDE_FILE_TYPES,
             where=where_files,
-            diagnostics=draft.diagnostics,
+            diagnostics=merged_diagnostics,
         )
         draft.include_file_types = set(include_file_types)
 
         if include_file_types and len(include_file_types) != len(draft.include_file_types):
-            draft.diagnostics.add_warning(
+            merged_diagnostics.add_warning(
                 "Duplicate included file types found in config "
                 f"(key: {Toml.KEY_INCLUDE_FILE_TYPES}): "
                 ", ".join(include_file_types),
@@ -402,12 +405,12 @@ def mutable_config_from_layered_toml_table(
             files_tbl,
             Toml.KEY_EXCLUDE_FILE_TYPES,
             where=where_files,
-            diagnostics=draft.diagnostics,
+            diagnostics=merged_diagnostics,
         )
         draft.exclude_file_types = set(exclude_file_types)
 
         if exclude_file_types and len(exclude_file_types) != len(draft.exclude_file_types):
-            draft.diagnostics.add_warning(
+            merged_diagnostics.add_warning(
                 "Duplicate excluded file types found in config "
                 f"(key: {Toml.KEY_EXCLUDE_FILE_TYPES}): "
                 ", ".join(exclude_file_types),
@@ -431,7 +434,7 @@ def mutable_config_from_layered_toml_table(
             else:
                 # [fields] is a free-form table; include the TOML location for consistency.
                 loc: str = f"[{Toml.SECTION_FIELDS}].{k}"
-                draft.diagnostics.add_warning(f"Ignoring unsupported field value for {loc}: {v}")
+                merged_diagnostics.add_warning(f"Ignoring unsupported field value for {loc}: {v}")
         draft.field_values = field_values
 
         # `[header].fields`: ordered list of field names to render (built-ins and/or
@@ -442,7 +445,7 @@ def mutable_config_from_layered_toml_table(
             header_tbl,
             Toml.KEY_FIELDS,
             where=f"[{Toml.SECTION_HEADER}]",
-            diagnostics=draft.diagnostics,
+            diagnostics=merged_diagnostics,
         )
 
         # NOTE: If the user did not specify any header fields, this results in an empty header.
@@ -450,7 +453,7 @@ def mutable_config_from_layered_toml_table(
         # the field_values table in their declared order. This preserves intuitive
         # behavior (headers render when values are present).
         if not draft.header_fields:
-            draft.diagnostics.add_warning(
+            merged_diagnostics.add_warning(
                 f"{Toml.SECTION_HEADER}.{Toml.KEY_FIELDS} is not set (empty TopMark header)"
             )
 
@@ -459,7 +462,7 @@ def mutable_config_from_layered_toml_table(
             header_tbl,
             Toml.KEY_RELATIVE_TO,
             where=f"[{Toml.SECTION_HEADER}]",
-            diagnostics=draft.diagnostics,
+            diagnostics=merged_diagnostics,
             default="",
         )
         if draft.relative_to_raw:
@@ -489,7 +492,7 @@ def mutable_config_from_layered_toml_table(
             formatting_tbl,
             Toml.KEY_ALIGN_FIELDS,
             where=where_fmt,
-            diagnostics=draft.diagnostics,
+            diagnostics=merged_diagnostics,
         )
 
     def _extract_layered_toml_tables(
@@ -568,6 +571,8 @@ def mutable_config_from_layered_toml_table(
     _parse_formatting_table(toml_tables.formatting_tbl)
 
     # ---- File-related settings ----
+
+    draft.refresh_diagnostics()
 
     return draft
 

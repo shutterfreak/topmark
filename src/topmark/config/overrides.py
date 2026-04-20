@@ -18,6 +18,10 @@ Execution-only runtime intent such as apply mode, stdin routing, output target,
 file write strategy, pruning, and timestamps is intentionally out of scope and
 must be handled separately via
 [`RunOptions`][topmark.runtime.model.RunOptions].
+
+Override-application diagnostics belong to the merged-config validation stage.
+During the staged-validation refactor, the flattened compatibility diagnostics
+on `MutableConfig` are refreshed from that staged log before returning.
 """
 
 from __future__ import annotations
@@ -27,7 +31,6 @@ from dataclasses import field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from topmark.config.model import MutableConfig
 from topmark.config.paths import extend_pattern_sources
 from topmark.config.paths import pattern_source_from_cwd
 from topmark.config.policy import MutablePolicy
@@ -40,6 +43,7 @@ if TYPE_CHECKING:
     from topmark.config.policy import EmptyInsertMode
     from topmark.config.policy import HeaderMutationMode
     from topmark.core.logging import TopmarkLogger
+    from topmark.diagnostic.model import DiagnosticLog
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -71,7 +75,8 @@ class ConfigOverrides:
         config_base: real filesystem base for relative patterns and sources
         strict_config_checking: Config-loading strictness override.
             This remains config-like override intent and is separate from
-            execution-only runtime options.
+            execution-only runtime options. It currently governs strict
+            evaluation of the staged config-loading validation gates.
         policy: Global, resolved, immutable runtime policy (plain booleans),
             applied after discovery.
         policy_by_type: Per-file-type resolved policy overrides
@@ -175,7 +180,12 @@ def apply_config_overrides(
         - Execution-only runtime intent (apply mode, STDIN routing, output target, file write
           strategy, pruning, timestamps) is out of scope here and must be handled separately via
           [`RunOptions`][topmark.runtime.model.RunOptions].
+        - Override-application diagnostics are recorded in the merged-config
+          validation stage and then flattened back into `config.diagnostics`
+          for compatibility with existing validation/reporting code.
     """
+    merged_diagnostics: DiagnosticLog = config.validation_logs.merged_config
+
     # Record that a highest-precedence CLI/API override layer was applied.
     # This is provenance-only; explicit `--config` files are merged earlier by
     # the resolution layer.
@@ -200,7 +210,7 @@ def apply_config_overrides(
         raw_files: list[str] = overrides.files
         empties: list[str] = [s for s in raw_files if not s]
         if empties:
-            config.diagnostics.add_warning(
+            merged_diagnostics.add_warning(
                 f"Ignoring empty string entries in override files: {empties!r}"
             )
         # Keep only the non-empty entries
@@ -292,7 +302,7 @@ def apply_config_overrides(
         config.include_file_types = deduped
         dup_count: int = len(filtered) - len(deduped)
         if dup_count:
-            config.diagnostics.add_info(
+            merged_diagnostics.add_info(
                 f"Ignored {dup_count} duplicate values for override include_file_types"
             )
 
@@ -303,7 +313,7 @@ def apply_config_overrides(
         config.exclude_file_types = deduped
         dup_count: int = len(filtered) - len(deduped)
         if dup_count:
-            config.diagnostics.add_info(
+            merged_diagnostics.add_info(
                 f"Ignored {dup_count} duplicate values for override exclude_file_types"
             )
 
@@ -312,6 +322,8 @@ def apply_config_overrides(
         config.header_fields = overrides.header_fields
     if overrides.field_values is not None:
         config.field_values = overrides.field_values
+
+    config.refresh_diagnostics()
 
     logger.debug("Patched MutableConfig: %s", config)
     logger.info("Applied argument mapping overrides to MutableConfig")
