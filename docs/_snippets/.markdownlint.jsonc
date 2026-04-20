@@ -1,0 +1,14 @@
+// topmark:header:start
+//
+//   project      : TopMark
+//   file         : .markdownlint.jsonc
+//   file_relpath : docs/_snippets/.markdownlint.jsonc
+//   license      : MIT
+//   copyright    : (c) 2025 Olivier Biot
+//
+// topmark:header:end
+
+{
+  // Suppress first-line-h1 for MarkDown snippets
+  "MD041": false
+}

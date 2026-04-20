@@ -11,6 +11,7 @@
 {
     "recommendations": [
         "charliermarsh.ruff",
+        "davidanson.vscode-markdownlint",
         "esbenp.prettier-vscode",
         "ms-pyright.pyright",
         "ms-python.python",
