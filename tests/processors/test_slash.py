@@ -71,18 +71,18 @@ def test_slash_processor_basics(tmp_path: Path) -> None:
 
 @mark_pipeline
 def test_slash_processor_with_content_matcher_detects_jsonc_in_json(tmp_path: Path) -> None:
-    """Detect JSON file is JSONC and confirm no pre-existing header.
+    """Detect `.json` content as JSONC and confirm no pre-existing header.
 
     Given a ``.json`` source without a TopMark block, the processor resolution should
-    map to a JSON with comments (via content matcher) and the scanner should report
-    no existing header.
+    map to the ambiguous `json-as-jsonc` file type (via content matcher) and the scanner
+    should report no existing header.
     """
     file: Path = tmp_path / "test.json"
     cfg: Config = mutable_config_from_defaults().freeze()
     file.write_text("// JSON with comments\n" + json.dumps({"test": "Value", "try": True}))
 
     ctx: ProcessingContext = run_insert(file, cfg)
-    assert ctx.file_type and ctx.file_type.local_key == "jsonc"
+    assert ctx.file_type and ctx.file_type.local_key == "json-as-jsonc"
     assert ctx.views.header is None
 
 

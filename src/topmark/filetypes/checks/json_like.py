@@ -25,7 +25,9 @@ from topmark.filetypes.model import PreInsertContextView
 
 
 def json_like_can_insert(
-    ctx: PreInsertContextView, *, allow_promote: bool = False
+    ctx: PreInsertContextView,
+    *,
+    allow_promote: bool = False,
 ) -> InsertCheckResult:
     """Check if it's advisable to insert a header into a JSON-like file.
 
@@ -52,7 +54,7 @@ def json_like_can_insert(
 
     # Only act for JSON-family types; other types OK
     ft_local_key: str = (ctx.file_type.local_key if ctx.file_type else "").lower()
-    if ft_local_key not in ("jsonc", "json-with-comments"):
+    if ft_local_key != "json-as-jsonc":
         return {
             "capability": InsertCapability.OK,
             "origin": origin,

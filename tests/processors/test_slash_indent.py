@@ -55,11 +55,11 @@ if TYPE_CHECKING:
 def test_jsonc_insert_at_top_with_no_pre_prefix_indent(tmp_path: Path) -> None:
     """JSONC insertion starts at column 0 and adds one blank line after the block.
 
-    The file is recognized as JSONC via a user comment line (``// note``).
+    The file uses the native `.jsonc` extension and contains a user comment line.
     The header must be inserted before that line, starting at index 0, and
     header lines must begin with ``//`` (no leading spaces).
     """
-    file: Path = tmp_path / "settings.json"
+    file: Path = tmp_path / "settings.jsonc"
     file.write_text('// user note\n{\n  "a": 1\n}\n', encoding="utf-8")
 
     cfg: Config = mutable_config_from_defaults().freeze()
@@ -88,7 +88,7 @@ def test_jsonc_replace_preserves_pre_prefix_indent(tmp_path: Path) -> None:
     verify the replacement retains those four spaces, while using the processor's
     standard after-prefix spacing for the field lines.
     """
-    file_name: str = "indented.json"
+    file_name: str = "indented.jsonc"
     file: Path = tmp_path / file_name
     indent = "    "  # four spaces before prefix
     seeded: str = (
@@ -147,7 +147,7 @@ def test_jsonc_replace_preserves_pre_prefix_indent(tmp_path: Path) -> None:
 @mark_pipeline
 def test_jsonc_replace_keeps_crlf_and_indent(tmp_path: Path) -> None:
     """Replacement keeps CRLF line endings and preserved pre-prefix indent."""
-    file_name: str = "crlf_indented.json"
+    file_name: str = "crlf_indented.jsonc"
     file: Path = tmp_path / file_name
     indent = "\t\t"  # tabs are allowed as pre-prefix indent
     with file.open("w", encoding="utf-8", newline="\r\n") as fp:

@@ -64,7 +64,7 @@ FILETYPES: list[FileType] = [
         skip_processing=True,
     ),
     BUILTIN_FILETYPE_FACTORY(
-        local_key="jsonc",
+        local_key="json-as-jsonc",
         extensions=[".json"],
         filenames=[],
         patterns=[],
@@ -78,6 +78,19 @@ FILETYPES: list[FileType] = [
             ensure_blank_after_header=True,
         ),
         pre_insert_checker=json_like_can_insert,
+    ),
+    BUILTIN_FILETYPE_FACTORY(
+        local_key="jsonc",
+        extensions=[".jsonc"],
+        filenames=[],
+        patterns=[],
+        description="JSON with comments (JSONC/CJSON)",
+        skip_processing=False,
+        header_policy=FileTypeHeaderPolicy(
+            supports_shebang=False,
+            pre_header_blank_after_block=1,
+            ensure_blank_after_header=True,
+        ),
     ),
     BUILTIN_FILETYPE_FACTORY(
         local_key="python-requirements",
