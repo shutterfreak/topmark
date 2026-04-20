@@ -35,7 +35,7 @@ topmark strip --diff src/
 # Summary‑only view (CI‑friendly)
 topmark strip --summary src/
 
-# Treat aggregated config-resolution/preflight warnings as errors for this run
+# Treat staged config-loading validation warnings as errors for this run
 topmark strip --strict src/
 
 # Read targets from stdin (one path per line) and generate unified diff output
@@ -70,9 +70,9 @@ These modes are mutually exclusive: do **not** mix `-` (content mode) with `--fi
 - Idempotent: re‑running after headers are removed results in **no changes**.
 - Supports `--strict` / `--no-strict` to override the effective `strict_config_checking` value for
   the run.
-- Performs whole-source TOML schema validation during configuration loading; TOML-layer diagnostics
-  (including missing-section INFO diagnostics) are included in the final config diagnostics for the
-  run.
+- Performs whole-source TOML schema validation during configuration loading; TOML-source diagnostics
+  (including missing-section INFO diagnostics) are evaluated together with merged-config and
+  runtime-applicability diagnostics for the run.
 
 {% include-markdown "\_snippets/config-resolution.md" %}
 
@@ -190,7 +190,7 @@ or per-bucket `summary` records (summary mode):
   1. `kind="config"` (effective config snapshot)
   1. `kind="config_diagnostics"` (**counts-only**)
   1. zero or more `kind="diagnostic"` records (each with `domain="config"`; these may originate from
-     TOML schema validation or config-layer validation)
+     TOML-source, merged-config, or runtime-applicability diagnostics)
 - Then:
   - detail mode (no `--summary`): one `kind="result"` record per file
   - summary mode (`--summary`): one `kind="summary"` record per `(outcome, reason)` bucket
@@ -326,8 +326,8 @@ topmark strip --summary
 ### 4) Run with strict config checking
 
 ```bash
-# Fail when aggregated config-resolution/preflight warnings are present
-# (for example TOML validation issues, suspicious config inputs, or sanitization warnings)
+# Fail when staged config-loading validation warnings are present
+# (for example TOML-source, merged-config, or runtime-applicability warnings)
 topmark strip --strict src/
 ```
 

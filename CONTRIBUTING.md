@@ -99,11 +99,20 @@ Configuration loading follows a staged model:
 1. validate each whole-source TOML fragment
 1. extract the layered config fragment
 1. deserialize and merge into a mutable config draft
+1. evaluate effective config validity across staged validation logs
 1. freeze into the final `Config`
 
 Source-local options such as `strict_config_checking` are resolved during configuration loading and
-influence validation behaviour, but do not become layered `Config` fields. CLI/API overrides
-(`--strict` / `--no-strict`) take precedence for the current run.
+influence validation behaviour, but do not become layered `Config` fields. In the current
+implementation, effective strictness is applied across staged config-loading diagnostics:
+
+- TOML-source diagnostics
+- merged-config diagnostics
+- runtime-applicability diagnostics
+
+The flattened compatibility diagnostics view remains available for reporting and current
+machine/API/CLI surfaces. CLI/API overrides (`--strict` / `--no-strict`) take precedence for the
+current run.
 
 The main integration helper is:
 

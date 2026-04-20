@@ -305,8 +305,14 @@ ______________________________________________________________________
 
 ## ConfigDiagnosticsPayload
 
-`ConfigDiagnosticsPayload` summarizes configuration diagnostics collected during config
-discovery/merge/sanitization.
+`ConfigDiagnosticsPayload` summarizes the flattened compatibility view of configuration diagnostics
+collected during staged config-loading validation.
+
+These diagnostics may originate from:
+
+- TOML-source diagnostics
+- merged-config diagnostics
+- runtime-applicability diagnostics
 
 JSON shape:
 
@@ -477,7 +483,9 @@ diagnostics, and a `config_check` status payload.
 
 The `strict_config_checking` field reflects the **effective validation strictness** used for the
 run. It is derived from TOML source configuration (`[config].strict_config_checking`) and may be
-overridden by CLI or API inputs.
+overridden by CLI or API inputs. In the current implementation, this strictness is evaluated across
+staged config-loading diagnostics, while `config_diagnostics` remains the flattened compatibility
+view exposed in machine output.
 
 ### NDJSON shape for `config check`
 
@@ -499,7 +507,8 @@ The NDJSON stream follows the same stable prefix pattern used by processing comm
 
 Notes:
 
-- NDJSON follows the same **counts-only + one diagnostic per line** model for config diagnostics.
+- NDJSON follows the same **counts-only + one diagnostic per line** model for the flattened
+  compatibility config diagnostics view.
 
 (See `topmark.config.machine.*` for canonical builders/serializers.)
 

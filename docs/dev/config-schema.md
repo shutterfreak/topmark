@@ -25,8 +25,9 @@ from `topmark.toml` and from `[tool.topmark]` in `pyproject.toml`.
 `strict_config_checking` is a **TOML-source-local config-loading option**, not a
 layered `Config` field. It is resolved from `[config]` / `[tool.topmark.config]`
 during TOML source resolution and applied after layered config merging. In the
-current implementation, its effective value governs the aggregated
-config-resolution/preflight diagnostic pool.
+current implementation, its effective value governs staged config-loading
+validation evaluated across TOML-source, merged-config, and
+runtime-applicability diagnostics.
 
 This distinction matters for `topmark config dump --show-layers`:
 - the human-facing layered TOML export exposes source-local TOML fragments under
@@ -50,7 +51,9 @@ After this step, only the **layered config fragment** is passed to the config la
 
 At the TOML layer, malformed known sections are handled as warning-and-ignore cases, while missing
 known sections are emitted as INFO diagnostics. This lets callers distinguish absent sections from
-malformed-present sections before config/runtime semantics are applied.
+malformed-present sections before config/runtime semantics are applied. These TOML-source
+diagnostics are then evaluated together with merged-config and runtime-applicability diagnostics
+during effective config validation.
 
 This means:
 
@@ -74,7 +77,7 @@ topmark:
     strict_config_checking:
       type: bool
       default: false
-      description: Source-local strictness preference later applied to aggregated config-resolution/preflight validation; warnings become failures when effective strict config checking is enabled.
+      description: Source-local strictness preference later applied to staged config-loading validation; warnings become failures when effective strict config checking is enabled.
 
   header:
     fields:

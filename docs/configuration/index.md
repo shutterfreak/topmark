@@ -26,7 +26,7 @@ TopMark supports layered configuration with explicit precedence:
 - **Config-loading behaviour (e.g. `strict_config_checking`) is resolved from TOML sources**
   (`[config]` / `[tool.topmark.config]`) during TOML loading and applied after layered merging; it
   is not a regular layered configuration field. In the current implementation, effective strictness
-  applies to the aggregated config-resolution/preflight diagnostic pool (see
+  applies across staged config-loading validation logs (see
   [Config-loading behaviour](./discovery.md#config-loading-behaviour-toml-level)).
 - `relative_to` affects only header metadata (e.g., `file_relpath`), not discovery.
 
@@ -40,7 +40,9 @@ fragment is then passed into layered config merging.
 
 At the TOML layer, malformed known sections are handled as warning-and-ignore cases, while missing
 known sections are emitted as INFO diagnostics. This lets callers distinguish absent sections from
-malformed-present sections before config/runtime semantics are applied.
+malformed-present sections before config/runtime semantics are applied. These TOML-source
+diagnostics are then evaluated together with merged-config and runtime-applicability diagnostics
+during effective config validation.
 
 ## Configuration flow at a glance
 

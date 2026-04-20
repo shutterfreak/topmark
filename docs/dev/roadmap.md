@@ -98,6 +98,11 @@ The configuration system has been fully restructured:
 - Implemented **layered config with provenance**
 - Added **per-path effective config resolution**
 - Introduced **strict validation model** with diagnostics + strict mode
+- Introduced **staged config-loading validation logs**:
+  - TOML-source diagnostics
+  - merged-config diagnostics
+  - runtime-applicability diagnostics while preserving a flattened compatibility diagnostics view
+    for reporting and current machine/API/CLI surfaces
 - Removed legacy helpers and compatibility layers
 - Standardized API inputs via `ConfigMapping`
 
@@ -424,10 +429,14 @@ Remaining decisions:
   - `PolicyOverrides`
   - `ConfigOverrides`
 - Decide how much of that override structure is truly public/stable for Python callers.
-- Decide whether 1.0 keeps the current **aggregated strictness gate** for `strict_config_checking`,
-  or introduces staged validation gates before final freeze.
-- Decide whether sanitization/runtime-applicability warnings intentionally stay inside that same
-  strictness gate for 1.0.
+- Freeze and document the staged validation model now implemented internally:
+  - TOML-source diagnostics
+  - merged-config diagnostics
+  - runtime-applicability diagnostics
+- Decide how much of that staged model should remain internal for 1.0 versus be exposed explicitly
+  in CLI/API/machine-output contracts.
+- Confirm that sanitization/runtime-applicability warnings intentionally remain inside the effective
+  `strict_config_checking` gate for 1.0.
 - Confirm that TOML validation, config validation, runtime overlay, and layered provenance remain
   clearly separated responsibilities.
 - Decide whether configuration schema versioning should remain implicit for 1.0, with any explicit
@@ -436,8 +445,11 @@ Remaining decisions:
 Recommended direction:
 
 - keep the current TOML → Config → Runtime split,
-- freeze the current validation/strictness semantics unless a staged gate model is truly necessary
-  before final release,
+- keep `strict_config_checking` as the public config-loading strictness knob for 1.0,
+- freeze the staged validation semantics now implemented internally while keeping the flattened
+  diagnostics view as the compatibility/reporting surface,
+- defer broader staged-gate exposure in CLI/API/machine output unless clearly justified before final
+  freeze,
 - defer explicit config schema versioning until a future non-additive schema change requires it.
 
 ### Output contract freeze
@@ -603,8 +615,13 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] validation always runs
   - [x] strictness controls raise vs report behavior
   - [x] CLI and API use the same validation path
-  - [x] current aggregated strictness semantics are documented
-  - [ ] final decision made: keep aggregated gate for 1.0 or introduce staged gates before freeze
+  - [x] staged validation logs implemented internally
+  - [x] effective validity now evaluates TOML-source, merged-config, and runtime-applicability
+    diagnostics together
+  - [x] `strict_config_checking` remains the public config-loading strictness knob
+  - [ ] final decision made on 1.0 exposure: keep staged validation primarily internal with
+    flattened compatibility diagnostics, or expose more of the staged model in
+    CLI/API/machine-output contracts
 - [ ] Decision made whether explicit configuration schema versioning is deferred past 1.0
 
 #### [Must] Pipeline & testing
@@ -684,7 +701,8 @@ These items are explicitly reasonable to defer.
 
 - [ ] Implement in-memory pipeline support if deferred for 1.0
 - [ ] Revisit whether configuration schema versioning needs an explicit version key
-- [ ] Revisit staged validation gates if 1.0 keeps the aggregated strictness model
+- [ ] Revisit whether staged validation details should be exposed more directly in
+  CLI/API/machine-output contracts beyond the flattened compatibility diagnostics view
 
 #### [Post-1.0] Human output
 

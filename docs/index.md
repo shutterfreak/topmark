@@ -139,15 +139,20 @@ as `root` and `strict_config_checking` under `[tool.topmark.config]`.
 Source-local options under `[config]` / `[tool.topmark.config]` do not participate in layered config
 merging. For example, `strict_config_checking` affects configuration validation behaviour rather
 than becoming a normal layered `Config` field. In the current implementation, its effective value
-applies to the aggregated config-resolution/preflight diagnostic pool.
+applies across staged config-loading diagnostics:
 
-During loading, TopMark first validates each whole-source TOML fragment (unknown sections, unknown
-keys, malformed section shapes, missing known sections, etc.). Only the validated layered config
-fragment is then passed into layered config merging.
+- TOML-source diagnostics
+- merged-config diagnostics
+- runtime-applicability diagnostics
+
+The flattened compatibility diagnostics view remains available for reporting and current
+machine/API/CLI surfaces.
 
 At the TOML layer, malformed known sections are handled as warning-and-ignore cases, while missing
 known sections are emitted as INFO diagnostics. This lets callers distinguish absent sections from
-malformed-present sections before config/runtime semantics are applied.
+malformed-present sections before config/runtime semantics are applied. These TOML-source
+diagnostics are then evaluated together with merged-config and runtime-applicability diagnostics
+during effective config validation.
 
 ### Inspecting configuration
 

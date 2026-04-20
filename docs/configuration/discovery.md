@@ -117,20 +117,20 @@ The following settings are defined in configuration files and participate in lay
 config scopes. These fields determine how TopMark behaves for a given file and participate in
 layered config merging.
 
-| Semantic group    | Field(s)                                           | Current merge behavior                                 | Recommended long-term behavior       | Notes                                                                                                   |
-| ----------------- | -------------------------------------------------- | ------------------------------------------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------- |
-| Provenance        | `config_files`                                     | Append                                                 | Append                               | Keep all contributing config origins for observability and diagnostics.                                 |
-| Diagnostics       | `diagnostics`                                      | Append                                                 | Append                               | Diagnostics should accumulate across discovery, parsing, merge, and sanitize steps.                     |
-| Behavioral config | `header_fields`                                    | Replace                                                | Replace                              | The nearest applicable config defines the effective header field order.                                 |
-| Behavioral config | `align_fields`                                     | Replace if explicitly set                              | Replace                              | Scalar formatting choice; nearest applicable value should win.                                          |
-| Behavioral config | `relative_to_raw`, `relative_to`                   | Replace if explicitly set                              | Replace                              | Path base decisions should come from the nearest applicable config.                                     |
-| Policy            | `policy`                                           | Tri-state field merge via `MutablePolicy.merge_with()` | Replace or tri-state merge           | Field-wise tri-state merging allows layered policy refinement while preserving defaults.                |
-| Policy            | `policy_by_type`                                   | Key-wise merge + tri-state per field                   | Key-wise merge + tri-state per field | Per-file-type policies overlay the global policy and refine it for specific formats.                    |
-| Field values      | `field_values`                                     | Key-wise merge (overlay)                               | Key-wise merge                       | Future direction: child keys override matching parent keys while preserving unrelated inherited values. |
-| Discovery inputs  | `include_pattern_groups`, `exclude_pattern_groups` | Append                                                 | Append                               | Pattern sources accumulate across layers and remain active within their scope.                          |
-| Discovery inputs  | `include_from`, `exclude_from`, `files_from`       | Replace-wholesale when non-empty                       | Append                               | Future direction: path-based discovery sources accumulate rather than replace.                          |
-| Discovery inputs  | `files`                                            | Replace-wholesale when non-empty                       | Replace                              | Explicit file lists are authoritative and should not silently accumulate across layers.                 |
-| Discovery filters | `include_file_types`, `exclude_file_types`         | Replace-wholesale when non-empty                       | Replace                              | File-type filters represent a nearest-scope decision rather than a union.                               |
+| Semantic group    | Field(s)                                           | Current merge behavior                                 | Recommended long-term behavior       | Notes                                                                                                                        |
+| ----------------- | -------------------------------------------------- | ------------------------------------------------------ | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| Provenance        | `config_files`                                     | Append                                                 | Append                               | Keep all contributing config origins for observability and diagnostics.                                                      |
+| Diagnostics       | `validation_logs`, `diagnostics`                   | Stage-aware append + flattened compatibility view      | Preserve staged logs + flat view     | Staged validation logs accumulate per validation stage; flattened `diagnostics` remains the compatibility/reporting surface. |
+| Behavioral config | `header_fields`                                    | Replace                                                | Replace                              | The nearest applicable config defines the effective header field order.                                                      |
+| Behavioral config | `align_fields`                                     | Replace if explicitly set                              | Replace                              | Scalar formatting choice; nearest applicable value should win.                                                               |
+| Behavioral config | `relative_to_raw`, `relative_to`                   | Replace if explicitly set                              | Replace                              | Path base decisions should come from the nearest applicable config.                                                          |
+| Policy            | `policy`                                           | Tri-state field merge via `MutablePolicy.merge_with()` | Replace or tri-state merge           | Field-wise tri-state merging allows layered policy refinement while preserving defaults.                                     |
+| Policy            | `policy_by_type`                                   | Key-wise merge + tri-state per field                   | Key-wise merge + tri-state per field | Per-file-type policies overlay the global policy and refine it for specific formats.                                         |
+| Field values      | `field_values`                                     | Key-wise merge (overlay)                               | Key-wise merge                       | Future direction: child keys override matching parent keys while preserving unrelated inherited values.                      |
+| Discovery inputs  | `include_pattern_groups`, `exclude_pattern_groups` | Append                                                 | Append                               | Pattern sources accumulate across layers and remain active within their scope.                                               |
+| Discovery inputs  | `include_from`, `exclude_from`, `files_from`       | Replace-wholesale when non-empty                       | Append                               | Future direction: path-based discovery sources accumulate rather than replace.                                               |
+| Discovery inputs  | `files`                                            | Replace-wholesale when non-empty                       | Replace                              | Explicit file lists are authoritative and should not silently accumulate across layers.                                      |
+| Discovery filters | `include_file_types`, `exclude_file_types`         | Replace-wholesale when non-empty                       | Replace                              | File-type filters represent a nearest-scope decision rather than a union.                                                    |
 
 ### Runtime overlays
 
@@ -154,9 +154,15 @@ These TOML-source-local options are still validated as part of whole-source TOML
 do not become layered `Config` fields.
 
 The current `strict_config_checking` name comes from the earlier single-"config" architecture. In
-TopMark's current layered TOML → Config → Runtime model, its effective behavior is broader: it acts
-on the aggregated config-resolution/preflight diagnostic pool, which may include replayed TOML
-validation issues, config-layer diagnostics, and sanitization warnings.
+TopMark's current layered TOML → Config → Runtime model, its effective behavior is broader: it
+controls staged config-loading validation evaluated across:
+
+- TOML-source diagnostics
+- merged-config diagnostics
+- runtime-applicability diagnostics
+
+The flattened compatibility diagnostics view remains available for reporting and current
+machine/API/CLI surfaces.
 
 Currently, this includes:
 
@@ -169,6 +175,8 @@ Key properties:
 - These values are resolved from TOML sources after TOML-layer validation and before building the
   layered config draft.
 - They are **not part of `Config` / `MutableConfig` merge semantics**.
+- Effective validity is evaluated across the staged validation logs rather than a single
+  undifferentiated diagnostic pool.
 - Effective strictness is determined as:
 
 ```text
@@ -194,7 +202,7 @@ This distinction is also visible in layered provenance output:
 
 This enables strict config validation for the current project scope, causing warnings to be treated
 as errors during config checking. In the current implementation, this strictness applies to the
-aggregated config-resolution/preflight diagnostic pool, not only to TOML parsing in isolation.
+staged config-loading validation model as a whole, not only to TOML parsing in isolation.
 
 For the full generated reference configuration document, see
 [Example TOML document](./generated/example-config.md).

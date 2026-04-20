@@ -73,7 +73,9 @@ diagnostics are included in the reported config diagnostics.
 
 Consumers can control configuration validation strictness using `--strict` / `--no-strict`. This
 overrides the effective `strict_config_checking` setting resolved from TOML sources for the duration
-of the hook run.
+of the hook run. In the current implementation, this strictness is applied across staged
+config-loading diagnostics (TOML-source, merged-config, and runtime-applicability diagnostics),
+while the reported diagnostics remain the flattened compatibility view.
 
 For the `topmark-check` hook (which runs `topmark check`), consumers may also pass policy options
 such as `--header-mutation-mode`, `--allow-header-in-empty-files`, or `--empty-insert-mode` when

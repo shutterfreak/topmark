@@ -54,17 +54,25 @@ ______________________________________________________________________
 - **Validates merged config**: loads defaults → discovered config → `--config` files → CLI
   overrides, performs whole-source TOML schema validation per source, then freezes/validates the
   final configuration.
+
 - **Reports TOML schema issues**: unknown sections/keys, malformed TOML structures, and missing
   known sections are surfaced as configuration diagnostics originating from the TOML layer.
+
 - **File-agnostic**: positional PATHS are ignored (a note is printed). `-` (content-on-STDIN) is
   ignored.
+
 - **CI-friendly**: exit code is non-zero when validation fails.
+
 - **Strict mode**: effective strictness is determined as:
+
   - CLI override (`--strict` / `--no-strict`)
   - resolved TOML value from `[config].strict_config_checking` /
     `[tool.topmark.config].strict_config_checking`
-  - default non-strict mode Errors always fail; warnings fail only when strict config checking is
-    enabled across the aggregated config-resolution/preflight diagnostic pool.
+  - default non-strict mode
+
+  Errors always fail; warnings fail only when strict config checking is enabled across staged
+  config-loading validation logs (TOML-source, merged-config, and runtime-applicability
+  diagnostics).
 
 {% include-markdown "\_snippets/config-resolution.md" %}
 
@@ -152,8 +160,10 @@ Notes:
   loading/validation, including missing-section INFO diagnostics from the TOML layer, but not
   pipeline processing diagnostics.
 
-- Validation still follows the same staged flow shown above: per-source TOML validation first, then
-  layered config merge, then final config validation.
+- Validation follows staged config-loading validation: per-source TOML validation first (TOML-source
+  diagnostics), then layered config merge (merged-config diagnostics), then final config validation
+  including runtime-applicability checks. The effective validity decision is evaluated across these
+  staged diagnostics collectively.
 
 Example (`[config].strict_config_checking = true` resolved from TOML, with no CLI override):
 

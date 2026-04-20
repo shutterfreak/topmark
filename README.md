@@ -301,10 +301,17 @@ known sections are emitted as INFO diagnostics. This lets callers distinguish ab
 malformed-present sections before config/runtime semantics are applied.
 
 For example, `strict_config_checking` is resolved from TOML sources and affects configuration
-validation behaviour; it is not a normal layered `Config` field. In the current implementation, it
-governs the aggregated config-resolution/preflight diagnostic pool rather than only TOML parsing or
-layered-config merge validation in isolation. CLI/API strictness overrides still take precedence for
-the current run.
+validation behaviour; it is not a normal layered `Config` field. In the current implementation,
+validation is evaluated across staged config-loading diagnostics:
+
+- TOML-source diagnostics
+- merged-config diagnostics
+- runtime-applicability diagnostics
+
+The effective strictness governs this staged validation collectively (warnings become failures when
+strict mode is enabled). The flattened compatibility diagnostics view remains available for
+reporting and output surfaces. CLI/API strictness overrides still take precedence for the current
+run.
 
 In layered provenance output, these source-local TOML fragments remain grouped under their original
 TOML sections (for example `[config]` and `[writer]`) rather than being collapsed into the final

@@ -51,14 +51,20 @@ config = {
 Note that `strict_config_checking` is not a layered `Config` field. It is resolved from `[config]` /
 `[tool.topmark.config]`-shaped input during configuration loading and influences validation
 behavior. API helpers such as `ensure_config_valid(...)` apply this effective strictness (including
-optional overrides) when validating a config.
+optional overrides) when validating a config across staged config-loading diagnostics:
+
+- TOML-source diagnostics
+- merged-config diagnostics
+- runtime-applicability diagnostics
 
 These options are resolved separately from layered `Config` values and do not participate in layered
 config merging.
 
 Internally, TopMark first performs whole-source TOML-style validation of these sections (unknown
-keys, malformed section shapes, etc.) and then deserializes only the layered fragment into the final
-immutable `Config` snapshot. This is why sections like `[config]` and `[writer]` can influence
+keys, malformed section shapes, etc.), then deserializes only the layered fragment into the final
+immutable `Config` snapshot, and finally evaluates effective validity across staged config-loading
+validation logs. The flattened compatibility diagnostics view remains available for reporting and
+exception payloads. This is why sections like `[config]` and `[writer]` can influence
 loading/runtime behavior without becoming layered `Config` fields.
 
 This distinction is also visible when inspecting configuration via
@@ -135,9 +141,10 @@ The public API only operates on the flattened immutable `Config`. Layered proven
 inspection concern and is exposed via the CLI (`config dump --show-layers`) rather than through the
 stable `topmark.api` surface.
 
-Internally, TopMark resolves TOML sources, validates each whole-source TOML fragment, and builds a
-merged mutable config draft before freezing it into an immutable `Config`. Advanced users can
-inspect this process via
+Internally, TopMark resolves TOML sources, validates each whole-source TOML fragment, builds a
+merged mutable config draft, and evaluates effective validity across staged config-loading
+validation logs before freezing into or validating against an immutable `Config`. Advanced users can
+inspect the TOML-resolution and draft-building portion of this process via
 \[`resolve_toml_sources_and_build_config_draft()`\][topmark.config.resolution.bridge.resolve_toml_sources_and_build_config_draft].
 
 ### Recognized vs supported file types

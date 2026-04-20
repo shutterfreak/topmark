@@ -55,7 +55,7 @@ Not all TOML-defined values become layered `Config` fields. Source-local options
 config discovery/validation behaviour without participating in layered config merging.
 
 Whole-source TOML schema validation now happens before layered config deserialization. The staged
-flow is shown in the diagram above. In other words:
+config-loading validation flow is shown in the diagram above. In other words:
 
 - `topmark.toml` validates the full TopMark TOML source (including `[config]`, `[writer]`, unknown
   top-level entries, malformed section shapes, and missing known sections)
@@ -460,8 +460,9 @@ TopMark exposes configuration state through both human-readable and machine-read
 
 For `config check`, machine output reports effective strictness under the key
 `strict_config_checking`, reflecting TOML-resolved strictness plus any CLI/API override. In the
-current 1.0 preparation model, this strictness applies to the aggregated config-resolution/preflight
-diagnostic pool rather than only to TOML parsing or layered-config merge validation in isolation.
+current 1.0 preparation model, this strictness applies across staged config-loading validation:
+TOML-source diagnostics, merged-config diagnostics, and runtime-applicability diagnostics. The
+flattened compatibility diagnostics view remains the current reporting and machine-output surface.
 
 In machine formats, `config defaults` and `config init` share the same underlying configuration
 snapshot, even though their human-facing output differs.
