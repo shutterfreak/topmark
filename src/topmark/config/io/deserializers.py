@@ -112,7 +112,7 @@ def mutable_config_from_layered_toml_table(
 
     When called from that normal pipeline, this helper assumes TOML section/key
     shape has already been validated and focuses on layered deserialization,
-    normalization, and config/runtime semantics.
+    normalization, and staged config-validation semantics.
 
     This helper still performs defensive parsing of layered fragments so that
     malformed inputs (e.g. from API mappings or tests) are handled gracefully

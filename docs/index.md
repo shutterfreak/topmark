@@ -150,9 +150,9 @@ machine/API/CLI surfaces.
 
 At the TOML layer, malformed known sections are handled as warning-and-ignore cases, while missing
 known sections are emitted as INFO diagnostics. This lets callers distinguish absent sections from
-malformed-present sections before config/runtime semantics are applied. These TOML-source
+malformed-present sections before staged config-validation semantics are applied. These TOML-source
 diagnostics are then evaluated together with merged-config and runtime-applicability diagnostics
-during effective config validation.
+during staged config-loading/preflight validation.
 
 ### Inspecting configuration
 
