@@ -52,8 +52,8 @@ ______________________________________________________________________
 ## Key properties
 
 - **Validates merged config**: loads defaults → discovered config → `--config` files → CLI
-  overrides, performs whole-source TOML schema validation per source, then freezes/validates the
-  final configuration.
+  overrides, performs whole-source TOML schema validation per source, then validates staged
+  config-loading diagnostics and freezes the final configuration.
 
 - **Reports TOML schema issues**: unknown sections/keys, malformed TOML structures, and missing
   known sections are surfaced as configuration diagnostics originating from the TOML layer.
@@ -71,8 +71,7 @@ ______________________________________________________________________
   - default non-strict mode
 
   Errors always fail; warnings fail only when strict config checking is enabled across staged
-  config-loading validation logs (TOML-source, merged-config, and runtime-applicability
-  diagnostics).
+  config-loading/preflight validation.
 
 {% include-markdown "\_snippets/config-resolution.md" %}
 
@@ -137,10 +136,11 @@ flowchart TD
     B["Validate each whole-source TOML fragment<br/>unknown sections, unknown keys, malformed shapes, missing known sections"]
     C["Extract layered config fragment<br/>source-local sections like [config] and [writer] stay TOML-local"]
     D["Merge layered config into mutable draft<br/>apply precedence and overrides"]
-    E["Freeze and validate final Config<br/>value/type diagnostics, strictness handling"]
-    F["Emit human or machine-readable diagnostics<br/>config check result"]
+    E["Validate staged config-loading diagnostics<br/>TOML-source, merged-config, runtime-applicability"]
+    F["Freeze final Config<br/>validated config snapshot"]
+    G["Emit human or machine-readable diagnostics<br/>config check result"]
 
-    A --> B --> C --> D --> E --> F
+    A --> B --> C --> D --> E --> F --> G
 ```
 
 ______________________________________________________________________
@@ -160,10 +160,10 @@ Notes:
   loading/validation, including missing-section INFO diagnostics from the TOML layer, but not
   pipeline processing diagnostics.
 
-- Validation follows staged config-loading validation: per-source TOML validation first (TOML-source
-  diagnostics), then layered config merge (merged-config diagnostics), then final config validation
-  including runtime-applicability checks. The effective validity decision is evaluated across these
-  staged diagnostics collectively.
+- Validation follows staged config-loading/preflight validation: per-source TOML validation first
+  (TOML-source diagnostics), then layered config merge (merged-config diagnostics), then final
+  config validation including runtime-applicability checks. The effective validity decision is
+  evaluated across these staged validation logs collectively.
 
 Example (`[config].strict_config_checking = true` resolved from TOML, with no CLI override):
 

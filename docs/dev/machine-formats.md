@@ -124,9 +124,9 @@ ______________________________________________________________________
 TopMark uses internal \[`Diagnostic`\][topmark.diagnostic.model.Diagnostic] objects to represent
 warnings and errors. For machine output:
 
-Diagnostics emitted in machine output represent the flattened compatibility view of staged
-config-loading validation. Internally, these diagnostics may originate from TOML-source validation,
-merged-config validation, or runtime-applicability checks.
+Diagnostics emitted in machine output represent the flattened compatibility view derived from staged
+config-validation logs. Internally, these diagnostics may originate from TOML-source, merged-config,
+or runtime-applicability validation.
 
 - **JSON** uses stable `{level, message}` entries within domain payloads (for example
   `config_diagnostics.diagnostics`).
@@ -156,8 +156,8 @@ ______________________________________________________________________
   - then either per-file `result` records (detail mode) or per-outcome **reason-preserving**
     `summary` records (summary mode)
 
-These diagnostics correspond to the flattened compatibility view derived from staged config-loading
-validation logs.
+These diagnostics correspond to the flattened compatibility view derived from staged
+config-validation logs.
 
 In **summary mode**, TopMark aggregates results by the pair `(outcome, reason)` rather than
 collapsing all reasons under a single outcome bucket.
@@ -217,9 +217,9 @@ underlying default configuration snapshot shape.
 
 For `config check`, the machine payload uses `strict_config_checking` to report the effective
 config-validation strictness after applying CLI override precedence over resolved TOML strictness.
-In the current implementation, this strictness is evaluated across staged config-loading validation
-(TOML-source, merged-config, and runtime-applicability diagnostics), while machine output continues
-to expose the flattened compatibility diagnostics view.
+This strictness is evaluated across staged config-loading/preflight validation (TOML-source,
+merged-config, and runtime-applicability diagnostics), while machine output continues to expose the
+flattened compatibility diagnostics view.
 
 For `config dump --show-layers`, machine output preserves the same logical ordering as the
 human-facing layered export:

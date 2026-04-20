@@ -20,6 +20,9 @@ from `topmark.toml` and from `[tool.topmark]` in `pyproject.toml`.
 > - This is a schema *summary* (not a full JSON Schema).
 > - The ordering mirrors `src/topmark/toml/topmark-example.toml`.
 > - Keys are defined authoritatively in `src/topmark/toml/keys.py`.
+>
+> Machine and human outputs expose a flattened compatibility view derived from these staged
+> validation logs; the staged form is not serialized directly.
 
 ```md
 `strict_config_checking` is a **TOML-source-local config-loading option**, not a
@@ -49,16 +52,20 @@ deserialized:
 After this step, only the **layered config fragment** is passed to the config layer
 (`MutableConfig`) for value parsing and normalization.
 
+At this boundary, diagnostics remain **staged**; flattening into a single compatibility view is
+performed only at reporting, exception, and machine-output boundaries.
+
 At the TOML layer, malformed known sections are handled as warning-and-ignore cases, while missing
 known sections are emitted as INFO diagnostics. This lets callers distinguish absent sections from
-malformed-present sections before config/runtime semantics are applied. These TOML-source
+malformed-present sections before staged config-validation semantics are applied. These TOML-source
 diagnostics are then evaluated together with merged-config and runtime-applicability diagnostics
-during effective config validation.
+during staged config-loading/preflight validation.
 
 This means:
 
 - TOML schema validation is handled in `topmark.toml`
-- config value/type validation is handled in `topmark.config`
+- config value/type validation is handled in `topmark.config` as staged validation logs
+  (merged-config and runtime-applicability stages)
 - layered config deserialization (`mutable_config_from_layered_toml_table`) assumes schema
   validation already happened, but still performs defensive parsing for API and test inputs
 
@@ -77,7 +84,7 @@ topmark:
     strict_config_checking:
       type: bool
       default: false
-      description: Source-local strictness preference later applied to staged config-loading validation; warnings become failures when effective strict config checking is enabled.
+      description: Source-local strictness preference applied to staged config-loading/preflight validation; warnings become failures when effective strict config checking is enabled across TOML-source, merged-config, and runtime-applicability diagnostics.
 
   header:
     fields:

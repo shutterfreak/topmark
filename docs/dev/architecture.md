@@ -44,7 +44,7 @@ flowchart TD
     C["Extract layered config fragment<br/>source-local sections like [config] and [writer] stay TOML-local"]
     D["Deserialize layered fragment into MutableConfig<br/>defensive value parsing and normalization"]
     E["Merge layered config into mutable draft<br/>apply precedence and overrides"]
-    F["Freeze and validate final Config<br/>value/type diagnostics, strictness handling"]
+    F["Freeze final Config and validate staged config-loading diagnostics<br/>TOML-source, merged-config, runtime-applicability"]
     G["Runtime layer<br/>apply execution-only options before pipeline"]
 
     A --> B --> C --> D --> E --> F --> G
@@ -52,7 +52,8 @@ flowchart TD
 
 Not all TOML-defined values become layered `Config` fields. Source-local options such as
 `[config].root` and `strict_config_checking` are resolved on the TOML side first, then applied to
-config discovery/validation behaviour without participating in layered config merging.
+config discovery and staged config-loading/preflight validation without participating in layered
+config merging.
 
 Whole-source TOML schema validation now happens before layered config deserialization. The staged
 config-loading validation flow is shown in the diagram above. In other words:
@@ -65,7 +66,7 @@ config-loading validation flow is shown in the diagram above. In other words:
 
 At the TOML layer, malformed known sections are treated as **warning-and-ignore** cases, while
 missing known sections are emitted as **INFO diagnostics** so callers can distinguish “not present”
-from “present but malformed” before config/runtime semantics are applied.
+from “present but malformed” before staged config-validation semantics are applied.
 
 The main integration point between TOML resolution and config merging is:
 
@@ -459,13 +460,17 @@ TopMark exposes configuration state through both human-readable and machine-read
   - JSON / NDJSON snapshots described in [`machine-output.md`](machine-output.md)
 
 For `config check`, machine output reports effective strictness under the key
-`strict_config_checking`, reflecting TOML-resolved strictness plus any CLI/API override. In the
-current 1.0 preparation model, this strictness applies across staged config-loading validation:
-TOML-source diagnostics, merged-config diagnostics, and runtime-applicability diagnostics. The
-flattened compatibility diagnostics view remains the current reporting and machine-output surface.
+`strict_config_checking`, reflecting TOML-resolved strictness plus any CLI/API override. This
+strictness applies across staged config-loading validation: TOML-source diagnostics, merged-config
+diagnostics, and runtime-applicability diagnostics. Machine output continues to expose the flattened
+compatibility diagnostics view derived from those staged validation logs.
 
 In machine formats, `config defaults` and `config init` share the same underlying configuration
 snapshot, even though their human-facing output differs.
+
+More generally, TopMark now treats staged validation logs as the sole internal representation of
+config-validation diagnostics. Flattening is performed only at exception, presentation, and
+machine-output boundaries.
 
 ______________________________________________________________________
 

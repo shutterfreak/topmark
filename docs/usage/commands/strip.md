@@ -72,7 +72,7 @@ These modes are mutually exclusive: do **not** mix `-` (content mode) with `--fi
   the run.
 - Performs whole-source TOML schema validation during configuration loading; TOML-source diagnostics
   (including missing-section INFO diagnostics) are evaluated together with merged-config and
-  runtime-applicability diagnostics for the run.
+  runtime-applicability diagnostics during staged config-loading/preflight validation for the run.
 
 {% include-markdown "\_snippets/config-resolution.md" %}
 
@@ -145,7 +145,8 @@ Notes:
 - Diffs (`--diff`) are **human-only** and are not included in JSON/NDJSON.
 - Summary mode aggregates outcomes and suppresses per-file guidance lines.
 - The `config` payload in JSON / NDJSON is the resolved config snapshot after per-source TOML
-  validation, layered config merge, and CLI override application.
+  validation, layered config merge, staged config-loading/preflight validation, and CLI override
+  application.
 
 ### JSON schema (detail mode)
 
@@ -294,8 +295,9 @@ ______________________________________________________________________
 - **Markdown**: ignores code fences for detection; header‑like text inside fences is not removed.
 - **Idempotency**: once stripped, subsequent runs are no‑ops.
 - **Configuration loading**: before any file processing begins, TopMark resolves TOML sources,
-  validates each whole-source TOML fragment, then merges the validated layered config fragments into
-  the effective config for the run.
+  validates each whole-source TOML fragment, merges the validated layered config fragments, then
+  evaluates staged config-loading/preflight validation before freezing the effective config for the
+  run.
 
 ______________________________________________________________________
 

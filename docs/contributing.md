@@ -36,8 +36,14 @@ TopMark uses a layered architecture:
 - **TOML layer** (`topmark.toml`) — config discovery, parsing, and whole-source TOML schema
   validation (unknown sections/keys, malformed shapes), plus source-local options (e.g.
   `[config].root`, `strict_config_checking`)
-- **Config layer** (`topmark.config`) — layered merge into `Config`
+- **Config layer** (`topmark.config`) — layered merge into `Config` and staged
+  config-loading/preflight validation (TOML-source, merged-config, runtime-applicability
+  diagnostics)
 - **Runtime layer** (`topmark.runtime`) — execution-time behavior
+
+Internally, configuration validation is represented as staged validation logs. A flattened
+compatibility view of diagnostics is derived only at reporting, exception, and machine-output
+boundaries.
 
 See also:
 

@@ -288,7 +288,7 @@ exclude_file_types = ["html"]
 exclude_from = [".gitignore"]
 ```
 
-Source-local TOML options such as discovery boundaries and config-checking strictness live under
+Source-local TOML options such as discovery boundaries and config-validation strictness live under
 `[config]` (or `[tool.topmark.config]` in `pyproject.toml`). They are resolved separately from
 layered `Config` values and do not participate in layered config merging.
 
@@ -298,20 +298,20 @@ fragment is then passed into layered config merging.
 
 At the TOML layer, malformed known sections are handled as warning-and-ignore cases, while missing
 known sections are emitted as INFO diagnostics. This lets callers distinguish absent sections from
-malformed-present sections before config/runtime semantics are applied.
+malformed-present sections before staged config-validation semantics are applied.
 
 For example, `strict_config_checking` is resolved from TOML sources and affects configuration
 validation behaviour; it is not a normal layered `Config` field. In the current implementation,
-validation is evaluated across staged config-loading diagnostics:
+validation is evaluated across staged config-loading/preflight validation:
 
 - TOML-source diagnostics
 - merged-config diagnostics
 - runtime-applicability diagnostics
 
 The effective strictness governs this staged validation collectively (warnings become failures when
-strict mode is enabled). The flattened compatibility diagnostics view remains available for
-reporting and output surfaces. CLI/API strictness overrides still take precedence for the current
-run.
+strict mode is enabled). A flattened compatibility diagnostics view remains available for reporting
+and output surfaces, derived from staged validation logs. CLI/API strictness overrides still take
+precedence for the current run.
 
 In layered provenance output, these source-local TOML fragments remain grouped under their original
 TOML sections (for example `[config]` and `[writer]`) rather than being collapsed into the final

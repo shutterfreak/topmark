@@ -51,7 +51,7 @@ config = {
 Note that `strict_config_checking` is not a layered `Config` field. It is resolved from `[config]` /
 `[tool.topmark.config]`-shaped input during configuration loading and influences validation
 behavior. API helpers such as `ensure_config_valid(...)` apply this effective strictness (including
-optional overrides) when validating a config across staged config-loading diagnostics:
+optional overrides) when validating a config across staged config-loading/preflight validation:
 
 - TOML-source diagnostics
 - merged-config diagnostics
@@ -62,10 +62,10 @@ config merging.
 
 Internally, TopMark first performs whole-source TOML-style validation of these sections (unknown
 keys, malformed section shapes, etc.), then deserializes only the layered fragment into the final
-immutable `Config` snapshot, and finally evaluates effective validity across staged config-loading
-validation logs. The flattened compatibility diagnostics view remains available for reporting and
-exception payloads. This is why sections like `[config]` and `[writer]` can influence
-loading/runtime behavior without becoming layered `Config` fields.
+immutable `Config` snapshot, and finally evaluates effective validity across staged
+config-loading/preflight validation. The flattened compatibility diagnostics view remains available
+for reporting and exception payloads. This is why sections like `[config]` and `[writer]` can
+influence loading/runtime behavior without becoming layered `Config` fields.
 
 This distinction is also visible when inspecting configuration via
 `topmark config dump --show-layers`: source-local TOML fragments are preserved per layer (for
@@ -134,16 +134,16 @@ This process follows:
 
 1. TOML sources (defaults, user, project, `--config`)
 1. Layered config (merged by precedence)
-1. Flattened effective `Config`
+1. Staged config-loading/preflight validation
+1. Freeze into effective immutable `Config`
 1. Runtime overlays (API call arguments such as `diff`, `report`, etc.)
 
-The public API only operates on the flattened immutable `Config`. Layered provenance is an
-inspection concern and is exposed via the CLI (`config dump --show-layers`) rather than through the
-stable `topmark.api` surface.
+The public API only operates on the flattened immutable `Config`. Staged validation logs are not
+exposed directly; only their flattened compatibility view is used at reporting and API boundaries.
 
 Internally, TopMark resolves TOML sources, validates each whole-source TOML fragment, builds a
-merged mutable config draft, and evaluates effective validity across staged config-loading
-validation logs before freezing into or validating against an immutable `Config`. Advanced users can
+merged mutable config draft, and evaluates effective validity across staged config-loading/preflight
+validation before freezing into or validating against an immutable `Config`. Advanced users can
 inspect the TOML-resolution and draft-building portion of this process via
 \[`resolve_toml_sources_and_build_config_draft()`\][topmark.config.resolution.bridge.resolve_toml_sources_and_build_config_draft].
 

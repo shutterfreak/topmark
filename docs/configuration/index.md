@@ -40,9 +40,9 @@ fragment is then passed into layered config merging.
 
 At the TOML layer, malformed known sections are handled as warning-and-ignore cases, while missing
 known sections are emitted as INFO diagnostics. This lets callers distinguish absent sections from
-malformed-present sections before config/runtime semantics are applied. These TOML-source
+malformed-present sections before staged config-validation semantics are applied. These TOML-source
 diagnostics are then evaluated together with merged-config and runtime-applicability diagnostics
-during effective config validation.
+during staged config-loading/preflight validation.
 
 ## Configuration flow at a glance
 
@@ -52,17 +52,19 @@ flowchart LR
     B["Validate each whole-source TOML fragment<br/>unknown sections, unknown keys, malformed shapes"]
     C["Extract layered config fragment<br/>source-local sections like [config] and [writer] stay TOML-local"]
     D["Merge layered config by precedence<br/>effective MutableConfig draft"]
-    E["Freeze effective Config<br/>final config snapshot"]
-    F["Apply runtime overlays<br/>CLI or API execution intent"]
+    E["Validate staged config-loading diagnostics<br/>TOML-source, merged-config, runtime-applicability"]
+    F["Freeze effective Config<br/>final config snapshot"]
+    G["Apply runtime overlays<br/>CLI or API execution intent"]
 
-    A --> B --> C --> D --> E
+    A --> B --> C --> D --> E --> F --> G
 ```
 
 This reflects the main distinction in TopMark's configuration model:
 
 - TOML sources are validated first at the **whole-source TOML layer**.
 - Only the validated **layered config fragment** contributes to config merging.
-- The merged layered result is frozen into one **effective config**.
+- The merged layered result is then validated across staged config-loading diagnostics.
+- The validated layered result is frozen into one **effective config**.
 - Runtime overlays are then applied for execution-only concerns such as output mode, apply/dry-run
   behavior, or stdin handling.
 

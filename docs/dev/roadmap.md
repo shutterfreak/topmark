@@ -101,8 +101,9 @@ The configuration system has been fully restructured:
 - Introduced **staged config-loading validation logs**:
   - TOML-source diagnostics
   - merged-config diagnostics
-  - runtime-applicability diagnostics while preserving a flattened compatibility diagnostics view
-    for reporting and current machine/API/CLI surfaces
+  - runtime-applicability diagnostics
+- Removed stored flattened diagnostics from `Config` / `MutableConfig`
+  - flattening is now performed only at exception, presentation, and machine-output boundaries
 - Removed legacy helpers and compatibility layers
 - Standardized API inputs via `ConfigMapping`
 
@@ -435,6 +436,8 @@ Remaining decisions:
   - runtime-applicability diagnostics
 - Decide how much of that staged model should remain internal for 1.0 versus be exposed explicitly
   in CLI/API/machine-output contracts.
+- Keep `strict_config_checking` as-is for 1.0 and revisit any possible rename only after the 1.0
+  contract freeze.
 - Confirm that sanitization/runtime-applicability warnings intentionally remain inside the effective
   `strict_config_checking` gate for 1.0.
 - Confirm that TOML validation, config validation, runtime overlay, and layered provenance remain
@@ -446,8 +449,9 @@ Recommended direction:
 
 - keep the current TOML → Config → Runtime split,
 - keep `strict_config_checking` as the public config-loading strictness knob for 1.0,
-- freeze the staged validation semantics now implemented internally while keeping the flattened
-  diagnostics view as the compatibility/reporting surface,
+- freeze the staged validation semantics now implemented internally,
+- keep flattened diagnostics as a derived compatibility/reporting surface only at exception,
+  presentation, and machine-output boundaries,
 - defer broader staged-gate exposure in CLI/API/machine output unless clearly justified before final
   freeze,
 - defer explicit config schema versioning until a future non-additive schema change requires it.
@@ -620,8 +624,8 @@ These are release blockers unless explicitly deferred with a documented rational
     diagnostics together
   - [x] `strict_config_checking` remains the public config-loading strictness knob
   - [ ] final decision made on 1.0 exposure: keep staged validation primarily internal with
-    flattened compatibility diagnostics, or expose more of the staged model in
-    CLI/API/machine-output contracts
+    flattened compatibility diagnostics only at exception/presentation/output boundaries, or expose
+    more of the staged model in CLI/API/machine-output contracts
 - [ ] Decision made whether explicit configuration schema versioning is deferred past 1.0
 
 #### [Must] Pipeline & testing
@@ -702,7 +706,9 @@ These items are explicitly reasonable to defer.
 - [ ] Implement in-memory pipeline support if deferred for 1.0
 - [ ] Revisit whether configuration schema versioning needs an explicit version key
 - [ ] Revisit whether staged validation details should be exposed more directly in
-  CLI/API/machine-output contracts beyond the flattened compatibility diagnostics view
+  CLI/API/machine-output contracts beyond the current flattened compatibility diagnostics view
+- [ ] Revisit whether `strict_config_checking` should eventually be renamed once 1.0 contract
+  stability no longer constrains config-key naming
 
 #### [Post-1.0] Human output
 

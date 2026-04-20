@@ -93,26 +93,26 @@ TopMark separates configuration into three layers:
   layered merge into a mutable config draft
 - Runtime layer (`topmark.runtime`) — execution-time options and overrides
 
-Configuration loading follows a staged model:
+Configuration loading follows a staged config-loading model:
 
 1. resolve TOML sources (defaults, discovered config, `--config`, CLI context)
 1. validate each whole-source TOML fragment
 1. extract the layered config fragment
 1. deserialize and merge into a mutable config draft
-1. evaluate effective config validity across staged validation logs
+1. evaluate effective config validity across staged config-loading/preflight validation
 1. freeze into the final `Config`
 
 Source-local options such as `strict_config_checking` are resolved during configuration loading and
 influence validation behaviour, but do not become layered `Config` fields. In the current
-implementation, effective strictness is applied across staged config-loading diagnostics:
+implementation, effective strictness is applied across staged config-loading/preflight validation:
 
 - TOML-source diagnostics
 - merged-config diagnostics
 - runtime-applicability diagnostics
 
-The flattened compatibility diagnostics view remains available for reporting and current
-machine/API/CLI surfaces. CLI/API overrides (`--strict` / `--no-strict`) take precedence for the
-current run.
+A flattened compatibility diagnostics view remains available for reporting and current
+machine/API/CLI surfaces, derived from staged validation logs. CLI/API overrides (`--strict` /
+`--no-strict`) take precedence for the current run.
 
 The main integration helper is:
 
