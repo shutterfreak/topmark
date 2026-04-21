@@ -11,8 +11,8 @@
 """Registry machine-output schema types.
 
 This module defines the *typing surface* for machine-readable output emitted by
-registry-related commands (currently `topmark registry filetypes`, `topmark registry processors`
-and `topmark registry bindings`).
+registry-related commands (currently `topmark registry filetypes`,
+`topmark registry processors` and `topmark registry bindings`).
 
 These are schema-only types:
 - They describe the JSON/NDJSON payload shapes.
@@ -25,7 +25,8 @@ Why `TypedDict`:
 - The payloads are small, shallow, and naturally expressed as JSON objects.
 
 Serialization conventions:
-- JSON mode wraps a payload in a top-level envelope with `meta` plus a stable key.
+- JSON mode wraps a payload in a top-level envelope with `meta` plus stable
+  top-level collection keys.
 - NDJSON mode emits one record per entity, using the canonical record envelope
   (`kind` + `meta` + payload container).
 
@@ -99,7 +100,7 @@ class FileTypePolicyEntry(TypedDict):
 
 
 class FileTypeBriefEntry(TypedDict):
-    """Brief file type entry used when `--show-details` is not requested."""
+    """Brief file type entry used when `--long` is not requested."""
 
     local_key: str
     namespace: str
@@ -108,7 +109,7 @@ class FileTypeBriefEntry(TypedDict):
 
 
 class FileTypeDetailEntry(TypedDict):
-    """Detailed file type entry used when `--show-details` is enabled."""
+    """Detailed file type entry used when `--long` is enabled."""
 
     local_key: str
     namespace: str
@@ -128,7 +129,7 @@ class FileTypeDetailEntry(TypedDict):
 FileTypeEntry: TypeAlias = FileTypeBriefEntry | FileTypeDetailEntry
 """Single file type entry (brief or detailed)."""
 
-FileTypesPayload: TypeAlias = list[FileTypeEntry]
+FileTypesPayload: TypeAlias = list[FileTypeBriefEntry] | list[FileTypeDetailEntry]
 """Payload for `topmark registry filetypes`: a list of entries sorted by file type key."""
 
 
@@ -150,7 +151,7 @@ FileTypeRef: TypeAlias = str | FileTypeRefEntry
 
 
 class ProcessorBriefEntry(TypedDict):
-    """Brief header-processor entry used when `--show-details` is not requested."""
+    """Brief header-processor entry used when `--long` is not requested."""
 
     local_key: str
     namespace: str
@@ -159,7 +160,7 @@ class ProcessorBriefEntry(TypedDict):
 
 
 class ProcessorDetailEntry(TypedDict):
-    """Detailed header-processor entry used when `--show-details` is enabled."""
+    """Detailed header-processor entry used when `--long` is enabled."""
 
     local_key: str
     namespace: str
@@ -177,25 +178,19 @@ ProcessorEntry: TypeAlias = ProcessorBriefEntry | ProcessorDetailEntry
 """Single processor entry (brief or detailed)."""
 
 
-class ProcessorsPayload(TypedDict):
-    """Payload for `topmark registry processors`.
-
-    This payload is now identity-focused: it lists registered processors rather
-    than grouping file types under each processor.
-    """
-
-    processors: list[ProcessorEntry]
+ProcessorsPayload: TypeAlias = list[ProcessorBriefEntry] | list[ProcessorDetailEntry]
+"""Payload for `topmark registry processors`: a list of entries sorted by processor key."""
 
 
 class BindingBriefEntry(TypedDict):
-    """Brief binding entry used when `--show-details` is not requested."""
+    """Brief binding entry used when `--long` is not requested."""
 
     file_type_key: str
     processor_key: str
 
 
 class BindingDetailEntry(TypedDict):
-    """Detailed binding entry used when `--show-details` is enabled."""
+    """Detailed binding entry used when `--long` is enabled."""
 
     file_type_key: str
     file_type_local_key: str
@@ -209,6 +204,9 @@ class BindingDetailEntry(TypedDict):
 
 BindingEntry: TypeAlias = BindingBriefEntry | BindingDetailEntry
 """Single binding entry (brief or detailed)."""
+
+BindingEntriesPayload: TypeAlias = list[BindingBriefEntry] | list[BindingDetailEntry]
+"""List of binding entries in either brief or detailed form, but never mixed."""
 
 
 class ProcessorRefEntry(TypedDict):
@@ -238,6 +236,6 @@ class BindingsPayload(TypedDict):
             in an effective binding.
     """
 
-    bindings: list[BindingEntry]
+    bindings: BindingEntriesPayload
     unbound_filetypes: list[FileTypeRef]
     unused_processors: list[ProcessorRef]

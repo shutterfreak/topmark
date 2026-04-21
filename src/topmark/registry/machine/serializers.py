@@ -15,7 +15,7 @@ wire representations.
 
 Layers:
 - `payloads` builds JSON-serializable payload structures.
-- `shapes` wraps payloads into canonical JSON envelopes / NDJSON record objects.
+- `envelopes` wraps payloads into canonical JSON envelopes / NDJSON record objects.
 - This module serializes those objects:
     - JSON: one pretty-printed JSON string (no trailing newline).
     - NDJSON: an iterable of per-line JSON strings (no trailing newline per item).
@@ -46,8 +46,7 @@ if TYPE_CHECKING:
 
     from topmark.core.machine.schemas import MetaPayload
     from topmark.registry.machine.schemas import BindingsPayload
-    from topmark.registry.machine.schemas import FileTypeBriefEntry
-    from topmark.registry.machine.schemas import FileTypeDetailEntry
+    from topmark.registry.machine.schemas import FileTypesPayload
     from topmark.registry.machine.schemas import ProcessorsPayload
 
 
@@ -101,7 +100,7 @@ def serialize_filetypes_json(
         - JSON: pretty-printed JSON string (no trailing newline)
         - NDJSON: iterable of JSON strings (one per record; no trailing newline per item)
     """
-    payload: list[FileTypeBriefEntry | FileTypeDetailEntry] = build_filetypes_payload(
+    payload: FileTypesPayload = build_filetypes_payload(
         show_details=show_details,
     )
     envelope: dict[str, object] = build_filetypes_json_envelope(
@@ -125,7 +124,7 @@ def serialize_filetypes_ndjson(
     Returns:
         Iterator of JSON strings (one per record; no trailing newline per item)
     """
-    payload: list[FileTypeBriefEntry | FileTypeDetailEntry] = build_filetypes_payload(
+    payload: FileTypesPayload = build_filetypes_payload(
         show_details=show_details,
     )
     records: Iterator[dict[str, object]] = iter_filetypes_ndjson_records(

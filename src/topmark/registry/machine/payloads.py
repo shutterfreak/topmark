@@ -37,6 +37,7 @@ from topmark.api.commands.registry import list_filetypes
 from topmark.api.commands.registry import list_processors
 from topmark.registry.machine.schemas import BindingBriefEntry
 from topmark.registry.machine.schemas import BindingDetailEntry
+from topmark.registry.machine.schemas import BindingEntriesPayload
 from topmark.registry.machine.schemas import BindingsPayload
 from topmark.registry.machine.schemas import FileTypeBriefEntry
 from topmark.registry.machine.schemas import FileTypeDetailEntry
@@ -103,7 +104,7 @@ def build_filetypes_payload(*, show_details: bool) -> FileTypesPayload:
     """
     raw_items: list[FileTypeInfo] = list_filetypes()
 
-    payload: list[FileTypeBriefEntry] | list[FileTypeDetailEntry] = []
+    payload: FileTypesPayload = []
     for item in sorted(raw_items, key=lambda it: str(it["qualified_key"])):
         if show_details:
             payload.append(
@@ -142,11 +143,11 @@ def build_processors_payload(*, show_details: bool) -> ProcessorsPayload:
         show_details: If True, include expanded identity and delimiter fields.
 
     Returns:
-        A `ProcessorsPayload` dict sorted by canonical processor key.
+        List of processor entries, sorted by canonical processor key.
     """
     raw_items: list[ProcessorInfo] = list_processors()
 
-    processors: list[ProcessorBriefEntry] | list[ProcessorDetailEntry] = []
+    processors: ProcessorsPayload = []
     for item in sorted(raw_items, key=lambda it: str(it["qualified_key"])):
         if show_details:
             processors.append(
@@ -173,7 +174,7 @@ def build_processors_payload(*, show_details: bool) -> ProcessorsPayload:
                 )
             )
 
-    return ProcessorsPayload(processors=processors)
+    return processors
 
 
 def build_bindings_payload(*, show_details: bool) -> BindingsPayload:
@@ -197,7 +198,7 @@ def build_bindings_payload(*, show_details: bool) -> BindingsPayload:
     raw_filetypes: list[FileTypeInfo] = list_filetypes()
     raw_processors: list[ProcessorInfo] = list_processors()
 
-    bindings: list[BindingBriefEntry | BindingDetailEntry] = []
+    bindings: BindingEntriesPayload = []
     for item in sorted(raw_bindings, key=lambda it: str(it["file_type_key"])):
         if show_details:
             bindings.append(

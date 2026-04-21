@@ -105,7 +105,7 @@ def build_processors_json_envelope(
 
     Args:
         meta: Machine metadata payload.
-        payload: Processors payload.
+        payload: List of processor entries.
 
     Returns:
         JSON envelope with keys `meta` and `processors`.
@@ -133,7 +133,7 @@ def iter_processors_ndjson_records(
     Yields:
         NDJSON record objects (not yet serialized to strings).
     """
-    for proc_item in payload["processors"]:
+    for proc_item in payload:
         proc_entry: ProcessorEntry = proc_item
         yield build_ndjson_record(
             kind=RegistryKind.PROCESSOR,
@@ -154,11 +154,13 @@ def build_bindings_json_envelope(
         payload: Bindings payload.
 
     Returns:
-        JSON envelope with keys `meta` and `bindings`.
+        JSON envelope with keys `meta`, `bindings`, `unbound_filetypes`, and `unused_processors`.
     """
     return build_json_envelope(
         meta=meta,
-        bindings=payload,
+        bindings=payload["bindings"],
+        unbound_filetypes=payload["unbound_filetypes"],
+        unused_processors=payload["unused_processors"],
     )
 
 
