@@ -133,8 +133,14 @@ Machine formats are now:
 - Fully separated from CLI
 - Using consistent envelope structures
 - Supporting JSON and NDJSON
+- Backed by focused JSON + NDJSON contract tests for:
+  - config commands
+  - pipeline commands
+  - version command
+- Supported by shared JSON/NDJSON test helpers for machine-output parsing
 
-Remaining work is limited to **schema freeze and naming audits**, not architecture.
+Remaining work is limited to **registry command coverage, schema freeze, and naming audits**, not
+architecture.
 
 ### Human output system (completed)
 
@@ -154,6 +160,7 @@ Result: human output is now **consistent, composable, and decoupled from CLI**.
 - Enforced docstring standards and validation
 - Introduced link-checking and stricter docs CI
 - Reorganized tests and helpers for clarity
+- Added shared JSON/NDJSON parsing helpers for machine-output tests
 
 ### CI / release / dependency model (completed)
 
@@ -176,6 +183,7 @@ At this point:
 - Legacy implicit behavior is **eliminated**
 - System boundaries are **clear and enforced**
 - Remaining work is **focused and incremental**, not structural
+- Machine-output contract coverage is now strong for config, pipeline, and version commands
 
 The project is now in a **pre-1.0 stabilization phase**, with only a few major decisions and
 targeted features (notably in-memory pipeline support) remaining.
@@ -434,8 +442,8 @@ Remaining decisions:
   - TOML-source diagnostics
   - merged-config diagnostics
   - runtime-applicability diagnostics
-- Decide how much of that staged model should remain internal for 1.0 versus be exposed explicitly
-  in CLI/API/machine-output contracts.
+- Keep staged validation primarily internal for 1.0, with only the flattened compatibility
+  diagnostics contract exposed at exception, presentation, and machine-output boundaries.
 - Keep `strict_config_checking` as-is for 1.0 and revisit any possible rename only after the 1.0
   contract freeze.
 - Confirm that sanitization/runtime-applicability warnings intentionally remain inside the effective
@@ -465,8 +473,8 @@ Machine output remaining work:
 
 - Final audit of field naming consistency across domains.
 - Finalize how TOML validation diagnostics are represented alongside config diagnostics.
-- Decide whether flattened `{level, message}` config diagnostics are sufficient for 1.0, or whether
-  richer TOML-specific structure is required.
+- Keep flattened `{level, message}` config diagnostics as the accepted 1.0 machine contract and
+  defer any richer TOML-specific structure unless required before final freeze.
 - Finish contract tests for remaining registry machine outputs.
 - Freeze `detail_level` semantics and brief vs long projections.
 - Freeze machine-format documentation in `docs/dev/machine-formats.md`.
@@ -564,14 +572,15 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] pipeline commands
   - [x] version command
   - [ ] registry commands
+  - [ ] top-level command groups reviewed for any remaining machine-output gaps
 - [ ] Final schema freeze review completed
   - [ ] `(outcome, reason, count)` summary rows frozen
   - [ ] `detail_level` semantics frozen
   - [ ] field naming consistency audited across domains
 - [x] `config check` payload naming stabilized as `config_check`
 - [x] `strict_config_checking` naming stabilized in config-validation payloads
-- [ ] Decision made on the 1.0 machine contract for config/TOML diagnostics:
-  - [ ] flattened `{level, message}` is explicitly accepted as final, or
+- [x] Decision made on the 1.0 machine contract for config/TOML diagnostics:
+  - [x] flattened `{level, message}` is explicitly accepted as final
   - [ ] richer TOML-specific structure is required before freeze
 - [ ] `docs/dev/machine-formats.md` reviewed and frozen as the reference contract
 
@@ -623,9 +632,10 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] effective validity now evaluates TOML-source, merged-config, and runtime-applicability
     diagnostics together
   - [x] `strict_config_checking` remains the public config-loading strictness knob
-  - [ ] final decision made on 1.0 exposure: keep staged validation primarily internal with
-    flattened compatibility diagnostics only at exception/presentation/output boundaries, or expose
-    more of the staged model in CLI/API/machine-output contracts
+  - [x] `ConfigValidationError` now has focused coverage for staged-count summaries and
+    exception-boundary flattening
+  - [x] final decision made on 1.0 exposure: keep staged validation primarily internal with
+    flattened compatibility diagnostics only at exception/presentation/output boundaries
 - [ ] Decision made whether explicit configuration schema versioning is deferred past 1.0
 
 #### [Must] Pipeline & testing
@@ -683,10 +693,13 @@ These should ideally be completed for 1.0, but may be deferred more easily if ne
 #### [Recommended] Machine output
 
 - [ ] Add stable examples for remaining command categories in `docs/dev/machine-formats.md`
-- [ ] Add examples showing TOML-layer diagnostics alongside config-layer diagnostics where relevant
-- [ ] Add a short explicit note on the flattened config-diagnostics contract if that remains the 1.0
+- [ ] Add examples showing flattened config/TOML diagnostics in both JSON and NDJSON forms where
+  relevant
+- [x] Add a short explicit note on the flattened config-diagnostics contract if that remains the 1.0
   decision
 - [ ] Edge-case coverage reviewed for confidence in frozen schemas
+  - [x] config command machine tests now cover flattened staged diagnostics behavior
+  - [x] version command machine tests now cover JSON and NDJSON output
 
 #### [Recommended] CI / release architecture
 

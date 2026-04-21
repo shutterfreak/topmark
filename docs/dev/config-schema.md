@@ -22,7 +22,8 @@ from `topmark.toml` and from `[tool.topmark]` in `pyproject.toml`.
 > - Keys are defined authoritatively in `src/topmark/toml/keys.py`.
 >
 > Machine and human outputs expose a flattened compatibility view derived from these staged
-> validation logs; the staged form is not serialized directly.
+> validation logs; the staged form is not serialized directly. For 1.0, this flattened form is the
+> accepted machine/API contract (stable entry shape `{level, message}`).
 
 ```md
 `strict_config_checking` is a **TOML-source-local config-loading option**, not a
@@ -53,7 +54,9 @@ After this step, only the **layered config fragment** is passed to the config la
 (`MutableConfig`) for value parsing and normalization.
 
 At this boundary, diagnostics remain **staged**; flattening into a single compatibility view is
-performed only at reporting, exception, and machine-output boundaries.
+performed only at reporting, exception, and machine-output boundaries. For 1.0, staged validation
+remains primarily internal, while public reporting and machine/API surfaces expose only the
+flattened compatibility diagnostics contract.
 
 At the TOML layer, malformed known sections are handled as warning-and-ignore cases, while missing
 known sections are emitted as INFO diagnostics. This lets callers distinguish absent sections from

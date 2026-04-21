@@ -20,10 +20,12 @@ topmark:header:end
 > - **Globs passed via CLI** are resolved relative to the **current working directory**.
 > - Paths to other files (like `exclude_from`) are resolved relative to the **declaring source**
 >   (config dir or CWD for CLI).
-> - After resolution and merge, configuration validity is evaluated across staged config-loading
->   diagnostics:
+> - After resolution and merge, configuration validity is evaluated across staged
+>   config-loading/preflight diagnostics:
 >   - TOML-source diagnostics
 >   - merged-config diagnostics
->   - runtime-applicability diagnostics (reported as a flattened compatibility diagnostics view).
+>   - runtime-applicability diagnostics
+> - For 1.0, the staged form remains internal; reporting and machine/API/CLI surfaces expose only
+>   the flattened compatibility diagnostics contract.
 >
 > See: [Configuration → Discovery & Precedence](../configuration/discovery.md).

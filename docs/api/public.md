@@ -63,9 +63,10 @@ config merging.
 Internally, TopMark first performs whole-source TOML-style validation of these sections (unknown
 keys, malformed section shapes, etc.), then deserializes only the layered fragment into the final
 immutable `Config` snapshot, and finally evaluates effective validity across staged
-config-loading/preflight validation. The flattened compatibility diagnostics view remains available
-for reporting and exception payloads. This is why sections like `[config]` and `[writer]` can
-influence loading/runtime behavior without becoming layered `Config` fields.
+config-loading/preflight validation. A flattened compatibility diagnostics view remains available
+for reporting and exception payloads, derived from the staged validation logs. This is why sections
+like `[config]` and `[writer]` can influence loading/runtime behavior without becoming layered
+`Config` fields.
 
 This distinction is also visible when inspecting configuration via
 `topmark config dump --show-layers`: source-local TOML fragments are preserved per layer (for

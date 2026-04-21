@@ -20,7 +20,9 @@ project/user config, and any CLI overrides.
 
 During loading, TopMark first performs whole-source TOML schema validation for all
 discovered/configured TOML sources. Only the validated layered config fragment contributes to the
-final merged output.
+final merged output. Validation is evaluated across staged config-loading/preflight diagnostics,
+which remain internal; reporting and machine/API/CLI surfaces expose only the flattened
+compatibility diagnostics contract for 1.0.
 
 It is **file-agnostic**: it does not resolve or process any files.
 

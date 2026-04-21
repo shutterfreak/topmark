@@ -45,6 +45,9 @@ Internally, configuration validation is represented as staged validation logs. A
 compatibility view of diagnostics is derived only at reporting, exception, and machine-output
 boundaries.
 
+For 1.0, this boundary is intentional: staged validation remains primarily internal, while public
+reporting and machine/API/CLI surfaces expose only the flattened compatibility diagnostics contract.
+
 See also:
 
 - [`Configuration overview`](./configuration/index.md)

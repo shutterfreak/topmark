@@ -310,8 +310,10 @@ validation is evaluated across staged config-loading/preflight validation:
 
 The effective strictness governs this staged validation collectively (warnings become failures when
 strict mode is enabled). A flattened compatibility diagnostics view remains available for reporting
-and output surfaces, derived from staged validation logs. CLI/API strictness overrides still take
-precedence for the current run.
+and output surfaces, derived from staged validation logs. For 1.0, this boundary is intentional:
+staged validation remains primarily internal, while public reporting and machine/API/CLI surfaces
+expose only the flattened compatibility diagnostics contract. CLI/API strictness overrides still
+take precedence for the current run.
 
 In layered provenance output, these source-local TOML fragments remain grouped under their original
 TOML sections (for example `[config]` and `[writer]`) rather than being collapsed into the final

@@ -155,14 +155,9 @@ do not become layered `Config` fields.
 
 The current `strict_config_checking` name comes from the earlier single-"config" architecture. In
 TopMark's current layered TOML → Config → Runtime model, its effective behavior is broader: it
-controls staged config-loading validation evaluated across:
+controls staged config-loading validation.
 
-- TOML-source diagnostics
-- merged-config diagnostics
-- runtime-applicability diagnostics
-
-The flattened compatibility diagnostics view remains available for reporting and current
-machine/API/CLI surfaces.
+{% include-markdown "\_snippets/config-validation-contract.md" %}
 
 Currently, this includes:
 

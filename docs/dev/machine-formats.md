@@ -128,6 +128,10 @@ Diagnostics emitted in machine output represent the flattened compatibility view
 config-validation logs. Internally, these diagnostics may originate from TOML-source, merged-config,
 or runtime-applicability validation.
 
+For 1.0, this flattened compatibility form is the accepted final machine contract for config/TOML
+validation diagnostics. Machine output does **not** serialize stage-local validation structure; the
+stable emitted diagnostic entry shape remains `{level, message}`.
+
 - **JSON** uses stable `{level, message}` entries within domain payloads (for example
   `config_diagnostics.diagnostics`).
 - **NDJSON** emits one `diagnostic` record per diagnostic, with a `domain` field identifying the
@@ -220,6 +224,9 @@ config-validation strictness after applying CLI override precedence over resolve
 This strictness is evaluated across staged config-loading/preflight validation (TOML-source,
 merged-config, and runtime-applicability diagnostics), while machine output continues to expose the
 flattened compatibility diagnostics view.
+
+For 1.0, this boundary is intentional: staged validation remains an internal representation, while
+machine output exposes only the flattened compatibility diagnostics contract.
 
 For `config dump --show-layers`, machine output preserves the same logical ordering as the
 human-facing layered export:

@@ -314,6 +314,9 @@ These diagnostics may originate from staged validation logs for:
 - merged-config diagnostics
 - runtime-applicability diagnostics
 
+For 1.0, the machine contract for config-validation diagnostics is this flattened compatibility
+shape. Stage-local validation structure remains internal and is not serialized directly.
+
 JSON shape:
 
 ```jsonc
@@ -325,6 +328,8 @@ JSON shape:
   ]
 }
 ```
+
+The individual diagnostic entry shape is intentionally fixed at `{level, message}` for 1.0.
 
 - `diagnostic_counts`: counts per level (`info`, `warning`, `error`)
 - `diagnostics`: list of individual diagnostics (stable `{level, message}` entries; see
@@ -486,6 +491,9 @@ run. It is derived from TOML source configuration (`[config].strict_config_check
 overridden by CLI or API inputs. This strictness is evaluated across staged config-loading/preflight
 validation, while `config_diagnostics` remains the flattened compatibility view exposed in machine
 output.
+
+For 1.0, this is the explicit contract decision: staged validation remains primarily internal, and
+machine output serializes only the flattened compatibility diagnostics surface.
 
 ### NDJSON shape for `config check`
 

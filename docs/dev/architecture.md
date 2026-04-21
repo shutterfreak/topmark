@@ -461,16 +461,20 @@ TopMark exposes configuration state through both human-readable and machine-read
 
 For `config check`, machine output reports effective strictness under the key
 `strict_config_checking`, reflecting TOML-resolved strictness plus any CLI/API override. This
-strictness applies across staged config-loading validation: TOML-source diagnostics, merged-config
-diagnostics, and runtime-applicability diagnostics. Machine output continues to expose the flattened
-compatibility diagnostics view derived from those staged validation logs.
+strictness applies across staged config-loading/preflight validation: TOML-source diagnostics,
+merged-config diagnostics, and runtime-applicability diagnostics. Machine output continues to expose
+the flattened compatibility diagnostics view derived from those staged validation logs.
+
+For 1.0, this flattened compatibility form is the accepted final machine contract for config/TOML
+validation diagnostics. Stage-local validation structure remains internal and is not serialized in
+machine formats; the stable emitted diagnostic entry shape remains `{level, message}`.
 
 In machine formats, `config defaults` and `config init` share the same underlying configuration
 snapshot, even though their human-facing output differs.
 
 More generally, TopMark now treats staged validation logs as the sole internal representation of
-config-validation diagnostics. Flattening is performed only at exception, presentation, and
-machine-output boundaries.
+config-validation diagnostics. For 1.0, staged validation remains primarily internal, and flattening
+is performed only at exception, presentation, and machine-output boundaries.
 
 ______________________________________________________________________
 
