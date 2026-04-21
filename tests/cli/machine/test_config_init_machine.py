@@ -35,14 +35,16 @@ All CLI invocations are executed via Click's `CliRunner`, using the helpers in
 
 from __future__ import annotations
 
-import json
 from typing import TYPE_CHECKING
-from typing import cast
 
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
+from tests.helpers.json import parse_json_object
+from tests.helpers.ndjson import parse_single_ndjson_record
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
+from topmark.core.typing_guards import as_object_dict
+from topmark.core.typing_guards import is_mapping
 
 if TYPE_CHECKING:
     from click.testing import Result
@@ -60,9 +62,7 @@ def test_config_init_json_includes_meta_and_config() -> None:
     )
     assert_SUCCESS(result)
 
-    payload_obj: object = json.loads(result.output)
-    assert isinstance(payload_obj, dict)
-    payload: dict[str, object] = cast("dict[str, object]", payload_obj)
+    payload: dict[str, object] = parse_json_object(result.output)
 
     assert "meta" in payload
     assert "config" in payload
@@ -70,8 +70,8 @@ def test_config_init_json_includes_meta_and_config() -> None:
     assert "config_provenance" not in payload
 
     meta_obj: object | None = payload.get("meta")
-    assert isinstance(meta_obj, dict)
-    meta: dict[str, object] = cast("dict[str, object]", meta_obj)
+    assert is_mapping(meta_obj)
+    meta: dict[str, object] = as_object_dict(meta_obj)
     assert meta.get("tool") == "topmark"
     assert isinstance(meta.get("version"), str)
 
@@ -88,13 +88,11 @@ def test_config_init_json_is_structured_config_snapshot() -> None:
     )
     assert_SUCCESS(result)
 
-    payload_obj: object = json.loads(result.output)
-    assert isinstance(payload_obj, dict)
-    payload: dict[str, object] = cast("dict[str, object]", payload_obj)
+    payload: dict[str, object] = parse_json_object(result.output)
 
     config_obj: object | None = payload.get("config")
-    assert isinstance(config_obj, dict)
-    config: dict[str, object] = cast("dict[str, object]", config_obj)
+    assert is_mapping(config_obj)
+    config: dict[str, object] = as_object_dict(config_obj)
 
     assert "fields" in config
     assert "header" in config
@@ -113,12 +111,7 @@ def test_config_init_ndjson_emits_only_config_record() -> None:
     )
     assert_SUCCESS(result)
 
-    lines: list[str] = [line for line in result.output.splitlines() if line.strip()]
-    assert len(lines) == 1
-
-    record_obj: object = json.loads(lines[0])
-    assert isinstance(record_obj, dict)
-    record: dict[str, object] = cast("dict[str, object]", record_obj)
+    record: dict[str, object] = parse_single_ndjson_record(result.output)
 
     assert record.get("kind") == "config"
     assert "meta" in record

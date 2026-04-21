@@ -36,16 +36,19 @@ All CLI invocations are executed via Click’s `CliRunner`, using the helpers in
 
 from __future__ import annotations
 
-import json
 from typing import TYPE_CHECKING
-from typing import cast
 
 import pytest
 
 from tests.cli.conftest import assert_SUCCESS_or_WOULD_CHANGE
 from tests.cli.conftest import run_cli_in
+from tests.helpers.json import parse_json_object
+from tests.helpers.ndjson import parse_ndjson_records
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
+from topmark.core.typing_guards import as_object_dict
+from topmark.core.typing_guards import is_any_list
+from topmark.core.typing_guards import is_mapping
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -87,12 +90,12 @@ def test_processing_json_includes_meta(tmp_path: Path, command: str) -> None:
     )
     assert_SUCCESS_or_WOULD_CHANGE(result)
 
-    payload: dict[str, object] = json.loads(result.output)
+    payload: dict[str, object] = parse_json_object(result.output)
     assert "meta" in payload
 
     meta_obj = payload.get("meta")
-    assert isinstance(meta_obj, dict)
-    meta: dict[str, object] = cast("dict[str, object]", meta_obj)
+    assert is_mapping(meta_obj)
+    meta: dict[str, object] = as_object_dict(meta_obj)
 
     tool_obj = meta.get("tool")
     assert isinstance(tool_obj, str)
@@ -134,9 +137,7 @@ def test_processing_json_detail_shape(tmp_path: Path, command: str) -> None:
     )
     assert_SUCCESS_or_WOULD_CHANGE(result)
 
-    payload_raw: object = json.loads(result.output)
-    assert isinstance(payload_raw, dict)
-    payload: dict[str, object] = cast("dict[str, object]", payload_raw)
+    payload: dict[str, object] = parse_json_object(result.output)
 
     # Top-level wrapper keys
     assert "meta" in payload
@@ -145,13 +146,13 @@ def test_processing_json_detail_shape(tmp_path: Path, command: str) -> None:
     assert "results" in payload
 
     results_raw: object = payload["results"]
-    assert isinstance(results_raw, list)
-    results_list: list[object] = cast("list[object]", results_raw)
+    assert is_any_list(results_raw)
+    results_list: list[object] = results_raw
     assert results_list  # At least one result
 
     first_raw: object = results_list[0]
-    assert isinstance(first_raw, dict)
-    first: dict[str, object] = cast("dict[str, object]", first_raw)
+    assert is_mapping(first_raw)
+    first: dict[str, object] = as_object_dict(first_raw)
 
     # Basic per-file keys
     for key in (
@@ -167,16 +168,16 @@ def test_processing_json_detail_shape(tmp_path: Path, command: str) -> None:
 
     # steps: list of strings
     steps_raw: object = first["steps"]
-    assert isinstance(steps_raw, list)
-    steps: list[object] = cast("list[object]", steps_raw)
+    assert is_any_list(steps_raw)
+    steps: list[object] = steps_raw
     assert steps
     for s in steps:
         assert isinstance(s, str)
 
     # step_axes: mapping step name -> list of axes
     step_axes_raw: object = first["step_axes"]
-    assert isinstance(step_axes_raw, dict)
-    step_axes: dict[str, object] = cast("dict[str, object]", step_axes_raw)
+    assert is_mapping(step_axes_raw)
+    step_axes: dict[str, object] = as_object_dict(step_axes_raw)
     assert step_axes  # some step axes present
 
     # At least one entry maps to a non-empty list of axis names
@@ -189,24 +190,24 @@ def test_processing_json_detail_shape(tmp_path: Path, command: str) -> None:
 
     # status: axis -> {axis, name, label}
     status_obj = first["status"]
-    assert isinstance(status_obj, dict)
-    status: dict[str, object] = cast("dict[str, object]", status_obj)
+    assert is_mapping(status_obj)
+    status: dict[str, object] = as_object_dict(status_obj)
     # We expect at least the "resolve" axis entry
     assert "resolve" in status
     resolve_status_obj = status["resolve"]
-    assert isinstance(resolve_status_obj, dict)
-    resolve_status: dict[str, object] = cast("dict[str, object]", resolve_status_obj)
+    assert is_mapping(resolve_status_obj)
+    resolve_status: dict[str, object] = as_object_dict(resolve_status_obj)
     assert resolve_status.get("axis") == "resolve"
     assert isinstance(resolve_status.get("name"), str)
     assert isinstance(resolve_status.get("label"), str)
 
     # views: should be a mapping
     views_obj = first["views"]
-    assert isinstance(views_obj, dict)
+    assert is_mapping(views_obj)
 
     # outcome: should be a mapping
     outcome_obj = first["outcome"]
-    assert isinstance(outcome_obj, dict)
+    assert is_mapping(outcome_obj)
 
 
 @pytest.mark.parametrize(
@@ -241,9 +242,7 @@ def test_processing_json_summary_shape(tmp_path: Path, command: str) -> None:
     )
     assert_SUCCESS_or_WOULD_CHANGE(result)
 
-    payload_obj: object = json.loads(result.output)
-    assert isinstance(payload_obj, dict)
-    payload: dict[str, object] = cast("dict[str, object]", payload_obj)
+    payload: dict[str, object] = parse_json_object(result.output)
 
     # Top-level wrapper still includes meta/config/config_diagnostics
     assert "meta" in payload
@@ -253,13 +252,13 @@ def test_processing_json_summary_shape(tmp_path: Path, command: str) -> None:
     assert "summary" in payload
 
     summary_obj = payload["summary"]
-    assert isinstance(summary_obj, list)
-    summary_rows: list[object] = cast("list[object]", summary_obj)
+    assert is_any_list(summary_obj)
+    summary_rows: list[object] = summary_obj
     assert summary_rows  # at least one summary row
 
     first_obj: object = summary_rows[0]
-    assert isinstance(first_obj, dict)
-    first: dict[str, object] = cast("dict[str, object]", first_obj)
+    assert is_mapping(first_obj)
+    first: dict[str, object] = as_object_dict(first_obj)
     assert isinstance(first.get("outcome"), str)
     assert isinstance(first.get("reason"), str)
     assert isinstance(first.get("count"), int)
@@ -294,18 +293,16 @@ def test_processing_json_summary_rows_do_not_use_legacy_key_label_shape(
     )
     assert_SUCCESS_or_WOULD_CHANGE(result)
 
-    payload_obj: object = json.loads(result.output)
-    assert isinstance(payload_obj, dict)
-    payload: dict[str, object] = cast("dict[str, object]", payload_obj)
+    payload: dict[str, object] = parse_json_object(result.output)
 
     summary_obj: object = payload["summary"]
-    assert isinstance(summary_obj, list)
-    summary_rows: list[object] = cast("list[object]", summary_obj)
+    assert is_any_list(summary_obj)
+    summary_rows: list[object] = summary_obj
     assert summary_rows
 
     for row_obj in summary_rows:
-        assert isinstance(row_obj, dict)
-        row: dict[str, object] = cast("dict[str, object]", row_obj)
+        assert is_mapping(row_obj)
+        row: dict[str, object] = as_object_dict(row_obj)
         assert "outcome" in row
         assert "reason" in row
         assert "count" in row
@@ -350,22 +347,19 @@ def test_processing_ndjson_kinds_with_summary(tmp_path: Path, command: str) -> N
     )
     assert_SUCCESS_or_WOULD_CHANGE(result)
 
-    lines: list[str] = [line for line in result.output.splitlines() if line.strip()]
-    assert lines
+    records: list[dict[str, object]] = parse_ndjson_records(result.output)
+    assert records
 
     kinds: list[str] = []
-    for line in lines:
-        record_obj: object = json.loads(line)
-        assert isinstance(record_obj, dict)
-        record: dict[str, object] = cast("dict[str, object]", record_obj)
+    for record in records:
         kind_obj = record.get("kind")
         assert isinstance(kind_obj, str)
         kinds.append(kind_obj)
 
         if kind_obj == "summary":
             summary_obj = record.get("summary")
-            assert isinstance(summary_obj, dict)
-            summary: dict[str, object] = cast("dict[str, object]", summary_obj)
+            assert is_mapping(summary_obj)
+            summary: dict[str, object] = as_object_dict(summary_obj)
 
             outcome_obj = summary.get("outcome")
             reason_obj = summary.get("reason")
@@ -409,21 +403,18 @@ def test_processing_ndjson_summary_rows_do_not_use_legacy_key_label_shape(
     )
     assert_SUCCESS_or_WOULD_CHANGE(result)
 
-    lines: list[str] = [line for line in result.output.splitlines() if line.strip()]
-    assert lines
+    records: list[dict[str, object]] = parse_ndjson_records(result.output)
+    assert records
 
     summary_records_found: int = 0
-    for line in lines:
-        record_obj: object = json.loads(line)
-        assert isinstance(record_obj, dict)
-        record: dict[str, object] = cast("dict[str, object]", record_obj)
+    for record in records:
         if record.get("kind") != "summary":
             continue
 
         summary_records_found += 1
         summary_obj: object | None = record.get("summary")
-        assert isinstance(summary_obj, dict)
-        summary: dict[str, object] = cast("dict[str, object]", summary_obj)
+        assert is_mapping(summary_obj)
+        summary: dict[str, object] = as_object_dict(summary_obj)
 
         assert "outcome" in summary
         assert "reason" in summary

@@ -37,14 +37,18 @@ All CLI invocations are executed via Click’s `CliRunner`, using the helpers in
 
 from __future__ import annotations
 
-import json
 from typing import TYPE_CHECKING
-from typing import cast
 
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
+from tests.helpers.json import parse_json_object
+from tests.helpers.ndjson import parse_ndjson_records
+from tests.helpers.ndjson import parse_single_ndjson_record
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
+from topmark.core.typing_guards import as_object_dict
+from topmark.core.typing_guards import is_any_list
+from topmark.core.typing_guards import is_mapping
 
 if TYPE_CHECKING:
     from click.testing import Result
@@ -69,15 +73,15 @@ def test_config_dump_json_includes_meta() -> None:
     )
     assert_SUCCESS(result)
 
-    payload: dict[str, object] = json.loads(result.output)
+    payload: dict[str, object] = parse_json_object(result.output)
 
     # Top-level keys
     assert "meta" in payload
     assert "config" in payload
 
     meta_obj = payload.get("meta")
-    assert isinstance(meta_obj, dict)
-    meta: dict[str, object] = cast("dict[str, object]", meta_obj)
+    assert is_mapping(meta_obj)
+    meta: dict[str, object] = as_object_dict(meta_obj)
 
     tool_obj = meta.get("tool")
     assert isinstance(tool_obj, str)
@@ -102,33 +106,31 @@ def test_config_dump_json_show_layers_includes_config_provenance() -> None:
     )
     assert_SUCCESS(result)
 
-    payload_obj: object = json.loads(result.output)
-    assert isinstance(payload_obj, dict)
-    payload: dict[str, object] = cast("dict[str, object]", payload_obj)
+    payload: dict[str, object] = parse_json_object(result.output)
 
     assert "meta" in payload
     assert "config_provenance" in payload
     assert "config" in payload
 
     provenance_obj = payload.get("config_provenance")
-    assert isinstance(provenance_obj, dict)
-    provenance: dict[str, object] = cast("dict[str, object]", provenance_obj)
+    assert is_mapping(provenance_obj)
+    provenance: dict[str, object] = as_object_dict(provenance_obj)
 
     layers_obj = provenance.get("config_layers")
-    assert isinstance(layers_obj, list)
-    layers: list[object] = cast("list[object]", layers_obj)
+    assert is_any_list(layers_obj)
+    layers: list[object] = layers_obj
     assert layers
 
     first_obj: object = layers[0]
-    assert isinstance(first_obj, dict)
-    first: dict[str, object] = cast("dict[str, object]", first_obj)
+    assert is_mapping(first_obj)
+    first: dict[str, object] = as_object_dict(first_obj)
 
     assert isinstance(first.get("origin"), str)
     assert isinstance(first.get("kind"), str)
     assert isinstance(first.get("precedence"), int)
 
     toml_obj = first.get("toml")
-    assert isinstance(toml_obj, dict)
+    assert is_mapping(toml_obj)
 
 
 def test_config_dump_json_show_layers_defaults_layer_shape() -> None:
@@ -144,30 +146,28 @@ def test_config_dump_json_show_layers_defaults_layer_shape() -> None:
     )
     assert_SUCCESS(result)
 
-    payload_obj: object = json.loads(result.output)
-    assert isinstance(payload_obj, dict)
-    payload: dict[str, object] = cast("dict[str, object]", payload_obj)
+    payload: dict[str, object] = parse_json_object(result.output)
 
     provenance_obj = payload.get("config_provenance")
-    assert isinstance(provenance_obj, dict)
-    provenance: dict[str, object] = cast("dict[str, object]", provenance_obj)
+    assert is_mapping(provenance_obj)
+    provenance: dict[str, object] = as_object_dict(provenance_obj)
 
     layers_obj = provenance.get("config_layers")
-    assert isinstance(layers_obj, list)
-    layers: list[object] = cast("list[object]", layers_obj)
+    assert is_any_list(layers_obj)
+    layers: list[object] = layers_obj
     assert layers
 
     first_obj: object = layers[0]
-    assert isinstance(first_obj, dict)
-    first: dict[str, object] = cast("dict[str, object]", first_obj)
+    assert is_mapping(first_obj)
+    first: dict[str, object] = as_object_dict(first_obj)
 
     assert first.get("origin") == "<defaults>"
     assert first.get("kind") == "default"
     assert first.get("precedence") == 0
 
     toml_obj = first.get("toml")
-    assert isinstance(toml_obj, dict)
-    toml_fragment: dict[str, object] = cast("dict[str, object]", toml_obj)
+    assert is_mapping(toml_obj)
+    toml_fragment: dict[str, object] = as_object_dict(toml_obj)
     assert "config" in toml_fragment
     assert "writer" in toml_fragment
 
@@ -191,17 +191,11 @@ def test_config_dump_ndjson_kinds() -> None:
     )
     assert_SUCCESS(result)
 
-    lines: list[str] = [line for line in result.output.splitlines() if line.strip()]
-    assert lines
+    record: dict[str, object] = parse_single_ndjson_record(result.output)
 
-    kinds: set[str] = set()
-    for line in lines:
-        record_obj: object = json.loads(line)
-        assert isinstance(record_obj, dict)
-        record: dict[str, object] = cast("dict[str, object]", record_obj)
-        kind_obj = record.get("kind")
-        assert isinstance(kind_obj, str)
-        kinds.add(kind_obj)
+    kind_obj = record.get("kind")
+    assert isinstance(kind_obj, str)
+    kinds: set[str] = {kind_obj}
 
     assert kinds == {"config"}
 
@@ -219,24 +213,18 @@ def test_config_dump_ndjson_show_layers_kinds() -> None:
     )
     assert_SUCCESS(result)
 
-    lines: list[str] = [line for line in result.output.splitlines() if line.strip()]
-    assert len(lines) == 2
-
-    records: list[dict[str, object]] = []
-    for line in lines:
-        record_obj: object = json.loads(line)
-        assert isinstance(record_obj, dict)
-        records.append(cast("dict[str, object]", record_obj))
+    records: list[dict[str, object]] = parse_ndjson_records(result.output)
+    assert len(records) == 2
 
     assert records[0].get("kind") == "config_provenance"
     assert records[1].get("kind") == "config"
 
     provenance_obj = records[0].get("config_provenance")
-    assert isinstance(provenance_obj, dict)
-    provenance: dict[str, object] = cast("dict[str, object]", provenance_obj)
+    assert is_mapping(provenance_obj)
+    provenance: dict[str, object] = as_object_dict(provenance_obj)
 
     layers_obj = provenance.get("config_layers")
-    assert isinstance(layers_obj, list)
+    assert is_any_list(layers_obj)
     assert layers_obj
 
 
@@ -253,31 +241,29 @@ def test_config_dump_ndjson_show_layers_defaults_layer_shape() -> None:
     )
     assert_SUCCESS(result)
 
-    lines: list[str] = [line for line in result.output.splitlines() if line.strip()]
-    assert len(lines) == 2
+    records: list[dict[str, object]] = parse_ndjson_records(result.output)
+    assert len(records) == 2
 
-    first_record_obj: object = json.loads(lines[0])
-    assert isinstance(first_record_obj, dict)
-    first_record: dict[str, object] = cast("dict[str, object]", first_record_obj)
+    first_record: dict[str, object] = records[0]
 
     assert first_record.get("kind") == "config_provenance"
 
     provenance_obj = first_record.get("config_provenance")
-    assert isinstance(provenance_obj, dict)
-    provenance: dict[str, object] = cast("dict[str, object]", provenance_obj)
+    assert is_mapping(provenance_obj)
+    provenance: dict[str, object] = as_object_dict(provenance_obj)
 
     layers_obj = provenance.get("config_layers")
-    assert isinstance(layers_obj, list)
-    layers: list[object] = cast("list[object]", layers_obj)
+    assert is_any_list(layers_obj)
+    layers: list[object] = layers_obj
     assert layers
 
     first_layer_obj: object = layers[0]
-    assert isinstance(first_layer_obj, dict)
-    first_layer: dict[str, object] = cast("dict[str, object]", first_layer_obj)
+    assert is_mapping(first_layer_obj)
+    first_layer: dict[str, object] = as_object_dict(first_layer_obj)
 
     assert first_layer.get("origin") == "<defaults>"
     assert first_layer.get("kind") == "default"
     assert first_layer.get("precedence") == 0
 
     toml_obj = first_layer.get("toml")
-    assert isinstance(toml_obj, dict)
+    assert is_mapping(toml_obj)
