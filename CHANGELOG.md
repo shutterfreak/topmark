@@ -18,6 +18,128 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ______________________________________________________________________
 
+## [1.0.0a2] – 2026-04-21
+
+This second **1.0 alpha release** finalizes the internal configuration-validation model, strengthens
+machine-output and test coverage, and hardens the release workflow.
+
+The focus of `1.0.0a2` is **internal contract completion and release-path reliability**:
+
+- configuration validation now uses a **staged validation log model** internally,
+- flattened diagnostics are now strictly a **boundary-level compatibility view**,
+- test coverage and helpers were expanded to support the new validation model,
+- release automation is now **fully deterministic and ambiguity-safe**,
+- documentation and roadmap now reflect the **true 1.0 contract and stabilization status**.
+
+This alpha continues the transition from large-scale refactoring to **final contract validation
+before 1.0**.
+
+### Highlights — 1.0.0a2
+
+- Staged validation logs as the single internal representation of config diagnostics
+- Removal of duplicated flattened diagnostics state from config models
+- Boundary-only flattening at exception, presentation, and machine-output layers
+- Strengthened machine-output and validation test coverage
+- Improved JSONC file-type handling with native `.jsonc` support and safer ambiguous
+  `.json`-as-JSONC detection
+- Hardened artifact-based release workflow with strict tag preflight rules
+- Fully aligned documentation and roadmap for 1.0 contract freeze
+
+### Added — 1.0.0a2
+
+- **Configuration / validation**
+
+  - Staged validation log model with explicit stages:
+    - TOML-source diagnostics
+    - merged-config diagnostics
+    - runtime-applicability diagnostics
+  - New validation-log helpers and test utilities for:
+    - stage-level assertions
+    - diagnostic count validation
+  - Focused test module for `ConfigValidationError` behavior and staged summaries
+
+- **Testing**
+
+  - Shared JSON and NDJSON parsing helpers for machine-output tests
+  - Dedicated machine-output test coverage for:
+    - config commands
+    - pipeline commands
+    - version command (JSON + NDJSON)
+  - Reorganized TOML schema validation tests into focused modules
+
+- **File types / JSONC**
+
+  - Added a native built-in `jsonc` file type for `.jsonc` extension files.
+  - Renamed the former content-detected `.json` JSONC variant from `jsonc` to `json-as-jsonc`.
+
+### Changed — 1.0.0a2
+
+- **Configuration / validation model**
+
+  - Removed stored flattened diagnostics from `Config` and `MutableConfig`
+  - Staged validation logs are now the **single source of truth**
+  - Flattened diagnostics are now derived **only at boundaries**
+  - Validity checks now evaluate all staged diagnostics consistently
+  - `ConfigValidationError` now:
+    - consumes staged logs
+    - summarizes per-stage diagnostics
+    - exposes flattened compatibility diagnostics at the exception boundary
+
+- **Machine output**
+
+  - Config/TOML diagnostics continue to use the **flattened `{level, message}` contract**
+  - Machine output now consistently derives diagnostics from staged validation logs
+  - Machine-output test suite refactored for shared parsing and clearer assertions
+
+- **Documentation**
+
+  - Full alignment of configuration and validation documentation with staged model
+  - Introduced canonical documentation snippet for validation contract wording
+  - Roadmap updated to reflect completed staged-validation refactor and 1.0 freeze decisions
+
+- **Release workflow**
+
+  - Enforced **single release-tag per commit** preflight rule
+  - Release workflow now:
+    - skips when no matching tag is present
+    - fails when multiple matching tags exist
+  - Improved determinism and debuggability of release preflight
+
+- **JSON / JSONC handling**
+
+  - Plain `json` remains unheaderable / `skip_processing=True`.
+  - JSON-like pre-insert checking is now limited to the ambiguous `json-as-jsonc` case instead of
+    applying JSON-promotion logic to native `.jsonc` files.
+  - Processor-path resolution and tests now distinguish native `.jsonc` handling from ambiguous
+    `.json` files detected as JSONC by content.
+
+### Removed — 1.0.0a2
+
+- Stored flattened diagnostics fields from configuration models
+- Redundant synchronization logic between staged and flattened diagnostics
+- Legacy reliance on flattened diagnostics as internal state
+
+### Fixed — 1.0.0a2
+
+- Consistency of config-validation behavior across CLI, API, and machine-output paths
+- JSONC handling for real `.jsonc` files, which could previously be blocked by JSON-promotion logic
+  intended only for ambiguous `.json` inputs
+- Release workflow ambiguity when multiple tags pointed to the same commit
+- Documentation inconsistencies around validation behavior and strictness semantics
+
+### Notes — 1.0.0a2
+
+- The **staged validation model is now complete internally** and considered stable for 1.0.
+- The **flattened diagnostics contract remains the official 1.0 public surface**.
+- `strict_config_checking` remains unchanged and continues to apply across staged validation.
+- This release further reduces internal duplication and aligns implementation with documented
+  architecture.
+
+TopMark is now firmly in the **final 1.0 stabilization phase**, with remaining work focused on
+contract freeze, coverage completion, and selected feature decisions (notably in-memory pipeline).
+
+______________________________________________________________________
+
 ## [1.0.0a1] – 2026-04-18
 
 This first **1.0 alpha release** consolidates the large pre-1.0 refactor series into a coherent
