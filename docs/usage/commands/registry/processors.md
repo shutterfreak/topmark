@@ -52,11 +52,30 @@ ______________________________________________________________________
 Use `--output-format` to pick the output format:
 
 - `text` — human‑readable (brief or detailed)
-- `json` — a single JSON document
-- `ndjson` — one JSON object per line
+- `json` — a single JSON document with `meta` and `processors` keys
+- `ndjson` — one JSON object per line (stream-friendly, record-oriented)
 - `markdown` — a beautified Markdown table
 
 The `--long` flag controls the level of detail for **all** formats.
+
+______________________________________________________________________
+
+### JSON structure
+
+The JSON output has the following structure:
+
+```jsonc
+{
+  "meta": { /* MetaPayload */ },
+  "processors": [ /* ProcessorEntry ... */ ]
+}
+```
+
+- `meta` contains machine metadata (tool, version, platform, and optionally `detail_level`).
+- `processors` is a list of processor entries.
+
+In `--long` mode, each entry is expanded with additional fields such as delimiter and comment
+capabilities.
 
 ______________________________________________________________________
 
@@ -98,7 +117,7 @@ topmark registry processors
 topmark registry processors --long --output-format markdown
 
 # JSON for scripting
-topmark registry processors --long --output-format json | jq '.processors[] | {cls: .class, n: (.filetypes|length)}'
+topmark registry processors --long --output-format json | jq '.processors[] | {cls: .class}'
 
 # NDJSON for streaming
 topmark registry processors --output-format ndjson | grep processor | head -n 5

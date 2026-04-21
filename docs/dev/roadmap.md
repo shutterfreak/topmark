@@ -128,18 +128,21 @@ Result: pipeline behavior is now **explicit, consistent, and predictable**.
 
 Machine formats are now:
 
-- **Domain-scoped** (`config`, `pipeline`, `registry`, `core`)
+- **Domain-scoped** (`config`, `pipeline`, `registry`, `core`, `version`)
 - **Schema-driven (TypedDict)**
 - Fully separated from CLI
-- Using consistent envelope structures
+- Using consistent JSON/NDJSON envelope conventions
 - Supporting JSON and NDJSON
 - Backed by focused JSON + NDJSON contract tests for:
   - config commands
   - pipeline commands
   - version command
-- Supported by shared JSON/NDJSON test helpers for machine-output parsing
+  - registry commands
+- Supported by shared JSON/NDJSON test helpers for machine-output parsing and record/meta assertions
+- Documented with aligned machine-format and machine-output reference pages, plus registry command
+  usage pages
 
-Remaining work is limited to **registry command coverage, schema freeze, and naming audits**, not
+Remaining work is limited to a **final naming audit and CLI/output-surface follow-up**, not
 architecture.
 
 ### Human output system (completed)
@@ -160,7 +163,7 @@ Result: human output is now **consistent, composable, and decoupled from CLI**.
 - Enforced docstring standards and validation
 - Introduced link-checking and stricter docs CI
 - Reorganized tests and helpers for clarity
-- Added shared JSON/NDJSON parsing helpers for machine-output tests
+- Added shared JSON/NDJSON parsing and assertion helpers for machine-output tests
 
 ### CI / release / dependency model (completed)
 
@@ -183,7 +186,8 @@ At this point:
 - Legacy implicit behavior is **eliminated**
 - System boundaries are **clear and enforced**
 - Remaining work is **focused and incremental**, not structural
-- Machine-output contract coverage is now strong for config, pipeline, and version commands
+- Machine-output contract coverage is now strong for config, pipeline, version, and registry
+  commands
 
 The project is now in a **pre-1.0 stabilization phase**, with only a few major decisions and
 targeted features (notably in-memory pipeline support) remaining.
@@ -287,7 +291,12 @@ snapshots, and downstream automation may need adjustment.
   a generic summary wrapper.
 - `config dump --show-layers` now adds layered provenance output (`config_provenance`) before the
   final flattened config payload.
-- `detail_level` is now part of the machine-output contract.
+- `detail_level` is now part of the machine-output contract for command families that emit
+  projection metadata (notably registry machine output).
+- Registry JSON machine output was flattened for 1.0 contract stability:
+  - `registry filetypes` → `{meta, filetypes}`
+  - `registry processors` → `{meta, processors}`
+  - `registry bindings` → `{meta, bindings, unbound_filetypes, unused_processors}`
 
 Result: machine formats are much more stable and structured, but downstream consumers that relied on
 older payload naming or outcome-keyed summaries must update.
@@ -337,7 +346,7 @@ system shape**:
 - explicit registry/binding model
 - layered TOML/config/runtime boundaries
 - explicit preview/apply runtime model
-- schema-driven machine output
+- schema-driven machine output with domain-specific JSON envelopes and stable NDJSON record kinds
 - uv/nox-based tooling and artifact-based release automation
 
 The 1.0 task is therefore not large-scale redesign anymore, but **contract freeze and final
@@ -466,18 +475,23 @@ Recommended direction:
 
 ### Output contract freeze
 
-Most output architecture work is done. The remaining work is about **freezing semantics**, not
-redesigning the system.
+Most output architecture work is done. Machine-output implementation, tests, and reference
+documentation are now largely frozen; the remaining work is about **final semantics, naming audit,
+and CLI/human-output follow-up**, not redesigning the system.
 
 Machine output remaining work:
 
 - Final audit of field naming consistency across domains.
-- Finalize how TOML validation diagnostics are represented alongside config diagnostics.
-- Keep flattened `{level, message}` config diagnostics as the accepted 1.0 machine contract and
-  defer any richer TOML-specific structure unless required before final freeze.
-- Finish contract tests for remaining registry machine outputs.
-- Freeze `detail_level` semantics and brief vs long projections.
-- Freeze machine-format documentation in `docs/dev/machine-formats.md`.
+- Keep flattened `{level, message}` config diagnostics as the accepted 1.0 machine contract. Richer
+  TOML-specific structure is explicitly deferred beyond 1.0.
+- Registry machine-output contract frozen after the flattened JSON-envelope cleanup (`filetypes`,
+  `processors`, `bindings`, `unbound_filetypes`, `unused_processors`).
+- `detail_level` semantics frozen:
+  - `--long` controls projection depth across formats
+  - `detail_level` reflects projection in machine output when present
+  - verbosity remains independent (human-output concern)
+- Keep `docs/dev/machine-formats.md` and `docs/dev/machine-output.md` aligned as the reference
+  machine-format documentation.
 
 Human output remaining work:
 
@@ -529,12 +543,12 @@ The remaining work is no longer broad architectural redesign.
 What is left is mainly:
 
 - **freeze decisions**
-- **contract documentation**
-- **coverage completion**
+- **final audits and consistency reviews**
+- **CLI / human-output follow-up**
 - one major scope choice: **in-memory pipeline before 1.0 vs explicit deferral**
 
-That means TopMark is now in the final stage of the 1.0 effort: deciding what to freeze, what to
-ship, and what to defer cleanly.
+That means TopMark is now in the final stage of the 1.0 effort: auditing the last cross-surface
+contracts, deciding what to freeze, and deferring anything non-essential cleanly.
 
 ______________________________________________________________________
 
@@ -567,22 +581,26 @@ These are release blockers unless explicitly deferred with a documented rational
 #### [Must] Machine output contracts
 
 - [x] No presentation leakage in machine output
-- [ ] Machine outputs covered by focused JSON + NDJSON contract tests for all command groups
+- [x] Machine outputs covered by focused JSON + NDJSON contract tests for all command groups
   - [x] config commands
   - [x] pipeline commands
   - [x] version command
-  - [ ] registry commands
-  - [ ] top-level command groups reviewed for any remaining machine-output gaps
+  - [x] registry commands
+  - [x] top-level command groups reviewed for any remaining machine-output gaps
 - [ ] Final schema freeze review completed
-  - [ ] `(outcome, reason, count)` summary rows frozen
-  - [ ] `detail_level` semantics frozen
+  - [x] `(outcome, reason, count)` summary rows frozen
+  - [x] `detail_level` semantics frozen
+    - [x] `--long` is the cross-format projection selector (brief vs long)
+    - [x] `detail_level` reflects this projection in machine output when emitted
+    - [x] verbosity remains a separate human-output concern
   - [ ] field naming consistency audited across domains
 - [x] `config check` payload naming stabilized as `config_check`
 - [x] `strict_config_checking` naming stabilized in config-validation payloads
 - [x] Decision made on the 1.0 machine contract for config/TOML diagnostics:
   - [x] flattened `{level, message}` is explicitly accepted as final
-  - [ ] richer TOML-specific structure is required before freeze
-- [ ] `docs/dev/machine-formats.md` reviewed and frozen as the reference contract
+  - [x] richer TOML-specific structure is not required before 1.0 freeze (explicitly deferred)
+- [x] `docs/dev/machine-formats.md` reviewed and frozen as a reference contract
+- [x] `docs/dev/machine-output.md` reviewed and aligned with the current command contracts
 
 #### [Must] Human output contracts
 
@@ -692,14 +710,19 @@ These should ideally be completed for 1.0, but may be deferred more easily if ne
 
 #### [Recommended] Machine output
 
-- [ ] Add stable examples for remaining command categories in `docs/dev/machine-formats.md`
-- [ ] Add examples showing flattened config/TOML diagnostics in both JSON and NDJSON forms where
+- [x] Add stable examples for any remaining command categories in `docs/dev/machine-formats.md`
+- [x] Add examples showing flattened config/TOML diagnostics in both JSON and NDJSON forms where
   relevant
 - [x] Add a short explicit note on the flattened config-diagnostics contract if that remains the 1.0
   decision
-- [ ] Edge-case coverage reviewed for confidence in frozen schemas
+- [x] Edge-case coverage reviewed for confidence in frozen schemas
+  - [x] coverage audit performed on core/config/pipeline/registry/version machine modules
+  - [x] no remaining uncovered schema-relevant blind spots identified for frozen machine contracts
+  - [x] dedicated CLI machine contract tests now pass for config, pipeline, version, and registry
   - [x] config command machine tests now cover flattened staged diagnostics behavior
   - [x] version command machine tests now cover JSON and NDJSON output
+  - [x] registry command machine tests now cover flattened JSON envelopes, NDJSON record kinds,
+    detail levels, and ordering
 
 #### [Recommended] CI / release architecture
 

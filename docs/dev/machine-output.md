@@ -54,7 +54,7 @@ ______________________________________________________________________
 
 All machine outputs include a small metadata block, either:
 
-- as the top-level `meta` key in JSON, or
+- as the top-level `meta` key in JSON documents, or
 - as the top-level `meta` key in every NDJSON record.
 
 Shape:
@@ -75,8 +75,9 @@ Notes:
 - `version` reflects the resolved TopMark package version (normally PEP 440), derived from Git tags
   via `setuptools-scm`. Examples are illustrative only.
 - `platform` is a short runtime identifier (e.g., from `sys.platform`).
-- `detail_level` (optional) is machine-facing and distinguishes the default projection (`"brief"`)
-  from the expanded projection requested via `--long` (`"long"`).
+- `detail_level` is machine-facing and distinguishes the default projection (`"brief"`) from the
+  expanded projection requested via `--long` (`"long"`) when a command surface emits that field.
+  Registry machine output currently includes `detail_level`; other command families may omit it.
 
 Shared metadata keys are defined in
 \[`topmark.core.machine.schemas.MachineMetaKey`\][topmark.core.machine.schemas.MachineMetaKey].
@@ -331,12 +332,32 @@ JSON shape:
 
 The individual diagnostic entry shape is intentionally fixed at `{level, message}` for 1.0.
 
+Example JSON diagnostics payload:
+
+```jsonc
+{
+  "diagnostic_counts": { "info": 0, "warning": 2, "error": 0 },
+  "diagnostics": [
+    { "level": "warning", "message": "Duplicate included file types found in config" },
+    { "level": "warning", "message": "Unknown included file types specified" }
+  ]
+}
+```
+
 - `diagnostic_counts`: counts per level (`info`, `warning`, `error`)
 - `diagnostics`: list of individual diagnostics (stable `{level, message}` entries; see
   \[`topmark.diagnostic.machine.schemas.DiagnosticKey`\][topmark.diagnostic.machine.schemas.DiagnosticKey])
 
 > [!NOTE] In NDJSON, `config_diagnostics` is **counts-only** and each individual config diagnostic
 > is emitted as a separate `diagnostic` record with `domain="config"` (one record per diagnostic).
+
+Example NDJSON diagnostics records:
+
+```jsonc
+{"kind":"config_diagnostics","meta":{...},"config_diagnostics":{"diagnostic_counts":{"info":0,"warning":2,"error":0}}}
+{"kind":"diagnostic","meta":{...},"diagnostic":{"domain":"config","level":"warning","message":"Duplicate included file types found in config"}}
+{"kind":"diagnostic","meta":{...},"diagnostic":{"domain":"config","level":"warning","message":"Unknown included file types specified"}}
+```
 
 See:
 
@@ -592,7 +613,7 @@ Brief entry (default):
 }
 ```
 
-Detailed entry (`--show-details`):
+Detailed entry (`--long`):
 
 ```jsonc
 {
@@ -636,9 +657,7 @@ JSON envelope:
 ```jsonc
 {
   "meta": { /* MetaPayload */ },
-  "processors": {
-    "processors": [ /* ProcessorEntry ... */ ]
-  }
+  "processors": [ /* ProcessorEntry ... */ ]
 }
 ```
 
@@ -653,7 +672,7 @@ Processor entry (brief):
 }
 ```
 
-Processor entry (detailed, `--show-details`):
+Processor entry (detailed, `--long`):
 
 ```jsonc
 {
@@ -688,11 +707,9 @@ JSON envelope:
 ```jsonc
 {
   "meta": { /* MetaPayload */ },
-  "bindings": {
-    "bindings": [ /* BindingEntry ... */ ],
-    "unbound_filetypes": [ /* FileTypeRef ... */ ],
-    "unused_processors": [ /* ProcessorRef ... */ ]
-  }
+  "bindings": [ /* BindingEntry ... */ ],
+  "unbound_filetypes": [ /* FileTypeRef ... */ ],
+  "unused_processors": [ /* ProcessorRef ... */ ]
 }
 ```
 
@@ -705,7 +722,7 @@ Binding entry (brief):
 }
 ```
 
-Binding entry (detailed, `--show-details`):
+Binding entry (detailed, `--long`):
 
 ```jsonc
 {
@@ -734,13 +751,16 @@ NDJSON emits:
 
 ```jsonc
 {"kind":"binding","meta":{...},"binding":{ /* BindingEntry */ }}
-{"kind":"unbound_filetype","meta":{...},"unbound_filetype":{ /* FileTypeRef */ }}
-{"kind":"unused_processor","meta":{...},"unused_processor":{ /* ProcessorRef */ }}
+{"kind":"unbound_filetype","meta":{...},"unbound_filetype":"topmark:some_unbound_filetype"}
+{"kind":"unused_processor","meta":{...},"unused_processor":"topmark:some_unused_processor"}
 ```
+
+In brief mode, `unbound_filetype` and `unused_processor` NDJSON records carry qualified-key strings
+as their payloads. In `--long` mode, those same record kinds carry expanded reference objects.
 
 Canonical schemas/builders live in `topmark.registry.machine.*`.
 
-The corresponding NDJSON record kinds are owned by
+The corresponding JSON payload keys and NDJSON record kinds are owned by
 \[`topmark.registry.machine.schemas.RegistryKind`\][topmark.registry.machine.schemas.RegistryKind].
 
 ______________________________________________________________________

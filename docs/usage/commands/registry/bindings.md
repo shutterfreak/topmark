@@ -53,11 +53,34 @@ ______________________________________________________________________
 Use `--output-format` to pick the output format:
 
 - `text` — human‑readable (brief or detailed)
-- `json` — a single JSON document (array of file types)
-- `ndjson` — one JSON object per line (stream‑friendly)
+- `json` — a single JSON document with `meta`, `bindings`, `unbound_filetypes`, and
+  `unused_processors` keys
+- `ndjson` — one JSON object per line (stream‑friendly, record-oriented)
 - `markdown` — a beautified Markdown table (great for docs)
 
 The `--long` flag controls the level of detail for **all** formats.
+
+______________________________________________________________________
+
+### JSON structure
+
+The JSON output has the following structure:
+
+```jsonc
+{
+  "meta": { /* MetaPayload */ },
+  "bindings": [ /* BindingEntry ... */ ],
+  "unbound_filetypes": [ /* FileTypeRef ... */ ],
+  "unused_processors": [ /* ProcessorRef ... */ ]
+}
+```
+
+- `meta` contains machine metadata (tool, version, platform, and optionally `detail_level`).
+- `bindings` is the list of effective file type ↔ processor relationships.
+- `unbound_filetypes` lists file types without a processor.
+- `unused_processors` lists processors not referenced by any binding.
+
+In `--long` mode, entries in all collections are expanded with additional descriptive fields.
 
 ______________________________________________________________________
 
@@ -108,7 +131,13 @@ topmark registry bindings --long
 topmark registry bindings --long --output-format markdown
 
 # JSON for scripting
-topmark registry bindings --long --output-format json | jq '.[] | select(.skip_processing==false)'
+topmark registry bindings --long --output-format json | jq '.bindings[]'
+
+# Inspect unbound file types
+topmark registry bindings --output-format json | jq '.unbound_filetypes[]'
+
+# Inspect unused processors
+topmark registry bindings --output-format json | jq '.unused_processors[]'
 
 # NDJSON for streaming
 topmark registry bindings --output-format ndjson | head -n 5

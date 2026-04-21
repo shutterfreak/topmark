@@ -58,11 +58,18 @@ ______________________________________________________________________
 All machine output includes a `meta` object:
 
 - `tool`: the tool name (always `"topmark"`)
+
 - `version`: the TopMark package version (PEP 440)
+
 - `platform`: short runtime identifier (e.g. `sys.platform`)
+
 - `detail_level`: optional machine-facing projection level for some commands:
+
   - `"brief"` for default machine output
   - `"long"` when `--long` / detailed projection is requested
+
+  Registry commands include `detail_level` in both JSON and NDJSON. Other command families may omit
+  this field.
 
 In JSON, `meta` appears once at the top level.
 
@@ -88,6 +95,113 @@ Each NDJSON line is a JSON object with a stable envelope:
 - `kind` determines the payload container key (by default, container key == kind).
 - `meta` appears in every record.
 - the payload object is stored under a container key that matches `kind`.
+
+Note:
+
+- Some NDJSON record kinds carry scalar payloads in brief mode (for example registry reference kinds
+  such as `unbound_filetype` and `unused_processor`, which emit qualified-key strings). In `--long`
+  mode, these payloads expand to structured objects.
+
+## JSON envelope conventions
+
+Unlike NDJSON, JSON output is **domain-specific and aggregated**. Each command defines its own
+stable top-level keys for collections.
+
+Examples:
+
+- Registry filetypes:
+
+```jsonc
+{ "meta": { ... }, "filetypes": [ ... ] }
+```
+
+- Registry processors:
+
+```jsonc
+{ "meta": { ... }, "processors": [ ... ] }
+```
+
+- Registry bindings:
+
+```jsonc
+{
+  "meta": { ... },
+  "bindings": [ ... ],
+  "unbound_filetypes": [ ... ],
+  "unused_processors": [ ... ]
+}
+```
+
+- Processing commands (summary mode):
+
+```jsonc
+{
+  "meta": { ... },
+  "config": { ... },
+  "config_diagnostics": { ... },
+  "summary": [
+    { "outcome": "unchanged", "reason": "up-to-date", "count": 30 },
+    { "outcome": "skipped", "reason": "known file type, headers not supported", "count": 1 }
+  ]
+}
+```
+
+- `config check`:
+
+```jsonc
+{
+  "meta": { ... },
+  "config": { ... },
+  "config_diagnostics": {
+    "diagnostic_counts": { "info": 0, "warning": 1, "error": 0 },
+    "diagnostics": [
+      { "level": "warning", "message": "Duplicate included file types found in config" }
+    ]
+  },
+  "config_check": {
+    "ok": true,
+    "strict_config_checking": false,
+    "diagnostic_counts": { "info": 0, "warning": 1, "error": 0 },
+    "config_files": ["/repo/topmark.toml"]
+  }
+}
+```
+
+- `config dump --show-layers`:
+
+```jsonc
+{
+  "meta": { ... },
+  "config_provenance": {
+    "layers": [
+      {
+        "origin": "<defaults>",
+        "kind": "default",
+        "precedence": 0,
+        "toml": {
+          "config": { "strict_config_checking": false }
+        }
+      }
+    ]
+  },
+  "config": { ... }
+}
+```
+
+- `version`:
+
+```jsonc
+{
+  "meta": { ... },
+  "version_info": {
+    "version": "1.0.0a2",
+    "version_format": "pep440"
+  }
+}
+```
+
+Consumers should **not assume a single generic container key** (such as `items` or a bare array),
+but instead switch on documented domain-specific keys.
 
 ______________________________________________________________________
 
@@ -175,6 +289,13 @@ Each summary entry therefore contains:
 This guarantees that machine consumers can distinguish between different causes that lead to the
 same high-level outcome.
 
+Example NDJSON summary records:
+
+```jsonc
+{"kind":"summary","meta":{...},"summary":{"outcome":"unchanged","reason":"up-to-date","count":30}}
+{"kind":"summary","meta":{...},"summary":{"outcome":"skipped","reason":"known file type, headers not supported","count":1}}
+```
+
 ### Summary payload shape
 
 In the pipeline machine schema, this row shape is represented by `OutcomeSummaryRow`.
@@ -224,6 +345,26 @@ config-validation strictness after applying CLI override precedence over resolve
 This strictness is evaluated across staged config-loading/preflight validation (TOML-source,
 merged-config, and runtime-applicability diagnostics), while machine output continues to expose the
 flattened compatibility diagnostics view.
+
+Example `config check` NDJSON prefix:
+
+```jsonc
+{"kind":"config","meta":{...},"config":{...}}
+{"kind":"config_diagnostics","meta":{...},"config_diagnostics":{
+  "diagnostic_counts":{"info":0,"warning":1,"error":0}
+}}
+{"kind":"diagnostic","meta":{...},"diagnostic":{
+  "domain":"config",
+  "level":"warning",
+  "message":"Duplicate included file types found in config"
+}}
+{"kind":"config_check","meta":{...},"config_check":{
+  "ok":true,
+  "strict_config_checking":false,
+  "diagnostic_counts":{"info":0,"warning":1,"error":0},
+  "config_files":["/repo/topmark.toml"]
+}}
+```
 
 For 1.0, this boundary is intentional: staged validation remains an internal representation, while
 machine output exposes only the flattened compatibility diagnostics contract.

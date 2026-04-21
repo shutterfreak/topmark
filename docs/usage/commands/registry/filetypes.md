@@ -50,13 +50,30 @@ ______________________________________________________________________
 Use `--output-format` to pick the output format:
 
 - `text` — human‑readable (brief or detailed)
-- `json` — a single JSON document (array of file types)
-- `ndjson` — one JSON object per line (stream‑friendly)
+- `json` — a single JSON document with `meta` and `filetypes` keys
+- `ndjson` — one JSON object per line (stream‑friendly, record-oriented)
 - `markdown` — a beautified Markdown table (great for docs)
 
 The `--long` flag controls the level of detail for **all** formats.
 
 ______________________________________________________________________
+
+### JSON structure
+
+The JSON output has the following structure:
+
+```jsonc
+{
+  "meta": { /* MetaPayload */ },
+  "filetypes": [ /* FileTypeEntry ... */ ]
+}
+```
+
+- `meta` contains machine metadata (tool, version, platform, and optionally `detail_level`).
+- `filetypes` is a list of file type entries.
+
+In `--long` mode, each entry is expanded with additional fields such as matching rules and header
+policy information.
 
 Unlike [`registry bindings`](./bindings.md), this command focuses on **file type identities**, not
 which processor handles them.
@@ -106,7 +123,7 @@ topmark registry filetypes --long
 topmark registry filetypes --long --output-format markdown
 
 # JSON for scripting
-topmark registry filetypes --long --output-format json | jq '.[] | select(.skip_processing==false)'
+topmark registry filetypes --long --output-format json | jq '.filetypes[] | select(.skip_processing==false)'
 
 # NDJSON for streaming
 topmark registry filetypes --output-format ndjson | head -n 5
