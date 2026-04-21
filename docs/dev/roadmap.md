@@ -142,8 +142,7 @@ Machine formats are now:
 - Documented with aligned machine-format and machine-output reference pages, plus registry command
   usage pages
 
-Remaining work is limited to a **final naming audit and CLI/output-surface follow-up**, not
-architecture.
+Remaining work is limited to **CLI/output-surface follow-up**, not architecture.
 
 ### Human output system (completed)
 
@@ -164,6 +163,7 @@ Result: human output is now **consistent, composable, and decoupled from CLI**.
 - Introduced link-checking and stricter docs CI
 - Reorganized tests and helpers for clarity
 - Added shared JSON/NDJSON parsing and assertion helpers for machine-output tests
+- Recorded machine-output naming conventions in the canonical machine-output reference
 
 ### CI / release / dependency model (completed)
 
@@ -297,6 +297,11 @@ snapshots, and downstream automation may need adjustment.
   - `registry filetypes` → `{meta, filetypes}`
   - `registry processors` → `{meta, processors}`
   - `registry bindings` → `{meta, bindings, unbound_filetypes, unused_processors}`
+- Machine-output naming conventions are now explicitly frozen for 1.0, including:
+  - shared envelope/meta ownership in `topmark.core.machine.schemas`
+  - plural/domain-specific JSON collection keys
+  - singular NDJSON record kinds
+  - `qualified_key`, `namespace` + `local_key`, and `*_key` reference naming
 
 Result: machine formats are much more stable and structured, but downstream consumers that relied on
 older payload naming or outcome-keyed summaries must update.
@@ -476,12 +481,11 @@ Recommended direction:
 ### Output contract freeze
 
 Most output architecture work is done. Machine-output implementation, tests, and reference
-documentation are now largely frozen; the remaining work is about **final semantics, naming audit,
-and CLI/human-output follow-up**, not redesigning the system.
+documentation are now largely frozen; the remaining work is about **CLI/human-output follow-up**,
+not redesigning the system.
 
 Machine output remaining work:
 
-- Final audit of field naming consistency across domains.
 - Keep flattened `{level, message}` config diagnostics as the accepted 1.0 machine contract. Richer
   TOML-specific structure is explicitly deferred beyond 1.0.
 - Registry machine-output contract frozen after the flattened JSON-envelope cleanup (`filetypes`,
@@ -490,6 +494,7 @@ Machine output remaining work:
   - `--long` controls projection depth across formats
   - `detail_level` reflects projection in machine output when present
   - verbosity remains independent (human-output concern)
+- Field naming consistency audited across domains and documented in the machine-output reference.
 - Keep `docs/dev/machine-formats.md` and `docs/dev/machine-output.md` aligned as the reference
   machine-format documentation.
 
@@ -543,12 +548,11 @@ The remaining work is no longer broad architectural redesign.
 What is left is mainly:
 
 - **freeze decisions**
-- **final audits and consistency reviews**
 - **CLI / human-output follow-up**
 - one major scope choice: **in-memory pipeline before 1.0 vs explicit deferral**
 
-That means TopMark is now in the final stage of the 1.0 effort: auditing the last cross-surface
-contracts, deciding what to freeze, and deferring anything non-essential cleanly.
+That means TopMark is now in the final stage of the 1.0 effort: finishing the last CLI-facing
+consistency work, deciding what to freeze, and deferring anything non-essential cleanly.
 
 ______________________________________________________________________
 
@@ -593,7 +597,7 @@ These are release blockers unless explicitly deferred with a documented rational
     - [x] `--long` is the cross-format projection selector (brief vs long)
     - [x] `detail_level` reflects this projection in machine output when emitted
     - [x] verbosity remains a separate human-output concern
-  - [ ] field naming consistency audited across domains
+  - [x] field naming consistency audited across domains
 - [x] `config check` payload naming stabilized as `config_check`
 - [x] `strict_config_checking` naming stabilized in config-validation payloads
 - [x] Decision made on the 1.0 machine contract for config/TOML diagnostics:
@@ -699,7 +703,7 @@ These should ideally be completed for 1.0, but may be deferred more easily if ne
 - [ ] Decide whether the local-key compatibility view in `FileTypeRegistry` remains a supported 1.0
   feature
 - [ ] Resolution helper surface reviewed for public/internal stability
-- [ ] Canonical terminology (`qualified_key`, `file_type_id`, `local_key`, etc.) reviewed one final
+- [x] Canonical terminology (`qualified_key`, `file_type_id`, `local_key`, etc.) reviewed one final
   time across docs and public surfaces
 
 #### [Recommended] Human output

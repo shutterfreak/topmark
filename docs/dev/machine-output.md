@@ -123,6 +123,27 @@ package-local schema modules such as:
 - \[`topmark.registry.machine.schemas.RegistryKind`\][topmark.registry.machine.schemas.RegistryKind]
 - \[`topmark.version.machine.schemas.VersionKind`\][topmark.version.machine.schemas.VersionKind]
 
+### Naming conventions
+
+The machine-output naming audit for 1.0 adopts the following conventions across domains:
+
+- Shared envelope and metadata keys are owned by
+  \[`topmark.core.machine.schemas`\][topmark.core.machine.schemas].
+- JSON uses **domain-specific aggregated keys** (for example `filetypes`, `processors`, `bindings`,
+  `results`, `config_layers`) rather than a generic container such as `items`.
+- NDJSON uses **singular record kinds** (for example `filetype`, `processor`, `binding`, `result`,
+  `summary`) and stores each payload under a container key that matches `kind`.
+- Globally qualified identities use `qualified_key`.
+- Decomposed identities use `namespace` + `local_key`.
+- Relationship references use `*_key` (for example `file_type_key`, `processor_key`).
+- `detail_level` is an **extended metadata field** rather than baseline metadata:
+  - baseline metadata is `tool`, `version`, `platform`
+  - `detail_level` is emitted only by command families whose machine output exposes a brief vs long
+    projection
+
+These conventions are considered frozen for 1.0 unless a final pre-release audit identifies a
+concrete naming defect worth correcting before release.
+
 ______________________________________________________________________
 
 ## Processing commands (`check`, `strip`)
