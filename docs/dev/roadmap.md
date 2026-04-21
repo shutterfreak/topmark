@@ -540,6 +540,16 @@ A few user-facing behavior questions remain open for 1.0:
   presentation-facing labels.
 - Keep confirming that API and CLI docs consistently use the `report` model and no longer reference
   legacy `skip_*` filters.
+- Audit TopMark’s line-ending support model before 1.0:
+  - confirm whether only standard CR / LF newline styles are intended to be supported
+  - review the hypothesis-driven test cases that introduced additional nonstandard line-ending
+    characters
+  - decide whether such line endings should:
+    - remain unsupported,
+    - be accepted as tolerated-but-not-normalized input, or
+    - gain an explicit extended/rich line-ending policy surface
+  - ensure the decision is reflected consistently across pipeline step behavior, diagnostics/policy
+    handling, tests, and user-facing documentation
 
 ### Overall status (undecided / to do)
 
@@ -668,6 +678,12 @@ These are release blockers unless explicitly deferred with a documented rational
 - [ ] Test strategy clarified and documented:
   - [ ] intended split between memory-based unit tests and filesystem integration tests
   - [ ] API surface expectations for in-memory inputs (if implemented or deferred)
+- [ ] Line-ending support policy audited and frozen for 1.0
+  - [ ] decision made on standard CR/LF-only vs extended/nonstandard line-ending support
+  - [ ] pipeline behavior and diagnostics aligned with that decision
+  - [ ] hypothesis/property tests aligned with the intended supported line-ending model
+  - [ ] user-facing docs updated if nonstandard line endings are intentionally unsupported or given
+    a dedicated policy
 - [ ] Namespace-aware registry lookup and deterministic ambiguity behavior covered by tests
 - [x] TOML-layer validation paths have focused coverage
 - [x] Empty / empty-like file handling is explicit and idempotent
