@@ -22,6 +22,7 @@ from packaging.version import Version
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
 from tests.helpers.json import parse_json_object
+from tests.helpers.ndjson import assert_ndjson_meta
 from tests.helpers.ndjson import parse_single_ndjson_record
 from tests.helpers.version import SEMVER_RE
 from topmark.cli.keys import CliCmd
@@ -103,12 +104,11 @@ def test_version_ndjson_format(use_semver: bool) -> None:
 
     assert payload.get("kind") == "version"
 
-    meta_obj: object | None = payload.get("meta")
-    assert is_mapping(meta_obj)
-    meta: dict[str, object] = as_object_dict(meta_obj)
-    assert meta.get("tool") == "topmark"
+    meta: dict[str, object] = assert_ndjson_meta(
+        payload.get("meta"),
+        expected_detail_level="brief",
+    )
     assert meta.get("version") == TOPMARK_VERSION
-    assert isinstance(meta.get("platform"), str)
 
     version_obj: object | None = payload.get("version")
     assert is_mapping(version_obj)

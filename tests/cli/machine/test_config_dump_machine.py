@@ -42,8 +42,10 @@ from typing import TYPE_CHECKING
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
 from tests.helpers.json import parse_json_object
+from tests.helpers.ndjson import assert_ndjson_meta
 from tests.helpers.ndjson import parse_ndjson_records
 from tests.helpers.ndjson import parse_single_ndjson_record
+from tests.helpers.ndjson import record_kinds
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.core.typing_guards import as_object_dict
@@ -195,6 +197,7 @@ def test_config_dump_ndjson_kinds() -> None:
 
     kind_obj = record.get("kind")
     assert isinstance(kind_obj, str)
+    assert_ndjson_meta(record.get("meta"), expected_detail_level="brief")
     kinds: set[str] = {kind_obj}
 
     assert kinds == {"config"}
@@ -215,9 +218,10 @@ def test_config_dump_ndjson_show_layers_kinds() -> None:
 
     records: list[dict[str, object]] = parse_ndjson_records(result.output)
     assert len(records) == 2
+    for record in records:
+        assert_ndjson_meta(record.get("meta"), expected_detail_level="brief")
 
-    assert records[0].get("kind") == "config_provenance"
-    assert records[1].get("kind") == "config"
+    assert record_kinds(records) == ["config_provenance", "config"]
 
     provenance_obj = records[0].get("config_provenance")
     assert is_mapping(provenance_obj)
@@ -243,6 +247,8 @@ def test_config_dump_ndjson_show_layers_defaults_layer_shape() -> None:
 
     records: list[dict[str, object]] = parse_ndjson_records(result.output)
     assert len(records) == 2
+    for record in records:
+        assert_ndjson_meta(record.get("meta"), expected_detail_level="brief")
 
     first_record: dict[str, object] = records[0]
 

@@ -39,6 +39,7 @@ from typing import TYPE_CHECKING
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
 from tests.helpers.json import parse_json_object
+from tests.helpers.ndjson import assert_ndjson_meta
 from tests.helpers.ndjson import parse_single_ndjson_record
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
@@ -113,6 +114,7 @@ def test_config_defaults_ndjson_emits_only_config_record() -> None:
     record: dict[str, object] = parse_single_ndjson_record(result.output)
 
     assert record.get("kind") == "config"
+    assert_ndjson_meta(record.get("meta"), expected_detail_level="brief")
     assert "meta" in record
     assert "config" in record
     assert "config_diagnostics" not in record

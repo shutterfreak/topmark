@@ -43,7 +43,9 @@ import pytest
 from tests.cli.conftest import assert_SUCCESS_or_WOULD_CHANGE
 from tests.cli.conftest import run_cli_in
 from tests.helpers.json import parse_json_object
+from tests.helpers.ndjson import assert_ndjson_meta
 from tests.helpers.ndjson import parse_ndjson_records
+from tests.helpers.ndjson import record_kinds
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.core.typing_guards import as_object_dict
@@ -350,12 +352,11 @@ def test_processing_ndjson_kinds_with_summary(tmp_path: Path, command: str) -> N
     records: list[dict[str, object]] = parse_ndjson_records(result.output)
     assert records
 
-    kinds: list[str] = []
     for record in records:
-        kind_obj = record.get("kind")
-        assert isinstance(kind_obj, str)
-        kinds.append(kind_obj)
+        assert_ndjson_meta(record.get("meta"), expected_detail_level="brief")
 
+    kinds: list[str] = record_kinds(records)
+    for record, kind_obj in zip(records, kinds, strict=False):
         if kind_obj == "summary":
             summary_obj = record.get("summary")
             assert is_mapping(summary_obj)
@@ -405,6 +406,9 @@ def test_processing_ndjson_summary_rows_do_not_use_legacy_key_label_shape(
 
     records: list[dict[str, object]] = parse_ndjson_records(result.output)
     assert records
+
+    for record in records:
+        assert_ndjson_meta(record.get("meta"), expected_detail_level="brief")
 
     summary_records_found: int = 0
     for record in records:

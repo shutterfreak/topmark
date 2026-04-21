@@ -41,7 +41,9 @@ from typing import TYPE_CHECKING
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
 from tests.helpers.json import parse_json_object
+from tests.helpers.ndjson import assert_ndjson_meta
 from tests.helpers.ndjson import parse_ndjson_records
+from tests.helpers.ndjson import record_kinds
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.core.typing_guards import as_object_dict
@@ -234,12 +236,12 @@ def test_config_check_ndjson_record_order() -> None:
     records: list[dict[str, object]] = parse_ndjson_records(result.output)
     assert len(records) >= 3
 
-    assert records[0].get("kind") == "config"
-    assert records[1].get("kind") == "config_diagnostics"
-    assert records[2].get("kind") == "config_check"
+    for record in records:
+        assert_ndjson_meta(record.get("meta"), expected_detail_level="brief")
 
-    for record in records[3:]:
-        assert record.get("kind") == "diagnostic"
+    kinds: list[str] = record_kinds(records)
+    assert kinds[:3] == ["config", "config_diagnostics", "config_check"]
+    assert all(kind == "diagnostic" for kind in kinds[3:])
 
 
 def test_config_check_ndjson_flattens_staged_diagnostics_in_order(tmp_path: Path) -> None:
@@ -261,6 +263,9 @@ def test_config_check_ndjson_flattens_staged_diagnostics_in_order(tmp_path: Path
     assert_SUCCESS(result)
 
     records: list[dict[str, object]] = parse_ndjson_records(result.output)
+    for record in records:
+        assert_ndjson_meta(record.get("meta"), expected_detail_level="brief")
+
     messages: list[str] = _extract_diagnostic_messages_from_ndjson(records)
 
     toml_index: int = _find_first_matching_index(
@@ -297,6 +302,7 @@ def test_config_check_ndjson_config_diagnostics_record_shape() -> None:
     record: dict[str, object] = records[1]
 
     assert record.get("kind") == "config_diagnostics"
+    assert_ndjson_meta(record.get("meta"), expected_detail_level="brief")
 
     diagnostics_obj: object | None = record.get("config_diagnostics")
     assert is_mapping(diagnostics_obj)
@@ -325,6 +331,7 @@ def test_config_check_ndjson_summary_record_uses_strict_config_checking() -> Non
     record: dict[str, object] = records[2]
 
     assert record.get("kind") == "config_check"
+    assert_ndjson_meta(record.get("meta"), expected_detail_level="brief")
 
     config_check_summary_obj: object | None = record.get("config_check")
     assert is_mapping(config_check_summary_obj)
@@ -351,5 +358,7 @@ def test_config_check_ndjson_third_record_uses_config_check_container_not_summar
     record: dict[str, object] = records[2]
 
     assert record.get("kind") == "config_check"
+    assert_ndjson_meta(record.get("meta"), expected_detail_level="brief")
+
     assert "config_check" in record
     assert "summary" not in record
