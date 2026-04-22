@@ -18,6 +18,127 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ______________________________________________________________________
 
+## [1.0.0a3] – 2026-04-22
+
+This third **1.0 alpha release** focuses on **packaging correctness, machine-output finalization,
+and documentation alignment**.
+
+The primary goal of `1.0.0a3` is to ensure that TopMark behaves reliably in **isolated
+environments** and that the **machine-output contract is fully finalized, tested, and documented**
+ahead of the 1.0 release.
+
+This release completes the machine-output track and introduces important packaging fixes discovered
+during real-world usage.
+
+### Highlights — 1.0.0a3
+
+- Corrected runtime dependency model for reliable execution in isolated environments
+- Finalized registry machine-output contract (JSON + NDJSON)
+- Strengthened machine-output test coverage with shared helpers
+- Fully aligned machine-output documentation and roadmap with frozen 1.0 contract
+- Introduced markdownlint integration for documentation quality
+
+### Added — 1.0.0a3
+
+- **Registry machine-output tests**
+
+  - Dedicated CLI machine tests for:
+    - `registry filetypes`
+    - `registry processors`
+    - `registry bindings`
+  - Coverage includes:
+    - flattened JSON shapes
+    - NDJSON record kinds
+    - detail-level projections
+    - ordering guarantees
+    - bound/unbound/unused registry scenarios
+
+- **Testing helpers**
+
+  - Shared NDJSON helpers for:
+    - record kind validation
+    - payload extraction
+    - metadata assertions
+  - Helpers now reusable across:
+    - config
+    - pipeline
+    - version
+    - registry
+
+- **Tooling**
+
+  - Added `markdownlint-cli2` integration via pre-commit
+  - Introduced `.markdownlint.jsonc` for documentation consistency
+
+### Changed — 1.0.0a3
+
+- **Dependencies / packaging**
+
+  - Promoted `typing-extensions` to a **core runtime dependency**
+  - Packaging metadata now reflects the actual runtime import surface
+  - Ensures consistent behavior across:
+    - pre-commit environments
+    - CI runners
+    - clean/isolated virtual environments
+
+- **Machine output (registry)**
+
+  - Flattened JSON envelopes for registry commands:
+    - `filetypes` → `{meta, filetypes}`
+    - `processors` → `{meta, processors}`
+    - `bindings` → `{meta, bindings, unbound_filetypes, unused_processors}`
+  - Removed nested wrapper objects in favor of stable top-level collections
+  - Aligned registry machine typing surface with homogeneous entry-list schemas
+  - Ensured consistency between JSON (aggregated) and NDJSON (record-oriented) outputs
+
+- **Tests**
+
+  - Refactored existing machine tests to use shared NDJSON helpers
+  - Reduced duplication in NDJSON parsing and validation
+  - Improved clarity and consistency of machine contract assertions
+
+- **Documentation**
+
+  - Updated machine-output and machine-format docs to match the frozen 1.0 contract
+  - Added explicit JSON and NDJSON examples across:
+    - config
+    - pipeline
+    - version
+    - registry
+  - Finalized machine-output naming conventions and documented them explicitly
+  - Updated registry command docs with correct shapes and examples
+  - Roadmap updated to:
+    - mark machine-output work as complete
+    - reflect contract freeze
+    - narrow remaining work to CLI/human-output
+
+### Fixed — 1.0.0a3
+
+- **Runtime import failure in isolated environments**
+
+  - Resolved `ModuleNotFoundError` for `typing_extensions`
+  - Prevented failures in:
+    - pre-commit hooks
+    - fresh virtual environments
+    - minimal CI environments
+
+- **Registry machine-output inconsistencies**
+
+  - Fixed asymmetries between filetypes, processors, and bindings outputs
+  - Corrected JSON structure mismatches with documented contract
+
+### Notes — 1.0.0a3
+
+- Machine output is now **fully finalized, tested, and documented** for 1.0.
+- The runtime dependency model is now **explicit and reliable across environments**.
+- This release completes the **machine-output track** and stabilizes packaging behavior.
+- Remaining work before 1.0 is focused on:
+  - CLI / human-output consistency
+  - final contract freeze decisions
+  - line-ending policy audit
+
+______________________________________________________________________
+
 ## [1.0.0a2] – 2026-04-21
 
 This second **1.0 alpha release** finalizes the internal configuration-validation model, strengthens

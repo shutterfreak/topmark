@@ -171,6 +171,8 @@ Result: human output is now **consistent, composable, and decoupled from CLI**.
 - Replaced tox with **nox**
 - Implemented **artifact-based CI → release pipeline**
 - Adopted **SCM-based versioning (setuptools-scm)**
+- Corrected the runtime dependency model by promoting `typing-extensions` to core dependencies after
+  isolated-environment failures revealed it was still required at runtime.
 - Hardened CI with:
   - link checks
   - permissions model
@@ -336,6 +338,9 @@ stricter than before.
   - it now validates SCM-derived artifact versions against the resolved release tag
 - Release/contributor workflow no longer includes a manual version-bump step.
 - Compact PEP 440 prerelease tags are now preferred (`vX.Y.ZaN`, `vX.Y.ZbN`, `vX.Y.ZrcN`).
+- `typing-extensions` is now treated as a runtime dependency rather than an implicitly available
+  development-only/transitive dependency; packaging and isolated-environment installs now reflect
+  the actual runtime import surface.
 - GitHub Actions behavior is more aggressively gated by changed-file buckets on pull requests, so
   some jobs may now be skipped unless relevant files changed.
 
@@ -695,20 +700,33 @@ These are release blockers unless explicitly deferred with a documented rational
 #### [Must] Tooling / dependency / release ecosystem
 
 - [ ] Decision made on long-term color backend policy (`yachalk` confinement or removal)
+
 - [ ] Formatter/tool configuration split stabilized and documented
+
   - [ ] `.mdformat.toml`
   - [ ] `.taplo.toml`
+
 - [ ] Tooling environments verified to consume the same formatter/plugin/tool expectations:
+
   - [ ] nox
   - [ ] pre-commit
   - [ ] local `.venv`
   - [ ] editor integrations
   - [ ] CI
   - [ ] artifact-based release workflow
+
 - [x] Artifact-based CI → release pipeline implemented and documented
+
 - [ ] Positive release-path rehearsal accepted as complete for the path to `1.0.0`
+
   - [x] first prerelease flow (`v1.0.0a1`) succeeded
+  - [x] second prerelease flow (`v1.0.0a2`) succeeded
   - [ ] remaining follow-up issues, if any, resolved or explicitly accepted
+
+- [ ] Runtime dependency model verified against isolated environments
+
+  - [x] `typing-extensions` promoted to core dependencies after isolated-environment failure
+  - [ ] pre-commit / clean-environment / packaging verification rerun on the final dependency set
 
 ### Strongly recommended (but not blockers)
 
