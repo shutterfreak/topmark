@@ -1676,6 +1676,7 @@ dependencies = [
     { name = "click" },
     { name = "pathspec" },
     { name = "tomlkit" },
+    { name = "typing-extensions" },
     { name = "yachalk" },
 ]
 
@@ -1695,7 +1696,6 @@ dev = [
     { name = "ruff" },
     { name = "taplo" },
     { name = "twine" },
-    { name = "typing-extensions" },
     { name = "uv" },
 ]
 docs = [
@@ -1755,7 +1755,7 @@ requires-dist = [
     { name = "taplo", marker = "extra == 'dev'", specifier = ">=0.9.3,<0.10.0" },
     { name = "tomlkit", specifier = ">=0.13.3,<0.15.0" },
     { name = "twine", marker = "extra == 'dev'", specifier = ">=6.2.0,<7.0.0" },
-    { name = "typing-extensions", marker = "extra == 'dev'", specifier = ">=4.15.0,<5.0.0" },
+    { name = "typing-extensions", specifier = ">=4.15.0,<5.0.0" },
     { name = "typing-extensions", marker = "extra == 'docs'", specifier = ">=4.15.0,<5.0.0" },
     { name = "uv", marker = "extra == 'dev'", specifier = ">=0.5.0,<0.12.0" },
     { name = "yachalk", specifier = ">=0.1.8,<0.2.0" },
