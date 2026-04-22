@@ -1,0 +1,15 @@
+// topmark:header:start
+//
+//   project      : TopMark
+//   file         : .markdownlint.jsonc
+//   file_relpath : .markdownlint.jsonc
+//   license      : MIT
+//   copyright    : (c) 2025 Olivier Biot
+//
+// topmark:header:end
+
+{
+  "default": true,
+  "MD013": false,       // Line length - usually handled by mdformat
+  "MD033": false        // Allow inline HTML (common in MkDocs/TopMark)
+}

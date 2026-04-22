@@ -16,7 +16,7 @@ repos:
       - id: check-merge-conflict
       - id: check-yaml
         # Allow custom YAML tags often used in MkDocs (PyYAML python/name tags)
-        args: [--unsafe]
+        args: [ --unsafe ]
       - id: check-added-large-files
 
   # Formatters
@@ -33,13 +33,20 @@ repos:
           - mdformat-gfm
           - mdformat-gfm-alerts
 
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.22.1
+    hooks:
+      - id: markdownlint-cli2
+        # Use args to point to your config or ignore specific folders
+        args: [ "--config", ".markdownlint.jsonc" ]
+
   - repo: local # Use local lychee setup to overcome the 'nightly' release tag problem in autoupdate
     hooks:
       - id: lychee-md
         name: lychee (changed Markdown)
         entry: lychee
         language: system
-        args: ["--config", "lychee.toml", "--no-progress"]
+        args: [ "--config", "lychee.toml", "--no-progress" ]
         files: ^(README\.md|docs/).*\.(md|MD)$
         pass_filenames: true
 
@@ -47,20 +54,20 @@ repos:
         name: lychee (MkDocs site, incl. generated pages)
         entry: make
         language: system
-        args: ["links-site"]
+        args: [ "links-site" ]
         pass_filenames: false
-        stages: [manual]
+        stages: [ manual ]
 
       - id: lychee-src
         name: lychee (changed Python docstrings)
         entry: lychee
         language: system
-        args: ["--config", "lychee.toml", "--no-progress"]
+        args: [ "--config", "lychee.toml", "--no-progress" ]
         files: ^src/.*\.py$
         pass_filenames: true
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.10
+    rev: v0.15.11
     hooks:
       - id: ruff-format
       - id: ruff-check
@@ -75,12 +82,12 @@ repos:
       - id: topmark-apply
         # files: '\.(py|md|toml|ya?ml|sh|Makefile)$'
 
-  # Docstring semantics - Limited to source and tools
+        # Docstring semantics - Limited to source and tools
   - repo: https://github.com/jsh9/pydoclint
     rev: 0.8.3
     hooks:
       - id: pydoclint
-        args: ["-q"]
+        args: [ "-q" ]
         files: ^(src|tools)/.*\.py$
 
   # Links in docstrings (code)
@@ -90,7 +97,7 @@ repos:
         name: docstring link style (TopMark)
         entry: python
         language: system
-        args: ["tools/docs/check_docstring_links.py"]
+        args: [ "tools/docs/check_docstring_links.py" ]
         files: ^src/.*\.py$
         pass_filenames: true
 
@@ -99,7 +106,7 @@ repos:
     rev: v0.9.3
     hooks:
       - id: taplo-lint
-        args: ["--no-schema"]
+        args: [ "--no-schema" ]
 
   # Type checker last
   - repo: https://github.com/RobertCraigie/pyright-python
