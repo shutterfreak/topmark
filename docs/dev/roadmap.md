@@ -719,12 +719,12 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] first prerelease flow (`v1.0.0a1`) succeeded
   - [x] second prerelease flow (`v1.0.0a2`) succeeded
   - [ ] remaining follow-up issues, if any, resolved or explicitly accepted
-- [ ] Runtime dependency model verified against isolated environments
+- [x] Runtime dependency model verified against isolated environments
   - [x] `typing-extensions` promoted to core dependencies after isolated-environment failure
   - [x] `packaging` promoted to core dependencies after pre-commit/isolated-environment failure
   - [x] dependency-audit configuration added (`deptry`) to reduce risk of further implicit
     runtime/development dependency drift
-  - [ ] pre-commit / clean-environment / packaging verification rerun on the final dependency set
+  - [x] pre-commit / clean-environment / packaging verification rerun on the final dependency set
 
 ### Strongly recommended (but not blockers)
 
