@@ -62,6 +62,8 @@ requires-python = ">=3.10,<3.15"
 dependencies = [
   # CLI framework:
   "click>=8.3.1,<9.0.0",
+  # Utilities for Python Packaging interoperability specifications:
+  "packaging>=25.0,<27.0.0",
   # Git-style pattern matching for file inclusion/exclusion:
   "pathspec>=0.12.1,<1.1.0",
   # TOML configuration file manipulation:
@@ -186,6 +188,11 @@ output = "coverage.xml"
 [tool.coverage.json]
 output       = "coverage.json"
 pretty_print = true
+
+[tool.deptry]
+# This tells deptry that these groups in [project.optional-dependencies]
+# are for development and shouldn't be flagged as 'unused' in src/
+optional_dependencies_dev_groups = ["dev", "docs", "test", "typing"]
 
 # Pre-commit configuration
 # Coordinates with VS Code settings to ensure consistent formatting and linting across environments

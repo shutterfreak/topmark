@@ -173,6 +173,10 @@ Result: human output is now **consistent, composable, and decoupled from CLI**.
 - Adopted **SCM-based versioning (setuptools-scm)**
 - Corrected the runtime dependency model by promoting `typing-extensions` to core dependencies after
   isolated-environment failures revealed it was still required at runtime.
+- Corrected additional implicit dependency by promoting `packaging` to core dependencies after
+  pre-commit/isolated-environment usage revealed it is required at runtime.
+- Added `deptry` configuration in `pyproject.toml` so optional dependency groups used for
+  development and documentation are modeled explicitly during dependency-audit checks.
 - Hardened CI with:
   - link checks
   - permissions model
@@ -700,32 +704,26 @@ These are release blockers unless explicitly deferred with a documented rational
 #### [Must] Tooling / dependency / release ecosystem
 
 - [ ] Decision made on long-term color backend policy (`yachalk` confinement or removal)
-
 - [ ] Formatter/tool configuration split stabilized and documented
-
   - [ ] `.mdformat.toml`
   - [ ] `.taplo.toml`
-
 - [ ] Tooling environments verified to consume the same formatter/plugin/tool expectations:
-
   - [ ] nox
   - [ ] pre-commit
   - [ ] local `.venv`
   - [ ] editor integrations
   - [ ] CI
   - [ ] artifact-based release workflow
-
 - [x] Artifact-based CI → release pipeline implemented and documented
-
 - [ ] Positive release-path rehearsal accepted as complete for the path to `1.0.0`
-
   - [x] first prerelease flow (`v1.0.0a1`) succeeded
   - [x] second prerelease flow (`v1.0.0a2`) succeeded
   - [ ] remaining follow-up issues, if any, resolved or explicitly accepted
-
 - [ ] Runtime dependency model verified against isolated environments
-
   - [x] `typing-extensions` promoted to core dependencies after isolated-environment failure
+  - [x] `packaging` promoted to core dependencies after pre-commit/isolated-environment failure
+  - [x] dependency-audit configuration added (`deptry`) to reduce risk of further implicit
+    runtime/development dependency drift
   - [ ] pre-commit / clean-environment / packaging verification rerun on the final dependency set
 
 ### Strongly recommended (but not blockers)

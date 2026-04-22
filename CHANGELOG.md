@@ -18,6 +18,51 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ______________________________________________________________________
 
+## [1.0.0a4] – 2026-04-22
+
+This fourth **1.0 alpha release** focuses on **finalizing the runtime dependency model** for
+reliable execution in isolated environments.
+
+It follows `1.0.0a3` and addresses an additional implicit dependency discovered during pre-commit
+usage, while also introducing dependency-audit configuration to reduce the risk of further
+dependency drift.
+
+### Highlights — 1.0.0a4
+
+- Completed promotion of implicit runtime dependencies to explicit core dependencies
+- Added dependency-audit configuration to help prevent further dependency drift
+- Further improved reliability in pre-commit, CI, and clean environments
+
+### Changed — 1.0.0a4
+
+- **Dependencies / packaging**
+
+  - Promoted `packaging` to a **core runtime dependency**.
+  - Ensures that version parsing and related utilities used in `topmark.constants` are always
+    available at runtime.
+  - Aligns declared dependencies with actual runtime import requirements.
+  - Added a `deptry` configuration block in `pyproject.toml` so dependency-audit checks model the
+    development/documentation optional-dependency groups explicitly.
+
+### Fixed — 1.0.0a4
+
+- **Runtime import failure in isolated environments**
+
+  - Prevented potential `ModuleNotFoundError` for `packaging` when running via:
+    - pre-commit hooks
+    - fresh virtual environments
+    - minimal CI environments
+
+### Notes — 1.0.0a4
+
+- This release continues the cleanup of **implicit runtime dependencies** discovered during alpha
+  testing.
+- TopMark’s dependency model is now more explicit, reproducible, and better guarded against future
+  drift through dependency-audit configuration.
+- Remaining work before 1.0 focuses on **CLI / human-output consistency and final contract freeze**.
+
+______________________________________________________________________
+
 ## [1.0.0a3] – 2026-04-22
 
 This third **1.0 alpha release** focuses on **packaging correctness, machine-output finalization,

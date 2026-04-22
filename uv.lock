@@ -1674,6 +1674,7 @@ name = "topmark"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
+    { name = "packaging" },
     { name = "pathspec" },
     { name = "tomlkit" },
     { name = "typing-extensions" },
@@ -1740,6 +1741,7 @@ requires-dist = [
     { name = "mkdocstrings", extras = ["python"], marker = "extra == 'docs'", specifier = ">=0.30.1,<1.1.0" },
     { name = "nox", marker = "extra == 'dev'", specifier = ">=2025.11.12,<2027.0.0" },
     { name = "nox-uv", marker = "extra == 'dev'", specifier = ">=0.7.0,<1.0.0" },
+    { name = "packaging", specifier = ">=25.0,<27.0.0" },
     { name = "pathspec", specifier = ">=0.12.1,<1.1.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.4.0,<5.0.0" },
     { name = "pydoclint", marker = "extra == 'dev'", specifier = ">=0.8.1,<0.9.0" },
