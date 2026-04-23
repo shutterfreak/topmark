@@ -268,18 +268,16 @@ def _split_csv_multi_option(
     return tuple(out)
 
 
-def resolve_verbosity(verbose_count: int, quiet_count: int) -> int:
-    """Resolve an integer verbosity level from -v/-q counts.
+def normalize_verbosity(verbose_count: int) -> int:
+    """Normalize an integer verbosity level from `-v/--verbose` counts.
 
     Args:
         verbose_count: Number of times `-v/--verbose` is passed.
-        quiet_count: Number of times `-q/--quiet` is passed.
 
     Returns:
-        Signed verbosity level (`verbose_count - quiet_count`).
+        Normalized verbosity level in the range 0..2.
     """
-    verbosity_level: int = verbose_count - quiet_count
-    return verbosity_level
+    return min(2, max(0, verbose_count))
 
 
 # ---- Trap infrastructure ----
@@ -414,7 +412,7 @@ def option_with_underscore_traps(
 # ---- Option decorators ----
 
 
-def common_verbose_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
+def common_human_output_verbosity_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
     """Adds --verbose and --quiet options to a command.
 
     Args:
@@ -424,22 +422,23 @@ def common_verbose_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
         The decorated function with verbosity options added.
 
     Behavior:
-        Adds -v/--verbose and -q/--quiet options that count occurrences.
-        These options are mutually exclusive and control human-facing output verbosity.
+        Adds count-based `-v/--verbose` detail controls and boolean `-q/--quiet`
+        suppression for human-readable output. These options are mutually exclusive.
     """
     f = option_with_underscore_traps(
         CliOpt.VERBOSE,
-        ArgKey.VERBOSE,
+        ArgKey.VERBOSITY,
         CliShortOpt.VERBOSE,
         count=True,
-        help="Increase verbosity. Specify up to twice for more detail.",
+        help="Increase human-output detail. Repeat once for full detail.",
     )(f)
     f = option_with_underscore_traps(
         CliOpt.QUIET,
         ArgKey.QUIET,
         CliShortOpt.QUIET,
-        count=True,
-        help="Suppress output. Specify up to twice for even less.",
+        is_flag=True,
+        default=False,
+        help="Suppress human-readable output and rely on exit status only.",
     )(f)
     return f
 
@@ -484,11 +483,11 @@ def common_ui_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
         The decorated function with verbosity and color options added.
 
     Behavior:
-        Adds --verbose and --quiet options (mutually exclusive).
+        Adds human-output detail controls (`--verbose`, `--quiet`).
         Adds --color with choices (auto, always, never).
         Adds --no-color flag that disables color output.
     """
-    f = common_verbose_options(f)
+    f = common_human_output_verbosity_options(f)
     f = common_color_options(f)
     return f
 

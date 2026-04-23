@@ -344,24 +344,48 @@ def apply_ignore_positional_paths_policy(
 # ---- Command-specific validators ----
 
 
-def validate_verbose_quiet_exclusivity(
+def validate_output_verbosity_policy(
     ctx: click.Context,
     *,
-    verbose: bool,
+    verbosity: int,
     quiet: bool,
+    fmt: OutputFormat,
 ) -> None:
-    """Validate the CLI `--verbose` / `--quiet` exclusivity.
+    """Validate human-output verbosity policy for the current invocation.
 
     Args:
         ctx: Active Click context containing CLI state and console.
-        verbose: Whether `--verbose` was specified.
+        verbosity: Raw verbosity count from `--verbose/-v`.
         quiet: Whether `--quiet` was specified.
+        fmt: Effective output format for this invocation.
 
+    Behavior:
+        - For machine-readable formats, human-output verbosity controls are ignored.
+        - For human-readable formats, `--verbose` and `--quiet` are mutually exclusive.
     """
+    if is_machine_format(fmt):
+        console: ConsoleProtocol = ctx.obj[ArgKey.CONSOLE]
+        if verbosity > 0:
+            console.warn(
+                f"Note: {ctx.command_path}: {CliOpt.VERBOSE} is ignored when "
+                f"{CliOpt.OUTPUT_FORMAT}={fmt.value}."
+            )
+            ctx.obj[ArgKey.VERBOSITY] = 0
+        if quiet:
+            console.warn(
+                f"Note: {ctx.command_path}: {CliOpt.QUIET} is ignored when "
+                f"{CliOpt.OUTPUT_FORMAT}={fmt.value}."
+            )
+            ctx.obj[ArgKey.QUIET] = False
+
+        # Since these flags are ignored for machine format,
+        # we don't raise an error if both are present.
+        return
+
     validate_mutually_exclusive(
         ctx,
         flags={
-            CliOpt.VERBOSE: verbose,
+            CliOpt.VERBOSE: verbosity > 0,
             CliOpt.QUIET: quiet,
         },
     )

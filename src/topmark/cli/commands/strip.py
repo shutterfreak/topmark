@@ -146,8 +146,8 @@ Examples:
 def strip_command(
     *,
     # common_ui_options (verbosity, color):
-    verbose: int,
-    quiet: int,
+    verbosity: int,
+    quiet: bool,
     color_mode: ColorMode | None,
     no_color: bool,
     # config_strict_checking_options:
@@ -195,9 +195,9 @@ def strip_command(
     options are intentionally not exposed for this command.
 
     Args:
-        verbose: Incements the verbosity level,
-        quiet: Decrements  the verbosity level,
-        color_mode: Set the color mode (derfault: autp),
+        verbosity: Verbosity level.
+        quiet: Suppresses human-readable output.
+        color_mode: Set the color mode (default: auto).
         no_color: bool: If set, disable color mode.
         strict_config_checking: if True, report warnings as errors.
         no_config: If True, skip loading project/user configuration files.
@@ -244,14 +244,14 @@ def strip_command(
     # Initialize the common state (verbosity, color mode) and initialize console
     init_common_state(
         ctx,
-        verbose=verbose,
+        verbosity=verbosity,
         quiet=quiet,
         color_mode=color_mode,
         no_color=no_color,
     )
 
     # Retrieve effective human facing program-output verbosity for gating extra details
-    verbosity_level: int = ctx.obj[ArgKey.VERBOSITY_LEVEL]
+    verbosity_level: int = ctx.obj[ArgKey.VERBOSITY]
 
     # Reject check-only policy options that would otherwise slip through due to
     # permissive path-command parsing.

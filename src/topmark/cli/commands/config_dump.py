@@ -112,8 +112,8 @@ logger: TopmarkLogger = get_logger(__name__)
 def config_dump_command(
     *,
     # common_ui_options (verbosity, color):
-    verbose: int,
-    quiet: int,
+    verbosity: int,
+    quiet: bool,
     color_mode: ColorMode | None,
     no_color: bool,
     # common_config_resolution_options:
@@ -150,9 +150,9 @@ def config_dump_command(
           config provenance (still without diagnostics).
 
     Args:
-        verbose: Incements the verbosity level,
-        quiet: Decrements  the verbosity level,
-        color_mode: Set the color mode (derfault: autp),
+        verbosity: Verbosity level.
+        quiet: Suppresses human-readable output.
+        color_mode: Set the color mode (default: auto).
         no_color: bool: If set, disable color mode.
         no_config: If True, skip loading project/user configuration files.
         config_files: Additional configuration file paths to load and merge.
@@ -181,14 +181,14 @@ def config_dump_command(
     # Initialize the common state (verbosity, color mode) and initialize console
     init_common_state(
         ctx,
-        verbose=verbose,
+        verbosity=verbosity,
         quiet=quiet,
         color_mode=color_mode,
         no_color=no_color,
     )
 
     # Retrieve effective human facing program-output verbosity for gating extra details
-    verbosity_level: int = ctx.obj[ArgKey.VERBOSITY_LEVEL]
+    verbosity_level: int = ctx.obj[ArgKey.VERBOSITY]
 
     # Machine metadata
     meta: MetaPayload = build_meta_payload()

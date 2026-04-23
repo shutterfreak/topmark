@@ -33,10 +33,10 @@ from topmark.cli.console.click_console import Console
 from topmark.cli.console.color import resolve_color_mode
 from topmark.cli.console.context import resolve_console
 from topmark.cli.options import ColorMode
-from topmark.cli.options import resolve_verbosity
+from topmark.cli.options import normalize_verbosity
 from topmark.cli.presentation import TextStyler
 from topmark.cli.presentation import style_for_role
-from topmark.cli.validators import validate_verbose_quiet_exclusivity
+from topmark.cli.validators import validate_output_verbosity_policy
 from topmark.config.model import MutableConfig
 from topmark.config.overrides import ConfigOverrides
 from topmark.config.overrides import PolicyOverrides
@@ -47,6 +47,7 @@ from topmark.config.resolution.bridge import resolve_toml_sources_and_build_conf
 from topmark.config.types import FileWriteStrategy
 from topmark.config.types import OutputTarget
 from topmark.constants import CLI_OVERRIDE_STR
+from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
 from topmark.core.logging import resolve_env_log_level
 from topmark.core.logging import setup_logging
@@ -72,54 +73,83 @@ _CTX_RESOLVED_WRITER_OPTIONS_KEY: Final[str] = "_topmark_resolved_writer_options
 def init_common_state(
     ctx: click.Context,
     *,
-    verbose: int,
-    quiet: int,
+    verbosity: int,
+    quiet: bool,
     color_mode: ColorMode | None,
     no_color: bool,
 ) -> None:
     """Initialize shared UI/runtime state on the Click context.
 
     It populates `ctx.obj` with:
-    - `ArgKey.VERBOSITY_LEVEL`
+    - `ArgKey.VERBOSITY`
+    - `ArgKey.QUIET`
     - `ArgKey.LOG_LEVEL` (from environment)
     - `ArgKey.COLOR_MODE` and `ArgKey.COLOR_ENABLED`
     - `ArgKey.CONSOLE`
 
     Args:
         ctx: Current Click context; will have ``obj`` and ``color`` set.
-        verbose: Count of ``-v`` flags (0..2).
-        quiet: Count of ``-q`` flags (0..2).
+        verbosity: Count of ``--verbose/-v`` flags (0..2).
+        quiet: Whether ``--quiet/-q`` was provided.
         color_mode: Explicit color mode from ``--color`` (or ``None``).
         no_color: Whether ``--no-color`` was passed; forces color off.
     """
-    ctx.obj = ctx.obj or {}
+    ctx.ensure_object(dict)
 
-    # Program-output verbosity (stored for downstream gating).
-    validate_verbose_quiet_exclusivity(ctx, verbose=verbose > 0, quiet=quiet > 0)
-
-    level_cli: int = resolve_verbosity(verbose, quiet)
-    ctx.obj[ArgKey.VERBOSITY_LEVEL] = level_cli
-
-    # Internal logging (env-driven).
-    level_env: int | None = resolve_env_log_level()
-    ctx.obj[ArgKey.LOG_LEVEL] = level_env
-    setup_logging(level=level_env)
-
-    # Color policy (command decides output format later; `output_format=None` here).
+    # 1. Color policy (command decides output format later; `output_format=None` here).
     effective_color_mode: ColorMode = (
         ColorMode.NEVER if no_color else (color_mode or ColorMode.AUTO)
     )
+    # Store the resolved color mode in the Click context:
     ctx.obj[ArgKey.COLOR_MODE] = effective_color_mode
     enable_color: bool = resolve_color_mode(
         color_mode_override=effective_color_mode,
         output_format=None,
     )
+    # Store whether color is enabled in the console in the Click context:
     ctx.obj[ArgKey.COLOR_ENABLED] = enable_color
     ctx.color = enable_color
 
-    # Respect the resolved color policy (may differ from the raw --no-color flag).
+    # 2. Initialize the console.
+    # Respect the resolved color policy (may differ from the raw `--no-color`` flag).
     console = Console(enable_color=enable_color)
+    # Store the console in the Click context:
     ctx.obj[ArgKey.CONSOLE] = console
+
+    # 3. Initialize internal logging (env-driven).
+    level_env: int | None = resolve_env_log_level()
+    setup_logging(level=level_env)
+    # Store the resolved internal runtime log level in the Click context:
+    ctx.obj[ArgKey.LOG_LEVEL] = level_env
+
+    # 4. Validate output verbosity for human formats
+    if isinstance(fmt_raw := ctx.obj.get(ArgKey.OUTPUT_FORMAT), OutputFormat):
+        fmt: OutputFormat = fmt_raw
+    else:
+        fmt = OutputFormat.TEXT
+    # Store the resolved output format in the Click context:
+    ctx.obj[ArgKey.OUTPUT_FORMAT] = fmt
+
+    # Store raw human-output controls so validators can normalize ignored flags.
+    ctx.obj[ArgKey.VERBOSITY] = verbosity
+    ctx.obj[ArgKey.QUIET] = quiet
+
+    # Program-output verbosity (stored for downstream gating).
+    validate_output_verbosity_policy(
+        ctx,
+        verbosity=verbosity,
+        quiet=quiet,
+        fmt=fmt,
+    )
+
+    raw_verbosity_obj: object = ctx.obj.get(ArgKey.VERBOSITY, verbosity)
+    raw_verbosity: int = raw_verbosity_obj if isinstance(raw_verbosity_obj, int) else verbosity
+    effective_quiet_obj: object = ctx.obj.get(ArgKey.QUIET, quiet)
+    effective_quiet: bool = effective_quiet_obj if isinstance(effective_quiet_obj, bool) else quiet
+
+    # Store the normalized verbosity level in the Click context.
+    ctx.obj[ArgKey.VERBOSITY] = normalize_verbosity(raw_verbosity)
+    ctx.obj[ArgKey.QUIET] = effective_quiet
 
 
 def build_file_list(

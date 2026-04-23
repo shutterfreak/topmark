@@ -62,8 +62,8 @@ def cli(
     if ArgKey.CONSOLE not in ctx.obj:
         init_common_state(
             ctx,
-            verbose=0,
-            quiet=0,
+            verbosity=0,
+            quiet=False,
             color_mode=None,
             no_color=False,
         )

@@ -59,8 +59,8 @@ Use this command to see which file types can be processed and referenced in conf
 def registry_filetypes_command(
     *,
     # common_ui_options (verbosity, color):
-    verbose: int,
-    quiet: int,
+    verbosity: int,
+    quiet: bool,
     color_mode: ColorMode | None,
     no_color: bool,
     # registry_details_options:
@@ -74,9 +74,9 @@ def registry_filetypes_command(
     Useful for reference when configuring file type filters.
 
     Args:
-        verbose: Incements the verbosity level,
-        quiet: Decrements  the verbosity level,
-        color_mode: Set the color mode (derfault: autp),
+        verbosity: Verbosity level.
+        quiet: Suppresses human-readable output.
+        color_mode: Set the color mode (default: auto).
         no_color: bool: If set, disable color mode.
         show_details: Whether to show extended information about each file type,
             including associated extensions, filenames, patterns, skip policy, and header policy.
@@ -91,14 +91,14 @@ def registry_filetypes_command(
     # Initialize the common state (verbosity, color mode) and initialize console
     init_common_state(
         ctx,
-        verbose=verbose,
+        verbosity=verbosity,
         quiet=quiet,
         color_mode=color_mode,
         no_color=no_color,
     )
 
     # Retrieve effective human facing program-output verbosity for gating extra details
-    verbosity_level: int = ctx.obj[ArgKey.VERBOSITY_LEVEL]
+    verbosity_level: int = ctx.obj[ArgKey.VERBOSITY]
 
     # Select the console
     console: ConsoleProtocol = ctx.obj[ArgKey.CONSOLE]

@@ -84,9 +84,8 @@ class ArgKey(str, Enum):
     SHOW_DETAILS = "show_details"
 
     # Logging / UX
-    VERBOSE = "verbose"
+    VERBOSITY = "verbosity"
     QUIET = "quiet"
-    VERBOSITY_LEVEL = "verbosity_level"
     LOG_LEVEL = "log_level"
     COLOR_MODE = "color_mode"
     NO_COLOR_MODE = "no_color"

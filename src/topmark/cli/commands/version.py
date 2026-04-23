@@ -56,8 +56,8 @@ if TYPE_CHECKING:
 def version_command(
     *,
     # common_ui_options (verbosity, color):
-    verbose: int,
-    quiet: int,
+    verbosity: int,
+    quiet: bool,
     color_mode: ColorMode | None,
     no_color: bool,
     # version_format_options:
@@ -70,9 +70,9 @@ def version_command(
     Prints the TopMark version as installed in the current Python environment.
 
     Args:
-        verbose: Incements the verbosity level,
-        quiet: Decrements  the verbosity level,
-        color_mode: Set the color mode (derfault: autp),
+        verbosity: Verbosity level.
+        quiet: Suppresses human-readable output.
+        color_mode: Set the color mode (default: auto).
         no_color: bool: If set, disable color mode.
         semver: Whether to attempt to render the version as SemVer (default: PEP 440).
         output_format: Output format to use (``text``, ``markdown``, ``json``, or ``ndjson``).
@@ -86,14 +86,14 @@ def version_command(
     # Initialize the common state (verbosity, color mode) and initialize console
     init_common_state(
         ctx,
-        verbose=verbose,
+        verbosity=verbosity,
         quiet=quiet,
         color_mode=color_mode,
         no_color=no_color,
     )
 
     # Retrieve effective human facing program-output verbosity for gating extra details
-    verbosity_level: int = ctx.obj[ArgKey.VERBOSITY_LEVEL]
+    verbosity_level: int = ctx.obj[ArgKey.VERBOSITY]
 
     # Select the console
     console: ConsoleProtocol = ctx.obj[ArgKey.CONSOLE]

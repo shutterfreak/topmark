@@ -89,8 +89,8 @@ logger: TopmarkLogger = get_logger(__name__)
 def config_check_command(
     *,
     # common_ui_options (verbosity, color):
-    verbose: int,
-    quiet: int,
+    verbosity: int,
+    quiet: bool,
     color_mode: ColorMode | None,
     no_color: bool,
     # common_config_resolution_options:
@@ -109,7 +109,7 @@ def config_check_command(
     that need to consume the resolved configuration.
 
     Args:
-        verbose: Increment verbosity level.
+        verbosity: Increment verbosity level.
         quiet: Decrement verbosity level.
         color_mode: Color mode for text format (default: auto).
         no_color: If set, disable color mode.
@@ -127,14 +127,14 @@ def config_check_command(
     # Initialize the common state (verbosity, color mode) and initialize console
     init_common_state(
         ctx,
-        verbose=verbose,
+        verbosity=verbosity,
         quiet=quiet,
         color_mode=color_mode,
         no_color=no_color,
     )
 
     # Retrieve effective human facing program-output verbosity for gating extra details
-    verbosity_level: int = ctx.obj[ArgKey.VERBOSITY_LEVEL]
+    verbosity_level: int = ctx.obj[ArgKey.VERBOSITY]
 
     # Select the console
     console: ConsoleProtocol = ctx.obj[ArgKey.CONSOLE]
