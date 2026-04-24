@@ -40,7 +40,7 @@ from topmark.resolution.filetypes import resolve_binding_for_path
 if TYPE_CHECKING:
     from collections.abc import Callable
     from collections.abc import Collection
-    from collections.abc import Iterator
+    from collections.abc import Generator
     from collections.abc import Mapping
     from pathlib import Path
 
@@ -195,7 +195,7 @@ def patched_effective_registries(
     *,
     filetypes: Mapping[str, FileType],
     processors: Mapping[str, HeaderProcessor | ProcessorDefinition],
-) -> Iterator[None]:
+) -> Generator[None, None, None]:
     """Temporarily override the effective registries used by TopMark.
 
     This helper patches the composed file-type, processor, and binding views
