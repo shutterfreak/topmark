@@ -88,7 +88,7 @@ def version_command(
 
     Args:
         verbosity: Verbosity level.
-        quiet: Suppresses human-readable output.
+        quiet: Suppresses default TEXT output.
         color_mode: Set the color mode (default: auto).
         no_color: bool: If set, disable color mode.
         semver: Whether to attempt to render the version as SemVer (default: PEP 440).
@@ -144,6 +144,7 @@ def version_command(
 
     report: VersionHumanReport = make_version_human_report(
         verbosity_level=verbosity_level,
+        quiet=quiet,
         styled=enable_color,
         semver=semver,
     )

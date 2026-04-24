@@ -27,6 +27,7 @@ class VersionHumanReport:
         version_format: The effective format label (e.g. "semver" or "pep440").
         error: Optional conversion error when SemVer conversion was requested and failed.
         verbosity_level: Effective verbosity for gating extra details.
+        quiet: Suppresses default TEXT output.
         styled: Whether to render the output styled.
     """
 
@@ -34,12 +35,14 @@ class VersionHumanReport:
     version_format: str
     error: TopmarkCliVersionConversionError | None
     verbosity_level: int
+    quiet: bool
     styled: bool
 
 
 def make_version_human_report(
     semver: bool,
     verbosity_level: int,
+    quiet: bool,
     styled: bool,
 ) -> VersionHumanReport:
     """Create a VersionHumanReport instance.
@@ -47,6 +50,7 @@ def make_version_human_report(
     Args:
         semver: Whether to render the version in SemVer format (default: PEP440).
         verbosity_level: Effective verbosity level.
+        quiet: Suppresses default TEXT output.
         styled: Whether to render the output styled.
 
     Returns:
@@ -59,5 +63,6 @@ def make_version_human_report(
         version_format=version_format,
         error=TopmarkCliVersionConversionError(message=str(err)) if err else None,
         verbosity_level=verbosity_level,
+        quiet=quiet,
         styled=styled,
     )

@@ -38,6 +38,9 @@ def render_version_text(report: VersionHumanReport) -> str:
     Returns:
         A text document as a single string.
     """
+    if report.quiet:
+        return ""
+
     # Note: the stylers already check `report.styled` so we don't need `maybe_style()`
     heading_styler: TextStyler = style_for_role(StyleRole.HEADING_TITLE, styled=report.styled)
     emphasis_styler: TextStyler = style_for_role(StyleRole.EMPHASIS, styled=report.styled)

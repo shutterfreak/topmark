@@ -38,11 +38,19 @@ def render_version_markdown(
     Returns:
         A Markdown document as a single string.
     """
-    lines: list[str] = [
-        "# TopMark Version",
-        "",
-        f"**TopMark version ({report.version_format}): {report.version_text}**",
-    ]
+    lines: list[str] = []
+
+    if report.verbosity_level > 0:
+        lines.extend(
+            [
+                "# TopMark Version",
+                "",
+                f"**Version format:** `{report.version_format}`",
+                f"**Version:** `{report.version_text}`",
+            ]
+        )
+    else:
+        lines.append(report.version_text)
 
     if report.error is not None:
         lines.extend(["", f"> **Warning:** {report.error}"])
