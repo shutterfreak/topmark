@@ -8,7 +8,7 @@
 #
 # topmark:header:end
 
-"""ANSI (TEXT) diagnostic rendering helpers for CLI commands.
+"""TEXT diagnostic rendering helpers for CLI commands.
 
 This module contains helpers that render diagnostics for human-facing TEXT output formats.
 These generate no I/O.
@@ -41,25 +41,29 @@ def render_human_diagnostics_text(
     """Render prepared human diagnostics as text for human output.
 
     Args:
-        counts: HumanDiagnosticCounts (object with .error, .warning, .info).
-        diagnostics: List of HumanDiagnosticLine (object with .level, .message).
-        verbosity_level: Controls detail.
+        counts: Aggregated human-facing diagnostic counts.
+        diagnostics: Prepared human-facing diagnostic lines.
+        verbosity_level: Effective verbosity for gating extra details.
 
     Returns:
         Text document as single string.
     """
     if not diagnostics:
         return ""
-    parts: list[str] = []
 
-    parts.append(
+    summary: str = (
         f"Diagnostics: {counts.error} error(s), "
         f"{counts.warning} warning(s), "
         f"{counts.info} information(s)"
     )
-    if verbosity_level > 0:
-        for d in diagnostics:
-            parts.append(f"- {d.level}: {d.message}")
+
+    if verbosity_level <= 0:
+        return f"{summary} (use '{CliShortOpt.VERBOSE}' to view details)"
+
+    parts: list[str] = [summary]
+    for d in diagnostics:
+        parts.append(f"- {d.level}: {d.message}")
+
     return "\n".join(parts)
 
 

@@ -42,26 +42,30 @@ def render_human_diagnostics_markdown(
 
     Args:
         title: Section heading.
-        counts: HumanDiagnosticCounts (object with .error, .warning, .info).
-        diagnostics: List of HumanDiagnosticLine (object with .level, .message).
-        verbosity_level: Controls detail.
+        counts: Aggregated human-facing diagnostic counts.
+        diagnostics: Prepared human-facing diagnostic lines.
+        verbosity_level: Effective verbosity for gating extra details.
 
     Returns:
         Markdown fragment string (may be empty). Includes a trailing newline when non-empty.
     """
-    if not diagnostics and verbosity_level <= 0:
+    if not diagnostics:
         return ""
-    # For summary at verbosity 0
+
+    summary: str = (
+        f"{counts.error} error(s), {counts.warning} warning(s), {counts.info} information(s)"
+    )
+
+    # Summary at verbosity 0.
     if verbosity_level <= 0:
-        return (
-            f"> **Diagnostics:** {counts.error} error(s), "
-            f"{counts.warning} warning(s), "
-            f"{counts.info} information(s)"
-            " (use `-v` to view details)\n"
-        )
-    # Verbose: emit section with bullet list
-    lines: list[str] = []
-    lines.append(f"### {title}")
+        return f"> **Diagnostics:** {summary} (use `{CliShortOpt.VERBOSE}` to view details)\n"
+
+    # Verbose output: emit section with summary and bullet list.
+    lines: list[str] = [
+        f"### {title}",
+        "",
+        f"**Diagnostics:** {summary}",
+    ]
     for d in diagnostics:
         lines.append(f"- **{d.level}**: {d.message}")
     return "\n".join(lines).rstrip() + "\n"

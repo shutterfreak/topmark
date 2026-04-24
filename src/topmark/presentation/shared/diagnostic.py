@@ -104,7 +104,7 @@ def prepare_human_diagnostics(
         diagnostics: Iterable of internal Diagnostic objects.
 
     Returns:
-        (counts, lines) tuple.
+        A tuple containing aggregated diagnostic counts and prepared diagnostic lines.
     """
     info = 0
     warning = 0
