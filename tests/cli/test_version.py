@@ -75,6 +75,38 @@ def test_version_with_semver_flag_outputs_semver() -> None:
     assert re.fullmatch(SEMVER_RE, out) is not None
 
 
+def test_version_quiet_suppresses_default_text_output() -> None:
+    """`version --quiet` should suppress default TEXT output."""
+    result: Result = run_cli(
+        [
+            CliCmd.VERSION,
+            CliOpt.NO_COLOR_MODE,
+            CliOpt.QUIET,
+        ]
+    )
+
+    assert_SUCCESS(result)
+    assert result.output == ""
+
+
+def test_version_quiet_does_not_suppress_markdown_output() -> None:
+    """`version --quiet --output-format markdown` should still render Markdown."""
+    result: Result = run_cli(
+        [
+            CliCmd.VERSION,
+            CliOpt.NO_COLOR_MODE,
+            CliOpt.QUIET,
+            CliOpt.OUTPUT_FORMAT,
+            "markdown",
+        ]
+    )
+
+    assert_SUCCESS(result)
+
+    out: str = result.output.strip()
+    assert out == TOPMARK_VERSION
+
+
 @pytest.mark.parametrize("use_semver", [False, True])
 def test_version_markdown_format(use_semver: bool) -> None:
     """`version --output-format markdown` prints the correct version in human output."""

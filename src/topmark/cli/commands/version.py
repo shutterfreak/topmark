@@ -150,9 +150,10 @@ def version_command(
     )
 
     if fmt == OutputFormat.TEXT:
-        console.print(
-            render_version_text(report),
-        )
+        rendered: str = render_version_text(report)
+        # Quiet TEXT output renders as an empty string; avoid emitting a blank line.
+        if rendered:
+            console.print(rendered)
         return
 
     if fmt == OutputFormat.MARKDOWN:

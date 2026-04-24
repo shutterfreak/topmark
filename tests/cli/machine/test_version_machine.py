@@ -85,6 +85,29 @@ def test_version_json_format(use_semver: bool) -> None:
             pytest.fail(f"Not a valid PEP 440 version: {out!r} ({exc})")
 
 
+def test_version_quiet_does_not_suppress_json_output() -> None:
+    """`version --quiet --output-format json` should still emit machine output."""
+    result: Result = run_cli(
+        [
+            CliCmd.VERSION,
+            CliOpt.NO_COLOR_MODE,
+            CliOpt.QUIET,
+            CliOpt.OUTPUT_FORMAT,
+            "json",
+        ]
+    )
+
+    assert_SUCCESS(result)
+
+    payload: dict[str, object] = parse_json_object(result.output)
+    assert "version_info" in payload
+    assert is_mapping(payload["version_info"])
+
+    version_info: dict[str, object] = as_object_dict(payload["version_info"])
+    assert version_info.get("version") == TOPMARK_VERSION
+    assert version_info.get("version_format") == "pep440"
+
+
 @pytest.mark.parametrize("use_semver", [False, True])
 def test_version_ndjson_format(use_semver: bool) -> None:
     """`version --output-format ndjson` returns a valid machine record."""
@@ -134,3 +157,27 @@ def test_version_ndjson_format(use_semver: bool) -> None:
             Version(out)
         except InvalidVersion as exc:
             pytest.fail(f"Not a valid PEP 440 version: {out!r} ({exc})")
+
+
+def test_version_quiet_does_not_suppress_ndjson_output() -> None:
+    """`version --quiet --output-format ndjson` should still emit machine output."""
+    result: Result = run_cli(
+        [
+            CliCmd.VERSION,
+            CliOpt.NO_COLOR_MODE,
+            CliOpt.QUIET,
+            CliOpt.OUTPUT_FORMAT,
+            "ndjson",
+        ]
+    )
+
+    assert_SUCCESS(result)
+
+    payload: dict[str, object] = parse_single_ndjson_record(result.output)
+    assert payload.get("kind") == "version"
+
+    version_obj: object | None = payload.get("version")
+    assert is_mapping(version_obj)
+    version_info: dict[str, object] = as_object_dict(version_obj)
+    assert version_info.get("version") == TOPMARK_VERSION
+    assert version_info.get("version_format") == "pep440"

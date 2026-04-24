@@ -364,37 +364,38 @@ def validate_output_verbosity_policy(
         fmt: Effective output format for this invocation.
 
     Behavior:
-        - For machine-readable formats, human-output verbosity controls are ignored.
-        - For human-readable formats, `--verbose` and `--quiet` are mutually exclusive.
+        - For machine-readable formats, `--verbose` is ignored with a warning.
+        - For non-TEXT formats, `--quiet` is cleared silently so output remains renderable.
+        - For TEXT output, `--verbose` and `--quiet` are mutually exclusive.
     """
+    state: TopmarkCliState = get_cli_state(ctx)
+    console: ConsoleProtocol = state.console
+
+    if fmt != OutputFormat.TEXT and quiet:
+        # Quiet only suppresses default TEXT output. For other formats,
+        # clear it silently.
+        state.quiet = False
+
     if is_machine_format(fmt):
-        state = get_cli_state(ctx)
-        console: ConsoleProtocol = state.console
         if verbosity > 0:
             console.warn(
                 f"Note: {ctx.command_path}: {CliOpt.VERBOSE} is ignored when "
                 f"{CliOpt.OUTPUT_FORMAT}={fmt.value}."
             )
             state.verbosity = 0
-        if quiet:
-            console.warn(
-                f"Note: {ctx.command_path}: {CliOpt.QUIET} is ignored when "
-                f"{CliOpt.OUTPUT_FORMAT}={fmt.value}."
-            )
-            state.quiet = False
 
-        # Since these flags are ignored for machine format,
-        # we don't raise an error if both are present.
+        # Since human-output verbosity controls are ignored for machine formats,
+        # do not raise an error if both are present.
         return
 
     validate_mutually_exclusive(
         ctx,
         flags={
             CliOpt.VERBOSE: verbosity > 0,
-            CliOpt.QUIET: quiet,
+            CliOpt.QUIET: state.quiet,
         },
     )
-    # Raises: TopmarkCliUsageError: If both flags are enabled.
+    # Raises: TopmarkCliUsageError: If both flags are enabled for TEXT output.
 
 
 def validate_diff_policy_for_output_format(
