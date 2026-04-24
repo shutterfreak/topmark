@@ -46,13 +46,12 @@ from topmark.cli.options import common_header_formatting_options
 from topmark.cli.options import common_output_format_options
 from topmark.cli.options import common_ui_options
 from topmark.cli.options import config_dump_provenance_options
+from topmark.cli.state import TopmarkCliState
+from topmark.cli.state import bootstrap_cli_state
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import validate_stdin_dash_requires_piped_input
-from topmark.constants import TOML_BLOCK_END
-from topmark.constants import TOML_BLOCK_START
 from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
-from topmark.core.keys import ArgKey
 from topmark.core.logging import get_logger
 from topmark.core.machine.payloads import build_meta_payload
 from topmark.presentation.markdown.config import render_config_dump_markdown
@@ -82,23 +81,29 @@ logger: TopmarkLogger = get_logger(__name__)
     name=CliCmd.CONFIG_DUMP,
     context_settings=GROUP_CONTEXT_SETTINGS,
     help=(
-        "Dump the final merged TopMark configuration as TOML. "
-        "This command is file-agnostic and does not accept positional PATHS. "
-        f"{CliOpt.STDIN_FILENAME} is not supported for this command. "
-        f"Filtering flags are honored (e.g., {CliOpt.INCLUDE_PATTERNS}/{CliOpt.EXCLUDE_PATTERNS} "
-        f"and {CliOpt.INCLUDE_FROM}/{CliOpt.EXCLUDE_FROM}). "
-        f"Use {CliOpt.INCLUDE_FROM} - / {CliOpt.EXCLUDE_FROM} - to read patterns from STDIN. "
-        "File content on STDIN (using '-' as a PATH) is ignored."
+        "Print the effective merged TopMark configuration as TOML. "
+        f"This command is file-agnostic: positional PATHS and {CliOpt.STDIN_FILENAME} are ignored. "
+        f"Use {CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}/{OutputFormat.NDJSON.value} "
+        "for machine-readable output."
     ),
     epilog=(
+        "\b\n"
+        "Examples:\n"
+        "  # Print the effective merged configuration\n"
+        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_DUMP}\n"
+        "  # Include configuration provenance layers\n"
+        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_DUMP} {CliOpt.SHOW_CONFIG_LAYERS}\n"
+        "  # Read include patterns from STDIN\n"
+        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_DUMP} {CliOpt.INCLUDE_FROM} -\n"
+        "  # Emit machine-readable configuration\n"
+        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_DUMP} "
+        f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}\n"
+        "\n"
         "Notes:\n"
         "  • File lists are inputs, not configuration; they are ignored by this command.\n"
-        "  • Pattern sources are part of configuration and are included in the dump.\n"
-        "  • Use --output-format json / ndjson for machine-readable output.\n"
-        "  • In the default (human) format, output is wrapped between "
-        f"'{TOML_BLOCK_START}' and '{TOML_BLOCK_END}' markers when verbosity level ≥ 1.\n"
-        "  • In human output formats (`text` and `markdown`), "
-        "config diagnostics are rendered according to the selected verbosity level."
+        "  • Pattern sources are configuration and are included in the dump.\n"
+        "  • Human output may include TOML block markers when verbosity is enabled.\n"
+        "  • Machine formats emit a Config snapshot and optional provenance records.\n"
     ),
 )
 @common_ui_options
@@ -137,12 +142,10 @@ def config_dump_command(
     # common_output_format_options:
     output_format: OutputFormat | None,
 ) -> None:
-    """Dump the final merged configuration as TOML.
+    """Print the effective merged TopMark configuration.
 
-    Builds the effective configuration from defaults, discovered/explicit
-    config files, and CLI overrides, then prints it as TOML surrounded by
-    BEGIN/END markers. This is useful for debugging or for external tools
-    that need to consume the resolved configuration.
+    Builds the effective configuration from defaults, discovered and explicit
+    config files, and CLI overrides, then renders it for human or machine output.
 
     Notes:
         - In JSON/NDJSON modes, this command emits a Config snapshot and,
@@ -150,8 +153,8 @@ def config_dump_command(
           config provenance (still without diagnostics).
 
     Args:
-        verbosity: Verbosity level.
-        quiet: Suppresses human-readable output.
+        verbosity: Increase human-output detail.
+        quiet: Suppress human-readable output.
         color_mode: Set the color mode (default: auto).
         no_color: bool: If set, disable color mode.
         no_config: If True, skip loading project/user configuration files.
@@ -176,7 +179,10 @@ def config_dump_command(
         NotImplementedError: When providing an unsupported OutputType.
     """
     ctx: click.Context = click.get_current_context()
-    ctx.ensure_object(dict)
+    state: TopmarkCliState = bootstrap_cli_state(ctx)
+
+    # Effective output format (stored early so shared initialization sees it).
+    state.output_format = output_format or OutputFormat.TEXT
 
     # Initialize the common state (verbosity, color mode) and initialize console
     init_common_state(
@@ -188,16 +194,16 @@ def config_dump_command(
     )
 
     # Retrieve effective human facing program-output verbosity for gating extra details
-    verbosity_level: int = ctx.obj[ArgKey.VERBOSITY]
+    verbosity_level: int = state.verbosity
 
     # Machine metadata
     meta: MetaPayload = build_meta_payload()
 
     # Output format
-    fmt: OutputFormat = output_format or OutputFormat.TEXT
+    fmt: OutputFormat = state.output_format
 
     apply_color_policy_for_output_format(ctx, fmt=fmt)
-    enable_color: bool = ctx.obj[ArgKey.COLOR_ENABLED]
+    enable_color: bool = state.color_enabled
 
     # common_from_sources_options - Fail fast if a `--*-from -` option is used without piped STDIN.
     validate_stdin_dash_requires_piped_input(
@@ -257,7 +263,6 @@ def config_dump_command(
     )
 
     config: Config = draft_config.freeze()
-
     logger.trace("Run config after layered CLI overrides: %s", config)
 
     # Render flattened config validation diagnostics before emitting the final dump.
@@ -294,6 +299,7 @@ def config_dump_command(
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         # Machine-readable formats: emit JSON/NDJSON without human banners
         emit_config_machine(
+            console=console,
             meta=meta,
             config=config,
             fmt=fmt,

@@ -23,17 +23,19 @@ import click
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.emitters.machine import emit_config_machine
 from topmark.cli.keys import CliCmd
+from topmark.cli.keys import CliOpt
 from topmark.cli.options import GROUP_CONTEXT_SETTINGS
 from topmark.cli.options import common_output_format_options
 from topmark.cli.options import common_ui_options
 from topmark.cli.options import config_pyproject_options
 from topmark.cli.options import config_root_options
+from topmark.cli.state import TopmarkCliState
+from topmark.cli.state import bootstrap_cli_state
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import apply_ignore_positional_paths_policy
 from topmark.cli.validators import validate_human_only_config_flags_for_machine_format
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.core.formats import OutputFormat
-from topmark.core.keys import ArgKey
 from topmark.core.machine.payloads import build_meta_payload
 from topmark.presentation.markdown.config import render_config_init_markdown
 from topmark.presentation.shared.config import ConfigInitHumanReport
@@ -52,15 +54,26 @@ if TYPE_CHECKING:
     context_settings=GROUP_CONTEXT_SETTINGS,
     help=(
         "Print a starter TopMark configuration file. "
-        "This command is file-agnostic: positional PATHS are ignored "
-        "and --stdin-filename is not allowed. "
-        "Use --output-format json/ndjson for a machine-readable config snapshot."
+        f"This command is file-agnostic: positional PATHS and {CliOpt.STDIN_FILENAME} are ignored. "
+        f"Use {CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}/{OutputFormat.NDJSON.value} "
+        "for machine-readable output."
     ),
     epilog=(
+        "\b\n"
+        "Examples:\n"
+        "  # Print a starter topmark.toml configuration\n"
+        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_INIT}\n"
+        "  # Print a starter pyproject.toml configuration section\n"
+        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_INIT} {CliOpt.CONFIG_FOR_PYPROJECT}\n"
+        "  # Write a starter configuration file\n"
+        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_INIT} > topmark.toml\n"
+        "  # Emit machine-readable configuration\n"
+        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_INIT} "
+        f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}\n"
+        "\n"
         "Notes:\n"
-        "  • text/markdown output uses the annotated, commented template bundled with TopMark.\n"
-        "  • json/ndjson output emits a minimal Config snapshot (no comments, no diagnostics).\n"
-        "  • See docs/dev/machine_outputs.md for machine output conventions.\n"
+        "  • Human formats use the annotated, commented template bundled with TopMark.\n"
+        "  • Machine formats emit a minimal Config snapshot without comments or diagnostics.\n"
     ),
 )
 # Common option decorators
@@ -82,18 +95,18 @@ def config_init_command(
     # common_output_format_options:
     output_format: OutputFormat | None,
 ) -> None:
-    """Print a starter config file to stdout.
+    """Print a starter TopMark configuration file.
 
-    Outputs an initial TopMark configuration file with default values.
-    Intended as a starting point for customization in your own project.
+    Human formats render the annotated starter template bundled with TopMark.
+    Machine formats emit a minimal Config snapshot without comments or diagnostics.
 
     Notes:
         - In JSON/NDJSON modes, this command emits only a Config snapshot
           (no diagnostics).
 
     Args:
-        verbosity: Increment verbosity level.
-        quiet: Decrement verbosity level.
+        verbosity: Increase human-output detail.
+        quiet: Suppress human-readable output.
         color_mode: Color mode for text format (default: auto).
         no_color: If set, disable color mode.
         for_pyproject: If True, render as subtable under `[tool.topmark]`
@@ -105,7 +118,10 @@ def config_init_command(
         NotImplementedError: When providing an unsupported OutputType.
     """
     ctx: click.Context = click.get_current_context()
-    ctx.ensure_object(dict)
+    state: TopmarkCliState = bootstrap_cli_state(ctx)
+
+    # Effective output format (stored early so shared initialization sees it).
+    state.output_format = output_format or OutputFormat.TEXT
 
     # Initialize the common state (verbosity, color mode) and initialize console
     init_common_state(
@@ -117,21 +133,21 @@ def config_init_command(
     )
 
     # Retrieve effective human facing program-output verbosity for gating extra details
-    verbosity_level: int = ctx.obj[ArgKey.VERBOSITY]
+    verbosity_level: int = state.verbosity
 
     # Select the console
-    console: ConsoleProtocol = ctx.obj[ArgKey.CONSOLE]
+    console: ConsoleProtocol = state.console
 
     # Machine metadata
     meta: MetaPayload = build_meta_payload()
 
     # Output format
-    fmt: OutputFormat = output_format or OutputFormat.TEXT
+    fmt: OutputFormat = state.output_format
 
     apply_color_policy_for_output_format(ctx, fmt=fmt)
-    enable_color: bool = ctx.obj[ArgKey.COLOR_ENABLED]
+    enable_color: bool = state.color_enabled
 
-    # config_check_command() is file-agnostic: ignore positional PATHS
+    # `config init` is file-agnostic: ignore positional PATHS
     apply_ignore_positional_paths_policy(
         ctx,
         warn_stdin_dash=True,
@@ -148,6 +164,7 @@ def config_init_command(
         # Machine-readable formats: emit JSON/NDJSON without human banners
         mutable_config: MutableConfig = mutable_config_from_defaults()
         emit_config_machine(
+            console=console,
             meta=meta,
             config=mutable_config.freeze(),
             fmt=fmt,

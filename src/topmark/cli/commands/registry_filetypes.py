@@ -8,10 +8,9 @@
 #
 # topmark:header:end
 
-"""TopMark `filetypes` command.
+"""TopMark `registry filetypes` command.
 
-Lists all file types supported by TopMark along with their identifiers and descriptions. Useful for
-discovering available file type filters when configuring headers.
+Prints registered file type metadata for human inspection or machine-readable output.
 """
 
 from __future__ import annotations
@@ -23,14 +22,16 @@ import click
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.emitters.machine import emit_filetypes_machine
 from topmark.cli.keys import CliCmd
+from topmark.cli.keys import CliOpt
 from topmark.cli.options import GROUP_CONTEXT_SETTINGS
 from topmark.cli.options import common_output_format_options
 from topmark.cli.options import common_ui_options
 from topmark.cli.options import registry_details_options
+from topmark.cli.state import TopmarkCliState
+from topmark.cli.state import bootstrap_cli_state
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import apply_ignore_positional_paths_policy
 from topmark.core.formats import OutputFormat
-from topmark.core.keys import ArgKey
 from topmark.core.machine.payloads import build_meta_payload
 from topmark.core.machine.payloads import with_detail_level
 from topmark.presentation.markdown.registry import render_filetypes_markdown
@@ -47,11 +48,22 @@ if TYPE_CHECKING:
 @click.command(
     name=CliCmd.REGISTRY_FILETYPES,
     context_settings=GROUP_CONTEXT_SETTINGS,
-    help="List all supported file types.",
-    epilog="""
-Lists all file types currently supported by TopMark, along with a brief description of each.
-Use this command to see which file types can be processed and referenced in configuration.
-""",
+    help="Inspect registered TopMark file types.",
+    epilog=(
+        "\b\n"
+        "Examples:\n"
+        "  # Inspect registered file types\n"
+        f"  topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_FILETYPES}\n"
+        "  # Show extended file type metadata\n"
+        f"  topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_FILETYPES} {CliOpt.SHOW_DETAILS}\n"
+        "  # Emit machine-readable file type metadata\n"
+        f"  topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_FILETYPES} "
+        f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}\n"
+        "\n"
+        "Notes:\n"
+        "  • Use file type identifiers in configuration filters.\n"
+        "  • Machine formats emit registry metadata without human formatting.\n"
+    ),
 )
 @common_ui_options
 @registry_details_options
@@ -68,14 +80,14 @@ def registry_filetypes_command(
     # common_output_format_options:
     output_format: OutputFormat | None,
 ) -> None:
-    """List supported file types.
+    """Inspect registered TopMark file types.
 
-    Prints all file types supported by TopMark, including their identifiers and descriptions.
-    Useful for reference when configuring file type filters.
+    Builds a registry report for file type identifiers, matching metadata, and
+    optional extended policy details.
 
     Args:
-        verbosity: Verbosity level.
-        quiet: Suppresses human-readable output.
+        verbosity: Increase human-output detail.
+        quiet: Suppress human-readable output.
         color_mode: Set the color mode (default: auto).
         no_color: bool: If set, disable color mode.
         show_details: Whether to show extended information about each file type,
@@ -86,7 +98,10 @@ def registry_filetypes_command(
         ValueError: If an unsupported output format is requested.
     """
     ctx: click.Context = click.get_current_context()
-    ctx.ensure_object(dict)
+    state: TopmarkCliState = bootstrap_cli_state(ctx)
+
+    # Effective output format (stored early so shared initialization sees it).
+    state.output_format = output_format or OutputFormat.TEXT
 
     # Initialize the common state (verbosity, color mode) and initialize console
     init_common_state(
@@ -98,10 +113,10 @@ def registry_filetypes_command(
     )
 
     # Retrieve effective human facing program-output verbosity for gating extra details
-    verbosity_level: int = ctx.obj[ArgKey.VERBOSITY]
+    verbosity_level: int = state.verbosity
 
     # Select the console
-    console: ConsoleProtocol = ctx.obj[ArgKey.CONSOLE]
+    console: ConsoleProtocol = state.console
 
     # Machine metadata: extend with show_details:
     meta: DetailedMetaPayload = with_detail_level(
@@ -110,12 +125,12 @@ def registry_filetypes_command(
     )
 
     # Output format
-    fmt: OutputFormat = output_format or OutputFormat.TEXT
+    fmt: OutputFormat = state.output_format
 
     apply_color_policy_for_output_format(ctx, fmt=fmt)
-    enable_color: bool = ctx.obj[ArgKey.COLOR_ENABLED]
+    enable_color: bool = state.color_enabled
 
-    # config_check_command() is file-agnostic: ignore positional PATHS
+    # `registry filetypes` is file-agnostic: ignore positional PATHS
     apply_ignore_positional_paths_policy(
         ctx,
         warn_stdin_dash=True,
@@ -124,6 +139,7 @@ def registry_filetypes_command(
     # Machine formats
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         emit_filetypes_machine(
+            console=console,
             meta=meta,
             fmt=fmt,
             show_details=show_details,
@@ -136,6 +152,7 @@ def registry_filetypes_command(
         verbosity_level=verbosity_level,
         styled=enable_color,
     )
+
     if fmt == OutputFormat.MARKDOWN:
         console.print(
             render_filetypes_markdown(report=report),
@@ -143,8 +160,9 @@ def registry_filetypes_command(
         return
 
     if fmt == OutputFormat.TEXT:
-        console.print(render_filetypes_text(report))
-
+        console.print(
+            render_filetypes_text(report),
+        )
         return
 
     # Defensive guard

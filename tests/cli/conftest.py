@@ -11,7 +11,7 @@
 """CLI test helpers for running TopMark in a controlled working directory.
 
 This module provides small utilities used across CLI tests. In particular,
-`run_in()` changes the process working directory to the given `tmp_path`
+`run_cli_in()` changes the process working directory to the given `tmp_path`
 before invoking the Click CLI. This ensures that **relative** file patterns and
 **globs** (e.g., "*.py") are resolved against the temporary test directory,
 matching TopMark's resolver contract that disallows absolute patterns.
@@ -29,6 +29,7 @@ from click.testing import CliRunner
 from click.testing import Result
 
 from topmark.cli.main import cli
+from topmark.cli.state import TopmarkCliState
 from topmark.core.exit_codes import ExitCode
 
 if TYPE_CHECKING:
@@ -74,7 +75,9 @@ def run_cli_in(
             cli,
             argv,
             input=input_text,
-            obj={"prune": prune},  # inject test override into Click’s context object
+            obj=TopmarkCliState(
+                prune_pipeline_views=prune,
+            ),  # inject typed CLI state into Click context (test override)
         )
     finally:
         os.chdir(cwd)
@@ -107,7 +110,7 @@ def run_cli(
 
     Example:
         ```python
-        result = run_cli(tmp_path, ["--help"])  # no filesystem interaction
+        result = run_cli(["--help"])  # no filesystem interaction
         assert result.exit_code == ExitCode.SUCCESS
         ```
     """
@@ -116,7 +119,9 @@ def run_cli(
         cli,
         argv,
         input=input_text,
-        obj={"prune": prune},  # inject test override into Click’s context object
+        obj=TopmarkCliState(
+            prune_pipeline_views=prune,
+        ),  # inject typed CLI state into Click context (test override)
     )
 
 

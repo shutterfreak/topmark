@@ -11,7 +11,8 @@
 """CLI rendering and emission helpers for TopMark.
 
 This module contains helpers used by concrete CLI commands to *emit* output,
-both human-readable and machine-readable, to a `ConsoleLike` instance.
+both human-readable and machine-readable, to explicit console objects passed in
+by the CLI layer.
 
 Responsibilities are intentionally split as follows:
 
@@ -24,7 +25,7 @@ Human-oriented output (TEXT format):
 
 Machine-oriented output (JSON / NDJSON):
 - thin CLI-level emitters that *print* already-serialized JSON/NDJSON strings
-  or streams produced elsewhere,
+  or streams produced elsewhere using an explicit console,
 - no data shaping, schema decisions, or serialization logic lives here.
 
 Architecture overview for machine formats:
@@ -42,9 +43,8 @@ This module deliberately does **not** define machine schemas or JSON/NDJSON
 serialization logic. Its role is limited to selecting the appropriate serializer
 based on CLI options and emitting the resulting text to the console.
 
-All printing goes through `ConsoleLike` instances obtained via
-[`topmark.cli.console.context.resolve_console`][topmark.cli.console.context.resolve_console].
-keeping Click-style concerns isolated from core logic.
+All printing goes through explicit console objects passed in by CLI commands or
+shared CLI helpers, keeping Click-style concerns isolated from core logic.
 """
 
 from __future__ import annotations

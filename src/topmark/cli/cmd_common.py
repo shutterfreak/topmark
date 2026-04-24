@@ -14,10 +14,9 @@ This module holds small, focused helpers used by multiple CLI commands.
 They intentionally avoid policy (exit code rules, messages) and only
 encapsulate plumbing such as running pipelines, filtering, and error exits.
 
-It also contains a small initializer (`init_common_state`) that populates
-`ctx.obj` with the shared UI/runtime state (verbosity, color, console, meta)
-when these options are owned by individual commands rather than the root
-command group.
+It also contains a small initializer (`init_common_state`) that prepares the
+shared typed CLI state (`TopmarkCliState`) for commands that own verbosity,
+color, and related human-output controls rather than the root command group.
 """
 
 from __future__ import annotations
@@ -31,28 +30,24 @@ import click
 
 from topmark.cli.console.click_console import Console
 from topmark.cli.console.color import resolve_color_mode
-from topmark.cli.console.context import resolve_console
 from topmark.cli.options import ColorMode
 from topmark.cli.options import normalize_verbosity
 from topmark.cli.presentation import TextStyler
 from topmark.cli.presentation import style_for_role
+from topmark.cli.state import TopmarkCliState
+from topmark.cli.state import bootstrap_cli_state
+from topmark.cli.state import get_cli_state
 from topmark.cli.validators import validate_output_verbosity_policy
-from topmark.config.model import MutableConfig
 from topmark.config.overrides import ConfigOverrides
 from topmark.config.overrides import PolicyOverrides
 from topmark.config.overrides import apply_config_overrides
-from topmark.config.policy import EmptyInsertMode
-from topmark.config.policy import HeaderMutationMode
 from topmark.config.resolution.bridge import resolve_toml_sources_and_build_config_draft
 from topmark.config.types import FileWriteStrategy
 from topmark.config.types import OutputTarget
 from topmark.constants import CLI_OVERRIDE_STR
-from topmark.core.formats import OutputFormat
-from topmark.core.keys import ArgKey
 from topmark.core.logging import resolve_env_log_level
 from topmark.core.logging import setup_logging
 from topmark.core.presentation import StyleRole
-from topmark.core.typing_guards import as_object_dict
 from topmark.resolution.files import resolve_file_list
 from topmark.runtime.model import RunOptions
 from topmark.runtime.writer_options import WriterOptions
@@ -64,7 +59,9 @@ if TYPE_CHECKING:
     from topmark.cli.io import InputPlan
     from topmark.config.model import Config
     from topmark.config.model import MutableConfig
+    from topmark.config.policy import MutablePolicy
     from topmark.core.exit_codes import ExitCode
+    from topmark.core.formats import OutputFormat
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
 _CTX_RESOLVED_WRITER_OPTIONS_KEY: Final[str] = "_topmark_resolved_writer_options"
@@ -80,12 +77,7 @@ def init_common_state(
 ) -> None:
     """Initialize shared UI/runtime state on the Click context.
 
-    It populates `ctx.obj` with:
-    - `ArgKey.VERBOSITY`
-    - `ArgKey.QUIET`
-    - `ArgKey.LOG_LEVEL` (from environment)
-    - `ArgKey.COLOR_MODE` and `ArgKey.COLOR_ENABLED`
-    - `ArgKey.CONSOLE`
+    It initializes the shared `TopmarkCliState` stored on `ctx.obj`.
 
     Args:
         ctx: Current Click context; will have ``obj`` and ``color`` set.
@@ -94,47 +86,42 @@ def init_common_state(
         color_mode: Explicit color mode from ``--color`` (or ``None``).
         no_color: Whether ``--no-color`` was passed; forces color off.
     """
-    ctx.ensure_object(dict)
+    state: TopmarkCliState = bootstrap_cli_state(ctx)
 
-    # 1. Color policy (command decides output format later; `output_format=None` here).
+    # 1. Color policy for the effective command output format.
     effective_color_mode: ColorMode = (
         ColorMode.NEVER if no_color else (color_mode or ColorMode.AUTO)
     )
     # Store the resolved color mode in the Click context:
-    ctx.obj[ArgKey.COLOR_MODE] = effective_color_mode
+    state.color_mode = effective_color_mode
     enable_color: bool = resolve_color_mode(
         color_mode_override=effective_color_mode,
-        output_format=None,
+        output_format=state.output_format,
     )
-    # Store whether color is enabled in the console in the Click context:
-    ctx.obj[ArgKey.COLOR_ENABLED] = enable_color
+    # Store whether color is enabled for this invocation.
+    state.color_enabled = enable_color
     ctx.color = enable_color
 
     # 2. Initialize the console.
     # Respect the resolved color policy (may differ from the raw `--no-color`` flag).
     console = Console(enable_color=enable_color)
     # Store the console in the Click context:
-    ctx.obj[ArgKey.CONSOLE] = console
+    state.console = console
 
     # 3. Initialize internal logging (env-driven).
     level_env: int | None = resolve_env_log_level()
     setup_logging(level=level_env)
     # Store the resolved internal runtime log level in the Click context:
-    ctx.obj[ArgKey.LOG_LEVEL] = level_env
+    state.log_level = level_env
 
-    # 4. Validate output verbosity for human formats
-    if isinstance(fmt_raw := ctx.obj.get(ArgKey.OUTPUT_FORMAT), OutputFormat):
-        fmt: OutputFormat = fmt_raw
-    else:
-        fmt = OutputFormat.TEXT
-    # Store the resolved output format in the Click context:
-    ctx.obj[ArgKey.OUTPUT_FORMAT] = fmt
+    # 4. Validate output verbosity for human formats.
+    fmt: OutputFormat = state.output_format
 
     # Store raw human-output controls so validators can normalize ignored flags.
-    ctx.obj[ArgKey.VERBOSITY] = verbosity
-    ctx.obj[ArgKey.QUIET] = quiet
+    state.verbosity = verbosity
+    state.quiet = quiet
 
-    # Program-output verbosity (stored for downstream gating).
+    # Program-output verbosity / quiet policy (stored for downstream gating).
     validate_output_verbosity_policy(
         ctx,
         verbosity=verbosity,
@@ -142,14 +129,8 @@ def init_common_state(
         fmt=fmt,
     )
 
-    raw_verbosity_obj: object = ctx.obj.get(ArgKey.VERBOSITY, verbosity)
-    raw_verbosity: int = raw_verbosity_obj if isinstance(raw_verbosity_obj, int) else verbosity
-    effective_quiet_obj: object = ctx.obj.get(ArgKey.QUIET, quiet)
-    effective_quiet: bool = effective_quiet_obj if isinstance(effective_quiet_obj, bool) else quiet
-
-    # Store the normalized verbosity level in the Click context.
-    ctx.obj[ArgKey.VERBOSITY] = normalize_verbosity(raw_verbosity)
-    ctx.obj[ArgKey.QUIET] = effective_quiet
+    # Store normalized effective human-output state for downstream consumers.
+    state.verbosity = normalize_verbosity(state.verbosity)
 
 
 def build_file_list(
@@ -236,19 +217,17 @@ def build_run_options(
     ctx: click.Context | None = click.get_current_context(silent=True)
     writer_options: WriterOptions | None = None
     if ctx is not None:
-        ctx_obj_raw: object = ctx.obj
-        ctx_obj: dict[str, object] = as_object_dict(ctx_obj_raw)
-        candidate: object | None = ctx_obj.get(_CTX_RESOLVED_WRITER_OPTIONS_KEY)
+        state: TopmarkCliState = get_cli_state(ctx)
+        candidate: object | None = state.extras.get(_CTX_RESOLVED_WRITER_OPTIONS_KEY)
         if isinstance(candidate, WriterOptions):
             writer_options = candidate
 
     return apply_resolved_writer_options(run_options, writer_options)
 
 
-def exit_if_no_files(file_list: list[Path], *, styled: bool) -> bool:
+def exit_if_no_files(file_list: list[Path], *, console: ConsoleProtocol, styled: bool) -> bool:
     """Echo a friendly message and return True if there is nothing to process."""
     if not file_list:
-        console: ConsoleProtocol = resolve_console()
         info_styler: TextStyler = style_for_role(StyleRole.INFO, styled=styled)
         console.print(info_styler("\nℹ️  No files to process.\n"))
         return True
@@ -272,8 +251,8 @@ def maybe_route_console_to_stderr(
     that output can be piped safely. Human-facing output (summaries, warnings,
     diagnostics) is therefore routed to STDERR.
 
-    The function updates ``ctx.obj[ArgKey.CONSOLE]`` when rerouting is needed and
-    returns the effective console instance.
+    The function updates the console stored on the shared typed CLI state when
+    rerouting is needed and returns the effective console instance.
 
     Args:
         ctx: Current Click context.
@@ -293,11 +272,12 @@ def maybe_route_console_to_stderr(
             out=sys.stderr,
             err=sys.stderr,
         )
-        ctx.obj[ArgKey.CONSOLE] = console
+        state: TopmarkCliState = get_cli_state(ctx)
+        state.console = console
         return console
 
     # Fall back to the console initialized by `init_common_state`.
-    return resolve_console()
+    return get_cli_state(ctx).console
 
 
 def maybe_exit_on_error(*, code: ExitCode | None, temp_path: Path | None) -> None:
@@ -309,40 +289,23 @@ def maybe_exit_on_error(*, code: ExitCode | None, temp_path: Path | None) -> Non
         click.get_current_context().exit(code)
 
 
-def build_cli_policy_overrides_from_ctx(ctx: click.Context) -> PolicyOverrides:
-    """Build structured policy overrides from parsed CLI option values."""
-    header_mutation_mode_obj: object = ctx.obj.get(ArgKey.POLICY_HEADER_MUTATION_MODE)
-    allow_header_in_empty_files_obj: object = ctx.obj.get(ArgKey.POLICY_ALLOW_HEADER_IN_EMPTY_FILES)
-    empty_insert_mode_obj: object = ctx.obj.get(ArgKey.POLICY_EMPTY_INSERT_MODE)
-    render_empty_header_when_no_fields_obj: object = ctx.obj.get(
-        ArgKey.POLICY_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS
-    )
-    allow_reflow_obj: object = ctx.obj.get(ArgKey.POLICY_ALLOW_REFLOW)
-    allow_content_probe_obj: object = ctx.obj.get(ArgKey.POLICY_ALLOW_CONTENT_PROBE)
+def build_cli_policy_overrides(state: TopmarkCliState) -> PolicyOverrides:
+    """Build structured policy overrides from typed CLI state.
 
+    Args:
+        state: Shared typed CLI invocation state.
+
+    Returns:
+        Structured policy overrides derived from the mutable CLI policy object.
+    """
+    policy: MutablePolicy = state.policy
     return PolicyOverrides(
-        header_mutation_mode=(
-            header_mutation_mode_obj
-            if isinstance(header_mutation_mode_obj, HeaderMutationMode)
-            else None
-        ),
-        allow_header_in_empty_files=(
-            allow_header_in_empty_files_obj
-            if isinstance(allow_header_in_empty_files_obj, bool)
-            else None
-        ),
-        empty_insert_mode=(
-            empty_insert_mode_obj if isinstance(empty_insert_mode_obj, EmptyInsertMode) else None
-        ),
-        render_empty_header_when_no_fields=(
-            render_empty_header_when_no_fields_obj
-            if isinstance(render_empty_header_when_no_fields_obj, bool)
-            else None
-        ),
-        allow_reflow=(allow_reflow_obj if isinstance(allow_reflow_obj, bool) else None),
-        allow_content_probe=(
-            allow_content_probe_obj if isinstance(allow_content_probe_obj, bool) else None
-        ),
+        header_mutation_mode=policy.header_mutation_mode,
+        allow_header_in_empty_files=policy.allow_header_in_empty_files,
+        empty_insert_mode=policy.empty_insert_mode,
+        render_empty_header_when_no_fields=policy.render_empty_header_when_no_fields,
+        allow_reflow=policy.allow_reflow,
+        allow_content_probe=policy.allow_content_probe,
     )
 
 
@@ -379,11 +342,11 @@ def build_resolved_toml_sources_and_config_for_plan(
         defaults -> resolved TOML sources -> config draft -> CLI overrides
 
     As a side effect, this helper also resolves persisted TOML writer
-    preferences for the same discovery inputs and stores them on `ctx.obj` for
-    later runtime-option assembly.
+    preferences for the same discovery inputs and stores them on the shared
+    typed CLI state for later runtime-option assembly.
 
     Args:
-        ctx: Click context carrying normalized command options in `ctx.obj`.
+        ctx: Click context carrying the shared typed CLI state.
         plan: Input plan containing paths, STDIN metadata, and pattern-source
             options.
         no_config: Whether to skip discovered config files.
@@ -432,10 +395,10 @@ def build_resolved_toml_sources_and_config_for_plan(
         no_config=no_config,
     )
 
-    ctx.ensure_object(dict)
-    ctx.obj[_CTX_RESOLVED_WRITER_OPTIONS_KEY] = resolved_toml.writer_options
+    state: TopmarkCliState = bootstrap_cli_state(ctx)
+    state.extras[_CTX_RESOLVED_WRITER_OPTIONS_KEY] = resolved_toml.writer_options
 
-    policy_overrides: PolicyOverrides = build_cli_policy_overrides_from_ctx(ctx)
+    policy_overrides: PolicyOverrides = build_cli_policy_overrides(state)
     overrides: ConfigOverrides = ConfigOverrides(
         config_origin=Path(CLI_OVERRIDE_STR),
         policy=policy_overrides,

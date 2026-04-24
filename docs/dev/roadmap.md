@@ -73,6 +73,16 @@ Key improvements:
 - Introduced **semantic styling (StyleRole)** instead of inline coloring
 - Standardized verbosity model (`default`, `-v`, `-vv`)
 - Unified summary generation via pipeline outcomes instead of ad-hoc hint logic
+- Introduced a strongly typed `TopmarkCliState` for Click invocation state.
+- Removed raw `ctx.obj` dictionary access from CLI command/runtime paths.
+- Removed implicit active-console resolution from CLI emitters and helpers.
+- Standardized explicit console passing for human and machine CLI output.
+- Clarified verbosity/quiet semantics:
+  - `-v` / `-vv` increase human-output detail
+  - `-q` / `--quiet` is a boolean human-output suppression mode
+  - machine formats ignore human-output verbosity controls with explicit warnings
+- Aligned command help text, epilogs, and developer docstrings across CLI entry-point, command
+  groups and commands.
 
 Result: output is now **fully deterministic, testable, and reusable outside CLI contexts**.
 
@@ -510,7 +520,12 @@ Machine output remaining work:
 Human output remaining work:
 
 - Ensure TEXT and MARKDOWN remain consistent across commands.
+  - Main CLI entry point, command groups and command help/epilog wording has been aligned.
+  - Remaining review should focus on rendered command output, not Click help text.
 - Freeze verbosity semantics (`-v`, `-vv`, `-q`).
+  - CLI option plumbing now treats verbosity as human-output detail and `--quiet` as boolean
+    human-output suppression.
+  - Remaining work is documentation/final contract confirmation, not core plumbing.
 - Finalize hint-ordering strategy.
 - Decide whether Markdown should remain layout-equivalent to text output or evolve toward a more
   document-oriented format later.
@@ -549,6 +564,8 @@ A few user-facing behavior questions remain open for 1.0:
   presentation-facing labels.
 - Keep confirming that API and CLI docs consistently use the `report` model and no longer reference
   legacy `skip_*` filters.
+- Keep CLI help examples aligned with canonical option/command constants to avoid drift between
+  documentation and implementation.
 - Audit TopMark’s line-ending support model before 1.0:
   - confirm whether only standard CR / LF newline styles are intended to be supported
   - review the hypothesis-driven test cases that introduced additional nonstandard line-ending
@@ -634,6 +651,11 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] version command
 - [ ] Warning/error phrasing reviewed for CLI-wide consistency
 - [ ] Verbosity semantics (`default`, `-v`, `-vv`, `-q`) documented and considered stable
+  - [x] CLI plumbing normalized around typed `TopmarkCliState`
+  - [x] `-v` / `-vv` treated as human-output detail
+  - [x] `-q` / `--quiet` treated as boolean human-output suppression
+  - [x] machine formats ignore human-output verbosity controls with explicit warnings
+  - [ ] final user-facing documentation reviewed and frozen
 - [ ] Decision made on hint-ordering / “primary hint” semantics for 1.0
 
 #### [Must] CLI behavior
@@ -643,6 +665,7 @@ These are release blockers unless explicitly deferred with a documented rational
   - [ ] policy-option applicability
   - [ ] stdin/list-vs-content handling
   - [ ] strict config-checking behavior at command level
+  - [x] command help/epilog wording aligned for main CLI entry point, command groups and commands
 - [ ] Final review of user-facing policy/report flags completed
   - [ ] `--report` semantics frozen
   - [ ] `--header-mutation-mode` semantics frozen
@@ -716,8 +739,7 @@ These are release blockers unless explicitly deferred with a documented rational
   - [ ] artifact-based release workflow
 - [x] Artifact-based CI → release pipeline implemented and documented
 - [ ] Positive release-path rehearsal accepted as complete for the path to `1.0.0`
-  - [x] first prerelease flow (`v1.0.0a1`) succeeded
-  - [x] second prerelease flow (`v1.0.0a2`) succeeded
+  - [x] prerelease flow (`v1.0.0aN`) validated
   - [ ] remaining follow-up issues, if any, resolved or explicitly accepted
 - [x] Runtime dependency model verified against isolated environments
   - [x] `typing-extensions` promoted to core dependencies after isolated-environment failure

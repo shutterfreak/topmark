@@ -14,9 +14,9 @@ This module centralizes small, Click-layer checks and normalizations that are sh
 multiple commands.
 
 Conventions:
-    - `apply_*` helpers apply a policy and may mutate `ctx.obj` (for example, to disable ANSI
-      color for output formats that must remain plain). Some `apply_*` helpers also return the
-      effective value they set/normalized.
+    - `apply_*` helpers apply a policy and may update the shared typed CLI state (for example, to
+      disable ANSI color for output formats that must remain plain). Some `apply_*` helpers also
+      return the effective value they set or normalized.
     - `validate_*` helpers enforce a policy and raise `TopmarkCliUsageError` when the invocation is
       invalid or unsupported.
 
@@ -34,9 +34,9 @@ from typing import TypeVar
 import click
 
 from topmark.cli.console.color import ColorMode
-from topmark.cli.console.context import resolve_console
 from topmark.cli.errors import TopmarkCliUsageError
 from topmark.cli.keys import CliOpt
+from topmark.cli.state import get_cli_state
 from topmark.core.formats import OutputFormat
 from topmark.core.formats import is_machine_format
 from topmark.core.keys import ArgKey
@@ -49,6 +49,7 @@ if TYPE_CHECKING:
     from click.core import ParameterSource
 
     from topmark.cli.console.protocols import ConsoleProtocol
+    from topmark.cli.state import TopmarkCliState
     from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.reporting import ReportScope
 
@@ -174,23 +175,23 @@ def warn_and_clear(
     obj_key: str,
     cleared_value: _T,
 ) -> _T:
-    """Emit a warning and clear a value in the Click context object.
+    """Emit a warning and clear a value on the typed CLI state.
 
     This helper is useful for apply_* policies that need to warn the user about ignored
-    options and then clear the corresponding values in `ctx.obj`.
+    options and then clear the corresponding values on `TopmarkCliState`.
 
     Args:
-        ctx: Active Click context containing CLI state and console.
+        ctx: Active Click context carrying the shared typed CLI state.
         message: Warning message to emit.
-        obj_key: The key in `ctx.obj` to clear (`ArgKey.*` string value).
+        obj_key: The typed-state key to clear (`ArgKey.*` string value).
         cleared_value: The value to set for the cleared key.
 
     Returns:
         The cleared value.
     """
-    console: ConsoleProtocol = ctx.obj[ArgKey.CONSOLE]
-    console.warn(message)
-    ctx.obj[obj_key] = cleared_value
+    state: TopmarkCliState = get_cli_state(ctx)
+    state.console.warn(message)
+    state[obj_key] = cleared_value
     return cleared_value
 
 
@@ -239,9 +240,9 @@ def warn_if_report_scope_ignored(
     if not msgs:
         return
 
-    console: ConsoleProtocol = resolve_console()
+    state: TopmarkCliState = get_cli_state(ctx)
     for msg in msgs:
-        console.warn(msg)
+        state.console.warn(msg)
 
 
 def apply_color_policy_for_output_format(
@@ -256,26 +257,28 @@ def apply_color_policy_for_output_format(
     structured or copy/paste-friendly output.
 
     Behavior:
-        - If `fmt` is not `OutputFormat.TEXT`, force `ArgKey.COLOR_ENABLED` to `False`.
+        - If `fmt` is not `OutputFormat.TEXT`, force `state.color_enabled` to `False`.
         - If the user explicitly requested `--color=always` and the format
           does not support color, emit a warning explaining that the option
           is being ignored.
 
-    This helper mutates `ctx.obj` and is intended to be called by subcommands after the effective
-    output format has been resolved.
+    This helper updates the shared typed CLI state and is intended to be called by subcommands
+    after the effective output format has been resolved.
 
-    Requires in `ctx.obj`:
-        - `ArgKey.CONSOLE`: The active `ConsoleLike` instance.
-        - `ArgKey.COLOR_MODE`: The color mode specified with `--color ColorMode` or `--no-color`.
-        - `ArgKey.COLOR_ENABLED`: Whether color mode is effectively enabled.
+    Requires on `TopmarkCliState`:
+        - `console`: The active console instance.
+        - `color_mode`: The color mode specified with `--color` or `--no-color`.
+        - `color_enabled`: Whether color output is effectively enabled.
 
     Args:
-        ctx: Active Click context containing CLI state and console.
+        ctx: Active Click context carrying the shared typed CLI state.
         fmt: Effective output format selected for the command.
     """
     if fmt != OutputFormat.TEXT:
+        state: TopmarkCliState = get_cli_state(ctx)
+
         # ANSI color is only supported for OutputFormat.TEXT (human) output.
-        color_mode: ColorMode | None = ctx.obj.get(ArgKey.COLOR_MODE)
+        color_mode: ColorMode = state.color_mode
 
         # Warn only when the user explicitly forced color.
         if color_mode == ColorMode.ALWAYS:
@@ -290,7 +293,7 @@ def apply_color_policy_for_output_format(
             )
 
         # Ensure downstream emitters do not use ANSI styling.
-        ctx.obj[ArgKey.COLOR_ENABLED] = False
+        state.color_enabled = False
 
 
 def apply_ignore_positional_paths_policy(
@@ -322,7 +325,8 @@ def apply_ignore_positional_paths_policy(
     Returns:
         None. This helper mutates ``ctx.args`` in-place.
     """
-    console: ConsoleProtocol = ctx.obj[ArgKey.CONSOLE]
+    state: TopmarkCliState = get_cli_state(ctx)
+    console: ConsoleProtocol = state.console
     cmd: str = ctx.command_path
 
     original_args: list[str] = list(ctx.args)
@@ -354,7 +358,7 @@ def validate_output_verbosity_policy(
     """Validate human-output verbosity policy for the current invocation.
 
     Args:
-        ctx: Active Click context containing CLI state and console.
+        ctx: Active Click context carrying the shared typed CLI state.
         verbosity: Raw verbosity count from `--verbose/-v`.
         quiet: Whether `--quiet` was specified.
         fmt: Effective output format for this invocation.
@@ -364,19 +368,20 @@ def validate_output_verbosity_policy(
         - For human-readable formats, `--verbose` and `--quiet` are mutually exclusive.
     """
     if is_machine_format(fmt):
-        console: ConsoleProtocol = ctx.obj[ArgKey.CONSOLE]
+        state = get_cli_state(ctx)
+        console: ConsoleProtocol = state.console
         if verbosity > 0:
             console.warn(
                 f"Note: {ctx.command_path}: {CliOpt.VERBOSE} is ignored when "
                 f"{CliOpt.OUTPUT_FORMAT}={fmt.value}."
             )
-            ctx.obj[ArgKey.VERBOSITY] = 0
+            state.verbosity = 0
         if quiet:
             console.warn(
                 f"Note: {ctx.command_path}: {CliOpt.QUIET} is ignored when "
                 f"{CliOpt.OUTPUT_FORMAT}={fmt.value}."
             )
-            ctx.obj[ArgKey.QUIET] = False
+            state.quiet = False
 
         # Since these flags are ignored for machine format,
         # we don't raise an error if both are present.
@@ -405,7 +410,7 @@ def validate_diff_policy_for_output_format(
     `TopmarkCliUsageError`.
 
     Args:
-        ctx: Active Click context containing CLI state and console.
+        ctx: Active Click context carrying the shared typed CLI state.
         diff: Whether the user requested unified diffs.
         fmt: Effective output format for this invocation.
     """

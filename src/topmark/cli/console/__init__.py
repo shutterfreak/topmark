@@ -31,7 +31,6 @@ from topmark.cli.console.click_console import ClickStyleKwargs
 from topmark.cli.console.click_console import Console
 from topmark.cli.console.color import ColorMode
 from topmark.cli.console.color import resolve_color_mode
-from topmark.cli.console.context import resolve_console
 from topmark.cli.console.protocols import ConsoleProtocol
 from topmark.cli.console.standard_console import StdConsole
 from topmark.cli.console.utils import get_console_line_width
@@ -44,5 +43,4 @@ __all__ = (
     "StdConsole",
     "get_console_line_width",
     "resolve_color_mode",
-    "resolve_console",
 )

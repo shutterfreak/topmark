@@ -15,8 +15,8 @@ Usage:
     and exit codes.
 
 Styling:
-    Exceptions prefer the project console if available (see `show()`); if no console is present in
-    the Click context, they fall back to Click's default styling.
+    Exceptions prefer the console stored on the shared typed CLI state (see `show()`).
+    If no CLI state is available, they fall back to Click's default styling.
 """
 
 from __future__ import annotations
@@ -29,12 +29,13 @@ import click
 
 from topmark.cli.presentation import TextStyler
 from topmark.cli.presentation import style_for_role
+from topmark.cli.state import get_cli_state
 from topmark.core.exit_codes import ExitCode
-from topmark.core.keys import ArgKey
 from topmark.core.logging import get_logger
 from topmark.core.presentation import StyleRole
 
 if TYPE_CHECKING:
+    from topmark.cli.state import TopmarkCliState
     from topmark.core.logging import TopmarkLogger
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -61,23 +62,24 @@ class TopmarkCliError(click.ClickException):
         # same signature to satisfy override compatibility with third-party stubs.
         """Display the error using the project console if available.
 
-        Falls back to Click’s default error display when no console is present.
+        Falls back to Click’s default error display when no typed CLI state is available.
+
+        Args:
+            file: Ignored when a CLI console is available; used only by Click fallback.
         """
         try:
             ctx: click.Context | None = click.get_current_context(silent=True)
-            if ctx is not None and isinstance(getattr(ctx, "obj", None), dict):
-                console = ctx.obj.get(ArgKey.CONSOLE)
-                styled = bool(ctx.obj[ArgKey.COLOR_ENABLED])
-                if console is not None:
-                    # Use console for user-facing error output with bright red style
-                    error_styler: TextStyler = style_for_role(
-                        StyleRole.ERROR,
-                        styled=styled,
-                    )
-                    console.error(error_styler(self.format_message()))
-                    return
+            if ctx is not None:
+                state: TopmarkCliState = get_cli_state(ctx)
+                # Use console for user-facing error output with bright red style.
+                error_styler: TextStyler = style_for_role(
+                    StyleRole.ERROR,
+                    styled=state.color_enabled,
+                )
+                state.console.error(error_styler(self.format_message()))
+                return
         except Exception:  # noqa: BLE001 - never let error rendering crash the CLI
-            # Never let error rendering crash the CLI; best-effort debug trace only.
+            # Never let error rendering crash the CLI; fall back to Click behavior.
             logger.debug("Failed to render TopMark error via console", exc_info=True)
         # Fallback to Click's default behavior (includes its own styling)
         super().show(file)
@@ -132,7 +134,7 @@ class TopmarkCliPipelineError(TopmarkCliError):
 
 
 class TopmarkCliVersionConversionError(TopmarkCliError):
-    """Error for PEP440-to-SemVer version converion."""
+    """Error for PEP440-to-SemVer version conversion."""
 
     exit_code = ExitCode.VERSION_CONVERSION_ERROR
 

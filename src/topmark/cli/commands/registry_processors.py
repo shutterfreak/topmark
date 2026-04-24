@@ -8,11 +8,9 @@
 #
 # topmark:header:end
 
-"""CLI command to list registered header processors.
+"""TopMark `registry processors` command.
 
-This module defines a command-line interface (CLI) command that lists all header processors
-registered in TopMark, along with the file types they handle. It supports various output formats,
-including JSON, NDJSON, Markdown, and a default human-readable format.
+Prints registered header processor metadata for human inspection or machine-readable output.
 """
 
 from __future__ import annotations
@@ -24,14 +22,16 @@ import click
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.emitters.machine import emit_processors_machine
 from topmark.cli.keys import CliCmd
+from topmark.cli.keys import CliOpt
 from topmark.cli.options import GROUP_CONTEXT_SETTINGS
 from topmark.cli.options import common_output_format_options
 from topmark.cli.options import common_ui_options
 from topmark.cli.options import registry_details_options
+from topmark.cli.state import TopmarkCliState
+from topmark.cli.state import bootstrap_cli_state
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import apply_ignore_positional_paths_policy
 from topmark.core.formats import OutputFormat
-from topmark.core.keys import ArgKey
 from topmark.core.machine.payloads import build_meta_payload
 from topmark.core.machine.payloads import with_detail_level
 from topmark.presentation.markdown.registry import render_processors_markdown
@@ -48,12 +48,23 @@ if TYPE_CHECKING:
 @click.command(
     name=CliCmd.REGISTRY_PROCESSORS,
     context_settings=GROUP_CONTEXT_SETTINGS,
-    help="List registered header processors.",
-    epilog="""
-Lists all header processors currently registered in TopMark, along with the file types they handle.
-Use this command to see which processors are available and which file types they support.""",
+    help="Inspect registered TopMark header processors.",
+    epilog=(
+        "\b\n"
+        "Examples:\n"
+        "  # Inspect registered header processors\n"
+        f"  topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_PROCESSORS}\n"
+        "  # Show extended processor metadata\n"
+        f"  topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_PROCESSORS} {CliOpt.SHOW_DETAILS}\n"
+        "  # Emit machine-readable processor metadata\n"
+        f"  topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_PROCESSORS} "
+        f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}\n"
+        "\n"
+        "Notes:\n"
+        "  • Processors define how TopMark detects and renders headers for file types.\n"
+        "  • Machine formats emit registry metadata without human formatting.\n"
+    ),
 )
-# Common option decorators
 @common_ui_options
 @registry_details_options
 @common_output_format_options
@@ -69,14 +80,14 @@ def registry_processors_command(
     # common_output_format_options:
     output_format: OutputFormat | None,
 ) -> None:
-    """List registered header processors.
+    """Inspect registered TopMark header processors.
 
-    Prints all header processors supported by TopMark, including the file types they handle.
-    Useful for reference when configuring file type filters.
+    Builds a registry report for processor identifiers, supported file types,
+    and optional extended binding metadata.
 
     Args:
-        verbosity: Verbosity level.
-        quiet: Suppresses human-readable output.
+        verbosity: Increase human-output detail.
+        quiet: Suppress human-readable output.
         color_mode: Set the color mode (default: auto).
         no_color: bool: If set, disable color mode.
         show_details: Whether to show extended information about each processor,
@@ -87,7 +98,10 @@ def registry_processors_command(
         ValueError: If an unsupported output format is requested.
     """
     ctx: click.Context = click.get_current_context()
-    ctx.ensure_object(dict)
+    state: TopmarkCliState = bootstrap_cli_state(ctx)
+
+    # Effective output format (stored early so shared initialization sees it).
+    state.output_format = output_format or OutputFormat.TEXT
 
     # Initialize the common state (verbosity, color mode) and initialize console
     init_common_state(
@@ -99,10 +113,10 @@ def registry_processors_command(
     )
 
     # Retrieve effective human facing program-output verbosity for gating extra details
-    verbosity_level: int = ctx.obj[ArgKey.VERBOSITY]
+    verbosity_level: int = state.verbosity
 
     # Select the console
-    console: ConsoleProtocol = ctx.obj[ArgKey.CONSOLE]
+    console: ConsoleProtocol = state.console
 
     # Machine metadata: extend with show_details:
     meta: DetailedMetaPayload = with_detail_level(
@@ -111,12 +125,12 @@ def registry_processors_command(
     )
 
     # Output format
-    fmt: OutputFormat = output_format or OutputFormat.TEXT
+    fmt: OutputFormat = state.output_format
 
     apply_color_policy_for_output_format(ctx, fmt=fmt)
-    enable_color: bool = ctx.obj[ArgKey.COLOR_ENABLED]
+    enable_color: bool = state.color_enabled
 
-    # config_check_command() is file-agnostic: ignore positional PATHS
+    # `registry processors` is file-agnostic: ignore positional PATHS
     apply_ignore_positional_paths_policy(
         ctx,
         warn_stdin_dash=True,
@@ -125,6 +139,7 @@ def registry_processors_command(
     # Machine formats
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         emit_processors_machine(
+            console=console,
             meta=meta,
             fmt=fmt,
             show_details=show_details,
@@ -139,11 +154,15 @@ def registry_processors_command(
     )
 
     if fmt == OutputFormat.MARKDOWN:
-        console.print(render_processors_markdown(report=report))
+        console.print(
+            render_processors_markdown(report=report),
+        )
         return
 
     if fmt == OutputFormat.TEXT:
-        console.print(render_processors_text(report=report))
+        console.print(
+            render_processors_text(report=report),
+        )
         return
 
     # Defensive guard

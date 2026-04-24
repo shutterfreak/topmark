@@ -35,17 +35,19 @@ from topmark.api.runtime import is_config_valid
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.emitters.machine import emit_config_check_machine
 from topmark.cli.keys import CliCmd
+from topmark.cli.keys import CliOpt
 from topmark.cli.options import GROUP_CONTEXT_SETTINGS
 from topmark.cli.options import common_config_resolution_options
 from topmark.cli.options import common_output_format_options
 from topmark.cli.options import common_ui_options
 from topmark.cli.options import config_strict_checking_options
+from topmark.cli.state import TopmarkCliState
+from topmark.cli.state import bootstrap_cli_state
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import apply_ignore_positional_paths_policy
 from topmark.config.resolution.bridge import resolve_toml_sources_and_build_config_draft
 from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
-from topmark.core.keys import ArgKey
 from topmark.core.logging import get_logger
 from topmark.core.machine.payloads import build_meta_payload
 from topmark.presentation.markdown.config import render_config_check_markdown
@@ -68,18 +70,28 @@ logger: TopmarkLogger = get_logger(__name__)
     context_settings=GROUP_CONTEXT_SETTINGS,
     help=(
         "Validate the effective merged TopMark configuration and report diagnostics. "
-        "This command is file-agnostic: positional PATHS and --stdin-filename are ignored. "
-        "Use --strict to fail on warnings, and --output-format json/ndjson "
+        f"This command is file-agnostic: positional PATHS and {CliOpt.STDIN_FILENAME} are ignored. "
+        f"Use {CliOpt.STRICT_CONFIG_CHECKING} to treat warnings as errors and "
+        f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}/{OutputFormat.NDJSON.value} "
         "for machine-readable output."
     ),
     epilog=(
+        "\b\n"
+        "Examples:\n"
+        "  # Validate the effective merged configuration\n"
+        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_CHECK}\n"
+        "  # Fail on warnings (strict mode)\n"
+        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_CHECK} {CliOpt.STRICT_CONFIG_CHECKING}\n"
+        "  # Emit machine-readable diagnostics\n"
+        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_CHECK} "
+        f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}\n"
+        "\n"
         "Notes:\n"
-        "  • The effective configuration is built from defaults, discovered config files, "
-        "explicit --config files, and CLI overrides.\n"
-        "  • Exit status is non-zero when validation fails (errors, or warnings with --strict).\n"
-        "  • NDJSON output begins with 'config' and 'config_diagnostics' records, followed by a "
-        "'config_check' record and then one 'diagnostic' record per configuration diagnostic.\n"
-        "  • See docs/dev/machine_outputs.md for canonical machine-output conventions."
+        "  • Configuration is built from defaults, discovered files, "
+        f"explicit {CliOpt.CONFIG_FILES} files, and CLI overrides.\n"
+        "  • Exit status is non-zero on validation failure "
+        f"(errors, or warnings with {CliOpt.STRICT_CONFIG_CHECKING}).\n"
+        "  • NDJSON emits a sequence of structured records.\n"
     ),
 )
 @common_ui_options
@@ -101,16 +113,14 @@ def config_check_command(
     # common_output_format_options:
     output_format: OutputFormat | None,
 ) -> None:
-    """Validates and verifies the final merged configuration.
+    """Validate the final merged TopMark configuration.
 
-    Builds the effective configuration from defaults, discovered/explicit
-    config files, and CLI overrides, then validates it.
-    This is useful for debugging or for external tools
-    that need to consume the resolved configuration.
+    Builds the effective configuration from defaults, discovered and explicit
+    config files, and CLI overrides, then validates it and reports diagnostics.
 
     Args:
-        verbosity: Increment verbosity level.
-        quiet: Decrement verbosity level.
+        verbosity: Increase human-output detail.
+        quiet: Suppress human-readable output.
         color_mode: Color mode for text format (default: auto).
         no_color: If set, disable color mode.
         no_config: If True, skip loading project/user configuration files.
@@ -122,7 +132,10 @@ def config_check_command(
         NotImplementedError: When providing an unsupported OutputType.
     """
     ctx: click.Context = click.get_current_context()
-    ctx.ensure_object(dict)
+    state: TopmarkCliState = bootstrap_cli_state(ctx)
+
+    # Effective output format (stored early so shared initialization sees it).
+    state.output_format = output_format or OutputFormat.TEXT
 
     # Initialize the common state (verbosity, color mode) and initialize console
     init_common_state(
@@ -134,23 +147,26 @@ def config_check_command(
     )
 
     # Retrieve effective human facing program-output verbosity for gating extra details
-    verbosity_level: int = ctx.obj[ArgKey.VERBOSITY]
+    verbosity_level: int = state.verbosity
 
     # Select the console
-    console: ConsoleProtocol = ctx.obj[ArgKey.CONSOLE]
+    console: ConsoleProtocol = state.console
 
     # Machine metadata
     meta: MetaPayload = build_meta_payload()
 
     # Output format
-    fmt: OutputFormat = output_format or OutputFormat.TEXT
+    fmt: OutputFormat = state.output_format
 
     apply_color_policy_for_output_format(ctx, fmt=fmt)
-    enable_color: bool = ctx.obj[ArgKey.COLOR_ENABLED]
+    enable_color: bool = state.color_enabled
 
     # `config check` is file-agnostic w.r.t. positional PATHS and STDIN content mode ('-').
     # However, we still accept `*_from` options so callers can validate pattern/path sources.
-    apply_ignore_positional_paths_policy(ctx, warn_stdin_dash=True)
+    apply_ignore_positional_paths_policy(
+        ctx,
+        warn_stdin_dash=True,
+    )
 
     # Build a merged draft config (we do not need an InputPlan since we're not processing files)
     resolved, draft_config = resolve_toml_sources_and_build_config_draft(
@@ -177,6 +193,7 @@ def config_check_command(
 
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         emit_config_check_machine(
+            console=console,
             meta=meta,
             config=config,
             strict=bool(resolved.strict_config_checking),

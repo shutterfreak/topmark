@@ -76,14 +76,17 @@ from topmark.cli.options import config_strict_checking_options
 from topmark.cli.options import pipeline_reporting_options
 from topmark.cli.options import render_diff_options
 from topmark.cli.options import shared_policy_options
+from topmark.cli.state import TopmarkCliState
+from topmark.cli.state import bootstrap_cli_state
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import validate_diff_policy_for_output_format
 from topmark.cli.validators import validate_stdin_dash_requires_piped_input
 from topmark.cli.validators import warn_if_report_scope_ignored
+from topmark.config.policy import HeaderMutationMode
+from topmark.config.policy import MutablePolicy
 from topmark.core.errors import ConfigValidationError
 from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
-from topmark.core.keys import ArgKey
 from topmark.core.logging import get_logger
 from topmark.core.machine.payloads import build_meta_payload
 from topmark.pipeline.context.policy import effective_would_add_or_update
@@ -111,7 +114,6 @@ if TYPE_CHECKING:
     from topmark.cli.io import InputPlan
     from topmark.config.model import Config
     from topmark.config.policy import EmptyInsertMode
-    from topmark.config.policy import HeaderMutationMode
     from topmark.core.logging import TopmarkLogger
     from topmark.core.machine.schemas import MetaPayload
     from topmark.diagnostic.model import FrozenDiagnosticLog
@@ -125,20 +127,18 @@ logger: TopmarkLogger = get_logger(__name__)
 @click.command(
     name=CliCmd.CHECK,
     context_settings=PATH_COMMAND_CONTEXT_SETTINGS,
-    help="Check headers in dry-run mode, or add/update them with --apply.",
-    epilog=f"""\
-Checks TopMark header blocks and, with {CliOpt.APPLY_CHANGES}, adds or updates them in place.
-Examples:
-
-  # Preview which files would change (dry-run)
-  topmark {CliCmd.CHECK} src
-
-  # Apply header updates in place
-  topmark {CliCmd.CHECK} {CliOpt.APPLY_CHANGES} .
-
-  # Restrict check/apply to adding missing headers only
-  topmark {CliCmd.CHECK} {CliOpt.POLICY_HEADER_MUTATION_MODE} add-only src
-""",
+    help=f"Inspect TopMark headers (dry-run), or add/update them with {CliOpt.APPLY_CHANGES}.",
+    epilog=(
+        "\b\n"
+        "Examples:\n"
+        "  # Preview which files would change (dry-run)\n"
+        f"  topmark {CliCmd.CHECK} src\n"
+        "  # Apply header updates in place\n"
+        f"  topmark {CliCmd.CHECK} {CliOpt.APPLY_CHANGES} .\n"
+        "  # Restrict check/apply to adding missing headers only\n"
+        f"  topmark {CliCmd.CHECK} "
+        f"{CliOpt.POLICY_HEADER_MUTATION_MODE}={HeaderMutationMode.ADD_ONLY.value} src\n"
+    ),
 )
 @common_ui_options
 @config_strict_checking_options
@@ -212,8 +212,8 @@ def check_command(
        ``--include-from -``, or ``--exclude-from -`` (exactly one may consume STDIN).
 
     Args:
-        verbosity: Verbosity level.
-        quiet: Suppresses human-readable output.
+        verbosity: Increase human-output detail.
+        quiet: Suppress human-readable output.
         color_mode: Set the color mode (default: auto).
         no_color: bool: If set, disable color mode.
         strict_config_checking: if True, report warnings as errors.
@@ -271,7 +271,9 @@ def check_command(
         UNEXPECTED_ERROR (255): An unhandled error occurred.
     """
     ctx: click.Context = click.get_current_context()
-    ctx.ensure_object(dict)
+    state: TopmarkCliState = bootstrap_cli_state(ctx)
+    # Effective output format (stored early so shared initialization sees it).
+    state.output_format = output_format or OutputFormat.TEXT
 
     # Initialize the common state (verbosity, color mode) and initialize console
     init_common_state(
@@ -283,16 +285,16 @@ def check_command(
     )
 
     # Retrieve effective human facing program-output verbosity for gating extra details
-    verbosity_level: int = ctx.obj[ArgKey.VERBOSITY]
+    verbosity_level: int = state.verbosity
 
     # Machine metadata
     meta: MetaPayload = build_meta_payload()
 
     # Output format
-    fmt: OutputFormat = output_format or OutputFormat.TEXT
+    fmt: OutputFormat = state.output_format
 
     apply_color_policy_for_output_format(ctx, fmt=fmt)
-    enable_color: bool = ctx.obj[ArgKey.COLOR_ENABLED]
+    enable_color: bool = state.color_enabled
 
     # common_from_sources_options - Fail fast if a `--*-from -` option is used without piped STDIN.
     validate_stdin_dash_requires_piped_input(
@@ -311,22 +313,22 @@ def check_command(
         report=report,
     )
 
-    prune_override: bool | None = ctx.obj.get(
-        "prune"
-    )  # injected by tests via CliRunner.invoke(..., obj=...)
-    prune_views: bool = bool(prune_override) if prune_override else False
+    # injected by tests via CliRunner.invoke(..., obj=TopmarkCliState(prune_pipeline_views=True)):
+    prune_views: bool = state.prune_pipeline_views
 
-    # Add apply_changes and write_mode to Click context
-    ctx.obj[ArgKey.APPLY_CHANGES] = apply_changes
-    ctx.obj[ArgKey.WRITE_MODE] = write_mode
+    # Store command-scoped runtime values in typed state:
+    state.apply_changes = apply_changes
+    state.write_mode = write_mode
 
-    # Add policy option values to Click context for ConfigOverrides construction.
-    ctx.obj[ArgKey.POLICY_HEADER_MUTATION_MODE] = header_mutation_mode
-    ctx.obj[ArgKey.POLICY_ALLOW_HEADER_IN_EMPTY_FILES] = allow_header_in_empty_files
-    ctx.obj[ArgKey.POLICY_EMPTY_INSERT_MODE] = empty_insert_mode
-    ctx.obj[ArgKey.POLICY_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS] = render_empty_header_when_no_fields
-    ctx.obj[ArgKey.POLICY_ALLOW_REFLOW] = allow_reflow
-    ctx.obj[ArgKey.POLICY_ALLOW_CONTENT_PROBE] = allow_content_probe
+    # Store policy option values for ConfigOverrides construction.
+    state.policy = MutablePolicy(
+        header_mutation_mode=header_mutation_mode,
+        allow_header_in_empty_files=allow_header_in_empty_files,
+        empty_insert_mode=empty_insert_mode,
+        render_empty_header_when_no_fields=render_empty_header_when_no_fields,
+        allow_reflow=allow_reflow,
+        allow_content_probe=allow_content_probe,
+    )
 
     # === Build layered config, runtime options, and file list ===
     plan: InputPlan = plan_cli_inputs(
@@ -421,7 +423,7 @@ def check_command(
     # Use Click's text stream for stdin so CliRunner/invoke input is read reliably
     # stdin_stream = click.get_text_stream("stdin") if stdin_text else None
 
-    if exit_if_no_files(file_list, styled=enable_color):
+    if exit_if_no_files(file_list, console=console, styled=enable_color):
         # Nothing to do
         return
 
@@ -460,6 +462,7 @@ def check_command(
 
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         emit_processing_results_machine(
+            console=console,
             meta=meta,
             config=config,
             results=results,

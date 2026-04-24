@@ -10,12 +10,12 @@
 
 """TopMark `config` command group.
 
-Provides a family of subcommands for inspecting and scaffolding TopMark
+Provides subcommands for validating, inspecting, and scaffolding TopMark
 configuration:
 
-  * ``topmark config check``: check merged configuration for errors.
-  * ``topmark config dump``: show the effective merged configuration.
-  * ``topmark config defaults``: show the built-in default configuration.
+  * ``topmark config check``: validate the effective merged configuration.
+  * ``topmark config dump``: print the effective merged configuration.
+  * ``topmark config defaults``: print the built-in default configuration.
   * ``topmark config init``: print a starter configuration file.
 """
 
@@ -34,23 +34,47 @@ from topmark.cli.options import GROUP_CONTEXT_SETTINGS
 @click.group(
     name=CliCmd.CONFIG,
     context_settings=GROUP_CONTEXT_SETTINGS,
-    help="Inspect and scaffold TopMark configuration.",
+    help="Validate, inspect, and scaffold TopMark configuration.",
+    epilog=(
+        "\b\n"
+        "Examples:\n"
+        "  # Validate the effective merged configuration\n"
+        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_CHECK}\n"
+        "  # Print the effective merged configuration\n"
+        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_DUMP}\n"
+        "  # Print the built-in default configuration reference\n"
+        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_DEFAULTS}\n"
+        "  # Create a starter configuration file for projects\n"
+        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_INIT} > topmark.toml\n"
+    ),
 )
 def config_command() -> None:
     """Group for configuration-related subcommands.
 
-    This group itself performs no action; use one of its subcommands:
+    This group performs no action itself; use one of its subcommands:
 
-      * ``check``: check the configuration for errors.
-      * ``dump``: show the effective merged configuration.
-      * ``defaults``: show the built-in default configuration reference.
+      * ``check``: validate the effective merged configuration.
+      * ``dump``: print the effective merged configuration.
+      * ``defaults``: print the built-in default configuration reference.
       * ``init``: print a starter configuration file for projects.
     """
     # No-op: behavior is provided by subcommands only.
 
 
 # Attach existing commands as subcommands of `topmark config`
-config_command.add_command(config_check_command, name=CliCmd.CONFIG_CHECK)
-config_command.add_command(config_dump_command, name=CliCmd.CONFIG_DUMP)
-config_command.add_command(config_defaults_command, name=CliCmd.CONFIG_DEFAULTS)
-config_command.add_command(config_init_command, name=CliCmd.CONFIG_INIT)
+config_command.add_command(
+    config_check_command,
+    name=CliCmd.CONFIG_CHECK,
+)
+config_command.add_command(
+    config_dump_command,
+    name=CliCmd.CONFIG_DUMP,
+)
+config_command.add_command(
+    config_defaults_command,
+    name=CliCmd.CONFIG_DEFAULTS,
+)
+config_command.add_command(
+    config_init_command,
+    name=CliCmd.CONFIG_INIT,
+)

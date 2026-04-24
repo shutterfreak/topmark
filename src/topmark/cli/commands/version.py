@@ -22,14 +22,16 @@ import click
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.emitters.machine import emit_machine
 from topmark.cli.keys import CliCmd
+from topmark.cli.keys import CliOpt
 from topmark.cli.options import GROUP_CONTEXT_SETTINGS
 from topmark.cli.options import common_output_format_options
 from topmark.cli.options import common_ui_options
 from topmark.cli.options import version_format_options
+from topmark.cli.state import TopmarkCliState
+from topmark.cli.state import bootstrap_cli_state
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import apply_ignore_positional_paths_policy
 from topmark.core.formats import OutputFormat
-from topmark.core.keys import ArgKey
 from topmark.core.machine.payloads import build_meta_payload
 from topmark.presentation.markdown.version import render_version_markdown
 from topmark.presentation.shared.version import VersionHumanReport
@@ -48,7 +50,21 @@ if TYPE_CHECKING:
 @click.command(
     name=CliCmd.VERSION,
     context_settings=GROUP_CONTEXT_SETTINGS,
-    help="Show the current version of TopMark.",
+    help="Print the installed TopMark version.",
+    epilog=(
+        "\b\n"
+        "Examples:\n"
+        "  # Print the installed TopMark version\n"
+        f"  topmark {CliCmd.VERSION}\n"
+        "  # Print the version in SemVer form when possible\n"
+        f"  topmark {CliCmd.VERSION} {CliOpt.SEMVER_VERSION}\n"
+        "  # Emit machine-readable version metadata\n"
+        f"  topmark {CliCmd.VERSION} "
+        f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}\n"
+        "Notes:\n"
+        "  • Default output uses the installed package version.\n"
+        "  • Machine formats emit structured version metadata.\n"
+    ),
 )
 @common_ui_options
 @version_format_options
@@ -65,9 +81,10 @@ def version_command(
     # common_output_format_options:
     output_format: OutputFormat | None,
 ) -> None:
-    """Show the current version of TopMark.
+    """Print the installed TopMark version.
 
-    Prints the TopMark version as installed in the current Python environment.
+    Renders the installed package version for human-readable or machine-readable
+    output, optionally normalized to SemVer when possible.
 
     Args:
         verbosity: Verbosity level.
@@ -81,7 +98,10 @@ def version_command(
         ValueError: If an unsupported output format is requested.
     """
     ctx: click.Context = click.get_current_context()
-    ctx.ensure_object(dict)
+    state: TopmarkCliState = bootstrap_cli_state(ctx)
+
+    # Effective output format (stored early so shared initialization sees it).
+    state.output_format = output_format or OutputFormat.TEXT
 
     # Initialize the common state (verbosity, color mode) and initialize console
     init_common_state(
@@ -93,21 +113,21 @@ def version_command(
     )
 
     # Retrieve effective human facing program-output verbosity for gating extra details
-    verbosity_level: int = ctx.obj[ArgKey.VERBOSITY]
+    verbosity_level: int = state.verbosity
 
     # Select the console
-    console: ConsoleProtocol = ctx.obj[ArgKey.CONSOLE]
+    console: ConsoleProtocol = state.console
 
     # Machine metadata
     meta: MetaPayload = build_meta_payload()
 
     # Output format
-    fmt: OutputFormat = output_format or OutputFormat.TEXT
+    fmt: OutputFormat = state.output_format
 
     apply_color_policy_for_output_format(ctx, fmt=fmt)
-    enable_color: bool = ctx.obj[ArgKey.COLOR_ENABLED]
+    enable_color: bool = state.color_enabled
 
-    # version_command() is file-agnostic: ignore positional PATHS
+    # `version` is file-agnostic: ignore positional PATHS
     apply_ignore_positional_paths_policy(ctx, warn_stdin_dash=True)
 
     # Machine formats
@@ -119,7 +139,7 @@ def version_command(
         )
         # Do not emit trailing newline for JSON
         nl: bool = fmt != OutputFormat.JSON
-        emit_machine(serialized, nl=nl)
+        emit_machine(serialized, console=console, nl=nl)
         return
 
     report: VersionHumanReport = make_version_human_report(
@@ -129,11 +149,16 @@ def version_command(
     )
 
     if fmt == OutputFormat.TEXT:
-        console.print(render_version_text(report))
+        console.print(
+            render_version_text(report),
+        )
         return
 
     if fmt == OutputFormat.MARKDOWN:
-        console.print(render_version_markdown(report), nl=False)
+        console.print(
+            render_version_markdown(report),
+            nl=False,
+        )
         return
 
     # Defensive guard

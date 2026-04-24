@@ -10,11 +10,11 @@
 
 """TopMark `registry` command group.
 
-Provides a family of subcommands for inspecting the TopMark registry:
+Provides subcommands for inspecting TopMark registry metadata:
 
-  * ``topmark registry bindings``: show the registered bindings.
-  * ``topmark registry filetypes``: show the registered file types.
-  * ``topmark registry processors``: show the registered processors.
+  * ``topmark registry filetypes``: inspect registered file types.
+  * ``topmark registry processors``: inspect registered header processors.
+  * ``topmark registry bindings``: inspect file-type-to-processor bindings.
 """
 
 from __future__ import annotations
@@ -40,21 +40,40 @@ logger: TopmarkLogger = get_logger(__name__)
 @click.group(
     name=CliCmd.REGISTRY,
     context_settings=GROUP_CONTEXT_SETTINGS,
-    help="Inspect the TopMark registry.",
+    help="Inspect TopMark registry metadata.",
+    epilog=(
+        "\b\n"
+        "Examples:\n"
+        "  # Inspect registered file types\n"
+        f"  topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_FILETYPES}\n"
+        "  # Inspect registered header processors\n"
+        f"  topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_PROCESSORS}\n"
+        "  # Inspect file-type-to-processor bindings\n"
+        f"  topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_BINDINGS}\n"
+    ),
 )
 def registry_command() -> None:
     """Group for registry-related subcommands.
 
-    This group itself performs no action; use one of its subcommands:
+    This group performs no action itself; use one of its subcommands:
 
-      * ``filetypes``: show the registered filetypes.
-      * ``processors``: show the registered processors.
-      * ``bindings``: show the registered bindings.
+      * ``filetypes``: inspect registered file types.
+      * ``processors``: inspect registered header processors.
+      * ``bindings``: inspect file-type-to-processor bindings.
     """
     # No-op: behavior is provided by subcommands only.
 
 
-# Attach existing commands as subcommands of `topmark config`
-registry_command.add_command(registry_filetypes_command, name=CliCmd.REGISTRY_FILETYPES)
-registry_command.add_command(registry_processors_command, name=CliCmd.REGISTRY_PROCESSORS)
-registry_command.add_command(registry_bindings_command, name=CliCmd.REGISTRY_BINDINGS)
+# Attach existing commands as subcommands of `topmark registry`
+registry_command.add_command(
+    registry_filetypes_command,
+    name=CliCmd.REGISTRY_FILETYPES,
+)
+registry_command.add_command(
+    registry_processors_command,
+    name=CliCmd.REGISTRY_PROCESSORS,
+)
+registry_command.add_command(
+    registry_bindings_command,
+    name=CliCmd.REGISTRY_BINDINGS,
+)

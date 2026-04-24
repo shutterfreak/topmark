@@ -20,7 +20,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.cli.console.context import resolve_console
 from topmark.config.machine.serializers import serialize_config
 from topmark.config.machine.serializers import serialize_config_check
 from topmark.config.machine.serializers import serialize_config_diagnostics
@@ -45,19 +44,20 @@ if TYPE_CHECKING:
 def emit_machine(
     serialized: str | Iterable[str],
     *,
+    console: ConsoleProtocol,
     nl: bool = True,
 ) -> None:
     """Emit the serialized machine format to the ConsoleLike.
 
     Args:
         serialized: The serialized machine data to emit.
-        nl: If True (default), emit a newline at the end of each line,
+        console: Console used to emit the already-serialized machine output.
+        nl: If True (default), emit a newline at the end of each line.
     """
     if not serialized:
         # Nothing to print
         return
 
-    console: ConsoleProtocol = resolve_console()
     if isinstance(serialized, str):
         console.print(serialized, nl=nl)
     else:
@@ -67,6 +67,7 @@ def emit_machine(
 
 def emit_processing_results_machine(
     *,
+    console: ConsoleProtocol,
     meta: MetaPayload,
     config: Config,
     results: list[ProcessingContext],
@@ -76,6 +77,7 @@ def emit_processing_results_machine(
     """Emit already-rendered machine strings to console.
 
     Args:
+        console: Console used to emit the already-serialized machine output.
         meta: The machine metadata payload.
         config: The Config instance.
         results: Ordered list of per-file processing results.
@@ -98,11 +100,12 @@ def emit_processing_results_machine(
 
     # Do not emit trailing newline for JSON
     nl: bool = fmt != OutputFormat.JSON
-    emit_machine(serialized, nl=nl)
+    emit_machine(serialized, console=console, nl=nl)
 
 
 def emit_config_machine(
     *,
+    console: ConsoleProtocol,
     meta: MetaPayload,
     config: Config,
     fmt: OutputFormat,
@@ -127,6 +130,7 @@ def emit_config_machine(
             {"kind": "config", "meta": ..., "config": ...}
 
     Args:
+        console: Console used to emit the already-serialized machine output.
         meta: The machine metadata payload.
         config: Immutable runtime configuration to serialize.
         fmt: Target machine format (JSON or NDJSON).
@@ -154,11 +158,12 @@ def emit_config_machine(
 
     # Do not emit trailing newline for JSON
     nl: bool = fmt != OutputFormat.JSON
-    emit_machine(serialized, nl=nl)
+    emit_machine(serialized, console=console, nl=nl)
 
 
 def emit_config_diagnostics_machine(
     *,
+    console: ConsoleProtocol,
     meta: MetaPayload,
     config: Config,
     fmt: OutputFormat,
@@ -173,6 +178,7 @@ def emit_config_diagnostics_machine(
             "config_diagnostics": <ConfigDiagnosticsPayload>}.
 
     Args:
+        console: Console used to emit the already-serialized machine output.
         meta: The machine metadata payload.
         config: Immutable runtime configuration providing diagnostics.
         fmt: Target machine format (JSON or NDJSON).
@@ -191,11 +197,12 @@ def emit_config_diagnostics_machine(
 
     # Do not emit trailing newline for JSON
     nl: bool = fmt != OutputFormat.JSON
-    emit_machine(serialized, nl=nl)
+    emit_machine(serialized, console=console, nl=nl)
 
 
 def emit_config_check_machine(
     *,
+    console: ConsoleProtocol,
     meta: MetaPayload,
     config: Config,
     strict: bool,
@@ -215,6 +222,7 @@ def emit_config_check_machine(
       4+) `diagnostic` (domain=`config`) one per diagnostic
 
     Args:
+        console: Console used to emit the already-serialized machine output.
         meta: The machine metadata payload.
         config: Immutable runtime configuration providing diagnostics.
         strict: Enforce strict config checking (fail on warning) if True,
@@ -238,11 +246,12 @@ def emit_config_check_machine(
 
     # Do not emit trailing newline for JSON
     nl: bool = fmt != OutputFormat.JSON
-    emit_machine(serialized, nl=nl)
+    emit_machine(serialized, console=console, nl=nl)
 
 
 def emit_filetypes_machine(
     *,
+    console: ConsoleProtocol,
     meta: MetaPayload,
     fmt: OutputFormat,
     show_details: bool,
@@ -250,6 +259,7 @@ def emit_filetypes_machine(
     """Emit `topmark registry filetypes` machine output.
 
     Args:
+        console: Console used to emit the already-serialized machine output.
         meta: The machine metadata payload.
         fmt: Target machine format (`json` or `ndjson`).
         show_details: If True, include expanded identity, matching, binding,
@@ -263,11 +273,12 @@ def emit_filetypes_machine(
 
     # Do not emit trailing newline for JSON
     nl: bool = fmt != OutputFormat.JSON
-    emit_machine(serialized, nl=nl)
+    emit_machine(serialized, console=console, nl=nl)
 
 
 def emit_processors_machine(
     *,
+    console: ConsoleProtocol,
     meta: MetaPayload,
     fmt: OutputFormat,
     show_details: bool,
@@ -275,6 +286,7 @@ def emit_processors_machine(
     """Emit `topmark registry processors` machine output.
 
     Args:
+        console: Console used to emit the already-serialized machine output.
         meta: The machine metadata payload.
         fmt: Target machine format (`json` or `ndjson`).
         show_details: If True, include expanded identity, binding, and
@@ -288,11 +300,12 @@ def emit_processors_machine(
 
     # Do not emit trailing newline for JSON
     nl: bool = fmt != OutputFormat.JSON
-    emit_machine(serialized, nl=nl)
+    emit_machine(serialized, console=console, nl=nl)
 
 
 def emit_bindings_machine(
     *,
+    console: ConsoleProtocol,
     meta: MetaPayload,
     fmt: OutputFormat,
     show_details: bool,
@@ -300,6 +313,7 @@ def emit_bindings_machine(
     """Emit `topmark registry bindings` machine output.
 
     Args:
+        console: Console used to emit the already-serialized machine output.
         meta: The machine metadata payload.
         fmt: Target machine format (`json` or `ndjson`).
         show_details: If True, include expanded file type and processor
@@ -313,4 +327,4 @@ def emit_bindings_machine(
 
     # Do not emit trailing newline for JSON
     nl: bool = fmt != OutputFormat.JSON
-    emit_machine(serialized, nl=nl)
+    emit_machine(serialized, console=console, nl=nl)

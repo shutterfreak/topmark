@@ -20,7 +20,7 @@ Input modes supported:
   or ``--exclude-from -`` (exactly one may consume STDIN).
 
 Examples:
-  Preview changes (dry run):
+  Preview changes (dry-run):
 
     $ topmark strip src
 
@@ -70,15 +70,17 @@ from topmark.cli.options import config_strict_checking_options
 from topmark.cli.options import pipeline_reporting_options
 from topmark.cli.options import render_diff_options
 from topmark.cli.options import shared_policy_options
+from topmark.cli.state import TopmarkCliState
+from topmark.cli.state import bootstrap_cli_state
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import validate_diff_policy_for_output_format
 from topmark.cli.validators import validate_forbidden_options_in_extra_args
 from topmark.cli.validators import validate_stdin_dash_requires_piped_input
 from topmark.cli.validators import warn_if_report_scope_ignored
+from topmark.config.policy import MutablePolicy
 from topmark.core.errors import ConfigValidationError
 from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
-from topmark.core.keys import ArgKey
 from topmark.core.logging import get_logger
 from topmark.core.machine.payloads import build_meta_payload
 from topmark.pipeline.context.policy import effective_would_strip
@@ -118,18 +120,17 @@ logger: TopmarkLogger = get_logger(__name__)
 @click.command(
     name=CliCmd.STRIP,
     context_settings=PATH_COMMAND_CONTEXT_SETTINGS,
-    help="Remove the entire TopMark header from files.",
-    epilog=f"""\
-Removes TopMark header blocks in files (in-place with {CliOpt.APPLY_CHANGES}).
-
-Examples:
-
-  # Preview which files would change (dry-run)
-  topmark {CliCmd.STRIP} src
-
-  # Apply: remove headers in-place
-  topmark {CliCmd.STRIP} {CliOpt.APPLY_CHANGES} .
-""",
+    help=(
+        f"Preview header removal (dry-run), or remove TopMark headers with {CliOpt.APPLY_CHANGES}."
+    ),
+    epilog=(
+        "\b\n"
+        "Examples:\n"
+        "  # Preview which files would change (dry-run)\n"
+        f"  topmark {CliCmd.STRIP} src\n"
+        "  # Remove headers in-place (apply):\n"
+        f"  topmark {CliCmd.STRIP} {CliOpt.APPLY_CHANGES} .\n"
+    ),
 )
 @common_ui_options
 @config_strict_checking_options
@@ -195,8 +196,8 @@ def strip_command(
     options are intentionally not exposed for this command.
 
     Args:
-        verbosity: Verbosity level.
-        quiet: Suppresses human-readable output.
+        verbosity: Increase human-output detail.
+        quiet: Suppress human-readable output.
         color_mode: Set the color mode (default: auto).
         no_color: bool: If set, disable color mode.
         strict_config_checking: if True, report warnings as errors.
@@ -239,7 +240,9 @@ def strip_command(
         UNEXPECTED_ERROR (255): An unhandled error occurred.
     """
     ctx: click.Context = click.get_current_context()
-    ctx.ensure_object(dict)
+    state: TopmarkCliState = bootstrap_cli_state(ctx)
+    # Effective output format (stored early so shared initialization sees it).
+    state.output_format = output_format or OutputFormat.TEXT
 
     # Initialize the common state (verbosity, color mode) and initialize console
     init_common_state(
@@ -251,7 +254,7 @@ def strip_command(
     )
 
     # Retrieve effective human facing program-output verbosity for gating extra details
-    verbosity_level: int = ctx.obj[ArgKey.VERBOSITY]
+    verbosity_level: int = state.verbosity
 
     # Reject check-only policy options that would otherwise slip through due to
     # permissive path-command parsing.
@@ -274,10 +277,10 @@ def strip_command(
     meta: MetaPayload = build_meta_payload()
 
     # Output format
-    fmt: OutputFormat = output_format or OutputFormat.TEXT
+    fmt: OutputFormat = state.output_format
 
     apply_color_policy_for_output_format(ctx, fmt=fmt)
-    enable_color: bool = ctx.obj[ArgKey.COLOR_ENABLED]
+    enable_color: bool = state.color_enabled
 
     # common_from_sources_options - Fail fast if a `--*-from -` option is used without piped STDIN.
     validate_stdin_dash_requires_piped_input(
@@ -296,17 +299,17 @@ def strip_command(
         report=report,
     )
 
-    prune_override: bool | None = ctx.obj.get(
-        "prune"
-    )  # injected by tests via CliRunner.invoke(..., obj=...)
-    prune_views: bool = bool(prune_override) if prune_override else False
+    # injected by tests via CliRunner.invoke(..., obj=TopmarkCliState(prune_pipeline_views=True)):
+    prune_views: bool = state.prune_pipeline_views
 
-    # Add apply_changes and write_mode to Click context
-    ctx.obj[ArgKey.APPLY_CHANGES] = apply_changes
-    ctx.obj[ArgKey.WRITE_MODE] = write_mode
+    # Store command-scoped runtime values in typed state:
+    state.apply_changes = apply_changes
+    state.write_mode = write_mode
 
-    # Add policy option values to Click context for ConfigOverrides construction.
-    ctx.obj[ArgKey.POLICY_ALLOW_CONTENT_PROBE] = allow_content_probe
+    # Store policy option values for ConfigOverrides construction.
+    state.policy = MutablePolicy(
+        allow_content_probe=allow_content_probe,
+    )
 
     # === Build layered config, runtime options, and file list ===
     plan: InputPlan = plan_cli_inputs(
@@ -401,7 +404,7 @@ def strip_command(
     # Use Click's text stream for stdin so CliRunner/invoke input is read reliably
     # stdin_stream = click.get_text_stream("stdin") if stdin_text else None
 
-    if exit_if_no_files(file_list, styled=enable_color):
+    if exit_if_no_files(file_list, console=console, styled=enable_color):
         # Nothing to do
         return
 
@@ -440,6 +443,7 @@ def strip_command(
 
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         emit_processing_results_machine(
+            console=console,
             meta=meta,
             config=config,
             results=results,
