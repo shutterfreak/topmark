@@ -37,9 +37,11 @@ from topmark.cli.emitters.machine import emit_config_check_machine
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.cli.options import GROUP_CONTEXT_SETTINGS
+from topmark.cli.options import common_color_options
 from topmark.cli.options import common_config_resolution_options
 from topmark.cli.options import common_output_format_options
-from topmark.cli.options import common_ui_options
+from topmark.cli.options import common_text_output_quiet_options
+from topmark.cli.options import common_text_output_verbosity_options
 from topmark.cli.options import config_strict_checking_options
 from topmark.cli.state import TopmarkCliState
 from topmark.cli.state import bootstrap_cli_state
@@ -94,7 +96,9 @@ logger: TopmarkLogger = get_logger(__name__)
         "  • NDJSON emits a sequence of structured records.\n"
     ),
 )
-@common_ui_options
+@common_color_options
+@common_text_output_verbosity_options
+@common_text_output_quiet_options
 @common_config_resolution_options
 @config_strict_checking_options
 @common_output_format_options
@@ -119,8 +123,8 @@ def config_check_command(
     config files, and CLI overrides, then validates it and reports diagnostics.
 
     Args:
-        verbosity: Increase human-output detail.
-        quiet: Suppress human-readable output.
+        verbosity: Increase TEXT output detail.
+        quiet: Suppress TEXT output.
         color_mode: Color mode for text format (default: auto).
         no_color: If set, disable color mode.
         no_config: If True, skip loading project/user configuration files.
@@ -219,7 +223,8 @@ def config_check_command(
         _exit(ctx, success=config_valid)
 
     if fmt == OutputFormat.TEXT:
-        console.print(render_config_check_text(report))
+        if not state.quiet:
+            console.print(render_config_check_text(report))
         _exit(ctx, success=config_valid)
 
     # Defensive guard in case OutputFormat gains new members

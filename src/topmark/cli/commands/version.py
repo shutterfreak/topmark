@@ -24,8 +24,10 @@ from topmark.cli.emitters.machine import emit_machine
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.cli.options import GROUP_CONTEXT_SETTINGS
+from topmark.cli.options import common_color_options
 from topmark.cli.options import common_output_format_options
-from topmark.cli.options import common_ui_options
+from topmark.cli.options import common_text_output_quiet_options
+from topmark.cli.options import common_text_output_verbosity_options
 from topmark.cli.options import version_format_options
 from topmark.cli.state import TopmarkCliState
 from topmark.cli.state import bootstrap_cli_state
@@ -66,7 +68,9 @@ if TYPE_CHECKING:
         "  • Machine formats emit structured version metadata.\n"
     ),
 )
-@common_ui_options
+@common_color_options
+@common_text_output_verbosity_options
+@common_text_output_quiet_options
 @version_format_options
 @common_output_format_options
 def version_command(
@@ -87,12 +91,13 @@ def version_command(
     output, optionally normalized to SemVer when possible.
 
     Args:
-        verbosity: Verbosity level.
+        verbosity: Increase TEXT output detail.
         quiet: Suppresses default TEXT output.
         color_mode: Set the color mode (default: auto).
         no_color: bool: If set, disable color mode.
         semver: Whether to attempt to render the version as SemVer (default: PEP 440).
         output_format: Output format to use (``text``, ``markdown``, ``json``, or ``ndjson``).
+            Verbosity and quiet controls apply only to TEXT output.
 
     Raises:
         ValueError: If an unsupported output format is requested.
@@ -111,9 +116,6 @@ def version_command(
         color_mode=color_mode,
         no_color=no_color,
     )
-
-    # Retrieve effective human facing program-output verbosity for gating extra details
-    verbosity_level: int = state.verbosity
 
     # Select the console
     console: ConsoleProtocol = state.console
@@ -143,8 +145,8 @@ def version_command(
         return
 
     report: VersionHumanReport = make_version_human_report(
-        verbosity_level=verbosity_level,
-        quiet=quiet,
+        verbosity_level=state.verbosity,
+        quiet=state.quiet,
         styled=enable_color,
         semver=semver,
     )

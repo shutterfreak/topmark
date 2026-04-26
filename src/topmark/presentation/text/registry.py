@@ -13,6 +13,8 @@
 This module contains pure TEXT renderers used by CLI commands to produce
 human-facing console output. Rendering is pure: functions return a string and
 perform no I/O.
+
+TEXT output may use `verbosity_level` for console-oriented progressive disclosure.
 """
 
 from __future__ import annotations
@@ -170,7 +172,7 @@ def render_bindings_text(
     parts: list[str] = []
 
     if vlevel > 0:
-        parts.append(heading_styler("Effective file type to processor bindings:"))
+        parts.append(heading_styler("Effective file-type-to-processor bindings:"))
         parts.append("")
 
     total: int = len(report.bindings)

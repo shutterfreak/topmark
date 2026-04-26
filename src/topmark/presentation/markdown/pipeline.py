@@ -8,14 +8,17 @@
 #
 # topmark:header:end
 
-"""Markdown pipeline rendering helpers for the TopMark CLI.
+"""Markdown pipeline renderers for the TopMark CLI.
 
-Click-free helpers that prepare Markdown for pipeline-oriented commands
-(e.g. `check`, `strip`). Callers print the returned strings.
+This module renders human-facing Markdown output for pipeline-oriented commands
+such as `topmark check` and `topmark strip`.
+
+Markdown output is document-oriented: it intentionally ignores TEXT-only
+verbosity, quiet, and styling controls. Pipeline content is controlled by
+semantic command options such as `--summary`, `--report`, and `--diff`.
 
 Notes:
-    - TEXT (ANSI) output lives in
-      [`topmark.presentation.text.pipeline`][topmark.presentation.text.pipeline].
+    - TEXT output is implemented in [`topmark.presentation.text`][topmark.presentation.text].
     - Machine output is handled via domain machine serializers.
 """
 
@@ -26,7 +29,6 @@ from typing import TYPE_CHECKING
 from topmark.cli.errors import TopmarkCliPipelineError
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
-from topmark.cli.keys import CliShortOpt
 from topmark.pipeline.context.policy import effective_would_add_or_update
 from topmark.pipeline.context.policy import effective_would_strip
 from topmark.pipeline.outcomes import Intent
@@ -40,13 +42,13 @@ from topmark.pipeline.status import WriteStatus
 from topmark.presentation.markdown.diagnostic import render_diagnostics_markdown
 from topmark.presentation.markdown.utils import markdown_code_span
 from topmark.presentation.markdown.utils import render_markdown_table
+from topmark.presentation.shared.pipeline import PipelineCommandHumanReport
 from topmark.presentation.shared.pipeline import get_display_path
 from topmark.rendering.unified_diff import format_patch_plain
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from topmark.api.types import PipelineKindLiteral
     from topmark.diagnostic.model import DiagnosticStats
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.hints import Hint
@@ -86,14 +88,12 @@ def _render_hint_markdown(
     hint: Hint,
     *,
     last: bool,
-    verbosity_level: int,
 ) -> str:
     """Render a single hint as Markdown.
 
     Args:
         hint: Hint to render.
         last: Whether this is the last/decisive hint in the rendered subset.
-        verbosity_level: Effective verbosity level controlling detail rendering.
 
     Returns:
         Markdown fragment for one hint entry.
@@ -110,16 +110,10 @@ def _render_hint_markdown(
 
     lines.append(f"    - {marker} **{axis}** (`{cluster}`) `{code}`: {message}{terminal_suffix}")
 
-    # Optional detail vs "use -vv" nudge
+    # Optional detail
     if hint.detail:
-        if verbosity_level > 1:
-            for line in hint.detail.splitlines():
-                lines.append(f"      {line}")
-        else:
-            lines.append(
-                f"      (use `{CliShortOpt.VERBOSE}{CliShortOpt.VERBOSE[-1]}` "
-                "to display detailed hints)"
-            )
+        for line in hint.detail.splitlines():
+            lines.append(f"      {line}")
 
     return "\n".join(lines)
 
@@ -267,7 +261,6 @@ def _render_strip_guidance_message_markdown(
 def _render_file_summary_line_markdown(
     *,
     ctx: ProcessingContext,
-    verbosity_level: int,
 ) -> str:
     """Render a concise one-line Markdown summary for one file.
 
@@ -276,7 +269,6 @@ def _render_file_summary_line_markdown(
 
     Args:
         ctx: Processing context containing status and view data.
-        verbosity_level: Effective verbosity level for inline diagnostic nudges.
 
     Returns:
         One-line Markdown summary for the file.
@@ -297,7 +289,6 @@ def _render_file_summary_line_markdown(
     elif ctx.views.diff and ctx.views.diff.text:
         parts.append("diff")
 
-    diag_show_hint: str = ""
     if ctx.diagnostics:
         # Compose a compact triage summary such as "1 error, 2 warnings".
         stats: DiagnosticStats = ctx.diagnostics.stats()
@@ -305,10 +296,7 @@ def _render_file_summary_line_markdown(
         if triage_summary:
             parts.append(triage_summary)
 
-        if verbosity_level <= 0 and stats.total > 0:
-            diag_show_hint = f" (use `{CliShortOpt.VERBOSE}` to view)"
-
-    suffix: str = (" — " + " - ".join(parts) + diag_show_hint) if parts else ""
+    suffix: str = (" — " + " - ".join(parts)) if parts else ""
     return f"`{get_display_path(ctx)}` ({ft}) — `{key}`: {label}{suffix}"
 
 
@@ -318,23 +306,23 @@ def _render_per_file_guidance_markdown(
     make_message: Callable[[ProcessingContext, bool], str | None],
     apply_changes: bool,
     show_diffs: bool,
-    verbosity_level: int,
 ) -> str:
     """Render per-file Markdown sections.
 
     For each file, this includes:
         1. A summary line.
         2. An optional guidance message.
-        3. Diagnostics at verbosity >= 1.
-        4. One hint at `-v`, or all hints at `-vv` and above.
+        3. Diagnostics when present.
+        4. Diagnostic hints when present.
         5. An optional diff block.
+
+    Unlike TEXT output, Markdown always renders available diagnostics and hints,
 
     Args:
         view_results: Processing contexts to render.
         make_message: Per-file guidance message builder.
         apply_changes: Whether the command runs in apply mode.
         show_diffs: Whether to include unified diffs.
-        verbosity_level: Effective verbosity level.
 
     Returns:
         Markdown fragment containing all rendered file sections.
@@ -344,14 +332,11 @@ def _render_per_file_guidance_markdown(
     blocks.append("")
 
     for idx, ctx in enumerate(view_results, start=1):
-        # At verbosity 0, keep output minimal: one summary line per file.
-        #
-        # 1. summary line
+        # 1. summary line.
         blocks.append(
             f"{idx}. "
             + _render_file_summary_line_markdown(
                 ctx=ctx,
-                verbosity_level=verbosity_level,
             )
         )
 
@@ -360,36 +345,26 @@ def _render_per_file_guidance_markdown(
         if msg:
             blocks.append(f"  - {msg}")
 
-        # 3. diagnostics block (shown at verbosity >= 1)
-        if verbosity_level > 0 and len(ctx.diagnostics) > 0:
+        # 3. diagnostics block; Markdown shows diagnostics whenever present.
+        if len(ctx.diagnostics) > 0:
             diag_md: str = render_diagnostics_markdown(
                 diagnostics=ctx.diagnostics,
-                verbosity_level=verbosity_level,
             ).rstrip()
             if diag_md:
                 for line in diag_md.splitlines():
                     blocks.append(f"  {line}" if line else "")
 
-        # 4. hints (one hint at `-v`, full list at `-vv` and above)
+        # 4. hints; Markdown shows all hints whenever present.
         hints: list[Hint] = ctx.diagnostic_hints.items
         hints_count: int = len(hints)
-        if verbosity_level > 0 and hints_count > 0:
-            extended_hint_info: str = (
-                ""
-                if verbosity_level > 1
-                else f" (use `{CliShortOpt.VERBOSE}{CliShortOpt.VERBOSE[-1]}` to view all hints)"
-            )
-            blocks.append(f"  - Hints: {hints_count}{extended_hint_info}")
+        if hints_count > 0:
+            blocks.append(f"  - Hints: {hints_count}")
 
-            # Only display the last hint when verbosity_level==1
-            hints_to_show: list[Hint] = [hints[-1]] if verbosity_level == 1 else hints
-            hints_to_show_count: int = len(hints_to_show)
-            for i, h in enumerate(hints_to_show, start=1):
+            for i, h in enumerate(hints, start=1):
                 blocks.append(
                     _render_hint_markdown(
                         hint=h,
-                        last=i == hints_to_show_count,
-                        verbosity_level=verbosity_level,
+                        last=i == hints_count,
                     )
                 )
 
@@ -509,31 +484,12 @@ def _render_summary_counts_markdown(
 
 
 def render_pipeline_output_markdown(
-    *,
-    cmd: str,
-    pipeline_kind: PipelineKindLiteral,
-    file_list_total: int,
-    view_results: list[ProcessingContext],
-    report: ReportScope,
-    unsupported_count: int,
-    verbosity_level: int,
-    summary_mode: bool,
-    show_diffs: bool,
-    apply_changes: bool,
+    report: PipelineCommandHumanReport,
 ) -> str:
     """Render human-facing Markdown output for a pipeline command.
 
     Args:
-        cmd: Command name, such as `check` or `strip`.
-        pipeline_kind: Pipeline kind used to select command-specific guidance.
-        file_list_total: Total number of candidate files before view filtering.
-        view_results: Processing contexts to render.
-        report: Active report scope for the current view.
-        unsupported_count: Number of unsupported files omitted from actionable listings.
-        verbosity_level: Effective verbosity level.
-        summary_mode: Whether to render grouped outcome counts instead of per-file sections.
-        show_diffs: Whether to include unified diffs.
-        apply_changes: Whether the command runs in apply mode.
+        report: Prepared human report for the pipeline command.
 
     Returns:
         Rendered Markdown output.
@@ -542,57 +498,59 @@ def render_pipeline_output_markdown(
         RuntimeError: If an invalid pipeline kind was selected.
     """
     make_message: Callable[[ProcessingContext, bool], str | None] | None = None
-    if pipeline_kind == CliCmd.CHECK:
+    if report.pipeline_kind == CliCmd.CHECK:
         make_message = _render_check_guidance_message_markdown
-    elif pipeline_kind == CliCmd.STRIP:
+    elif report.pipeline_kind == CliCmd.STRIP:
         make_message = _render_strip_guidance_message_markdown
     else:
         # Defensive guard.
-        raise RuntimeError(f"Invalid pipeline kind selected: {pipeline_kind}")
+        raise RuntimeError(f"Invalid pipeline kind selected: {report.pipeline_kind}")
 
     parts: list[str] = []
 
-    # Banner (verbosity-gated)
-    if verbosity_level > 0:
-        parts.append(
-            _render_pipeline_banner_markdown(
-                cmd=cmd,
-                n_files=file_list_total,
-            )
+    # Markdown always starts with a document banner.
+    parts.append(
+        _render_pipeline_banner_markdown(
+            cmd=report.cmd,
+            n_files=report.file_list_total,
         )
-        parts.append("")
+    )
+    parts.append("")
 
-    # Summary mode (grouped by `(outcome, reason)`)
-    if summary_mode:
-        if show_diffs:
+    # Summary mode (grouped by `(outcome, reason)`).
+    if report.summary_mode:
+        if report.show_diffs:
             parts.append(
                 _render_pipeline_diffs_markdown(
-                    results=view_results,
+                    results=report.view_results,
                 )
             )
         parts.append(
             _render_summary_counts_markdown(
-                view_results=view_results,
-                total=file_list_total,
+                view_results=report.view_results,
+                total=report.file_list_total,
             )
         )
     else:
         # Per-file guidance
         parts.append(
             _render_per_file_guidance_markdown(
-                view_results=view_results,
+                view_results=report.view_results,
                 make_message=make_message,
-                apply_changes=apply_changes,
-                show_diffs=show_diffs,
-                verbosity_level=verbosity_level,
+                apply_changes=report.apply_changes,
+                show_diffs=report.show_diffs,
             ),
         )
 
     # In actionable mode, unsupported files are hidden from the per-file listing but summarized
     # for visibility.
-    if (not summary_mode) and (report == ReportScope.ACTIONABLE) and (unsupported_count > 0):
+    if (
+        (not report.summary_mode)
+        and (report.report_scope == ReportScope.ACTIONABLE)
+        and (report.unsupported_count > 0)
+    ):
         parts.append(
-            f"\n> ⚠️ Unsupported: {unsupported_count} file(s) "
+            f"\n> ⚠️ Unsupported: {report.unsupported_count} file(s) "
             f"(use {CliOpt.REPORT}={ReportScope.NONCOMPLIANT.value} to list)\n"
         )
 

@@ -32,25 +32,21 @@ def render_version_markdown(
 ) -> str:
     """Render `topmark version` output as Markdown.
 
+    Markdown output is document-oriented and intentionally ignores TEXT-only
+    verbosity and quiet controls.
+
     Args:
         report: The human version information report.
 
     Returns:
         A Markdown document as a single string.
     """
-    lines: list[str] = []
-
-    if report.verbosity_level > 0:
-        lines.extend(
-            [
-                "# TopMark Version",
-                "",
-                f"**Version format:** `{report.version_format}`",
-                f"**Version:** `{report.version_text}`",
-            ]
-        )
-    else:
-        lines.append(report.version_text)
+    lines: list[str] = [
+        "# TopMark Version",
+        "",
+        f"**Version format:** `{report.version_format}`",
+        f"**Version:** `{report.version_text}`",
+    ]
 
     if report.error is not None:
         lines.extend(["", f"> **Warning:** {report.error}"])

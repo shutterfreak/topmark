@@ -73,7 +73,7 @@ class ArgKey(str, Enum):
     POLICY_ALLOW_CONTENT_PROBE = "allow_content_probe"
 
     # Pipeline result reporting
-    REPORT = "report"
+    REPORT_SCOPE = "report_scope"
 
     # Output / write behavior
     WRITE_MODE = "write_mode"

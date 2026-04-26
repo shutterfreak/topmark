@@ -8,10 +8,15 @@
 #
 # topmark:header:end
 
-"""Text (ANSI-capable) pipeline emitters for the TopMark CLI.
+"""TEXT pipeline renderers for the TopMark CLI.
 
 This module renders human-facing TEXT output for pipeline-oriented commands
-(for example, `check` and `strip`).
+such as `topmark check` and `topmark strip`.
+
+TEXT output is console-oriented: it may use `verbosity_level` for progressive
+disclosure, `styled` for ANSI-capable semantic styling, and compact hints that
+refer to `-v` / `-vv`. Markdown and machine output are rendered by separate
+presentation and machine-output layers.
 
 Notes:
     - ANSI styling primitives (for example, conditional colorization) live in
@@ -47,13 +52,13 @@ from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.status import WriteStatus
 from topmark.presentation.shared.outcomes import collect_outcome_counts_styled
 from topmark.presentation.shared.outcomes import get_outcome_style_role
+from topmark.presentation.shared.pipeline import PipelineCommandHumanReport
 from topmark.presentation.shared.pipeline import get_display_path
 from topmark.presentation.text.diagnostic import render_diagnostics_text
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from topmark.api.types import PipelineKindLiteral
     from topmark.diagnostic.model import DiagnosticStats
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.hints import Hint
@@ -126,8 +131,8 @@ def _render_hint_text(
     Args:
         hint: Hint to render.
         last: Whether this is the last hint in the rendered subset.
-        verbosity_level: Effective verbosity level controlling detail rendering.
-        styled: Whether ANSI styling is enabled.
+        verbosity_level: Effective TEXT verbosity controlling detail rendering.
+        styled: Whether ANSI-capable styling is enabled.
 
     Returns:
         Rendered text for one hint entry.
@@ -154,7 +159,7 @@ def _render_hint_text(
         )
     )
 
-    # Optional detail vs "use -vv" nudge
+    # TEXT uses -vv as the progressive-disclosure threshold for hint details.
     if hint.detail:
         if verbosity_level > 1:
             for line in hint.detail.splitlines():
@@ -188,7 +193,7 @@ def _render_pipeline_banner_text(
     Args:
         cmd: Command name.
         n_files: Number of candidate files.
-        styled: Whether ANSI styling is enabled.
+        styled: Whether ANSI-capable styling is enabled.
 
     Returns:
         TEXT banner shown before the main pipeline output.
@@ -331,8 +336,8 @@ def _render_file_summary_line_text(
 
     Args:
         ctx: Processing context containing status and view data.
-        verbosity_level: Effective verbosity level for inline diagnostic nudges.
-        styled: Whether ANSI styling is enabled.
+        verbosity_level: Effective TEXT verbosity for inline diagnostic nudges.
+        styled: Whether ANSI-capable styling is enabled.
 
     Returns:
         One-line TEXT summary for the file.
@@ -426,7 +431,7 @@ def _render_per_file_guidance_text(
     For each file, this includes:
         1. A summary line.
         2. An optional guidance message.
-        3. Diagnostics at verbosity >= 1.
+        3. Diagnostics at `-v` and above.
         4. One hint at `-v`, or all hints at `-vv` and above.
         5. An optional diff block.
 
@@ -435,8 +440,8 @@ def _render_per_file_guidance_text(
         make_message: Per-file guidance message builder.
         apply_changes: Whether the command runs in apply mode.
         show_diffs: Whether to include unified diffs.
-        verbosity_level: Effective verbosity level.
-        styled: Whether ANSI styling is enabled.
+        verbosity_level: Effective TEXT verbosity level.
+        styled: Whether ANSI-capable styling is enabled.
 
     Returns:
         TEXT fragment containing all rendered file sections.
@@ -454,9 +459,7 @@ def _render_per_file_guidance_text(
     diff_end_fence: Final[str] = " diff - end ".center(line_width, "─")
 
     for ctx in view_results:
-        # At verbosity 0, keep output minimal: one summary line per file.
-        #
-        # 1. summary line
+        # 1. summary line; at verbosity 0, keep output compact.
         parts.append(
             _render_file_summary_line_text(
                 ctx=ctx,
@@ -473,7 +476,7 @@ def _render_per_file_guidance_text(
                 )
             )
 
-        # 3. diagnostics log (shown at verbosity >= 1)
+        # 3. diagnostics log (shown at -v and above)
         if verbosity_level > 0 and len(ctx.diagnostics) > 0:
             parts.append(
                 render_diagnostics_text(
@@ -483,7 +486,7 @@ def _render_per_file_guidance_text(
                 )
             )
 
-        # 4. hints (one hint at `-v`, full list at `-vv` and above)
+        # 4. hints (one hint at -v, full list at -vv and above)
         hints_count: int = len(ctx.diagnostic_hints)
         if verbosity_level > 0 and hints_count > 0:
             hints: list[Hint] = ctx.diagnostic_hints.items
@@ -551,7 +554,7 @@ def _render_diff_text(
     Args:
         diff_view: Diff view to render.
         show_line_numbers: Whether to prepend line numbers.
-        styled: Whether ANSI styling is enabled.
+        styled: Whether ANSI-capable styling is enabled.
 
     Returns:
         Rendered diff text, or `None` when no diff is available.
@@ -579,7 +582,7 @@ def _render_pipeline_diffs_text(
     Args:
         results: Processing contexts to inspect.
         show_line_numbers: Whether to prepend line numbers.
-        styled: Whether ANSI styling is enabled.
+        styled: Whether ANSI-capable styling is enabled.
 
     Returns:
         TEXT diff section.
@@ -633,7 +636,7 @@ def _render_summary_counts_text(
     Args:
         view_results: Processing contexts included in the rendered view.
         total: Total number of candidate files before view filtering.
-        styled: Whether ANSI styling is enabled.
+        styled: Whether ANSI-capable styling is enabled.
 
     Returns:
         TEXT summary grouped by outcome and reason.
@@ -689,100 +692,83 @@ def _render_summary_counts_text(
 
 
 def render_pipeline_output_text(
-    *,
-    cmd: str,
-    pipeline_kind: PipelineKindLiteral,
-    file_list_total: int,
-    view_results: list[ProcessingContext],
-    report: ReportScope,
-    unsupported_count: int,
-    verbosity_level: int,
-    summary_mode: bool,
-    show_diffs: bool,
-    apply_changes: bool,
-    styled: bool,
+    report: PipelineCommandHumanReport,
 ) -> str:
     """Render human-facing TEXT output for a pipeline command.
 
     Args:
-        cmd: Command name, such as `check` or `strip`.
-        pipeline_kind: Pipeline kind used to select command-specific guidance.
-        file_list_total: Total number of candidate files before view filtering.
-        view_results: Processing contexts to render.
-        report: Active report scope for the current view.
-        unsupported_count: Number of unsupported files omitted from actionable listings.
-        verbosity_level: Effective verbosity level.
-        summary_mode: Whether to render grouped outcome counts instead of per-file sections.
-        show_diffs: Whether to include unified diffs.
-        apply_changes: Whether the command runs in apply mode.
-        styled: Whether ANSI styling is enabled.
+        report: Prepared human report for the pipeline command.
 
     Returns:
-        Rendered TEXT output.
+        Rendered TEXT output for the prepared pipeline report.
 
     Raises:
         RuntimeError: If an invalid pipeline kind was selected.
     """
     make_message: Callable[[ProcessingContext, bool], str | None] | None = None
-    if pipeline_kind == CliCmd.CHECK:
+    if report.pipeline_kind == CliCmd.CHECK:
         make_message = _render_check_guidance_message_text
-    elif pipeline_kind == CliCmd.STRIP:
+    elif report.pipeline_kind == CliCmd.STRIP:
         make_message = _render_strip_guidance_message_text
     else:
         # Defensive guard.
-        raise RuntimeError(f"Invalid pipeline kind selected: {pipeline_kind}")
+        raise RuntimeError(f"Invalid pipeline kind selected: {report.pipeline_kind}")
 
     # Note: the stylers already check `report.styled` so we don't need `maybe_style()`
-    warning_styler: TextStyler = style_for_role(StyleRole.WARNING, styled=styled)
+    warning_styler: TextStyler = style_for_role(StyleRole.WARNING, styled=report.styled)
 
     parts: list[str] = []
 
-    # Banner (verbosity-gated)
-    if verbosity_level > 0:
+    # TEXT banner is shown at -v and above.
+    if report.verbosity_level > 0:
         parts.append(
             _render_pipeline_banner_text(
-                cmd=cmd,
-                n_files=file_list_total,
-                styled=styled,
+                cmd=report.cmd,
+                n_files=report.file_list_total,
+                styled=report.styled,
             )
         )
 
     # Summary mode (grouped by `(outcome, reason)`)
-    if summary_mode:
-        if show_diffs:
+    if report.summary_mode:
+        if report.show_diffs:
             parts.append(
                 _render_pipeline_diffs_text(
-                    results=view_results,
-                    styled=styled,
+                    results=report.view_results,
+                    styled=report.styled,
                 )
             )
         parts.append(
             _render_summary_counts_text(
-                view_results=view_results,
-                total=file_list_total,
-                styled=styled,
+                view_results=report.view_results,
+                total=report.file_list_total,
+                styled=report.styled,
             )
         )
     else:
         # Per-file guidance
         parts.append(
             _render_per_file_guidance_text(
-                view_results=view_results,
+                view_results=report.view_results,
                 make_message=make_message,
-                apply_changes=apply_changes,
-                show_diffs=show_diffs,
-                verbosity_level=verbosity_level,
-                styled=styled,
+                apply_changes=report.apply_changes,
+                show_diffs=report.show_diffs,
+                verbosity_level=report.verbosity_level,
+                styled=report.styled,
             )
         )
 
     # In actionable mode, unsupported files are hidden from the per-file listing but summarized
     # for visibility.
 
-    if (not summary_mode) and (report == ReportScope.ACTIONABLE) and (unsupported_count > 0):
+    if (
+        (not report.summary_mode)
+        and (report.report_scope == ReportScope.ACTIONABLE)
+        and (report.unsupported_count > 0)
+    ):
         parts.append(
             warning_styler(
-                f"⚠️  Unsupported: {unsupported_count} file(s) "
+                f"⚠️  Unsupported: {report.unsupported_count} file(s) "
                 f"(use {CliOpt.REPORT}={ReportScope.NONCOMPLIANT.value} to list)"
             )
         )
@@ -803,7 +789,7 @@ def render_pipeline_apply_summary_text(
         command_path: Command path, such as `topmark check`.
         written: Number of files written.
         failed: Number of files that failed to write.
-        styled: Whether ANSI styling is enabled.
+        styled: Whether ANSI-capable styling is enabled.
 
     Returns:
         Rendered TEXT footer.

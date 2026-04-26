@@ -412,33 +412,47 @@ def option_with_underscore_traps(
 # ---- Option decorators ----
 
 
-def common_human_output_verbosity_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
-    """Adds --verbose and --quiet options to a command.
+def common_text_output_verbosity_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
+    """Adds --verbose option to a command.
 
     Args:
         f: The Click command function to decorate.
 
     Returns:
-        The decorated function with verbosity options added.
+        The decorated function with verbosity option added.
 
     Behavior:
-        Adds count-based `-v/--verbose` detail controls and boolean `-q/--quiet`
-        suppression for human-readable output. These options are mutually exclusive.
+        Adds count-based `-v/--verbose` detail controls for text output.
     """
     f = option_with_underscore_traps(
         CliOpt.VERBOSE,
         ArgKey.VERBOSITY,
         CliShortOpt.VERBOSE,
         count=True,
-        help="Increase human-output detail. Repeat once for full detail.",
+        help="Increase TEXT output detail. Repeat once for full detail.",
     )(f)
+    return f
+
+
+def common_text_output_quiet_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
+    """Adds --quiet option to a command.
+
+    Args:
+        f: The Click command function to decorate.
+
+    Returns:
+        The decorated function with quiet option added.
+
+    Behavior:
+        Adds boolean `-q/--quiet` suppression for text output.
+    """
     f = option_with_underscore_traps(
         CliOpt.QUIET,
         ArgKey.QUIET,
         CliShortOpt.QUIET,
         is_flag=True,
         default=False,
-        help="Suppress human-readable output and rely on exit status only.",
+        help="Suppress TEXT output and rely on exit status only.",
     )(f)
     return f
 
@@ -470,25 +484,6 @@ def common_color_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
         is_flag=True,
         help=f"Disable color output (equivalent to {CliOpt.COLOR_MODE} never).",
     )(f)
-    return f
-
-
-def common_ui_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
-    """Convenience decorator (verbosity + color mode).
-
-    Args:
-        f: The Click command function to decorate.
-
-    Returns:
-        The decorated function with verbosity and color options added.
-
-    Behavior:
-        Adds human-output detail controls (`--verbose`, `--quiet`).
-        Adds --color with choices (auto, always, never).
-        Adds --no-color flag that disables color output.
-    """
-    f = common_human_output_verbosity_options(f)
-    f = common_color_options(f)
     return f
 
 
@@ -772,7 +767,7 @@ def pipeline_reporting_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
 
     f = option_with_underscore_traps(
         CliOpt.REPORT,
-        ArgKey.REPORT,
+        ArgKey.REPORT_SCOPE,
         type=EnumChoiceParam(
             ReportScope,
             case_sensitive=False,

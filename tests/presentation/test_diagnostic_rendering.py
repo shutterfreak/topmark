@@ -34,8 +34,8 @@ def test_human_diagnostics_text_summary_at_default_verbosity() -> None:
     )
 
 
-def test_human_diagnostics_markdown_summary_at_default_verbosity() -> None:
-    """Markdown diagnostics should render a compact summary at default verbosity."""
+def test_human_diagnostics_markdown_renders_stable_document_output() -> None:
+    """Markdown diagnostics should render stable document output."""
     output: str = render_human_diagnostics_markdown(
         title="Configuration diagnostics",
         counts=HumanDiagnosticCounts(error=1, warning=2, info=3),
@@ -43,11 +43,20 @@ def test_human_diagnostics_markdown_summary_at_default_verbosity() -> None:
             HumanDiagnosticLine(level="error", message="Invalid config"),
             HumanDiagnosticLine(level="warning", message="Deprecated option"),
         ],
-        verbosity_level=0,
     )
 
-    assert output == (
-        "> **Diagnostics:** 1 error(s), 2 warning(s), 3 information(s) (use `-v` to view details)\n"
+    assert (
+        output
+        == "\n".join(
+            [
+                "### Configuration diagnostics",
+                "",
+                "**Diagnostics:** 1 error(s), 2 warning(s), 3 information(s)",
+                "- **error**: Invalid config",
+                "- **warning**: Deprecated option",
+            ]
+        )
+        + "\n"
     )
 
 
@@ -71,33 +80,6 @@ def test_human_diagnostics_text_details_at_verbose_level() -> None:
     )
 
 
-def test_human_diagnostics_markdown_details_at_verbose_level() -> None:
-    """Markdown diagnostics should include a section, summary, and detail lines."""
-    output: str = render_human_diagnostics_markdown(
-        title="Configuration diagnostics",
-        counts=HumanDiagnosticCounts(error=1, warning=1, info=0),
-        diagnostics=[
-            HumanDiagnosticLine(level="error", message="Invalid config"),
-            HumanDiagnosticLine(level="warning", message="Deprecated option"),
-        ],
-        verbosity_level=1,
-    )
-
-    assert (
-        output
-        == "\n".join(
-            [
-                "### Configuration diagnostics",
-                "",
-                "**Diagnostics:** 1 error(s), 1 warning(s), 0 information(s)",
-                "- **error**: Invalid config",
-                "- **warning**: Deprecated option",
-            ]
-        )
-        + "\n"
-    )
-
-
 def test_human_diagnostics_render_empty_when_no_diagnostics() -> None:
     """Both renderers should return an empty string when there are no diagnostics."""
     counts = HumanDiagnosticCounts(error=0, warning=0, info=0)
@@ -115,7 +97,6 @@ def test_human_diagnostics_render_empty_when_no_diagnostics() -> None:
             title="Configuration diagnostics",
             counts=counts,
             diagnostics=[],
-            verbosity_level=1,
         )
         == ""
     )

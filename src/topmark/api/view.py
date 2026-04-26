@@ -178,7 +178,7 @@ def finalize_run_result(
     results: list[ProcessingContext],
     file_list: list[Path],
     apply: bool,
-    report: ReportScope,
+    report_scope: ReportScope,
     would_change: Callable[[ProcessingContext], bool],
     update_statuses: set[PlanStatus],
     encountered_error_code: ExitCode | None,
@@ -193,7 +193,7 @@ def finalize_run_result(
         results: Raw pipeline results (unfiltered).
         file_list: Resolved input files for the run.
         apply: Whether the run was in apply mode (affects counting).
-        report: Public report-scope selection for the returned view.
+        report_scope: Active report scope for the current view.
         would_change: Predicate describing whether a result represents a file
             TopMark would change (or did change, depending on caller context).
         update_statuses: Which `PlanStatus` values count as written/updated.
@@ -207,7 +207,7 @@ def finalize_run_result(
 
     filtered: ReportFilterResult = filter_results_for_report(
         results,
-        report=report,
+        report_scope=report_scope,
         would_change=would_change,
     )
     view_results: list[ProcessingContext] = filtered.view_results

@@ -24,8 +24,9 @@ from topmark.cli.emitters.machine import emit_processors_machine
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.cli.options import GROUP_CONTEXT_SETTINGS
+from topmark.cli.options import common_color_options
 from topmark.cli.options import common_output_format_options
-from topmark.cli.options import common_ui_options
+from topmark.cli.options import common_text_output_verbosity_options
 from topmark.cli.options import registry_details_options
 from topmark.cli.state import TopmarkCliState
 from topmark.cli.state import bootstrap_cli_state
@@ -65,14 +66,14 @@ if TYPE_CHECKING:
         "  • Machine formats emit registry metadata without human formatting.\n"
     ),
 )
-@common_ui_options
+@common_color_options
+@common_text_output_verbosity_options
 @registry_details_options
 @common_output_format_options
 def registry_processors_command(
     *,
     # common_ui_options (verbosity, color):
     verbosity: int,
-    quiet: bool,
     color_mode: ColorMode | None,
     no_color: bool,
     # registry_details_options:
@@ -86,8 +87,7 @@ def registry_processors_command(
     and optional extended binding metadata.
 
     Args:
-        verbosity: Increase human-output detail.
-        quiet: Suppress human-readable output.
+        verbosity: Increase TEXT output detail.
         color_mode: Set the color mode (default: auto).
         no_color: bool: If set, disable color mode.
         show_details: Whether to show extended information about each processor,
@@ -107,7 +107,7 @@ def registry_processors_command(
     init_common_state(
         ctx,
         verbosity=verbosity,
-        quiet=quiet,
+        quiet=False,
         color_mode=color_mode,
         no_color=no_color,
     )

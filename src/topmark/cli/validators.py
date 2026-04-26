@@ -200,7 +200,7 @@ def warn_if_report_scope_ignored(
     *,
     output_format: OutputFormat,
     summary_mode: bool,
-    report: ReportScope,
+    report_scope: ReportScope,
 ) -> None:
     """Warn when an explicitly provided `--report` value will have no effect.
 
@@ -219,9 +219,9 @@ def warn_if_report_scope_ignored(
         ctx: Active Click context.
         output_format: Effective output format.
         summary_mode: Whether summary-only mode is enabled.
-        report: Effective report scope.
+        report_scope: Effective report scope.
     """
-    param_source: ParameterSource | None = ctx.get_parameter_source(ArgKey.REPORT)
+    param_source: ParameterSource | None = ctx.get_parameter_source(ArgKey.REPORT_SCOPE)
     if param_source is not click.core.ParameterSource.COMMANDLINE:
         return
 
@@ -229,12 +229,12 @@ def warn_if_report_scope_ignored(
 
     if is_machine_format(output_format):
         msgs.append(
-            f"Note: {ctx.command_path}: {CliOpt.REPORT}={report.value} is ignored when "
+            f"Note: {ctx.command_path}: {CliOpt.REPORT}={report_scope.value} is ignored when "
             f"{CliOpt.OUTPUT_FORMAT}={output_format.value}."
         )
     if summary_mode:
         msgs.append(
-            f"Note: {ctx.command_path}: {CliOpt.REPORT}={report.value} is ignored when "
+            f"Note: {ctx.command_path}: {CliOpt.REPORT}={report_scope.value} is ignored when "
             f"{CliOpt.RESULTS_SUMMARY_MODE} is enabled."
         )
     if not msgs:
@@ -355,7 +355,7 @@ def validate_output_verbosity_policy(
     quiet: bool,
     fmt: OutputFormat,
 ) -> None:
-    """Validate human-output verbosity policy for the current invocation.
+    """Validate TEXT-only verbosity and quiet policy for the current invocation.
 
     Args:
         ctx: Active Click context carrying the shared typed CLI state.
@@ -364,35 +364,32 @@ def validate_output_verbosity_policy(
         fmt: Effective output format for this invocation.
 
     Behavior:
-        - For machine-readable formats, `--verbose` is ignored with a warning.
-        - For non-TEXT formats, `--quiet` is cleared silently so output remains renderable.
+        - For non-TEXT formats, `--verbose` and `--quiet` are cleared silently.
         - For TEXT output, `--verbose` and `--quiet` are mutually exclusive.
     """
     state: TopmarkCliState = get_cli_state(ctx)
-    console: ConsoleProtocol = state.console
 
-    if fmt != OutputFormat.TEXT and quiet:
-        # Quiet only suppresses default TEXT output. For other formats,
-        # clear it silently.
-        state.quiet = False
+    if fmt != OutputFormat.TEXT:
+        # Verbosity and quiet are TEXT-only console-output controls. For
+        # Markdown and machine formats, clear them silently so document and
+        # structured output remain stable and renderable.
+        if verbosity > 0 or quiet:
+            ignored: list[str] = []
+            if verbosity > 0:
+                ignored.append(CliOpt.VERBOSE)
+                state.verbosity = 0
+            if quiet:
+                ignored.append(CliOpt.QUIET)
+                state.quiet = False
 
-    if is_machine_format(fmt):
-        if verbosity > 0:
-            console.warn(
-                f"Note: {ctx.command_path}: {CliOpt.VERBOSE} is ignored when "
-                f"{CliOpt.OUTPUT_FORMAT}={fmt.value}."
-            )
-            state.verbosity = 0
-
-        # Since human-output verbosity controls are ignored for machine formats,
-        # do not raise an error if both are present.
+            logger.debug("Ignoring TEXT-only CLI options: %s", ", ".join(ignored))
         return
 
     validate_mutually_exclusive(
         ctx,
         flags={
             CliOpt.VERBOSE: verbosity > 0,
-            CliOpt.QUIET: state.quiet,
+            CliOpt.QUIET: quiet,
         },
     )
     # Raises: TopmarkCliUsageError: If both flags are enabled for TEXT output.

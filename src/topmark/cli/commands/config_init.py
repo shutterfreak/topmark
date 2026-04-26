@@ -25,8 +25,10 @@ from topmark.cli.emitters.machine import emit_config_machine
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.cli.options import GROUP_CONTEXT_SETTINGS
+from topmark.cli.options import common_color_options
 from topmark.cli.options import common_output_format_options
-from topmark.cli.options import common_ui_options
+from topmark.cli.options import common_text_output_quiet_options
+from topmark.cli.options import common_text_output_verbosity_options
 from topmark.cli.options import config_pyproject_options
 from topmark.cli.options import config_root_options
 from topmark.cli.state import TopmarkCliState
@@ -77,7 +79,9 @@ if TYPE_CHECKING:
     ),
 )
 # Common option decorators
-@common_ui_options
+@common_color_options
+@common_text_output_verbosity_options
+@common_text_output_quiet_options
 @config_pyproject_options
 @config_root_options
 @common_output_format_options
@@ -105,8 +109,8 @@ def config_init_command(
           (no diagnostics).
 
     Args:
-        verbosity: Increase human-output detail.
-        quiet: Suppress human-readable output.
+        verbosity: Increase TEXT output detail.
+        quiet: Suppress TEXT output.
         color_mode: Color mode for text format (default: auto).
         no_color: If set, disable color mode.
         for_pyproject: If True, render as subtable under `[tool.topmark]`
@@ -187,7 +191,8 @@ def config_init_command(
         return
 
     if fmt == OutputFormat.TEXT:
-        console.print(render_config_init_text(report))
+        if not state.quiet:
+            console.print(render_config_init_text(report))
         return
 
     # Defensive guard in case OutputFormat gains new members

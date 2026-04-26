@@ -25,6 +25,9 @@ Notes:
     warnings should be handled by the caller or the emitters.
     Where human-facing config diagnostics are prepared, this module flattens
     staged config-validation logs at the presentation boundary.
+    TEXT renderers may use `verbosity_level` and `styled`; Markdown renderers
+    treat Markdown as document-oriented output and ignore TEXT-only verbosity
+    and quiet controls.
 """
 
 from __future__ import annotations
@@ -68,8 +71,8 @@ class ConfigInitHumanReport:
         error: Optional exception raised while reading the bundled template. When set, callers may
             render a warning and still proceed with the returned TOML text (which may be a
             synthesized fallback).
-        verbosity_level: Effective verbosity for gating extra details.
-        styled: Whether to style text output (OutputFormat.TEXT)
+        verbosity_level: Effective TEXT verbosity; Markdown renderers ignore it.
+        styled: Whether TEXT renderers should apply styling; Markdown renderers ignore it.
     """
 
     toml_text: str
@@ -98,8 +101,8 @@ def build_config_init_human_report(
     Args:
         for_pyproject: If `True`, nest the final document under `[tool.topmark]`.
         root: If `True`, set `[config].root = true` before any optional nesting.
-        verbosity_level: Effective verbosity for gating extra details.
-        styled: Whether to style text output (OutputFormat.TEXT).
+        verbosity_level: Effective TEXT verbosity; Markdown renderers ignore it.
+        styled: Whether TEXT renderers should apply styling; Markdown renderers ignore it.
 
     Returns:
         Prepared TOML text plus optional template read error.
@@ -149,9 +152,8 @@ class ConfigDefaultsHumanReport:
     Attributes:
         toml_text: Cleaned TOML text. When prepared with `for_pyproject=True`, the TOML is nested
             under `[tool.topmark]`.
-        verbosity_level: Effective verbosity for gating extra details.
-        styled: Whether to style text output (OutputFormat.TEXT)
-
+        verbosity_level: Effective TEXT verbosity; Markdown renderers ignore it.
+        styled: Whether TEXT renderers should apply styling; Markdown renderers ignore it.
     """
 
     toml_text: str
@@ -174,8 +176,8 @@ def build_config_defaults_human_report(
     Args:
         for_pyproject: If True, nest the TOML under `[tool.topmark]`.
         root: If True, set `root = true` (top-level or tool.topmark.root).
-        verbosity_level: Effective verbosity for gating extra details.
-        styled: Whether to style text output (OutputFormat.TEXT)
+        verbosity_level: Effective TEXT verbosity; Markdown renderers ignore it.
+        styled: Whether TEXT renderers should apply styling; Markdown renderers ignore it.
 
     Returns:
         Prepared cleaned TOML text.
@@ -209,9 +211,8 @@ class ConfigCheckHumanReport:
             (typically only included at verbosity >= 2).
         counts: Human diagnostic counts.
         diagnostics: Human diagnostic lines (ordered).
-        verbosity_level: Effective verbosity for gating extra details.
-        styled: Whether to style text output (OutputFormat.TEXT)
-
+        verbosity_level: Effective TEXT verbosity; Markdown renderers ignore it.
+        styled: Whether TEXT renderers should apply styling; Markdown renderers ignore it.
     """
 
     config_files: list[str]
@@ -300,8 +301,8 @@ class ConfigDumpHumanReport:
             `[[layers]]` entries preserve provenance metadata and expose each
             source-local TOML fragment under `[layers.toml.*]`.
         show_config_layers: Whether layered provenance output was requested.
-        verbosity_level: Effective verbosity for gating extra details.
-        styled: Whether to style text output (OutputFormat.TEXT).
+        verbosity_level: Effective TEXT verbosity; Markdown renderers ignore it.
+        styled: Whether TEXT renderers should apply styling; Markdown renderers ignore it.
     """
 
     config_files: list[str]
@@ -392,8 +393,8 @@ def build_config_dump_human_report(
     config: Config,
     resolved_toml: ResolvedTopmarkTomlSources,
     show_config_layers: bool,
-    styled: bool,
     verbosity_level: int,
+    styled: bool,
 ) -> ConfigDumpHumanReport:
     """Prepare human-facing data for `topmark config dump`.
 
@@ -407,8 +408,8 @@ def build_config_dump_human_report(
             provenance export.
         show_config_layers: If `True`, include a layered TOML provenance export
             before the flattened config dump.
-        styled: Whether to style text output (OutputFormat.TEXT).
-        verbosity_level: Effective verbosity for gating extra details.
+        verbosity_level: Effective TEXT verbosity; Markdown renderers ignore it.
+        styled: Whether TEXT renderers should apply styling; Markdown renderers ignore it.
 
     Returns:
         Prepared config file list, flattened TOML text, and optional layered

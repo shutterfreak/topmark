@@ -21,7 +21,7 @@ Scope:
 
 Design:
     - The resulting shapes (`HumanDiagnosticCounts`, `HumanDiagnosticLine`) are
-      used by both ANSI (TEXT) and Markdown emitters.
+      used by both TEXT and Markdown emitters.
     - Helpers here do not print or perform Click I/O. They may normalize text,
       map levels, and count diagnostics.
 
@@ -120,7 +120,7 @@ def prepare_human_diagnostics(
         elif level == "warning":
             warning += 1
         else:
-            # Treat unknown levels as "info" for human output stability
+            # Treat unknown levels as "info" for human output stability.
             info += 1
             if not level:
                 level = "info"

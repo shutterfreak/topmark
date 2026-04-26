@@ -11,7 +11,7 @@
 """TopMark `check` command.
 
 Checks whether the TopMark header is present, needs updating or complies.
-Performs a dry‑run check by default and applies changes when ``--apply`` is given.
+Performs a dry-run check by default and applies changes when ``--apply`` is given.
 
 Input modes supported:
   * **Paths mode (default)**: one or more PATHS and/or ``--files-from FILE``.
@@ -19,12 +19,17 @@ Input modes supported:
   * **Lists on STDIN for ...-from**: allow ``--files-from -``, ``--include-from -``,
     or ``--exclude-from -`` (exactly one may consume STDIN).
 
+Output model:
+  * TEXT output is console-oriented and may use ``-v`` / ``--quiet``.
+  * Markdown output is document-oriented and ignores TEXT-only verbosity/quiet controls.
+  * JSON/NDJSON output is machine-readable and uses the full raw result set.
+
 Examples:
   Check files and print a human summary:
 
     $ topmark check --summary src
 
-  Emit per‑file objects in NDJSON (one per line):
+  Emit per-file objects in NDJSON (one per line):
 
     $ topmark check --output-format=ndjson src pkg
 
@@ -64,6 +69,7 @@ from topmark.cli.keys import CliOpt
 from topmark.cli.options import PATH_COMMAND_CONTEXT_SETTINGS
 from topmark.cli.options import check_policy_options
 from topmark.cli.options import common_apply_and_write_options
+from topmark.cli.options import common_color_options
 from topmark.cli.options import common_config_resolution_options
 from topmark.cli.options import common_file_filtering_options
 from topmark.cli.options import common_file_type_filtering_options
@@ -71,7 +77,8 @@ from topmark.cli.options import common_from_sources_options
 from topmark.cli.options import common_header_formatting_options
 from topmark.cli.options import common_output_format_options
 from topmark.cli.options import common_stdin_content_mode_options
-from topmark.cli.options import common_ui_options
+from topmark.cli.options import common_text_output_quiet_options
+from topmark.cli.options import common_text_output_verbosity_options
 from topmark.cli.options import config_strict_checking_options
 from topmark.cli.options import pipeline_reporting_options
 from topmark.cli.options import render_diff_options
@@ -99,6 +106,7 @@ from topmark.presentation.markdown.diagnostic import render_diagnostics_markdown
 from topmark.presentation.markdown.pipeline import render_pipeline_apply_summary_markdown
 from topmark.presentation.markdown.pipeline import render_pipeline_output_markdown
 from topmark.presentation.markdown.version import render_version_footer_markdown
+from topmark.presentation.shared.pipeline import PipelineCommandHumanReport
 from topmark.presentation.text.diagnostic import render_diagnostics_text
 from topmark.presentation.text.pipeline import render_pipeline_apply_summary_text
 from topmark.presentation.text.pipeline import render_pipeline_output_text
@@ -140,7 +148,9 @@ logger: TopmarkLogger = get_logger(__name__)
         f"{CliOpt.POLICY_HEADER_MUTATION_MODE}={HeaderMutationMode.ADD_ONLY.value} src\n"
     ),
 )
-@common_ui_options
+@common_color_options
+@common_text_output_verbosity_options
+@common_text_output_quiet_options
 @config_strict_checking_options
 @common_config_resolution_options
 @common_stdin_content_mode_options
@@ -193,7 +203,7 @@ def check_command(
     diff: bool,
     # pipeline_reporting_options
     summary_mode: bool,
-    report: ReportScope,
+    report_scope: ReportScope,
     # common_header_formatting_options:
     align_fields: bool,
     relative_to: str | None,
@@ -202,9 +212,8 @@ def check_command(
 ) -> None:
     """Run the header check pipeline in dry-run or apply mode.
 
-    The command receives options parsed at the group level and reads positional
-    paths from ``click.get_current_context().args`` (Black‑style). It supports
-    three input styles:
+    The command reads positional paths from ``click.get_current_context().args``
+    (Black-style) and supports three input styles:
 
     1. Paths mode (default): PATHS and/or ``--files-from FILE``.
     2. Content-on-STDIN: use ``-`` as the sole PATH **and** provide ``--stdin-filename``.
@@ -212,14 +221,14 @@ def check_command(
        ``--include-from -``, or ``--exclude-from -`` (exactly one may consume STDIN).
 
     Args:
-        verbosity: Increase human-output detail.
-        quiet: Suppress human-readable output.
+        verbosity: Increase TEXT output detail.
+        quiet: Suppress TEXT output.
         color_mode: Set the color mode (default: auto).
         no_color: bool: If set, disable color mode.
         strict_config_checking: if True, report warnings as errors.
         no_config: If True, skip loading project/user configuration files.
         config_files: Additional configuration file paths to load and merge.
-        stdin_filename: Assumed filename when  reading content from STDIN).
+        stdin_filename: Assumed filename when reading content from STDIN).
         files_from: Files that contain newline‑delimited *paths* to add to the
             candidate set before filtering. Use ``-`` to read from STDIN.
         include_from: Files that contain include glob patterns (one per line).
@@ -250,11 +259,12 @@ def check_command(
             or writing to STDOUT (default: atomic writer).
         diff: Show unified diffs of header changes (human output only).
         summary_mode: Show outcome counts instead of per‑file details.
-        report: Reporting scope for human per-file output (`actionable`, `noncompliant`, `all`).
-            Ignored for summary mode and machine-readable formats.
+        report_scope: Reporting scope for human per-file output (`actionable`, `noncompliant`,
+            `all`). Ignored for summary mode and machine-readable formats.
         align_fields: Whether to align header fields when rendering (captured in config).
         relative_to: Base path used only for resolving header metadata (e.g., `file_relpath`).
         output_format: Output format to use (``text``, ``markdown``, ``json``, or ``ndjson``).
+            Verbosity and quiet controls apply only to TEXT output.
 
     Raises:
         TopmarkCliIOError: If an I/O error occurred (read/write).
@@ -275,7 +285,7 @@ def check_command(
     # Effective output format (stored early so shared initialization sees it).
     state.output_format = output_format or OutputFormat.TEXT
 
-    # Initialize the common state (verbosity, color mode) and initialize console
+    # Initialize typed CLI state (TEXT verbosity/quiet, color mode, console).
     init_common_state(
         ctx,
         verbosity=verbosity,
@@ -284,13 +294,13 @@ def check_command(
         no_color=no_color,
     )
 
-    # Retrieve effective human facing program-output verbosity for gating extra details
+    # Effective TEXT verbosity for console-oriented progressive disclosure.
     verbosity_level: int = state.verbosity
 
-    # Machine metadata
+    # Machine metadata.
     meta: MetaPayload = build_meta_payload()
 
-    # Output format
+    # Effective output format.
     fmt: OutputFormat = state.output_format
 
     apply_color_policy_for_output_format(ctx, fmt=fmt)
@@ -310,10 +320,11 @@ def check_command(
         ctx,
         output_format=output_format or OutputFormat.TEXT,
         summary_mode=summary_mode,
-        report=report,
+        report_scope=report_scope,
     )
 
-    # injected by tests via CliRunner.invoke(..., obj=TopmarkCliState(prune_pipeline_views=True)):
+    # Test harnesses may inject this via
+    # `CliRunner.invoke(..., obj=TopmarkCliState(prune_pipeline_views=True))`.
     prune_views: bool = state.prune_pipeline_views
 
     # Store command-scoped runtime values in typed state:
@@ -330,7 +341,7 @@ def check_command(
         allow_content_probe=allow_content_probe,
     )
 
-    # === Build layered config, runtime options, and file list ===
+    # Build layered config, runtime options, and file list.
     plan: InputPlan = plan_cli_inputs(
         ctx=ctx,
         files_from=files_from,
@@ -382,7 +393,7 @@ def check_command(
 
     logger.trace("Run config after layered CLI overrides: %s", config)
 
-    # Validate the config
+    # Validate the effective configuration.
     try:
         ensure_config_valid(
             config,
@@ -392,25 +403,24 @@ def check_command(
         console.error(f"Processing stopped: {exc}")
         ctx.exit(ExitCode.CONFIG_ERROR)
 
-    if verbosity_level > 0:
-        # Display flattened config validation diagnostics before resolving files.
-        flattened_diagnostics: FrozenDiagnosticLog = config.validation_logs.flattened()
+    # Display config validation diagnostics before resolving files.
+    # TEXT keeps these behind -v; Markdown renders diagnostics whenever present.
+    flattened_diagnostics: FrozenDiagnosticLog = config.validation_logs.flattened()
 
-        if fmt == OutputFormat.TEXT:
-            console.print(
-                render_diagnostics_text(
-                    diagnostics=flattened_diagnostics,
-                    verbosity_level=verbosity_level,
-                    color=enable_color,
-                )
+    if fmt == OutputFormat.TEXT and verbosity_level > 0 and not state.quiet:
+        console.print(
+            render_diagnostics_text(
+                diagnostics=flattened_diagnostics,
+                verbosity_level=verbosity_level,
+                color=enable_color,
             )
-        elif fmt == OutputFormat.MARKDOWN:
-            console.print(
-                render_diagnostics_markdown(
-                    diagnostics=flattened_diagnostics,
-                    verbosity_level=verbosity_level,
-                )
+        )
+    elif fmt == OutputFormat.MARKDOWN and len(flattened_diagnostics) > 0:
+        console.print(
+            render_diagnostics_markdown(
+                diagnostics=flattened_diagnostics,
             )
+        )
 
     temp_path: Path | None = plan.temp_path  # for cleanup/STDIN-apply branch
 
@@ -420,14 +430,11 @@ def check_command(
         temp_path=temp_path,
     )
 
-    # Use Click's text stream for stdin so CliRunner/invoke input is read reliably
-    # stdin_stream = click.get_text_stream("stdin") if stdin_text else None
-
     if exit_if_no_files(file_list, console=console, styled=enable_color):
         # Nothing to do
         return
 
-    # Choose the concrete pipeline variant
+    # Choose and run the concrete pipeline variant.
     pipeline_kind: PipelineKindLiteral = "check"
     pipeline: Sequence[Step[ProcessingContext]] = select_pipeline(
         pipeline_kind,
@@ -454,7 +461,7 @@ def check_command(
     # - Human non-summary output uses the filtered per-file view.
     filtered: ReportFilterResult = filter_results_for_report(
         results,
-        report=report,
+        report_scope=report_scope,
         would_change=effective_would_add_or_update,
     )
 
@@ -469,37 +476,25 @@ def check_command(
             fmt=fmt,
             summary_mode=summary_mode,
         )
-    elif fmt == OutputFormat.TEXT:
-        console.print(
-            render_pipeline_output_text(
-                cmd=CliCmd.CHECK,
-                pipeline_kind=pipeline_kind,
-                file_list_total=len(file_list),
-                view_results=human_results,
-                report=report,
-                unsupported_count=filtered.unsupported_count_all,
-                verbosity_level=verbosity_level,
-                summary_mode=summary_mode,
-                show_diffs=diff,
-                apply_changes=apply_changes,
-                styled=enable_color,
-            )
+    else:
+        report = PipelineCommandHumanReport(
+            cmd=CliCmd.CHECK,
+            pipeline_kind=pipeline_kind,
+            file_list_total=len(file_list),
+            view_results=human_results,
+            report_scope=report_scope,
+            unsupported_count=filtered.unsupported_count_all,
+            verbosity_level=verbosity_level,
+            summary_mode=summary_mode,
+            show_diffs=diff,
+            apply_changes=apply_changes,
+            styled=enable_color,
         )
-    elif fmt == OutputFormat.MARKDOWN:
-        console.print(
-            render_pipeline_output_markdown(
-                cmd=CliCmd.CHECK,
-                pipeline_kind=pipeline_kind,
-                file_list_total=len(file_list),
-                view_results=human_results,
-                report=report,
-                unsupported_count=filtered.unsupported_count_all,
-                verbosity_level=verbosity_level,
-                summary_mode=summary_mode,
-                show_diffs=diff,
-                apply_changes=apply_changes,
-            )
-        )
+
+        if fmt == OutputFormat.TEXT and not state.quiet:
+            console.print(render_pipeline_output_text(report))
+        elif fmt == OutputFormat.MARKDOWN:
+            console.print(render_pipeline_output_markdown(report))
 
     if apply_changes:
         # Writes (only when --apply is set)
@@ -511,12 +506,12 @@ def check_command(
             safe_unlink(temp_path)
             return
         else:
-            # Count outcomes after the pipeline writer step finalized statuses.
+            # Count outcomes after writer statuses have been finalized.
             written: int = sum(1 for r in results if r.status.write == WriteStatus.WRITTEN)
             failed: int = sum(1 for r in results if r.status.write == WriteStatus.FAILED)
 
-            # Emit summary of applied changes.
-            if fmt == OutputFormat.TEXT:
+            # Emit apply summary. TEXT honors --quiet; Markdown remains document-oriented.
+            if fmt == OutputFormat.TEXT and not state.quiet:
                 console.print(
                     render_pipeline_apply_summary_text(
                         command_path=ctx.command_path,
@@ -557,4 +552,4 @@ def check_command(
     if temp_path and temp_path.exists():
         safe_unlink(temp_path)
 
-    # No explicit return needed for Click commands.
+    # No explicit return is needed for Click commands.

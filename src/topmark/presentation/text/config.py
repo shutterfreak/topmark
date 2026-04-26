@@ -12,6 +12,8 @@
 
 This module is reserved for Click-free helpers that render human-facing config
 output in `OutputFormat.TEXT`. These generate no I/O.
+
+TEXT output may use `verbosity_level` for console-oriented progressive disclosure.
 """
 
 from __future__ import annotations

@@ -14,8 +14,10 @@ This module contains Click-free Markdown renderers used by CLI commands to produ
 documentation-friendly output. Rendering is pure: functions return a string and perform no I/O.
 
 Notes:
-    These renderers use shared Click-free "human report" preparers to ensure TEXT and MARKDOWN
-    outputs remain equivalent by construction.
+    These renderers use shared Click-free "human report" preparers so TEXT and MARKDOWN
+    expose equivalent information. Markdown output is document-oriented and intentionally
+    ignores TEXT-only verbosity and quiet controls; `show_details` / `--long` controls
+    registry detail depth across human formats.
 
 See Also:
 - [`topmark.presentation.shared.registry`][topmark.presentation.shared.registry]
@@ -48,6 +50,8 @@ def render_filetype_policy_markdown(policy: FileTypePolicyHumanItem) -> str:
 
 def render_filetypes_markdown(report: FileTypesHumanReport) -> str:
     """Render the `filetypes` registry report as Markdown.
+
+    Markdown rendering ignores TEXT-only verbosity and quiet controls.
 
     Args:
         report: Prepared Click-free report model produced by
@@ -136,6 +140,8 @@ def render_filetypes_markdown(report: FileTypesHumanReport) -> str:
 def render_processors_markdown(report: ProcessorsHumanReport) -> str:
     """Render the `processors` registry report as Markdown.
 
+    Markdown rendering ignores TEXT-only verbosity and quiet controls.
+
     Args:
         report: Prepared Click-free report model produced by
             `build_processors_human_report`.
@@ -209,6 +215,8 @@ def render_processors_markdown(report: ProcessorsHumanReport) -> str:
 def render_bindings_markdown(report: BindingsHumanReport) -> str:
     """Render the `bindings` registry report as Markdown.
 
+    Markdown rendering ignores TEXT-only verbosity and quiet controls.
+
     Args:
         report: Prepared Click-free report model produced by
             `build_bindings_human_report`.
@@ -217,7 +225,7 @@ def render_bindings_markdown(report: BindingsHumanReport) -> str:
         A Markdown document suitable for printing to stdout.
     """
     lines: list[str] = []
-    lines.append("# Effective File Type Bindings\n")
+    lines.append("# Effective File-Type-to-Processor Bindings\n")
     lines.append(
         f"TopMark version **{TOPMARK_VERSION}** currently resolves the following effective "
         f"file-type-to-processor bindings:\n"

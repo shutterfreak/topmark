@@ -103,8 +103,34 @@ def test_version_quiet_does_not_suppress_markdown_output() -> None:
 
     assert_SUCCESS(result)
 
-    out: str = result.output.strip()
-    assert out == TOPMARK_VERSION
+    out: str = result.output
+    assert "# TopMark Version" in out
+    assert f"**Version:** `{TOPMARK_VERSION}`" in out
+
+
+def test_version_verbose_does_not_change_markdown_output() -> None:
+    """`version -v --output-format markdown` should render stable Markdown."""
+    base_result: Result = run_cli(
+        [
+            CliCmd.VERSION,
+            CliOpt.NO_COLOR_MODE,
+            CliOpt.OUTPUT_FORMAT,
+            "markdown",
+        ]
+    )
+    verbose_result: Result = run_cli(
+        [
+            CliCmd.VERSION,
+            CliOpt.NO_COLOR_MODE,
+            CliOpt.VERBOSE,
+            CliOpt.OUTPUT_FORMAT,
+            "markdown",
+        ]
+    )
+
+    assert_SUCCESS(base_result)
+    assert_SUCCESS(verbose_result)
+    assert verbose_result.output == base_result.output
 
 
 @pytest.mark.parametrize("use_semver", [False, True])
@@ -127,12 +153,12 @@ def test_version_markdown_format(use_semver: bool) -> None:
 
     if use_semver:
         expected: str = convert_pep440_to_semver(TOPMARK_VERSION)
-        assert expected in out  # don’t over-specify formatting around the value
+        assert expected in out  # Do not over-specify Markdown formatting around the value.
         # Validate the version token itself (not the whole markdown block)
         assert re.fullmatch(SEMVER_RE, expected) is not None
     else:
         assert TOPMARK_VERSION in out
-        # Extract the first version-like token and validate it’s PEP 440.
+        # Validate the expected version token as PEP 440.
         # We keep this flexible in case the markdown includes code spans or prefixes.
         # Fallback: use the exact TOPMARK_VERSION we already saw in the string.
         candidate: str = TOPMARK_VERSION

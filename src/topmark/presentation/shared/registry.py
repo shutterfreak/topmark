@@ -11,13 +11,16 @@
 """Shared Click-free preparers for human-facing registry output.
 
 This module prepares typed, human-facing report models for registry-related CLI commands. The
-prepared data is intentionally presentation-agnostic and reused by:
+prepared data is intentionally Click-free and reused by:
 
 - TEXT renderers under [`topmark.presentation.text`][topmark.presentation.text]
   (ANSI/console styling), and
 - Markdown renderers under
   [`topmark.presentation.markdown`][topmark.presentation.markdown]
   (documentation-friendly output).
+
+TEXT renderers may use `verbosity_level` and `styled`; Markdown renderers treat
+Markdown as document-oriented output and use `show_details` as the shared detail-depth control.
 
 Notes:
     This is a "human output" layer. It is distinct from
@@ -252,8 +255,8 @@ def build_filetypes_human_report(
 
     Args:
         show_details: Whether consumers intend to display extended details.
-        verbosity_level: Effective verbosity (consumers may ignore).
-        styled: Whether to render styled text output.
+        verbosity_level: Effective TEXT verbosity; Markdown renderers ignore it.
+        styled: Whether TEXT renderers should apply styling; Markdown renderers ignore it.
 
     Returns:
         A `FileTypesHumanReport` with one item per file type.
@@ -296,8 +299,8 @@ def build_processors_human_report(
 
     Args:
         show_details: Whether consumers intend to display extended details.
-        verbosity_level: Effective verbosity (consumers may ignore).
-        styled: Whether to render styled text output.
+        verbosity_level: Effective TEXT verbosity; Markdown renderers ignore it.
+        styled: Whether TEXT renderers should apply styling; Markdown renderers ignore it.
 
     Returns:
         A `ProcessorsHumanReport` with one item per registered processor.
@@ -338,8 +341,8 @@ def build_bindings_human_report(
 
     Args:
         show_details: Whether consumers intend to display extended details.
-        verbosity_level: Effective verbosity (consumers may ignore).
-        styled: Whether to render styled text output.
+        verbosity_level: Effective TEXT verbosity; Markdown renderers ignore it.
+        styled: Whether TEXT renderers should apply styling; Markdown renderers ignore it.
 
     Returns:
         A `BindingsHumanReport` with effective bindings, unbound file types, and

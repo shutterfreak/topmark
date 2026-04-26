@@ -308,6 +308,14 @@ class FrozenDiagnosticLog:
         """Iterate over contained diagnostics in insertion order."""
         return iter(self.items)
 
+    def __len__(self) -> int:
+        """Return the number of diagnostics stored in this log.
+
+        Returns:
+            The number of diagnostic entries.
+        """
+        return len(self.items)
+
     def thaw(self) -> DiagnosticLog:
         """Return a mutable copy of this frozen diagnostic log."""
         return DiagnosticLog(items=list(self.items))

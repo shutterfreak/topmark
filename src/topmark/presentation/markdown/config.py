@@ -136,20 +136,18 @@ def render_config_check_markdown(
         title="Diagnostics",
         counts=counts,
         diagnostics=diags,
-        verbosity_level=prepared.verbosity_level,
     )
     if diag_md:
         lines.append(diag_md.rstrip())
         lines.append("")
 
     # Config files
-    if prepared.verbosity_level > 0:
-        lines.append(f"### Config files processed ({len(prepared.config_files)})\n")
-        for i, p in enumerate(prepared.config_files, start=1):
-            lines.append(f"{i}. {p}")
-        lines.append("")
+    lines.append(f"### Config files processed ({len(prepared.config_files)})\n")
+    for i, p in enumerate(prepared.config_files, start=1):
+        lines.append(f"{i}. {p}")
+    lines.append("")
 
-    if prepared.verbosity_level > 1 and prepared.merged_toml is not None:
+    if prepared.merged_toml is not None:
         lines.append("### Effective merged TOML\n")
         lines.append("```toml")
         lines.append(prepared.merged_toml.rstrip())
@@ -186,9 +184,8 @@ def render_config_dump_markdown(
             ).rstrip()
         )
         lines.append("")
-        if prepared.verbosity_level > 0:
-            lines.append("---")
-            lines.append("")
+        lines.append("---")
+        lines.append("")
         lines.append(
             render_toml_markdown(
                 heading="TopMark Config Dump (Flattened TOML)",
@@ -205,11 +202,10 @@ def render_config_dump_markdown(
             ).rstrip()
         )
 
-    if prepared.verbosity_level > 0:
-        lines.append("")
-        lines.append(f"### Config files processed ({len(prepared.config_files)})\n")
-        for i, p in enumerate(prepared.config_files, start=1):
-            lines.append(f"{i}. {p}")
+    lines.append("")
+    lines.append(f"### Config files processed ({len(prepared.config_files)})\n")
+    for i, p in enumerate(prepared.config_files, start=1):
+        lines.append(f"{i}. {p}")
 
     lines.append(render_version_footer_markdown())
 

@@ -128,7 +128,7 @@ def _needs_attention(r: ProcessingContext) -> bool:
 def filter_results_for_report(
     results: list[ProcessingContext],
     *,
-    report: ReportScope,
+    report_scope: ReportScope,
     would_change: Callable[[ProcessingContext], bool],
 ) -> ReportFilterResult:
     """Filter raw pipeline results for human per-file rendering.
@@ -147,7 +147,7 @@ def filter_results_for_report(
 
     Args:
         results: Raw pipeline results.
-        report: Which entries to include in the human per-file listing.
+        report_scope: Active report scope for the current view.
         would_change: Predicate describing whether a result represents a file
             TopMark would change (or did change, depending on caller context).
 
@@ -161,7 +161,7 @@ def filter_results_for_report(
     count: int = len(results)
     skipped_count: int
 
-    if report == ReportScope.ALL:
+    if report_scope == ReportScope.ALL:
         skipped_count = 0
         return ReportFilterResult(
             view_results=results,
@@ -172,7 +172,7 @@ def filter_results_for_report(
     def is_noncompliant(r: ProcessingContext) -> bool:
         return would_change(r) or _needs_attention(r)
 
-    if report == ReportScope.NONCOMPLIANT:
+    if report_scope == ReportScope.NONCOMPLIANT:
         view: list[ProcessingContext] = [r for r in results if is_noncompliant(r)]
         skipped_count = count - len(view)
         return ReportFilterResult(
