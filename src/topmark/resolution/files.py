@@ -44,9 +44,8 @@ from topmark.registry.filetypes import FileTypeRegistry
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from pathspec import PathSpec
-
     from topmark.config.model import Config
+    from topmark.config.types import GitIgnorePathSpec
     from topmark.config.types import PatternSource
     from topmark.core.logging import TopmarkLogger
     from topmark.filetypes.model import FileType
@@ -160,7 +159,7 @@ def _candidate_match_strings(
 def _compile_matchers(
     pattern_groups: tuple[PatternGroup, ...],
     pattern_sources: tuple[PatternSource, ...],
-) -> list[tuple[PathSpec, Path]]:
+) -> list[tuple[GitIgnorePathSpec, Path]]:
     """Compile matchers from pattern groups and pattern sources.
 
     Returns a list of (spec, base) tuples.
@@ -170,7 +169,7 @@ def _compile_matchers(
 
     Empty groups and sources that yield no patterns are ignored.
     """
-    specs: list[tuple[PathSpec, Path]] = []
+    specs: list[tuple[GitIgnorePathSpec, Path]] = []
 
     for pattern_group in pattern_groups:
         if pattern_group.is_empty():
@@ -189,7 +188,7 @@ def _compile_matchers(
 
 
 def _matches_any(
-    specs: list[tuple[PathSpec, Path]],
+    specs: list[tuple[GitIgnorePathSpec, Path]],
     path: Path,
 ) -> bool:
     """Return True if `path` matches any compiled ``(spec, base)`` matcher.
@@ -357,7 +356,7 @@ def resolve_file_list(
     # -------- Precompute exclude specs to allow directory-level pruning --------
 
     # Each exclude spec is paired with its interpretation base directory.
-    exclude_specs_all: list[tuple[PathSpec, Path]] = _compile_matchers(
+    exclude_specs_all: list[tuple[GitIgnorePathSpec, Path]] = _compile_matchers(
         exclude_pattern_groups,
         exclude_sources,
     )
@@ -507,7 +506,7 @@ def resolve_file_list(
     any_includes: bool = bool(include_pattern_groups) or bool(include_sources)
     if any_includes:
         kept: set[Path] = set()
-        include_specs_all: list[tuple[PathSpec, Path]] = _compile_matchers(
+        include_specs_all: list[tuple[GitIgnorePathSpec, Path]] = _compile_matchers(
             include_pattern_groups,
             include_sources,
         )

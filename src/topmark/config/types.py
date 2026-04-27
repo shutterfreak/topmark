@@ -32,6 +32,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from pathspec import PathSpec
+from pathspec.patterns.gitignore.basic import GitIgnoreBasicPattern
 
 from topmark.core.enum_mixins import KeyedStrEnum
 from topmark.core.logging import get_logger
@@ -42,6 +43,8 @@ if TYPE_CHECKING:
 
     from topmark.core.logging import TopmarkLogger
 
+GitIgnorePathSpec = PathSpec[GitIgnoreBasicPattern]
+
 logger: TopmarkLogger = get_logger(__name__)
 
 
@@ -49,7 +52,7 @@ logger: TopmarkLogger = get_logger(__name__)
 
 
 @functools.lru_cache(maxsize=256)
-def _compile_gitignore_pathspec_cached(patterns: tuple[str, ...]) -> PathSpec:
+def _compile_gitignore_pathspec_cached(patterns: tuple[str, ...]) -> GitIgnorePathSpec:
     """Compile gitignore-style patterns into a cached `PathSpec`.
 
     Args:
@@ -63,7 +66,7 @@ def _compile_gitignore_pathspec_cached(patterns: tuple[str, ...]) -> PathSpec:
     return PathSpec.from_lines("gitignore", patterns)
 
 
-def compile_gitignore_pathspec(patterns: Iterable[str]) -> PathSpec:
+def compile_gitignore_pathspec(patterns: Iterable[str]) -> GitIgnorePathSpec:
     """Compile gitignore-style patterns into a `PathSpec`.
 
     This centralizes `PathSpec.from_lines(GitIgnoreBasicPattern, ...)` usage so all pattern
@@ -123,7 +126,7 @@ class PatternGroup:
         """Return True if this group contains no patterns."""
         return not self.patterns
 
-    def to_pathspec(self) -> PathSpec:
+    def to_pathspec(self) -> GitIgnorePathSpec:
         """Compile and return a PathSpec for these patterns."""
         return _compile_gitignore_pathspec_cached(self.patterns)
 
