@@ -11,7 +11,7 @@
 """Payload builders for pipeline-related machine output.
 
 This module contains **pure** helpers that build the *payload fragments* used by
-pipeline machine outputs for `check` / `strip`.
+pipeline machine outputs for `check`, `strip`, and `probe`.
 
 Scope:
 
@@ -47,6 +47,124 @@ if TYPE_CHECKING:
 
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.machine.schemas import OutcomeSummaryRow
+    from topmark.resolution.probe import ResolutionProbeCandidate
+    from topmark.resolution.probe import ResolutionProbeMatchSignals
+    from topmark.resolution.probe import ResolutionProbeResult
+    from topmark.resolution.probe import ResolutionProbeSelection
+
+
+def build_probe_selection_payload(
+    selection: ResolutionProbeSelection | None,
+) -> dict[str, object] | None:
+    """Build a machine payload for a probe-selected file type or processor.
+
+    Args:
+        selection: Probe selection to serialize, or `None`.
+
+    Returns:
+        JSON-compatible selection payload, or `None`.
+    """
+    if selection is None:
+        return None
+
+    payload: dict[str, object] = {
+        "qualified_key": selection.qualified_key,
+        "namespace": selection.namespace,
+        "local_key": selection.local_key,
+    }
+    if selection.score is not None:
+        payload["score"] = selection.score
+    return payload
+
+
+def build_probe_match_payload(
+    match: ResolutionProbeMatchSignals,
+) -> dict[str, object]:
+    """Build a machine payload for probe match signals.
+
+    Args:
+        match: Probe-visible match signals.
+
+    Returns:
+        JSON-compatible match payload.
+    """
+    return {
+        "extension": match.extension,
+        "filename": match.filename,
+        "pattern": match.pattern,
+        "content_probe_allowed": match.content_probe_allowed,
+        "content_match": match.content_match,
+        "content_error": match.content_error,
+    }
+
+
+def build_probe_candidate_payload(
+    candidate: ResolutionProbeCandidate,
+) -> dict[str, object]:
+    """Build a machine payload for one scored probe candidate.
+
+    Args:
+        candidate: Probe candidate to serialize.
+
+    Returns:
+        JSON-compatible candidate payload.
+    """
+    return {
+        "qualified_key": candidate.qualified_key,
+        "namespace": candidate.namespace,
+        "local_key": candidate.local_key,
+        "score": candidate.score,
+        "selected": candidate.selected,
+        "tie_break_rank": candidate.tie_break_rank,
+        "match": build_probe_match_payload(candidate.match),
+    }
+
+
+def build_probe_result_payload(
+    result: ProcessingContext,
+) -> dict[str, object]:
+    """Build a machine payload for one resolution probe context.
+
+    Args:
+        result: Processing context containing a resolution probe result.
+
+    Returns:
+        JSON-compatible probe result payload.
+    """
+    probe: ResolutionProbeResult | None = result.resolution_probe
+    if probe is None:
+        return {
+            "path": str(result.path),
+            "status": "probe_missing",
+            "reason": "no_resolution_probe_result",
+            "selected_file_type": None,
+            "selected_processor": None,
+            "candidates": [],
+        }
+
+    return {
+        "path": str(probe.path),
+        "status": probe.status.value,
+        "reason": probe.reason.value,
+        "selected_file_type": build_probe_selection_payload(probe.selected_file_type),
+        "selected_processor": build_probe_selection_payload(probe.selected_processor),
+        "candidates": [build_probe_candidate_payload(candidate) for candidate in probe.candidates],
+    }
+
+
+def iter_probe_results_payload_items(
+    results: list[ProcessingContext],
+) -> Iterator[dict[str, object]]:
+    """Yield per-file resolution probe payloads for machine output.
+
+    Args:
+        results: Ordered list of per-file processing contexts.
+
+    Yields:
+        One probe result payload per processed context, in the same order as `results`.
+    """
+    for result in results:
+        yield build_probe_result_payload(result)
 
 
 def iter_processing_results_payload_items(

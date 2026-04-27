@@ -52,11 +52,15 @@ class PipelineKey(str, Enum):
     """Stable pipeline-domain keys for machine-readable payloads.
 
     Attributes:
+        PROBE: Container key for a single probe result.
+        PROBES: Container key for a JSON list of probe results.
         RESULT: Container key for a single processing result.
         RESULTS: Container key for a JSON list of processing results.
         SUMMARY: Container key for pipeline outcome summaries.
     """
 
+    PROBE = "probe"
+    PROBES = "probes"
     RESULT = "result"
     RESULTS = "results"
     SUMMARY = "summary"
@@ -66,10 +70,12 @@ class PipelineKind(str, Enum):
     """Stable NDJSON kinds emitted by the pipeline machine-output domain.
 
     Attributes:
+        PROBE: One per-file resolution probe record.
         RESULT: One per-file processing result record.
         SUMMARY: One per-summary-row record.
     """
 
+    PROBE = "probe"
     RESULT = "result"
     SUMMARY = "summary"
 

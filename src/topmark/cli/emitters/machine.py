@@ -25,6 +25,7 @@ from topmark.config.machine.serializers import serialize_config_check
 from topmark.config.machine.serializers import serialize_config_diagnostics
 from topmark.core.formats import OutputFormat
 from topmark.core.formats import is_machine_format
+from topmark.pipeline.machine.serializers import serialize_probe_results
 from topmark.pipeline.machine.serializers import serialize_processing_results
 from topmark.registry.machine.serializers import serialize_bindings
 from topmark.registry.machine.serializers import serialize_filetypes
@@ -63,6 +64,40 @@ def emit_machine(
     else:
         for line in serialized:
             console.print(line, nl=nl)
+
+
+def emit_probe_results_machine(
+    *,
+    console: ConsoleProtocol,
+    meta: MetaPayload,
+    config: Config,
+    results: list[ProcessingContext],
+    fmt: OutputFormat,
+) -> None:
+    """Emit topmark probe machine output.
+
+    Args:
+        console: Console used to emit the already-serialized machine output.
+        meta: The machine metadata payload.
+        config: The Config instance.
+        results: Ordered list of per-file probe results.
+        fmt: Output format (`OutputFormat.JSON` or `OutputFormat.NDJSON`).
+
+    Raises:
+        ValueError: if `fmt` is not a machine format.
+    """
+    if not is_machine_format(fmt):
+        raise ValueError(f"Unsupported machine output format: {fmt!r}")
+
+    serialized: str | Iterator[str] = serialize_probe_results(
+        meta=meta,
+        config=config,
+        results=results,
+        fmt=fmt,
+    )
+
+    nl: bool = fmt != OutputFormat.JSON
+    emit_machine(serialized, console=console, nl=nl)
 
 
 def emit_processing_results_machine(

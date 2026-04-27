@@ -66,6 +66,7 @@ if TYPE_CHECKING:
     from topmark.filetypes.model import FileType
     from topmark.pipeline.protocols import Step
     from topmark.processors.base import HeaderProcessor
+    from topmark.resolution.probe import ResolutionProbeResult
     from topmark.runtime.model import RunOptions
 
 
@@ -111,6 +112,8 @@ class ProcessingContext:
         timestamp: The file path's modification timestamp. This is distinct from
             `run_options.started_at`, which records when the invocation began.
         steps: Ordered list of pipeline steps that have been executed for this context.
+        resolution_probe: Probe result explaining file type and processor resolution for the
+            current file path.
         file_type: Resolved file type for the file (for example, a Python or Markdown file type),
             if applicable.
         status: Aggregated status for each pipeline axis, kept as the single source of truth for
@@ -160,6 +163,8 @@ class ProcessingContext:
 
     timestamp: datetime | None = None
     steps: list[Step[ProcessingContext]] = field(default_factory=lambda: [])
+
+    resolution_probe: ResolutionProbeResult | None = None
 
     file_type: FileType | None = None  # Resolved file type (e.g., PythonFileType)
     status: ProcessingStatus = field(default_factory=ProcessingStatus)

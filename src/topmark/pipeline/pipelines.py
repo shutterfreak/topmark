@@ -16,6 +16,7 @@ to pipelines. Pipelines are built from class-based steps that implement the
 
 Overview
 --------
+- ``PROBE``: probe
 - ``SCAN``: resolve → sniff → read → scan
 - ``CHECK_RENDER``: SCAN + build → render
 - ``CHECK`` (summary): CHECK_RENDER + compare
@@ -29,6 +30,7 @@ Mermaid (orientation)
 flowchart TD
 
   subgraph Discovery
+    P[prober]
     R[resolver]
     S[sniffer]
     D[reader]
@@ -46,9 +48,9 @@ flowchart TD
   end
 
   subgraph Strip
-    P[stripper]
+    X[stripper]
 
-    N --> P --> C
+    N --> X --> C
   end
 
   subgraph Mutations
@@ -80,6 +82,7 @@ from topmark.pipeline.steps import builder
 from topmark.pipeline.steps import comparer
 from topmark.pipeline.steps import patcher
 from topmark.pipeline.steps import planner
+from topmark.pipeline.steps import prober
 from topmark.pipeline.steps import reader
 from topmark.pipeline.steps import renderer
 from topmark.pipeline.steps import resolver
@@ -88,31 +91,36 @@ from topmark.pipeline.steps import sniffer
 from topmark.pipeline.steps import stripper
 from topmark.pipeline.steps import writer
 
-# Perform basic TopMark header scanning:
+PROBE_PIPELINE: Final[tuple[Step[ProcessingContext], ...]] = (
+    prober.ProberStep(),  # Resolve file type and assign header processor for the file
+)
+"""Probe file type and header processor for a given file."""
+
 SCAN_PIPELINE: Final[tuple[Step[ProcessingContext], ...]] = (
     resolver.ResolverStep(),  # Resolve file type and assign header processor for the file
     sniffer.SnifferStep(),  # Cheap pre-read checks and newline policy
     reader.ReaderStep(),  # Read the file
     scanner.ScannerStep(),  # Scan the file for a header
 )
+"""Perform basic TopMark header scanning."""
 
-# Render-only pipeline: resolves, sniffs, reads, scans, builds, and renders
-# (no compare/update/patch):
 CHECK_RENDER_PIPELINE: Final[tuple[Step[ProcessingContext], ...]] = SCAN_PIPELINE + (
     builder.BuilderStep(),  # Build the dict with expected header fields
     renderer.RendererStep(),  # Render the updated header
 )
+"""Render-only pipeline: resolves, sniffs, reads, scans, builds, and renders
+(no compare/update/patch)."""
 
-# A lightweight pipeline that stops after comparison (no update/patch):
 CHECK_SUMMMARY_PIPELINE: Final[tuple[Step[ProcessingContext], ...]] = CHECK_RENDER_PIPELINE + (
     comparer.ComparerStep(),  # Compare existing header with rendered new header
 )
+"""A lightweight pipeline that stops after comparison (no update/patch)."""
 
-# Only for generating unified diffs:
 CHECK_PATCH_PIPELINE: Final[tuple[Step[ProcessingContext], ...]] = CHECK_SUMMMARY_PIPELINE + (
     planner.PlannerStep(),  # Update the file
     patcher.PatcherStep(),  # Generate unified diff (needs comparer.compare)
 )
+"""Only for generating unified diffs."""
 
 CHECK_APPLY_PIPELINE: Final[tuple[Step[ProcessingContext], ...]] = CHECK_SUMMMARY_PIPELINE + (
     planner.PlannerStep(),  # Update the file
@@ -125,22 +133,23 @@ CHECK_APPLY_PATCH_PIPELINE: Final[tuple[Step[ProcessingContext], ...]] = CHECK_S
     writer.WriterStep(),  # Write changes to file/stdout
 )
 
-# NOTE: we do not run ComparerStep in a strip pipeline
 STRIP_PIPELINE: Final[tuple[Step[ProcessingContext], ...]] = SCAN_PIPELINE + (
     stripper.StripperStep(),  # Strip the header from the file
 )
+"""NOTE: we do not run ComparerStep in a strip pipeline."""
 
-# Only for generating unified diffs:
 STRIP_PATCH_PIPELINE: Final[tuple[Step[ProcessingContext], ...]] = STRIP_PIPELINE + (
     comparer.ComparerStep(),  # Compare existing header with rendered stripped header
     planner.PlannerStep(),  # Update the file
     patcher.PatcherStep(),  # Generate unified diff (needs comparer.compare)
 )
+"""Only for generating unified diffs."""
 
 STRIP_APPLY_PIPELINE: Final[tuple[Step[ProcessingContext], ...]] = STRIP_PIPELINE + (
     planner.PlannerStep(),  # Update the file
     writer.WriterStep(),  # Write changes to file/stdout
 )
+
 STRIP_APPLY_PATCH_PIPELINE: Final[tuple[Step[ProcessingContext], ...]] = STRIP_PIPELINE + (
     comparer.ComparerStep(),  # Compare existing header with rendered stripped header
     planner.PlannerStep(),  # Update the file
@@ -153,6 +162,8 @@ class Pipeline(tuple[Step[ProcessingContext], ...], Enum):
     """Available execution pipelines for file processing, mapped to their step sequences."""
 
     # Note: Enum members use underscores instead of hyphens for valid Python identifiers.
+
+    PROBE = PROBE_PIPELINE
 
     SCAN = SCAN_PIPELINE
     CHECK_RENDER = CHECK_RENDER_PIPELINE

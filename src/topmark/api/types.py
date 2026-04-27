@@ -62,10 +62,18 @@ Values are typed as `object` intentionally so the public boundary does not leak
 layer.
 """
 
-DiagnosticLevelLiteral = Literal["info", "warning", "error"]
+DiagnosticLevelLiteral = Literal[
+    "info",
+    "warning",
+    "error",
+]
 """Allowed public diagnostic severity tokens."""
 
-PipelineKindLiteral = Literal["check", "strip"]
+PipelineKindLiteral = Literal[
+    "probe",
+    "check",
+    "strip",
+]
 """Allowed public pipeline-family tokens."""
 
 

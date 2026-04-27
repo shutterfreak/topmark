@@ -11,7 +11,7 @@
 """Machine-output envelope builders for pipeline processing commands.
 
 This module composes **machine-readable output shapes** for pipeline runs
-(`topmark check` / `topmark strip`).
+(`topmark check`, `topmark strip`, and `topmark probe`).
 
 It is intentionally:
 - console-/Click-free (no printing, no CLI concerns)
@@ -51,6 +51,7 @@ from topmark.core.machine.schemas import MachineDomain
 from topmark.core.machine.schemas import MetaPayload
 from topmark.diagnostic.machine.envelopes import iter_diagnostic_ndjson_records
 from topmark.pipeline.machine.payloads import build_processing_results_summary_rows_payload
+from topmark.pipeline.machine.payloads import iter_probe_results_payload_items
 from topmark.pipeline.machine.payloads import iter_processing_results_payload_items
 from topmark.pipeline.machine.payloads import iter_processing_results_summary_entries
 from topmark.pipeline.machine.schemas import PipelineKey
@@ -65,6 +66,78 @@ if TYPE_CHECKING:
     from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.machine.schemas import OutcomeSummaryRow
+
+
+def build_probe_results_json_envelope(
+    *,
+    config: Config,
+    meta: MetaPayload,
+    results: list[ProcessingContext],
+) -> dict[str, object]:
+    """Build the JSON envelope for resolution probe results.
+
+    Args:
+        config: The effective `Config` instance used for the run.
+        meta: Shared metadata payload (`tool`/`version`).
+        results: Ordered list of per-file processing contexts.
+
+    Returns:
+        A JSON-serializable envelope mapping (not yet serialized to JSON).
+    """
+    cfg_payload: ConfigPayload = build_config_payload(config)
+    cfg_diag_payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
+    probe_payloads: list[dict[str, object]] = list(iter_probe_results_payload_items(results))
+
+    return build_json_envelope(
+        meta=meta,
+        **{
+            ConfigKey.CONFIG.value: cfg_payload,
+            ConfigKey.CONFIG_DIAGNOSTICS.value: cfg_diag_payload,
+            PipelineKey.PROBES.value: probe_payloads,
+        },
+    )
+
+
+def iter_probe_results_ndjson_records(
+    *,
+    config: Config,
+    meta: MetaPayload,
+    results: list[ProcessingContext],
+) -> Iterator[dict[str, object]]:
+    """Yield NDJSON records for resolution probe results.
+
+    Args:
+        config: Effective configuration instance.
+        meta: Shared metadata payload (`tool`/`version`).
+        results: Ordered list of per-file processing contexts.
+
+    Yields:
+        Shaped NDJSON record mappings for config prefix records, config diagnostics,
+        and one `kind="probe"` record per processed file.
+    """
+    cfg_payload: ConfigPayload = build_config_payload(config)
+    cfg_diag_payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
+
+    yield from iter_config_prefix_ndjson_records(
+        config=config,
+        meta=meta,
+        cfg_payload=cfg_payload,
+        cfg_diag_payload=cfg_diag_payload,
+    )
+
+    flattened_diagnostics: FrozenDiagnosticLog = config.validation_logs.flattened()
+    yield from iter_diagnostic_ndjson_records(
+        meta=meta,
+        domain=MachineDomain.CONFIG,
+        diagnostics=flattened_diagnostics,
+    )
+
+    for payload in iter_probe_results_payload_items(results):
+        yield build_ndjson_record(
+            kind=PipelineKind.PROBE,
+            meta=meta,
+            payload=payload,
+        )
 
 
 def build_processing_results_json_envelope(

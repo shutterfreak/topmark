@@ -33,6 +33,7 @@ class CliCmd:
     These values are the Click command names (e.g., `topmark check`).
     """
 
+    PROBE: Final = "probe"
     CHECK: Final = "check"
     STRIP: Final = "strip"
     CONFIG: Final = "config"

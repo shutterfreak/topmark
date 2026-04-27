@@ -37,6 +37,29 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class ProbeCommandHumanReport:
+    """Prepared payload for human-facing pipeline probe command renderers.
+
+    The report is shared by human-facing renderers for `topmark probe`. It
+    contains only presentation-ready data and policy flags; it does not perform
+    rendering, Click interaction, or console output.
+
+    Attributes:
+        verbosity_level: Effective TEXT verbosity; Markdown renderers ignore it.
+        styled: Whether TEXT renderers should apply styling; Markdown renderers ignore it.
+        cmd: Command name, usually `probe`.
+        file_list_total: Total number of candidate files before view filtering.
+        view_results: Processing contexts selected for the current human-output view.
+    """
+
+    verbosity_level: int
+    styled: bool
+    cmd: str
+    file_list_total: int
+    view_results: list[ProcessingContext]
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class PipelineCommandHumanReport:
     """Prepared payload for human-facing pipeline command renderers.
 

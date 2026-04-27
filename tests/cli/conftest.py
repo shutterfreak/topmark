@@ -153,6 +153,11 @@ def assert_SUCCESS_or_WOULD_CHANGE(result: Result) -> None:
     assert result.exit_code in [ExitCode.SUCCESS, ExitCode.WOULD_CHANGE], result.output
 
 
+def assert_UNSUPPORTED_FILE_TYPE(result: Result) -> None:
+    """Assert that the command exited with UNSUPPORTED_FILE_TYPE."""
+    assert result.exit_code == ExitCode.UNSUPPORTED_FILE_TYPE, result.output
+
+
 def assert_USAGE_ERROR(result: Result) -> None:
     """Assert that the command exited with USAGE_ERROR (code 64).
 

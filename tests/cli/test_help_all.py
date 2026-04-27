@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     from click.testing import Result
 
 COMMANDS: list[tuple[str, ...]] = [
+    (CliCmd.PROBE,),
     (CliCmd.CHECK,),
     (CliCmd.STRIP,),
     (CliCmd.CONFIG,),
@@ -58,6 +59,10 @@ COMMANDS: list[tuple[str, ...]] = [
     (
         CliCmd.REGISTRY,
         CliCmd.REGISTRY_PROCESSORS,
+    ),
+    (
+        CliCmd.REGISTRY,
+        CliCmd.REGISTRY_BINDINGS,
     ),
     (CliCmd.VERSION,),
 ]

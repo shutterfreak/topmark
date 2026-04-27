@@ -1025,7 +1025,7 @@ def shared_policy_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
     """Attach policy options shared by multiple pipeline commands.
 
     These options affect common pipeline behavior such as file-type resolution
-    and are meaningful for both `topmark check` and `topmark strip`.
+    and are meaningful for `topmark check`, `topmark strip`, and `topmark probe`.
 
     Exposed options:
         - `--allow-content-probe` / `--no-allow-content-probe`
@@ -1042,8 +1042,8 @@ def shared_policy_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
         is_flag=True,
         default=None,
         help=(
-            "Override whether file-type detection may consult file contents when "
-            "needed. Applies to both check and strip."
+            "Override whether file-type resolution may consult file contents when "
+            "needed. Applies to check, strip, and probe."
         ),
     )(f)
 

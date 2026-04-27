@@ -32,7 +32,9 @@ from typing import TYPE_CHECKING
 from topmark.core.formats import OutputFormat
 from topmark.core.machine.serializers import iter_ndjson_strings
 from topmark.core.machine.serializers import serialize_json_object
+from topmark.pipeline.machine.envelopes import build_probe_results_json_envelope
 from topmark.pipeline.machine.envelopes import build_processing_results_json_envelope
+from topmark.pipeline.machine.envelopes import iter_probe_results_ndjson_records
 from topmark.pipeline.machine.envelopes import iter_processing_results_ndjson_records
 
 if TYPE_CHECKING:
@@ -41,6 +43,46 @@ if TYPE_CHECKING:
     from topmark.config.model import Config
     from topmark.core.machine.schemas import MetaPayload
     from topmark.pipeline.context.model import ProcessingContext
+
+
+def serialize_probe_results(
+    *,
+    meta: MetaPayload,
+    config: Config,
+    results: list[ProcessingContext],
+    fmt: OutputFormat,
+) -> str | Iterator[str]:
+    """Serialize resolution probe results in a machine format.
+
+    Args:
+        meta: Shared machine-output metadata payload.
+        config: Effective configuration for the run.
+        results: Ordered list of per-file processing contexts.
+        fmt: Output format (`OutputFormat.JSON` or `OutputFormat.NDJSON`).
+
+    Returns:
+        Serialized JSON string or iterator of NDJSON strings.
+
+    Raises:
+        ValueError: If `fmt` is not a supported machine format.
+    """
+    if fmt == OutputFormat.JSON:
+        envelope: dict[str, object] = build_probe_results_json_envelope(
+            config=config,
+            meta=meta,
+            results=results,
+        )
+        return serialize_json_object(envelope)
+
+    if fmt == OutputFormat.NDJSON:
+        records: Iterator[dict[str, object]] = iter_probe_results_ndjson_records(
+            config=config,
+            meta=meta,
+            results=results,
+        )
+        return iter_ndjson_strings(records)
+
+    raise ValueError(f"Unsupported machine output format: {fmt!r}")
 
 
 def serialize_processing_results(

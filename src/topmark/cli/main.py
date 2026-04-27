@@ -28,6 +28,7 @@ import click
 
 from topmark.cli.commands.check import check_command
 from topmark.cli.commands.config import config_command
+from topmark.cli.commands.probe import probe_command
 from topmark.cli.commands.registry import registry_command
 from topmark.cli.commands.strip import strip_command
 from topmark.cli.commands.version import version_command
@@ -88,6 +89,7 @@ def cli(
 
 
 cli.add_command(config_command)
+cli.add_command(probe_command)
 cli.add_command(check_command)
 cli.add_command(strip_command)
 cli.add_command(registry_command)

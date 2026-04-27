@@ -25,21 +25,29 @@ registry error. Instead, the resolver applies a deterministic precedence model
 and selects at most one effective winner. Candidate overlap is therefore
 allowed, but the final selection must remain stable for the same path, content,
 and effective registry state.
+
+The module also constructs probe results for `topmark probe`. Probe result value
+objects live in [`topmark.resolution.probe`][topmark.resolution.probe], while the
+probe implementation remains here so it can share the exact same scoring and
+tie-break helpers used by effective resolution.
 """
 
 from __future__ import annotations
 
 import re
-from collections.abc import Collection
 from dataclasses import dataclass
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from topmark.core.logging import get_logger
 from topmark.filetypes.model import ContentGate
 from topmark.filetypes.model import FileType
-from topmark.processors.base import HeaderProcessor
 from topmark.registry.filetypes import FileTypeRegistry
+from topmark.resolution.probe import ResolutionProbeCandidate
+from topmark.resolution.probe import ResolutionProbeMatchSignals
+from topmark.resolution.probe import ResolutionProbeReason
+from topmark.resolution.probe import ResolutionProbeResult
+from topmark.resolution.probe import ResolutionProbeSelection
+from topmark.resolution.probe import ResolutionProbeStatus
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -281,41 +289,36 @@ def _score_file_type_candidate(
     return s
 
 
-def get_file_type_candidates_for_path(
+@dataclass(frozen=True, slots=True)
+class _ProbeCandidateDraft:
+    """Internal candidate draft preserving probe match signals before final ranking."""
+
+    candidate: FileTypeCandidate
+    match: ResolutionProbeMatchSignals
+
+
+def _get_probe_candidate_drafts_for_path(
     path: Path,
     *,
     include_file_types: Collection[str] | None = None,
     exclude_file_types: Collection[str] | None = None,
-) -> list[FileTypeCandidate]:
-    """Return candidate file types using name-based and optional content‑based matching.
-
-    This helper centralizes the resolution logic used by `ResolverStep`.
-    For each registered `FileType`, it computes name‑based match signals,
-    determines whether content probing is allowed via the file type’s
-    `ContentGate`, optionally calls the file type’s `content_matcher`, and
-    evaluates inclusion rules and scoring.
+) -> list[_ProbeCandidateDraft]:
+    """Return probe candidate drafts using effective resolver scoring.
 
     Args:
         path: Filesystem path of the file being resolved.
-        include_file_types: Optional set of file type identifiers to include (whitelist).
-            Empty collection means no whitelist filter
-        exclude_file_types: Optional set of file type identifiers to exclude (blacklist).
-            Empty collection means no blacklist filter
+        include_file_types: Optional set of file type identifiers to include.
+        exclude_file_types: Optional set of file type identifiers to exclude.
 
     Returns:
-        A list of `(score, file_type_name, FileType)` tuples, unsorted. The caller is responsible
-        for selecting the best candidate.
+        Probe candidate drafts preserving match signals and scores.
     """
     base_name: str = path.name
     path_str: str = path.as_posix()
-    candidates: list[FileTypeCandidate] = []
+    drafts: list[_ProbeCandidateDraft] = []
 
-    # Validate against the effective file type registry:
     ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping_by_local_key()
 
-    # 1) Compute name signals -> 2) Gate content probe -> 3) Include? -> 4) Score
-
-    # Normalizeation: empty collections are treated the same as None.
     effective_include: Collection[str] | None = include_file_types or None
     effective_exclude: Collection[str] | None = exclude_file_types or None
 
@@ -330,6 +333,7 @@ def get_file_type_candidates_for_path(
 
         cm: Callable[[Path], bool] | None = ft.content_matcher or None
         content_hit = False
+        content_error: str | None = None
         if should_probe and callable(cm):
             try:
                 content_hit = bool(cm(path))
@@ -343,20 +347,61 @@ def get_file_type_candidates_for_path(
             ) as e:
                 # Content matchers are user/extensible; keep resolver resilient.
                 logger.debug("content matcher failed (%s); treating as no-hit", type(e).__name__)
+                content_error = type(e).__name__
                 content_hit = False
 
         if not _should_include_candidate(ft, sig, content_hit):
             continue
 
-        candidates.append(
-            FileTypeCandidate(
-                score=_score_file_type_candidate(ft, sig, content_hit, base_name, path_str),
-                namespace=ft.namespace,
-                local_key=ft.local_key,
-                file_type=ft,
-            )
+        candidate = FileTypeCandidate(
+            score=_score_file_type_candidate(ft, sig, content_hit, base_name, path_str),
+            namespace=ft.namespace,
+            local_key=ft.local_key,
+            file_type=ft,
         )
-    return candidates
+        match = ResolutionProbeMatchSignals(
+            extension=sig.extension,
+            filename=sig.filename,
+            pattern=sig.pattern,
+            content_probe_allowed=should_probe,
+            content_match=content_hit,
+            content_error=content_error,
+        )
+        drafts.append(_ProbeCandidateDraft(candidate=candidate, match=match))
+    return drafts
+
+
+def get_file_type_candidates_for_path(
+    path: Path,
+    *,
+    include_file_types: Collection[str] | None = None,
+    exclude_file_types: Collection[str] | None = None,
+) -> list[FileTypeCandidate]:
+    """Return candidate file types using name-based and optional content-based matching.
+
+    This helper centralizes the resolution logic used by `ResolverStep`.
+    For each registered `FileType`, it computes name-based match signals,
+    determines whether content probing is allowed via the file type’s
+    `ContentGate`, optionally calls the file type’s `content_matcher`, and
+    evaluates inclusion rules and scoring.
+
+    Args:
+        path: Filesystem path of the file being resolved.
+        include_file_types: Optional set of file type identifiers to include (whitelist).
+            Empty collection means no whitelist filter
+        exclude_file_types: Optional set of file type identifiers to exclude (blacklist).
+            Empty collection means no blacklist filter
+
+    Returns:
+        Unsorted scored candidates. The caller is responsible for selecting the
+        best candidate.
+    """
+    drafts: list[_ProbeCandidateDraft] = _get_probe_candidate_drafts_for_path(
+        path,
+        include_file_types=include_file_types,
+        exclude_file_types=exclude_file_types,
+    )
+    return [draft.candidate for draft in drafts]
 
 
 def _select_best_file_type_candidate(
@@ -392,6 +437,109 @@ def _select_best_file_type_candidate(
     #   key = (-score, namespace, local_key)
     # so the "best" candidate becomes the smallest by this ordering.
     return min(candidates, key=candidate_order_key)
+
+
+def probe_resolution_for_path(
+    path: Path,
+    *,
+    include_file_types: Collection[str] | None = None,
+    exclude_file_types: Collection[str] | None = None,
+) -> ResolutionProbeResult:
+    """Resolve a path and return probe-visible explanation details.
+
+    This helper uses the same scoring and deterministic tie-break model as
+    [`resolve_file_type_for_path`][topmark.resolution.filetypes.resolve_file_type_for_path],
+    but returns all diagnostic details needed by the `topmark probe` command.
+
+    Args:
+        path: Filesystem path of the file being resolved.
+        include_file_types: Optional set of file type identifiers to include.
+        exclude_file_types: Optional set of file type identifiers to exclude.
+
+    Returns:
+        Probe result containing candidates, selected file type, selected processor,
+        status, and reason.
+    """
+    drafts: list[_ProbeCandidateDraft] = _get_probe_candidate_drafts_for_path(
+        path,
+        include_file_types=include_file_types,
+        exclude_file_types=exclude_file_types,
+    )
+    if not drafts:
+        return ResolutionProbeResult(
+            path=path,
+            status=ResolutionProbeStatus.UNSUPPORTED,
+            reason=ResolutionProbeReason.NO_CANDIDATES,
+            candidates=(),
+            selected_file_type=None,
+            selected_processor=None,
+        )
+
+    ranked_drafts: list[_ProbeCandidateDraft] = sorted(
+        drafts,
+        key=lambda draft: candidate_order_key(draft.candidate),
+    )
+    best_draft: _ProbeCandidateDraft = ranked_drafts[0]
+    best_candidate: FileTypeCandidate = best_draft.candidate
+
+    top_score: int = best_candidate.score
+    top_candidates: list[FileTypeCandidate] = [
+        draft.candidate for draft in ranked_drafts if draft.candidate.score == top_score
+    ]
+    reason: ResolutionProbeReason = (
+        ResolutionProbeReason.SELECTED_BY_TIE_BREAK
+        if len(top_candidates) > 1
+        else ResolutionProbeReason.SELECTED_HIGHEST_SCORE
+    )
+
+    selected_file_type = ResolutionProbeSelection(
+        qualified_key=best_candidate.file_type.qualified_key,
+        namespace=best_candidate.namespace,
+        local_key=best_candidate.local_key,
+        score=best_candidate.score,
+    )
+
+    from topmark.registry.registry import Registry
+
+    processor: HeaderProcessor | None = Registry.resolve_processor(
+        best_candidate.file_type.qualified_key
+    )
+    selected_processor: ResolutionProbeSelection | None = None
+    status = ResolutionProbeStatus.RESOLVED
+    if processor is None:
+        status = ResolutionProbeStatus.NO_PROCESSOR
+        reason = ResolutionProbeReason.SELECTED_FILE_TYPE_HAS_NO_BOUND_PROCESSOR
+    else:
+        selected_processor = ResolutionProbeSelection(
+            qualified_key=processor.qualified_key,
+            namespace=processor.namespace,
+            local_key=processor.local_key,
+        )
+
+    probe_candidates: list[ResolutionProbeCandidate] = []
+    for rank, draft in enumerate(ranked_drafts, start=1):
+        candidate = draft.candidate
+        probe_candidates.append(
+            ResolutionProbeCandidate(
+                qualified_key=candidate.file_type.qualified_key,
+                namespace=candidate.namespace,
+                local_key=candidate.local_key,
+                score=candidate.score,
+                selected=candidate.file_type.qualified_key
+                == best_candidate.file_type.qualified_key,
+                tie_break_rank=rank,
+                match=draft.match,
+            )
+        )
+
+    return ResolutionProbeResult(
+        path=path,
+        status=status,
+        reason=reason,
+        candidates=tuple(probe_candidates),
+        selected_file_type=selected_file_type,
+        selected_processor=selected_processor,
+    )
 
 
 def resolve_file_type_for_path(

@@ -422,15 +422,16 @@ def select_pipeline(
     """Return the concrete pipeline steps for the requested operation and mode.
 
     Args:
-        kind: The pipeline family to use (`"check"` or `"strip"`).
+        kind: The pipeline family to use (`"probe"`, `"check"` or `"strip"`).
         apply: If `True`, choose an `*_APPLY*` variant.
         diff: If `True`, choose a `*PATCH*` variant that includes unified diffs.
 
     Returns:
         The ordered list of steps to execute.
+
+    Raises:
+        RuntimeError: if an invalid pipeline kind was specified.
     """
-    # TODO: If a future public/API mode needs header rendering without apply, wire it here
-    # instead of introducing ad-hoc branching at call sites.
     if kind == "check":
         return (
             Pipeline.CHECK_APPLY_PATCH.steps
@@ -441,16 +442,19 @@ def select_pipeline(
             if diff
             else Pipeline.CHECK.steps
         )
-    # kind == "strip"
-    return (
-        Pipeline.STRIP_APPLY_PATCH.steps
-        if apply and diff
-        else Pipeline.STRIP_APPLY.steps
-        if apply
-        else Pipeline.STRIP_PATCH.steps
-        if diff
-        else Pipeline.STRIP.steps
-    )
+    elif kind == "strip":
+        return (
+            Pipeline.STRIP_APPLY_PATCH.steps
+            if apply and diff
+            else Pipeline.STRIP_APPLY.steps
+            if apply
+            else Pipeline.STRIP_PATCH.steps
+            if diff
+            else Pipeline.STRIP.steps
+        )
+
+    # Defensive guard:
+    raise RuntimeError(f"Invalid pipeline kind specified: {kind}")
 
 
 def _resolve_public_header_mutation_mode(value: str) -> HeaderMutationMode:
