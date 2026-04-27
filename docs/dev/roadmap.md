@@ -425,6 +425,14 @@ The registry architecture is largely complete, but a few 1.0 decisions remain:
   - what remains public
   - what becomes internal
   - what ambiguity behavior is guaranteed for 1.0
+- Decide whether to add user-facing registry discovery/query commands before 1.0:
+  - query file types by substring, glob-like pattern, namespace, extension, or processor binding
+  - query processors by key/namespace/capability
+  - query bindings by file type or processor
+  - clarify whether this belongs in existing `topmark registry filetypes/processors/bindings`
+    commands via filters, or as separate subcommands such as `registry find` / `registry query`
+  - ensure any query surface preserves the canonical identity model (`qualified_key`, `namespace`,
+    `local_key`) and does not reintroduce ambiguous local-key assumptions
 
 Recommended direction:
 
@@ -604,6 +612,17 @@ A few user-facing behavior questions remain open for 1.0:
     - gain an explicit extended/rich line-ending policy surface
   - ensure the decision is reflected consistently across pipeline step behavior, diagnostics/policy
     handling, tests, and user-facing documentation
+- Decide whether to add a file-recognition / resolution probe command before 1.0:
+  - report how TopMark recognizes one or more input paths without running the full check/strip
+    mutation planning flow
+  - expose file-type candidates, selected binding, namespace-qualified identities, processor choice,
+    and ambiguity/tie-break information that is currently hidden by `check` / `strip`
+  - make the command useful for debugging registry resolution, plugin registration, include/exclude
+    file-type filters, and content-match behavior
+  - compare against the existing workaround `topmark check --no-config --report=all` and decide
+    whether a dedicated `probe` command adds enough value
+  - keep it read-only and diagnostics-oriented; avoid mixing it with header comparison, planning, or
+    write/apply semantics
 
 ### Overall status (undecided / to do)
 
@@ -703,6 +722,11 @@ These are release blockers unless explicitly deferred with a documented rational
   - [ ] `--report` semantics frozen
   - [ ] `--header-mutation-mode` semantics frozen
   - [ ] `EmptyInsertMode` token semantics frozen
+- [ ] Decision made on registry discovery and file-recognition debugging commands
+  - [ ] registry filtering/query surface accepted or explicitly deferred
+  - [ ] file-recognition / resolution probe command accepted or explicitly deferred
+  - [ ] if accepted, command scope is limited to read-only discovery/diagnostics and documented as
+    distinct from `check` / `strip`
 
 #### [Must] Configuration & validation
 
@@ -750,6 +774,8 @@ These are release blockers unless explicitly deferred with a documented rational
   - [ ] user-facing docs updated if nonstandard line endings are intentionally unsupported or given
     a dedicated policy
 - [ ] Namespace-aware registry lookup and deterministic ambiguity behavior covered by tests
+- [ ] If a probe command is accepted, resolution-candidate reporting is covered by focused tests
+  without weakening the existing check/strip output contract
 - [x] TOML-layer validation paths have focused coverage
 - [x] Empty / empty-like file handling is explicit and idempotent
 - [x] Resolver treats content matcher exceptions as safe misses
