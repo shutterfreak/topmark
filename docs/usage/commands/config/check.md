@@ -45,6 +45,12 @@ topmark config check --output-format json
 
 # Machine-readable NDJSON (record stream)
 topmark config check --output-format ndjson
+
+# Suppress TEXT output and rely on the exit code
+topmark config check --quiet
+
+# Render document-oriented Markdown output
+topmark config check --output-format markdown
 ```
 
 ______________________________________________________________________
@@ -87,12 +93,13 @@ ______________________________________________________________________
 
 ## Options (subset)
 
-| Option                 | Description                                                 |
-| ---------------------- | ----------------------------------------------------------- |
-| `--strict/--no-strict` | Override resolved TOML strict config checking for this run. |
-| `--output-format`      | Output format (`text`, `markdown`, `json`, `ndjson`).       |
-| `--config`             | Merge an explicit TOML config file (can be repeated).       |
-| `--no-config`          | Do not discover local project/user config.                  |
+| Option                 | Description                                                      |
+| ---------------------- | ---------------------------------------------------------------- |
+| `--strict/--no-strict` | Override resolved TOML strict config checking for this run.      |
+| `--output-format`      | Output format (`text`, `markdown`, `json`, `ndjson`).            |
+| `-q`, `--quiet`        | Suppress TEXT output while preserving the command’s exit status. |
+| `--config`             | Merge an explicit TOML config file (can be repeated).            |
+| `--no-config`          | Do not discover local project/user config.                       |
 
 > Run `topmark config check -h` for the full list of options and help text.
 
@@ -112,10 +119,12 @@ ______________________________________________________________________
 ### Default output (human)
 
 - If there are no diagnostics: prints a short success message.
-- If diagnostics exist: prints counts of errors/warnings/info. With higher verbosity, it prints each
+- If diagnostics exist: prints counts of errors/warnings/info. With `-v` and above, it prints each
   diagnostic line.
-- With higher verbosity, it also prints the list of config files that were processed.
-- With very high verbosity, it can print the merged config as TOML (wrapped with BEGIN/END markers).
+- With higher TEXT verbosity, it also prints the list of config files that were processed.
+- With very high TEXT verbosity, it can print the merged config as TOML (wrapped with BEGIN/END
+  markers).
+- `--quiet` suppresses TEXT output while preserving the exit status.
 
 ### Markdown output
 
@@ -126,7 +135,8 @@ ______________________________________________________________________
 - diagnostic counts
 - (optionally) full diagnostic list and processed config files, depending on verbosity
 
-This format is designed for CI logs and copy/paste into issues.
+This format is designed for CI logs and copy/paste into issues. It is document-oriented and ignores
+TEXT-only verbosity and quiet controls.
 
 ### Typical validation flow
 
@@ -154,12 +164,13 @@ The canonical schema, stable `kind` values, and shared conventions are documente
 - [Machine output schema (JSON & NDJSON)](../../../dev/machine-output.md)
 - [Machine formats](../../../dev/machine-formats.md)
 
+{% include-markdown "\_snippets/output-contract.md" %}
+
 Notes:
 
 - `config check` emits diagnostics for both TOML schema validation and configuration
   loading/validation, including missing-section INFO diagnostics from the TOML layer, but not
   pipeline processing diagnostics.
-
 - Validation follows staged config-loading/preflight validation: per-source TOML validation first
   (TOML-source diagnostics), then layered config merge (merged-config diagnostics), then final
   config validation including runtime-applicability checks. The effective validity decision is

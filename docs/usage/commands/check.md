@@ -36,6 +36,12 @@ topmark check --diff src/
 # Summary‑only view (CI‑friendly)
 topmark check --summary src/
 
+# Suppress TEXT output and rely on the exit code
+topmark check --quiet src/
+
+# Render document-oriented Markdown output
+topmark check --output-format markdown src/
+
 # Treat staged config-loading validation warnings as errors for this run
 topmark check --strict src/
 
@@ -88,7 +94,6 @@ filters.
 
 - `--include-file-types / -t` Restrict processing to the given file type identifiers. May be
   repeated and/or provided as a comma-separated list.
-
 - `--exclude-file-types / -T` Exclude the given file type identifiers. May be repeated and/or
   provided as a comma-separated list.
 
@@ -97,9 +102,7 @@ Exclude rules take precedence over include rules.
 ### Path-based filters
 
 - `--include`, `--exclude` Include or exclude glob patterns.
-
 - `--include-from`, `--exclude-from` Load patterns from files (one per line).
-
 - `--files-from` Provide an explicit list of files to process.
 
 Notes:
@@ -159,6 +162,8 @@ For the canonical schema and stable `kind` values, see:
 
 - [Machine output schema (JSON & NDJSON)](../../dev/machine-output.md)
 - [Machine formats](../../dev/machine-formats.md)
+
+{% include-markdown "\_snippets/output-contract.md" %}
 
 Notes:
 
@@ -225,20 +230,23 @@ ______________________________________________________________________
 
 ## Global options
 
-Output format, verbosity and color output are configured with
+Output format, TEXT verbosity, quiet mode, and color output are configured with
 [global options](../global-options.md).
 
 ### Verbosity & logging
 
-Program-output verbosity is separate from internal logging:
+TEXT output verbosity is separate from internal logging:
 
-- `-v`, `--verbose` increases **program output** detail (e.g., renders per‑line diagnostics).
-- `-q`, `--quiet` suppresses most **program output**.
+- `-v`, `--verbose` increases TEXT output detail for `check`, such as per-line diagnostics and
+  additional hints.
+- `-q`, `--quiet` suppresses TEXT output while preserving the command’s exit status.
+- See the output-format note above for Markdown and machine-output behavior.
 
 Notes:
 
 - **Summary mode** aggregates outcomes and suppresses per-file guidance lines.
-- **Per‑line diagnostics** are shown when the effective program verbosity ≥ 1.
+- In TEXT output, **per-line diagnostics** are shown with `-v` and above.
+- In Markdown output, diagnostics and hints are rendered when present without requiring `-v`.
 - **Diffs** (`--diff`) are always human‑only and never included in JSON/NDJSON.
 
 ## Options (subset)
@@ -248,6 +256,7 @@ Notes:
 | `--apply`                     | Write changes to files (off by default).                               |
 | `--diff`                      | Show unified diffs (human output only).                                |
 | `--summary`                   | Show outcome counts instead of per‑file details.                       |
+| `-q`, `--quiet`               | Suppress TEXT output while preserving the command’s exit status.       |
 | `--files-from`                | Read newline‑delimited paths from file (use '-' for STDIN).            |
 | `-` (PATH)                    | Read a single file’s content from STDIN (requires `--stdin-filename`). |
 | `--include`                   | Add paths by glob (can be used multiple times).                        |
@@ -418,7 +427,7 @@ ______________________________________________________________________
 
 - **No files to process**: Ensure you passed positional paths, or selected the correct STDIN mode
   (`--files-from -` for list mode, or `-` with `--stdin-filename` for content mode). Use `-vv` for
-  debug logs.
+  detailed TEXT output; use logging options for internal debug logs.
 - **Patterns don’t match**: Remember that include/exclude patterns are **relative to CWD**. `cd`
   into the project root before running.
 - **Unexpected placement**: For pound/slash formats, check for leading banners or shebang/encoding

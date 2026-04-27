@@ -22,8 +22,10 @@ Because the output is generated from TopMark's built-in defaults, it reflects on
 default config fragment**. Source-local TOML sections such as `[config]` and `[writer]` are not
 resolved from project files here.
 
-- `text` / `markdown` formats: minimal, comment-free TOML.
-- `json` / `ndjson`: a plain Config snapshot, with no diagnostics.
+- `text` / `markdown` formats: minimal, comment-free TOML. Markdown is document-oriented and ignores
+  TEXT-only verbosity/quiet controls.
+- `json` / `ndjson`: a plain Config snapshot, with no diagnostics. Machine formats ignore TEXT-only
+  verbosity/quiet controls.
 
 ______________________________________________________________________
 
@@ -32,6 +34,12 @@ ______________________________________________________________________
 ```bash
 # Show the internal default configuration (TOML)
 topmark config defaults
+
+# Suppress TEXT output and rely on the exit code
+topmark config defaults --quiet
+
+# Render document-oriented Markdown output
+topmark config defaults --output-format markdown
 ```
 
 ______________________________________________________________________
@@ -66,6 +74,9 @@ ______________________________________________________________________
 This command is intentionally minimal and usually has no options. See `topmark config defaults -h`
 for any environment‑specific flags that may be available in your build.
 
+Note: `-v` / `--verbose` and `-q` / `--quiet` apply only to TEXT output. Markdown and machine
+formats ignore these controls.
+
 ______________________________________________________________________
 
 ## Machine-readable output
@@ -76,6 +87,8 @@ The canonical schema, stable `kind` values, and shared conventions are documente
 
 - [Machine output schema (JSON & NDJSON)](../../../dev/machine-output.md)
 - [Machine formats](../../../dev/machine-formats.md)
+
+{% include-markdown "\_snippets/output-contract.md" %}
 
 Notes:
 

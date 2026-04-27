@@ -23,8 +23,10 @@ and `[files]`) and TOML-source-local sections such as `[config]`. During normal 
 validates the whole source first and then deserializes only the layered fragment into the final
 merged config.
 
-- `text` / `markdown`: full commented template from the bundled resource.
+- `text` / `markdown`: full commented template from the bundled resource. Markdown is
+  document-oriented and ignores TEXT-only verbosity/quiet controls.
 - `json` / `ndjson`: minimal defaults-derived config snapshot, without comments or diagnostics.
+  Machine formats ignore TEXT-only verbosity/quiet controls.
 
 Notes:
 
@@ -46,6 +48,12 @@ topmark config init > topmark.toml
 
 # Or integrate into pyproject
 topmark config init --pyproject >> pyproject.toml
+
+# Suppress TEXT output and rely on the exit code
+topmark config init --quiet
+
+# Render document-oriented Markdown output
+topmark config init --output-format markdown
 ```
 
 ______________________________________________________________________
@@ -73,8 +81,12 @@ ______________________________________________________________________
 
 ## Verbosity
 
-`config init` prints plain TOML to stdout. When run with higher verbosity (e.g., `-v`), the output
-is wrapped between BEGIN/END markers for easier parsing in scripts and tests.
+`config init` prints plain TOML to stdout.
+
+- In TEXT output, `-v` adds BEGIN/END markers around the TOML output.
+- `--quiet` suppresses TEXT output while preserving the exit status.
+- Markdown output is document-oriented and ignores TEXT-only verbosity and quiet controls.
+- JSON/NDJSON output is machine-readable and ignores TEXT-only verbosity and quiet controls.
 
 ______________________________________________________________________
 
@@ -82,6 +94,9 @@ ______________________________________________________________________
 
 This command is intentionally minimal and usually has no options. See `topmark config init -h` for
 any environment‑specific flags that may be available in your build.
+
+Note: `-v` / `--verbose` and `-q` / `--quiet` apply only to TEXT output. Markdown and machine
+formats ignore these controls.
 
 ______________________________________________________________________
 
@@ -93,6 +108,8 @@ The canonical schema, stable `kind` values, and shared conventions are documente
 
 - [Machine output schema (JSON & NDJSON)](../../../dev/machine-output.md)
 - [Machine formats](../../../dev/machine-formats.md)
+
+{% include-markdown "\_snippets/output-contract.md" %}
 
 Notes:
 

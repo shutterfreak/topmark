@@ -37,10 +37,19 @@ By default, `topmark version` prints **only the version string**, with no additi
 decoration.
 
 - The default format is the package’s canonical **PEP 440** version.
+
 - Use `--semver` to request a **SemVer-compatible** representation when possible.
+
 - For development builds between release tags, the reported version may include SCM-derived
   dev/local segments such as commit identifiers.
+
 - Output is suitable for scripting and CI usage.
+
+- TEXT output supports verbosity (`-v`) and quiet mode (`--quiet`).
+
+- Markdown output is document-oriented and ignores TEXT-only verbosity and quiet controls.
+
+- JSON/NDJSON output is machine-readable and ignores TEXT-only verbosity and quiet controls.
 
 Example:
 
@@ -83,6 +92,14 @@ ______________________________________________________________________
 | ----------------- | ----------------------------------------------------------------------------------------------------------- |
 | `--semver`        | Render the version as SemVer instead of PEP 440 when possible (for example `rcN → -rc.N`, `devN → -dev.N`). |
 | `--output-format` | Select output format (`json`, `ndjson`, or default human-readable output).                                  |
+| `-q`, `--quiet`   | Suppress TEXT output while preserving exit status (ignored for non-TEXT formats).                           |
+
+### Verbosity & quiet mode
+
+- `-v`, `--verbose` increases TEXT output detail.
+- `-q`, `--quiet` suppresses TEXT output entirely.
+- Markdown output ignores these flags and always renders a complete document.
+- JSON/NDJSON output is unaffected by these flags.
 
 See `topmark version -h` for the full list of global CLI options.
 
@@ -150,6 +167,8 @@ Produces one JSON object per line:
 - Development builds between release tags may include SCM-derived dev/local segments.
 - No ANSI color codes or human formatting are emitted in machine formats.
 - JSON output is emitted **without** a trailing newline; NDJSON emits one record per line.
+
+{% include-markdown "\_snippets/output-contract.md" %}
 
 ______________________________________________________________________
 

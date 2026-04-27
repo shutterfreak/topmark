@@ -364,12 +364,18 @@ ______________________________________________________________________
 
 ## Observability
 
-Run with `-v` or `--verbose` to see:
+Run with `-v` or `--verbose` to increase **TEXT output** detail and observe:
 
 - Discovery anchor and workspace base
 - Config chain (root → current)
 - Normalization of pattern-file paths
 - Active policy and per-file-type overrides
+
+Notes:
+
+- Verbosity (`-v`) affects only human TEXT output.
+- Markdown output is document-oriented and does not use verbosity for progressive disclosure.
+- Machine-readable formats are unaffected by verbosity controls.
 
 ______________________________________________________________________
 

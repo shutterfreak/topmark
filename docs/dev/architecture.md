@@ -448,11 +448,38 @@ This matters especially for:
 The practical consequence is that newline semantics and placeholder images are preserved without
 collapsing all empty-like cases to the same filesystem status.
 
-## Configuration and machine output
+## Presentation and machine output boundaries
+
+TopMark separates human-facing presentation from machine-readable output.
+
+Human-facing presentation is split into two intentionally different formats:
+
+- **TEXT output** is console-oriented. It may use `-v` / `--verbose` for progressive disclosure,
+  `-q` / `--quiet` for output suppression where the command still has a useful exit-status or
+  mutation signal, and semantic styling when color is enabled.
+- **Markdown output** is document-oriented. It ignores TEXT-only verbosity, quiet, and styling
+  controls and instead renders stable Markdown suitable for documentation, CI logs, and issue
+  reports.
+
+Machine formats (`json`, `ndjson`) are separate from both human formats. They are schema-driven,
+never include ANSI styling, and are unaffected by TEXT-only verbosity or quiet controls. Machine
+projection depth is controlled by explicit machine-facing options such as `--long`, not by `-v`.
+
+Human presentation modules follow a shared pattern: CLI commands build Click-free, typed report
+objects in `topmark.presentation.shared`, then pass those reports to TEXT or Markdown renderers.
+This keeps renderer behavior testable and prevents Click state, console objects, and I/O from
+leaking into the presentation layer.
+
+Practical consequences:
+
+- Do not parse TEXT or Markdown output in automation; use JSON/NDJSON instead.
+- Use `--long` for data/detail depth where supported.
+- Use `-v` / `--quiet` only as TEXT console-output controls.
+- Do not expose internal report model names in user-facing usage documentation.
 
 TopMark exposes configuration state through both human-readable and machine-readable interfaces:
 
-- Human-facing commands:
+- Human-facing configuration commands:
   - `config dump` (resolved config)
   - `config defaults` (built-in default TOML document)
   - `config init` (bundled example TOML resource)
@@ -472,6 +499,10 @@ machine formats; the stable emitted diagnostic entry shape remains `{level, mess
 In machine formats, `config defaults` and `config init` share the same underlying configuration
 snapshot, even though their human-facing output differs.
 
+The same separation applies to pipeline and registry output: TEXT output may use console-oriented
+verbosity, Markdown output remains document-oriented, and JSON/NDJSON output remains the stable
+programmatic interface.
+
 More generally, TopMark now treats staged validation logs as the sole internal representation of
 config-validation diagnostics. For 1.0, staged validation remains primarily internal, and flattening
 is performed only at exception, presentation, and machine-output boundaries.
@@ -481,8 +512,8 @@ ______________________________________________________________________
 ## Related architecture and reference pages
 
 This page focuses on cross-cutting architectural decisions such as registry design, configuration
-layering, policy resolution, and the relationship between human-facing and machine-facing
-interfaces.
+layering, policy resolution, presentation boundaries, and the relationship between human-facing and
+machine-facing interfaces.
 
 - [`Pipelines (Concepts)`](./pipelines.md) — conceptual overview of pipeline structure, phases, and
   step responsibilities

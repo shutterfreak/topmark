@@ -41,6 +41,14 @@ topmark config dump --exclude .venv --exclude-from .gitignore
 printf "*.py\n" | topmark config dump --include-from -
 ```
 
+```bash
+# Suppress TEXT output and rely on the exit code
+topmark config dump --quiet
+
+# Render document-oriented Markdown output
+topmark config dump --output-format markdown
+```
+
 ______________________________________________________________________
 
 ## Key properties
@@ -63,8 +71,9 @@ ______________________________________________________________________
   - `--include-from` / `--exclude-from` are honored.
   - `--include-from -` / `--exclude-from -` read patterns from STDIN.
 
-- Output is **plain TOML**. When run with higher verbosity (e.g., `-v`), the TOML is wrapped between
-  BEGIN/END markers for easy parsing:
+- Output is **plain TOML**. In TEXT output, when run with higher verbosity (e.g., `-v`), the TOML is
+  wrapped between BEGIN/END markers for easy parsing. Markdown output is document-oriented and
+  ignores TEXT-only verbosity and quiet controls:
 
   ```text
   \# === BEGIN[TOML] ===
@@ -132,6 +141,7 @@ ______________________________________________________________________
 | `--relative-to`   | Base directory for relative path handling in config.                       |
 | `--align-fields`  | Whether to align header fields (captured in config).                       |
 | `--header-format` | Header rendering format override (captured in config).                     |
+| `-q`, `--quiet`   | Suppress TEXT output while preserving the command’s exit status.           |
 
 > Run `topmark config dump -h` for the full list of options and help text.
 
@@ -145,6 +155,8 @@ The canonical schema, stable `kind` values, and shared conventions are documente
 
 - [Machine output schema (JSON & NDJSON)](../../../dev/machine-output.md)
 - [Machine formats](../../../dev/machine-formats.md)
+
+{% include-markdown "\_snippets/output-contract.md" %}
 
 Notes:
 
@@ -206,10 +218,12 @@ ______________________________________________________________________
 
 ## Verbosity
 
-`config dump` prints configuration; it does not render program output with per‑file diagnostics. The
-`verbosity_level` setting is a runtime/CLI concern and is **not** serialized to TOML in the output.
+`config dump` prints configuration; it does not render program output with per-file diagnostics.
 
-When verbosity ≥ 1, BEGIN/END markers are included around the TOML output.
+- In TEXT output, `-v` adds BEGIN/END markers around the TOML output.
+- `--quiet` suppresses TEXT output while preserving the exit status.
+- Markdown output is document-oriented and ignores TEXT-only verbosity and quiet controls.
+- JSON/NDJSON output is machine-readable and ignores TEXT-only verbosity and quiet controls.
 
 ______________________________________________________________________
 

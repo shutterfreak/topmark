@@ -27,6 +27,13 @@ TopMark exposes four `--output-format` values:
   - `json`: a single JSON document per invocation.
   - `ndjson`: a newline-delimited JSON stream.
 
+Notes:
+
+- Machine formats (`json`, `ndjson`) are independent of human-facing presentation controls.
+- TEXT-only flags such as `-v` / `--verbose` and `-q` / `--quiet` do not affect machine output.
+- Markdown output is also independent from machine formats and follows its own document-oriented
+  contract.
+
 This page describes the **conventions** shared across machine formats. For the canonical field-level
 schema reference, see:
 
@@ -47,8 +54,13 @@ Stability guarantees:
 
 Consumers should:
 
+- Treat machine output as the authoritative contract; do not rely on TEXT or Markdown output for
+  programmatic use.
+
 - Switch on `kind` (NDJSON) rather than relying on ordering.
+
 - Tolerate unknown fields.
+
 - Avoid string matching against formatted output.
 
 ______________________________________________________________________
@@ -83,6 +95,11 @@ record kinds in their respective `*.machine.schemas` modules.
 
 Unlike human-facing verbosity, `detail_level` is part of the machine contract. Consumers should
 prefer this field over inferring the projection from payload shape alone.
+
+Note:
+
+- `detail_level` is distinct from TEXT verbosity (`-v`) and quiet mode (`--quiet`).
+- It reflects an explicit machine-facing projection (`--long`), not presentation detail.
 
 ## NDJSON envelope contract
 
@@ -276,6 +293,9 @@ ______________________________________________________________________
 
 These diagnostics correspond to the flattened compatibility view derived from staged
 config-validation logs.
+
+Machine output for processing commands is unaffected by TEXT verbosity or quiet mode; these flags
+only influence human TEXT output.
 
 In **summary mode**, TopMark aggregates results by the pair `(outcome, reason)` rather than
 collapsing all reasons under a single outcome bucket.

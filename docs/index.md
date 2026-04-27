@@ -91,6 +91,8 @@ Core commands: `check`, `strip`, `config`, `registry`, `version`.
 
 The `config` command has the following subcommands: `check`, `defaults`, `dump`, `init`.
 
+{% include-markdown "\_snippets/output-contract.md" %}
+
 Use `config dump --show-layers` to inspect how configuration is built from individual sources and
 how precedence is applied.
 

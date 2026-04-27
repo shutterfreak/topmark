@@ -71,18 +71,29 @@ Key improvements:
   - **renderers** (human output)
 - Enforced **Click-free rendering**
 - Introduced **semantic styling (StyleRole)** instead of inline coloring
-- Standardized verbosity model (`default`, `-v`, `-vv`)
-- Unified summary generation via pipeline outcomes instead of ad-hoc hint logic
+- Standardized TEXT verbosity model (`default`, `-v`, `-vv`).
+- Unified summary generation via pipeline outcomes instead of ad-hoc hint logic.
 - Introduced a strongly typed `TopmarkCliState` for Click invocation state.
 - Removed raw `ctx.obj` dictionary access from CLI command/runtime paths.
 - Removed implicit active-console resolution from CLI emitters and helpers.
 - Standardized explicit console passing for human and machine CLI output.
-- Clarified verbosity/quiet semantics:
-  - `-v` / `-vv` increase human-output detail
-  - `-q` / `--quiet` is a boolean human-output suppression mode
-  - machine formats ignore human-output verbosity controls with explicit warnings
+- Split shared CLI option decorators so commands opt into TEXT verbosity and TEXT quiet mode
+  independently.
+- Clarified the final human-output contract:
+  - TEXT output is console-oriented and may use `-v` / `-vv` for progressive disclosure.
+  - `-q` / `--quiet` suppresses TEXT output only where the command still has a useful exit-status or
+    mutation signal.
+  - Markdown output is document-oriented and ignores TEXT-only verbosity, quiet, and styling
+    controls.
+  - JSON/NDJSON output is machine-readable and ignores TEXT-only presentation controls.
+  - Registry commands intentionally do not support `--quiet` because they are informational and
+    always exit with status 0.
+- Added Click-free shared human report models across config, registry, version, diagnostics, and
+  pipeline presentation surfaces.
 - Aligned command help text, epilogs, and developer docstrings across CLI entry-point, command
   groups and commands.
+- Expanded focused human-output tests for version, diagnostics, config, registry, and pipeline
+  commands.
 
 Result: output is now **fully deterministic, testable, and reusable outside CLI contexts**.
 
@@ -134,7 +145,7 @@ The pipeline has been stabilized with clearer semantics:
 
 Result: pipeline behavior is now **explicit, consistent, and predictable**.
 
-### Machine output system (near-complete)
+### Machine output system (completed)
 
 Machine formats are now:
 
@@ -152,16 +163,23 @@ Machine formats are now:
 - Documented with aligned machine-format and machine-output reference pages, plus registry command
   usage pages
 
-Remaining work is limited to **CLI/output-surface follow-up**, not architecture.
+Result: machine output is now **schema-driven, documented, and separated from human presentation**.
+Remaining work is limited to final schema-freeze review, not architecture.
 
 ### Human output system (completed)
 
-- Consolidated formats: TEXT + MARKDOWN
-- Introduced `topmark.presentation` as canonical rendering layer
+- Consolidated human formats: TEXT + MARKDOWN.
+- Introduced `topmark.presentation` as canonical rendering layer.
+- Established the final presentation contract:
+  - TEXT is console-oriented and owns verbosity/quiet semantics.
+  - Markdown is document-oriented and ignores TEXT-only verbosity/quiet controls.
+  - Machine formats are not part of the human-output layer.
 - Ensured all renderers are:
   - pure (no I/O)
   - reusable
   - testable
+- Added direct presentation tests for shared diagnostic rendering.
+- Added CLI-level human-output tests for version, config, registry, and pipeline command groups.
 
 Result: human output is now **consistent, composable, and decoupled from CLI**.
 
@@ -174,6 +192,8 @@ Result: human output is now **consistent, composable, and decoupled from CLI**.
 - Reorganized tests and helpers for clarity
 - Added shared JSON/NDJSON parsing and assertion helpers for machine-output tests
 - Recorded machine-output naming conventions in the canonical machine-output reference
+- Updated usage, configuration, architecture, machine-output, API, README, and index documentation
+  to reflect the finalized TEXT / Markdown / machine output contract.
 
 ### CI / release / dependency model (completed)
 
@@ -279,6 +299,11 @@ older policy tokens, or older TOML layout/validation assumptions must update.
   - Older emitter/import paths were removed or renamed.
 - Verbosity and color options moved from the root CLI group to individual commands.
   - Existing invocation patterns may need updating.
+- Verbosity and quiet semantics were narrowed:
+  - `-v` / `--verbose` and `-q` / `--quiet` apply only to TEXT output.
+  - Markdown output is document-oriented and ignores TEXT-only verbosity/quiet controls.
+  - JSON/NDJSON output is machine-readable and ignores TEXT-only presentation controls.
+  - Registry commands no longer expose `--quiet`.
 - Runtime-only execution intent is now modeled separately from layered config.
   - `RunOptions` now carries runtime behavior such as apply/preview and stdin handling.
 - Dry-run / apply semantics are now explicit:
@@ -446,8 +471,8 @@ If implemented before 1.0, this should also drive a clearer split between:
 
 The separation is much clearer now, but a few boundary questions remain:
 
-- Remove any remaining Click-facing concerns from non-CLI modules.
-- Keep formatting, verbosity, and color decisions strictly split between:
+- Keep monitoring for any remaining Click-facing concerns in non-CLI modules.
+- Keep formatting, TEXT verbosity/quiet, and color decisions strictly split between:
   - CLI policy/orchestration
   - pure presentation rendering
   - core/domain logic
@@ -499,9 +524,9 @@ Recommended direction:
 
 ### Output contract freeze
 
-Most output architecture work is done. Machine-output implementation, tests, and reference
-documentation are now largely frozen; the remaining work is about **CLI/human-output follow-up**,
-not redesigning the system.
+Output architecture work is now complete. Machine-output implementation, human-output rendering,
+tests, and reference documentation are largely frozen; remaining work is about final review and
+schema/wording freeze, not redesigning the system.
 
 Machine output remaining work:
 
@@ -510,25 +535,26 @@ Machine output remaining work:
 - Registry machine-output contract frozen after the flattened JSON-envelope cleanup (`filetypes`,
   `processors`, `bindings`, `unbound_filetypes`, `unused_processors`).
 - `detail_level` semantics frozen:
-  - `--long` controls projection depth across formats
+  - `--long` controls projection/data depth across formats where supported
   - `detail_level` reflects projection in machine output when present
-  - verbosity remains independent (human-output concern)
+  - TEXT verbosity remains independent and presentation-only
 - Field naming consistency audited across domains and documented in the machine-output reference.
 - Keep `docs/dev/machine-formats.md` and `docs/dev/machine-output.md` aligned as the reference
   machine-format documentation.
 
 Human output remaining work:
 
-- Ensure TEXT and MARKDOWN remain consistent across commands.
-  - Main CLI entry point, command groups and command help/epilog wording has been aligned.
-  - Remaining review should focus on rendered command output, not Click help text.
-- Freeze verbosity semantics (`-v`, `-vv`, `-q`).
-  - CLI option plumbing now treats verbosity as human-output detail and `--quiet` as boolean
-    human-output suppression.
-  - Remaining work is documentation/final contract confirmation, not core plumbing.
+- TEXT and Markdown output contracts reviewed across command groups.
+  - TEXT remains compact/console-oriented and may use `-v`, `-vv`, and `--quiet` where applicable.
+  - Markdown is explicitly document-oriented and ignores TEXT-only verbosity/quiet controls.
+  - `--long` remains the data/detail-depth control where supported.
+- Verbosity semantics (`default`, `-v`, `-vv`, `--quiet`) frozen for 1.0.
+  - `-v` / `-vv` are TEXT-only progressive-disclosure controls.
+  - `--quiet` is TEXT-only and only exposed where suppressing output still leaves a useful signal.
+  - Registry commands intentionally do not support `--quiet`.
+- Focused human-output tests added for version, diagnostics, config, registry, and pipeline command
+  groups.
 - Finalize hint-ordering strategy.
-- Decide whether Markdown should remain layout-equivalent to text output or evolve toward a more
-  document-oriented format later.
 - Continue keeping presentation logic fully out of CLI command functions.
 
 ### Tooling / CI / release follow-up
@@ -566,6 +592,8 @@ A few user-facing behavior questions remain open for 1.0:
   legacy `skip_*` filters.
 - Keep CLI help examples aligned with canonical option/command constants to avoid drift between
   documentation and implementation.
+- Keep Markdown documentation and examples aligned with the document-oriented output contract rather
+  than treating Markdown as layout-equivalent TEXT.
 - Audit TopMark’s line-ending support model before 1.0:
   - confirm whether only standard CR / LF newline styles are intended to be supported
   - review the hypothesis-driven test cases that introduced additional nonstandard line-ending
@@ -644,18 +672,21 @@ These are release blockers unless explicitly deferred with a documented rational
 
 #### [Must] Human output contracts
 
-- [ ] TEXT and MARKDOWN outputs reviewed for consistency across command groups
-  - [ ] config commands
+- [x] TEXT and MARKDOWN outputs reviewed for consistency across command groups
+  - [x] config commands
   - [x] pipeline commands
   - [x] registry commands
   - [x] version command
+  - [x] diagnostics presentation helpers
 - [ ] Warning/error phrasing reviewed for CLI-wide consistency
-- [ ] Verbosity semantics (`default`, `-v`, `-vv`, `-q`) documented and considered stable
+- [x] Verbosity semantics (default, `-v`, `-vv`, `--quiet`) documented and considered stable
   - [x] CLI plumbing normalized around typed `TopmarkCliState`
-  - [x] `-v` / `-vv` treated as human-output detail
-  - [x] `-q` / `--quiet` treated as boolean human-output suppression
-  - [x] machine formats ignore human-output verbosity controls with explicit warnings
-  - [ ] final user-facing documentation reviewed and frozen
+  - [x] `-v` / `-vv` treated as TEXT-only progressive-disclosure controls
+  - [x] `-q` / `--quiet` treated as TEXT-only output suppression where applicable
+  - [x] Markdown output ignores TEXT-only verbosity/quiet controls
+  - [x] machine formats ignore TEXT-only presentation controls
+  - [x] registry commands intentionally do not support `--quiet`
+  - [x] final user-facing documentation reviewed and aligned
 - [ ] Decision made on hint-ordering / “primary hint” semantics for 1.0
 
 #### [Must] CLI behavior
@@ -666,6 +697,8 @@ These are release blockers unless explicitly deferred with a documented rational
   - [ ] stdin/list-vs-content handling
   - [ ] strict config-checking behavior at command level
   - [x] command help/epilog wording aligned for main CLI entry point, command groups and commands
+  - [x] TEXT-only verbosity/quiet applicability documented and enforced by command
+  - [x] registry commands reject `--quiet`
 - [ ] Final review of user-facing policy/report flags completed
   - [ ] `--report` semantics frozen
   - [ ] `--header-mutation-mode` semantics frozen
@@ -675,7 +708,7 @@ These are release blockers unless explicitly deferred with a documented rational
 
 - [ ] Config keys and semantics documented and considered stable
 - [ ] Qualified/unqualified file type identifier semantics documented and considered stable
-- [ ] `config init`, `config defaults`, `config check`, and `config dump` outputs aligned and frozen
+- [x] `config init`, `config defaults`, `config check`, and `config dump` outputs aligned and frozen
 - [ ] Decision made and documented on the final public override model
 - [x] Package/application versioning model documented and stable
   - [x] Git tags are the single source of truth via `setuptools-scm`
@@ -762,9 +795,9 @@ These should ideally be completed for 1.0, but may be deferred more easily if ne
 
 #### [Recommended] Human output
 
-- [ ] Human-facing registry output reviewed/frozen for qualified identifier presentation
+- [x] Human-facing registry output reviewed/frozen for qualified identifier presentation
 - [ ] Diff rendering policy reviewed across pipeline commands
-- [ ] Markdown layout direction explicitly documented (stay text-equivalent vs evolve later)
+- [x] Markdown layout direction explicitly documented as document-oriented, not text-equivalent
 
 #### [Recommended] Machine output
 
@@ -806,7 +839,8 @@ These items are explicitly reasonable to defer.
 
 #### [Post-1.0] Human output
 
-- [ ] Further Markdown layout evolution (tables, grouped sections, richer structures)
+- [ ] Further Markdown layout evolution (tables, grouped sections, richer structures) within the
+  document-oriented output contract
 - [ ] Generalize or refine the “primary hint” concept
 - [ ] Evaluate theme/style configurability and semantic style exposure
 

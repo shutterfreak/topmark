@@ -35,6 +35,12 @@ topmark strip --diff src/
 # Summary‑only view (CI‑friendly)
 topmark strip --summary src/
 
+# Suppress TEXT output and rely on the exit code
+topmark strip --quiet src/
+
+# Render document-oriented Markdown output
+topmark strip --output-format markdown src/
+
 # Treat staged config-loading validation warnings as errors for this run
 topmark strip --strict src/
 
@@ -140,6 +146,8 @@ For the canonical schema, stable `kind` values, and shared conventions, see:
 - [Machine output schema (JSON & NDJSON)](../../dev/machine-output.md)
 - [Machine formats](../../dev/machine-formats.md)
 
+{% include-markdown "\_snippets/output-contract.md" %}
+
 Notes:
 
 - Diffs (`--diff`) are **human-only** and are not included in JSON/NDJSON.
@@ -206,17 +214,25 @@ Example (summary mode):
 
 ______________________________________________________________________
 
-## Verbosity & logging
+## Global options
 
-Program-output verbosity is separate from internal logging:
+Output format, TEXT verbosity, quiet mode, and color output are configured with
+[global options](../global-options.md).
 
-- `-v`, `--verbose` increases **program output** detail (e.g., renders per‑line diagnostics).
-- `-q`, `--quiet` suppresses most **program output**.
+### Verbosity & logging
+
+TEXT output verbosity is separate from internal logging:
+
+- `-v`, `--verbose` increases TEXT output detail for `strip`, such as per-line diagnostics and
+  additional hints.
+- `-q`, `--quiet` suppresses TEXT output while preserving the command’s exit status.
+- See the output-format note above for Markdown and machine-output behavior.
 
 Notes:
 
 - **Summary mode** aggregates outcomes and suppresses per-file guidance lines.
-- **Per‑line diagnostics** are shown when the effective program verbosity ≥ 1.
+- In TEXT output, **per-line diagnostics** are shown with `-v` and above.
+- In Markdown output, diagnostics and hints are rendered when present without requiring `-v`.
 - **Diffs** (`--diff`) are always human‑only and never included in JSON/NDJSON.
 
 ## Options (subset)
@@ -226,6 +242,7 @@ Notes:
 | `--apply`                                            | Write changes to files (off by default).                               |
 | `--diff`                                             | Show unified diffs (human output only).                                |
 | `--summary`                                          | Show outcome counts instead of per‑file details.                       |
+| `-q`, `--quiet`                                      | Suppress TEXT output while preserving the command’s exit status.       |
 | `--files-from`                                       | Read newline‑delimited paths from file (use '-' for STDIN).            |
 | `-` (PATH)                                           | Read a single file’s content from STDIN (requires `--stdin-filename`). |
 | `--include`                                          | Add paths by glob (can be used multiple times).                        |
@@ -357,7 +374,7 @@ ______________________________________________________________________
 
 - **No files to process**: Ensure you passed positional paths, or selected the correct STDIN mode
   (`--files-from -` for list mode, or `-` with `--stdin-filename` for content mode). Use `-vv` for
-  debug logs.
+  detailed TEXT output; use logging options for internal debug logs.
 - **Patterns don’t match**: Remember that include/exclude patterns are **relative to CWD**. `cd`
   into the project root before running.
 - **“Header not detected”**: Header‑like text inside code fences or strings is intentionally

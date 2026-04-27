@@ -229,6 +229,12 @@ topmark registry filetypes --output-format markdown --long
 topmark registry processors --output-format markdown --long
 ```
 
+> Note:
+>
+> - `-v` / `--verbose` and `-q` / `--quiet` apply only to TEXT output.
+> - Markdown output is document-oriented and ignores these flags.
+> - JSON/NDJSON output is machine-readable and also ignores these flags.
+
 TopMark preserves line endings, shebangs, BOMs, and indentation rules for each file type.
 
 ______________________________________________________________________

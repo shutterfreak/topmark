@@ -24,6 +24,13 @@ from `topmark.toml` and from `[tool.topmark]` in `pyproject.toml`.
 > Machine and human outputs expose a flattened compatibility view derived from these staged
 > validation logs; the staged form is not serialized directly. For 1.0, this flattened form is the
 > accepted machine/API contract (stable entry shape `{level, message}`).
+>
+> Presentation note:
+>
+> - Human-facing TEXT verbosity (`-v`) and quiet mode (`--quiet`) are presentation-layer concerns
+>   and do not affect configuration schema validation, staged diagnostics, or machine/API outputs.
+> - Markdown and machine outputs always reflect the full flattened compatibility view, independent
+>   of TEXT-only verbosity controls.
 
 ```md
 `strict_config_checking` is a **TOML-source-local config-loading option**, not a
@@ -54,9 +61,14 @@ After this step, only the **layered config fragment** is passed to the config la
 (`MutableConfig`) for value parsing and normalization.
 
 At this boundary, diagnostics remain **staged**; flattening into a single compatibility view is
-performed only at reporting, exception, and machine-output boundaries. For 1.0, staged validation
-remains primarily internal, while public reporting and machine/API surfaces expose only the
-flattened compatibility diagnostics contract.
+performed only at reporting, exception, and machine-output boundaries.
+
+This reporting boundary is independent of human presentation controls: TEXT verbosity (`-v`) and
+quiet mode (`--quiet`) only influence how diagnostics are rendered in console output, not how they
+are produced, staged, or exposed through machine/API interfaces.
+
+For 1.0, staged validation remains primarily internal, while public reporting and machine/API
+surfaces expose only the flattened compatibility diagnostics contract.
 
 At the TOML layer, malformed known sections are handled as warning-and-ignore cases, while missing
 known sections are emitted as INFO diagnostics. This lets callers distinguish absent sections from

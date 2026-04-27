@@ -43,8 +43,10 @@ The schemas below only apply to **`json`** and **`ndjson`**.
 Notes:
 
 - Machine formats never include ANSI color codes and are **not affected** by `--color`.
-- Verbosity flags may change *which records are emitted* (e.g. detail vs summary), but they do not
-  change the schema shape of a given record type (`kind`).
+- Machine formats are independent of human-facing presentation controls.
+- TEXT-only flags such as `-v` / `--verbose` and `-q` / `--quiet` do not affect machine output.
+- Markdown output is also independent from machine formats and follows its own document-oriented
+  contract.
 
 ______________________________________________________________________
 
@@ -78,6 +80,9 @@ Notes:
 - `detail_level` is machine-facing and distinguishes the default projection (`"brief"`) from the
   expanded projection requested via `--long` (`"long"`) when a command surface emits that field.
   Registry machine output currently includes `detail_level`; other command families may omit it.
+
+`detail_level` is distinct from TEXT verbosity (`-v`) and quiet mode (`--quiet`). It reflects an
+explicit machine-facing projection such as `--long`, not presentation detail.
 
 Shared metadata keys are defined in
 \[`topmark.core.machine.schemas.MachineMetaKey`\][topmark.core.machine.schemas.MachineMetaKey].
@@ -150,6 +155,9 @@ ______________________________________________________________________
 
 Processing commands produce either **detail** output (per-file results) or **summary** output
 (bucket counts), depending on whether the CLI is in `--summary` mode.
+
+Processing machine output is unaffected by TEXT verbosity or quiet mode; those flags only influence
+human TEXT output.
 
 ### JSON schema (detail mode)
 
@@ -291,8 +299,13 @@ At a high level, per-file results include:
   - list of diagnostics (when requested / enabled)
   - pre-computed diagnostic counts
 
-> [!NOTE] Diffs (`--diff`) and any ANSI coloring are **human-only** and are not included in machine
-> payloads.
+> [!NOTE]
+>
+> - Diffs (`--diff`) and any ANSI coloring are **human-only** and are not included in machine
+>   payloads.
+> - Human presentation controls such as `-v` / `--verbose` and `-q` / `--quiet` are ignored by
+>   machine output. Consumers should use JSON/NDJSON fields rather than relying on TEXT or Markdown
+>   rendering.
 
 ______________________________________________________________________
 
@@ -369,8 +382,10 @@ Example JSON diagnostics payload:
 - `diagnostics`: list of individual diagnostics (stable `{level, message}` entries; see
   \[`topmark.diagnostic.machine.schemas.DiagnosticKey`\][topmark.diagnostic.machine.schemas.DiagnosticKey])
 
-> [!NOTE] In NDJSON, `config_diagnostics` is **counts-only** and each individual config diagnostic
-> is emitted as a separate `diagnostic` record with `domain="config"` (one record per diagnostic).
+> [!NOTE]
+>
+> In NDJSON, `config_diagnostics` is **counts-only** and each individual config diagnostic is
+> emitted as a separate `diagnostic` record with `domain="config"` (one record per diagnostic).
 
 Example NDJSON diagnostics records:
 
@@ -399,6 +414,8 @@ Notes:
 - `config defaults` emits the built-in default configuration snapshot.
 - `config init` emits the same built-in default configuration snapshot in machine formats, even
   though its human-facing output is the bundled example TopMark TOML resource with comments.
+
+Machine output for these commands is unaffected by TEXT verbosity or quiet mode.
 
 ### JSON shape for `config dump`, `config defaults`, `config init`
 
@@ -537,6 +554,8 @@ output.
 For 1.0, this is the explicit contract decision: staged validation remains primarily internal, and
 machine output serializes only the flattened compatibility diagnostics surface.
 
+Machine output for `config check` is unaffected by TEXT verbosity or quiet mode.
+
 ### NDJSON shape for `config check`
 
 Stream prefix:
@@ -598,6 +617,8 @@ while JSON payload keys such as `version_info` are defined in
 The version reported in machine output is derived from the installed package metadata / generated
 version module, not from a manually maintained static field in `pyproject.toml`.
 
+Machine output for `version` is unaffected by TEXT verbosity or quiet mode.
+
 Notes:
 
 - `version_format` may be `"pep440"` or `"semver"` depending on `--semver`.
@@ -611,6 +632,9 @@ Notes:
 ______________________________________________________________________
 
 ## Registry commands
+
+Registry machine output uses `--long` to select brief vs detailed projections. Registry commands do
+not support `--quiet`, and TEXT verbosity does not affect machine output.
 
 ### `topmark registry filetypes`
 
@@ -793,9 +817,15 @@ releases.
 
 Consumers should:
 
+- Treat machine output as the authoritative contract for programmatic use; do not parse TEXT or
+  Markdown output in automation.
+
 - Rely on `kind` for NDJSON.
+
 - Treat unknown fields as optional/ignorable.
+
 - Prefer parsing and schema-tolerant logic over strict string matching.
+
 - Assume additive fields may appear over time.
 
 Breaking changes should be signaled via Conventional Commits (using the `!` marker) and documented

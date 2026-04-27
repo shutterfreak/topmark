@@ -56,6 +56,11 @@ Use `--output-format` to pick the output format:
 
 The `--long` flag controls the level of detail for **all** formats.
 
+This flag controls the data/detail depth across all formats. TEXT-only verbosity (`-v`) affects
+presentation (e.g., headings) and does not change the data fields emitted.
+
+{% include-markdown "\_snippets/output-contract-no-quiet.md" %}
+
 ______________________________________________________________________
 
 ### JSON structure
@@ -105,8 +110,8 @@ ______________________________________________________________________
 ## Numbered output & verbosity
 
 In human-readable formats, TopMark renders a **numbered list** of file types with right-aligned
-indices (e.g., `1.`, `2.`, …) to keep long lists scannable. With `--long` or higher verbosity,
-additional details are shown alongside each identifier.
+indices (e.g., `1.`, `2.`, …) to keep long lists scannable. With `--long`, additional details are
+shown alongside each identifier. TEXT verbosity (`-v`) affects presentation only (for TEXT output).
 
 ______________________________________________________________________
 
@@ -136,6 +141,8 @@ ______________________________________________________________________
 - File types define **how files are matched and classified**.
 - Processing behavior is determined by bindings (see [`registry bindings`](./bindings.md)).
 - A file type may be present but not processed if it is unbound or marked `skip_processing`.
+- `--quiet` is not supported for registry commands; use output-format options instead if you need
+  non-TEXT output.
 
 ______________________________________________________________________
 

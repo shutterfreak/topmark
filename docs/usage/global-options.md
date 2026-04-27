@@ -27,7 +27,8 @@ TopMark supports four output formats:
 - Human-facing output:
   - `text` (default): When using in an interactive terminal; if color-enabled the output will be
     rendered in color by default (disable with `--no-color`).
-  - `markdown`: Generate output as MarkDown (can be redirected to a file).
+  - `markdown`: Generate output as Markdown (document-oriented; ignores TEXT-only verbosity and
+    quiet controls).
 - Machine-readable formats:
   - `json`: Return a single JSON object, formatted for easier reading.
   - `ndjson`: Returns a stream of NDJSON objects (one per line).
@@ -40,25 +41,22 @@ ______________________________________________________________________
 
 ## Verbosity
 
-TopMark supports verbosity controls:
+TopMark supports TEXT output verbosity controls:
 
 ```bash
---verbose       # Increase verbosity level
+--verbose       # Increase TEXT output verbosity
 -v              # Shorthand (can be repeated)
---quiet         # Decrease verbosity level
--q              # Shorthand (can be repeated)
+--quiet         # Suppress TEXT output
+-q              # Shorthand
 ```
 
-Verbosity affects:
+In TEXT output, verbosity affects:
 
 - Hint grouping
 - Diagnostic detail
 - Summary rendering
 
-Notes:
-
-- Machine-readable formats (`json`, `ndjson`) are not affected by verbosity.
-- `--verbose` and `--quiet` are mutually exclusive
+{% include-markdown "\_snippets/output-contract.md" %}
 
 ______________________________________________________________________
 

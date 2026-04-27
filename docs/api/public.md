@@ -25,6 +25,13 @@ The API reference complements the higher‑level usage guides:
 
 Use this section if you need details on functions, classes, or constants available in TopMark.
 
+{% include-markdown "\_snippets/output-contract.md" %}
+
+> [!NOTE]
+>
+> For programmatic use, prefer the Python API or JSON/NDJSON output rather than parsing
+> TEXT/Markdown.
+
 ## Public API (stable)
 
 ### Configuration via mappings (immutable at runtime)
@@ -122,6 +129,12 @@ For the public API, the returned view is controlled via
 ```python
 assert run.summary.get("unchanged", 0) >= 0
 ```
+
+These API results are rendered differently depending on the selected output format:
+
+- TEXT: console-oriented, supports `-v` / `--quiet`.
+- Markdown: document-oriented, ignores TEXT-only verbosity/quiet controls.
+- JSON/NDJSON: machine-readable, unaffected by presentation flags.
 
 This design keeps the public surface small and semver-stable while allowing flexible per-call
 configuration.

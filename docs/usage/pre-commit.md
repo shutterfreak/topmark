@@ -102,8 +102,7 @@ ______________________________________________________________________
 Pre-commit **batches filenames** to avoid OS argument-length limits (ARG_MAX). Your hook may run
 multiple times per invocation (for different batches). This is expected.
 
-> Tip: Keep human banners at `INFO` level in TopMark and use `--quiet` in hooks to avoid repeated
-> banners in batched runs.
+{% include-markdown "\_snippets/output-contract.md" %}
 
 **Run once per repo** by setting `pass_filenames: false` in the hook manifest and letting TopMark
 perform its own file discovery from config:
@@ -141,10 +140,15 @@ For the manual hook:
 Notes:
 
 - `args:` is appended to the hook’s `entry`.
+
 - Prefer `args:` over copying a full `entry:` in the consumer config; it stays compatible when the
   hook entry changes.
+
 - If you need TopMark to run once per repo (self-discovery), combine `pass_filenames: false` with
   `args:` as needed.
+
+- TEXT-only controls such as `-v` / `--verbose` and `-q` / `--quiet` affect only human TEXT output;
+  Markdown and machine formats ignore these flags.
 
 ______________________________________________________________________
 
@@ -155,6 +159,11 @@ ______________________________________________________________________
 ```bash
 # Focus output on files that would change
 topmark check --report actionable
+```
+
+```bash
+# Suppress TEXT output in CI and rely on exit status
+topmark check --report actionable --quiet
 ```
 
 During these runs, configuration loading includes per-source TOML validation before layered config

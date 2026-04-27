@@ -60,6 +60,8 @@ Use `--output-format` to pick the output format:
 
 The `--long` flag controls the level of detail for **all** formats.
 
+{% include-markdown "\_snippets/output-contract-no-quiet.md" %}
+
 ______________________________________________________________________
 
 ### JSON structure
@@ -113,7 +115,7 @@ ______________________________________________________________________
 ## Numbered output & verbosity
 
 In human-readable formats, TopMark renders a **numbered list** of file types with right-aligned
-indices (e.g., `1.`, `2.`, …) to keep long lists scannable. With `--long` or higher verbosity,
+indices (e.g., `1.`, `2.`, …) to keep long lists scannable. With `--long` or higher TEXT verbosity,
 additional details are shown alongside each identifier.
 
 ______________________________________________________________________
@@ -150,3 +152,5 @@ ______________________________________________________________________
 - Bindings represent the **effective runtime mapping** used by TopMark.
 - A file type may be intentionally unbound (e.g., `skip_processing = true`).
 - This command is the best way to debug resolution issues or missing processor registrations.
+- `--quiet` is not supported for registry commands; use output-format options instead if you need
+  non-TEXT output.
