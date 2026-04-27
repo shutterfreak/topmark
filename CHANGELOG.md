@@ -18,6 +18,135 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ______________________________________________________________________
 
+## [1.0.0a5] – 2026-04-27
+
+This fifth **1.0 alpha release** focuses on **finalizing the CLI output contract and human-output
+semantics** across TEXT, Markdown, and machine formats.
+
+It completes the CLI/output-surface stabilization work by enforcing a clear separation between
+console-oriented output, document-oriented rendering, and machine-readable formats, backed by
+comprehensive tests and fully aligned documentation.
+
+### ⚠️ Breaking Changes - 1.0.0a5
+
+- TopMark now requires `pathspec>=1.1.0,<1.2.0`. Environments pinning older `pathspec` versions must
+  update their constraints.
+
+### Highlights — 1.0.0a5
+
+- Finalized and enforced the **TEXT vs Markdown vs machine output contract**
+- Introduced **typed CLI runtime state** and removed untyped context usage
+- Standardized **verbosity and quiet semantics** across all commands
+- Strengthened **human-output test coverage** across pipeline, config, registry, and version
+  commands
+- Fully aligned CLI, presentation layer, and documentation ahead of the 1.0 freeze
+
+### Added — 1.0.0a5
+
+- **CLI / human-output tests**
+
+  - Dedicated CLI test coverage for pipeline commands (`check`, `strip`) validating:
+    - TEXT quiet mode suppressing output while preserving exit status
+    - Markdown output ignoring TEXT-only controls
+    - TEXT verbosity affecting output shape
+    - `--apply --quiet` performing mutations without emitting output
+  - Additional tests for:
+    - version command (TEXT, Markdown, JSON, NDJSON quiet/verbosity behavior)
+    - config, registry, and diagnostic human-output consistency
+
+- **Presentation tests**
+
+  - New test module validating diagnostic rendering across TEXT and Markdown:
+    - compact summary at default verbosity
+    - detailed output at higher verbosity levels
+    - consistent behavior across formats
+
+### Changed — 1.0.0a5
+
+- **CLI output contract**
+
+  - Enforced strict separation between:
+    - TEXT output (console-oriented, verbosity/quiet controlled)
+    - Markdown output (document-oriented, independent of verbosity/quiet)
+    - machine output (JSON/NDJSON, schema-driven and unaffected by presentation flags)
+  - `--verbose` and `--quiet` are now explicitly **TEXT-only controls**
+  - Markdown rendering is now stable and independent from TEXT verbosity/quiet behavior
+  - Registry commands no longer expose `--quiet`
+
+- **CLI runtime architecture**
+
+  - Introduced `TopmarkCliState` as the **typed runtime state container**
+  - Replaced untyped `ctx.obj` usage with structured helpers:
+    - `bootstrap_cli_state()`
+    - `get_cli_state()`
+  - Removed implicit console resolution and now pass console explicitly
+  - Improved type safety and predictability of CLI execution
+
+- **Verbosity and quiet semantics**
+
+  - Normalized verbosity handling via `normalize_verbosity()` with bounded levels
+  - Converted `--quiet` from a count-based flag to a **boolean suppression flag**
+  - Restricted quiet suppression to **TEXT rendering only**
+  - Non-TEXT formats now ignore or normalize verbosity/quiet flags safely
+
+- **Presentation layer**
+
+  - Further decoupled presentation from CLI and runtime concerns
+  - Ensured all renderers are:
+    - pure (no I/O)
+    - reusable
+    - independently testable
+  - Aligned diagnostic rendering behavior across TEXT and Markdown
+
+- **Documentation**
+
+  - Unified CLI output contract wording across all documentation surfaces
+  - Introduced reusable snippets:
+    - `output-contract.md`
+    - `output-contract-no-quiet.md`
+  - Replaced duplicated explanations across:
+    - command docs (check, strip, version, config, registry)
+    - global options and pre-commit docs
+    - README and index pages
+  - Updated developer docs (architecture, machine-output, roadmap) to reflect:
+    - strict separation of output layers
+    - finalized verbosity/quiet semantics
+  - Marked CLI/output behavior as **effectively frozen for 1.0**
+
+- **Dependencies / file resolution**
+
+  - Updated `pathspec` requirement to **`>=1.1.0,<1.2.0`**.
+  - Aligned TopMark with the generic `PathSpec` API introduced in `pathspec 1.1`.
+  - Introduced a typed `GitIgnorePathSpec` alias backed by `GitIgnoreBasicPattern` for Pyright
+    strict compatibility.
+  - Updated config pattern compilation and file-resolution logic to use the typed API.
+  - TopMark now requires the `pathspec 1.1.x` series; environments pinning older `pathspec` versions
+    must update their constraints.
+
+### Fixed — 1.0.0a5
+
+- **Version command output**
+
+  - Ensured `--quiet` suppresses only TEXT output without emitting blank lines
+  - Preserved Markdown and machine output visibility under quiet mode
+  - Aligned Markdown rendering with TEXT verbosity expectations
+
+- **Diagnostic rendering consistency**
+
+  - Resolved inconsistencies between TEXT and Markdown summary/detail behavior
+  - Ensured consistent compact vs detailed output across verbosity levels
+
+### Notes — 1.0.0a5
+
+- The **CLI output contract is now finalized and considered stable for 1.0**.
+- TEXT, Markdown, and machine outputs now have **clearly defined and enforced roles**.
+- Presentation, CLI orchestration, and machine serialization are now **fully decoupled**.
+- Remaining work before 1.0 is limited to:
+  - minor presentation refinements (e.g. hint ordering, diff rendering)
+  - final release-path validation and polish
+
+______________________________________________________________________
+
 ## [1.0.0a4] – 2026-04-22
 
 This fourth **1.0 alpha release** focuses on **finalizing the runtime dependency model** for
