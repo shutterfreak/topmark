@@ -30,16 +30,126 @@ from topmark.pipeline.hints import KnownCode
 from topmark.pipeline.status import ResolveStatus
 from topmark.pipeline.steps.base import BaseStep
 from topmark.processors.base import HeaderProcessor
-from topmark.resolution.filetypes import ResolvedBinding
-from topmark.resolution.filetypes import resolve_binding_for_path
+from topmark.registry.registry import Registry
+from topmark.resolution.filetypes import probe_resolution_for_path
+from topmark.resolution.probe import ResolutionProbeStatus
 
 if TYPE_CHECKING:
     from topmark.core.logging import TopmarkLogger
     from topmark.filetypes.model import FileType
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.processors.base import HeaderProcessor
+    from topmark.resolution.probe import ResolutionProbeResult
 
 logger: TopmarkLogger = get_logger(__name__)
+
+
+def _ensure_resolution_probe(ctx: ProcessingContext) -> ResolutionProbeResult:
+    """Return the resolution probe result for a context, creating it if needed.
+
+    Args:
+        ctx: Processing context whose path should be resolved.
+
+    Returns:
+        Resolution probe result stored on the context.
+    """
+    if ctx.resolution_probe is None:
+        ctx.resolution_probe = probe_resolution_for_path(
+            ctx.path,
+            include_file_types=ctx.config.include_file_types or None,
+            exclude_file_types=ctx.config.exclude_file_types or None,
+        )
+    return ctx.resolution_probe
+
+
+def apply_probe_resolution_to_context(
+    *,
+    ctx: ProcessingContext,
+    step: BaseStep,
+) -> None:
+    """Apply probe-backed resolution state to a processing context.
+
+    This helper maps the shared `ResolutionProbeResult` contract onto the
+    effective pipeline fields and statuses used by normal processing pipelines.
+    It requests a halt for unsupported, unbound, or header-unsupported files, but
+    deliberately does not halt on successful resolution.
+
+    Args:
+        ctx: Processing context to update.
+        step: Pipeline step requesting halts and diagnostics.
+    """
+    ctx.status.resolve = ResolveStatus.PENDING
+    probe: ResolutionProbeResult = _ensure_resolution_probe(ctx)
+
+    if probe.selected_file_type is None:
+        logger.info("Unsupported file type for '%s' (no matcher)", ctx.path)
+        ctx.status.resolve = ResolveStatus.UNSUPPORTED
+        reason: str = "No file type associated with this file."
+        ctx.diagnostics.add_info(reason)
+        ctx.request_halt(reason=reason, at_step=step)
+        return
+
+    file_type: FileType | None = Registry.get_filetype(probe.selected_file_type.qualified_key)
+    if file_type is not None:
+        ctx.file_type = file_type
+        logger.debug("File '%s' resolved to type: %s", ctx.path, file_type.local_key)
+
+        if file_type.skip_processing:
+            logger.info(
+                "Skipping header processing for '%s' (file type '%s' marked skip_processing=True)",
+                ctx.path,
+                file_type.local_key,
+            )
+            ctx.status.resolve = ResolveStatus.TYPE_RESOLVED_HEADERS_UNSUPPORTED
+            reason = (
+                f"File type '{file_type.local_key}' "
+                f"(namespace: {file_type.namespace}) recognized; "
+                "headers are not supported for this format."
+            )
+            ctx.diagnostics.add_info(reason)
+            ctx.request_halt(reason=reason, at_step=step)
+            return
+
+    if probe.status == ResolutionProbeStatus.NO_PROCESSOR or probe.selected_processor is None:
+        logger.info(
+            "No header processor registered for file type '%s' (file '%s')",
+            probe.selected_file_type.local_key,
+            ctx.path,
+        )
+        ctx.status.resolve = ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED
+        reason = (
+            f"No header processor registered for file type '{probe.selected_file_type.local_key}'."
+        )
+        ctx.diagnostics.add_info(reason)
+        ctx.request_halt(reason=reason, at_step=step)
+        return
+
+    processor: HeaderProcessor | None = Registry.resolve_processor(
+        probe.selected_file_type.qualified_key
+    )
+    if processor is None:
+        logger.info(
+            "No header processor registered for file type '%s' (file '%s')",
+            probe.selected_file_type.local_key,
+            ctx.path,
+        )
+        ctx.status.resolve = ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED
+        reason = (
+            f"No header processor registered for file type '{probe.selected_file_type.local_key}'."
+        )
+        ctx.diagnostics.add_info(reason)
+        ctx.request_halt(reason=reason, at_step=step)
+        return
+
+    ctx.header_processor = processor
+
+    ctx.status.resolve = ResolveStatus.RESOLVED
+    logger.debug(
+        "Resolve success: file='%s' type='%s' processor=%s",
+        ctx.path,
+        probe.selected_file_type.local_key,
+        processor.__class__.__name__,
+    )
 
 
 class ResolverStep(BaseStep):
@@ -91,8 +201,6 @@ class ResolverStep(BaseStep):
             Sets `ctx.file_type`, `ctx.header_processor`, and `ctx.status.resolve`.
             Appends human-readable diagnostics when resolution fails or is partial.
         """
-        ctx.status.resolve = ResolveStatus.PENDING
-
         logger.debug(
             "Resolve start: file='%s', fs status='%s', type=%s, processor=%s",
             ctx.path,
@@ -100,66 +208,7 @@ class ResolverStep(BaseStep):
             ctx.file_type.local_key if ctx.file_type else VALUE_NOT_SET,
             (ctx.header_processor.__class__.__name__ if ctx.header_processor else VALUE_NOT_SET),
         )
-
-        resolved: ResolvedBinding = resolve_binding_for_path(
-            ctx.path,
-            include_file_types=ctx.config.include_file_types or None,
-            exclude_file_types=ctx.config.exclude_file_types or None,
-        )
-        file_type: FileType | None = resolved.file_type
-        processor: HeaderProcessor | None = resolved.processor
-
-        if file_type is not None:
-            ctx.file_type = file_type
-            logger.debug("File '%s' resolved to type: %s", ctx.path, file_type.local_key)
-
-            if file_type.skip_processing:
-                logger.info(
-                    "Skipping header processing for '%s' "
-                    "(file type '%s' marked skip_processing=True)",
-                    ctx.path,
-                    file_type.local_key,
-                )
-                ctx.status.resolve = ResolveStatus.TYPE_RESOLVED_HEADERS_UNSUPPORTED
-                reason: str = (
-                    f"File type '{file_type.local_key}' "
-                    f"(namespace: {file_type.namespace}) recognized; "
-                    "headers are not supported for this format."
-                )
-                ctx.diagnostics.add_info(reason)
-                ctx.request_halt(reason=reason, at_step=self)
-                return
-
-            if processor is None:
-                logger.info(
-                    "No header processor registered for file type '%s' (file '%s')",
-                    file_type.local_key,
-                    ctx.path,
-                )
-                ctx.status.resolve = ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED
-                reason = f"No header processor registered for file type '{file_type.local_key}'."
-                ctx.diagnostics.add_info(reason)
-                ctx.request_halt(reason=reason, at_step=self)
-                return
-
-            # Success: attach the processor and mark the file as resolved
-            ctx.header_processor = processor
-            ctx.status.resolve = ResolveStatus.RESOLVED
-            logger.debug(
-                "Resolve success: file='%s' type='%s' processor=%s",
-                ctx.path,
-                file_type.local_key,
-                processor.__class__.__name__,
-            )
-            return
-
-        # No FileType matched
-        logger.info("Unsupported file type for '%s' (no matcher)", ctx.path)
-        ctx.status.resolve = ResolveStatus.UNSUPPORTED
-        reason = "No file type associated with this file."
-        ctx.diagnostics.add_info(reason)
-        ctx.request_halt(reason=reason, at_step=self)
-        return
+        apply_probe_resolution_to_context(ctx=ctx, step=self)
 
     def hint(self, ctx: ProcessingContext) -> None:
         """Advise about resolution outcome (non-binding).
