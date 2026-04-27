@@ -92,12 +92,14 @@ markdown_extensions:
         # Mermaid.js integration: intercepts ```mermaid blocks and renders diagrams.
         - name: mermaid
           class: mermaid
-          format: !!python/name:pymdownx.superfences.fence_code_format
+          format:
 
+            !!python/name:pymdownx.superfences.fence_code_format 
         - name: flow
           class: highlight
-          format: !!python/name:pymdownx.superfences.fence_code_format
+          format:
 
+            !!python/name:pymdownx.superfences.fence_code_format 
   - pymdownx.highlight:
       anchor_linenums: true
       line_spans: __span
@@ -105,9 +107,10 @@ markdown_extensions:
 
   # Material icon shortcodes like :material-folder: / :material-file:
   - pymdownx.emoji:
-      emoji_generator: !!python/name:material.extensions.emoji.to_svg
-      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg 
+      emoji_index:
 
+        !!python/name:material.extensions.emoji.twemoji 
 plugins:
   # 1) Search engine plugin - usually listed early in the sequence.
   - search
@@ -130,7 +133,7 @@ plugins:
       default_handler: python
       handlers:
         python:
-          paths: ["src"]
+          paths: [ "src" ]
           options:
             docstring_style: google
             show_signature: true
@@ -188,7 +191,8 @@ nav:
   - Configuration:
       - Overview: configuration/index.md
       - Discovery & Precedence: configuration/discovery.md
-      - Example TOML document: configuration/generated/example-config.md
+      - Example TOML document (generated): configuration/generated/example-config.md
+      - Default TOML settings (generated): configuration/generated/config-defaults.md
   - CI/CD:
       - CI workflow: ci/ci-workflow.md
       - Dev validation: ci/dev-validation.md

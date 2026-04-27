@@ -170,6 +170,12 @@ def generate_cli_reference_pages() -> None:
         "--output-format",
         "markdown",
     )
+    config_defaults_md: str = _run_topmark_markdown(
+        "config",
+        "init",
+        "--output-format",
+        "markdown",
+    )
 
     def _write_generated_page(dest: str, title: str, body: str) -> None:
         """Write a standalone generated Markdown page under `docs/`.
@@ -205,6 +211,11 @@ def generate_cli_reference_pages() -> None:
         "configuration/generated/example-config.md",
         "Example TOML configuration (generated)",
         example_config_md,
+    )
+    _write_generated_page(
+        "configuration/generated/config-defaults.md",
+        "Default TOML configuration (generated)",
+        config_defaults_md,
     )
 
 
