@@ -244,9 +244,13 @@ topmark registry processors --output-format markdown --long
 
 > Note:
 >
-> - `-v` / `--verbose` and `-q` / `--quiet` apply only to TEXT output.
-> - Markdown output is document-oriented and ignores these flags.
-> - JSON/NDJSON output is machine-readable and also ignores these flags.
+> - `-v` / `--verbose` applies only to TEXT output.
+> - `-q` / `--quiet` is available only on commands that support TEXT output suppression, such as
+>   `check`, `strip`, `probe`, `config check`, and `config dump`.
+> - Pure informational content-producing commands such as `version`, `config defaults`,
+>   `config init`, and registry commands do not support `--quiet`.
+> - Markdown output is document-oriented and ignores TEXT-only verbosity controls.
+> - JSON/NDJSON output is machine-readable and also ignores TEXT-only verbosity controls.
 > - `topmark probe` also reports explicitly requested paths that were filtered out before
 >   resolution, distinguishing between path filters, file-type filters, and a generic fallback.
 

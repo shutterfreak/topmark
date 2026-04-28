@@ -27,8 +27,8 @@ TopMark supports four output formats:
 - Human-facing output:
   - `text` (default): When using in an interactive terminal; if color-enabled the output will be
     rendered in color by default (disable with `--no-color`).
-  - `markdown`: Generate output as Markdown (document-oriented; ignores TEXT-only verbosity and
-    quiet controls).
+  - `markdown`: Generate output as Markdown (document-oriented; ignores TEXT-only verbosity
+    controls).
 - Machine-readable formats:
   - `json`: Return a single JSON object, formatted for easier reading.
   - `ndjson`: Returns a stream of NDJSON objects (one per line).
@@ -46,9 +46,16 @@ TopMark supports TEXT output verbosity controls:
 ```bash
 --verbose       # Increase TEXT output verbosity
 -v              # Shorthand (can be repeated)
---quiet         # Suppress TEXT output
+--quiet         # Suppress TEXT output (only for supported commands)
 -q              # Shorthand
 ```
+
+Note:
+
+- `--quiet` is available only for commands that provide a meaningful status, inspection, or mutation
+  signal (for example, `check`, `strip`, `probe`, `config check`, `config dump`).
+- Pure informational content-producing commands (such as `version`, `config defaults`,
+  `config init`, and registry commands) do not support `--quiet`.
 
 In TEXT output, verbosity affects:
 

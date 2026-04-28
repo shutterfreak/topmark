@@ -24,9 +24,9 @@ validates the whole source first and then deserializes only the layered fragment
 merged config.
 
 - `text` / `markdown`: full commented template from the bundled resource. Markdown is
-  document-oriented and ignores TEXT-only verbosity/quiet controls.
+  document-oriented and ignores TEXT-only verbosity controls.
 - `json` / `ndjson`: minimal defaults-derived config snapshot, without comments or diagnostics.
-  Machine formats ignore TEXT-only verbosity/quiet controls.
+  Machine formats ignore TEXT-only verbosity controls.
 
 Notes:
 
@@ -48,9 +48,6 @@ topmark config init > topmark.toml
 
 # Or integrate into pyproject
 topmark config init --pyproject >> pyproject.toml
-
-# Suppress TEXT output and rely on the exit code
-topmark config init --quiet
 
 # Render document-oriented Markdown output
 topmark config init --output-format markdown
@@ -84,9 +81,8 @@ ______________________________________________________________________
 `config init` prints plain TOML to stdout.
 
 - In TEXT output, `-v` adds BEGIN/END markers around the TOML output.
-- `--quiet` suppresses TEXT output while preserving the exit status.
-- Markdown output is document-oriented and ignores TEXT-only verbosity and quiet controls.
-- JSON/NDJSON output is machine-readable and ignores TEXT-only verbosity and quiet controls.
+- Markdown output is document-oriented and ignores TEXT-only verbosity controls.
+- JSON/NDJSON output is machine-readable and ignores TEXT-only verbosity controls.
 
 ______________________________________________________________________
 
@@ -95,8 +91,8 @@ ______________________________________________________________________
 This command is intentionally minimal and usually has no options. See `topmark config init -h` for
 any environment‑specific flags that may be available in your build.
 
-Note: `-v` / `--verbose` and `-q` / `--quiet` apply only to TEXT output. Markdown and machine
-formats ignore these controls.
+Note: `-v` / `--verbose` applies only to TEXT output. This command does not support `--quiet`.
+Markdown and machine formats ignore verbosity.
 
 ______________________________________________________________________
 
@@ -109,7 +105,7 @@ The canonical schema, stable `kind` values, and shared conventions are documente
 - [Machine output schema (JSON & NDJSON)](../../../dev/machine-output.md)
 - [Machine formats](../../../dev/machine-formats.md)
 
-{% include-markdown "\_snippets/output-contract.md" %}
+{% include-markdown "\_snippets/output-contract-no-quiet.md" %}
 
 Notes:
 

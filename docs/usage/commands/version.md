@@ -45,7 +45,7 @@ decoration.
 
 - Output is suitable for scripting and CI usage.
 
-- TEXT output supports verbosity (`-v`) and quiet mode (`--quiet`).
+- TEXT output supports verbosity (`-v`).
 
 - Markdown output is document-oriented and ignores TEXT-only verbosity and quiet controls.
 
@@ -92,14 +92,12 @@ ______________________________________________________________________
 | ----------------- | ----------------------------------------------------------------------------------------------------------- |
 | `--semver`        | Render the version as SemVer instead of PEP 440 when possible (for example `rcN → -rc.N`, `devN → -dev.N`). |
 | `--output-format` | Select output format (`json`, `ndjson`, or default human-readable output).                                  |
-| `-q`, `--quiet`   | Suppress TEXT output while preserving exit status (ignored for non-TEXT formats).                           |
 
-### Verbosity & quiet mode
+### Verbosity
 
 - `-v`, `--verbose` increases TEXT output detail.
-- `-q`, `--quiet` suppresses TEXT output entirely.
-- Markdown output ignores these flags and always renders a complete document.
-- JSON/NDJSON output is unaffected by these flags.
+- Markdown output ignores verbosity and always renders a complete document.
+- JSON/NDJSON output is unaffected by verbosity.
 
 See `topmark version -h` for the full list of global CLI options.
 
@@ -168,7 +166,7 @@ Produces one JSON object per line:
 - No ANSI color codes or human formatting are emitted in machine formats.
 - JSON output is emitted **without** a trailing newline; NDJSON emits one record per line.
 
-{% include-markdown "\_snippets/output-contract.md" %}
+{% include-markdown "\_snippets/output-contract-no-quiet.md" %}
 
 ______________________________________________________________________
 

@@ -35,6 +35,13 @@ to the config layer for merging.
   document*.
 - [`topmark config init`](./config/init.md) — print the bundled example TopMark TOML resource.
 
+Note on output controls:
+
+- `-v` / `--verbose` applies only to TEXT output across all `config` subcommands.
+- `--quiet` is supported only for commands that provide a meaningful status or inspection signal
+  (`config check`, `config dump`).
+- Pure content-producing commands (`config defaults`, `config init`) do not support `--quiet`.
+
 When using `topmark config dump --show-layers`, the command also exposes **layered configuration
 provenance** in addition to the flattened effective configuration. This layered view reflects how
 configuration was built from individual TOML sources (defaults, discovered config, CLI overrides)

@@ -12,6 +12,6 @@ topmark:header:end
 
 > [!NOTE]
 >
-> - `-v` / `--verbose` and `-q` / `--quiet` apply only to **TEXT output**.
-> - Markdown output is **document-oriented** and ignores these flags.
-> - JSON/NDJSON output is **machine-readable** and also ignores these flags.
+> - Verbosity (`-v` / `--verbose`) applies only to TEXT output.
+> - Quiet mode (`-q` / `--quiet`) suppresses TEXT output for commands that support it.
+> - Markdown and machine formats are not affected by TEXT verbosity controls.

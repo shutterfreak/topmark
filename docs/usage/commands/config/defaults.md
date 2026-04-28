@@ -23,9 +23,9 @@ default config fragment**. Source-local TOML sections such as `[config]` and `[w
 resolved from project files here.
 
 - `text` / `markdown` formats: minimal, comment-free TOML. Markdown is document-oriented and ignores
-  TEXT-only verbosity/quiet controls.
+  TEXT-only verbosity controls.
 - `json` / `ndjson`: a plain Config snapshot, with no diagnostics. Machine formats ignore TEXT-only
-  verbosity/quiet controls.
+  verbosity controls.
 
 ______________________________________________________________________
 
@@ -34,9 +34,6 @@ ______________________________________________________________________
 ```bash
 # Show the internal default configuration (TOML)
 topmark config defaults
-
-# Suppress TEXT output and rely on the exit code
-topmark config defaults --quiet
 
 # Render document-oriented Markdown output
 topmark config defaults --output-format markdown
@@ -74,8 +71,8 @@ ______________________________________________________________________
 This command is intentionally minimal and usually has no options. See `topmark config defaults -h`
 for any environment‑specific flags that may be available in your build.
 
-Note: `-v` / `--verbose` and `-q` / `--quiet` apply only to TEXT output. Markdown and machine
-formats ignore these controls.
+Note: `-v` / `--verbose` applies only to TEXT output. This command does not support `--quiet`.
+Markdown and machine formats ignore verbosity.
 
 ______________________________________________________________________
 
@@ -88,7 +85,7 @@ The canonical schema, stable `kind` values, and shared conventions are documente
 - [Machine output schema (JSON & NDJSON)](../../../dev/machine-output.md)
 - [Machine formats](../../../dev/machine-formats.md)
 
-{% include-markdown "\_snippets/output-contract.md" %}
+{% include-markdown "\_snippets/output-contract-no-quiet.md" %}
 
 Notes:
 

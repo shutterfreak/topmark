@@ -98,13 +98,13 @@ Key improvements:
   independently.
 - Clarified the final human-output contract:
   - TEXT output is console-oriented and may use `-v` / `-vv` for progressive disclosure.
-  - `-q` / `--quiet` suppresses TEXT output only where the command still has a useful exit-status or
-    mutation signal.
+  - `-q` / `--quiet` suppresses TEXT output only where the command still has a useful status,
+    inspection, or mutation signal.
   - Markdown output is document-oriented and ignores TEXT-only verbosity, quiet, and styling
     controls.
   - JSON/NDJSON output is machine-readable and ignores TEXT-only presentation controls.
-  - Registry commands intentionally do not support `--quiet` because they are informational and
-    always exit with status 0.
+  - Pure informational content-producing commands (`version`, `config defaults`, `config init`, and
+    registry commands) intentionally do not support `--quiet`.
 - Added Click-free shared human report models across config, registry, version, diagnostics, and
   pipeline presentation surfaces.
 - Aligned command help text, epilogs, and developer docstrings across CLI entry-point, command
@@ -348,10 +348,13 @@ older policy tokens, or older TOML layout/validation assumptions must update.
 - Verbosity and color options moved from the root CLI group to individual commands.
   - Existing invocation patterns may need updating.
 - Verbosity and quiet semantics were narrowed:
-  - `-v` / `--verbose` and `-q` / `--quiet` apply only to TEXT output.
+  - `-v` / `--verbose` applies only to TEXT output.
+  - `-q` / `--quiet` applies only to TEXT output on commands that explicitly support output
+    suppression.
   - Markdown output is document-oriented and ignores TEXT-only verbosity/quiet controls.
   - JSON/NDJSON output is machine-readable and ignores TEXT-only presentation controls.
-  - Registry commands no longer expose `--quiet`.
+  - Pure informational content-producing commands (`version`, `config defaults`, `config init`, and
+    registry commands) no longer expose `--quiet`.
 - Runtime-only execution intent is now modeled separately from layered config.
   - `RunOptions` now carries runtime behavior such as apply/preview and stdin handling.
 - Dry-run / apply semantics are now explicit:
@@ -608,13 +611,16 @@ Machine output remaining work:
 Human output remaining work:
 
 - TEXT and Markdown output contracts reviewed across command groups.
-  - TEXT remains compact/console-oriented and may use `-v`, `-vv`, and `--quiet` where applicable.
+  - TEXT remains compact/console-oriented and may use `-v` / `-vv` for progressive disclosure and
+    `--quiet` only where the command exposes meaningful status, inspection, or mutation semantics.
   - Markdown is explicitly document-oriented and ignores TEXT-only verbosity/quiet controls.
   - `--long` remains the data/detail-depth control where supported.
 - Verbosity semantics (`default`, `-v`, `-vv`, `--quiet`) frozen for 1.0.
   - `-v` / `-vv` are TEXT-only progressive-disclosure controls.
-  - `--quiet` is TEXT-only and only exposed where suppressing output still leaves a useful signal.
-  - Registry commands intentionally do not support `--quiet`.
+  - `--quiet` is TEXT-only and only exposed where suppressing output still leaves a useful status,
+    inspection, or mutation signal.
+  - Pure informational content-producing commands (`version`, `config defaults`, `config init`, and
+    registry commands) intentionally do not support `--quiet`.
 - Focused human-output tests added for version, diagnostics, config, registry, and pipeline command
   groups.
 - Finalize hint-ordering strategy.
@@ -746,10 +752,12 @@ These are release blockers unless explicitly deferred with a documented rational
 - [x] Verbosity semantics (default, `-v`, `-vv`, `--quiet`) documented and considered stable
   - [x] CLI plumbing normalized around typed `TopmarkCliState`
   - [x] `-v` / `-vv` treated as TEXT-only progressive-disclosure controls
-  - [x] `-q` / `--quiet` treated as TEXT-only output suppression where applicable
+  - [x] `-q` / `--quiet` treated as TEXT-only output suppression only where the command exposes a
+    useful status, inspection, or mutation signal
   - [x] Markdown output ignores TEXT-only verbosity/quiet controls
   - [x] machine formats ignore TEXT-only presentation controls
-  - [x] registry commands intentionally do not support `--quiet`
+  - [x] pure informational content-producing commands (`version`, `config defaults`, `config init`,
+    and registry commands) intentionally do not support `--quiet`
   - [x] final user-facing documentation reviewed and aligned
 - [ ] Decision made on hint-ordering / “primary hint” semantics for 1.0
 
@@ -762,7 +770,8 @@ These are release blockers unless explicitly deferred with a documented rational
   - [ ] strict config-checking behavior at command level
   - [x] command help/epilog wording aligned for main CLI entry point, command groups and commands
   - [x] TEXT-only verbosity/quiet applicability documented and enforced by command
-  - [x] registry commands reject `--quiet`
+  - [x] pure informational content-producing commands reject `--quiet` (`version`,
+    `config defaults`, `config init`, and registry commands)
 - [ ] Final review of user-facing policy/report flags completed
   - [ ] `--report` semantics frozen
   - [ ] `--header-mutation-mode` semantics frozen

@@ -479,16 +479,16 @@ TopMark separates human-facing presentation from machine-readable output.
 
 Human-facing presentation is split into two intentionally different formats:
 
-- **TEXT output** is console-oriented. It may use `-v` / `--verbose` for progressive disclosure,
-  `-q` / `--quiet` for output suppression where the command still has a useful exit-status or
-  mutation signal, and semantic styling when color is enabled.
+- **TEXT output** is console-oriented. It may use `-v` / `--verbose` for progressive disclosure and
+  semantic styling when color is enabled. Commands that still have a useful status, inspection, or
+  mutation signal may also expose `-q` / `--quiet` for TEXT output suppression.
 - **Markdown output** is document-oriented. It ignores TEXT-only verbosity, quiet, and styling
   controls and instead renders stable Markdown suitable for documentation, CI logs, and issue
   reports.
 
 Machine formats (`json`, `ndjson`) are separate from both human formats. They are schema-driven,
-never include ANSI styling, and are unaffected by TEXT-only verbosity or quiet controls. Machine
-projection depth is controlled by explicit machine-facing options such as `--long`, not by `-v`.
+never include ANSI styling, and are unaffected by TEXT-only verbosity controls. Machine projection
+depth is controlled by explicit machine-facing options such as `--long`, not by `-v`.
 
 Human presentation modules follow a shared pattern: CLI commands build Click-free, typed report
 objects in `topmark.presentation.shared`, then pass those reports to TEXT or Markdown renderers.
@@ -499,7 +499,9 @@ Practical consequences:
 
 - Do not parse TEXT or Markdown output in automation; use JSON/NDJSON instead.
 - Use `--long` for data/detail depth where supported.
-- Use `-v` / `--quiet` only as TEXT console-output controls.
+- Use `-v` only as a TEXT progressive-disclosure control.
+- Use `--quiet` only on commands that explicitly support TEXT output suppression; pure informational
+  content-producing commands intentionally do not expose it.
 - Do not expose internal report model names in user-facing usage documentation.
 
 TopMark exposes configuration state through both human-readable and machine-readable interfaces:
