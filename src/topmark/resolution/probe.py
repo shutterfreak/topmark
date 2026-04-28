@@ -28,16 +28,35 @@ if TYPE_CHECKING:
 
 
 class ResolutionProbeStatus(str, Enum):
-    """Machine-friendly status for the overall probe outcome."""
+    """Machine-friendly status for the overall probe outcome.
 
+    Attributes:
+        FILTERED: The path was excluded during discovery before file-type probing.
+        RESOLVED: A file type and processor were successfully selected.
+        UNSUPPORTED: No file type candidates matched the path.
+        NO_PROCESSOR: A file type was selected, but no processor was bound.
+    """
+
+    FILTERED = "filtered"
     RESOLVED = "resolved"
     UNSUPPORTED = "unsupported"
     NO_PROCESSOR = "no_processor"
 
 
 class ResolutionProbeReason(str, Enum):
-    """Machine-friendly reason explaining the probe outcome."""
+    """Machine-friendly reason explaining the probe outcome.
 
+    Attributes:
+        EXCLUDED_BY_DISCOVERY_FILTER: The path was filtered out before probing.
+        SELECTED_HIGHEST_SCORE: The selected file type had the highest score.
+        SELECTED_BY_TIE_BREAK: Multiple candidates shared the top score and were
+            ordered deterministically by tie-break rules.
+        NO_CANDIDATES: No file type candidates matched the path.
+        SELECTED_FILE_TYPE_HAS_NO_BOUND_PROCESSOR: The selected file type has no
+            associated processor binding.
+    """
+
+    EXCLUDED_BY_DISCOVERY_FILTER = "excluded_by_discovery_filter"
     SELECTED_HIGHEST_SCORE = "selected_highest_score"
     SELECTED_BY_TIE_BREAK = "selected_by_tie_break"
     NO_CANDIDATES = "no_candidates"
@@ -114,8 +133,12 @@ class ResolutionProbeResult:
         status: Machine-friendly probe status.
         reason: Machine-friendly reason for the probe outcome.
         candidates: Scored file type candidates in deterministic resolution order.
-        selected_file_type: Selected file type identity, or ``None`` when unsupported.
-        selected_processor: Selected processor identity, or ``None`` when unsupported or unbound.
+            Empty when the path was filtered before probing or when no candidates
+            matched.
+        selected_file_type: Selected file type identity, or ``None`` when
+            unsupported or filtered.
+        selected_processor: Selected processor identity, or ``None`` when
+            unsupported, unbound, or filtered.
     """
 
     path: Path

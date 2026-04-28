@@ -8,15 +8,16 @@
 #
 # topmark:header:end
 
-"""Pure JSON/NDJSON serialization helpers for TopMark pipeline machine output.
+"""Pure JSON/NDJSON serializers for TopMark processing and probe machine output.
 
 This module is intentionally console- and Click-free: it takes already-shaped
-payload mappings/objects and produces serialized strings (or streams of strings).
+processing/probe envelopes or record streams and produces serialized strings
+(or streams of strings).
 
 Responsibilities:
-- JSON: serialize a single, already-shaped envelope mapping.
-- NDJSON: serialize a stream of already-shaped record mappings as
-  newline-delimited JSON (one JSON object per line).
+- JSON: serialize a single, already-shaped processing or probe envelope mapping.
+- NDJSON: serialize a stream of already-shaped processing or probe record mappings
+  as newline-delimited JSON (one JSON object per line).
 
 Creation of envelopes (adding `meta`/`kind`, selecting container keys, etc.) happens in
 [`topmark.pipeline.machine.envelopes`][topmark.pipeline.machine.envelopes], using shared helpers
@@ -54,10 +55,14 @@ def serialize_probe_results(
 ) -> str | Iterator[str]:
     """Serialize resolution probe results in a machine format.
 
+    Probe results may include normal file-backed probe contexts and synthetic
+    contexts for explicit inputs filtered during discovery before file-type
+    probing.
+
     Args:
         meta: Shared machine-output metadata payload.
         config: Effective configuration for the run.
-        results: Ordered list of per-file processing contexts.
+        results: Ordered list of probe contexts to serialize.
         fmt: Output format (`OutputFormat.JSON` or `OutputFormat.NDJSON`).
 
     Returns:
@@ -98,7 +103,7 @@ def serialize_processing_results(
     Args:
         meta: Shared machine-output metadata payload.
         config: Effective configuration for the run.
-        results: Ordered list of per-file processing contexts.
+        results: Ordered list of per-file check/strip processing contexts.
         fmt: Output format (`OutputFormat.JSON` or `OutputFormat.NDJSON`).
         summary_mode: If True, emit aggregated outcome summaries instead of per-file entries.
 
@@ -143,12 +148,11 @@ def serialize_processing_results_json(
     Args:
         meta: Shared machine-output metadata payload.
         config: Effective configuration for the run.
-        results: Ordered list of per-file processing contexts.
+        results: Ordered list of per-file check/strip processing contexts.
         summary_mode: If True, emit aggregated outcome summaries instead of per-file entries.
 
     Returns:
-        - A single pretty-printed JSON string (no trailing newline).
-
+        Single pretty-printed JSON string (no trailing newline).
     """
     envelope: dict[str, object] = build_processing_results_json_envelope(
         config=config,
@@ -171,14 +175,13 @@ def serialize_processing_results_ndjson(
     Args:
         meta: Shared machine-output metadata payload.
         config: Effective configuration for the run.
-        results: Ordered list of per-file processing contexts.
+        results: Ordered list of per-file check/strip processing contexts.
         summary_mode: If True, emit aggregated outcome summaries instead of per-file entries.
 
     Returns:
-        Iterator of JSON strings (one per record), where each
-        yielded string has no trailing newline. The caller controls line joining and
-        whether a final newline is printed.
-
+        Iterator of JSON strings (one per record), where each yielded string has
+        no trailing newline. The caller controls line joining and whether a final
+        newline is printed.
     """
     iter_records: Iterator[dict[str, object]] = iter_processing_results_ndjson_records(
         config=config,

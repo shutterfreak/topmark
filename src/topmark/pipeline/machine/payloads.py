@@ -20,18 +20,20 @@ Scope:
     - choose between JSON vs NDJSON record layout,
     - serialize (`json.dumps`) or print.
 
-    They only construct the domain payload shapes consumed by shape builders in
-    [`topmark.core.machine.envelopes`][topmark.core.machine.envelopes] (JSON envelopes and
-    NDJSON records).
+    They only construct the domain payload shapes consumed by envelope builders
+    in [`topmark.core.machine.envelopes`][topmark.core.machine.envelopes]
+    (JSON envelopes and NDJSON records).
 
 Naming conventions:
 
     - `build_*_payload(...) -> <payload object>`: constructs an eager payload object.
     - `iter_*_payload_items(...) -> Iterator[...]`: yields payload items lazily.
 
-See Also:
-    - [`topmark.pipeline.machine.schemas`][topmark.pipeline.machine.schemas]: `TypedDict` schema
-        fragments for these payloads.
+Probe payloads:
+
+    Probe payloads are built from `ProcessingContext.resolution_probe` and include
+    both ordinary file-type probe results and synthetic filtered results for
+    explicit inputs excluded during discovery before file-type probing.
 """
 
 from __future__ import annotations
@@ -56,10 +58,11 @@ if TYPE_CHECKING:
 def build_probe_selection_payload(
     selection: ResolutionProbeSelection | None,
 ) -> dict[str, object] | None:
-    """Build a machine payload for a probe-selected file type or processor.
+    """Build a machine payload for a selected file type or processor.
 
     Args:
-        selection: Probe selection to serialize, or `None`.
+        selection: Probe selection to serialize, or `None` for unresolved, unbound,
+            or filtered probe results.
 
     Returns:
         JSON-compatible selection payload, or `None`.
@@ -80,7 +83,7 @@ def build_probe_selection_payload(
 def build_probe_match_payload(
     match: ResolutionProbeMatchSignals,
 ) -> dict[str, object]:
-    """Build a machine payload for probe match signals.
+    """Build a machine payload for candidate match signals.
 
     Args:
         match: Probe-visible match signals.
@@ -107,7 +110,8 @@ def build_probe_candidate_payload(
         candidate: Probe candidate to serialize.
 
     Returns:
-        JSON-compatible candidate payload.
+        JSON-compatible candidate payload including score, selection state, rank,
+        and match signals.
     """
     return {
         "qualified_key": candidate.qualified_key,
@@ -125,8 +129,17 @@ def build_probe_result_payload(
 ) -> dict[str, object]:
     """Build a machine payload for one resolution probe context.
 
+    Filtered explicit inputs are represented as probe results with:
+
+    - `status="filtered"`
+    - `selected_file_type=None`
+    - `selected_processor=None`
+    - `candidates=[]`
+
     Args:
-        result: Processing context containing a resolution probe result.
+        result: Processing context containing a resolution probe result. Contexts
+            without a probe result are serialized as `probe_missing` fallback
+            payloads.
 
     Returns:
         JSON-compatible probe result payload.
@@ -155,13 +168,15 @@ def build_probe_result_payload(
 def iter_probe_results_payload_items(
     results: list[ProcessingContext],
 ) -> Iterator[dict[str, object]]:
-    """Yield per-file resolution probe payloads for machine output.
+    """Yield per-path resolution probe payloads for machine output.
 
     Args:
-        results: Ordered list of per-file processing contexts.
+        results: Ordered list of processing contexts. The list may contain normal
+            file-backed probe contexts and synthetic contexts for explicit inputs
+            filtered before file-type probing.
 
     Yields:
-        One probe result payload per processed context, in the same order as `results`.
+        One probe result payload per context, in the same order as `results`.
     """
     for result in results:
         yield build_probe_result_payload(result)

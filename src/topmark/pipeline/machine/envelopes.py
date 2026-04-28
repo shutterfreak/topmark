@@ -8,7 +8,7 @@
 #
 # topmark:header:end
 
-"""Machine-output envelope builders for pipeline processing commands.
+"""Machine-output envelope builders for processing and probe commands.
 
 This module composes **machine-readable output shapes** for pipeline runs
 (`topmark check`, `topmark strip`, and `topmark probe`).
@@ -19,19 +19,19 @@ It is intentionally:
 
 Responsibilities:
 - **JSON**: build a single top-level envelope containing `meta`, `config`,
-  `config_diagnostics`, and either `results` (detail mode) or `summary`
-  (summary mode).
+  `config_diagnostics`, and either processing data (`results` / `summary`) or
+  probe data (`probes`).
 - **NDJSON**: yield a stream of per-record mappings following the project’s
   NDJSON contract (Pattern A: every record includes `kind` and `meta`), starting
-  with config prefix records and followed by either per-file `result` records
-  (detail mode) or per-bucket `summary` records (summary mode).
+  with config prefix records and followed by processing records (`result` /
+  `summary`) or probe records (`probe`).
 
 Where config diagnostics are included, this module exposes the flattened
 compatibility view derived from staged config-validation logs.
 
 See Also:
 - [`topmark.pipeline.machine.payloads`][topmark.pipeline.machine.payloads]:
-    domain payload fragments for processing runs.
+    domain payload fragments for processing and probe runs.
 - [`topmark.core.machine.envelopes`][topmark.core.machine.envelopes]:
     shared envelope/record helpers (`build_json_envelope`, `build_ndjson_record`,
     config prefix and diagnostic record generators).
@@ -79,13 +79,18 @@ def build_probe_results_json_envelope(
     Args:
         config: The effective `Config` instance used for the run.
         meta: Shared metadata payload (`tool`/`version`).
-        results: Ordered list of per-file processing contexts.
+        results: Ordered list of probe contexts. The list may include normal
+            file-backed probe contexts and synthetic contexts for explicit inputs
+            filtered before file-type probing.
 
     Returns:
-        A JSON-serializable envelope mapping (not yet serialized to JSON).
+        JSON-serializable envelope mapping (not yet serialized to JSON).
     """
+    # Prepare config payloads once, including flattened compatibility diagnostics.
     cfg_payload: ConfigPayload = build_config_payload(config)
     cfg_diag_payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
+    # Probe payloads include both normal file-type probe results and synthetic
+    # filtered results for explicit inputs removed during discovery.
     probe_payloads: list[dict[str, object]] = list(iter_probe_results_payload_items(results))
 
     return build_json_envelope(
@@ -109,12 +114,15 @@ def iter_probe_results_ndjson_records(
     Args:
         config: Effective configuration instance.
         meta: Shared metadata payload (`tool`/`version`).
-        results: Ordered list of per-file processing contexts.
+        results: Ordered list of probe contexts. The list may include normal
+            file-backed probe contexts and synthetic contexts for explicit inputs
+            filtered before file-type probing.
 
     Yields:
         Shaped NDJSON record mappings for config prefix records, config diagnostics,
-        and one `kind="probe"` record per processed file.
+        and one `kind="probe"` record per probe context.
     """
+    # Prepare config payloads once, including flattened compatibility diagnostics.
     cfg_payload: ConfigPayload = build_config_payload(config)
     cfg_diag_payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
 
@@ -132,6 +140,7 @@ def iter_probe_results_ndjson_records(
         diagnostics=flattened_diagnostics,
     )
 
+    # One probe record per context, including synthetic filtered contexts.
     for payload in iter_probe_results_payload_items(results):
         yield build_ndjson_record(
             kind=PipelineKind.PROBE,

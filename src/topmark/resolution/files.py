@@ -24,6 +24,11 @@ Positional globs are expanded relative to the current working directory (CWD).
 Globs declared in configuration files are expanded relative to the directory of
 each declaring config file. Paths loaded from `files_from` sources are resolved
 against their declaring source base directory.
+
+The module also provides discovery-level probe helpers for `topmark probe`.
+Those helpers explain why explicitly requested paths did not reach file-type
+probing, without enumerating every recursively discovered file excluded during
+normal traversal.
 """
 
 from __future__ import annotations
@@ -40,6 +45,9 @@ from topmark.core.logging import TRACE_LEVEL
 from topmark.core.logging import get_logger
 from topmark.filetypes.model import FileType
 from topmark.registry.filetypes import FileTypeRegistry
+from topmark.resolution.discovery import FileSelectionProbeResult
+from topmark.resolution.discovery import FileSelectionReason
+from topmark.resolution.discovery import FileSelectionStatus
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -211,31 +219,110 @@ def _matches_any(
     return False
 
 
-# def _iter_config_base_dirs(
-#     config_files: tuple[str | Path, ...],
-# ) -> list[Path]:
-#     """Return parent directories of real config files only.
+def _explicit_input_paths(config: Config) -> list[Path]:
+    """Return explicit path inputs supplied by the user.
 
-#     Skips non-files (e.g., markers like "<CLI overrides>") and resolves to absolute paths.
+    Explicit inputs are positional paths and paths loaded through `files_from`.
+    They are the only inputs for which `topmark probe` reports discovery-level
+    filtering explanations. Recursively discovered files are intentionally not
+    enumerated when they are filtered out.
 
-#     Args:
-#         config_files: Sequence of config source identifiers (paths or markers like
-#             "<CLI overrides>").
+    Args:
+        config: Effective layered configuration.
 
-#     Returns:
-#         Unique parent directories of real config files, resolved to absolute paths.
-#     """
-#     bases: list[Path] = []
-#     for config_file in config_files:
-#         try:
-#             p = Path(config_file)
-#         except TypeError:
-#             continue
-#         if p.exists() and p.is_file():
-#             base: Path = p.resolve().parent
-#             if base not in bases:
-#                 bases.append(base)
-#     return bases
+    Returns:
+        Explicit input paths from positional command inputs and files-from
+        sources.
+    """
+    paths: list[Path] = [Path(p) for p in config.files if p]
+    for source in config.files_from:
+        paths.extend(_read_input_paths_from_source(source))
+    return paths
+
+
+def _selected_real_paths(selected_files: Sequence[Path]) -> set[Path]:
+    """Return normalized real paths for selected file-list entries.
+
+    Args:
+        selected_files: File-list results returned by `resolve_file_list()`.
+
+    Returns:
+        Set of resolved selected paths. Paths that cannot be resolved are kept
+        as provided so comparison remains best-effort and non-fatal.
+    """
+    selected: set[Path] = set()
+    for path in selected_files:
+        try:
+            selected.add(path.resolve())
+        except OSError:
+            selected.add(path)
+    return selected
+
+
+def probe_explicit_file_selection(
+    config: Config,
+    *,
+    selected_files: Sequence[Path],
+) -> tuple[FileSelectionProbeResult, ...]:
+    """Explain explicit inputs that were not selected for file-type probing.
+
+    This helper is intentionally narrow: it only reports paths explicitly named
+    through positional inputs or `files_from`. It does not enumerate every file
+    excluded during recursive directory traversal, because that could produce
+    unexpectedly large diagnostic output for `topmark probe`.
+
+    Args:
+        config: Effective layered configuration used for file discovery.
+        selected_files: Files selected by `resolve_file_list()`.
+
+    Returns:
+        Discovery-level probe results for explicit inputs that did not reach
+        file-type probing.
+    """
+    selected_real: set[Path] = _selected_real_paths(selected_files)
+    results: list[FileSelectionProbeResult] = []
+
+    for explicit in _explicit_input_paths(config):
+        try:
+            real: Path = explicit.resolve()
+        except OSError:
+            real = explicit
+
+        if real in selected_real:
+            continue
+
+        if not explicit.exists():
+            results.append(
+                FileSelectionProbeResult(
+                    path=explicit,
+                    status=FileSelectionStatus.NOT_FOUND,
+                    reason=FileSelectionReason.NOT_FOUND,
+                )
+            )
+            continue
+
+        if not explicit.is_file():
+            results.append(
+                FileSelectionProbeResult(
+                    path=explicit,
+                    status=FileSelectionStatus.FILTERED,
+                    reason=FileSelectionReason.NOT_A_FILE,
+                )
+            )
+            continue
+        # The path exists and is a file, but it disappeared from the selected
+        # file list. For now, expose a stable generic discovery-filter reason;
+        # exact pattern/source attribution can be added later without changing
+        # the probe command's basic contract.
+        results.append(
+            FileSelectionProbeResult(
+                path=explicit,
+                status=FileSelectionStatus.FILTERED,
+                reason=FileSelectionReason.EXCLUDED_BY_DISCOVERY_FILTER,
+            )
+        )
+
+    return tuple(results)
 
 
 def _resolve_configured_file_types(

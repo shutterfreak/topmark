@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING
 from click.testing import CliRunner
 from click.testing import Result
 
+from tests.cli.conftest import assert_UNSUPPORTED_FILE_TYPE
 from tests.helpers.json import parse_json_object
 from tests.helpers.ndjson import parse_ndjson_records
 from tests.helpers.ndjson import record_kinds
@@ -33,6 +34,8 @@ from topmark.core.typing_guards import is_mapping
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from pytest import MonkeyPatch
 
 
 def test_probe_json_output_shape(tmp_path: Path) -> None:
@@ -132,6 +135,57 @@ def test_probe_json_candidate_structure(tmp_path: Path) -> None:
     assert "content_error" in match
 
 
+def test_probe_json_reports_explicit_filtered_input(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """JSON output should expose explicit inputs filtered before probing."""
+    monkeypatch.chdir(tmp_path)
+    filtered_dir: Path = tmp_path / "__pycache__"
+    filtered_dir.mkdir()
+    file: Path = filtered_dir / "example.cpython-312.pyc"
+    file.write_bytes(b"\x00\x00\x00\x00")
+    input_path: str = "__pycache__/example.cpython-312.pyc"
+
+    runner = CliRunner()
+    result: Result = runner.invoke(
+        cli,
+        [
+            CliCmd.PROBE,
+            "--exclude",
+            "__pycache__/",
+            input_path,
+            "--output-format",
+            "json",
+        ],
+    )
+
+    assert_UNSUPPORTED_FILE_TYPE(result)
+
+    payload: dict[str, object] = parse_json_object(result.output)
+    probes_obj: object = payload["probes"]
+    assert is_any_list(probes_obj)
+    probes: list[object] = probes_obj
+    assert len(probes) == 1
+
+    probe_obj: object = probes[0]
+    assert is_mapping(probe_obj)
+    probe: dict[str, object] = as_object_dict(probe_obj)
+
+    assert probe["path"] == input_path
+
+    assert probe["status"] == "filtered"
+    assert probe["reason"] == "excluded_by_discovery_filter"
+    assert probe["selected_file_type"] is None
+    assert probe["selected_processor"] is None
+
+    candidates_obj: object = probe["candidates"]
+    assert is_any_list(candidates_obj)
+    assert candidates_obj == []
+
+    assert "match" not in probe
+
+
 def test_probe_ndjson_output_shape(tmp_path: Path) -> None:
     """NDJSON output should contain probe records with correct structure."""
     file: Path = tmp_path / "example.py"
@@ -165,6 +219,52 @@ def test_probe_ndjson_output_shape(tmp_path: Path) -> None:
 
     # Ensure no double wrapping (regression test)
     assert "probe" not in payload
+
+
+def test_probe_ndjson_reports_explicit_filtered_input(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """NDJSON output should expose explicit inputs filtered before probing."""
+    monkeypatch.chdir(tmp_path)
+    filtered_dir: Path = tmp_path / "__pycache__"
+    filtered_dir.mkdir()
+    file: Path = filtered_dir / "example.cpython-312.pyc"
+    file.write_bytes(b"\x00\x00\x00\x00")
+    input_path: str = "__pycache__/example.cpython-312.pyc"
+
+    runner = CliRunner()
+    result: Result = runner.invoke(
+        cli,
+        [
+            CliCmd.PROBE,
+            "--exclude",
+            "__pycache__/",
+            input_path,
+            "--output-format",
+            "ndjson",
+        ],
+    )
+
+    assert_UNSUPPORTED_FILE_TYPE(result)
+
+    records: list[dict[str, object]] = parse_ndjson_records(result.output)
+    probe_records: list[dict[str, object]] = [r for r in records if r["kind"] == "probe"]
+    assert len(probe_records) == 1
+
+    payload: dict[str, object] = record_payload(probe_records[0])
+    assert payload["path"] == input_path
+
+    assert payload["status"] == "filtered"
+    assert payload["reason"] == "excluded_by_discovery_filter"
+    assert payload["selected_file_type"] is None
+    assert payload["selected_processor"] is None
+
+    candidates_obj: object = payload["candidates"]
+    assert is_any_list(candidates_obj)
+    assert candidates_obj == []
+
+    assert "match" not in payload
 
 
 def test_probe_ndjson_multiple_files(tmp_path: Path) -> None:
