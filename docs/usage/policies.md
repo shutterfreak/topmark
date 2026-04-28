@@ -132,6 +132,22 @@ allow_content_probe = false
 
 ______________________________________________________________________
 
+## Line-ending handling (not a policy)
+
+TopMark’s line-ending behavior is fixed for 1.0 and is **not configurable via policy**.
+
+- Only LF (`\n`), CRLF (`\r\n`), and CR (`\r`) are recognized as physical line-ending styles.
+- These styles are preserved across rendering, planning, patching, and writing.
+- Files with mixed recognized newline styles are skipped by the mixed-line-ending guard.
+
+Non-standard Unicode separators such as NEL (`U+0085`), Line Separator (`U+2028`), and Paragraph
+Separator (`U+2029`) are treated as ordinary content characters. They are not considered line
+endings and do not affect newline detection or mixed-newline diagnostics.
+
+Some file-type-specific checks (notably XML) may conservatively skip mutation when such characters
+appear near insertion boundaries due to idempotence concerns. This is a localized safety behavior,
+not an extension of newline support.
+
 ## Per-file-type policy
 
 Use `policy_by_type.<file_type_id>` to override policy for one file type while inheriting

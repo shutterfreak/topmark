@@ -448,6 +448,31 @@ This matters especially for:
 The practical consequence is that newline semantics and placeholder images are preserved without
 collapsing all empty-like cases to the same filesystem status.
 
+### Line-ending support contract
+
+For 1.0, TopMark intentionally recognizes only the standard physical newline styles used by text
+files:
+
+- LF (`\n`)
+- CRLF (`\r\n`)
+- CR (`\r`)
+
+The sniffer and reader both use this same contract. These standard newline styles are counted for
+newline-style detection, mixed-newline diagnostics, and write preservation. When a file uses one
+standard style consistently, TopMark preserves that style in generated headers, planned edits,
+patches, and writes. Files with mixed recognized newline styles are blocked by the existing
+mixed-line-ending guard rather than normalized implicitly.
+
+Non-standard Unicode separators such as NEL (`U+0085`), Line Separator (`U+2028`), and Paragraph
+Separator (`U+2029`) are not supported physical line-ending styles. They are treated as ordinary
+text content and do not contribute to newline histograms, dominant-newline detection, or
+mixed-newline diagnostics.
+
+This contract is global for built-in file types. It is not currently configurable through file-type
+policy or runtime policy. XML-specific checks may still treat non-standard newline-like characters
+near XML insertion boundaries as an idempotence risk and skip mutation conservatively; that is a
+local safety guard, not extended newline support.
+
 ## Presentation and machine output boundaries
 
 TopMark separates human-facing presentation from machine-readable output.

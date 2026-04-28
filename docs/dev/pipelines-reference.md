@@ -28,6 +28,24 @@ Source-local TOML options such as `[config].root` and `strict_config_checking` a
 pipeline execution. They influence configuration discovery and validation behaviour, but do not
 become layered `Config` fields.
 
+## Line-ending handling (contract)
+
+Pipeline steps operate under a fixed 1.0 newline contract:
+
+- Only LF (`\n`), CRLF (`\r\n`), and CR (`\r`) are recognized as physical line-ending styles.
+- `SnifferStep` detects and counts only these styles to determine newline histograms and
+  mixed-line-ending diagnostics.
+- `ReaderStep` confirms and preserves the dominant newline style for downstream steps (rendering,
+  planning, patching, writing).
+
+Non-standard Unicode separators such as NEL (`U+0085`), Line Separator (`U+2028`), and Paragraph
+Separator (`U+2029`) are treated as ordinary text content. They are not considered line endings and
+do not contribute to newline detection or mixed-newline diagnostics.
+
+Some file-type-specific checks (notably XML) may conservatively skip mutation when such characters
+appear near insertion boundaries, as idempotence cannot be guaranteed. This is a localized safety
+mechanism and not a general extension of newline support.
+
 ______________________________________________________________________
 
 ## Canonical reference (generated)

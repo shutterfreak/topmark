@@ -159,6 +159,14 @@ The pipeline has been stabilized with clearer semantics:
 - Standardized summary output:
   - grouped by `(outcome, reason)`
 - Ensured **idempotence and deterministic behavior**
+- Audited and froze the 1.0 line-ending support contract:
+  - LF (`\n`), CRLF (`\r\n`), and CR (`\r`) are the only recognized physical newline styles
+  - non-standard Unicode separators such as NEL (`U+0085`), Line Separator (`U+2028`), and Paragraph
+    Separator (`U+2029`) are treated as ordinary content, not line endings
+  - XML-specific insertion checks may conservatively skip mutation near such characters as a local
+    idempotence guard, not as extended newline support
+- Centralized standard newline constants and aligned reader, sniffer, whitespace, XML, and property
+  tests with the frozen newline contract.
 
 Result: pipeline behavior is now **explicit, consistent, and predictable**.
 
@@ -649,16 +657,6 @@ A few user-facing behavior questions remain open for 1.0:
   documentation and implementation.
 - Keep Markdown documentation and examples aligned with the document-oriented output contract rather
   than treating Markdown as layout-equivalent TEXT.
-- Audit TopMark’s line-ending support model before 1.0:
-  - confirm whether only standard CR / LF newline styles are intended to be supported
-  - review the hypothesis-driven test cases that introduced additional nonstandard line-ending
-    characters
-  - decide whether such line endings should:
-    - remain unsupported,
-    - be accepted as tolerated-but-not-normalized input, or
-    - gain an explicit extended/rich line-ending policy surface
-  - ensure the decision is reflected consistently across pipeline step behavior, diagnostics/policy
-    handling, tests, and user-facing documentation
 - File-recognition / resolution explainability is now accepted for 1.0 via the read-only
   `topmark probe` command.
   - explicit inputs filtered during discovery are reported as `filtered` probe results with broad
@@ -814,12 +812,15 @@ These are release blockers unless explicitly deferred with a documented rational
 - [ ] Test strategy clarified and documented:
   - [ ] intended split between memory-based unit tests and filesystem integration tests
   - [ ] API surface expectations for in-memory inputs (if implemented or deferred)
-- [ ] Line-ending support policy audited and frozen for 1.0
-  - [ ] decision made on standard CR/LF-only vs extended/nonstandard line-ending support
-  - [ ] pipeline behavior and diagnostics aligned with that decision
-  - [ ] hypothesis/property tests aligned with the intended supported line-ending model
-  - [ ] user-facing docs updated if nonstandard line endings are intentionally unsupported or given
-    a dedicated policy
+- [x] Line-ending support policy audited and frozen for 1.0
+  - [x] decision made: only LF (`\n`), CRLF (`\r\n`), and CR (`\r`) are recognized physical newline
+    styles
+  - [x] non-standard Unicode separators such as NEL (`U+0085`), Line Separator (`U+2028`), and
+    Paragraph Separator (`U+2029`) are treated as ordinary content, not line endings
+  - [x] pipeline behavior and diagnostics aligned with that decision
+  - [x] hypothesis/property tests aligned with the intended supported line-ending model
+  - [x] user-facing docs updated; newline handling remains a fixed contract, not a configurable
+    policy surface
 - [ ] Namespace-aware registry lookup and deterministic ambiguity behavior covered by tests
 - [x] Probe command resolution-candidate and filtered explicit-input reporting is covered by focused
   resolver, discovery, pipeline-step, CLI human-output, CLI exit-code, and machine-output tests,
