@@ -18,6 +18,143 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ______________________________________________________________________
 
+## [1.0.0a7] – 2026-04-28
+
+This seventh **1.0 alpha release** completes the `probe` diagnostics surface by explaining
+**explicit inputs filtered during discovery** before file-type probing begins.
+
+It follows `1.0.0a6`, which introduced the `probe` command and probe-backed resolution contract, and
+extends that contract so explicitly requested paths that are filtered out are still reported in
+TEXT, Markdown, JSON, and NDJSON output.
+
+### ⚠️ Breaking Changes - 1.0.0a7
+
+- `topmark probe` now reports explicitly requested paths filtered during discovery instead of
+  treating them as silently absent from the probe result set.
+- Probe machine output now includes a new status / reason pair:
+  - `status="filtered"`
+  - `reason="excluded_by_discovery_filter"`
+- Probe JSON / NDJSON output should now be interpreted as **per-path** / **per-result** output
+  rather than strictly per-file output.
+- `topmark probe` returns `UNSUPPORTED_FILE_TYPE` (69) when one or more explicit inputs are filtered
+  before probing, because those paths did not resolve to a supported file type and processor.
+
+### Highlights — 1.0.0a7
+
+- Added discovery-level explainability for explicitly filtered inputs
+- Completed the `probe` diagnostics model across discovery and resolution
+- Added `filtered` probe results to TEXT, Markdown, JSON, and NDJSON output
+- Split probe presentation from check/strip pipeline presentation
+- Strengthened unit and CLI coverage for filtered probe inputs
+- Aligned user and developer documentation with the updated probe contract
+
+### Added — 1.0.0a7
+
+- **Discovery-level probe model**
+
+  - Added `FileSelectionProbeResult` for explaining explicit inputs before file-type probing.
+  - Added machine-friendly selection statuses and reasons for discovery-level filtering.
+  - Added focused resolver tests for:
+    - selected explicit inputs
+    - filtered explicit inputs
+    - missing explicit inputs
+    - explicit directories
+
+- **Filtered probe results**
+
+  - Added `ResolutionProbeStatus.FILTERED`.
+  - Added `ResolutionProbeReason.EXCLUDED_BY_DISCOVERY_FILTER`.
+  - `topmark probe` now emits synthetic probe results for explicitly requested paths excluded during
+    discovery.
+  - Filtered probe results use:
+    - `selected_file_type = null`
+    - `selected_processor = null`
+    - `candidates = []`
+
+- **Probe presentation modules**
+
+  - Added dedicated TEXT probe renderer (`topmark.presentation.text.probe`).
+  - Added dedicated Markdown probe renderer (`topmark.presentation.markdown.probe`).
+  - Kept probe presentation separate from check/strip pipeline rendering.
+
+- **Tests**
+
+  - Added CLI human-output coverage for filtered explicit inputs.
+  - Added JSON / NDJSON machine-output coverage for filtered probe payloads.
+  - Added path-preservation assertions for filtered explicit inputs.
+  - Added resolver-level discovery tests for the new discovery explanation helper.
+
+### Changed — 1.0.0a7
+
+- **Probe behavior**
+
+  - `topmark probe` now explains explicit inputs that disappear during discovery/filtering.
+
+  - Filtered explicit inputs are rendered in TEXT output as:
+
+    ```text
+    <path>: <filtered> - filtered: excluded_by_discovery_filter
+    ```
+
+  - Recursive discovery still does **not** enumerate every ignored file; only explicitly requested
+    paths are reported as filtered probe results.
+
+- **Machine output**
+
+  - Probe output is now documented and treated as **per-path** rather than strictly per-file.
+  - JSON `probes` entries and NDJSON `kind="probe"` records may represent:
+    - normal file-type probe results
+    - unsupported paths
+    - unbound processor cases
+    - filtered explicit inputs
+  - Machine schemas, payload builders, envelopes, and serializers now document filtered synthetic
+    probe contexts.
+
+- **Presentation layer**
+
+  - Split probe-specific rendering out of generic pipeline renderers.
+  - Updated probe banners to use **TopMark Resolution Probe Results** wording.
+  - Updated filtered TEXT output from `<unknown>` to `<filtered>`.
+  - Kept Markdown probe output document-oriented and independent from TEXT verbosity/quiet controls.
+
+- **Documentation**
+
+  - Updated machine-output and machine-format references to document filtered probe payloads.
+  - Updated resolution and pipeline docs to distinguish discovery filtering from file-type probing.
+  - Updated `topmark probe` command documentation with filtered payload examples and exit-code
+    wording.
+  - Updated filtering documentation to describe how probe reports explicitly requested filtered
+    inputs.
+  - Updated README and docs index with filtered-input probe examples.
+
+### Fixed — 1.0.0a7
+
+- **Probe explainability gap**
+
+  - Explicit inputs filtered before file-type probing are no longer reported as simply missing or as
+    “no files to process”.
+  - Users can now distinguish “unsupported file type” from “filtered before probing”.
+
+- **Presentation coupling**
+
+  - Removed probe rendering code from check/strip pipeline presentation modules.
+  - Cleaned stale pipeline/check/strip wording from probe renderers.
+  - Improved docstrings and inline comments in probe, pipeline, discovery, and machine-output code
+    paths.
+
+### Notes — 1.0.0a7
+
+- `topmark probe` now covers both:
+  - discovery-level explanations for explicitly filtered inputs
+  - file-type / processor resolution explanations for paths that reached probing
+- Filtered probe payloads intentionally use a coarse `excluded_by_discovery_filter` reason for now.
+  Exact filter-pattern/source attribution remains a possible future enhancement.
+- Files ignored implicitly during recursive discovery are not enumerated by `probe`; only explicit
+  command inputs and `--files-from` entries are reported this way.
+- This alpha further stabilizes the 1.0 resolution explainability contract introduced in `1.0.0a6`.
+
+______________________________________________________________________
+
 ## [1.0.0a6] – 2026-04-28
 
 This sixth **1.0 alpha release** focuses on **finalizing the resolution contract** and introducing
