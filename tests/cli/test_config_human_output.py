@@ -33,13 +33,11 @@ pytestmark = pytest.mark.cli
     "cmd",
     [
         CliCmd.CONFIG_CHECK,
-        CliCmd.CONFIG_DEFAULTS,
         CliCmd.CONFIG_DUMP,
-        CliCmd.CONFIG_INIT,
     ],
 )
-def test_config_commands_text_quiet_suppresses_output(cmd: str) -> None:
-    """Config subcommands that support `--quiet` should suppress TEXT output."""
+def test_config_status_or_inspection_commands_text_quiet_suppresses_output(cmd: str) -> None:
+    """Config commands with useful silent status/inspection signals support `--quiet`."""
     result: Result = run_cli(
         [
             CliCmd.CONFIG,
@@ -56,14 +54,35 @@ def test_config_commands_text_quiet_suppresses_output(cmd: str) -> None:
 @parametrize(
     "cmd",
     [
-        CliCmd.CONFIG_CHECK,
         CliCmd.CONFIG_DEFAULTS,
-        CliCmd.CONFIG_DUMP,
         CliCmd.CONFIG_INIT,
     ],
 )
-def test_config_commands_markdown_ignores_quiet(cmd: str) -> None:
-    """Config Markdown output should ignore TEXT-only quiet mode."""
+def test_config_content_commands_reject_quiet_option(cmd: str) -> None:
+    """Pure content-producing config commands do not support TEXT quiet suppression."""
+    result: Result = run_cli(
+        [
+            CliCmd.CONFIG,
+            cmd,
+            CliOpt.NO_COLOR_MODE,
+            CliOpt.QUIET,
+        ]
+    )
+
+    assert result.exit_code != 0
+    assert "No such option" in result.output
+    assert CliOpt.QUIET in result.output
+
+
+@parametrize(
+    "cmd",
+    [
+        CliCmd.CONFIG_CHECK,
+        CliCmd.CONFIG_DUMP,
+    ],
+)
+def test_config_status_or_inspection_commands_markdown_ignores_quiet(cmd: str) -> None:
+    """Config Markdown output ignores TEXT-only quiet mode where `--quiet` is supported."""
     result: Result = run_cli(
         [
             CliCmd.CONFIG,
@@ -77,6 +96,31 @@ def test_config_commands_markdown_ignores_quiet(cmd: str) -> None:
 
     assert_SUCCESS(result)
     assert result.output.strip() != ""
+
+
+@parametrize(
+    "cmd",
+    [
+        CliCmd.CONFIG_DEFAULTS,
+        CliCmd.CONFIG_INIT,
+    ],
+)
+def test_config_content_commands_reject_quiet_option_with_markdown_output(cmd: str) -> None:
+    """Config content commands reject `--quiet` even when Markdown output is requested."""
+    result: Result = run_cli(
+        [
+            CliCmd.CONFIG,
+            cmd,
+            CliOpt.NO_COLOR_MODE,
+            CliOpt.QUIET,
+            CliOpt.OUTPUT_FORMAT,
+            "markdown",
+        ]
+    )
+
+    assert result.exit_code != 0
+    assert "No such option" in result.output
+    assert CliOpt.QUIET in result.output
 
 
 @parametrize(

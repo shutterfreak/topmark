@@ -85,8 +85,8 @@ def test_version_json_format(use_semver: bool) -> None:
             pytest.fail(f"Not a valid PEP 440 version: {out!r} ({exc})")
 
 
-def test_version_quiet_does_not_suppress_json_output() -> None:
-    """`version --quiet --output-format json` should still emit machine output."""
+def test_version_rejects_quiet_option_with_json_output() -> None:
+    """`version --output-format json` rejects unsupported `--quiet`."""
     result: Result = run_cli(
         [
             CliCmd.VERSION,
@@ -97,15 +97,9 @@ def test_version_quiet_does_not_suppress_json_output() -> None:
         ]
     )
 
-    assert_SUCCESS(result)
-
-    payload: dict[str, object] = parse_json_object(result.output)
-    assert "version_info" in payload
-    assert is_mapping(payload["version_info"])
-
-    version_info: dict[str, object] = as_object_dict(payload["version_info"])
-    assert version_info.get("version") == TOPMARK_VERSION
-    assert version_info.get("version_format") == "pep440"
+    assert result.exit_code != 0
+    assert "No such option" in result.output
+    assert CliOpt.QUIET in result.output
 
 
 def test_version_verbose_does_not_change_json_output() -> None:
@@ -182,8 +176,8 @@ def test_version_ndjson_format(use_semver: bool) -> None:
             pytest.fail(f"Not a valid PEP 440 version: {out!r} ({exc})")
 
 
-def test_version_quiet_does_not_suppress_ndjson_output() -> None:
-    """`version --quiet --output-format ndjson` should still emit machine output."""
+def test_version_rejects_quiet_option_with_ndjson_output() -> None:
+    """`version --output-format ndjson` rejects unsupported `--quiet`."""
     result: Result = run_cli(
         [
             CliCmd.VERSION,
@@ -194,16 +188,9 @@ def test_version_quiet_does_not_suppress_ndjson_output() -> None:
         ]
     )
 
-    assert_SUCCESS(result)
-
-    payload: dict[str, object] = parse_single_ndjson_record(result.output)
-    assert payload.get("kind") == "version"
-
-    version_obj: object | None = payload.get("version")
-    assert is_mapping(version_obj)
-    version_info: dict[str, object] = as_object_dict(version_obj)
-    assert version_info.get("version") == TOPMARK_VERSION
-    assert version_info.get("version_format") == "pep440"
+    assert result.exit_code != 0
+    assert "No such option" in result.output
+    assert CliOpt.QUIET in result.output
 
 
 def test_version_verbose_does_not_change_ndjson_output() -> None:

@@ -27,7 +27,6 @@ from topmark.cli.keys import CliOpt
 from topmark.cli.options import GROUP_CONTEXT_SETTINGS
 from topmark.cli.options import common_color_options
 from topmark.cli.options import common_output_format_options
-from topmark.cli.options import common_text_output_quiet_options
 from topmark.cli.options import common_text_output_verbosity_options
 from topmark.cli.options import config_pyproject_options
 from topmark.cli.options import config_root_options
@@ -81,7 +80,6 @@ if TYPE_CHECKING:
 # Common option decorators
 @common_color_options
 @common_text_output_verbosity_options
-@common_text_output_quiet_options
 @config_pyproject_options
 @config_root_options
 @common_output_format_options
@@ -89,7 +87,6 @@ def config_init_command(
     *,
     # common_ui_options (verbosity, color):
     verbosity: int,
-    quiet: bool,
     color_mode: ColorMode | None,
     no_color: bool,
     # config_pyproject_options:
@@ -110,13 +107,14 @@ def config_init_command(
 
     Args:
         verbosity: Increase TEXT output detail.
-        quiet: Suppress TEXT output.
         color_mode: Color mode for text format (default: auto).
         no_color: If set, disable color mode.
         for_pyproject: If True, render as subtable under `[tool.topmark]`
             (default: False: plain topmark.toml TOML config format).
         config_root: If True, set config as root (stops further config resoution).
         output_format: Output format to use (``text``, ``markdown``, ``json``, or ``ndjson``).
+            Verbosity applies only to TEXT output; this command does not support
+            ``--quiet``.
 
     Raises:
         NotImplementedError: When providing an unsupported OutputType.
@@ -131,7 +129,7 @@ def config_init_command(
     init_common_state(
         ctx,
         verbosity=verbosity,
-        quiet=quiet,
+        quiet=False,  # Pure informational command; no ``--quiet`` option is registered.
         color_mode=color_mode,
         no_color=no_color,
     )
@@ -191,8 +189,7 @@ def config_init_command(
         return
 
     if fmt == OutputFormat.TEXT:
-        if not state.quiet:
-            console.print(render_config_init_text(report))
+        console.print(render_config_init_text(report))
         return
 
     # Defensive guard in case OutputFormat gains new members

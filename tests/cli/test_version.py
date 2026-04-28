@@ -75,8 +75,8 @@ def test_version_with_semver_flag_outputs_semver() -> None:
     assert re.fullmatch(SEMVER_RE, out) is not None
 
 
-def test_version_quiet_suppresses_default_text_output() -> None:
-    """`version --quiet` should suppress default TEXT output."""
+def test_version_rejects_quiet_option() -> None:
+    """`version` is informational and does not support TEXT quiet suppression."""
     result: Result = run_cli(
         [
             CliCmd.VERSION,
@@ -85,12 +85,13 @@ def test_version_quiet_suppresses_default_text_output() -> None:
         ]
     )
 
-    assert_SUCCESS(result)
-    assert result.output == ""
+    assert result.exit_code != 0
+    assert "No such option" in result.output
+    assert CliOpt.QUIET in result.output
 
 
-def test_version_quiet_does_not_suppress_markdown_output() -> None:
-    """`version --quiet --output-format markdown` should still render Markdown."""
+def test_version_rejects_quiet_option_with_markdown_output() -> None:
+    """`version --output-format markdown` also rejects unsupported `--quiet`."""
     result: Result = run_cli(
         [
             CliCmd.VERSION,
@@ -101,11 +102,9 @@ def test_version_quiet_does_not_suppress_markdown_output() -> None:
         ]
     )
 
-    assert_SUCCESS(result)
-
-    out: str = result.output
-    assert "# TopMark Version" in out
-    assert f"**Version:** `{TOPMARK_VERSION}`" in out
+    assert result.exit_code != 0
+    assert "No such option" in result.output
+    assert CliOpt.QUIET in result.output
 
 
 def test_version_verbose_does_not_change_markdown_output() -> None:
@@ -150,6 +149,8 @@ def test_version_markdown_format(use_semver: bool) -> None:
 
     out = result.output.strip()
     assert out, "Markdown output must not be empty"
+
+    assert "# TopMark Version" in out
 
     if use_semver:
         expected: str = convert_pep440_to_semver(TOPMARK_VERSION)

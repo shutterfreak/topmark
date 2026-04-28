@@ -26,7 +26,6 @@ from topmark.cli.keys import CliOpt
 from topmark.cli.options import GROUP_CONTEXT_SETTINGS
 from topmark.cli.options import common_color_options
 from topmark.cli.options import common_output_format_options
-from topmark.cli.options import common_text_output_quiet_options
 from topmark.cli.options import common_text_output_verbosity_options
 from topmark.cli.options import version_format_options
 from topmark.cli.state import TopmarkCliState
@@ -70,14 +69,12 @@ if TYPE_CHECKING:
 )
 @common_color_options
 @common_text_output_verbosity_options
-@common_text_output_quiet_options
 @version_format_options
 @common_output_format_options
 def version_command(
     *,
     # common_ui_options (verbosity, color):
     verbosity: int,
-    quiet: bool,
     color_mode: ColorMode | None,
     no_color: bool,
     # version_format_options:
@@ -92,12 +89,11 @@ def version_command(
 
     Args:
         verbosity: Increase TEXT output detail.
-        quiet: Suppresses default TEXT output.
         color_mode: Set the color mode (default: auto).
         no_color: bool: If set, disable color mode.
         semver: Whether to attempt to render the version as SemVer (default: PEP 440).
         output_format: Output format to use (``text``, ``markdown``, ``json``, or ``ndjson``).
-            Verbosity and quiet controls apply only to TEXT output.
+            Verbosity applies only to TEXT output; `version` does not support `--quiet`.
 
     Raises:
         ValueError: If an unsupported output format is requested.
@@ -112,7 +108,7 @@ def version_command(
     init_common_state(
         ctx,
         verbosity=verbosity,
-        quiet=quiet,
+        quiet=False,  # Pure informational command; no ``--quiet`` option is registered.
         color_mode=color_mode,
         no_color=no_color,
     )
@@ -146,14 +142,13 @@ def version_command(
 
     report: VersionHumanReport = make_version_human_report(
         verbosity_level=state.verbosity,
-        quiet=state.quiet,
         styled=enable_color,
         semver=semver,
     )
 
     if fmt == OutputFormat.TEXT:
         rendered: str = render_version_text(report)
-        # Quiet TEXT output renders as an empty string; avoid emitting a blank line.
+        # Avoid emitting a blank line if a future renderer returns an empty string.
         if rendered:
             console.print(rendered)
         return
