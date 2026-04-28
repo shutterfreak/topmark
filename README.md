@@ -56,7 +56,8 @@ ______________________________________________________________________
 - Selective application via file patterns or STDIN (list mode or single-file content mode)
 - Strict static typing (PEP 604 unions, Pyright)
 - Works well with `pre-commit`, CI, and Git hooks
-- Preserves newline style (LF/CRLF/CR) and BOM
+- Preserves newline style (LF/CRLF/CR) and BOM; non-standard Unicode separators (NEL/LS/PS) are
+  treated as ordinary content, not line endings
 - Idempotent: re-running on already-compliant files makes no changes
 - Configurable comment alignment and raw/pretty formatting
 
@@ -249,7 +250,9 @@ topmark registry processors --output-format markdown --long
 > - `topmark probe` also reports explicitly requested paths that were filtered out before
 >   resolution, distinguishing between path filters, file-type filters, and a generic fallback.
 
-TopMark preserves line endings, shebangs, BOMs, and indentation rules for each file type.
+TopMark preserves standard line endings (LF, CRLF, CR), shebangs, BOMs, and indentation rules for
+each file type. Non-standard Unicode newline separators (NEL, LS, PS) are treated as ordinary
+content and are not recognized as physical line-ending styles.
 
 ______________________________________________________________________
 
