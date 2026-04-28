@@ -126,6 +126,30 @@ For the public API, the returned view is controlled via
 `report="all" | "actionable" | "noncompliant"`. This replaces the older `skip_compliant` /
 `skip_unsupported` booleans.
 
+### Resolution diagnostics (probe API)
+
+For programmatic inspection of file-type and processor resolution, use the probe API:
+
+```python
+from topmark.resolution.filetypes import probe_resolution_for_path
+
+probe = probe_resolution_for_path("README.md")
+
+if probe.selected_file_type:
+    print(probe.selected_file_type.qualified_key)
+
+for candidate in probe.candidates:
+    print(candidate.qualified_key, candidate.score)
+```
+
+This API exposes the same resolution evidence used by:
+
+- `topmark probe` (CLI)
+- pipeline resolution (`ResolverStep`, `ProberStep`)
+- machine output (JSON / NDJSON)
+
+and is the recommended way to debug and integrate resolution behavior.
+
 ```python
 assert run.summary.get("unchanged", 0) >= 0
 ```
@@ -180,6 +204,11 @@ used by the runtime registries.
 Unqualified identifiers are only safe when they remain unique in the composed registry. If multiple
 file types share the same unqualified name, callers must use the qualified `"namespace:name"` form.
 
+For resolution diagnostics, use `probe_resolution_for_path()` (see
+\[`topmark.resolution.filetypes.probe_resolution_for_path`\][topmark.resolution.filetypes.probe_resolution_for_path]).
+This function returns a `ResolutionProbeResult` exposing candidate file types, scores, match
+signals, and the selected processor, and is the canonical path-based resolution surface for 1.0.
+
 ### Registries, bindings, and extensibility
 
 TopMark exposes **read-only** registries for file types and header processors via the stable facade
@@ -212,6 +241,10 @@ effects when registering or binding components.
 
 Most users should interact with registries through this facade and treat them as
 **introspection-only**.
+
+Resolution of file types and processors is now probe-driven in 1.0. Instead of using ad-hoc helpers,
+callers should rely on `probe_resolution_for_path()` and then use the registry facade to inspect or
+resolve processors from the selected file type.
 
 If you need dynamic extensions at runtime (typically in plugins or tests), use the advanced
 registries in \[`topmark.registry`\][topmark.registry] directly and keep the steps explicit:
