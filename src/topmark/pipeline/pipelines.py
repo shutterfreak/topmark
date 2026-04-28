@@ -16,7 +16,7 @@ to pipelines. Pipelines are built from class-based steps that implement the
 
 Overview
 --------
-- ``PROBE``: probe
+- ``PROBE``: probe resolution only
 - ``SCAN``: resolve → sniff → read → scan
 - ``CHECK_RENDER``: SCAN + build → render
 - ``CHECK`` (summary): CHECK_RENDER + compare
@@ -92,9 +92,9 @@ from topmark.pipeline.steps import stripper
 from topmark.pipeline.steps import writer
 
 PROBE_PIPELINE: Final[tuple[Step[ProcessingContext], ...]] = (
-    prober.ProberStep(),  # Resolve file type and assign header processor for the file
+    prober.ProberStep(),  # Probe file type/processor resolution and halt.
 )
-"""Probe file type and header processor for a given file."""
+"""Probe file type and header processor resolution for a given file."""
 
 SCAN_PIPELINE: Final[tuple[Step[ProcessingContext], ...]] = (
     resolver.ResolverStep(),  # Resolve file type and assign header processor for the file

@@ -92,20 +92,6 @@ class MatchSignals:
         return self.extension or self.filename or self.pattern
 
 
-@dataclass(frozen=True, slots=True)
-class ResolvedBinding:
-    """Resolved file type and associated header processor for a path.
-
-    Attributes:
-        file_type: Resolved `FileType`, or ``None`` when no candidate matched.
-        processor: Bound `HeaderProcessor` for the resolved file type, or
-            ``None`` when the file type is unsupported or unresolved.
-    """
-
-    file_type: FileType | None
-    processor: HeaderProcessor | None
-
-
 def candidate_order_key(
     candidate: FileTypeCandidate,
 ) -> tuple[int, str, str]:
@@ -404,41 +390,6 @@ def get_file_type_candidates_for_path(
     return [draft.candidate for draft in drafts]
 
 
-def _select_best_file_type_candidate(
-    candidates: list[FileTypeCandidate],
-) -> FileTypeCandidate | None:
-    """Select the best file type candidate deterministically.
-
-    Candidates are ranked by
-    [`candidate_order_key`][topmark.resolution.filetypes.candidate_order_key],
-    which prefers higher score and then uses namespace and local key as stable
-    tie-breakers.
-
-    Multiple candidates are therefore allowed, but the resolver always returns
-    at most one effective winner.
-
-    Args:
-        candidates: Resolution candidates for the current path.
-
-    Returns:
-        The best candidate, or ``None`` if `candidates` is empty.
-    """
-    if not candidates:
-        return None
-
-    # Deterministic best candidate selection.
-    #
-    # We want the highest score to win, with a stable tie-break on namespace
-    # and local key (both ascending) to ensure deterministic behavior across
-    # runs and across overlapping file type definitions from different
-    # namespaces.
-    #
-    # Using `min()` with a composite key avoids sorting the full list:
-    #   key = (-score, namespace, local_key)
-    # so the "best" candidate becomes the smallest by this ordering.
-    return min(candidates, key=candidate_order_key)
-
-
 def probe_resolution_for_path(
     path: Path,
     *,
@@ -447,9 +398,9 @@ def probe_resolution_for_path(
 ) -> ResolutionProbeResult:
     """Resolve a path and return probe-visible explanation details.
 
-    This helper uses the same scoring and deterministic tie-break model as
-    [`resolve_file_type_for_path`][topmark.resolution.filetypes.resolve_file_type_for_path],
-    but returns all diagnostic details needed by the `topmark probe` command.
+    This helper uses the shared scoring and deterministic tie-break model and
+    returns all diagnostic details needed by the `topmark probe` command and
+    probe-backed pipeline resolution.
 
     Args:
         path: Filesystem path of the file being resolved.
@@ -540,91 +491,3 @@ def probe_resolution_for_path(
         selected_file_type=selected_file_type,
         selected_processor=selected_processor,
     )
-
-
-def resolve_file_type_for_path(
-    path: Path,
-    *,
-    include_file_types: Collection[str] | None = None,
-    exclude_file_types: Collection[str] | None = None,
-) -> FileType | None:
-    """Resolve the best matching `FileType` for `path`.
-
-    Multiple candidates may match the same path. When that happens, the
-    resolver applies the documented deterministic precedence and tie-break
-    policy and returns at most one effective winner.
-
-    Args:
-        path: Filesystem path of the file being resolved.
-        include_file_types: Optional set of file type identifiers to include (whitelist).
-            Empty collection means no whitelist filter.
-        exclude_file_types: Optional set of file type identifiers to exclude (blacklist).
-            Empty collection means no blacklist filter.
-
-    Returns:
-        The highest-precedence matching `FileType`, or ``None`` if no
-        candidates remain after filtering.
-    """
-    candidates: list[FileTypeCandidate] = get_file_type_candidates_for_path(
-        path,
-        include_file_types=include_file_types,
-        exclude_file_types=exclude_file_types,
-    )
-
-    if not candidates:
-        return None
-
-    top_score: int = max(candidate.score for candidate in candidates)
-    top_candidates: list[FileTypeCandidate] = [
-        candidate for candidate in candidates if candidate.score == top_score
-    ]
-    if len(top_candidates) > 1:
-        logger.debug(
-            "File type resolution tie for '%s' at score %s; applying deterministic tie-break: %s",
-            path,
-            top_score,
-            [candidate.file_type.qualified_key for candidate in top_candidates],
-        )
-
-    best: FileTypeCandidate | None = _select_best_file_type_candidate(candidates)
-    return None if best is None else best.file_type
-
-
-def resolve_binding_for_path(
-    path: Path,
-    *,
-    include_file_types: Collection[str] | None = None,
-    exclude_file_types: Collection[str] | None = None,
-) -> ResolvedBinding:
-    """Resolve the effective file type/processor binding for `path`.
-
-    Args:
-        path: Filesystem path of the file being resolved.
-        include_file_types: Optional set of file type identifiers to include (whitelist).
-            Empty collection means no whitelist filter
-        exclude_file_types: Optional set of file type identifiers to exclude (blacklist).
-            Empty collection means no blacklist filter
-
-    Returns:
-        [`ResolvedBinding`][topmark.resolution.filetypes.ResolvedBinding]
-        containing the resolved file type and associated processor.
-    """
-    file_type: FileType | None = resolve_file_type_for_path(
-        path,
-        include_file_types=include_file_types,
-        exclude_file_types=exclude_file_types,
-    )
-    if file_type is None:
-        logger.warning("File '%s' cannot be resolved to a registered file type", path)
-        return ResolvedBinding(None, None)
-
-    from topmark.registry.registry import Registry
-
-    processor: HeaderProcessor | None = Registry.resolve_processor(file_type.qualified_key)
-    if processor is None:
-        logger.warning(
-            "File '%s' is resolved to file type '%s' but has no registered header processor",
-            path,
-            file_type.local_key,
-        )
-    return ResolvedBinding(file_type, processor)

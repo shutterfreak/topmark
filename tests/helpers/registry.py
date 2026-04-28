@@ -35,7 +35,7 @@ from topmark.filetypes.model import InsertChecker
 from topmark.filetypes.policy import FileTypeHeaderPolicy
 from topmark.processors.base import HeaderProcessor
 from topmark.registry.types import ProcessorDefinition
-from topmark.resolution.filetypes import resolve_binding_for_path
+from topmark.resolution.filetypes import probe_resolution_for_path
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -43,6 +43,8 @@ if TYPE_CHECKING:
     from collections.abc import Generator
     from collections.abc import Mapping
     from pathlib import Path
+
+    from topmark.resolution.probe import ResolutionProbeResult
 
 
 def make_file_type(
@@ -316,7 +318,7 @@ def resolve_processor_for_path(
     """Resolve the effective header processor for `path`.
 
     This is a small convenience wrapper around
-    [`resolve_binding_for_path()`][topmark.resolution.filetypes.resolve_binding_for_path]
+    [`probe_resolution_for_path()`][topmark.resolution.filetypes.probe_resolution_for_path]
     used by tests that only care about the resolved processor object.
 
     Args:
@@ -329,8 +331,14 @@ def resolve_processor_for_path(
     Returns:
         The resolved header processor (or None).
     """
-    return resolve_binding_for_path(
+    probe: ResolutionProbeResult = probe_resolution_for_path(
         path,
         include_file_types=include_file_types,
         exclude_file_types=exclude_file_types,
-    ).processor
+    )
+    if probe.selected_file_type is None:
+        return None
+
+    from topmark.registry.registry import Registry
+
+    return Registry.resolve_processor(probe.selected_file_type.qualified_key)

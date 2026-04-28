@@ -35,15 +35,13 @@ Current module roles:
 - [`topmark.resolution.files`][topmark.resolution.files] decides **which files**
   should be processed by expanding configured inputs and applying path-based and
   file-type-based filters.
-- [`topmark.resolution.filetypes`][topmark.resolution.filetypes] decides **what
-  each file is** by scoring matching file type candidates and resolving the
-  associated processor binding.
+- `resolve_file_list()` - determine the concrete input files to process.
+- `probe_resolution_for_path()` - explain file type and processor resolution for a path.
+- `get_file_type_candidates_for_path()` - inspect all candidate file type matches and their scores.
 
 Typical entry points include:
 
 - `resolve_file_list()` - determine the concrete input files to process.
-- `resolve_file_type_for_path()` - determine the best matching file type for a path.
-- `resolve_binding_for_path()` - resolve both file type and processor for a path.
 - `get_file_type_candidates_for_path()` - inspect all candidate file type matches and their scores.
 
 These helpers respect optional include/exclude file type filters, allowing
