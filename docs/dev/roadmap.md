@@ -41,17 +41,34 @@ The registry system has been fully refactored into a **deterministic, explicit, 
 model**:
 
 - Introduced a strict **three-registry architecture**:
+
   - `filetypes` → identity of file types
   - `processors` → identity of processors
   - `bindings` → relationships between file types and processors
+
 - Added a thin façade (`registry.registry`) to compose these concerns without hiding behavior.
+
 - Replaced all implicit registration (decorators, bootstrap scanning) with **explicit bindings**.
+
 - Introduced **namespace-aware identities**:
+
   - `qualified_key = "<namespace>:<name>"`
   - canonical keys are now the default across APIs and outputs
+
 - Implemented **ambiguity-aware resolution** with explicit error types.
+
 - Moved resolution logic into `topmark.resolution.*` and removed legacy resolver paths.
+
 - Established **canonical identity semantics** across machine output, CLI, and API.
+
+- Introduced probe-based resolution via `ResolutionProbeResult` as the shared evidence model for
+  resolver diagnostics and effective pipeline resolution.
+
+- Added the read-only `topmark probe` command to expose file-type candidates, selected file type,
+  selected processor, scores, and match signals.
+
+- Refactored `ResolverStep` and `ProberStep` so normal pipelines and the probe pipeline share the
+  same probe-backed resolution mapping.
 
 Result: the registry is now **predictable, testable, and plugin-ready**, with no import-time side
 effects.
@@ -150,18 +167,30 @@ Result: pipeline behavior is now **explicit, consistent, and predictable**.
 Machine formats are now:
 
 - **Domain-scoped** (`config`, `pipeline`, `registry`, `core`, `version`)
+
 - **Schema-driven (TypedDict)**
+
 - Fully separated from CLI
+
 - Using consistent JSON/NDJSON envelope conventions
+
 - Supporting JSON and NDJSON
+
 - Backed by focused JSON + NDJSON contract tests for:
+
   - config commands
   - pipeline commands
   - version command
   - registry commands
+  - probe command
+
 - Supported by shared JSON/NDJSON test helpers for machine-output parsing and record/meta assertions
+
 - Documented with aligned machine-format and machine-output reference pages, plus registry command
   usage pages
+
+- Added probe-specific JSON and NDJSON machine output with a `probes` JSON collection and `probe`
+  NDJSON records.
 
 Result: machine output is now **schema-driven, documented, and separated from human presentation**.
 Remaining work is limited to final schema-freeze review, not architecture.
@@ -179,21 +208,32 @@ Remaining work is limited to final schema-freeze review, not architecture.
   - reusable
   - testable
 - Added direct presentation tests for shared diagnostic rendering.
-- Added CLI-level human-output tests for version, config, registry, and pipeline command groups.
+- Added CLI-level human-output tests for version, config, registry, pipeline, and probe command
+  groups.
 
 Result: human output is now **consistent, composable, and decoupled from CLI**.
 
 ### Documentation & developer tooling (completed)
 
 - Major documentation alignment with new architecture
+
 - Added pipeline docs and registry documentation
+
 - Enforced docstring standards and validation
+
 - Introduced link-checking and stricter docs CI
+
 - Reorganized tests and helpers for clarity
+
 - Added shared JSON/NDJSON parsing and assertion helpers for machine-output tests
+
 - Recorded machine-output naming conventions in the canonical machine-output reference
+
 - Updated usage, configuration, architecture, machine-output, API, README, and index documentation
   to reflect the finalized TEXT / Markdown / machine output contract.
+
+- Documented probe-based resolution in the resolution, pipeline, machine-output, machine-format, and
+  `topmark probe` usage pages.
 
 ### CI / release / dependency model (completed)
 
@@ -422,17 +462,15 @@ The registry architecture is largely complete, but a few 1.0 decisions remain:
 - Confirm that canonical identity terminology (`qualified_key`, `file_type_id`, `local_key`, etc.)
   is fully stabilized across docs, tests, CLI, and public API references.
 - Finish freezing the public surface of `topmark.resolution.*`:
-  - what remains public
-  - what becomes internal
-  - what ambiguity behavior is guaranteed for 1.0
-- Decide whether to add user-facing registry discovery/query commands before 1.0:
+  - `probe_resolution_for_path()` is now the 1.0 path-based resolution surface
+  - final public/internal wording still needs one review pass across API docs and generated
+    references
+- Registry discovery/query commands are explicitly deferred beyond the current probe work:
   - query file types by substring, glob-like pattern, namespace, extension, or processor binding
   - query processors by key/namespace/capability
   - query bindings by file type or processor
-  - clarify whether this belongs in existing `topmark registry filetypes/processors/bindings`
-    commands via filters, or as separate subcommands such as `registry find` / `registry query`
-  - ensure any query surface preserves the canonical identity model (`qualified_key`, `namespace`,
-    `local_key`) and does not reintroduce ambiguous local-key assumptions
+  - any future query surface must preserve the canonical identity model (`qualified_key`,
+    `namespace`, `local_key`) and must not reintroduce ambiguous local-key assumptions
 
 Recommended direction:
 
@@ -440,6 +478,8 @@ Recommended direction:
 - Keep local-key support only where it provides clear user-facing compatibility value.
 - Keep ambiguity handling in the resolver layer rather than treating overlapping file types as a
   registry error.
+- Treat `topmark probe` as the accepted 1.0 resolution explainability surface.
+- Defer registry query/filter commands unless a concrete pre-1.0 blocker appears.
 
 ### In-memory pipeline: implement or defer
 
@@ -542,6 +582,8 @@ Machine output remaining work:
   TOML-specific structure is explicitly deferred beyond 1.0.
 - Registry machine-output contract frozen after the flattened JSON-envelope cleanup (`filetypes`,
   `processors`, `bindings`, `unbound_filetypes`, `unused_processors`).
+- Probe machine-output contract added and covered with focused JSON/NDJSON tests (`probes` JSON
+  collection and `probe` NDJSON records).
 - `detail_level` semantics frozen:
   - `--long` controls projection/data depth across formats where supported
   - `detail_level` reflects projection in machine output when present
@@ -612,16 +654,10 @@ A few user-facing behavior questions remain open for 1.0:
     - gain an explicit extended/rich line-ending policy surface
   - ensure the decision is reflected consistently across pipeline step behavior, diagnostics/policy
     handling, tests, and user-facing documentation
-- Decide whether to add a file-recognition / resolution probe command before 1.0:
-  - report how TopMark recognizes one or more input paths without running the full check/strip
-    mutation planning flow
-  - expose file-type candidates, selected binding, namespace-qualified identities, processor choice,
-    and ambiguity/tie-break information that is currently hidden by `check` / `strip`
-  - make the command useful for debugging registry resolution, plugin registration, include/exclude
-    file-type filters, and content-match behavior
-  - compare against the existing workaround `topmark check --no-config --report=all` and decide
-    whether a dedicated `probe` command adds enough value
-  - keep it read-only and diagnostics-oriented; avoid mixing it with header comparison, planning, or
+- File-recognition / resolution explainability is now accepted for 1.0 via the read-only
+  `topmark probe` command.
+  - registry query/filter commands remain deferred
+  - probe is distinct from `check` / `strip` and does not perform header comparison, planning, or
     write/apply semantics
 
 ### Overall status (undecided / to do)
@@ -673,6 +709,7 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] pipeline commands
   - [x] version command
   - [x] registry commands
+  - [x] probe command
   - [x] top-level command groups reviewed for any remaining machine-output gaps
 - [ ] Final schema freeze review completed
   - [x] `(outcome, reason, count)` summary rows frozen
@@ -688,6 +725,7 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] richer TOML-specific structure is not required before 1.0 freeze (explicitly deferred)
 - [x] `docs/dev/machine-formats.md` reviewed and frozen as a reference contract
 - [x] `docs/dev/machine-output.md` reviewed and aligned with the current command contracts
+- [x] Probe machine output reviewed and documented as part of the 1.0 machine contract
 
 #### [Must] Human output contracts
 
@@ -697,6 +735,7 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] registry commands
   - [x] version command
   - [x] diagnostics presentation helpers
+  - [x] probe command
 - [ ] Warning/error phrasing reviewed for CLI-wide consistency
 - [x] Verbosity semantics (default, `-v`, `-vv`, `--quiet`) documented and considered stable
   - [x] CLI plumbing normalized around typed `TopmarkCliState`
@@ -722,11 +761,11 @@ These are release blockers unless explicitly deferred with a documented rational
   - [ ] `--report` semantics frozen
   - [ ] `--header-mutation-mode` semantics frozen
   - [ ] `EmptyInsertMode` token semantics frozen
-- [ ] Decision made on registry discovery and file-recognition debugging commands
-  - [ ] registry filtering/query surface accepted or explicitly deferred
-  - [ ] file-recognition / resolution probe command accepted or explicitly deferred
-  - [ ] if accepted, command scope is limited to read-only discovery/diagnostics and documented as
-    distinct from `check` / `strip`
+- [x] Decision made on registry discovery and file-recognition debugging commands
+  - [x] registry filtering/query surface explicitly deferred
+  - [x] file-recognition / resolution probe command accepted for 1.0
+  - [x] command scope is limited to read-only discovery/diagnostics and documented as distinct from
+    `check` / `strip`
 
 #### [Must] Configuration & validation
 
@@ -774,8 +813,9 @@ These are release blockers unless explicitly deferred with a documented rational
   - [ ] user-facing docs updated if nonstandard line endings are intentionally unsupported or given
     a dedicated policy
 - [ ] Namespace-aware registry lookup and deterministic ambiguity behavior covered by tests
-- [ ] If a probe command is accepted, resolution-candidate reporting is covered by focused tests
-  without weakening the existing check/strip output contract
+- [x] Probe command resolution-candidate reporting is covered by focused resolver, pipeline-step,
+  CLI human-output, CLI exit-code, and machine-output tests without weakening the existing
+  check/strip output contract
 - [x] TOML-layer validation paths have focused coverage
 - [x] Empty / empty-like file handling is explicit and idempotent
 - [x] Resolver treats content matcher exceptions as safe misses
@@ -815,7 +855,7 @@ These should ideally be completed for 1.0, but may be deferred more easily if ne
 
 - [ ] Decide whether the local-key compatibility view in `FileTypeRegistry` remains a supported 1.0
   feature
-- [ ] Resolution helper surface reviewed for public/internal stability
+- [ ] Resolution helper surface reviewed for final public/internal stability wording
 - [x] Canonical terminology (`qualified_key`, `file_type_id`, `local_key`, etc.) reviewed one final
   time across docs and public surfaces
 
@@ -835,7 +875,8 @@ These should ideally be completed for 1.0, but may be deferred more easily if ne
 - [x] Edge-case coverage reviewed for confidence in frozen schemas
   - [x] coverage audit performed on core/config/pipeline/registry/version machine modules
   - [x] no remaining uncovered schema-relevant blind spots identified for frozen machine contracts
-  - [x] dedicated CLI machine contract tests now pass for config, pipeline, version, and registry
+  - [x] dedicated CLI machine contract tests now pass for config, pipeline, version, registry, and
+    probe
   - [x] config command machine tests now cover flattened staged diagnostics behavior
   - [x] version command machine tests now cover JSON and NDJSON output
   - [x] registry command machine tests now cover flattened JSON envelopes, NDJSON record kinds,
