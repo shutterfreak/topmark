@@ -19,13 +19,15 @@ It is intended for integrators and tooling authors who consume TopMark programma
 Covered command groups:
 
 - **Processing commands**: `check`, `strip`
+- **Resolution diagnostics**: `probe`
 - **Registry commands**: `registry filetypes`, `registry processors`, `registry bindings`
 - **Configuration commands**: `config check`, `config init`, `config defaults`, `config dump`
 - **Version reporting**: `version`
 
 This page is the canonical reference for TopMark’s machine output shapes. Usage guides for
-individual commands (for example, [`check`](../usage/commands/check.md) and
-[`strip`](../usage/commands/strip.md)) provide task-oriented examples consistent with this schema.
+individual commands (for example, [`check`](../usage/commands/check.md),
+[`strip`](../usage/commands/strip.md), and [`probe`](../usage/commands/probe.md)) provide
+task-oriented examples consistent with this schema.
 
 ## Output formats
 
@@ -135,9 +137,9 @@ The machine-output naming audit for 1.0 adopts the following conventions across 
 - Shared envelope and metadata keys are owned by
   \[`topmark.core.machine.schemas`\][topmark.core.machine.schemas].
 - JSON uses **domain-specific aggregated keys** (for example `filetypes`, `processors`, `bindings`,
-  `results`, `config_layers`) rather than a generic container such as `items`.
+  `results`, `probes`, `config_layers`) rather than a generic container such as `items`.
 - NDJSON uses **singular record kinds** (for example `filetype`, `processor`, `binding`, `result`,
-  `summary`) and stores each payload under a container key that matches `kind`.
+  `probe`, `summary`) and stores each payload under a container key that matches `kind`.
 - Globally qualified identities use `qualified_key`.
 - Decomposed identities use `namespace` + `local_key`.
 - Relationship references use `*_key` (for example `file_type_key`, `processor_key`).
@@ -150,6 +152,154 @@ These conventions are considered frozen for 1.0 unless a final pre-release audit
 concrete naming defect worth correcting before release.
 
 ______________________________________________________________________
+
+## Resolution diagnostics (`probe`)
+
+The `topmark probe` command explains file-type and processor resolution. It is a diagnostic command,
+not a compliance or mutation command: it does not compute header changes, diffs, strip plans, or
+write plans.
+
+Probe machine output is unaffected by TEXT verbosity or quiet mode. The JSON and NDJSON formats
+expose the same resolution evidence used by the human-facing probe renderers:
+
+- selected file type and selected processor
+- probe status and reason
+- all scored candidate file types
+- candidate match signals
+
+### JSON schema
+
+```jsonc
+{
+  "meta": { /* MetaPayload */ },
+  "config": { /* ConfigPayload */ },
+  "config_diagnostics": { /* ConfigDiagnosticsPayload */ },
+  "probes": [
+    { /* per-file probe payload */ }
+  ]
+}
+```
+
+- `meta`: small metadata block, including tool name and TopMark version.
+- `config`: snapshot of the effective config used for file filtering and resolution policy.
+- `config_diagnostics`: full diagnostics payload including counts and the list of config
+  diagnostics.
+- `probes`: one resolution probe payload per probed file.
+
+### NDJSON schema
+
+NDJSON output follows the same stable config prefix used by processing commands, then emits one
+`probe` record per probed file:
+
+```jsonc
+{"kind":"config","meta":{...},"config":{...}}
+{"kind":"config_diagnostics","meta":{...},"config_diagnostics":{"diagnostic_counts":{...}}}
+{"kind":"diagnostic","meta":{...},"diagnostic":{"domain":"config","level":"warning","message":"..."}}
+{"kind":"probe","meta":{...},"probe":{ /* per-file probe payload */ }}
+```
+
+NDJSON rules for `probe`:
+
+- Every record includes `kind` and `meta`.
+- Payload container key matches `kind`.
+- The stream begins with:
+  1. `config`
+  1. `config_diagnostics` (**counts-only**)
+  1. zero or more `diagnostic` records (each with `domain="config"`)
+- Then one `probe` record is emitted per probed file.
+
+The JSON `probes` key and NDJSON `probe` kind are defined in
+\[`topmark.pipeline.machine.schemas.PipelineKey`\][topmark.pipeline.machine.schemas.PipelineKey] and
+\[`topmark.pipeline.machine.schemas.PipelineKind`\][topmark.pipeline.machine.schemas.PipelineKind].
+The NDJSON stream is produced by:
+
+- \[`topmark.pipeline.machine.envelopes.iter_probe_results_ndjson_records`\][topmark.pipeline.machine.envelopes.iter_probe_results_ndjson_records]
+- serialization helpers in
+  \[`topmark.pipeline.machine.serializers`\][topmark.pipeline.machine.serializers]
+
+______________________________________________________________________
+
+## Per-file probe payload
+
+Each element of the JSON `probes` array and each NDJSON `probe` record contains a **per-file
+resolution probe payload**.
+
+High-level shape:
+
+```jsonc
+{
+  "path": "README.md",
+  "status": "resolved",
+  "reason": "selected_highest_score",
+  "selected_file_type": {
+    "qualified_key": "topmark:markdown",
+    "namespace": "topmark",
+    "local_key": "markdown",
+    "score": 54
+  },
+  "selected_processor": {
+    "qualified_key": "topmark:html",
+    "namespace": "topmark",
+    "local_key": "html"
+  },
+  "candidates": [
+    {
+      "qualified_key": "topmark:markdown",
+      "namespace": "topmark",
+      "local_key": "markdown",
+      "score": 54,
+      "selected": true,
+      "tie_break_rank": 1,
+      "match": {
+        "extension": true,
+        "filename": false,
+        "pattern": false,
+        "content_probe_allowed": false,
+        "content_match": false,
+        "content_error": null
+      }
+    }
+  ]
+}
+```
+
+Fields:
+
+- `path`: probed filesystem path.
+- `status`: probe status, currently one of:
+  - `resolved` — a file type and processor were selected.
+  - `unsupported` — no file type candidate matched.
+  - `no_processor` — a file type was selected, but no processor binding was available.
+  - `probe_missing` — internal fallback used only if a pipeline result lacks a probe payload.
+- `reason`: machine-friendly explanation for the status and selection, for example:
+  - `selected_highest_score`
+  - `selected_by_tie_break`
+  - `no_candidates`
+  - `selected_file_type_has_no_bound_processor`
+  - `no_resolution_probe_result`
+- `selected_file_type`: selected file type identity and score, or `null` when unresolved.
+- `selected_processor`: selected processor identity, or `null` when unresolved or unbound.
+- `candidates`: scored candidate file types in deterministic resolution order.
+
+Candidate fields:
+
+- `qualified_key`, `namespace`, `local_key`: canonical file type identity.
+- `score`: resolver score for this candidate. Higher scores are preferred.
+- `selected`: whether this candidate is the effective selected file type.
+- `tie_break_rank`: one-based deterministic rank after score and tie-break ordering.
+- `match`: probe-visible match signals:
+  - `extension`
+  - `filename`
+  - `pattern`
+  - `content_probe_allowed`
+  - `content_match`
+  - `content_error`
+
+> [!NOTE]
+>
+> Scores are exposed for explainability and ordering. Automation should primarily rely on `status`,
+> `selected`, and canonical identities (`qualified_key`, `namespace`, `local_key`) rather than
+> hard-coding exact numeric scores.
 
 ## Processing commands (`check`, `strip`)
 

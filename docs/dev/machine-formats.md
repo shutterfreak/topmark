@@ -70,18 +70,12 @@ ______________________________________________________________________
 All machine output includes a `meta` object:
 
 - `tool`: the tool name (always `"topmark"`)
-
 - `version`: the TopMark package version (PEP 440)
-
 - `platform`: short runtime identifier (e.g. `sys.platform`)
-
 - `detail_level`: optional machine-facing projection level for some commands:
-
   - `"brief"` for default machine output
-  - `"long"` when `--long` / detailed projection is requested
-
-  Registry commands include `detail_level` in both JSON and NDJSON. Other command families may omit
-  this field.
+  - `"long"` when `--long` / detailed projection is requested Registry commands include
+    `detail_level` in both JSON and NDJSON. Other command families may omit this field.
 
 In JSON, `meta` appears once at the top level.
 
@@ -217,6 +211,17 @@ Examples:
 }
 ```
 
+- Resolution diagnostics (`probe`):
+
+```jsonc
+{
+  "meta": { ... },
+  "config": { ... },
+  "config_diagnostics": { ... },
+  "probes": [ ... ]
+}
+```
+
 Consumers should **not assume a single generic container key** (such as `items` or a bare array),
 but instead switch on documented domain-specific keys.
 
@@ -237,6 +242,7 @@ Common NDJSON kinds include:
 - `config_diagnostics` (counts-only in NDJSON prefix records)
 - `diagnostic` (one diagnostic per record; see "Diagnostics" below)
 - `result` (per-file result)
+- `probe` (per-file resolution probe)
 - `summary` (one aggregated `(outcome, reason)` summary entry)
 - `version`
 - registry-specific kinds:
@@ -342,6 +348,31 @@ Important properties of the summary model:
 
 This design keeps JSON and NDJSON schemas consistent and avoids ambiguous aggregation when different
 reasons share the same outcome.
+
+______________________________________________________________________
+
+## Resolution diagnostics (`probe`)
+
+`topmark probe` exposes file-type and processor resolution as a machine-readable diagnostic surface.
+
+- JSON emits: `meta`, `config`, `config_diagnostics`, `probes`
+- NDJSON emits a stable prefix:
+  - `config`
+  - `config_diagnostics` (counts-only)
+  - zero or more `diagnostic` records (domain=`"config"`)
+  - then one `probe` record per file
+
+Unlike processing commands, `probe`:
+
+- does not emit `results` or `summary`
+- does not compute header changes or plans
+- is purely diagnostic and resolution-focused
+
+Machine output for `probe` is unaffected by TEXT verbosity or quiet mode.
+
+Refer to the machine schema reference for the per-file probe payload:
+
+- [Machine output schema (JSON & NDJSON)](machine-output.md)
 
 ______________________________________________________________________
 
