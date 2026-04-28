@@ -172,7 +172,7 @@ def generate_cli_reference_pages() -> None:
     )
     config_defaults_md: str = _run_topmark_markdown(
         "config",
-        "init",
+        "defaults",
         "--output-format",
         "markdown",
     )
