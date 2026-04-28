@@ -14,7 +14,8 @@ topmark:header:end
 
 TopMark processes files through **explicit, immutable pipelines** composed of small,
 single-responsibility steps. Each pipeline represents a supported user intent (scan, check, strip,
-apply, patch) and defines **exactly which steps run and in which order**.
+apply, patch) and defines **exactly which steps run and in which order**. A dedicated **probe
+pipeline** exists for resolution diagnostics (`topmark probe`).
 
 Pipelines do not make high-level decisions themselves. Instead:
 
@@ -57,6 +58,9 @@ All pipelines are built from the same core phases:
 1. **Inspection** – read content and detect existing headers
 1. **Evaluation** – generate and compare expected headers
 1. **Mutation (optional)** – plan, patch, and/or write changes
+
+The `probe` pipeline is an exception: it only executes the resolution phase and stops immediately
+after producing probe results.
 
 ### Unified Pipeline Flow
 
@@ -114,6 +118,29 @@ Pipelines are defined in `src/topmark/pipeline/pipelines.py` and exposed via
 
 The CLI selects among these immutable pipeline variants based on command intent and flags such as
 `--patch` and `--apply`.
+
+### PROBE
+
+**Purpose:** Explain file type and processor resolution
+
+**Mutation:** ❌ none
+
+**Steps:**
+
+```mermaid
+flowchart TD
+
+P[<tt>ProberStep</tt>]
+```
+
+**End states:**
+
+- Resolution status (`resolved`, `unsupported`, `no_processor`)
+- Selected file type and processor (if any)
+- Full candidate set with match signals
+
+This pipeline powers `topmark probe` and is intentionally **resolution-only**. It halts immediately
+after probing and does not perform inspection, comparison, or mutation.
 
 ### SCAN
 
@@ -374,6 +401,7 @@ Each step implements the `Step` protocol and:
 | Step                                                             | Responsibility                                                                  |
 | ---------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | \[`ResolverStep`\][topmark.pipeline.steps.resolver.ResolverStep] | Determine file type and header processor (see [`resolution.md`](resolution.md)) |
+| \[`ProberStep`\][topmark.pipeline.steps.prober.ProberStep]       | Run resolution probe and expose scored candidates and selection                 |
 | \[`SnifferStep`\][topmark.pipeline.steps.sniffer.SnifferStep]    | Fast policy and newline checks                                                  |
 | \[`ReaderStep`\][topmark.pipeline.steps.reader.ReaderStep]       | Read file content safely                                                        |
 | \[`ScannerStep`\][topmark.pipeline.steps.scanner.ScannerStep]    | Locate existing header bounds                                                   |

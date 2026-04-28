@@ -49,6 +49,7 @@ Use the links below (or the search box) to jump to the right module.
 
 - Individual step modules:
 
+  - [`topmark.pipeline.steps.prober`](../api/internals/topmark/pipeline/steps/prober.md)
   - [`topmark.pipeline.steps.resolver`](../api/internals/topmark/pipeline/steps/resolver.md)
   - [`topmark.pipeline.steps.sniffer`](../api/internals/topmark/pipeline/steps/sniffer.md)
   - [`topmark.pipeline.steps.reader`](../api/internals/topmark/pipeline/steps/reader.md)
