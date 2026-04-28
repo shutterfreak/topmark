@@ -52,8 +52,7 @@ Path-based resolution is implemented in
 
 The main public entry points are:
 
-- \[`resolve_file_type_for_path()`\][topmark.resolution.filetypes.resolve_file_type_for_path]
-- \[`resolve_binding_for_path()`\][topmark.resolution.filetypes.resolve_binding_for_path]
+- \[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path]
 
 These entry points participate only in **path-based runtime resolution**. They do not surface or
 consume layered config provenance payloads such as the human-facing `[[layers]]` export or the
@@ -70,8 +69,35 @@ See also:
 - [`Configuration discovery`](../configuration/discovery.md)
 - [`Configuration index`](../configuration/index.md)
 
-`resolve_binding_for_path()` first resolves the best matching file type for a path, then looks up
-the bound processor through the registry facade.
+______________________________________________________________________
+
+## Probe-based resolution (1.0 contract)
+
+TopMark 1.0 introduces a probe-first resolution model exposed via
+\[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path].
+
+This function returns a
+**\[`ResolutionProbeResult`\][topmark.resolution.probe.ResolutionProbeResult]** containing:
+
+- selected file type and processor (if any)
+- probe status and reason
+- all scored candidate file types
+- match signals used during resolution
+
+The probe result is the **single source of truth** for resolution decisions:
+
+- \[`ResolverStep`\][topmark.pipeline.steps.resolver.ResolverStep] consumes `ctx.resolution_probe`
+  and maps it to pipeline state
+- \[`ProberStep`\][topmark.pipeline.steps.prober.ProberStep] exposes the same data for
+  `topmark probe`
+
+This unifies:
+
+- human output (TEXT / Markdown)
+- machine output (JSON / NDJSON)
+- pipeline resolution behaviour
+
+Callers should use `probe_resolution_for_path()` when they need path-based resolution details.
 
 ______________________________________________________________________
 
@@ -210,8 +236,12 @@ ______________________________________________________________________
 ## Logging and observability
 
 When multiple candidates share the top score,
-\[`resolve_file_type_for_path()`\][topmark.resolution.filetypes.resolve_file_type_for_path] emits a
-debug log before applying the deterministic tie-break.
+\[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path] records
+the tie-break outcome in the returned `ResolutionProbeResult`.
+
+The probe result surfaces the full candidate set, scores, match signals, selected candidate, and
+reason (`selected_highest_score` or `selected_by_tie_break`). This makes resolution decisions fully
+observable without relying on debug logging alone.
 
 This makes ambiguous-but-resolvable situations observable during development and debugging without
 turning them into hard failures.
@@ -223,6 +253,10 @@ The log includes:
 - the qualified keys of the tied top candidates
 
 This helps explain why a particular file type won when multiple strong candidates existed.
+
+In addition, probe-based resolution surfaces the full candidate set, scores, and match signals
+through `ResolutionProbeResult`. This makes resolution decisions fully observable without relying on
+debug logging alone.
 
 ______________________________________________________________________
 
@@ -271,6 +305,7 @@ Possible future improvements include:
 - user-configurable precedence overrides
 - richer diagnostics or hints when deterministic tie-breaks are used
 - plugin-defined precedence policies layered on top of the default scoring model
+- richer probe diagnostics and scoring transparency in machine output
 
 Until then, the documented deterministic policy on this page is the source of truth.
 
