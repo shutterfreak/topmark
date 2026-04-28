@@ -416,7 +416,7 @@ ______________________________________________________________________
 ## Related commands
 
 - [`topmark strip`](./strip.md) — remove detected TopMark headers instead of inserting or updating
-  them.
+- [`topmark probe`](./probe.md) — explain file-type and processor resolution. them.
 - [`topmark config check`](./config/check.md) — validate the effective merged configuration and
   report diagnostics.
 - [`topmark config dump`](./config/dump.md) — show the effective merged configuration as TOML.
