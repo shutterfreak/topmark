@@ -65,7 +65,7 @@ model**:
   resolver diagnostics and effective pipeline resolution.
 
 - Added the read-only `topmark probe` command to expose file-type candidates, selected file type,
-  selected processor, scores, and match signals.
+  selected processor, scores, match signals, and explicit inputs filtered before probing.
 
 - Refactored `ResolverStep` and `ProberStep` so normal pipelines and the probe pipeline share the
   same probe-backed resolution mapping.
@@ -189,8 +189,8 @@ Machine formats are now:
 - Documented with aligned machine-format and machine-output reference pages, plus registry command
   usage pages
 
-- Added probe-specific JSON and NDJSON machine output with a `probes` JSON collection and `probe`
-  NDJSON records.
+- Added probe-specific JSON and NDJSON machine output with a per-path `probes` JSON collection and
+  `probe` NDJSON records, including filtered explicit inputs.
 
 Result: machine output is now **schema-driven, documented, and separated from human presentation**.
 Remaining work is limited to final schema-freeze review, not architecture.
@@ -232,8 +232,8 @@ Result: human output is now **consistent, composable, and decoupled from CLI**.
 - Updated usage, configuration, architecture, machine-output, API, README, and index documentation
   to reflect the finalized TEXT / Markdown / machine output contract.
 
-- Documented probe-based resolution in the resolution, pipeline, machine-output, machine-format, and
-  `topmark probe` usage pages.
+- Documented probe-based resolution and filtered explicit-input reporting in the resolution,
+  pipeline, filtering, machine-output, machine-format, and `topmark probe` usage pages.
 
 ### CI / release / dependency model (completed)
 
@@ -383,6 +383,8 @@ snapshots, and downstream automation may need adjustment.
   - plural/domain-specific JSON collection keys
   - singular NDJSON record kinds
   - `qualified_key`, `namespace` + `local_key`, and `*_key` reference naming
+- Probe machine output now treats probe records as per-path results and includes filtered explicit
+  inputs via `status="filtered"` and `reason="excluded_by_discovery_filter"`.
 
 Result: machine formats are much more stable and structured, but downstream consumers that relied on
 older payload naming or outcome-keyed summaries must update.
@@ -478,7 +480,9 @@ Recommended direction:
 - Keep local-key support only where it provides clear user-facing compatibility value.
 - Keep ambiguity handling in the resolver layer rather than treating overlapping file types as a
   registry error.
-- Treat `topmark probe` as the accepted 1.0 resolution explainability surface.
+- Treat `topmark probe` as the accepted 1.0 resolution explainability surface, covering both
+  discovery-level filtering for explicit inputs and file-type / processor resolution for paths that
+  reach probing.
 - Defer registry query/filter commands unless a concrete pre-1.0 blocker appears.
 
 ### In-memory pipeline: implement or defer
@@ -582,8 +586,8 @@ Machine output remaining work:
   TOML-specific structure is explicitly deferred beyond 1.0.
 - Registry machine-output contract frozen after the flattened JSON-envelope cleanup (`filetypes`,
   `processors`, `bindings`, `unbound_filetypes`, `unused_processors`).
-- Probe machine-output contract added and covered with focused JSON/NDJSON tests (`probes` JSON
-  collection and `probe` NDJSON records).
+- Probe machine-output contract added and covered with focused JSON/NDJSON tests (per-path `probes`
+  JSON collection and `probe` NDJSON records, including filtered explicit inputs).
 - `detail_level` semantics frozen:
   - `--long` controls projection/data depth across formats where supported
   - `detail_level` reflects projection in machine output when present
@@ -656,6 +660,7 @@ A few user-facing behavior questions remain open for 1.0:
     handling, tests, and user-facing documentation
 - File-recognition / resolution explainability is now accepted for 1.0 via the read-only
   `topmark probe` command.
+  - explicit inputs filtered during discovery are reported as `filtered` probe results
   - registry query/filter commands remain deferred
   - probe is distinct from `check` / `strip` and does not perform header comparison, planning, or
     write/apply semantics
@@ -725,7 +730,8 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] richer TOML-specific structure is not required before 1.0 freeze (explicitly deferred)
 - [x] `docs/dev/machine-formats.md` reviewed and frozen as a reference contract
 - [x] `docs/dev/machine-output.md` reviewed and aligned with the current command contracts
-- [x] Probe machine output reviewed and documented as part of the 1.0 machine contract
+- [x] Probe machine output reviewed and documented as part of the 1.0 machine contract, including
+  filtered explicit inputs
 
 #### [Must] Human output contracts
 
@@ -813,9 +819,9 @@ These are release blockers unless explicitly deferred with a documented rational
   - [ ] user-facing docs updated if nonstandard line endings are intentionally unsupported or given
     a dedicated policy
 - [ ] Namespace-aware registry lookup and deterministic ambiguity behavior covered by tests
-- [x] Probe command resolution-candidate reporting is covered by focused resolver, pipeline-step,
-  CLI human-output, CLI exit-code, and machine-output tests without weakening the existing
-  check/strip output contract
+- [x] Probe command resolution-candidate and filtered explicit-input reporting is covered by focused
+  resolver, discovery, pipeline-step, CLI human-output, CLI exit-code, and machine-output tests
+  without weakening the existing check/strip output contract
 - [x] TOML-layer validation paths have focused coverage
 - [x] Empty / empty-like file handling is explicit and idempotent
 - [x] Resolver treats content matcher exceptions as safe misses
@@ -876,7 +882,7 @@ These should ideally be completed for 1.0, but may be deferred more easily if ne
   - [x] coverage audit performed on core/config/pipeline/registry/version machine modules
   - [x] no remaining uncovered schema-relevant blind spots identified for frozen machine contracts
   - [x] dedicated CLI machine contract tests now pass for config, pipeline, version, registry, and
-    probe
+    probe, including filtered explicit-input probe payloads
   - [x] config command machine tests now cover flattened staged diagnostics behavior
   - [x] version command machine tests now cover JSON and NDJSON output
   - [x] registry command machine tests now cover flattened JSON envelopes, NDJSON record kinds,
