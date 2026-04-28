@@ -18,6 +18,163 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ______________________________________________________________________
 
+## [1.0.0a6] – 2026-04-28
+
+This sixth **1.0 alpha release** focuses on **finalizing the resolution contract** and introducing
+full **resolution explainability** via the new `probe` command and probe-backed pipeline model.
+
+It completes the registry / resolution freeze by unifying file-type and processor resolution around
+a single probe-based contract, removing legacy helpers, and exposing deterministic, inspectable
+resolution behavior across CLI, pipeline, API, documentation, and machine formats.
+
+### ⚠️ Breaking Changes - 1.0.0a6
+
+- Removed legacy resolution helpers:
+  - `resolve_file_type_for_path()`
+  - `resolve_binding_for_path()`
+  - `ResolvedBinding`
+- `probe_resolution_for_path()` is now the single path-based resolution surface for callers that
+  need file-type / processor resolution details.
+- Resolution is now **probe-driven**:
+  - pipeline resolution derives from `ResolutionProbeResult`
+  - no parallel file-type / binding resolution path remains
+
+### Highlights — 1.0.0a6
+
+- Introduced **resolution explainability** via `topmark probe`
+- Unified resolution across CLI, pipeline, and API using a shared **probe result** model
+- Completed the **registry / resolution contract freeze**
+- Removed legacy resolution helpers and redundant resolution paths
+- Added full **machine-output support** for probe diagnostics (JSON + NDJSON)
+- Strengthened test coverage across resolution, pipeline, CLI, and machine formats
+
+### Added — 1.0.0a6
+
+- **Probe command (`topmark probe`)**
+
+  - New CLI command to explain file-type and processor resolution
+  - Supports:
+    - TEXT output (verbosity-aware)
+    - Markdown output (document-style)
+    - JSON output (`probes` envelope)
+    - NDJSON output (`kind="probe"` records)
+  - Provides:
+    - candidate file types with scores
+    - match signals
+    - selected file type and processor
+    - deterministic tie-break reasoning
+
+- **Resolution probe model**
+
+  - New `ResolutionProbeResult` data model exposing:
+    - candidate ranking
+    - scoring
+    - match signals
+    - selected outcome
+  - Shared across:
+    - CLI (`probe`)
+    - pipeline (`ProberStep`, `ResolverStep`)
+    - API (`probe_resolution_for_path()`)
+
+- **Pipeline**
+
+  - New `ProberStep` producing resolution probe results
+  - Dedicated `Pipeline.PROBE` variant for resolution-only diagnostics
+
+- **Machine output**
+
+  - Added probe payloads and schemas:
+    - JSON: `probes` collection
+    - NDJSON: one `kind="probe"` record per file
+  - Integrated probe output into machine emitters and serializers
+
+- **Testing**
+
+  - Resolver-level probe tests for candidate selection, ranking, and unsupported cases
+  - Pipeline step tests for `ProberStep`
+  - CLI tests for:
+    - exit codes
+    - TEXT and Markdown output contracts
+  - Machine-output tests for:
+    - JSON schema shape
+    - NDJSON record shape
+    - regression coverage for probe record wrapping
+
+### Changed — 1.0.0a6
+
+- **Resolution model**
+
+  - Resolution is now fully **probe-backed and deterministic**
+  - Path-based resolution is unified under `probe_resolution_for_path()`
+  - Removed internal duplication between probing and effective resolution
+
+- **Pipeline architecture**
+
+  - Refactored `ResolverStep` to consume probe results instead of recomputing resolution
+  - Shared effective resolution mapping between `ResolverStep` and `ProberStep`
+  - Preserved existing `check` / `strip` pipeline semantics while making resolution explainable
+
+- **CLI behavior**
+
+  - Added probe-specific exit behavior:
+    - `SUCCESS` (0): all files resolved
+    - `UNSUPPORTED_FILE_TYPE` (69): one or more files could not resolve to a supported file type and
+      processor
+  - Kept `probe` independent from `check` / `strip` mutation semantics
+  - Kept probe output focused on resolution diagnostics rather than actionable header hints
+
+- **Presentation layer**
+
+  - Added dedicated rendering for probe output in:
+    - TEXT (verbosity-aware)
+    - Markdown (document-oriented and verbosity-independent)
+  - Aligned probe output with the existing human-output contract for TEXT vs Markdown behavior
+
+- **Documentation**
+
+  - Added full probe command documentation (`docs/usage/commands/probe.md`)
+  - Updated:
+    - resolution docs (probe-based model)
+    - pipeline docs (`ProberStep` and `Pipeline.PROBE`)
+    - machine-output and machine-format docs (probe schemas)
+    - API docs (probe-based resolution surface)
+    - README and index pages (probe as a first-class feature)
+  - Roadmap updated to mark resolution explainability as complete and registry query/filter commands
+    as deferred
+
+### Removed — 1.0.0a6
+
+- Legacy non-probe resolution helpers:
+  - `resolve_file_type_for_path()`
+  - `resolve_binding_for_path()`
+  - `ResolvedBinding`
+- Redundant file-type / processor resolution paths outside the probe-backed model
+
+### Fixed — 1.0.0a6
+
+- **NDJSON probe output**
+
+  - Fixed double-wrapping of probe records
+  - Ensured one `kind="probe"` record is emitted per probed file
+
+- **Resolution consistency**
+
+  - Eliminated discrepancies between resolver and probing logic
+  - Preserved header-unsupported precedence for `skip_processing=True` file types
+  - Ensured deterministic tie-break behavior is consistently applied and exposed
+
+### Notes — 1.0.0a6
+
+- The **resolution contract is now finalized and considered stable for 1.0**.
+- `probe_resolution_for_path()` is the canonical path-based resolution surface.
+- `topmark probe` is the canonical diagnostics interface for resolution explainability.
+- Registry query/filter commands remain explicitly deferred beyond this alpha.
+- Remaining work before 1.0 focuses on:
+  - optional discovery/filter explainability for explicitly skipped inputs
+  - final release-path validation and polish
+
+______________________________________________________________________
+
 ## [1.0.0a5] – 2026-04-27
 
 This fifth **1.0 alpha release** focuses on **finalizing the CLI output contract and human-output
