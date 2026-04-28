@@ -90,11 +90,17 @@ This function returns a
 
 The probe result is the **single source of truth** for resolution decisions once a path reaches
 file-type probing. Explicit inputs may be filtered earlier during discovery; those cases are
-represented as synthetic probe results with `status="filtered"` and
-`reason="excluded_by_discovery_filter"`.
+represented as synthetic probe results with `status="filtered"` and one of:
+
+- `reason="excluded_by_path_filter"`
+
+- `reason="excluded_by_file_type_filter"`
+
+- `reason="excluded_by_discovery_filter"` (fallback when the exact category is not identified)
 
 - \[`ResolverStep`\][topmark.pipeline.steps.resolver.ResolverStep] consumes `ctx.resolution_probe`
   and maps it to pipeline state
+
 - \[`ProberStep`\][topmark.pipeline.steps.prober.ProberStep] exposes the same data for
   `topmark probe`
 
@@ -255,7 +261,9 @@ reason (`selected_highest_score` or `selected_by_tie_break`). This makes resolut
 observable without relying on debug logging alone.
 
 For explicitly requested paths that were filtered before probing, observability is provided through
-synthetic probe results emitted by `topmark probe`, rather than through candidate-level data.
+synthetic probe results emitted by `topmark probe`, rather than through candidate-level data. The
+reported reason distinguishes whether the path was excluded by path filters, file-type filters, or a
+generic discovery-filter fallback.
 
 This makes ambiguous-but-resolvable situations observable during development and debugging without
 turning them into hard failures.

@@ -150,6 +150,18 @@ This API exposes the same resolution evidence used by:
 
 and is the recommended way to debug and integrate resolution behavior.
 
+Note that `probe_resolution_for_path()` only applies to paths that reach file-type probing. Explicit
+inputs filtered earlier during discovery are not returned by this API. Instead, the CLI
+`topmark probe` command augments these results with synthetic probe outputs for such paths, using
+`status="filtered"` and one of:
+
+- `excluded_by_path_filter`
+- `excluded_by_file_type_filter`
+- `excluded_by_discovery_filter`
+
+This distinction keeps the programmatic API focused on resolution, while the CLI provides full
+end-to-end explainability including discovery.
+
 ```python
 assert run.summary.get("unchanged", 0) >= 0
 ```

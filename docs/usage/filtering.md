@@ -37,7 +37,7 @@ For example, when a path is excluded via `--exclude` or `exclude_patterns`, `top
 still show it in the output as:
 
 ```text
-<path>: <filtered> - filtered: excluded_by_discovery_filter
+<path>: <filtered> - filtered: excluded_by_path_filter
 ```
 
 In machine-readable formats (JSON / NDJSON), these are represented as probe results with:
@@ -45,12 +45,18 @@ In machine-readable formats (JSON / NDJSON), these are represented as probe resu
 ```jsonc
 {
   "status": "filtered",
-  "reason": "excluded_by_discovery_filter",
+  "reason": "excluded_by_path_filter",
   "selected_file_type": null,
   "selected_processor": null,
   "candidates": []
 }
 ```
+
+Filtered probe results may use one of the following reasons:
+
+- `excluded_by_path_filter` — excluded by path-based include/exclude rules
+- `excluded_by_file_type_filter` — excluded by file-type include/exclude rules
+- `excluded_by_discovery_filter` — excluded before probing, but exact category not identified
 
 Only explicitly requested inputs (CLI paths or `--files-from`) are reported this way. Files excluded
 implicitly during recursive discovery are not enumerated.

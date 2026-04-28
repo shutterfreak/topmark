@@ -384,7 +384,8 @@ snapshots, and downstream automation may need adjustment.
   - singular NDJSON record kinds
   - `qualified_key`, `namespace` + `local_key`, and `*_key` reference naming
 - Probe machine output now treats probe records as per-path results and includes filtered explicit
-  inputs via `status="filtered"` and `reason="excluded_by_discovery_filter"`.
+  inputs via `status="filtered"` with path-filter, file-type-filter, or generic discovery-filter
+  reasons.
 
 Result: machine formats are much more stable and structured, but downstream consumers that relied on
 older payload naming or outcome-keyed summaries must update.
@@ -660,7 +661,8 @@ A few user-facing behavior questions remain open for 1.0:
     handling, tests, and user-facing documentation
 - File-recognition / resolution explainability is now accepted for 1.0 via the read-only
   `topmark probe` command.
-  - explicit inputs filtered during discovery are reported as `filtered` probe results
+  - explicit inputs filtered during discovery are reported as `filtered` probe results with broad
+    path-filter, file-type-filter, or generic discovery-filter reasons
   - registry query/filter commands remain deferred
   - probe is distinct from `check` / `strip` and does not perform header comparison, planning, or
     write/apply semantics
@@ -731,7 +733,7 @@ These are release blockers unless explicitly deferred with a documented rational
 - [x] `docs/dev/machine-formats.md` reviewed and frozen as a reference contract
 - [x] `docs/dev/machine-output.md` reviewed and aligned with the current command contracts
 - [x] Probe machine output reviewed and documented as part of the 1.0 machine contract, including
-  filtered explicit inputs
+  filtered explicit inputs and refined filter reasons
 
 #### [Must] Human output contracts
 
@@ -820,8 +822,9 @@ These are release blockers unless explicitly deferred with a documented rational
     a dedicated policy
 - [ ] Namespace-aware registry lookup and deterministic ambiguity behavior covered by tests
 - [x] Probe command resolution-candidate and filtered explicit-input reporting is covered by focused
-  resolver, discovery, pipeline-step, CLI human-output, CLI exit-code, and machine-output tests
-  without weakening the existing check/strip output contract
+  resolver, discovery, pipeline-step, CLI human-output, CLI exit-code, and machine-output tests,
+  including path-filter, file-type-filter, and fallback discovery-filter cases, without weakening
+  the existing check/strip output contract
 - [x] TOML-layer validation paths have focused coverage
 - [x] Empty / empty-like file handling is explicit and idempotent
 - [x] Resolver treats content matcher exceptions as safe misses
@@ -882,7 +885,7 @@ These should ideally be completed for 1.0, but may be deferred more easily if ne
   - [x] coverage audit performed on core/config/pipeline/registry/version machine modules
   - [x] no remaining uncovered schema-relevant blind spots identified for frozen machine contracts
   - [x] dedicated CLI machine contract tests now pass for config, pipeline, version, registry, and
-    probe, including filtered explicit-input probe payloads
+    probe, including filtered explicit-input probe payloads and refined filter reasons
   - [x] config command machine tests now cover flattened staged diagnostics behavior
   - [x] version command machine tests now cover JSON and NDJSON output
   - [x] registry command machine tests now cover flattened JSON envelopes, NDJSON record kinds,

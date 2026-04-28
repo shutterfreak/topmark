@@ -272,7 +272,7 @@ Filtered explicit input shape:
 {
   "path": "__pycache__/example.cpython-312.pyc",
   "status": "filtered",
-  "reason": "excluded_by_discovery_filter",
+  "reason": "excluded_by_path_filter",
   "selected_file_type": null,
   "selected_processor": null,
   "candidates": []
@@ -282,6 +282,12 @@ Filtered explicit input shape:
 Filtered probe payloads are emitted only for paths explicitly supplied to `topmark probe` (including
 paths loaded via `--files-from`). TopMark does not enumerate every recursively discovered file that
 was ignored by discovery filters.
+
+Filtered probe payloads may use one of these reasons:
+
+- `excluded_by_path_filter` — excluded by path-based include/exclude rules.
+- `excluded_by_file_type_filter` — excluded by file-type include/exclude rules.
+- `excluded_by_discovery_filter` — excluded before probing, but exact category was not identified.
 
 Fields:
 
@@ -299,6 +305,8 @@ Fields:
   - `selected_by_tie_break`
   - `no_candidates`
   - `selected_file_type_has_no_bound_processor`
+  - `excluded_by_path_filter`
+  - `excluded_by_file_type_filter`
   - `excluded_by_discovery_filter`
   - `no_resolution_probe_result`
 - `selected_file_type`: selected file type identity and score, or `null` when unresolved, unbound,
@@ -329,7 +337,8 @@ Candidate fields:
 > hard-coding exact numeric scores.
 >
 > Filtered probe payloads have no candidate-level `match` object because file-type probing did not
-> run.
+> run. The reason identifies whether the path was excluded by path filters, file-type filters, or a
+> generic discovery filter fallback.
 
 ## Processing commands (`check`, `strip`)
 

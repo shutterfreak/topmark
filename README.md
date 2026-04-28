@@ -247,7 +247,7 @@ topmark registry processors --output-format markdown --long
 > - Markdown output is document-oriented and ignores these flags.
 > - JSON/NDJSON output is machine-readable and also ignores these flags.
 > - `topmark probe` also reports explicitly requested paths that were filtered out before
->   resolution.
+>   resolution, distinguishing between path filters, file-type filters, and a generic fallback.
 
 TopMark preserves line endings, shebangs, BOMs, and indentation rules for each file type.
 

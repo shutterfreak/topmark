@@ -370,6 +370,13 @@ Unlike processing commands, `probe`:
 
 Machine output for `probe` is unaffected by TEXT verbosity or quiet mode.
 
+Filtered probe results use machine-friendly reasons to explain why a path did not reach probing.
+These include:
+
+- `excluded_by_path_filter` — excluded by path-based include/exclude rules
+- `excluded_by_file_type_filter` — excluded by file-type include/exclude rules
+- `excluded_by_discovery_filter` — excluded before probing, but exact category not identified
+
 Refer to the machine schema reference for the per-path probe payload:
 
 - [Machine output schema (JSON & NDJSON)](machine-output.md)

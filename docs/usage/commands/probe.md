@@ -167,12 +167,18 @@ Filtered explicit inputs are also represented as probe payloads with:
 {
   "path": "__pycache__/example.cpython-312.pyc",
   "status": "filtered",
-  "reason": "excluded_by_discovery_filter",
+  "reason": "excluded_by_path_filter",
   "selected_file_type": null,
   "selected_processor": null,
   "candidates": []
 }
 ```
+
+Filtered probe results may use one of the following reasons:
+
+- `excluded_by_path_filter` — excluded by path-based include/exclude rules
+- `excluded_by_file_type_filter` — excluded by file-type include/exclude rules
+- `excluded_by_discovery_filter` — excluded before probing but exact category not identified
 
 ### NDJSON
 
@@ -267,4 +273,7 @@ ______________________________________________________________________
 - **Unexpected selection**: use `-vv` to inspect candidate scores and match signals.
 - **No processor**: check that a processor is registered for the selected file type.
 - **Filtered input**: the path was excluded by discovery filters (e.g., `--exclude`). The probe
-  output will show `filtered: excluded_by_discovery_filter`.
+  output will show one of:
+  - `filtered: excluded_by_path_filter`
+  - `filtered: excluded_by_file_type_filter`
+  - `filtered: excluded_by_discovery_filter`
