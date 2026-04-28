@@ -47,8 +47,8 @@ class FileSelectionReason(str, Enum):
         SELECTED: The explicit input was selected for file-type probing.
         EXCLUDED_BY_PATH_FILTER: The explicit input was excluded by path filters.
         EXCLUDED_BY_FILE_TYPE_FILTER: The explicit input was excluded by file-type filters.
-        EXCLUDED_BY_DISCOVERY_FILTER: The explicit input was excluded by discovery filters before
-            file-type probing.
+        EXCLUDED_BY_DISCOVERY_FILTER: The explicit input was excluded before file-type probing, but
+            the exact discovery filter category was not identified.
         NOT_A_FILE: The explicit input exists but is not a regular file.
         NOT_FOUND: The explicit input path does not exist.
     """
@@ -69,9 +69,11 @@ class FileSelectionProbeResult:
         path: Explicit input path being explained. This may be relative to the
             current working directory or to a `files_from` source base.
         status: Selection status for the explicit input path.
-        reason: Machine-friendly reason for the selection status. Reasons are
-            intentionally coarse for now; exact pattern/source attribution can be
-            added later without changing the basic probe contract.
+        reason: Machine-friendly reason for the selection status. Reasons identify
+            whether a path was filtered by path filters, file-type filters, or a
+            generic discovery filter. Exact pattern/source attribution is still
+            intentionally out of scope and can be added later without changing the
+            basic probe contract.
     """
 
     path: Path

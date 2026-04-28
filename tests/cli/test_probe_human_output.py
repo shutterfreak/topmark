@@ -109,7 +109,7 @@ def test_probe_text_output_reports_explicit_filtered_input(
     assert_UNSUPPORTED_FILE_TYPE(result)
 
     assert "<filtered>" in result.output
-    assert "filtered: excluded_by_discovery_filter" in result.output
+    assert "filtered: excluded_by_path_filter" in result.output
 
 
 def test_probe_markdown_output_ignores_verbosity(tmp_path: Path) -> None:

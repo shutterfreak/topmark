@@ -90,6 +90,7 @@ from topmark.presentation.shared.pipeline import ProbeCommandHumanReport
 from topmark.presentation.text.diagnostic import render_diagnostics_text
 from topmark.presentation.text.probe import render_probe_output_text
 from topmark.resolution.discovery import FileSelectionProbeResult
+from topmark.resolution.discovery import FileSelectionReason
 from topmark.resolution.discovery import FileSelectionStatus
 from topmark.resolution.files import probe_explicit_file_selection
 from topmark.resolution.probe import ResolutionProbeReason
@@ -111,7 +112,34 @@ if TYPE_CHECKING:
     from topmark.pipeline.protocols import Step
     from topmark.runtime.model import RunOptions
 
+
 logger: TopmarkLogger = get_logger(__name__)
+
+
+def _selection_reason_to_probe_reason(
+    reason: FileSelectionReason,
+) -> ResolutionProbeReason:
+    """Map a discovery-level selection reason to a probe reason.
+
+    Args:
+        reason: Discovery-level selection reason.
+
+    Returns:
+        Corresponding machine-friendly probe reason.
+    """
+    match reason:
+        case FileSelectionReason.EXCLUDED_BY_PATH_FILTER:
+            return ResolutionProbeReason.EXCLUDED_BY_PATH_FILTER
+        case FileSelectionReason.EXCLUDED_BY_FILE_TYPE_FILTER:
+            return ResolutionProbeReason.EXCLUDED_BY_FILE_TYPE_FILTER
+        case FileSelectionReason.EXCLUDED_BY_DISCOVERY_FILTER:
+            return ResolutionProbeReason.EXCLUDED_BY_DISCOVERY_FILTER
+        case FileSelectionReason.NOT_A_FILE:
+            return ResolutionProbeReason.EXCLUDED_BY_DISCOVERY_FILTER
+        case FileSelectionReason.NOT_FOUND:
+            return ResolutionProbeReason.EXCLUDED_BY_DISCOVERY_FILTER
+        case FileSelectionReason.SELECTED:
+            return ResolutionProbeReason.EXCLUDED_BY_DISCOVERY_FILTER
 
 
 def _build_filtered_probe_contexts(
@@ -148,7 +176,7 @@ def _build_filtered_probe_contexts(
         ctx.resolution_probe = ResolutionProbeResult(
             path=selection.path,
             status=ResolutionProbeStatus.FILTERED,
-            reason=ResolutionProbeReason.EXCLUDED_BY_DISCOVERY_FILTER,
+            reason=_selection_reason_to_probe_reason(selection.reason),
             candidates=(),
             selected_file_type=None,
             selected_processor=None,

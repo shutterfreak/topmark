@@ -44,8 +44,8 @@ def test_probe_explicit_file_selection_omits_selected_file(tmp_path: Path) -> No
     assert results == ()
 
 
-def test_probe_explicit_file_selection_reports_filtered_file(tmp_path: Path) -> None:
-    """Existing files omitted from selected files should be reported as filtered."""
+def test_probe_explicit_file_selection_reports_generic_filtered_file(tmp_path: Path) -> None:
+    """Existing files with no clear filter cause should use generic filtered reason."""
     file: Path = tmp_path / "example.py"
     file.write_text("print('hello')\n", encoding="utf-8")
     cfg: Config = make_config(files=[str(file)])
@@ -60,6 +60,74 @@ def test_probe_explicit_file_selection_reports_filtered_file(tmp_path: Path) -> 
     assert result.path == file
     assert result.status == FileSelectionStatus.FILTERED
     assert result.reason == FileSelectionReason.EXCLUDED_BY_DISCOVERY_FILTER
+
+
+def test_probe_explicit_file_selection_reports_path_filtered_file(tmp_path: Path) -> None:
+    """Existing files excluded by path filters should report path-filter reason."""
+    ignored_dir: Path = tmp_path / "ignored"
+    ignored_dir.mkdir()
+    file: Path = ignored_dir / "example.py"
+    file.write_text("print('hello')\n", encoding="utf-8")
+    cfg: Config = make_config(
+        files=[str(file)],
+        exclude_patterns=["ignored/"],
+    )
+
+    results: tuple[FileSelectionProbeResult, ...] = probe_explicit_file_selection(
+        cfg,
+        selected_files=[],
+    )
+
+    assert len(results) == 1
+    result: FileSelectionProbeResult = results[0]
+    assert result.path == file
+    assert result.status == FileSelectionStatus.FILTERED
+    assert result.reason == FileSelectionReason.EXCLUDED_BY_PATH_FILTER
+
+
+def test_probe_explicit_file_selection_reports_file_type_filtered_file(tmp_path: Path) -> None:
+    """Existing files excluded by file-type filters should report file-type reason."""
+    file: Path = tmp_path / "example.py"
+    file.write_text("print('hello')\n", encoding="utf-8")
+    cfg: Config = make_config(
+        files=[str(file)],
+        include_file_types={"markdown"},
+    )
+
+    results: tuple[FileSelectionProbeResult, ...] = probe_explicit_file_selection(
+        cfg,
+        selected_files=[],
+    )
+
+    assert len(results) == 1
+    result: FileSelectionProbeResult = results[0]
+    assert result.path == file
+    assert result.status == FileSelectionStatus.FILTERED
+    assert result.reason == FileSelectionReason.EXCLUDED_BY_FILE_TYPE_FILTER
+
+
+def test_probe_explicit_file_selection_reports_exclude_file_type_filtered_file(
+    tmp_path: Path,
+) -> None:
+    """Existing files excluded by exclude_file_types should report file-type reason."""
+    file: Path = tmp_path / "example.py"
+    file.write_text("print('hello')\n", encoding="utf-8")
+
+    cfg: Config = make_config(
+        files=[str(file)],
+        exclude_file_types={"python"},
+    )
+
+    results: tuple[FileSelectionProbeResult, ...] = probe_explicit_file_selection(
+        cfg,
+        selected_files=[],
+    )
+
+    assert len(results) == 1
+    result: FileSelectionProbeResult = results[0]
+    assert result.path == file
+    assert result.status == FileSelectionStatus.FILTERED
+    assert result.reason == FileSelectionReason.EXCLUDED_BY_FILE_TYPE_FILTER
 
 
 def test_probe_explicit_file_selection_reports_missing_file(tmp_path: Path) -> None:

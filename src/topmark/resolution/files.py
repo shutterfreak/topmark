@@ -259,6 +259,94 @@ def _selected_real_paths(selected_files: Sequence[Path]) -> set[Path]:
     return selected
 
 
+# --- Discovery filter explanation helpers ---
+
+
+def _is_excluded_by_path_filters(
+    path: Path,
+    config: Config,
+) -> bool:
+    """Return whether an explicit file path is excluded by path filters.
+
+    This checks the same include/intersection and exclude/subtraction filter
+    categories used by `resolve_file_list()`, but only for one explicit file.
+    It intentionally does not report the exact pattern or pattern source.
+
+    Args:
+        path: Explicit file path to classify.
+        config: Effective layered configuration used for file discovery.
+
+    Returns:
+        True if path filters explain why the path did not reach probing.
+    """
+    include_specs: list[tuple[GitIgnorePathSpec, Path]] = _compile_matchers(
+        config.include_pattern_groups,
+        config.include_from,
+    )
+    if include_specs and not _matches_any(include_specs, path):
+        return True
+
+    exclude_specs: list[tuple[GitIgnorePathSpec, Path]] = _compile_matchers(
+        config.exclude_pattern_groups,
+        config.exclude_from,
+    )
+    return bool(exclude_specs and _matches_any(exclude_specs, path))
+
+
+def _is_excluded_by_file_type_filters(
+    path: Path,
+    config: Config,
+) -> bool:
+    """Return whether an explicit file path is excluded by file-type filters.
+
+    Args:
+        path: Explicit file path to classify.
+        config: Effective layered configuration used for file discovery.
+
+    Returns:
+        True if file-type include/exclude filters explain why the path did not
+        reach probing.
+    """
+    include_file_types: frozenset[str] = frozenset(config.include_file_types)
+    if include_file_types:
+        selected_include_types: list[FileType] = _resolve_configured_file_types(include_file_types)
+        if not _matches_any_file_type(path, selected_include_types):
+            return True
+
+    exclude_file_types: frozenset[str] = frozenset(config.exclude_file_types)
+    if exclude_file_types:
+        selected_exclude_types: list[FileType] = _resolve_configured_file_types(exclude_file_types)
+        if _matches_any_file_type(path, selected_exclude_types):
+            return True
+
+    return False
+
+
+def _classify_explicit_filter_reason(
+    path: Path,
+    config: Config,
+) -> FileSelectionReason:
+    """Classify why an explicit existing file was filtered before probing.
+
+    The classifier mirrors the broad discovery categories from
+    `resolve_file_list()` without exposing exact pattern/source attribution.
+
+    Args:
+        path: Explicit existing file path that did not reach probing.
+        config: Effective layered configuration used for file discovery.
+
+    Returns:
+        Machine-friendly filter reason.
+    """
+    if _is_excluded_by_path_filters(path, config):
+        return FileSelectionReason.EXCLUDED_BY_PATH_FILTER
+
+    if _is_excluded_by_file_type_filters(path, config):
+        return FileSelectionReason.EXCLUDED_BY_FILE_TYPE_FILTER
+
+    return FileSelectionReason.EXCLUDED_BY_DISCOVERY_FILTER
+
+
 def probe_explicit_file_selection(
     config: Config,
     *,
@@ -311,14 +399,13 @@ def probe_explicit_file_selection(
             )
             continue
         # The path exists and is a file, but it disappeared from the selected
-        # file list. For now, expose a stable generic discovery-filter reason;
-        # exact pattern/source attribution can be added later without changing
-        # the probe command's basic contract.
+        # file list. Classify the broad filter category while keeping exact
+        # pattern/source attribution out of the stable probe contract for now.
         results.append(
             FileSelectionProbeResult(
                 path=explicit,
                 status=FileSelectionStatus.FILTERED,
-                reason=FileSelectionReason.EXCLUDED_BY_DISCOVERY_FILTER,
+                reason=_classify_explicit_filter_reason(explicit, config),
             )
         )
 

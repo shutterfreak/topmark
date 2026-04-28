@@ -47,7 +47,10 @@ class ResolutionProbeReason(str, Enum):
     """Machine-friendly reason explaining the probe outcome.
 
     Attributes:
-        EXCLUDED_BY_DISCOVERY_FILTER: The path was filtered out before probing.
+        EXCLUDED_BY_PATH_FILTER: The path was filtered by path discovery filters.
+        EXCLUDED_BY_FILE_TYPE_FILTER: The path was filtered by file-type filters.
+        EXCLUDED_BY_DISCOVERY_FILTER: The path was filtered out before probing, but the exact
+            discovery filter category was not identified.
         SELECTED_HIGHEST_SCORE: The selected file type had the highest score.
         SELECTED_BY_TIE_BREAK: Multiple candidates shared the top score and were
             ordered deterministically by tie-break rules.
@@ -56,6 +59,8 @@ class ResolutionProbeReason(str, Enum):
             associated processor binding.
     """
 
+    EXCLUDED_BY_PATH_FILTER = "excluded_by_path_filter"
+    EXCLUDED_BY_FILE_TYPE_FILTER = "excluded_by_file_type_filter"
     EXCLUDED_BY_DISCOVERY_FILTER = "excluded_by_discovery_filter"
     SELECTED_HIGHEST_SCORE = "selected_highest_score"
     SELECTED_BY_TIE_BREAK = "selected_by_tie_break"

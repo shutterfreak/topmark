@@ -175,7 +175,7 @@ def test_probe_json_reports_explicit_filtered_input(
     assert probe["path"] == input_path
 
     assert probe["status"] == "filtered"
-    assert probe["reason"] == "excluded_by_discovery_filter"
+    assert probe["reason"] == "excluded_by_path_filter"
     assert probe["selected_file_type"] is None
     assert probe["selected_processor"] is None
 
@@ -256,7 +256,7 @@ def test_probe_ndjson_reports_explicit_filtered_input(
     assert payload["path"] == input_path
 
     assert payload["status"] == "filtered"
-    assert payload["reason"] == "excluded_by_discovery_filter"
+    assert payload["reason"] == "excluded_by_path_filter"
     assert payload["selected_file_type"] is None
     assert payload["selected_processor"] is None
 
