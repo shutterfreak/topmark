@@ -28,6 +28,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.conftest import parametrize
 from tests.helpers.pipeline import make_pipeline_context
 from tests.helpers.pipeline import run_resolver
 from tests.helpers.pipeline import run_sniffer
@@ -143,6 +144,67 @@ def test_sniff_strict_mixed_newlines(tmp_path: Path) -> None:
     assert ctx.file_type is not None
     ctx = run_sniffer(ctx)
     assert ctx.status.fs == FsStatus.MIXED_LINE_ENDINGS
+
+
+# --- Exotic Unicode separator tests ---
+
+
+@parametrize(
+    "separator, label",
+    [
+        ("\x85", "nel"),
+        ("\u2028", "line_separator"),
+        ("\u2029", "paragraph_separator"),
+    ],
+)
+def test_sniff_treats_exotic_separators_as_content_not_newlines(
+    tmp_path: Path, separator: str, label: str
+) -> None:
+    """Sniffer must not recognize NEL/LS/PS as physical newline styles."""
+    file: Path = tmp_path / f"exotic_separator_{label}.py"
+    content: str = f"alpha{separator}beta{separator}gamma"
+    with file.open("w", encoding="utf-8", newline="") as fh:
+        fh.write(content)
+
+    cfg: Config = mutable_config_from_defaults().freeze()
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
+    ctx = run_resolver(ctx)
+    assert ctx.file_type is not None
+
+    ctx = run_sniffer(ctx)
+
+    assert ctx.status.fs == FsStatus.OK
+    assert ctx.newline_style == "\n"
+    assert ctx.newline_hist == {}
+    assert ctx.dominant_newline is None
+    assert ctx.dominance_ratio is None
+    assert ctx.mixed_newlines is False
+    assert ctx.ends_with_newline is None
+
+
+def test_sniff_does_not_count_exotic_separators_as_mixed_newlines(tmp_path: Path) -> None:
+    """NEL/LS/PS near LF text must not create a mixed-newline skip."""
+    file: Path = tmp_path / "lf_with_exotic_separators.py"
+    content: str = "alpha\u2028beta\ncharlie\x85delta\necho\u2029foxtrot\n"
+    with file.open("w", encoding="utf-8", newline="") as fh:
+        fh.write(content)
+
+    cfg: Config = mutable_config_from_defaults().freeze()
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
+    ctx = run_resolver(ctx)
+    assert ctx.file_type is not None
+
+    ctx = run_sniffer(ctx)
+
+    assert ctx.status.fs == FsStatus.OK
+    assert ctx.newline_style == "\n"
+    assert ctx.newline_hist == {"\n": 3}
+    assert ctx.dominant_newline == "\n"
+    assert ctx.dominance_ratio == 1.0
+    assert ctx.mixed_newlines is False
+    assert ctx.ends_with_newline is None
 
 
 # --- Unit test for _inspect_bom_shebang ---

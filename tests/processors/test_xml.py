@@ -21,6 +21,7 @@ import re
 from typing import TYPE_CHECKING
 
 from tests.conftest import mark_pipeline
+from tests.conftest import parametrize
 from tests.helpers.pipeline import BlockSignatures
 from tests.helpers.pipeline import expected_block_lines_for
 from tests.helpers.pipeline import find_line
@@ -263,6 +264,33 @@ def test_xml_prolog_and_body_on_same_line_blocked_by_policy(tmp_path: Path) -> N
     assert ctx.pre_insert_capability == InsertCapability.SKIP_IDEMPOTENCE_RISK
     assert ctx.status.content == ContentStatus.SKIPPED_REFLOW
     assert ctx.is_halted is True
+
+
+@parametrize(
+    "separator, label",
+    [
+        ("\x85", "nel"),
+        ("\u2028", "line_separator"),
+        ("\u2029", "paragraph_separator"),
+    ],
+)
+def test_xml_prolog_and_body_separated_by_exotic_separator_blocked_by_policy(
+    tmp_path: Path, separator: str, label: str
+) -> None:
+    """XML NEL/LS/PS near the insertion boundary is an idempotence risk."""
+    file: Path = tmp_path / f"xml_exotic_separator_{label}.xml"
+    original: str = f'<?xml version="1.0"?>{separator}<root/>'
+    file.write_text(original, encoding="utf-8", newline="")
+
+    cfg: Config = mutable_config_from_defaults().freeze()
+    ctx: ProcessingContext = run_insert(file, cfg)
+
+    assert ctx.status.resolve == ResolveStatus.RESOLVED
+    assert ctx.pre_insert_capability == InsertCapability.SKIP_IDEMPOTENCE_RISK
+    assert ctx.status.content == ContentStatus.SKIPPED_REFLOW
+    assert ctx.is_halted is True
+    assert ctx.newline_style == "\n"
+    assert ctx.newline_hist == {}
 
 
 def test_xml_prolog_and_body_on_same_line_alllowed_by_policy(tmp_path: Path) -> None:

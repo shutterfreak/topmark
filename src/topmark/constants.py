@@ -186,3 +186,13 @@ Rules:
     - No consecutive separators
     - Must not contain ':'
 """
+
+
+STANDARD_NEWLINES: Final[tuple[str, ...]] = ("\r\n", "\n", "\r")
+"""Supported physical newline styles, ordered longest-first for safe matching."""
+
+STANDARD_NEWLINE_SET: Final[frozenset[str]] = frozenset(STANDARD_NEWLINES)
+"""Set of supported physical newline styles for membership checks."""
+
+STANDARD_NEWLINE_RE: Final = r"\r\n|\n|\r"
+"""Regular expression pattern matching supported LF, CRLF, and CR line endings."""

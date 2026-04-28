@@ -29,6 +29,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from topmark.constants import STANDARD_NEWLINES
 from topmark.core.logging import get_logger
 from topmark.filetypes.model import FileType
 from topmark.pipeline.adapters import PreInsertViewAdapter
@@ -54,7 +55,7 @@ logger: TopmarkLogger = get_logger(__name__)
 
 
 def _newline_histogram(lines: list[str]) -> dict[str, int]:
-    hist: dict[str, int] = {"\n": 0, "\r\n": 0, "\r": 0}
+    hist: dict[str, int] = dict.fromkeys(STANDARD_NEWLINES, 0)
     for ln in lines[:-1]:
         if ln.endswith("\r\n"):
             hist["\r\n"] += 1
@@ -101,7 +102,7 @@ def _compute_empty_flags(lines: list[str]) -> tuple[bool, bool]:
     # newline sequence (LF/CRLF/CR). Reject interior newlines.
     t: str = text
     removed_nl: bool = False
-    for nl in ("\r\n", "\n", "\r"):
+    for nl in STANDARD_NEWLINES:
         if t.endswith(nl):
             t = t[: -len(nl)]
             removed_nl = True
@@ -312,7 +313,7 @@ class ReaderStep(BaseStep):
                 return
 
             # Record whether the file ends with a newline (used when generating patches)
-            ctx.ends_with_newline = lines[-1].endswith(("\r\n", "\n", "\r"))
+            ctx.ends_with_newline = lines[-1].endswith(STANDARD_NEWLINES)
 
             # Preserve original line endings; each element contains its own terminator
             ctx.views.image = ListFileImageView(lines)

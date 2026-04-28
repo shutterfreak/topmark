@@ -34,6 +34,7 @@ from typing_extensions import TypedDict
 from tests.helpers.registry import resolve_processor_for_path
 from topmark.config.policy import PolicyRegistry
 from topmark.config.policy import make_policy_registry
+from topmark.constants import STANDARD_NEWLINES
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.pipelines import CHECK_PATCH_PIPELINE
 from topmark.pipeline.pipelines import CHECK_SUMMMARY_PIPELINE
@@ -271,7 +272,7 @@ def coerce_newlines(
     )
     if ends_with_newline is None:
         # Preserve as-is but convert style if it had a terminator
-        if last.endswith(("\r\n", "\n", "\r")):
+        if last.endswith(STANDARD_NEWLINES):
             out.append(core_last + target_nl)
         else:
             out.append(core_last)

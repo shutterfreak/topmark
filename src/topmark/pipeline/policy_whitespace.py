@@ -26,6 +26,7 @@ Helpers
 
 from __future__ import annotations
 
+from topmark.constants import STANDARD_NEWLINE_SET
 from topmark.filetypes.policy import BlankCollapseMode
 from topmark.filetypes.policy import FileTypeHeaderPolicy
 
@@ -46,7 +47,7 @@ def is_pure_spacer(line: str, policy: FileTypeHeaderPolicy | None) -> bool:
     Returns:
         True if the line is blank per policy, else False.
     """
-    if line == "" or line in ("\n", "\r\n", "\r"):
+    if line == "" or line in STANDARD_NEWLINE_SET:
         return True
 
     if policy is None:

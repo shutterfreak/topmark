@@ -55,6 +55,19 @@ def test_xml_prolog_and_body_on_same_line_blocked_by_policy(tmp_path: Path) -> N
     assert ctx.is_halted is True
 
 
+def test_xml_prolog_and_body_with_exotic_separator_blocked_by_policy(tmp_path: Path) -> None:
+    """XML exotic separators are not safe physical line breaks for insertion."""
+    f: Path = tmp_path / "one_exotic_separator.xml"
+    original: str = '<?xml version="1.0"?>\u2028<root/>'
+    f.write_text(original, encoding="utf-8", newline="")
+
+    cfg: Config = mutable_config_from_defaults().freeze()
+    ctx: ProcessingContext = run_insert(f, cfg)
+
+    assert ctx.status.content == ContentStatus.SKIPPED_REFLOW
+    assert ctx.is_halted is True
+
+
 def test_xml_prolog_and_body_on_same_line_alllowed_by_policy(tmp_path: Path) -> None:
     """XML prolog and body on same line would reflow, allowed by policy."""
     f: Path = tmp_path / "one.xml"

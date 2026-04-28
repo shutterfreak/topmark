@@ -254,6 +254,50 @@ def test_read_accepts_unicode_rich_text(tmp_path: Path) -> None:
     assert set(ctx.newline_hist.keys()) == {"\n"}
 
 
+# --- Exotic Unicode separator tests ---
+
+
+@parametrize(
+    "separator, label",
+    [
+        ("\x85", "nel"),
+        ("\u2028", "line_separator"),
+        ("\u2029", "paragraph_separator"),
+    ],
+)
+def test_read_treats_exotic_separators_as_content_not_newlines(
+    tmp_path: Path, separator: str, label: str
+) -> None:
+    """Reader must not recognize NEL/LS/PS as physical newline styles."""
+    content: str = f"alpha{separator}beta{separator}gamma"
+    file: Path = tmp_path / f"exotic_separator_{label}.py"
+    with file.open("w", encoding="utf-8", newline="") as fh:
+        fh.write(content)
+
+    cfg: Config = mutable_config_from_defaults().freeze()
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
+    ctx = run_resolver(ctx)
+
+    assert ctx.file_type is not None
+
+    ctx = run_sniffer(ctx)
+    ctx = run_reader(ctx)
+
+    assert ctx.status.resolve == ResolveStatus.RESOLVED
+    assert ctx.status.fs == FsStatus.OK
+    assert ctx.status.content == ContentStatus.OK
+    assert ctx.newline_style == "\n"
+    assert ctx.newline_hist == {}
+    assert ctx.dominant_newline is None
+    assert ctx.dominance_ratio is None
+    assert ctx.mixed_newlines is False
+    assert ctx.ends_with_newline is False
+
+    lines: list[str] = materialize_image_lines(ctx)
+    assert lines == [content]
+
+
 def test_read_bom_only_file_contract(tmp_path: Path) -> None:
     """BOM-only files are empty-like, but no longer true FS-empty files."""
     file: Path = tmp_path / "bom_only.py"
@@ -326,6 +370,41 @@ def test_read_mixed_newlines_even_if_dominant(tmp_path: Path) -> None:
 
     assert ctx.status.content == ContentStatus.SKIPPED_MIXED_LINE_ENDINGS
     assert ctx.dominant_newline == "\r\n"
+
+
+def test_read_does_not_count_exotic_separators_as_mixed_newlines(tmp_path: Path) -> None:
+    """NEL/LS/PS near LF text must not create a mixed-newline skip."""
+    content: str = "alpha\u2028beta\ncharlie\x85delta\necho\u2029foxtrot\n"
+    file: Path = tmp_path / "lf_with_exotic_separators.py"
+    with file.open("w", encoding="utf-8", newline="") as fh:
+        fh.write(content)
+
+    cfg: Config = mutable_config_from_defaults().freeze()
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
+    ctx = run_resolver(ctx)
+
+    assert ctx.file_type is not None
+
+    ctx = run_sniffer(ctx)
+    ctx = run_reader(ctx)
+
+    assert ctx.status.resolve == ResolveStatus.RESOLVED
+    assert ctx.status.fs == FsStatus.OK
+    assert ctx.status.content == ContentStatus.OK
+    assert ctx.newline_style == "\n"
+    assert ctx.newline_hist == {"\n": 3}
+    assert ctx.dominant_newline == "\n"
+    assert ctx.dominance_ratio == 1.0
+    assert ctx.mixed_newlines is False
+    assert ctx.ends_with_newline is True
+
+    lines: list[str] = materialize_image_lines(ctx)
+    assert lines == [
+        "alpha\u2028beta\n",
+        "charlie\x85delta\n",
+        "echo\u2029foxtrot\n",
+    ]
 
 
 def test_read_shebang_no_bom_is_ok(tmp_path: Path) -> None:

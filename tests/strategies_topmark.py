@@ -26,16 +26,10 @@ from typing import Literal
 
 from hypothesis import strategies as st
 
+from topmark.constants import STANDARD_NEWLINES
+
 Draw = Callable[[st.SearchStrategy[Any]], Any]
 
-# --- ADAPT ME: import your public types/APIs here ---
-# from topmark.header.processing import HeaderProcessor  # example
-# from topmark.resolver import resolve_processor_for_path
-# from topmark.builder import build_header_dict, build_header_text
-# from topmark.scanner import scan_header_bounds
-# from topmark.updater import update_or_insert_header
-# from topmark.comparer import compare_rendered_or_dict
-# from topmark.config import TopmarkConfig
 
 # Common file type “families” you support
 CommentFamily = Literal[
@@ -56,10 +50,12 @@ BOMS: tuple[str, ...] = (
     "",
 )  # UTF-8 BOM or none
 
-LINE_ENDINGS: tuple[str, ...] = (
-    "\n",
-    "\r\n",
-)
+LINE_ENDINGS: tuple[str, ...] = STANDARD_NEWLINES
+"""Supported physical newline styles for TopMark property-test envelopes.
+
+Unicode separators such as NEL/LS/PS are intentionally not included here: they
+are ordinary content characters for TopMark 1.0, not supported line endings.
+"""
 
 BLACKLIST_CATEGORIES = ("Cs",)
 
@@ -91,8 +87,9 @@ COMMENT_STYLES: tuple[CommentStyle, ...] = (
 
 
 def _normalize_eol(s: str, le: str) -> str:
-    """Normalize all end-of-line markers in ``s`` to ``le``."""
-    # First collapse CRLF and lone CR to LF, then map LF to target `le`
+    """Normalize supported physical end-of-line markers in ``s`` to ``le``."""
+    # First collapse supported CRLF and lone CR to LF, then map LF to target `le`.
+    # Exotic Unicode separators are intentionally left untouched as content.
     s = s.replace("\r\n", "\n").replace("\r", "\n")
     if le != "\n":
         s = s.replace("\n", le)
@@ -157,7 +154,7 @@ def s_source_envelope(draw: Draw) -> tuple[str, CommentStyle, str]:
         lead += shebang + le
     if pre_junk:
         lead += pre_junk.rstrip("\n\r") + le
-    if body and not body.endswith(("\n", "\r", "\r\n")):
+    if body and not body.endswith(STANDARD_NEWLINES):
         body = body + le
     content: str = lead + body
     return content, style, le
@@ -227,7 +224,7 @@ def s_source_envelope_for_ext(
                 max_size=120,
             )
         )
-        if body and not body.endswith(("\n", "\r", "\r\n")):
+        if body and not body.endswith(STANDARD_NEWLINES):
             body = body + le
 
         lead: str = (bom or "") + decl
@@ -267,7 +264,7 @@ def s_source_envelope_for_ext(
                 max_size=120,
             )
         )
-        if body and not body.endswith(("\n", "\r", "\r\n")):
+        if body and not body.endswith(STANDARD_NEWLINES):
             body = body + le
 
         # Shebang must be the first bytes in the file. If a shebang is present,
@@ -297,7 +294,7 @@ def s_source_envelope_for_ext(
                 max_size=200,
             )
         )
-        if body and not body.endswith(("\n", "\r", "\r\n")):
+        if body and not body.endswith(STANDARD_NEWLINES):
             body = body + le
 
         lead = bom or ""
