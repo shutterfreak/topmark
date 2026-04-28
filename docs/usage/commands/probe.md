@@ -24,6 +24,7 @@ Instead, it exposes the **resolution decision process**, including:
 - the resolution status and reason
 - all scored candidate file types
 - match signals (extension, filename, pattern, content probing)
+- explicit inputs filtered during discovery before file-type probing
 
 ______________________________________________________________________
 
@@ -54,7 +55,8 @@ ______________________________________________________________________
 
 - **Read-only**: does not modify files.
 - **Resolution-only**: does not perform scanning, comparison, or mutation.
-- Uses the same **file discovery and filtering** as other commands.
+- Uses the same **file discovery and filtering** as other commands, and reports explicit inputs that
+  are filtered before probing.
 - Uses the same resolution policy and scoring logic as `check` and `strip`.
 - Exposes the same resolution logic used internally by `check` / `strip`.
 - Idempotent: repeated runs produce identical output for unchanged inputs.
@@ -128,7 +130,7 @@ Notes:
 Use `--output-format json` or `--output-format ndjson` to emit output suitable for tooling.
 
 - **JSON**: a single document containing `meta`, `config`, `config_diagnostics`, and `probes`
-- **NDJSON**: one record per line; includes `kind="probe"` records for each file
+- **NDJSON**: one record per line; includes `kind="probe"` records for each probe result
 
 For the canonical schema, see:
 
@@ -159,13 +161,26 @@ ______________________________________________________________________
 }
 ```
 
+Filtered explicit inputs are also represented as probe payloads with:
+
+```jsonc
+{
+  "path": "__pycache__/example.cpython-312.pyc",
+  "status": "filtered",
+  "reason": "excluded_by_discovery_filter",
+  "selected_file_type": null,
+  "selected_processor": null,
+  "candidates": []
+}
+```
+
 ### NDJSON
 
 ```jsonc
 {"kind":"config",...}
 {"kind":"config_diagnostics",...}
 {"kind":"diagnostic",...}
-{"kind":"probe","meta":{...},"probe":{...}}
+{"kind":"probe","meta":{...},"probe":{...}}  <!-- one per probe result -->
 ```
 
 ______________________________________________________________________
@@ -208,11 +223,11 @@ ______________________________________________________________________
 
 ## Exit codes
 
-| Code | Meaning                                   |
-| ---- | ----------------------------------------- |
-| 0    | All files resolved successfully           |
-| 69   | One or more files could not be resolved   |
-| 70   | Internal probe or pipeline error occurred |
+| Code | Meaning                                                  |
+| ---- | -------------------------------------------------------- |
+| 0    | All files resolved successfully                          |
+| 69   | One or more paths could not be resolved or were filtered |
+| 70   | Internal probe or pipeline error occurred                |
 
 ______________________________________________________________________
 
@@ -251,3 +266,5 @@ ______________________________________________________________________
 - **Unsupported file**: ensure file type patterns or extensions are configured correctly.
 - **Unexpected selection**: use `-vv` to inspect candidate scores and match signals.
 - **No processor**: check that a processor is registered for the selected file type.
+- **Filtered input**: the path was excluded by discovery filters (e.g., `--exclude`). The probe
+  output will show `filtered: excluded_by_discovery_filter`.

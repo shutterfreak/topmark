@@ -242,7 +242,7 @@ Common NDJSON kinds include:
 - `config_diagnostics` (counts-only in NDJSON prefix records)
 - `diagnostic` (one diagnostic per record; see "Diagnostics" below)
 - `result` (per-file result)
-- `probe` (per-file resolution probe)
+- `probe` (per-path resolution probe, including filtered explicit inputs)
 - `summary` (one aggregated `(outcome, reason)` summary entry)
 - `version`
 - registry-specific kinds:
@@ -360,7 +360,7 @@ ______________________________________________________________________
   - `config`
   - `config_diagnostics` (counts-only)
   - zero or more `diagnostic` records (domain=`"config"`)
-  - then one `probe` record per file
+  - then one `probe` record per probe result
 
 Unlike processing commands, `probe`:
 
@@ -370,7 +370,7 @@ Unlike processing commands, `probe`:
 
 Machine output for `probe` is unaffected by TEXT verbosity or quiet mode.
 
-Refer to the machine schema reference for the per-file probe payload:
+Refer to the machine schema reference for the per-path probe payload:
 
 - [Machine output schema (JSON & NDJSON)](machine-output.md)
 

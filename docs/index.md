@@ -25,6 +25,8 @@ topmark check --summary --config topmark.toml src/
 topmark check --apply src/
 # Explain file-type / processor resolution
 topmark probe README.md
+# Explain why a path was filtered by discovery rules
+topmark probe __pycache__/example.cpython-312.pyc
 ```
 
 ### Public API quickstart
@@ -49,7 +51,8 @@ for b in Registry.bindings():
 - Preserves newline style (LF/CRLF/CR) and BOM
 - Provides `strip` to remove headers (also dry‑run by default)
 - Works well in CI and with pre‑commit hooks
-- Explains file-type and processor resolution via `topmark probe`
+- Explains file-type and processor resolution via `topmark probe`, including why explicit inputs may
+  be filtered before probing
 - Inspects **layered configuration provenance** via `topmark config dump --show-layers`
 - Validates whole-source TOML configuration before layered config merging
 
@@ -92,6 +95,8 @@ topmark:header:end
 
 Core commands: `check`, `strip`, `probe`, `config`, `registry`, `version`.
 
+The `probe` command also reports explicitly requested paths that were filtered out during discovery.
+
 The `config` command has the following subcommands: `check`, `defaults`, `dump`, `init`.
 
 {% include-markdown "\_snippets/output-contract.md" %}
@@ -115,6 +120,9 @@ TopMark supports two STDIN modes:
 
 > For full rules, supported file types, JSON vs JSONC handling, and resolver specifics, see the
 > sections in the repository README.
+>
+> `topmark probe` can be used to understand how file types are resolved and why certain paths are
+> ignored.
 
 ## Configuration (example)
 

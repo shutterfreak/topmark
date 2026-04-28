@@ -46,6 +46,9 @@ TopMark has two different resolution modes:
 - **Path-based resolution** resolves a real path by evaluating extension, filename, pattern, and
   optional content-based signals.
 
+Before path-based resolution runs, TopMark performs file discovery and filtering. Paths excluded at
+that stage do not participate in candidate generation or scoring.
+
 Path-based resolution is implemented in
 \[`topmark.resolution.filetypes`\][topmark.resolution.filetypes] and consumed by
 \[`ResolverStep`\][topmark.pipeline.steps.resolver.ResolverStep].
@@ -83,8 +86,12 @@ This function returns a
 - probe status and reason
 - all scored candidate file types
 - match signals used during resolution
+- filtered explicit inputs that did not reach file-type probing
 
-The probe result is the **single source of truth** for resolution decisions:
+The probe result is the **single source of truth** for resolution decisions once a path reaches
+file-type probing. Explicit inputs may be filtered earlier during discovery; those cases are
+represented as synthetic probe results with `status="filtered"` and
+`reason="excluded_by_discovery_filter"`.
 
 - \[`ResolverStep`\][topmark.pipeline.steps.resolver.ResolverStep] consumes `ctx.resolution_probe`
   and maps it to pipeline state
@@ -98,6 +105,10 @@ This unifies:
 - pipeline resolution behaviour
 
 Callers should use `probe_resolution_for_path()` when they need path-based resolution details.
+
+Note that `probe_resolution_for_path()` only applies to paths that passed discovery filtering. The
+`topmark probe` command augments these results with discovery-level explanations for explicitly
+requested paths that were filtered before probing.
 
 ______________________________________________________________________
 
@@ -242,6 +253,9 @@ the tie-break outcome in the returned `ResolutionProbeResult`.
 The probe result surfaces the full candidate set, scores, match signals, selected candidate, and
 reason (`selected_highest_score` or `selected_by_tie_break`). This makes resolution decisions fully
 observable without relying on debug logging alone.
+
+For explicitly requested paths that were filtered before probing, observability is provided through
+synthetic probe results emitted by `topmark probe`, rather than through candidate-level data.
 
 This makes ambiguous-but-resolvable situations observable during development and debugging without
 turning them into hard failures.

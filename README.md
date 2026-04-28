@@ -24,7 +24,7 @@ topmark:header:end
 **TopMark** is a command-line tool to inspect, insert, validate, and manage file headers in diverse
 codebases.\
 It maintains consistent metadata across files by supporting multiple comment styles, configuration
-formats, and dry-run safety.
+formats, dry-run safety, and transparent resolution diagnostics.
 
 ______________________________________________________________________
 
@@ -44,7 +44,8 @@ ______________________________________________________________________
 - Configurable header fields and alignment
 - Dry-run by default for safety
 - **Policy-based control** over when headers may be inserted, updated, or added to empty files
-- Explain file-type and processor resolution with `topmark probe`
+- Explain file-type and processor resolution with `topmark probe`, including why explicit inputs may
+  be filtered before probing
 - Whole-source TOML validation plus layered configuration via:
   - `pyproject.toml` (`[tool.topmark]`)
   - `topmark.toml`
@@ -224,6 +225,9 @@ topmark probe README.md
 # Show candidate scores and match signals
 topmark probe -vv README.md
 
+# Show why a path was filtered by discovery rules
+topmark probe __pycache__/example.cpython-312.pyc
+
 # Inspect merged configuration with layered provenance
 topmark config dump --show-layers
 
@@ -242,6 +246,8 @@ topmark registry processors --output-format markdown --long
 > - `-v` / `--verbose` and `-q` / `--quiet` apply only to TEXT output.
 > - Markdown output is document-oriented and ignores these flags.
 > - JSON/NDJSON output is machine-readable and also ignores these flags.
+> - `topmark probe` also reports explicitly requested paths that were filtered out before
+>   resolution.
 
 TopMark preserves line endings, shebangs, BOMs, and indentation rules for each file type.
 

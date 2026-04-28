@@ -15,7 +15,8 @@ topmark:header:end
 TopMark processes files through **explicit, immutable pipelines** composed of small,
 single-responsibility steps. Each pipeline represents a supported user intent (scan, check, strip,
 apply, patch) and defines **exactly which steps run and in which order**. A dedicated **probe
-pipeline** exists for resolution diagnostics (`topmark probe`).
+pipeline** exists for resolution diagnostics (`topmark probe`), including explanations for explicit
+inputs filtered before file-type probing.
 
 Pipelines do not make high-level decisions themselves. Instead:
 
@@ -135,12 +136,19 @@ P[<tt>ProberStep</tt>]
 
 **End states:**
 
-- Resolution status (`resolved`, `unsupported`, `no_processor`)
+- Resolution status (`resolved`, `unsupported`, `no_processor`, `filtered`)
+
 - Selected file type and processor (if any)
+
 - Full candidate set with match signals
 
+- Filtered explicit inputs are represented as probe results with `status="filtered"` and
+  `reason="excluded_by_discovery_filter"`. These correspond to paths that were excluded during
+  discovery before file-type probing.
+
 This pipeline powers `topmark probe` and is intentionally **resolution-only**. It halts immediately
-after probing and does not perform inspection, comparison, or mutation.
+after probing and does not perform inspection, comparison, or mutation. Discovery-level filtering is
+reported via synthetic probe results for explicitly requested paths that did not reach probing.
 
 ### SCAN
 
@@ -398,20 +406,20 @@ Each step implements the `Step` protocol and:
 - May halt execution via `ctx.flow.halt`
 - Emits structured hints for diagnostics
 
-| Step                                                             | Responsibility                                                                  |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| \[`ResolverStep`\][topmark.pipeline.steps.resolver.ResolverStep] | Determine file type and header processor (see [`resolution.md`](resolution.md)) |
-| \[`ProberStep`\][topmark.pipeline.steps.prober.ProberStep]       | Run resolution probe and expose scored candidates and selection                 |
-| \[`SnifferStep`\][topmark.pipeline.steps.sniffer.SnifferStep]    | Fast policy and newline checks                                                  |
-| \[`ReaderStep`\][topmark.pipeline.steps.reader.ReaderStep]       | Read file content safely                                                        |
-| \[`ScannerStep`\][topmark.pipeline.steps.scanner.ScannerStep]    | Locate existing header bounds                                                   |
-| \[`BuilderStep`\][topmark.pipeline.steps.builder.BuilderStep]    | Build expected header field values                                              |
-| \[`RendererStep`\][topmark.pipeline.steps.renderer.RendererStep] | Render header text                                                              |
-| \[`ComparerStep`\][topmark.pipeline.steps.comparer.ComparerStep] | Compare existing vs rendered header                                             |
-| \[`StripperStep`\][topmark.pipeline.steps.stripper.StripperStep] | Remove header content                                                           |
-| \[`PlannerStep`\][topmark.pipeline.steps.planner.PlannerStep]    | Decide insert / replace / remove plan                                           |
-| \[`PatcherStep`\][topmark.pipeline.steps.patcher.PatcherStep]    | Generate unified diff                                                           |
-| \[`WriterStep`\][topmark.pipeline.steps.writer.WriterStep]       | Persist changes                                                                 |
+| Step                                                             | Responsibility                                                                             |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| \[`ResolverStep`\][topmark.pipeline.steps.resolver.ResolverStep] | Determine file type and header processor (see [`resolution.md`](resolution.md))            |
+| \[`ProberStep`\][topmark.pipeline.steps.prober.ProberStep]       | Run resolution probe and expose scored candidates, selection, and filtered explicit inputs |
+| \[`SnifferStep`\][topmark.pipeline.steps.sniffer.SnifferStep]    | Fast policy and newline checks                                                             |
+| \[`ReaderStep`\][topmark.pipeline.steps.reader.ReaderStep]       | Read file content safely                                                                   |
+| \[`ScannerStep`\][topmark.pipeline.steps.scanner.ScannerStep]    | Locate existing header bounds                                                              |
+| \[`BuilderStep`\][topmark.pipeline.steps.builder.BuilderStep]    | Build expected header field values                                                         |
+| \[`RendererStep`\][topmark.pipeline.steps.renderer.RendererStep] | Render header text                                                                         |
+| \[`ComparerStep`\][topmark.pipeline.steps.comparer.ComparerStep] | Compare existing vs rendered header                                                        |
+| \[`StripperStep`\][topmark.pipeline.steps.stripper.StripperStep] | Remove header content                                                                      |
+| \[`PlannerStep`\][topmark.pipeline.steps.planner.PlannerStep]    | Decide insert / replace / remove plan                                                      |
+| \[`PatcherStep`\][topmark.pipeline.steps.patcher.PatcherStep]    | Generate unified diff                                                                      |
+| \[`WriterStep`\][topmark.pipeline.steps.writer.WriterStep]       | Persist changes                                                                            |
 
 ______________________________________________________________________
 

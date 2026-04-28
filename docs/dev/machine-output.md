@@ -166,6 +166,7 @@ expose the same resolution evidence used by the human-facing probe renderers:
 - probe status and reason
 - all scored candidate file types
 - candidate match signals
+- explicit inputs filtered during discovery before file-type probing
 
 ### JSON schema
 
@@ -175,7 +176,7 @@ expose the same resolution evidence used by the human-facing probe renderers:
   "config": { /* ConfigPayload */ },
   "config_diagnostics": { /* ConfigDiagnosticsPayload */ },
   "probes": [
-    { /* per-file probe payload */ }
+    { /* per-path probe payload */ }
   ]
 }
 ```
@@ -184,18 +185,19 @@ expose the same resolution evidence used by the human-facing probe renderers:
 - `config`: snapshot of the effective config used for file filtering and resolution policy.
 - `config_diagnostics`: full diagnostics payload including counts and the list of config
   diagnostics.
-- `probes`: one resolution probe payload per probed file.
+- `probes`: one resolution probe payload per probed path, including explicit inputs filtered before
+  file-type probing.
 
 ### NDJSON schema
 
 NDJSON output follows the same stable config prefix used by processing commands, then emits one
-`probe` record per probed file:
+`probe` record per probe result:
 
 ```jsonc
 {"kind":"config","meta":{...},"config":{...}}
 {"kind":"config_diagnostics","meta":{...},"config_diagnostics":{"diagnostic_counts":{...}}}
 {"kind":"diagnostic","meta":{...},"diagnostic":{"domain":"config","level":"warning","message":"..."}}
-{"kind":"probe","meta":{...},"probe":{ /* per-file probe payload */ }}
+{"kind":"probe","meta":{...},"probe":{ /* per-path probe payload */ }}
 ```
 
 NDJSON rules for `probe`:
@@ -206,7 +208,7 @@ NDJSON rules for `probe`:
   1. `config`
   1. `config_diagnostics` (**counts-only**)
   1. zero or more `diagnostic` records (each with `domain="config"`)
-- Then one `probe` record is emitted per probed file.
+- Then one `probe` record is emitted per probe result.
 
 The JSON `probes` key and NDJSON `probe` kind are defined in
 \[`topmark.pipeline.machine.schemas.PipelineKey`\][topmark.pipeline.machine.schemas.PipelineKey] and
@@ -219,10 +221,11 @@ The NDJSON stream is produced by:
 
 ______________________________________________________________________
 
-## Per-file probe payload
+## Per-path probe payload
 
-Each element of the JSON `probes` array and each NDJSON `probe` record contains a **per-file
-resolution probe payload**.
+Each element of the JSON `probes` array and each NDJSON `probe` record contains a **per-path
+resolution probe payload**. Most probe payloads correspond to files that reached file-type probing,
+but explicit inputs filtered during discovery are also represented as probe payloads.
 
 High-level shape:
 
@@ -263,23 +266,47 @@ High-level shape:
 }
 ```
 
+Filtered explicit input shape:
+
+```jsonc
+{
+  "path": "__pycache__/example.cpython-312.pyc",
+  "status": "filtered",
+  "reason": "excluded_by_discovery_filter",
+  "selected_file_type": null,
+  "selected_processor": null,
+  "candidates": []
+}
+```
+
+Filtered probe payloads are emitted only for paths explicitly supplied to `topmark probe` (including
+paths loaded via `--files-from`). TopMark does not enumerate every recursively discovered file that
+was ignored by discovery filters.
+
 Fields:
 
-- `path`: probed filesystem path.
+- `path`: probed or explicitly requested filesystem path. For filtered explicit inputs, this is the
+  path supplied to the command.
 - `status`: probe status, currently one of:
   - `resolved` — a file type and processor were selected.
   - `unsupported` — no file type candidate matched.
   - `no_processor` — a file type was selected, but no processor binding was available.
+  - `filtered` — an explicitly requested input was filtered during discovery before file-type
+    probing.
   - `probe_missing` — internal fallback used only if a pipeline result lacks a probe payload.
 - `reason`: machine-friendly explanation for the status and selection, for example:
   - `selected_highest_score`
   - `selected_by_tie_break`
   - `no_candidates`
   - `selected_file_type_has_no_bound_processor`
+  - `excluded_by_discovery_filter`
   - `no_resolution_probe_result`
-- `selected_file_type`: selected file type identity and score, or `null` when unresolved.
-- `selected_processor`: selected processor identity, or `null` when unresolved or unbound.
-- `candidates`: scored candidate file types in deterministic resolution order.
+- `selected_file_type`: selected file type identity and score, or `null` when unresolved, unbound,
+  or filtered.
+- `selected_processor`: selected processor identity, or `null` when unresolved, unbound, or
+  filtered.
+- `candidates`: scored candidate file types in deterministic resolution order. Empty for filtered
+  explicit inputs and for unsupported paths with no candidates.
 
 Candidate fields:
 
@@ -300,6 +327,9 @@ Candidate fields:
 > Scores are exposed for explainability and ordering. Automation should primarily rely on `status`,
 > `selected`, and canonical identities (`qualified_key`, `namespace`, `local_key`) rather than
 > hard-coding exact numeric scores.
+>
+> Filtered probe payloads have no candidate-level `match` object because file-type probing did not
+> run.
 
 ## Processing commands (`check`, `strip`)
 

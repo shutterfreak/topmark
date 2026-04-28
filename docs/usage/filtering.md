@@ -21,7 +21,39 @@ Filtering order:
 1. File type filters (`include_file_types`, `exclude_file_types`)
 1. Eligibility (supported vs unsupported)
 
+Note: For `topmark probe`, paths excluded during step 1 or 2 may still be reported as `filtered`
+results if they were explicitly requested.
+
 ## STDIN support
+
+## Interaction with `topmark probe`
+
+The `topmark probe` command uses the same discovery and filtering rules described above.
+
+However, unlike processing commands (`check`, `strip`), `probe` also reports **explicit inputs that
+were filtered out before file-type probing**.
+
+For example, when a path is excluded via `--exclude` or `exclude_patterns`, `topmark probe` will
+still show it in the output as:
+
+```text
+<path>: <filtered> - filtered: excluded_by_discovery_filter
+```
+
+In machine-readable formats (JSON / NDJSON), these are represented as probe results with:
+
+```jsonc
+{
+  "status": "filtered",
+  "reason": "excluded_by_discovery_filter",
+  "selected_file_type": null,
+  "selected_processor": null,
+  "candidates": []
+}
+```
+
+Only explicitly requested inputs (CLI paths or `--files-from`) are reported this way. Files excluded
+implicitly during recursive discovery are not enumerated.
 
 TopMark supports two STDIN modes when supplying file lists or content:
 
