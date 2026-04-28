@@ -18,6 +18,89 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ______________________________________________________________________
 
+## [1.0.0a9] – 2026-04-28
+
+This ninth **1.0 alpha release** finalizes TopMark’s **line-ending support contract** for 1.0.
+
+It audits and freezes how the pipeline detects, preserves, and rejects newline styles, clarifying
+that TopMark supports only standard physical newline sequences while tolerating nonstandard Unicode
+separators as ordinary content characters.
+
+### Highlights — 1.0.0a9
+
+- Froze the 1.0 line-ending support contract
+- Standardized newline detection around LF, CRLF, and CR only
+- Clarified that exotic Unicode separators are content, not line delimiters
+- Strengthened reader, sniffer, XML safety, and property-based tests
+- Documented that newline behavior is global and not configurable by policy for 1.0
+
+### Added — 1.0.0a9
+
+- **Pipeline / newline contract**
+
+  - Added canonical standard newline helpers:
+    - `STANDARD_NEWLINES`
+    - `STANDARD_NEWLINE_SET`
+    - `STANDARD_NEWLINE_RE`
+  - Established LF, CRLF, and CR as the only recognized physical newline styles.
+
+- **Tests**
+
+  - Added reader coverage confirming exotic separators are treated as content.
+  - Added sniffer coverage confirming exotic separators are not counted as newline styles.
+  - Added XML processor coverage for conservative idempotence skips near unsupported separators.
+  - Updated property-based tests to generate only standard newline styles.
+
+### Changed — 1.0.0a9
+
+- **Pipeline behavior**
+
+  - Reader and sniffer logic now consistently use the standard newline contract.
+  - Newline detection preserves CRLF-first ordering to avoid misclassifying CRLF as separate CR/LF.
+  - Mixed-line-ending detection applies only to recognized standard newline styles.
+  - Rendering, planning, patching, and writing preserve the recognized newline style and do not
+    normalize mixed styles implicitly.
+
+- **Nonstandard separators**
+
+  - Unicode NEL (`U+0085`), LS (`U+2028`), and PS (`U+2029`) are not treated as newline delimiters.
+  - Such characters are tolerated as ordinary content characters.
+  - They are not counted in newline histograms and do not participate in mixed-line-ending
+    detection.
+  - XML-specific boundary safety remains conservative where such characters could affect
+    idempotence.
+
+- **Documentation**
+
+  - Documented the newline contract in user and developer docs.
+  - Clarified that newline handling is global, not per-file-type.
+  - Clarified that no newline-related policy surface is introduced for 1.0.
+  - Updated roadmap status to mark the line-ending support audit as completed.
+
+### Fixed — 1.0.0a9
+
+- **Property-test overreach**
+
+  - Removed accidental implication that exotic Unicode separators are supported newline styles.
+  - Aligned Hypothesis strategies with the intended 1.0 newline contract.
+
+- **Pipeline consistency**
+
+  - Ensured reader and sniffer behavior agree on which newline styles are recognized.
+  - Reduced risk of accidental future expansion of newline semantics through tests or regex changes.
+
+### Notes — 1.0.0a9
+
+- TopMark’s supported physical newline styles for 1.0 are:
+  - LF (`\n`)
+  - CRLF (`\r\n`)
+  - CR (`\r`)
+- Nonstandard Unicode separators remain tolerated as content, but are not supported as line endings.
+- Extended/rich Unicode newline support and newline-related policy controls are explicitly deferred
+  beyond 1.0 unless a concrete file-type requirement emerges.
+
+______________________________________________________________________
+
 ## [1.0.0a8] – 2026-04-28
 
 This eighth **1.0 alpha release** refines the filtered-input diagnostics introduced in `1.0.0a7` by
