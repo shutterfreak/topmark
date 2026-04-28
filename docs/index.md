@@ -23,6 +23,8 @@ pip install topmark
 topmark check --summary --config topmark.toml src/
 # Apply changes
 topmark check --apply src/
+# Explain file-type / processor resolution
+topmark probe README.md
 ```
 
 ### Public API quickstart
@@ -47,6 +49,7 @@ for b in Registry.bindings():
 - Preserves newline style (LF/CRLF/CR) and BOM
 - Provides `strip` to remove headers (also dry‑run by default)
 - Works well in CI and with pre‑commit hooks
+- Explains file-type and processor resolution via `topmark probe`
 - Inspects **layered configuration provenance** via `topmark config dump --show-layers`
 - Validates whole-source TOML configuration before layered config merging
 
@@ -87,7 +90,7 @@ topmark:header:end
 
 `topmark [COMMAND] ([SUBCOMMAND]) [OPTIONS] [PATHS]...`
 
-Core commands: `check`, `strip`, `config`, `registry`, `version`.
+Core commands: `check`, `strip`, `probe`, `config`, `registry`, `version`.
 
 The `config` command has the following subcommands: `check`, `defaults`, `dump`, `init`.
 
@@ -172,7 +175,15 @@ after TOML-layer validation.
 ## Next steps
 
 - **Install:** [Installation guide](install.md)
-- **Usage:** Pre‑commit integration ([usage/pre-commit.md](usage/pre-commit.md))
+- **Usage:**
+  - **Commands:**
+    - [`check`](usage/commands/check.md)
+    - [`strip`](usage/commands/strip.md)
+    - [`probe`](usage/commands/probe.md)
+    - [`version`](usage/commands/version.md)
+    - [`config` commands](usage/commands/config.md)
+    - [`registry` commands](usage/commands/registry.md)
+  - Pre‑commit integration ([usage/pre-commit.md](usage/pre-commit.md))
 - **CI/CD:** Release workflow ([ci/release-workflow.md](ci/release-workflow.md))
 - **Policies:** Guide ([usage/policies.md](usage/policies.md))
 - **Public API:** Reference ([api/public.md](api/public.md))
@@ -181,4 +192,4 @@ after TOML-layer validation.
 
 ______________________________________________________________________
 
-Need the complete, canonical introduction? See the project README on GitHub.
+Need the complete — canonical introduction? See the project README on GitHub.

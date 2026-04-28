@@ -44,6 +44,7 @@ ______________________________________________________________________
 - Configurable header fields and alignment
 - Dry-run by default for safety
 - **Policy-based control** over when headers may be inserted, updated, or added to empty files
+- Explain file-type and processor resolution with `topmark probe`
 - Whole-source TOML validation plus layered configuration via:
   - `pyproject.toml` (`[tool.topmark]`)
   - `topmark.toml`
@@ -190,6 +191,7 @@ topmark [COMMAND] [OPTIONS] [PATHS]...
 | --------------------- | ----------------------------------------------------------------------------- |
 | `check`               | Add or update TopMark headers                                                 |
 | `strip`               | Remove TopMark headers                                                        |
+| `probe`               | Explain file-type and processor resolution                                    |
 | `config check`        | Check the merged config for errors.                                           |
 | `config defaults`     | Show the built-in default TopMark TOML document                               |
 | `config dump`         | Show resolved configuration (merged TOML), optionally with layered provenance |
@@ -215,6 +217,12 @@ topmark strip --apply src/
 
 # Treat config warnings as errors for this run
 topmark check --strict src/
+
+# Explain how TopMark resolves a file type and processor
+topmark probe README.md
+
+# Show candidate scores and match signals
+topmark probe -vv README.md
 
 # Inspect merged configuration with layered provenance
 topmark config dump --show-layers
@@ -335,7 +343,7 @@ after TOML-layer validation.
 | `empty_insert_mode`                  | Controls how TopMark classifies files as empty for insertion            |
 | `render_empty_header_when_no_fields` | Allow inserting an otherwise empty header when no fields are configured |
 | `allow_reflow`                       | Allow content reflow during header insertion/update                     |
-| `allow_content_probe`                | Allow file-type detection to inspect file contents when needed          |
+| `allow_content_probe`                | Allow file-type resolution to inspect file contents when needed         |
 
 Per-type overrides under `[policy_by_type."filetype"]` in `topmark.toml` (or
 `[tool.topmark.policy_by_type."filetype"]` in `pyproject.toml`) can adjust specific behavior.
