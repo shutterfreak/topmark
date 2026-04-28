@@ -18,6 +18,75 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ______________________________________________________________________
 
+## [1.0.0a8] – 2026-04-28
+
+This eighth **1.0 alpha release** refines the filtered-input diagnostics introduced in `1.0.0a7` by
+distinguishing **path-filtered** inputs from **file-type-filtered** inputs.
+
+It keeps exact pattern/source attribution out of scope, but improves `topmark probe` explainability
+with stable, machine-friendly reason categories.
+
+### ⚠️ Breaking Changes - 1.0.0a8
+
+- Filtered probe results no longer always use `reason="excluded_by_discovery_filter"`.
+- Probe machine output may now emit:
+  - `reason="excluded_by_path_filter"`
+  - `reason="excluded_by_file_type_filter"`
+  - `reason="excluded_by_discovery_filter"` as fallback
+- Consumers that assumed only `excluded_by_discovery_filter` for filtered probe results must accept
+  the refined reason values.
+
+### Highlights — 1.0.0a8
+
+- Refined filtered-input reasons for `topmark probe`
+- Distinguished path filters from file-type filters
+- Preserved generic discovery-filter fallback
+- Updated TEXT, JSON, and NDJSON tests
+- Aligned probe, filtering, machine-output, API, README, and roadmap documentation
+
+### Added — 1.0.0a8
+
+- **Refined filtered probe reasons**
+
+  - Added:
+    - `excluded_by_path_filter`
+    - `excluded_by_file_type_filter`
+  - Kept:
+    - `excluded_by_discovery_filter` as a fallback when no broad category is identified
+
+- **Tests**
+
+  - Added resolver coverage for:
+    - path-filtered explicit inputs
+    - include-file-type filtered inputs
+    - exclude-file-type filtered inputs
+    - generic fallback filtering
+  - Updated CLI human-output and machine-output tests for refined reason values.
+
+### Changed — 1.0.0a8
+
+- **Probe behavior**
+
+  - `topmark probe` now classifies explicit filtered inputs by broad filter category.
+  - `--exclude` / path-pattern filtering now reports `excluded_by_path_filter`.
+  - file-type include/exclude filtering now reports `excluded_by_file_type_filter`.
+
+- **Documentation**
+
+  - Updated probe command documentation.
+  - Updated machine-output and machine-format references.
+  - Updated resolution, filtering, API, README, and roadmap documentation.
+  - Clarified that exact filter pattern/source attribution remains out of scope.
+
+### Notes — 1.0.0a8
+
+- This alpha refines the `1.0.0a7` filtered-input probe contract.
+- `topmark probe` still reports only explicitly requested filtered inputs.
+- Files ignored implicitly during recursive discovery are still not enumerated.
+- Exact matching pattern/source attribution remains a possible future enhancement.
+
+______________________________________________________________________
+
 ## [1.0.0a7] – 2026-04-28
 
 This seventh **1.0 alpha release** completes the `probe` diagnostics surface by explaining
