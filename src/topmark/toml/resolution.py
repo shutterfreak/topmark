@@ -46,14 +46,17 @@ from typing import Literal
 from typing import TypeAlias
 
 from topmark.core.logging import get_logger
+from topmark.diagnostic.model import DiagnosticLog
 from topmark.toml.loaders import load_topmark_toml_source
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from topmark.core.logging import TopmarkLogger
+    from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.runtime.writer_options import WriterOptions
     from topmark.toml.parse import ParsedTopmarkToml
+    from topmark.toml.validation import TomlValidationIssue
 
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -70,18 +73,33 @@ Allowed values:
 
 @dataclass(frozen=True, slots=True)
 class ResolvedTopmarkTomlSource:
-    """One successfully loaded TopMark TOML source.
+    """One TopMark TOML source participating in per-run resolution.
+
+    A source may be syntactically invalid or unreadable. Such sources are still
+    preserved as resolved source records so TOML-source diagnostics can be
+    replayed into staged config validation. Only successfully parsed sources
+    contribute layered config fragments and TOML-side settings such as writer
+    options or `strict_config_checking`.
 
     Attributes:
         path: Resolved filesystem path of the TOML source.
-        parsed: Split-parsed TOML source contents.
+        parsed: Split-parsed TOML source contents, or `None` when loading or
+            parsing failed.
         kind: Discovery class of the source. Allowed values are `"user"`,
             `"discovered"`, and `"explicit"`.
+        validation_issues: TOML schema validation issues associated with this
+            source. For failed loads this is empty because no TOML schema
+            validation could run.
+        load_diagnostics: Diagnostics produced while loading or parsing the TOML
+            source. This is normally empty for successfully parsed sources and
+            contains a synthetic error for unreadable or invalid TOML files.
     """
 
     path: Path
-    parsed: ParsedTopmarkToml
+    parsed: ParsedTopmarkToml | None
     kind: TomlSourceKind
+    validation_issues: tuple[TomlValidationIssue, ...]
+    load_diagnostics: FrozenDiagnosticLog
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,12 +130,23 @@ def _append_loaded_source(
     *,
     kind: TomlSourceKind,
 ) -> None:
-    """Load one TOML source and append it when split parsing succeeds."""
+    """Load one TOML source and append it with preserved source diagnostics."""
     resolved_path: Path = path.resolve()
     parsed: ParsedTopmarkToml | None = load_topmark_toml_source(resolved_path)
     if parsed is None:
         logger.debug(
-            "Skipping unreadable or invalid TOML source during resolution: %s", resolved_path
+            "Preserving unreadable or invalid TOML source during resolution: %s", resolved_path
+        )
+        diagnostics = DiagnosticLog()
+        diagnostics.add_error(f"Unable to load or parse TOML source: {resolved_path}")
+        dst.append(
+            ResolvedTopmarkTomlSource(
+                path=resolved_path,
+                parsed=None,
+                kind=kind,
+                validation_issues=(),
+                load_diagnostics=diagnostics.freeze(),
+            )
         )
         return
 
@@ -126,6 +155,8 @@ def _append_loaded_source(
             path=resolved_path,
             parsed=parsed,
             kind=kind,
+            validation_issues=parsed.validation_issues,
+            load_diagnostics=DiagnosticLog().freeze(),
         )
     )
 
@@ -252,6 +283,8 @@ def _resolve_writer_options(
     """Resolve writer options using highest-precedence non-`None` wins."""
     resolved: WriterOptions | None = None
     for source in sources:
+        if source.parsed is None:
+            continue
         writer_options: WriterOptions | None = source.parsed.writer_options
         if writer_options is not None and writer_options.file_write_strategy is not None:
             resolved = writer_options
@@ -266,6 +299,8 @@ def _resolve_strict_config_checking(
     """Resolve config-loading strictness using precedence order."""
     resolved: bool | None = None
     for source in sources:
+        if source.parsed is None:
+            continue
         value: bool | None = source.parsed.config_loading_options.strict_config_checking
         if value is not None:
             resolved = value

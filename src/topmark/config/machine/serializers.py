@@ -48,6 +48,29 @@ if TYPE_CHECKING:
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
 
+def _build_required_toml_provenance_payload(
+    resolved_toml: ResolvedTopmarkTomlSources | None,
+) -> TomlProvenancePayload:
+    """Build required TOML provenance payload for machine output.
+
+    Args:
+        resolved_toml: Resolved TOML sources required for provenance export.
+
+    Returns:
+        TOML provenance payload for JSON or NDJSON machine output.
+
+    Raises:
+        ValueError: If `resolved_toml` is missing or provenance payload construction fails.
+    """
+    if resolved_toml is None:
+        raise ValueError("resolved_toml is required when show_config_layers=True")
+
+    try:
+        return build_toml_provenance_payload(resolved_toml)
+    except ValueError as exc:
+        raise ValueError("Unable to serialize config provenance for machine output") from exc
+
+
 def serialize_config(
     *,
     meta: MetaPayload,
@@ -139,13 +162,11 @@ def serialize_config_json(
         Pretty-printed JSON string (no trailing newline).
 
     Raises:
-        ValueError: If `show_config_layers` is `True` but `resolved_toml` is `None`.
-    """
-    cfg_provenance_payload: TomlProvenancePayload | None = None
-    if show_config_layers:
-        if resolved_toml is None:
-            raise ValueError("resolved_toml is required when show_config_layers=True")
-        cfg_provenance_payload = build_toml_provenance_payload(resolved_toml)
+        ValueError: If `show_config_layers` is `True` but TOML provenance cannot be serialized.
+    """  # noqa: DOC502 - documents propagated exceptions from `_build_required_toml_provenance_payload()``
+    cfg_provenance_payload: TomlProvenancePayload | None = (
+        _build_required_toml_provenance_payload(resolved_toml) if show_config_layers else None
+    )
 
     envelope: dict[str, object] = build_config_json_envelope(
         config=config,
@@ -185,13 +206,11 @@ def serialize_config_ndjson(
         Iterator of NDJSON lines (no trailing newline).
 
     Raises:
-        ValueError: If `show_config_layers` is `True` but `resolved_toml` is `None`.
-    """
-    cfg_provenance_payload: TomlProvenancePayload | None = None
-    if show_config_layers:
-        if resolved_toml is None:
-            raise ValueError("resolved_toml is required when show_config_layers=True")
-        cfg_provenance_payload = build_toml_provenance_payload(resolved_toml)
+        ValueError: If `show_config_layers` is `True` but TOML provenance cannot be serialized.
+    """  # noqa: DOC502 - documents propagated exceptions from `_build_required_toml_provenance_payload()``
+    cfg_provenance_payload: TomlProvenancePayload | None = (
+        _build_required_toml_provenance_payload(resolved_toml) if show_config_layers else None
+    )
 
     iter_records: Iterator[dict[str, object]] = iter_config_ndjson_records(
         config=config,

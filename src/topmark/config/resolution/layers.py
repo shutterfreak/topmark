@@ -197,6 +197,12 @@ def build_config_layers_from_resolved_toml_sources(
 
     precedence: int = FIRST_SOURCE_LAYER_PRECEDENCE
     for source in sources:
+        if source.parsed is None:
+            logger.debug(
+                "Skipping config layer for unreadable or invalid TOML source: %s",
+                source.path,
+            )
+            continue
         layer: ConfigLayer = _make_layer_from_layered_toml_table(
             source.path,
             data=source.parsed.layered_config,

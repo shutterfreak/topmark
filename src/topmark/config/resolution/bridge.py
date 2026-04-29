@@ -77,8 +77,10 @@ def build_config_draft_from_resolved_toml_sources(
     for source in resolved.sources:
         add_toml_issues(
             draft.validation_logs.toml_source,
-            source.parsed.validation_issues,
+            source.validation_issues,
         )
+        for diagnostic in source.load_diagnostics:
+            draft.validation_logs.toml_source.add(diagnostic)
 
     return draft
 

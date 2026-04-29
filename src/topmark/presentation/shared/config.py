@@ -55,7 +55,10 @@ if TYPE_CHECKING:
     from topmark.config.model import Config
     from topmark.config.resolution.layers import ConfigLayer
     from topmark.diagnostic.model import FrozenDiagnosticLog
+    from topmark.toml.parse import ParsedTopmarkToml
+    from topmark.toml.resolution import ResolvedTopmarkTomlSource
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
+    from topmark.toml.template_surgery import TemplateEditResult
     from topmark.toml.types import TomlTable
 
 
@@ -112,7 +115,7 @@ def build_config_init_human_report(
     changed = False
 
     if root:
-        res = set_root_flag_in_template_text(
+        res: TemplateEditResult = set_root_flag_in_template_text(
             toml_text,
             for_pyproject=False,
             root=True,
@@ -358,6 +361,10 @@ def _build_config_layers_provenance_toml(
 
     Returns:
         The layered provenance document rendered as valid TOML.
+
+    Raises:
+        ValueError: if the config provenance layer is resolved to an invalid TOML source.
+
     """
     layers: list[ConfigLayer] = build_config_layers_from_resolved_toml_sources(
         resolved_toml.sources
@@ -374,13 +381,21 @@ def _build_config_layers_provenance_toml(
             )
         )
 
-    for layer, source in zip(layers[1:], resolved_toml.sources, strict=True):
-        exported_layers.append(
-            _build_layer_export_table(
-                layer=layer,
-                toml_fragment=source.parsed.toml_fragment,
+        parsed_sources: list[ResolvedTopmarkTomlSource] = [
+            source for source in resolved_toml.sources if source.parsed is not None
+        ]
+
+        for layer, source in zip(layers[1:], parsed_sources, strict=True):
+            parsed: ParsedTopmarkToml | None = source.parsed
+            if parsed is None:
+                raise ValueError("config provenance layer resolved to an invalid TOML source")
+
+            exported_layers.append(
+                _build_layer_export_table(
+                    layer=layer,
+                    toml_fragment=parsed.toml_fragment,
+                )
             )
-        )
 
     export_doc: TomlTable = {
         "layers": as_toml_table_list(exported_layers),

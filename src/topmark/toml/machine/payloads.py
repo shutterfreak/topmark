@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from topmark.config.resolution.layers import ConfigLayer
+    from topmark.toml.parse import ParsedTopmarkToml
     from topmark.toml.resolution import ResolvedTopmarkTomlSource
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
     from topmark.toml.types import TomlTable
@@ -73,7 +74,8 @@ def build_toml_provenance_payload(
 
     Raises:
         ValueError: If config provenance layers do not align with the resolved
-            TOML sources.
+            TOML sources, or if config provenance layer resolved to an invalid
+            TOML source.
         TomlRenderError: If an invalid files serialization mode is specified
             while rendering API- or CLI-originated layers back to TopMark TOML.
     """  # noqa: DOC503
@@ -101,9 +103,17 @@ def build_toml_provenance_payload(
             )  # May raise TomlRenderError for invalid file-serialization settings.
         else:
             source: ResolvedTopmarkTomlSource | None = next(remaining_sources, None)
+            while source is not None and source.parsed is None:
+                source = next(remaining_sources, None)
+
             if source is None:
                 raise ValueError("config provenance layers do not align with resolved TOML sources")
-            toml_fragment = _normalize_toml_fragment(source.parsed.toml_fragment)
+
+            parsed: ParsedTopmarkToml | None = source.parsed
+            if parsed is None:
+                raise ValueError("config provenance layer resolved to an invalid TOML source")
+
+            toml_fragment = _normalize_toml_fragment(parsed.toml_fragment)
 
         out_layers.append(
             TomlProvenanceLayerPayload(
