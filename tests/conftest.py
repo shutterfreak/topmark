@@ -58,7 +58,7 @@ DecoratorType = Callable[[AnyCallable], AnyCallable]
 ScopeName = Literal["session", "package", "module", "class", "function"]
 
 
-# --- Typed Wrappers ---
+# --- Typed Markers ---
 
 
 def as_typed_mark(mark: Any) -> DecoratorType:
@@ -77,10 +77,36 @@ def as_typed_mark(mark: Any) -> DecoratorType:
     return _decorator
 
 
-mark_integration: DecoratorType = as_typed_mark(pytest.mark.integration)
-mark_pipeline: DecoratorType = as_typed_mark(pytest.mark.pipeline)
+mark_api: DecoratorType = as_typed_mark(pytest.mark.api)
+"""Marks tests that exercise the API."""
+
 mark_cli: DecoratorType = as_typed_mark(pytest.mark.cli)
+"""Marks tests that exercise the CLI."""
+
+mark_config: DecoratorType = as_typed_mark(pytest.mark.config)
+"""Marks tests for config deserialization, path normalization, strictness,
+and layer merge behavior."""
+
 mark_dev_validation: DecoratorType = as_typed_mark(pytest.mark.dev_validation)
+"""Marks developer validation tests (e.g., registry validation)."""
+
+mark_exit_code: DecoratorType = as_typed_mark(pytest.mark.exit_code)
+"""Marks tests that pin the public CLI exit-code contract."""
+
+mark_hypothesis_slow: DecoratorType = as_typed_mark(pytest.mark.hypothesis_slow)
+"""Marks long-running property tests (skipped in CI)."""
+
+mark_integration: DecoratorType = as_typed_mark(pytest.mark.integration)
+"""Marks environment-dependent integration checks (e.g., shell completion)."""
+
+mark_pipeline: DecoratorType = as_typed_mark(pytest.mark.pipeline)
+"""Marks tests that exercise the TopMark pipeline."""
+
+mark_toml: DecoratorType = as_typed_mark(pytest.mark.toml)
+"""Marks tests for TopMark TOML loading, extraction, schema validation, and
+source resolution."""
+
+# --- Typed Wrappers ---
 
 
 def parametrize(*args: Any, **kwargs: Any) -> DecoratorType:

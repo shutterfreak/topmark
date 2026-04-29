@@ -265,6 +265,7 @@ markers = [
   "cli: tests that exercise the CLI",
   "config: tests for config deserialization, path normalization, strictness, and layer merge behavior",
   "dev_validation: developer validation tests (e.g., registry validation)",
+  "exit_code: tests that validate the CLI exit-code contract",
   "hypothesis_slow: long-running property tests (skipped in CI)",
   "integration: environment-dependent integration checks (e.g., shell completion)",
   "pipeline: tests that exercise the processing pipeline",

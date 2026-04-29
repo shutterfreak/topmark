@@ -125,6 +125,9 @@ def run_cli(
     )
 
 
+# --- Exit-code contract assertion helpers ---
+
+
 def assert_SUCCESS(result: Result) -> None:
     """Assert that the command exited successfully (code 0).
 
@@ -145,7 +148,11 @@ def assert_WOULD_CHANGE(result: Result) -> None:
 
 
 def assert_SUCCESS_or_WOULD_CHANGE(result: Result) -> None:
-    """Assert that the command exited successfully (code 0).
+    """Assert that the command exited with success or dry-run changes.
+
+    This helper is intended for tests where both clean and would-change outcomes
+    are acceptable, for example when a fixture may already be in the desired
+    state.
 
     Args:
         result: The Result object returned by `run_cli` or `run_cli_in`.
@@ -154,7 +161,15 @@ def assert_SUCCESS_or_WOULD_CHANGE(result: Result) -> None:
 
 
 def assert_UNSUPPORTED_FILE_TYPE(result: Result) -> None:
-    """Assert that the command exited with UNSUPPORTED_FILE_TYPE."""
+    """Assert that the command exited with unsupported/unavailable input.
+
+    Historically this maps to `ExitCode.UNSUPPORTED_FILE_TYPE`. For the CLI
+    contract, this is used by commands such as `probe` when an explicitly
+    requested input is unsupported, unresolved, or filtered.
+
+    Args:
+        result: The Result object returned by `run_cli` or `run_cli_in`.
+    """
     assert result.exit_code == ExitCode.UNSUPPORTED_FILE_TYPE, result.output
 
 
@@ -164,5 +179,41 @@ def assert_USAGE_ERROR(result: Result) -> None:
     Args:
         result: The Result object returned by `run_cli` or `run_cli_in`.
     """
-    # Your CLI returns USAGE_ERROR=64; Click’s UsageError type may be present.
+    # TopMark normalizes usage errors to the public USAGE_ERROR contract code.
     assert result.exit_code == ExitCode.USAGE_ERROR, result.output
+
+
+def assert_FAILURE(result: Result) -> None:
+    """Assert that the command exited with validation failure (code 1).
+
+    This is used for commands that complete successfully as commands but report
+    a failing validation result, such as `topmark config check`.
+
+    Args:
+        result: The Result object returned by `run_cli` or `run_cli_in`.
+    """
+    assert result.exit_code == ExitCode.FAILURE, result.output
+
+
+def assert_CONFIG_ERROR(result: Result) -> None:
+    """Assert that the command exited with a configuration error (code 78).
+
+    This represents errors that prevent normal command execution, such as an
+    unreadable, malformed, or otherwise unusable configuration file.
+
+    Args:
+        result: The Result object returned by `run_cli` or `run_cli_in`.
+    """
+    assert result.exit_code == ExitCode.CONFIG_ERROR, result.output
+
+
+def assert_IO_ERROR(result: Result) -> None:
+    """Assert that the command exited with an I/O error (code 74).
+
+    This represents apply/write failures and other filesystem I/O failures that
+    occur after command-line parsing and configuration loading have succeeded.
+
+    Args:
+        result: The Result object returned by `run_cli` or `run_cli_in`.
+    """
+    assert result.exit_code == ExitCode.IO_ERROR, result.output
