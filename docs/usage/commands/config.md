@@ -35,6 +35,20 @@ to the config layer for merging.
   document*.
 - [`topmark config init`](./config/init.md) — print the bundled example TopMark TOML resource.
 
+## Exit codes
+
+Exit-code behavior for `config` subcommands follows a consistent pattern:
+
+- Informational commands (`config dump`, `config defaults`, `config init`) exit with **0** on
+  success.
+- Validation command (`config check`) exits with:
+  - **0** when configuration is valid
+  - **1** when validation completes and reports failing diagnostics
+- CLI usage errors (invalid options, incompatible flags) exit with **64**.
+- Configuration loading/processing failures exit with **78** where applicable.
+
+See [`Exit codes`](../exit-codes.md) for the complete CLI-wide exit-code contract.
+
 Note on output controls:
 
 - `-v` / `--verbose` applies only to TEXT output across all `config` subcommands.

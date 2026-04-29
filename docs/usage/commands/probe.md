@@ -193,13 +193,14 @@ ______________________________________________________________________
 
 ## Global options
 
-Output format, TEXT verbosity, quiet mode, and color output are configured with
-[global options](../global-options.md).
+Output format, TEXT verbosity, quiet mode, color output, and shared exit-code behavior are
+documented in [global options](../global-options.md) and [exit codes](../exit-codes.md).
 
 ### Verbosity & logging
 
 - `-v`, `--verbose` increases TEXT output detail
-- `-q`, `--quiet` suppresses TEXT output (no effect on Markdown or machine formats)
+- `-q`, `--quiet` suppresses TEXT output (no effect on Markdown or machine formats; does not affect
+  exit codes)
 
 Notes:
 
@@ -229,11 +230,11 @@ ______________________________________________________________________
 
 ## Exit codes
 
-| Code | Meaning                                                  |
-| ---- | -------------------------------------------------------- |
-| 0    | All files resolved successfully                          |
-| 69   | One or more paths could not be resolved or were filtered |
-| 70   | Internal probe or pipeline error occurred                |
+`topmark probe` exits with **0** when all inputs are fully resolved. It exits with **69** when any
+input is unresolved, unsupported, or filtered.
+
+See [`Exit codes`](../exit-codes.md) for the complete CLI-wide exit-code contract, including
+configuration errors, usage errors, and unexpected failures.
 
 ______________________________________________________________________
 

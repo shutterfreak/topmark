@@ -51,9 +51,7 @@ git ls-files | topmark check --files-from - --diff
 
 ______________________________________________________________________
 
-## Key properties
-
-- Dry‑run by default; return code **2** when changes *would* occur.
+- Dry‑run by default; exit code **2** when changes *would* occur.
 - Preserves the file’s original **newline style** (LF/CRLF/CR).
 - Preserves a leading **UTF‑8 BOM** if present.
 - Places headers according to file‑type policy (shebang and PEP 263 in Python; XML
@@ -228,10 +226,8 @@ Example (summary mode):
 
 ______________________________________________________________________
 
-## Global options
-
-Output format, TEXT verbosity, quiet mode, and color output are configured with
-[global options](../global-options.md).
+Output format, TEXT verbosity, quiet mode, color output, and shared exit-code behavior are
+documented in [global options](../global-options.md) and [exit codes](../exit-codes.md).
 
 ### Verbosity & logging
 
@@ -277,11 +273,11 @@ ______________________________________________________________________
 
 ## Exit codes
 
-| Code | Meaning                                      |
-| ---- | -------------------------------------------- |
-| 0    | Nothing to change **or** writes succeeded    |
-| 1    | Errors occurred while writing with `--apply` |
-| 2    | Dry‑run detected that changes would occur    |
+`topmark check` uses exit code **2** as a stable dry-run signal when changes would be needed.
+Successful clean runs and successful `--apply` runs exit with **0**.
+
+See [`Exit codes`](../exit-codes.md) for the complete CLI-wide exit-code contract, including
+configuration errors, usage errors, write failures, and unexpected failures.
 
 ______________________________________________________________________
 

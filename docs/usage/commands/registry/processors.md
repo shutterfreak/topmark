@@ -133,6 +133,15 @@ topmark registry processors --output-format ndjson | grep processor | head -n 5
 
 ______________________________________________________________________
 
+## Exit codes
+
+`topmark registry processors` is a purely informational command and exits with **0** on successful
+execution.
+
+CLI usage errors (for example, unsupported options) exit with **64**.
+
+See [`Exit codes`](../../exit-codes.md) for the complete CLI-wide exit-code contract.
+
 ## Notes
 
 - Processors define how headers are parsed, rendered and stripped.

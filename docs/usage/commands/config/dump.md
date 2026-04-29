@@ -242,3 +242,13 @@ ______________________________________________________________________
 - [`topmark config check`](./check.md) — check the *effective merged* configuration for errors.
 - [`topmark config defaults`](./defaults.md) — show the *built-in default TopMark TOML document*.
 - [`topmark config init`](./init.md) — print the bundled example TopMark TOML resource.
+
+## Exit codes
+
+`topmark config dump` is a purely informational command and exits with **0** on successful
+execution.
+
+Configuration errors (for example, failure to construct the effective config) exit with **78**. CLI
+usage errors exit with **64**.
+
+See [`Exit codes`](../../exit-codes.md) for the complete CLI-wide exit-code contract.

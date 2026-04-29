@@ -98,6 +98,7 @@ ______________________________________________________________________
 - `-v`, `--verbose` increases TEXT output detail.
 - Markdown output ignores verbosity and always renders a complete document.
 - JSON/NDJSON output is unaffected by verbosity.
+- `--quiet` is not supported for this command (pure content output; see global options).
 
 See `topmark version -h` for the full list of global CLI options.
 
@@ -170,9 +171,13 @@ Produces one JSON object per line:
 
 ______________________________________________________________________
 
-## Exit status
+## Exit codes
 
-- `0` — version printed successfully.
-- Non-zero exit codes are reserved for unexpected internal errors.
+`topmark version` is a purely informational command and exits with **0** on successful execution.
+
+Version resolution failures (rare, typically only in broken or development environments) exit with
+**100**. CLI usage errors exit with **64**.
+
+See [`Exit codes`](../exit-codes.md) for the complete CLI-wide exit-code contract.
 
 The `version` command performs no file processing and never modifies state.

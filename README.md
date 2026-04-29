@@ -258,6 +258,22 @@ TopMark preserves standard line endings (LF, CRLF, CR), shebangs, BOMs, and inde
 each file type. Non-standard Unicode newline separators (NEL, LS, PS) are treated as ordinary
 content and are not recognized as physical line-ending styles.
 
+### Exit codes (CI / scripting)
+
+TopMark uses a small, stable set of exit codes for automation:
+
+- `0` — success (no changes needed or changes applied)
+- `2` — dry-run indicates changes would be made (`check`, `strip`)
+- `1` — validation failed (`config check`)
+- `64` — CLI usage error
+- `78` — configuration error
+
+Other codes (for example `69`, `70`, `74`) are used for more specific runtime conditions.
+
+For the complete, stable contract, see the documentation page:
+
+- `docs/usage/exit-codes.md`
+
 ______________________________________________________________________
 
 ## 🧠 Configuration & Policy

@@ -136,6 +136,15 @@ topmark registry filetypes --output-format ndjson | head -n 5
 
 ______________________________________________________________________
 
+## Exit codes
+
+`topmark registry filetypes` is a purely informational command and exits with **0** on successful
+execution.
+
+CLI usage errors (for example, unsupported options) exit with **64**.
+
+See [`Exit codes`](../../exit-codes.md) for the complete CLI-wide exit-code contract.
+
 ## Notes
 
 - File types define **how files are matched and classified**.

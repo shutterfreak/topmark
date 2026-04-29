@@ -36,6 +36,7 @@ TopMark supports four output formats:
 See also:
 
 - [`Machine output schema`](../dev/machine-output.md)
+- [`Exit codes`](exit-codes.md)
 
 ______________________________________________________________________
 
@@ -62,6 +63,15 @@ In TEXT output, verbosity affects:
 - Hint grouping
 - Diagnostic detail
 - Summary rendering
+
+## Exit codes
+
+- Exit codes are **not affected** by verbosity or `--quiet`.
+- `--quiet` suppresses output but preserves the CLI status signal.
+
+See also:
+
+- [`Exit codes`](exit-codes.md)
 
 {% include-markdown "\_snippets/output-contract.md" %}
 

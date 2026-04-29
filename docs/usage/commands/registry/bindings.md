@@ -147,6 +147,15 @@ topmark registry bindings --output-format ndjson | head -n 5
 
 ______________________________________________________________________
 
+## Exit codes
+
+`topmark registry bindings` is a purely informational command and exits with **0** on successful
+execution.
+
+CLI usage errors (for example, unsupported options) exit with **64**.
+
+See [`Exit codes`](../../exit-codes.md) for the complete CLI-wide exit-code contract.
+
 ## Notes
 
 - Bindings represent the **effective runtime mapping** used by TopMark.

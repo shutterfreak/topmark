@@ -74,6 +74,15 @@ for any environment‑specific flags that may be available in your build.
 Note: `-v` / `--verbose` applies only to TEXT output. This command does not support `--quiet`.
 Markdown and machine formats ignore verbosity.
 
+## Exit codes
+
+`topmark config defaults` is a purely informational command and exits with **0** on successful
+execution.
+
+CLI usage errors (for example, unsupported options) exit with **64**.
+
+See [`Exit codes`](../../exit-codes.md) for the complete CLI-wide exit-code contract.
+
 ______________________________________________________________________
 
 ## Machine-readable output

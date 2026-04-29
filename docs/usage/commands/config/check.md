@@ -67,7 +67,7 @@ ______________________________________________________________________
 - **File-agnostic**: positional PATHS are ignored (a note is printed). `-` (content-on-STDIN) is
   ignored.
 
-- **CI-friendly**: exit code is non-zero when validation fails.
+- **CI-friendly**: exit code **1** when validation fails.
 
 - **Strict mode**: effective strictness is determined as:
 
@@ -107,10 +107,15 @@ ______________________________________________________________________
 
 ## Exit codes
 
-- **0**: configuration is valid (no failing diagnostics).
-- **non-zero**: configuration validation failed:
-  - errors are present, or
-  - effective strict config checking is enabled and warnings are present.
+`topmark config check` exits with **0** when the configuration is valid. It exits with **1** when
+validation completes and reports failing diagnostics:
+
+- errors are present, or
+- effective strict config checking is enabled and warnings are present.
+
+CLI usage errors (for example, invalid options) exit with **64**.
+
+See [`Exit codes`](../../exit-codes.md) for the complete CLI-wide exit-code contract.
 
 ______________________________________________________________________
 
@@ -124,7 +129,7 @@ ______________________________________________________________________
 - With higher TEXT verbosity, it also prints the list of config files that were processed.
 - With very high TEXT verbosity, it can print the merged config as TOML (wrapped with BEGIN/END
   markers).
-- `--quiet` suppresses TEXT output while preserving the exit status.
+- `--quiet` suppresses TEXT output while preserving the exit status (does not affect exit codes).
 
 ### Markdown output
 

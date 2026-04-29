@@ -95,6 +95,18 @@ topmark:header:end
 
 Core commands: `check`, `strip`, `probe`, `config`, `registry`, `version`.
 
+### Exit codes (overview)
+
+TopMark uses a small, stable set of exit codes suitable for CI and scripting:
+
+- `0` — success (no changes needed or changes applied)
+- `2` — dry-run indicates changes would be made (`check`, `strip`)
+- `1` — validation failed (`config check`)
+
+Additional codes are used for usage errors, configuration errors, and runtime conditions.
+
+See [`Exit codes`](usage/exit-codes.md) for the complete CLI-wide contract.
+
 The `probe` command also reports explicitly requested paths that were filtered out during discovery.
 
 The `config` command has the following subcommands: `check`, `defaults`, `dump`, `init`.

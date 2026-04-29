@@ -111,6 +111,8 @@ Key improvements:
   groups and commands.
 - Expanded focused human-output tests for version, diagnostics, config, registry, and pipeline
   commands.
+- Documented the stable CLI exit-code contract across the canonical usage page, command pages,
+  command-group pages, README, and documentation index.
 
 Result: output is now **fully deterministic, testable, and reusable outside CLI contexts**.
 
@@ -368,6 +370,11 @@ older policy tokens, or older TOML layout/validation assumptions must update.
   - `--add-only` / `--update-only` → replaced by `--header-mutation-mode`
 - Command applicability rules are stricter:
   - `strip` now rejects check-only mutation/insertion policy options at the CLI layer
+- CLI exit-code behavior is now documented as a stable 1.0 contract:
+  - `check` / `strip` use exit code `2` as the dry-run "would change" signal
+  - `config check` uses exit code `1` for completed validation with failing diagnostics
+  - command-specific runtime/config/usage failures are documented separately from validation and
+    dry-run signals
 
 Result: CLI behavior is now more explicit and consistent, but command-line invocation habits, output
 snapshots, and downstream automation may need adjustment.
@@ -624,7 +631,12 @@ Human output remaining work:
 - Focused human-output tests added for version, diagnostics, config, registry, and pipeline command
   groups.
 - Finalize hint-ordering strategy.
-- Continue keeping presentation logic fully out of CLI command functions.
+  - Continue keeping presentation logic fully out of CLI command functions.
+
+CLI exit-code documentation is now complete for the 1.0 freeze: `docs/usage/exit-codes.md` is the
+canonical contract, with README, docs index, global options, command-group pages, and command pages
+linking or summarizing the same behavior. Remaining CLI work is now limited to enforcement/test
+review and error/diagnostic wording consistency, not documentation structure.
 
 ### Tooling / CI / release follow-up
 
@@ -763,7 +775,10 @@ These are release blockers unless explicitly deferred with a documented rational
 
 #### [Must] CLI behavior
 
-- [ ] Exit codes documented and considered stable
+- [x] Exit codes documented and considered stable
+  - [x] canonical contract added in `docs/usage/exit-codes.md`
+  - [x] command and command-group pages aligned with the canonical contract
+  - [x] README and docs index include CI/scripting-oriented summaries
 - [ ] CLI command applicability rules fully documented and enforced
   - [ ] policy-option applicability
   - [ ] stdin/list-vs-content handling

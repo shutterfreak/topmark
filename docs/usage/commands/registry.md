@@ -24,6 +24,15 @@ TopMark exposes a `registry` command group to inspect the three core registry do
 These commands reflect the internal split between identities (file types and processors) and
 relationships (bindings), which together define how TopMark resolves and processes files.
 
+## Exit codes
+
+All `registry` subcommands are purely informational:
+
+- They exit with **0** on successful execution.
+- CLI usage errors (invalid or unsupported options) exit with **64**.
+
+See [`Exit codes`](../exit-codes.md) for the complete CLI-wide exit-code contract.
+
 ## Conceptual model
 
 ```mermaid
