@@ -12,9 +12,8 @@
 
 These tests pin the public CLI contract for resolution outcomes:
 - all inputs resolved → SUCCESS (0)
-- any input unresolved/unsupported/filtered → UNSUPPORTED_FILE_TYPE (69)
-
-Tests intentionally assert exact exit codes.
+- missing explicit inputs → FILE_NOT_FOUND (66)
+- semantic probe failures (unresolved/unsupported/filtered) → UNSUPPORTED_FILE_TYPE (69)
 """
 
 from __future__ import annotations
@@ -25,6 +24,7 @@ import pytest
 from click.testing import CliRunner
 from click.testing import Result
 
+from tests.cli.conftest import assert_FILE_NOT_FOUND
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_UNSUPPORTED_FILE_TYPE
 from topmark.cli.keys import CliCmd
@@ -87,3 +87,40 @@ def test_probe_exit_code_unsupported_for_mixed_files(tmp_path: Path) -> None:
     )
 
     assert_UNSUPPORTED_FILE_TYPE(result)
+
+
+# --- Missing explicit inputs beat semantic probe outcomes ---
+def test_probe_exit_code_file_not_found_for_missing_file(tmp_path: Path) -> None:
+    """Missing explicit inputs should exit FILE_NOT_FOUND."""
+    missing_file: Path = tmp_path / "missing.py"
+    runner = CliRunner()
+    result: Result = runner.invoke(
+        cli,
+        [
+            CliCmd.PROBE,
+            str(missing_file),
+        ],
+    )
+
+    assert_FILE_NOT_FOUND(result)
+
+
+def test_probe_exit_code_file_not_found_for_mixed_missing_and_unsupported(
+    tmp_path: Path,
+) -> None:
+    """Missing inputs should beat unsupported semantic probe outcomes."""
+    missing_file: Path = tmp_path / "missing.py"
+    unsupported_file: Path = tmp_path / "example.unknown"
+    unsupported_file.write_text("data\n", encoding="utf-8")
+
+    runner = CliRunner()
+    result: Result = runner.invoke(
+        cli,
+        [
+            CliCmd.PROBE,
+            str(missing_file),
+            str(unsupported_file),
+        ],
+    )
+
+    assert_FILE_NOT_FOUND(result)

@@ -259,3 +259,40 @@ def test_check_apply_mixed_missing_and_write_failure_exits_file_not_found(
     )
 
     assert_FILE_NOT_FOUND(result)
+
+
+# --- Strip mixed-result priority contract ---
+
+
+def test_strip_missing_file_exits_file_not_found(tmp_path: Path) -> None:
+    """`strip` should exit FILE_NOT_FOUND for explicit missing inputs."""
+    missing_path: Path = tmp_path / "missing.py"
+
+    result: Result = run_cli(
+        [
+            CliCmd.STRIP,
+            str(missing_path),
+        ]
+    )
+
+    assert_FILE_NOT_FOUND(result)
+
+
+def test_strip_apply_mixed_missing_and_write_failure_exits_file_not_found(
+    unwritable_dir_with_header_file: Path,
+    tmp_path: Path,
+) -> None:
+    """Missing inputs should beat apply/write IO_ERROR in mixed strip runs."""
+    missing_path: Path = tmp_path / "missing.py"
+
+    result: Result = run_cli_in(
+        tmp_path,
+        [
+            CliCmd.STRIP,
+            CliOpt.APPLY_CHANGES,
+            str(unwritable_dir_with_header_file),
+            str(missing_path),
+        ],
+    )
+
+    assert_FILE_NOT_FOUND(result)
