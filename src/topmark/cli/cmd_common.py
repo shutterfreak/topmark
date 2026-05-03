@@ -134,16 +134,16 @@ def init_common_state(
     state.verbosity = normalize_verbosity(state.verbosity)
 
 
-def build_file_list(
+def build_file_resolution(
     *,
     run_options: RunOptions,
     config: Config,
     temp_path: Path | None,
-) -> list[Path]:
-    """Return the files to process, respecting content-on-STDIN mode.
+) -> FileListResolution:
+    """Return file-list resolution diagnostics for the current invocation.
 
-    - In content-on-STDIN mode, return the single temp path created for the
-      staged input content.
+    - In content-on-STDIN mode, return a synthetic resolution containing the
+      single temp path created for staged input content.
     - Otherwise, delegate to the unified resolver that uses `config.files`,
       `files_from`, include/exclude patterns, and file types.
 
@@ -153,7 +153,8 @@ def build_file_list(
         temp_path: Temporary file path created for content-on-STDIN mode, if any.
 
     Returns:
-        The ordered list of files to process for the CLI invocation.
+        A [FileListResolution][topmark.resolution.files.FileListResolution]
+        containing selected files and any discovery diagnostics.
 
     Raises:
         RuntimeError: If `temp_path` is undefined in `stdin_mode`.
@@ -161,9 +162,13 @@ def build_file_list(
     if run_options.stdin_mode:
         if temp_path is None:
             raise RuntimeError("temp_path should not be undefined in stdin_mode")
-        return [temp_path]
+        return FileListResolution(
+            selected=(temp_path,),
+            missing_literals=(),
+            unmatched_patterns=(),
+        )
     resolution: FileListResolution = resolve_file_list_with_diagnostics(config)
-    return list(resolution.selected)
+    return resolution
 
 
 # ---- Runtime option assembly ----

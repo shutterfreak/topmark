@@ -208,17 +208,25 @@ def map_bucket(ctx: ProcessingContext, *, apply: bool) -> ResultBucket:
         return ResultBucket(outcome=outcome, reason=reason)
 
     # 1) Hard skips/errors (resolve/fs/content fatal states)
+
+    # Filesystem failures can be discovered before file-type resolution, for example
+    # synthetic contexts for explicit missing inputs. Classify these before resolve
+    # status so they do not fall through as "resolve pending" skips.
+    if ctx.status.fs in {
+        FsStatus.NOT_FOUND,
+        FsStatus.NO_READ_PERMISSION,
+        FsStatus.UNREADABLE,
+    }:
+        return ret(
+            debug_tag="error:fs-read",
+            outcome=Outcome.ERROR,
+            reason=ctx.status.fs.value,
+        )
     if ctx.status.resolve != ResolveStatus.RESOLVED:
         return ret(
             debug_tag="skip:resolve",
             outcome=Outcome.SKIPPED,
             reason=ctx.status.resolve.value,
-        )
-    if ctx.status.fs in {FsStatus.NOT_FOUND, FsStatus.NO_READ_PERMISSION, FsStatus.UNREADABLE}:
-        return ret(
-            debug_tag="error:fs-read",
-            outcome=Outcome.ERROR,
-            reason=ctx.status.fs.value,
         )
     if apply and ctx.status.fs == FsStatus.NO_WRITE_PERMISSION:
         return ret(

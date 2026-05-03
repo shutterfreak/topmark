@@ -54,6 +54,7 @@ from topmark.presentation.shared.outcomes import collect_outcome_counts_styled
 from topmark.presentation.shared.outcomes import get_outcome_style_role
 from topmark.presentation.shared.pipeline import PipelineCommandHumanReport
 from topmark.presentation.shared.pipeline import get_display_path
+from topmark.presentation.shared.pipeline import get_file_type_label
 from topmark.presentation.text.diagnostic import render_diagnostics_text
 
 if TYPE_CHECKING:
@@ -347,14 +348,12 @@ def _render_file_summary_line_text(
     # Style helpers already respect the selected color policy.
     muted_styler: TextStyler = style_for_role(StyleRole.MUTED, styled=styled)
 
-    # File type (dim), or <unknown> if resolution failed
-    parts.append(
-        muted_styler(
-            ctx.file_type.local_key if ctx.file_type is not None else "<unknown>",
-        )
-    )
-
-    parts.append("-")
+    # Shared helper keeps missing-file and unresolved-type labels consistent
+    # across TEXT and Markdown renderers.
+    ft_label: str | None = get_file_type_label(ctx)
+    if ft_label is not None:
+        parts.append(muted_styler(ft_label))
+        parts.append("-")
 
     # Resolve the public bucket for this context and style the summary from its
     # semantic outcome role.

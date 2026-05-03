@@ -48,7 +48,7 @@ from typing import TYPE_CHECKING
 import click
 
 from topmark.api.runtime import ensure_config_valid
-from topmark.cli.cmd_common import build_file_list
+from topmark.cli.cmd_common import build_file_resolution
 from topmark.cli.cmd_common import build_resolved_toml_sources_and_config_for_plan
 from topmark.cli.cmd_common import build_run_options
 from topmark.cli.cmd_common import exit_if_no_files
@@ -84,6 +84,7 @@ from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.engine import exit_code_from_pipeline_results
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.pipelines import Pipeline
+from topmark.pipeline.synthetic import build_missing_file_contexts
 from topmark.presentation.markdown.diagnostic import render_diagnostics_markdown
 from topmark.presentation.markdown.probe import render_probe_output_markdown
 from topmark.presentation.markdown.version import render_version_footer_markdown
@@ -111,6 +112,7 @@ if TYPE_CHECKING:
     from topmark.core.machine.schemas import MetaPayload
     from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.pipeline.protocols import Step
+    from topmark.resolution.files import FileListResolution
     from topmark.runtime.model import RunOptions
 
 
@@ -416,11 +418,12 @@ def probe_command(
 
     temp_path: Path | None = plan.temp_path  # for cleanup/STDIN-apply branch
 
-    file_list: list[Path] = build_file_list(
+    file_resolution: FileListResolution = build_file_resolution(
         run_options=run_options,
         config=config,
         temp_path=temp_path,
     )
+    file_list: list[Path] = list(file_resolution.selected)
 
     # Explain only explicit inputs that disappear during discovery/filtering.
     # Recursive traversal may exclude many files; reporting all of them would be
@@ -434,6 +437,7 @@ def probe_command(
 
     if (
         not file_list
+        and not file_resolution.missing_literals
         and not filtered_selection_results
         and exit_if_no_files(file_list, console=console, styled=enable_color)
     ):
@@ -454,10 +458,18 @@ def probe_command(
         file_list=file_list,
     )
 
-    # Hard filesystem/content/write errors from actual pipeline execution must
-    # beat probe-specific semantic statuses such as unsupported or filtered.
-    # Compute this before adding synthetic filtered contexts so explicit
-    # discovery-filtered inputs continue to map to UNSUPPORTED_FILE_TYPE (69).
+    # Add resolver-level hard failures before deriving the process exit code.
+    # Missing explicit inputs should beat probe-specific semantic statuses such
+    # as unsupported or filtered.
+    missing_results: list[ProcessingContext] = build_missing_file_contexts(
+        paths=file_resolution.missing_literals,
+        config=config,
+        run_options=run_options,
+    )
+    results.extend(missing_results)
+
+    # Compute hard-error precedence before adding synthetic filtered contexts;
+    # filtered explicit inputs remain probe-semantic outcomes and map to 69.
     pipeline_error_code: ExitCode | None = exit_code_from_pipeline_results(results)
     encountered_error_code = encountered_error_code or pipeline_error_code
 

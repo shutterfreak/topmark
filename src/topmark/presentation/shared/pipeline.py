@@ -30,6 +30,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from topmark.pipeline.status import FsStatus
+
 if TYPE_CHECKING:
     from topmark.api.types import PipelineKindLiteral
     from topmark.pipeline.context.model import ProcessingContext
@@ -72,7 +74,8 @@ class PipelineCommandHumanReport:
         styled: Whether TEXT renderers should apply styling; Markdown renderers ignore it.
         cmd: Command name, such as `check` or `strip`.
         pipeline_kind: Pipeline kind used to select command-specific guidance.
-        file_list_total: Total number of candidate files before view filtering.
+        file_list_total: Total number of user-requested results before view filtering,
+            including selected pipeline files and synthetic resolver-level outcomes.
         view_results: Processing contexts selected for the current human-output view.
         report_scope: Active report scope for the current view.
         unsupported_count: Number of unsupported files omitted from actionable listings.
@@ -116,3 +119,35 @@ def get_display_path(
     if r.run_options.stdin_mode and bool(r.run_options.stdin_filename):
         return r.run_options.stdin_filename
     return str(r.path)
+
+
+def get_file_type_label(ctx: ProcessingContext) -> str | None:
+    """Return the human-facing file-type label for a pipeline result.
+
+    Resolved files use their local file-type key. Unresolved files usually render
+    as ``<unknown>`` so users can see that type resolution did not complete.
+    Synthetic missing-file contexts are the exception: they are created by file
+    resolution before type resolution can run, so they omit the file-type segment
+    entirely.
+
+    This keeps missing-file output concise:
+
+    ```text
+    fubar: error: not_found
+    ```
+
+    while still preserving useful context if a file was resolved before a later
+    filesystem failure.
+
+    Args:
+        ctx: Processing context to inspect.
+
+    Returns:
+        File-type label for human output, or `None` when the file-type segment
+        should be omitted.
+    """
+    if ctx.file_type is not None:
+        return ctx.file_type.local_key
+    if ctx.status.fs == FsStatus.NOT_FOUND:
+        return None
+    return "<unknown>"

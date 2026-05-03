@@ -243,13 +243,6 @@ def test_check_apply_mixed_unreadable_and_write_failure_exits_permission_denied(
     assert_PERMISSION_DENIED(result)
 
 
-@pytest.mark.xfail(
-    reason=(
-        "CLI input/config resolution still drops explicit missing path arguments "
-        "before they reach FileListResolution / pipeline exit-code prioritization"
-    ),
-    strict=True,
-)
 def test_check_apply_mixed_missing_and_write_failure_exits_file_not_found(
     unwritable_dir_with_file_and_missing_peer: tuple[Path, Path],
 ) -> None:

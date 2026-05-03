@@ -46,6 +46,7 @@ from topmark.presentation.markdown.utils import render_markdown_table
 from topmark.presentation.markdown.utils import render_path_display_markdown
 from topmark.presentation.shared.pipeline import PipelineCommandHumanReport
 from topmark.presentation.shared.pipeline import get_display_path
+from topmark.presentation.shared.pipeline import get_file_type_label
 from topmark.rendering.unified_diff import format_patch_plain
 
 if TYPE_CHECKING:
@@ -250,8 +251,9 @@ def _render_file_summary_line_markdown(
     Returns:
         One-line Markdown summary for the file.
     """
-    # File type, or <unknown> if resolution failed
-    ft: str = ctx.file_type.local_key if ctx.file_type is not None else "<unknown>"
+    # Shared helper keeps missing-file and unresolved-type labels consistent
+    # across TEXT and Markdown renderers.
+    ft_label: str | None = get_file_type_label(ctx)
 
     # Resolve the public bucket for this context.
     apply_changes: bool = ctx.run_options.apply_changes is True
@@ -274,7 +276,10 @@ def _render_file_summary_line_markdown(
             parts.append(triage_summary)
 
     suffix: str = (" — " + " - ".join(parts)) if parts else ""
-    return f"`{get_display_path(ctx)}` ({ft}) — `{key}`: {label}{suffix}"
+
+    if ft_label is not None:
+        return f"`{get_display_path(ctx)}` ({ft_label}) — `{key}`: {label}{suffix}"
+    return f"`{get_display_path(ctx)}` — `{key}`: {label}{suffix}"
 
 
 def _render_per_file_guidance_markdown(

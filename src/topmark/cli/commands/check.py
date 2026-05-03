@@ -54,7 +54,7 @@ import click
 
 from topmark.api.runtime import ensure_config_valid
 from topmark.api.runtime import select_pipeline
-from topmark.cli.cmd_common import build_file_list
+from topmark.cli.cmd_common import build_file_resolution
 from topmark.cli.cmd_common import build_resolved_toml_sources_and_config_for_plan
 from topmark.cli.cmd_common import build_run_options
 from topmark.cli.cmd_common import exit_if_no_files
@@ -95,6 +95,7 @@ from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
 from topmark.core.logging import get_logger
 from topmark.core.machine.payloads import build_meta_payload
+from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.context.policy import effective_would_add_or_update
 from topmark.pipeline.engine import exit_code_from_pipeline_results
 from topmark.pipeline.engine import run_steps_for_files
@@ -102,6 +103,7 @@ from topmark.pipeline.reporting import ReportFilterResult
 from topmark.pipeline.reporting import ReportScope
 from topmark.pipeline.reporting import filter_results_for_report
 from topmark.pipeline.status import WriteStatus
+from topmark.pipeline.synthetic import build_missing_file_contexts
 from topmark.presentation.markdown.diagnostic import render_diagnostics_markdown
 from topmark.presentation.markdown.pipeline import render_pipeline_apply_summary_markdown
 from topmark.presentation.markdown.pipeline import render_pipeline_output_markdown
@@ -127,6 +129,7 @@ if TYPE_CHECKING:
     from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.protocols import Step
+    from topmark.resolution.files import FileListResolution
     from topmark.runtime.model import RunOptions
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -421,13 +424,20 @@ def check_command(
 
     temp_path: Path | None = plan.temp_path  # for cleanup/STDIN-apply branch
 
-    file_list: list[Path] = build_file_list(
+    file_resolution: FileListResolution = build_file_resolution(
         run_options=run_options,
         config=config,
         temp_path=temp_path,
     )
+    file_list: list[Path] = list(file_resolution.selected)
 
-    if exit_if_no_files(file_list, console=console, styled=enable_color):
+    # Missing explicit literals are represented later as synthetic contexts.
+    # They do not count as selected files for pipeline execution.
+    if not file_resolution.missing_literals and exit_if_no_files(
+        file_list,
+        console=console,
+        styled=enable_color,
+    ):
         # Nothing to do
         return
 
@@ -449,6 +459,15 @@ def check_command(
         pipeline=pipeline,
         file_list=file_list,
     )
+
+    # Add resolver-level hard failures before deriving the process exit code so
+    # explicit missing inputs participate in reports and priority selection.
+    missing_results: list[ProcessingContext] = build_missing_file_contexts(
+        paths=file_resolution.missing_literals,
+        config=config,
+        run_options=run_options,
+    )
+    results.extend(missing_results)
 
     pipeline_error_code: ExitCode | None = exit_code_from_pipeline_results(results)
     encountered_error_code = encountered_error_code or pipeline_error_code
@@ -480,7 +499,7 @@ def check_command(
         report = PipelineCommandHumanReport(
             cmd=CliCmd.CHECK,
             pipeline_kind=pipeline_kind,
-            file_list_total=len(file_list),
+            file_list_total=len(results),
             view_results=human_results,
             report_scope=report_scope,
             unsupported_count=filtered.unsupported_count_all,
