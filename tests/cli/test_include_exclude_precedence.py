@@ -8,11 +8,13 @@
 #
 # topmark:header:end
 
-"""Include vs exclude precedence for file discovery (Black-style semantics).
+"""CLI include/exclude precedence behavior tests.
 
-Covers:
-- File matched by both include and exclude → **exclude wins**.
-- Comments and blank lines in pattern files are ignored.
+This module verifies file-discovery precedence for include/exclude pattern files:
+- files matched by both include and exclude patterns are excluded,
+- comments and blank lines in pattern files are ignored.
+
+These are discovery/filter behavior tests rather than pure exit-code contract tests.
 """
 
 from __future__ import annotations
@@ -32,27 +34,33 @@ if TYPE_CHECKING:
     from click.testing import Result
 
 
-def test_exclude_wins_over_include(tmp_path: Path) -> None:
-    """When a file is matched by both include and exclude, exclude removes it."""
-    target: Path = tmp_path / "keep.py"
-    other: Path = tmp_path / "skip.py"
-    target.write_text("print('ok')\n", "utf-8")
-    other.write_text("print('skip')\n", "utf-8")
+# --- Include/exclude precedence ---
 
-    incf: Path = tmp_path / "inc.txt"
-    excf: Path = tmp_path / "exc.txt"
+
+def test_exclude_patterns_take_precedence_over_include_patterns(
+    tmp_path: Path,
+) -> None:
+    """Files matched by both include and exclude patterns should be excluded."""
+    included_target: Path = tmp_path / "keep.py"
+    excluded_target: Path = tmp_path / "skip.py"
+
+    included_target.write_text("# header\n")
+    excluded_target.write_text("# header\n")
+
+    include_patterns: Path = tmp_path / "inc.txt"
+    exclude_patterns: Path = tmp_path / "exc.txt"
     # Both files included; exclude removes `skip.py`.
-    incf.write_text("*.py\n# comment\n\n", "utf-8")
-    excf.write_text("# exclude explicit below\nskip.py\n", "utf-8")
+    include_patterns.write_text("*.py\n# comment\n\n", "utf-8")
+    exclude_patterns.write_text("# exclude explicit below\nskip.py\n", "utf-8")
 
     result: Result = run_cli_in(
         tmp_path,
         [
             CliCmd.CHECK,
             CliOpt.INCLUDE_FROM,
-            str(incf.name),
+            str(include_patterns.name),
             CliOpt.EXCLUDE_FROM,
-            str(excf.name),
+            str(exclude_patterns.name),
             CliOpt.APPLY_CHANGES,
             ".",
         ],
@@ -60,8 +68,8 @@ def test_exclude_wins_over_include(tmp_path: Path) -> None:
 
     assert_SUCCESS(result)
 
-    # `keep.py` should have a header
-    assert TOPMARK_START_MARKER in target.read_text("utf-8")
+    # `keep.py` remains selected and should receive a header.
+    assert TOPMARK_START_MARKER in included_target.read_text("utf-8")
 
-    # `skip.py` should remain header-less
-    assert TOPMARK_START_MARKER not in other.read_text("utf-8")
+    # `skip.py` is excluded and should remain header-less.
+    assert TOPMARK_START_MARKER not in excluded_target.read_text("utf-8")

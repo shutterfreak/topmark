@@ -93,10 +93,8 @@ def test_invalid_topmark_toml_exits_config_error_in_non_strict_mode(
 
 def test_invalid_topmark_toml_exits_config_error_in_strict_mode(
     tmp_path: Path,
-    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Malformed discovered config should exit CONFIG_ERROR under `--strict`."""
-    caplog.set_level("INFO")
     (tmp_path / "topmark.toml").write_text("this = [[[[ not_toml", "utf-8")
     file_name = "x.py"
     f: Path = tmp_path / file_name

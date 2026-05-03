@@ -10,8 +10,10 @@
 
 """CLI smoke tests for TopMark.
 
-Provides minimal coverage that the CLI entry point is callable and that
-`--help` and `version` commands succeed.
+These tests provide minimal coverage that the CLI entry point is callable and
+that basic informational commands succeed:
+- `--help` renders usage information,
+- `version` prints the project version.
 """
 
 from __future__ import annotations
@@ -28,17 +30,23 @@ if TYPE_CHECKING:
     from click.testing import Result
 
 
-def test_cli_entry() -> None:
-    """It should show usage information and exit code SUCCESS when `--help` is passed."""
+# --- Help command ---
+
+
+def test_cli_help_outputs_usage_and_exits_success() -> None:
+    """`--help` should render usage information and exit SUCCESS."""
     result: Result = run_cli([CliOpt.HELP])
 
     assert_SUCCESS(result)
 
-    assert "Usage" in result.output
+    assert "usage" in result.output.lower()
 
 
-def test_version() -> None:
-    """It should show version information containing 'topmark' and exit code SUCCESS."""
+# --- Version command ---
+
+
+def test_cli_version_outputs_project_version() -> None:
+    """`version` should print the project version and exit SUCCESS."""
     result: Result = run_cli([CliCmd.VERSION])
 
     assert_SUCCESS(result)

@@ -8,11 +8,16 @@
 #
 # topmark:header:end
 
-"""CLI tests for `--file-type` and report scoping (`--report`).
+"""CLI tests for file-type filters and report scoping.
 
-Covers:
-- `--file-type` filters: default and `strip` should only act on the selected type(s).
-- `--report`: actionable/problematics scoping hides compliant and/or unsupported entries.
+This module covers:
+- `--file-type` filters for `check` and `strip`,
+- `--report` scoping for per-file output,
+- summary behavior when per-file entries are filtered.
+
+These are behavior/reporting tests rather than pure exit-code contract tests.
+Exit-code assertions are used only to verify that the command completed with
+the expected high-level status.
 
 Labels asserted in this module follow the public summary buckets documented in
 `topmark.cli.utils.classify_outcome()`. Tests should match label **substrings**
@@ -41,14 +46,17 @@ if TYPE_CHECKING:
     from click.testing import Result
 
 
-def test_file_type_filter_limits_check_processing(tmp_path: Path) -> None:
-    """`--file-type` limits `check` processing to the selected types."""
+# --- File-type filters ---
+
+
+def test_file_type_filter_limits_check_to_selected_types(tmp_path: Path) -> None:
+    """`check --file-type` should process only matching file types."""
     py: Path = tmp_path / "a.py"
     ts: Path = tmp_path / "a.ts"
     py.write_text("print('x')\n", "utf-8")
     ts.write_text("console.log(1);\n", "utf-8")
 
-    # Only act on python files
+    # Only Python files should be selected for header insertion.
     result: Result = run_cli(
         [
             CliCmd.CHECK,
@@ -61,7 +69,7 @@ def test_file_type_filter_limits_check_processing(tmp_path: Path) -> None:
 
     assert_SUCCESS(result)
 
-    # Python file should now have a header; TS file should remain unchanged.
+    # Python file should now have a header; TypeScript file should remain unchanged.
     out_py: str = py.read_text("utf-8")
     assert TOPMARK_START_MARKER in out_py
 
@@ -69,8 +77,8 @@ def test_file_type_filter_limits_check_processing(tmp_path: Path) -> None:
     assert TOPMARK_START_MARKER not in out_ts
 
 
-def test_file_type_filter_limits_strip_processing(tmp_path: Path) -> None:
-    """`--file-type` limits `strip` processing to the selected types."""
+def test_file_type_filter_limits_strip_to_selected_types(tmp_path: Path) -> None:
+    """`strip --file-type` should process only matching file types."""
     py: Path = tmp_path / "b.py"
     ts: Path = tmp_path / "b.ts"
     py.write_text(
@@ -81,7 +89,7 @@ def test_file_type_filter_limits_strip_processing(tmp_path: Path) -> None:
         "utf-8",
     )
 
-    # Strip only for python → TS header remains
+    # Strip only Python files; the TypeScript header should remain.
     result: Result = run_cli(
         [
             CliCmd.STRIP,
@@ -99,12 +107,14 @@ def test_file_type_filter_limits_strip_processing(tmp_path: Path) -> None:
     assert TOPMARK_START_MARKER in ts.read_text("utf-8")
 
 
-def test_report_actionable_per_file_hides_not_needed_but_summary_counts_it(tmp_path: Path) -> None:
-    """`--report actionable` filters per-file output, but summary still counts compliant files.
+# --- Report scope: actionable vs summary output ---
 
-    In actionable mode, TopMark suppresses per-file entries that have no actionable work.
-    However, `--summary` is an overview of *all* outcomes, so it still includes the
-    compliant/not-needed bucket count.
+
+def test_report_all_summary_counts_ready_and_not_needed_strip_outcomes(tmp_path: Path) -> None:
+    """`strip --summary --report all` should count both ready and not-needed outcomes.
+
+    Summary output reports the distribution of all selected outcomes, including files
+    that need stripping and files where stripping is not needed.
     """
     f1: Path = tmp_path / "has.py"
     f2: Path = tmp_path / "clean.py"
@@ -113,7 +123,7 @@ def test_report_actionable_per_file_hides_not_needed_but_summary_counts_it(tmp_p
     )
     f2.write_text("print()\n", "utf-8")
 
-    # In summary mode, ensure the compliant bucket isn't shown when actionable reporting is set.
+    # In summary mode with report=all, both actionable and non-actionable buckets are counted.
     result: Result = run_cli(
         [
             CliCmd.STRIP,
@@ -127,24 +137,23 @@ def test_report_actionable_per_file_hides_not_needed_but_summary_counts_it(tmp_p
     assert_SUCCESS_or_WOULD_CHANGE(result)
 
     out: str = result.output.lower()
-    # NOTE: Labels come from map_bucket/summary labels
+    # Labels come from summary bucket values.
     assert StripStatus.READY.value in out
-    # The compliant ("not needed") bucket should still be present in summary
+    # The non-actionable "not needed" bucket should still be present in summary.
     assert StripStatus.NOT_NEEDED.value in out
 
 
-def test_report_actionable_per_file_hides_unsupported_but_summary_counts_it(tmp_path: Path) -> None:
-    """`--report actionable` filters per-file output, but summary still counts unsupported files.
+def test_report_actionable_hides_unsupported_per_file_but_summary_counts_it(tmp_path: Path) -> None:
+    """`--report actionable` should hide unsupported per-file entries but count summaries.
 
-    In actionable mode, TopMark suppresses per-file entries that are unsupported.
-    However, `--summary` remains a full distribution of outcomes and still includes an
-    unsupported bucket count.
+    In actionable mode, unsupported per-file entries are suppressed. Summary mode still
+    reports the full outcome distribution, including unsupported inputs.
     """
     # Create a clearly unsupported file (extension not registered).
     unk: Path = tmp_path / "data.unknown"
     unk.write_text("payload\n", "utf-8")
 
-    # Normal mode
+    # Per-file actionable output should suppress unsupported entries.
     result_normal: Result = run_cli(
         [
             CliCmd.CHECK,
@@ -154,11 +163,11 @@ def test_report_actionable_per_file_hides_unsupported_but_summary_counts_it(tmp_
         ],
     )
 
-    # nothing to do, and unknown is skipped from output
+    # Nothing to do, and the unsupported file is hidden from per-file output.
     assert_SUCCESS(result_normal)
     assert ResolveStatus.UNSUPPORTED.value not in result_normal.output.lower()
 
-    # Summary mode: the "unsupported" bucket should still be present in summary.
+    # Summary mode should still count the unsupported bucket.
     result_summary: Result = run_cli(
         [
             CliCmd.CHECK,

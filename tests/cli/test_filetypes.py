@@ -8,10 +8,14 @@
 #
 # topmark:header:end
 
-"""CLI test: `filetypes` command output.
+"""CLI registry filetypes command tests.
 
-Ensures that invoking `topmark registry filetypes` exits successfully and produces
-non-empty output, typically including the phrase "Supported file types".
+This module verifies that the `topmark registry filetypes` command:
+- executes successfully,
+- produces non-empty output,
+- exposes supported file-type information.
+
+This is a behavior/output test rather than a strict exit-code contract test.
 """
 
 from __future__ import annotations
@@ -20,20 +24,26 @@ from typing import TYPE_CHECKING
 
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
+from topmark.cli.keys import CliCmd
 
 if TYPE_CHECKING:
     from click.testing import Result
 
 
-def test_filetypes_lists_known_types() -> None:
-    """It should list supported file types and exit with code 0."""
+# --- Registry filetypes listing ---
+
+
+def test_registry_filetypes_lists_supported_types() -> None:
+    """`registry filetypes` should list supported file types and exit successfully."""
     result: Result = run_cli(
         [
-            "registry",
-            "filetypes",
+            CliCmd.REGISTRY,
+            CliCmd.REGISTRY_FILETYPES,
         ]
     )
 
     assert_SUCCESS(result)
 
-    assert "Supported file types" in result.output or result.output.strip() != ""
+    # Default TEXT output is compact and does not include the verbose heading.
+    assert result.output.strip() != ""
+    assert "topmark:" in result.output

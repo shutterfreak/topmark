@@ -8,10 +8,13 @@
 #
 # topmark:header:end
 
-"""CLI test: logging verbosity and quietness flags.
+"""CLI logging/output-control flag tests.
 
-Ensures that combinations of `-v`/`-vvv` and `-q`/`-qq` parse correctly
-and that invoking `topmark version` with them exits successfully.
+This module verifies parsing and applicability of TEXT output-control flags:
+- supported verbosity and quiet levels are accepted by commands that support them,
+- verbosity and quiet flags are mutually exclusive.
+
+These are CLI applicability tests rather than output rendering tests.
 """
 
 from __future__ import annotations
@@ -29,9 +32,12 @@ if TYPE_CHECKING:
     from click.testing import Result
 
 
+# --- Supported verbosity / quiet levels ---
+
+
 @parametrize("verbosity", ["-v", "-vv", "-vvv", "-q", "-qq", "-qqq"])
-def test_verbose_and_quiet_flags_parse(verbosity: str) -> None:
-    """It should accept verbosity and quietness flags for commands that support them."""
+def test_config_check_accepts_supported_verbose_and_quiet_levels(verbosity: str) -> None:
+    """`config check` should accept supported TEXT verbosity and quiet levels."""
     result: Result = run_cli(
         [
             CliCmd.CONFIG,
@@ -44,14 +50,16 @@ def test_verbose_and_quiet_flags_parse(verbosity: str) -> None:
     assert_SUCCESS(result)
 
 
-def test_verbose_and_quiet_flags_mutex_parse() -> None:
-    """It should fail when verbosity and quietness flags are combined."""
-    for args in (
+# --- Mutually exclusive output controls ---
+
+
+def test_config_check_rejects_combined_verbose_and_quiet_flags() -> None:
+    """`config check` should reject combined verbose and quiet flags."""
+    conflicting_invocations: tuple[list[str], ...] = (
         [CliCmd.CONFIG, CliCmd.CONFIG_CHECK, CliOpt.NO_CONFIG, "-v", "-q"],
         [CliCmd.CONFIG, CliCmd.CONFIG_CHECK, CliOpt.NO_CONFIG, "-q", "-v"],
-    ):
+    )
+    for args in conflicting_invocations:
         result: Result = run_cli(args)
-
-        assert "--verbose and --quiet are mutually exclusive" in result.output
-
         assert_USAGE_ERROR(result)
+        assert "--verbose and --quiet are mutually exclusive" in result.output

@@ -8,11 +8,21 @@
 #
 # topmark:header:end
 
-"""CLI tests for human-facing pipeline command output."""
+"""CLI pipeline command human-output behavior tests.
+
+This module verifies output-control behavior for the processing commands
+(`check` and `strip`):
+- TEXT quiet mode suppresses output while preserving exit status,
+- Markdown output ignores TEXT-only quiet/verbosity controls,
+- TEXT verbosity still controls progressive disclosure,
+- `--apply --quiet` mutates files without emitting TEXT output.
+
+These are output/rendering and applicability tests rather than pure exit-code
+contract tests.
+"""
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -32,16 +42,18 @@ if TYPE_CHECKING:
     from click.testing import Result
 
 
-pytestmark = pytest.mark.cli
+pytestmark: pytest.MarkDecorator = pytest.mark.cli
 
 
 def _write_file_requiring_check_update(tmp_path: Path) -> Path:
+    """Create a Python file that requires header insertion by `check`."""
     path: Path = tmp_path / "needs_header.py"
     path.write_text("print('needs header')\n", encoding="utf-8")
     return path
 
 
 def _write_file_requiring_strip(tmp_path: Path) -> Path:
+    """Create a Python file with a removable TopMark header."""
     path: Path = tmp_path / "has_header.py"
     path.write_text(
         f"# {TOPMARK_START_MARKER}\n"
@@ -53,17 +65,25 @@ def _write_file_requiring_strip(tmp_path: Path) -> Path:
     return path
 
 
-@parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
-def test_pipeline_text_quiet_suppresses_output_but_preserves_exit_status(
-    tmp_path: Path,
-    cmd: str,
-) -> None:
-    """Pipeline TEXT quiet mode should suppress output but keep meaningful exit status."""
-    path: Path = (
+def _write_file_requiring_pipeline_change(tmp_path: Path, cmd: str) -> Path:
+    """Create an input file that requires a change for the selected command."""
+    return (
         _write_file_requiring_check_update(tmp_path)
         if cmd == CliCmd.CHECK
         else _write_file_requiring_strip(tmp_path)
     )
+
+
+# --- TEXT quiet mode ---
+
+
+@parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
+def test_pipeline_text_quiet_suppresses_output_but_preserves_would_change_status(
+    tmp_path: Path,
+    cmd: str,
+) -> None:
+    """TEXT quiet mode should suppress output while preserving WOULD_CHANGE."""
+    path: Path = _write_file_requiring_pipeline_change(tmp_path, cmd)
 
     result: Result = run_cli(
         [
@@ -78,22 +98,20 @@ def test_pipeline_text_quiet_suppresses_output_but_preserves_exit_status(
     assert result.output == ""
 
 
+# --- Markdown output: quiet / verbosity controls ---
+
+
 @parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
-def test_pipeline_markdown_ignores_quiet(
+def test_pipeline_markdown_output_ignores_text_quiet(
     tmp_path: Path,
     cmd: str,
 ) -> None:
-    """Pipeline Markdown output should ignore TEXT-only quiet mode."""
-    path: Path = (
-        _write_file_requiring_check_update(tmp_path)
-        if cmd == CliCmd.CHECK
-        else _write_file_requiring_strip(tmp_path)
-    )
+    """Markdown pipeline output should ignore TEXT-only quiet mode."""
+    path: Path = _write_file_requiring_pipeline_change(tmp_path, cmd)
 
     result: Result = run_cli(
         [
             cmd,
-            CliOpt.NO_COLOR_MODE,
             CliOpt.QUIET,
             CliOpt.OUTPUT_FORMAT,
             "markdown",
@@ -106,16 +124,12 @@ def test_pipeline_markdown_ignores_quiet(
 
 
 @parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
-def test_pipeline_markdown_ignores_verbose(
+def test_pipeline_markdown_output_ignores_text_verbosity(
     tmp_path: Path,
     cmd: str,
 ) -> None:
-    """Pipeline Markdown output should ignore TEXT-only verbosity."""
-    base_path: Path = (
-        _write_file_requiring_check_update(tmp_path)
-        if cmd == CliCmd.CHECK
-        else _write_file_requiring_strip(tmp_path)
-    )
+    """Markdown pipeline output should ignore TEXT-only verbosity."""
+    base_path: Path = _write_file_requiring_pipeline_change(tmp_path, cmd)
 
     base: Result = run_cli(
         [
@@ -143,16 +157,12 @@ def test_pipeline_markdown_ignores_verbose(
 
 
 @parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
-def test_pipeline_markdown_always_renders_banner(
+def test_pipeline_markdown_output_always_renders_document_banner(
     tmp_path: Path,
     cmd: str,
 ) -> None:
-    """Markdown output should always include a document banner."""
-    path: Path = (
-        _write_file_requiring_check_update(tmp_path)
-        if cmd == CliCmd.CHECK
-        else _write_file_requiring_strip(tmp_path)
-    )
+    """Markdown pipeline output should always include a document banner."""
+    path: Path = _write_file_requiring_pipeline_change(tmp_path, cmd)
 
     result: Result = run_cli(
         [
@@ -168,8 +178,8 @@ def test_pipeline_markdown_always_renders_banner(
     assert "# TopMark" in result.output
 
 
-def test_pipeline_markdown_shows_hints_without_verbose(tmp_path: Path) -> None:
-    """Markdown should render available diagnostic hints without requiring -v."""
+def test_check_markdown_output_shows_hints_without_text_verbosity(tmp_path: Path) -> None:
+    """Markdown check output should render diagnostic hints without `-v`."""
     path: Path = _write_file_requiring_check_update(tmp_path)
 
     result: Result = run_cli(
@@ -187,17 +197,16 @@ def test_pipeline_markdown_shows_hints_without_verbose(tmp_path: Path) -> None:
     assert "header:missing" in result.output
 
 
+# --- TEXT verbosity ---
+
+
 @parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
 def test_pipeline_text_verbose_changes_console_output_shape(
     tmp_path: Path,
     cmd: str,
 ) -> None:
-    """Pipeline TEXT verbosity should still control progressive disclosure."""
-    path: Path = (
-        _write_file_requiring_check_update(tmp_path)
-        if cmd == CliCmd.CHECK
-        else _write_file_requiring_strip(tmp_path)
-    )
+    """TEXT pipeline verbosity should control progressive disclosure."""
+    path: Path = _write_file_requiring_pipeline_change(tmp_path, cmd)
 
     base: Result = run_cli(
         [
@@ -220,33 +229,11 @@ def test_pipeline_text_verbose_changes_console_output_shape(
     assert verbose.output != base.output
 
 
-@parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
-def test_pipeline_quiet_does_not_suppress_markdown_output(
-    tmp_path: Path,
-    cmd: str,
-) -> None:
-    """--quiet must not suppress Markdown output."""
-    path: Path = (
-        _write_file_requiring_check_update(tmp_path)
-        if cmd == CliCmd.CHECK
-        else _write_file_requiring_strip(tmp_path)
-    )
-
-    result: Result = run_cli(
-        [
-            cmd,
-            CliOpt.QUIET,
-            CliOpt.OUTPUT_FORMAT,
-            "markdown",
-            str(path),
-        ]
-    )
-
-    assert result.output.strip() != ""
+# --- Apply with quiet mode ---
 
 
 def test_check_apply_quiet_writes_changes_without_text_output(tmp_path: Path) -> None:
-    """`check --apply --quiet` should write changes while suppressing TEXT output."""
+    """`check --apply --quiet` should mutate files without TEXT output."""
     path: Path = _write_file_requiring_check_update(tmp_path)
     before: str = path.read_text(encoding="utf-8")
 
@@ -266,7 +253,7 @@ def test_check_apply_quiet_writes_changes_without_text_output(tmp_path: Path) ->
 
 
 def test_strip_apply_quiet_writes_changes_without_text_output(tmp_path: Path) -> None:
-    """`strip --apply --quiet` should write changes while suppressing TEXT output."""
+    """`strip --apply --quiet` should mutate files without TEXT output."""
     path: Path = _write_file_requiring_strip(tmp_path)
 
     result: Result = run_cli(

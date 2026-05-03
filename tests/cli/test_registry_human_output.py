@@ -8,7 +8,17 @@
 #
 # topmark:header:end
 
-"""CLI tests for human-facing registry command output."""
+"""CLI registry command human-output behavior tests.
+
+This module verifies output-control behavior for the `topmark registry` command
+family:
+- compact and detailed TEXT output,
+- Markdown output stability when TEXT-only verbosity is used,
+- rejection of unsupported `--quiet` usage,
+- deterministic rendering of filetypes, processors, and bindings.
+
+These are output/applicability tests rather than pure exit-code contract tests.
+"""
 
 from __future__ import annotations
 
@@ -50,12 +60,12 @@ class UnusedHumanRegistryProcessor(HeaderProcessor):
     description: ClassVar[str] = "Processor left intentionally unused."
 
 
-pytestmark = pytest.mark.cli
+pytestmark: pytest.MarkDecorator = pytest.mark.cli
 
 
 @pytest.fixture
 def registry_snapshot() -> Iterator[None]:
-    """Patch a tiny deterministic effective registry for human-output tests."""
+    """Patch a small deterministic registry for output rendering tests."""
     bound_filetype: FileType = make_file_type(
         local_key="bound_ft",
         namespace="pytest",
@@ -96,10 +106,13 @@ def registry_snapshot() -> Iterator[None]:
         yield
 
 
+# --- TEXT output: filetypes ---
+
+
 def test_registry_filetypes_text_output_is_compact_by_default(
     registry_snapshot: None,
 ) -> None:
-    """TEXT filetypes output should render a compact default view."""
+    """Default TEXT filetypes output should render a compact view."""
     result: Result = run_cli(
         [
             CliCmd.REGISTRY,
@@ -114,10 +127,10 @@ def test_registry_filetypes_text_output_is_compact_by_default(
     assert "Extensions:" not in result.output
 
 
-def test_registry_filetypes_text_verbose_shows_heading(
+def test_registry_filetypes_text_verbose_shows_console_heading(
     registry_snapshot: None,
 ) -> None:
-    """TEXT verbosity should add console-oriented headings."""
+    """Verbose TEXT filetypes output should add a console-oriented heading."""
     result: Result = run_cli(
         [
             CliCmd.REGISTRY,
@@ -132,37 +145,10 @@ def test_registry_filetypes_text_verbose_shows_heading(
     assert "pytest:bound_ft" in result.output
 
 
-@parametrize(
-    "cmd",
-    [
-        CliCmd.REGISTRY_FILETYPES,
-        CliCmd.REGISTRY_PROCESSORS,
-        CliCmd.REGISTRY_BINDINGS,
-    ],
-)
-def test_registry_commands_do_not_accept_quiet(
-    cmd: str,
-    registry_snapshot: None,
-) -> None:
-    """Registry subcommands are informational and should not accept `--quiet`."""
-    result: Result = run_cli(
-        [
-            CliCmd.REGISTRY,
-            cmd,
-            CliOpt.NO_COLOR_MODE,
-            CliOpt.QUIET,
-        ]
-    )
-
-    assert result.exit_code != 0
-    assert "No such option" in result.output
-    assert CliOpt.QUIET in result.output
-
-
 def test_registry_filetypes_text_long_shows_details(
     registry_snapshot: None,
 ) -> None:
-    """`--long` should add registry detail to TEXT output."""
+    """`registry filetypes --long` should add filetype details to TEXT output."""
     result: Result = run_cli(
         [
             CliCmd.REGISTRY,
@@ -177,10 +163,43 @@ def test_registry_filetypes_text_long_shows_details(
     assert ".bound" in result.output
 
 
+# --- Unsupported quiet mode ---
+
+
+@parametrize(
+    "cmd",
+    [
+        CliCmd.REGISTRY_FILETYPES,
+        CliCmd.REGISTRY_PROCESSORS,
+        CliCmd.REGISTRY_BINDINGS,
+    ],
+)
+def test_registry_commands_reject_quiet_option_for_text_output(
+    cmd: str,
+    registry_snapshot: None,
+) -> None:
+    """Registry subcommands should reject TEXT `--quiet` suppression."""
+    result: Result = run_cli(
+        [
+            CliCmd.REGISTRY,
+            cmd,
+            CliOpt.NO_COLOR_MODE,
+            CliOpt.QUIET,
+        ]
+    )
+
+    assert result.exit_code != 0
+    assert "No such option" in result.output
+    assert CliOpt.QUIET in result.output
+
+
+# --- Markdown output: filetypes ---
+
+
 def test_registry_filetypes_markdown_ignores_verbose(
     registry_snapshot: None,
 ) -> None:
-    """Markdown registry output should ignore TEXT-only verbosity."""
+    """Markdown filetypes output should ignore TEXT-only verbosity."""
     base: Result = run_cli(
         [
             CliCmd.REGISTRY,
@@ -206,10 +225,10 @@ def test_registry_filetypes_markdown_ignores_verbose(
     assert verbose.output == base.output
 
 
-def test_registry_filetypes_markdown_does_not_accept_quiet(
+def test_registry_filetypes_markdown_rejects_quiet_option(
     registry_snapshot: None,
 ) -> None:
-    """Registry Markdown output should not expose `--quiet`."""
+    """Markdown filetypes output should reject unsupported `--quiet`."""
     result: Result = run_cli(
         [
             CliCmd.REGISTRY,
@@ -229,7 +248,7 @@ def test_registry_filetypes_markdown_does_not_accept_quiet(
 def test_registry_filetypes_markdown_long_shows_details(
     registry_snapshot: None,
 ) -> None:
-    """`--long` should control Markdown filetype detail depth."""
+    """`registry filetypes --long --output-format markdown` should show details."""
     result: Result = run_cli(
         [
             CliCmd.REGISTRY,
@@ -248,10 +267,13 @@ def test_registry_filetypes_markdown_long_shows_details(
     assert ".bound" in result.output
 
 
+# --- Markdown output: processors and bindings ---
+
+
 def test_registry_processors_markdown_ignores_verbose(
     registry_snapshot: None,
 ) -> None:
-    """Markdown processor output should ignore TEXT-only verbosity."""
+    """Markdown processors output should ignore TEXT-only verbosity."""
     base: Result = run_cli(
         [
             CliCmd.REGISTRY,
@@ -280,7 +302,7 @@ def test_registry_processors_markdown_ignores_verbose(
 def test_registry_bindings_markdown_ignores_verbose(
     registry_snapshot: None,
 ) -> None:
-    """Markdown binding output should ignore TEXT-only verbosity."""
+    """Markdown bindings output should ignore TEXT-only verbosity."""
     base: Result = run_cli(
         [
             CliCmd.REGISTRY,
@@ -306,10 +328,10 @@ def test_registry_bindings_markdown_ignores_verbose(
     assert verbose.output == base.output
 
 
-def test_registry_bindings_markdown_long_shows_details(
+def test_registry_bindings_markdown_long_shows_binding_details(
     registry_snapshot: None,
 ) -> None:
-    """`--long` should control Markdown registry detail depth."""
+    """`registry bindings --long --output-format markdown` should show details."""
     result: Result = run_cli(
         [
             CliCmd.REGISTRY,

@@ -8,7 +8,15 @@
 #
 # topmark:header:end
 
-"""Test reading file list from stdin with unified CLI semantics and dry-run behavior."""
+"""List/pattern-list STDIN CLI behavior tests.
+
+This module covers valid STDIN list modes:
+- `--files-from -` for newline-delimited file paths,
+- `--include-from -` for include patterns,
+- `--exclude-from -` for exclude patterns.
+
+Invalid STDIN mode combinations are covered in `tests/cli/test_stdin_errors.py`.
+"""
 
 from __future__ import annotations
 
@@ -30,71 +38,103 @@ if TYPE_CHECKING:
     from click.testing import Result
 
 
+# --- File-list STDIN mode ---
+
+
 @pytest.mark.parametrize(
-    "command,expect",
+    "command,expected_exit",
     [
         (CliCmd.CHECK, "WOULD_CHANGE"),
         (CliCmd.STRIP, "SUCCESS"),
     ],
 )
-def test_files_from_stdin_list_basic(tmp_path: Path, command: str, expect: str) -> None:
-    """--files-from - reads newline-delimited paths from STDIN."""
+def test_files_from_stdin_reads_newline_delimited_paths(
+    tmp_path: Path,
+    command: str,
+    expected_exit: str,
+) -> None:
+    """`--files-from -` should read newline-delimited paths from STDIN."""
     f: Path = tmp_path / "t.py"
     f.write_text("print('y')\n", "utf-8")
     result: Result = run_cli_in(
         tmp_path,
-        [command, CliOpt.FILES_FROM, "-"],
+        [
+            command,
+            CliOpt.FILES_FROM,
+            "-",
+        ],
         input_text=f.name + "\n",
     )
-    if expect == "WOULD_CHANGE":
+    if expected_exit == "WOULD_CHANGE":
         assert_WOULD_CHANGE(result)
     else:
         assert_SUCCESS(result)
 
 
-def test_include_from_stdin_filters_candidates(tmp_path: Path) -> None:
-    """--include-from - adds include globs from STDIN (intersection)."""
+# --- Pattern-list STDIN mode: include filters ---
+def test_include_from_stdin_narrows_candidate_paths(tmp_path: Path) -> None:
+    """`--include-from -` should narrow candidates using patterns from STDIN."""
     a: Path = tmp_path / "a.py"
     a.write_text("print()\n", "utf-8")
     b: Path = tmp_path / "b.txt"
     b.write_text("x\n", "utf-8")
-    # Provide a superset as PATHS; include-from - narrows to *.py
+    # Provide a superset as paths; include-from narrows the candidates to *.py.
     result: Result = run_cli_in(
         tmp_path,
-        [CliCmd.CHECK, CliOpt.INCLUDE_FROM, "-", "a.py", "b.txt"],
+        [
+            CliCmd.CHECK,
+            CliOpt.INCLUDE_FROM,
+            "-",
+            "a.py",
+            "b.txt",
+        ],
         input_text="*.py\n",
     )
-    # Only a.py is considered → WOULD_CHANGE (header would be added)
+    # Only a.py is considered, and it needs a header.
     assert_WOULD_CHANGE(result)
 
 
-def test_exclude_from_stdin_filters_candidates(tmp_path: Path) -> None:
-    """--exclude-from - adds exclude globs from STDIN (subtraction)."""
+# --- Pattern-list STDIN mode: exclude filters ---
+def test_exclude_from_stdin_removes_candidate_paths(tmp_path: Path) -> None:
+    """`--exclude-from -` should remove candidates using patterns from STDIN."""
     a: Path = tmp_path / "a.py"
     a.write_text("print()\n", "utf-8")
     b: Path = tmp_path / "b.py"
     b.write_text("print()\n", "utf-8")
-    # Exclude b.py from the candidate set; only a.py remains → WOULD_CHANGE
+    # Exclude b.py from the candidate set; only a.py remains and needs a header.
     result: Result = run_cli_in(
         tmp_path,
-        [CliCmd.CHECK, CliOpt.EXCLUDE_FROM, "-", "a.py", "b.py"],
+        [
+            CliCmd.CHECK,
+            CliOpt.EXCLUDE_FROM,
+            "-",
+            "a.py",
+            "b.py",
+        ],
         input_text="b.py\n",
     )
     assert_WOULD_CHANGE(result)
 
 
+# --- Empty STDIN list/pattern input ---
 @pytest.mark.parametrize("opt", [CliOpt.FILES_FROM, CliOpt.INCLUDE_FROM, CliOpt.EXCLUDE_FROM])
-def test_from_stdin_empty_is_noop(tmp_path: Path, opt: str) -> None:
-    """Empty STDIN with …-from - yields empty additions and should not crash."""
-    # No paths → no effect. The CLI should treat as nothing added/filtered.
-    # With no positional inputs either, your CLI currently prints guidance and exits usage.
-    # Here we give a benign PATH so the command runs.
+def test_empty_stdin_for_from_options_keeps_explicit_path_candidates(
+    tmp_path: Path, opt: str
+) -> None:
+    """Empty `*-from -` input should not remove explicit path candidates."""
+    # Empty STDIN contributes no additional paths or patterns.
+    # The explicit path remains selected, so the command should still run.
     f: Path = tmp_path / "x.py"
     f.write_text("print()\n", "utf-8")
     result: Result = run_cli_in(
         tmp_path,
-        [CliCmd.CHECK, opt, "-", f.name],
+        [
+            CliCmd.CHECK,
+            opt,
+            "-",
+            f.name,
+        ],
         input_text="",
     )
-    # With only x.py left, we expect WOULD_CHANGE
+    # x.py remains selected and needs a header.
     assert_WOULD_CHANGE(result)

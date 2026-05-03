@@ -8,22 +8,29 @@
 #
 # topmark:header:end
 
-"""Mutual exclusion between content-on-STDIN ('-') and explicit paths.
+"""STDIN-related CLI usage-error contract tests.
 
-This module ensures the CLI rejects invocations that combine `'-'` (read a
-single file's *content* from STDIN) with explicit file or directory arguments.
-Both the default (check/apply) command and the `strip` subcommand must exit
-with `ExitCode.USAGE_ERROR (64)` and emit a helpful error message.
+This module covers invalid combinations of TopMark's STDIN modes:
+- content-on-STDIN mode (`-` as the input path),
+- list-on-STDIN mode (`--files-from -`),
+- pattern-list-on-STDIN mode (`--include-from -` / `--exclude-from -`).
+
+These tests pin the documented usage-error contract: invalid STDIN mode
+combinations exit with `USAGE_ERROR` (64) and emit actionable diagnostics.
 """
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
 from click.testing import Result
 
 from tests.cli.conftest import assert_USAGE_ERROR
+from tests.cli.conftest import run_cli
 from tests.cli.conftest import run_cli_in
+from tests.conftest import parametrize
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 
@@ -33,11 +40,31 @@ if TYPE_CHECKING:
     from click.testing import Result
 
 
-def test_default_rejects_stdin_with_file(tmp_path: Path) -> None:
-    """Default command: error if '-' (STDIN) is combined with a file path."""
+# All tests in this module pin documented CLI usage-error behavior.
+pytestmark: pytest.MarkDecorator = pytest.mark.exit_code
+
+
+# --- Content-on-STDIN mode: missing stdin filename ---
+@parametrize("command", [CliCmd.CHECK, CliCmd.STRIP])
+def test_content_stdin_without_filename_exits_usage_error(command: str) -> None:
+    """Content-on-STDIN mode without a stdin filename should exit usage error."""
+    result: Result = run_cli(
+        [
+            command,
+            "-",
+        ],
+        input_text="",
+    )
+
+    assert_USAGE_ERROR(result)
+
+
+# --- Content-on-STDIN mode: mixed with explicit paths ---
+def test_check_rejects_content_stdin_with_file(tmp_path: Path) -> None:
+    """`check` should reject content-on-STDIN mode mixed with a file path."""
     (tmp_path / "x.py").write_text("print('x')\n", "utf-8")
 
-    # Content-on-STDIN ("-") mixed with an explicit path must error
+    # Content-on-STDIN (`-`) is mutually exclusive with explicit paths.
     result: Result = run_cli_in(
         tmp_path,
         [CliCmd.CHECK, "-", "x.py"],
@@ -45,12 +72,12 @@ def test_default_rejects_stdin_with_file(tmp_path: Path) -> None:
     )
 
     assert_USAGE_ERROR(result)
-    # Message should mention '-' / STDIN and path mixing
+    # Diagnostic should point users toward the STDIN/path conflict.
     assert "-" in result.output or "STDIN" in result.output
 
 
-def test_strip_rejects_stdin_with_file(tmp_path: Path) -> None:
-    """Strip subcommand: error if '-' (STDIN) is combined with a file path."""
+def test_strip_rejects_content_stdin_with_file(tmp_path: Path) -> None:
+    """`strip` should reject content-on-STDIN mode mixed with a file path."""
     (tmp_path / "h.py").write_text("# topmark:header:start\n# h\n# topmark:header:end\n", "utf-8")
 
     result: Result = run_cli_in(
@@ -63,8 +90,8 @@ def test_strip_rejects_stdin_with_file(tmp_path: Path) -> None:
     assert "-" in result.output or "STDIN" in result.output
 
 
-def test_default_rejects_stdin_with_directory(tmp_path: Path) -> None:
-    """Default command: error if '-' (STDIN) is combined with a directory path."""
+def test_check_rejects_content_stdin_with_directory(tmp_path: Path) -> None:
+    """`check` should reject content-on-STDIN mode mixed with a directory path."""
     (tmp_path / "pkg").mkdir()
     (tmp_path / "pkg" / "y.py").write_text("print('y')\n", "utf-8")
 
@@ -78,8 +105,8 @@ def test_default_rejects_stdin_with_directory(tmp_path: Path) -> None:
     assert "-" in result.output or "STDIN" in result.output
 
 
-def test_strip_rejects_stdin_with_directory(tmp_path: Path) -> None:
-    """Strip subcommand: error if '-' (STDIN) is combined with a directory path."""
+def test_strip_rejects_content_stdin_with_directory(tmp_path: Path) -> None:
+    """`strip` should reject content-on-STDIN mode mixed with a directory path."""
     (tmp_path / "docs").mkdir()
     (tmp_path / "docs" / "index.md").write_text("<!-- topmark:header:start -->\n", "utf-8")
     result: Result = run_cli_in(
@@ -91,10 +118,11 @@ def test_strip_rejects_stdin_with_directory(tmp_path: Path) -> None:
     assert "-" in result.output or "STDIN" in result.output
 
 
-def test_only_one_from_option_may_consume_stdin(tmp_path: Path) -> None:
-    """Using more than one of --files-from -, --include-from -, --exclude-from - must error."""
+# --- List/pattern-list STDIN modes: single consumer rule ---
+def test_only_one_list_mode_option_may_consume_stdin(tmp_path: Path) -> None:
+    """Only one list/pattern-list option may consume STDIN in a single invocation."""
     (tmp_path / "a.py").write_text("print()\n", "utf-8")
-    # Both include-from and files-from try to read '-' → usage error
+    # Both include-from and files-from try to consume `-` as STDIN.
     result: Result = run_cli_in(
         tmp_path,
         [CliCmd.CHECK, CliOpt.INCLUDE_FROM, "-", CliOpt.FILES_FROM, "-", "a.py"],

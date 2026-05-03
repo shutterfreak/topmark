@@ -8,11 +8,10 @@
 #
 # topmark:header:end
 
-"""CLI test: exit codes for the `check` command.
+"""Exit-code contract tests for `topmark check`.
 
-Verifies that invoking `topmark check` with a file missing a header exits
-with either 0 (SUCCESS) or 2 (WOULD_CHANGE). The behavior may be tightened
-later as the CLI spec is finalized.
+These tests pin the public CLI contract for dry-run changes, successful apply
+runs, and clean follow-up checks. They intentionally assert exact exit codes.
 """
 
 from __future__ import annotations
@@ -20,9 +19,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
+from click.testing import Result
+
+from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_WOULD_CHANGE
-from tests.cli.conftest import run_cli_in
+from tests.cli.conftest import run_cli
 from topmark.cli.keys import CliCmd
+from topmark.cli.keys import CliOpt
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -30,13 +34,50 @@ if TYPE_CHECKING:
     from click.testing import Result
 
 
-def test_check_exit_code_with_missing_header(tmp_path: Path) -> None:
-    """It should exit with code `WOULD_CHANGE` (2)."""
-    file_name = "foo.py"
-    f: Path = tmp_path / file_name
-    f.write_text("print('hi')\n")
+# All tests in this module pin documented CLI exit-code behavior.
+pytestmark: pytest.MarkDecorator = pytest.mark.exit_code
 
-    result: Result = run_cli_in(tmp_path, [CliCmd.CHECK, file_name])
 
-    # When a header is missing, the default command should report WOULD_CHANGE (2).
+# --- Dry-run contract ---
+def test_check_exits_would_change_when_changes_needed(tmp_path: Path) -> None:
+    """`check` should exit WOULD_CHANGE (2) when headers would be added or modified."""
+    f: Path = tmp_path / "x.py"
+    f.write_text("print('z')\n", "utf-8")
+
+    result: Result = run_cli(
+        [
+            CliCmd.CHECK,
+            str(f),
+        ],
+    )
+
+    # Dry-run differences are reported with the stable WOULD_CHANGE signal.
     assert_WOULD_CHANGE(result)
+
+
+# --- Apply and clean-check contract ---
+def test_check_apply_exits_success_and_follow_up_check_is_clean(tmp_path: Path) -> None:
+    """`check --apply` should exit 0 and make a follow-up dry-run clean."""
+    f: Path = tmp_path / "x.py"
+    f.write_text("print('z')\n", "utf-8")
+
+    # Applying the planned header insertion should succeed.
+    result_apply: Result = run_cli(
+        [
+            CliCmd.CHECK,
+            CliOpt.APPLY_CHANGES,
+            str(f),
+        ],
+    )
+
+    assert_SUCCESS(result_apply)
+
+    # A follow-up dry-run should now be clean and exit SUCCESS.
+    result_check: Result = run_cli(
+        [
+            CliCmd.CHECK,
+            str(f),
+        ],
+    )
+
+    assert_SUCCESS(result_check)

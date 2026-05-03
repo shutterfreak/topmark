@@ -8,15 +8,13 @@
 #
 # topmark:header:end
 
-"""CLI tests for `topmark config dump` output validity.
+"""CLI config-dump output validity tests.
 
-Ensures that running `topmark config dump`:
+This module verifies that `topmark config dump` emits parseable TOML in human
+output when verbose TOML block markers are requested. It also validates the
+shape of layered provenance output produced by `--show-layers`.
 
-- Exits successfully (exit code 0).
-- Prints markers `TOML_BLOCK_START` and `TOML_BLOCK_END` in human output.
-- Produces valid TOML snippets between markers.
-- Optionally emits a layered TOML provenance export before the final flattened
-  config when `--show-layers` is used.
+These are output/provenance tests rather than pure exit-code contract tests.
 """
 
 from __future__ import annotations
@@ -43,7 +41,7 @@ if TYPE_CHECKING:
 
 
 def _extract_toml_blocks(output: str) -> list[str]:
-    """Return TOML blocks found between BEGIN/END markers in CLI output."""
+    """Return TOML snippets found between verbose TOML block markers."""
     blocks: list[str] = []
     start_idx: int = 0
 
@@ -62,8 +60,21 @@ def _extract_toml_blocks(output: str) -> list[str]:
     return blocks
 
 
-def test_dump_config_outputs_valid_toml() -> None:
-    """It should emit one valid flattened TOML block by default."""
+def _parse_toml_block(block: str) -> tomlkit.TOMLDocument:
+    """Parse a TOML block or fail the test with a useful message."""
+    try:
+        return tomlkit.loads(block)
+    except TypeError as exc:
+        pytest.fail(f"TypeError during TOML parsing: {exc}")
+    except TomlkitParseError as exc:
+        pytest.fail(f"TomlDecodeError: {exc}")
+
+
+# --- Flattened config output ---
+
+
+def test_config_dump_outputs_valid_flattened_toml_block() -> None:
+    """`config dump -v --no-color` should emit one flattened TOML block."""
     result: Result = run_cli(
         [
             CliCmd.CONFIG,
@@ -78,25 +89,20 @@ def test_dump_config_outputs_valid_toml() -> None:
     assert TOML_BLOCK_START in result.output
     assert TOML_BLOCK_END in result.output
 
-    # Extract the TOML slice
+    # Verbose human output should contain exactly one parseable config block.
     blocks: list[str] = _extract_toml_blocks(result.output)
     assert len(blocks) == 1
 
-    try:
-        parsed: tomlkit.TOMLDocument = tomlkit.loads(blocks[0])
-        assert "fields" in parsed
-        assert "header" in parsed
-    except TypeError as e:
-        # If an exception is caught, use pytest.fail() to fail the test explicitly.
-        # You can include the exception details in the message for better debugging.
-        pytest.fail(f"TypeError during TOML parsing: {e}")
-    except TomlkitParseError as e:
-        # Fail the test if the TOML decoding fails.
-        pytest.fail(f"TomlDecodeError: {e}")
+    parsed: tomlkit.TOMLDocument = _parse_toml_block(blocks[0])
+    assert "fields" in parsed
+    assert "header" in parsed
 
 
-def test_dump_config_show_layers_outputs_two_valid_toml_blocks() -> None:
-    """It should emit layered provenance TOML followed by flattened TOML."""
+# --- Layered provenance output ---
+
+
+def test_config_dump_show_layers_outputs_provenance_and_flattened_toml_blocks() -> None:
+    """`config dump --show-layers` should emit provenance then flattened TOML."""
     result: Result = run_cli(
         [
             CliCmd.CONFIG,
@@ -112,41 +118,33 @@ def test_dump_config_show_layers_outputs_two_valid_toml_blocks() -> None:
     blocks: list[str] = _extract_toml_blocks(result.output)
     assert len(blocks) == 2
 
-    try:
-        provenance_doc: tomlkit.TOMLDocument = tomlkit.loads(blocks[0])
-        flattened_doc: tomlkit.TOMLDocument = tomlkit.loads(blocks[1])
+    provenance_doc: tomlkit.TOMLDocument = _parse_toml_block(blocks[0])
+    flattened_doc: tomlkit.TOMLDocument = _parse_toml_block(blocks[1])
 
-        assert "layers" in provenance_doc
-        raw_layers: Item | Container = provenance_doc["layers"]
-        assert isinstance(raw_layers, list)
-        assert len(raw_layers) >= 1
+    assert "layers" in provenance_doc
+    raw_layers: Item | Container = provenance_doc["layers"]
+    assert isinstance(raw_layers, list)
+    assert len(raw_layers) >= 1
 
-        layers: list[Any] = list(raw_layers)
+    layers: list[Any] = list(raw_layers)
 
-        first_layer = layers[0]
-        assert is_toml_table(first_layer)
+    first_layer = layers[0]
+    assert is_toml_table(first_layer)
 
-        assert "origin" in first_layer
-        assert "kind" in first_layer
-        assert "precedence" in first_layer
-        assert "toml" in first_layer
-        assert isinstance(first_layer["toml"], dict)
-        assert "config" not in first_layer
-        assert "source_options" not in first_layer
+    assert "origin" in first_layer
+    assert "kind" in first_layer
+    assert "precedence" in first_layer
+    assert "toml" in first_layer
+    assert isinstance(first_layer["toml"], dict)
+    assert "config" not in first_layer
+    assert "source_options" not in first_layer
 
-        assert "fields" in flattened_doc
-        assert "header" in flattened_doc
-    except TypeError as e:
-        # If an exception is caught, use pytest.fail() to fail the test explicitly.
-        # You can include the exception details in the message for better debugging.
-        pytest.fail(f"TypeError during TOML parsing: {e}")
-    except TomlkitParseError as e:
-        # Fail the test if the TOML decoding fails.
-        pytest.fail(f"TomlDecodeError: {e}")
+    assert "fields" in flattened_doc
+    assert "header" in flattened_doc
 
 
-def test_dump_config_show_layers_defaults_layer_has_expected_shape() -> None:
-    """It should export the built-in defaults layer first in provenance output."""
+def test_config_dump_show_layers_defaults_layer_has_expected_shape() -> None:
+    """Layered provenance should export the built-in defaults layer first."""
     result: Result = run_cli(
         [
             CliCmd.CONFIG,
@@ -162,35 +160,30 @@ def test_dump_config_show_layers_defaults_layer_has_expected_shape() -> None:
     blocks: list[str] = _extract_toml_blocks(result.output)
     assert len(blocks) == 2
 
-    try:
-        provenance_doc: tomlkit.TOMLDocument = tomlkit.loads(blocks[0])
+    provenance_doc: tomlkit.TOMLDocument = _parse_toml_block(blocks[0])
 
-        assert "layers" in provenance_doc
-        raw_layers: Item | Container = provenance_doc["layers"]
-        assert isinstance(raw_layers, list)
-        assert len(raw_layers) >= 1
+    assert "layers" in provenance_doc
+    raw_layers: Item | Container = provenance_doc["layers"]
+    assert isinstance(raw_layers, list)
+    assert len(raw_layers) >= 1
 
-        layers: list[Any] = list(raw_layers)
+    layers: list[Any] = list(raw_layers)
 
-        first_layer = layers[0]
-        assert is_toml_table(first_layer)
+    first_layer = layers[0]
+    assert is_toml_table(first_layer)
 
-        assert first_layer["origin"] == "<defaults>"
-        assert first_layer["kind"] == "default"
-        assert first_layer["precedence"] == 0
+    assert first_layer["origin"] == "<defaults>"
+    assert first_layer["kind"] == "default"
+    assert first_layer["precedence"] == 0
 
-        toml_fragment = first_layer["toml"]
-        assert is_toml_table(toml_fragment)
-        assert "config" in toml_fragment
-        assert "writer" in toml_fragment
-    except TypeError as e:
-        pytest.fail(f"TypeError during TOML parsing: {e}")
-    except TomlkitParseError as e:
-        pytest.fail(f"TomlDecodeError: {e}")
+    toml_fragment = first_layer["toml"]
+    assert is_toml_table(toml_fragment)
+    assert "config" in toml_fragment
+    assert "writer" in toml_fragment
 
 
-def test_dump_config_show_layers_includes_non_default_toml_fragment() -> None:
-    """It should expose at least one non-default source-local TOML fragment when present."""
+def test_config_dump_show_layers_includes_non_default_toml_fragment_when_available() -> None:
+    """Layered provenance should include non-default TOML fragments when available."""
     result: Result = run_cli(
         [
             CliCmd.CONFIG,
@@ -206,25 +199,18 @@ def test_dump_config_show_layers_includes_non_default_toml_fragment() -> None:
     blocks: list[str] = _extract_toml_blocks(result.output)
     assert len(blocks) == 2
 
-    try:
-        provenance_doc: tomlkit.TOMLDocument = tomlkit.loads(blocks[0])
+    provenance_doc: tomlkit.TOMLDocument = _parse_toml_block(blocks[0])
 
-        assert "layers" in provenance_doc
-        raw_layers: Item | Container = provenance_doc["layers"]
-        assert isinstance(raw_layers, list)
-        assert len(raw_layers) >= 1
+    assert "layers" in provenance_doc
+    raw_layers: Item | Container = provenance_doc["layers"]
+    assert isinstance(raw_layers, list)
+    assert len(raw_layers) >= 1
 
-        layers: list[Any] = list(raw_layers)
-        assert all(is_toml_table(x) for x in layers)
+    layers: list[Any] = list(raw_layers)
+    assert all(is_toml_table(x) for x in layers)
 
-        non_default_layers: list[Any] = [
-            layer for layer in layers if layer.get("kind") != "default"
-        ]
-        if non_default_layers:
-            first_non_default = non_default_layers[0]
-            assert "toml" in first_non_default
-            assert is_toml_table(first_non_default["toml"])
-    except TypeError as e:
-        pytest.fail(f"TypeError during TOML parsing: {e}")
-    except TomlkitParseError as e:
-        pytest.fail(f"TomlDecodeError: {e}")
+    non_default_layers: list[Any] = [layer for layer in layers if layer.get("kind") != "default"]
+    if non_default_layers:
+        first_non_default = non_default_layers[0]
+        assert "toml" in first_non_default
+        assert is_toml_table(first_non_default["toml"])

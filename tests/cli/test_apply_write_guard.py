@@ -8,17 +8,17 @@
 #
 # topmark:header:end
 
-"""Apply-write guard: only write when updater marks INSERTED/REPLACED/REMOVED.
+"""Apply/write-guard contract tests.
 
-This module protects against regressions where files that should be skipped
-(e.g., known no-header formats like LICENSE, binary-ish assets) were previously
-truncated because the CLI wrote whenever ``updated_file_lines`` was not ``None``.
+These tests ensure that files are written **only** when the updater explicitly
+marks a mutation (INSERTED / REPLACED / REMOVED). They protect against
+regressions where skipped or unsupported files were previously truncated.
 
-Coverage targets:
-  * Default command: writes only when ``WriteStatus`` is ``INSERTED`` or ``REPLACED``.
-  * Strip command: writes only when ``WriteStatus`` is ``REMOVED``.
-  * Skipped/unsupported files: never written, content remains intact.
-  * Idempotency: second run after apply should be a no-op with unchanged files.
+Contract covered:
+  * Default (`check`): writes only on INSERTED / REPLACED.
+  * Strip (`strip`): writes only on REMOVED.
+  * Skipped/unsupported inputs: never written.
+  * Idempotency: second run after apply is a no-op.
 """
 
 from __future__ import annotations
@@ -26,7 +26,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
+from click.testing import Result
+
 from tests.cli.conftest import assert_SUCCESS
+from tests.cli.conftest import run_cli
 from tests.cli.conftest import run_cli_in
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
@@ -39,7 +43,42 @@ if TYPE_CHECKING:
 
     from click.testing import Result
 
+# All tests in this module pin exit-code + write-guard behavior.
+pytestmark: pytest.MarkDecorator = pytest.mark.exit_code
 
+
+# --- Apply pipeline invocation contract ---
+def test_default_summary_apply_runs_apply_pipeline(tmp_path: Path) -> None:
+    """`--summary --apply` should still perform apply pipeline (not dry-run only)."""
+    f: Path = tmp_path / "x.py"
+    f.write_text("print('z')\n", "utf-8")
+
+    result: Result = run_cli(
+        [CliCmd.CHECK, CliOpt.RESULTS_SUMMARY_MODE, CliOpt.APPLY_CHANGES, str(f)],
+    )
+
+    assert_SUCCESS(result)
+
+    # File should now contain a header.
+    assert TOPMARK_START_MARKER in f.read_text("utf-8")
+
+
+def test_default_diff_with_apply_emits_patch(tmp_path: Path) -> None:
+    """`--diff --apply` should apply changes and still show a patch."""
+    f: Path = tmp_path / "x.py"
+    f.write_text("print('z')\n", "utf-8")
+
+    result: Result = run_cli(
+        [CliCmd.CHECK, CliOpt.RENDER_DIFF, CliOpt.APPLY_CHANGES, str(f)],
+    )
+
+    # Apply succeeded; diff should be emitted for changed file.
+    assert_SUCCESS(result)
+
+    assert "--- " in result.output and "+++ " in result.output
+
+
+# --- Write guard: skipped / unsupported inputs ---
 def test_apply_does_not_write_skipped_known_no_headers(tmp_path: Path) -> None:
     """`--apply` must not write for known no-header types (e.g., LICENSE).
 
@@ -71,11 +110,12 @@ def test_apply_does_not_write_skipped_known_no_headers(tmp_path: Path) -> None:
     # 3) Assertions
     assert_SUCCESS(result)
 
-    # Allow either your standard “file skipped” diagnostic or the JSON paths in other modes.
+    # Output should indicate no changes; content must remain intact.
     assert "no changes to apply." in result.output
     assert lic.read_text("utf-8") == original  # content intact
 
 
+# --- Write guard: insertion and idempotency ---
 def test_apply_writes_only_on_insert_and_is_idempotent(tmp_path: Path) -> None:
     """Default command: write only when INSERTED/REPLACED; then no-op.
 
@@ -103,7 +143,7 @@ def test_apply_writes_only_on_insert_and_is_idempotent(tmp_path: Path) -> None:
 
     assert TOPMARK_START_MARKER in after_first
 
-    # Second apply: should be a no-op; content identical.
+    # Second apply: must be a no-op; content identical.
     result_2: Result = run_cli_in(
         tmp_path,
         [CliCmd.CHECK, CliOpt.APPLY_CHANGES, "x.py"],
@@ -114,6 +154,7 @@ def test_apply_writes_only_on_insert_and_is_idempotent(tmp_path: Path) -> None:
     assert f.read_text("utf-8") == after_first
 
 
+# --- Write guard: strip removal semantics ---
 def test_strip_apply_writes_only_on_removed_and_preserves_body(tmp_path: Path) -> None:
     """`strip --apply` should only write when a header was actually removed.
 
@@ -145,7 +186,7 @@ def test_strip_apply_writes_only_on_removed_and_preserves_body(tmp_path: Path) -
     assert TOPMARK_START_MARKER not in after1
     assert "print('body')" in after1
 
-    # 4) Second run: should be a no-op
+    # Second run: must be a no-op
     result_2: Result = run_cli_in(
         tmp_path,
         [CliCmd.STRIP, CliOpt.APPLY_CHANGES, "h.py"],
@@ -156,6 +197,7 @@ def test_strip_apply_writes_only_on_removed_and_preserves_body(tmp_path: Path) -
     assert p.read_text("utf-8") == after1
 
 
+# --- Write guard: path resolution / patterns ---
 def test_apply_write_guard_respects_relative_patterns(tmp_path: Path) -> None:
     """Guard path: ensure relative patterns work and don't cause accidental writes.
 
@@ -187,6 +229,7 @@ def test_apply_write_guard_respects_relative_patterns(tmp_path: Path) -> None:
     assert lic.read_text("utf-8") == original
 
 
+# --- Write guard: binary / unsupported files ---
 def test_apply_does_not_write_binary_like_file(tmp_path: Path) -> None:
     """`--apply` must not write for binary/unsupported files (e.g., favicon.ico)."""
     ico: Path = tmp_path / "favicon.ico"
@@ -203,6 +246,7 @@ def test_apply_does_not_write_binary_like_file(tmp_path: Path) -> None:
     assert ico.read_bytes() == data
 
 
+# --- Mixed scenarios: changed + skipped inputs ---
 def test_apply_guard_mixed_changed_and_skipped(tmp_path: Path) -> None:
     """A changed .py and skipped files in one run should only write the .py."""
     (tmp_path / "x.py").write_text("print('a')\n", "utf-8")
@@ -223,6 +267,7 @@ def test_apply_guard_mixed_changed_and_skipped(tmp_path: Path) -> None:
     assert typed.read_text("utf-8") == "typed\n"
 
 
+# --- Interaction: apply + diff rendering ---
 def test_apply_with_diff_respects_write_guard(tmp_path: Path) -> None:
     """`--apply --diff` should write only when updater sets INSERTED/REPLACED."""
     py: Path = tmp_path / "x.py"
@@ -248,6 +293,7 @@ def test_apply_with_diff_respects_write_guard(tmp_path: Path) -> None:
     assert "--- " not in result_2.output
 
 
+# --- Strip no-op semantics ---
 def test_strip_apply_no_header_is_noop(tmp_path: Path) -> None:
     """`strip --apply` should not write when no header exists."""
     f: Path = tmp_path / "no_header.py"
@@ -271,6 +317,7 @@ def test_strip_apply_no_header_is_noop(tmp_path: Path) -> None:
     assert f.read_text("utf-8") == before
 
 
+# --- STDIN input handling ---
 def test_apply_write_guard_with_stdin(tmp_path: Path) -> None:
     """Guard must hold when files are provided via --stdin."""
     (tmp_path / "x.py").write_text("print('x')\n", "utf-8")

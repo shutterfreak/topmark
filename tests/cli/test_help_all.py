@@ -8,19 +8,17 @@
 #
 # topmark:header:end
 
-"""CLI tests: `--help` output for all commands.
+"""CLI help-output smoke tests.
 
-Ensures that:
+This module verifies that the top-level CLI and all public command paths expose
+a working `--help` page and exit successfully.
 
-- The top-level `topmark --help` exits with code 0.
-- Each registered subcommand provides a working `--help` page.
+These tests are broad command-surface smoke tests, not detailed content checks.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-
-from click.testing import Result
 
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
@@ -30,7 +28,7 @@ from topmark.cli.keys import CliOpt
 if TYPE_CHECKING:
     from click.testing import Result
 
-COMMANDS: list[tuple[str, ...]] = [
+PUBLIC_COMMAND_PATHS: list[tuple[str, ...]] = [
     (CliCmd.PROBE,),
     (CliCmd.CHECK,),
     (CliCmd.STRIP,),
@@ -67,21 +65,28 @@ COMMANDS: list[tuple[str, ...]] = [
     (CliCmd.VERSION,),
 ]
 
+# --- Top-level help ---
 
-def test_group_help() -> None:
-    """It should exit successfully (0) when running `topmark --help`."""
+
+def test_top_level_help_exits_success() -> None:
+    """`topmark --help` should exit SUCCESS."""
     result: Result = run_cli(
         [CliOpt.HELP],
     )
 
     assert_SUCCESS(result)
+    assert "usage" in result.output.lower()
 
 
-def test_each_command_has_help() -> None:
-    """It should provide a `--help` page for each known subcommand."""
-    for cmd in COMMANDS:
+# --- Public command help pages ---
+
+
+def test_each_public_command_path_has_help() -> None:
+    """Every public command path should expose a working `--help` page."""
+    for command_path in PUBLIC_COMMAND_PATHS:
         result: Result = run_cli(
-            cmd + (CliOpt.HELP,),
+            command_path + (CliOpt.HELP,),
         )
 
         assert_SUCCESS(result)
+        assert "usage" in result.output.lower()

@@ -8,13 +8,24 @@
 #
 # topmark:header:end
 
-"""CLI tests for human-facing config command output."""
+"""CLI config command human-output behavior tests.
+
+This module verifies output-control behavior for the `topmark config` command
+family:
+- quiet mode for status/inspection commands,
+- rejection of quiet mode for pure content commands,
+- Markdown output independence from TEXT-only quiet/verbosity controls,
+- progressive disclosure for verbose TEXT output.
+
+These are output-control tests rather than pure exit-code contract tests.
+"""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
 import pytest
+from click.testing import Result
 
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
@@ -26,9 +37,10 @@ if TYPE_CHECKING:
     from click.testing import Result
 
 
-pytestmark = pytest.mark.cli
+pytestmark: pytest.MarkDecorator = pytest.mark.cli
 
 
+# --- Quiet mode: TEXT output ---
 @parametrize(
     "cmd",
     [
@@ -36,8 +48,8 @@ pytestmark = pytest.mark.cli
         CliCmd.CONFIG_DUMP,
     ],
 )
-def test_config_status_or_inspection_commands_text_quiet_suppresses_output(cmd: str) -> None:
-    """Config commands with useful silent status/inspection signals support `--quiet`."""
+def test_config_status_and_inspection_commands_text_quiet_suppress_output(cmd: str) -> None:
+    """Status/inspection config commands should suppress TEXT output with `--quiet`."""
     result: Result = run_cli(
         [
             CliCmd.CONFIG,
@@ -58,8 +70,8 @@ def test_config_status_or_inspection_commands_text_quiet_suppresses_output(cmd: 
         CliCmd.CONFIG_INIT,
     ],
 )
-def test_config_content_commands_reject_quiet_option(cmd: str) -> None:
-    """Pure content-producing config commands do not support TEXT quiet suppression."""
+def test_config_content_commands_reject_text_quiet_option(cmd: str) -> None:
+    """Pure content-producing config commands should reject TEXT `--quiet`."""
     result: Result = run_cli(
         [
             CliCmd.CONFIG,
@@ -74,6 +86,7 @@ def test_config_content_commands_reject_quiet_option(cmd: str) -> None:
     assert CliOpt.QUIET in result.output
 
 
+# --- Quiet mode: Markdown output ---
 @parametrize(
     "cmd",
     [
@@ -81,8 +94,8 @@ def test_config_content_commands_reject_quiet_option(cmd: str) -> None:
         CliCmd.CONFIG_DUMP,
     ],
 )
-def test_config_status_or_inspection_commands_markdown_ignores_quiet(cmd: str) -> None:
-    """Config Markdown output ignores TEXT-only quiet mode where `--quiet` is supported."""
+def test_config_status_and_inspection_commands_markdown_ignore_quiet(cmd: str) -> None:
+    """Markdown output should ignore TEXT-only quiet mode where supported."""
     result: Result = run_cli(
         [
             CliCmd.CONFIG,
@@ -106,7 +119,7 @@ def test_config_status_or_inspection_commands_markdown_ignores_quiet(cmd: str) -
     ],
 )
 def test_config_content_commands_reject_quiet_option_with_markdown_output(cmd: str) -> None:
-    """Config content commands reject `--quiet` even when Markdown output is requested."""
+    """Pure content-producing config commands should reject `--quiet` for Markdown too."""
     result: Result = run_cli(
         [
             CliCmd.CONFIG,
@@ -123,6 +136,7 @@ def test_config_content_commands_reject_quiet_option_with_markdown_output(cmd: s
     assert CliOpt.QUIET in result.output
 
 
+# --- Verbosity: Markdown output ---
 @parametrize(
     "cmd",
     [
@@ -133,7 +147,7 @@ def test_config_content_commands_reject_quiet_option_with_markdown_output(cmd: s
     ],
 )
 def test_config_commands_markdown_ignores_verbose(cmd: str) -> None:
-    """Config Markdown output should ignore TEXT-only verbosity."""
+    """Markdown output should ignore TEXT-only verbosity for all config commands."""
     base: Result = run_cli(
         [
             CliCmd.CONFIG,
@@ -159,8 +173,9 @@ def test_config_commands_markdown_ignores_verbose(cmd: str) -> None:
     assert verbose.output == base.output
 
 
-def test_config_dump_text_verbose_adds_progressive_details() -> None:
-    """TEXT verbosity should still control config dump progressive disclosure."""
+# --- Verbosity: TEXT output ---
+def test_config_dump_text_verbose_adds_progressive_disclosure_details() -> None:
+    """Verbose TEXT output should add config dump progressive-disclosure details."""
     base: Result = run_cli(
         [
             CliCmd.CONFIG,
@@ -183,8 +198,9 @@ def test_config_dump_text_verbose_adds_progressive_details() -> None:
     assert "Config files processed" in verbose.output
 
 
+# --- Markdown document content ---
 def test_config_dump_markdown_includes_document_sections_by_default() -> None:
-    """Markdown config dump should include document sections without `-v`."""
+    """Markdown config dump should include document sections without verbosity."""
     result: Result = run_cli(
         [
             CliCmd.CONFIG,

@@ -7,13 +7,15 @@
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
-"""Test reading file content from STDIN with unified CLI semantics and dry-run behavior.
+"""Content-on-STDIN CLI behavior tests.
 
-This module tests the behavior when a single file's *content* is provided on
-STDIN (using `'-'` as the path). The default (`check`/`apply`) command and
-the `strip` subcommand should behave consistently in dry-run and `--apply`
-modes. In particular, with `--apply`, the modified content should be printed
-to STDOUT (not written to the filesystem).
+This module covers the mode where a single file's content is provided on
+STDIN using `-` as the input path and `--stdin-filename` for file-type
+resolution.
+
+The tests verify that `check` and `strip` behave consistently for dry-run and
+`--apply` invocations. In apply mode, transformed content is written to STDOUT;
+no filesystem target is written.
 """
 
 from __future__ import annotations
@@ -35,34 +37,39 @@ if TYPE_CHECKING:
 
     from click.testing import Result
 
+# --- Check command: dry-run and apply ---
 
-def test_check_content_stdin_dry_run() -> None:
-    """Reading a single file from STDIN ('-') should behave like a real file in dry-run."""
+
+def test_check_content_stdin_dry_run_reports_would_change() -> None:
+    """`check - --stdin-filename` should report WOULD_CHANGE in dry-run mode."""
     body = "print('x')\n"
     result: Result = run_cli(
         [CliCmd.CHECK, "-", CliOpt.STDIN_FILENAME, "x.py"],
         input_text=body,
     )
-    assert_WOULD_CHANGE(result)  # header would be added
+    # Header insertion would be needed, so dry-run reports WOULD_CHANGE.
+    assert_WOULD_CHANGE(result)
     # Should not write to disk (it prints diagnostics only); no file exists here.
 
 
-def test_check_content_stdin_apply_prints_to_stdout(tmp_path: Path) -> None:
-    """With --apply, content-on-STDIN writes the modified content to stdout (not the FS)."""
+def test_check_content_stdin_apply_prints_modified_content_to_stdout(tmp_path: Path) -> None:
+    """`check --apply -` should print modified STDIN content to STDOUT."""
     body = "print('x')\n"
     result: Result = run_cli(
         [CliCmd.CHECK, CliOpt.APPLY_CHANGES, "-", CliOpt.STDIN_FILENAME, "x.py"],
         input_text=body,
     )
     assert_SUCCESS(result)
-    # Heuristic: the header start marker should appear in stdout output.
-    from topmark.constants import TOPMARK_START_MARKER
 
+    # Apply mode for content-on-STDIN writes transformed content to STDOUT.
     assert TOPMARK_START_MARKER in result.output
 
 
-def test_strip_content_stdin_dry_run() -> None:
-    """Strip on content from STDIN should detect removal would occur."""
+# --- Strip command: dry-run and apply ---
+
+
+def test_strip_content_stdin_dry_run_reports_would_change() -> None:
+    """`strip - --stdin-filename` should report WOULD_CHANGE when removal is needed."""
     body: str = f"# {TOPMARK_START_MARKER}\n# test:header\n# {TOPMARK_END_MARKER}\nprint()\n"
     result: Result = run_cli(
         [CliCmd.STRIP, "-", CliOpt.STDIN_FILENAME, "x.py"],
@@ -71,14 +78,15 @@ def test_strip_content_stdin_dry_run() -> None:
     assert_WOULD_CHANGE(result)
 
 
-def test_strip_content_stdin_apply_prints_to_stdout() -> None:
-    """With --apply, strip prints stripped content to stdout."""
+def test_strip_content_stdin_apply_prints_stripped_content_to_stdout() -> None:
+    """`strip --apply -` should print stripped STDIN content to STDOUT."""
     body: str = f"# {TOPMARK_START_MARKER}\n# test:header\n# {TOPMARK_END_MARKER}\nprint('ok')\n"
     result: Result = run_cli(
         [CliCmd.STRIP, CliOpt.APPLY_CHANGES, "-", CliOpt.STDIN_FILENAME, "x.py"],
         input_text=body,
     )
     assert_SUCCESS(result)
-    # Header should be gone in stdout
+
+    # Header should be absent from transformed STDOUT content.
     assert TOPMARK_START_MARKER not in result.output
     assert "print('ok')" in result.output

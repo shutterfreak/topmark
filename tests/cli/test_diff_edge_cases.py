@@ -8,11 +8,14 @@
 #
 # topmark:header:end
 
-r"""CLI diff edge cases for default and strip commands.
+r"""CLI diff-rendering edge-case tests.
 
-Covers:
-- Diff on LF file **without** final newline still yields a non-empty, sensible patch.
-- Diff on CRLF-seeded content does not introduce stray `\\r` lines or mixed endings.
+This module covers diff output for newline-sensitive inputs:
+- LF content without a final newline,
+- CRLF-seeded content rendered through `strip --diff`.
+
+These tests verify that patches are emitted and that rendered newline markers do
+not regress into malformed or mixed-ending output.
 """
 
 from __future__ import annotations
@@ -33,27 +36,37 @@ if TYPE_CHECKING:
     from click.testing import Result
 
 
-def test_diff_on_no_final_newline_default(tmp_path: Path) -> None:
-    """Unified diff is produced for LF file without final newline (default command)."""
+# --- LF input without final newline ---
+
+
+def test_check_diff_on_lf_input_without_final_newline_emits_patch(tmp_path: Path) -> None:
+    """`check --diff` should emit a patch for LF input without final newline."""
     file_name = "a.py"
     f: Path = tmp_path / file_name
-    # No final newline on purpose.
+    # No final newline on purpose; this exercises diff rendering at EOF.
     f.write_text("print('x')", "utf-8")
 
     result: Result = run_cli_in(
         tmp_path,
-        [CliCmd.CHECK, CliOpt.RENDER_DIFF, str(f)],
+        [
+            CliCmd.CHECK,
+            CliOpt.RENDER_DIFF,
+            str(f),
+        ],
     )
 
-    # Would insert → exit 2, and a non-empty patch must be shown.
+    # Header insertion would be needed, and a non-empty patch must be shown.
     assert_WOULD_CHANGE(result)
 
     out: str = result.output
     assert "--- " in out and "+++ " in out and f"+# {TOPMARK_START_MARKER}" in out
 
 
-def test_diff_preserves_crlf_strip(tmp_path: Path) -> None:
-    r"""Strip diff on CRLF file shows consistent lines (no stray bare `\\r`)."""
+# --- CRLF input rendering ---
+
+
+def test_strip_diff_on_crlf_input_preserves_newline_rendering(tmp_path: Path) -> None:
+    r"""`strip --diff` should render CRLF input without flipped newline sequences."""
     file_name = "a.ts"
     f: Path = tmp_path / file_name
     with f.open("w", encoding="utf-8", newline="\r\n") as fp:
@@ -63,12 +76,16 @@ def test_diff_preserves_crlf_strip(tmp_path: Path) -> None:
 
     result: Result = run_cli_in(
         tmp_path,
-        [CliCmd.STRIP, CliOpt.RENDER_DIFF, str(f)],
+        [
+            CliCmd.STRIP,
+            CliOpt.RENDER_DIFF,
+            str(f),
+        ],
     )
 
     assert_WOULD_CHANGE(result)
 
-    # Basic sanity check: headers present and no raw solitary "\r" occurrences.
+    # Basic sanity check: the rendered patch should include the removed header.
     out: str = result.output
     assert "--- " in out and "+++ " in out and f"-// {TOPMARK_START_MARKER}" in out
 
@@ -76,16 +93,17 @@ def test_diff_preserves_crlf_strip(tmp_path: Path) -> None:
     start: int = out.find("Patch (rendered):")
     rendered: str = out[start:] if start != -1 else out
 
-    # Some sinks normalize CR → LF; accept any of:
+    # Some sinks normalize CRLF, so accept any of:
     #  - actual CRLF characters,
-    #  - visible glyphs,
-    #  - (fallback) no explicit CRLF markers but *no* flipped "\n\r" anywhere.
+    #  - visible glyph markers,
+    #  - escaped-literal markers,
+    #  - or no explicit CRLF markers as long as no flipped "\n\r" appears.
     has_actual_crlf: bool = "\r\n" in rendered
     has_visible_glyphs: bool = "␍␊" in rendered
-    # Keep the older escaped-literal check as a courtesy if a sink shows escapes:
+    # Keep an escaped-literal check for sinks that display escapes.
     has_escaped_literal: bool = "\\r\\n" in rendered
 
     assert has_actual_crlf or has_visible_glyphs or has_escaped_literal or ("\n\r" not in rendered)
 
-    # Still ensure no flipped sequence appears anywhere in output.
+    # Ensure no flipped sequence appears anywhere in output.
     assert "\n\r" not in out

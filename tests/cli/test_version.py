@@ -8,7 +8,16 @@
 #
 # topmark:header:end
 
-"""CLI tests for human-facing `topmark version` output."""
+"""CLI version command output and option behavior tests.
+
+This module verifies human-facing `topmark version` behavior:
+- default PEP 440 output,
+- SemVer rendering with `--semver`,
+- Markdown output stability,
+- rejection of unsupported `--quiet` usage.
+
+These are output/behavior tests rather than pure exit-code contract tests.
+"""
 
 from __future__ import annotations
 
@@ -31,8 +40,11 @@ if TYPE_CHECKING:
     from click.testing import Result
 
 
-def test_version_outputs_pep440_version() -> None:
-    """It should output the PEP 440 version string (exact match)."""
+# --- Plain TEXT output ---
+
+
+def test_version_outputs_pep440_version_by_default() -> None:
+    """`version` should output the PEP 440 project version by default."""
     result: Result = run_cli(
         [
             CliCmd.VERSION,
@@ -43,18 +55,18 @@ def test_version_outputs_pep440_version() -> None:
     assert_SUCCESS(result)
 
     out: str = result.output.strip()
-    # Contract: default 'version' prints the PEP 440 project version exactly
+    # Default TEXT output is the exact PEP 440 project version.
     assert out == TOPMARK_VERSION
 
-    # Validate it's a valid PEP 440 version
+    # Validate that the emitted token is valid PEP 440.
     try:
         Version(out)  # raises InvalidVersion if not PEP 440
     except InvalidVersion as exc:
         pytest.fail(f"Not a valid PEP 440 version: {out!r} ({exc})")
 
 
-def test_version_with_semver_flag_outputs_semver() -> None:
-    """It should output the SemVer-rendered version string with --semver."""
+def test_version_semver_flag_outputs_semver_version() -> None:
+    """`version --semver` should output the SemVer-rendered version."""
     result: Result = run_cli(
         [
             CliCmd.VERSION,
@@ -68,15 +80,18 @@ def test_version_with_semver_flag_outputs_semver() -> None:
     out: str = result.output.strip()
     expected: str = convert_pep440_to_semver(TOPMARK_VERSION)
 
-    # 1) Exact mapping check: CLI output should equal our conversion helper
+    # Exact mapping check: CLI output should equal the shared conversion helper.
     assert out == expected
 
-    # 2) Validate the rendered SemVer token against the shared relaxed SemVer pattern.
+    # Validate the rendered SemVer token against the shared relaxed SemVer pattern.
     assert re.fullmatch(SEMVER_RE, out) is not None
 
 
-def test_version_rejects_quiet_option() -> None:
-    """`version` is informational and does not support TEXT quiet suppression."""
+# --- Unsupported quiet mode ---
+
+
+def test_version_rejects_quiet_option_for_text_output() -> None:
+    """`version --quiet` should be rejected because version emits pure content."""
     result: Result = run_cli(
         [
             CliCmd.VERSION,
@@ -91,7 +106,7 @@ def test_version_rejects_quiet_option() -> None:
 
 
 def test_version_rejects_quiet_option_with_markdown_output() -> None:
-    """`version --output-format markdown` also rejects unsupported `--quiet`."""
+    """`version --quiet --output-format markdown` should also be rejected."""
     result: Result = run_cli(
         [
             CliCmd.VERSION,
@@ -107,8 +122,11 @@ def test_version_rejects_quiet_option_with_markdown_output() -> None:
     assert CliOpt.QUIET in result.output
 
 
+# --- Markdown output ---
+
+
 def test_version_verbose_does_not_change_markdown_output() -> None:
-    """`version -v --output-format markdown` should render stable Markdown."""
+    """`version -v --output-format markdown` should match non-verbose Markdown."""
     base_result: Result = run_cli(
         [
             CliCmd.VERSION,
@@ -133,8 +151,8 @@ def test_version_verbose_does_not_change_markdown_output() -> None:
 
 
 @pytest.mark.parametrize("use_semver", [False, True])
-def test_version_markdown_format(use_semver: bool) -> None:
-    """`version --output-format markdown` prints the correct version in human output."""
+def test_version_markdown_format_contains_expected_version(use_semver: bool) -> None:
+    """Markdown output should contain the expected PEP 440 or SemVer version."""
     args: list[str] = [
         CliCmd.VERSION,
         CliOpt.NO_COLOR_MODE,
@@ -147,21 +165,20 @@ def test_version_markdown_format(use_semver: bool) -> None:
     result: Result = run_cli(args)
     assert_SUCCESS(result)
 
-    out = result.output.strip()
+    out: str = result.output.strip()
     assert out, "Markdown output must not be empty"
 
     assert "# TopMark Version" in out
 
     if use_semver:
         expected: str = convert_pep440_to_semver(TOPMARK_VERSION)
-        assert expected in out  # Do not over-specify Markdown formatting around the value.
-        # Validate the version token itself (not the whole markdown block)
+        # Do not over-specify Markdown formatting around the value.
+        assert expected in out
+        # Validate the version token itself, not the whole Markdown block.
         assert re.fullmatch(SEMVER_RE, expected) is not None
     else:
         assert TOPMARK_VERSION in out
-        # Validate the expected version token as PEP 440.
-        # We keep this flexible in case the markdown includes code spans or prefixes.
-        # Fallback: use the exact TOPMARK_VERSION we already saw in the string.
+        # Validate the expected version token as PEP 440 without over-specifying Markdown.
         candidate: str = TOPMARK_VERSION
         try:
             Version(candidate)

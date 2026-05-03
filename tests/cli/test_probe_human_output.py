@@ -8,10 +8,14 @@
 #
 # topmark:header:end
 
-"""CLI human-output tests for `topmark probe`.
+"""CLI probe human-output behavior tests.
 
-These tests validate TEXT and Markdown rendering behavior for the probe
-command, including verbosity handling and Markdown invariants.
+This module verifies human-facing `topmark probe` output behavior:
+- TEXT output changes progressively with verbosity,
+- explicitly filtered inputs are reported with actionable diagnostics,
+- Markdown output ignores TEXT-only verbosity and quiet controls.
+
+These are output/rendering tests rather than pure exit-code contract tests.
 """
 
 from __future__ import annotations
@@ -21,6 +25,7 @@ from typing import TYPE_CHECKING
 from click.testing import CliRunner
 from click.testing import Result
 
+from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_UNSUPPORTED_FILE_TYPE
 from topmark.cli.keys import CliCmd
 from topmark.cli.main import cli
@@ -31,8 +36,9 @@ if TYPE_CHECKING:
     from pytest import MonkeyPatch
 
 
-def test_probe_text_output_default_and_verbose_levels(tmp_path: Path) -> None:
-    """TEXT output should change with verbosity levels."""
+# --- TEXT output: verbosity levels ---
+def test_probe_text_output_progressively_expands_with_verbosity(tmp_path: Path) -> None:
+    """TEXT probe output should progressively expand from default to `-vv`."""
     file: Path = tmp_path / "example.py"
     file.write_text("print('hello')\n", encoding="utf-8")
 
@@ -62,32 +68,33 @@ def test_probe_text_output_default_and_verbose_levels(tmp_path: Path) -> None:
         ],
     )
 
-    assert result_default.exit_code == 0
-    assert result_v.exit_code == 0
-    assert result_vv.exit_code == 0
+    assert_SUCCESS(result_default)
+    assert_SUCCESS(result_v)
+    assert_SUCCESS(result_vv)
 
-    # Default: compact one-line summary
+    # Default TEXT output is a compact one-line summary.
     assert "resolved" in result_default.output
     assert "processor=" in result_default.output
 
-    # -v: selected details appear
+    # `-v` adds selected file type and processor details.
     assert "selected file type" in result_v.output
     assert "selected processor" in result_v.output
 
-    # -vv: candidate details appear
+    # `-vv` adds candidate and match details.
     assert "candidates:" in result_vv.output
     assert "match:" in result_vv.output
 
-    # Ensure outputs differ across verbosity levels
+    # Each verbosity level should provide a distinct TEXT rendering.
     assert result_default.output != result_v.output
     assert result_v.output != result_vv.output
 
 
-def test_probe_text_output_reports_explicit_filtered_input(
+# --- TEXT output: filtered explicit inputs ---
+def test_probe_text_output_reports_explicitly_filtered_input(
     tmp_path: Path,
     monkeypatch: MonkeyPatch,
 ) -> None:
-    """TEXT output should explain explicit inputs filtered before probing."""
+    """TEXT probe output should explain explicit inputs filtered before resolution."""
     monkeypatch.chdir(tmp_path)
     filtered_dir: Path = tmp_path / "__pycache__"
     filtered_dir.mkdir()
@@ -112,8 +119,9 @@ def test_probe_text_output_reports_explicit_filtered_input(
     assert "filtered: excluded_by_path_filter" in result.output
 
 
-def test_probe_markdown_output_ignores_verbosity(tmp_path: Path) -> None:
-    """Markdown output should not depend on verbosity flags."""
+# --- Markdown output: verbosity and quiet controls ---
+def test_probe_markdown_output_ignores_text_verbosity(tmp_path: Path) -> None:
+    """Markdown probe output should ignore TEXT-only verbosity flags."""
     file: Path = tmp_path / "example.py"
     file.write_text("print('hello')\n", encoding="utf-8")
 
@@ -139,20 +147,20 @@ def test_probe_markdown_output_ignores_verbosity(tmp_path: Path) -> None:
         ],
     )
 
-    assert result_default.exit_code == 0
-    assert result_v.exit_code == 0
+    assert_SUCCESS(result_default)
+    assert_SUCCESS(result_v)
 
-    # Markdown ignores verbosity → outputs should be identical
+    # Markdown ignores TEXT verbosity, so output should be identical.
     assert result_default.output == result_v.output
 
-    # Basic Markdown structure checks
+    # Basic Markdown structure checks.
     assert "TopMark Resolution Probe Results" in result_default.output
     assert "## Files" in result_default.output
     assert "###" in result_default.output
 
 
-def test_probe_markdown_output_ignores_quiet(tmp_path: Path) -> None:
-    """Markdown output should not be suppressed by --quiet."""
+def test_probe_markdown_output_ignores_text_quiet(tmp_path: Path) -> None:
+    """Markdown probe output should ignore TEXT-only quiet suppression."""
     file: Path = tmp_path / "example.py"
     file.write_text("print('hello')\n", encoding="utf-8")
 
@@ -169,8 +177,8 @@ def test_probe_markdown_output_ignores_quiet(tmp_path: Path) -> None:
         ],
     )
 
-    assert result.exit_code == 0
+    assert_SUCCESS(result)
 
-    # Markdown should still render full output
+    # Markdown should still render full document output.
     assert result.output.strip() != ""
     assert "TopMark Resolution Probe Results" in result.output

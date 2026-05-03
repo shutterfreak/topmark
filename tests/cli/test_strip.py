@@ -8,16 +8,17 @@
 #
 # topmark:header:end
 
-"""CLI strip command: behavior, exit codes, diff output, and input sources.
+"""CLI strip command: behavior and exit-code contract.
 
-This module hardens the `strip` subcommand behavior across:
+This module covers:
 - dry-run vs apply exit codes,
-- idempotence,
+- idempotency guarantees,
 - unified diff rendering,
-- summary bucket text,
-- positional paths and `--stdin` support.
+- summary/reporting output,
+- positional paths, globs, and include/exclude patterns.
 
-All tests use CliRunner boundaries (no FS side effects beyond tmp_path).
+Tests are grouped by contract areas and assert both behavior and exit-code
+guarantees where relevant.
 """
 
 from __future__ import annotations
@@ -44,6 +45,8 @@ from topmark.pipeline.status import StripStatus
 
 if TYPE_CHECKING:
     from click.testing import Result
+
+# --- Dry-run exit-code contract ---
 
 
 def test_strip_dry_run_exits_2(tmp_path: Path) -> None:
@@ -81,6 +84,9 @@ def test_strip_dry_run_exit_0_when_no_header(tmp_path: Path) -> None:
     assert_SUCCESS(result)
 
 
+# --- Apply semantics and idempotency ---
+
+
 def test_strip_apply_removes_and_is_idempotent(tmp_path: Path) -> None:
     """Verify that `--apply` removes the header and the operation is idempotent.
 
@@ -101,7 +107,7 @@ def test_strip_apply_removes_and_is_idempotent(tmp_path: Path) -> None:
     after_strip_1: str = f.read_text("utf-8")
     assert TOPMARK_START_MARKER not in after_strip_1 and "print('x')" in after_strip_1
 
-    # Second application should be a no-op and still succeed.
+    # Second application must be a no-op and still succeed.
     result_strip_2: Result = run_cli(
         [CliCmd.STRIP, CliOpt.APPLY_CHANGES, str(f)],
     )
@@ -109,6 +115,9 @@ def test_strip_apply_removes_and_is_idempotent(tmp_path: Path) -> None:
     assert_SUCCESS(result_strip_2)
 
     assert f.read_text("utf-8") == after_strip_1
+
+
+# --- Diff rendering ---
 
 
 def test_strip_diff_shows_patch(tmp_path: Path) -> None:
@@ -128,12 +137,15 @@ def test_strip_diff_shows_patch(tmp_path: Path) -> None:
     # With a removable header, diff-only should exit 2 (would change).
     assert_WOULD_CHANGE(result)
 
-    # Check classic unified diff headers and a removed header line.
+    # Diff should include unified headers and removed header lines.
     assert (
         "--- " in result.output
         and "+++ " in result.output
         and f"-# {TOPMARK_START_MARKER}" in result.output
     )
+
+
+# --- Summary / reporting ---
 
 
 def test_strip_summary_buckets(tmp_path: Path) -> None:
@@ -162,7 +174,7 @@ def test_strip_summary_buckets(tmp_path: Path) -> None:
         ],
     )
 
-    # Depending on aggregation, exit may be 2 (would change) or 0 (no changes).
+    # Mixed inputs may produce either WOULD_CHANGE or SUCCESS.
     assert_SUCCESS_or_WOULD_CHANGE(result)
 
     # Expect human-facing wording present for both categories.
@@ -177,8 +189,11 @@ def test_strip_summary_buckets(tmp_path: Path) -> None:
     )
 
 
+# --- Input handling: paths and globs ---
+
+
 def test_strip_accepts_positional_paths(tmp_path: Path) -> None:
-    """`topmmark strip` should accept positional globs/paths like the default command.
+    """`topmark strip` should accept positional globs/paths like the default command.
 
     Uses a simple Markdown example to validate path ingress.
     """
@@ -189,7 +204,7 @@ def test_strip_accepts_positional_paths(tmp_path: Path) -> None:
         [CliCmd.STRIP, str(p)],
     )
 
-    # Header present → dry-run 'would change' = 2; tolerate 0 in edge runners.
+    # Header present → dry-run should report WOULD_CHANGE.
     assert_SUCCESS_or_WOULD_CHANGE(result)
 
     cwd: Path = Path.cwd()
@@ -203,8 +218,11 @@ def test_strip_accepts_positional_paths(tmp_path: Path) -> None:
     finally:
         os.chdir(cwd)
 
-    # Depending on shell/glob semantics, allow either dry-run changed or success
+    # Depending on glob expansion semantics, allow either WOULD_CHANGE or SUCCESS.
     assert_SUCCESS_or_WOULD_CHANGE(result)
+
+
+# --- Malformed header handling ---
 
 
 def test_strip_ignores_missing_end_marker(tmp_path: Path) -> None:
@@ -226,8 +244,11 @@ def test_strip_ignores_missing_end_marker(tmp_path: Path) -> None:
 
     assert_SUCCESS(result)
 
-    # Nothing stripped; header markers still there
+    # No removal should occur; header markers must remain.
     assert TOPMARK_START_MARKER in f.read_text("utf-8")
+
+
+# --- Include / exclude pattern handling ---
 
 
 def test_strip_include_from_exclude_from(tmp_path: Path) -> None:
