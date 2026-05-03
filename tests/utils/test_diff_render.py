@@ -8,7 +8,6 @@
 #
 # topmark:header:end
 
-# File path: tests/utils/test_diff_render.py
 """Diff utils: rendering from text or sequences and empty inputs.
 
 Covers `render_patch` inputs and output type guarantees.
