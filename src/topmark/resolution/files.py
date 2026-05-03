@@ -34,6 +34,7 @@ normal traversal.
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -60,6 +61,21 @@ if TYPE_CHECKING:
 
 
 logger: TopmarkLogger = get_logger(__name__)
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class FileListResolution:
+    """Resolved file-list result plus discovery diagnostics.
+
+    Attributes:
+        selected: Concrete files selected for processing.
+        missing_literals: Explicit literal input paths that do not exist.
+        unmatched_patterns: Glob patterns that matched no files.
+    """
+
+    selected: tuple[Path, ...]
+    missing_literals: tuple[Path, ...]
+    unmatched_patterns: tuple[str, ...]
 
 
 def load_patterns_from_file(
@@ -442,10 +458,10 @@ def _matches_any_file_type(
     return any(file_type.matches(path) for file_type in file_types)
 
 
-def resolve_file_list(
+def resolve_file_list_with_diagnostics(
     config: Config,
-) -> list[Path]:
-    """Return the concrete input files to process after expansion and filtering.
+) -> FileListResolution:
+    """Return concrete input files plus discovery diagnostics.
 
     The resolver implements these semantics:
       1. **Candidate set**: Expand positional paths (files, directories recursively, and globs).
@@ -470,7 +486,8 @@ def resolve_file_list(
         config: Effective layered configuration.
 
     Returns:
-        Sorted list of files selected for processing.
+        A [FileListResolution][topmark.resolution.files.FileListResolution]
+        containing selected files and discovery diagnostics.
     """
     logger.debug("resolve_file_list(): config: %s", config)
 
@@ -750,4 +767,8 @@ def resolve_file_list(
 
     result: list[Path] = sorted(out_by_real.values(), key=lambda q: q.as_posix())
     logger.trace("Files to process: %d -- %s", len(result), result)
-    return result
+    return FileListResolution(
+        selected=tuple(result),
+        missing_literals=tuple(missing_literals),
+        unmatched_patterns=tuple(unmatched_patterns),
+    )

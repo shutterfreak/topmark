@@ -81,6 +81,7 @@ from topmark.core.formats import OutputFormat
 from topmark.core.logging import get_logger
 from topmark.core.machine.payloads import build_meta_payload
 from topmark.pipeline.context.model import ProcessingContext
+from topmark.pipeline.engine import exit_code_from_pipeline_results
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.pipelines import Pipeline
 from topmark.presentation.markdown.diagnostic import render_diagnostics_markdown
@@ -452,6 +453,13 @@ def probe_command(
         pipeline=pipeline,
         file_list=file_list,
     )
+
+    # Hard filesystem/content/write errors from actual pipeline execution must
+    # beat probe-specific semantic statuses such as unsupported or filtered.
+    # Compute this before adding synthetic filtered contexts so explicit
+    # discovery-filtered inputs continue to map to UNSUPPORTED_FILE_TYPE (69).
+    pipeline_error_code: ExitCode | None = exit_code_from_pipeline_results(results)
+    encountered_error_code = encountered_error_code or pipeline_error_code
 
     # Add synthetic probe results for explicit inputs that were filtered before
     # the probe pipeline could run.

@@ -58,7 +58,6 @@ from topmark.cli.cmd_common import init_common_state
 from topmark.cli.cmd_common import maybe_exit_on_error
 from topmark.cli.cmd_common import maybe_route_console_to_stderr
 from topmark.cli.emitters.machine import emit_processing_results_machine
-from topmark.cli.errors import TopmarkCliIOError
 from topmark.cli.io import plan_cli_inputs
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
@@ -91,6 +90,7 @@ from topmark.core.formats import OutputFormat
 from topmark.core.logging import get_logger
 from topmark.core.machine.payloads import build_meta_payload
 from topmark.pipeline.context.policy import effective_would_strip
+from topmark.pipeline.engine import exit_code_from_pipeline_results
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.reporting import ReportFilterResult
 from topmark.pipeline.reporting import ReportScope
@@ -235,9 +235,6 @@ def strip_command(
             `all`). Ignored for summary mode and machine-readable formats.
         output_format: Output format to use (``text``, ``markdown``, ``json``, or ``ndjson``).
             Verbosity and quiet controls apply only to TEXT output.
-
-    Raises:
-        TopmarkCliIOError: If an I/O error occurred (read/write).
 
     Exit Status:
         SUCCESS (0): No changes required or all requested changes were written.
@@ -435,6 +432,9 @@ def strip_command(
         file_list=file_list,
     )
 
+    pipeline_error_code: ExitCode | None = exit_code_from_pipeline_results(results)
+    encountered_error_code = encountered_error_code or pipeline_error_code
+
     # Report scope is a human per-file listing policy only.
     #
     # - Machine output must always use the full raw result set.
@@ -514,21 +514,28 @@ def strip_command(
                 console.print(render_version_footer_markdown())
 
             if failed:
-                raise TopmarkCliIOError(f"Failed to write {failed} file(s). See log for details.")
+                # Keep the user-facing apply summary above, but do not raise here.
+                # `encountered_error_code` already includes the prioritized
+                # pipeline-derived exit code, so the centralized
+                # `maybe_exit_on_error(...)` call below decides whether this run
+                # exits as FILE_NOT_FOUND, PERMISSION_DENIED, ENCODING_ERROR, or
+                # IO_ERROR.
+                encountered_error_code = encountered_error_code or ExitCode.IO_ERROR
 
     else:
         if fmt == OutputFormat.MARKDOWN:
             console.print(render_version_footer_markdown())
 
-        # Dry-run: determine exit code
-        if any(effective_would_strip(r) for r in results):
-            ctx.exit(ExitCode.WOULD_CHANGE)
-
-    # Exit on any error encountered during processing
+    # Exit on any error encountered during processing. Pipeline errors must beat
+    # the dry-run WOULD_CHANGE signal so access/encoding failures never exit as
+    # a successful diff-only result.
     maybe_exit_on_error(
         code=encountered_error_code,
         temp_path=temp_path,
     )
+
+    if not apply_changes and any(effective_would_strip(r) for r in results):
+        ctx.exit(ExitCode.WOULD_CHANGE)
 
     # Cleanup temp file if any (shouldn't be needed except on errors)
     if temp_path and temp_path.exists():

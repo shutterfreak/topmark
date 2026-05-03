@@ -48,7 +48,8 @@ from topmark.constants import CLI_OVERRIDE_STR
 from topmark.core.logging import resolve_env_log_level
 from topmark.core.logging import setup_logging
 from topmark.core.presentation import StyleRole
-from topmark.resolution.files import resolve_file_list
+from topmark.resolution.files import FileListResolution
+from topmark.resolution.files import resolve_file_list_with_diagnostics
 from topmark.runtime.model import RunOptions
 from topmark.runtime.writer_options import WriterOptions
 from topmark.runtime.writer_options import apply_resolved_writer_options
@@ -161,7 +162,8 @@ def build_file_list(
         if temp_path is None:
             raise RuntimeError("temp_path should not be undefined in stdin_mode")
         return [temp_path]
-    return resolve_file_list(config)
+    resolution: FileListResolution = resolve_file_list_with_diagnostics(config)
+    return list(resolution.selected)
 
 
 # ---- Runtime option assembly ----

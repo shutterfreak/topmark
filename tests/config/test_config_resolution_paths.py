@@ -31,7 +31,8 @@ from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.overrides import ConfigOverrides
 from topmark.config.overrides import apply_config_overrides
 from topmark.config.resolution.bridge import resolve_toml_sources_and_build_config_draft
-from topmark.resolution.files import resolve_file_list
+from topmark.resolution.files import FileListResolution
+from topmark.resolution.files import resolve_file_list_with_diagnostics
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -145,8 +146,9 @@ def test_globs_evaluated_relative_to_relative_to(
     _resolved, draft = resolve_toml_sources_and_build_config_draft(
         input_paths=[proj],
     )
-    # `resolve_file_list` should include our file based on the glob evaluated from proj
-    paths: list[Path] = resolve_file_list(draft.freeze())
+    # File-list resolution should include our file based on the glob evaluated from proj.
+    resolution: FileListResolution = resolve_file_list_with_diagnostics(draft.freeze())
+    paths: list[Path] = list(resolution.selected)
     assert py.resolve() in paths
 
 
@@ -284,8 +286,9 @@ def test_config_seeding_globs_when_no_inputs_and_cwd_differs(
         input_paths=[elsewhere],
         extra_config_files=[proj / "pyproject.toml"],
     )
-    files: list[Path] = resolve_file_list(draft.freeze())
-    # normalize
+    resolution: FileListResolution = resolve_file_list_with_diagnostics(draft.freeze())
+    files: list[Path] = list(resolution.selected)
+    # Normalize paths relative to the test root for stable assertions.
     rel: list[str] = sorted(
         (p if not p.is_absolute() else p.relative_to(tmp_path)).as_posix() for p in files
     )

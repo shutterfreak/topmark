@@ -8,11 +8,11 @@
 #
 # topmark:header:end
 
-"""Unit tests for `resolve_file_list` in [`topmark.file_resolver`][topmark.file_resolver].
+"""Unit tests for file-list resolution in `topmark.resolution.files`.
 
 These tests verify candidate expansion from positional args and config files,
-as well as include/exclude filtering, pattern file handling, file type filtering,
-and other edge cases like dotfiles, globs, and duplicates.
+include/exclude filtering, pattern file handling, file type filtering, and
+edge cases such as dotfiles, globs, duplicates, and discovery diagnostics.
 """
 
 from __future__ import annotations
@@ -87,6 +87,11 @@ def write(p: Path, text: str = "") -> Path:
     return p
 
 
+def resolve_selected(config: Config) -> list[Path]:
+    """Resolve files and return only the selected processing candidates."""
+    return list(file_resolver_mod.resolve_file_list_with_diagnostics(config).selected)
+
+
 def test_candidates_from_positional_and_globs(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -106,7 +111,7 @@ def test_candidates_from_positional_and_globs(
     with monkeypatch.context() as m:
         m.chdir(tmp_path)
         cfg: Config = make_config(files=["**/*.py"])
-        files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+        files: list[Path] = resolve_selected(cfg)
         rel: list[str] = sorted(p.as_posix() for p in files)
 
         assert rel == ["b.py", "pkg/c.py"]
@@ -140,7 +145,7 @@ def test_fallback_to_include_seed_when_no_positional(
                 ),
             ],
         )
-        files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+        files: list[Path] = resolve_selected(cfg)
         # Results may contain absolute paths (from seeding). Normalize to tmp_path-relative.
         rel: list[str] = sorted(
             (p if not p.is_absolute() else p.relative_to(tmp_path)).as_posix() for p in files
@@ -166,7 +171,7 @@ def test_include_intersection_filters_candidates(
                 ),
             ],
         )
-        files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+        files: list[Path] = resolve_selected(cfg)
         rel: list[str] = sorted(p.as_posix() for p in files)
 
         assert rel == ["a.py"]
@@ -191,7 +196,7 @@ def test_exclude_subtraction_filters_candidates(
                 ),
             ],
         )
-        files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+        files: list[Path] = resolve_selected(cfg)
         rel: list[str] = sorted(p.as_posix() for p in files)
 
         assert rel == ["a.py", "c.txt"]
@@ -217,7 +222,7 @@ def test_include_from_and_exclude_from_files(
             include_from=[str(inc)],
             exclude_from=[str(exc)],
         )
-        files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+        files: list[Path] = resolve_selected(cfg)
         rel: list[str] = sorted(p.as_posix() for p in files)
 
         assert rel == ["a.py"]  # b.py excluded, readme.md not included
@@ -250,7 +255,7 @@ def test_file_types_filtering(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
                 files=["."],
                 include_file_types={"py"},
             )
-            files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+            files: list[Path] = resolve_selected(cfg)
             rel: list[str] = sorted(p.as_posix() for p in files)
 
             assert rel == ["a.py"]
@@ -269,7 +274,7 @@ def test_returns_sorted_and_files_only(tmp_path: Path, monkeypatch: pytest.Monke
     with monkeypatch.context() as m:
         m.chdir(tmp_path)
         cfg: Config = make_config(files=["."])
-        files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+        files: list[Path] = resolve_selected(cfg)
         # No directories, sorted
         rel: list[str] = sorted(p.as_posix() for p in files)
 
@@ -299,7 +304,7 @@ def test_include_and_exclude_together(tmp_path: Path, monkeypatch: pytest.Monkey
                 ),
             ],
         )
-        files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+        files: list[Path] = resolve_selected(cfg)
         rel: list[str] = sorted(p.as_posix() for p in files)
 
         assert rel == ["keep/yes.py"]
@@ -310,7 +315,7 @@ def test_no_inputs_returns_empty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     monkeypatch.chdir(tmp_path)
     cfg: Config = make_config()
 
-    assert file_resolver_mod.resolve_file_list(cfg) == []
+    assert resolve_selected(cfg) == []
 
 
 def test_include_no_matches_yields_empty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -326,7 +331,7 @@ def test_include_no_matches_yields_empty(tmp_path: Path, monkeypatch: pytest.Mon
             ),
         ],
     )
-    assert file_resolver_mod.resolve_file_list(cfg) == []
+    assert resolve_selected(cfg) == []
 
 
 def test_exclude_wins_over_include(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -348,7 +353,7 @@ def test_exclude_wins_over_include(tmp_path: Path, monkeypatch: pytest.MonkeyPat
             ),
         ],
     )
-    assert file_resolver_mod.resolve_file_list(cfg) == []
+    assert resolve_selected(cfg) == []
 
 
 def test_pattern_files_ignore_comments_and_blanks(
@@ -367,7 +372,7 @@ def test_pattern_files_ignore_comments_and_blanks(
         include_from=[str(inc)],
         exclude_from=[str(exc)],
     )
-    rel: list[str] = [p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg)]
+    rel: list[str] = [p.as_posix() for p in resolve_selected(cfg)]
     assert rel == ["a.py"]
 
 
@@ -379,7 +384,7 @@ def test_glob_relative_to_cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     cfg: Config = make_config(
         files=["*.py"],
     )
-    rel: list[str] = [p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg)]
+    rel: list[str] = [p.as_posix() for p in resolve_selected(cfg)]
     assert rel == ["x.py"]
 
 
@@ -399,7 +404,7 @@ def test_includes_dotfiles_and_dotdirs_by_default(
             ),
         ],
     )
-    rel: list[str] = [p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg)]
+    rel: list[str] = [p.as_posix() for p in resolve_selected(cfg)]
     assert rel == [".hidden/.x.py"]
 
 
@@ -414,7 +419,7 @@ def test_deduplicates_overlapping_roots_and_globs(
     cfg: Config = make_config(
         files=[".", "dir", "**/*.py"],
     )
-    rel: list[str] = [p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg)]
+    rel: list[str] = [p.as_posix() for p in resolve_selected(cfg)]
     assert rel == ["a.py", "dir/b.py"]
 
 
@@ -445,7 +450,7 @@ def test_file_type_unknown_is_ignored(
             files=["."],
             include_file_types=include_file_types,
         )
-        files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+        files: list[Path] = resolve_selected(cfg)
         assert [p.as_posix() for p in files] == ["a.py"]
         assert any(
             "Unknown included file types specified" in r.message
@@ -476,7 +481,7 @@ def test_config_files_respected_by_filters(tmp_path: Path, monkeypatch: pytest.M
             ),
         ],
     )
-    files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+    files: list[Path] = resolve_selected(cfg)
     rel: list[str] = sorted(
         (p if not p.is_absolute() else p.relative_to(tmp_path)).as_posix() for p in files
     )
@@ -493,7 +498,7 @@ def test_empty_include_means_no_include_filter(
     cfg: Config = make_config(
         files=["."],
     )
-    rel: list[str] = [p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg)]
+    rel: list[str] = [p.as_posix() for p in resolve_selected(cfg)]
     assert rel == ["a.py", "b.txt"]
 
 
@@ -524,7 +529,7 @@ def test_no_seeding_when_files_from_present(
         files_from=[str(lst)],
         include_from=[str(inc)],  # irrelevant here
     )
-    files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+    files: list[Path] = resolve_selected(cfg)
     # Because files_from existed, no seeding should occur → no files
     assert files == []
 
@@ -556,7 +561,7 @@ def test_config_declared_globs_match_under_config_dir_even_if_cwd_diff(
             )
         ],
     )
-    files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+    files: list[Path] = resolve_selected(cfg)
     # Normalize relative to tmp_path for stability
     rel: list[str] = sorted(
         (p if not p.is_absolute() else p.relative_to(tmp_path)).as_posix() for p in files
@@ -584,7 +589,7 @@ def test_pattern_file_base_outside_cwd(tmp_path: Path, monkeypatch: pytest.Monke
         files=["."],
         include_from=[str(inc)],
     )
-    files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+    files: list[Path] = resolve_selected(cfg)
     assert files == []
 
 
@@ -613,7 +618,7 @@ def test_pattern_file_base_outside_cwd_matches_within_pattern_base(
         files=[".", str(ext.resolve())],
         include_from=[str(inc)],
     )
-    files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+    files: list[Path] = resolve_selected(cfg)
     rel: list[str] = sorted(
         (p if not p.is_absolute() else p.relative_to(tmp_path)).as_posix() for p in files
     )
@@ -651,7 +656,7 @@ def test_include_intersection_mixed_sources(
         ],
         include_from=[str(inc_file)],
     )
-    rel: list[str] = sorted(p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg))
+    rel: list[str] = sorted(p.as_posix() for p in resolve_selected(cfg))
     assert rel == ["docs/readme.md", "src/a.py"]
 
 
@@ -677,7 +682,7 @@ def test_exclude_from_overrides_include_patterns(
         ],
         exclude_from=[str(exc_file)],
     )
-    rel: list[str] = sorted(p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg))
+    rel: list[str] = sorted(p.as_posix() for p in resolve_selected(cfg))
     assert rel == ["src/a.py"]
 
 
@@ -692,7 +697,7 @@ def test_deduplicates_mixed_absolute_and_relative(
     cfg: Config = make_config(
         files=["pkg", str(a.resolve()), "**/a.py"],
     )
-    rel: list[str] = [p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg)]
+    rel: list[str] = [p.as_posix() for p in resolve_selected(cfg)]
     # Only one instance should remain
     assert rel == ["pkg/a.py"]
 
@@ -718,7 +723,7 @@ def test_multiple_unknown_file_types_warn_once(
             files=["."],
             include_file_types=include_file_types,
         )
-        files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+        files: list[Path] = resolve_selected(cfg)
         assert [p.as_posix() for p in files] == ["a.py"]
         msgs: list[str] = [
             r.message
@@ -750,7 +755,7 @@ def test_pattern_files_trim_whitespace_and_trailing_spaces(
         include_from=[str(inc)],
         exclude_from=[str(exc)],
     )
-    rel: list[str] = [p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg)]
+    rel: list[str] = [p.as_posix() for p in resolve_selected(cfg)]
     assert rel == ["a.py"]
 
 
@@ -766,7 +771,7 @@ def test_missing_pattern_files_fail_gracefully(
         files=["."],
         include_from=[str(tmp_path / "missing-include.txt")],  # non-existent
     )
-    files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+    files: list[Path] = resolve_selected(cfg)
     # include_from with no readable patterns → include filter removes all
     assert files == []
     assert any("Cannot read patterns from" in r.message for r in caplog.records)
@@ -793,7 +798,7 @@ def test_exclude_dotfiles_with_pattern(tmp_path: Path, monkeypatch: pytest.Monke
             )
         ],
     )
-    rel: list[str] = [p.as_posix() for p in file_resolver_mod.resolve_file_list(cfg)]
+    rel: list[str] = [p.as_posix() for p in resolve_selected(cfg)]
     assert rel == []
 
 
@@ -821,7 +826,7 @@ def test_positional_glob_matches_path_rglob(
 
         # TopMark resolver using the same positional glob
         cfg: Config = make_config(files=[pattern])
-        files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+        files: list[Path] = resolve_selected(cfg)
         result: list[Path] = sorted(files)
 
         assert [p.as_posix() for p in result] == [p.as_posix() for p in expected]
@@ -852,21 +857,17 @@ def test_files_from_seeds_candidates(tmp_path: Path, monkeypatch: pytest.MonkeyP
         cfg: Config = make_config(
             files_from=[str(lst)],
         )
-        files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
+        files: list[Path] = resolve_selected(cfg)
         rel: list[str] = sorted(p.as_posix() for p in files)
 
         # Expect both listed files, but not 'other/c.py' (not in the list)
         assert rel == ["src/a.py", "src/b.txt"]
 
 
-def test_nonexistent_literal_paths_are_ignored(
+def test_nonexistent_literal_paths_are_reported_as_missing_diagnostics(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    """Nonexistent literal paths should be ignored after logging a warning.
-
-    This pins down current behavior: literal paths that do not exist
-    are not fatal and do not contribute to the final candidate set.
-    """
+    """Missing literal paths should be omitted from selected files but reported."""
     # One real file and one missing literal
     write(tmp_path / "a.py", "x")
     missing: Path = tmp_path / "missing.py"
@@ -876,14 +877,57 @@ def test_nonexistent_literal_paths_are_ignored(
         caplog.set_level("WARNING")
 
         cfg: Config = make_config(files=["a.py", str(missing)])
-        files: list[Path] = file_resolver_mod.resolve_file_list(cfg)
-        rel: list[str] = [p.as_posix() for p in files]
+        resolution: file_resolver_mod.FileListResolution = (
+            file_resolver_mod.resolve_file_list_with_diagnostics(cfg)
+        )
+        rel: list[str] = [p.as_posix() for p in resolution.selected]
 
-        # Only the existing file should remain
+        # Only the existing file should remain selected for processing.
         assert rel == ["a.py"]
+        assert resolution.missing_literals == (missing,)
+        assert resolution.unmatched_patterns == ()
 
-        # And we should have logged at least one warning about the missing path
+        # Missing literal paths are still logged as discovery diagnostics.
         msgs: list[str] = [
             r.message for r in caplog.records if "No such file or directory" in r.message
         ]
         assert msgs, "Expected a warning about the missing literal path"
+
+
+def test_unmatched_glob_patterns_are_reported_as_diagnostics(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Unmatched glob patterns should be omitted from selected files but reported."""
+    monkeypatch.chdir(tmp_path)
+    caplog.set_level("WARNING")
+
+    cfg: Config = make_config(files=["missing/**/*.py"])
+    resolution: file_resolver_mod.FileListResolution = (
+        file_resolver_mod.resolve_file_list_with_diagnostics(cfg)
+    )
+
+    assert resolution.selected == ()
+    assert resolution.missing_literals == ()
+    assert resolution.unmatched_patterns == ("missing/**/*.py",)
+    assert any("No matches for glob pattern" in r.message for r in caplog.records)
+
+
+def test_resolve_file_list_wrapper_returns_selected_files_only(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Compatibility wrapper should return only selected files."""
+    write(tmp_path / "a.py", "x")
+    missing: Path = tmp_path / "missing.py"
+
+    with monkeypatch.context() as m:
+        m.chdir(tmp_path)
+        cfg: Config = make_config(files=["a.py", str(missing)])
+        resolution: file_resolver_mod.FileListResolution = (
+            file_resolver_mod.resolve_file_list_with_diagnostics(cfg)
+        )
+        files: list[Path] = list(resolution.selected)
+
+    assert [p.as_posix() for p in files] == ["a.py"]

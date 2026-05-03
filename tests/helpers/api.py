@@ -30,7 +30,7 @@ from topmark import api
 from topmark.api.runtime import select_pipeline
 from topmark.config.resolution.bridge import resolve_toml_sources_and_build_config_draft
 from topmark.pipeline.engine import run_steps_for_files
-from topmark.resolution.files import resolve_file_list
+from topmark.resolution.files import resolve_file_list_with_diagnostics
 from topmark.runtime.model import RunOptions
 from topmark.toml.keys import Toml
 
@@ -214,7 +214,7 @@ def run_cli_like(
         draft.exclude_file_types = set(exclude_file_types)
 
     cfg: Config = draft.freeze()
-    files: list[Path] = resolve_file_list(cfg)
+    files: list[Path] = list(resolve_file_list_with_diagnostics(cfg).selected)
     run_options: RunOptions = RunOptions(
         apply_changes=apply,
         prune_views=prune_views,

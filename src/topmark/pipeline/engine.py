@@ -46,6 +46,9 @@ from topmark.core.exit_codes import ExitCode
 from topmark.core.logging import get_logger
 from topmark.pipeline import runner
 from topmark.pipeline.context.model import ProcessingContext
+from topmark.pipeline.status import ContentStatus
+from topmark.pipeline.status import FsStatus
+from topmark.pipeline.status import WriteStatus
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -58,6 +61,63 @@ if TYPE_CHECKING:
     from topmark.runtime.model import RunOptions
 
 logger: TopmarkLogger = get_logger(__name__)
+
+
+def exit_code_from_pipeline_results(
+    results: Sequence[ProcessingContext],
+) -> ExitCode | None:
+    """Return the highest-priority non-success exit code implied by pipeline results.
+
+    This helper summarizes per-file pipeline statuses into a process-level exit
+    signal for CLI/API callers. It is intentionally presentation-free: it does
+    not print, log, or inspect rendered hints. Callers remain responsible for
+    rendering diagnostics and deciding exactly when to exit.
+
+    Priority order:
+      1. missing inputs (`FILE_NOT_FOUND`)
+      2. permission failures (`PERMISSION_DENIED`)
+      3. encoding failures (`ENCODING_ERROR`)
+      4. write failures (`IO_ERROR`)
+      5. generic read/I/O failures (`IO_ERROR`)
+
+    Non-error skips such as binary/unsupported files, empty files, mixed line
+    endings, and policy blocks are intentionally not mapped here. Those remain
+    normal per-file pipeline outcomes unless a command layer gives them a
+    command-specific non-zero meaning.
+
+    Args:
+        results: Pipeline contexts returned by `run_steps_for_files`.
+
+    Returns:
+        The highest-priority `ExitCode` implied by the results, or `None` when
+        the result set does not imply a command-level error.
+    """
+    if any(r.status.fs == FsStatus.NOT_FOUND for r in results):
+        return ExitCode.FILE_NOT_FOUND
+
+    if any(
+        r.status.fs
+        in {
+            FsStatus.NO_READ_PERMISSION,
+            FsStatus.NO_WRITE_PERMISSION,
+        }
+        for r in results
+    ):
+        return ExitCode.PERMISSION_DENIED
+
+    if any(r.status.fs == FsStatus.UNICODE_DECODE_ERROR for r in results):
+        return ExitCode.ENCODING_ERROR
+
+    if any(r.status.write == WriteStatus.FAILED for r in results):
+        return ExitCode.IO_ERROR
+
+    if any(
+        r.status.fs == FsStatus.UNREADABLE or r.status.content == ContentStatus.UNREADABLE
+        for r in results
+    ):
+        return ExitCode.IO_ERROR
+
+    return None
 
 
 def run_steps_for_files(

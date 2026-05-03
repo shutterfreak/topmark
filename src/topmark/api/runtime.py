@@ -49,7 +49,8 @@ from topmark.core.errors import InvalidPolicyError
 from topmark.core.logging import get_logger
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.pipelines import Pipeline
-from topmark.resolution.files import resolve_file_list
+from topmark.resolution.files import FileListResolution
+from topmark.resolution.files import resolve_file_list_with_diagnostics
 from topmark.runtime.writer_options import WriterOptions
 from topmark.runtime.writer_options import apply_resolved_writer_options
 
@@ -281,7 +282,8 @@ def _resolve_candidate_files(cfg: Config) -> list[Path]:
     Returns:
         The resolved and filtered candidate file list.
     """
-    file_list: list[Path] = resolve_file_list(cfg)
+    resolution: FileListResolution = resolve_file_list_with_diagnostics(cfg)
+    file_list: list[Path] = list(resolution.selected)
     logger.debug("Files found: %s", len(file_list))
     return file_list
 

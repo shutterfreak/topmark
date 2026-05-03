@@ -128,6 +128,11 @@ def run_cli(
 # --- Exit-code contract assertion helpers ---
 
 
+# Tests that pin the public CLI exit-code contract should use
+# pytest.mark.exit_code so they can be audited with:
+# pytest -m exit_code
+
+
 def assert_SUCCESS(result: Result) -> None:
     """Assert that the command exited successfully (code 0).
 
@@ -217,3 +222,27 @@ def assert_IO_ERROR(result: Result) -> None:
         result: The Result object returned by `run_cli` or `run_cli_in`.
     """
     assert result.exit_code == ExitCode.IO_ERROR, result.output
+
+
+def assert_PERMISSION_DENIED(result: Result) -> None:
+    """Assert that the command exited with a permission error (code 77).
+
+    This represents input/access permission failures detected by the pipeline,
+    such as unreadable files or files/directories without required permissions.
+
+    Args:
+        result: The Result object returned by `run_cli` or `run_cli_in`.
+    """
+    assert result.exit_code == ExitCode.PERMISSION_DENIED, result.output
+
+
+def assert_FILE_NOT_FOUND(result: Result) -> None:
+    """Assert that the command exited with a file-not-found error (code 66).
+
+    This represents missing input paths detected by the pipeline before normal
+    processing can complete.
+
+    Args:
+        result: The Result object returned by `run_cli` or `run_cli_in`.
+    """
+    assert result.exit_code == ExitCode.FILE_NOT_FOUND, result.output
