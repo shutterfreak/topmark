@@ -508,35 +508,33 @@ Recommended direction:
 
 This is the largest remaining product/architecture decision before 1.0.
 
-Question:
-
-- Should TopMark gain **first-class in-memory pipeline support** before 1.0, or should it be
-  explicitly deferred?
+- In-memory pipeline support is **explicitly deferred beyond 1.0**.
 
 Current status:
 
 - design drafted
 - implementation not started
 - architecture direction understood
-
-Proposed direction remains:
-
-- keep the existing file-based pipeline intact
-- introduce an `InputSource` abstraction
-- add a memory-oriented early-stage pipeline variant
-- reuse the existing later pipeline steps unchanged where possible
+- explicitly deferred for 1.0 contract freeze
 
 What still needs deciding:
 
-- whether mixed file + memory inputs are allowed in one run
-- how synthetic paths/display names should be represented
-- whether stdin should be modeled through the same abstraction
-- whether this is a 1.0 feature or a documented post-1.0 deferral
+- decision recorded: defer in-memory pipeline support to post-1.0
+- future design considerations retained for post-1.0 work:
+  - whether mixed file + memory inputs are allowed in one run
+  - how synthetic paths/display names should be represented
+  - whether stdin should be modeled through the same abstraction
 
-If implemented before 1.0, this should also drive a clearer split between:
+For 1.0:
 
-- fast memory-based unit tests
-- smaller, focused filesystem integration tests
+- the existing file-based pipeline remains the only supported execution model
+- stdin continues to be handled via the existing runtime mechanisms
+
+Post-1.0:
+
+- introduce an `InputSource` abstraction
+- enable memory-backed pipeline execution
+- revisit test strategy to split between memory-based unit tests and filesystem integration tests
 
 ### API / CLI / presentation boundary freeze
 
@@ -693,7 +691,7 @@ What is left is mainly:
 
 - **freeze decisions**
 - **CLI / human-output follow-up**
-- one major scope choice: **in-memory pipeline before 1.0 vs explicit deferral**
+- one major scope decision resolved: **in-memory pipeline explicitly deferred to post-1.0**
 
 That means TopMark is now in the final stage of the 1.0 effort: finishing the last CLI-facing
 consistency work, deciding what to freeze, and deferring anything non-essential cleanly.
