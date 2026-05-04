@@ -18,6 +18,226 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ______________________________________________________________________
 
+## [1.0.0a10] – 2026-05-04
+
+This tenth **1.0 alpha release** finalizes TopMark’s **CLI exit-code contract**, tightens the
+`--quiet` / verbosity surface, and completes the file-resolution diagnostics model for 1.0.
+
+It introduces structured file-list resolution with explicit diagnostics, preserves missing inputs
+end-to-end via synthetic pipeline contexts, and centralizes exit-code derivation from pipeline
+results using deterministic priority ordering.
+
+This release completes the CLI contract work following the output-contract, probe, and resolution
+explainability milestones from earlier alphas.
+
+### ⚠️ Breaking Changes - 1.0.0a10
+
+- **CLI quiet/verbosity contract tightened**
+
+  - The `--quiet` flag is no longer accepted by **pure informational commands**:
+    - `version`
+    - `config defaults`
+    - `config init`
+  - These commands now:
+    - always produce output in TEXT/Markdown modes
+    - reject `--quiet` as a usage error
+  - This finalizes the CLI contract where:
+    - `--quiet` is available only on commands with meaningful status, inspection, or mutation
+      signals
+
+- **CLI behavior for missing inputs**
+
+  - Explicit missing input paths are no longer silently ignored or collapsed into “no files to
+    process”.
+  - Missing inputs are now reported as per-file errors in:
+    - TEXT output
+    - Markdown output
+    - JSON / NDJSON machine output
+  - CLI commands now exit with:
+    - `FILE_NOT_FOUND (66)` when one or more explicit inputs are missing
+
+- **Resolver API change**
+
+  - `resolve_file_list()` has been replaced by:
+    - `resolve_file_list_with_diagnostics()`
+  - Callers must now handle a structured `FileListResolution` object with:
+    - `selected`
+    - `missing_literals`
+    - `unmatched_patterns`
+  - Legacy assumptions about resolver returning only a list of files are no longer valid.
+
+- **Exit-code semantics**
+
+  - Pipeline-result-derived exit-code behavior is now centralized and enforced with deterministic
+    priority ordering, including:
+    - `PERMISSION_DENIED (77)` > `FILE_NOT_FOUND (66)` > `IO_ERROR (74)` > `CONFIG_ERROR (78)` >
+      `FAILURE (1)`
+  - Mixed-result runs now deterministically return the highest-priority failure.
+  - CLI commands (`check`, `strip`, `probe`) now share consistent exit-code semantics.
+
+- **Unmatched glob behavior clarified**
+
+  - Unmatched glob patterns are treated as:
+    - non-fatal diagnostics for `check` / `strip`
+    - semantic resolution outcomes for `probe` (`UNSUPPORTED_FILE_TYPE (69)`)
+
+### Highlights — 1.0.0a10
+
+- Finalized CLI `--quiet` / verbosity contract for pure informational commands
+- Finalized CLI exit-code contract for 1.0
+- Introduced diagnostic-aware file resolution
+- Preserved missing inputs via synthetic pipeline contexts
+- Unified exit-code derivation across all CLI commands
+- Completed probe/check/strip parity for filesystem and resolution errors
+- Fully aligned tests, CLI behavior, and documentation
+
+### Added — 1.0.0a10
+
+- **File resolution diagnostics**
+
+  - Added `FileListResolution` model exposing:
+    - selected files
+    - missing literal inputs
+    - unmatched glob patterns
+  - Added `resolve_file_list_with_diagnostics()` as the canonical resolver entry point.
+
+- **Synthetic pipeline contexts**
+
+  - Added `pipeline.synthetic.build_missing_file_contexts(...)`.
+  - Represent missing inputs as `ProcessingContext` instances with `FsStatus.NOT_FOUND`
+  - Ensure missing inputs participate in:
+    - pipeline execution
+    - rendering
+    - summaries
+    - exit-code selection
+
+- **Exit-code engine**
+
+  - Added `exit_code_from_pipeline_results(...)` to centralize pipeline-result-derived exit-code
+    selection.
+  - Implemented deterministic priority ordering for mixed-result runs.
+
+- **Tests**
+
+  - Added CLI tests for:
+    - missing inputs (`FILE_NOT_FOUND`)
+    - write/permission errors
+    - unmatched glob behavior
+    - probe exit-code semantics
+    - mixed-result exit-code priority
+  - Introduced `pytest.mark.exit_code` and centralized assertion helpers
+
+### Changed — 1.0.0a10
+
+- **CLI quiet/verbosity behavior**
+
+  - Removed `--quiet` support from pure informational commands:
+    - `version`
+    - `config defaults`
+    - `config init`
+  - Informational commands now:
+    - always emit output in TEXT and Markdown formats
+    - treat `--quiet` as an invalid option
+  - Reinforces the CLI contract:
+    - `--quiet` applies only to commands with meaningful status, inspection, or mutation signals
+  - Simplified version presentation by removing quiet-dependent branching for informational output
+
+- **CLI behavior**
+
+  - `check`, `strip`, and `probe` now:
+    - propagate resolver diagnostics end-to-end
+    - report missing inputs explicitly
+    - no longer short-circuit on “no files to process” when inputs are invalid
+  - Total file counts now include synthetic resolver-level results
+
+- **Pipeline / outcome classification**
+
+  - Updated `map_bucket()` to prioritize filesystem failures before resolution state
+  - Prevented synthetic contexts from being classified as “resolve pending”
+  - Ensured missing inputs are consistently classified as errors
+
+- **Probe semantics**
+
+  - Ensured missing inputs produce hard failures (`FILE_NOT_FOUND`)
+  - Preserved semantic outcomes (`UNSUPPORTED_FILE_TYPE`) for filtered/unsupported inputs
+  - Completed exit-code parity with `check` and `strip`
+
+- **Documentation: output contract, verbosity and `--quiet`**
+
+  - Updated command docs (`version`, `config defaults`, `config init`) to remove `--quiet`
+  - Introduced dedicated output-contract snippets:
+    - `output-contract.md`
+    - `output-contract-no-quiet.md`
+  - Clarified in global options and README:
+    - `--quiet` is not universally available
+    - informational commands always produce output
+
+- **Documentation: exit codes and hint ordering**
+
+  - Added and aligned a canonical exit-code contract (`docs/usage/exit-codes.md`)
+  - Updated:
+    - command pages (`check`, `strip`, `probe`, `config`, `registry`, `version`)
+    - filtering and pre-commit docs
+    - architecture, API, machine-output, and roadmap docs
+    - README and documentation index
+  - Clarified:
+    - missing vs unmatched input behavior
+    - machine output vs process exit status separation
+    - presentation-level nature of hint ordering
+
+- **Test suite**
+
+  - Refactored CLI test suite into domain-specific modules
+  - Removed legacy `test_exit_codes.py`
+  - Standardized exit-code assertions and naming
+  - Updated CLI tests to:
+    - assert rejection of `--quiet` for informational commands
+    - remove overlapping quiet-behavior tests for version/config commands
+    - align logging flag tests with commands that support quiet
+
+### Fixed — 1.0.0a10
+
+- **Missing input handling**
+
+  - Fixed bug where missing inputs were dropped during resolution and not reflected in CLI output or
+    exit codes
+  - Ensured missing inputs are preserved across resolver → pipeline → presentation
+
+- **Exit-code inconsistencies**
+
+  - Fixed inconsistent exit-code behavior across `check`, `strip`, and `probe`
+  - Ensured mixed-result runs always return the highest-priority failure
+
+- **Probe edge cases**
+
+  - Fixed probe behavior where semantic outcomes could override filesystem errors
+  - Ensured missing inputs take precedence over unsupported-type outcomes
+
+- **Resolver/test mismatches**
+
+  - Fixed tests relying on legacy resolver behavior returning plain file lists
+  - Aligned resolver tests with diagnostic-aware model
+
+- **Documentation generation**
+
+  - Fixed the generated `config defaults` documentation page incorrectly showing `config init`
+    output.
+
+### Notes — 1.0.0a10
+
+- The **CLI exit-code contract and `--quiet` / verbosity surface are now finalized and considered
+  stable for 1.0**.
+- File resolution, pipeline execution, and CLI reporting now form a **single unified diagnostic
+  flow**.
+- Machine output (JSON/NDJSON) remains intentionally **decoupled from process exit codes**.
+- Primary/headline hint selection is explicitly **presentation-level and not part of the stable CLI
+  contract**.
+- Remaining work before 1.0 is limited to:
+  - minor wording and presentation refinements
+  - final release-path validation and polish
+
+______________________________________________________________________
+
 ## [1.0.0a9] – 2026-04-28
 
 This ninth **1.0 alpha release** finalizes TopMark’s **line-ending support contract** for 1.0.
