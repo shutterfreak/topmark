@@ -92,18 +92,35 @@ allow_header_in_empty_files = true
 
 ### `empty_insert_mode`
 
-Controls how TopMark classifies files as empty for insertion.
+Controls which empty or empty-like files are classified as empty for insertion.
+
+This policy affects dry-run reporting, `--apply` behavior, API result views, and outcome bucketing.
+
+This setting is evaluated together with `allow_header_in_empty_files`:
+
+- If `allow_header_in_empty_files = false` (default), files classified as empty for insertion are
+  treated as unchanged/compliant by default.
+- If `allow_header_in_empty_files = true`, files classified as empty for insertion may receive
+  generated headers, subject to normal safety gates.
 
 Allowed values:
 
-- `bytes_empty`
-- `logical_empty`
-- `whitespace_empty`
+- `bytes_empty`: only true 0-byte files
+- `logical_empty`: true 0-byte files plus logically empty placeholders (optional BOM, optional
+  horizontal whitespace, and at most one trailing newline)
+- `whitespace_empty`: true 0-byte files plus any decoded content containing only whitespace or
+  newlines
 
 ```toml
 [policy]
 empty_insert_mode = "whitespace_empty"
 ```
+
+`render_empty_header_when_no_fields` is separate. It controls whether TopMark may render an
+otherwise empty header when no header fields are configured.
+
+Safety gates still take precedence. Unreadable files, unsupported files, malformed headers, blocked
+filesystem states, and other non-mutable conditions are not made mutable by `empty_insert_mode`.
 
 ### `render_empty_header_when_no_fields`
 

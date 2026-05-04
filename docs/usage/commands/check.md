@@ -144,7 +144,26 @@ filesystem states, and other non-mutable conditions are not made mutable by
 - `--allow-header-in-empty-files / --no-allow-header-in-empty-files`
 - `--empty-insert-mode`
 
-Control how TopMark classifies empty files and whether headers may be inserted.
+These options control how `check` classifies empty files and whether headers may be inserted.
+
+`--empty-insert-mode` defines which empty or empty-like files are eligible for insertion:
+
+- `bytes_empty`: only true 0-byte files
+- `logical_empty`: true 0-byte files plus logically empty placeholders
+- `whitespace_empty`: any decoded content containing only whitespace or newlines
+
+This policy affects dry-run reporting, `--apply` behavior, API result views, and outcome bucketing.
+
+This classification is evaluated together with `--allow-header-in-empty-files`:
+
+- when disabled (default), empty-like files are treated as unchanged/compliant
+- when enabled, eligible empty-like files may receive headers, subject to safety gates
+
+`--render-empty-header-when-no-fields` is separate and controls whether an otherwise empty header
+may be rendered when no fields are configured.
+
+Safety gates still take precedence. Unreadable files, unsupported files, malformed headers, blocked
+filesystem states, and other non-mutable conditions are not made mutable by these options.
 
 ### Formatting and safety
 
