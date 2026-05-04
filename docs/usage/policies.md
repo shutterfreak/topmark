@@ -59,13 +59,19 @@ ______________________________________________________________________
 
 ### `header_mutation_mode`
 
-Controls which files `topmark check` may modify.
+Controls the mutation intent for `topmark check`.
 
-Allowed values:
+Allowed TOML/API values:
 
 - `all`: insert missing headers and update existing headers
-- `add_only`: only insert missing headers
-- `update_only`: only update existing headers
+- `add_only`: insert missing headers only; existing headers are not updated
+- `update_only`: update existing headers only; missing headers are not inserted
+
+This policy affects dry-run reporting, apply behavior, API result views, and outcome bucketing. It
+applies only to `check`; `strip` and `probe` reject generated-header mutation controls.
+
+Safety gates still take precedence. Malformed headers, unreadable files, unsupported files, blocked
+filesystem states, and other non-mutable conditions are not made mutable by `header_mutation_mode`.
 
 Example:
 
@@ -199,7 +205,8 @@ Shared policy options:
 
 - `--allow-content-probe / --no-allow-content-probe`
 
-Header insertion/update policies do not apply to `strip`.
+Header insertion/update policies, including `header_mutation_mode`, do not apply to `strip` and are
+rejected when provided.
 
 ______________________________________________________________________
 
@@ -209,8 +216,11 @@ Reporting controls what the CLI prints. Policy controls what the pipeline is all
 
 Examples:
 
-- `--report actionable`: show only files that would be mutated
-- `--report noncompliant`: include actionable files plus unsupported file types
-- `--header-mutation-mode add-only`: change pipeline mutation behavior
+- `--report actionable`: show human per-file entries that would change, changed, failed, or
+  otherwise need attention
+- `--report noncompliant`: include actionable files plus unsupported file types in human per-file
+  output
+- `--header-mutation-mode add-only`: allow `check` to insert missing headers but not update existing
+  headers
 
 These settings are independent and may be combined.

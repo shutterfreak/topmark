@@ -327,7 +327,7 @@ def allow_bom_before_shebang(ctx: PolicyContext) -> bool:
 
 
 def check_permitted_by_policy(ctx: PolicyContext) -> bool | None:
-    """Whether policy allows the intended type of change (tri-state).
+    """Whether the active check policy allows the intended header mutation.
 
     Args:
         ctx: Processing context for the current file.

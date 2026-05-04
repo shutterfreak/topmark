@@ -126,13 +126,18 @@ The `check` command supports policy overrides that control how headers are inser
 
 See also: [TopMark Policy Guide](../policies.md).
 
-### Header mutation mode
+Use `--header-mutation-mode` to control the mutation intent for `check`:
 
-Use `--header-mutation-mode` to control which files may be modified:
+- `all` (default): insert missing headers and update existing headers
+- `add-only`: insert missing headers only; existing headers are not updated
+- `update-only`: update existing headers only; missing headers are not inserted
 
-- `all` (default): insert and update headers
-- `add-only`: only insert missing headers
-- `update-only`: only update existing headers
+This policy affects dry-run reporting, `--apply` behavior, API result views, and outcome bucketing.
+It is a check-only policy; `strip` removes existing headers and `probe` is read-only.
+
+Safety gates still take precedence. Malformed headers, unreadable files, unsupported files, blocked
+filesystem states, and other non-mutable conditions are not made mutable by
+`--header-mutation-mode`.
 
 ### Empty file behavior
 
@@ -438,7 +443,8 @@ ______________________________________________________________________
 ## Related commands
 
 - [`topmark strip`](./strip.md) — remove detected TopMark headers instead of inserting or updating
-- [`topmark probe`](./probe.md) — explain file-type and processor resolution. them.
+  them.
+- [`topmark probe`](./probe.md) — explain file-type and processor resolution.
 - [`topmark config check`](./config/check.md) — validate the effective merged configuration and
   report diagnostics.
 - [`topmark config dump`](./config/dump.md) — show the effective merged configuration as TOML.

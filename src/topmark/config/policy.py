@@ -57,7 +57,7 @@ class HeaderMutationMode(str, Enum):
     """Defines how headers may be mutated.
 
     Attributes:
-        ALL: Process all files (default).
+        ALL: Allow both inserting missing headers and updating existing headers (default).
         ADD_ONLY: Only add headers when no header present.
         UPDATE_ONLY: Only update existing headers.
     """

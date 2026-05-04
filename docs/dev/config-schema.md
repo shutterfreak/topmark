@@ -137,7 +137,7 @@ topmark:
       type: str
       default: "all"
       enum: ["all", "add_only", "update_only"]
-      description: Control whether TopMark inserts and updates headers, only inserts missing headers, or only updates existing headers.
+      description: Controls check mutation intent: insert and update headers, insert missing headers only, or update existing headers only. Safety gates still take precedence.
 
     allow_header_in_empty_files:
       type: bool
@@ -174,6 +174,7 @@ topmark:
         type: str
         optional: true
         enum: ["all", "add_only", "update_only"]
+        description: Per-file-type override for check mutation intent.
       allow_header_in_empty_files:
         type: bool
         optional: true
@@ -237,3 +238,18 @@ topmark:
       default: []
       description: Input paths (files/directories) to scan; commonly provided via CLI.
 ```
+
+## Policy token notes
+
+`header_mutation_mode` uses TOML/API tokens with underscores:
+
+- `all`: insert missing headers and update existing headers
+- `add_only`: insert missing headers only; existing headers are not updated
+- `update_only`: update existing headers only; missing headers are not inserted
+
+The equivalent CLI values use hyphens for the non-default modes: `add-only` and `update-only`.
+
+This policy applies only to `check`. It affects dry-run reporting, apply behavior, API result views,
+and outcome bucketing. It does not apply to `strip` or `probe`, and safety gates still take
+precedence: malformed headers, unreadable files, unsupported files, blocked filesystem states, and
+other non-mutable conditions are not made mutable by this policy.
