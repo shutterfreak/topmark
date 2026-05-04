@@ -18,6 +18,90 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ______________________________________________________________________
 
+## [1.0.0a11] - 2026-05-04
+
+This eleventh **1.0 alpha release** finalizes TopMark’s **CLI command-applicability contract**,
+STDIN handling rules, and user-facing policy/report semantics for 1.0.
+
+It tightens option scoping across `check`, `strip`, `probe`, `config`, `registry`, and `version`,
+ensures invalid command/option combinations fail as CLI usage errors, and documents the final
+behavior across CLI help, user documentation, architecture notes, and the roadmap.
+
+This release completes the remaining CLI/policy freeze work after the exit-code and output-contract
+milestones from earlier alphas.
+
+### ⚠️ Breaking Changes - 1.0.0a11
+
+- CLI now strictly enforces command applicability:
+  - unsupported options are rejected with usage errors instead of being ignored
+  - file-agnostic commands (`config *`, `version`, registry commands) reject positional PATHS and
+    STDIN inputs
+- `--stdin` flag is no longer accepted (and is now explicitly rejected); only `-` with
+  `--stdin-filename` is supported
+- Option applicability is now strictly validated:
+  - `--apply`, `--report`, and policy options are rejected on unsupported commands (e.g. `probe`,
+    `strip`)
+- CLI help and error messages updated for consistency; downstream tooling relying on exact output
+  may need adjustment
+
+### Added - 1.0.0a11
+
+- Finalized and enforced CLI command-applicability contract across all commands
+- Introduced global CLI applicability validation with consistent error handling
+- Added focused CLI tests for:
+  - command-specific option rejection
+  - STDIN misuse and conflicts
+  - file-agnostic command behavior
+- Added reusable documentation snippets for:
+  - STDIN handling
+  - report-scope semantics
+- Added config-dump-specific `--files-from` option decorator to clarify compatibility semantics
+
+### Changed - 1.0.0a11
+
+- Standardized STDIN contract:
+  - content input uses POSIX-style `-` sentinel plus `--stdin-filename`
+  - `--stdin` option flag is explicitly not supported and rejected
+- Harmonized CLI help text, epilog formatting, and option descriptions across all commands
+- Clarified file-agnostic command behavior:
+  - positional PATHS and file-processing STDIN modes are now consistently rejected
+- Refined `config dump --files-from` semantics:
+  - accepted for compatibility only
+  - listed paths do not affect dumped configuration
+- Unified wording across CLI, docs, and tests for:
+  - “rejected” vs “ignored” behavior
+  - report-scope semantics
+- Improved robustness of CLI help tests by normalizing whitespace to account for Click wrapping
+
+### Fixed - 1.0.0a11
+
+- Fixed STDIN handling inconsistencies when using unsupported `--stdin` flag
+- Fixed incorrect or misleading CLI help text regarding:
+  - STDIN usage
+  - file-agnostic command behavior
+  - `--files-from` semantics in `config dump`
+- Fixed epilog formatting issues in nested command groups (`config *`) using Click paragraph
+  preservation
+- Fixed brittle CLI help assertions caused by line wrapping in test output
+
+### Documentation - 1.0.0a11
+
+- Updated all CLI command pages (`check`, `strip`, `probe`, `config`, registry, version) to reflect
+  frozen applicability and STDIN contracts
+- Updated configuration, filtering, and architecture docs to align with finalized CLI behavior
+- Updated README and documentation index for consistency
+- Updated roadmap to reflect completion of CLI/policy contract freeze and shift remaining work to
+  API/config boundaries
+
+### Notes - 1.0.0a11
+
+- CLI applicability, error/diagnostic behavior, STDIN handling, and user-facing policy/report
+  semantics are now considered frozen for 1.0
+- Remaining work toward 1.0 focuses on API/public boundary freeze, configuration contract
+  finalization, and release validation
+
+______________________________________________________________________
+
 ## [1.0.0a10] – 2026-05-04
 
 This tenth **1.0 alpha release** finalizes TopMark’s **CLI exit-code contract**, tightens the
