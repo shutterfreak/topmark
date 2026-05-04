@@ -166,6 +166,14 @@ The pipeline has been stabilized with clearer semantics:
 - Introduced **empty-file classification model**
 - Refactored policy handling:
   - `HeaderMutationMode` replaces boolean flags
+- Froze the user-facing policy/report flag semantics for 1.0:
+  - `--report` controls human per-file output scope only and does not affect processing, summaries,
+    machine output, or exit-code selection
+  - `header_mutation_mode` controls `check` mutation intent (`all`, `add_only`, `update_only`) while
+    safety gates still take precedence
+  - `empty_insert_mode` controls empty/empty-like classification only and is evaluated together with
+    `allow_header_in_empty_files`
+  - `render_empty_header_when_no_fields` remains separate from empty-file insertion permission
 - Standardized summary output:
   - grouped by `(outcome, reason)`
 - Ensured **idempotence and deterministic behavior**
@@ -675,7 +683,6 @@ A few user-facing behavior questions remain open for 1.0:
 
 - Should the default processing mode remain **“all supported file types”**?
 - Should a stricter whitelist-first mode ever become the default?
-- Freeze the final public token semantics for `EmptyInsertMode`.
 - Decide whether public API callers should continue using stable string literals for policy tokens,
   or whether a dedicated public enum should exist later.
 - Decide whether summary reason strings are part of the stable integration contract or only
@@ -700,8 +707,8 @@ The remaining work is no longer broad architectural redesign.
 
 What is left is mainly:
 
-- **freeze decisions**
-- **CLI / human-output follow-up**
+- **public/API and configuration-boundary freeze decisions**
+- **tooling/release follow-up**
 - one major scope decision resolved: **in-memory pipeline explicitly deferred to post-1.0**
 
 That means TopMark is now in the final stage of the 1.0 effort: finishing the last CLI-facing
@@ -771,7 +778,8 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] version command
   - [x] diagnostics presentation helpers
   - [x] probe command
-- [ ] Warning/error phrasing reviewed for CLI-wide consistency
+- [x] Warning/error phrasing reviewed for CLI-wide consistency around command applicability,
+  usage-error boundaries, and policy/report semantics
 - [x] Verbosity semantics (default, `-v`, `-vv`, `--quiet`) documented and considered stable
   - [x] CLI plumbing normalized around typed `TopmarkCliState`
   - [x] `-v` / `-vv` treated as TEXT-only progressive-disclosure controls
@@ -810,10 +818,10 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] TEXT-only verbosity/quiet applicability documented and enforced by command
   - [x] pure informational content-producing commands reject `--quiet` (`version`,
     `config defaults`, `config init`, and registry commands)
-- [ ] Final review of user-facing policy/report flags completed
+- [x] Final review of user-facing policy/report flags completed
   - [x] `--report` semantics frozen
-  - [ ] `--header-mutation-mode` semantics frozen
-  - [ ] `EmptyInsertMode` token semantics frozen
+  - [x] `--header-mutation-mode` semantics frozen
+  - [x] `EmptyInsertMode` token semantics frozen
 - [x] Decision made on registry discovery and file-recognition debugging commands
   - [x] registry filtering/query surface explicitly deferred
   - [x] file-recognition / resolution probe command accepted for 1.0
