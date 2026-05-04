@@ -252,6 +252,8 @@ Result: human output is now **consistent, composable, and decoupled from CLI**.
   missing-vs-unmatched input behavior and mixed-result priority.
 - Documented probe-based resolution and filtered explicit-input reporting in the resolution,
   pipeline, filtering, machine-output, machine-format, and `topmark probe` usage pages.
+- Updated policy, command, configuration discovery, schema, and roadmap documentation to reflect the
+  frozen `--report`, `header_mutation_mode`, and `empty_insert_mode` contracts.
 
 ### CI / release / dependency model (completed)
 
@@ -654,8 +656,9 @@ CLI exit-code work is now complete for the 1.0 freeze: `docs/usage/exit-codes.md
 contract, implementation is centralized around pipeline/result prioritization, focused
 `pytest.mark.exit_code` coverage enforces the contract, and README, docs index, global options,
 filtering, pre-commit, command-group pages, command pages, API docs, architecture docs, and
-machine-output docs link or summarize the same behavior. Remaining CLI work is now limited to
-broader error/diagnostic wording consistency and other command-applicability/policy freeze items.
+machine-output docs link or summarize the same behavior. The CLI command-applicability, usage-error,
+and user-facing policy/report contracts are also frozen and documented; remaining CLI work is now
+limited to any last warning/error wording cleanup discovered during release validation.
 
 ### Tooling / CI / release follow-up
 
@@ -700,6 +703,12 @@ A few user-facing behavior questions remain open for 1.0:
   - registry query/filter commands remain deferred
   - probe is distinct from `check` / `strip` and does not perform header comparison, planning, or
     write/apply semantics
+- User-facing policy/report flag semantics are now accepted for 1.0:
+  - `--report` is a human per-file output filter for `check` and `strip`
+  - `header_mutation_mode` controls `check` insertion/update intent
+  - `empty_insert_mode` classifies empty/empty-like files for insertion eligibility and does not by
+    itself permit insertion
+  - safety gates remain authoritative over all policy options
 
 ### Overall status (undecided / to do)
 
@@ -711,8 +720,9 @@ What is left is mainly:
 - **tooling/release follow-up**
 - one major scope decision resolved: **in-memory pipeline explicitly deferred to post-1.0**
 
-That means TopMark is now in the final stage of the 1.0 effort: finishing the last CLI-facing
-consistency work, deciding what to freeze, and deferring anything non-essential cleanly.
+That means TopMark is now in the final stage of the 1.0 effort: freezing the remaining public/API
+and configuration boundaries, validating release/tooling assumptions, and deferring anything
+non-essential cleanly.
 
 ______________________________________________________________________
 
@@ -863,9 +873,9 @@ These are release blockers unless explicitly deferred with a documented rational
 
 - [x] Decision taken on in-memory pipeline support
   - [x] explicitly deferred beyond 1.0 with rationale
-- [ ] Test strategy clarified and documented:
-  - [ ] intended split between memory-based unit tests and filesystem integration tests
-  - [ ] API surface expectations for in-memory inputs (if implemented or deferred)
+- [x] Test strategy clarified for 1.0:
+  - [x] filesystem-backed pipeline remains the supported execution model for 1.0
+  - [x] memory-backed unit-test/API split deferred with the in-memory pipeline work
 - [x] Line-ending support policy audited and frozen for 1.0
   - [x] decision made: only LF (`\n`), CRLF (`\r\n`), and CR (`\r`) are recognized physical newline
     styles
