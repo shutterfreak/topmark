@@ -67,7 +67,8 @@ from topmark.cli.options import common_color_options
 from topmark.cli.options import common_config_resolution_options
 from topmark.cli.options import common_file_filtering_options
 from topmark.cli.options import common_file_type_filtering_options
-from topmark.cli.options import common_from_sources_options
+from topmark.cli.options import common_files_from_options
+from topmark.cli.options import common_include_exclude_from_options
 from topmark.cli.options import common_output_format_options
 from topmark.cli.options import common_stdin_content_mode_options
 from topmark.cli.options import common_text_output_quiet_options
@@ -149,7 +150,8 @@ logger: TopmarkLogger = get_logger(__name__)
 @config_strict_checking_options
 @common_config_resolution_options
 @common_stdin_content_mode_options
-@common_from_sources_options
+@common_files_from_options
+@common_include_exclude_from_options
 @common_file_filtering_options
 @common_file_type_filtering_options
 @shared_policy_options
@@ -171,8 +173,9 @@ def strip_command(
     config_files: list[str],
     # common_stdin_content_mode_options:
     stdin_filename: str | None,
-    # common_from_sources_options:
+    # common_files_from_options:
     files_from: list[str],
+    # common_include_exclude_from_options:
     include_from: list[str],
     exclude_from: list[str],
     # common_file_filtering_options:

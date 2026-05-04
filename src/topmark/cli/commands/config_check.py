@@ -72,7 +72,8 @@ logger: TopmarkLogger = get_logger(__name__)
     context_settings=GROUP_CONTEXT_SETTINGS,
     help=(
         "Validate the effective merged TopMark configuration and report diagnostics. "
-        f"This command is file-agnostic: positional PATHS and {CliOpt.STDIN_FILENAME} are ignored. "
+        "This command is file-agnostic: positional PATHS "
+        "and file-processing STDIN modes are rejected. "
         f"Use {CliOpt.STRICT_CONFIG_CHECKING} to treat warnings as errors and "
         f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}/{OutputFormat.NDJSON.value} "
         "for machine-readable output."
@@ -88,6 +89,7 @@ logger: TopmarkLogger = get_logger(__name__)
         f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_CHECK} "
         f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}\n"
         "\n"
+        "\b\n"
         "Notes:\n"
         "  • Configuration is built from defaults, discovered files, "
         f"explicit {CliOpt.CONFIG_FILES} files, and CLI overrides.\n"

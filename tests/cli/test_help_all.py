@@ -20,6 +20,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from click.testing import Result
+
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
 from topmark.cli.keys import CliCmd
@@ -65,6 +67,12 @@ PUBLIC_COMMAND_PATHS: list[tuple[str, ...]] = [
     (CliCmd.VERSION,),
 ]
 
+
+def _collapse_help_whitespace(text: str) -> str:
+    """Normalize Click help wrapping for stable substring assertions."""
+    return " ".join(text.split())
+
+
 # --- Top-level help ---
 
 
@@ -90,3 +98,17 @@ def test_each_public_command_path_has_help() -> None:
 
         assert_SUCCESS(result)
         assert "usage" in result.output.lower()
+
+
+def test_config_dump_help_listed_paths_noop() -> None:
+    """Listed paths do not affect the dumped configuration."""
+    result: Result = run_cli(
+        [
+            CliCmd.CONFIG,
+            CliCmd.CONFIG_DUMP,
+            CliOpt.HELP,
+        ]
+    )
+    output: str = _collapse_help_whitespace(result.output)
+
+    assert "Listed paths do not affect the dumped configuration." in output

@@ -452,7 +452,7 @@ def common_text_output_quiet_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
         CliShortOpt.QUIET,
         is_flag=True,
         default=False,
-        help="Suppress TEXT output and rely on exit status only.",
+        help="Suppress human (TEXT) output and rely on exit status only.",
     )(f)
     return f
 
@@ -476,13 +476,14 @@ def common_color_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
         ArgKey.COLOR_MODE,
         type=click.Choice([m.value for m in ColorMode]),
         default=None,
-        help="Color output: auto (default), always, or never.",
+        help=f"Color output: {ColorMode.AUTO.value} (default), "
+        f"{ColorMode.ALWAYS.value}, or {ColorMode.NEVER.value}.",
     )(f)
     f = option_with_underscore_traps(
         CliOpt.NO_COLOR_MODE,
         ArgKey.NO_COLOR_MODE,
         is_flag=True,
-        help=f"Disable color output (equivalent to {CliOpt.COLOR_MODE} never).",
+        help=f"Disable color output (equivalent to {CliOpt.COLOR_MODE}={ColorMode.NEVER.value}).",
     )(f)
     return f
 
@@ -541,11 +542,42 @@ def common_header_field_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
     return f
 
 
-def common_from_sources_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
+def common_include_exclude_from_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
     """Apply common file selection and filtering options.
 
-    Adds the following file source options: ``--files-from``, ``--include-from``,
-    ``--exclude-from``.
+    Adds the following file source options: ``--include-from``, ``--exclude-from``.
+
+    Args:
+        f: The Click command function to decorate.
+
+    Returns:
+        The decorated function.
+    """
+    f = option_with_underscore_traps(
+        CliOpt.INCLUDE_FROM,
+        ArgKey.INCLUDE_FROM,
+        type=str,  # Ensure '-' passes through untouched
+        multiple=True,
+        help="Filter: read include glob patterns from file(s) "
+        "(use '-' for STDIN). May be repeated.",
+    )(f)
+
+    f = option_with_underscore_traps(
+        CliOpt.EXCLUDE_FROM,
+        ArgKey.EXCLUDE_FROM,
+        type=str,  # Ensure '-' passes through untouched
+        multiple=True,
+        help="Filter: read exclude glob patterns from file(s) "
+        "(use '-' for STDIN). May be repeated.",
+    )(f)
+
+    return f
+
+
+def common_files_from_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
+    """Apply common file selection and filtering options.
+
+    Adds the following file source options: ``--files-from``.
 
     Args:
         f: The Click command function to decorate.
@@ -566,22 +598,31 @@ def common_from_sources_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
         ),
     )(f)
 
-    f = option_with_underscore_traps(
-        CliOpt.INCLUDE_FROM,
-        ArgKey.INCLUDE_FROM,
-        type=str,  # Ensure '-' passes through untouched
-        multiple=True,
-        help="Filter: read include glob patterns from file(s) "
-        "(use '-' for STDIN). May be repeated.",
-    )(f)
+    return f
 
+
+def config_dump_files_from_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
+    """Apply config dump file selection and filtering options.
+
+    Adds the following file source options: ``--files-from``.
+
+    Args:
+        f: The Click command function to decorate.
+
+    Returns:
+        The decorated function.
+    """
+    # Option for reading candidate file paths from files (for config dump)
     f = option_with_underscore_traps(
-        CliOpt.EXCLUDE_FROM,
-        ArgKey.EXCLUDE_FROM,
+        CliOpt.FILES_FROM,
+        ArgKey.FILES_FROM,
         type=str,  # Ensure '-' passes through untouched
         multiple=True,
-        help="Filter: read exclude glob patterns from file(s) "
-        "(use '-' for STDIN). May be repeated.",
+        help=(
+            "Accept newline-delimited paths from file(s) for compatibility "
+            "(use '-' for STDIN). "
+            "Listed paths do not affect the dumped configuration."
+        ),
     )(f)
 
     return f

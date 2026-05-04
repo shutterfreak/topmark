@@ -17,10 +17,11 @@ The output is wrapped between `TOML_BLOCK_START` and `TOML_BLOCK_END` markers
 for easy parsing in tests or tooling.
 
 Input modes:
-  * This command is file-agnostic: positional PATHS and --files-from are ignored
-    (with a warning if present).
+  * This command is file-agnostic: positional PATHS are rejected.
+  * --files-from is accepted for compatibility, but listed paths do not affect the dumped
+    configuration.
   * --include-from - and --exclude-from - are honored for config resolution.
-  * '-' as a PATH (content-on-STDIN) is ignored in `topmark config dump`.
+  * '-' as a PATH is rejected; content-on-STDIN is only supported by file-processing commands.
 """
 
 from __future__ import annotations
@@ -42,11 +43,12 @@ from topmark.cli.options import common_color_options
 from topmark.cli.options import common_config_resolution_options
 from topmark.cli.options import common_file_filtering_options
 from topmark.cli.options import common_file_type_filtering_options
-from topmark.cli.options import common_from_sources_options
 from topmark.cli.options import common_header_formatting_options
+from topmark.cli.options import common_include_exclude_from_options
 from topmark.cli.options import common_output_format_options
 from topmark.cli.options import common_text_output_quiet_options
 from topmark.cli.options import common_text_output_verbosity_options
+from topmark.cli.options import config_dump_files_from_options
 from topmark.cli.options import config_dump_provenance_options
 from topmark.cli.state import TopmarkCliState
 from topmark.cli.state import bootstrap_cli_state
@@ -84,7 +86,8 @@ logger: TopmarkLogger = get_logger(__name__)
     context_settings=GROUP_CONTEXT_SETTINGS,
     help=(
         "Print the effective merged TopMark configuration as TOML. "
-        f"This command is file-agnostic: positional PATHS and {CliOpt.STDIN_FILENAME} are ignored. "
+        "This command is file-agnostic: positional PATHS "
+        "and file-processing STDIN modes are rejected. "
         f"Use {CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}/{OutputFormat.NDJSON.value} "
         "for machine-readable output."
     ),
@@ -101,8 +104,10 @@ logger: TopmarkLogger = get_logger(__name__)
         f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_DUMP} "
         f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}\n"
         "\n"
+        "\b\n"
         "Notes:\n"
-        "  • File lists are inputs, not configuration; they are ignored by this command.\n"
+        "  • File lists are inputs, not configuration; "
+        "listed paths do not affect this command's output.\n"
         "  • Pattern sources are configuration and are included in the dump.\n"
         "  • Human output may include TOML block markers when verbosity is enabled.\n"
         "  • Machine formats emit a Config snapshot and optional provenance records.\n"
@@ -113,7 +118,8 @@ logger: TopmarkLogger = get_logger(__name__)
 @common_text_output_quiet_options
 @common_config_resolution_options
 @config_dump_provenance_options
-@common_from_sources_options
+@config_dump_files_from_options
+@common_include_exclude_from_options
 @common_file_filtering_options
 @common_file_type_filtering_options
 @common_header_formatting_options
@@ -130,8 +136,9 @@ def config_dump_command(
     config_files: list[str],
     # config_dump_provenance_options:
     show_config_layers: bool,
-    # common_from_sources_options:
+    # config_dump_files_from_options:
     files_from: list[str],
+    # common_include_exclude_from_options:
     include_from: list[str],
     exclude_from: list[str],
     # common_file_filtering_options:
@@ -165,8 +172,8 @@ def config_dump_command(
         config_files: Additional configuration file paths to load and merge.
         show_config_layers: If True, include a layered TOML provenance view before
             the final flattened config dump.
-        files_from: Files that contain newline‑delimited *paths* to add to the
-            candidate set before filtering. Use ``-`` to read from STDIN.
+        files_from: Compatibility input accepted by config dump. Listed paths do not affect
+            the dumped configuration.
         include_from: Files that contain include glob patterns (one per line).
             Use ``-`` to read patterns from STDIN.
         exclude_from: Files that contain exclude glob patterns (one per line).

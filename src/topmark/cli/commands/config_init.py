@@ -55,7 +55,8 @@ if TYPE_CHECKING:
     context_settings=GROUP_CONTEXT_SETTINGS,
     help=(
         "Print a starter TopMark configuration file. "
-        f"This command is file-agnostic: positional PATHS and {CliOpt.STDIN_FILENAME} are ignored. "
+        "This command is file-agnostic: positional PATHS "
+        "and file-processing STDIN modes are rejected. "
         f"Use {CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}/{OutputFormat.NDJSON.value} "
         "for machine-readable output."
     ),
@@ -72,6 +73,7 @@ if TYPE_CHECKING:
         f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_INIT} "
         f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}\n"
         "\n"
+        "\b\n"
         "Notes:\n"
         "  • Human formats use the annotated, commented template bundled with TopMark.\n"
         "  • Machine formats emit a minimal Config snapshot without comments or diagnostics.\n"
