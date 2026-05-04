@@ -315,7 +315,8 @@ effective = merge(global_policy, policy_by_type[file_type])
 
 ### Empty file semantics
 
-The meaning of "empty" is controlled by `empty_insert_mode`:
+The meaning of "empty" is controlled by `empty_insert_mode`, which defines which files are
+classified as empty for insertion:
 
 | Mode               | Description                                                        |
 | ------------------ | ------------------------------------------------------------------ |
@@ -323,23 +324,41 @@ The meaning of "empty" is controlled by `empty_insert_mode`:
 | `logical_empty`    | 0-byte files + placeholders (BOM, optional whitespace, ≤1 newline) |
 | `whitespace_empty` | Any file containing only whitespace / newlines                     |
 
-This classification is used when evaluating `allow_header_in_empty_files`.
+This classification is evaluated together with `allow_header_in_empty_files`:
+
+- When `allow_header_in_empty_files = false` (default), files classified as empty for insertion are
+  treated as unchanged/compliant by default.
+- When `allow_header_in_empty_files = true`, files classified as empty for insertion may receive
+  generated headers, subject to normal safety gates.
 
 For `topmark check`, these policy values may also be overridden from the CLI via
 `--header-mutation-mode`, `--allow-header-in-empty-files`, `--empty-insert-mode`,
 `--render-empty-header-when-no-fields`, `--allow-reflow`, and the shared `--allow-content-probe`
 option.
 
+`empty_insert_mode` defines *classification only*; it does not by itself allow insertion.
+
+`render_empty_header_when_no_fields` is separate. It controls whether TopMark may render an
+otherwise empty header when no header fields are configured.
+
+Safety gates still take precedence. Unreadable files, unsupported files, malformed headers, blocked
+filesystem states, and other non-mutable conditions are not made mutable by these settings.
+
 ### Policy keys
 
-| Policy key                           | Description                                                           |
-| ------------------------------------ | --------------------------------------------------------------------- |
-| `header_mutation_mode`               | Controls insertion/update behavior (`all`, `add_only`, `update_only`) |
-| `allow_header_in_empty_files`        | Permit header insertion in empty-like files                           |
-| `empty_insert_mode`                  | Defines how "empty" is interpreted (see above)                        |
-| `render_empty_header_when_no_fields` | Allow inserting empty headers when no fields are defined              |
-| `allow_reflow`                       | Allow content reflow (may break idempotence)                          |
-| `allow_content_probe`                | Allow resolver to inspect file contents for type detection            |
+| Policy key                           | Description                                                                                                                                            |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `header_mutation_mode`               | Controls `check` mutation intent: insert and update (`all`), insert missing headers only (`add_only`), or update existing headers only (`update_only`) |
+| `allow_header_in_empty_files`        | Permit header insertion in empty-like files                                                                                                            |
+| `empty_insert_mode`                  | Defines how "empty" is interpreted (see above)                                                                                                         |
+| `render_empty_header_when_no_fields` | Allow inserting empty headers when no fields are defined                                                                                               |
+| `allow_reflow`                       | Allow content reflow (may break idempotence)                                                                                                           |
+| `allow_content_probe`                | Allow resolver to inspect file contents for type detection                                                                                             |
+
+`header_mutation_mode` applies only to `check`. It affects dry-run reporting, apply behavior, API
+result views, and outcome bucketing. It does not apply to `strip` or `probe`, and safety gates still
+take precedence: malformed headers, unreadable files, unsupported files, blocked filesystem states,
+and other non-mutable conditions are not made mutable by this policy.
 
 ______________________________________________________________________
 
