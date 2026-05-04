@@ -18,6 +18,21 @@ The `registry processors` subcommand lists registered **header processors** and 
 comment/delimiter capabilities. Use it to understand what processing logic is available in the
 system.
 
+______________________________________________________________________
+
+## Command applicability
+
+`registry processors` is informational and file-agnostic. It inspects TopMark's built-in registry
+state, not project files or discovered configuration.
+
+It does not accept file-processing inputs:
+
+- positional PATH arguments are rejected as invalid CLI usage
+- `-` is not a content-STDIN sentinel for this command
+- `--stdin-filename` does not apply
+- file-list STDIN modes (for example, `--files-from -`) do not apply
+- `--quiet` is not supported; use output-format options for machine-readable or lower-noise output
+
 To see which processor is used for a given file type, use [`registry bindings`](./bindings.md).
 
 ______________________________________________________________________
@@ -149,6 +164,7 @@ Notes:
 
 - This command does not process project files and does not use file-processing exit codes such as
   `WOULD_CHANGE (2)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.
+- Invalid positional paths are reported as CLI usage errors, not file-processing diagnostics.
 - `--quiet` is not supported for registry commands; use output-format options instead for non-TEXT
   output.
 
@@ -159,6 +175,7 @@ ______________________________________________________________________
 ## Notes
 
 - Processors define how headers are parsed, rendered and stripped.
+- The output is independent of project configuration discovery.
 - Whether a processor is actually used is determined by bindings (see
   [`registry bindings`](./bindings.md)).
 - Prefer [`registry bindings`](./bindings.md) when investigating which processor handles a file

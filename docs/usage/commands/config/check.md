@@ -64,8 +64,9 @@ ______________________________________________________________________
 - **Reports TOML schema issues**: unknown sections/keys, malformed TOML structures, and missing
   known sections are surfaced as configuration diagnostics originating from the TOML layer.
 
-- **File-agnostic**: positional PATHS are ignored (a note is printed). `-` (content-on-STDIN) is
-  ignored.
+- **File-agnostic**: positional PATHS are rejected as unexpected arguments. `-` is not
+  content-on-STDIN for this command, and file-list STDIN modes such as `--files-from -` do not
+  apply.
 
 - **CI-friendly**: exits with `FAILURE (1)` when validation fails.
 
@@ -91,6 +92,21 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
+## Input applicability
+
+`config check` validates configuration state, not source files. It therefore does not accept
+file-processing inputs:
+
+- positional PATH arguments are rejected as invalid CLI usage
+- `-` is not a content-STDIN sentinel for this command
+- `--stdin-filename` does not apply
+- file-list STDIN modes (for example, `--files-from -`) do not apply
+
+Use `--config PATH` to validate an explicit config file, or rely on normal config discovery to
+validate the effective merged configuration for the current working directory.
+
+______________________________________________________________________
+
 ## Options (subset)
 
 | Option                 | Description                                                      |
@@ -100,6 +116,7 @@ ______________________________________________________________________
 | `-q`, `--quiet`        | Suppress TEXT output while preserving the command’s exit status. |
 | `--config`             | Merge an explicit TOML config file (can be repeated).            |
 | `--no-config`          | Do not discover local project/user config.                       |
+| `-v`, `--verbose`      | Increase human-readable diagnostic detail.                       |
 
 > Run `topmark config check -h` for the full list of options and help text.
 
@@ -130,6 +147,9 @@ Notes:
   with `FAILURE (1)`.
 - CLI usage errors (for example, invalid options) exit with `USAGE_ERROR (64)`.
 
+Because `config check` is file-agnostic, invalid positional paths or file-processing input options
+are reported as CLI usage errors rather than as file-processing diagnostics.
+
 See [`Exit codes`](../../exit-codes.md) for the complete CLI-wide exit-code contract.
 
 ______________________________________________________________________
@@ -145,6 +165,7 @@ ______________________________________________________________________
 - With very high TEXT verbosity, it can print the merged config as TOML (wrapped with BEGIN/END
   markers).
 - `--quiet` suppresses TEXT output while preserving the exit status (does not affect exit codes).
+- File-processing diagnostics, summaries, diffs, and reports are not emitted by this command.
 
 ### Markdown output
 

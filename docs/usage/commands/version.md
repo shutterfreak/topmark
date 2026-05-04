@@ -22,6 +22,23 @@ package metadata / the generated version module.
 
 ______________________________________________________________________
 
+## Command applicability
+
+`version` is informational and file-agnostic. It reports the installed TopMark package version and
+inspects no project files or configuration.
+
+It does not accept file-processing inputs:
+
+- positional PATH arguments are rejected as invalid CLI usage
+- `-` is not a content-STDIN sentinel for this command
+- `--stdin-filename` does not apply
+- file-list STDIN modes (for example, `--files-from -`) do not apply
+- `--quiet` is not supported; use output-format options for machine-readable output
+
+Config discovery does not apply to this command.
+
+______________________________________________________________________
+
 ## Quick start
 
 ```bash
@@ -99,6 +116,7 @@ ______________________________________________________________________
 - Markdown output ignores verbosity and always renders a complete document.
 - JSON/NDJSON output is unaffected by verbosity.
 - `--quiet` is not supported for this command (pure content output; see global options).
+- Positional paths and STDIN input modes are not accepted by this command.
 
 See `topmark version -h` for the full list of global CLI options.
 
@@ -188,6 +206,7 @@ Notes:
 
 - This command does not process project files and does not use file-processing exit codes such as
   `WOULD_CHANGE (2)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.
+- Invalid positional paths or file-processing input options are reported as CLI usage errors.
 - `--quiet` is not supported because the command's primary purpose is to emit content.
 
 See [`Exit codes`](../exit-codes.md) for the complete CLI-wide exit-code contract.

@@ -114,6 +114,13 @@ Key improvements:
 - Documented and enforced the stable CLI exit-code contract across implementation, tests, the
   canonical usage page, command pages, command-group pages, README, documentation index, pre-commit
   guidance, and developer-facing machine/API documentation.
+- Documented and enforced the CLI command-applicability contract across implementation, focused
+  tests, command pages, command-group pages, README, documentation index, filtering guidance,
+  architecture documentation, and public API documentation.
+- Froze the path-command STDIN contract:
+  - content STDIN uses the POSIX-style `-` PATH sentinel plus `--stdin-filename`
+  - TopMark intentionally does not expose a `--stdin` option flag
+  - unsupported `--stdin` spellings are rejected as CLI usage errors before input planning
 
 Result: output is now **fully deterministic, testable, and reusable outside CLI contexts**.
 
@@ -361,8 +368,12 @@ older policy tokens, or older TOML layout/validation assumptions must update.
   - `--skip-compliant` → replaced by `--report actionable`
   - `--skip-unsupported` → replaced by `--report noncompliant`
   - `--add-only` / `--update-only` → replaced by `--header-mutation-mode`
-- Command applicability rules are stricter:
-  - `strip` now rejects check-only mutation/insertion policy options at the CLI layer
+- Command applicability rules are stricter and enforced at the CLI layer:
+  - `strip` rejects check-only mutation, insertion, and generated-header formatting options
+  - `probe` rejects mutation, write-mode, diff, summary/reporting, and generated-header controls
+  - path-processing commands intentionally do not expose a `--stdin` option flag; content STDIN uses
+    `-` plus `--stdin-filename`
+  - file-agnostic commands reject positional paths and file-processing STDIN modes as usage errors
 - CLI exit-code behavior is now implemented, tested, documented, and treated as a stable 1.0
   contract:
   - `check` / `strip` use `WOULD_CHANGE (2)` as the dry-run "would change" signal
@@ -788,16 +799,19 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] focused `pytest.mark.exit_code` tests cover success, dry-run would-change, config
     validation, usage errors, missing inputs, permission/write failures, probe semantic outcomes,
     unmatched glob behavior, and mixed-result priority
-- [ ] CLI command applicability rules fully documented and enforced
-  - [ ] policy-option applicability
-  - [ ] stdin/list-vs-content handling
-  - [ ] strict config-checking behavior at command level
+- [x] CLI command applicability rules fully documented and enforced
+  - [x] policy-option applicability for `check`, `strip`, and `probe`
+  - [x] stdin/list-vs-content handling frozen and documented
+  - [x] `-` plus `--stdin-filename` accepted as the only content-STDIN form
+  - [x] unsupported `--stdin` option spellings rejected with actionable usage errors
+  - [x] file-agnostic commands reject positional paths and file-processing STDIN modes
+  - [x] strict config-checking behavior documented at command level where applicable
   - [x] command help/epilog wording aligned for main CLI entry point, command groups and commands
   - [x] TEXT-only verbosity/quiet applicability documented and enforced by command
   - [x] pure informational content-producing commands reject `--quiet` (`version`,
     `config defaults`, `config init`, and registry commands)
 - [ ] Final review of user-facing policy/report flags completed
-  - [ ] `--report` semantics frozen
+  - [x] `--report` semantics frozen
   - [ ] `--header-mutation-mode` semantics frozen
   - [ ] `EmptyInsertMode` token semantics frozen
 - [x] Decision made on registry discovery and file-recognition debugging commands
@@ -839,9 +853,8 @@ These are release blockers unless explicitly deferred with a documented rational
 
 #### [Must] Pipeline & testing
 
-- [ ] Decision taken on in-memory pipeline support
-  - [ ] implemented before 1.0, or
-  - [ ] explicitly deferred with rationale
+- [x] Decision taken on in-memory pipeline support
+  - [x] explicitly deferred beyond 1.0 with rationale
 - [ ] Test strategy clarified and documented:
   - [ ] intended split between memory-based unit tests and filesystem integration tests
   - [ ] API surface expectations for in-memory inputs (if implemented or deferred)

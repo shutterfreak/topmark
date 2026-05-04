@@ -23,6 +23,21 @@ resolution, and to identify:
 
 ______________________________________________________________________
 
+## Command applicability
+
+`registry bindings` is informational and file-agnostic. It inspects TopMark's built-in registry
+state, not project files or discovered configuration.
+
+It does not accept file-processing inputs:
+
+- positional PATH arguments are rejected as invalid CLI usage
+- `-` is not a content-STDIN sentinel for this command
+- `--stdin-filename` does not apply
+- file-list STDIN modes (for example, `--files-from -`) do not apply
+- `--quiet` is not supported; use output-format options for machine-readable or lower-noise output
+
+______________________________________________________________________
+
 ## Quick start
 
 ```bash
@@ -163,6 +178,7 @@ Notes:
 
 - This command does not process project files and does not use file-processing exit codes such as
   `WOULD_CHANGE (2)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.
+- Invalid positional paths are reported as CLI usage errors, not file-processing diagnostics.
 - `--quiet` is not supported for registry commands; use output-format options instead for non-TEXT
   output.
 
@@ -173,6 +189,7 @@ ______________________________________________________________________
 ## Notes
 
 - Bindings represent the **effective runtime mapping** used by TopMark.
+- The output is independent of project configuration discovery.
 - A file type may be intentionally unbound (e.g., `skip_processing = true`).
 - This command is the best way to debug resolution issues or missing processor registrations.
 - `--quiet` is not supported for registry commands; use output-format options instead if you need

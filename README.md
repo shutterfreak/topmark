@@ -53,7 +53,8 @@ ______________________________________________________________________
 - Inspectable layered config provenance via `topmark config dump --show-layers` and machine-readable
   `config_provenance` output
 - Fine-grained include/exclude rules
-- Selective application via file patterns or STDIN (list mode or single-file content mode)
+- Selective application via file patterns or STDIN (`--files-from -` for list mode, `-` plus
+  `--stdin-filename` for single-file content mode)
 - Strict static typing (PEP 604 unions, Pyright)
 - Works well with `pre-commit`, CI, and Git hooks
 - Preserves newline style (LF/CRLF/CR) and BOM; non-standard Unicode separators (NEL/LS/PS) are
@@ -226,6 +227,9 @@ topmark probe README.md
 # Show candidate scores and match signals
 topmark probe -vv README.md
 
+# Process one file's content from STDIN
+cat README.md | topmark check - --stdin-filename README.md
+
 # Show why a path was filtered by discovery rules
 topmark probe __pycache__/example.cpython-312.pyc
 
@@ -249,6 +253,10 @@ topmark registry processors --output-format markdown --long
 >   `check`, `strip`, `probe`, `config check`, and `config dump`.
 > - Pure informational content-producing commands such as `version`, `config defaults`,
 >   `config init`, and registry commands do not support `--quiet`.
+> - TopMark does not provide a `--stdin` flag. Use the POSIX-style `-` PATH sentinel together with
+>   `--stdin-filename NAME` when reading one file's content from STDIN.
+> - File-agnostic commands such as `version`, `config defaults`, `config init`, and registry
+>   commands reject positional paths and file-processing STDIN modes.
 > - Markdown output is document-oriented and ignores TEXT-only verbosity controls.
 > - JSON/NDJSON output is machine-readable and also ignores TEXT-only verbosity controls.
 > - `topmark probe` also reports explicitly requested paths that were filtered out before
@@ -266,10 +274,13 @@ TopMark uses a small, stable set of exit codes for automation:
 - `WOULD_CHANGE (2)` — dry-run indicates changes would be made (`check`, `strip`)
 - `FAILURE (1)` — validation failed (`config check`)
 - `USAGE_ERROR (64)` — CLI usage error
+- invalid command/option combinations, positional paths on file-agnostic commands, and unsupported
+  STDIN modes are reported as usage errors
 - `CONFIG_ERROR (78)` — configuration error
 
 Other codes (for example `UNSUPPORTED_FILE_TYPE (69)`, `PIPELINE_ERROR (70)`, `IO_ERROR (74)`,
-`PERMISSION_DENIED (77)`) are used for more specific runtime conditions.
+`PERMISSION_DENIED (77)`) are used for more specific runtime conditions after CLI usage has been
+accepted.
 
 For the complete, stable contract, see:
 

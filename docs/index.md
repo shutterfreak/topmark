@@ -25,6 +25,8 @@ topmark check --summary --config topmark.toml src/
 topmark check --apply src/
 # Explain file-type / processor resolution
 topmark probe README.md
+# Process one file's content from STDIN
+cat README.md | topmark check - --stdin-filename README.md
 # Explain why a path was filtered by discovery rules
 topmark probe __pycache__/example.cpython-312.pyc
 ```
@@ -95,6 +97,10 @@ topmark:header:end
 
 Core commands: `check`, `strip`, `probe`, `config`, `registry`, `version`.
 
+Informational commands (`version`, `config defaults`, `config init`, and registry commands) are
+file-agnostic: they do not accept positional paths or STDIN input modes and reject them as CLI usage
+errors.
+
 ### Exit codes (overview)
 
 TopMark uses a small, stable set of exit codes suitable for CI and scripting:
@@ -102,9 +108,11 @@ TopMark uses a small, stable set of exit codes suitable for CI and scripting:
 - `SUCCESS (0)` — success (no changes needed or changes applied)
 - `WOULD_CHANGE (2)` — dry-run indicates changes would be made (`check`, `strip`)
 - `FAILURE (1)` — validation failed (`config check`)
+- `USAGE_ERROR (64)` — CLI usage error (invalid options, unsupported STDIN modes, or positional
+  paths on file-agnostic commands)
 
-Additional codes are used for usage errors, configuration errors, and runtime conditions (for
-example `USAGE_ERROR (64)`, `CONFIG_ERROR (78)`, `FILE_NOT_FOUND (66)`).
+Additional codes are used for configuration errors and runtime conditions (for example
+`CONFIG_ERROR (78)`, `FILE_NOT_FOUND (66)`). These apply after CLI usage has been accepted.
 
 See:
 
@@ -127,6 +135,9 @@ TopMark supports two STDIN modes:
   `--include-from -` / `--exclude-from -`)
 - **Content mode**: process one file’s content by passing `-` as the sole PATH together with
   `--stdin-filename NAME`
+
+TopMark does not provide a `--stdin` option flag. Use the POSIX-style `-` PATH sentinel together
+with `--stdin-filename NAME` for content mode. Passing `--stdin` is treated as invalid CLI usage.
 
 ## Header placement (short version)
 

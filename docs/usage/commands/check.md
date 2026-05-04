@@ -69,8 +69,14 @@ TopMark supports **two different STDIN modes**:
 - **Content mode**: process one file’s *content* from STDIN by passing `-` as the sole PATH and
   providing `--stdin-filename NAME`.
 
+TopMark does not provide a `--stdin` option flag. Use `-` together with `--stdin-filename` instead.
+Passing `--stdin` is rejected as invalid CLI usage.
+
 These modes are mutually exclusive: do **not** mix `-` (content mode) with `--files-from -`,
 `--include-from -`, or `--exclude-from -` (list mode).
+
+In content mode, `--stdin-filename` is required so TopMark can resolve file type, processor, and
+path-sensitive header policy exactly as it would for a real file path.
 
 - Idempotent: re‑running on already‑correct files results in **no changes**.
 - Supports `--strict` / `--no-strict` to override the effective `strict_config_checking` value for
@@ -314,14 +320,9 @@ ______________________________________________________________________
 - Explicit missing literal paths are reported as `FILE_NOT_FOUND (66)`. Unmatched glob patterns are
   non-fatal for `check`.
 
-- STDIN supports two modes:
+{% include-markdown "\_snippets/file-discovery-patterns.md" %}
 
-  - **list mode** via `--files-from -` (or `--include-from -` / `--exclude-from -`) for newline-
-    delimited paths or patterns
-  - **content mode** via `-` plus `--stdin-filename` for one file’s content
-
-- Use `--report actionable` to focus CI output on files that would change, or
-  `--report noncompliant` to also include unsupported file types in the report.
+{% include-markdown "\_snippets/report-scope.md" %}
 
 - Diffs (`--diff`) are only shown in human mode; machine formats never include diffs.
 

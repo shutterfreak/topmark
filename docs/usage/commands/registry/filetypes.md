@@ -20,6 +20,21 @@ associated with each type.
 
 ______________________________________________________________________
 
+## Command applicability
+
+`registry filetypes` is informational and file-agnostic. It inspects TopMark's built-in registry
+state, not project files or discovered configuration.
+
+It does not accept file-processing inputs:
+
+- positional PATH arguments are rejected as invalid CLI usage
+- `-` is not a content-STDIN sentinel for this command
+- `--stdin-filename` does not apply
+- file-list STDIN modes (for example, `--files-from -`) do not apply
+- `--quiet` is not supported; use output-format options for machine-readable or lower-noise output
+
+______________________________________________________________________
+
 ## Quick start
 
 ```bash
@@ -152,6 +167,7 @@ Notes:
 
 - This command does not process project files and does not use file-processing exit codes such as
   `WOULD_CHANGE (2)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.
+- Invalid positional paths are reported as CLI usage errors, not file-processing diagnostics.
 - `--quiet` is not supported for registry commands; use output-format options instead for non-TEXT
   output.
 
@@ -162,6 +178,7 @@ ______________________________________________________________________
 ## Notes
 
 - File types define **how files are matched and classified**.
+- The output is independent of project configuration discovery.
 - Processing behavior is determined by bindings (see [`registry bindings`](./bindings.md)).
 - A file type may be present but not processed if it is unbound or marked `skip_processing`.
 - `--quiet` is not supported for registry commands; use output-format options instead if you need

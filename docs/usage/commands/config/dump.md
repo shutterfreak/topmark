@@ -62,8 +62,8 @@ ______________________________________________________________________
 - **File-agnostic**:
 
   - Positional PATHS are **not accepted** (the command fails if provided).
-  - `--files-from` is accepted and treated as a source of input paths, but input paths do not affect
-    the dumped configuration.
+  - `--files-from` is accepted as a documented config-override compatibility input, but file paths
+    read from it do not affect the dumped configuration.
 
 - **Filters are config**:
 
@@ -121,27 +121,32 @@ ______________________________________________________________________
 - **List on STDIN for patterns**: `--include-from -` or `--exclude-from -` read newline-delimited
   patterns from STDIN. When using `-`, STDIN must be piped; otherwise the command fails.
 - **Content on STDIN** (`-` as PATH) is not supported by `config dump`. This mode is only meaningful
-  for file-processing commands (e.g., `check`, `strip`).
+  for file-processing commands (for example, `check`, `strip`, and `probe`). `--stdin-filename` does
+  not apply.
 - **`--files-from`** is accepted but does not influence the dumped configuration. File lists are
   considered inputs for processing commands, not configuration state.
+
+Positional PATH arguments are rejected as invalid CLI usage. `config dump` explains configuration
+state; it does not process source files.
 
 ______________________________________________________________________
 
 ## Options (subset)
 
-| Option            | Description                                                                |
-| ----------------- | -------------------------------------------------------------------------- |
-| `--config`        | Merge an explicit TOML config file (can be repeated).                      |
-| `--no-config`     | Do not discover local project/user config.                                 |
-| `--include`       | Add include patterns (can be repeated).                                    |
-| `--exclude`       | Add exclude patterns (can be repeated).                                    |
-| `--include-from`  | Read include patterns from file (one per line, `#` comments allowed).      |
-| `--exclude-from`  | Read exclude patterns from file (one per line, `#` comments allowed).      |
-| `--file-type`     | Restrict to specific TopMark file type identifiers (affects config state). |
-| `--relative-to`   | Base directory for relative path handling in config.                       |
-| `--align-fields`  | Whether to align header fields (captured in config).                       |
-| `--header-format` | Header rendering format override (captured in config).                     |
-| `-q`, `--quiet`   | Suppress TEXT output while preserving the command's exit status.           |
+| Option            | Description                                                                           |
+| ----------------- | ------------------------------------------------------------------------------------- |
+| `--config`        | Merge an explicit TOML config file (can be repeated).                                 |
+| `--no-config`     | Do not discover local project/user config.                                            |
+| `--include`       | Add include patterns (can be repeated).                                               |
+| `--exclude`       | Add exclude patterns (can be repeated).                                               |
+| `--include-from`  | Read include patterns from file (one per line, `#` comments allowed).                 |
+| `--exclude-from`  | Read exclude patterns from file (one per line, `#` comments allowed).                 |
+| `--files-from`    | Accept a file-list input for compatibility; listed files do not affect dumped config. |
+| `--file-type`     | Restrict to specific TopMark file type identifiers (affects config state).            |
+| `--relative-to`   | Base directory for relative path handling in config.                                  |
+| `--align-fields`  | Whether to align header fields (captured in config).                                  |
+| `--header-format` | Header rendering format override (captured in config).                                |
+| `-q`, `--quiet`   | Suppress TEXT output while preserving the command's exit status.                      |
 
 > Run `topmark config dump -h` for the full list of options and help text.
 
@@ -230,8 +235,8 @@ ______________________________________________________________________
 ## Notes
 
 - The output reflects the configuration **TopMark would use** if you ran processing commands
-  (`check`, `strip`) with the same configuration-related flags in the current working directory,
-  after TOML-layer validation and layered config merging.
+  (`check`, `strip`, or `probe`) with the same configuration-related flags in the current working
+  directory, after TOML-layer validation and layered config merging.
 - For per-file configuration (e.g., overrides that may depend on path), consider a future option
   like `--for FILE` (not currently implemented), similar to ESLint’s `--print-config`.
 
@@ -260,6 +265,7 @@ Notes:
 
 - This command does not process files and does not use file-processing exit codes such as
   `WOULD_CHANGE (2)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.
+- Invalid positional paths are reported as CLI usage errors, not file-processing diagnostics.
 - `--quiet` is supported for TEXT output and suppresses the rendered TOML while preserving the exit
   status.
 - Markdown and machine formats ignore TEXT-only quiet and verbosity controls.

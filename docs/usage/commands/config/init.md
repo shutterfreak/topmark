@@ -67,9 +67,24 @@ You can safely edit the generated file to match your project’s needs.
 
 ______________________________________________________________________
 
+## Input applicability
+
+`config init` renders a bundled example configuration and does not accept file-processing inputs:
+
+- positional PATH arguments are rejected as invalid CLI usage
+- `-` is not a content-STDIN sentinel for this command
+- `--stdin-filename` does not apply
+- file-list STDIN modes (for example, `--files-from -`) do not apply
+
+Use shell redirection (for example, `> topmark.toml`) to write the generated configuration to a
+file.
+
+______________________________________________________________________
+
 ## Key properties
 
-- **File‑agnostic**: does not inspect any files.
+- **File‑agnostic**: does not inspect any files. Positional paths are rejected as invalid CLI usage.
+  STDIN content mode (`-`) and file-list modes (such as `--files-from -`) do not apply.
 - **Non‑destructive**: writes nothing; you control redirection.
 - **Self‑documenting**: comments explain layered config fields, source-local TOML options, and
   reasonable defaults.
@@ -110,6 +125,7 @@ Notes:
 
 - This command does not inspect project files and does not use file-processing exit codes such as
   `WOULD_CHANGE (2)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.
+- Invalid positional paths are reported as CLI usage errors, not file-processing diagnostics.
 - `--quiet` is unsupported because the command's primary purpose is to emit content.
 
 See [`Exit codes`](../../exit-codes.md) for the complete CLI-wide exit-code contract.

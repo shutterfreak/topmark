@@ -72,10 +72,26 @@ TopMark supports **two different STDIN modes**:
 - **Content mode**: process one file’s *content* from STDIN by passing `-` as the sole PATH and
   providing `--stdin-filename NAME`.
 
+TopMark does not provide a `--stdin` option flag. Use `-` together with `--stdin-filename` instead.
+Passing `--stdin` is rejected as invalid CLI usage.
+
 These modes are mutually exclusive: do **not** mix `-` (content mode) with `--files-from -`,
 `--include-from -`, or `--exclude-from -` (list mode).
 
+In content mode, `--stdin-filename` is required so TopMark can resolve file type, processor, and
+path-sensitive resolution policy exactly as it would for a real file path.
+
 {% include-markdown "\_snippets/config-resolution.md" %}
+
+______________________________________________________________________
+
+## Command applicability
+
+`probe` is read-only and diagnostic-only. It shares input discovery, filtering, configuration, and
+file-type resolution controls with `check` and `strip`, but it rejects options that belong to file
+mutation, patch planning, reporting summaries, diffs, or generated-header rendering.
+
+Use `check` or `strip` for header comparison, patch previews, reports, or mutation.
 
 ______________________________________________________________________
 
@@ -216,18 +232,19 @@ ______________________________________________________________________
 
 ## Options (subset)
 
-| Option                        | Description                                                            |
-| ----------------------------- | ---------------------------------------------------------------------- |
-| `-q`, `--quiet`               | Suppress TEXT output while preserving exit status.                     |
-| `--files-from`                | Read newline-delimited paths from file (use '-' for STDIN).            |
-| `-` (PATH)                    | Read a single file’s content from STDIN (requires `--stdin-filename`). |
-| `--include`                   | Add paths by glob.                                                     |
-| `--include-from`              | File of patterns to include.                                           |
-| `--exclude`                   | Exclude paths by glob.                                                 |
-| `--exclude-from`              | File of patterns to exclude.                                           |
-| `--include-file-types` / `-t` | Restrict to specific file type identifiers.                            |
-| `--exclude-file-types` / `-T` | Exclude specific file type identifiers.                                |
-| `--stdin-filename`            | Assumed filename when PATH is '-' (content from STDIN).                |
+| Option                                               | Description                                                            |
+| ---------------------------------------------------- | ---------------------------------------------------------------------- |
+| `-q`, `--quiet`                                      | Suppress TEXT output while preserving exit status.                     |
+| `--files-from`                                       | Read newline-delimited paths from file (use '-' for STDIN).            |
+| `-` (PATH)                                           | Read a single file’s content from STDIN (requires `--stdin-filename`). |
+| `--include`                                          | Add paths by glob.                                                     |
+| `--include-from`                                     | File of patterns to include.                                           |
+| `--exclude`                                          | Exclude paths by glob.                                                 |
+| `--exclude-from`                                     | File of patterns to exclude.                                           |
+| `--include-file-types` / `-t`                        | Restrict to specific file type identifiers.                            |
+| `--exclude-file-types` / `-T`                        | Exclude specific file type identifiers.                                |
+| `--stdin-filename`                                   | Assumed filename when PATH is '-' (content from STDIN).                |
+| `--allow-content-probe` / `--no-allow-content-probe` | Shared policy override for file-type detection.                        |
 
 > Run `topmark probe -h` for the full list of options.
 
@@ -301,5 +318,7 @@ ______________________________________________________________________
   - `filtered: excluded_by_path_filter`
   - `filtered: excluded_by_file_type_filter`
   - `filtered: excluded_by_discovery_filter`
+- **`--stdin` is rejected**: Use `-` as the PATH sentinel together with `--stdin-filename NAME` when
+  reading one file’s content from STDIN.
 - **Missing file error**: A literal path such as `fubar.py` is treated as an explicit input and
   fails with `FILE_NOT_FOUND (66)` when it does not exist.

@@ -44,7 +44,8 @@ ______________________________________________________________________
 ## Key properties
 
 - **Isolated**: ignores project/user config files and CLI overrides.
-- **File‑agnostic**: does not resolve or process any PATHS.
+- **File‑agnostic**: does not resolve or process any PATHS. Positional paths are rejected as invalid
+  CLI usage. STDIN content mode (`-`) and file-list modes (such as `--files-from -`) do not apply.
 - **Reference**: useful to understand the default layered config fragment, header layout, policy
   behavior, and TOML/config split.
 
@@ -63,6 +64,21 @@ ______________________________________________________________________
 - To compare your project’s configuration with the baseline shipped by TopMark.
 - To seed your own config manually (you can copy & modify the parts you need).
 - To debug why a field or policy is present when you did not set it explicitly.
+
+______________________________________________________________________
+
+## Input applicability
+
+`config defaults` is a pure informational command that emits built-in defaults only. It does not
+accept file-processing inputs:
+
+- positional PATH arguments are rejected as invalid CLI usage
+- `-` is not a content-STDIN sentinel for this command
+- `--stdin-filename` does not apply
+- file-list STDIN modes (for example, `--files-from -`) do not apply
+
+This ensures the output always reflects only the built-in defaults, independent of any workspace
+state.
 
 ______________________________________________________________________
 
@@ -90,6 +106,7 @@ Notes:
 
 - This command does not inspect project files and does not use file-processing exit codes such as
   `WOULD_CHANGE (2)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.
+- Invalid positional paths are reported as CLI usage errors, not file-processing diagnostics.
 - `--quiet` is unsupported because the command's primary purpose is to emit content.
 
 See [`Exit codes`](../../exit-codes.md) for the complete CLI-wide exit-code contract.

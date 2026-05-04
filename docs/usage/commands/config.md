@@ -35,6 +35,23 @@ to the config layer for merging.
   document*.
 - [`topmark config init`](./config/init.md) — print the bundled example TopMark TOML resource.
 
+______________________________________________________________________
+
+## Command applicability
+
+The `config` command family is **file-agnostic**. These commands operate on configuration state and
+do not process source files.
+
+Across all `config` subcommands:
+
+- positional PATH arguments are rejected as invalid CLI usage
+- `-` is not a content-STDIN sentinel
+- `--stdin-filename` does not apply
+- file-list STDIN modes (for example, `--files-from -`) do not apply
+
+Config discovery applies only where explicitly documented (`config check`, `config dump`) and is not
+used by purely informational commands (`config defaults`, `config init`).
+
 ## Exit codes
 
 Exit-code behavior for `config` subcommands follows a consistent pattern:

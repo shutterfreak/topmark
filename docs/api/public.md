@@ -168,6 +168,10 @@ This distinction keeps the programmatic API focused on file-type/processor resol
 provides full end-to-end explainability including discovery filters, missing inputs, and
 process-level exit codes.
 
+Note that command-level applicability rules (for example rejecting mutation or reporting options on
+`topmark probe`) are enforced in the CLI layer and are not part of the programmatic probe API. The
+probe API focuses exclusively on resolution diagnostics for inputs that reach file-type probing.
+
 ```python
 assert run.summary.get("unchanged", 0) >= 0
 ```
@@ -181,6 +185,10 @@ These API results are rendered differently depending on the selected output form
 Machine output and API result payloads should not be treated as substitutes for process exit status.
 For CLI automation, inspect the process exit code separately from JSON/NDJSON payloads; see
 [`Exit codes`](../usage/exit-codes.md).
+
+At the CLI layer, invalid command/option combinations, unsupported STDIN modes, and positional paths
+on file-agnostic commands are rejected as usage errors before any API or pipeline execution occurs.
+These conditions are therefore not represented in API result objects.
 
 This design keeps the public surface small and semver-stable while allowing flexible per-call
 configuration.

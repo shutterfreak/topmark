@@ -392,6 +392,11 @@ This distinction is important because not every discovery outcome should become 
 
 - Explicit missing literal paths are hard user input errors and are represented as synthetic
   pipeline contexts with `FsStatus.NOT_FOUND`.
+
+By contrast, invalid command/option combinations and inappropriate STDIN modes are rejected earlier
+by the CLI layer as usage errors. They are not represented as synthetic contexts because no valid
+file-selection request exists yet.
+
 - Unmatched glob patterns are soft discovery diagnostics for processing commands (`check`, `strip`).
 - `probe` treats unmatched glob patterns as filtered semantic outcomes because its purpose is to
   explain resolution and filtering.
@@ -530,10 +535,46 @@ Machine output is also intentionally decoupled from process exit codes. JSON and
 serialize structured results, diagnostics, and resolution state; they do not embed the CLI exit
 code. Consumers must inspect the process exit status separately from parsing machine payloads.
 
+### CLI applicability and usage-error boundary
+
+CLI command applicability is enforced before pipeline execution and before presentation or machine
+payload construction. Path-processing commands (`check`, `strip`, and `probe`) share input
+discovery, filtering, configuration loading, file-type resolution, and STDIN content handling, but
+they expose different mutation and reporting controls according to command intent.
+
+Important invariants:
+
+- `check` may compare, render, plan, preview, and mutate headers when `--apply` is provided.
+- `strip` shares file input, reporting, diff, and write behavior with `check`, but is removal-only
+  and rejects generated-header insertion/update controls.
+- `probe` shares file input and filtering behavior with `check` and `strip`, but is read-only and
+  diagnostic-only. It rejects mutation, patch-planning, reporting-summary, diff, and
+  generated-header rendering controls.
+- File-agnostic commands (`version`, registry commands, `config defaults`, and `config init`) reject
+  positional paths and file-processing STDIN modes. They also do not participate in project config
+  discovery unless explicitly documented.
+
+TopMark intentionally uses the POSIX-style `-` PATH sentinel for content read from STDIN, together
+with `--stdin-filename` so file type, processor, and path-sensitive policy resolution remain the
+same as for real file paths. There is no `--stdin` option flag; known unsupported option spellings
+that survive permissive path-command parsing are rejected with actionable CLI usage errors before
+input planning can treat them as literal paths.
+
+These applicability failures are CLI usage errors. They do not become pipeline contexts, file
+statuses, hints, reports, or machine-output payload entries. This preserves the separation between:
+
+- CLI parsing and command applicability
+- file discovery and resolution diagnostics
+- pipeline execution results
+- presentation and machine-output rendering
+
+### Human presentation and report rendering
+
 Human presentation modules follow a shared pattern: CLI commands build Click-free, typed report
-objects in `topmark.presentation.shared`, then pass those reports to TEXT or Markdown renderers.
-This keeps renderer behavior testable and prevents Click state, console objects, and I/O from
-leaking into the presentation layer.
+objects in \[`topmark.presentation.shared`\][topmark.presentation.shared], then pass those reports
+to TEXT or Markdown renderers. This keeps renderer behavior testable and prevents Click state,
+console objects, and I/O from leaking into the presentation layer. The CLI layer is responsible for
+validating command applicability before those report objects are built.
 
 Primary/headline hint selection is also a presentation concern. Hints and statuses are structured
 diagnostics, but the exact hint chosen as the headline, and the ordering of secondary hints in human
@@ -548,6 +589,10 @@ Practical consequences:
 - Use `--quiet` only on commands that explicitly support TEXT output suppression; pure informational
   content-producing commands intentionally do not expose it.
 - Do not expose internal report model names in user-facing usage documentation.
+- Keep command-specific option applicability checks in the CLI layer; presentation and machine
+  projection code should only receive valid command/report combinations.
+- Treat unsupported command/option combinations as usage errors, not as pipeline hints or synthetic
+  file diagnostics.
 
 TopMark exposes configuration state through both human-readable and machine-readable interfaces:
 

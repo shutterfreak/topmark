@@ -48,7 +48,11 @@ TopMark supports two STDIN modes when supplying file lists or content:
 - **Content mode**: process a single file's content from STDIN by passing `-` as the sole PATH
   together with `--stdin-filename NAME`
 
-These modes are mutually exclusive and should not be combined.
+TopMark does not provide a `--stdin` option flag. Use the POSIX-style `-` PATH sentinel together
+with `--stdin-filename` for content mode. Passing `--stdin` is treated as invalid CLI usage.
+
+These modes are mutually exclusive and should not be combined. In content mode, `--stdin-filename`
+is required so TopMark can resolve file type and header policy consistently with path-based inputs.
 
 Note that STDIN handling is independent from configuration validation. Options such as `--strict` /
 `--no-strict` still apply and control how staged config-loading/preflight validation warnings are
@@ -69,6 +73,9 @@ silent no-ops. As a result:
 - The command exits with `UNSUPPORTED_FILE_TYPE (69)`, reflecting incomplete resolution.
 
 This differs from processing commands, which treat unmatched patterns as non-fatal diagnostics.
+
+`probe` is read-only and diagnostic-only. It shares discovery and filtering behavior with `check`
+and `strip`, but rejects mutation, diff, reporting, and generated-header options that do not apply.
 
 For example, when a path is excluded via `--exclude` or `exclude_patterns`, `topmark probe` will
 still show it in the output as:
@@ -216,6 +223,9 @@ Missing explicit inputs take precedence over semantic probe outcomes.
 
 When multiple conditions occur, TopMark applies an exit-code priority model (see
 [Exit Codes documentation](exit-codes.md)), where hard input and filesystem errors take precedence.
+
+Invalid CLI usage (for example, unsupported options or inappropriate STDIN modes) is reported as a
+usage error and takes precedence over filtering outcomes.
 
 ## Notes on configuration strictness
 
