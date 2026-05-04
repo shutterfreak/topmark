@@ -72,6 +72,55 @@ LOG_LEVELS: dict[str, int] = {
 # ---- Reusable validators ----
 
 
+def _extra_arg_matches_option(arg: str, opt: str) -> bool:
+    """Return whether an extra argument is the given option spelling.
+
+    Supports both bare flag form (``--flag``) and assignment form
+    (``--flag=value``). Short-option clustering is intentionally not supported
+    because TopMark command-specific option constants are long options.
+    """
+    return arg == opt or arg.startswith(f"{opt}=")
+
+
+_FORBIDDEN_PATH_COMMAND_OPTS_IN_EXTRA_ARGS: Mapping[str, str] = {
+    "--stdin": (f"Use '-' with '{CliOpt.STDIN_FILENAME}' to read one file's content from STDIN."),
+}
+"""Known option spellings that are intentionally unsupported by path commands.
+
+Path-oriented commands use permissive Click parsing so arbitrary file paths can
+start with a dash. As a consequence, unknown options remain in ``ctx.args`` and
+would otherwise be interpreted as literal input paths. Keep this mapping for
+cross-command spellings that TopMark wants to reject explicitly with an
+actionable message.
+"""
+
+
+def validate_common_forbidden_path_command_options_in_extra_args(
+    ctx: click.Context,
+) -> None:
+    """Reject common unsupported options left behind by permissive path parsing.
+
+    Path commands use ``ignore_unknown_options=True`` and ``allow_extra_args=True``
+    to support Black-style path handling. This means a mistyped or unsupported
+    option can survive Click parsing in ``ctx.args``. This validator catches
+    known common spellings before input planning can treat them as file paths.
+
+    Args:
+        ctx: Active Click context whose ``ctx.args`` may contain extra path-like
+            tokens and unknown option spellings.
+
+    Raises:
+        TopmarkCliUsageError: If a known common unsupported option is present in
+            ``ctx.args``.
+    """
+    extra_args: list[str] = list(ctx.args)
+    for opt, reason in _FORBIDDEN_PATH_COMMAND_OPTS_IN_EXTRA_ARGS.items():
+        if any(_extra_arg_matches_option(arg, opt) for arg in extra_args):
+            raise TopmarkCliUsageError(
+                f"Option '{opt}' is not supported for '{ctx.command_path}'. {reason}"
+            )
+
+
 def validate_forbidden_options_in_extra_args(
     ctx: click.Context,
     *,
@@ -85,9 +134,9 @@ def validate_forbidden_options_in_extra_args(
     """
     extra_args: list[str] = list(ctx.args)
     for opt, reason in forbidden_opts.items():
-        if opt in extra_args:
+        if any(_extra_arg_matches_option(arg, opt) for arg in extra_args):
             raise TopmarkCliUsageError(
-                f"{ctx.command_path}: {opt} is not supported for this command. {reason}"
+                f"Option '{opt}' is not supported for '{ctx.command_path}'. {reason}"
             )
 
 

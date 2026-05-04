@@ -79,6 +79,7 @@ from topmark.cli.options import shared_policy_options
 from topmark.cli.state import TopmarkCliState
 from topmark.cli.state import bootstrap_cli_state
 from topmark.cli.validators import apply_color_policy_for_output_format
+from topmark.cli.validators import validate_common_forbidden_path_command_options_in_extra_args
 from topmark.cli.validators import validate_diff_policy_for_output_format
 from topmark.cli.validators import validate_forbidden_options_in_extra_args
 from topmark.cli.validators import validate_stdin_dash_requires_piped_input
@@ -266,22 +267,32 @@ def strip_command(
     # Effective TEXT verbosity for console-oriented progressive disclosure.
     verbosity_level: int = state.verbosity
 
-    # Reject check-only policy options that would otherwise slip through due to
-    # permissive path-command parsing.
-    _forbidden_option_reason: str = "Use this only with `topmark check`."
+    # Reject options that belong to header generation/update. `strip` shares
+    # input, reporting, diff, and write semantics with `check`, but it is a
+    # removal-only command and must not accept generated-header controls.
+    _check_reason: str = "Use this only with `topmark check`."
     validate_forbidden_options_in_extra_args(
         ctx,
         forbidden_opts={
-            CliOpt.POLICY_HEADER_MUTATION_MODE: _forbidden_option_reason,
-            CliOpt.POLICY_ALLOW_HEADER_IN_EMPTY_FILES: _forbidden_option_reason,
-            CliOpt.POLICY_NO_ALLOW_HEADER_IN_EMPTY_FILES: _forbidden_option_reason,
-            CliOpt.POLICY_EMPTY_INSERT_MODE: _forbidden_option_reason,
-            CliOpt.POLICY_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS: _forbidden_option_reason,
-            CliOpt.POLICY_NO_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS: _forbidden_option_reason,
-            CliOpt.POLICY_ALLOW_REFLOW: _forbidden_option_reason,
-            CliOpt.POLICY_NO_ALLOW_REFLOW: _forbidden_option_reason,
+            CliOpt.POLICY_HEADER_MUTATION_MODE: _check_reason,
+            CliOpt.POLICY_ALLOW_HEADER_IN_EMPTY_FILES: _check_reason,
+            CliOpt.POLICY_NO_ALLOW_HEADER_IN_EMPTY_FILES: _check_reason,
+            CliOpt.POLICY_EMPTY_INSERT_MODE: _check_reason,
+            CliOpt.POLICY_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS: _check_reason,
+            CliOpt.POLICY_NO_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS: _check_reason,
+            CliOpt.POLICY_ALLOW_REFLOW: _check_reason,
+            CliOpt.POLICY_NO_ALLOW_REFLOW: _check_reason,
+            CliOpt.HEADER_FIELDS: _check_reason,
+            CliOpt.FIELD_VALUES: _check_reason,
+            CliOpt.ALIGN_FIELDS: _check_reason,
+            CliOpt.NO_ALIGN_FIELDS: _check_reason,
+            CliOpt.RELATIVE_TO: _check_reason,
         },
     )
+
+    # Reject common unsupported option spellings that permissive path parsing
+    # would otherwise pass through as positional input paths, such as `--stdin`.
+    validate_common_forbidden_path_command_options_in_extra_args(ctx)
 
     # Machine metadata.
     meta: MetaPayload = build_meta_payload()

@@ -85,6 +85,7 @@ from topmark.cli.options import shared_policy_options
 from topmark.cli.state import TopmarkCliState
 from topmark.cli.state import bootstrap_cli_state
 from topmark.cli.validators import apply_color_policy_for_output_format
+from topmark.cli.validators import validate_common_forbidden_path_command_options_in_extra_args
 from topmark.cli.validators import validate_diff_policy_for_output_format
 from topmark.cli.validators import validate_stdin_dash_requires_piped_input
 from topmark.cli.validators import warn_if_report_scope_ignored
@@ -296,6 +297,10 @@ def check_command(
 
     # Effective TEXT verbosity for console-oriented progressive disclosure.
     verbosity_level: int = state.verbosity
+
+    # Reject common unsupported option spellings that permissive path parsing
+    # would otherwise pass through as positional input paths, such as `--stdin`.
+    validate_common_forbidden_path_command_options_in_extra_args(ctx)
 
     # Machine metadata.
     meta: MetaPayload = build_meta_payload()
