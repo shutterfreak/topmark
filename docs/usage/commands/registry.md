@@ -28,8 +28,11 @@ relationships (bindings), which together define how TopMark resolves and process
 
 All `registry` subcommands are purely informational:
 
-- They exit with **0** on successful execution.
-- CLI usage errors (invalid or unsupported options) exit with **64**.
+- They exit with `SUCCESS (0)` on successful execution.
+- CLI usage errors (invalid or unsupported options) exit with `USAGE_ERROR (64)`.
+
+Registry subcommands do not process project files and therefore do not use file-processing exit
+codes such as `WOULD_CHANGE (2)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.
 
 See [`Exit codes`](../exit-codes.md) for the complete CLI-wide exit-code contract.
 

@@ -39,13 +39,14 @@ to the config layer for merging.
 
 Exit-code behavior for `config` subcommands follows a consistent pattern:
 
-- Informational commands (`config dump`, `config defaults`, `config init`) exit with **0** on
-  success.
+- Informational commands (`config dump`, `config defaults`, `config init`) exit with `SUCCESS (0)`
+  on success.
 - Validation command (`config check`) exits with:
-  - **0** when configuration is valid
-  - **1** when validation completes and reports failing diagnostics
-- CLI usage errors (invalid options, incompatible flags) exit with **64**.
-- Configuration loading/processing failures exit with **78** where applicable.
+  - `SUCCESS (0)` when configuration is valid
+  - `FAILURE (1)` when validation completes and reports failing diagnostics
+- CLI usage errors (invalid options, incompatible flags) exit with `USAGE_ERROR (64)`.
+- Configuration loading/processing failures exit with `CONFIG_ERROR (78)` where applicable.
+- Unexpected internal failures exit with `UNEXPECTED_ERROR (255)`.
 
 See [`Exit codes`](../exit-codes.md) for the complete CLI-wide exit-code contract.
 
@@ -53,8 +54,8 @@ Note on output controls:
 
 - `-v` / `--verbose` applies only to TEXT output across all `config` subcommands.
 - `--quiet` is supported only for commands that provide a meaningful status or inspection signal
-  (`config check`, `config dump`).
-- Pure content-producing commands (`config defaults`, `config init`) do not support `--quiet`.
+  (`config check`, `config dump`). Pure content-producing commands (`config defaults`,
+  `config init`) do not support `--quiet`.
 
 When using `topmark config dump --show-layers`, the command also exposes **layered configuration
 provenance** in addition to the flattened effective configuration. This layered view reflects how

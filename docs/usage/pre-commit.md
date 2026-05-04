@@ -179,6 +179,39 @@ You can also pass `--summary` to only receive a summary instead of per-file diag
 
 ### Narrow file scope in consuming repos
 
+______________________________________________________________________
+
+## Exit codes in pre-commit hooks
+
+TopMark hooks rely on the CLI exit-code contract to signal success or failure to pre-commit and CI.
+
+- **`topmark-check` (non-destructive)**:
+
+  - Exits with `SUCCESS (0)` when all headers are up-to-date.
+  - Exits with `WOULD_CHANGE (2)` when headers would be added/updated in dry-run mode (this causes
+    the hook to fail as intended).
+  - May exit with other non-zero codes for errors, for example:
+    - `FILE_NOT_FOUND (66)` for explicit missing input paths
+    - `IO_ERROR (74)` or `PERMISSION_DENIED (77)` for filesystem issues
+    - `CONFIG_ERROR (78)` for configuration problems
+
+- **`topmark-apply` (manual, destructive)**:
+
+  - Exits with `SUCCESS (0)` on successful application of changes.
+  - May exit with the same error codes as above if issues occur during processing.
+
+Notes:
+
+- Pre-commit treats any non-zero exit code as a failure; this is expected for `topmark-check` when
+  changes are needed (`WOULD_CHANGE (2)`).
+- Use `--quiet` in CI to suppress TEXT output and rely solely on exit status.
+- For full details and edge cases (mixed-result runs, precedence), see:
+  - [`Exit codes`](./exit-codes.md)
+  - [`check` command](./commands/check.md)
+  - [`strip` command](./commands/strip.md)
+
+______________________________________________________________________
+
 ```yaml
 hooks:
   - id: topmark-check

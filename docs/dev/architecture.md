@@ -379,6 +379,42 @@ existing configuration or CLI usage. For the path-based winner-selection and amb
 
 ______________________________________________________________________
 
+## File resolution diagnostics and exit-code boundaries
+
+TopMark’s file selection layer separates **selected processing inputs** from **discovery
+diagnostics**. The resolver returns a structured file-list resolution result containing:
+
+- `selected` — concrete files that should enter the processing or probe pipeline
+- `missing_literals` — explicit literal input paths that do not exist
+- `unmatched_patterns` — glob patterns that matched no files
+
+This distinction is important because not every discovery outcome should become a pipeline input:
+
+- Explicit missing literal paths are hard user input errors and are represented as synthetic
+  pipeline contexts with `FsStatus.NOT_FOUND`.
+- Unmatched glob patterns are soft discovery diagnostics for processing commands (`check`, `strip`).
+- `probe` treats unmatched glob patterns as filtered semantic outcomes because its purpose is to
+  explain resolution and filtering.
+
+Synthetic contexts are built for resolver-level hard failures that occur before normal pipeline
+execution can begin. This keeps human output, machine output, summaries, and exit-code selection
+based on the same result collection instead of requiring separate side channels.
+
+Exit-code selection is centralized after pipeline execution by summarizing result statuses. The CLI
+layer remains responsible for process-level exit behavior, while pipeline and presentation layers
+remain Click-free and do not call `ctx.exit()`.
+
+Practical consequences:
+
+- Hard filesystem and input errors take precedence over semantic outcomes such as unsupported file
+  types or dry-run would-change signals.
+- Missing explicit inputs are visible as per-file errors instead of being collapsed into “no files
+  to process”.
+- Machine payloads expose structured diagnostics/results, while process status remains external as
+  the CLI exit code.
+
+______________________________________________________________________
+
 ## Policy Resolution (≥ 0.11.0)
 
 TopMark constructs a `PolicyRegistry` at pipeline bootstrap time and resolves runtime policy from
@@ -490,14 +526,23 @@ Machine formats (`json`, `ndjson`) are separate from both human formats. They ar
 never include ANSI styling, and are unaffected by TEXT-only verbosity controls. Machine projection
 depth is controlled by explicit machine-facing options such as `--long`, not by `-v`.
 
+Machine output is also intentionally decoupled from process exit codes. JSON and NDJSON payloads
+serialize structured results, diagnostics, and resolution state; they do not embed the CLI exit
+code. Consumers must inspect the process exit status separately from parsing machine payloads.
+
 Human presentation modules follow a shared pattern: CLI commands build Click-free, typed report
 objects in `topmark.presentation.shared`, then pass those reports to TEXT or Markdown renderers.
 This keeps renderer behavior testable and prevents Click state, console objects, and I/O from
 leaking into the presentation layer.
 
+Primary/headline hint selection is also a presentation concern. Hints and statuses are structured
+diagnostics, but the exact hint chosen as the headline, and the ordering of secondary hints in human
+output, are not part of the stable CLI contract for 1.0.
+
 Practical consequences:
 
 - Do not parse TEXT or Markdown output in automation; use JSON/NDJSON instead.
+- Do not infer process success solely from JSON/NDJSON payloads; inspect the CLI exit code.
 - Use `--long` for data/detail depth where supported.
 - Use `-v` only as a TEXT progressive-disclosure control.
 - Use `--quiet` only on commands that explicitly support TEXT output suppression; pure informational

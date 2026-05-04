@@ -141,7 +141,7 @@ ______________________________________________________________________
 | `--relative-to`   | Base directory for relative path handling in config.                       |
 | `--align-fields`  | Whether to align header fields (captured in config).                       |
 | `--header-format` | Header rendering format override (captured in config).                     |
-| `-q`, `--quiet`   | Suppress TEXT output while preserving the command’s exit status.           |
+| `-q`, `--quiet`   | Suppress TEXT output while preserving the command's exit status.           |
 
 > Run `topmark config dump -h` for the full list of options and help text.
 
@@ -245,10 +245,23 @@ ______________________________________________________________________
 
 ## Exit codes
 
-`topmark config dump` is a purely informational command and exits with **0** on successful
-execution.
+`topmark config dump` is an informational/inspection command and exits with `SUCCESS (0)` when the
+effective configuration is rendered successfully.
 
-Configuration errors (for example, failure to construct the effective config) exit with **78**. CLI
-usage errors exit with **64**.
+Common `config dump` exit codes:
+
+| Scenario                                   | Exit code           |
+| ------------------------------------------ | ------------------- |
+| Effective config rendered successfully     | `SUCCESS (0)`       |
+| Invalid CLI usage                          | `USAGE_ERROR (64)`  |
+| Configuration cannot be loaded for command | `CONFIG_ERROR (78)` |
+
+Notes:
+
+- This command does not process files and does not use file-processing exit codes such as
+  `WOULD_CHANGE (2)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.
+- `--quiet` is supported for TEXT output and suppresses the rendered TOML while preserving the exit
+  status.
+- Markdown and machine formats ignore TEXT-only quiet and verbosity controls.
 
 See [`Exit codes`](../../exit-codes.md) for the complete CLI-wide exit-code contract.

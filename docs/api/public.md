@@ -159,8 +159,14 @@ inputs filtered earlier during discovery are not returned by this API. Instead, 
 - `excluded_by_file_type_filter`
 - `excluded_by_discovery_filter`
 
-This distinction keeps the programmatic API focused on resolution, while the CLI provides full
-end-to-end explainability including discovery.
+Explicit missing literal inputs are handled even earlier by file-list resolution. They are not
+represented by `probe_resolution_for_path()` and are not normal resolution-probe payloads. At the
+CLI boundary, missing literals are surfaced as synthetic pipeline results and produce
+`FILE_NOT_FOUND (66)` according to the CLI exit-code contract.
+
+This distinction keeps the programmatic API focused on file-type/processor resolution, while the CLI
+provides full end-to-end explainability including discovery filters, missing inputs, and
+process-level exit codes.
 
 ```python
 assert run.summary.get("unchanged", 0) >= 0
@@ -171,6 +177,10 @@ These API results are rendered differently depending on the selected output form
 - TEXT: console-oriented, supports `-v` / `--quiet`.
 - Markdown: document-oriented, ignores TEXT-only verbosity/quiet controls.
 - JSON/NDJSON: machine-readable, unaffected by presentation flags.
+
+Machine output and API result payloads should not be treated as substitutes for process exit status.
+For CLI automation, inspect the process exit code separately from JSON/NDJSON payloads; see
+[`Exit codes`](../usage/exit-codes.md).
 
 This design keeps the public surface small and semver-stable while allowing flexible per-call
 configuration.

@@ -149,12 +149,26 @@ ______________________________________________________________________
 
 ## Exit codes
 
-`topmark registry bindings` is a purely informational command and exits with **0** on successful
-execution.
+`topmark registry bindings` is a purely informational command and exits with `SUCCESS (0)` on
+successful execution.
 
-CLI usage errors (for example, unsupported options) exit with **64**.
+Common `registry bindings` exit codes:
+
+| Scenario                      | Exit code          |
+| ----------------------------- | ------------------ |
+| Command executed successfully | `SUCCESS (0)`      |
+| Invalid CLI usage             | `USAGE_ERROR (64)` |
+
+Notes:
+
+- This command does not process project files and does not use file-processing exit codes such as
+  `WOULD_CHANGE (2)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.
+- `--quiet` is not supported for registry commands; use output-format options instead for non-TEXT
+  output.
 
 See [`Exit codes`](../../exit-codes.md) for the complete CLI-wide exit-code contract.
+
+______________________________________________________________________
 
 ## Notes
 

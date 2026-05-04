@@ -102,6 +102,9 @@ Notes:
 - Path-based filters are evaluated **before** file-type filters.
 - Exclude rules win over include rules when both match a path.
 - File-type filters are applied after path-based include/exclude filtering.
+- Explicit missing literal paths (for example `fubar.py`) are reported as `FILE_NOT_FOUND (66)`.
+- Unmatched glob patterns (for example `missing/**/*.py`) are reported as filtered probe results and
+  contribute to `UNSUPPORTED_FILE_TYPE (69)`.
 
 ______________________________________________________________________
 
@@ -206,6 +209,8 @@ Notes:
 
 - Markdown output ignores verbosity
 - Machine output is unaffected by verbosity and quiet mode
+- Primary/headline hint selection, where rendered in human output, is presentation-level guidance
+  and is not part of the stable CLI contract; rely on exit codes and machine output for automation.
 
 ______________________________________________________________________
 
@@ -230,11 +235,29 @@ ______________________________________________________________________
 
 ## Exit codes
 
-`topmark probe` exits with **0** when all inputs are fully resolved. It exits with **69** when any
-input is unresolved, unsupported, or filtered.
+`topmark probe` exits with `SUCCESS (0)` when all inputs are fully resolved.
 
-See [`Exit codes`](../exit-codes.md) for the complete CLI-wide exit-code contract, including
-configuration errors, usage errors, and unexpected failures.
+Common `probe` exit codes:
+
+| Scenario                                      | Exit code                    |
+| --------------------------------------------- | ---------------------------- |
+| All inputs resolved                           | `SUCCESS (0)`                |
+| Any input unresolved / unsupported / filtered | `UNSUPPORTED_FILE_TYPE (69)` |
+| Missing explicit input path                   | `FILE_NOT_FOUND (66)`        |
+| Permission failure                            | `PERMISSION_DENIED (77)`     |
+| Configuration error                           | `CONFIG_ERROR (78)`          |
+| Invalid CLI usage                             | `USAGE_ERROR (64)`           |
+
+Notes:
+
+- `UNSUPPORTED_FILE_TYPE (69)` indicates semantic resolution failure (e.g., unsupported file type or
+  filtered input), not a crash.
+- Explicit missing literal paths are treated as hard input errors and produce `FILE_NOT_FOUND (66)`.
+- Missing explicit inputs take precedence over semantic probe outcomes (`69`).
+- Unmatched glob patterns are reported as filtered probe results (e.g.,
+  `filtered: excluded_by_discovery_filter`) and result in `UNSUPPORTED_FILE_TYPE (69)`.
+
+See [`Exit codes`](../exit-codes.md) for the complete CLI-wide exit-code contract.
 
 ______________________________________________________________________
 
@@ -278,3 +301,5 @@ ______________________________________________________________________
   - `filtered: excluded_by_path_filter`
   - `filtered: excluded_by_file_type_filter`
   - `filtered: excluded_by_discovery_filter`
+- **Missing file error**: A literal path such as `fubar.py` is treated as an explicit input and
+  fails with `FILE_NOT_FOUND (66)` when it does not exist.

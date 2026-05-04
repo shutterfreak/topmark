@@ -67,7 +67,7 @@ ______________________________________________________________________
 - **File-agnostic**: positional PATHS are ignored (a note is printed). `-` (content-on-STDIN) is
   ignored.
 
-- **CI-friendly**: exit code **1** when validation fails.
+- **CI-friendly**: exits with `FAILURE (1)` when validation fails.
 
 - **Strict mode**: effective strictness is determined as:
 
@@ -107,13 +107,28 @@ ______________________________________________________________________
 
 ## Exit codes
 
-`topmark config check` exits with **0** when the configuration is valid. It exits with **1** when
-validation completes and reports failing diagnostics:
+`topmark config check` exits with `SUCCESS (0)` when the effective configuration is valid. It exits
+with `FAILURE (1)` when validation completes and reports failing diagnostics:
 
 - errors are present, or
 - effective strict config checking is enabled and warnings are present.
 
-CLI usage errors (for example, invalid options) exit with **64**.
+Common `config check` exit codes:
+
+| Scenario                                       | Exit code           |
+| ---------------------------------------------- | ------------------- |
+| Valid effective configuration                  | `SUCCESS (0)`       |
+| Validation completed with failing diagnostics  | `FAILURE (1)`       |
+| Invalid CLI usage                              | `USAGE_ERROR (64)`  |
+| Configuration cannot be loaded for the command | `CONFIG_ERROR (78)` |
+
+Notes:
+
+- `FAILURE (1)` is a validation result for this command, not an unexpected crash.
+- Warning-only diagnostics exit with `SUCCESS (0)` unless strict config checking is enabled.
+- Malformed TOML discovered by `config check` is reported as a failing validation result and exits
+  with `FAILURE (1)`.
+- CLI usage errors (for example, invalid options) exit with `USAGE_ERROR (64)`.
 
 See [`Exit codes`](../../exit-codes.md) for the complete CLI-wide exit-code contract.
 

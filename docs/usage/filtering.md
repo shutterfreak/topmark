@@ -24,7 +24,35 @@ Filtering order:
 Note: For `topmark probe`, paths excluded during step 1 or 2 may still be reported as `filtered`
 results if they were explicitly requested.
 
+## Missing vs unmatched inputs
+
+TopMark distinguishes between **explicit literal paths** and **glob patterns**:
+
+- **Explicit missing literal paths** (e.g., `fubar.py`) are treated as **hard input errors** and
+  result in `FILE_NOT_FOUND (66)`.
+- **Unmatched glob patterns** (e.g., `missing/**/*.py`) are treated as **soft discovery
+  diagnostics** and do **not** cause a failure for processing commands (`check`, `strip`) (exit
+  `SUCCESS (0)`).
+
+This distinction ensures that typos in explicit inputs are surfaced, while flexible patterns that
+match nothing do not break automation.
+
 ## STDIN support
+
+TopMark supports two STDIN modes when supplying file lists or content:
+
+- **List mode**: provide newline-delimited paths or patterns via:
+  - `--files-from -`
+  - `--include-from -`
+  - `--exclude-from -`
+- **Content mode**: process a single file's content from STDIN by passing `-` as the sole PATH
+  together with `--stdin-filename NAME`
+
+These modes are mutually exclusive and should not be combined.
+
+Note that STDIN handling is independent from configuration validation. Options such as `--strict` /
+`--no-strict` still apply and control how staged config-loading/preflight validation warnings are
+treated during the run.
 
 ## Interaction with `topmark probe`
 
@@ -32,6 +60,15 @@ The `topmark probe` command uses the same discovery and filtering rules describe
 
 However, unlike processing commands (`check`, `strip`), `probe` also reports **explicit inputs that
 were filtered out before file-type probing**.
+
+Additionally, `probe` treats unmatched glob patterns as **filtered semantic outcomes** rather than
+silent no-ops. As a result:
+
+- Unmatched glob patterns are reported as `filtered` probe results (e.g.,
+  `filtered: excluded_by_discovery_filter`).
+- The command exits with `UNSUPPORTED_FILE_TYPE (69)`, reflecting incomplete resolution.
+
+This differs from processing commands, which treat unmatched patterns as non-fatal diagnostics.
 
 For example, when a path is excluded via `--exclude` or `exclude_patterns`, `topmark probe` will
 still show it in the output as:
@@ -57,24 +94,10 @@ Filtered probe results may use one of the following reasons:
 - `excluded_by_path_filter` — excluded by path-based include/exclude rules
 - `excluded_by_file_type_filter` — excluded by file-type include/exclude rules
 - `excluded_by_discovery_filter` — excluded before probing, but exact category not identified
+- `no_candidates` — no file-type candidates were found (e.g., unsupported extension)
 
 Only explicitly requested inputs (CLI paths or `--files-from`) are reported this way. Files excluded
 implicitly during recursive discovery are not enumerated.
-
-TopMark supports two STDIN modes when supplying file lists or content:
-
-- **List mode**: provide newline-delimited paths or patterns via:
-  - `--files-from -`
-  - `--include-from -`
-  - `--exclude-from -`
-- **Content mode**: process a single file's content from STDIN by passing `-` as the sole PATH
-  together with `--stdin-filename NAME`
-
-These modes are mutually exclusive and should not be combined.
-
-Note that STDIN handling is independent from configuration validation. Options such as `--strict` /
-`--no-strict` still apply and control how staged config-loading/preflight validation warnings are
-treated during the run.
 
 ## Recipe: Process only Python and Markdown
 
@@ -180,6 +203,19 @@ topmark check --report actionable .
 topmark check --report noncompliant .
 topmark strip --report noncompliant .
 ```
+
+## Exit-code interaction
+
+Filtering decisions can influence exit codes indirectly:
+
+- Missing explicit inputs → `FILE_NOT_FOUND (66)`
+- Unmatched glob patterns → no failure (`check` / `strip`, `SUCCESS (0)`), or
+  `UNSUPPORTED_FILE_TYPE (69)` in `probe`
+
+Missing explicit inputs take precedence over semantic probe outcomes.
+
+When multiple conditions occur, TopMark applies an exit-code priority model (see
+[Exit Codes documentation](exit-codes.md)), where hard input and filesystem errors take precedence.
 
 ## Notes on configuration strictness
 

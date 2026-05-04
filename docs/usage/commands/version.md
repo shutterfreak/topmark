@@ -173,10 +173,22 @@ ______________________________________________________________________
 
 ## Exit codes
 
-`topmark version` is a purely informational command and exits with **0** on successful execution.
+`topmark version` is a purely informational/content-producing command and exits with `SUCCESS (0)`
+on successful execution.
 
-Version resolution failures (rare, typically only in broken or development environments) exit with
-**100**. CLI usage errors exit with **64**.
+Common `version` exit codes:
+
+| Scenario                      | Exit code                        |
+| ----------------------------- | -------------------------------- |
+| Version rendered successfully | `SUCCESS (0)`                    |
+| Version conversion failure    | `VERSION_CONVERSION_ERROR (100)` |
+| Invalid CLI usage             | `USAGE_ERROR (64)`               |
+
+Notes:
+
+- This command does not process project files and does not use file-processing exit codes such as
+  `WOULD_CHANGE (2)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.
+- `--quiet` is not supported because the command's primary purpose is to emit content.
 
 See [`Exit codes`](../exit-codes.md) for the complete CLI-wide exit-code contract.
 

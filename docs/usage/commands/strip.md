@@ -110,6 +110,9 @@ Notes:
 - Path-based filters are evaluated **before** file-type filters.
 - Exclude rules win over include rules when both match a path.
 - File-type filters are applied after path-based include/exclude filtering.
+- Explicit missing literal paths (for example `fubar.py`) are reported as `FILE_NOT_FOUND (66)`.
+- Unmatched glob patterns (for example `missing/**/*.py`) are treated as soft discovery diagnostics
+  and do not fail `strip`.
 
 ______________________________________________________________________
 
@@ -229,6 +232,8 @@ Notes:
 - **Summary mode** aggregates outcomes and suppresses per-file guidance lines.
 - In TEXT output, **per-line diagnostics** are shown with `-v` and above.
 - In Markdown output, diagnostics and hints are rendered when present without requiring `-v`.
+- Primary/headline hint selection is presentation-level guidance and is not part of the stable CLI
+  contract; rely on exit codes and machine output for automation.
 - **Diffs** (`--diff`) are always human‑only and never included in JSON/NDJSON.
 
 ## Options (subset)
@@ -258,11 +263,28 @@ ______________________________________________________________________
 
 ## Exit codes
 
-`topmark strip` uses exit code **2** as a stable dry-run signal when removals would be needed.
-Successful no-op runs and successful `--apply` runs exit with **0**.
+`topmark strip` uses exit code `WOULD_CHANGE (2)` as a stable dry-run signal when removals would be
+needed. Successful no-op runs and successful `--apply` runs exit with `SUCCESS (0)`.
 
-See [`Exit codes`](../exit-codes.md) for the complete CLI-wide exit-code contract, including
-configuration errors, usage errors, write failures, and unexpected failures.
+Common `strip` exit codes:
+
+| Scenario                     | Exit code                |
+| ---------------------------- | ------------------------ |
+| Clean run / successful apply | `SUCCESS (0)`            |
+| Dry-run would remove headers | `WOULD_CHANGE (2)`       |
+| Missing explicit input path  | `FILE_NOT_FOUND (66)`    |
+| Write/apply failure          | `IO_ERROR (74)`          |
+| Permission failure           | `PERMISSION_DENIED (77)` |
+| Configuration error          | `CONFIG_ERROR (78)`      |
+| Invalid CLI usage            | `USAGE_ERROR (64)`       |
+
+Notes:
+
+- Explicit missing literal paths are hard input errors and produce `FILE_NOT_FOUND (66)`.
+- Unmatched glob patterns are soft discovery diagnostics and do not fail `strip`.
+- In mixed-result runs, hard input and filesystem errors take precedence over `WOULD_CHANGE (2)`.
+
+See [`Exit codes`](../exit-codes.md) for the complete CLI-wide exit-code contract.
 
 ______________________________________________________________________
 
@@ -273,6 +295,9 @@ ______________________________________________________________________
 
 - Patterns in `--include`, `--exclude`, and the files passed to `--include-from` / `--exclude-from`
   are also resolved **relative to CWD**. Absolute patterns are not supported.
+
+- Explicit missing literal paths are reported as `FILE_NOT_FOUND (66)`. Unmatched glob patterns are
+  non-fatal for `strip`.
 
 - STDIN supports two modes:
 
@@ -374,5 +399,8 @@ ______________________________________________________________________
   detailed TEXT output; use logging options for internal debug logs.
 - **Patterns don’t match**: Remember that include/exclude patterns are **relative to CWD**. `cd`
   into the project root before running.
+- **Missing file error**: A literal path such as `fubar.py` is treated as an explicit input and
+  fails with `FILE_NOT_FOUND (66)` when it does not exist. Use a glob pattern when an empty match
+  set should be non-fatal.
 - **“Header not detected”**: Header‑like text inside code fences or strings is intentionally
   ignored; `strip` won’t remove it.

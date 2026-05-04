@@ -91,15 +91,26 @@ ______________________________________________________________________
 This command is intentionally minimal and usually has no options. See `topmark config init -h` for
 any environment‑specific flags that may be available in your build.
 
-Note: `-v` / `--verbose` applies only to TEXT output. This command does not support `--quiet`.
-Markdown and machine formats ignore verbosity.
+Note: `-v` / `--verbose` applies only to TEXT output. This pure content-producing command does not
+support `--quiet`. Markdown and machine formats ignore TEXT-only verbosity controls.
 
 ## Exit codes
 
-`topmark config init` is a purely informational command and exits with **0** on successful
-execution.
+`topmark config init` is a pure informational/content-producing command and exits with `SUCCESS (0)`
+on successful execution.
 
-CLI usage errors (for example, unsupported options) exit with **64**.
+Common `config init` exit codes:
+
+| Scenario                      | Exit code          |
+| ----------------------------- | ------------------ |
+| Example rendered successfully | `SUCCESS (0)`      |
+| Invalid CLI usage             | `USAGE_ERROR (64)` |
+
+Notes:
+
+- This command does not inspect project files and does not use file-processing exit codes such as
+  `WOULD_CHANGE (2)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.
+- `--quiet` is unsupported because the command's primary purpose is to emit content.
 
 See [`Exit codes`](../../exit-codes.md) for the complete CLI-wide exit-code contract.
 

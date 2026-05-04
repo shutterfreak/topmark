@@ -16,6 +16,29 @@ This page documents TopMark’s **machine-readable output conventions** across c
 
 ______________________________________________________________________
 
+## Exit codes vs machine output
+
+Machine formats (`json`, `ndjson`) intentionally **do not encode CLI exit codes inside the
+payload**.
+
+- Exit status is communicated exclusively via the process exit code.
+- Machine payloads represent **structured results and diagnostics**, not process-level
+  success/failure.
+
+Implications for consumers:
+
+- Always check the process exit code in addition to parsing machine output.
+- Do not attempt to infer success/failure solely from payload content (for example, empty results or
+  filtered probes).
+
+This separation ensures that:
+
+- machine payloads remain stable and composable,
+- exit-code semantics can evolve independently,
+- CI tooling can rely on standard process semantics.
+
+______________________________________________________________________
+
 ## Output formats
 
 TopMark exposes four `--output-format` values:
@@ -380,6 +403,13 @@ These include:
 Refer to the machine schema reference for the per-path probe payload:
 
 - [Machine output schema (JSON & NDJSON)](machine-output.md)
+
+Note:
+
+- Explicit missing literal inputs are surfaced via the CLI exit code (`FILE_NOT_FOUND (66)`), not as
+  a distinct probe status.
+- In mixed-input runs, probe payloads may still include filtered or unsupported entries, but
+  exit-code precedence is resolved outside the payload.
 
 ______________________________________________________________________
 

@@ -22,25 +22,29 @@ ______________________________________________________________________
 
 ## Overview
 
-| Code | Name                  | Meaning                                                                                                         |
-| ---: | --------------------- | --------------------------------------------------------------------------------------------------------------- |
-|    0 | SUCCESS               | Operation completed successfully; no changes needed (or changes applied successfully).                          |
-|    1 | VALIDATION_FAILED     | Command completed, but reported a failing validation result (used by `config check`).                           |
-|    2 | WOULD_CHANGE          | Dry-run indicates changes would be made (used by `check` and `strip` without `--apply`).                        |
-|   64 | USAGE_ERROR           | Invalid CLI usage (invalid options, incompatible flags).                                                        |
-|   66 | INPUT_ERROR           | Input problem (e.g., missing file, unreadable path).                                                            |
-|   69 | UNAVAILABLE / PARTIAL | Requested operation could not be fully satisfied (e.g., unsupported, filtered, or unresolved input in `probe`). |
-|   70 | INTERNAL_ERROR        | Unexpected internal failure or missing required pipeline result.                                                |
-|   74 | IO_ERROR              | Write/apply failure (e.g., filesystem write error).                                                             |
-|   78 | CONFIG_ERROR          | Configuration could not be loaded or validated for execution.                                                   |
-|  100 | VERSION_ERROR         | Version information could not be determined (rare; see `version`).                                              |
-|  255 | UNHANDLED_ERROR       | Unhandled exception fallback.                                                                                   |
+| Code | Name                     | Meaning                                                                                  |
+| ---: | ------------------------ | ---------------------------------------------------------------------------------------- |
+|    0 | SUCCESS                  | Operation completed successfully.                                                        |
+|    1 | FAILURE                  | Generic failure (non-specific error).                                                    |
+|    2 | WOULD_CHANGE             | Dry-run indicates changes would be made (used by `check` and `strip` without `--apply`). |
+|   64 | USAGE_ERROR              | Invalid CLI usage (invalid options, incompatible flags).                                 |
+|   65 | ENCODING_ERROR           | Text decoding/encoding error (e.g., Unicode issues).                                     |
+|   66 | FILE_NOT_FOUND           | Explicit input path does not exist.                                                      |
+|   69 | UNSUPPORTED_FILE_TYPE    | Unsupported / unresolved / filtered input (primarily used by `probe`).                   |
+|   70 | PIPELINE_ERROR           | Internal pipeline failure or missing required processing result.                         |
+|   74 | IO_ERROR                 | Read/write failure (e.g., filesystem write error).                                       |
+|   77 | PERMISSION_DENIED        | Insufficient permissions (read/write).                                                   |
+|   78 | CONFIG_ERROR             | Configuration could not be loaded or validated for execution.                            |
+|  100 | VERSION_CONVERSION_ERROR | Version information could not be determined or converted.                                |
+|  255 | UNEXPECTED_ERROR         | Unhandled exception fallback.                                                            |
 
 Notes:
 
 - Codes broadly follow **sysexits-style semantics** where applicable.
 - Not all codes are used by every command.
 - Commands may short-circuit on higher-severity errors (e.g., config errors before processing).
+- Explicit missing literal paths are treated as hard input errors (66). Unmatched glob patterns are
+  soft diagnostics and do not produce 66.
 
 ______________________________________________________________________
 
@@ -56,12 +60,16 @@ ______________________________________________________________________
 | Configuration error                      |        78 |
 | Write failure during apply               |        74 |
 | CLI usage error                          |        64 |
+| Missing explicit input                   |        66 |
 | Unexpected/internal error                |  70 / 255 |
 
 Notes:
 
 - `2` is a **signal**, not an error: it indicates that files would change.
 - In CI, treat `2` as "diff detected".
+- Explicit missing input paths are reported as errors (66), even if no files are selected for
+  processing.
+- Unmatched glob patterns are treated as discovery diagnostics and do not cause failure.
 
 ______________________________________________________________________
 
@@ -75,7 +83,13 @@ ______________________________________________________________________
 | Configuration error                      |        78 |
 | Write failure during apply               |        74 |
 | CLI usage error                          |        64 |
+| Missing explicit input                   |        66 |
 | Unexpected/internal error                |  70 / 255 |
+
+Notes:
+
+- Explicit missing input paths are reported as errors (66).
+- Unmatched glob patterns are treated as discovery diagnostics and do not cause failure.
 
 ______________________________________________________________________
 
@@ -85,6 +99,7 @@ ______________________________________________________________________
 | --------------------------------------------- | --------: |
 | All inputs resolved successfully              |         0 |
 | Any input unresolved / unsupported / filtered |        69 |
+| Missing explicit input                        |        66 |
 | Missing probe result / internal inconsistency |        70 |
 | Configuration error                           |        78 |
 | CLI usage error                               |        64 |
@@ -93,6 +108,9 @@ Notes:
 
 - `69` indicates **partial or unavailable resolution**, not a crash.
 - This is useful for automation that requires full resolvability.
+- Missing explicit input paths are treated as hard errors (66) and take precedence over semantic
+  probe outcomes.
+- Unmatched glob patterns are reported as filtered semantic outcomes and result in exit code 69.
 
 ______________________________________________________________________
 
@@ -171,13 +189,34 @@ Recommended handling:
 - Treat `2` as **non-error change signal** (for `check`/`strip`).
 - Treat `1` (from `config check`) as a **failing validation result**.
 - Treat `64`, `66`, `69`, `70`, `74`, `78`, `255` as errors.
+- Note: `66` indicates explicit user input errors (e.g., missing paths), not unmatched glob
+  patterns.
+
+______________________________________________________________________
+
+## Exit code priority (mixed results)
+
+When multiple issues occur in a single run, TopMark selects the exit code based on the
+highest-priority condition.
+
+Priority order (highest to lowest):
+
+1. Permission errors (`77`) and other filesystem access failures
+1. Missing explicit inputs (`66`)
+1. Write/apply failures (`74`)
+1. Configuration errors (`78`)
+1. Semantic/availability signals (`69`)
+1. Generic failures (`1`)
+
+This ensures that hard user or environment errors take precedence over informational or semantic
+outcomes.
 
 Example:
 
 ```sh
 # Detect formatting/header drift without applying changes
-if ! topmark check .; then
-  if [ $? -eq 2 ]; then
+if ! topmark check . ; then
+  if [ $? -eq 2 ] ; then
     echo "Changes required"
   else
     echo "Error during check"

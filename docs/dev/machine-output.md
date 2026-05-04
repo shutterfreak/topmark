@@ -52,6 +52,27 @@ Notes:
 
 ______________________________________________________________________
 
+## Exit codes and machine output
+
+Machine output (`json`, `ndjson`) is intentionally **decoupled from CLI exit codes**:
+
+- Exit codes are not embedded in JSON or NDJSON payloads.
+- Structured payloads represent results, diagnostics, and resolution state only.
+
+Consumers must:
+
+- inspect the process exit code for success/failure semantics,
+- parse machine output for detailed diagnostics and results.
+
+This design ensures a clean separation between:
+
+- **process status** (exit code), and
+- **structured data contract** (machine output).
+
+Refer to [`Exit codes`](../usage/exit-codes.md) for the full contract.
+
+______________________________________________________________________
+
 ## Shared concepts
 
 ### MetaPayload
@@ -339,6 +360,13 @@ Candidate fields:
 > Filtered probe payloads have no candidate-level `match` object because file-type probing did not
 > run. The reason identifies whether the path was excluded by path filters, file-type filters, or a
 > generic discovery filter fallback.
+
+Note:
+
+- Explicit missing literal inputs are not represented as a dedicated probe status; they are reported
+  via CLI exit codes (`FILE_NOT_FOUND (66)`).
+- Synthetic probe entries may still appear for explicitly requested paths that were filtered during
+  discovery, but exit-code precedence is resolved at the CLI layer.
 
 ## Processing commands (`check`, `strip`)
 

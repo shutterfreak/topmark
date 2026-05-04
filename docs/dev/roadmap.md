@@ -111,8 +111,9 @@ Key improvements:
   groups and commands.
 - Expanded focused human-output tests for version, diagnostics, config, registry, and pipeline
   commands.
-- Documented the stable CLI exit-code contract across the canonical usage page, command pages,
-  command-group pages, README, and documentation index.
+- Documented and enforced the stable CLI exit-code contract across implementation, tests, the
+  canonical usage page, command pages, command-group pages, README, documentation index, pre-commit
+  guidance, and developer-facing machine/API documentation.
 
 Result: output is now **fully deterministic, testable, and reusable outside CLI contexts**.
 
@@ -169,6 +170,10 @@ The pipeline has been stabilized with clearer semantics:
     idempotence guard, not as extended newline support
 - Centralized standard newline constants and aligned reader, sniffer, whitespace, XML, and property
   tests with the frozen newline contract.
+- Centralized pipeline-result-to-exit-code derivation with explicit priority ordering for mixed
+  result runs.
+- Added resolver-level synthetic pipeline contexts for explicit missing literal inputs so missing
+  files appear in human output, machine output, summaries, and exit-code selection.
 
 Result: pipeline behavior is now **explicit, consistent, and predictable**.
 
@@ -177,30 +182,23 @@ Result: pipeline behavior is now **explicit, consistent, and predictable**.
 Machine formats are now:
 
 - **Domain-scoped** (`config`, `pipeline`, `registry`, `core`, `version`)
-
 - **Schema-driven (TypedDict)**
-
 - Fully separated from CLI
-
 - Using consistent JSON/NDJSON envelope conventions
-
 - Supporting JSON and NDJSON
-
 - Backed by focused JSON + NDJSON contract tests for:
-
   - config commands
   - pipeline commands
   - version command
   - registry commands
   - probe command
-
 - Supported by shared JSON/NDJSON test helpers for machine-output parsing and record/meta assertions
-
 - Documented with aligned machine-format and machine-output reference pages, plus registry command
   usage pages
-
 - Added probe-specific JSON and NDJSON machine output with a per-path `probes` JSON collection and
   `probe` NDJSON records, including filtered explicit inputs.
+- Clarified that machine payloads are decoupled from process exit codes: JSON/NDJSON expose
+  structured results and diagnostics, while process status remains the CLI exit code.
 
 Result: machine output is now **schema-driven, documented, and separated from human presentation**.
 Remaining work is limited to final schema-freeze review, not architecture.
@@ -226,22 +224,17 @@ Result: human output is now **consistent, composable, and decoupled from CLI**.
 ### Documentation & developer tooling (completed)
 
 - Major documentation alignment with new architecture
-
 - Added pipeline docs and registry documentation
-
 - Enforced docstring standards and validation
-
 - Introduced link-checking and stricter docs CI
-
 - Reorganized tests and helpers for clarity
-
 - Added shared JSON/NDJSON parsing and assertion helpers for machine-output tests
-
 - Recorded machine-output naming conventions in the canonical machine-output reference
-
 - Updated usage, configuration, architecture, machine-output, API, README, and index documentation
   to reflect the finalized TEXT / Markdown / machine output contract.
-
+- Updated exit-code, filtering, command, command-group, pre-commit, architecture, API, machine
+  output, README, and index documentation to reflect the finalized exit-code contract, including
+  missing-vs-unmatched input behavior and mixed-result priority.
 - Documented probe-based resolution and filtered explicit-input reporting in the resolution,
   pipeline, filtering, machine-output, machine-format, and `topmark probe` usage pages.
 
@@ -370,11 +363,16 @@ older policy tokens, or older TOML layout/validation assumptions must update.
   - `--add-only` / `--update-only` → replaced by `--header-mutation-mode`
 - Command applicability rules are stricter:
   - `strip` now rejects check-only mutation/insertion policy options at the CLI layer
-- CLI exit-code behavior is now documented as a stable 1.0 contract:
-  - `check` / `strip` use exit code `2` as the dry-run "would change" signal
-  - `config check` uses exit code `1` for completed validation with failing diagnostics
-  - command-specific runtime/config/usage failures are documented separately from validation and
-    dry-run signals
+- CLI exit-code behavior is now implemented, tested, documented, and treated as a stable 1.0
+  contract:
+  - `check` / `strip` use `WOULD_CHANGE (2)` as the dry-run "would change" signal
+  - `config check` uses `FAILURE (1)` for completed validation with failing diagnostics
+  - explicit missing literal inputs produce `FILE_NOT_FOUND (66)`
+  - unmatched glob patterns are soft discovery diagnostics for `check` / `strip`
+  - `probe` reports unresolved, unsupported, filtered, and unmatched-glob semantic outcomes with
+    `UNSUPPORTED_FILE_TYPE (69)`
+  - filesystem, configuration, usage, and internal failures use the enum-backed CLI-wide exit-code
+    contract
 
 Result: CLI behavior is now more explicit and consistent, but command-line invocation habits, output
 snapshots, and downstream automation may need adjustment.
@@ -404,6 +402,8 @@ snapshots, and downstream automation may need adjustment.
 - Probe machine output now treats probe records as per-path results and includes filtered explicit
   inputs via `status="filtered"` with path-filter, file-type-filter, or generic discovery-filter
   reasons.
+- Machine output no longer implies process status: consumers must inspect the CLI exit code
+  separately from JSON/NDJSON payloads.
 
 Result: machine formats are much more stable and structured, but downstream consumers that relied on
 older payload naming or outcome-keyed summaries must update.
@@ -633,10 +633,12 @@ Human output remaining work:
 - Finalize hint-ordering strategy.
   - Continue keeping presentation logic fully out of CLI command functions.
 
-CLI exit-code documentation is now complete for the 1.0 freeze: `docs/usage/exit-codes.md` is the
-canonical contract, with README, docs index, global options, command-group pages, and command pages
-linking or summarizing the same behavior. Remaining CLI work is now limited to enforcement/test
-review and error/diagnostic wording consistency, not documentation structure.
+CLI exit-code work is now complete for the 1.0 freeze: `docs/usage/exit-codes.md` is the canonical
+contract, implementation is centralized around pipeline/result prioritization, focused
+`pytest.mark.exit_code` coverage enforces the contract, and README, docs index, global options,
+filtering, pre-commit, command-group pages, command pages, API docs, architecture docs, and
+machine-output docs link or summarize the same behavior. Remaining CLI work is now limited to
+broader error/diagnostic wording consistency and other command-applicability/policy freeze items.
 
 ### Tooling / CI / release follow-up
 
@@ -771,14 +773,23 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] pure informational content-producing commands (`version`, `config defaults`, `config init`,
     and registry commands) intentionally do not support `--quiet`
   - [x] final user-facing documentation reviewed and aligned
-- [ ] Decision made on hint-ordering / “primary hint” semantics for 1.0
+- [x] Decision made on hint-ordering / “primary hint” semantics for 1.0
+  - headline hint selection is based on severity prioritization
+  - exact ordering and wording are not part of the stable contract
 
 #### [Must] CLI behavior
 
-- [x] Exit codes documented and considered stable
+- [x] Exit codes implemented, tested, documented, and considered stable
   - [x] canonical contract added in `docs/usage/exit-codes.md`
+  - [x] enum-backed exit-code names used consistently in user-facing documentation
   - [x] command and command-group pages aligned with the canonical contract
   - [x] README and docs index include CI/scripting-oriented summaries
+  - [x] filtering and pre-commit documentation explain missing-vs-unmatched input behavior
+  - [x] machine-output, API, and architecture docs clarify that process status remains the CLI exit
+    code and is separate from JSON/NDJSON payloads
+  - [x] focused `pytest.mark.exit_code` tests cover success, dry-run would-change, config
+    validation, usage errors, missing inputs, permission/write failures, probe semantic outcomes,
+    unmatched glob behavior, and mixed-result priority
 - [ ] CLI command applicability rules fully documented and enforced
   - [ ] policy-option applicability
   - [ ] stdin/list-vs-content handling
@@ -854,6 +865,10 @@ These are release blockers unless explicitly deferred with a documented rational
 - [x] Empty / empty-like file handling is explicit and idempotent
 - [x] Resolver treats content matcher exceptions as safe misses
 - [x] Preview vs apply semantics are consistent end-to-end
+- [x] Explicit missing literal inputs are preserved as synthetic pipeline results and participate
+  consistently in human output, machine output, summaries, and exit-code selection
+- [x] Unmatched glob behavior is frozen and tested: non-fatal for `check` / `strip`, semantic
+  `UNSUPPORTED_FILE_TYPE (69)` for `probe`
 - [x] API and CLI policy override behavior have focused coverage
 - [x] Engine applies per-path configs and policy registries correctly
 

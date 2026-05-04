@@ -262,17 +262,20 @@ content and are not recognized as physical line-ending styles.
 
 TopMark uses a small, stable set of exit codes for automation:
 
-- `0` — success (no changes needed or changes applied)
-- `2` — dry-run indicates changes would be made (`check`, `strip`)
-- `1` — validation failed (`config check`)
-- `64` — CLI usage error
-- `78` — configuration error
+- `SUCCESS (0)` — success (no changes needed or changes applied)
+- `WOULD_CHANGE (2)` — dry-run indicates changes would be made (`check`, `strip`)
+- `FAILURE (1)` — validation failed (`config check`)
+- `USAGE_ERROR (64)` — CLI usage error
+- `CONFIG_ERROR (78)` — configuration error
 
-Other codes (for example `69`, `70`, `74`) are used for more specific runtime conditions.
+Other codes (for example `UNSUPPORTED_FILE_TYPE (69)`, `PIPELINE_ERROR (70)`, `IO_ERROR (74)`,
+`PERMISSION_DENIED (77)`) are used for more specific runtime conditions.
 
-For the complete, stable contract, see the documentation page:
+For the complete, stable contract, see:
 
-- `docs/usage/exit-codes.md`
+- [`Exit codes`](docs/usage/exit-codes.md)
+- [`check`](docs/usage/commands/check.md)
+- [`strip`](docs/usage/commands/strip.md)
 
 ______________________________________________________________________
 
