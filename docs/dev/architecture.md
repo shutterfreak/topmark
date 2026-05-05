@@ -22,18 +22,18 @@ ______________________________________________________________________
 
 TopMark separates configuration concerns into three layers:
 
-- **TOML layer** (`topmark.toml`):
+- **TOML layer** (\[`topmark.toml`\][topmark.toml]):
   - discovery of configuration sources
   - parsing of TOML tables
   - whole-source TOML schema validation (unknown sections / keys, malformed section shapes, missing
     known sections as INFO diagnostics)
   - resolution of source-local options (e.g. `[config].root`, `strict_config_checking`)
-- **Config layer** (`topmark.config`):
+- **Config layer** (\[`topmark.config`\][topmark.config]):
   - construction of layered configuration (`ConfigLayer`)
   - deserialization of already-validated layered config fragments into `MutableConfig`
   - merging into a mutable config draft
   - field-level merge semantics and precedence rules
-- **Runtime layer** (`topmark.runtime`):
+- **Runtime layer** (\[`topmark.runtime`\][topmark.runtime]):
   - execution-time options (e.g. writer behavior)
   - final adjustments before pipeline execution
 
@@ -58,9 +58,9 @@ config merging.
 Whole-source TOML schema validation now happens before layered config deserialization. The staged
 config-loading validation flow is shown in the diagram above. In other words:
 
-- `topmark.toml` validates the full TopMark TOML source (including `[config]`, `[writer]`, unknown
-  top-level entries, malformed section shapes, and missing known sections)
-- `topmark.config` only receives the layered config fragment
+- \[`topmark.toml`\][topmark.toml] validates the full TopMark TOML source (including `[config]`,
+  `[writer]`, unknown top-level entries, malformed section shapes, and missing known sections)
+- \[`topmark.config`\][topmark.config] only receives the layered config fragment
 - layered config deserializers still perform defensive value parsing so API and test callers can
   pass malformed layered fragments without crashing
 
@@ -327,7 +327,7 @@ TOML schema details are documented in [`docs/dev/config-schema.md`](config-schem
 
 ## FileType identity and resolution
 
-A `FileType` has a stable identity defined by the tuple:
+A \[`FileType`\][topmark.filetypes.model.FileType] has a stable identity defined by the tuple:
 
 ```py
 (namespace, name)
@@ -341,8 +341,9 @@ The canonical identifier form is therefore:
 
 For compatibility with existing configuration and CLI filtering, registries may still accept or
 expose the *unqualified* file type name. Resolution is performed through
-`FileTypeRegistry.resolve_filetype_id(...)`, which accepts both forms and returns the corresponding
-`FileType` instance.
+\[`FileTypeRegistry.resolve_filetype_id(...)`\][topmark.registry.filetypes.FileTypeRegistry.resolve_filetype_id],
+which accepts both forms and returns the corresponding
+\[`FileType`\][topmark.filetypes.model.FileType] instance.
 
 The resolution path from a user-provided identifier to a bound processor looks like this:
 
@@ -359,9 +360,12 @@ flowchart TD
 
 Internally:
 
-- `FileTypeRegistry` stores and validates `FileType` objects
-- `HeaderProcessorRegistry` binds processors to specific `FileType` instances
-- the public `Registry` facade resolves identifiers before delegating to the underlying registries
+- \[`FileTypeRegistry`\][topmark.registry.filetypes.FileTypeRegistry] stores and validates
+  \[`FileType`\][topmark.filetypes.model.FileType] objects
+- \[`HeaderProcessorRegistry`\][topmark.registry.processors.HeaderProcessorRegistry] binds
+  processors to specific \[`FileType`\][topmark.filetypes.model.FileType] instances
+- the public \[`Registry`\][topmark.registry.registry.Registry] facade resolves identifiers before
+  delegating to the underlying registries
 
 This design allows TopMark to gradually move toward fully-qualified identifiers without breaking
 existing configuration or CLI usage. For the path-based winner-selection and ambiguity policy, see
@@ -369,7 +373,7 @@ existing configuration or CLI usage. For the path-based winner-selection and amb
 
 ### Practical Implications for Contributors
 
-- Prefer `Registry` (facade) when reading registry contents.
+- Prefer \[`Registry`\][topmark.registry.registry.Registry] (facade) when reading registry contents.
 - Treat file types, processors, and bindings as separate concerns:
   - file types / processors describe identities
   - bindings describe relationships
@@ -391,19 +395,34 @@ diagnostics**. The resolver returns a structured file-list resolution result con
 This distinction is important because not every discovery outcome should become a pipeline input:
 
 - Explicit missing literal paths are hard user input errors and are represented as synthetic
-  pipeline contexts with `FsStatus.NOT_FOUND`.
+  pipeline contexts with \[`FsStatus.NOT_FOUND`\][topmark.pipeline.status.FsStatus].
 
 By contrast, invalid command/option combinations and inappropriate STDIN modes are rejected earlier
 by the CLI layer as usage errors. They are not represented as synthetic contexts because no valid
 file-selection request exists yet.
 
+The public Python API mirrors this boundary for probe diagnostics.
+\[`topmark.api.probe()`\][topmark.api.commands.pipeline.probe] returns stable public DTOs
+(\[`ProbeRunResult`\][topmark.api.types.ProbeRunResult],
+\[`ProbeFileResult`\][topmark.api.types.ProbeFileResult], and
+\[`ProbeCandidateInfo`\][topmark.api.types.ProbeCandidateInfo]) rather than raw pipeline contexts or
+resolver objects. Internally, the API runtime still uses synthetic
+\[`ProcessingContext`\][topmark.pipeline.context.model.ProcessingContext] instances so CLI output,
+machine output, API summaries, and exit-code selection can share the same resolver-level result
+model.
+
 - Unmatched glob patterns are soft discovery diagnostics for processing commands (`check`, `strip`).
-- `probe` treats unmatched glob patterns as filtered semantic outcomes because its purpose is to
-  explain resolution and filtering.
+- `probe` treats unmatched glob patterns and explicit discovery-filtered inputs as filtered semantic
+  outcomes because its purpose is to explain resolution and filtering.
 
 Synthetic contexts are built for resolver-level hard failures that occur before normal pipeline
 execution can begin. This keeps human output, machine output, summaries, and exit-code selection
 based on the same result collection instead of requiring separate side channels.
+
+For probe specifically, TopMark also builds synthetic probe contexts for explicit inputs filtered
+before file-type resolution. Missing explicit paths remain hard filesystem/input errors; they are
+not also emitted as filtered probe results. This keeps the public API and CLI probe output from
+reporting the same path twice.
 
 Exit-code selection is centralized after pipeline execution by summarizing result statuses. The CLI
 layer remains responsible for process-level exit behavior, while pipeline and presentation layers
@@ -417,13 +436,18 @@ Practical consequences:
   to process”.
 - Machine payloads expose structured diagnostics/results, while process status remains external as
   the CLI exit code.
+- Public probe API payloads expose normalized strings and DTOs. Internal resolver enums,
+  `ResolutionProbeResult`, and
+  \[`ProcessingContext`\][topmark.pipeline.context.model.ProcessingContext] remain implementation
+  details.
 
 ______________________________________________________________________
 
 ## Policy Resolution (≥ 0.11.0)
 
-TopMark constructs a `PolicyRegistry` at pipeline bootstrap time and resolves runtime policy from
-**global defaults + per-file-type overrides** before policy queries are used by pipeline steps.
+TopMark constructs a \[`PolicyRegistry`\][topmark.config.policy.PolicyRegistry] at pipeline
+bootstrap time and resolves runtime policy from **global defaults + per-file-type overrides** before
+policy queries are used by pipeline steps.
 
 See also:
 
@@ -439,7 +463,7 @@ This guarantees:
 
 The runtime model now distinguishes three related concepts:
 
-- **true empty**: a 0-byte file (`FsStatus.EMPTY`)
+- **true empty**: a 0-byte file (\[`FsStatus.EMPTY`\][topmark.pipeline.status.FsStatus])
 - **logically empty**: a placeholder image with no meaningful content after BOM stripping (for
   example BOM-only, newline-only, or optional horizontal whitespace with at most one trailing
   newline)
@@ -474,7 +498,7 @@ A major source of subtle bugs in TopMark was the difference between:
 
 The current design treats this distinction explicitly:
 
-- `FsStatus.EMPTY` is reserved for true 0-byte files
+- \[`FsStatus.EMPTY`\][topmark.pipeline.status.FsStatus] is reserved for true 0-byte files
 - reader-computed flags describe logical/effective emptiness for decoded images
 - planner and stripper normalize placeholder images conservatively so that insert → strip → insert
   remains stable
@@ -540,7 +564,11 @@ code. Consumers must inspect the process exit status separately from parsing mac
 CLI command applicability is enforced before pipeline execution and before presentation or machine
 payload construction. Path-processing commands (`check`, `strip`, and `probe`) share input
 discovery, filtering, configuration loading, file-type resolution, and STDIN content handling, but
-they expose different mutation and reporting controls according to command intent.
+they expose different mutation and reporting controls according to command intent. The Python API
+keeps the same command-intent separation through
+\[`topmark.api.check()`\][topmark.api.commands.pipeline.check],
+\[`topmark.api.strip()`\][topmark.api.commands.pipeline.strip], and
+\[`topmark.api.probe()`\][topmark.api.commands.pipeline.probe].
 
 Important invariants:
 
@@ -548,11 +576,14 @@ Important invariants:
 - `strip` shares file input, reporting, diff, and write behavior with `check`, but is removal-only
   and rejects generated-header insertion/update controls.
 - `probe` shares file input and filtering behavior with `check` and `strip`, but is read-only and
-  diagnostic-only. It rejects mutation, patch-planning, reporting-summary, diff, and
-  generated-header rendering controls.
-- File-agnostic commands (`version`, registry commands, `config defaults`, and `config init`) reject
-  positional paths and file-processing STDIN modes. They also do not participate in project config
-  discovery unless explicitly documented.
+  diagnostic-only. The CLI rejects mutation, patch-planning, reporting-summary, diff, and
+  generated-header rendering controls. The Python API exposes no mutation or diff parameters for
+  \[`probe()`\][topmark.api.commands.pipeline.probe].
+- File-agnostic commands (`version`, registry commands,
+  [`config defaults`](../usage/commands/config/defaults.md), and
+  [`config init`](../usage/commands/config/init.md)) reject positional paths and file-processing
+  STDIN modes. They also do not participate in project config discovery unless explicitly
+  documented.
 
 TopMark intentionally uses the POSIX-style `-` PATH sentinel for content read from STDIN, together
 with `--stdin-filename` so file type, processor, and path-sensitive policy resolution remain the
@@ -597,24 +628,26 @@ Practical consequences:
 TopMark exposes configuration state through both human-readable and machine-readable interfaces:
 
 - Human-facing configuration commands:
-  - `config dump` (resolved config)
-  - `config defaults` (built-in default TOML document)
-  - `config init` (bundled example TOML resource)
+  - [`config dump`](../usage/commands/config/dump.md) (resolved config)
+  - [`config defaults`](../usage/commands/config/defaults.md) (built-in default TOML document)
+  - [`config init`](../usage/commands/config/init.md) (bundled example TOML resource)
 - Machine formats:
   - JSON / NDJSON snapshots described in [`machine-output.md`](machine-output.md)
 
-For `config check`, machine output reports effective strictness under the key
-`strict_config_checking`, reflecting TOML-resolved strictness plus any CLI/API override. This
-strictness applies across staged config-loading/preflight validation: TOML-source diagnostics,
-merged-config diagnostics, and runtime-applicability diagnostics. Machine output continues to expose
-the flattened compatibility diagnostics view derived from those staged validation logs.
+For [`config check`](../usage/commands/config/check.md), machine output reports effective strictness
+under the key `strict_config_checking`, reflecting TOML-resolved strictness plus any CLI/API
+override. This strictness applies across staged config-loading/preflight validation: TOML-source
+diagnostics, merged-config diagnostics, and runtime-applicability diagnostics. Machine output
+continues to expose the flattened compatibility diagnostics view derived from those staged
+validation logs.
 
 For 1.0, this flattened compatibility form is the accepted final machine contract for config/TOML
 validation diagnostics. Stage-local validation structure remains internal and is not serialized in
 machine formats; the stable emitted diagnostic entry shape remains `{level, message}`.
 
-In machine formats, `config defaults` and `config init` share the same underlying configuration
-snapshot, even though their human-facing output differs.
+In machine formats, [`config defaults`](../usage/commands/config/defaults.md) and
+[`config init`](../usage/commands/config/init.md) share the same underlying configuration snapshot,
+even though their human-facing output differs.
 
 The same separation applies to pipeline and registry output: TEXT output may use console-oriented
 verbosity, Markdown output remains document-oriented, and JSON/NDJSON output remains the stable

@@ -15,8 +15,9 @@ topmark:header:end
 TopMark processes files through **explicit, immutable pipelines** composed of small,
 single-responsibility steps. Each pipeline represents a supported user intent (scan, check, strip,
 apply, patch) and defines **exactly which steps run and in which order**. A dedicated **probe
-pipeline** exists for resolution diagnostics (`topmark probe`), including explanations for explicit
-inputs filtered before file-type probing.
+pipeline** exists for resolution diagnostics ([`topmark probe`](../usage/commands/probe.md)). Probe
+orchestration also reports explicit inputs filtered before file-type probing via synthetic probe
+contexts.
 
 Pipelines do not make high-level decisions themselves. Instead:
 
@@ -27,13 +28,13 @@ Pipelines do not make high-level decisions themselves. Instead:
 
 This design guarantees predictability, debuggability, and idempotence.
 
-Pipeline execution consumes a frozen `Config` plus runtime options assembled from the TOML → Config
-→ Runtime flow documented in [`architecture.md`](architecture.md) and
-[`../configuration/discovery.md`](../configuration/discovery.md).
+Pipeline execution consumes a frozen \[`Config`\][topmark.config.model.Config] plus runtime options
+assembled from the TOML → Config → Runtime flow documented in [`architecture.md`](architecture.md)
+and [`../configuration/discovery.md`](../configuration/discovery.md).
 
 Source-local TOML options such as `[config].root` and `strict_config_checking` are resolved before
 pipeline execution. They influence configuration discovery and validation behaviour, but do not
-become normal layered `Config` fields.
+become normal layered \[`Config`\][topmark.config.model.Config] fields.
 
 ## Concepts vs Reference
 
@@ -67,6 +68,10 @@ after producing probe results.
 
 ```mermaid
 flowchart TD
+
+  subgraph Probing
+    O[<tt>ProberStep</tt>]
+  end
 
   subgraph Discovery
     R[<tt>ResolverStep</tt>]
@@ -131,7 +136,7 @@ The CLI selects among these immutable pipeline variants based on command intent 
 ```mermaid
 flowchart TD
 
-P[<tt>ProberStep</tt>]
+O[<tt>ProberStep</tt>]
 ```
 
 **End states:**
@@ -142,13 +147,15 @@ P[<tt>ProberStep</tt>]
 
 - Full candidate set with match signals
 
-- Filtered explicit inputs are represented as probe results with `status="filtered"` and
-  `reason="excluded_by_discovery_filter"`. These correspond to paths that were excluded during
-  discovery before file-type probing.
+- Explicit inputs filtered before file-type probing are represented by synthetic probe results with
+  `status="filtered"` and reasons such as `excluded_by_path_filter`, `excluded_by_file_type_filter`,
+  or `excluded_by_discovery_filter`.
 
-This pipeline powers `topmark probe` and is intentionally **resolution-only**. It halts immediately
-after probing and does not perform inspection, comparison, or mutation. Discovery-level filtering is
-reported via synthetic probe results for explicitly requested paths that did not reach probing.
+This pipeline powers [`topmark probe`](../usage/commands/probe.md) and
+\[`topmark.api.probe()`\][topmark.api.commands.pipeline.probe] and is intentionally
+**resolution-only**. It halts immediately after probing and does not perform inspection, comparison,
+or mutation. Discovery-level filtering is reported by orchestration via synthetic probe results for
+explicitly requested paths that did not reach probing.
 
 ### SCAN
 
@@ -228,7 +235,7 @@ CR --> C
 - `CHANGED` – header would be updated or inserted
 - `SKIPPED` / `UNSUPPORTED` – policy or file constraints
 
-This is the default pipeline behind `topmark check`.
+This is the default pipeline behind [`topmark check`](../usage/commands/check.md).
 
 ______________________________________________________________________
 
@@ -400,26 +407,26 @@ ______________________________________________________________________
 
 ## Step Responsibilities
 
-Each step implements the `Step` protocol and:
+Each step implements the \[`Step`\][topmark.pipeline.protocols.Step] protocol and:
 
 - Declares which **status axes** it may write
 - May halt execution via `ctx.flow.halt`
 - Emits structured hints for diagnostics
 
-| Step                                                             | Responsibility                                                                             |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| \[`ResolverStep`\][topmark.pipeline.steps.resolver.ResolverStep] | Determine file type and header processor (see [`resolution.md`](resolution.md))            |
-| \[`ProberStep`\][topmark.pipeline.steps.prober.ProberStep]       | Run resolution probe and expose scored candidates, selection, and filtered explicit inputs |
-| \[`SnifferStep`\][topmark.pipeline.steps.sniffer.SnifferStep]    | Fast policy and newline checks                                                             |
-| \[`ReaderStep`\][topmark.pipeline.steps.reader.ReaderStep]       | Read file content safely                                                                   |
-| \[`ScannerStep`\][topmark.pipeline.steps.scanner.ScannerStep]    | Locate existing header bounds                                                              |
-| \[`BuilderStep`\][topmark.pipeline.steps.builder.BuilderStep]    | Build expected header field values                                                         |
-| \[`RendererStep`\][topmark.pipeline.steps.renderer.RendererStep] | Render header text                                                                         |
-| \[`ComparerStep`\][topmark.pipeline.steps.comparer.ComparerStep] | Compare existing vs rendered header                                                        |
-| \[`StripperStep`\][topmark.pipeline.steps.stripper.StripperStep] | Remove header content                                                                      |
-| \[`PlannerStep`\][topmark.pipeline.steps.planner.PlannerStep]    | Decide insert / replace / remove plan                                                      |
-| \[`PatcherStep`\][topmark.pipeline.steps.patcher.PatcherStep]    | Generate unified diff                                                                      |
-| \[`WriterStep`\][topmark.pipeline.steps.writer.WriterStep]       | Persist changes                                                                            |
+| Step                                                             | Responsibility                                                                      |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| \[`ProberStep`\][topmark.pipeline.steps.prober.ProberStep]       | Run resolution probe and expose scored candidates, selection, and processor binding |
+| \[`ResolverStep`\][topmark.pipeline.steps.resolver.ResolverStep] | Determine file type and header processor (see [`resolution.md`](resolution.md))     |
+| \[`SnifferStep`\][topmark.pipeline.steps.sniffer.SnifferStep]    | Fast policy and newline checks                                                      |
+| \[`ReaderStep`\][topmark.pipeline.steps.reader.ReaderStep]       | Read file content safely                                                            |
+| \[`ScannerStep`\][topmark.pipeline.steps.scanner.ScannerStep]    | Locate existing header bounds                                                       |
+| \[`BuilderStep`\][topmark.pipeline.steps.builder.BuilderStep]    | Build expected header field values                                                  |
+| \[`RendererStep`\][topmark.pipeline.steps.renderer.RendererStep] | Render header text                                                                  |
+| \[`ComparerStep`\][topmark.pipeline.steps.comparer.ComparerStep] | Compare existing vs rendered header                                                 |
+| \[`StripperStep`\][topmark.pipeline.steps.stripper.StripperStep] | Remove header content                                                               |
+| \[`PlannerStep`\][topmark.pipeline.steps.planner.PlannerStep]    | Decide insert / replace / remove plan                                               |
+| \[`PatcherStep`\][topmark.pipeline.steps.patcher.PatcherStep]    | Generate unified diff                                                               |
+| \[`WriterStep`\][topmark.pipeline.steps.writer.WriterStep]       | Persist changes                                                                     |
 
 ______________________________________________________________________
 
@@ -620,10 +627,11 @@ ______________________________________________________________________
 
 ## CLI-focused flowcharts
 
-These diagrams describe the **user-visible** execution paths behind `topmark check` and
-`topmark strip`, including the `--patch` and `--apply` switches.
+These diagrams describe the **user-visible** execution paths behind
+[`topmark check`](../usage/commands/check.md) and [`topmark strip`](../usage/commands/strip.md),
+including the `--patch` and `--apply` switches.
 
-### `topmark check`
+### [`topmark check`](../usage/commands/check.md)
 
 ```mermaid
 flowchart TD
@@ -654,7 +662,7 @@ flowchart TD
   B --> L --> M
 ```
 
-### `topmark strip`
+### [`topmark strip`](../usage/commands/strip.md)
 
 ```mermaid
 flowchart TD
@@ -684,3 +692,7 @@ flowchart TD
   I --> K
   B --> L --> M
 ```
+
+Filtered or missing explicit inputs are not produced by
+\[`ProberStep`\][topmark.pipeline.steps.prober.ProberStep] itself. They are represented by synthetic
+contexts created by probe orchestration before final presentation/API packaging.

@@ -23,14 +23,22 @@ def test_api_all_contains_expected_symbols() -> None:
 
     expected_methods: set[str] = {
         "check",
+        "probe",
         "strip",
         "list_filetypes",
         "list_processors",
         "get_version_info",
         "get_version_text",
     }
+    expected_types: set[str] = {
+        "ProbeCandidateInfo",
+        "ProbeFileResult",
+        "ProbeRunResult",
+        "FileResult",
+        "RunResult",
+    }
     exported: set[str] = set(api.__all__)
-    missing: set[str] = expected_methods - exported
+    missing: set[str] = (expected_methods | expected_types) - exported
     assert not missing, f"Missing from api.__all__: {sorted(missing)}; have: {sorted(exported)}"
 
 

@@ -64,8 +64,9 @@ model**:
 - Introduced probe-based resolution via `ResolutionProbeResult` as the shared evidence model for
   resolver diagnostics and effective pipeline resolution.
 
-- Added the read-only `topmark probe` command to expose file-type candidates, selected file type,
-  selected processor, scores, match signals, and explicit inputs filtered before probing.
+- Added the read-only `topmark probe` command and matching `topmark.api.probe()` public API to
+  expose file-type candidates, selected file type, selected processor, scores, match signals, and
+  explicit inputs filtered before probing through stable DTOs at the API boundary.
 
 - Refactored `ResolverStep` and `ProberStep` so normal pipelines and the probe pipeline share the
   same probe-backed resolution mapping.
@@ -252,6 +253,8 @@ Result: human output is now **consistent, composable, and decoupled from CLI**.
   missing-vs-unmatched input behavior and mixed-result priority.
 - Documented probe-based resolution and filtered explicit-input reporting in the resolution,
   pipeline, filtering, machine-output, machine-format, and `topmark probe` usage pages.
+- Documented `topmark.api.probe()` as the stable public probe surface, with internal resolver
+  objects, synthetic contexts, and low-level probe helpers kept outside the 1.0 public API contract.
 - Updated policy, command, configuration discovery, schema, and roadmap documentation to reflect the
   frozen `--report`, `header_mutation_mode`, and `empty_insert_mode` contracts.
 
@@ -282,11 +285,13 @@ At this point:
 - Legacy implicit behavior is **eliminated**
 - System boundaries are **clear and enforced**
 - Remaining work is **focused and incremental**, not structural
-- Machine-output contract coverage is now strong for config, pipeline, version, and registry
+- Machine-output contract coverage is now strong for config, pipeline, version, registry, and probe
   commands
+- The public probe API is now aligned with the CLI probe command while preserving the
+  public/internal boundary around resolver internals
 
-The project is now in a **pre-1.0 stabilization phase**, with only a few major decisions and
-targeted features (notably in-memory pipeline support) remaining.
+The project is now in a **pre-1.0 stabilization phase**, with broad architecture complete, in-memory
+pipeline support explicitly deferred, and only targeted contract-freeze decisions remaining.
 
 ______________________________________________________________________
 
@@ -503,10 +508,11 @@ The registry architecture is largely complete, but a few 1.0 decisions remain:
   - plugin-facing examples and tests
 - Confirm that canonical identity terminology (`qualified_key`, `file_type_id`, `local_key`, etc.)
   is fully stabilized across docs, tests, CLI, and public API references.
-- Finish freezing the public surface of `topmark.resolution.*`:
-  - `probe_resolution_for_path()` is now the 1.0 path-based resolution surface
-  - final public/internal wording still needs one review pass across API docs and generated
-    references
+- Keep the high-level resolution surface centered on `topmark.api.probe()` for public integrations:
+  - `topmark.api.probe()` is the stable 1.0 public probe API
+  - low-level helpers such as `probe_resolution_for_path()` remain advanced/internal debugging
+    surfaces outside the `topmark.api` stability contract
+  - generated references should continue to reflect that distinction
 - Registry discovery/query commands are explicitly deferred beyond the current probe work:
   - query file types by substring, glob-like pattern, namespace, extension, or processor binding
   - query processors by key/namespace/capability
@@ -520,9 +526,9 @@ Recommended direction:
 - Keep local-key support only where it provides clear user-facing compatibility value.
 - Keep ambiguity handling in the resolver layer rather than treating overlapping file types as a
   registry error.
-- Treat `topmark probe` as the accepted 1.0 resolution explainability surface, covering both
-  discovery-level filtering for explicit inputs and file-type / processor resolution for paths that
-  reach probing.
+- Treat `topmark probe` and `topmark.api.probe()` as the accepted 1.0 resolution explainability
+  surfaces, covering both discovery-level filtering for explicit inputs and file-type / processor
+  resolution for paths that reach probing.
 - Defer registry query/filter commands unless a concrete pre-1.0 blocker appears.
 
 ### In-memory pipeline: implement or defer
@@ -568,8 +574,8 @@ The separation is much clearer now, but a few boundary questions remain:
   - core/domain logic
 - Confirm that TOML validation diagnostics surface consistently in CLI and API flows without leaking
   CLI-specific formatting concerns into shared validation logic.
-- Decide whether API-side convenience helpers in `topmark.api.runtime` should remain as part of the
-  long-term public surface or be slimmed further.
+- Keep `topmark.api.runtime` internal; public callers should use `topmark.api.probe()`,
+  `topmark.api.check()`, and `topmark.api.strip()` rather than runtime helpers.
 - Confirm that provenance inspection (`config dump --show-layers`) remains an inspection concern and
   does not leak into validation-oriented commands or public API contracts.
 - Keep release-automation concerns artifact/download-oriented and scoped to CLI/automation, not to
@@ -697,12 +703,14 @@ A few user-facing behavior questions remain open for 1.0:
 - Keep Markdown documentation and examples aligned with the document-oriented output contract rather
   than treating Markdown as layout-equivalent TEXT.
 - File-recognition / resolution explainability is now accepted for 1.0 via the read-only
-  `topmark probe` command.
+  `topmark probe` command and `topmark.api.probe()`.
   - explicit inputs filtered during discovery are reported as `filtered` probe results with broad
     path-filter, file-type-filter, or generic discovery-filter reasons
   - registry query/filter commands remain deferred
   - probe is distinct from `check` / `strip` and does not perform header comparison, planning, or
     write/apply semantics
+  - public API probe results expose stable DTOs rather than resolver enums, pipeline contexts, or
+    registry internals
 - User-facing policy/report flag semantics are now accepted for 1.0:
   - `--report` is a human per-file output filter for `check` and `strip`
   - `header_mutation_mode` controls `check` insertion/update intent
@@ -748,9 +756,11 @@ These are release blockers unless explicitly deferred with a documented rational
 - [x] Runtime behavior separated cleanly from layered config
 - [x] No CLI-specific concerns (verbosity, color, formatting) in core logic
 - [ ] Remaining public-vs-internal boundaries frozen and documented for:
-  - `topmark.resolution.*`
-  - `topmark.api.runtime`
-  - typed override surfaces (`PolicyOverrides`, `ConfigOverrides`)
+  - [x] `topmark.api.probe()` accepted as the stable public probe API
+  - [x] `topmark.api.runtime` documented as internal API orchestration infrastructure
+  - [x] low-level resolver/probe objects documented as advanced/internal rather than stable public
+    DTOs
+  - [ ] typed override surfaces (`PolicyOverrides`, `ConfigOverrides`)
 
 #### [Must] Machine output contracts
 
@@ -844,6 +854,9 @@ These are release blockers unless explicitly deferred with a documented rational
 - [ ] Qualified/unqualified file type identifier semantics documented and considered stable
 - [x] `config init`, `config defaults`, `config check`, and `config dump` outputs aligned and frozen
 - [ ] Decision made and documented on the final public override model
+  - [x] public API command signatures accept plain mapping-based policy/config overlays
+  - [ ] internal typed override helpers (`PolicyOverrides`, `ConfigOverrides`) classified and
+    documented as public, internal, or tolerated internal surfaces
 - [x] Package/application versioning model documented and stable
   - [x] Git tags are the single source of truth via `setuptools-scm`
   - [x] static `[project].version` is gone
@@ -886,10 +899,11 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] user-facing docs updated; newline handling remains a fixed contract, not a configurable
     policy surface
 - [ ] Namespace-aware registry lookup and deterministic ambiguity behavior covered by tests
-- [x] Probe command resolution-candidate and filtered explicit-input reporting is covered by focused
-  resolver, discovery, pipeline-step, CLI human-output, CLI exit-code, and machine-output tests,
-  including path-filter, file-type-filter, and fallback discovery-filter cases, without weakening
-  the existing check/strip output contract
+- [x] Probe command and public probe API resolution-candidate and filtered explicit-input reporting
+  are covered by focused resolver, discovery, pipeline-step, CLI human-output, CLI exit-code,
+  machine-output, and API tests, including path-filter, file-type-filter, fallback discovery-filter,
+  missing-input, and candidate-shape cases, without weakening the existing check/strip output
+  contract
 - [x] TOML-layer validation paths have focused coverage
 - [x] Empty / empty-like file handling is explicit and idempotent
 - [x] Resolver treats content matcher exceptions as safe misses
@@ -933,7 +947,9 @@ These should ideally be completed for 1.0, but may be deferred more easily if ne
 
 - [ ] Decide whether the local-key compatibility view in `FileTypeRegistry` remains a supported 1.0
   feature
-- [ ] Resolution helper surface reviewed for final public/internal stability wording
+- [x] Resolution/probe helper surface reviewed for final public/internal stability wording
+  - [x] `topmark.api.probe()` is the public stable surface
+  - [x] low-level resolution helpers remain advanced/internal and outside the `topmark.api` snapshot
 - [x] Canonical terminology (`qualified_key`, `file_type_id`, `local_key`, etc.) reviewed one final
   time across docs and public surfaces
 

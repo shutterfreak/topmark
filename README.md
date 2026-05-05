@@ -471,6 +471,17 @@ result = api.strip(
 )
 ```
 
+For read-only resolution diagnostics, use `api.probe()`, which returns stable public DTOs without
+exposing internal resolver or pipeline objects.
+
+```python
+# Explain file-type / processor resolution
+probe_result = api.probe(paths)
+
+for file_result in probe_result.files:
+    print(file_result.path, file_result.status, file_result.reason)
+```
+
 For programmatic discovery:
 
 ```python

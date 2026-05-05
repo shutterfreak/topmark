@@ -29,7 +29,7 @@ High-level concepts:
   ``"info"``, ``"warning"``, ``"error"``.
 
 Configuration contract:
-- Public pipeline functions (``check()``, ``strip()``) accept an optional plain mapping
+- Public pipeline functions (``probe()``, ``check()``, ``strip()``) accept an optional plain mapping
   (mirroring the TOML/pyproject structure) or a frozen
   [`Config`][topmark.config.model.Config].
 - Passing ``config=None`` triggers layered discovery (defaults → user → project) using the
@@ -68,11 +68,11 @@ Example:
         },
     }
 
-    run: api.runResult = api.check(
+    run: api.RunResult = api.check(
         ["src"],
         config=config,
         diff=True,
-        skip_compliant=True,
+        report="actionable",
     )
 
     assert run.summary.get("unchanged", 0) >= 0
@@ -82,6 +82,7 @@ Example:
 from __future__ import annotations
 
 from topmark.api.commands.pipeline import check
+from topmark.api.commands.pipeline import probe
 from topmark.api.commands.pipeline import strip
 from topmark.api.commands.registry import list_filetypes
 from topmark.api.commands.registry import list_processors
@@ -91,24 +92,29 @@ from topmark.api.types import DiagnosticEntry
 from topmark.api.types import FileResult
 from topmark.api.types import FileTypeInfo
 from topmark.api.types import Outcome
+from topmark.api.types import ProbeCandidateInfo
+from topmark.api.types import ProbeFileResult
+from topmark.api.types import ProbeRunResult
 from topmark.api.types import ProcessorInfo
 from topmark.api.types import RunResult
 from topmark.version.types import VersionInfo
 
-__all__ = (  # noqa: RUF022
-    # Types
+__all__ = (
+    "DiagnosticEntry",
     "FileResult",
     "FileTypeInfo",
     "Outcome",
+    "ProbeCandidateInfo",
+    "ProbeFileResult",
+    "ProbeRunResult",
     "ProcessorInfo",
-    "DiagnosticEntry",
     "RunResult",
     "VersionInfo",
-    # Commands
     "check",
-    "strip",
-    "list_filetypes",
-    "list_processors",
     "get_version_info",
     "get_version_text",
+    "list_filetypes",
+    "list_processors",
+    "probe",
+    "strip",
 )

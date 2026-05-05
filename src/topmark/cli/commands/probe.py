@@ -84,10 +84,10 @@ from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
 from topmark.core.logging import get_logger
 from topmark.core.machine.payloads import build_meta_payload
-from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.engine import exit_code_from_pipeline_results
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.pipelines import Pipeline
+from topmark.pipeline.synthetic import build_filtered_probe_contexts
 from topmark.pipeline.synthetic import build_missing_file_contexts
 from topmark.presentation.markdown.diagnostic import render_diagnostics_markdown
 from topmark.presentation.markdown.probe import render_probe_output_markdown
@@ -95,12 +95,7 @@ from topmark.presentation.markdown.version import render_version_footer_markdown
 from topmark.presentation.shared.pipeline import ProbeCommandHumanReport
 from topmark.presentation.text.diagnostic import render_diagnostics_text
 from topmark.presentation.text.probe import render_probe_output_text
-from topmark.resolution.discovery import FileSelectionProbeResult
-from topmark.resolution.discovery import FileSelectionReason
-from topmark.resolution.discovery import FileSelectionStatus
 from topmark.resolution.files import probe_explicit_file_selection
-from topmark.resolution.probe import ResolutionProbeReason
-from topmark.resolution.probe import ResolutionProbeResult
 from topmark.resolution.probe import ResolutionProbeStatus
 from topmark.utils.file import safe_unlink
 
@@ -115,82 +110,14 @@ if TYPE_CHECKING:
     from topmark.core.logging import TopmarkLogger
     from topmark.core.machine.schemas import MetaPayload
     from topmark.diagnostic.model import FrozenDiagnosticLog
+    from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.protocols import Step
+    from topmark.resolution.discovery import FileSelectionProbeResult
     from topmark.resolution.files import FileListResolution
     from topmark.runtime.model import RunOptions
 
 
 logger: TopmarkLogger = get_logger(__name__)
-
-
-def _selection_reason_to_probe_reason(
-    reason: FileSelectionReason,
-) -> ResolutionProbeReason:
-    """Map a discovery-level selection reason to a probe reason.
-
-    Args:
-        reason: Discovery-level selection reason.
-
-    Returns:
-        Corresponding machine-friendly probe reason.
-    """
-    match reason:
-        case FileSelectionReason.EXCLUDED_BY_PATH_FILTER:
-            return ResolutionProbeReason.EXCLUDED_BY_PATH_FILTER
-        case FileSelectionReason.EXCLUDED_BY_FILE_TYPE_FILTER:
-            return ResolutionProbeReason.EXCLUDED_BY_FILE_TYPE_FILTER
-        case FileSelectionReason.EXCLUDED_BY_DISCOVERY_FILTER:
-            return ResolutionProbeReason.EXCLUDED_BY_DISCOVERY_FILTER
-        case FileSelectionReason.NOT_A_FILE:
-            return ResolutionProbeReason.EXCLUDED_BY_DISCOVERY_FILTER
-        case FileSelectionReason.NOT_FOUND:
-            return ResolutionProbeReason.EXCLUDED_BY_DISCOVERY_FILTER
-        case FileSelectionReason.SELECTED:
-            return ResolutionProbeReason.EXCLUDED_BY_DISCOVERY_FILTER
-
-
-def _build_filtered_probe_contexts(
-    *,
-    selection_results: tuple[FileSelectionProbeResult, ...],
-    config: Config,
-    run_options: RunOptions,
-) -> list[ProcessingContext]:
-    """Build synthetic probe contexts for explicit inputs filtered by discovery.
-
-    The normal probe pipeline only runs for files returned by `build_file_list()`.
-    Explicit inputs that are filtered before that point still need a probe result
-    so `topmark probe` can explain why they did not reach file-type resolution.
-
-    Args:
-        selection_results: Discovery-level explanations for explicit inputs.
-        config: Effective frozen configuration for the current command.
-        run_options: Runtime options used to bootstrap synthetic contexts.
-
-    Returns:
-        Synthetic processing contexts carrying filtered probe results.
-    """
-    contexts: list[ProcessingContext] = []
-
-    for selection in selection_results:
-        if selection.status == FileSelectionStatus.SELECTED:
-            continue
-
-        ctx: ProcessingContext = ProcessingContext.bootstrap(
-            path=selection.path,
-            config=config,
-            run_options=run_options,
-        )
-        ctx.resolution_probe = ResolutionProbeResult(
-            path=selection.path,
-            status=ResolutionProbeStatus.FILTERED,
-            reason=_selection_reason_to_probe_reason(selection.reason),
-            candidates=(),
-            selected_file_type=None,
-            selected_processor=None,
-        )
-        contexts.append(ctx)
-
-    return contexts
 
 
 @click.command(
@@ -516,7 +443,7 @@ def probe_command(
     # Add synthetic probe results for explicit inputs that were filtered before
     # the probe pipeline could run.
     results.extend(
-        _build_filtered_probe_contexts(
+        build_filtered_probe_contexts(
             selection_results=filtered_selection_results,
             config=config,
             run_options=run_options,

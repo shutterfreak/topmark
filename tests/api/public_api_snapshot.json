@@ -3,6 +3,9 @@
   "FileResult": "<class>",
   "FileTypeInfo": "<class>",
   "Outcome": "<enum>",
+  "ProbeCandidateInfo": "<class>",
+  "ProbeFileResult": "<class>",
+  "ProbeRunResult": "<class>",
   "ProcessorInfo": "<class>",
   "RunResult": "<class>",
   "VersionInfo": "<class>",
@@ -11,5 +14,6 @@
   "get_version_text": "() -> 'str'",
   "list_filetypes": "() -> 'list[FileTypeInfo]'",
   "list_processors": "() -> 'list[ProcessorInfo]'",
+  "probe": "(paths: 'Iterable[Path | str]', *, config: 'Mapping[str, object] | None' = None, policy: 'PublicPolicy | None' = None, policy_by_type: 'Mapping[str, PublicPolicy] | None' = None, include_file_types: 'Sequence[str] | None' = None, exclude_file_types: 'Sequence[str] | None' = None, prune_views: 'bool' = False) -> 'ProbeRunResult'",
   "strip": "(paths: 'Iterable[Path | str]', *, apply: 'bool' = False, diff: 'bool' = False, config: 'Mapping[str, object] | None' = None, policy: 'PublicPolicy | None' = None, policy_by_type: 'Mapping[str, PublicPolicy] | None' = None, include_file_types: 'Sequence[str] | None' = None, exclude_file_types: 'Sequence[str] | None' = None, report: 'PublicReportScopeLiteral' = 'all', prune_views: 'bool' = False) -> 'RunResult'"
 }

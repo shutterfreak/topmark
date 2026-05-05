@@ -16,7 +16,7 @@ This module centralizes the public, non-protocol type surface used by
 - public config-input mapping aliases
 - literal token types used in public function signatures
 - JSON-friendly TypedDict shapes for diagnostics and registry metadata
-- frozen dataclasses returned by public API helpers
+- frozen dataclasses returned by public API helpers, including probe-specific DTOs
 
 These shapes follow the project's semver policy. Internal domain objects may be
 richer and are allowed to evolve independently (for example, internal
@@ -108,6 +108,90 @@ class DiagnosticTotals(TypedDict):
     total: int
 
 
+@dataclass(frozen=True, kw_only=True)
+class ProbeCandidateInfo:
+    """Stable public view of one file-type resolution candidate.
+
+    Attributes:
+        file_type: Public file type identifier for the candidate.
+        qualified_key: Canonical namespaced file type key.
+        score: Resolver score used only for explanatory ordering within this
+            probe result. The exact scoring algorithm is internal and may evolve.
+        selected: Whether this candidate was selected as the effective file type.
+        rank: One-based rank after resolver tie-breaking.
+        matched_by: Stable string tokens describing which resolver signals matched,
+            such as extension, filename, pattern, content, or content_error.
+
+    Notes:
+        This object deliberately omits internal registry objects, matcher instances,
+        and raw scoring details. Consumers should treat `selected`, `rank`, and
+        `matched_by` as the stable decision signals; `score` is explanatory only.
+    """
+
+    file_type: str
+    qualified_key: str
+    score: int
+    selected: bool
+    rank: int
+    matched_by: tuple[str, ...]
+
+
+@dataclass(frozen=True, kw_only=True)
+class ProbeFileResult:
+    """Probe result for a single path.
+
+    Attributes:
+        path: Path that was probed, reported as missing, or reported as filtered
+            during explicit-input discovery.
+        status: Stable string status for the probe result, derived from the
+            internal resolver status without exposing internal enum classes.
+        reason: Stable string reason describing why the path reached that status.
+        selected_file_type: Public local identifier of the selected file type, if
+            one resolved successfully.
+        selected_processor: Public local identifier of the selected processor, if
+            one is bound for the selected file type.
+        candidates: Ordered, normalized candidate list considered during file-type
+            resolution. Empty for missing or discovery-filtered paths.
+
+    Notes:
+        `status` and `reason` are plain strings to keep the public API JSON-friendly
+        and independent from internal resolver enum classes. Candidate internals are
+        reduced to `ProbeCandidateInfo` records.
+    """
+
+    path: Path
+    status: str
+    reason: str
+    selected_file_type: str | None
+    selected_processor: str | None
+    candidates: Sequence[ProbeCandidateInfo]
+
+
+@dataclass(frozen=True, kw_only=True)
+class ProbeRunResult:
+    """Aggregate result of a TopMark probe run.
+
+    Attributes:
+        files: Ordered sequence of per-path probe results.
+        summary: Mapping from public probe status strings to counts for `files`.
+        had_errors: `True` when any unfiltered result represents a hard error.
+        diagnostics: Optional mapping from file path to public diagnostic entries
+            for the probe result set.
+        diagnostic_totals: Aggregate diagnostic counts across the probe result set.
+
+    Notes:
+        This is the public API shape for `topmark.api.probe()`. It intentionally
+        exposes resolution as stable primitive values and DTOs instead of returning
+        `ProcessingContext`, `ResolutionProbeResult`, or other internal structures.
+    """
+
+    files: Sequence[ProbeFileResult]
+    summary: Mapping[str, int]
+    had_errors: bool
+    diagnostics: dict[str, list[DiagnosticEntry]] | None = None
+    diagnostic_totals: DiagnosticTotals | None = None
+
+
 class Outcome(str, Enum):
     """Stable per-file outcome bucket used by the public API.
 
@@ -151,7 +235,7 @@ OUTCOME_ORDER: Final[tuple[Outcome, ...]] = (
 )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class FileResult:
     """Result for a single file after pipeline execution and view filtering.
 
@@ -190,7 +274,7 @@ class FileResult:
     bucket_label: str | None = None
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class RunResult:
     """Aggregate result of a TopMark run after view-level filtering.
 
