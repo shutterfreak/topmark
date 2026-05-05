@@ -24,11 +24,11 @@ TopMark defines its **stable programmatic API** as the set of symbols exported b
 
 In practice this means:
 
-- Anything exported from `topmark.api` is considered **public and versioned**.
+- Anything exported from \[`topmark.api`\][topmark.api] is considered **public and versioned**.
 - Symbols not exported via `topmark.api.__all__` are **internal implementation details** and may
   change without notice.
-- Registry internals (`topmark.registry.*`) and other subsystems are documented for extensibility
-  but are **not part of the snapshot stability contract**.
+- Registry internals (\[`topmark.registry.*`\][topmark.registry]) and other subsystems are
+  documented for extensibility but are **not part of the snapshot stability contract**.
 
 The API snapshot test therefore derives its reference surface directly from `topmark.api.__all__`
 and verifies that this façade remains stable across Python versions.
@@ -37,22 +37,29 @@ ______________________________________________________________________
 
 ## 🧩 What’s Covered
 
-The snapshot captures the **stable programmatic API exposed via `topmark.api`**, including:
+The snapshot captures the **stable programmatic API exposed via \[`topmark.api`\][topmark.api]**,
+including:
 
 - `from topmark import api`: all entries defined in `api.__all__`
-- Public API command functions (e.g. `check`, `strip`, `list_filetypes`, `list_processors`, version
-  helpers)
-- Public result and metadata types exported by `topmark.api`
+- Public API command functions (e.g. \[`check`\][topmark.api.commands.pipeline.check],
+  \[`strip`\][topmark.api.commands.pipeline.strip],
+  \[`probe`\][topmark.api.commands.pipeline.probe],
+  \[`list_filetypes`\][topmark.api.commands.registry.list_filetypes],
+  \[`list_processors`\][topmark.api.commands.registry.list_processors], version helpers)
+- Public result and metadata types exported by \[`topmark.api`\][topmark.api]
 - Enum and class structure normalization for cross-version consistency:
   - Enums → `"<enum>"`
   - Classes → `"<class>"`
   - Functions → real signatures are preserved
 
+This includes read-only diagnostic APIs such as \[`topmark.api.probe()`\][topmark.api.probe] in
+addition to content-processing commands.
+
 The snapshot intentionally **does not include internal registries or implementation modules**. Only
 the façade defined by `topmark.api.__all__` is considered part of the stable surface.
 
 Overlay state and internal registries are intentionally excluded from the snapshot; only symbols and
-signatures exported via `topmark.api` are tracked.
+signatures exported via \[`topmark.api`\][topmark.api] are tracked.
 
 Configuration layering and TOML source resolution are also internal implementation details and are
 not part of the public API contract.
@@ -127,7 +134,8 @@ ______________________________________________________________________
 
 The method \[`MutableConfig.sanitize()`\][topmark.config.model.MutableConfig.sanitize] in
 \[`topmark.config.model`\][topmark.config.model] is the central place to enforce invariants on
-configuration values before they are frozen into an immutable `Config`.
+configuration values before they are frozen into an immutable
+\[`Config`\][topmark.config.model.Config].
 
 Current rules are intentionally conservative (for example, rejecting glob-like paths in
 `include_from` / `exclude_from` / `files_from`), but this method is expected to grow stricter over
@@ -162,8 +170,8 @@ ______________________________________________________________________
 
 **Registry note:** Registry access for integrations is provided via the read‑only façade in
 \[`topmark.registry.registry.Registry`\][topmark.registry.registry.Registry]. The registry system
-itself is **not part of the `topmark.api` snapshot contract** and may evolve independently as long
-as the public API commands in `topmark.api` remain stable.
+itself is **not part of the \[`topmark.api`\][topmark.api] snapshot contract** and may evolve
+independently as long as the public API commands in \[`topmark.api`\][topmark.api] remain stable.
 
 - **Supported Python range:** 3.10–3.14 (`nox` matrix).\
   Future minor Python releases will be added once supported by CI.

@@ -52,7 +52,7 @@ ______________________________________________________________________
   - CLI overrides and `--config`
 - Inspectable layered config provenance via `topmark config dump --show-layers` and machine-readable
   `config_provenance` output
-- Fine-grained include/exclude rules
+- Fine-grained include/exclude rules, including local or qualified file type identifiers
 - Selective application via file patterns or STDIN (`--files-from -` for list mode, `-` plus
   `--stdin-filename` for single-file content mode)
 - Strict static typing (PEP 604 unions, Pyright)
@@ -345,6 +345,10 @@ exclude_file_types = ["html"]
 exclude_from = [".gitignore"]
 ```
 
+File type filters such as `include_file_types` and `exclude_file_types` accept local identifiers
+such as `python` when unambiguous. In plugin-heavy setups, prefer qualified identifiers such as
+`topmark:python`.
+
 Source-local TOML options such as discovery boundaries and config-validation strictness live under
 `[config]` (or `[tool.topmark.config]` in `pyproject.toml`). They are resolved separately from
 layered `Config` values and do not participate in layered config merging.
@@ -426,14 +430,17 @@ ______________________________________________________________________
 
 ## 🔒 Public API
 
-The public API accepts optional `policy` and `policy_by_type` arguments (global or per-type) that
-integrate with the same resolution mechanism used by the CLI. The returned result view is controlled
-via `report="all" | "actionable" | "noncompliant"`.
+The public API accepts plain mapping-based `config`, `policy`, and `policy_by_type` inputs. Policy
+inputs integrate with the same resolution mechanism used by the CLI. For `check()` and `strip()`,
+the returned result view is controlled via `report="all" | "actionable" | "noncompliant"`.
 
 When API callers provide mapping-based configuration, TopMark still follows the same staged model
 internally: whole-source TOML-style validation for source-local sections such as `[config]` /
 `[writer]`, then layered config deserialization and merge into the final immutable `Config`
 snapshot.
+
+Public API callers should use the functions and DTOs exposed from `topmark.api`. Runtime helpers,
+resolver internals, and pipeline contexts are implementation details.
 
 ### Example
 
@@ -472,7 +479,7 @@ result = api.strip(
 ```
 
 For read-only resolution diagnostics, use `api.probe()`, which returns stable public DTOs without
-exposing internal resolver or pipeline objects.
+exposing resolver internals or pipeline objects.
 
 ```python
 # Explain file-type / processor resolution

@@ -155,6 +155,8 @@ The configuration system has been fully restructured:
   - flattening is now performed only at exception, presentation, and machine-output boundaries
 - Removed legacy helpers and compatibility layers
 - Standardized API inputs via `ConfigMapping`
+- Classified `PolicyOverrides` and `ConfigOverrides` as internal CLI/API orchestration bridge types,
+  with public callers using plain mapping-based `config`, `policy`, and `policy_by_type` inputs.
 
 Result: configuration is now **typed, layered, validated, and consistent across CLI/API**.
 
@@ -257,6 +259,8 @@ Result: human output is now **consistent, composable, and decoupled from CLI**.
   objects, synthetic contexts, and low-level probe helpers kept outside the 1.0 public API contract.
 - Updated policy, command, configuration discovery, schema, and roadmap documentation to reflect the
   frozen `--report`, `header_mutation_mode`, and `empty_insert_mode` contracts.
+- Added a shared documentation snippet for the public/internal override boundary and reused it
+  across API, configuration, architecture, schema, and resolution documentation.
 
 ### CI / release / dependency model (completed)
 
@@ -576,6 +580,8 @@ The separation is much clearer now, but a few boundary questions remain:
   CLI-specific formatting concerns into shared validation logic.
 - Keep `topmark.api.runtime` internal; public callers should use `topmark.api.probe()`,
   `topmark.api.check()`, and `topmark.api.strip()` rather than runtime helpers.
+- Keep `topmark.config.overrides.PolicyOverrides` and `topmark.config.overrides.ConfigOverrides`
+  internal; public callers use mapping-based API inputs instead.
 - Confirm that provenance inspection (`config dump --show-layers`) remains an inspection concern and
   does not leak into validation-oriented commands or public API contracts.
 - Keep release-automation concerns artifact/download-oriented and scoped to CLI/automation, not to
@@ -588,10 +594,9 @@ places.
 
 Remaining decisions:
 
-- Freeze and document the typed override boundary:
-  - `PolicyOverrides`
-  - `ConfigOverrides`
-- Decide how much of that override structure is truly public/stable for Python callers.
+- Typed override boundary is now frozen:
+  - `PolicyOverrides` and `ConfigOverrides` are internal CLI/API orchestration bridge types
+  - public Python callers use plain mapping-based `config`, `policy`, and `policy_by_type` inputs
 - Freeze and document the staged validation model now implemented internally:
   - TOML-source diagnostics
   - merged-config diagnostics
@@ -724,13 +729,13 @@ The remaining work is no longer broad architectural redesign.
 
 What is left is mainly:
 
-- **public/API and configuration-boundary freeze decisions**
+- **remaining configuration-schema and identifier-semantics freeze decisions**
 - **tooling/release follow-up**
 - one major scope decision resolved: **in-memory pipeline explicitly deferred to post-1.0**
 
-That means TopMark is now in the final stage of the 1.0 effort: freezing the remaining public/API
-and configuration boundaries, validating release/tooling assumptions, and deferring anything
-non-essential cleanly.
+That means TopMark is now in the final stage of the 1.0 effort: freezing the last configuration and
+identifier semantics, validating release/tooling assumptions, and deferring anything non-essential
+cleanly.
 
 ______________________________________________________________________
 
@@ -755,12 +760,13 @@ These are release blockers unless explicitly deferred with a documented rational
 - [x] Clear separation between CLI, presentation, API, and core/domain layers
 - [x] Runtime behavior separated cleanly from layered config
 - [x] No CLI-specific concerns (verbosity, color, formatting) in core logic
-- [ ] Remaining public-vs-internal boundaries frozen and documented for:
+- [x] Remaining public-vs-internal boundaries frozen and documented for:
   - [x] `topmark.api.probe()` accepted as the stable public probe API
   - [x] `topmark.api.runtime` documented as internal API orchestration infrastructure
   - [x] low-level resolver/probe objects documented as advanced/internal rather than stable public
     DTOs
-  - [ ] typed override surfaces (`PolicyOverrides`, `ConfigOverrides`)
+  - [x] typed override surfaces (`PolicyOverrides`, `ConfigOverrides`) classified as internal
+    CLI/API orchestration bridge types
 
 #### [Must] Machine output contracts
 
@@ -852,11 +858,13 @@ These are release blockers unless explicitly deferred with a documented rational
 
 - [ ] Config keys and semantics documented and considered stable
 - [ ] Qualified/unqualified file type identifier semantics documented and considered stable
+  - [x] local or qualified file type identifiers documented for path command filters and README
+  - [ ] final local-key compatibility decision for registry/file-type internals remains open
 - [x] `config init`, `config defaults`, `config check`, and `config dump` outputs aligned and frozen
-- [ ] Decision made and documented on the final public override model
+- [x] Decision made and documented on the final public override model
   - [x] public API command signatures accept plain mapping-based policy/config overlays
-  - [ ] internal typed override helpers (`PolicyOverrides`, `ConfigOverrides`) classified and
-    documented as public, internal, or tolerated internal surfaces
+  - [x] internal typed override helpers (`PolicyOverrides`, `ConfigOverrides`) classified as
+    internal CLI/API orchestration bridge types
 - [x] Package/application versioning model documented and stable
   - [x] Git tags are the single source of truth via `setuptools-scm`
   - [x] static `[project].version` is gone

@@ -15,8 +15,8 @@ topmark:header:end
 TopMark policies control how the pipeline detects file types, classifies empty files, and decides
 whether headers may be inserted or updated.
 
-Policy settings are part of the layered configuration (`Config`) and are merged according to
-discovery and precedence rules. See:
+Policy settings are part of the layered configuration (\[`Config`\][topmark.config.model.Config])
+and are merged according to discovery and precedence rules. See:
 
 - [`Configuration overview`](../configuration/index.md)
 - [`Discovery & Precedence`](../configuration/discovery.md)
@@ -26,6 +26,12 @@ Policies can be supplied from:
 - discovered config files (`topmark.toml` or `[tool.topmark]` in `pyproject.toml`)
 - command-specific CLI options
 - the Python API via public policy overlays
+
+Policy values shown here are part of the public configuration surface. Internal implementation
+helpers such as \[`PolicyOverrides`\][topmark.config.overrides.PolicyOverrides] and
+\[`ConfigOverrides`\][topmark.config.overrides.ConfigOverrides] are not part of the user-facing CLI
+or Python API contract. Public callers should use plain mapping-based inputs via `config=...`,
+`policy=...`, and `policy_by_type=...` when using `topmark.api`.
 
 In `topmark.toml`, policy is defined under `[policy]` and `[policy_by_type.<file_type>]`. In
 `pyproject.toml`, the same settings live under `[tool.topmark.policy]` and
@@ -59,7 +65,7 @@ ______________________________________________________________________
 
 ### `header_mutation_mode`
 
-Controls the mutation intent for `topmark check`.
+Controls the mutation intent for \[[`topmark check`](commands/check.md)\](commands/check.md).
 
 Allowed TOML/API values:
 
@@ -68,7 +74,8 @@ Allowed TOML/API values:
 - `update_only`: update existing headers only; missing headers are not inserted
 
 This policy affects dry-run reporting, apply behavior, API result views, and outcome bucketing. It
-applies only to `check`; `strip` and `probe` reject generated-header mutation controls.
+applies only to [`check`](commands/check.md); [`strip`](commands/strip.md) and
+[`probe`](commands/probe.md) reject generated-header mutation controls.
 
 Safety gates still take precedence. Malformed headers, unreadable files, unsupported files, blocked
 filesystem states, and other non-mutable conditions are not made mutable by `header_mutation_mode`.
@@ -146,7 +153,7 @@ allow_reflow = true
 
 Controls whether file-type detection may consult file contents when needed.
 
-This policy applies to both `check` and `strip`.
+This policy applies to both [`check`](commands/check.md) and [`strip`](commands/strip.md).
 
 ```toml
 [policy]
@@ -200,9 +207,9 @@ ______________________________________________________________________
 
 ## Policy options by command
 
-### `topmark check`
+### [`topmark check`](commands/check.md)
 
-`check` supports both check-only and shared policy options.
+[`check`](commands/check.md) supports both check-only and shared policy options.
 
 Check-only policy options:
 
@@ -216,14 +223,14 @@ Shared policy options:
 
 - `--allow-content-probe / --no-allow-content-probe`
 
-### `topmark strip`
+### [`topmark strip`](commands/strip.md)
 
-`strip` supports only shared policy options:
+[`strip`](commands/strip.md) supports only shared policy options:
 
 - `--allow-content-probe / --no-allow-content-probe`
 
-Header insertion/update policies, including `header_mutation_mode`, do not apply to `strip` and are
-rejected when provided.
+Header insertion/update policies, including `header_mutation_mode`, do not apply to
+[`strip`](commands/strip.md) and are rejected when provided.
 
 ______________________________________________________________________
 
@@ -237,7 +244,7 @@ Examples:
   otherwise need attention
 - `--report noncompliant`: include actionable files plus unsupported file types in human per-file
   output
-- `--header-mutation-mode add-only`: allow `check` to insert missing headers but not update existing
-  headers
+- `--header-mutation-mode add-only`: allow [`check`](commands/check.md) to insert missing headers
+  but not update existing headers
 
 These settings are independent and may be combined.

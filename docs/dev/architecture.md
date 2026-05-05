@@ -72,6 +72,11 @@ The main integration point between TOML resolution and config merging is:
 
 - \[`resolve_toml_sources_and_build_config_draft()`\][topmark.config.resolution.bridge.resolve_toml_sources_and_build_config_draft]
 
+{% include-markdown "\_snippets/api-internal-overrides.md" %}
+
+At the architecture level, this keeps public API input shapes separate from the internal mutable
+config-draft machinery used between TOML/config resolution and runtime execution.
+
 See also:
 
 - [`Discovery & Precedence`](../configuration/discovery.md)
@@ -411,9 +416,11 @@ resolver objects. Internally, the API runtime still uses synthetic
 machine output, API summaries, and exit-code selection can share the same resolver-level result
 model.
 
-- Unmatched glob patterns are soft discovery diagnostics for processing commands (`check`, `strip`).
-- `probe` treats unmatched glob patterns and explicit discovery-filtered inputs as filtered semantic
-  outcomes because its purpose is to explain resolution and filtering.
+- Unmatched glob patterns are soft discovery diagnostics for processing commands
+  ([`check`](../usage/commands/check.md), [`strip`](../usage/commands/strip.md)).
+- [`probe`](../usage/commands/probe.md) treats unmatched glob patterns and explicit
+  discovery-filtered inputs as filtered semantic outcomes because its purpose is to explain
+  resolution and filtering.
 
 Synthetic contexts are built for resolver-level hard failures that occur before normal pipeline
 execution can begin. This keeps human output, machine output, summaries, and exit-code selection
@@ -476,16 +483,18 @@ These are represented in the processing context via:
 - `is_effectively_empty`
 - `is_empty_like`
 
-Policy evaluation for insertion now uses the configured `EmptyInsertMode`, which controls which
-class of "empty" files is eligible for insertion when `allow_header_in_empty_files` is enabled.
+Policy evaluation for insertion now uses the configured
+\[`EmptyInsertMode`\][topmark.config.policy.EmptyInsertMode], which controls which class of "empty"
+files is eligible for insertion when \[`allow_header_in_empty_files`\][topmark.config.policy.Policy]
+is enabled.
 
 The canonical policy helpers live in
 \[`topmark.pipeline.context.policy`\]\[topmark.pipeline.context.policy\]:
 
-- `is_empty_for_insert(ctx)`
-- `allow_insert_into_empty_like(ctx)`
-- `is_empty_for_insert_unchanged_by_default(ctx)`
-- `can_change(ctx)`
+- \[`is_empty_for_insert(ctx)`\][topmark.pipeline.context.policy.is_empty_for_insert]
+- \[`allow_insert_into_empty_like(ctx)`\][topmark.pipeline.context.policy.allow_insert_into_empty_like]
+- \[`is_empty_for_insert_unchanged_by_default(ctx)`\][topmark.pipeline.context.policy.is_empty_for_insert_unchanged_by_default]
+- \[`can_change(ctx)`\][topmark.pipeline.context.policy.can_change]
 
 This keeps step-level gating and outcome bucketing consistent with the same policy interpretation.
 
@@ -562,7 +571,8 @@ code. Consumers must inspect the process exit status separately from parsing mac
 ### CLI applicability and usage-error boundary
 
 CLI command applicability is enforced before pipeline execution and before presentation or machine
-payload construction. Path-processing commands (`check`, `strip`, and `probe`) share input
+payload construction. Path-processing commands ([`check`](../usage/commands/check.md),
+[`strip`](../usage/commands/strip.md), and [`probe`](../usage/commands/probe.md)) share input
 discovery, filtering, configuration loading, file-type resolution, and STDIN content handling, but
 they expose different mutation and reporting controls according to command intent. The Python API
 keeps the same command-intent separation through
@@ -572,14 +582,17 @@ keeps the same command-intent separation through
 
 Important invariants:
 
-- `check` may compare, render, plan, preview, and mutate headers when `--apply` is provided.
-- `strip` shares file input, reporting, diff, and write behavior with `check`, but is removal-only
-  and rejects generated-header insertion/update controls.
-- `probe` shares file input and filtering behavior with `check` and `strip`, but is read-only and
-  diagnostic-only. The CLI rejects mutation, patch-planning, reporting-summary, diff, and
+- [`check`](../usage/commands/check.md) may compare, render, plan, preview, and mutate headers when
+  `--apply` is provided.
+- [`strip`](../usage/commands/strip.md) shares file input, reporting, diff, and write behavior with
+  [`check`](../usage/commands/check.md), but is removal-only and rejects generated-header
+  insertion/update controls.
+- [`probe`](../usage/commands/probe.md) shares file input and filtering behavior with
+  [`check`](../usage/commands/check.md) and [`strip`](../usage/commands/strip.md), but is read-only
+  and diagnostic-only. The CLI rejects mutation, patch-planning, reporting-summary, diff, and
   generated-header rendering controls. The Python API exposes no mutation or diff parameters for
   \[`probe()`\][topmark.api.commands.pipeline.probe].
-- File-agnostic commands (`version`, registry commands,
+- File-agnostic commands ([`version`](../usage/commands/version.md), registry commands,
   [`config defaults`](../usage/commands/config/defaults.md), and
   [`config init`](../usage/commands/config/init.md)) reject positional paths and file-processing
   STDIN modes. They also do not participate in project config discovery unless explicitly

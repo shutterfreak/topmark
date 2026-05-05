@@ -21,8 +21,8 @@ Filtering order:
 1. File type filters (`include_file_types`, `exclude_file_types`)
 1. Eligibility (supported vs unsupported)
 
-Note: For `topmark probe`, paths excluded during step 1 or 2 may still be reported as `filtered`
-results if they were explicitly requested.
+Note: For [`topmark probe`](commands/probe.md), paths excluded during step 1 or 2 may still be
+reported as `filtered` results if they were explicitly requested.
 
 ## Missing vs unmatched inputs
 
@@ -31,8 +31,8 @@ TopMark distinguishes between **explicit literal paths** and **glob patterns**:
 - **Explicit missing literal paths** (e.g., `fubar.py`) are treated as **hard input errors** and
   result in `FILE_NOT_FOUND (66)`.
 - **Unmatched glob patterns** (e.g., `missing/**/*.py`) are treated as **soft discovery
-  diagnostics** and do **not** cause a failure for processing commands (`check`, `strip`) (exit
-  `SUCCESS (0)`).
+  diagnostics** and do **not** cause a failure for processing commands
+  ([`check`](commands/check.md), [`strip`](commands/strip.md)) (exit `SUCCESS (0)`).
 
 This distinction ensures that typos in explicit inputs are surfaced, while flexible patterns that
 match nothing do not break automation.
@@ -58,15 +58,17 @@ Note that STDIN handling is independent from configuration validation. Options s
 `--no-strict` still apply and control how staged config-loading/preflight validation warnings are
 treated during the run.
 
-## Interaction with `topmark probe`
+## Interaction with [`topmark probe`](commands/probe.md)
 
-The `topmark probe` command uses the same discovery and filtering rules described above.
+The [`topmark probe`](commands/probe.md) command uses the same discovery and filtering rules
+described above.
 
-However, unlike processing commands (`check`, `strip`), `probe` also reports **explicit inputs that
-were filtered out before file-type probing**.
+However, unlike processing commands ([`check`](commands/check.md), [`strip`](commands/strip.md)),
+[`probe`](commands/probe.md) also reports **explicit inputs that were filtered out before file-type
+probing**.
 
-Additionally, `probe` treats unmatched glob patterns as **filtered semantic outcomes** rather than
-silent no-ops. As a result:
+Additionally, [`probe`](commands/probe.md) treats unmatched glob patterns as **filtered semantic
+outcomes** rather than silent no-ops. As a result:
 
 - Unmatched glob patterns are reported as `filtered` probe results (e.g.,
   `filtered: excluded_by_discovery_filter`).
@@ -74,11 +76,12 @@ silent no-ops. As a result:
 
 This differs from processing commands, which treat unmatched patterns as non-fatal diagnostics.
 
-`probe` is read-only and diagnostic-only. It shares discovery and filtering behavior with `check`
-and `strip`, but rejects mutation, diff, reporting, and generated-header options that do not apply.
+[`probe`](commands/probe.md) is read-only and diagnostic-only. It shares discovery and filtering
+behavior with [`check`](commands/check.md) and [`strip`](commands/strip.md), but rejects mutation,
+diff, reporting, and generated-header options that do not apply.
 
-For example, when a path is excluded via `--exclude` or `exclude_patterns`, `topmark probe` will
-still show it in the output as:
+For example, when a path is excluded via `--exclude` or `exclude_patterns`,
+[`topmark probe`](commands/probe.md) will still show it in the output as:
 
 ```text
 <path>: <filtered> - filtered: excluded_by_path_filter
@@ -216,8 +219,8 @@ topmark strip --report noncompliant .
 Filtering decisions can influence exit codes indirectly:
 
 - Missing explicit inputs → `FILE_NOT_FOUND (66)`
-- Unmatched glob patterns → no failure (`check` / `strip`, `SUCCESS (0)`), or
-  `UNSUPPORTED_FILE_TYPE (69)` in `probe`
+- Unmatched glob patterns → no failure ([`check`](commands/check.md) / [`strip`](commands/strip.md),
+  `SUCCESS (0)`), or `UNSUPPORTED_FILE_TYPE (69)` in [`probe`](commands/probe.md)
 
 Missing explicit inputs take precedence over semantic probe outcomes.
 

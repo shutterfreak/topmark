@@ -8,16 +8,23 @@
 #
 # topmark:header:end
 
-"""Apply config-like override intent to a resolved `MutableConfig` draft.
+"""Apply internal config-like override intent to a resolved `MutableConfig` draft.
 
 This module sits *after* layered config discovery/resolution. Its job is to
-apply the highest-precedence config-like override layer coming from CLI or API
-inputs without reimplementing config-file discovery.
+apply the highest-precedence config-like override layer produced by CLI or API
+orchestration without reimplementing config-file discovery.
+
+[`PolicyOverrides`][topmark.config.overrides.PolicyOverrides] and
+[`ConfigOverrides`][topmark.config.overrides.ConfigOverrides] are internal typed
+value objects. They are not part of TopMark's stable public Python API. Public callers
+should pass plain mapping-based configuration and policy inputs to [`topmark.api`][topmark.api]
+entry points such as [`topmark.api.check()`][topmark.api.commands.pipeline.check],
+[`topmark.api.strip()`][topmark.api.commands.pipeline.strip], and
+[`topmark.api.probe()`][topmark.api.commands.pipeline.probe].
 
 Execution-only runtime intent such as apply mode, stdin routing, output target,
 file write strategy, pruning, and timestamps is intentionally out of scope and
-must be handled separately via
-[`RunOptions`][topmark.runtime.model.RunOptions].
+must be handled separately via [`RunOptions`][topmark.runtime.model.RunOptions].
 
 Override-application diagnostics belong to the merged-config validation stage.
 Flattening is performed only at reporting and output boundaries.
@@ -47,11 +54,16 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
+# Internal bridge object: public callers pass mapping-shaped policy values to
+# `topmark.api` rather than constructing this dataclass directly.
 @dataclass(frozen=True, slots=True)
 class PolicyOverrides:
-    """Optional overrides for global or per-file-type policy values.
+    """Internal typed overrides for global or per-file-type policy values.
 
     `None` means "no override provided" for the corresponding policy field.
+    These values are produced by CLI/API orchestration after public mapping
+    inputs have been normalized. They are intentionally not exported from
+    `topmark.api` and should not be treated as a stable integration surface.
     """
 
     header_mutation_mode: HeaderMutationMode | None = None
@@ -62,12 +74,19 @@ class PolicyOverrides:
     allow_content_probe: bool | None = None
 
 
+# Internal bridge object: this represents normalized highest-precedence override
+# intent after CLI/API input handling, not a stable public configuration type.
 @dataclass(frozen=True, slots=True)
 class ConfigOverrides:
-    """Highest-precedence config overrides from CLI or API inputs.
+    """Internal highest-precedence config overrides from CLI or API orchestration.
 
     `None` means "no override provided". Empty collections are meaningful and
     should therefore be preserved.
+
+    This dataclass is an internal bridge between user-facing inputs and mutable
+    config drafts. Public API callers should provide plain mappings to
+    [`topmark.api`][topmark.api] functions instead of constructing
+    [`ConfigOverrides`][topmark.config.overrides.ConfigOverrides] directly.
 
     Attributes:
         config_origin: provenance marker or path
@@ -76,10 +95,9 @@ class ConfigOverrides:
             This remains config-like override intent and is separate from
             execution-only runtime options. It currently governs strict
             evaluation of staged config-loading validation.
-        policy: Global, resolved, immutable runtime policy (plain booleans),
-            applied after discovery.
-        policy_by_type: Per-file-type resolved policy overrides
-            (plain booleans), applied after discovery.
+        policy: Internal global policy override values applied after discovery.
+        policy_by_type: Internal per-file-type policy override values applied
+            after discovery.
         files: List of files to process.
         files_from: Paths to files that list newline-delimited candidate
             file paths to add before filtering.
@@ -96,8 +114,8 @@ class ConfigOverrides:
             from [fields].
         align_fields: Whether to align fields, from [formatting].
         relative_to: Base path used only for header metadata (e.g., file_relpath).
-            Note: Glob expansion and filtering are resolved relative to their declaring source
-            (config file dir or CWD for CLI), not relative_to.
+            Note: Glob expansion and filtering are resolved relative to their declaring
+            source (config file dir or CWD for CLI), not relative_to.
     """
 
     # Config-related options
@@ -153,20 +171,21 @@ def apply_config_overrides(
     config: MutableConfig,
     overrides: ConfigOverrides,
 ) -> MutableConfig:
-    """Apply CLI/API override intent to an existing mutable config draft.
+    """Apply internal CLI/API override intent to an existing mutable config draft.
 
-    This helper updates an already-resolved `MutableConfig` with the final highest-precedence
-    override layer. It intentionally does **not** handle config discovery concerns such as
-    `--no-config` or `--config`; those belong to
+    This helper updates an already-resolved [`MutableConfig`][topmark.config.model.MutableConfig]
+    with the final highest-precedence override layer. It intentionally does **not** handle
+    config discovery concerns such as `--no-config` or `--config`; those belong to
     [`topmark.toml.resolution`][topmark.toml.resolution] and
     [`topmark.config.resolution`][topmark.config.resolution].
 
     Args:
         config: Mutable config draft to mutate in place.
-        overrides: Structured override values coming from CLI/API.
+        overrides: Internal structured override values produced by CLI/API orchestration.
 
     Returns:
-        The same `MutableConfig` instance after in-place mutation.
+        The same [`MutableConfig`][topmark.config.model.MutableConfig] instance
+        after in-place mutation.
 
     Notes:
         - Path-to-file options (`--include-from`, `--exclude-from`, `--files-from`) are normalized
@@ -176,6 +195,10 @@ def apply_config_overrides(
           config-declared glob sources are interpreted.
         - Provenance information is appended to `overrides.config_origin` so downstream views
           can show that a highest-precedence override layer was applied.
+        - [`ConfigOverrides`][topmark.config.overrides.ConfigOverrides] and
+          [`PolicyOverrides`][topmark.config.overrides.PolicyOverrides] are internal bridge types,
+          not stable public API inputs. Public callers should use mapping-based
+          arguments accepted by `topmark.api`.
         - Execution-only runtime intent (apply mode, STDIN routing, output target, file write
           strategy, pruning, timestamps) is out of scope here and must be handled separately via
           [`RunOptions`][topmark.runtime.model.RunOptions].

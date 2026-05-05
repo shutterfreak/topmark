@@ -54,7 +54,8 @@ File types are discovered through Python entry points. TopMark loads:
 - **plugin file types** from the entry point group:
   - **Entry point group:** \[`topmark.filetypes`\][topmark.filetypes]
 
-A plugin registers one or more `FileType` objects via that entry point.
+A plugin registers one or more \[`FileType`\][topmark.filetypes.model.FileType] objects via that
+entry point.
 
 **When loaded:** lazily, when TopMark first needs to resolve file types.
 
@@ -93,13 +94,13 @@ ______________________________________________________________________
 
 ### File type identity: name and namespace
 
-Every `FileType` has two identity components:
+Every \[`FileType`\][topmark.filetypes.model.FileType] has two identity components:
 
 - `namespace`: identifies the producer (TopMark built-ins vs. plugins)
 - `name`: the file type identifier used by filtering and configuration
 
-TopMark reserves the namespace `topmark` (the internal constant `TOPMARK_NAMESPACE`) for built-in
-file types.
+TopMark reserves the namespace `topmark` (the internal constant
+\[`TOPMARK_NAMESPACE`\][topmark.constants.TOPMARK_NAMESPACE]) for built-in file types.
 
 **Plugin guidance:**
 
@@ -113,7 +114,8 @@ Note: `namespace` is **mandatory** for both file types and processors. The built
 
 Internally, a file type’s stable identity is the tuple **(namespace, name)**. Registries may still
 expose or accept the *unqualified* file type name for compatibility with existing configuration and
-CLI filtering, but resolution is performed through `FileTypeRegistry.resolve_filetype_id(...)`,
+CLI filtering, but resolution is performed through
+\[`FileTypeRegistry.resolve_filetype_id(...)`\][topmark.registry.filetypes.FileTypeRegistry.resolve_filetype_id],
 which understands both forms:
 
 - `"name"` (unqualified)
@@ -128,7 +130,8 @@ should be treated as the stable reference for future integrations and plugins.
 
 ### 1) Create a provider function
 
-Create a module that returns an iterable of `FileType` objects.
+Create a module that returns an iterable of \[`FileType`\][topmark.filetypes.model.FileType]
+objects.
 
 Example:
 
@@ -169,11 +172,13 @@ MY_FILETYPE = make_my_ft(
 )
 ```
 
-This avoids repeating the namespace argument and ensures that all `FileType` instances created by
-the plugin share the correct identity.
+This avoids repeating the namespace argument and ensures that all
+\[`FileType`\][topmark.filetypes.model.FileType] instances created by the plugin share the correct
+identity.
 
-The factory only **constructs** `FileType` objects; registration still happens when TopMark loads
-file types through the \[`topmark.filetypes`\][topmark.filetypes] entry point group.
+The factory only **constructs** \[`FileType`\][topmark.filetypes.model.FileType] objects;
+registration still happens when TopMark loads file types through the
+\[`topmark.filetypes`\][topmark.filetypes] entry point group.
 
 ### 2) Register the entry point
 
@@ -226,9 +231,10 @@ Registry.register_processor("my_plugin:my_plugin_my_lang", MyLangHeaderProcessor
 ```
 
 At registration time, TopMark resolves the file type identifier through the composed file type
-registry and then binds the instantiated processor to that resolved `FileType` object. Qualified
-identifiers are recommended because an unqualified file type name may become ambiguous once multiple
-namespaces define similarly named file types.
+registry and then binds the instantiated processor to that resolved
+\[`FileType`\][topmark.filetypes.model.FileType] object. Qualified identifiers are recommended
+because an unqualified file type name may become ambiguous once multiple namespaces define similarly
+named file types.
 
 Important:
 
@@ -250,9 +256,11 @@ A typical advanced integration flow is:
 1. expose file types through the \[`topmark.registry.filetypes`\][topmark.registry.filetypes] entry
    point group;
 1. let TopMark discover those file types lazily;
-1. register processor classes explicitly through `Registry.register_processor(...)`,
-   `Registry.try_register_processor(...)`, or `HeaderProcessorRegistry.register(...)` during
-   controlled initialization.
+1. register processor classes explicitly through
+   \[`HeaderProcessorRegistry.register(...)`\][topmark.registry.processors.HeaderProcessorRegistry.register],
+   \[`Registry.bind(...)`\][topmark.registry.registry.Registry.bind], or
+   \[`HeaderProcessorRegistry.register(...)`\][topmark.registry.processors.HeaderProcessorRegistry.register]
+   during controlled initialization.
 
 This keeps built-in registry construction deterministic and avoids relying on module-import side
 effects.
@@ -282,7 +290,8 @@ Fix:
 
 - Ensure the plugin file type (including its `namespace` and unique `name`) is registered via the
   \[`topmark.filetypes`\][topmark.filetypes] entry point.
-- Ensure file type discovery occurs before calling `Registry.register_processor(...)`.
+- Ensure file type discovery occurs before calling
+  \[`Registry.bind(...)`\][topmark.registry.registry.Registry.bind].
 - Prefer qualified file type identifiers such as `"my_plugin:my_plugin_my_lang"` when registering
   processors.
 

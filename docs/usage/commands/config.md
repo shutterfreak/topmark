@@ -23,6 +23,13 @@ validation.
 
 {% include-markdown "\_snippets/config-validation-contract.md" %}
 
+Configuration and policy values handled by these commands are part of the **public configuration
+surface**. Internal helper types such as
+\[`PolicyOverrides`\][topmark.config.overrides.PolicyOverrides] and
+\[`ConfigOverrides`\][topmark.config.overrides.ConfigOverrides] are not exposed here; they are used
+internally by CLI/API orchestration. When using the Python API, provide plain mapping-based inputs
+via `config=...`, `policy=...`, and `policy_by_type=...`.
+
 TopMark performs whole-source TOML schema validation during loading. Unknown sections or keys,
 malformed section shapes, and missing known sections are reported as configuration diagnostics
 before staged config-validation semantics are applied. Only the validated layered fragment is passed
@@ -49,16 +56,17 @@ Across all `config` subcommands:
 - `--stdin-filename` does not apply
 - file-list STDIN modes (for example, `--files-from -`) do not apply
 
-Config discovery applies only where explicitly documented (`config check`, `config dump`) and is not
-used by purely informational commands (`config defaults`, `config init`).
+Config discovery applies only where explicitly documented ([`config check`](config/check.md),
+[`config dump`](config/dump.md)) and is not used by purely informational commands
+([`config defaults`](config/defaults.md), [`config init`](config/init.md)).
 
 ## Exit codes
 
 Exit-code behavior for `config` subcommands follows a consistent pattern:
 
-- Informational commands (`config dump`, `config defaults`, `config init`) exit with `SUCCESS (0)`
-  on success.
-- Validation command (`config check`) exits with:
+- Informational commands ([`config dump`](config/dump.md), [`config defaults`](config/defaults.md),
+  [`config init`](config/init.md)) exit with `SUCCESS (0)` on success.
+- Validation command ([`config check`](config/check.md)) exits with:
   - `SUCCESS (0)` when configuration is valid
   - `FAILURE (1)` when validation completes and reports failing diagnostics
 - CLI usage errors (invalid options, incompatible flags) exit with `USAGE_ERROR (64)`.
@@ -71,16 +79,17 @@ Note on output controls:
 
 - `-v` / `--verbose` applies only to TEXT output across all `config` subcommands.
 - `--quiet` is supported only for commands that provide a meaningful status or inspection signal
-  (`config check`, `config dump`). Pure content-producing commands (`config defaults`,
-  `config init`) do not support `--quiet`.
+  ([`config check`](config/check.md), [`config dump`](config/dump.md)). Pure content-producing
+  commands ([`config defaults`](config/defaults.md), [`config init`](config/init.md)) do not support
+  `--quiet`.
 
-When using `topmark config dump --show-layers`, the command also exposes **layered configuration
-provenance** in addition to the flattened effective configuration. This layered view reflects how
-configuration was built from individual TOML sources (defaults, discovered config, CLI overrides)
-and includes source-local TOML fragments. This includes the original TOML fragments (after schema
-validation) that contributed to each layer.
+When using [`topmark config dump --show-layers`](config/dump.md), the command also exposes **layered
+configuration provenance** in addition to the flattened effective configuration. This layered view
+reflects how configuration was built from individual TOML sources (defaults, discovered config, CLI
+overrides) and includes source-local TOML fragments. This includes the original TOML fragments
+(after schema validation) that contributed to each layer.
 
-When running `config check`, effective validation strictness is determined by:
+When running [`config check`](config/check.md), effective validation strictness is determined by:
 
 1. CLI override (`--strict` / `--no-strict`)
 1. TOML value (`strict_config_checking`)
@@ -93,4 +102,4 @@ contract is exposed at CLI/API/machine boundaries.
 
 Note that `strict_config_checking` is a **source-local TOML option**, not a layered configuration
 field. It influences validation behaviour but is not part of the final merged config; however, it is
-visible in layered provenance output (`config dump --show-layers`).
+visible in layered provenance output ([`config dump --show-layers`](config/dump.md)).

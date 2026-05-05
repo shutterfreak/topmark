@@ -104,6 +104,10 @@ filters.
 
 Exclude rules take precedence over include rules.
 
+File type identifiers may be passed as local identifiers such as `python` when unambiguous, or as
+qualified identifiers such as `topmark:python`. Prefer qualified identifiers in plugin-heavy setups
+or whenever local names could become ambiguous.
+
 ### Path-based filters
 
 - `--include`, `--exclude` Include or exclude glob patterns.

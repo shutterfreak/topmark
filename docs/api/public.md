@@ -130,6 +130,8 @@ For the public API, the returned view is controlled via
 `report="all" | "actionable" | "noncompliant"`. This replaces the older `skip_compliant` /
 `skip_unsupported` booleans.
 
+{% include-markdown "\_snippets/api-internal-overrides.md" %}
+
 ### Resolution diagnostics (probe API)
 
 For programmatic inspection of file-type and processor resolution, use the high-level probe API:

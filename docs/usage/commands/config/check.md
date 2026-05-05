@@ -82,6 +82,12 @@ ______________________________________________________________________
 
 {% include-markdown "\_snippets/config-resolution.md" %}
 
+Configuration and policy override values shown by this command are public configuration data.
+Internal implementation helpers such as
+\[`PolicyOverrides`\][topmark.config.overrides.PolicyOverrides] and
+\[`ConfigOverrides`\][topmark.config.overrides.ConfigOverrides] are not part of the user-facing CLI
+or Python API contract.
+
 ______________________________________________________________________
 
 ## When to use

@@ -30,9 +30,10 @@ TopMark supports layered configuration with explicit precedence:
   [Config-loading behaviour](./discovery.md#config-loading-behaviour-toml-level)).
 - `relative_to` affects only header metadata (e.g., `file_relpath`), not discovery.
 
-TopMark also provides an inspection mode via `topmark config dump --show-layers` that exposes
-**layered configuration provenance**. This shows how the final configuration is constructed from
-individual TOML sources and CLI overrides, including their original TOML fragments.
+TopMark also provides an inspection mode via
+[`topmark config dump --show-layers`](../usage/commands/config/dump.md) that exposes **layered
+configuration provenance**. This shows how the final configuration is constructed from individual
+TOML sources and CLI overrides, including their original TOML fragments.
 
 During loading, TopMark first validates each whole-source TOML fragment (unknown sections, unknown
 keys, malformed section shapes, missing known sections, etc.). Only the validated layered config
@@ -83,7 +84,8 @@ See Also:
   used by `topmark config init` (rendered from the bundled example TOML resource
   `src/topmark/toml/topmark-example.toml`)
 - API docs:
-  - `resolve_toml_sources_and_build_config_draft()`
-  - `Config`, `MutableConfig`
+  - \[`resolve_toml_sources_and_build_config_draft()`\][topmark.config.resolution.bridge.resolve_toml_sources_and_build_config_draft]
+  - \[`Config`\][topmark.config.model.Config],
+    \[`MutableConfig`\][topmark.config.model.MutableConfig]
 - Usage: [`config dump`](../usage/commands/config/dump.md) for inspecting the effective
   configuration and layered provenance

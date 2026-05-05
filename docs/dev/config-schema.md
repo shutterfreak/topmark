@@ -32,15 +32,20 @@ from `topmark.toml` and from `[tool.topmark]` in `pyproject.toml`.
 > - Markdown and machine outputs always reflect the full flattened compatibility view, independent
 >   of TEXT-only verbosity controls.
 
+{% include-markdown "\_snippets/api-internal-overrides.md" %}
+
+At this layer, override handling is expressed as plain mapping data; internal typed override objects
+are introduced later during CLI/API orchestration and are not part of the public schema.
+
 ```md
 `strict_config_checking` is a **TOML-source-local config-loading option**, not a
-layered `Config` field. It is resolved from `[config]` / `[tool.topmark.config]`
+layered [`Config`][topmark.config.model.Config] field. It is resolved from `[config]` / `[tool.topmark.config]`
 during TOML source resolution and applied after layered config merging. In the
 current implementation, its effective value governs staged config-loading
 validation evaluated across TOML-source, merged-config, and
 runtime-applicability diagnostics.
 
-This distinction matters for `topmark config dump --show-layers`:
+This distinction matters for [`topmark config dump --show-layers`](../usage/commands/config/dump.md):
 - the human-facing layered TOML export exposes source-local TOML fragments under
   `[[layers]].toml.*`
 - the machine-readable layered export exposes the same source-local TOML
@@ -58,7 +63,7 @@ deserialized:
 - validation is source-local and happens per TOML file during loading
 
 After this step, only the **layered config fragment** is passed to the config layer
-(`MutableConfig`) for value parsing and normalization.
+(\[`MutableConfig`\][topmark.config.model.MutableConfig]) for value parsing and normalization.
 
 At this boundary, diagnostics remain **staged**; flattening into a single compatibility view is
 performed only at reporting, exception, and machine-output boundaries.
@@ -78,11 +83,13 @@ during staged config-loading/preflight validation.
 
 This means:
 
-- TOML schema validation is handled in `topmark.toml`
-- config value/type validation is handled in `topmark.config` as staged validation logs
-  (merged-config and runtime-applicability stages)
-- layered config deserialization (`mutable_config_from_layered_toml_table`) assumes schema
-  validation already happened, but still performs defensive parsing for API and test inputs
+- TOML schema validation is handled in \[`topmark.toml`\][topmark.toml]
+- config value/type validation is handled in \[`topmark.config`\][topmark.config] as staged
+  validation logs (merged-config and runtime-applicability stages)
+- layered config deserialization
+  (\[`mutable_config_from_layered_toml_table`\][topmark.config.io.deserializers.mutable_config_from_layered_toml_table])
+  assumes schema validation already happened, but still performs defensive parsing for API and test
+  inputs
 
 ```yaml
 topmark:
@@ -249,7 +256,8 @@ topmark:
 
 The equivalent CLI values use hyphens for the non-default modes: `add-only` and `update-only`.
 
-This policy applies only to `check`. It affects dry-run reporting, apply behavior, API result views,
-and outcome bucketing. It does not apply to `strip` or `probe`, and safety gates still take
-precedence: malformed headers, unreadable files, unsupported files, blocked filesystem states, and
-other non-mutable conditions are not made mutable by this policy.
+This policy applies only to [`check`](../usage/commands/check.md). It affects dry-run reporting,
+apply behavior, API result views, and outcome bucketing. It does not apply to
+[`strip`](../usage/commands/strip.md) or [`probe`](../usage/commands/probe.md), and safety gates
+still take precedence: malformed headers, unreadable files, unsupported files, blocked filesystem
+states, and other non-mutable conditions are not made mutable by this policy.

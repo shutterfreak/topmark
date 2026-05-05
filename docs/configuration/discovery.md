@@ -17,10 +17,12 @@ TopMark merges configuration from multiple sources with **clear precedence** and
 
 TopMark now distinguishes clearly between:
 
-- **whole-source TOML validation** (`topmark.toml`), which validates unknown sections/keys,
-  malformed section shapes, and emits INFO diagnostics for missing known sections per TOML source
-- **layered config deserialization and merge** (`topmark.config`), which consumes only the validated
-  layered fragment and performs value parsing, normalization, and merge semantics
+- **whole-source TOML validation** (\[`topmark.toml`\][topmark.toml]), which validates unknown
+  sections/keys, malformed section shapes, and emits INFO diagnostics for missing known sections per
+  TOML source
+- **layered config deserialization and merge** (\[`topmark.config`\][topmark.config]), which
+  consumes only the validated layered fragment and performs value parsing, normalization, and merge
+  semantics
 
 ______________________________________________________________________
 
@@ -65,9 +67,10 @@ Configuration is discovered as follows (lowest → highest precedence):
 
 ### Layered provenance (inspection)
 
-When using `topmark config dump --show-layers`, this discovery and merge process is exposed as a
-**layered provenance view**. Each layer corresponds to one of the sources described above (defaults,
-user config, project configs, `--config`, CLI) and includes the original source-local TOML fragment.
+When using [`topmark config dump --show-layers`](../usage/commands/config/dump.md), this discovery
+and merge process is exposed as a **layered provenance view**. Each layer corresponds to one of the
+sources described above (defaults, user config, project configs, `--config`, CLI) and includes the
+original source-local TOML fragment.
 
 This layered view is inspection-oriented and does not change merge semantics; it simply makes the
 effective precedence and contributions of each layer explicit. The stored TOML fragments correspond
@@ -111,6 +114,12 @@ apply. The distinction between configuration and runtime settings is important:
 - [**Runtime overlays**](#runtime-overlays) are applied after config resolution and do not originate
   from TOML files.
 
+{% include-markdown "\_snippets/api-internal-overrides.md" %}
+
+At this configuration layer, all override intent is expressed as plain mapping data. Internal typed
+override objects are introduced later during CLI/API orchestration and are not part of the public
+configuration surface.
+
 ### Layered configuration settings
 
 The following settings are defined in configuration files and participate in layered merging across
@@ -151,7 +160,7 @@ config merging. Instead, they are resolved once during TOML source discovery and
 layered merging.
 
 These TOML-source-local options are still validated as part of whole-source TOML loading, but they
-do not become layered `Config` fields.
+do not become layered \[`Config`\][topmark.config.model.Config] fields.
 
 The current `strict_config_checking` name comes from the earlier single-"config" architecture. In
 TopMark's current layered TOML → Config → Runtime model, its effective behavior is broader: it
@@ -169,7 +178,8 @@ Key properties:
 
 - These values are resolved from TOML sources after TOML-layer validation and before building the
   layered config draft.
-- They are **not part of `Config` / `MutableConfig` merge semantics**.
+- They are **not part of \[`Config`\][topmark.config.model.Config] /
+  \[`MutableConfig`\][topmark.config.model.MutableConfig] merge semantics**.
 - Effective validity is evaluated across the staged validation logs rather than a single
   undifferentiated diagnostic pool.
 - Effective strictness is determined as:
@@ -190,8 +200,8 @@ strict_config_checking = true
 
 This distinction is also visible in layered provenance output:
 
-- In human output (`config dump --show-layers`), source-local TOML fragments are rendered under
-  `[[layers]].toml.*`.
+- In human output ([`config dump --show-layers`](../usage/commands/config/dump.md)), source-local
+  TOML fragments are rendered under `[[layers]].toml.*`.
 - In machine output, the same validated source-local fragments are exposed under
   `config_provenance.layers[].toml`.
 
@@ -206,7 +216,8 @@ For the full generated reference configuration document, see
 
 The tables distinguish between **current** behavior and **recommended long-term** behavior:
 
-- **Current merge behavior** describes how `MutableConfig.merge_with()` behaves today.
+- **Current merge behavior** describes how
+  \[`MutableConfig.merge_with()`\][topmark.config.model.MutableConfig.merge_with] behaves today.
 - **Recommended long-term behavior** describes the more explicit layered mental model TopMark is
   moving toward as config provenance and per-path effective configs evolve.
 
@@ -278,7 +289,7 @@ root = true
 include_patterns = ["src/**/*.py"]
 ```
 
-Running `topmark check` in `repo/app/` will:
+Running [`topmark check`](../usage/commands/check.md) in `repo/app/` will:
 
 1. Use `repo/` as part of the project chain (because it contains a config),
 1. Stop searching parents above `repo/`,

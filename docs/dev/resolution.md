@@ -55,7 +55,7 @@ Path-based resolution is implemented in
 
 The main public entry points are:
 
-- \[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path]
+- \[\[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path]\][topmark.resolution.filetypes.probe_resolution_for_path]
 
 These entry points participate only in **path-based runtime resolution**. They do not surface or
 consume layered config provenance payloads such as the human-facing `[[layers]]` export or the
@@ -63,6 +63,12 @@ machine-readable `config_provenance` payload used by `topmark config dump --show
 
 They operate after staged config-loading/preflight validation has completed and the effective
 configuration is finalized.
+
+{% include-markdown "\_snippets/api-internal-overrides.md" %}
+
+At this layer, path-based resolution consumes the already-finalized effective configuration. Public
+API callers provide mapping-based inputs; internal typed override objects are introduced earlier by
+CLI/API orchestration and are not part of the resolver contract.
 
 See also:
 
@@ -77,7 +83,7 @@ ______________________________________________________________________
 ## Probe-based resolution (1.0 contract)
 
 TopMark 1.0 introduces a probe-first resolution model exposed via
-\[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path].
+\[\[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path]\][topmark.resolution.filetypes.probe_resolution_for_path].
 
 This function returns a
 **\[`ResolutionProbeResult`\][topmark.resolution.probe.ResolutionProbeResult]** containing:
@@ -102,7 +108,7 @@ represented as synthetic probe results with `status="filtered"` and one of:
   and maps it to pipeline state
 
 - \[`ProberStep`\][topmark.pipeline.steps.prober.ProberStep] exposes the same data for
-  `topmark probe`
+  [`topmark probe`](../usage/commands/probe.md)
 
 This unifies:
 
@@ -110,11 +116,20 @@ This unifies:
 - machine output (JSON / NDJSON)
 - pipeline resolution behaviour
 
-Callers should use `probe_resolution_for_path()` when they need path-based resolution details.
+Callers should use
+\[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path] when they
+need path-based resolution details.
 
-Note that `probe_resolution_for_path()` only applies to paths that passed discovery filtering. The
-`topmark probe` command augments these results with discovery-level explanations for explicitly
-requested paths that were filtered before probing.
+For stable integrations, prefer \[`topmark.api.probe()`\][topmark.api.probe] which returns
+normalized public DTOs.
+\[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path] is an
+advanced helper that exposes internal probe structures and is not part of the
+\[`topmark.api`\][topmark.api] stability contract.
+
+Note that \[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path]
+only applies to paths that passed discovery filtering. The
+[`topmark probe`](../usage/commands/probe.md) command augments these results with discovery-level
+explanations for explicitly requested paths that were filtered before probing.
 
 ______________________________________________________________________
 
@@ -123,8 +138,8 @@ ______________________________________________________________________
 Candidate generation is performed by
 \[`get_file_type_candidates_for_path()`\][topmark.resolution.filetypes.get_file_type_candidates_for_path].
 
-For each effective `FileType`, the resolver evaluates name-based signals and, when allowed, optional
-content-based signals.
+For each effective \[`FileType`\][topmark.filetypes.model.FileType], the resolver evaluates
+name-based signals and, when allowed, optional content-based signals.
 
 ### Name-based signals
 
@@ -220,7 +235,7 @@ In practice, this means:
 - if score and namespace are equal, local key is used as the final stable tie-breaker
 
 This policy guarantees that the same path, content, and effective registry state always produce the
-same winning `FileType`.
+same winning \[`FileType`\][topmark.filetypes.model.FileType].
 
 TopMark currently uses a deterministic winner-selection policy rather than an ambiguity error
 policy.
@@ -253,17 +268,18 @@ ______________________________________________________________________
 ## Logging and observability
 
 When multiple candidates share the top score,
-\[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path] records
-the tie-break outcome in the returned `ResolutionProbeResult`.
+\[\[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path]\][topmark.resolution.filetypes.probe_resolution_for_path]
+records the tie-break outcome in the returned
+\[`ResolutionProbeResult`\][topmark.resolution.probe.ResolutionProbeResult].
 
 The probe result surfaces the full candidate set, scores, match signals, selected candidate, and
 reason (`selected_highest_score` or `selected_by_tie_break`). This makes resolution decisions fully
 observable without relying on debug logging alone.
 
 For explicitly requested paths that were filtered before probing, observability is provided through
-synthetic probe results emitted by `topmark probe`, rather than through candidate-level data. The
-reported reason distinguishes whether the path was excluded by path filters, file-type filters, or a
-generic discovery-filter fallback.
+synthetic probe results emitted by [`topmark probe`](../usage/commands/probe.md), rather than
+through candidate-level data. The reported reason distinguishes whether the path was excluded by
+path filters, file-type filters, or a generic discovery-filter fallback.
 
 This makes ambiguous-but-resolvable situations observable during development and debugging without
 turning them into hard failures.
@@ -277,8 +293,8 @@ The log includes:
 This helps explain why a particular file type won when multiple strong candidates existed.
 
 In addition, probe-based resolution surfaces the full candidate set, scores, and match signals
-through `ResolutionProbeResult`. This makes resolution decisions fully observable without relying on
-debug logging alone.
+through \[`ResolutionProbeResult`\][topmark.resolution.probe.ResolutionProbeResult]. This makes
+resolution decisions fully observable without relying on debug logging alone.
 
 ______________________________________________________________________
 
