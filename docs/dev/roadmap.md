@@ -83,6 +83,9 @@ Key improvements:
   - **renderers** (human output)
 - Enforced **Click-free rendering**
 - Introduced **semantic styling (StyleRole)** instead of inline coloring
+- Froze the 1.0 color-backend decision: keep `yachalk` because styling is confined to CLI
+  presentation internals through `StyleRole`, `Theme`, and string-in/string-out styling helpers;
+  defer any Rich migration until after 1.0.
 - Standardized TEXT verbosity model (`default`, `-v`, `-vv`).
 - Unified summary generation via pipeline outcomes instead of ad-hoc hint logic.
 - Introduced a strongly typed `TopmarkCliState` for Click invocation state.
@@ -676,6 +679,10 @@ Human output remaining work:
     registry commands) intentionally do not support `--quiet`.
 - Focused human-output tests added for version, diagnostics, config, registry, and pipeline command
   groups.
+- Color backend decision frozen for 1.0:
+  - keep `yachalk` as an internal CLI presentation dependency
+  - keep semantic styling routed through `StyleRole`, `Theme`, `TextStyler`, and `maybe_style()`
+  - defer Rich / `rich-click` migration until after 1.0 unless a concrete release blocker appears
 - Finalize hint-ordering strategy.
   - Continue keeping presentation logic fully out of CLI command functions.
 
@@ -951,7 +958,9 @@ These are release blockers unless explicitly deferred with a documented rational
 
 #### [Must] Tooling / dependency / release ecosystem
 
-- [ ] Decision made on long-term color backend policy (`yachalk` confinement or removal)
+- [x] Decision made on long-term color backend policy
+  - [x] keep `yachalk` for 1.0 because it is confined to CLI presentation internals
+  - [x] Rich / `rich-click` migration deferred post-1.0 unless a concrete blocker appears
 - [ ] Formatter/tool configuration split stabilized and documented
   - [ ] `.mdformat.toml`
   - [ ] `.taplo.toml`
@@ -1039,7 +1048,8 @@ These items are explicitly reasonable to defer.
 - [ ] Further Markdown layout evolution (tables, grouped sections, richer structures) within the
   document-oriented output contract
 - [ ] Generalize or refine the “primary hint” concept
-- [ ] Evaluate theme/style configurability and semantic style exposure
+- [ ] Evaluate Rich / `rich-click` migration and broader theme/style configurability once 1.0 is
+  released
 
 #### [Post-1.0] Tooling / ecosystem
 
