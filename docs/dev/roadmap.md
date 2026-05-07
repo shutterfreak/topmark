@@ -713,6 +713,10 @@ Remaining work:
   documented explicitly in contributor-facing CI guidance.
 - Keep validating that Nox, pre-commit, local `.venv`, editor integrations, CI jobs, and the
   artifact-based release workflow all consume the same formatter/tool configuration.
+- Keep MkDocs 1.x as the accepted documentation generator for the `v1.0.0b1` beta gate because the
+  current strict docs build, link checks, generated API pages, and release validation are green.
+  Evaluate ProperDocs as a post-beta / post-1.0 tooling follow-up unless MkDocs becomes a concrete
+  release blocker before final `1.0.0`.
 
 ### Human-facing policy / behavior questions
 
@@ -966,13 +970,13 @@ These are release blockers unless explicitly deferred with a documented rational
     pre-commit, and nox validation paths
   - [x] `.taplo.toml` is the TOML formatter/linter configuration shared by Taplo CLI, pre-commit,
     CI, and editor integrations
-- [ ] Tooling environments verified to consume the same formatter/plugin/tool expectations:
-  - [ ] nox
-  - [ ] pre-commit
-  - [ ] local `.venv`
-  - [ ] editor integrations
-  - [ ] CI
-  - [ ] artifact-based release workflow
+- [x] Tooling environments verified to consume the same formatter/plugin/tool expectations:
+  - [x] nox
+  - [x] pre-commit
+  - [x] local `.venv`
+  - [x] editor integrations
+  - [x] CI
+  - [x] artifact-based release workflow
 - [x] Artifact-based CI → release pipeline implemented and documented
 - [x] Positive release-path rehearsal accepted as complete for the path to `1.0.0`
   - [x] prerelease flow (`v1.0.0aN`) validated
@@ -1023,19 +1027,21 @@ release workflow checks rather than dedicated pytest tests.
   - [x] `make test` (runs `nox -s qa`)
   - [x] `make release-check`
   - [x] `make release-full`, or an equivalent CI-backed full release gate, passes
-- [ ] Tooling parity validation completed
-  - [ ] nox formatter/linter behavior matches pre-commit behavior
-  - [ ] local `.venv` behavior matches nox expectations where documented
-  - [ ] VS Code/editor integration expectations match `.mdformat.toml`, `.taplo.toml`, Ruff, and
+- [x] Tooling parity validation completed
+  - [x] nox formatter/linter behavior matches pre-commit behavior
+  - [x] local `.venv` behavior matches nox expectations where documented
+  - [x] VS Code/editor integration expectations match `.mdformat.toml`, `.taplo.toml`, Ruff, and
     Pyright configuration
-  - [ ] CI uses the same formatter, linter, type-checking, docs, and packaging expectations as the
+  - [x] CI uses the same formatter, linter, type-checking, docs, and packaging expectations as the
     documented local release gates
 - [ ] Final beta freeze review completed
   - [ ] no alpha-only semantics remain exposed in CLI help, docs, or machine output
   - [ ] warning and error wording remains consistent with the frozen command-applicability and
     exit-code contracts
-  - [ ] accepted imperfections are recorded explicitly as post-1.0 follow-up or non-blocking beta
+  - [x] accepted imperfections are recorded explicitly as post-1.0 follow-up or non-blocking beta
     notes
+    - [x] MkDocs 1.x remains accepted for `v1.0.0b1`; ProperDocs evaluation is deferred unless the
+      current documentation toolchain becomes a concrete release blocker
 
 ### Strongly recommended (but not blockers)
 
@@ -1115,6 +1121,8 @@ These items are explicitly reasonable to defer.
 #### [Post-1.0] Tooling / ecosystem
 
 - [ ] Revisit long-term CLI framework choice (Click vs alternative)
+- [ ] Evaluate ProperDocs as a potential successor to MkDocs for documentation generation once the
+  current beta gate has closed
 - [ ] Further refactor GitHub workflow structure into reusable workflow/release-infra patterns if
   still worthwhile
 
