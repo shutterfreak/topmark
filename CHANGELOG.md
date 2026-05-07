@@ -18,6 +18,291 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ______________________________________________________________________
 
+## [1.0.0a12] - 2026-05-07
+
+This twelfth **1.0 alpha release** finalizes two remaining pre-1.0 public-boundary contracts:
+
+1. the stable public probe API; and
+1. the qualified-vs-local file type identifier semantics used by CLI filters, TOML configuration,
+   API overlays, policy resolution, resolver filtering, diagnostics, and registry-facing APIs.
+
+It introduces `topmark.api.probe()` as the stable, read-only public API counterpart to the
+`topmark probe` CLI command. Probe results are exposed through small, frozen DTOs instead of raw
+resolver enums, registry objects, pipeline contexts, or synthetic contexts.
+
+It also freezes TopMark's file type identifier contract: public inputs may use either canonical
+qualified identifiers such as `topmark:python`, or local identifiers such as `python` when the local
+identifier is unambiguous. Internally, TopMark now normalizes file type filters and `policy_by_type`
+keys to canonical qualified keys.
+
+This release continues the 1.0 boundary-freeze work from earlier alphas by aligning CLI/API probe
+parity, classifying typed override helpers as internal bridge objects, freezing canonical file type
+identifier behavior, and documenting the resulting public/internal boundaries across the user and
+developer documentation.
+
+### ⚠️ Breaking Changes - 1.0.0a12
+
+- **Frozen `Config.policy_by_type` keys are now canonical qualified file type identifiers.**
+
+  - Previously, per-file-type policy maps could remain keyed by local identifiers such as `python`.
+  - Frozen config now stores canonical qualified keys such as `topmark:python`.
+  - Internal callers that directly inspect `Config.policy_by_type` or call low-level policy helpers
+    must use canonical qualified keys.
+
+- **Runtime effective-policy lookup now uses canonical qualified file type identifiers.**
+
+  - `ProcessingContext.get_effective_policy()` now looks up policies by
+    `ctx.file_type.qualified_key` instead of `ctx.file_type.local_key`.
+  - Direct internal calls such as `effective_policy(cfg, "python")` no longer match a normalized
+    `topmark:python` policy entry; use `effective_policy(cfg, "topmark:python")` instead.
+
+- **Configuration, CLI, API, and machine-output consumers should expect normalized identifiers.**
+
+  - File type filters and `policy_by_type` entries supplied as local identifiers may be emitted as
+    canonical qualified identifiers after configuration freeze.
+  - Downstream tooling that relied on preserving the exact user-supplied identifier spelling should
+    compare canonical keys instead.
+
+### Highlights — 1.0.0a12
+
+- Added `topmark.api.probe()` as the stable public Python API for resolution diagnostics
+- Introduced normalized public probe DTOs for run, file, and candidate results
+- Aligned probe API behavior with the `topmark probe` CLI command
+- Preserved missing and filtered explicit inputs in API probe results
+- Froze qualified-vs-local file type identifier semantics for 1.0
+- Normalized CLI/API/config file type filters to canonical qualified keys
+- Added qualified identifier support for `policy_by_type`
+- Normalized frozen `policy_by_type` maps to canonical qualified keys
+- Updated runtime policy lookup to use canonical qualified file type identifiers
+- Added registry, config, resolver, CLI, API, TOML, and policy regression coverage
+- Kept resolver internals, pipeline contexts, synthetic contexts, and typed override helpers outside
+  the stable public API contract
+- Added shared documentation for file type identifier semantics and the public/internal override
+  boundary
+- Reorganized registry and plugin documentation around a dedicated registry model reference
+
+### Added — 1.0.0a12
+
+- **Public probe API**
+
+  - Added `topmark.api.probe()` as a read-only API entry point for file-type and processor
+    resolution diagnostics.
+  - Added stable public DTOs:
+    - `ProbeRunResult`
+    - `ProbeFileResult`
+    - `ProbeCandidateInfo`
+  - Exposed `probe` and probe DTOs via `topmark.api.__all__`.
+
+- **Qualified/local file type identifier contract**
+
+  - Added canonical normalization of public file type identifiers to qualified keys such as
+    `topmark:python` during config freeze.
+  - Added qualified identifier support for:
+    - `include_file_types`
+    - `exclude_file_types`
+    - `policy_by_type`
+    - API overlays
+    - resolver filtering helpers
+  - Accepted local identifiers such as `python` only when unambiguous in the effective file type
+    registry.
+  - Added deterministic handling for ambiguous, unknown, and malformed file type identifiers.
+
+- **Probe result model**
+
+  - API probe results include:
+    - per-path probe status and reason strings
+    - selected file type and processor, when resolved
+    - normalized candidate information
+    - selected/rank/match-signal fields for candidate interpretation
+  - Explicit missing paths are preserved as error results.
+  - Explicit inputs filtered before file-type probing are preserved as filtered probe results.
+
+- **Tests**
+
+  - Added focused API tests for `topmark.api.probe()` covering:
+    - empty explicit directories
+    - resolved Python files
+    - unsupported explicit files
+    - missing explicit paths
+    - file-type-filtered explicit inputs
+    - stable candidate DTO shape
+  - Added registry identity tests for:
+    - local identifier resolution
+    - qualified identifier resolution
+    - default namespace behavior
+    - ambiguous local identifiers
+    - malformed qualified identifiers
+  - Added config and TOML regression coverage for `policy_by_type` normalization, ambiguity,
+    malformed identifiers, and unknown identifiers.
+  - Added API, CLI, and resolver regression coverage for local and qualified file type filters.
+  - Updated public API import coverage and the public API snapshot for the new stable API surface.
+
+- **Documentation snippets and pages**
+
+  - Added `_snippets/no-stdin-option.md` to keep STDIN option guidance consistent across command and
+    usage documentation.
+  - Added `_snippets/api-internal-overrides.md` to keep the public/internal override-boundary
+    wording consistent across API, configuration, architecture, schema, and resolution
+    documentation.
+  - Added `_snippets/file-type-identifiers.md` as the canonical reusable wording for local vs
+    qualified file type identifiers.
+  - Reused shared documentation snippets for file type identifier semantics, STDIN handling, and
+    public/internal API boundary wording across user-facing and developer-facing documentation.
+  - Added user-facing usage overview pages:
+    - `docs/usage/cli.md`
+    - `docs/usage/configuration.md`
+  - Added `docs/dev/registry-model.md` as the dedicated registry architecture, identity, binding,
+    overlay, and plugin-integration reference.
+
+### Changed — 1.0.0a12
+
+- **Configuration normalization**
+
+  - `MutableConfig.freeze()` now normalizes `include_file_types`, `exclude_file_types`, and
+    `policy_by_type` keys to canonical qualified file type identifiers.
+  - Unknown identifiers are ignored diagnostically.
+  - Malformed qualified identifiers are ignored diagnostically.
+  - Ambiguous local identifiers are ignored diagnostically and require the qualified form.
+  - Overlapping include/exclude file type filters are compared after canonical normalization.
+  - Duplicate local/qualified `policy_by_type` entries that normalize to the same qualified key are
+    merged deterministically.
+
+- **Runtime policy lookup**
+
+  - `ProcessingContext.get_effective_policy()` now looks up per-file-type policies by canonical
+    qualified file type key.
+  - This aligns frozen config, runtime policy lookup, resolver output, and registry identity
+    semantics.
+
+- **Resolver and file selection**
+
+  - Resolver filtering now evaluates effective file type candidates by canonical qualified key while
+    remaining tolerant of direct helper calls that pass local identifiers.
+  - File selection diagnostics now distinguish unknown, malformed, and ambiguous configured file
+    type identifiers more explicitly.
+  - Resolver debug logging now reports qualified file type keys.
+
+- **API runtime orchestration**
+
+  - Added a probe-specific API runtime path that mirrors CLI probe behavior while returning public
+    DTOs.
+  - Refactored shared API runtime setup through `PreparedApiRun` so `check`, `strip`, and `probe`
+    share config discovery, runtime policy overlays, writer-option handling, selected-file
+    resolution, and per-path config setup.
+  - Kept `topmark.api.runtime` internal; public callers should use `topmark.api.probe()`,
+    `topmark.api.check()`, and `topmark.api.strip()`.
+
+- **Synthetic probe handling**
+
+  - Moved shared synthetic probe helpers into `topmark.pipeline.synthetic`.
+  - Reused synthetic contexts internally so CLI output, machine output, API summaries, and exit-code
+    selection remain aligned.
+  - Prevented missing explicit paths from being reported twice as both hard errors and filtered
+    probe results.
+
+- **Public/internal API boundary**
+
+  - Clarified that `topmark.api.probe()` is the stable public probe surface.
+  - Clarified that low-level resolver helpers such as `probe_resolution_for_path()` are advanced /
+    internal debugging surfaces outside the `topmark.api` stability contract.
+  - Ensured probe API results expose normalized strings and DTOs rather than internal enum classes
+    or implementation objects.
+
+- **Configuration override boundary**
+
+  - Classified `PolicyOverrides` and `ConfigOverrides` as internal typed bridge objects used by
+    CLI/API orchestration.
+  - Clarified that public Python callers should use plain mapping-based inputs through `config=...`,
+    `policy=...`, and `policy_by_type=...` instead of constructing internal override dataclasses.
+  - Documented the distinction between public configuration data and internal override machinery in
+    user-facing configuration, policy, and command documentation.
+
+- **File type identifier guidance**
+
+  - Replaced local-only or ambiguous wording with a single contract:
+    - qualified identifiers are canonical internally;
+    - local identifiers are accepted only when unambiguous;
+    - ambiguous local identifiers require the qualified form.
+  - Documented that CLI filters, TOML configuration, API overlays, machine output, resolver
+    diagnostics, and registry-facing APIs share this identifier model.
+
+- **Plugin and registry documentation alignment**
+
+  - Split detailed registry architecture, binding, overlay, and identity semantics into
+    `docs/dev/registry-model.md`.
+  - Updated plugin documentation to focus on plugin authoring while linking to the registry model
+    for lower-level registry details.
+  - Updated registry command documentation to describe effective composed registry views and
+    canonical qualified identity fields.
+
+### Fixed — 1.0.0a12
+
+- Fixed `policy_by_type` inconsistency where filters accepted qualified identifiers but per-type
+  policy keys were effectively local-only.
+- Fixed runtime policy lookup missing per-type policies after canonical key normalization.
+- Fixed resolver and CLI/API filter behavior so local and qualified file type identifiers select the
+  same file types when unambiguous.
+- Fixed config freeze behavior so ambiguous local `policy_by_type` identifiers do not silently map
+  to an arbitrary namespace.
+- Fixed malformed qualified identifiers such as `:python`, `topmark:`, and `topmark:python:extra`
+  being treated as ordinary unknown identifiers.
+- Fixed documentation drift around registry helpers, plugin identity guidance, command filtering,
+  machine-output identity fields, and public mapping-based API overlays.
+
+### Documentation — 1.0.0a12
+
+- Updated README with:
+  - a public `api.probe()` usage example
+  - local and qualified file type filter examples
+  - canonical `policy_by_type` examples
+  - API identifier-semantics guidance
+- Updated public API documentation to describe:
+  - `topmark.api.probe()`
+  - probe DTOs
+  - missing and filtered input behavior
+  - public/internal resolver boundary
+- Updated architecture documentation to describe the API probe boundary and synthetic-context model.
+- Updated pipeline documentation to distinguish `ProberStep` from probe orchestration and synthetic
+  probe results.
+- Added reusable file type identifier and STDIN guidance snippets and reused them across user and
+  developer docs.
+- Added and wired new user-facing pages:
+  - CLI overview
+  - Configuration guide
+- Added and wired the new registry model developer page.
+- Updated public and internal API docs to distinguish stable API surfaces from registry and resolver
+  internals.
+- Updated configuration, discovery, schema, filtering, policy, pre-commit, exit-code, global-option,
+  command, machine-output, machine-format, architecture, resolution, plugin, registry, and API
+  stability documentation.
+- Updated all command pages for `check`, `strip`, `probe`, `config`, `registry`, and `version` to
+  align with canonical identifier semantics and effective frozen configuration terminology.
+- Updated `mkdocs.yml` navigation for the new CLI, configuration, and registry model pages.
+- Updated API, configuration, architecture, resolution, policy, filtering, command, and README pages
+  to document the public mapping-based override model.
+- Updated plugin documentation to remove stale registry-helper references.
+- Updated roadmap status to reflect completion of the public probe API, resolution-diagnostics
+  boundary freeze and qualified/local file type identifier semantics freeze.
+
+### Notes — 1.0.0a12
+
+- `topmark.api.probe()` is now considered part of the stable 1.x public API contract.
+- Probe remains read-only and does not perform header inspection, comparison, planning, patching, or
+  mutation.
+- Qualified file type identifiers such as `topmark:python` are the canonical internal identity.
+- Local file type identifiers such as `python` remain accepted at public boundaries only when
+  unambiguous.
+- `policy_by_type`, `include_file_types`, and `exclude_file_types` all support the same identifier
+  forms and normalize to canonical qualified keys internally.
+- `PolicyOverrides` and `ConfigOverrides` are internal implementation details, not stable public API
+  inputs.
+- Public callers should use mapping-based `config`, `policy`, and `policy_by_type` arguments exposed
+  by `topmark.api`.
+- Remaining 1.0 work now focuses on final release validation, documentation build/link checks,
+  packaging rehearsal, and any last release-path polish tracked in the roadmap.
+
+______________________________________________________________________
+
 ## [1.0.0a11] - 2026-05-04
 
 This eleventh **1.0 alpha release** finalizes TopMark’s **CLI command-applicability contract**,
