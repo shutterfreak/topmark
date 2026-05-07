@@ -18,6 +18,75 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ______________________________________________________________________
 
+## [1.0.0a13] – 2026-05-07
+
+This thirteenth **1.0 alpha release** finalizes TopMark’s TOML strictness naming and closes the
+explicit schema-versioning decision for the 1.0 configuration contract.
+
+It renames the alpha-cycle `[config].strict_config_checking` setting to `[config].strict`, updates
+machine-output naming accordingly, and documents the decision not to add an explicit TOML schema
+version key for 1.0. Explicit configuration schema versioning remains deferred until a future
+non-additive schema change requires it.
+
+### ⚠️ Breaking Changes - 1.0.0a13
+
+- The alpha-only TOML setting `[config].strict_config_checking` has been renamed to
+  `[config].strict`.
+  - No compatibility alias is provided because `strict_config_checking` existed only during the 1.0
+    alpha cycle.
+  - Configuration files created against earlier 1.0 alpha releases must rename the key before using
+    `1.0.0a13` or later.
+- The `config check` machine-output payload now emits `strict` instead of `strict_config_checking`.
+  - Consumers of alpha config-check JSON/NDJSON output must update their parsers.
+
+### Highlights — 1.0.0a13
+
+- Renamed `[config].strict_config_checking` to `[config].strict`
+- Updated config-check machine-output naming from `strict_config_checking` to `strict`
+- Added reusable documentation for `[config].strict`
+- Clarified strictness semantics across user, API, developer, and machine-output documentation
+- Decided to defer explicit TOML schema versioning beyond 1.0 until it is actually needed
+- Updated roadmap status for the completed strictness rename and schema-versioning decision
+
+### Changed — 1.0.0a13
+
+- **TOML strictness key**
+
+  - Renamed the source-local strictness key:
+    - old alpha key: `[config].strict_config_checking`
+    - new 1.0 key: `[config].strict`
+  - Standardized code, tests, examples, and documentation on the shorter `strict` terminology.
+  - Clarified that `[config].strict` is a source-local strictness preference for staged
+    configuration, resolution, and runtime-applicability diagnostics.
+
+- **Machine output**
+
+  - Renamed the config-check machine payload field from `strict_config_checking` to `strict`.
+  - Updated machine-output tests to assert the finalized pre-1.0 key name.
+
+- **Configuration schema-versioning decision**
+
+  - Decided not to add a `[config].version` or equivalent schema-version key for 1.0.
+  - Deferred explicit TOML schema versioning until a future non-additive schema change requires it.
+  - Updated the roadmap to mark this decision as complete for the 1.0 freeze.
+
+### Documentation — 1.0.0a13
+
+- Added `_snippets/config-strictness.md` for consistent `[config].strict` wording.
+- Updated README, configuration docs, command pages, API docs, pipeline docs, machine-output docs,
+  contributing docs, and roadmap entries to use `[config].strict`.
+- Removed obsolete documentation references to the alpha-only `strict_config_checking` name.
+- Documented that schema versioning remains intentionally absent from the 1.0 TOML format.
+
+### Notes — 1.0.0a13
+
+- This rename is intentionally completed before the stable 1.0 configuration contract is frozen.
+- `[config].strict` is now the stable 1.0 TOML key for config-loading strictness behavior.
+- Explicit TOML schema versioning is a post-1.0 concern and should be introduced only when a future
+  non-additive schema change makes it necessary.
+
+______________________________________________________________________
+
 ## [1.0.0a12] - 2026-05-07
 
 This twelfth **1.0 alpha release** finalizes two remaining pre-1.0 public-boundary contracts:
