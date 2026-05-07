@@ -79,7 +79,7 @@ class ResolvedTopmarkTomlSource:
     preserved as resolved source records so TOML-source diagnostics can be
     replayed into staged config validation. Only successfully parsed sources
     contribute layered config fragments and TOML-side settings such as writer
-    options or `strict_config_checking`.
+    options or `strict`.
 
     Attributes:
         path: Resolved filesystem path of the TOML source.
@@ -111,14 +111,14 @@ class ResolvedTopmarkTomlSources:
             precedence order (lowest -> highest), excluding built-in defaults.
         writer_options: Resolved non-layered writer preferences using
             highest-precedence non-`None` wins.
-        strict_config_checking: Resolved config-loading strictness using
+        strict: Resolved config-loading strictness using
             highest-precedence non-`None` wins, optionally overridden by the
             explicit function argument to `resolve_topmark_toml_sources()`.
     """
 
     sources: list[ResolvedTopmarkTomlSource]
     writer_options: WriterOptions | None
-    strict_config_checking: bool | None
+    strict: bool | None
 
 
 # ---- Shared helpers ----
@@ -291,7 +291,7 @@ def _resolve_writer_options(
     return resolved
 
 
-def _resolve_strict_config_checking(
+def _resolve_strict(
     sources: list[ResolvedTopmarkTomlSource],
     *,
     explicit_override: bool | None,
@@ -301,7 +301,7 @@ def _resolve_strict_config_checking(
     for source in sources:
         if source.parsed is None:
             continue
-        value: bool | None = source.parsed.config_loading_options.strict_config_checking
+        value: bool | None = source.parsed.config_loading_options.strict
         if value is not None:
             resolved = value
 
@@ -317,7 +317,7 @@ def _resolve_strict_config_checking(
 def resolve_topmark_toml_sources(
     input_paths: Iterable[Path] | None = None,
     extra_config_files: Iterable[Path] | None = None,
-    strict_config_checking: bool | None = None,
+    strict: bool | None = None,
     no_config: bool = False,
 ) -> ResolvedTopmarkTomlSources:
     """Discover, load, and resolve TopMark TOML sources for one run.
@@ -330,7 +330,7 @@ def resolve_topmark_toml_sources(
         1. user-scoped TOML source
         2. discovered project/local TOML sources (root-most -> nearest)
         3. explicit extra TOML sources (in the order provided)
-        4. explicit `strict_config_checking` function argument, if provided
+        4. explicit `strict` function argument, if provided
 
     Args:
         input_paths: Optional discovery anchors. The first path is used to pick
@@ -340,7 +340,7 @@ def resolve_topmark_toml_sources(
         extra_config_files: Explicit TOML source files to append after
             discovered sources. Later files have higher precedence than earlier
             ones.
-        strict_config_checking: Optional explicit override for resolved config
+        strict: Optional explicit override for resolved config
             loading strictness.
         no_config: If `True`, skip all discovered TOML sources (user + project)
             and only consider explicit extra TOML sources.
@@ -370,13 +370,13 @@ def resolve_topmark_toml_sources(
         _append_loaded_source(source_entries, Path(extra), kind="explicit")
 
     resolved_writer: WriterOptions | None = _resolve_writer_options(source_entries)
-    resolved_strict: bool | None = _resolve_strict_config_checking(
+    resolved_strict: bool | None = _resolve_strict(
         source_entries,
-        explicit_override=strict_config_checking,
+        explicit_override=strict,
     )
 
     return ResolvedTopmarkTomlSources(
         sources=source_entries,
         writer_options=resolved_writer,
-        strict_config_checking=resolved_strict,
+        strict=resolved_strict,
     )

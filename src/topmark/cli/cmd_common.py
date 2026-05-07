@@ -325,7 +325,7 @@ def build_resolved_toml_sources_and_config_for_plan(
     plan: InputPlan,
     no_config: bool,
     config_paths: list[str],
-    strict_config_checking: bool | None,
+    strict: bool | None,
     include_file_types: list[str],
     exclude_file_types: list[str],
     align_fields: bool | None,
@@ -358,7 +358,7 @@ def build_resolved_toml_sources_and_config_for_plan(
             options.
         no_config: Whether to skip discovered config files.
         config_paths: Explicit extra config files passed on the CLI.
-        strict_config_checking: Optional CLI override for strict config
+        strict: Optional CLI override for strict config
             checking. `None` means that strictness should be taken from the
             resolved TOML sources.
         include_file_types: CLI include file-type filters.
@@ -398,7 +398,7 @@ def build_resolved_toml_sources_and_config_for_plan(
     resolved_toml, draft = resolve_toml_sources_and_build_config_draft(
         input_paths=discovery_inputs,
         extra_config_files=extra_config_files,
-        strict_config_checking=strict_config_checking,
+        strict=strict,
         no_config=no_config,
     )
 

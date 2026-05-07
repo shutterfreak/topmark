@@ -56,7 +56,7 @@ class Toml:
     KEY_ROOT: Final[str] = "root"
 
     # Strict TOML config checking (fail on warnings)
-    KEY_STRICT_CONFIG_CHECKING: Final[str] = "strict_config_checking"
+    KEY_STRICT: Final[str] = "strict"
 
     # [header]
     SECTION_HEADER: Final[str] = "header"

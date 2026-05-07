@@ -135,7 +135,7 @@ def test_config_check_json_config_diagnostics_shape() -> None:
 
     assert "diagnostics" in diagnostics
     assert "diagnostic_counts" in diagnostics
-    assert "strict_config_checking" not in diagnostics
+    assert "strict" not in diagnostics
 
 
 def test_config_check_json_flattens_staged_diagnostics_into_payload(tmp_path: Path) -> None:
@@ -200,7 +200,7 @@ def test_config_check_json_summary_shape() -> None:
 
     assert "command" in config_check_summary
     assert "ok" in config_check_summary
-    assert "strict_config_checking" in config_check_summary
+    assert "strict" in config_check_summary
 
 
 def test_config_check_json_uses_config_check_payload_not_legacy_summary_key() -> None:
@@ -310,10 +310,10 @@ def test_config_check_ndjson_config_diagnostics_record_shape() -> None:
 
     assert "diagnostics" not in diagnostics
     assert "diagnostic_counts" in diagnostics
-    assert "strict_config_checking" not in diagnostics
+    assert "strict" not in diagnostics
 
 
-def test_config_check_ndjson_summary_record_uses_strict_config_checking() -> None:
+def test_config_check_ndjson_summary_record_uses_strict() -> None:
     """Ensure NDJSON summary record uses stable strictness naming."""
     result: Result = run_cli(
         [
@@ -337,7 +337,7 @@ def test_config_check_ndjson_summary_record_uses_strict_config_checking() -> Non
     assert is_mapping(config_check_summary_obj)
     config_check_summary: dict[str, object] = as_object_dict(config_check_summary_obj)
 
-    assert "strict_config_checking" in config_check_summary
+    assert "strict" in config_check_summary
 
 
 def test_config_check_ndjson_third_record_uses_config_check_container_not_summary() -> None:

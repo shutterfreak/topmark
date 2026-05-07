@@ -161,7 +161,7 @@ def is_config_valid(
     a warning or an error diagnostic.
 
     The strictness used here is the effective resolved value of
-    `strict_config_checking`, derived from:
+    `strict`, derived from:
     - an explicit API/CLI override when provided,
     - otherwise the TOML-resolved source-local preference in `resolved`,
     - otherwise non-strict behavior.
@@ -173,15 +173,13 @@ def is_config_valid(
     Args:
         cfg: Frozen or mutable config to validate.
         resolved: Resolved TOML-side state for the current run.
-        override: Optional API/CLI override for `strict_config_checking`.
+        override: Optional API/CLI override for `strict`.
 
     Returns:
         `True` if the config is valid under the effective strictness, else
         `False`.
     """
-    effective_strict: bool = bool(
-        override if override is not None else resolved.strict_config_checking
-    )
+    effective_strict: bool = bool(override if override is not None else resolved.strict)
     return cfg.is_valid(strict=effective_strict)
 
 
@@ -201,7 +199,7 @@ def ensure_config_valid(
     a warning or an error diagnostic.
 
     The strictness used here is the effective resolved value of
-    `strict_config_checking`, derived from:
+    `strict`, derived from:
     - an explicit API/CLI override when provided,
     - otherwise the TOML-resolved source-local preference in `resolved`,
     - otherwise non-strict behavior.
@@ -213,15 +211,13 @@ def ensure_config_valid(
     Args:
         cfg: Frozen or mutable config to validate.
         resolved: Resolved TOML-side state for the current run.
-        override: Optional API/CLI override for `strict_config_checking`.
+        override: Optional API/CLI override for `strict`.
 
     Raises:
         ConfigValidationError: If the config is invalid under the effective
             strictness.
     """  # noqa: DOC502 - documents propagated exceptions from `cfg.ensure_valid()``
-    effective_strict: bool = bool(
-        override if override is not None else resolved.strict_config_checking
-    )
+    effective_strict: bool = bool(override if override is not None else resolved.strict)
     cfg.ensure_valid(strict=effective_strict)
 
 
@@ -330,7 +326,7 @@ def _prepare_toml_and_config_draft_for_api_run(
     return resolve_toml_sources_and_build_config_draft(
         input_paths=tuple(path_list),
         extra_config_files=(),
-        strict_config_checking=None,
+        strict=None,
         no_config=False,
     )
 

@@ -72,7 +72,8 @@
 # Uncomment to mark this TOML source as a discovery boundary:
 # root = true
 
-# Source-local strictness preference for config-resolution / preflight validation.
+# Source-local strictness preference for staged configuration and
+# runtime-applicability diagnostics.
 #
 # Semantics (current implementation):
 #   - Applies to staged config-loading/preflight validation
@@ -84,7 +85,7 @@
 #   - Highest-precedence non-null value wins across discovered TOML sources.
 #   - CLI/API overrides take final precedence for the current run.
 #
-# strict_config_checking = false
+# strict = false
 
 
 # ==========================

@@ -188,7 +188,7 @@ class Config:
 
         Here, `strict` is the effective resolved strictness used for
         config/preflight validation. Callers typically derive it from
-        `strict_config_checking` after applying TOML resolution and any CLI/API
+        `strict` after applying TOML resolution and any CLI/API
         override precedence.
 
         A similar helper exists on `MutableConfig`.
@@ -216,7 +216,7 @@ class Config:
 
         Here, `strict` is the effective resolved strictness used for
         config/preflight validation. Callers typically derive it from
-        `strict_config_checking` after applying TOML resolution and any CLI/API
+        `strict` after applying TOML resolution and any CLI/API
         override precedence.
 
         A similar helper exists on `MutableConfig`.
@@ -230,7 +230,7 @@ class Config:
         if not self.is_valid(strict=strict):
             raise ConfigValidationError(
                 validation_logs=self.validation_logs,
-                strict_config_checking=bool(strict),
+                strict=bool(strict),
             )
 
     def thaw(self) -> MutableConfig:
@@ -365,7 +365,7 @@ class MutableConfig:
 
         Here, `strict` is the effective resolved strictness used for
         config/preflight validation. Callers typically derive it from
-        `strict_config_checking` after applying TOML resolution and any CLI/API
+        `strict` after applying TOML resolution and any CLI/API
         override precedence.
 
         A similar helper exists on `Config`.
@@ -393,7 +393,7 @@ class MutableConfig:
 
         Here, `strict` is the effective resolved strictness used for
         config/preflight validation. Callers typically derive it from
-        `strict_config_checking` after applying TOML resolution and any CLI/API
+        `strict` after applying TOML resolution and any CLI/API
         override precedence.
 
         A similar helper exists on `Config`.
@@ -407,7 +407,7 @@ class MutableConfig:
         if not self.is_valid(strict=strict):
             raise ConfigValidationError(
                 validation_logs=self.validation_logs,
-                strict_config_checking=bool(strict),
+                strict=bool(strict),
             )
 
     # ---------------------------- Build/freeze ----------------------------

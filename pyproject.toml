@@ -383,8 +383,8 @@ version_file = "src/topmark/_version.py"
 
 [tool.topmark]
   [tool.topmark.config]
-  root                   = true
-  strict_config_checking = true
+  root   = true
+  strict = true
 
   [tool.topmark.fields]
   project   = "TopMark"

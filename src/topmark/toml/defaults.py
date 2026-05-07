@@ -121,7 +121,7 @@ def _build_default_config_metadata_toml() -> TomlTable:
     """
     return {
         Toml.SECTION_CONFIG: {
-            Toml.KEY_STRICT_CONFIG_CHECKING: False,
+            Toml.KEY_STRICT: False,
         },
     }
 

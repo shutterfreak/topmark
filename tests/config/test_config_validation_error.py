@@ -61,7 +61,7 @@ def _extract_error_context(error: Exception) -> object:
 
 
 @pytest.mark.parametrize(
-    ("strict_config_checking", "strict_fragment"),
+    ("strict", "strict_fragment"),
     [
         (True, "strict = True"),
         (False, "strict = False"),
@@ -69,7 +69,7 @@ def _extract_error_context(error: Exception) -> object:
 )
 def test_config_validation_error_message_summarizes_stage_counts(
     *,
-    strict_config_checking: bool,
+    strict: bool,
     strict_fragment: str,
 ) -> None:
     """The error message should summarize counts for each validation stage."""
@@ -81,7 +81,7 @@ def test_config_validation_error_message_summarizes_stage_counts(
 
     err = ConfigValidationError(
         validation_logs=logs,
-        strict_config_checking=strict_config_checking,
+        strict=strict,
     )
 
     message: str = str(err)
@@ -100,7 +100,7 @@ def test_config_validation_error_attaches_flattened_diagnostics_in_stage_order()
 
     err = ConfigValidationError(
         validation_logs=logs,
-        strict_config_checking=False,
+        strict=False,
     )
 
     ctx: object = _extract_error_context(err)
@@ -121,7 +121,7 @@ def test_config_validation_error_attaches_empty_flattened_diagnostics_when_logs_
 
     err = ConfigValidationError(
         validation_logs=logs,
-        strict_config_checking=False,
+        strict=False,
     )
 
     ctx: object = _extract_error_context(err)

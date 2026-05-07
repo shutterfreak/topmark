@@ -103,7 +103,7 @@ def test_config_check_warning_only_config_exits_failure_in_strict_mode(tmp_path:
         [
             CliCmd.CONFIG,
             CliCmd.CONFIG_CHECK,
-            CliOpt.STRICT_CONFIG_CHECKING,
+            CliOpt.STRICT,
         ],
     )
 

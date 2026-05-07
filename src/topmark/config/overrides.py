@@ -91,7 +91,7 @@ class ConfigOverrides:
     Attributes:
         config_origin: provenance marker or path
         config_base: real filesystem base for relative patterns and sources
-        strict_config_checking: Config-loading strictness override.
+        strict: Config-loading strictness override.
             This remains config-like override intent and is separate from
             execution-only runtime options. It currently governs strict
             evaluation of staged config-loading validation.
@@ -121,7 +121,7 @@ class ConfigOverrides:
     # Config-related options
     config_origin: Path | str = CLI_OVERRIDE_STR
     config_base: Path = field(default_factory=lambda: Path.cwd().resolve())
-    strict_config_checking: bool | None = None
+    strict: bool | None = None
 
     # Policy (global and overrides by file type)
     policy: PolicyOverrides = field(default_factory=PolicyOverrides)

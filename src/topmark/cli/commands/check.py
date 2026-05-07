@@ -79,7 +79,7 @@ from topmark.cli.options import common_output_format_options
 from topmark.cli.options import common_stdin_content_mode_options
 from topmark.cli.options import common_text_output_quiet_options
 from topmark.cli.options import common_text_output_verbosity_options
-from topmark.cli.options import config_strict_checking_options
+from topmark.cli.options import config_strict_options
 from topmark.cli.options import pipeline_reporting_options
 from topmark.cli.options import render_diff_options
 from topmark.cli.options import shared_policy_options
@@ -156,7 +156,7 @@ logger: TopmarkLogger = get_logger(__name__)
 @common_color_options
 @common_text_output_verbosity_options
 @common_text_output_quiet_options
-@config_strict_checking_options
+@config_strict_options
 @common_config_resolution_options
 @common_stdin_content_mode_options
 @common_files_from_options
@@ -177,8 +177,8 @@ def check_command(
     quiet: bool,
     color_mode: ColorMode | None,
     no_color: bool,
-    # config_strict_checking_options:
-    strict_config_checking: bool | None,
+    # config_strict_options:
+    strict: bool | None,
     # common_config_resolution_options:
     no_config: bool,
     config_files: list[str],
@@ -232,7 +232,7 @@ def check_command(
         quiet: Suppress TEXT output.
         color_mode: Set the color mode (default: auto).
         no_color: bool: If set, disable color mode.
-        strict_config_checking: if True, report warnings as errors.
+        strict: if True, report warnings as errors.
         no_config: If True, skip loading project/user configuration files.
         config_files: Additional configuration file paths to load and merge.
         stdin_filename: Assumed filename when reading content from STDIN).
@@ -365,7 +365,7 @@ def check_command(
         plan=plan,
         no_config=no_config,
         config_paths=config_files,
-        strict_config_checking=strict_config_checking,
+        strict=strict,
         include_file_types=include_file_types,
         exclude_file_types=exclude_file_types,
         align_fields=align_fields,

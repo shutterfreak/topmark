@@ -104,7 +104,7 @@ def test_invalid_topmark_toml_exits_config_error_in_strict_mode(
         tmp_path,
         [
             CliCmd.CHECK,
-            CliOpt.STRICT_CONFIG_CHECKING,
+            CliOpt.STRICT,
             str(f),
         ],
     )

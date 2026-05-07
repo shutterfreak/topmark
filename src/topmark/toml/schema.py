@@ -475,7 +475,7 @@ TOPMARK_TOML_SCHEMA: Final[TomlSchema] = TomlSchema(
             allowed_keys=frozenset(
                 {
                     Toml.KEY_ROOT,
-                    Toml.KEY_STRICT_CONFIG_CHECKING,
+                    Toml.KEY_STRICT,
                 }
             ),
             open_keys=False,

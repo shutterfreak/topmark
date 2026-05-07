@@ -98,7 +98,7 @@ class ArgKey(str, Enum):
     SEMVER_VERSION = "semver"
 
     # Config checking
-    STRICT_CONFIG_CHECKING = "strict_config_checking"
+    STRICT = "strict"
 
     # Config root
     CONFIG_ROOT = "config_root"

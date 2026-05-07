@@ -542,7 +542,7 @@ class ConfigValidationError(TopmarkError):
     Args:
         validation_logs: Staged validation logs attached to the config being
             validated.
-        strict_config_checking: Effective resolved strictness used for staged
+        strict: Effective resolved strictness used for staged
             config/preflight validation. This is the boolean strictness that was
             actually applied after TOML resolution and any CLI/API override.
         details: Optional structured diagnostic details.
@@ -552,7 +552,7 @@ class ConfigValidationError(TopmarkError):
         self,
         *,
         validation_logs: ValidationLogs | FrozenValidationLogs,
-        strict_config_checking: bool,
+        strict: bool,
         details: tuple[str, ...] = (),
     ) -> None:
         toml_stats: DiagnosticStats = validation_logs.toml_source.stats()
@@ -560,7 +560,7 @@ class ConfigValidationError(TopmarkError):
         runtime_stats: DiagnosticStats = validation_logs.runtime_applicability.stats()
         flattened_diagnostics: DiagnosticLog | FrozenDiagnosticLog = validation_logs.flattened()
         message: str = (
-            f"Config validation failed (strict = {strict_config_checking!r}), "
+            f"Config validation failed (strict = {strict!r}), "
             f"TOML errors: {toml_stats.n_error}, warnings: {toml_stats.n_warning};"
             f"Merged-config errors: {config_stats.n_error}, warnings: {config_stats.n_warning};"
             f"Runtime errors: {runtime_stats.n_error}, warnings: {runtime_stats.n_warning};"

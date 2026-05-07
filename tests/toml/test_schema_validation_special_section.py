@@ -78,7 +78,7 @@ def test_unknown_key_in_config_section_warns_and_known_key_still_resolves(
     draft: MutableConfig = draft_from_topmark_toml_table(
         {
             Toml.SECTION_CONFIG: {
-                Toml.KEY_STRICT_CONFIG_CHECKING: True,
+                Toml.KEY_STRICT: True,
                 "bogus": 1,
             }
         }

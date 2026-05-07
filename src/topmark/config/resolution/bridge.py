@@ -52,12 +52,12 @@ def build_config_draft_from_resolved_toml_sources(
     In addition to merging the layered config fragments, it replays whole-source
     TOML schema validation issues collected during TOML loading into the merged
     draft's TOML-source validation stage. This ensures that the effective
-    strictness derived from `strict_config_checking` sees schema issues outside
+    strictness derived from `strict` sees schema issues outside
     the layered-config subset, such as invalid top-level keys under
     `[tool.topmark]`, unknown keys in `[writer]`, or TOML-layer missing-section
     INFO diagnostics.
 
-    Source-local config-loading options such as `strict_config_checking` are
+    Source-local config-loading options such as `strict` are
     resolved on the TOML side. This helper only performs config-layer
     construction, merging, and diagnostic aggregation; it does not re-run TOML
     schema validation.
@@ -89,7 +89,7 @@ def resolve_toml_sources_and_build_config_draft(
     *,
     input_paths: Iterable[Path] | None = None,
     extra_config_files: Iterable[Path] | None = None,
-    strict_config_checking: bool | None = None,
+    strict: bool | None = None,
     no_config: bool = False,
 ) -> tuple[ResolvedTopmarkTomlSources, MutableConfig]:
     """Resolve TOML sources once and build the merged config draft from them.
@@ -105,7 +105,7 @@ def resolve_toml_sources_and_build_config_draft(
             the current working directory.
         extra_config_files: Explicit config files to merge after discovered
             layers. Later files override earlier ones.
-        strict_config_checking: Optional explicit override for the TOML-side
+        strict: Optional explicit override for the TOML-side
             strictness preference that later governs staged
             config-loading/preflight validation.
         no_config: If `True`, skip all discovered config layers (user +
@@ -119,7 +119,7 @@ def resolve_toml_sources_and_build_config_draft(
     resolved: ResolvedTopmarkTomlSources = resolve_topmark_toml_sources(
         input_paths=input_paths,
         extra_config_files=extra_config_files,
-        strict_config_checking=strict_config_checking,
+        strict=strict,
         no_config=no_config,
     )
     return resolved, build_config_draft_from_resolved_toml_sources(resolved)

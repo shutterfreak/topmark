@@ -120,8 +120,8 @@ class CliOpt:
     SEMVER_VERSION: Final = "--semver"
 
     # Config checking
-    STRICT_CONFIG_CHECKING: Final = "--strict"
-    NO_STRICT_CONFIG_CHECKING: Final = "--no-strict"
+    STRICT: Final = "--strict"
+    NO_STRICT: Final = "--no-strict"
 
     # Config root
     CONFIG_ROOT: Final = "--root"

@@ -188,7 +188,7 @@ def test_unknown_key_in_config_section_warns_via_from_toml_file(
         path=path,
         content="""
             [config]
-            strict_config_checking = true
+            strict = true
             bogus = 1
         """,
     )

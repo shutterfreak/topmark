@@ -42,7 +42,7 @@ from topmark.cli.options import common_config_resolution_options
 from topmark.cli.options import common_output_format_options
 from topmark.cli.options import common_text_output_quiet_options
 from topmark.cli.options import common_text_output_verbosity_options
-from topmark.cli.options import config_strict_checking_options
+from topmark.cli.options import config_strict_options
 from topmark.cli.state import TopmarkCliState
 from topmark.cli.state import bootstrap_cli_state
 from topmark.cli.validators import apply_color_policy_for_output_format
@@ -74,7 +74,7 @@ logger: TopmarkLogger = get_logger(__name__)
         "Validate the effective merged TopMark configuration and report diagnostics. "
         "This command is file-agnostic: positional PATHS "
         "and file-processing STDIN modes are rejected. "
-        f"Use {CliOpt.STRICT_CONFIG_CHECKING} to treat warnings as errors and "
+        f"Use {CliOpt.STRICT} to treat warnings as errors and "
         f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}/{OutputFormat.NDJSON.value} "
         "for machine-readable output."
     ),
@@ -84,7 +84,7 @@ logger: TopmarkLogger = get_logger(__name__)
         "  # Validate the effective merged configuration\n"
         f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_CHECK}\n"
         "  # Fail on warnings (strict mode)\n"
-        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_CHECK} {CliOpt.STRICT_CONFIG_CHECKING}\n"
+        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_CHECK} {CliOpt.STRICT}\n"
         "  # Emit machine-readable diagnostics\n"
         f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_CHECK} "
         f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}\n"
@@ -94,7 +94,7 @@ logger: TopmarkLogger = get_logger(__name__)
         "  • Configuration is built from defaults, discovered files, "
         f"explicit {CliOpt.CONFIG_FILES} files, and CLI overrides.\n"
         "  • Exit status is non-zero on validation failure "
-        f"(errors, or warnings with {CliOpt.STRICT_CONFIG_CHECKING}).\n"
+        f"(errors, or warnings with {CliOpt.STRICT}).\n"
         "  • NDJSON emits a sequence of structured records.\n"
     ),
 )
@@ -102,7 +102,7 @@ logger: TopmarkLogger = get_logger(__name__)
 @common_text_output_verbosity_options
 @common_text_output_quiet_options
 @common_config_resolution_options
-@config_strict_checking_options
+@config_strict_options
 @common_output_format_options
 def config_check_command(
     *,
@@ -114,8 +114,8 @@ def config_check_command(
     # common_config_resolution_options:
     no_config: bool,
     config_files: list[str],
-    # config_strict_checking_options:
-    strict_config_checking: bool | None,
+    # config_strict_options:
+    strict: bool | None,
     # common_output_format_options:
     output_format: OutputFormat | None,
 ) -> None:
@@ -131,7 +131,7 @@ def config_check_command(
         no_color: If set, disable color mode.
         no_config: If True, skip loading project/user configuration files.
         config_files: Additional configuration file paths to load and merge.
-        strict_config_checking: if True, report warnings as errors.
+        strict: if True, report warnings as errors.
         output_format: Output format to use (``text``, ``markdown``, ``json``, or ``ndjson``).
 
     Raises:
@@ -176,7 +176,7 @@ def config_check_command(
 
     # Build a merged draft config (we do not need an InputPlan since we're not processing files)
     resolved, draft_config = resolve_toml_sources_and_build_config_draft(
-        strict_config_checking=strict_config_checking,
+        strict=strict,
         no_config=no_config,
         extra_config_files=[Path(p) for p in config_files],
     )
@@ -202,7 +202,7 @@ def config_check_command(
             console=console,
             meta=meta,
             config=config,
-            strict=bool(resolved.strict_config_checking),
+            strict=bool(resolved.strict),
             ok=config_valid,
             fmt=fmt,
         )
@@ -212,7 +212,7 @@ def config_check_command(
     report: ConfigCheckHumanReport = build_config_check_human_report(
         config=config,
         ok=config_valid,
-        strict=bool(resolved.strict_config_checking),
+        strict=bool(resolved.strict),
         verbosity_level=verbosity_level,
         styled=enable_color,
     )

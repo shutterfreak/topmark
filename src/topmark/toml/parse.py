@@ -46,13 +46,13 @@ class SourceConfigLoadingOptions:
     does not participate in layered config merging.
 
     Attributes:
-        strict_config_checking: Per-source strictness preference for later
+        strict: Per-source strictness preference for later
             staged config-loading/preflight validation. If `True`, warnings in
             staged config-validation are treated as failures. `None` means that
             the TOML source does not specify a strictness preference.
     """
 
-    strict_config_checking: bool | None = None
+    strict: bool | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -114,10 +114,10 @@ def _parse_config_loading_options(
     if config_tbl is None:
         return SourceConfigLoadingOptions()
 
-    strict_value: object = config_tbl.get(Toml.KEY_STRICT_CONFIG_CHECKING)
+    strict_value: object = config_tbl.get(Toml.KEY_STRICT)
 
     return SourceConfigLoadingOptions(
-        strict_config_checking=strict_value if isinstance(strict_value, bool) else None,
+        strict=strict_value if isinstance(strict_value, bool) else None,
     )
 
 

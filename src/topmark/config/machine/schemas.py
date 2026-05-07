@@ -56,7 +56,7 @@ class ConfigKey(str, Enum):
         CONFIG_FILES: Key for the resolved list of config files.
         CONFIG_CHECK: Container key for `topmark config check` summary payloads.
         OK: Boolean success field for config-check summaries.
-        STRICT_CONFIG_CHECKING: Whether warnings are treated as failures.
+        STRICT: Whether warnings are treated as failures.
     """
 
     CONFIG = "config"
@@ -67,7 +67,7 @@ class ConfigKey(str, Enum):
     CONFIG_CHECK = "config_check"
 
     OK = "ok"
-    STRICT_CONFIG_CHECKING = "strict_config_checking"
+    STRICT = "strict"
 
 
 class ConfigKind(str, Enum):
@@ -196,7 +196,7 @@ class ConfigCheckSummary:
             MachineKey.COMMAND.value: self.command,
             MachineKey.SUBCOMMAND.value: self.subcommand,
             ConfigKey.OK.value: self.ok,
-            ConfigKey.STRICT_CONFIG_CHECKING.value: self.strict,
+            ConfigKey.STRICT.value: self.strict,
             DiagnosticKey.DIAGNOSTIC_COUNTS.value: self.diagnostic_counts.to_dict(),
             ConfigKey.CONFIG_FILES.value: self.config_files,
         }

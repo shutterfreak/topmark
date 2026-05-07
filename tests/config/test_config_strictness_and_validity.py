@@ -12,7 +12,7 @@
 """Tests for resolved strictness and config validity behavior.
 
 These tests exercise:
-- strictness resolution from `[config].strict_config_checking`,
+- strictness resolution from `[config].strict`,
 - explicit strictness overrides,
 - `MutableConfig.is_valid()` / `Config.is_valid()` semantics,
 - and preservation of diagnostics across `freeze()`.
@@ -52,12 +52,12 @@ def test_load_resolved_config_applies_strictness_from_config_table(
         path=proj / "topmark.toml",
         content="""
             [config]
-            strict_config_checking = true
+            strict = true
         """,
     )
 
     resolved, _draft = resolve_toml_sources_and_build_config_draft(input_paths=[proj])
-    assert resolved.strict_config_checking is True
+    assert resolved.strict is True
 
 
 @pytest.mark.config
@@ -72,15 +72,15 @@ def test_explicit_strictness_override_false_wins_over_resolved_true(
         path=proj / "topmark.toml",
         content="""
             [config]
-            strict_config_checking = true
+            strict = true
         """,
     )
 
     resolved, _draft = resolve_toml_sources_and_build_config_draft(
         input_paths=[proj],
-        strict_config_checking=False,
+        strict=False,
     )
-    assert resolved.strict_config_checking is False
+    assert resolved.strict is False
 
 
 @pytest.mark.config
@@ -95,15 +95,15 @@ def test_explicit_strictness_override_true_wins_over_resolved_false(
         path=proj / "topmark.toml",
         content="""
             [config]
-            strict_config_checking = false
+            strict = false
         """,
     )
 
     resolved, _draft = resolve_toml_sources_and_build_config_draft(
         input_paths=[proj],
-        strict_config_checking=True,
+        strict=True,
     )
-    assert resolved.strict_config_checking is True
+    assert resolved.strict is True
 
 
 @pytest.mark.config

@@ -242,7 +242,7 @@ def config_dump_command(
         plan=plan,
         no_config=no_config,
         config_paths=config_files,
-        strict_config_checking=None,
+        strict=None,
         include_file_types=include_file_types,
         exclude_file_types=exclude_file_types,
         align_fields=align_fields,
