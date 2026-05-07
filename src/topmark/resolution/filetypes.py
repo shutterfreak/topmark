@@ -78,6 +78,32 @@ class FileTypeCandidate:
     file_type: FileType
 
 
+# --- File type filter helper ---
+
+
+def _matches_file_type_filter(
+    ft: FileType,
+    filter_ids: Collection[str],
+) -> bool:
+    """Return whether a file type matches a normalized or public filter set.
+
+    Frozen config stores canonical qualified keys such as `topmark:python`, but
+    resolver helpers may also be called directly with public local identifiers
+    such as `python`. Supporting both forms here keeps direct helper use
+    backwards-conscious while preserving qualified keys as the canonical runtime
+    representation.
+
+    Args:
+        ft: File type candidate being evaluated.
+        filter_ids: Public or canonical file type identifiers.
+
+    Returns:
+        True when the candidate matches either its canonical qualified key or its
+        local key.
+    """
+    return ft.qualified_key in filter_ids or ft.local_key in filter_ids
+
+
 @dataclass(frozen=True, slots=True)
 class MatchSignals:
     """Name-based match signals for a FileType (extension, filename/tail, pattern)."""
@@ -303,15 +329,21 @@ def _get_probe_candidate_drafts_for_path(
     path_str: str = path.as_posix()
     drafts: list[_ProbeCandidateDraft] = []
 
-    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping_by_local_key()
+    ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping()
 
     effective_include: Collection[str] | None = include_file_types or None
     effective_exclude: Collection[str] | None = exclude_file_types or None
 
     for ft in ft_registry.values():
-        if effective_include is not None and ft.local_key not in effective_include:
+        if effective_include is not None and not _matches_file_type_filter(
+            ft,
+            effective_include,
+        ):
             continue
-        if effective_exclude is not None and ft.local_key in effective_exclude:
+        if effective_exclude is not None and _matches_file_type_filter(
+            ft,
+            effective_exclude,
+        ):
             continue
 
         sig: MatchSignals = _compute_match_signals(ft, base_name, path_str)
@@ -373,10 +405,14 @@ def get_file_type_candidates_for_path(
 
     Args:
         path: Filesystem path of the file being resolved.
-        include_file_types: Optional set of file type identifiers to include (whitelist).
-            Empty collection means no whitelist filter
-        exclude_file_types: Optional set of file type identifiers to exclude (blacklist).
-            Empty collection means no blacklist filter
+        include_file_types: Optional set of file type identifiers to include.
+            Frozen config passes canonical qualified keys. Direct callers may
+            pass public local identifiers when unambiguous. Empty collection
+            means no whitelist filter.
+        exclude_file_types: Optional set of file type identifiers to exclude.
+            Frozen config passes canonical qualified keys. Direct callers may
+            pass public local identifiers when unambiguous. Empty collection
+            means no blacklist filter.
 
     Returns:
         Unsorted scored candidates. The caller is responsible for selecting the
@@ -405,7 +441,11 @@ def probe_resolution_for_path(
     Args:
         path: Filesystem path of the file being resolved.
         include_file_types: Optional set of file type identifiers to include.
+            Frozen config passes canonical qualified keys. Direct callers may
+            pass public local identifiers when unambiguous.
         exclude_file_types: Optional set of file type identifiers to exclude.
+            Frozen config passes canonical qualified keys. Direct callers may
+            pass public local identifiers when unambiguous.
 
     Returns:
         Probe result containing candidates, selected file type, selected processor,

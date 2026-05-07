@@ -24,6 +24,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
+
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_WOULD_CHANGE
 from tests.cli.conftest import run_cli_in
@@ -93,10 +95,15 @@ def test_strip_applies_only_to_included_non_excluded_targets(tmp_path: Path) -> 
 # --- File-type filters ---
 
 
-def test_file_type_filter_selects_only_matching_file_types(tmp_path: Path) -> None:
+@pytest.mark.parametrize("file_type_id", ["python", "topmark:python"])
+def test_file_type_filter_selects_only_matching_file_types(
+    tmp_path: Path,
+    file_type_id: str,
+) -> None:
     """`--file-type` should limit processing to matching file types.
 
-    Creates `.py` and `.md` files but restricts processing to the `python` type.
+    Creates `.py` and `.md` files but restricts processing to the selected
+    Python file type identifier.
     The relative glob pattern is resolved from `tmp_path` by `run_cli_in`.
     """
     py: Path = tmp_path / "x.py"
@@ -106,8 +113,30 @@ def test_file_type_filter_selects_only_matching_file_types(tmp_path: Path) -> No
 
     result: Result = run_cli_in(
         tmp_path,
-        [CliOpt.INCLUDE_FILE_TYPES, "python", "*.*"],
+        [CliOpt.INCLUDE_FILE_TYPES, file_type_id, "*.*"],
     )
 
     # Only x.py should be selected; because it lacks a header, check should report WOULD_CHANGE.
     assert_WOULD_CHANGE(result)
+
+
+@pytest.mark.parametrize("file_type_id", ["python", "topmark:python"])
+def test_file_type_exclude_filter_skips_matching_file_types(
+    tmp_path: Path,
+    file_type_id: str,
+) -> None:
+    """`--skip-type` should exclude local and qualified file type identifiers."""
+    py: Path = tmp_path / "x.py"
+    md: Path = tmp_path / "y.md"
+    py.write_text("print('ok')\n", "utf-8")
+    md.write_text("# Title\n", "utf-8")
+
+    result: Result = run_cli_in(
+        tmp_path,
+        [CliOpt.EXCLUDE_FILE_TYPES, file_type_id, "*.*"],
+    )
+
+    assert_WOULD_CHANGE(result)
+
+    assert TOPMARK_START_MARKER not in py.read_text("utf-8")
+    assert TOPMARK_START_MARKER not in md.read_text("utf-8")

@@ -63,8 +63,11 @@ from typing import TYPE_CHECKING
 from topmark.config.policy import MutablePolicy
 from topmark.config.policy import Policy
 from topmark.config.validation import ValidationLogs
+from topmark.core.errors import AmbiguousFileTypeIdentifierError
 from topmark.core.errors import ConfigValidationError
+from topmark.core.errors import InvalidRegistryIdentityError
 from topmark.core.logging import get_logger
+from topmark.filetypes.model import FileType
 from topmark.toml.keys import Toml
 
 if TYPE_CHECKING:
@@ -140,7 +143,7 @@ class Config:
 
     # Policy containers
     policy: Policy
-    policy_by_type: Mapping[str, Policy]  # e.g., {"python": Policy(...)}
+    policy_by_type: Mapping[str, Policy]  # e.g., {"topmark:python": Policy(...)}
 
     # Provenance
     config_files: tuple[Path | str, ...]
@@ -611,6 +614,10 @@ class MutableConfig:
             - include_from / exclude_from / files_from entries must refer to
               concrete files, not glob-style paths. Any `PatternSource.path`
               containing glob metacharacters (*, ?, [, ]) is ignored with a warning.
+            - include_file_types / exclude_file_types entries are resolved from
+              public local-or-qualified identifiers to canonical qualified keys.
+            - policy_by_type entries are resolved from public local-or-qualified
+              identifiers to canonical qualified keys.
 
         Future extensions may:
             - validate relative_to vs. config_files,
@@ -650,43 +657,98 @@ class MutableConfig:
         _sanitize_sources(Toml.KEY_EXCLUDE_FROM, self.exclude_from)
         _sanitize_sources(Toml.KEY_FILES_FROM, self.files_from)
 
+        def _resolve_file_type_id(file_type_id: str) -> str | None:
+            """Return the canonical qualified key for a public file type identifier.
+
+            Public configuration accepts either a qualified identifier such as
+            `topmark:python` or an unqualified local identifier such as `python`.
+            Local identifiers are accepted only when they are unambiguous in the
+            effective file type registry.
+
+            Args:
+                file_type_id: Public file type identifier from config, CLI, or API
+                    overrides.
+
+            Returns:
+                The canonical qualified file type key, or `None` when the
+                identifier is empty or unknown.
+
+            Raises:
+                AmbiguousFileTypeIdentifierError: If an unqualified local
+                    identifier matches more than one registered file type.
+                InvalidRegistryIdentityError: If a qualified identifier is
+                    malformed.
+            """  # noqa: DOC502 - documents propagated exceptions from delegated registry helpers
+            if not file_type_id:
+                return None
+
+            # Local import to keep config import-safe and avoid incidental cycles.
+            from topmark.registry.filetypes import FileTypeRegistry
+
+            file_type: FileType | None = FileTypeRegistry.resolve_filetype_id(file_type_id)
+            if file_type is None:
+                return None
+            return file_type.qualified_key
+
         def _sanitize_file_type_ids(
             name: str,
             ids: set[str],
             *,
             is_exclusion: bool,
         ) -> None:
-            """Validate file type identifiers against the registry.
+            """Resolve file type filters to canonical qualified keys.
 
-            Unknown identifiers are ignored (dropped) and recorded as
-            runtime-applicability validation diagnostics.
+            Unknown, malformed, or ambiguous identifiers are ignored and recorded
+            as runtime-applicability validation diagnostics. Valid identifiers
+            are rewritten in-place to their canonical qualified keys.
 
             Args:
-                name: Human-readable name for diagnostics (e.g. "include_file_types").
-                ids: The mutable set of identifiers to validate in-place.
+                name: Human-readable name for diagnostics, e.g.
+                    `include_file_types`.
+                ids: Mutable set of public identifiers to normalize in-place.
                 is_exclusion: Whether this selector is an exclusion filter.
             """
             if not ids:
                 return
 
-            # Local import to keep config import-safe and avoid incidental cycles.
-            from topmark.registry.filetypes import FileTypeRegistry
+            normalized: set[str] = set()
+            ignored: list[str] = []
 
-            # Validate against the effective file type registry:
-            ft_registry: Mapping[str, FileType] = FileTypeRegistry.as_mapping_by_local_key()
+            for file_type_id in sorted(ids):
+                try:
+                    qualified_key: str | None = _resolve_file_type_id(file_type_id)
+                except AmbiguousFileTypeIdentifierError as exc:
+                    candidates: str = ", ".join(exc.candidates)
+                    self.validation_logs.runtime_applicability.add_warning(
+                        f"Ambiguous {name} file type identifier ignored: "
+                        f"{file_type_id} (candidates: {candidates})"
+                    )
+                    ignored.append(file_type_id)
+                    continue
+                except InvalidRegistryIdentityError:
+                    self.validation_logs.runtime_applicability.add_warning(
+                        f"Malformed {name} file type identifier ignored: {file_type_id}"
+                    )
+                    ignored.append(file_type_id)
+                    continue
 
-            unknown: list[str] = sorted(t for t in ids if t not in ft_registry)
-            if not unknown:
-                return
+                if qualified_key is None:
+                    ignored.append(file_type_id)
+                    continue
 
-            unknown_str: str = ", ".join(unknown)
-            if is_exclusion:
-                msg: str = f"Unknown excluded file types specified (ignored): {unknown_str}"
-            else:
-                msg = f"Unknown included file types specified (ignored): {unknown_str}"
+                normalized.add(qualified_key)
 
-            self.validation_logs.runtime_applicability.add_warning(msg)
-            ids.difference_update(unknown)
+            if ignored:
+                unknown_str: str = ", ".join(ignored)
+                if is_exclusion:
+                    msg: str = f"Unknown excluded file types specified (ignored): {unknown_str}"
+                else:
+                    msg = f"Unknown included file types specified (ignored): {unknown_str}"
+                self.validation_logs.runtime_applicability.add_warning(msg)
+
+            if ids != normalized:
+                ids.clear()
+                ids.update(normalized)
 
         _sanitize_file_type_ids(
             Toml.KEY_INCLUDE_FILE_TYPES,
@@ -710,6 +772,51 @@ class MutableConfig:
             self.validation_logs.runtime_applicability.add_warning(msg)
             # Remove overlaps (blacklisted wins from whitelisted):
             self.include_file_types.difference_update(overlap)
+
+        def _sanitize_policy_by_type() -> None:
+            """Resolve per-type policy keys to canonical qualified file type keys.
+
+            Public `policy_by_type` keys accept the same identifier forms as file
+            type filters: qualified keys such as `topmark:python`, or local keys
+            such as `python` when unambiguous. The frozen `Config` stores only
+            canonical qualified keys.
+            """
+            if not self.policy_by_type:
+                return
+
+            normalized: dict[str, MutablePolicy] = {}
+
+            for file_type_id, policy in self.policy_by_type.items():
+                try:
+                    qualified_key: str | None = _resolve_file_type_id(file_type_id)
+                except AmbiguousFileTypeIdentifierError as exc:
+                    candidates: str = ", ".join(exc.candidates)
+                    self.validation_logs.runtime_applicability.add_warning(
+                        "Ambiguous policy_by_type file type identifier ignored: "
+                        f"{file_type_id} (candidates: {candidates})"
+                    )
+                    continue
+                except InvalidRegistryIdentityError:
+                    self.validation_logs.runtime_applicability.add_warning(
+                        f"Malformed policy_by_type file type identifier ignored: {file_type_id}"
+                    )
+                    continue
+
+                if qualified_key is None:
+                    self.validation_logs.runtime_applicability.add_warning(
+                        f"Unknown policy_by_type file type identifier ignored: {file_type_id}"
+                    )
+                    continue
+
+                existing: MutablePolicy | None = normalized.get(qualified_key)
+                if existing is None:
+                    normalized[qualified_key] = policy
+                else:
+                    normalized[qualified_key] = existing.merge_with(policy)
+
+            self.policy_by_type = normalized
+
+        _sanitize_policy_by_type()
 
 
 # --------------------------- Validation helpers ---------------------------

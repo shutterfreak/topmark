@@ -223,11 +223,16 @@ class ProcessingContext:
         does not perform any merging at runtime; all policies are resolved at
         Config.freeze() time.
 
+        Per-type policies are keyed by canonical qualified file type identifiers
+        such as `topmark:python`, not local identifiers such as `python`.
+
         Returns:
             The effective policy for this context.
         """
-        local_key: str | None = self.file_type.local_key if self.file_type is not None else None
-        return self.policy_registry.for_type(local_key)
+        qualified_key: str | None = (
+            self.file_type.qualified_key if self.file_type is not None else None
+        )
+        return self.policy_registry.for_type(qualified_key)
 
     @property
     def step_axes(self) -> dict[str, list[str]]:

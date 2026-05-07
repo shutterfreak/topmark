@@ -29,6 +29,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
+
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_SUCCESS_or_WOULD_CHANGE
 from tests.cli.conftest import run_cli
@@ -49,7 +51,11 @@ if TYPE_CHECKING:
 # --- File-type filters ---
 
 
-def test_file_type_filter_limits_check_to_selected_types(tmp_path: Path) -> None:
+@pytest.mark.parametrize("file_type_id", ["python", "topmark:python"])
+def test_file_type_filter_limits_check_to_selected_types(
+    tmp_path: Path,
+    file_type_id: str,
+) -> None:
     """`check --file-type` should process only matching file types."""
     py: Path = tmp_path / "a.py"
     ts: Path = tmp_path / "a.ts"
@@ -61,7 +67,7 @@ def test_file_type_filter_limits_check_to_selected_types(tmp_path: Path) -> None
         [
             CliCmd.CHECK,
             CliOpt.INCLUDE_FILE_TYPES,
-            "python",
+            file_type_id,
             CliOpt.APPLY_CHANGES,
             str(tmp_path),
         ],
@@ -77,7 +83,11 @@ def test_file_type_filter_limits_check_to_selected_types(tmp_path: Path) -> None
     assert TOPMARK_START_MARKER not in out_ts
 
 
-def test_file_type_filter_limits_strip_to_selected_types(tmp_path: Path) -> None:
+@pytest.mark.parametrize("file_type_id", ["python", "topmark:python"])
+def test_file_type_filter_limits_strip_to_selected_types(
+    tmp_path: Path,
+    file_type_id: str,
+) -> None:
     """`strip --file-type` should process only matching file types."""
     py: Path = tmp_path / "b.py"
     ts: Path = tmp_path / "b.ts"
@@ -94,7 +104,7 @@ def test_file_type_filter_limits_strip_to_selected_types(tmp_path: Path) -> None
         [
             CliCmd.STRIP,
             CliOpt.INCLUDE_FILE_TYPES,
-            "python",
+            file_type_id,
             CliOpt.APPLY_CHANGES,
             str(tmp_path),
         ],

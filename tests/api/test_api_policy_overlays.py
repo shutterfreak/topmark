@@ -76,9 +76,11 @@ def test_api_invalid_empty_insert_mode_raises_invalid_policy_error(
         )
 
 
+@pytest.mark.parametrize("policy_file_type_id", ["python", "topmark:python"])
 def test_api_policy_by_type_overrides_global_policy_for_matching_file_type(
     repo_py_with_and_without_header: Path,
     proc_py: HeaderProcessor,
+    policy_file_type_id: str,
 ) -> None:
     """Per-type policy overlays must override the global policy for that type."""
     target: Path = repo_py_with_and_without_header / "src" / "without_header.py"
@@ -92,7 +94,7 @@ def test_api_policy_by_type_overrides_global_policy_for_matching_file_type(
             header_mutation_mode="add_only",
         ),
         policy_by_type={
-            "python": PublicPolicy(
+            policy_file_type_id: PublicPolicy(
                 header_mutation_mode="update_only",
             ),
         },
@@ -101,6 +103,35 @@ def test_api_policy_by_type_overrides_global_policy_for_matching_file_type(
     assert r.had_errors is False
     assert r.written == 0
     assert not has_header(read_text(target), proc_py, "\n")
+
+
+@pytest.mark.parametrize("policy_file_type_id", ["python", "topmark:python"])
+def test_api_policy_by_type_allows_matching_file_type_when_qualified_or_local(
+    repo_py_with_and_without_header: Path,
+    proc_py: HeaderProcessor,
+    policy_file_type_id: str,
+) -> None:
+    """Per-type API policy keys may be local or qualified public identifiers."""
+    target: Path = repo_py_with_and_without_header / "src" / "without_header.py"
+    assert not has_header(read_text(target), proc_py, "\n")
+
+    r: api.RunResult = api.check(
+        [target],
+        apply=True,
+        include_file_types=["topmark:python"],
+        policy=PublicPolicy(
+            header_mutation_mode="update_only",
+        ),
+        policy_by_type={
+            policy_file_type_id: PublicPolicy(
+                header_mutation_mode="add_only",
+            ),
+        },
+    )
+
+    assert r.had_errors is False
+    assert r.written >= 1
+    assert has_header(read_text(target), proc_py, "\n")
 
 
 def test_api_public_policy_overlay_overrides_explicit_config_policy(
@@ -223,8 +254,10 @@ def test_api_strip_accepts_shared_policy_overlay(
     assert not has_header(read_text(target), proc_py, "\n")
 
 
+@pytest.mark.parametrize("policy_file_type_id", ["python", "topmark:python"])
 def test_api_invalid_policy_by_type_header_mutation_mode_raises_invalid_policy_error(
     repo_py_with_and_without_header: Path,
+    policy_file_type_id: str,
 ) -> None:
     """Invalid per-type public `header_mutation_mode` values must be rejected."""
     with pytest.raises(InvalidPolicyError):
@@ -233,6 +266,6 @@ def test_api_invalid_policy_by_type_header_mutation_mode_raises_invalid_policy_e
             apply=False,
             include_file_types=["python"],
             policy_by_type={
-                "python": unsafe_public_policy({"header_mutation_mode": "bogus"}),
+                policy_file_type_id: unsafe_public_policy({"header_mutation_mode": "bogus"}),
             },
         )

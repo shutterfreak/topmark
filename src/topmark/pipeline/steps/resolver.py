@@ -92,7 +92,7 @@ def apply_probe_resolution_to_context(
     file_type: FileType | None = Registry.get_filetype(probe.selected_file_type.qualified_key)
     if file_type is not None:
         ctx.file_type = file_type
-        logger.debug("File '%s' resolved to type: %s", ctx.path, file_type.local_key)
+        logger.debug("File '%s' resolved to type: %s", ctx.path, file_type.qualified_key)
 
         if file_type.skip_processing:
             logger.info(
@@ -147,7 +147,7 @@ def apply_probe_resolution_to_context(
     logger.debug(
         "Resolve success: file='%s' type='%s' processor=%s",
         ctx.path,
-        probe.selected_file_type.local_key,
+        probe.selected_file_type.qualified_key,
         processor.__class__.__name__,
     )
 
@@ -205,7 +205,7 @@ class ResolverStep(BaseStep):
             "Resolve start: file='%s', fs status='%s', type=%s, processor=%s",
             ctx.path,
             ctx.status.fs.value,
-            ctx.file_type.local_key if ctx.file_type else VALUE_NOT_SET,
+            ctx.file_type.qualified_key if ctx.file_type else VALUE_NOT_SET,
             (ctx.header_processor.__class__.__name__ if ctx.header_processor else VALUE_NOT_SET),
         )
         apply_probe_resolution_to_context(ctx=ctx, step=self)

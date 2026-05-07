@@ -35,6 +35,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.helpers.registry import make_file_type
+from tests.helpers.registry import patched_effective_registries
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.io.deserializers import mutable_config_from_layered_toml_table
 from topmark.config.overrides import ConfigOverrides
@@ -49,6 +51,7 @@ from topmark.config.policy import effective_policy
 if TYPE_CHECKING:
     from topmark.config.model import Config
     from topmark.config.model import MutableConfig
+    from topmark.filetypes.model import FileType
     from topmark.toml.types import TomlTable
 
 
@@ -91,7 +94,8 @@ def test_global_policy_only_resolves_correctly() -> None:
     assert cfg.policy_by_type == {}
 
 
-def test_per_type_override_inherits_global_policy() -> None:
+@pytest.mark.parametrize("input_identifier", ["python", "topmark:python"])
+def test_per_type_override_inherits_global_policy(input_identifier: str) -> None:
     """Per-type policy inherits unspecified fields from the resolved global policy."""
     mc: MutableConfig = mutable_config_from_defaults()
     # Global: header_mutation_mode=ADD_ONLY, allow_content_probe=False
@@ -101,14 +105,15 @@ def test_per_type_override_inherits_global_policy() -> None:
     )
     # Python: override allow_content_probe only, inherit header_mutation_mode
     mc.policy_by_type = {
-        "python": MutablePolicy(
+        input_identifier: MutablePolicy(
             allow_content_probe=True,
         ),
     }
 
     cfg: Config = mc.freeze()
     global_pol: Policy = cfg.policy
-    py_pol: Policy = cfg.policy_by_type["python"]
+    assert set(cfg.policy_by_type) == {"topmark:python"}
+    py_pol: Policy = cfg.policy_by_type["topmark:python"]
 
     # Global policy: explicit overrides respected.
     _assert_policy_fields(
@@ -125,7 +130,8 @@ def test_per_type_override_inherits_global_policy() -> None:
     )
 
 
-def test_effective_policy_prefers_per_type_over_global() -> None:
+@pytest.mark.parametrize("input_identifier", ["python", "topmark:python"])
+def test_effective_policy_prefers_per_type_over_global(input_identifier: str) -> None:
     """effective_policy should select per-type policy when available."""
     mc: MutableConfig = mutable_config_from_defaults()
     mc.policy = MutablePolicy(
@@ -133,20 +139,21 @@ def test_effective_policy_prefers_per_type_over_global() -> None:
         allow_content_probe=False,
     )
     mc.policy_by_type = {
-        "python": MutablePolicy(
+        input_identifier: MutablePolicy(
             allow_content_probe=True,
         ),
     }
 
     cfg: Config = mc.freeze()
     global_pol: Policy = cfg.policy
-    py_pol: Policy = cfg.policy_by_type["python"]
+    assert set(cfg.policy_by_type) == {"topmark:python"}
+    py_pol: Policy = cfg.policy_by_type["topmark:python"]
 
     # No type → global
     assert effective_policy(cfg, None) is global_pol
 
     # Known type → per-type override
-    assert effective_policy(cfg, "python") is py_pol
+    assert effective_policy(cfg, "topmark:python") is py_pol
 
     # Unknown type → fall back to global
     assert effective_policy(cfg, "unknown") is global_pol
@@ -226,23 +233,28 @@ def test_freeze_resolves_global_header_mutation_mode() -> None:
     assert cfg.policy.header_mutation_mode == HeaderMutationMode.UPDATE_ONLY
 
 
-def test_freeze_resolves_per_type_header_mutation_mode() -> None:
+@pytest.mark.parametrize("input_identifier", ["python", "topmark:python"])
+def test_freeze_resolves_per_type_header_mutation_mode(input_identifier: str) -> None:
     """freeze() must preserve an explicit per-type header-mutation mode."""
     mc: MutableConfig = mutable_config_from_defaults()
     mc.policy = MutablePolicy(
         header_mutation_mode=HeaderMutationMode.ALL,
     )
     mc.policy_by_type = {
-        "python": MutablePolicy(
+        input_identifier: MutablePolicy(
             header_mutation_mode=HeaderMutationMode.UPDATE_ONLY,
         ),
     }
 
     cfg: Config = mc.freeze()
-    assert cfg.policy_by_type["python"].header_mutation_mode == HeaderMutationMode.UPDATE_ONLY
+    assert set(cfg.policy_by_type) == {"topmark:python"}
+    assert (
+        cfg.policy_by_type["topmark:python"].header_mutation_mode == HeaderMutationMode.UPDATE_ONLY
+    )
 
 
-def test_policy_loaded_from_toml_tables() -> None:
+@pytest.mark.parametrize("input_identifier", ["python", "topmark:python"])
+def test_policy_loaded_from_toml_tables(input_identifier: str) -> None:
     """TOML-shaped dicts must hydrate MutableConfig and resolve Policy correctly.
 
     This test ensures that `[policy]` and `[policy_by_type.*]` TOML tables are
@@ -258,7 +270,7 @@ def test_policy_loaded_from_toml_tables() -> None:
             "allow_content_probe": False,
         },
         "policy_by_type": {
-            "python": {
+            input_identifier: {
                 "allow_header_in_empty_files": True,
             },
         },
@@ -271,13 +283,15 @@ def test_policy_loaded_from_toml_tables() -> None:
     assert cfg.policy.allow_content_probe is False
 
     # Per-type inherits + overrides
-    py_pol: Policy = cfg.policy_by_type["python"]
+    assert set(cfg.policy_by_type) == {"topmark:python"}
+    py_pol: Policy = cfg.policy_by_type["topmark:python"]
     assert py_pol.header_mutation_mode == HeaderMutationMode.ADD_ONLY  # inherited
     assert py_pol.allow_content_probe is False  # inherited
     assert py_pol.allow_header_in_empty_files is True  # override
 
 
-def test_policy_precedence_across_merged_configs() -> None:
+@pytest.mark.parametrize("input_identifier", ["python", "topmark:python"])
+def test_policy_precedence_across_merged_configs(input_identifier: str) -> None:
     """Merged configs must apply last-wins precedence before policy resolution.
 
     This test simulates a typical precedence chain:
@@ -294,13 +308,13 @@ def test_policy_precedence_across_merged_configs() -> None:
     base: MutableConfig = mutable_config_from_defaults()
     project: MutableConfig = mutable_config_from_defaults()
     project.policy = MutablePolicy(header_mutation_mode=HeaderMutationMode.ADD_ONLY)
-    project.policy_by_type = {"python": MutablePolicy(allow_content_probe=False)}
+    project.policy_by_type = {input_identifier: MutablePolicy(allow_content_probe=False)}
 
     local: MutableConfig = mutable_config_from_defaults()
     local.policy = MutablePolicy(
         header_mutation_mode=HeaderMutationMode.UPDATE_ONLY,
     )
-    local.policy_by_type = {"python": MutablePolicy(allow_header_in_empty_files=True)}
+    local.policy_by_type = {input_identifier: MutablePolicy(allow_header_in_empty_files=True)}
 
     merged: MutableConfig = base.merge_with(project).merge_with(local)
     cfg: Config = merged.freeze()
@@ -309,10 +323,187 @@ def test_policy_precedence_across_merged_configs() -> None:
     assert cfg.policy.header_mutation_mode == HeaderMutationMode.UPDATE_ONLY
 
     # Python per-type: local overrides project but still inherits from global
-    py_pol: Policy = cfg.policy_by_type["python"]
+    assert set(cfg.policy_by_type) == {"topmark:python"}
+    py_pol: Policy = cfg.policy_by_type["topmark:python"]
     assert py_pol.header_mutation_mode == HeaderMutationMode.UPDATE_ONLY  # from global
     assert py_pol.allow_content_probe is False  # from project per-type
     assert py_pol.allow_header_in_empty_files is True  # from local per-type
+
+
+# --- Inserted tests for canonical policy_by_type key normalization ---
+
+
+def test_per_type_policy_local_key_freezes_to_qualified_key() -> None:
+    """Local policy_by_type keys should freeze to canonical qualified keys."""
+    mc: MutableConfig = mutable_config_from_defaults()
+    mc.policy = MutablePolicy(
+        header_mutation_mode=HeaderMutationMode.ADD_ONLY,
+        allow_content_probe=False,
+    )
+    mc.policy_by_type = {
+        "python": MutablePolicy(
+            allow_content_probe=True,
+        ),
+    }
+
+    cfg: Config = mc.freeze()
+
+    assert set(cfg.policy_by_type) == {"topmark:python"}
+    py_pol: Policy = cfg.policy_by_type["topmark:python"]
+    _assert_policy_fields(
+        py_pol,
+        header_mutation_mode=HeaderMutationMode.ADD_ONLY,
+        allow_content_probe=True,
+    )
+
+
+def test_per_type_policy_qualified_key_freezes_to_qualified_key() -> None:
+    """Qualified policy_by_type keys should be preserved as canonical keys."""
+    mc: MutableConfig = mutable_config_from_defaults()
+    mc.policy = MutablePolicy(
+        header_mutation_mode=HeaderMutationMode.ADD_ONLY,
+        allow_content_probe=False,
+    )
+    mc.policy_by_type = {
+        "topmark:python": MutablePolicy(
+            allow_content_probe=True,
+        ),
+    }
+
+    cfg: Config = mc.freeze()
+
+    assert set(cfg.policy_by_type) == {"topmark:python"}
+    py_pol: Policy = cfg.policy_by_type["topmark:python"]
+    _assert_policy_fields(
+        py_pol,
+        header_mutation_mode=HeaderMutationMode.ADD_ONLY,
+        allow_content_probe=True,
+    )
+
+
+def test_per_type_policy_mixed_local_and_qualified_keys_freeze_to_qualified_keys() -> None:
+    """Mixed public policy_by_type identifiers should normalize consistently."""
+    mc: MutableConfig = mutable_config_from_defaults()
+    mc.policy = MutablePolicy(
+        header_mutation_mode=HeaderMutationMode.ADD_ONLY,
+        allow_content_probe=True,
+    )
+    mc.policy_by_type = {
+        "python": MutablePolicy(
+            allow_content_probe=False,
+        ),
+        "topmark:markdown": MutablePolicy(
+            header_mutation_mode=HeaderMutationMode.UPDATE_ONLY,
+        ),
+    }
+
+    cfg: Config = mc.freeze()
+
+    assert set(cfg.policy_by_type) == {"topmark:python", "topmark:markdown"}
+    py_pol: Policy = cfg.policy_by_type["topmark:python"]
+    md_pol: Policy = cfg.policy_by_type["topmark:markdown"]
+
+    _assert_policy_fields(
+        py_pol,
+        header_mutation_mode=HeaderMutationMode.ADD_ONLY,
+        allow_content_probe=False,
+    )
+    _assert_policy_fields(
+        md_pol,
+        header_mutation_mode=HeaderMutationMode.UPDATE_ONLY,
+        allow_content_probe=True,
+    )
+
+
+def test_effective_policy_accepts_canonical_qualified_file_type_key() -> None:
+    """Runtime policy selection should use canonical qualified file type keys."""
+    mc: MutableConfig = mutable_config_from_defaults()
+    mc.policy = MutablePolicy(
+        header_mutation_mode=HeaderMutationMode.ADD_ONLY,
+        allow_content_probe=False,
+    )
+    mc.policy_by_type = {
+        "topmark:python": MutablePolicy(
+            allow_content_probe=True,
+        ),
+    }
+
+    cfg: Config = mc.freeze()
+    global_pol: Policy = cfg.policy
+    py_pol: Policy = cfg.policy_by_type["topmark:python"]
+
+    assert effective_policy(cfg, None) is global_pol
+    assert effective_policy(cfg, "topmark:python") is py_pol
+    assert effective_policy(cfg, "python") is global_pol
+    assert effective_policy(cfg, "unknown") is global_pol
+
+
+def test_policy_by_type_ambiguous_local_identifier_is_ignored() -> None:
+    """Ambiguous local policy_by_type identifiers should not survive freeze."""
+    first: FileType = make_file_type(
+        local_key="shared",
+        namespace="first",
+        extensions=[".first"],
+        description="First shared file type",
+    )
+    second: FileType = make_file_type(
+        local_key="shared",
+        namespace="second",
+        extensions=[".second"],
+        description="Second shared file type",
+    )
+    mc: MutableConfig = mutable_config_from_defaults()
+    mc.policy_by_type = {
+        "shared": MutablePolicy(
+            header_mutation_mode=HeaderMutationMode.ADD_ONLY,
+        ),
+    }
+
+    with patched_effective_registries(
+        filetypes={"first-shared": first, "second-shared": second},
+        processors={},
+    ):
+        cfg: Config = mc.freeze()
+
+    assert cfg.policy_by_type == {}
+
+
+@pytest.mark.parametrize(
+    "policy_file_type_id",
+    [
+        ":python",
+        "topmark:",
+        "topmark:python:extra",
+    ],
+)
+def test_policy_by_type_malformed_identifier_is_ignored(
+    policy_file_type_id: str,
+) -> None:
+    """Malformed qualified policy_by_type identifiers should not survive freeze."""
+    mc: MutableConfig = mutable_config_from_defaults()
+    mc.policy_by_type = {
+        policy_file_type_id: MutablePolicy(
+            header_mutation_mode=HeaderMutationMode.ADD_ONLY,
+        ),
+    }
+
+    cfg: Config = mc.freeze()
+
+    assert cfg.policy_by_type == {}
+
+
+def test_policy_by_type_unknown_identifier_is_ignored() -> None:
+    """Unknown well-formed policy_by_type identifiers should not survive freeze."""
+    mc: MutableConfig = mutable_config_from_defaults()
+    mc.policy_by_type = {
+        "topmark:missing": MutablePolicy(
+            header_mutation_mode=HeaderMutationMode.ADD_ONLY,
+        ),
+    }
+
+    cfg: Config = mc.freeze()
+
+    assert cfg.policy_by_type == {}
 
 
 def test_apply_config_overrides_updates_global_policy_fields() -> None:

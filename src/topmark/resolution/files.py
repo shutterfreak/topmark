@@ -42,6 +42,7 @@ from topmark.config.types import PatternGroup  # runtime use
 from topmark.config.types import PatternSource  # runtime use
 from topmark.config.types import compile_gitignore_pathspec  # runtime use
 from topmark.core.errors import AmbiguousFileTypeIdentifierError
+from topmark.core.errors import InvalidRegistryIdentityError
 from topmark.core.logging import TRACE_LEVEL
 from topmark.core.logging import get_logger
 from topmark.filetypes.model import FileType
@@ -431,22 +432,53 @@ def probe_explicit_file_selection(
 def _resolve_configured_file_types(
     file_type_ids: frozenset[str],
 ) -> list[FileType]:
-    """Resolve configured file type identifiers to concrete `FileType` objects.
+    """Resolve public file type identifiers to concrete `FileType` objects.
 
-    Unknown identifiers are ignored with a warning. Ambiguous unqualified
-    identifiers are also ignored with a warning so resolution can continue.
+    Frozen config normally stores canonical qualified keys such as
+    `topmark:python`, but this helper remains tolerant of public identifiers so
+    discovery diagnostics and defensive call sites can still handle local keys
+    such as `python`. Local identifiers resolve only when unambiguous.
+
+    Unknown, malformed, or ambiguous identifiers are ignored with warnings so
+    file-list resolution can continue.
+
+    Args:
+        file_type_ids: Public or canonical file type identifiers from effective
+            configuration.
+
+    Returns:
+        Resolved file type objects in deterministic identifier order.
     """
     resolved: list[FileType] = []
+
     for file_type_id in sorted(file_type_ids):
         try:
             file_type: FileType | None = FileTypeRegistry.resolve_filetype_id(file_type_id)
         except AmbiguousFileTypeIdentifierError as err:
-            logger.warning("Ambiguous file type identifier in config (ignored): %s", err)
+            candidates: str = ", ".join(err.candidates)
+            logger.warning(
+                "Ambiguous file type identifier ignored during file selection: %s (candidates: %s)",
+                file_type_id,
+                candidates,
+            )
             continue
+        except InvalidRegistryIdentityError as err:
+            logger.warning(
+                "Malformed file type identifier ignored during file selection: %s (%s)",
+                file_type_id,
+                err,
+            )
+            continue
+
         if file_type is None:
-            logger.warning("Unknown file type identifier in config (ignored): %s", file_type_id)
+            logger.warning(
+                "Unknown file type identifier ignored during file selection: %s",
+                file_type_id,
+            )
             continue
+
         resolved.append(file_type)
+
     return resolved
 
 
