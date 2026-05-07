@@ -14,22 +14,35 @@ topmark:header:end
 
 TopMark exposes a `registry` command group to inspect the three core registry domains:
 
-- [`topmark registry filetypes`](./registry/filetypes.md) — inspect **file type identities** and
-  their matching rules and policies.
-- [`topmark registry processors`](./registry/processors.md) — inspect **header processor
-  identities** and their capabilities.
-- [`topmark registry bindings`](./registry/bindings.md) — inspect **effective relationships**
-  between file types and processors.
+- [`topmark registry filetypes`](registry/filetypes.md) — inspect **file type identities** and their
+  matching rules and policies.
+- [`topmark registry processors`](registry/processors.md) — inspect **header processor identities**
+  and their capabilities.
+- [`topmark registry bindings`](registry/bindings.md) — inspect **effective relationships** between
+  file types and processors.
 
 These commands reflect the internal split between identities (file types and processors) and
-relationships (bindings), which together define how TopMark resolves and processes files.
+relationships (bindings), which together define how TopMark resolves file types and selects
+processors.
+
+An overview of all CLI commands is available in [CLI overview](../cli.md).
+
+See also:
+
+- [Registry model](../../dev/registry-model.md)
+- [Plugins and extensibility](../../dev/plugins.md)
+- [Resolution model](../../dev/resolution.md)
+- [Configuration](../configuration.md)
+- [Filtering](../filtering.md)
+- [Machine-readable output](../../dev/machine-output.md)
 
 ______________________________________________________________________
 
 ## Command applicability
 
 The `registry` command family is **informational and file-agnostic**. These commands inspect
-TopMark's built-in registry state and do not process project files or configuration.
+TopMark's effective composed registry state and do not process project files or perform
+configuration discovery.
 
 Across all `registry` subcommands:
 
@@ -41,9 +54,44 @@ Across all `registry` subcommands:
 
 Config discovery does not apply to registry commands.
 
+Runtime overlays and plugin-discovered entries are still reflected in the effective registry view
+exposed by these commands.
+
+______________________________________________________________________
+
+## File type identifier semantics
+
+Registry commands expose canonical qualified identities.
+
+Examples:
+
+```text
+topmark:python
+topmark:markdown
+```
+
+TopMark may still accept local identifiers such as:
+
+```text
+python
+markdown
+```
+
+in public CLI filters and configuration when unambiguous.
+
+Registry-oriented machine output and effective runtime views use canonical qualified keys for
+deterministic identity handling.
+
+{% include-markdown "\_snippets/file-type-identifiers.md" %}
+
+This is important because the registry command group is now one of the primary introspection
+surfaces for the freeze semantics.
+
+______________________________________________________________________
+
 ## Exit codes
 
-All `registry` subcommands are purely informational:
+All `registry` subcommands are informational introspection commands:
 
 - They exit with `SUCCESS (0)` on successful execution.
 - CLI usage errors (invalid or unsupported options) exit with `USAGE_ERROR (64)`.
@@ -54,6 +102,19 @@ codes such as `WOULD_CHANGE (2)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.
 Invalid positional paths or file-processing input options are reported as CLI usage errors.
 
 See [`Exit codes`](../exit-codes.md) for the complete CLI-wide exit-code contract.
+
+______________________________________________________________________
+
+## Troubleshooting
+
+- **Unexpected missing file type**: ensure plugin discovery completed and that the file type is
+  registered in the effective composed registry.
+- **Unexpected identifier form**: registry commands intentionally emit canonical qualified
+  identifiers such as `topmark:python`.
+- **Unexpected processor relationship**: inspect [`topmark registry bindings`](registry/bindings.md)
+  to view the effective binding layer.
+
+______________________________________________________________________
 
 ## Conceptual model
 
@@ -73,3 +134,24 @@ flowchart LR
 
 This diagram illustrates how file types and processors are independent identities, while bindings
 define the effective relationship used during resolution.
+
+The effective runtime registry view is composed from built-in registry data plus runtime overlays.
+
+______________________________________________________________________
+
+## Machine-readable output
+
+Registry commands emit canonical qualified identities in machine-readable output.
+
+Examples include:
+
+- `qualified_key`
+- `file_type_key`
+- `processor_key`
+
+These keys are intended for stable joins, comparisons, and tooling integration.
+
+See also:
+
+- [Machine-readable output](../../dev/machine-output.md)
+- [Machine format conventions](../../dev/machine-formats.md)

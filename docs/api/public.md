@@ -108,11 +108,11 @@ config = {
         "align_fields": True,
     },
     "files": {
-        "include_file_types": ["python"],
+        "include_file_types": ["topmark:python"],
         "exclude_patterns": [".venv"],
     },
     "policy_by_type": {
-        "python": {
+        "topmark:python": {
             "allow_header_in_empty_files": True,
         },
     }
@@ -126,11 +126,22 @@ run: api.RunResult = api.check(
 )
 ```
 
+API overlays, TOML configuration, CLI filters, and runtime policy resolution all share the same
+file-type identifier semantics. Local identifiers such as `"python"` are also accepted when
+unambiguous. Internally, TopMark normalizes identifiers to canonical qualified keys such as
+`"topmark:python"`.
+
 For the public API, the returned view is controlled via
 `report="all" | "actionable" | "noncompliant"`. This replaces the older `skip_compliant` /
 `skip_unsupported` booleans.
 
 {% include-markdown "\_snippets/api-internal-overrides.md" %}
+
+See also:
+
+- [Configuration](../usage/configuration.md)
+- [Filtering](../usage/filtering.md)
+- [Policies](../usage/policies.md)
 
 ### Resolution diagnostics (probe API)
 
@@ -239,13 +250,23 @@ draft-building portion of this process via
   - it may appear in results depending on the selected `report` scope
   - no header insertion or removal is attempted
 
-File type identifiers may be provided either as an unqualified name (`"python"`) or as a qualified
-identifier (`"topmark:python"`). Internally, TopMark resolves these identifiers using
-`FileTypeRegistry.resolve_filetype_id(...)`, which returns the corresponding
-\[`FileType`\][topmark.filetypes.model.FileType] instance used by the runtime registries.
+File type identifiers may be provided either as a local identifier (`"python"`) or as a qualified
+identifier (`"topmark:python"`).
 
-Unqualified identifiers are only safe when they remain unique in the composed registry. If multiple
-file types share the same unqualified name, callers must use the qualified `"namespace:name"` form.
+Internally, TopMark normalizes identifiers to canonical qualified keys before resolver, filtering,
+and policy evaluation.
+
+Registry-facing APIs resolve identifiers using
+\[`FileTypeRegistry.resolve_filetype_id(...)`\][topmark.registry.filetypes.FileTypeRegistry.resolve_filetype_id],
+which returns the corresponding \[`FileType`\][topmark.filetypes.model.FileType] instance from the
+effective composed registry.
+
+Local identifiers are accepted only when they remain unambiguous in the composed registry. If
+multiple file types share the same local identifier, callers must use the qualified
+`"namespace:name"` form.
+
+For a detailed explanation of the registry model and identity semantics, see
+[Registry model](../dev/registry-model.md).
 
 For resolution diagnostics, use
 \[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path] (see
@@ -256,98 +277,49 @@ canonical path-based resolution surface for 1.0.
 
 ### Registries, bindings, and extensibility
 
-TopMark exposes **read-only** registries for file types and header processors via the stable facade
-in \[`topmark.registry.registry.Registry`\][topmark.registry.registry.Registry]. These registries
-represent the **effective composed view** (internal base registries + overlays − removals) and are
-returned as immutable `Mapping` views (backed by `MappingProxyType`).
+TopMark exposes read-only registry inspection through the stable
+\[`Registry`\][topmark.registry.registry.Registry] facade.
 
-These registry objects are **not part of the \[`topmark.api`\][topmark.api] stability contract**;
-the supported programmatic API is defined exclusively by the symbols exported in
-\[`topmark.api.__all__`\][topmark.api].
+The facade represents the effective composed runtime view of:
 
-Identity registries (\[`FileTypeRegistry`\][topmark.registry.filetypes.FileTypeRegistry],
-\[`HeaderProcessorRegistry`\][topmark.registry.processors.HeaderProcessorRegistry]) and the
-relationship registry (\[`BindingRegistry`\][topmark.registry.bindings.BindingRegistry]) are
-advanced APIs. The stable \[`Registry`\][topmark.registry.registry.Registry] façade remains the
-preferred entry point for public read operations and cross-registry coordination.
+- registered file types
+- registered header processors
+- effective file type to processor bindings
 
-The registry model has been refactored into three explicit layers with clear responsibilities:
-
-- \[`FileTypeRegistry`\]\[topmark.registry.filetypes.FileTypeRegistry\]: manages file type
-  identities (namespace, local key, qualified key)
-- \[`HeaderProcessorRegistry`\]\[topmark.registry.processors.HeaderProcessorRegistry\]: manages
-  processor identities (namespace, local key, qualified key)
-- \[`BindingRegistry`\]\[topmark.registry.bindings.BindingRegistry\]: manages relationships between
-  file types and processors (bindings)
-
-The \[`Registry`\][topmark.registry.registry.Registry] facade composes these layers and provides
-convenience read-only accessors such as:
-
-- `Registry.filetypes()` → effective file type mapping
-- `Registry.processors_by_qualified_key()` → processor definitions by qualified key
-- `Registry.bindings()` → effective bindings
-
-This separation ensures that identity and relationships remain decoupled, and avoids implicit side
-effects when registering or binding components.
-
-Most users should interact with registries through this facade and treat them as
-**introspection-only**.
-
-Resolution of file types and processors is now probe-driven in 1.0. Instead of using ad-hoc helpers,
-callers should rely on
-\[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path] and then
-use the registry facade to inspect or resolve processors from the selected file type.
-
-If you need dynamic extensions at runtime (typically in plugins or tests), use the advanced
-registries in \[`topmark.registry`\][topmark.registry] directly and keep the steps explicit:
+Examples:
 
 ```python
-from topmark.registry.bindings import BindingRegistry
-from topmark.registry.filetypes import FileTypeRegistry
-from topmark.registry.processors import HeaderProcessorRegistry
+from topmark.registry.registry import Registry
 
-# Register file type identity
-FileTypeRegistry.register(ft)
-
-# Register processor identity
-proc_def = HeaderProcessorRegistry.register(
-    processor_class=MyProcessor,
-)
-
-# Bind file type to processor
-BindingRegistry.bind(
-    file_type_key=ft.qualified_key,
-    processor_key=proc_def.qualified_key,
-)
+for ft in Registry.filetypes().values():
+    print(ft.qualified_key)
 ```
 
-For cleanup, reverse the same steps explicitly:
+```python
+from topmark.registry.registry import Registry
 
-- `BindingRegistry.unbind(ft.qualified_key)`
-- `HeaderProcessorRegistry.unregister(proc_def.qualified_key)`
-- `FileTypeRegistry.unregister(ft.qualified_key)`
+for binding in Registry.bindings():
+    print(binding.file_type_key, binding.processor_key)
+```
 
-Note that all mutation helpers operate on **overlay state only**. They do not mutate the built-in
-registry definitions and are intended for runtime extensions (e.g. plugins or tests).
+Most public integrations should treat the registry facade as introspection-only and prefer the
+high-level \[`topmark.api`\][topmark.api] functions for execution.
 
-These mutation helpers apply **overlay-only changes**: they do not mutate the internal base
-registries used to construct the effective views. Overlays are process-local and thread-safe (via an
-internal lock). In tests, prefer wrapping mutations in `try/finally` to ensure cleanup.
+Advanced registry concepts, including registry layers, overlay mutation helpers, bindings,
+qualified/local identity semantics, and runtime extension examples, are documented in
+[Registry model](../dev/registry-model.md).
 
-Overlay mutations automatically invalidate composed registry caches; callers do not need to manage
-cache lifetimes explicitly.
+Registry state can also be inspected from the CLI:
 
-When registering processors against file types, prefer qualified file type identifiers such as
-`"topmark:python"` or `"my_plugin:django_html"` once multiple namespaces are in play. Unqualified
-names remain supported for compatibility, but may become ambiguous.
+- [`topmark registry`](../usage/commands/registry.md)
+- [`topmark registry filetypes`](../usage/commands/registry/filetypes.md)
+- [`topmark registry processors`](../usage/commands/registry/processors.md)
+- [`topmark registry bindings`](../usage/commands/registry/bindings.md)
 
-For long-term or redistributable extensions, prefer publishing a plugin using the
-\[`topmark.filetypes`\][topmark.filetypes] entry point group.
+For resolution diagnostics, prefer:
 
-See the generated API reference:
-
-- [`topmark.api`](../api/reference/topmark.api.md)
-- [`topmark.registry`](../api/reference/topmark.registry.md)
+- \[`topmark.api.probe()`\][topmark.api.probe]
+- [`topmark probe`](../usage/commands/probe.md)
 
 ______________________________________________________________________
 

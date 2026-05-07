@@ -41,33 +41,27 @@ The registry system has been fully refactored into a **deterministic, explicit, 
 model**:
 
 - Introduced a strict **three-registry architecture**:
-
   - `filetypes` → identity of file types
   - `processors` → identity of processors
   - `bindings` → relationships between file types and processors
-
 - Added a thin façade (`registry.registry`) to compose these concerns without hiding behavior.
-
 - Replaced all implicit registration (decorators, bootstrap scanning) with **explicit bindings**.
-
 - Introduced **namespace-aware identities**:
-
   - `qualified_key = "<namespace>:<name>"`
   - canonical keys are now the default across APIs and outputs
-
+- Froze the qualified-vs-local file type identifier semantics for 1.0:
+  - canonical internal identity is the qualified key, such as `topmark:python`
+  - public inputs may use local identifiers, such as `python`, only when unambiguous
+  - ambiguous local identifiers require the qualified form
+  - fuzzy matching, aliases, and implicit namespace fallback are intentionally unsupported
 - Implemented **ambiguity-aware resolution** with explicit error types.
-
 - Moved resolution logic into `topmark.resolution.*` and removed legacy resolver paths.
-
 - Established **canonical identity semantics** across machine output, CLI, and API.
-
 - Introduced probe-based resolution via `ResolutionProbeResult` as the shared evidence model for
   resolver diagnostics and effective pipeline resolution.
-
 - Added the read-only `topmark probe` command and matching `topmark.api.probe()` public API to
   expose file-type candidates, selected file type, selected processor, scores, match signals, and
   explicit inputs filtered before probing through stable DTOs at the API boundary.
-
 - Refactored `ResolverStep` and `ProberStep` so normal pipelines and the probe pipeline share the
   same probe-backed resolution mapping.
 
@@ -155,6 +149,11 @@ The configuration system has been fully restructured:
   - flattening is now performed only at exception, presentation, and machine-output boundaries
 - Removed legacy helpers and compatibility layers
 - Standardized API inputs via `ConfigMapping`
+- Normalized file type identifier handling across config freeze and runtime policy lookup:
+  - `include_file_types` and `exclude_file_types` normalize to canonical qualified keys
+  - `policy_by_type` accepts both qualified identifiers and unambiguous local identifiers
+  - frozen `policy_by_type` maps are keyed by canonical qualified file type identifiers
+  - runtime policy lookup uses `ctx.file_type.qualified_key`
 - Classified `PolicyOverrides` and `ConfigOverrides` as internal CLI/API orchestration bridge types,
   with public callers using plain mapping-based `config`, `policy`, and `policy_by_type` inputs.
 
@@ -261,6 +260,12 @@ Result: human output is now **consistent, composable, and decoupled from CLI**.
   frozen `--report`, `header_mutation_mode`, and `empty_insert_mode` contracts.
 - Added a shared documentation snippet for the public/internal override boundary and reused it
   across API, configuration, architecture, schema, and resolution documentation.
+- Added a shared documentation snippet for qualified vs local file type identifiers and reused it
+  across usage, configuration, command, API, registry, plugin, resolution, and machine-output
+  documentation.
+- Added dedicated user-facing CLI and configuration overview pages.
+- Added a dedicated registry model developer page covering registry layers, bindings, overlays,
+  canonical identities, plugin integration, and registry CLI inspection.
 
 ### CI / release / dependency model (completed)
 
@@ -293,6 +298,9 @@ At this point:
   commands
 - The public probe API is now aligned with the CLI probe command while preserving the
   public/internal boundary around resolver internals
+- Qualified-vs-local file type identifier semantics are now frozen, implemented, tested, and
+  documented across CLI, TOML configuration, API overlays, resolver filtering, policy lookup,
+  registry-facing APIs, diagnostics, and machine output
 
 The project is now in a **pre-1.0 stabilization phase**, with broad architecture complete, in-memory
 pipeline support explicitly deferred, and only targeted contract-freeze decisions remaining.
@@ -319,10 +327,12 @@ This section summarizes the **externally relevant breaking changes** already int
   - processor registration → `HeaderProcessorRegistry.register(...)`
   - file type registration → `FileTypeRegistry.register(...)`
   - binding → `Registry.bind(...)` / `BindingRegistry.bind(...)`
-- Namespace-aware file type lookup now supports qualified identifiers and may raise
-  `AmbiguousFileTypeIdentifierError` for ambiguous unqualified identifiers.
+- Namespace-aware file type lookup now supports qualified identifiers and rejects ambiguous local
+  identifiers unless the caller uses the qualified form.
 - Registry machine and human outputs now expose canonical qualified identifiers and namespace
   metadata, and add a first-class bindings view.
+- Local file type identifiers are accepted at public boundaries only when unambiguous; canonical
+  qualified keys are the stable comparison and storage form.
 - Public API registry metadata was reshaped to align with the split filetype / processor / binding
   model.
   - Downstream callers using older field names or processor-grouped binding views must update.
@@ -351,6 +361,12 @@ consumers must update to the canonical identity and explicit binding model.
 - Policy/config surface changed:
   - `add_only` / `update_only` → replaced by `header_mutation_mode`
   - `skip_compliant` / `skip_unsupported` → replaced by `report`
+- Frozen `Config.policy_by_type` keys are now canonical qualified file type identifiers.
+  - Consumers that inspect frozen config or call low-level effective-policy helpers must use keys
+    such as `topmark:python` instead of assuming local-only keys such as `python`.
+- `policy_by_type`, `include_file_types`, and `exclude_file_types` now share the same identifier
+  contract: qualified identifiers are accepted explicitly, and local identifiers are accepted only
+  when unambiguous.
 - Config merge semantics are no longer uniformly “last-wins”:
   - some fields accumulate
   - some fields merge key-wise
@@ -429,6 +445,8 @@ snapshots, and downstream automation may need adjustment.
   - plural/domain-specific JSON collection keys
   - singular NDJSON record kinds
   - `qualified_key`, `namespace` + `local_key`, and `*_key` reference naming
+- Machine-readable config, registry, resolver, and probe payloads emit canonical qualified file type
+  identifiers when a resolved identity is available.
 - Probe machine output now treats probe records as per-path results and includes filtered explicit
   inputs via `status="filtered"` with path-filter, file-type-filter, or generic discovery-filter
   reasons.
@@ -448,6 +466,9 @@ older payload naming or outcome-keyed summaries must update.
   - `.taplo.toml`
 - Built-site link checking (`links-site`) is now part of the CI path that gates release-artifact
   creation on tag pushes.
+- User and developer documentation now treats qualified file type identifiers as the canonical
+  internal representation and documents local identifiers as an unambiguous public-input
+  convenience.
 
 Result: documentation is more accurate and better validated, but docs generation/validation is now
 stricter than before.
@@ -502,38 +523,23 @@ choices, and deciding what is in or out for 1.0**.
 
 ### Registry / resolution freeze
 
-The registry architecture is largely complete, but a few 1.0 decisions remain:
+The registry and resolution identifier contract is now frozen for 1.0.
 
-- Decide whether the **local-key compatibility view** in `FileTypeRegistry` remains an explicit
-  long-term 1.0 feature or should be treated as transitional.
-- Freeze and document where **local keys** remain valid user-facing input:
-  - CLI/config include/exclude filters
-  - API resolver-style helpers
-  - plugin-facing examples and tests
-- Confirm that canonical identity terminology (`qualified_key`, `file_type_id`, `local_key`, etc.)
-  is fully stabilized across docs, tests, CLI, and public API references.
-- Keep the high-level resolution surface centered on `topmark.api.probe()` for public integrations:
-  - `topmark.api.probe()` is the stable 1.0 public probe API
-  - low-level helpers such as `probe_resolution_for_path()` remain advanced/internal debugging
-    surfaces outside the `topmark.api` stability contract
-  - generated references should continue to reflect that distinction
-- Registry discovery/query commands are explicitly deferred beyond the current probe work:
-  - query file types by substring, glob-like pattern, namespace, extension, or processor binding
-  - query processors by key/namespace/capability
-  - query bindings by file type or processor
-  - any future query surface must preserve the canonical identity model (`qualified_key`,
-    `namespace`, `local_key`) and must not reintroduce ambiguous local-key assumptions
+Completed decisions:
 
-Recommended direction:
+- Canonical file type identity is the qualified key, for example `topmark:python`.
+- Local identifiers, such as `python`, remain accepted at public boundaries only when unambiguous.
+- Ambiguous local identifiers require the qualified form.
+- `include_file_types`, `exclude_file_types`, and `policy_by_type` all share the same identifier
+  semantics.
+- Frozen config and runtime policy lookup use canonical qualified keys.
+- `topmark probe` and `topmark.api.probe()` are the accepted 1.0 resolution explainability surfaces.
+- Low-level helpers such as `probe_resolution_for_path()` remain advanced/internal debugging
+  surfaces outside the `topmark.api` stability contract.
+- Registry discovery/query commands remain deferred beyond 1.0.
 
-- Keep **canonical qualified identity** as the default internal and external model.
-- Keep local-key support only where it provides clear user-facing compatibility value.
-- Keep ambiguity handling in the resolver layer rather than treating overlapping file types as a
-  registry error.
-- Treat `topmark probe` and `topmark.api.probe()` as the accepted 1.0 resolution explainability
-  surfaces, covering both discovery-level filtering for explicit inputs and file-type / processor
-  resolution for paths that reach probing.
-- Defer registry query/filter commands unless a concrete pre-1.0 blocker appears.
+Remaining work is limited to final release validation and ensuring generated API references continue
+reflecting the public/internal boundary.
 
 ### In-memory pipeline: implement or defer
 
@@ -589,14 +595,18 @@ The separation is much clearer now, but a few boundary questions remain:
 
 ### Config / validation contract freeze
 
-The architecture is now stable, but the **exact 1.0 contract** still needs to be frozen in a few
-places.
+The architecture is now stable, and the main public configuration and identifier semantics are now
+frozen. Remaining work is limited to final release validation and any explicit post-1.0 deferrals.
 
 Remaining decisions:
 
 - Typed override boundary is now frozen:
   - `PolicyOverrides` and `ConfigOverrides` are internal CLI/API orchestration bridge types
   - public Python callers use plain mapping-based `config`, `policy`, and `policy_by_type` inputs
+- Qualified/local file type identifier semantics are now frozen:
+  - public inputs may use qualified identifiers or unambiguous local identifiers
+  - config freeze normalizes file type filters and `policy_by_type` keys to canonical qualified keys
+  - runtime policy lookup uses canonical qualified keys
 - Freeze and document the staged validation model now implemented internally:
   - TOML-source diagnostics
   - merged-config diagnostics
@@ -615,6 +625,7 @@ Remaining decisions:
 Recommended direction:
 
 - keep the current TOML → Config → Runtime split,
+- keep canonical qualified file type identifiers as the internal frozen representation,
 - keep `strict_config_checking` as the public config-loading strictness knob for 1.0,
 - freeze the staged validation semantics now implemented internally,
 - keep flattened diagnostics as a derived compatibility/reporting surface only at exception,
@@ -716,6 +727,7 @@ A few user-facing behavior questions remain open for 1.0:
     write/apply semantics
   - public API probe results expose stable DTOs rather than resolver enums, pipeline contexts, or
     registry internals
+  - file type identifiers in probe filters follow the frozen qualified/local identifier contract
 - User-facing policy/report flag semantics are now accepted for 1.0:
   - `--report` is a human per-file output filter for `check` and `strip`
   - `header_mutation_mode` controls `check` insertion/update intent
@@ -729,13 +741,13 @@ The remaining work is no longer broad architectural redesign.
 
 What is left is mainly:
 
-- **remaining configuration-schema and identifier-semantics freeze decisions**
+- **final configuration-schema release validation**
 - **tooling/release follow-up**
 - one major scope decision resolved: **in-memory pipeline explicitly deferred to post-1.0**
 
-That means TopMark is now in the final stage of the 1.0 effort: freezing the last configuration and
-identifier semantics, validating release/tooling assumptions, and deferring anything non-essential
-cleanly.
+That means TopMark is now in the final stage of the 1.0 effort: validating release/tooling
+assumptions, confirming any explicit post-1.0 deferrals, and avoiding new scope unless a concrete
+release blocker appears.
 
 ______________________________________________________________________
 
@@ -856,10 +868,13 @@ These are release blockers unless explicitly deferred with a documented rational
 
 #### [Must] Configuration & validation
 
-- [ ] Config keys and semantics documented and considered stable
-- [ ] Qualified/unqualified file type identifier semantics documented and considered stable
-  - [x] local or qualified file type identifiers documented for path command filters and README
-  - [ ] final local-key compatibility decision for registry/file-type internals remains open
+- [x] Config keys and semantics documented and considered stable
+- [x] Qualified/local file type identifier semantics documented and considered stable
+  - [x] canonical internal identity is the qualified key, such as `topmark:python`
+  - [x] local identifiers are accepted at public boundaries only when unambiguous
+  - [x] `include_file_types`, `exclude_file_types`, and `policy_by_type` share the same identifier
+    semantics
+  - [x] frozen config and runtime policy lookup use canonical qualified keys
 - [x] `config init`, `config defaults`, `config check`, and `config dump` outputs aligned and frozen
 - [x] Decision made and documented on the final public override model
   - [x] public API command signatures accept plain mapping-based policy/config overlays
@@ -876,7 +891,7 @@ These are release blockers unless explicitly deferred with a documented rational
 - [x] Whole-source TOML schema validation rules documented and considered stable
 - [x] TOML/config/runtime split documented and implemented
 - [x] Per-path effective config resolution implemented
-- [ ] Validation semantics frozen for 1.0:
+- [x] Validation semantics frozen for 1.0:
   - [x] validation always runs
   - [x] strictness controls raise vs report behavior
   - [x] CLI and API use the same validation path
@@ -906,7 +921,11 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] hypothesis/property tests aligned with the intended supported line-ending model
   - [x] user-facing docs updated; newline handling remains a fixed contract, not a configurable
     policy surface
-- [ ] Namespace-aware registry lookup and deterministic ambiguity behavior covered by tests
+- [x] Namespace-aware registry lookup and deterministic ambiguity behavior covered by tests
+  - [x] registry identity tests cover local, qualified, default-namespace, ambiguous, malformed, and
+    unknown identifier cases
+  - [x] config, TOML, resolver, CLI, and API tests cover normalized file type filters and
+    `policy_by_type` behavior
 - [x] Probe command and public probe API resolution-candidate and filtered explicit-input reporting
   are covered by focused resolver, discovery, pipeline-step, CLI human-output, CLI exit-code,
   machine-output, and API tests, including path-filter, file-type-filter, fallback discovery-filter,
@@ -953,8 +972,9 @@ These should ideally be completed for 1.0, but may be deferred more easily if ne
 
 #### [Recommended] Registry / resolution
 
-- [ ] Decide whether the local-key compatibility view in `FileTypeRegistry` remains a supported 1.0
-  feature
+- [x] Decide whether local identifiers remain supported for 1.0
+  - [x] local identifiers remain supported at public boundaries only when unambiguous
+  - [x] canonical qualified keys remain the internal storage, comparison, and output form
 - [x] Resolution/probe helper surface reviewed for final public/internal stability wording
   - [x] `topmark.api.probe()` is the public stable surface
   - [x] low-level resolution helpers remain advanced/internal and outside the `topmark.api` snapshot
@@ -1005,6 +1025,8 @@ These items are explicitly reasonable to defer.
   CLI/API/machine-output contracts beyond the current flattened compatibility diagnostics view
 - [ ] Revisit whether `strict_config_checking` should eventually be renamed once 1.0 contract
   stability no longer constrains config-key naming
+- [ ] Revisit registry query/filter commands if users need richer registry discovery beyond the
+  current read-only registry listings and probe diagnostics
 
 #### [Post-1.0] Human output
 

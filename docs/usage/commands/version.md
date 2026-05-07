@@ -14,18 +14,26 @@ topmark:header:end
 
 **Purpose:** Display the TopMark version.
 
-The `version` subcommand prints the resolved TopMark package version for the active Python
-environment.\
-For installed builds, this version is derived from Git tags via `setuptools-scm` and exposed
-through\
-package metadata / the generated version module.
+The `version` subcommand prints the runtime-resolved TopMark package version for the active Python
+environment. For installed builds, this version is derived from Git tags via `setuptools-scm` and
+exposed through package metadata / the generated version module.
+
+An overview of all CLI commands is available in [CLI overview](../cli.md).
+
+See also:
+
+- [Global options](../global-options.md)
+- [Exit codes](../exit-codes.md)
+- [Machine-readable output](../../dev/machine-output.md)
+- [Machine format conventions](../../dev/machine-formats.md)
+- [API stability](../../dev/api-stability.md)
 
 ______________________________________________________________________
 
 ## Command applicability
 
 `version` is informational and file-agnostic. It reports the installed TopMark package version and
-inspects no project files or configuration.
+performs no project-file inspection or configuration discovery.
 
 It does not accept file-processing inputs:
 
@@ -35,7 +43,8 @@ It does not accept file-processing inputs:
 - file-list STDIN modes (for example, `--files-from -`) do not apply
 - `--quiet` is not supported; use output-format options for machine-readable output
 
-Config discovery does not apply to this command.
+Runtime configuration, registry overlays, resolver state, and file type selection do not affect the
+reported version output.
 
 ______________________________________________________________________
 
@@ -50,12 +59,12 @@ ______________________________________________________________________
 
 ## Output
 
-By default, `topmark version` prints **only the version string**, with no additional labels or
+By default, `topmark version` prints only the resolved version string, with no additional labels or
 decoration.
 
 - The default format is the package’s canonical **PEP 440** version.
 
-- Use `--semver` to request a **SemVer-compatible** representation when possible.
+- Use `--semver` to request a SemVer-compatible rendering when possible.
 
 - For development builds between release tags, the reported version may include SCM-derived
   dev/local segments such as commit identifiers.
@@ -129,8 +138,8 @@ The `version` command supports machine-readable output via:
 - `--output-format json`
 - `--output-format ndjson`
 
-These formats follow TopMark’s shared machine-output conventions. For a full overview of machine
-formats and envelopes, see [`docs/dev/machine-formats.md`](../../dev/machine-formats.md).
+These formats follow TopMark’s shared machine-output and envelope conventions. For a full overview
+of machine formats and envelopes, see [`docs/dev/machine-formats.md`](../../dev/machine-formats.md).
 
 As with human-readable output, the reported version is resolved at runtime from installed package
 metadata / the generated version module rather than from a manually maintained static field in
@@ -158,7 +167,7 @@ Produces a single JSON object:
 }
 ```
 
-- `meta` contains runtime metadata.
+- `meta` contains runtime metadata and shared machine-output envelope fields.
 - `version_info.version` is the resolved version string.
 - `version_info.version_format` is either `pep440` or `semver`.
 
@@ -174,18 +183,29 @@ Produces one JSON object per line:
 {"kind":"version","meta":{"tool":"topmark","version":"<package version>","platform":"darwin"},"version_info":{"version":"<package version>","version_format":"pep440"}}
 ```
 
-- Each line is a self-contained record.
+- Each line is a self-contained machine-output record.
 - The `kind` field identifies the record type (`version`).
 
 ### Notes
 
 - If SemVer conversion fails, TopMark falls back to the original PEP 440 version.
-- PEP 440 output is the canonical packaging version form used by Python packaging tools.
+- PEP 440 output is the canonical packaging-version form used by Python packaging tooling.
 - Development builds between release tags may include SCM-derived dev/local segments.
 - No ANSI color codes or human formatting are emitted in machine formats.
 - JSON output is emitted **without** a trailing newline; NDJSON emits one record per line.
 
 {% include-markdown "\_snippets/output-contract-no-quiet.md" %}
+
+______________________________________________________________________
+
+## Troubleshooting
+
+- **Unexpected development version**: builds between release tags may include SCM-derived
+  development or local-version metadata.
+- **Unexpected SemVer rendering**: TopMark falls back to the original PEP 440 version when a clean
+  SemVer conversion is not possible.
+- **Unexpected machine-output formatting**: use `--output-format json` or `--output-format ndjson`
+  for stable machine-readable output.
 
 ______________________________________________________________________
 
@@ -211,4 +231,4 @@ Notes:
 
 See [`Exit codes`](../exit-codes.md) for the complete CLI-wide exit-code contract.
 
-The `version` command performs no file processing and never modifies state.
+The `version` command performs no file processing, configuration discovery, or state mutation.

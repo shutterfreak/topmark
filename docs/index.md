@@ -15,6 +15,15 @@ topmark:header:end
 TopMark inspects and manages per-file headers (project/license/copyright) across codebases. It is
 comment‑aware, file‑type‑aware, and **dry‑run by default** for safe CI usage.
 
+TopMark provides consistent semantics across:
+
+- CLI execution
+- TOML configuration
+- API overlays
+- layered configuration discovery
+- resolver and probe filtering
+- pre-commit and CI integration
+
 ## Quickstart
 
 ```bash
@@ -36,8 +45,12 @@ topmark probe __pycache__/example.cpython-312.pyc
 ```python
 from topmark import api
 
-res = api.check(["src"], report="actionable")  # dry-run
+res1 = api.check(["src"], report="actionable")  # dry-run
 res2 = api.check(["src"], apply=True)
+res3 = api.check(
+    ["src"],
+    include_file_types=["topmark:python"],
+)
 ```
 
 ```python
@@ -51,12 +64,14 @@ for b in Registry.bindings():
 - Detects, inserts, and updates per‑file headers
 - Honors shebangs, XML declarations, and native comment styles
 - Preserves newline style (LF/CRLF/CR) and BOM
-- Provides `strip` to remove headers (also dry‑run by default)
+- Provides [`strip`](usage/commands/strip.md) to remove headers (also dry‑run by default)
 - Works well in CI and with pre‑commit hooks
-- Explains file-type and processor resolution via `topmark probe`, including why explicit inputs may
-  be filtered before probing
+- Explains file-type and processor resolution via [`topmark probe`](usage/commands/probe.md),
+  including why explicit inputs may be filtered before probing
 - Inspects **layered configuration provenance** via `topmark config dump --show-layers`
 - Validates whole-source TOML configuration before layered config merging
+- Normalizes file type identifiers to canonical qualified keys such as `topmark:python`
+- Supports local identifiers such as `python` when unambiguous
 
 ## Example headers
 
@@ -95,19 +110,24 @@ topmark:header:end
 
 `topmark [COMMAND] ([SUBCOMMAND]) [OPTIONS] [PATHS]...`
 
-Core commands: `check`, `strip`, `probe`, `config`, `registry`, `version`.
+Core commands: [`check`](usage/commands/check.md), [`strip`](usage/commands/strip.md),
+[`probe`](usage/commands/probe.md), [`config`](usage/commands/config.md),
+[`registry`](usage/commands/registry.md), [`version`](usage/commands/version.md).
 
-Informational commands (`version`, `config defaults`, `config init`, and registry commands) are
-file-agnostic: they do not accept positional paths or STDIN input modes and reject them as CLI usage
-errors.
+Informational commands ([`version`](usage/commands/version.md),
+[`config defaults`](usage/commands/config/defaults.md),
+[`config init`](usage/commands/config/init.md), and [`registry`](usage/commands/registry.md)
+commands) are file-agnostic: they do not accept positional paths or STDIN input modes and reject
+them as CLI usage errors.
 
 ### Exit codes (overview)
 
 TopMark uses a small, stable set of exit codes suitable for CI and scripting:
 
 - `SUCCESS (0)` — success (no changes needed or changes applied)
-- `WOULD_CHANGE (2)` — dry-run indicates changes would be made (`check`, `strip`)
-- `FAILURE (1)` — validation failed (`config check`)
+- `WOULD_CHANGE (2)` — dry-run indicates changes would be made ([`check`](usage/commands/check.md),
+  [`strip`](usage/commands/strip.md))
+- `FAILURE (1)` — validation failed ([`config check`](usage/commands/config/check.md))
 - `USAGE_ERROR (64)` — CLI usage error (invalid options, unsupported STDIN modes, or positional
   paths on file-agnostic commands)
 
@@ -120,14 +140,26 @@ See:
 - [`check`](usage/commands/check.md)
 - [`strip`](usage/commands/strip.md)
 
-The `probe` command also reports explicitly requested paths that were filtered out during discovery.
+The [`probe`](usage/commands/probe.md) command also reports explicitly requested paths that were
+filtered out during discovery.
 
-The `config` command has the following subcommands: `check`, `defaults`, `dump`, `init`.
+File-type filtering accepts either local identifiers such as `python` or canonical qualified
+identifiers such as `topmark:python`.
+
+The [`config`](usage/commands/config.md) command has the following subcommands:
+[`config check`](usage/commands/config/check.md),
+[`config defaults`](usage/commands/config/defaults.md),
+[`config dump`](usage/commands/config/dump.md), [`config init`](usage/commands/config/init.md).
+
+The [`registry`](usage/commands/registry.md) command has the following subcommands:
+[`registry filetypes`](usage/commands/registry/filetypes.md),
+[`registry processors`](usage/commands/registry/processors.md),
+[`registry bindings`](usage/commands/registry/bindings.md).
 
 {% include-markdown "\_snippets/output-contract.md" %}
 
-Use `config dump --show-layers` to inspect how configuration is built from individual sources and
-how precedence is applied.
+Use [`config dump --show-layers`](usage/commands/config/dump.md) to inspect how configuration is
+built from individual sources and how precedence is applied.
 
 TopMark supports two STDIN modes:
 
@@ -136,8 +168,7 @@ TopMark supports two STDIN modes:
 - **Content mode**: process one file’s content by passing `-` as the sole PATH together with
   `--stdin-filename NAME`
 
-TopMark does not provide a `--stdin` option flag. Use the POSIX-style `-` PATH sentinel together
-with `--stdin-filename NAME` for content mode. Passing `--stdin` is treated as invalid CLI usage.
+{% include-markdown "\_snippets/no-stdin-option.md" %}
 
 ## Header placement (short version)
 
@@ -149,8 +180,8 @@ with `--stdin-filename NAME` for content mode. Passing `--stdin` is treated as i
 > For full rules, supported file types, JSON vs JSONC handling, and resolver specifics, see the
 > sections in the repository README.
 >
-> `topmark probe` can be used to understand how file types are resolved and why certain paths are
-> ignored.
+> [`topmark probe`](usage/commands/probe.md) can be used to understand how file types are resolved
+> and why certain paths are ignored.
 
 ## Configuration (example)
 
@@ -174,6 +205,15 @@ include_file_types = ["python", "markdown", "env"]
 exclude_file_types = ["html"]
 ```
 
+TopMark also accepts local identifiers such as `python` when unambiguous, but internally normalizes
+identifiers to canonical qualified keys such as `topmark:python`. The same example with local keys:
+
+```toml
+[files]
+include_file_types = ["python", "markdown", "env"]
+exclude_file_types = ["html"]
+```
+
 In `pyproject.toml`, the same settings live under `[tool.topmark]`, with source-local options such
 as `root` and `strict_config_checking` under `[tool.topmark.config]`.
 
@@ -189,9 +229,26 @@ malformed-present sections before staged config-validation semantics are applied
 diagnostics are then evaluated together with merged-config and runtime-applicability diagnostics
 during staged config-loading/preflight validation.
 
+## File type identifiers
+
+TopMark accepts file type identifiers in either local form, such as `python`, or qualified form,
+such as `topmark:python`.
+
+Internally, identifiers normalize to canonical qualified keys such as `topmark:python`.
+
+Local identifiers are accepted only when unambiguous.
+
+See:
+
+- [Configuration](usage/configuration.md)
+- [Filtering](usage/filtering.md)
+- [Policies](usage/policies.md)
+- [CLI overview](usage/cli.md)
+
 ### Inspecting configuration
 
-Use `topmark config dump` to inspect the effective merged configuration.
+Use [`topmark config dump`](usage/commands/config/dump.md) to inspect the effective merged
+configuration.
 
 For deeper insight into how configuration is constructed, use:
 
@@ -212,6 +269,11 @@ after TOML-layer validation.
 
 - **Install:** [Installation guide](install.md)
 - **Usage:**
+  - [CLI overview](usage/cli.md)
+  - [Configuration](usage/configuration.md)
+  - [Filtering](usage/filtering.md)
+  - [Global options](usage/global-options.md)
+  - [Exit codes](usage/exit-codes.md)
   - **Commands:**
     - [`check`](usage/commands/check.md)
     - [`strip`](usage/commands/strip.md)
@@ -219,7 +281,7 @@ after TOML-layer validation.
     - [`version`](usage/commands/version.md)
     - [`config` commands](usage/commands/config.md)
     - [`registry` commands](usage/commands/registry.md)
-  - Pre‑commit integration ([usage/pre-commit.md](usage/pre-commit.md))
+  - [Pre‑commit integration](usage/pre-commit.md)
 - **CI/CD:** Release workflow ([ci/release-workflow.md](ci/release-workflow.md))
 - **Policies:** Guide ([usage/policies.md](usage/policies.md))
 - **Public API:** Reference ([api/public.md](api/public.md))

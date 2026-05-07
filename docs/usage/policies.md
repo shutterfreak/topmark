@@ -12,6 +12,21 @@ topmark:header:end
 
 # TopMark Policy Guide
 
+Policies control:
+
+- whether headers may be inserted or updated
+- how empty files are classified
+- whether file-content probing is allowed
+- how resolver behavior interacts with safety gates
+- how specific file types override global behavior
+
+See also:
+
+- [Configuration](configuration.md)
+- [Filtering](filtering.md)
+- [CLI overview](cli.md)
+- [Global options](global-options.md)
+
 TopMark policies control how the pipeline detects file types, classifies empty files, and decides
 whether headers may be inserted or updated.
 
@@ -23,8 +38,20 @@ and are merged according to discovery and precedence rules. See:
 
 Policies can be supplied from:
 
+Policy semantics are shared consistently across:
+
+- TOML configuration
+
+- CLI overrides
+
+- API overlays
+
+- runtime policy resolution
+
 - discovered config files (`topmark.toml` or `[tool.topmark]` in `pyproject.toml`)
+
 - command-specific CLI options
+
 - the Python API via public policy overlays
 
 Policy values shown here are part of the public configuration surface. Internal implementation
@@ -36,6 +63,9 @@ or Python API contract. Public callers should use plain mapping-based inputs via
 In `topmark.toml`, policy is defined under `[policy]` and `[policy_by_type.<file_type>]`. In
 `pyproject.toml`, the same settings live under `[tool.topmark.policy]` and
 `[tool.topmark.policy_by_type.<file_type>]`.
+
+For canonical file-type identifier semantics, see
+[Configuration](configuration.md#file-type-identifiers).
 
 During configuration loading, TopMark first validates each whole-source TOML fragment (unknown
 sections, unknown keys, malformed section shapes, etc.). Only the validated layered config fragment
@@ -180,10 +210,28 @@ not an extension of newline support.
 
 ## Per-file-type policy
 
+{% include-markdown "../\_snippets/file-type-identifiers.md" %}
+
 Use `policy_by_type.<file_type_id>` to override policy for one file type while inheriting
 unspecified values from the global `policy` section.
 
 In `pyproject.toml`, this section is written as `[tool.topmark.policy_by_type.<file_type>]`.
+
+Both local identifiers:
+
+```toml
+[policy_by_type.python]
+```
+
+and canonical qualified identifiers:
+
+```toml
+[policy_by_type."topmark:python"]
+```
+
+are supported when the local identifier is unambiguous.
+
+Internally, TopMark resolves per-file-type policy using canonical qualified file type identifiers.
 
 Example:
 
@@ -202,6 +250,39 @@ In this example:
 - Python files inherit `allow_content_probe = true`
 - Python files override `header_mutation_mode`
 - Python files additionally allow header insertion into empty files
+
+Equivalent canonical form:
+
+```toml
+[policy_by_type."topmark:python"]
+header_mutation_mode = "update_only"
+allow_header_in_empty_files = true
+```
+
+______________________________________________________________________
+
+## Ambiguous, unknown, and malformed identifiers
+
+Per-file-type policy identifiers follow the same rules as filtering and resolver configuration.
+
+Ambiguous local identifiers require the canonical qualified form.
+
+Examples:
+
+```text
+python                # accepted when unambiguous
+topmark:python        # canonical qualified form
+```
+
+Malformed identifiers are ignored diagnostically.
+
+Examples:
+
+```text
+:python
+topmark:
+topmark:python:extra
+```
 
 ______________________________________________________________________
 
@@ -248,3 +329,13 @@ Examples:
   but not update existing headers
 
 These settings are independent and may be combined.
+
+______________________________________________________________________
+
+## Related pages
+
+- [Configuration](configuration.md)
+- [Filtering](filtering.md)
+- [CLI overview](cli.md)
+- [Global options](global-options.md)
+- [Configuration discovery](../configuration/discovery.md)

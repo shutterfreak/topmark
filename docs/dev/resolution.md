@@ -16,7 +16,10 @@ This page documents how TopMark resolves a concrete filesystem path to the most 
 \[`FileType`\][topmark.filetypes.model.FileType], and then to the bound
 \[`HeaderProcessor`\][topmark.processors.base.HeaderProcessor] registered for that file type.
 
-It complements the registry architecture described in [`architecture.md`](architecture.md):
+Resolver behavior is deterministic and operates on canonical qualified file type identifiers such as
+`topmark:python`.
+
+It complements the registry architecture described in [`registry-model.md`](registry-model.md):
 
 - registries define **what exists**
 - the resolver defines **what wins for a concrete path**
@@ -41,13 +44,19 @@ ______________________________________________________________________
 
 TopMark has two different resolution modes:
 
-- **Identifier-based lookup** resolves file types or processors from explicit identifiers or
-  canonical keys through the registries.
+- **Identifier-based lookup** resolves file types or processors from explicit local or qualified
+  identifiers through the registries.
 - **Path-based resolution** resolves a real path by evaluating extension, filename, pattern, and
   optional content-based signals.
 
+Registry-facing APIs normalize identifiers to canonical qualified keys before resolver and binding
+operations.
+
 Before path-based resolution runs, TopMark performs file discovery and filtering. Paths excluded at
 that stage do not participate in candidate generation or scoring.
+
+File-type filters accept both local identifiers such as `python` and canonical qualified identifiers
+such as `topmark:python`. Internally, resolver filtering operates on canonical qualified keys.
 
 Path-based resolution is implemented in
 \[`topmark.resolution.filetypes`\][topmark.resolution.filetypes] and consumed by
@@ -73,10 +82,14 @@ CLI/API orchestration and are not part of the resolver contract.
 See also:
 
 - [`Architecture`](architecture.md)
+- [`Registry model`](registry-model.md)
 - [`Pipelines (Concepts)`](pipelines.md)
 - [`Pipelines (Reference)`](pipelines-reference.md)
 - [`Configuration discovery`](../configuration/discovery.md)
 - [`Configuration index`](../configuration/index.md)
+- [`Configuration`](../usage/configuration.md)
+- [`Filtering`](../usage/filtering.md)
+- [`CLI overview`](../usage/cli.md)
 
 ______________________________________________________________________
 
@@ -84,6 +97,9 @@ ______________________________________________________________________
 
 TopMark 1.0 introduces a probe-first resolution model exposed via
 \[\[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path]\][topmark.resolution.filetypes.probe_resolution_for_path].
+
+Probe-based resolution operates only after discovery filtering and configuration normalization have
+completed.
 
 This function returns a
 **\[`ResolutionProbeResult`\][topmark.resolution.probe.ResolutionProbeResult]** containing:
@@ -101,6 +117,8 @@ represented as synthetic probe results with `status="filtered"` and one of:
 - `reason="excluded_by_path_filter"`
 
 - `reason="excluded_by_file_type_filter"`
+
+  This includes canonicalized file-type filtering using normalized qualified identifiers.
 
 - `reason="excluded_by_discovery_filter"` (fallback when the exact category is not identified)
 
@@ -140,6 +158,8 @@ Candidate generation is performed by
 
 For each effective \[`FileType`\][topmark.filetypes.model.FileType], the resolver evaluates
 name-based signals and, when allowed, optional content-based signals.
+
+Candidate generation operates on the effective composed runtime registry.
 
 ### Name-based signals
 
@@ -228,6 +248,13 @@ Candidates are ordered by:
 1. namespace (**ascending**)
 1. local key (**ascending**)
 
+The winning file type is therefore stable for a given:
+
+- effective registry composition
+- path and filename
+- file content
+- configuration and filtering state
+
 In practice, this means:
 
 - the highest-scoring candidate wins
@@ -246,6 +273,12 @@ ______________________________________________________________________
 
 Resolution may produce multiple matching file type candidates. This is **not** considered a registry
 error.
+
+This runtime ambiguity policy is distinct from identifier ambiguity handling.
+
+Identifier ambiguity occurs when a local identifier such as `python` resolves to multiple file types
+in the effective registry. In those situations, callers must use canonical qualified identifiers
+such as `topmark:python`.
 
 Overlap between file types is allowed because it enables useful patterns such as:
 
@@ -284,6 +317,9 @@ path filters, file-type filters, or a generic discovery-filter fallback.
 This makes ambiguous-but-resolvable situations observable during development and debugging without
 turning them into hard failures.
 
+Identifier normalization and file-type filter decisions are also observable through probe and
+resolver diagnostics.
+
 The log includes:
 
 - the path being resolved
@@ -305,6 +341,7 @@ TopMark intentionally resolves ambiguity in the resolver layer rather than in th
 This separation keeps responsibilities clear:
 
 - \[`FileTypeRegistry`\][topmark.registry.filetypes.FileTypeRegistry] stores file type identities
+  and canonical identifier resolution
 - \[`HeaderProcessorRegistry`\][topmark.registry.processors.HeaderProcessorRegistry] stores
   processor identities
 - \[`BindingRegistry`\][topmark.registry.bindings.BindingRegistry] stores effective
@@ -328,6 +365,7 @@ The current resolver deliberately does **not** provide:
 - user-configurable namespace priority
 - a strict ambiguity error mode
 - registry-time rejection of overlapping file type definitions
+- fuzzy matching or implicit namespace fallback for identifier resolution
 - pluggable custom precedence strategies
 
 These may be introduced later if there is a strong use case, but they are not part of the current
@@ -352,5 +390,10 @@ ______________________________________________________________________
 ## See also
 
 - [`Architecture`](architecture.md) — registry design and system overview
+- [`Registry model`](registry-model.md) — registry layers, bindings, overlays, and identifier
+  semantics
 - [`Plugins`](plugins.md) — how file types and processors are registered
 - [`Machine output schema`](machine-output.md) — how resolution results surface in outputs
+- [`Configuration`](../usage/configuration.md) — canonical file-type identifier semantics
+- [`Filtering`](../usage/filtering.md) — discovery and file-type filter behavior
+- [`CLI overview`](../usage/cli.md) — resolver-related CLI commands and filtering options

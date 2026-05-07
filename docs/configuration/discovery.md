@@ -126,20 +126,20 @@ The following settings are defined in configuration files and participate in lay
 config scopes. These fields determine how TopMark behaves for a given file and participate in
 layered config merging.
 
-| Semantic group    | Field(s)                                           | Current merge behavior                                 | Recommended long-term behavior       | Notes                                                                                                                    |
-| ----------------- | -------------------------------------------------- | ------------------------------------------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
-| Provenance        | `config_files`                                     | Append                                                 | Append                               | Keep all contributing config origins for observability and diagnostics.                                                  |
-| Diagnostics       | `validation_logs`                                  | Stage-aware append                                     | Preserve staged logs                 | Staged validation logs accumulate per validation stage; flattening is performed only at reporting and output boundaries. |
-| Behavioral config | `header_fields`                                    | Replace                                                | Replace                              | The nearest applicable config defines the effective header field order.                                                  |
-| Behavioral config | `align_fields`                                     | Replace if explicitly set                              | Replace                              | Scalar formatting choice; nearest applicable value should win.                                                           |
-| Behavioral config | `relative_to_raw`, `relative_to`                   | Replace if explicitly set                              | Replace                              | Path base decisions should come from the nearest applicable config.                                                      |
-| Policy            | `policy`                                           | Tri-state field merge via `MutablePolicy.merge_with()` | Replace or tri-state merge           | Field-wise tri-state merging allows layered policy refinement while preserving defaults.                                 |
-| Policy            | `policy_by_type`                                   | Key-wise merge + tri-state per field                   | Key-wise merge + tri-state per field | Per-file-type policies overlay the global policy and refine it for specific formats.                                     |
-| Field values      | `field_values`                                     | Key-wise merge (overlay)                               | Key-wise merge                       | Future direction: child keys override matching parent keys while preserving unrelated inherited values.                  |
-| Discovery inputs  | `include_pattern_groups`, `exclude_pattern_groups` | Append                                                 | Append                               | Pattern sources accumulate across layers and remain active within their scope.                                           |
-| Discovery inputs  | `include_from`, `exclude_from`, `files_from`       | Replace-wholesale when non-empty                       | Append                               | Future direction: path-based discovery sources accumulate rather than replace.                                           |
-| Discovery inputs  | `files`                                            | Replace-wholesale when non-empty                       | Replace                              | Explicit file lists are authoritative and should not silently accumulate across layers.                                  |
-| Discovery filters | `include_file_types`, `exclude_file_types`         | Replace-wholesale when non-empty                       | Replace                              | File-type filters represent a nearest-scope decision rather than a union.                                                |
+| Semantic group    | Field(s)                                           | Current merge behavior                                 | Recommended long-term behavior       | Notes                                                                                                                                             |
+| ----------------- | -------------------------------------------------- | ------------------------------------------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Provenance        | `config_files`                                     | Append                                                 | Append                               | Keep all contributing config origins for observability and diagnostics.                                                                           |
+| Diagnostics       | `validation_logs`                                  | Stage-aware append                                     | Preserve staged logs                 | Staged validation logs accumulate per validation stage; flattening is performed only at reporting and output boundaries.                          |
+| Behavioral config | `header_fields`                                    | Replace                                                | Replace                              | The nearest applicable config defines the effective header field order.                                                                           |
+| Behavioral config | `align_fields`                                     | Replace if explicitly set                              | Replace                              | Scalar formatting choice; nearest applicable value should win.                                                                                    |
+| Behavioral config | `relative_to_raw`, `relative_to`                   | Replace if explicitly set                              | Replace                              | Path base decisions should come from the nearest applicable config.                                                                               |
+| Policy            | `policy`                                           | Tri-state field merge via `MutablePolicy.merge_with()` | Replace or tri-state merge           | Field-wise tri-state merging allows layered policy refinement while preserving defaults.                                                          |
+| Policy            | `policy_by_type`                                   | Key-wise merge + tri-state per field                   | Key-wise merge + tri-state per field | Per-file-type policies overlay the global policy and refine it for specific formats. Keys normalize to canonical qualified file type identifiers. |
+| Field values      | `field_values`                                     | Key-wise merge (overlay)                               | Key-wise merge                       | Future direction: child keys override matching parent keys while preserving unrelated inherited values.                                           |
+| Discovery inputs  | `include_pattern_groups`, `exclude_pattern_groups` | Append                                                 | Append                               | Pattern sources accumulate across layers and remain active within their scope.                                                                    |
+| Discovery inputs  | `include_from`, `exclude_from`, `files_from`       | Replace-wholesale when non-empty                       | Append                               | Future direction: path-based discovery sources accumulate rather than replace.                                                                    |
+| Discovery inputs  | `files`                                            | Replace-wholesale when non-empty                       | Replace                              | Explicit file lists are authoritative and should not silently accumulate across layers.                                                           |
+| Discovery filters | `include_file_types`, `exclude_file_types`         | Replace-wholesale when non-empty                       | Replace                              | File-type filters represent a nearest-scope decision rather than a union. Values normalize to canonical qualified file type identifiers.          |
 
 ### Runtime overlays
 
@@ -211,6 +211,11 @@ config-loading/preflight validation as a whole, not only to TOML parsing in isol
 
 For the full generated reference configuration document, see
 [Example TOML document](./generated/example-config.md).
+
+File type identifiers in configuration may use either local identifiers such as `python` or
+canonical qualified identifiers such as `topmark:python`. TopMark normalizes these identifiers to
+qualified keys during configuration freeze. See
+[Usage configuration](../usage/configuration.md#file-type-identifiers) for the public contract.
 
 ### Reading the tables
 
@@ -314,6 +319,14 @@ header_mutation_mode = "all"
 allow_header_in_empty_files = false
 empty_insert_mode = "logical_empty"
 
+[tool.topmark.policy_by_type."topmark:python"]
+allow_header_in_empty_files = true
+```
+
+Local keys such as `python` are also accepted when unambiguous, but the effective configuration uses
+canonical qualified keys such as `topmark:python`. Example using local key:
+
+```toml
 [tool.topmark.policy_by_type."python"]
 allow_header_in_empty_files = true
 ```
@@ -357,27 +370,38 @@ filesystem states, and other non-mutable conditions are not made mutable by thes
 
 ### Policy keys
 
-| Policy key                           | Description                                                                                                                                            |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `header_mutation_mode`               | Controls `check` mutation intent: insert and update (`all`), insert missing headers only (`add_only`), or update existing headers only (`update_only`) |
-| `allow_header_in_empty_files`        | Permit header insertion in empty-like files                                                                                                            |
-| `empty_insert_mode`                  | Defines how "empty" is interpreted (see above)                                                                                                         |
-| `render_empty_header_when_no_fields` | Allow inserting empty headers when no fields are defined                                                                                               |
-| `allow_reflow`                       | Allow content reflow (may break idempotence)                                                                                                           |
-| `allow_content_probe`                | Allow resolver to inspect file contents for type detection                                                                                             |
+| Policy key                           | Description                                                                                                                                                                          |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `header_mutation_mode`               | Controls [`check`](../usage/commands/check.md) mutation intent: insert and update (`all`), insert missing headers only (`add_only`), or update existing headers only (`update_only`) |
+| `allow_header_in_empty_files`        | Permit header insertion in empty-like files                                                                                                                                          |
+| `empty_insert_mode`                  | Defines how "empty" is interpreted (see above)                                                                                                                                       |
+| `render_empty_header_when_no_fields` | Allow inserting empty headers when no fields are defined                                                                                                                             |
+| `allow_reflow`                       | Allow content reflow (may break idempotence)                                                                                                                                         |
+| `allow_content_probe`                | Allow resolver to inspect file contents for type detection                                                                                                                           |
 
-`header_mutation_mode` applies only to `check`. It affects dry-run reporting, apply behavior, API
-result views, and outcome bucketing. It does not apply to `strip` or `probe`, and safety gates still
-take precedence: malformed headers, unreadable files, unsupported files, blocked filesystem states,
-and other non-mutable conditions are not made mutable by this policy.
+`header_mutation_mode` applies only to [`check`](../usage/commands/check.md). It affects dry-run
+reporting, apply behavior, API result views, and outcome bucketing. It does not apply to
+[`strip`](../usage/commands/strip.md) or [`probe`](../usage/commands/probe.md), and safety gates
+still take precedence: malformed headers, unreadable files, unsupported files, blocked filesystem
+states, and other non-mutable conditions are not made mutable by this policy.
 
 ______________________________________________________________________
 
 ## Gatekeeping & Pipeline
 
-Each pipeline step (`ResolverStep`, `SnifferStep`, `ReaderStep`, `ScannerStep`, `BuilderStep`,
-`RendererStep`, `ComparerStep`, `StripperStep`, `PatcherStep`, `PlannerStep`, `WriterStep`) is
-protected by a `may_proceed(ctx)` gating helper.
+Each pipeline step (\[`ProberStep`\][topmark.pipeline.steps.prober.ProberStep],
+\[`ResolverStep`\][topmark.pipeline.steps.resolver.ResolverStep],
+\[`SnifferStep`\][topmark.pipeline.steps.sniffer.SnifferStep],
+\[`ReaderStep`\][topmark.pipeline.steps.reader.ReaderStep],
+\[`ScannerStep`\][topmark.pipeline.steps.scanner.ScannerStep],
+\[`BuilderStep`\][topmark.pipeline.steps.builder.BuilderStep],
+\[`RendererStep`\][topmark.pipeline.steps.renderer.RendererStep],
+\[`ComparerStep`\][topmark.pipeline.steps.comparer.ComparerStep],
+\[`StripperStep`\][topmark.pipeline.steps.stripper.StripperStep],
+\[`PatcherStep`\][topmark.pipeline.steps.patcher.PatcherStep],
+\[`PlannerStep`\][topmark.pipeline.steps.planner.PlannerStep],
+\[`WriterStep`\][topmark.pipeline.steps.writer.WriterStep]) is protected by a `may_proceed(ctx)`
+gating helper.
 
 These gates consider:
 
@@ -385,7 +409,7 @@ These gates consider:
 - Content status (readability, encoding, newline policy)
 - Comparison result and update intent
 - Policy permissions (for example `allow_insert_into_empty_like`)
-- Feasibility (`can_change`)
+- Feasibility (\[`can_change`\][topmark.pipeline.context.policy.can_change])
 
 This ensures TopMark only mutates files when explicitly permitted by both policy and pipeline
 feasibility rules.
@@ -400,6 +424,7 @@ Run with `-v` or `--verbose` to increase **TEXT output** detail and observe:
 - Config chain (root → current)
 - Normalization of pattern-file paths
 - Active policy and per-file-type overrides
+- Canonical file type identifiers used by filters and policy lookup
 
 Notes:
 
@@ -435,4 +460,8 @@ ______________________________________________________________________
   - Config draft construction:
     \[`resolve_toml_sources_and_build_config_draft()`\][topmark.config.resolution.bridge.resolve_toml_sources_and_build_config_draft]
   - Policy evaluation: \[`effective_policy()`\][topmark.config.policy.effective_policy]
+- [Usage configuration guide](../usage/configuration.md)
+- [Filtering recipes](../usage/filtering.md)
+- [Policy guide](../usage/policies.md)
+- [CLI overview](../usage/cli.md)
 - Related doc: `README.md`

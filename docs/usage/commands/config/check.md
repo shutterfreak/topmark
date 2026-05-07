@@ -17,13 +17,41 @@ topmark:header:end
 The `config check` subcommand (part of the TopMark [`config` Command Family](../config.md))
 validates the **effective merged configuration** and reports any configuration diagnostics.
 
-Unlike `check` / `strip`, this command is **file-agnostic**: it does not resolve or process files.
-It is intended for CI validation and debugging configuration precedence issues.
+Unlike [`check`](../check.md) / [`strip`](../strip.md), this command is **file-agnostic**: it does
+not resolve or process files. It is intended for CI validation and debugging configuration
+precedence issues.
+
+See also:
+
+- [CLI overview](../../cli.md)
+- [Configuration](../../configuration.md)
+- [Filtering](../../filtering.md)
+- [Policies](../../policies.md)
+- [Configuration discovery](../../../configuration/discovery.md)
+- [Configuration schema](../../../dev/config-schema.md)
+
+Output formats:
 
 - `text`: human-readable validation result (optionally verbose).
 - `markdown`: Markdown report suitable for pasting into tickets or CI logs.
 - `json` / `ndjson`: machine-readable envelopes/records aligned with TopMark’s machine format
   conventions.
+
+______________________________________________________________________
+
+## File type identifier semantics
+
+File type identifiers in configuration may use either:
+
+- local identifiers such as `python`
+- canonical qualified identifiers such as `topmark:python`
+
+Internally, configuration freeze normalizes identifiers to canonical qualified keys before resolver,
+filtering, policy, and binding evaluation.
+
+Local identifiers are accepted only when unambiguous in the effective composed registry.
+
+{% include-markdown "\_snippets/file-type-identifiers.md" %}
 
 ______________________________________________________________________
 
@@ -58,8 +86,9 @@ ______________________________________________________________________
 ## Key properties
 
 - **Validates merged config**: loads defaults → discovered config → `--config` files → CLI
-  overrides, performs whole-source TOML schema validation per source, then validates staged
-  config-loading diagnostics and freezes the final configuration.
+  overrides, performs whole-source TOML schema validation per source before layered config merge and
+  runtime applicability evaluation, then validates staged config-loading diagnostics and freezes the
+  final configuration.
 
 - **Reports TOML schema issues**: unknown sections/keys, malformed TOML structures, and missing
   known sections are surfaced as configuration diagnostics originating from the TOML layer.
@@ -82,11 +111,14 @@ ______________________________________________________________________
 
 {% include-markdown "\_snippets/config-resolution.md" %}
 
-Configuration and policy override values shown by this command are public configuration data.
-Internal implementation helpers such as
+Configuration and policy override values shown by this command are part of the stable public
+configuration surface. Internal implementation helpers such as
 \[`PolicyOverrides`\][topmark.config.overrides.PolicyOverrides] and
 \[`ConfigOverrides`\][topmark.config.overrides.ConfigOverrides] are not part of the user-facing CLI
 or Python API contract.
+
+API overlays follow the same identifier normalization and policy-resolution semantics documented
+above for TOML configuration and CLI filtering.
 
 ______________________________________________________________________
 
@@ -213,6 +245,9 @@ The canonical schema, stable `kind` values, and shared conventions are documente
 
 {% include-markdown "\_snippets/output-contract.md" %}
 
+Machine-readable config snapshots emit normalized canonical qualified file type identifiers after
+configuration freeze.
+
 Notes:
 
 - `config check` emits diagnostics for both TOML schema validation and configuration
@@ -221,7 +256,8 @@ Notes:
 - Validation follows staged config-loading/preflight validation: per-source TOML validation first
   (TOML-source diagnostics), then layered config merge (merged-config diagnostics), then final
   config validation including runtime-applicability checks. The effective validity decision is
-  evaluated across these staged validation logs collectively.
+  evaluated across these staged validation logs collectively. Identifier normalization and runtime
+  applicability evaluation participate in this staged validation flow.
 
 Example (`[config].strict_config_checking = true` resolved from TOML, with no CLI override):
 
@@ -279,8 +315,41 @@ Example:
 
 ______________________________________________________________________
 
+## Configuration semantics
+
+`config check` reflects the same stable configuration contract used by:
+
+- CLI processing commands
+- API overlays
+- resolver filtering
+- machine-readable output
+- policy lookup
+
+Configuration handling intentionally does not support:
+
+- fuzzy matching for file type identifiers
+- implicit namespace fallback
+- automatic alias expansion
+- silent ambiguity resolution
+
+______________________________________________________________________
+
 ## Related commands
 
-- [`topmark config dump`](./dump.md) — show the *effective merged* configuration as TOML.
+- [`topmark config dump`](./dump.md) — show the effective frozen configuration, including normalized
+  canonical file type identifiers.
 - [`topmark config defaults`](./defaults.md) — show the *built-in default TopMark TOML document*.
 - [`topmark config init`](./init.md) — print the bundled example TopMark TOML resource.
+
+An overview of all CLI commands is available in [CLI overview](../../cli.md).
+
+______________________________________________________________________
+
+## Troubleshooting
+
+- **Unexpected file type filter behavior**: prefer qualified identifiers such as `topmark:python`
+  when local identifiers may be ambiguous.
+- **Unexpected policy application**: inspect normalized identifiers using
+  [`topmark config dump`](./dump.md).
+- **Unexpected validation failures**: use `-vv` or machine-readable output to inspect staged
+  validation diagnostics.

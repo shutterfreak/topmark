@@ -32,25 +32,41 @@ from `topmark.toml` and from `[tool.topmark]` in `pyproject.toml`.
 > - Markdown and machine outputs always reflect the full flattened compatibility view, independent
 >   of TEXT-only verbosity controls.
 
+See also:
+
+- [Configuration](../usage/configuration.md)
+- [Filtering](../usage/filtering.md)
+- [Policies](../usage/policies.md)
+- [Registry model](registry-model.md)
+- [Resolution](resolution.md)
+
 {% include-markdown "\_snippets/api-internal-overrides.md" %}
 
 At this layer, override handling is expressed as plain mapping data; internal typed override objects
 are introduced later during CLI/API orchestration and are not part of the public schema.
 
-```md
-`strict_config_checking` is a **TOML-source-local config-loading option**, not a
-layered [`Config`][topmark.config.model.Config] field. It is resolved from `[config]` / `[tool.topmark.config]`
-during TOML source resolution and applied after layered config merging. In the
-current implementation, its effective value governs staged config-loading
-validation evaluated across TOML-source, merged-config, and
-runtime-applicability diagnostics.
+File type identifiers in TOML configuration may use either:
 
-This distinction matters for [`topmark config dump --show-layers`](../usage/commands/config/dump.md):
-- the human-facing layered TOML export exposes source-local TOML fragments under
-  `[[layers]].toml.*`
-- the machine-readable layered export exposes the same source-local TOML
-  fragments under `config_provenance.layers[].toml`
-```
+- local identifiers such as `python`
+- canonical qualified identifiers such as `topmark:python`
+
+Internally, TopMark normalizes identifiers to canonical qualified keys during configuration freeze
+before resolver, filtering, policy, and binding evaluation.
+
+Local identifiers are accepted only when unambiguous in the effective composed registry.
+
+`strict_config_checking` is a **TOML-source-local config-loading option**, not a layered
+\[`Config`\][topmark.config.model.Config] field. It is resolved from `[config]` /
+`[tool.topmark.config]` during TOML source resolution and applied after layered config merging. In
+the current implementation, its effective value governs staged config-loading validation evaluated
+across TOML-source, merged-config, and runtime-applicability diagnostics.
+
+This distinction matters for
+[`topmark config dump --show-layers`](../usage/commands/config/dump.md):
+
+- the human-facing layered TOML export exposes source-local TOML fragments under `[[layers]].toml.*`
+- the machine-readable layered export exposes the same source-local TOML fragments under
+  `config_provenance.layers[].toml`
 
 ## Schema validation model
 
@@ -84,6 +100,8 @@ during staged config-loading/preflight validation.
 This means:
 
 - TOML schema validation is handled in \[`topmark.toml`\][topmark.toml]
+- file type identifier normalization and ambiguity evaluation are performed during config freeze and
+  runtime applicability validation
 - config value/type validation is handled in \[`topmark.config`\][topmark.config] as staged
   validation logs (merged-config and runtime-applicability stages)
 - layered config deserialization
@@ -175,8 +193,15 @@ topmark:
   policy_by_type:
     type: table
     default: {}
-    description: Per-file-type policy overrides, keyed by file type identifier.
+    description: Per-file-type policy overrides, keyed by local or canonical qualified file type identifiers.
     additionalProperties:
+      # Examples:
+      #
+      # [policy_by_type.python]
+      # [policy_by_type."topmark:python"]
+      #
+      # Internally, identifiers normalize to canonical qualified keys.
+
       header_mutation_mode:
         type: str
         optional: true
@@ -233,18 +258,55 @@ topmark:
     include_file_types:
       type: list[str]
       default: []
-      description: Restrict processing to these file type identifiers.
+      description: Restrict processing to these local or canonical qualified file type identifiers.
 
     exclude_file_types:
       type: list[str]
       default: []
-      description: Exclude these file type identifiers.
+      description: Exclude these local or canonical qualified file type identifiers.
 
     files:
       type: list[path]
       default: []
       description: Input paths (files/directories) to scan; commonly provided via CLI.
 ```
+
+At runtime, file type identifiers are normalized to canonical qualified keys before:
+
+- resolver filtering
+- policy lookup
+- processor binding lookup
+- probe evaluation
+- API overlay application
+
+This normalization is shared consistently across:
+
+- TOML configuration
+- CLI options
+- API overlays
+- runtime policy resolution
+
+## Identifier ambiguity
+
+Local identifiers such as:
+
+```text
+python
+markdown
+html
+```
+
+are accepted only when they remain unambiguous in the effective composed registry.
+
+If multiple file types share the same local identifier, callers must use the canonical qualified
+form:
+
+```text
+topmark:python
+acme:python
+```
+
+Malformed identifiers are handled diagnostically during staged config-loading validation.
 
 ## Policy token notes
 
@@ -261,3 +323,15 @@ apply behavior, API result views, and outcome bucketing. It does not apply to
 [`strip`](../usage/commands/strip.md) or [`probe`](../usage/commands/probe.md), and safety gates
 still take precedence: malformed headers, unreadable files, unsupported files, blocked filesystem
 states, and other non-mutable conditions are not made mutable by this policy.
+
+## Non-goals
+
+The configuration schema intentionally does not support:
+
+- fuzzy matching for file type identifiers
+- implicit namespace fallback
+- automatic alias expansion
+- silent ambiguity resolution
+- plugin-specific schema mutation during config loading
+
+Identifier handling remains explicit and deterministic.

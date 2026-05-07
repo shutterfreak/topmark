@@ -94,12 +94,12 @@ markdown_extensions:
           class: mermaid
           format:
 
-            !!python/name:pymdownx.superfences.fence_code_format
+            !!python/name:pymdownx.superfences.fence_code_format 
         - name: flow
           class: highlight
           format:
 
-            !!python/name:pymdownx.superfences.fence_code_format
+            !!python/name:pymdownx.superfences.fence_code_format 
   - pymdownx.highlight:
       anchor_linenums: true
       line_spans: __span
@@ -107,10 +107,10 @@ markdown_extensions:
 
   # Material icon shortcodes like :material-folder: / :material-file:
   - pymdownx.emoji:
-      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg 
       emoji_index:
 
-        !!python/name:material.extensions.emoji.twemoji
+        !!python/name:material.extensions.emoji.twemoji 
 plugins:
   # 1) Search engine plugin - usually listed early in the sequence.
   - search
@@ -166,29 +166,33 @@ nav:
   - Home: index.md
   - Installation: install.md
   - Usage:
+      - CLI overview: usage/cli.md
+      - Configuration: usage/configuration.md
       - Global options: usage/global-options.md
-      - Exit codes: usage/exit-codes.md
       - Commands:
-          - "check": usage/commands/check.md
-          - "strip": usage/commands/strip.md
-          - "config": usage/commands/config.md
-          - "config check": usage/commands/config/check.md
-          - "config dump": usage/commands/config/dump.md
-          - "config defaults": usage/commands/config/defaults.md
-          - "config init": usage/commands/config/init.md
-          - "registry": usage/commands/registry.md
-          - "registry filetypes": usage/commands/registry/filetypes.md
-          - "registry processors": usage/commands/registry/processors.md
-          - "registry bindings": usage/commands/registry/bindings.md
-          - "version": usage/commands/version.md
+          - check: usage/commands/check.md
+          - strip: usage/commands/strip.md
+          - probe: usage/commands/probe.md
+          - config: usage/commands/config.md
+          - config check: usage/commands/config/check.md
+          - config dump: usage/commands/config/dump.md
+          - config defaults: usage/commands/config/defaults.md
+          - config init: usage/commands/config/init.md
+          - registry: usage/commands/registry.md
+          - registry filetypes: usage/commands/registry/filetypes.md
+          - registry processors: usage/commands/registry/processors.md
+          - registry bindings: usage/commands/registry/bindings.md
+          - version: usage/commands/version.md
       - Guides:
-          - "Supported file types (generated)": usage/generated/filetypes.md
-          - "Registered processors (generated)": usage/generated/processors.md
-          - "Registered bindings (generated)": usage/generated/bindings.md
-          - "Filtering recipes": usage/filtering.md
-          - "Header placement": usage/header-placement.md
-          - "Policies": usage/policies.md
-          - "Pre-commit": usage/pre-commit.md
+          - Filtering recipes: usage/filtering.md
+          - Header placement: usage/header-placement.md
+          - Policies: usage/policies.md
+          - Pre-commit: usage/pre-commit.md
+      - Registry reference:
+          - Supported file types (generated): usage/generated/filetypes.md
+          - Registered processors (generated): usage/generated/processors.md
+          - Registered bindings (generated): usage/generated/bindings.md
+      - Exit codes: usage/exit-codes.md
   - Configuration:
       - Overview: configuration/index.md
       - Discovery & Precedence: configuration/discovery.md
@@ -201,24 +205,25 @@ nav:
       - Release workflow: ci/release-workflow.md
   - Contributing: contributing.md
   - API:
-      - "Public API": api/public.md
-      - "topmark.api": api/reference/topmark.api.md
-      - "topmark.registry": api/reference/topmark.registry.md
-      - "Internals":
+      - Public API: api/public.md
+      - topmark.api: api/reference/topmark.api.md
+      - topmark.registry: api/reference/topmark.registry.md
+      - Internals:
           - Overview: api/internals.md
-          - "Reference (generated)": api/internals/
+          - Reference (generated): api/internals/
   - Development:
-      - "Architecture": dev/architecture.md
-      - "Resolution": dev/resolution.md
-      - "Config schema": dev/config-schema.md
-      - "Pipelines (concepts)": dev/pipelines.md
-      - "Pipelines (reference hub)": dev/pipelines-reference.md
-      - "API Stability": dev/api-stability.md
-      - "Machine output": dev/machine-output.md
-      - "Machine formats": dev/machine-formats.md
-      - "Documentation Pipeline & Reference Hygiene": dev/documentation-pipeline.md
-      - "Plugins and extensibility": dev/plugins.md
-      - "Roadmap": dev/roadmap.md
+      - Architecture: dev/architecture.md
+      - Registry model: dev/registry-model.md
+      - Plugins and extensibility: dev/plugins.md
+      - Resolution: dev/resolution.md
+      - Config schema: dev/config-schema.md
+      - Pipelines (concepts): dev/pipelines.md
+      - Pipelines (reference hub): dev/pipelines-reference.md
+      - API Stability: dev/api-stability.md
+      - Machine output: dev/machine-output.md
+      - Machine formats: dev/machine-formats.md
+      - Documentation Pipeline & Reference Hygiene: dev/documentation-pipeline.md
+      - Roadmap: dev/roadmap.md
 
 # --- Development Server ---
 

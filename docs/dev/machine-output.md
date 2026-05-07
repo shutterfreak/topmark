@@ -18,16 +18,31 @@ It is intended for integrators and tooling authors who consume TopMark programma
 
 Covered command groups:
 
-- **Processing commands**: `check`, `strip`
-- **Resolution diagnostics**: `probe`
-- **Registry commands**: `registry filetypes`, `registry processors`, `registry bindings`
-- **Configuration commands**: `config check`, `config init`, `config defaults`, `config dump`
-- **Version reporting**: `version`
+- **Processing commands**: [`check`](../usage/commands/check.md),
+  [`strip`](../usage/commands/strip.md)
+- **Resolution diagnostics**: [`probe`](../usage/commands/probe.md)
+- **Registry commands**: [`registry filetypes`](../usage/commands/registry/filetypes.md),
+  [`registry processors`](../usage/commands/registry/processors.md),
+  [`registry bindings`](../usage/commands/registry/bindings.md)
+- **Configuration commands**: [`config check`](../usage/commands/config/check.md),
+  [`config init`](../usage/commands/config/init.md),
+  [`config defaults`](../usage/commands/config/defaults.md),
+  [`config dump`](../usage/commands/config/dump.md)
+- **Version reporting**: [`version`](../usage/commands/version.md)
 
 This page is the canonical reference for TopMark’s machine output shapes. Usage guides for
 individual commands (for example, [`check`](../usage/commands/check.md),
 [`strip`](../usage/commands/strip.md), and [`probe`](../usage/commands/probe.md)) provide
 task-oriented examples consistent with this schema.
+
+See also:
+
+- [CLI overview](../usage/cli.md)
+- [Global options](../usage/global-options.md)
+- [Exit codes](../usage/exit-codes.md)
+- [Configuration](../usage/configuration.md)
+- [Filtering](../usage/filtering.md)
+- [Registry model](registry-model.md)
 
 ## Output formats
 
@@ -115,8 +130,8 @@ Diagnostic-domain identifiers used in diagnostic payloads are defined in
 Canonical keys are defined in \[`topmark.core.machine.schemas`\][topmark.core.machine.schemas].
 
 For version-reporting commands, the machine-output metadata reflects the same runtime-resolved
-package version used by `topmark version`, which is sourced from generated package version metadata
-rather than a static config field.
+package version used by [`topmark version`](../usage/commands/version.md), which is sourced from
+generated package version metadata rather than a static config field.
 
 ### NDJSON record contract
 
@@ -161,7 +176,8 @@ The machine-output naming audit for 1.0 adopts the following conventions across 
   `results`, `probes`, `config_layers`) rather than a generic container such as `items`.
 - NDJSON uses **singular record kinds** (for example `filetype`, `processor`, `binding`, `result`,
   `probe`, `summary`) and stores each payload under a container key that matches `kind`.
-- Globally qualified identities use `qualified_key`.
+- Header processor identities and file type identities in machine output always report canonical
+  qualified keys such as `topmark:pound` and `topmark:python` when a resolved identity is available.
 - Decomposed identities use `namespace` + `local_key`.
 - Relationship references use `*_key` (for example `file_type_key`, `processor_key`).
 - `detail_level` is an **extended metadata field** rather than baseline metadata:
@@ -172,13 +188,33 @@ The machine-output naming audit for 1.0 adopts the following conventions across 
 These conventions are considered frozen for 1.0 unless a final pre-release audit identifies a
 concrete naming defect worth correcting before release.
 
+### File type identity fields
+
+Machine output uses the same canonical identifier model as the runtime registry and resolver.
+
+When a file type identity is present, payloads expose:
+
+- `qualified_key`: canonical identifier, for example `topmark:python`;
+- `namespace`: producer namespace, for example `topmark`;
+- `local_key`: local identifier within the namespace, for example `python`.
+
+Public inputs may use local identifiers such as `python` when unambiguous, but machine output emits
+resolved canonical identities. Consumers should prefer `qualified_key` for durable comparisons and
+joins across payloads.
+
+See [Registry model](registry-model.md#qualified-vs-local-identifiers) for the full identity
+contract.
+
 ______________________________________________________________________
 
-## Resolution diagnostics (`probe`)
+## Resolution diagnostics ([`probe`](../usage/commands/probe.md))
 
-The `topmark probe` command explains file-type and processor resolution. It is a diagnostic command,
-not a compliance or mutation command: it does not compute header changes, diffs, strip plans, or
-write plans.
+The [`topmark probe`](../usage/commands/probe.md) command explains file-type and processor
+resolution. It is a diagnostic command, not a compliance or mutation command: it does not compute
+header changes, diffs, strip plans, or write plans.
+
+Probe output reports canonical file type identities after identifier normalization and file-type
+filtering.
 
 Probe machine output is unaffected by TEXT verbosity or quiet mode. The JSON and NDJSON formats
 expose the same resolution evidence used by the human-facing probe renderers:
@@ -300,14 +336,15 @@ Filtered explicit input shape:
 }
 ```
 
-Filtered probe payloads are emitted only for paths explicitly supplied to `topmark probe` (including
-paths loaded via `--files-from`). TopMark does not enumerate every recursively discovered file that
-was ignored by discovery filters.
+Filtered probe payloads are emitted only for paths explicitly supplied to
+[`topmark probe`](../usage/commands/probe.md) (including paths loaded via `--files-from`). TopMark
+does not enumerate every recursively discovered file that was ignored by discovery filters.
 
 Filtered probe payloads may use one of these reasons:
 
 - `excluded_by_path_filter` — excluded by path-based include/exclude rules.
-- `excluded_by_file_type_filter` — excluded by file-type include/exclude rules.
+- `excluded_by_file_type_filter` — excluded by file-type include/exclude rules after identifier
+  normalization to canonical qualified keys.
 - `excluded_by_discovery_filter` — excluded before probing, but exact category was not identified.
 
 Fields:
@@ -330,8 +367,8 @@ Fields:
   - `excluded_by_file_type_filter`
   - `excluded_by_discovery_filter`
   - `no_resolution_probe_result`
-- `selected_file_type`: selected file type identity and score, or `null` when unresolved, unbound,
-  or filtered.
+- `selected_file_type`: selected canonical file type identity and score, or `null` when unresolved,
+  unbound, or filtered.
 - `selected_processor`: selected processor identity, or `null` when unresolved, unbound, or
   filtered.
 - `candidates`: scored candidate file types in deterministic resolution order. Empty for filtered
@@ -339,7 +376,8 @@ Fields:
 
 Candidate fields:
 
-- `qualified_key`, `namespace`, `local_key`: canonical file type identity.
+- `qualified_key`, `namespace`, `local_key`: canonical file type identity fields. Consumers should
+  prefer `qualified_key` for stable comparisons.
 - `score`: resolver score for this candidate. Higher scores are preferred.
 - `selected`: whether this candidate is the effective selected file type.
 - `tie_break_rank`: one-based deterministic rank after score and tie-break ordering.
@@ -368,7 +406,7 @@ Note:
 - Synthetic probe entries may still appear for explicitly requested paths that were filtered during
   discovery, but exit-code precedence is resolved at the CLI layer.
 
-## Processing commands (`check`, `strip`)
+## Processing commands ([`check`](../usage/commands/check.md), [`strip`](../usage/commands/strip.md))
 
 Processing commands produce either **detail** output (per-file results) or **summary** output
 (bucket counts), depending on whether the CLI is in `--summary` mode.
@@ -417,7 +455,8 @@ Summary mode corresponds to `summary_mode = true`.
 
 - `summary`: a **flat list of summary rows**, each representing a unique `(outcome, reason)` bucket
   with the number of files that produced that pair. This row shape corresponds to
-  `OutcomeSummaryRow` in \[`topmark.pipeline.machine.schemas`\][topmark.pipeline.machine.schemas].
+  \[`OutcomeSummaryRow`\][topmark.pipeline.machine.schemas.OutcomeSummaryRow] in
+  \[`topmark.pipeline.machine.schemas`\][topmark.pipeline.machine.schemas].
 
 Important characteristics:
 
@@ -426,8 +465,8 @@ Important characteristics:
   - `outcome` — pipeline outcome (e.g. `inserted`, `replaced`, `unchanged`).
   - `reason` — short lowercase bucket reason used for grouping.
   - `count` — number of files in that bucket.
-- Ordering is deterministic: outcomes follow the internal `Outcome` ordering and reasons are
-  alphabetically sorted within each outcome.
+- Ordering is deterministic: outcomes follow the internal \[`Outcome`\][topmark.api.types.Outcome]
+  ordering and reasons are alphabetically sorted within each outcome.
 
 ### NDJSON schema (detail and summary)
 
@@ -505,7 +544,7 @@ At a high level, per-file results include:
 
 - identity:
   - `path`
-  - `file_type` (resolved TopMark file type key)
+  - `file_type` (resolved canonical TopMark file type key, for example `topmark:python`)
 - pipeline execution:
   - executed step names
   - per-axis status objects (`axis`, `name`, `label`)
@@ -528,7 +567,8 @@ ______________________________________________________________________
 
 ## ConfigPayload
 
-`ConfigPayload` is a JSON-safe representation of the effective `Config`, as produced by
+\[`ConfigPayload`\][topmark.config.machine.schemas] is a JSON-safe representation of the effective
+\[`Config`\][topmark.config.model.Config], as produced by
 \[`topmark.config.machine.payloads.build_config_payload`\][topmark.config.machine.payloads.build_config_payload].
 
 High-level structure (keys may be extended over time):
@@ -540,6 +580,11 @@ High-level structure (keys may be extended over time):
 - `files`: file resolution/filtering options (paths serialized to strings).
 - `policy`: global resolved policy flags (booleans).
 - `policy_by_type`: per-file-type resolved policy overrides.
+
+File type identifiers in `files.include_file_types`, `files.exclude_file_types`, and
+`policy_by_type` are emitted after configuration normalization. Consumers should expect canonical
+qualified keys such as `topmark:python` rather than the exact local-or-qualified spelling supplied
+by a user.
 
 Normalization rules:
 
@@ -557,8 +602,11 @@ ______________________________________________________________________
 
 ## ConfigDiagnosticsPayload
 
-`ConfigDiagnosticsPayload` summarizes the flattened compatibility view derived from staged
-config-validation logs.
+\[`ConfigDiagnosticsPayload`\][topmark.config.machine.schemas.ConfigPayload] summarizes the
+flattened compatibility view derived from staged config-validation logs.
+
+Diagnostics may include runtime-applicability warnings for unknown, malformed, or ambiguous file
+type identifiers encountered during configuration sanitation.
 
 These diagnostics may originate from staged validation logs for:
 
@@ -619,22 +667,25 @@ See:
 
 ______________________________________________________________________
 
-## Config snapshot commands (`config dump`, `config defaults`, `config init`)
+## Config snapshot commands ([`config dump`](../usage/commands/config/dump.md), [`config defaults`](../usage/commands/config/defaults.md), [`config init`](../usage/commands/config/init.md))
 
 These commands produce a config snapshot without running the processing pipeline.
 
 Notes:
 
-- `config dump` emits the resolved config snapshot after discovery and merge.
-- `config dump --show-layers` additionally emits a machine-readable `config_provenance` payload
-  before the final flattened config snapshot.
-- `config defaults` emits the built-in default configuration snapshot.
-- `config init` emits the same built-in default configuration snapshot in machine formats, even
-  though its human-facing output is the bundled example TopMark TOML resource with comments.
+- [`config dump`](../usage/commands/config/dump.md) emits the resolved config snapshot after
+  discovery and merge.
+- [`config dump --show-layers`](../usage/commands/config/dump.md) additionally emits a
+  machine-readable `config_provenance` payload before the final flattened config snapshot.
+- [`config defaults`](../usage/commands/config/defaults.md) emits the built-in default configuration
+  snapshot.
+- [`config init`](../usage/commands/config/init.md) emits the same built-in default configuration
+  snapshot in machine formats, even though its human-facing output is the bundled example TopMark
+  TOML resource with comments.
 
 Machine output for these commands is unaffected by TEXT verbosity or quiet mode.
 
-### JSON shape for `config dump`, `config defaults`, `config init`
+### JSON shape for [`config dump`](../usage/commands/config/dump.md), [`config defaults`](../usage/commands/config/defaults.md), [`config init`](../usage/commands/config/init.md)
 
 ```jsonc
 {
@@ -643,7 +694,8 @@ Machine output for these commands is unaffected by TEXT verbosity or quiet mode.
 }
 ```
 
-When `config dump` is invoked with `--show-layers`, the JSON envelope becomes:
+When [`config dump`](../usage/commands/config/dump.md) is invoked with `--show-layers`, the JSON
+envelope becomes:
 
 ```jsonc
 {
@@ -673,7 +725,7 @@ When `config dump` is invoked with `--show-layers`, the JSON envelope becomes:
 - `scope_root` — optional scope root for discovered layers
 - `toml` — the source-local TopMark TOML fragment contributed by that layer
 
-### NDJSON shape for `config dump`, `config defaults`, `config init`
+### NDJSON shape for [`config dump`](../usage/commands/config/dump.md), [`config defaults`](../usage/commands/config/defaults.md), [`config init`](../usage/commands/config/init.md)
 
 Default mode emits a single record:
 
@@ -681,7 +733,8 @@ Default mode emits a single record:
 {"kind": "config", "meta": { /* MetaPayload */ }, "config": { /* ConfigPayload */ }}
 ```
 
-When `config dump` is invoked with `--show-layers`, NDJSON emits two records in order:
+When [`config dump`](../usage/commands/config/dump.md) is invoked with `--show-layers`, NDJSON emits
+two records in order:
 
 ```jsonc
 {"kind": "config_provenance", "meta": { /* MetaPayload */ }, "config_provenance": { /* TomlProvenancePayload */ }}
@@ -690,8 +743,8 @@ When `config dump` is invoked with `--show-layers`, NDJSON emits two records in 
 
 ## TomlProvenancePayload
 
-`TomlProvenancePayload` is a machine-readable layered provenance export used by
-`topmark config dump --show-layers`.
+\[`TomlProvenancePayload`\][topmark.toml.machine.schemas.TomlProvenancePayload] is a
+machine-readable layered provenance export used by `topmark config dump --show-layers`.
 
 JSON shape:
 
@@ -732,12 +785,12 @@ provenance-layer fragment keys (`origin`, `kind`, `precedence`, `toml`, `scope_r
 
 ______________________________________________________________________
 
-## `topmark config check`
+## [`topmark config check`](../usage/commands/config/check.md)
 
 This command validates configuration and emits the resolved config snapshot, configuration
 diagnostics, and a `config_check` status payload.
 
-### JSON shape for `config check`
+### JSON shape for [`config check`](../usage/commands/config/check.md)
 
 ```jsonc
 {
@@ -771,9 +824,10 @@ output.
 For 1.0, this is the explicit contract decision: staged validation remains primarily internal, and
 machine output serializes only the flattened compatibility diagnostics surface.
 
-Machine output for `config check` is unaffected by TEXT verbosity or quiet mode.
+Machine output for [`config check`](../usage/commands/config/check.md) is unaffected by TEXT
+verbosity or quiet mode.
 
-### NDJSON shape for `config check`
+### NDJSON shape for [`config check`](../usage/commands/config/check.md)
 
 Stream prefix:
 
@@ -806,9 +860,9 @@ config diagnostic entry/count keys are defined in
 
 ______________________________________________________________________
 
-## `topmark version`
+## [`topmark version`](../usage/commands/version.md)
 
-### JSON shape for `version`
+### JSON shape for [`version`](../usage/commands/version.md)
 
 ```jsonc
 {
@@ -820,7 +874,7 @@ ______________________________________________________________________
 }
 ```
 
-### NDJSON shape for `version`
+### NDJSON shape for [`version`](../usage/commands/version.md)
 
 ```jsonc
 {"kind":"version","meta":{ /* MetaPayload */ },"version_info":{ "version":"<package version>", "version_format":"pep440" }}
@@ -834,7 +888,8 @@ while JSON payload keys such as `version_info` are defined in
 The version reported in machine output is derived from the installed package metadata / generated
 version module, not from a manually maintained static field in `pyproject.toml`.
 
-Machine output for `version` is unaffected by TEXT verbosity or quiet mode.
+Machine output for [`version`](../usage/commands/version.md) is unaffected by TEXT verbosity or
+quiet mode.
 
 Notes:
 
@@ -853,7 +908,7 @@ ______________________________________________________________________
 Registry machine output uses `--long` to select brief vs detailed projections. Registry commands do
 not support `--quiet`, and TEXT verbosity does not affect machine output.
 
-### `topmark registry filetypes`
+### [`topmark registry filetypes`](../usage/commands/registry/filetypes.md)
 
 JSON envelope:
 
@@ -863,6 +918,9 @@ JSON envelope:
   "filetypes": [ /* FileTypeEntry ... */ ]
 }
 ```
+
+`qualified_key` is the canonical file type identity. `namespace` and `local_key` are provided for
+inspection, grouping, and display.
 
 Brief entry (default):
 
@@ -907,12 +965,12 @@ NDJSON emits one record per file type:
 {"kind":"filetype","meta":{...},"filetype":{ /* FileTypeEntry */ }}
 ```
 
-Canonical schemas/builders live in `topmark.registry.machine.*`.
+Canonical schemas/builders live in \[`topmark.registry.machine.*`\]\[`topmark.registry.machine`\].
 
 The corresponding NDJSON record kind is owned by
 \[`topmark.registry.machine.schemas.RegistryKind`\][topmark.registry.machine.schemas.RegistryKind].
 
-### `topmark registry processors`
+### [`topmark registry processors`](../usage/commands/registry/processors.md)
 
 JSON envelope:
 
@@ -957,12 +1015,12 @@ NDJSON emits one record per processor:
 {"kind":"processor","meta":{...},"processor":{ /* ProcessorEntry */ }}
 ```
 
-Canonical schemas/builders live in `topmark.registry.machine.*`.
+Canonical schemas/builders live in \[`topmark.registry.machine.*`\]\[`topmark.registry.machine`\].
 
 The corresponding NDJSON record kind is owned by
 \[`topmark.registry.machine.schemas.RegistryKind`\][topmark.registry.machine.schemas.RegistryKind].
 
-### `topmark registry bindings`
+### [`topmark registry bindings`](../usage/commands/registry/bindings.md)
 
 JSON envelope:
 
@@ -984,6 +1042,9 @@ Binding entry (brief):
 }
 ```
 
+Binding references use canonical qualified keys. `file_type_key` references a file type
+`qualified_key`, and `processor_key` references a processor `qualified_key`.
+
 Binding entry (detailed, `--long`):
 
 ```jsonc
@@ -1003,7 +1064,8 @@ Auxiliary lists:
 
 - `unbound_filetypes` contains file types that currently have no effective processor binding.
   - brief mode: qualified file type keys as strings
-  - long mode: expanded `FileTypeRefEntry` objects
+  - long mode: expanded \[`FileTypeRefEntry`\][topmark.registry.machine.schemas.FileTypeRefEntry]
+    objects
 - `unused_processors` contains registered processors that do not currently participate in any
   effective binding.
   - brief mode: qualified processor keys as strings
@@ -1020,7 +1082,7 @@ NDJSON emits:
 In brief mode, `unbound_filetype` and `unused_processor` NDJSON records carry qualified-key strings
 as their payloads. In `--long` mode, those same record kinds carry expanded reference objects.
 
-Canonical schemas/builders live in `topmark.registry.machine.*`.
+Canonical schemas/builders live in \[`topmark.registry.machine.*`\][topmark.registry.machine].
 
 The corresponding JSON payload keys and NDJSON record kinds are owned by
 \[`topmark.registry.machine.schemas.RegistryKind`\][topmark.registry.machine.schemas.RegistryKind].
@@ -1036,14 +1098,12 @@ Consumers should:
 
 - Treat machine output as the authoritative contract for programmatic use; do not parse TEXT or
   Markdown output in automation.
-
 - Rely on `kind` for NDJSON.
-
 - Treat unknown fields as optional/ignorable.
-
 - Prefer parsing and schema-tolerant logic over strict string matching.
-
 - Assume additive fields may appear over time.
+- Prefer canonical identity fields such as `qualified_key`, `file_type_key`, and `processor_key`
+  over display-oriented names.
 
 Breaking changes should be signaled via Conventional Commits (using the `!` marker) and documented
 in the changelog.

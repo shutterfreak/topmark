@@ -22,8 +22,8 @@ ______________________________________________________________________
 
 ## Command applicability
 
-`registry filetypes` is informational and file-agnostic. It inspects TopMark's built-in registry
-state, not project files or discovered configuration.
+`registry filetypes` is informational and file-agnostic. It inspects TopMark's effective composed
+registry state, not project files or configuration discovery.
 
 It does not accept file-processing inputs:
 
@@ -52,11 +52,53 @@ ______________________________________________________________________
 
 ### See also
 
+- [Registry model](../../../dev/registry-model.md)
+- [Plugins and extensibility](../../../dev/plugins.md)
+- [Resolution model](../../../dev/resolution.md)
+- [Machine-readable output](../../../dev/machine-output.md)
+- [Machine format conventions](../../../dev/machine-formats.md)
+
 For the canonical, version-accurate list (used for the docs), see:
 
 - [Supported file types (generated)](../../generated/filetypes.md)
 
 (This page is generated via `topmark registry filetypes --long --output-format markdown`.)
+
+______________________________________________________________________
+
+## File type identity semantics
+
+Registry file type identities use canonical qualified identifiers.
+
+Examples:
+
+```text
+topmark:python
+topmark:markdown
+```
+
+Registry-oriented machine output exposes canonical identity fields such as:
+
+- `qualified_key`
+- `file_type_key`
+- `processor_key`
+
+These fields are intended for stable comparisons, joins, tooling integration, and runtime
+introspection.
+
+Local identifiers such as:
+
+```text
+python
+markdown
+```
+
+may still be accepted in public configuration and CLI filtering when unambiguous, but registry file
+type views always operate on canonical qualified identities.
+
+{% include-markdown "\_snippets/file-type-identifiers.md" %}
+
+This page is one of the primary introspection surfaces for the freeze semantics.
 
 ______________________________________________________________________
 
@@ -90,27 +132,31 @@ The JSON output has the following structure:
 ```
 
 - `meta` contains machine metadata (tool, version, platform, and optionally `detail_level`).
-- `filetypes` is a list of file type entries.
+- `filetypes` is a list of file type entries. File type entries expose canonical qualified
+  identities.
 
 In `--long` mode, each entry is expanded with additional fields such as matching rules and header
 policy information.
 
-Unlike [`registry bindings`](./bindings.md), this command focuses on **file type identities**, not
-which processor handles them.
+Machine-readable output emits canonical qualified identities suitable for stable automation and
+tooling integration.
+
+Unlike [`registry bindings`](bindings.md), this command focuses on canonical file type identities,
+not processor-dispatch relationships.
 
 ## What it shows
 
 ### Brief (default)
 
-- **Local key** — the file type identifier (e.g., `python`, `markdown`, `env`)
+- **Local key** — the namespace-local identifier (e.g., `python`, `markdown`, `env`)
 - **Description** — a short description
 
 ### Detailed (`--long`)
 
 Rendered consistently across `text`, `json`, `ndjson`, and `markdown`:
 
-- **Qualified key**
-- **Local key / namespace**
+- **Canonical qualified key**
+- **Namespace / local key**
 - **Extensions** (comma‑separated)
 - **Filenames** (comma‑separated)
 - **Patterns** (comma‑separated)
@@ -125,8 +171,9 @@ ______________________________________________________________________
 ## Numbered output & verbosity
 
 In human-readable formats, TopMark renders a **numbered list** of file types with right-aligned
-indices (e.g., `1.`, `2.`, …) to keep long lists scannable. With `--long`, additional details are
-shown alongside each identifier. TEXT verbosity (`-v`) affects presentation only (for TEXT output).
+indices (e.g., `1.`, `2.`, …) to keep long lists scannable. With `--long`, additional canonical
+identity and matching details are shown alongside each entry. TEXT verbosity (`-v`) affects
+presentation only (for TEXT output).
 
 ______________________________________________________________________
 
@@ -179,7 +226,8 @@ ______________________________________________________________________
 
 - File types define **how files are matched and classified**.
 - The output is independent of project configuration discovery.
-- Processing behavior is determined by bindings (see [`registry bindings`](./bindings.md)).
+- Processor-dispatch behavior is determined by bindings (see [`registry bindings`](bindings.md)).
+- The effective runtime file type view is composed from built-in definitions plus runtime overlays.
 - A file type may be present but not processed if it is unbound or marked `skip_processing`.
 - `--quiet` is not supported for registry commands; use output-format options instead if you need
   non-TEXT output.
@@ -189,7 +237,7 @@ ______________________________________________________________________
 ## How TopMark resolves file types
 
 TopMark may have multiple `FileType` definitions that match a given path. The resolver evaluates all
-matching file types and selects the most specific match.
+matching file types and deterministically selects the most specific match.
 
 In practice, specificity follows this order:
 
@@ -197,8 +245,8 @@ In practice, specificity follows this order:
 1. **Regex patterns** (e.g., `Dockerfile(\..+)?`, `requirements.*\.(in|txt)$`)
 1. **Extensions** (e.g., `.py`, `.md`, `.json`)
 
-If multiple candidates remain tied, TopMark prefers the more “headerable” choice (i.e., file types
-that are not marked `skip_processing = true`).
+If multiple candidates remain tied, TopMark prefers the more “headerable” choice (that is, file
+types not marked `skip_processing = true`).
 
 ### Tail subpath matching
 
@@ -214,9 +262,30 @@ matched as **path suffixes** against `path.as_posix()`. Plain names still match 
 
 ### Unsupported but recognized types
 
-Some file types are recognized but intentionally unmodified (reported as “unsupported”):
+Some file types are recognized but intentionally left unmodified (reported as “unsupported”):
 
 - `license_text` (keep verbatim)
 - `python-typed-marker` (`py.typed` is a single-token marker)
 
 These are hidden by default; use `--report=noncompliant` or `--report=all` to show these in reports.
+
+______________________________________________________________________
+
+## Troubleshooting
+
+- **Unexpected identifier form**: registry commands intentionally emit canonical qualified
+  identifiers such as `topmark:python`.
+- **Unexpected processor behavior**: inspect [`registry bindings`](bindings.md) to view effective
+  processor-dispatch relationships.
+- **Unexpected file type selection**: use [`topmark probe`](../probe.md) to inspect resolver
+  candidate evaluation.
+
+______________________________________________________________________
+
+## Related commands
+
+- [`registry processors`](processors.md) — inspect canonical processor identities and capabilities.
+- [`registry bindings`](bindings.md) — inspect effective processor-dispatch relationships between
+  file types and processors.
+
+An overview of all CLI commands is available in [CLI overview](../../cli.md).

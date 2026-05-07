@@ -12,12 +12,34 @@ topmark:header:end
 
 # Using TopMark with pre-commit
 
+Pre-commit integration allows TopMark to participate in:
+
+- local Git workflows
+- CI validation
+- staged-file checks
+- repository-wide remediation
+- policy enforcement during commits and pushes
+
+See also:
+
+- [CLI overview](cli.md)
+- [Configuration](configuration.md)
+- [Filtering](filtering.md)
+- [Policies](policies.md)
+- [Exit codes](exit-codes.md)
+
 TopMark ships a hook manifest so you can run header checks in Git workflows and CI. This page covers
 setup, recommended patterns, and troubleshooting.
+
+Hook execution uses the same resolver, filtering, policy, and configuration semantics as normal CLI
+execution.
 
 ______________________________________________________________________
 
 ## Quick start (consumer repos)
+
+For canonical file-type identifier semantics and configuration behavior, see
+[Configuration](configuration.md#file-type-identifiers).
 
 Add TopMark to a project's `.pre-commit-config.yaml`:
 
@@ -64,6 +86,8 @@ This policy ensures safety in CI and everyday workflows.\
 Teams that want formatter-like behavior (similar to Black or Prettier) may choose to enable
 `topmark-apply` at `pre-commit` once the repository is clean.
 
+TopMark intentionally defaults to non-destructive behavior unless `--apply` is explicitly enabled.
+
 The hook manifest intentionally uses minimal defaults. All behavioral flags (such as `--summary`,
 `--report`, policy options, or output mode) should be supplied by consuming repositories via the
 hook’s `args:` configuration.
@@ -81,9 +105,12 @@ diagnostics remain the flattened compatibility view derived from staged validati
 this boundary is intentional: staged validation remains primarily internal, while hook output
 exposes only the flattened compatibility diagnostics contract.
 
-For the `topmark-check` hook (which runs `topmark check`), consumers may also pass policy options
-such as `--header-mutation-mode`, `--allow-header-in-empty-files`, or `--empty-insert-mode` when
-they need command-specific behavior on top of the resolved config.
+For the `topmark-check` hook (which runs [`topmark check`](commands/check.md)), consumers may also
+pass policy options such as `--header-mutation-mode`, `--allow-header-in-empty-files`, or
+`--empty-insert-mode` when they need command-specific behavior on top of the resolved config.
+
+These options follow the same policy-resolution and file-type identifier rules as normal CLI
+execution.
 
 Invoke the manual hook locally:
 
@@ -102,6 +129,13 @@ ______________________________________________________________________
 Pre-commit **batches filenames** to avoid OS argument-length limits (ARG_MAX). Your hook may run
 multiple times per invocation (for different batches). This is expected.
 
+TopMark applies the same filtering pipeline during hook execution:
+
+1. path filtering
+1. file-type filtering
+1. resolver and probe evaluation
+1. policy resolution
+
 {% include-markdown "\_snippets/output-contract.md" %}
 
 **Run once per repo** by setting `pass_filenames: false` in the hook manifest and letting TopMark
@@ -114,6 +148,8 @@ perform its own file discovery from config:
 ```
 
 ### About args
+
+Arguments passed through `args:` behave exactly like normal CLI arguments.
 
 Pre-commit supports an `args:` list **in consumer repos** (in `.pre-commit-config.yaml`). Because
 TopMark’s hook manifest uses minimal defaults, consumer `args:` are the primary mechanism for
@@ -137,6 +173,13 @@ For the manual hook:
   args: ["--report", "actionable"]
 ```
 
+Examples using canonical qualified identifiers:
+
+```yaml
+- id: topmark-check
+  args: ["--include-file-types", "topmark:python"]
+```
+
 Notes:
 
 - `args:` is appended to the hook’s `entry`.
@@ -150,11 +193,20 @@ Notes:
 - TEXT-only controls such as `-v` / `--verbose` and `-q` / `--quiet` affect only human TEXT output;
   Markdown and machine formats ignore these flags.
 
+### File-type identifier behavior
+
+{% include-markdown "\_snippets/file-type-identifiers.md" %}
+
+Pre-commit hook arguments, TOML configuration, and runtime policy evaluation all share the same
+canonical identifier semantics.
+
 ______________________________________________________________________
 
 ## Recommended patterns
 
 ### CI-friendly checks
+
+These patterns are especially useful for repository-wide validation in CI.
 
 ```bash
 # Focus output on files that would change
@@ -210,8 +262,6 @@ Notes:
   - [`check` command](./commands/check.md)
   - [`strip` command](./commands/strip.md)
 
-______________________________________________________________________
-
 ```yaml
 hooks:
   - id: topmark-check
@@ -245,3 +295,15 @@ topmark version
 pre-commit clean
 pre-commit try-repo . topmark-check --all-files --verbose
 ```
+
+______________________________________________________________________
+
+## Related pages
+
+- [CLI overview](cli.md)
+- [Configuration](configuration.md)
+- [Configuration discovery](../configuration/discovery.md)
+- [Filtering](filtering.md)
+- [Policies](policies.md)
+- [Global options](global-options.md)
+- [Exit codes](exit-codes.md)

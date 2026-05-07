@@ -23,24 +23,52 @@ validation.
 
 {% include-markdown "\_snippets/config-validation-contract.md" %}
 
-Configuration and policy values handled by these commands are part of the **public configuration
-surface**. Internal helper types such as
+See also:
+
+- [CLI overview](../cli.md)
+- [Configuration](../configuration.md)
+- [Filtering](../filtering.md)
+- [Policies](../policies.md)
+- [Configuration discovery](../../configuration/discovery.md)
+- [Configuration schema](../../dev/config-schema.md)
+
+Configuration and policy values handled by these commands are part of the stable **public
+configuration surface**. Internal helper types such as
 \[`PolicyOverrides`\][topmark.config.overrides.PolicyOverrides] and
 \[`ConfigOverrides`\][topmark.config.overrides.ConfigOverrides] are not exposed here; they are used
 internally by CLI/API orchestration. When using the Python API, provide plain mapping-based inputs
 via `config=...`, `policy=...`, and `policy_by_type=...`.
 
-TopMark performs whole-source TOML schema validation during loading. Unknown sections or keys,
-malformed section shapes, and missing known sections are reported as configuration diagnostics
-before staged config-validation semantics are applied. Only the validated layered fragment is passed
-to the config layer for merging.
+API overlays follow the same identifier normalization and policy-resolution semantics as TOML
+configuration and CLI filtering.
 
-- [`topmark config check`](./config/check.md) — validate the *effective merged* configuration and
+TopMark performs whole-source TOML schema validation during loading before layered config merging
+and runtime applicability evaluation. Unknown sections or keys, malformed section shapes, and
+missing known sections are reported as configuration diagnostics before staged config-validation
+semantics are applied. Only the validated layered fragment is passed to the config layer for
+merging.
+
+File type identifiers in configuration may use either:
+
+- local identifiers such as `python`
+- canonical qualified identifiers such as `topmark:python`
+
+Internally, configuration freeze normalizes identifiers to canonical qualified keys before resolver,
+filtering, policy, and binding evaluation.
+
+Local identifiers are accepted only when unambiguous in the effective composed registry.
+
+{% include-markdown "../../\_snippets/file-type-identifiers.md" %}
+
+- [`topmark config check`](config/check.md) — validate the *effective merged* configuration and
   report diagnostics.
-- [`topmark config dump`](./config/dump.md) — show the *effective merged* configuration.
-- [`topmark config defaults`](./config/defaults.md) — show the *built-in default TopMark TOML
+- [`topmark config dump`](config/dump.md) — show the *effective merged* configuration. Effective
+  config snapshots emit canonical normalized identifiers after configuration freeze.
+- [`topmark config defaults`](config/defaults.md) — show the *built-in default TopMark TOML
   document*.
-- [`topmark config init`](./config/init.md) — print the bundled example TopMark TOML resource.
+- [`topmark config init`](config/init.md) — print the bundled example TopMark TOML resource.
+
+An overview of all CLI commands is available in [CLI overview](../cli.md).
 
 ______________________________________________________________________
 
@@ -59,6 +87,27 @@ Across all `config` subcommands:
 Config discovery applies only where explicitly documented ([`config check`](config/check.md),
 [`config dump`](config/dump.md)) and is not used by purely informational commands
 ([`config defaults`](config/defaults.md), [`config init`](config/init.md)).
+
+______________________________________________________________________
+
+## Configuration semantics
+
+The `config` command family reflects the same stable configuration contract used by:
+
+- CLI processing commands
+- API overlays
+- resolver filtering
+- machine-readable output
+- policy lookup
+
+Configuration handling intentionally does not support:
+
+- fuzzy matching for file type identifiers
+- implicit namespace fallback
+- automatic alias expansion
+- silent ambiguity resolution
+
+______________________________________________________________________
 
 ## Exit codes
 
@@ -84,10 +133,13 @@ Note on output controls:
   `--quiet`.
 
 When using [`topmark config dump --show-layers`](config/dump.md), the command also exposes **layered
-configuration provenance** in addition to the flattened effective configuration. This layered view
-reflects how configuration was built from individual TOML sources (defaults, discovered config, CLI
-overrides) and includes source-local TOML fragments. This includes the original TOML fragments
-(after schema validation) that contributed to each layer.
+configuration provenance** in addition to the flattened effective configuration. This layered
+provenance view reflects how configuration was built from individual TOML sources (defaults,
+discovered config, CLI overrides) and includes source-local TOML fragments. This includes the
+original TOML fragments (after schema validation) that contributed to each layer.
+
+Machine-readable config snapshots emit normalized canonical qualified file type identifiers after
+configuration freeze.
 
 When running [`config check`](config/check.md), effective validation strictness is determined by:
 
@@ -95,11 +147,23 @@ When running [`config check`](config/check.md), effective validation strictness 
 1. TOML value (`strict_config_checking`)
 1. default non-strict behaviour
 
-Warnings are treated as errors only when strict config checking is enabled. In the current
-implementation, this applies to staged config-loading/preflight validation as a whole. For 1.0, this
-evaluation occurs over staged validation, while only the flattened compatibility diagnostics
-contract is exposed at CLI/API/machine boundaries.
+Warnings are treated as errors only when strict config checking is enabled. Identifier ambiguity,
+malformed identifiers, and runtime applicability diagnostics participate in this staged validation
+flow. In the current implementation, this applies to staged config-loading/preflight validation as a
+whole. For 1.0, this evaluation occurs over staged validation, while only the flattened
+compatibility diagnostics contract is exposed at CLI/API/machine boundaries.
 
 Note that `strict_config_checking` is a **source-local TOML option**, not a layered configuration
 field. It influences validation behaviour but is not part of the final merged config; however, it is
 visible in layered provenance output ([`config dump --show-layers`](config/dump.md)).
+
+______________________________________________________________________
+
+## Troubleshooting
+
+- **Unexpected file type filter behavior**: prefer qualified identifiers such as `topmark:python`
+  when local identifiers may be ambiguous.
+- **Unexpected policy application**: inspect normalized identifiers using
+  [`topmark config dump`](config/dump.md).
+- **Unexpected validation failures**: use [`topmark config check`](config/check.md) together with
+  `-vv` or machine output to inspect staged validation diagnostics.

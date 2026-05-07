@@ -12,10 +12,35 @@ topmark:header:end
 
 # Common filtering recipes
 
+Filtering controls determine:
+
+- which paths are considered during discovery
+- which file types are eligible for processing
+- how explicit inputs are classified
+- how probe diagnostics are reported
+
+See also:
+
+- [CLI overview](cli.md)
+- [Configuration](configuration.md)
+- [Global options](global-options.md)
+
 TopMark determines which files to process using a combination of **path-based filters** and **file
 type filters**.
 
+{% include-markdown "\_snippets/file-type-identifiers.md" %}
+
+For canonical file-type identifier semantics and configuration behavior, see
+[Configuration](configuration.md).
+
 Filtering order:
+
+This order is deterministic and is shared consistently across:
+
+- CLI execution
+- TOML configuration
+- API overlays
+- resolver and probe filtering
 
 1. Path filters (include/exclude patterns, `*_from`, `files_from`)
 1. File type filters (`include_file_types`, `exclude_file_types`)
@@ -48,8 +73,7 @@ TopMark supports two STDIN modes when supplying file lists or content:
 - **Content mode**: process a single file's content from STDIN by passing `-` as the sole PATH
   together with `--stdin-filename NAME`
 
-TopMark does not provide a `--stdin` option flag. Use the POSIX-style `-` PATH sentinel together
-with `--stdin-filename` for content mode. Passing `--stdin` is treated as invalid CLI usage.
+{% include-markdown "\_snippets/no-stdin-option.md" %}
 
 These modes are mutually exclusive and should not be combined. In content mode, `--stdin-filename`
 is required so TopMark can resolve file type and header policy consistently with path-based inputs.
@@ -62,6 +86,13 @@ treated during the run.
 
 The [`topmark probe`](commands/probe.md) command uses the same discovery and filtering rules
 described above.
+
+This includes:
+
+- path filtering
+- file-type filtering
+- canonical file-type identifier normalization
+- ambiguity handling
 
 However, unlike processing commands ([`check`](commands/check.md), [`strip`](commands/strip.md)),
 [`probe`](commands/probe.md) also reports **explicit inputs that were filtered out before file-type
@@ -115,6 +146,12 @@ CLI:
 
 ```bash
 topmark check --include-file-types python,markdown .
+```
+
+Equivalent canonical form:
+
+```bash
+topmark check --include-file-types topmark:python,topmark:markdown .
 ```
 
 TOML:
@@ -181,6 +218,13 @@ include_patterns = ["**/*.toml", "**/*.yaml", "**/*.yml"]
 exclude_file_types = ["yaml"]
 ```
 
+Equivalent canonical form:
+
+```toml
+[files]
+exclude_file_types = ["topmark:yaml"]
+```
+
 ## Recipe: Process only a known file list (from Git)
 
 Generate a file list:
@@ -214,6 +258,18 @@ topmark check --report noncompliant .
 topmark strip --report noncompliant .
 ```
 
+## File-type identifier behavior
+
+{% include-markdown "\_snippets/file-type-identifiers.md" %}
+
+Filtering accepts:
+
+- local identifiers such as `python`
+- canonical qualified identifiers such as `topmark:python`
+
+Internally, TopMark normalizes configured identifiers to canonical qualified keys before resolver
+and policy evaluation.
+
 ## Exit-code interaction
 
 Filtering decisions can influence exit codes indirectly:
@@ -243,3 +299,14 @@ Effective strictness is controlled by:
 
 When strict config checking is enabled, validation warnings are treated as errors and may cause the
 command to fail before processing files.
+
+______________________________________________________________________
+
+## Related pages
+
+- [CLI overview](cli.md)
+- [Configuration](configuration.md)
+- [Global options](global-options.md)
+- [Policies](policies.md)
+- [Exit codes](exit-codes.md)
+- [Configuration discovery](../configuration/discovery.md)

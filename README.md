@@ -227,6 +227,12 @@ topmark probe README.md
 # Show candidate scores and match signals
 topmark probe -vv README.md
 
+# Filter file types (by local identifier):
+topmark check --include-file-types python src/
+
+# Filter file types (by qualified identifier):
+topmark check --include-file-types topmark:python src/
+
 # Process one file's content from STDIN
 cat README.md | topmark check - --stdin-filename README.md
 
@@ -333,6 +339,23 @@ render_empty_header_when_no_fields = false
 allow_reflow = false
 allow_content_probe = true
 
+[policy_by_type."topmark:python"]
+allow_header_in_empty_files = true
+
+[files]
+include_file_types = ["topmark:python", "topmark:markdown", "topmark:env"]
+exclude_file_types = ["topmark:html"]
+exclude_from = [".gitignore"]
+```
+
+File type filters and `policy_by_type` keys accept local identifiers such as `python` when
+unambiguous, and qualified identifiers such as `topmark:python`. Qualified identifiers are the
+canonical internal representation and are recommended in shared configuration.
+
+The same example can be written using local identifiers when unambiguous:
+
+```toml
+...
 [policy_by_type."python"]
 allow_header_in_empty_files = true
 
@@ -344,10 +367,6 @@ include_file_types = ["python", "markdown", "env"]
 exclude_file_types = ["html"]
 exclude_from = [".gitignore"]
 ```
-
-File type filters such as `include_file_types` and `exclude_file_types` accept local identifiers
-such as `python` when unambiguous. In plugin-heavy setups, prefer qualified identifiers such as
-`topmark:python`.
 
 Source-local TOML options such as discovery boundaries and config-validation strictness live under
 `[config]` (or `[tool.topmark.config]` in `pyproject.toml`). They are resolved separately from
@@ -438,6 +457,8 @@ When API callers provide mapping-based configuration, TopMark still follows the 
 internally: whole-source TOML-style validation for source-local sections such as `[config]` /
 `[writer]`, then layered config deserialization and merge into the final immutable `Config`
 snapshot.
+
+API filters and `policy_by_type` follow the same identifier semantics as TOML and CLI inputs.
 
 Public API callers should use the functions and DTOs exposed from `topmark.api`. Runtime helpers,
 resolver internals, and pipeline contexts are implementation details.

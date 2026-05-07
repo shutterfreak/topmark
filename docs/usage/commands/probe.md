@@ -21,10 +21,20 @@ mutate headers, and does not write files.
 Instead, it exposes the **resolution decision process**, including:
 
 - the selected file type and processor
+- canonical resolved file type identities
 - the resolution status and reason
 - all scored candidate file types
 - match signals (extension, filename, pattern, content probing)
 - explicit inputs filtered during discovery before file-type probing
+
+See also:
+
+- [CLI overview](../cli.md)
+- [Configuration](../configuration.md)
+- [Filtering](../filtering.md)
+- [Policies](../policies.md)
+- [Exit codes](../exit-codes.md)
+- [Registry model](../../dev/registry-model.md)
 
 ______________________________________________________________________
 
@@ -57,8 +67,10 @@ ______________________________________________________________________
 - **Resolution-only**: does not perform scanning, comparison, or mutation.
 - Uses the same **file discovery and filtering** as other commands, and reports explicit inputs that
   are filtered before probing.
-- Uses the same resolution policy and scoring logic as `check` and `strip`.
-- Exposes the same resolution logic used internally by `check` / `strip`.
+- Uses the same resolver, filtering, normalization, and scoring logic as [`check`](check.md) and
+  [`strip`](strip.md).
+- Exposes the same resolver decisions used internally by [`check`](check.md) and
+  [`strip`](strip.md).
 - Idempotent: repeated runs produce identical output for unchanged inputs.
 
 ### STDIN modes
@@ -72,8 +84,7 @@ TopMark supports **two different STDIN modes**:
 - **Content mode**: process one file’s *content* from STDIN by passing `-` as the sole PATH and
   providing `--stdin-filename NAME`.
 
-TopMark does not provide a `--stdin` option flag. Use `-` together with `--stdin-filename` instead.
-Passing `--stdin` is rejected as invalid CLI usage.
+{% include-markdown "\_snippets/no-stdin-option.md" %}
 
 These modes are mutually exclusive: do **not** mix `-` (content mode) with `--files-from -`,
 `--include-from -`, or `--exclude-from -` (list mode).
@@ -88,10 +99,12 @@ ______________________________________________________________________
 ## Command applicability
 
 `probe` is read-only and diagnostic-only. It shares input discovery, filtering, configuration, and
-file-type resolution controls with `check` and `strip`, but it rejects options that belong to file
-mutation, patch planning, reporting summaries, diffs, or generated-header rendering.
+file-type resolution controls with [`check`](check.md) and [`strip`](strip.md), but it rejects
+options that belong to file mutation, patch planning, reporting summaries, diffs, or
+generated-header rendering.
 
-Use `check` or `strip` for header comparison, patch previews, reports, or mutation.
+Use [`check`](check.md) or [`strip`](strip.md) for header comparison, patch previews, reports, or
+mutation.
 
 ______________________________________________________________________
 
@@ -100,6 +113,8 @@ ______________________________________________________________________
 TopMark determines which files to process using a combination of path-based filters and file-type
 filters.
 
+For the full filtering contract and recipes, see [Filtering](../filtering.md).
+
 ### File type filters
 
 - `--include-file-types / -t` Restrict processing to the given file type identifiers.
@@ -107,9 +122,15 @@ filters.
 
 Exclude rules take precedence over include rules.
 
-File type identifiers may be passed as local identifiers such as `python` when unambiguous, or as
-qualified identifiers such as `topmark:python`. Prefer qualified identifiers in plugin-heavy setups
-or whenever local names could become ambiguous.
+{% include-markdown "../../\_snippets/file-type-identifiers.md" %}
+
+Examples:
+
+```bash
+topmark probe --include-file-types python README.md
+topmark probe --include-file-types topmark:markdown README.md
+topmark probe --exclude-file-types topmark:python src/
+```
 
 ### Path-based filters
 
@@ -122,6 +143,7 @@ Notes:
 - Path-based filters are evaluated **before** file-type filters.
 - Exclude rules win over include rules when both match a path.
 - File-type filters are applied after path-based include/exclude filtering.
+- File-type filters are normalized to canonical qualified keys before resolver and probe evaluation.
 - Explicit missing literal paths (for example `fubar.py`) are reported as `FILE_NOT_FOUND (66)`.
 - Unmatched glob patterns (for example `missing/**/*.py`) are reported as filtered probe results and
   contribute to `UNSUPPORTED_FILE_TYPE (69)`.
@@ -159,6 +181,9 @@ For the canonical schema, see:
 
 - [Machine output schema (JSON & NDJSON)](../../dev/machine-output.md)
 - [Machine formats](../../dev/machine-formats.md)
+
+Probe machine output emits resolved file type identities using canonical qualified keys when
+available.
 
 ______________________________________________________________________
 
@@ -200,7 +225,8 @@ Filtered explicit inputs are also represented as probe payloads with:
 Filtered probe results may use one of the following reasons:
 
 - `excluded_by_path_filter` — excluded by path-based include/exclude rules
-- `excluded_by_file_type_filter` — excluded by file-type include/exclude rules
+- `excluded_by_file_type_filter` — excluded by file-type include/exclude rules after identifier
+  normalization to canonical qualified keys
 - `excluded_by_discovery_filter` — excluded before probing but exact category not identified
 
 ### NDJSON
@@ -211,6 +237,9 @@ Filtered probe results may use one of the following reasons:
 {"kind":"diagnostic",...}
 {"kind":"probe","meta":{...},"probe":{...}}  <!-- one per probe result -->
 ```
+
+Canonical file type identities in machine output use normalized qualified keys such as
+`topmark:python`.
 
 ______________________________________________________________________
 
@@ -245,8 +274,8 @@ ______________________________________________________________________
 | `--include-from`                                     | File of patterns to include.                                           |
 | `--exclude`                                          | Exclude paths by glob.                                                 |
 | `--exclude-from`                                     | File of patterns to exclude.                                           |
-| `--include-file-types` / `-t`                        | Restrict to specific file type identifiers.                            |
-| `--exclude-file-types` / `-T`                        | Exclude specific file type identifiers.                                |
+| `--include-file-types` / `-t`                        | Restrict to local or qualified file type identifiers.                  |
+| `--exclude-file-types` / `-T`                        | Exclude local or qualified file type identifiers.                      |
 | `--stdin-filename`                                   | Assumed filename when PATH is '-' (content from STDIN).                |
 | `--allow-content-probe` / `--no-allow-content-probe` | Shared policy override for file-type detection.                        |
 
@@ -277,6 +306,8 @@ Notes:
 - Missing explicit inputs take precedence over semantic probe outcomes (`69`).
 - Unmatched glob patterns are reported as filtered probe results (e.g.,
   `filtered: excluded_by_discovery_filter`) and result in `UNSUPPORTED_FILE_TYPE (69)`.
+- Ambiguous local file type identifiers may also contribute to semantic resolution outcomes unless
+  callers use canonical qualified identifiers such as `topmark:python`.
 
 See [`Exit codes`](../exit-codes.md) for the complete CLI-wide exit-code contract.
 
@@ -308,7 +339,12 @@ ______________________________________________________________________
 
 - [`topmark check`](./check.md) — verify and update headers.
 - [`topmark strip`](./strip.md) — remove detected TopMark headers.
-- [`topmark config check`](./config/check.md) — validate configuration.
+- [`topmark config check`](./config/check.md) — validate the effective merged configuration and
+  report diagnostics.
+- [`topmark config dump`](./config/dump.md) — inspect the effective frozen configuration, including
+  normalized file type identifiers.
+
+An overview of all CLI commands is available in [CLI overview](../cli.md).
 
 ______________________________________________________________________
 
@@ -316,6 +352,8 @@ ______________________________________________________________________
 
 - **Unsupported file**: ensure file type patterns or extensions are configured correctly.
 - **Unexpected selection**: use `-vv` to inspect candidate scores and match signals.
+- **File type filter does not match**: prefer qualified identifiers such as `topmark:python` when
+  local identifiers may be ambiguous.
 - **No processor**: check that a processor is registered for the selected file type.
 - **Filtered input**: the path was excluded by discovery filters (e.g., `--exclude`). The probe
   output will show one of:

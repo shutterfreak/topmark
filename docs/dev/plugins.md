@@ -18,29 +18,36 @@ TopMark supports extensibility via **plugins** that provide:
 1. **Header processors** (implementations that can detect/insert/update/strip headers for those file
    types).
 
-This page documents the currently supported extension points and the registry/discovery rules that
-matter when extending TopMark with custom file types and processor overlays.
+This page documents the currently supported plugin extension points. For the lower-level registry
+architecture, composed registry views, bindings, overlays, and identity semantics, see
+[Registry model](registry-model.md).
+
+See also:
+
+- [Registry model](registry-model.md)
+- [Resolver model](resolution.md)
+- [Registry CLI commands](../usage/commands/registry.md)
+- [Registry file types command](../usage/commands/registry/filetypes.md)
+- [Registry processors command](../usage/commands/registry/processors.md)
+- [Registry bindings command](../usage/commands/registry/bindings.md)
+- [Configuration](../usage/configuration.md)
 
 ______________________________________________________________________
 
 ## Conceptual model
 
-TopMark uses a layered registry model with base registries plus composed overlay views:
+Plugins extend TopMark by contributing file type definitions and, for advanced integrations, runtime
+processor overlays.
 
-- **Base registries** (built-ins + discovered plugins)
+The detailed registry architecture is documented in [Registry model](registry-model.md). In short:
 
-  - File types: loaded lazily from built-ins and the \[`topmark.filetypes`\][topmark.filetypes]
-    entry point group.
-  - Processors: constructed from explicit built-in processor bindings and optional runtime overlays.
+- file type plugins are loaded through the `topmark.filetypes` entry point group;
+- built-in processors are defined by TopMark's internal binding inventory;
+- advanced processor integrations use runtime overlays;
+- CLI and API execution use the effective composed registry view.
 
-- **Composed registries** (base + overlays − removals)
-
-  - Exposed for introspection via \[`topmark.registry.*`\][topmark.registry] and the
-    [`topmark registry *`](../usage/commands/registry.md) CLI commands.
-  - Used by CLI and API at runtime.
-
-The separation is intentional: **base registries must remain import-light** to avoid import cycles,
-and the composed registries provide the user-facing effective views.
+Plugin authors should treat qualified file type identifiers, such as `my_plugin:my_lang`, as the
+stable reference once custom namespaces are involved.
 
 ______________________________________________________________________
 
@@ -96,37 +103,39 @@ ______________________________________________________________________
 
 Every \[`FileType`\][topmark.filetypes.model.FileType] has two identity components:
 
-- `namespace`: identifies the producer (TopMark built-ins vs. plugins)
-- `name`: the file type identifier used by filtering and configuration
+- `namespace`: identifies the producer, such as `topmark`, `acme`, or `my_plugin`
+- `name`: the local file type key within that namespace
 
 TopMark reserves the namespace `topmark` (the internal constant
 \[`TOPMARK_NAMESPACE`\][topmark.constants.TOPMARK_NAMESPACE]) for built-in file types.
 
 **Plugin guidance:**
 
-- Set `namespace` to your package or organization identifier (for example: `"acme"`,
-  `"my_company"`).
-- Choose a globally-unique `name` for now (for example: `"acme_python"` rather than just
-  `"python"`).
+- Set `namespace` to your package or organization identifier, for example `"acme"` or
+  `"my_company"`.
+- Choose a clear local `name`, for example `"django_html"` or `"my_lang"`.
+- Use the qualified identifier, such as `"acme:django_html"`, in shared configuration, processor
+  bindings, and documentation.
 
 Note: `namespace` is **mandatory** for both file types and processors. The built-in namespace
 `topmark` is reserved for TopMark-provided types.
 
-Internally, a file type’s stable identity is the tuple **(namespace, name)**. Registries may still
-expose or accept the *unqualified* file type name for compatibility with existing configuration and
-CLI filtering, but resolution is performed through
-\[`FileTypeRegistry.resolve_filetype_id(...)`\][topmark.registry.filetypes.FileTypeRegistry.resolve_filetype_id],
-which understands both forms:
+Internally, TopMark normalizes file type identifiers to canonical qualified keys of the form
+`<namespace>:<name>`.
 
-- `"name"` (unqualified)
-- `"namespace:name"` (qualified)
+TopMark accepts both:
 
-Unqualified identifiers are only safe when they remain globally unique in the composed registry. If
-multiple file types share the same unqualified name, callers must use the qualified
-`"namespace:name"` form.
+- local identifiers such as `"python"`, when unambiguous;
+- qualified identifiers such as `"topmark:python"` or `"acme:django_html"`.
 
-Internally, the qualified identifier `<namespace>:<name>` is considered the canonical identity and
-should be treated as the stable reference for future integrations and plugins.
+Local identifiers are accepted only when unambiguous in the effective composed registry. If multiple
+file types share the same local identifier, callers must use the qualified form.
+
+Registry-facing APIs resolve identifiers through
+\[`FileTypeRegistry.resolve_filetype_id(...)`\][topmark.registry.filetypes.FileTypeRegistry.resolve_filetype_id].
+
+For the complete identity contract, see
+[Registry model](registry-model.md#qualified-vs-local-identifiers).
 
 ### 1) Create a provider function
 
@@ -144,7 +153,7 @@ from topmark.filetypes.model import FileType
 def provide_filetypes() -> list[FileType]:
     return [
         FileType(
-            name="my_plugin_my_lang",
+            name="my_lang",
             namespace="my_plugin",
             extensions=[".mylang"],
             filenames=[],
@@ -166,7 +175,7 @@ from topmark.filetypes.factory import make_filetype_factory
 make_my_ft = make_filetype_factory(namespace="my_plugin")
 
 MY_FILETYPE = make_my_ft(
-    name="my_plugin_my_lang",
+    name="my_lang",
     description="MyLang source files",
     extensions=[".mylang"],
 )
@@ -227,13 +236,13 @@ class MyLangHeaderProcessor(HeaderProcessor):
     ...
 
 
-Registry.register_processor("my_plugin:my_plugin_my_lang", MyLangHeaderProcessor)
+Registry.register_processor("my_plugin:my_lang", MyLangHeaderProcessor)
 ```
 
 At registration time, TopMark resolves the file type identifier through the composed file type
-registry and then binds the instantiated processor to that resolved
+registry and then binds the processor to that resolved
 \[`FileType`\][topmark.filetypes.model.FileType] object. Qualified identifiers are recommended
-because an unqualified file type name may become ambiguous once multiple namespaces define similarly
+because a local file type identifier may become ambiguous once multiple namespaces define similarly
 named file types.
 
 Important:
@@ -241,8 +250,8 @@ Important:
 - file type registration must happen before processor registration;
 - runtime processor registrations are overlay-only and do not mutate the internal built-in base
   registry;
-- current composed processor views are still keyed by unqualified file type name, so file type names
-  should remain globally unique in the effective registry for now.
+- processor bindings should use canonical qualified file type identifiers for deterministic
+  behavior.
 
 ______________________________________________________________________
 
@@ -253,8 +262,7 @@ explicitly through the runtime registry API when needed.
 
 A typical advanced integration flow is:
 
-1. expose file types through the \[`topmark.registry.filetypes`\][topmark.registry.filetypes] entry
-   point group;
+1. expose file types through the \[`topmark.filetypes`\][topmark.filetypes] entry point group;
 1. let TopMark discover those file types lazily;
 1. register processor classes explicitly through
    \[`HeaderProcessorRegistry.register(...)`\][topmark.registry.processors.HeaderProcessorRegistry.register],
@@ -272,8 +280,7 @@ ______________________________________________________________________
 For most integrations, providing **FileType plugins only** is sufficient.
 
 Header processor plugins are more advanced because they currently rely on runtime overlay
-registration and still assume globally-unique unqualified file type names in the composed processor
-registry.
+registration and explicit processor bindings.
 
 Unless you need custom header parsing or formatting logic, prefer defining custom file types that
 reuse existing processors.
@@ -292,8 +299,7 @@ Fix:
   \[`topmark.filetypes`\][topmark.filetypes] entry point.
 - Ensure file type discovery occurs before calling
   \[`Registry.bind(...)`\][topmark.registry.registry.Registry.bind].
-- Prefer qualified file type identifiers such as `"my_plugin:my_plugin_my_lang"` when registering
-  processors.
+- Prefer qualified file type identifiers such as `"my_plugin:my_lang"` when registering processors.
 
 ### "Ambiguous file type identifier" during processor registration
 
@@ -303,12 +309,12 @@ type in the composed registry.
 Fix:
 
 - Retry with a qualified identifier such as `"topmark:html"` or `"my_plugin:django_html"`.
-- Keep unqualified file type names globally unique unless ambiguity is part of an explicitly managed
-  override strategy.
+- Use qualified identifiers consistently in shared configuration, processor bindings, and plugin
+  documentation.
 
 ### Duplicate processor registration
 
-TopMark rejects duplicate overlay registrations for the same file type name.
+TopMark rejects duplicate overlay registrations for the same effective file type binding.
 
 If you see an error indicating that a processor is already registered for a file type, decide on an
 explicit overlay strategy first, for example:
@@ -333,12 +339,16 @@ These modules are useful if you are extending TopMark deeply:
 - \[`topmark.registry.processors`\][topmark.registry.processors] – composed processor registry view
   and overlay mutations
 - \[`topmark.registry.registry`\][topmark.registry.registry] – stable higher-level registry facade
+- \[`topmark.registry.bindings`\][topmark.registry.bindings] – composed binding registry and overlay
+  mutations
 
 These composed registries provide effective views that combine base registrations with runtime
 overlays and removals.
 
 ## See also
 
+- [`Registry model`](./registry-model.md) — detailed registry layers, bindings, overlays, and
+  identifier semantics
 - [`Architecture`](./architecture.md) — high-level overview of registries and runtime composition
 - [`registry.md`](../usage/commands/registry.md) — CLI-facing registry inspection commands
 - [`resolution.md`](./resolution.md) — file-type scoring and ambiguity policy

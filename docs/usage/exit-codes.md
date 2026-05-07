@@ -12,37 +12,64 @@ topmark:header:end
 
 # Exit Codes
 
+Exit codes define the stable command-line contract for:
+
+- CI/CD integration
+- shell scripting
+- editor integration
+- pre-commit hooks
+- automation and orchestration
+- machine-readable command execution
+
+See also:
+
+- [CLI overview](cli.md)
+- [Global options](global-options.md)
+- [Pre-commit integration](pre-commit.md)
+- [Configuration](configuration.md)
+- [Filtering](filtering.md)
+
 This page defines the **stable CLI exit-code contract** for TopMark. These codes are intended for
 use in CI/CD, scripting, and automation.
 
 TopMark follows a **small, consistent set of exit codes** across commands, with a few
 command-specific signals (notably for dry-run differences and probe resolution status).
 
+Exit-code behavior is intentionally deterministic and stable across:
+
+- normal CLI execution
+- pre-commit execution
+- CI environments
+- API-driven subprocess orchestration
+
 ______________________________________________________________________
 
 ## Overview
 
-| Code | Name                     | Meaning                                                                                  |
-| ---: | ------------------------ | ---------------------------------------------------------------------------------------- |
-|    0 | SUCCESS                  | Operation completed successfully.                                                        |
-|    1 | FAILURE                  | Generic failure (non-specific error).                                                    |
-|    2 | WOULD_CHANGE             | Dry-run indicates changes would be made (used by `check` and `strip` without `--apply`). |
-|   64 | USAGE_ERROR              | Invalid CLI usage (invalid options, incompatible flags).                                 |
-|   65 | ENCODING_ERROR           | Text decoding/encoding error (e.g., Unicode issues).                                     |
-|   66 | FILE_NOT_FOUND           | Explicit input path does not exist.                                                      |
-|   69 | UNSUPPORTED_FILE_TYPE    | Unsupported / unresolved / filtered input (primarily used by `probe`).                   |
-|   70 | PIPELINE_ERROR           | Internal pipeline failure or missing required processing result.                         |
-|   74 | IO_ERROR                 | Read/write failure (e.g., filesystem write error).                                       |
-|   77 | PERMISSION_DENIED        | Insufficient permissions (read/write).                                                   |
-|   78 | CONFIG_ERROR             | Configuration could not be loaded or validated for execution.                            |
-|  100 | VERSION_CONVERSION_ERROR | Version information could not be determined or converted.                                |
-|  255 | UNEXPECTED_ERROR         | Unhandled exception fallback.                                                            |
+| Code | Name                     | Meaning                                                                                                                            |
+| ---: | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+|    0 | SUCCESS                  | Operation completed successfully.                                                                                                  |
+|    1 | FAILURE                  | Generic failure (non-specific error).                                                                                              |
+|    2 | WOULD_CHANGE             | Dry-run indicates changes would be made (used by [`check`](commands/check.md) and [`strip`](commands/strip.md) without `--apply`). |
+|   64 | USAGE_ERROR              | Invalid CLI usage (invalid options, incompatible flags).                                                                           |
+|   65 | ENCODING_ERROR           | Text decoding/encoding error (e.g., Unicode issues).                                                                               |
+|   66 | FILE_NOT_FOUND           | Explicit input path does not exist.                                                                                                |
+|   69 | UNSUPPORTED_FILE_TYPE    | Unsupported / unresolved / filtered input (primarily used by [`probe`](commands/probe.md)).                                        |
+|   70 | PIPELINE_ERROR           | Internal pipeline failure or missing required processing result.                                                                   |
+|   74 | IO_ERROR                 | Read/write failure (e.g., filesystem write error).                                                                                 |
+|   77 | PERMISSION_DENIED        | Insufficient permissions (read/write).                                                                                             |
+|   78 | CONFIG_ERROR             | Configuration could not be loaded or validated for execution.                                                                      |
+|  100 | VERSION_CONVERSION_ERROR | Version information could not be determined or converted.                                                                          |
+|  255 | UNEXPECTED_ERROR         | Unhandled exception fallback.                                                                                                      |
 
 Notes:
 
 - Codes broadly follow **sysexits-style semantics** where applicable.
 - Not all codes are used by every command.
 - Commands may short-circuit on higher-severity errors (e.g., config errors before processing).
+- Canonical file-type identifier normalization does not affect exit-code semantics.
+- Ambiguous or malformed file-type identifiers are reported diagnostically and may contribute to
+  configuration or semantic failure outcomes depending on command behavior.
 - Explicit missing literal paths are treated as hard input errors (66). Unmatched glob patterns are
   soft diagnostics and do not produce 66.
 
@@ -111,6 +138,7 @@ Notes:
 - Missing explicit input paths are treated as hard errors (66) and take precedence over semantic
   probe outcomes.
 - Unmatched glob patterns are reported as filtered semantic outcomes and result in exit code 69.
+- Ambiguous or unresolved file-type filtering may also contribute to semantic resolution outcomes.
 
 ______________________________________________________________________
 
@@ -192,6 +220,14 @@ Recommended handling:
 - Note: `66` indicates explicit user input errors (e.g., missing paths), not unmatched glob
   patterns.
 
+These recommendations apply equally to:
+
+- local automation scripts
+- CI pipelines
+- pre-commit hooks
+- editor tooling
+- GitHub Actions and similar runners
+
 ______________________________________________________________________
 
 ## Exit code priority (mixed results)
@@ -200,6 +236,9 @@ When multiple issues occur in a single run, TopMark selects the exit code based 
 highest-priority condition.
 
 Priority order (highest to lowest):
+
+This ordering ensures deterministic behavior even when multiple independent conditions occur during
+a single invocation.
 
 1. Permission errors (`77`) and other filesystem access failures
 1. Missing explicit inputs (`66`)
@@ -231,6 +270,7 @@ ______________________________________________________________________
 
 - `--quiet` **does not affect exit codes**.
 - It only suppresses output.
+- Structured output modes (`json`, `ndjson`) also preserve identical exit-code behavior.
 - This ensures scripts remain reliable.
 
 ______________________________________________________________________
@@ -244,3 +284,14 @@ Future changes will:
 - preserve existing codes,
 - only introduce new codes in a backward-compatible manner, or
 - require a major version bump.
+
+______________________________________________________________________
+
+## Further reading
+
+- [CLI overview](cli.md)
+- [Global options](global-options.md)
+- [Filtering](filtering.md)
+- [Policies](policies.md)
+- [Pre-commit integration](pre-commit.md)
+- [Configuration discovery](../configuration/discovery.md)

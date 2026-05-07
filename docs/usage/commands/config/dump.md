@@ -12,26 +12,51 @@ topmark:header:end
 
 # TopMark `config dump` Command Guide
 
-**Purpose:** Dump the *effective merged* configuration used by TopMark.
+**Purpose:** Dump the *effective* frozen configuration used by TopMark.
 
 The `config dump` subcommand (part of the TopMark [`config` Command Family](../config.md)) prints
-the **effective TopMark configuration** as TOML after applying built-in defaults, discovered
-project/user config, and any CLI overrides.
+the *effective frozen TopMark configuration* as TOML after applying built-in defaults, discovered
+project/user config, and CLI overrides.
 
 During loading, TopMark first performs whole-source TOML schema validation for all
 discovered/configured TOML sources. Only the validated layered config fragment contributes to the
-final merged output. Validation is evaluated across staged config-loading/preflight diagnostics,
+final frozen output. Validation is evaluated across staged config-loading/preflight diagnostics,
 which remain internal; reporting and machine/API/CLI surfaces expose only the flattened
 compatibility diagnostics contract for 1.0.
 
+See also:
+
+- [CLI overview](../../cli.md)
+- [Configuration](../../configuration.md)
+- [Filtering](../../filtering.md)
+- [Policies](../../policies.md)
+- [Configuration discovery](../../../configuration/discovery.md)
+- [Configuration schema](../../../dev/config-schema.md)
+
 It is **file-agnostic**: it does not resolve or process any files.
+
+______________________________________________________________________
+
+## File type identifier semantics
+
+File type identifiers in configuration may use either:
+
+- local identifiers such as `python`
+- canonical qualified identifiers such as `topmark:python`
+
+Internally, configuration freeze normalizes identifiers to canonical qualified keys before resolver,
+filtering, policy, and binding evaluation.
+
+Local identifiers are accepted only when unambiguous in the effective composed registry.
+
+{% include-markdown "\_snippets/file-type-identifiers.md" %}
 
 ______________________________________________________________________
 
 ## Quick start
 
 ```bash
-# Dump merged configuration (TOML)
+# Dump effective configuration (TOML)
 topmark config dump
 
 # Honor include/exclude patterns and pattern files
@@ -53,8 +78,8 @@ ______________________________________________________________________
 
 ## Key properties
 
-- Shows the **merged** configuration (defaults ⟶ discovered config ⟶ `--config` files ⟶ CLI flags),
-  after per-source TOML schema validation.
+- Shows the effective frozen configuration (defaults ⟶ discovered config ⟶ `--config` files ⟶ CLI
+  flags), after per-source TOML schema validation.
 
 - With `--show-layers`, also shows the **layered configuration provenance** before the flattened
   configuration.
@@ -90,7 +115,7 @@ When `--show-layers` is used, `config dump` emits two TOML documents in sequence
 1. A **layered provenance export** describing how configuration was constructed.
 1. The final **flattened effective configuration** (unchanged default behaviour).
 
-The layered export is inspection-oriented and uses an array-of-tables structure:
+The layered provenance export is inspection-oriented and uses an array-of-tables structure:
 
 ```toml
 [[layers]]
@@ -110,12 +135,12 @@ Each layer includes:
 - `scope_root` — optional root for discovered configs
 - `toml` — the source-local TopMark TOML fragment after TOML-layer validation
 
-The second TOML document is identical to the standard flattened output.
+The second TOML document is identical to the standard flattened frozen configuration output.
 
 {% include-markdown "\_snippets/config-resolution.md" %}
 
-Configuration and policy override values shown by this command are public configuration data.
-Internal implementation helpers such as
+Configuration and policy override values shown by this command are part of the stable public
+configuration surface. Internal implementation helpers such as
 \[`PolicyOverrides`\][topmark.config.overrides.PolicyOverrides] and
 \[`ConfigOverrides`\][topmark.config.overrides.ConfigOverrides] are not part of the user-facing CLI
 or Python API contract.
@@ -127,8 +152,8 @@ ______________________________________________________________________
 - **List on STDIN for patterns**: `--include-from -` or `--exclude-from -` read newline-delimited
   patterns from STDIN. When using `-`, STDIN must be piped; otherwise the command fails.
 - **Content on STDIN** (`-` as PATH) is not supported by `config dump`. This mode is only meaningful
-  for file-processing commands (for example, `check`, `strip`, and `probe`). `--stdin-filename` does
-  not apply.
+  for file-processing commands (for example, [`check`](../check.md), [`strip`](../strip.md), and
+  [`probe`](../probe.md)). `--stdin-filename` does not apply.
 - **`--files-from`** is accepted for compatibility, but listed paths do not affect the dumped
   configuration. File lists are inputs for processing commands, not configuration state.
 
@@ -148,7 +173,7 @@ ______________________________________________________________________
 | `--include-from`  | Read include patterns from file (one per line, `#` comments allowed).                            |
 | `--exclude-from`  | Read exclude patterns from file (one per line, `#` comments allowed).                            |
 | `--files-from`    | Accept a file-list input for compatibility; listed paths do not affect the dumped configuration. |
-| `--file-type`     | Restrict to specific TopMark file type identifiers (affects config state).                       |
+| `--file-type`     | Restrict to local or qualified TopMark file type identifiers (affects config state).             |
 | `--relative-to`   | Base directory for relative path handling in config.                                             |
 | `--align-fields`  | Whether to align header fields (captured in config).                                             |
 | `--header-format` | Header rendering format override (captured in config).                                           |
@@ -169,14 +194,18 @@ The canonical schema, stable `kind` values, and shared conventions are documente
 
 {% include-markdown "\_snippets/output-contract.md" %}
 
+Machine-readable config snapshots emit normalized canonical qualified file type identifiers after
+configuration freeze.
+
 Notes:
 
 - `config dump` is **file-agnostic** and emits the effective configuration after applying defaults →
   discovered config → `--config` files → CLI overrides, with whole-source TOML validation performed
-  per source before layered config merging.
+  per source before layered config merging. Identifier normalization and runtime applicability
+  evaluation occur before the effective frozen configuration snapshot is emitted.
 - With `--show-layers`, machine output also includes a `config_provenance` payload before the
   flattened config.
-- Diagnostics are not emitted for this command; it is an inspection view of the merged config.
+- Diagnostics are not emitted for this command; it is an inspection view of the effective config.
 
 ### JSON schema
 
@@ -185,7 +214,7 @@ A single JSON document is emitted:
 ```jsonc
 {
   "meta": { /* MetaPayload */ },
-  "config": { /* ConfigPayload (effective merged) */ }
+  "config": { /* ConfigPayload (effective frozen snapshot) */ }
 }
 ```
 
@@ -205,7 +234,7 @@ NDJSON is a stream where each line is a JSON object. Every record includes `kind
 
 Default mode:
 
-1. `kind="config"` (effective merged config snapshot)
+1. `kind="config"` (effective frozen config snapshot)
 
 Example:
 
@@ -215,8 +244,8 @@ Example:
 
 With `--show-layers`:
 
-1. `kind="config_provenance"` (layered provenance export)
-1. `kind="config"` (effective merged config snapshot)
+1. `kind="config_provenance"` (layered provenance export snapshot)
+1. `kind="config"` (effective frozen config snapshot)
 
 Example:
 
@@ -240,19 +269,36 @@ ______________________________________________________________________
 
 ## Notes
 
-- The output reflects the configuration **TopMark would use** if you ran processing commands
-  (`check`, `strip`, or `probe`) with the same configuration-related flags in the current working
-  directory, after TOML-layer validation and layered config merging.
+- The output reflects the effective frozen configuration TopMark would use if you ran processing
+  commands ([`check`](../check.md), [`strip`](../strip.md), or [`probe`](../probe.md)) with the same
+  configuration-related flags in the current working directory, after TOML-layer validation and
+  layered config merging.
 - For per-file configuration (e.g., overrides that may depend on path), consider a future option
   like `--for FILE` (not currently implemented), similar to ESLint’s `--print-config`.
 
 ______________________________________________________________________
 
+## Troubleshooting
+
+- **Unexpected file type filter behavior**: prefer qualified identifiers such as `topmark:python`
+  when local identifiers may be ambiguous.
+- **Unexpected policy application**: inspect normalized identifiers in the dumped frozen
+  configuration.
+- **Unexpected config layering**: use `--show-layers` to inspect layered provenance and validated
+  TOML fragments.
+
+______________________________________________________________________
+
 ## Related commands
 
-- [`topmark config check`](./check.md) — check the *effective merged* configuration for errors.
-- [`topmark config defaults`](./defaults.md) — show the *built-in default TopMark TOML document*.
+- [`topmark config check`](./check.md) — validate the effective frozen configuration and staged
+  config-loading diagnostics.
+- [`topmark config defaults`](./defaults.md) — show the built-in default layered config fragment.
 - [`topmark config init`](./init.md) — print the bundled example TopMark TOML resource.
+
+An overview of all CLI commands is available in [CLI overview](../../cli.md).
+
+______________________________________________________________________
 
 ## Exit codes
 

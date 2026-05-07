@@ -12,12 +12,20 @@ topmark:header:end
 
 # TopMark `check` Command Guide
 
-**Purpose:** Add or update TopMark headers.
+**Purpose:** Verify TopMark headers and optionally insert or update them with `--apply`.
 
 The `check` command verifies the presence and correctness of TopMark headers in targeted files. It
 does not modify files (dry‑run) but reports which files would need updates. In this mode summaries
 end with `- previewed`. When run with `--apply`, files are actually modified and summaries end with
 `- inserted`, `- replaced`, or other terminal statuses.
+
+See also:
+
+- [CLI overview](../cli.md)
+- [Configuration](../configuration.md)
+- [Filtering](../filtering.md)
+- [Policies](../policies.md)
+- [Exit codes](../exit-codes.md)
 
 ______________________________________________________________________
 
@@ -55,8 +63,8 @@ ______________________________________________________________________
 - Preserves the file’s original **newline style** (LF/CRLF/CR).
 - Preserves a leading **UTF‑8 BOM** if present.
 - Places headers according to file‑type policy (shebang and PEP 263 in Python; XML
-  declaration/DOCTYPE in XML/HTML; no insertion inside Markdown fenced code). Uses the same file
-  discovery and filtering as other commands.
+  declaration/DOCTYPE in XML/HTML; no insertion inside Markdown fenced code).
+- Uses the same file discovery and filtering as other commands.
 
 ### STDIN modes
 
@@ -69,8 +77,7 @@ TopMark supports **two different STDIN modes**:
 - **Content mode**: process one file’s *content* from STDIN by passing `-` as the sole PATH and
   providing `--stdin-filename NAME`.
 
-TopMark does not provide a `--stdin` option flag. Use `-` together with `--stdin-filename` instead.
-Passing `--stdin` is rejected as invalid CLI usage.
+{% include-markdown "\_snippets/no-stdin-option.md" %}
 
 These modes are mutually exclusive: do **not** mix `-` (content mode) with `--files-from -`,
 `--include-from -`, or `--exclude-from -` (list mode).
@@ -94,6 +101,8 @@ ______________________________________________________________________
 TopMark determines which files to process using a combination of path-based filters and file-type
 filters.
 
+For the full filtering contract and recipes, see [Filtering](../filtering.md).
+
 ### File type filters
 
 - `--include-file-types / -t` Restrict processing to the given file type identifiers. May be
@@ -103,9 +112,15 @@ filters.
 
 Exclude rules take precedence over include rules.
 
-File type identifiers may be passed as local identifiers such as `python` when unambiguous, or as
-qualified identifiers such as `topmark:python`. Prefer qualified identifiers in plugin-heavy setups
-or whenever local names could become ambiguous.
+{% include-markdown "../../\_snippets/file-type-identifiers.md" %}
+
+Examples:
+
+```bash
+topmark check --include-file-types python src/
+topmark check --include-file-types topmark:python src/
+topmark check --exclude-file-types topmark:markdown docs/
+```
 
 ### Path-based filters
 
@@ -118,6 +133,8 @@ Notes:
 - Path-based filters are evaluated **before** file-type filters.
 - Exclude rules win over include rules when both match a path.
 - File-type filters are applied after path-based include/exclude filtering.
+- File-type filters are normalized to canonical qualified keys before resolver and policy
+  evaluation.
 - Explicit missing literal paths (for example `fubar.py`) are reported as `FILE_NOT_FOUND (66)`.
 - Unmatched glob patterns (for example `missing/**/*.py`) are treated as soft discovery diagnostics
   and do not fail `check`.
@@ -130,6 +147,9 @@ The `check` command supports policy overrides that control how headers are inser
 
 See also: [TopMark Policy Guide](../policies.md).
 
+Policy overrides passed to `check` follow the same resolution semantics as TOML configuration and
+API overlays.
+
 Use `--header-mutation-mode` to control the mutation intent for `check`:
 
 - `all` (default): insert missing headers and update existing headers
@@ -137,7 +157,8 @@ Use `--header-mutation-mode` to control the mutation intent for `check`:
 - `update-only`: update existing headers only; missing headers are not inserted
 
 This policy affects dry-run reporting, `--apply` behavior, API result views, and outcome bucketing.
-It is a check-only policy; `strip` removes existing headers and `probe` is read-only.
+It is a check-only policy; [`strip`](strip.md) removes existing headers and [`probe`](probe.md) is
+read-only.
 
 Safety gates still take precedence. Malformed headers, unreadable files, unsupported files, blocked
 filesystem states, and other non-mutable conditions are not made mutable by
@@ -199,6 +220,9 @@ For the canonical schema and stable `kind` values, see:
 - [Machine formats](../../dev/machine-formats.md)
 
 {% include-markdown "\_snippets/output-contract.md" %}
+
+Machine output emits resolved file type identities using canonical qualified keys when available.
+Configuration payloads also emit normalized file type filters and `policy_by_type` keys.
 
 Notes:
 
@@ -298,8 +322,8 @@ Notes:
 | `--include-from`              | File of patterns to include (one per line, `#` comments allowed).      |
 | `--exclude`                   | Exclude paths by glob (can be used multiple times).                    |
 | `--exclude-from`              | File of patterns to exclude.                                           |
-| `--include-file-types` / `-t` | Restrict to specific TopMark file type identifiers.                    |
-| `--exclude-file-types` / `-T` | Exclude specific TopMark file type identifiers.                        |
+| `--include-file-types` / `-t` | Restrict to local or qualified TopMark file type identifiers.          |
+| `--exclude-file-types` / `-T` | Exclude local or qualified TopMark file type identifiers.              |
 | `--report`                    | Control reporting scope: actionable, noncompliant, or all.             |
 | `--header-mutation-mode`      | Check-only policy override: `all`, `add-only`, or `update-only`.       |
 | `--empty-insert-mode`         | Check-only policy override controlling empty-file classification.      |
@@ -383,6 +407,8 @@ ______________________________________________________________________
   validates each whole-source TOML fragment, merges the validated layered config fragments, then
   evaluates staged config-loading/preflight validation before freezing the effective config for the
   run.
+- **File type identifiers**: local identifiers such as `python` are accepted when unambiguous;
+  internally, TopMark normalizes identifiers to canonical qualified keys such as `topmark:python`.
 
 ______________________________________________________________________
 
@@ -470,7 +496,10 @@ ______________________________________________________________________
 - [`topmark probe`](./probe.md) — explain file-type and processor resolution.
 - [`topmark config check`](./config/check.md) — validate the effective merged configuration and
   report diagnostics.
-- [`topmark config dump`](./config/dump.md) — show the effective merged configuration as TOML.
+- [`topmark config dump`](./config/dump.md) — inspect the effective frozen configuration, including
+  normalized file type identifiers.
+
+An overview of all CLI commands is available in [CLI overview](../cli.md).
 
 ______________________________________________________________________
 
@@ -481,6 +510,9 @@ ______________________________________________________________________
   detailed TEXT output; use logging options for internal debug logs.
 - **Patterns don’t match**: Remember that include/exclude patterns are **relative to CWD**. `cd`
   into the project root before running.
+- **File type filter does not match**: use [`topmark probe`](probe.md) to inspect resolver
+  decisions, and prefer qualified identifiers such as `topmark:python` when local identifiers may be
+  ambiguous.
 - **Missing file error**: A literal path such as `fubar.py` is treated as an explicit input and
   fails with `FILE_NOT_FOUND (66)` when it does not exist. Use a glob pattern when an empty match
   set should be non-fatal.

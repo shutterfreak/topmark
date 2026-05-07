@@ -15,17 +15,44 @@ topmark:header:end
 **Purpose:** Show the built-in default TopMark TOML document.
 
 The `config defaults` subcommand (part of the TopMark [`config` Command Family](../config.md))
-prints TopMark’s **built‑in default TopMark TOML document** as TOML. It uses a cleaned, comment-free
+prints TopMark’s **built-in defaults-derived** TOML representation. It uses a cleaned, comment-free
 TOML representation derived from the built-in defaults (no project files are discovered or merged).
 
-Because the output is generated from TopMark's built-in defaults, it reflects only the **layered
-default config fragment**. Source-local TOML sections such as `[config]` and `[writer]` are not
-resolved from project files here.
+Because the output is generated from TopMark's built-in defaults, it reflects only the built-in
+default layered config fragment. Source-local TOML sections such as `[config]` and `[writer]` are
+not resolved from project files here.
 
-- `text` / `markdown` formats: minimal, comment-free TOML. Markdown is document-oriented and ignores
+See also:
+
+- [CLI overview](../../cli.md)
+- [Configuration](../../configuration.md)
+- [Filtering](../../filtering.md)
+- [Policies](../../policies.md)
+- [Configuration discovery](../../../configuration/discovery.md)
+- [Configuration schema](../../../dev/config-schema.md)
+
+Output formats:
+
+- `text` / `markdown`: minimal, comment-free TOML. Markdown is document-oriented and ignores
   TEXT-only verbosity controls.
 - `json` / `ndjson`: a plain Config snapshot, with no diagnostics. Machine formats ignore TEXT-only
   verbosity controls.
+
+______________________________________________________________________
+
+## File type identifier semantics
+
+File type identifiers in TopMark configuration may use either:
+
+- local identifiers such as `python`
+- canonical qualified identifiers such as `topmark:python`
+
+Internally, configuration freeze normalizes identifiers to canonical qualified keys before resolver,
+filtering, policy, and binding evaluation.
+
+Local identifiers are accepted only when unambiguous in the effective composed registry.
+
+{% include-markdown "\_snippets/file-type-identifiers.md" %}
 
 ______________________________________________________________________
 
@@ -46,8 +73,8 @@ ______________________________________________________________________
 - **Isolated**: ignores project/user config files and CLI overrides.
 - **File‑agnostic**: does not resolve or process any PATHS. Positional paths are rejected as invalid
   CLI usage. STDIN content mode (`-`) and file-list modes (such as `--files-from -`) do not apply.
-- **Reference**: useful to understand the default layered config fragment, header layout, policy
-  behavior, and TOML/config split.
+- **Reference**: useful for understanding the built-in default layered config fragment, header
+  layout, policy behavior, and TOML/config split.
 
 > **How config is resolved**
 >
@@ -80,6 +107,9 @@ accept file-processing inputs:
 This ensures the output always reflects only the built-in defaults, independent of any workspace
 state.
 
+No config discovery, project traversal, resolver filtering, or runtime policy overlay evaluation
+occurs for this command.
+
 ______________________________________________________________________
 
 ## Options (subset)
@@ -89,6 +119,8 @@ for any environment‑specific flags that may be available in your build.
 
 Note: `-v` / `--verbose` applies only to TEXT output. This pure content-producing command does not
 support `--quiet`. Markdown and machine formats ignore TEXT-only verbosity controls.
+
+______________________________________________________________________
 
 ## Exit codes
 
@@ -124,6 +156,9 @@ The canonical schema, stable `kind` values, and shared conventions are documente
 
 {% include-markdown "\_snippets/output-contract-no-quiet.md" %}
 
+Machine-readable config snapshots emit normalized canonical qualified file type identifiers after
+configuration freeze.
+
 Notes:
 
 - `config defaults` is **file-agnostic** and emits a configuration snapshot derived only from the
@@ -139,7 +174,7 @@ A single JSON document is emitted:
 ```jsonc
 {
   "meta": { /* MetaPayload */ },
-  "config": { /* ConfigPayload (defaults-derived) */ }
+  "config": { /* ConfigPayload (defaults-derived frozen snapshot) */ }
 }
 ```
 
@@ -149,7 +184,7 @@ NDJSON is a stream where each line is a JSON object. Every record includes `kind
 
 Stream:
 
-1. `kind="config"` (defaults-derived config snapshot)
+1. `kind="config"` (defaults-derived frozen config snapshot)
 
 Example:
 
@@ -159,8 +194,22 @@ Example:
 
 ______________________________________________________________________
 
+## Troubleshooting
+
+- **Unexpected defaults**: remember that `config defaults` ignores all project, user, and CLI
+  overlay configuration.
+- **Unexpected identifier formatting**: machine-readable output may emit normalized canonical
+  qualified identifiers such as `topmark:python`.
+- **Need the real effective config**: use [`topmark config dump`](./dump.md) instead.
+
+______________________________________________________________________
+
 ## Related commands
 
-- [`topmark config check`](./check.md) — check the *effective merged* configuration for errors.
-- [`topmark config dump`](./dump.md) — show the *effective merged* configuration as TOML.
+- [`topmark config check`](./check.md) — validate the effective frozen merged configuration and
+  staged config-loading diagnostics.
+- [`topmark config dump`](./dump.md) — show the effective frozen configuration, including normalized
+  canonical file type identifiers.
 - [`topmark config init`](./init.md) — print the bundled example TopMark TOML resource.
+
+An overview of all CLI commands is available in [CLI overview](../../cli.md).

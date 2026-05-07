@@ -29,6 +29,10 @@ TopMark supports layered configuration with explicit precedence:
   applies across staged config-loading validation logs (see
   [Config-loading behaviour](./discovery.md#config-loading-behaviour-toml-level)).
 - `relative_to` affects only header metadata (e.g., `file_relpath`), not discovery.
+- **File type identifiers** may be written in local form such as `python` or qualified form such as
+  `topmark:python`. TopMark normalizes identifiers to canonical qualified keys during configuration
+  freeze. For the user-facing contract, see
+  [Configuration](../usage/configuration.md#file-type-identifiers).
 
 TopMark also provides an inspection mode via
 [`topmark config dump --show-layers`](../usage/commands/config/dump.md) that exposes **layered
@@ -77,6 +81,9 @@ Start here:
   `[config].root = true`
 - [`Policy resolution`](./discovery.md#policy-resolution) for understanding how policy settings are
   defined and overridden at global level and per file type.
+- [Usage configuration guide](../usage/configuration.md) for the public TOML, CLI, and API
+  identifier contract.
+- [CLI overview](../usage/cli.md) for command-line execution and global options.
 
 See Also:
 
@@ -89,3 +96,7 @@ See Also:
     \[`MutableConfig`\][topmark.config.model.MutableConfig]
 - Usage: [`config dump`](../usage/commands/config/dump.md) for inspecting the effective
   configuration and layered provenance
+- [Usage configuration guide](../usage/configuration.md)
+- [Filtering recipes](../usage/filtering.md)
+- [Policy guide](../usage/policies.md)
+- [CLI overview](../usage/cli.md)
