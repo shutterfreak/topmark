@@ -96,8 +96,10 @@ TopMark performs whole-source TOML schema validation during hook execution; any 
 diagnostics are included in the reported config diagnostics.
 
 Consumers can control configuration validation strictness using `--strict` / `--no-strict`. This
-overrides the effective `strict_config_checking` setting resolved from TOML sources for the duration
-of the hook run.
+overrides the effective `strict` setting resolved from TOML sources for the duration of the hook
+run.
+
+{% include-markdown "\_snippets/config-strictness.md" %}
 
 In the current implementation, this strictness is applied across staged config-loading/preflight
 validation (TOML-source, merged-config, and runtime-applicability diagnostics), while the reported

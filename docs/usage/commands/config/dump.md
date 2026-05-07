@@ -124,7 +124,7 @@ kind = "default"
 precedence = 0
 
 [layers.toml.config]
-strict_config_checking = false
+strict = false
 ```
 
 Each layer includes:

@@ -291,10 +291,12 @@ usage error and takes precedence over filtering outcomes.
 Filtering determines *which* files are processed, while staged config-loading/preflight validation
 determines whether a run is allowed to proceed.
 
+{% include-markdown "\_snippets/config-strictness.md" %}
+
 Effective strictness is controlled by:
 
 1. CLI override (`--strict` / `--no-strict`)
-1. TOML setting (`strict_config_checking`)
+1. TOML setting (`strict`)
 1. default non-strict behaviour
 
 When strict config checking is enabled, validation warnings are treated as errors and may cause the

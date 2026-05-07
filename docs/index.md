@@ -215,11 +215,13 @@ exclude_file_types = ["html"]
 ```
 
 In `pyproject.toml`, the same settings live under `[tool.topmark]`, with source-local options such
-as `root` and `strict_config_checking` under `[tool.topmark.config]`.
+as `root` and `strict` under `[tool.topmark.config]`.
 
 Source-local options under `[config]` / `[tool.topmark.config]` do not participate in layered config
-merging. For example, `strict_config_checking` affects configuration validation behaviour rather
-than becoming a normal layered `Config` field.
+merging. For example, `strict` affects configuration validation behaviour rather than becoming a
+normal layered `Config` field.
+
+{% include-markdown "\_snippets/config-strictness.md" %}
 
 {% include-markdown "\_snippets/config-validation-contract.md" %}
 

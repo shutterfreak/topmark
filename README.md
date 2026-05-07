@@ -380,9 +380,9 @@ At the TOML layer, malformed known sections are handled as warning-and-ignore ca
 known sections are emitted as INFO diagnostics. This lets callers distinguish absent sections from
 malformed-present sections before staged config-validation semantics are applied.
 
-For example, `strict_config_checking` is resolved from TOML sources and affects configuration
-validation behaviour; it is not a normal layered `Config` field. In the current implementation,
-validation is evaluated across staged config-loading/preflight validation:
+For example, `strict` is resolved from TOML sources and affects configuration validation behaviour;
+it is not a normal layered `Config` field. In the current implementation, validation is evaluated
+across staged config-loading/preflight validation:
 
 - TOML-source diagnostics
 - merged-config diagnostics

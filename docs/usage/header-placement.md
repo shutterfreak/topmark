@@ -16,9 +16,8 @@ TopMark is comment‑aware and places the header block according to the file typ
 
 Header placement is governed by file type and policy settings.
 
-Configuration validation strictness (for example via `--strict` or `strict_config_checking`) does
-not affect header placement rules. It only controls whether a run proceeds when configuration
-warnings are present.
+Configuration validation strictness (for example via `--strict` or `strict`) does not affect header
+placement rules. It only controls whether a run proceeds when configuration warnings are present.
 
 See also:
 

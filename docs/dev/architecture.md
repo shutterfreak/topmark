@@ -27,7 +27,7 @@ TopMark separates configuration concerns into three layers:
   - parsing of TOML tables
   - whole-source TOML schema validation (unknown sections / keys, malformed section shapes, missing
     known sections as INFO diagnostics)
-  - resolution of source-local options (e.g. `[config].root`, `strict_config_checking`)
+  - resolution of source-local options (e.g. `[config].root`, `strict`)
 - **Config layer** (\[`topmark.config`\][topmark.config]):
   - construction of layered configuration (`ConfigLayer`)
   - deserialization of already-validated layered config fragments into `MutableConfig`
@@ -51,9 +51,10 @@ flowchart TD
 ```
 
 Not all TOML-defined values become layered `Config` fields. Source-local options such as
-`[config].root` and `strict_config_checking` are resolved on the TOML side first, then applied to
-config discovery and staged config-loading/preflight validation without participating in layered
-config merging.
+`[config].root` and `strict` are resolved on the TOML side first, then applied to config discovery
+and staged config-loading/preflight validation without participating in layered config merging.
+
+{% include-markdown "\_snippets/config-strictness.md" %}
 
 Whole-source TOML schema validation now happens before layered config deserialization. The staged
 config-loading validation flow is shown in the diagram above. In other words:
@@ -372,11 +373,10 @@ TopMark exposes configuration state through both human-readable and machine-read
   - JSON / NDJSON snapshots described in [`machine-output.md`](machine-output.md)
 
 For [`config check`](../usage/commands/config/check.md), machine output reports effective strictness
-under the key `strict_config_checking`, reflecting TOML-resolved strictness plus any CLI/API
-override. This strictness applies across staged config-loading/preflight validation: TOML-source
-diagnostics, merged-config diagnostics, and runtime-applicability diagnostics. Machine output
-continues to expose the flattened compatibility diagnostics view derived from those staged
-validation logs.
+under the key `strict`, reflecting TOML-resolved strictness plus any CLI/API override. This
+strictness applies across staged config-loading/preflight validation: TOML-source diagnostics,
+merged-config diagnostics, and runtime-applicability diagnostics. Machine output continues to expose
+the flattened compatibility diagnostics view derived from those staged validation logs.
 
 For 1.0, this flattened compatibility form is the accepted final machine contract for config/TOML
 validation diagnostics. Stage-local validation structure remains internal and is not serialized in

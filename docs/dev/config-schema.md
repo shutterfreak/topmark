@@ -55,7 +55,7 @@ before resolver, filtering, policy, and binding evaluation.
 
 Local identifiers are accepted only when unambiguous in the effective composed registry.
 
-`strict_config_checking` is a **TOML-source-local config-loading option**, not a layered
+`strict` is a **TOML-source-local config-loading option**, not a layered
 \[`Config`\][topmark.config.model.Config] field. It is resolved from `[config]` /
 `[tool.topmark.config]` during TOML source resolution and applied after layered config merging. In
 the current implementation, its effective value governs staged config-loading validation evaluated
@@ -121,7 +121,7 @@ topmark:
       type: bool
       default: false
       description: Stop upward config discovery when set in a discovered config.
-    strict_config_checking:
+    strict:
       type: bool
       default: false
       description: Source-local strictness preference applied to staged config-loading/preflight validation; warnings become failures when effective strict config checking is enabled across TOML-source, merged-config, and runtime-applicability diagnostics.

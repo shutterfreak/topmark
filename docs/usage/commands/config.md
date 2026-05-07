@@ -14,9 +14,11 @@ topmark:header:end
 
 TopMark exposes a `config` command group to inspect and scaffold configuration:
 
-Source-local options under `[config]` / `[tool.topmark.config]` (such as `root` and
-`strict_config_checking`) are resolved during configuration loading. They do not participate in
-layered config merging, but influence discovery and validation behaviour.
+Source-local options under `[config]` / `[tool.topmark.config]` (such as `root` and `strict`) are
+resolved during configuration loading. They do not participate in layered config merging, but
+influence discovery and validation behaviour.
+
+{% include-markdown "\_snippets/config-strictness.md" %}
 
 In the current implementation, effective strictness applies across staged config-loading/preflight
 validation.
@@ -144,7 +146,7 @@ configuration freeze.
 When running [`config check`](config/check.md), effective validation strictness is determined by:
 
 1. CLI override (`--strict` / `--no-strict`)
-1. TOML value (`strict_config_checking`)
+1. TOML value (`strict`)
 1. default non-strict behaviour
 
 Warnings are treated as errors only when strict config checking is enabled. Identifier ambiguity,
@@ -153,9 +155,9 @@ flow. In the current implementation, this applies to staged config-loading/prefl
 whole. For 1.0, this evaluation occurs over staged validation, while only the flattened
 compatibility diagnostics contract is exposed at CLI/API/machine boundaries.
 
-Note that `strict_config_checking` is a **source-local TOML option**, not a layered configuration
-field. It influences validation behaviour but is not part of the final merged config; however, it is
-visible in layered provenance output ([`config dump --show-layers`](config/dump.md)).
+Note that `strict` is a **source-local TOML option**, not a layered configuration field. It
+influences validation behaviour but is not part of the final merged config; however, it is visible
+in layered provenance output ([`config dump --show-layers`](config/dump.md)).
 
 ______________________________________________________________________
 

@@ -87,8 +87,7 @@ make property-test
 TopMark separates configuration into three layers:
 
 - TOML layer (`topmark.toml`) — discovery, parsing, and whole-source TOML schema validation (unknown
-  sections/keys, malformed shapes), plus source-local options (e.g. `[config].root`,
-  `strict_config_checking`)
+  sections/keys, malformed shapes), plus source-local options (e.g. `[config].root`, `strict`)
 - Config layer (`topmark.config`) — deserialization of validated layered config fragments and
   layered merge into a mutable config draft
 - Runtime layer (`topmark.runtime`) — execution-time options and overrides
@@ -102,9 +101,9 @@ Configuration loading follows a staged config-loading model:
 1. evaluate effective config validity across staged config-loading/preflight validation
 1. freeze into the final `Config`
 
-Source-local options such as `strict_config_checking` are resolved during configuration loading and
-influence validation behaviour, but do not become layered `Config` fields. In the current
-implementation, effective strictness is applied across staged config-loading/preflight validation:
+Source-local options such as `strict` are resolved during configuration loading and influence
+validation behaviour, but do not become layered `Config` fields. In the current implementation,
+effective strictness is applied across staged config-loading/preflight validation:
 
 - TOML-source diagnostics
 - merged-config diagnostics

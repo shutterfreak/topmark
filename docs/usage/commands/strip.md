@@ -86,11 +86,12 @@ path-sensitive header policy exactly as it would for a real file path. When `--a
 content mode, stripped content is written to STDOUT and diagnostics are routed to STDERR.
 
 - Idempotent: re‑running after headers are removed results in **no changes**.
-- Supports `--strict` / `--no-strict` to override the effective `strict_config_checking` value for
-  the run.
+- Supports `--strict` / `--no-strict` to override the effective `strict` value for the run.
 - Performs whole-source TOML schema validation during configuration loading; TOML-source diagnostics
   (including missing-section INFO diagnostics) are evaluated together with merged-config and
   runtime-applicability diagnostics during staged config-loading/preflight validation for the run.
+
+{% include-markdown "\_snippets/config-strictness.md" %}
 
 {% include-markdown "\_snippets/config-resolution.md" %}
 

@@ -43,22 +43,24 @@ immutable snapshot before running, which prevents accidental mutation and keeps 
 deterministic.
 
 The mapping mirrors the **layered TopMark config fragment** plus TOML-source-local sections such as
-`[config]` and `[writer]`. Source-local options such as `[config].root` and `strict_config_checking`
-can also be provided via the `config` key in the mapping, for example:
+`[config]` and `[writer]`. Source-local options such as `[config].root` and `strict` can also be
+provided via the `config` key in the mapping, for example:
 
 ```python
 config = {
     "config": {
         "root": True,
-        "strict_config_checking": False,
+        "strict": False,
     },
     # ... other sections like "fields", "header", "policy", etc.
 }
 ```
 
-Note that `strict_config_checking` is not a layered \[`Config`\][topmark.config.model.Config] field.
-It is resolved from `[config]` / `[tool.topmark.config]`-shaped input during configuration loading
-and influences validation behavior. API helpers such as
+{% include-markdown "\_snippets/config-strictness.md" %}
+
+Note that `strict` is not a layered \[`Config`\][topmark.config.model.Config] field. It is resolved
+from `[config]` / `[tool.topmark.config]`-shaped input during configuration loading and influences
+validation behavior. API helpers such as
 \[`ensure_config_valid(...)`\][topmark.api.runtime.ensure_config_valid] apply this effective
 strictness (including optional overrides) when validating a config across staged
 config-loading/preflight validation:
@@ -91,7 +93,7 @@ from topmark import api
 config = {
     "config": {
         "root": False,
-        "strict_config_checking": False,
+        "strict": False,
     },
     "fields": {
         "project": "TopMark",

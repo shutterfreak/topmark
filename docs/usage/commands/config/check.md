@@ -65,7 +65,7 @@ topmark config check
 topmark config check --strict
 
 # CLI override wins over TOML strictness
-# (even if topmark.toml contains `[config] strict_config_checking = true`)
+# (even if topmark.toml contains `[config] strict = true`)
 topmark config check --no-strict
 
 # Machine-readable JSON (single document)
@@ -102,8 +102,7 @@ ______________________________________________________________________
 - **Strict mode**: effective strictness is determined as:
 
   - CLI override (`--strict` / `--no-strict`)
-  - resolved TOML value from `[config].strict_config_checking` /
-    `[tool.topmark.config].strict_config_checking`
+  - resolved TOML value from `[config].strict` / `[tool.topmark.config].strict`
   - default non-strict mode
 
   Errors always fail; warnings fail only when strict config checking is enabled across staged
@@ -259,7 +258,7 @@ Notes:
   evaluated across these staged validation logs collectively. Identifier normalization and runtime
   applicability evaluation participate in this staged validation flow.
 
-Example (`[config].strict_config_checking = true` resolved from TOML, with no CLI override):
+Example (`[config].strict = true` resolved from TOML, with no CLI override):
 
 ```jsonc
 {
@@ -268,7 +267,7 @@ Example (`[config].strict_config_checking = true` resolved from TOML, with no CL
   "config_diagnostics": { /* ConfigDiagnosticsPayload */ },
   "config_check": {
     "ok": false,
-    "strict_config_checking": true,
+    "strict": true,
     "diagnostic_counts": { "info": 0, "warning": 1, "error": 0 },
     "config_files": ["topmark.toml"]
   }
@@ -286,7 +285,7 @@ A single JSON document is emitted:
   "config_diagnostics": { /* ConfigDiagnosticsPayload */ },
   "config_check": {
     "ok": true,
-    "strict_config_checking": false,
+    "strict": false,
     "diagnostic_counts": { "info": 0, "warning": 0, "error": 0 },
     "config_files": ["..."]
   }
@@ -309,7 +308,7 @@ Example:
 ```jsonc
 {"kind":"config","meta":{...},"config":{...}}
 {"kind":"config_diagnostics","meta":{...},"config_diagnostics":{"diagnostic_counts":{"info":0,"warning":0,"error":0}}}
-{"kind":"config_check","meta":{...},"config_check":{"ok":true,"strict_config_checking":false,"diagnostic_counts":{...},"config_files":[...]}}
+{"kind":"config_check","meta":{...},"config_check":{"ok":true,"strict":false,"diagnostic_counts":{...},"config_files":[...]}}
 {"kind":"diagnostic","meta":{...},"diagnostic":{"domain":"config","level":"warning","message":"..."}}
 ```
 

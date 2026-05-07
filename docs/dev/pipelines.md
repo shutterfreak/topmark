@@ -32,9 +32,11 @@ Pipeline execution consumes a frozen \[`Config`\][topmark.config.model.Config] p
 assembled from the TOML → Config → Runtime flow documented in [`architecture.md`](architecture.md)
 and [`../configuration/discovery.md`](../configuration/discovery.md).
 
-Source-local TOML options such as `[config].root` and `strict_config_checking` are resolved before
-pipeline execution. They influence configuration discovery and validation behaviour, but do not
-become normal layered \[`Config`\][topmark.config.model.Config] fields.
+Source-local TOML options such as `[config].root` and `strict` are resolved before pipeline
+execution. They influence configuration discovery and validation behaviour, but do not become normal
+layered \[`Config`\][topmark.config.model.Config] fields.
+
+{% include-markdown "\_snippets/config-strictness.md" %}
 
 ## Concepts vs Reference
 

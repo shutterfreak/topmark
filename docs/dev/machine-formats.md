@@ -237,7 +237,7 @@ Examples:
   },
   "config_check": {
     "ok": true,
-    "strict_config_checking": false,
+    "strict": false,
     "diagnostic_counts": { "info": 0, "warning": 1, "error": 0 },
     "config_files": ["/repo/topmark.toml"]
   }
@@ -256,7 +256,7 @@ Examples:
         "kind": "default",
         "precedence": 0,
         "toml": {
-          "config": { "strict_config_checking": false }
+          "config": { "strict": false }
         }
       }
     ]
@@ -491,11 +491,11 @@ built-in defaults, while [`config init`](../usage/commands/config/init.md) rende
 example TopMark TOML resource with extensive comments. In machine formats, both emit the same
 underlying default configuration snapshot shape.
 
-For [`config check`](../usage/commands/config/check.md), the machine payload uses
-`strict_config_checking` to report the effective config-validation strictness after applying CLI
-override precedence over resolved TOML strictness. This strictness is evaluated across staged
-config-loading/preflight validation (TOML-source, merged-config, and runtime-applicability
-diagnostics), while machine output continues to expose the flattened compatibility diagnostics view.
+For [`config check`](../usage/commands/config/check.md), the machine payload uses `strict` to report
+the effective config-validation strictness after applying CLI override precedence over resolved TOML
+strictness. This strictness is evaluated across staged config-loading/preflight validation
+(TOML-source, merged-config, and runtime-applicability diagnostics), while machine output continues
+to expose the flattened compatibility diagnostics view.
 
 Resolved config snapshots emit normalized file type identifiers. In particular,
 `files.include_file_types`, `files.exclude_file_types`, and `policy_by_type` use canonical qualified
@@ -515,7 +515,7 @@ Example [`config check`](../usage/commands/config/check.md) NDJSON prefix:
 }}
 {"kind":"config_check","meta":{...},"config_check":{
   "ok":true,
-  "strict_config_checking":false,
+  "strict":false,
   "diagnostic_counts":{"info":0,"warning":1,"error":0},
   "config_files":["/repo/topmark.toml"]
 }}

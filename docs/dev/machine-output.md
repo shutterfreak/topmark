@@ -707,7 +707,7 @@ envelope becomes:
         "kind": "default",
         "precedence": 0,
         "toml": {
-          "config": { "strict_config_checking": false },
+          "config": { "strict": false },
           "writer": { "strategy": "atomic" }
         }
       }
@@ -756,7 +756,7 @@ JSON shape:
       "kind": "default",
       "precedence": 0,
       "toml": {
-        "config": { "strict_config_checking": false },
+        "config": { "strict": false },
         "header": { "fields": ["file", "file_relpath"] },
         "writer": { "strategy": "atomic" }
       }
@@ -799,7 +799,7 @@ diagnostics, and a `config_check` status payload.
   "config_diagnostics": { /* ConfigDiagnosticsPayload */ },
   "config_check": {
     "ok": true,
-    "strict_config_checking": false,
+    "strict": false,
     "diagnostic_counts": { "info": 0, "warning": 1, "error": 0 },
     "config_files": ["..."]
   }
@@ -811,15 +811,14 @@ diagnostics, and a `config_check` status payload.
   diagnostics.
 - `config_check`: command-status payload containing:
   - `ok` — whether validation succeeded
-  - `strict_config_checking` — whether strict config-checking mode was enabled
+  - `strict` — whether strict config-checking mode was enabled
   - `diagnostic_counts` — counts by diagnostic level
   - `config_files` — config files that contributed to the resolved config
 
-The `strict_config_checking` field reflects the **effective validation strictness** used for the
-run. It is derived from TOML source configuration (`[config].strict_config_checking`) and may be
-overridden by CLI or API inputs. This strictness is evaluated across staged config-loading/preflight
-validation, while `config_diagnostics` remains the flattened compatibility view exposed in machine
-output.
+The `strict` field reflects the **effective validation strictness** used for the run. It is derived
+from TOML source configuration (`[config].strict`) and may be overridden by CLI or API inputs. This
+strictness is evaluated across staged config-loading/preflight validation, while
+`config_diagnostics` remains the flattened compatibility view exposed in machine output.
 
 For 1.0, this is the explicit contract decision: staged validation remains primarily internal, and
 machine output serializes only the flattened compatibility diagnostics surface.

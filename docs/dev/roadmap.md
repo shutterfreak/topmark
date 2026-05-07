@@ -145,6 +145,8 @@ The configuration system has been fully restructured:
   - TOML-source diagnostics
   - merged-config diagnostics
   - runtime-applicability diagnostics
+- Renamed the alpha-only `[config].strict_config_checking` key to `[config].strict` before the 1.0
+  config contract freeze.
 - Removed stored flattened diagnostics from `Config` / `MutableConfig`
   - flattening is now performed only at exception, presentation, and machine-output boundaries
 - Removed legacy helpers and compatibility layers
@@ -263,6 +265,8 @@ Result: human output is now **consistent, composable, and decoupled from CLI**.
 - Added a shared documentation snippet for qualified vs local file type identifiers and reused it
   across usage, configuration, command, API, registry, plugin, resolution, and machine-output
   documentation.
+- Added a shared documentation snippet for `[config].strict` and reused it across the configuration,
+  command, usage, architecture, resolution, and pipeline documentation.
 - Added dedicated user-facing CLI and configuration overview pages.
 - Added a dedicated registry model developer page covering registry layers, bindings, overlays,
   canonical identities, plugin integration, and registry CLI inspection.
@@ -352,8 +356,8 @@ consumers must update to the canonical identity and explicit binding model.
   - The legacy `ArgsLike` alias was removed.
 - Config-loading entry points were consolidated around TOML-first resolution.
   - Callers needing provenance must explicitly handle `(resolved_sources, draft_config)`.
-- Source-local TOML options such as `[config].root` and `strict_config_checking` now live outside
-  layered `Config` merging.
+- Source-local TOML options such as `[config].root` and `[config].strict` now live outside layered
+  `Config` merging.
 - TOML validation is now stricter and happens earlier:
   - unknown top-level sections/keys, malformed known sections, and malformed nested policy sections
     are reported during whole-source TOML loading
@@ -613,26 +617,27 @@ Remaining decisions:
   - runtime-applicability diagnostics
 - Keep staged validation primarily internal for 1.0, with only the flattened compatibility
   diagnostics contract exposed at exception, presentation, and machine-output boundaries.
-- Keep `strict_config_checking` as-is for 1.0 and revisit any possible rename only after the 1.0
-  contract freeze.
+- `[config].strict` is now the frozen public config-loading strictness knob for 1.0.
 - Confirm that sanitization/runtime-applicability warnings intentionally remain inside the effective
-  `strict_config_checking` gate for 1.0.
+  `[config].strict` gate for 1.0.
 - Confirm that TOML validation, config validation, runtime overlay, and layered provenance remain
   clearly separated responsibilities.
-- Decide whether configuration schema versioning should remain implicit for 1.0, with any explicit
-  schema-version key deferred until a future non-additive schema change.
+- Explicit configuration schema versioning is deferred beyond 1.0:
+  - no `[config].version` or equivalent schema-version key is added for 1.0
+  - schema versioning will be introduced only when a future non-additive schema change requires it
 
 Recommended direction:
 
 - keep the current TOML → Config → Runtime split,
 - keep canonical qualified file type identifiers as the internal frozen representation,
-- keep `strict_config_checking` as the public config-loading strictness knob for 1.0,
+- keep `[config].strict` as the public config-loading strictness knob for 1.0,
 - freeze the staged validation semantics now implemented internally,
 - keep flattened diagnostics as a derived compatibility/reporting surface only at exception,
   presentation, and machine-output boundaries,
 - defer broader staged-gate exposure in CLI/API/machine output unless clearly justified before final
   freeze,
-- defer explicit config schema versioning until a future non-additive schema change requires it.
+- keep explicit config schema versioning deferred until a future non-additive schema change requires
+  it.
 
 ### Output contract freeze
 
@@ -741,7 +746,7 @@ The remaining work is no longer broad architectural redesign.
 
 What is left is mainly:
 
-- **final configuration-schema release validation**
+- **final configuration and release validation**
 - **tooling/release follow-up**
 - one major scope decision resolved: **in-memory pipeline explicitly deferred to post-1.0**
 
@@ -798,7 +803,7 @@ These are release blockers unless explicitly deferred with a documented rational
     - [x] verbosity remains a separate human-output concern
   - [x] field naming consistency audited across domains
 - [x] `config check` payload naming stabilized as `config_check`
-- [x] `strict_config_checking` naming stabilized in config-validation payloads
+- [x] `strict` naming stabilized in config-validation payloads
 - [x] Decision made on the 1.0 machine contract for config/TOML diagnostics:
   - [x] flattened `{level, message}` is explicitly accepted as final
   - [x] richer TOML-specific structure is not required before 1.0 freeze (explicitly deferred)
@@ -887,7 +892,7 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] privileged release jobs consume CI-built artifacts
   - [x] no manual version-bump step remains
 - [x] Preferred release-tag conventions documented and stable
-- [x] `strict_config_checking` documented and stable as a TOML-source-local config-loading option
+- [x] `[config].strict` documented and stable as a TOML-source-local config-loading option
 - [x] Whole-source TOML schema validation rules documented and considered stable
 - [x] TOML/config/runtime split documented and implemented
 - [x] Per-path effective config resolution implemented
@@ -898,12 +903,14 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] staged validation logs implemented internally
   - [x] effective validity now evaluates TOML-source, merged-config, and runtime-applicability
     diagnostics together
-  - [x] `strict_config_checking` remains the public config-loading strictness knob
+  - [x] `[config].strict` remains the public config-loading strictness knob
   - [x] `ConfigValidationError` now has focused coverage for staged-count summaries and
     exception-boundary flattening
   - [x] final decision made on 1.0 exposure: keep staged validation primarily internal with
     flattened compatibility diagnostics only at exception/presentation/output boundaries
-- [ ] Decision made whether explicit configuration schema versioning is deferred past 1.0
+- [x] Decision made on explicit configuration schema versioning
+  - [x] no schema-version key is added for 1.0
+  - [x] schema versioning is deferred until a future non-additive schema change requires it
 
 #### [Must] Pipeline & testing
 
@@ -1020,11 +1027,10 @@ These items are explicitly reasonable to defer.
 #### [Post-1.0] Product / architecture
 
 - [ ] Implement in-memory pipeline support if deferred for 1.0
-- [ ] Revisit whether configuration schema versioning needs an explicit version key
+- [ ] Introduce configuration schema versioning only when a future non-additive schema change
+  requires it
 - [ ] Revisit whether staged validation details should be exposed more directly in
   CLI/API/machine-output contracts beyond the current flattened compatibility diagnostics view
-- [ ] Revisit whether `strict_config_checking` should eventually be renamed once 1.0 contract
-  stability no longer constrains config-key naming
 - [ ] Revisit registry query/filter commands if users need richer registry discovery beyond the
   current read-only registry listings and probe diagnostics
 

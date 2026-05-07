@@ -29,12 +29,14 @@ This resolver operates within the broader TOML → Config → Runtime architectu
 configuration discovery, layered config provenance export, or staged config-loading/preflight
 validation strictness resolution itself.
 
-In particular, source-local TOML options such as `[config].root` and `strict_config_checking` are
-resolved before runtime file-type resolution begins. They influence discovery and staged
-config-loading/preflight validation behaviour, but are not part of the resolver's matching or
-tie-break logic.
+In particular, source-local TOML options such as `[config].root` and `strict` are resolved before
+runtime file-type resolution begins. They influence discovery and staged config-loading/preflight
+validation behaviour, but are not part of the resolver's matching or tie-break logic.
 
-This distinction is also visible in `topmark config dump --show-layers`: layered provenance exports
+{% include-markdown "\_snippets/config-strictness.md" %}
+
+This distinction is also visible in
+[`topmark config dump --show-layers`](../usage/commands/config/dump.md): layered provenance exports
 are produced earlier from resolved TOML sources and flattened config state, while file-type
 resolution happens later against the already-validated effective runtime configuration.
 

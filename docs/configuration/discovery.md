@@ -162,17 +162,18 @@ layered merging.
 These TOML-source-local options are still validated as part of whole-source TOML loading, but they
 do not become layered \[`Config`\][topmark.config.model.Config] fields.
 
-The current `strict_config_checking` name comes from the earlier single-"config" architecture. In
-TopMark's current layered TOML → Config → Runtime model, its effective behavior is broader: it
-controls staged config-loading validation.
+In TopMark's current layered TOML → Config → Runtime model, `strict` controls staged config-loading
+validation.
+
+{% include-markdown "\_snippets/config-strictness.md" %}
 
 {% include-markdown "\_snippets/config-validation-contract.md" %}
 
 Currently, this includes:
 
-| Field                    | Description                                                                           |
-| ------------------------ | ------------------------------------------------------------------------------------- |
-| `strict_config_checking` | Controls how config validation treats warnings (warnings become errors when enabled). |
+| Field    | Description                                                                           |
+| -------- | ------------------------------------------------------------------------------------- |
+| `strict` | Controls how config validation treats warnings (warnings become errors when enabled). |
 
 Key properties:
 
@@ -195,7 +196,7 @@ Example:
 
 ```toml
 [config]
-strict_config_checking = true
+strict = true
 ```
 
 This distinction is also visible in layered provenance output:

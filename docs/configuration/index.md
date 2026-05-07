@@ -23,16 +23,18 @@ TopMark supports layered configuration with explicit precedence:
   **declaring config file** (or CWD for CLI-provided values).
 - **Merge semantics vary by field**: behavioral settings usually use nearest-wins semantics, mapping
   fields usually overlay keys, and discovery inputs usually accumulate across applicable layers.
-- **Config-loading behaviour (e.g. `strict_config_checking`) is resolved from TOML sources**
-  (`[config]` / `[tool.topmark.config]`) during TOML loading and applied after layered merging; it
-  is not a regular layered configuration field. In the current implementation, effective strictness
-  applies across staged config-loading validation logs (see
+- **Config-loading behaviour (e.g. `strict`) is resolved from TOML sources** (`[config]` /
+  `[tool.topmark.config]`) during TOML loading and applied after layered merging; it is not a
+  regular layered configuration field. In the current implementation, effective strictness applies
+  across staged config-loading validation logs (see
   [Config-loading behaviour](./discovery.md#config-loading-behaviour-toml-level)).
 - `relative_to` affects only header metadata (e.g., `file_relpath`), not discovery.
 - **File type identifiers** may be written in local form such as `python` or qualified form such as
   `topmark:python`. TopMark normalizes identifiers to canonical qualified keys during configuration
   freeze. For the user-facing contract, see
   [Configuration](../usage/configuration.md#file-type-identifiers).
+
+{% include-markdown "\_snippets/config-strictness.md" %}
 
 TopMark also provides an inspection mode via
 [`topmark config dump --show-layers`](../usage/commands/config/dump.md) that exposes **layered
