@@ -802,7 +802,7 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] registry commands
   - [x] probe command
   - [x] top-level command groups reviewed for any remaining machine-output gaps
-- [ ] Final schema freeze review completed
+- [x] Final schema freeze review completed
   - [x] `(outcome, reason, count)` summary rows frozen
   - [x] `detail_level` semantics frozen
     - [x] `--long` is the cross-format projection selector (brief vs long)
@@ -961,9 +961,11 @@ These are release blockers unless explicitly deferred with a documented rational
 - [x] Decision made on long-term color backend policy
   - [x] keep `yachalk` for 1.0 because it is confined to CLI presentation internals
   - [x] Rich / `rich-click` migration deferred post-1.0 unless a concrete blocker appears
-- [ ] Formatter/tool configuration split stabilized and documented
-  - [ ] `.mdformat.toml`
-  - [ ] `.taplo.toml`
+- [x] Formatter/tool configuration split stabilized and documented
+  - [x] `.mdformat.toml` is the Markdown formatter configuration used by mdformat-based local,
+    pre-commit, and nox validation paths
+  - [x] `.taplo.toml` is the TOML formatter/linter configuration shared by Taplo CLI, pre-commit,
+    CI, and editor integrations
 - [ ] Tooling environments verified to consume the same formatter/plugin/tool expectations:
   - [ ] nox
   - [ ] pre-commit
@@ -974,6 +976,12 @@ These are release blockers unless explicitly deferred with a documented rational
 - [x] Artifact-based CI → release pipeline implemented and documented
 - [ ] Positive release-path rehearsal accepted as complete for the path to `1.0.0`
   - [x] prerelease flow (`v1.0.0aN`) validated
+  - [ ] clean wheel install validated
+  - [ ] clean sdist install validated
+  - [ ] editable install validated
+  - [ ] TestPyPI install validated
+  - [ ] dependency resolution validated in isolated environments
+  - [ ] SCM-derived artifact version validated against the release tag
   - [ ] remaining follow-up issues, if any, resolved or explicitly accepted
 - [x] Runtime dependency model verified against isolated environments
   - [x] `typing-extensions` promoted to core dependencies after isolated-environment failure
@@ -981,6 +989,52 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] dependency-audit configuration added (`deptry`) to reduce risk of further implicit
     runtime/development dependency drift
   - [x] pre-commit / clean-environment / packaging verification rerun on the final dependency set
+
+#### [Must] Beta validation gate for `v1.0.0b1`
+
+Before cutting `v1.0.0b1`, run and record a positive validation pass for the current source
+snapshot. Packaging validation is intentionally handled through nox sessions, GitHub workflows, and
+release workflow checks rather than dedicated pytest tests.
+
+- [ ] Packaging validation completed
+  - [ ] `nox -s package_check` builds wheel and sdist artifacts and passes `twine check`
+  - [ ] wheel artifact installs into a clean environment and exposes the `topmark` console script
+  - [ ] sdist artifact installs into a clean environment and exposes the `topmark` console script
+  - [ ] editable install works with the documented development extras
+  - [ ] TestPyPI upload/install rehearsal succeeds for the beta candidate
+  - [ ] dependency resolution succeeds without undeclared runtime dependencies
+  - [ ] generated version metadata matches the release tag through `setuptools-scm`
+- [ ] CLI smoke validation completed from installed artifacts
+  - [ ] `topmark version`
+  - [ ] `topmark config defaults`
+  - [ ] `topmark config check`
+  - [ ] `topmark registry filetypes`
+  - [ ] `topmark registry processors`
+  - [ ] `topmark probe ...`
+  - [ ] `topmark check ...`
+  - [ ] `topmark strip ...`
+- [ ] Documentation validation completed
+  - [ ] `make docs-build`
+  - [ ] `make links-site`
+  - [ ] generated API reference pages are current
+  - [ ] strict MkDocs build passes in a clean environment
+- [ ] QA validation completed
+  - [ ] `make qa`
+  - [ ] `make release-check`
+  - [ ] `make release-full`, or an equivalent CI-backed full release gate, passes
+- [ ] Tooling parity validation completed
+  - [ ] nox formatter/linter behavior matches pre-commit behavior
+  - [ ] local `.venv` behavior matches nox expectations where documented
+  - [ ] VS Code/editor integration expectations match `.mdformat.toml`, `.taplo.toml`, Ruff, and
+    Pyright configuration
+  - [ ] CI uses the same formatter, linter, type-checking, docs, and packaging expectations as the
+    documented local release gates
+- [ ] Final beta freeze review completed
+  - [ ] no alpha-only semantics remain exposed in CLI help, docs, or machine output
+  - [ ] warning and error wording remains consistent with the frozen command-applicability and
+    exit-code contracts
+  - [ ] accepted imperfections are recorded explicitly as post-1.0 follow-up or non-blocking beta
+    notes
 
 ### Strongly recommended (but not blockers)
 
@@ -1000,7 +1054,7 @@ These should ideally be completed for 1.0, but may be deferred more easily if ne
 #### [Recommended] Human output
 
 - [x] Human-facing registry output reviewed/frozen for qualified identifier presentation
-- [ ] Diff rendering policy reviewed across pipeline commands
+- [x] Diff rendering policy reviewed across pipeline commands
 - [x] Markdown layout direction explicitly documented as document-oriented, not text-equivalent
 
 #### [Recommended] Machine output
@@ -1022,12 +1076,18 @@ These should ideally be completed for 1.0, but may be deferred more easily if ne
 
 #### [Recommended] CI / release architecture
 
-- [ ] Decide whether the current artifact-based CI → release split should remain the stable 1.0
+- [x] Decide whether the current artifact-based CI → release split should remain the stable 1.0
   release architecture or later be factored into reusable workflow/release-infra patterns
-- [ ] Decide whether workflow formatting/style expectations should stay editor-policy-only or be
+  - current artifact-based CI → release split is accepted for 1.0
+  - further factoring into reusable release-infra patterns is deferred post-1.0
+- [x] Decide whether workflow formatting/style expectations should stay editor-policy-only or be
   documented explicitly in contributor-facing CI guidance
-- [ ] Decide whether the explicit `tests` matrix setup should remain as-is or later reuse more of
+  - formatter behavior is governed by checked-in tool configuration and release validation gates
+  - broader editor-style guidance remains non-blocking for 1.0
+- [x] Decide whether the explicit `tests` matrix setup should remain as-is or later reuse more of
   the shared CI bootstrap model
+  - the explicit matrix remains accepted for 1.0
+  - further reuse of shared CI bootstrap models is deferred post-1.0
 
 ### Post-1.0 follow-up (nice-to-have)
 
@@ -1060,6 +1120,8 @@ These items are explicitly reasonable to defer.
 ______________________________________________________________________
 
 Only when all items in the “Must finish before 1.0” section are completed or explicitly deferred
-with rationale should `1.0.0` final be cut. The first 1.0 prerelease tag (`v1.0.0a1`) has already
-served as a meaningful part of the release-path rehearsal and final contract validation, but it does
-not replace the remaining contract-freeze decisions listed above.
+with rationale should `1.0.0` final be cut. The 1.0 alpha series has already served as a meaningful
+part of the release-path rehearsal and final contract validation. The next milestone is now the
+`v1.0.0b1` beta readiness gate: if packaging, tooling parity, documentation, QA, release workflow,
+and final freeze validation pass against the current source snapshot, the project can move from
+alpha stabilization to beta validation without reopening deferred post-1.0 scope.
