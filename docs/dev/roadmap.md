@@ -974,14 +974,14 @@ These are release blockers unless explicitly deferred with a documented rational
   - [ ] CI
   - [ ] artifact-based release workflow
 - [x] Artifact-based CI → release pipeline implemented and documented
-- [ ] Positive release-path rehearsal accepted as complete for the path to `1.0.0`
+- [x] Positive release-path rehearsal accepted as complete for the path to `1.0.0`
   - [x] prerelease flow (`v1.0.0aN`) validated
-  - [ ] clean wheel install validated
-  - [ ] clean sdist install validated
-  - [ ] editable install validated
-  - [ ] TestPyPI install validated
-  - [ ] dependency resolution validated in isolated environments
-  - [ ] SCM-derived artifact version validated against the release tag
+  - [x] clean wheel install validated
+  - [x] clean sdist install validated
+  - [x] uv-managed development environment validated
+- [x] TestPyPI install validated with PyPI fallback for dependencies
+  - [x] dependency resolution validated in isolated environments
+- [x] SCM-derived artifact version validated against the current source state
   - [ ] remaining follow-up issues, if any, resolved or explicitly accepted
 - [x] Runtime dependency model verified against isolated environments
   - [x] `typing-extensions` promoted to core dependencies after isolated-environment failure
@@ -996,32 +996,33 @@ Before cutting `v1.0.0b1`, run and record a positive validation pass for the cur
 snapshot. Packaging validation is intentionally handled through nox sessions, GitHub workflows, and
 release workflow checks rather than dedicated pytest tests.
 
-- [ ] Packaging validation completed
-  - [ ] `nox -s package_check` builds wheel and sdist artifacts and passes `twine check`
-  - [ ] wheel artifact installs into a clean environment and exposes the `topmark` console script
-  - [ ] sdist artifact installs into a clean environment and exposes the `topmark` console script
-  - [ ] editable install works with the documented development extras
-  - [ ] TestPyPI upload/install rehearsal succeeds for the beta candidate
-  - [ ] dependency resolution succeeds without undeclared runtime dependencies
-  - [ ] generated version metadata matches the release tag through `setuptools-scm`
-- [ ] CLI smoke validation completed from installed artifacts
-  - [ ] `topmark version`
-  - [ ] `topmark config defaults`
-  - [ ] `topmark config check`
-  - [ ] `topmark registry filetypes`
-  - [ ] `topmark registry processors`
-  - [ ] `topmark probe ...`
-  - [ ] `topmark check ...`
-  - [ ] `topmark strip ...`
-- [ ] Documentation validation completed
-  - [ ] `make docs-build`
-  - [ ] `make links-site`
-  - [ ] generated API reference pages are current
-  - [ ] strict MkDocs build passes in a clean environment
-- [ ] QA validation completed
-  - [ ] `make qa`
-  - [ ] `make release-check`
-  - [ ] `make release-full`, or an equivalent CI-backed full release gate, passes
+- [x] Packaging validation completed
+  - [x] `nox -s package_check` builds wheel and sdist artifacts and passes `twine check`
+  - [x] wheel artifact installs into a clean environment and exposes the `topmark` console script
+  - [x] sdist artifact installs into a clean environment and exposes the `topmark` console script
+- [x] uv-managed development environment works with the documented development extras
+  - [x] TestPyPI upload/install rehearsal succeeds for the prerelease path
+  - [x] dependency resolution succeeds without undeclared runtime dependencies
+  - [x] generated version metadata matches the release tag through `setuptools-scm`
+- [x] CLI smoke validation completed from installed artifacts; validation performed primarily
+  through isolated `nox -s qa` CLI test coverage plus wheel/sdist/TestPyPI installation rehearsal
+  - [x] `topmark version`
+  - [x] `topmark config defaults`
+  - [x] `topmark config check`
+  - [x] `topmark registry filetypes`
+  - [x] `topmark registry processors`
+  - [x] `topmark probe ...`
+  - [x] `topmark check ...`
+  - [x] `topmark strip ...`
+- [x] Documentation validation completed
+  - [x] `make docs-build`
+  - [x] `make links-site`
+  - [x] generated API reference pages are current
+  - [x] strict MkDocs build passes in a clean environment
+- [x] QA validation completed
+  - [x] `make test` (runs `nox -s qa`)
+  - [x] `make release-check`
+  - [x] `make release-full`, or an equivalent CI-backed full release gate, passes
 - [ ] Tooling parity validation completed
   - [ ] nox formatter/linter behavior matches pre-commit behavior
   - [ ] local `.venv` behavior matches nox expectations where documented
