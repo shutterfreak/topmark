@@ -44,7 +44,7 @@ and verifies that this façade remains stable across Python versions.
 This boundary intentionally separates:
 
 - stable user-facing execution APIs;
-- stable machine-output contracts;
+- stable machine-readable output contracts;
 - evolving registry internals and overlay helpers.
 
 ______________________________________________________________________
@@ -188,7 +188,7 @@ In particular:
 - JSON and NDJSON payload structure are documented in [`machine-output.md`](machine-output.md);
 - machine-format conventions are documented in [`machine-formats.md`](machine-formats.md);
 - canonical identity fields such as `qualified_key`, `file_type_key`, and `processor_key` are part
-  of the stable machine-output contract.
+  of the stable machine-readable output contract.
 
 The Python API snapshot protects importable symbols and signatures exposed via
 \[`topmark.api`\][topmark.api]. It does not directly snapshot JSON payload schemas.
@@ -218,7 +218,7 @@ evolve independently as long as:
 
 - the documented public API remains stable;
 
-- documented machine-output contracts remain stable;
+- documented machine-readable output contracts remain stable;
 
 - canonical identifier semantics remain stable.
 
@@ -236,7 +236,7 @@ ______________________________________________________________________
 - The generator logic lives in `tools/api_snapshot.py`.
 - Normalization ensures consistent diffing across OSes and Python builds.
 - Canonical file type identifier normalization ensures stable identity handling across
-  configuration, resolver, registry, and machine-output boundaries.
+  configuration, resolver, registry, and machine-readable output boundaries.
 - The snapshot is derived from `topmark.api.__all__`, ensuring the stable façade remains small and
   explicitly defined.
 - Internal helpers such as
@@ -257,7 +257,7 @@ The snapshot contract intentionally does not guarantee stability for:
 - internal resolver scoring heuristics;
 - private helper modules outside \[`topmark.api`\][topmark.api].
 
-Only documented public APIs and machine-output contracts are considered stable.
+Only documented public APIs and machine-readable output contracts are considered stable.
 
 ______________________________________________________________________
 
@@ -318,7 +318,7 @@ intended version stage.
 ______________________________________________________________________
 
 **Summary:**\
-TopMark separates stable public execution APIs and machine-output contracts from more flexible
-internal registry and orchestration details. The snapshot system protects the documented public
-surface while still allowing controlled internal evolution under the project's Git-tag-driven
+TopMark separates stable public execution APIs and machine-readable output contracts from more
+flexible internal registry and orchestration details. The snapshot system protects the documented
+public surface while still allowing controlled internal evolution under the project's Git-tag-driven
 versioning model.

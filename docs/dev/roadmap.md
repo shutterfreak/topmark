@@ -151,7 +151,8 @@ The configuration system has been fully restructured:
 - Renamed the alpha-only `[config].strict_config_checking` key to `[config].strict` before the 1.0
   config contract freeze.
 - Removed stored flattened diagnostics from `Config` / `MutableConfig`
-  - flattening is now performed only at exception, presentation, and machine-output boundaries
+  - flattening is now performed only at exception, presentation, and machine-readable output
+    boundaries
 - Removed legacy helpers and compatibility layers
 - Standardized API inputs via `ConfigMapping`
 - Normalized file type identifier handling across config freeze and runtime policy lookup:
@@ -214,9 +215,10 @@ Machine formats are now:
   - version command
   - registry commands
   - probe command
-- Supported by shared JSON/NDJSON test helpers for machine-output parsing and record/meta assertions
-- Documented with aligned machine-format and machine-output reference pages, plus registry command
-  usage pages
+- Supported by shared JSON/NDJSON test helpers for machine-readable output parsing and record/meta
+  assertions
+- Documented with aligned machine-format and machine-readable output reference pages, plus registry
+  command usage pages
 - Added probe-specific JSON and NDJSON machine output with a per-path `probes` JSON collection and
   `probe` NDJSON records, including filtered explicit inputs.
 - Clarified that machine payloads are decoupled from process exit codes: JSON/NDJSON expose
@@ -250,8 +252,9 @@ Result: human output is now **consistent, composable, and decoupled from CLI**.
 - Enforced docstring standards and validation
 - Introduced link-checking and stricter docs CI
 - Reorganized tests and helpers for clarity
-- Added shared JSON/NDJSON parsing and assertion helpers for machine-output tests
-- Recorded machine-output naming conventions in the canonical machine-output reference
+- Added shared JSON/NDJSON parsing and assertion helpers for machine-readable output tests
+- Recorded machine-readable output naming conventions in the canonical machine-readable output
+  reference
 - Updated usage, configuration, architecture, machine-output, API, README, and index documentation
   to reflect the finalized TEXT / Markdown / machine output contract.
 - Updated exit-code, filtering, command, command-group, pre-commit, architecture, API, machine
@@ -441,7 +444,7 @@ snapshots, and downstream automation may need adjustment.
   a generic summary wrapper.
 - `config dump --show-layers` now adds layered provenance output (`config_provenance`) before the
   final flattened config payload.
-- `detail_level` is now part of the machine-output contract for command families that emit
+- `detail_level` is now part of the machine-readable output contract for command families that emit
   projection metadata (notably registry machine output).
 - Registry JSON machine output was flattened for 1.0 contract stability:
   - `registry filetypes` → `{meta, filetypes}`
@@ -619,7 +622,7 @@ Remaining decisions:
   - merged-config diagnostics
   - runtime-applicability diagnostics
 - Keep staged validation primarily internal for 1.0, with only the flattened compatibility
-  diagnostics contract exposed at exception, presentation, and machine-output boundaries.
+  diagnostics contract exposed at exception, presentation, and machine-readable output boundaries.
 - `[config].strict` is now the frozen public config-loading strictness knob for 1.0.
 - Confirm that sanitization/runtime-applicability warnings intentionally remain inside the effective
   `[config].strict` gate for 1.0.
@@ -636,7 +639,7 @@ Recommended direction:
 - keep `[config].strict` as the public config-loading strictness knob for 1.0,
 - freeze the staged validation semantics now implemented internally,
 - keep flattened diagnostics as a derived compatibility/reporting surface only at exception,
-  presentation, and machine-output boundaries,
+  presentation, and machine-readable output boundaries,
 - defer broader staged-gate exposure in CLI/API/machine output unless clearly justified before final
   freeze,
 - keep explicit config schema versioning deferred until a future non-additive schema change requires
@@ -652,15 +655,16 @@ Machine output remaining work:
 
 - Keep flattened `{level, message}` config diagnostics as the accepted 1.0 machine contract. Richer
   TOML-specific structure is explicitly deferred beyond 1.0.
-- Registry machine-output contract frozen after the flattened JSON-envelope cleanup (`filetypes`,
-  `processors`, `bindings`, `unbound_filetypes`, `unused_processors`).
-- Probe machine-output contract added and covered with focused JSON/NDJSON tests (per-path `probes`
-  JSON collection and `probe` NDJSON records, including filtered explicit inputs).
+- Registry machine-readable output contract frozen after the flattened JSON-envelope cleanup
+  (`filetypes`, `processors`, `bindings`, `unbound_filetypes`, `unused_processors`).
+- Probe machine-readable output contract added and covered with focused JSON/NDJSON tests (per-path
+  `probes` JSON collection and `probe` NDJSON records, including filtered explicit inputs).
 - `detail_level` semantics frozen:
   - `--long` controls projection/data depth across formats where supported
   - `detail_level` reflects projection in machine output when present
   - TEXT verbosity remains independent and presentation-only
-- Field naming consistency audited across domains and documented in the machine-output reference.
+- Field naming consistency audited across domains and documented in the machine-readable output
+  reference.
 - Keep `docs/dev/machine-formats.md` and `docs/dev/machine-output.md` aligned as the reference
   machine-format documentation.
 
@@ -690,9 +694,9 @@ CLI exit-code work is now complete for the 1.0 freeze: `docs/usage/exit-codes.md
 contract, implementation is centralized around pipeline/result prioritization, focused
 `pytest.mark.exit_code` coverage enforces the contract, and README, docs index, shared options,
 filtering, pre-commit, command-group pages, command pages, API docs, architecture docs, and
-machine-output docs link or summarize the same behavior. The CLI command-applicability, usage-error,
-and user-facing policy/report contracts are also frozen and documented; remaining CLI work is now
-limited to any last warning/error wording cleanup discovered during release validation.
+machine-readable output docs link or summarize the same behavior. The CLI command-applicability,
+usage-error, and user-facing policy/report contracts are also frozen and documented; remaining CLI
+work is now limited to any last warning/error wording cleanup discovered during release validation.
 
 ### Tooling / CI / release follow-up
 
@@ -805,7 +809,7 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] version command
   - [x] registry commands
   - [x] probe command
-  - [x] top-level command groups reviewed for any remaining machine-output gaps
+  - [x] top-level command groups reviewed for any remaining machine-readable output gaps
 - [x] Final schema freeze review completed
   - [x] `(outcome, reason, count)` summary rows frozen
   - [x] `detail_level` semantics frozen
@@ -1106,7 +1110,8 @@ These items are explicitly reasonable to defer.
 - [ ] Introduce configuration schema versioning only when a future non-additive schema change
   requires it
 - [ ] Revisit whether staged validation details should be exposed more directly in
-  CLI/API/machine-output contracts beyond the current flattened compatibility diagnostics view
+  CLI/API/machine-readable output contracts beyond the current flattened compatibility diagnostics
+  view
 - [ ] Revisit registry query/filter commands if users need richer registry discovery beyond the
   current read-only registry listings and probe diagnostics
 

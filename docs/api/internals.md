@@ -23,7 +23,7 @@ Internals complement the stable public API documented in **API → Public API**.
 Where possible, prefer using:
 
 - `topmark.api`
-- documented machine-output contracts
+- documented machine-readable output contracts
 - the stable `Registry` facade
 
 Internal modules should only be relied on when building advanced integrations, debugging, testing,
@@ -61,7 +61,7 @@ Canonical qualified file type identifier semantics are documented in
 These pages are generated automatically during the MkDocs build and should not be edited manually.
 
 The generated reference pages reflect internal implementation structure and may change more
-frequently than the stable public API or machine-output contracts.
+frequently than the stable public API or machine-readable output contracts.
 
 Any changes should be made in the corresponding Python source files under `src/`.
 

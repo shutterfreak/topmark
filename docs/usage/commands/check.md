@@ -298,7 +298,7 @@ TEXT output verbosity is separate from internal logging:
 - `-v`, `--verbose` increases TEXT output detail for `check`, such as per-line diagnostics and
   additional hints.
 - `-q`, `--quiet` suppresses TEXT output while preserving the command’s exit status.
-- See the output-format note above for Markdown and machine-output behavior.
+- See the output-format note above for Markdown and machine-readable output behavior.
 
 Notes:
 

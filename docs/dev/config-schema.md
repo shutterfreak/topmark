@@ -82,7 +82,7 @@ After this step, only the **layered config fragment** is passed to the config la
 (\[`MutableConfig`\][topmark.config.model.MutableConfig]) for value parsing and normalization.
 
 At this boundary, diagnostics remain **staged**; flattening into a single compatibility view is
-performed only at reporting, exception, and machine-output boundaries.
+performed only at reporting, exception, and machine-readable output boundaries.
 
 This reporting boundary is independent of human presentation controls: TEXT verbosity (`-v`) and
 quiet mode (`--quiet`) only influence how diagnostics are rendered in console output, not how they

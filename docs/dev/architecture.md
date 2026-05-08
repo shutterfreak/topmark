@@ -331,12 +331,13 @@ that survive permissive path-command parsing are rejected with actionable CLI us
 input planning can treat them as literal paths.
 
 These applicability failures are CLI usage errors. They do not become pipeline contexts, file
-statuses, hints, reports, or machine-output payload entries. This preserves the separation between:
+statuses, hints, reports, or machine-readable output payload entries. This preserves the separation
+between:
 
 - CLI parsing and command applicability
 - file discovery and resolution diagnostics
 - pipeline execution results
-- presentation and machine-output rendering
+- presentation and machine-readable output rendering
 
 ### Human presentation and report rendering
 
@@ -393,7 +394,7 @@ programmatic interface.
 
 More generally, TopMark now treats staged validation logs as the sole internal representation of
 config-validation diagnostics. For 1.0, staged validation remains primarily internal, and flattening
-is performed only at exception, presentation, and machine-output boundaries.
+is performed only at exception, presentation, and machine-readable output boundaries.
 
 ______________________________________________________________________
 

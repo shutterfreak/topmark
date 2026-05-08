@@ -139,8 +139,8 @@ The `version` command supports machine-readable output via:
 - `--output-format json`
 - `--output-format ndjson`
 
-These formats follow TopMark’s shared machine-output and envelope conventions. For a full overview
-of machine-readable formats and envelopes, see
+These formats follow TopMark’s shared machine-readable output and envelope conventions. For a full
+overview of machine-readable formats and envelopes, see
 [`docs/dev/machine-formats.md`](../../dev/machine-formats.md).
 
 As with human-readable output, the reported version is resolved at runtime from installed package
@@ -169,7 +169,7 @@ Produces a single JSON object:
 }
 ```
 
-- `meta` contains runtime metadata and shared machine-output envelope fields.
+- `meta` contains runtime metadata and shared machine-readable output envelope fields.
 - `version_info.version` is the resolved version string.
 - `version_info.version_format` is either `pep440` or `semver`.
 
@@ -185,7 +185,7 @@ Produces one JSON object per line:
 {"kind":"version","meta":{"tool":"topmark","version":"<package version>","platform":"darwin"},"version_info":{"version":"<package version>","version_format":"pep440"}}
 ```
 
-- Each line is a self-contained machine-output record.
+- Each line is a self-contained machine-readable output record.
 - The `kind` field identifies the record type (`version`).
 
 ### Notes
@@ -206,8 +206,8 @@ ______________________________________________________________________
   development or local-version metadata.
 - **Unexpected SemVer rendering**: TopMark falls back to the original PEP 440 version when a clean
   SemVer conversion is not possible.
-- **Unexpected machine-output formatting**: use `--output-format json` or `--output-format ndjson`
-  for stable machine-readable output.
+- **Unexpected machine-readable output formatting**: use `--output-format json` or
+  `--output-format ndjson` for stable machine-readable output.
 
 ______________________________________________________________________
 

@@ -131,9 +131,9 @@ Diagnostic-domain identifiers used in diagnostic payloads are defined in
 
 Canonical keys are defined in \[`topmark.core.machine.schemas`\][topmark.core.machine.schemas].
 
-For version-reporting commands, the machine-output metadata reflects the same runtime-resolved
-package version used by [`topmark version`](../usage/commands/version.md), which is sourced from
-generated package version metadata rather than a static config field.
+For version-reporting commands, the machine-readable output metadata reflects the same
+runtime-resolved package version used by [`topmark version`](../usage/commands/version.md), which is
+sourced from generated package version metadata rather than a static config field.
 
 ### NDJSON record contract
 
@@ -170,7 +170,7 @@ package-local schema modules such as:
 
 ### Naming conventions
 
-The machine-output naming audit for 1.0 adopts the following conventions across domains:
+The machine-readable output naming audit for 1.0 adopts the following conventions across domains:
 
 - Shared envelope and metadata keys are owned by
   \[`topmark.core.machine.schemas`\][topmark.core.machine.schemas].
@@ -783,9 +783,9 @@ The payload is inspection-oriented rather than a loadable `topmark.toml` documen
 human-facing layered TOML export by preserving ordered layers and the corresponding source-local
 TopMark TOML fragments.
 
-The outer `config_layers` container key belongs to the config machine-output domain, while the inner
-provenance-layer fragment keys (`origin`, `kind`, `precedence`, `toml`, `scope_root`) are owned by
-\[`topmark.toml.machine.schemas.TomlKey`\][topmark.toml.machine.schemas.TomlKey].
+The outer `config_layers` container key belongs to the config machine-readable output domain, while
+the inner provenance-layer fragment keys (`origin`, `kind`, `precedence`, `toml`, `scope_root`) are
+owned by \[`topmark.toml.machine.schemas.TomlKey`\][topmark.toml.machine.schemas.TomlKey].
 
 ______________________________________________________________________
 
@@ -1094,8 +1094,8 @@ ______________________________________________________________________
 
 ## Backwards compatibility and evolution
 
-TopMark’s machine-output schema is part of its integration surface and may change between pre-1.0
-releases.
+TopMark’s machine-readable output schema is part of its integration surface and may change between
+pre-1.0 releases.
 
 Consumers should:
 

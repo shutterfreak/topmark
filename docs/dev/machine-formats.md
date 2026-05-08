@@ -297,9 +297,9 @@ ______________________________________________________________________
 
 ## Shared `kind` values
 
-NDJSON record kinds are owned by the schema module of the corresponding machine-output domain (for
-example \[`topmark.config.machine.schemas.ConfigKind`\][topmark.config.machine.schemas.ConfigKind]
-or
+NDJSON record kinds are owned by the schema module of the corresponding machine-readable output
+domain (for example
+\[`topmark.config.machine.schemas.ConfigKind`\][topmark.config.machine.schemas.ConfigKind] or
 \[`topmark.registry.machine.schemas.RegistryKind`\][topmark.registry.machine.schemas.RegistryKind]).
 The list below reflects commonly emitted kinds across commands.
 
