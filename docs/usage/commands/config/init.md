@@ -130,11 +130,12 @@ ______________________________________________________________________
 
 ## Options (subset)
 
-This command is intentionally minimal and usually has no options. See `topmark config init -h` for
-any environment‑specific flags that may be available in your build.
+`topmark config init` supports content-rendering options such as `--output-format`, `--pyproject`,
+`--root`, color controls, and TEXT verbosity. See `topmark config init -h` for the complete command
+help.
 
 Note: `-v` / `--verbose` applies only to TEXT output. This pure content-producing command does not
-support `--quiet`. Markdown and machine formats ignore TEXT-only verbosity controls.
+support `--quiet`. Markdown and machine-readable formats ignore TEXT-only verbosity controls.
 
 ## Exit codes
 
@@ -165,16 +166,16 @@ Use `--output-format json` or `--output-format ndjson` to emit output suitable f
 
 The canonical schema, stable `kind` values, and shared conventions are documented here:
 
-- [Machine output schema (JSON & NDJSON)](../../../dev/machine-output.md)
-- [Machine formats](../../../dev/machine-formats.md)
+- [Machine-readable output schema](../../../dev/machine-output.md)
+- [Machine-readable formats](../../../dev/machine-formats.md)
 
 {% include-markdown "\_snippets/output-contract-no-quiet.md" %}
 
 Notes:
 
-- In machine formats, `config init` emits a built-in defaults-derived config snapshot.
-- The machine output represents the built-in defaults view, not a discovered or merged project
-  configuration.
+- In machine-readable formats, `config init` emits a built-in defaults-derived config snapshot.
+- The machine-readable output represents the built-in defaults view, not a discovered or merged
+  project configuration.
 - Machine-readable config snapshots emit normalized canonical qualified file type identifiers after
   configuration freeze.
 - No diagnostics are emitted for this command.

@@ -203,7 +203,7 @@ This distinction is also visible in layered provenance output:
 
 - In human output ([`config dump --show-layers`](../usage/commands/config/dump.md)), source-local
   TOML fragments are rendered under `[[layers]].toml.*`.
-- In machine output, the same validated source-local fragments are exposed under
+- In machine-readable output, the same validated source-local fragments are exposed under
   `config_provenance.layers[].toml`.
 
 This enables strict config validation for the current project scope, causing warnings to be treated

@@ -48,10 +48,18 @@ topmark version
 The CLI uses the following structure:
 
 ```text
-topmark [GLOBAL OPTIONS] COMMAND [COMMAND OPTIONS] PATHS...
+topmark COMMAND [COMMAND OPTIONS] [PATHS...]
 ```
 
+The root command currently exposes only help (`topmark --help`). Shared controls such as config
+loading, output format, verbosity, filtering, and mutation flags are exposed on the command families
+where they apply.
+
 Examples:
+
+```bash
+topmark --help
+```
 
 ```bash
 topmark check src/
@@ -89,21 +97,25 @@ topmark registry filetypes --help
 
 The short form `-h` is also supported.
 
-## Global options
+## Shared command options
 
-Common global options include:
+Common shared options include:
 
-| Option                                        | Description                                 |
-| --------------------------------------------- | ------------------------------------------- |
-| `--config PATH`                               | Explicit configuration file path            |
-| `--apply`                                     | Apply file mutations instead of dry-run     |
-| `--verbosity-level {0..3}`                    | Control logging verbosity                   |
-| `--output-format {text,markdown,json,ndjson}` | Select output format                        |
-| `--color` / `--no-color`                      | Enable or disable colorized terminal output |
-| `--include-file-types`                        | Restrict processing to selected file types  |
-| `--exclude-file-types`                        | Exclude selected file types                 |
+| Option                                        | Description                                                  |
+| --------------------------------------------- | ------------------------------------------------------------ |
+| `--config FILE`                               | Load and merge an additional configuration file              |
+| `--apply`                                     | Apply file mutations instead of dry-run, where supported     |
+| `-v`, `--verbose`                             | Increase TEXT output detail, where supported                 |
+| `-q`, `--quiet`                               | Suppress TEXT output, where supported                        |
+| `--output-format {text,markdown,json,ndjson}` | Select output format, where structured output is supported   |
+| `--color` / `--no-color`                      | Enable or disable colorized terminal output, where supported |
+| `--include-file-types`                        | Restrict processing to selected file types, where supported  |
+| `--exclude-file-types`                        | Exclude selected file types, where supported                 |
 
-For complete output, verbosity, and formatting options, see [Global options](global-options.md).
+For command applicability, output, verbosity, and formatting options, see
+[Shared options](shared-options.md).
+
+{% include-markdown "\_snippets/option-spelling.md" %}
 
 ## File type filters
 
@@ -139,7 +151,7 @@ See also:
 
 - [Filtering](filtering.md)
 - [Policies](policies.md)
-- [Global options](global-options.md)
+- [Shared options](shared-options.md)
 
 ### [`check`](commands/check.md)
 
@@ -293,7 +305,7 @@ Diagnostics are designed to remain deterministic and machine-readable.
 - [Configuration](configuration.md)
 - [Filtering](filtering.md)
 - [Policies](policies.md)
-- [Global options](global-options.md)
+- [Shared options](shared-options.md)
 - [Exit codes](exit-codes.md)
 - [Pre-commit integration](pre-commit.md)
 - [Configuration discovery](../configuration/discovery.md)

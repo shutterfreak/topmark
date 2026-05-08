@@ -133,7 +133,7 @@ represented as synthetic probe results with `status="filtered"` and one of:
 This unifies:
 
 - human output (TEXT / Markdown)
-- machine output (JSON / NDJSON)
+- machine-readable output (JSON / NDJSON)
 - pipeline resolution behaviour
 
 Callers should use
@@ -383,7 +383,7 @@ Possible future improvements include:
 - user-configurable precedence overrides
 - richer diagnostics or hints when deterministic tie-breaks are used
 - plugin-defined precedence policies layered on top of the default scoring model
-- richer probe diagnostics and scoring transparency in machine output
+- richer probe diagnostics and scoring transparency in machine-readable output
 
 Until then, the documented deterministic policy on this page is the source of truth.
 
@@ -395,7 +395,7 @@ ______________________________________________________________________
 - [`Registry model`](registry-model.md) — registry layers, bindings, overlays, and identifier
   semantics
 - [`Plugins`](plugins.md) — how file types and processors are registered
-- [`Machine output schema`](machine-output.md) — how resolution results surface in outputs
+- [`Machine-readable output schema`](machine-output.md) — how resolution results surface in outputs
 - [`Configuration`](../usage/configuration.md) — canonical file-type identifier semantics
 - [`Filtering`](../usage/filtering.md) — discovery and file-type filter behavior
 - [`CLI overview`](../usage/cli.md) — resolver-related CLI commands and filtering options

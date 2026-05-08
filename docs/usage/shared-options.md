@@ -2,17 +2,17 @@
 topmark:header:start
 
   project      : TopMark
-  file         : global-options.md
-  file_relpath : docs/usage/global-options.md
+  file         : shared-options.md
+  file_relpath : docs/usage/shared-options.md
   license      : MIT
   copyright    : (c) 2025 Olivier Biot
 
 topmark:header:end
 -->
 
-# Global Output Options
+# Shared Output and Rendering Options
 
-Global options control:
+Shared options control:
 
 - output rendering
 - verbosity
@@ -20,6 +20,9 @@ Global options control:
 - machine-readable formats
 - color behavior
 - command applicability
+
+For CLI/configuration/API spelling conventions for multi-word option values, see
+[Configuration](configuration.md#cli-configuration-and-api-value-spelling).
 
 ## Output format
 
@@ -30,7 +33,7 @@ These formats apply consistently across all commands that support structured out
 ```bash
 --output-format text        # Text output on interactive terminal (default)
 --output-format markdown    # Markdown format
-# Machine formats:
+# Machine-readable formats:
 --output-format json        # JSON object (formatted)
 --output-format ndjson      # NDJSON records (1 per line)
 ```
@@ -46,7 +49,7 @@ These formats apply consistently across all commands that support structured out
 
 See also:
 
-- [`Machine output schema`](../dev/machine-output.md)
+- [`Machine-readable output schema`](../dev/machine-output.md)
 - [`Exit codes`](exit-codes.md)
 
 ______________________________________________________________________
@@ -74,11 +77,12 @@ Note:
 
 In TEXT output, verbosity affects:
 
-- Hint grouping
 - Diagnostic detail
-- Summary rendering
 - Hint visibility and grouping
+- Summary rendering
 - CLI progress reporting
+
+______________________________________________________________________
 
 ## Exit codes
 
@@ -149,7 +153,7 @@ Color output applies only to **text output format**.
 - `always`: force color
 - `never`: disable color
 
-Color has no effect on `markdown` or machine output formats (`json` or `ndjson`).
+Color has no effect on `markdown` or machine-readable output formats (`json` or `ndjson`).
 
 TopMark also respects the standard `NO_COLOR` environment variable.
 
@@ -162,4 +166,4 @@ ______________________________________________________________________
 - [Filtering](filtering.md)
 - [Policies](policies.md)
 - [Exit codes](exit-codes.md)
-- [Machine output schema](../dev/machine-output.md)
+- [Machine-readable output schema](../dev/machine-output.md)

@@ -122,7 +122,7 @@ For the full filtering contract and recipes, see [Filtering](../filtering.md).
 
 Exclude rules take precedence over include rules.
 
-{% include-markdown "../../\_snippets/file-type-identifiers.md" %}
+{% include-markdown "\_snippets/file-type-identifiers.md" %}
 
 Examples:
 
@@ -179,15 +179,15 @@ Use `--output-format json` or `--output-format ndjson` to emit output suitable f
 
 For the canonical schema, see:
 
-- [Machine output schema (JSON & NDJSON)](../../dev/machine-output.md)
-- [Machine formats](../../dev/machine-formats.md)
+- [Machine-readable output schema](../../dev/machine-output.md)
+- [Machine-readable formats](../../dev/machine-formats.md)
 
-Probe machine output emits resolved file type identities using canonical qualified keys when
-available.
+Probe machine-readable output emits resolved file type identities using canonical qualified keys
+when available.
 
 ______________________________________________________________________
 
-## Machine output schema
+## Machine-readable output schema
 
 ### JSON
 
@@ -238,28 +238,29 @@ Filtered probe results may use one of the following reasons:
 {"kind":"probe","meta":{...},"probe":{...}}  <!-- one per probe result -->
 ```
 
-Canonical file type identities in machine output use normalized qualified keys such as
+Canonical file type identities in machine-readable output use normalized qualified keys such as
 `topmark:python`.
 
 ______________________________________________________________________
 
-## Global options
+## Shared options
 
 Output format, TEXT verbosity, quiet mode, color output, and shared exit-code behavior are
-documented in [global options](../global-options.md) and [exit codes](../exit-codes.md).
+documented in [shared options](../shared-options.md) and [exit codes](../exit-codes.md).
 
 ### Verbosity & logging
 
 - `-v`, `--verbose` increases TEXT output detail
-- `-q`, `--quiet` suppresses TEXT output (no effect on Markdown or machine formats; does not affect
-  exit codes)
+- `-q`, `--quiet` suppresses TEXT output (no effect on Markdown or machine-readable formats; does
+  not affect exit codes)
 
 Notes:
 
 - Markdown output ignores verbosity
-- Machine output is unaffected by verbosity and quiet mode
+- Machine-readable output is unaffected by verbosity and quiet mode
 - Primary/headline hint selection, where rendered in human output, is presentation-level guidance
-  and is not part of the stable CLI contract; rely on exit codes and machine output for automation.
+  and is not part of the stable CLI contract; rely on exit codes and machine-readable output for
+  automation.
 
 ______________________________________________________________________
 

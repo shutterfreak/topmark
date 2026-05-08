@@ -11,7 +11,7 @@ topmark:header:end
 -->
 
 - `--report` controls the scope of human per-file output only. It does not affect processing,
-  mutation, summaries, machine output, or exit-code selection.
+  mutation, summaries, machine-readable output, or exit-code selection.
 
   Values:
 

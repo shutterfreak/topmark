@@ -22,10 +22,10 @@ An overview of all CLI commands is available in [CLI overview](../cli.md).
 
 See also:
 
-- [Global options](../global-options.md)
+- [Shared options](../shared-options.md)
 - [Exit codes](../exit-codes.md)
-- [Machine-readable output](../../dev/machine-output.md)
-- [Machine format conventions](../../dev/machine-formats.md)
+- [Machine-readable output schema](../../dev/machine-output.md)
+- [Machine-readable formats](../../dev/machine-formats.md)
 - [API stability](../../dev/api-stability.md)
 
 ______________________________________________________________________
@@ -119,15 +119,16 @@ ______________________________________________________________________
 | `--semver`        | Render the version as SemVer instead of PEP 440 when possible (for example `rcN → -rc.N`, `devN → -dev.N`). |
 | `--output-format` | Select output format (`json`, `ndjson`, or default human-readable output).                                  |
 
+See `topmark version -h` for the full list of options supported by this command.
+
 ### Verbosity
 
 - `-v`, `--verbose` increases TEXT output detail.
 - Markdown output ignores verbosity and always renders a complete document.
 - JSON/NDJSON output is unaffected by verbosity.
-- `--quiet` is not supported for this command (pure content output; see global options).
+- `--quiet` is not supported for this command (pure content output; see
+  [shared options](../shared-options.md)).
 - Positional paths and STDIN input modes are not accepted by this command.
-
-See `topmark version -h` for the full list of global CLI options.
 
 ______________________________________________________________________
 
@@ -139,7 +140,8 @@ The `version` command supports machine-readable output via:
 - `--output-format ndjson`
 
 These formats follow TopMark’s shared machine-output and envelope conventions. For a full overview
-of machine formats and envelopes, see [`docs/dev/machine-formats.md`](../../dev/machine-formats.md).
+of machine-readable formats and envelopes, see
+[`docs/dev/machine-formats.md`](../../dev/machine-formats.md).
 
 As with human-readable output, the reported version is resolved at runtime from installed package
 metadata / the generated version module rather than from a manually maintained static field in
@@ -191,7 +193,7 @@ Produces one JSON object per line:
 - If SemVer conversion fails, TopMark falls back to the original PEP 440 version.
 - PEP 440 output is the canonical packaging-version form used by Python packaging tooling.
 - Development builds between release tags may include SCM-derived dev/local segments.
-- No ANSI color codes or human formatting are emitted in machine formats.
+- No ANSI color codes or human formatting are emitted in machine-readable formats.
 - JSON output is emitted **without** a trailing newline; NDJSON emits one record per line.
 
 {% include-markdown "\_snippets/output-contract-no-quiet.md" %}

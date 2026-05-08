@@ -168,7 +168,7 @@ nav:
   - Usage:
       - CLI overview: usage/cli.md
       - Configuration: usage/configuration.md
-      - Global options: usage/global-options.md
+      - Shared options: usage/shared-options.md
       - Commands:
           - check: usage/commands/check.md
           - strip: usage/commands/strip.md
@@ -220,8 +220,8 @@ nav:
       - Pipelines (concepts): dev/pipelines.md
       - Pipelines (reference hub): dev/pipelines-reference.md
       - API Stability: dev/api-stability.md
-      - Machine output: dev/machine-output.md
-      - Machine formats: dev/machine-formats.md
+      - Machine-readable output: dev/machine-output.md
+      - Machine-readable formats: dev/machine-formats.md
       - Documentation Pipeline & Reference Hygiene: dev/documentation-pipeline.md
       - Roadmap: dev/roadmap.md
 

@@ -274,7 +274,7 @@ after TOML-layer validation.
   - [CLI overview](usage/cli.md)
   - [Configuration](usage/configuration.md)
   - [Filtering](usage/filtering.md)
-  - [Global options](usage/global-options.md)
+  - [Shared options](usage/shared-options.md)
   - [Exit codes](usage/exit-codes.md)
   - **Commands:**
     - [`check`](usage/commands/check.md)

@@ -48,7 +48,8 @@ compatibility view of diagnostics is derived only at reporting, exception, and m
 boundaries.
 
 For 1.0, this boundary is intentional: staged validation remains primarily internal, while public
-reporting and machine/API/CLI surfaces expose only the flattened compatibility diagnostics contract.
+reporting and CLI, API, and machine-readable output expose only the flattened compatibility
+diagnostics contract.
 
 See also:
 

@@ -11,6 +11,6 @@
 {
   // Line length is handled by mdformat
   "line_length": false,
-  // Suppress first-line-h1 for MarkDown snippets
+  // Suppress first-line-h1 for Markdown snippets
   "MD041": false
 }

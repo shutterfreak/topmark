@@ -23,7 +23,7 @@ See also:
 
 - [CLI overview](cli.md)
 - [Configuration](configuration.md)
-- [Global options](global-options.md)
+- [Shared options](shared-options.md)
 
 TopMark determines which files to process using a combination of **path-based filters** and **file
 type filters**.
@@ -308,7 +308,7 @@ ______________________________________________________________________
 
 - [CLI overview](cli.md)
 - [Configuration](configuration.md)
-- [Global options](global-options.md)
+- [Shared options](shared-options.md)
 - [Policies](policies.md)
 - [Exit codes](exit-codes.md)
 - [Configuration discovery](../configuration/discovery.md)

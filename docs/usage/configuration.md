@@ -21,6 +21,24 @@ TopMark configuration may be provided through:
 
 Configuration is resolved using layered discovery. Higher-precedence layers override lower layers.
 
+______________________________________________________________________
+
+## CLI, configuration, and API value spelling
+
+Configuration keys use the same names across the CLI, API, and TOML configuration. Some options
+accept predefined multi-word values such as `add_only` or `whitespace_empty`.
+
+TopMark uses different spelling conventions depending on the interface: CLI examples prefer
+*hyphenated forms* for readability, while TOML configuration, Python API values, and
+machine-readable output use *canonical underscore forms*.
+
+{% include-markdown "\_snippets/option-spelling.md" %}
+
+Unless otherwise noted, configuration and policy values shown throughout this page use the canonical
+TOML/API/machine-readable spelling.
+
+______________________________________________________________________
+
 ## File type identifiers
 
 {% include-markdown "\_snippets/file-type-identifiers.md" %}
@@ -32,6 +50,8 @@ File type identifiers are used by:
 - `policy_by_type`
 - CLI file-type filters
 - API file-type filters and policy overlays
+
+______________________________________________________________________
 
 ## File-type filters
 
@@ -59,6 +79,8 @@ exclude_file_types = ["topmark:yaml"]
 ```
 
 Internally, TopMark normalizes all configured file type identifiers to canonical qualified keys.
+
+______________________________________________________________________
 
 ## Per-file-type policy
 
@@ -102,6 +124,8 @@ In this example:
 - Python files override this with `update_only`
 - Markdown files disable content probing
 
+______________________________________________________________________
+
 ## Ambiguous identifiers
 
 When more than one registered file type shares the same local identifier, TopMark requires the
@@ -130,6 +154,8 @@ instead.
 
 Ambiguous identifiers are ignored diagnostically during configuration sanitization and validation.
 
+______________________________________________________________________
+
 ## Unknown and malformed identifiers
 
 Unknown identifiers are ignored diagnostically.
@@ -143,6 +169,8 @@ Examples of malformed identifiers:
 topmark:
 topmark:python:extra
 ```
+
+______________________________________________________________________
 
 ## CLI and API parity
 
@@ -165,6 +193,8 @@ api.check(
     include_file_types=["topmark:python"],
 )
 ```
+
+______________________________________________________________________
 
 ## See also
 

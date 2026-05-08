@@ -109,10 +109,10 @@ effective strictness is applied across staged config-loading/preflight validatio
 - merged-config diagnostics
 - runtime-applicability diagnostics
 
-A flattened compatibility diagnostics view remains available for reporting and current
-machine/API/CLI surfaces, derived from staged validation logs. For 1.0, this boundary is
-intentional: staged validation remains primarily internal, while contributor-facing reporting and
-machine/API/CLI surfaces expose only the flattened compatibility diagnostics contract. CLI/API
+A flattened compatibility diagnostics view remains available for reporting and current CLI, API, and
+machine-readable output, derived from staged validation logs. For 1.0, this boundary is intentional:
+staged validation remains primarily internal, while contributor-facing reporting and CLI, API, and
+machine-readable output expose only the flattened compatibility diagnostics contract. CLI/API
 overrides (`--strict` / `--no-strict`) take precedence for the current run.
 
 The main integration helper is:

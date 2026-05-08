@@ -21,7 +21,7 @@ project/user config, and CLI overrides.
 During loading, TopMark first performs whole-source TOML schema validation for all
 discovered/configured TOML sources. Only the validated layered config fragment contributes to the
 final frozen output. Validation is evaluated across staged config-loading/preflight diagnostics,
-which remain internal; reporting and machine/API/CLI surfaces expose only the flattened
+which remain internal; reporting and CLI, API, and machine-readable output expose only the flattened
 compatibility diagnostics contract for 1.0.
 
 See also:
@@ -189,8 +189,8 @@ Use `--output-format json` or `--output-format ndjson` to emit output suitable f
 
 The canonical schema, stable `kind` values, and shared conventions are documented here:
 
-- [Machine output schema (JSON & NDJSON)](../../../dev/machine-output.md)
-- [Machine formats](../../../dev/machine-formats.md)
+- [Machine-readable output schema (JSON & NDJSON)](../../../dev/machine-output.md)
+- [Machine-readable formats](../../../dev/machine-formats.md)
 
 {% include-markdown "\_snippets/output-contract.md" %}
 
@@ -203,8 +203,8 @@ Notes:
   discovered config → `--config` files → CLI overrides, with whole-source TOML validation performed
   per source before layered config merging. Identifier normalization and runtime applicability
   evaluation occur before the effective frozen configuration snapshot is emitted.
-- With `--show-layers`, machine output also includes a `config_provenance` payload before the
-  flattened config.
+- With `--show-layers`, machine-readable output also includes a `config_provenance` payload before
+  the flattened config.
 - Diagnostics are not emitted for this command; it is an inspection view of the effective config.
 
 ### JSON schema
@@ -320,6 +320,6 @@ Notes:
 - Invalid positional paths are reported as CLI usage errors, not file-processing diagnostics.
 - `--quiet` is supported for TEXT output and suppresses the rendered TOML while preserving the exit
   status.
-- Markdown and machine formats ignore TEXT-only quiet and verbosity controls.
+- Markdown and machine-readable formats ignore TEXT-only quiet and verbosity controls.
 
 See [`Exit codes`](../../exit-codes.md) for the complete CLI-wide exit-code contract.

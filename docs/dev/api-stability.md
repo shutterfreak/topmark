@@ -22,7 +22,7 @@ See also:
 - [Public API](../api/public.md)
 - [Registry model](registry-model.md)
 - [Machine-readable output](machine-output.md)
-- [Machine format conventions](machine-formats.md)
+- [Machine-readable formats](machine-formats.md)
 - [Configuration](../usage/configuration.md)
 
 ## Public API Contract
@@ -165,7 +165,7 @@ Current rules are intentionally conservative (for example, rejecting glob-like p
 time. New checks should:
 
 - Prefer emitting diagnostics (warnings or errors) over raising exceptions where possible.
-- Use `Config.diagnostics` to surface problems to the CLI and JSON/NDJSON machine output.
+- Use `Config.diagnostics` to surface problems to the CLI and JSON/NDJSON machine-readable output.
 - Avoid changing the *shape* of the public config API; instead, treat sanitization as validating and
   annotating existing fields.
 
@@ -179,7 +179,7 @@ See also:
 
 ______________________________________________________________________
 
-## Machine output stability
+## Machine-readable output stability
 
 Machine-readable output contracts are documented separately from the Python API snapshot contract.
 

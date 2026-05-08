@@ -138,8 +138,8 @@ The public Python API mirrors this boundary for probe diagnostics.
 \[`ProbeCandidateInfo`\][topmark.api.types.ProbeCandidateInfo]) rather than raw pipeline contexts or
 resolver objects. Internally, the API runtime still uses synthetic
 \[`ProcessingContext`\][topmark.pipeline.context.model.ProcessingContext] instances so CLI output,
-machine output, API summaries, and exit-code selection can share the same resolver-level result
-model.
+machine-readable output, API summaries, and exit-code selection can share the same resolver-level
+result model.
 
 - Unmatched glob patterns are soft discovery diagnostics for processing commands
   ([`check`](../usage/commands/check.md), [`strip`](../usage/commands/strip.md)).
@@ -148,8 +148,8 @@ model.
   resolution and filtering.
 
 Synthetic contexts are built for resolver-level hard failures that occur before normal pipeline
-execution can begin. This keeps human output, machine output, summaries, and exit-code selection
-based on the same result collection instead of requiring separate side channels.
+execution can begin. This keeps human output, machine-readable output, summaries, and exit-code
+selection based on the same result collection instead of requiring separate side channels.
 
 For probe specifically, TopMark also builds synthetic probe contexts for explicit inputs filtered
 before file-type resolution. Missing explicit paths remain hard filesystem/input errors; they are
@@ -184,7 +184,7 @@ policy queries are used by pipeline steps.
 See also:
 
 - [`Configuration discovery`](../configuration/discovery.md)
-- [`Machine output schema`](machine-output.md)
+- [`Machine-readable output schema`](machine-output.md)
 
 This guarantees:
 
@@ -272,7 +272,7 @@ policy or runtime policy. XML-specific checks may still treat non-standard newli
 near XML insertion boundaries as an idempotence risk and skip mutation conservatively; that is a
 local safety guard, not extended newline support.
 
-## Presentation and machine output boundaries
+## Presentation and machine-readable output boundaries
 
 TopMark separates human-facing presentation from machine-readable output.
 
@@ -285,13 +285,14 @@ Human-facing presentation is split into two intentionally different formats:
   controls and instead renders stable Markdown suitable for documentation, CI logs, and issue
   reports.
 
-Machine formats (`json`, `ndjson`) are separate from both human formats. They are schema-driven,
-never include ANSI styling, and are unaffected by TEXT-only verbosity controls. Machine projection
-depth is controlled by explicit machine-facing options such as `--long`, not by `-v`.
+Machine-readable formats (`json`, `ndjson`) are separate from both human formats. They are
+schema-driven, never include ANSI styling, and are unaffected by TEXT-only verbosity controls.
+Machine projection depth is controlled by explicit machine-facing options such as `--long`, not by
+`-v`.
 
-Machine output is also intentionally decoupled from process exit codes. JSON and NDJSON payloads
-serialize structured results, diagnostics, and resolution state; they do not embed the CLI exit
-code. Consumers must inspect the process exit status separately from parsing machine payloads.
+Machine-readable output is also intentionally decoupled from process exit codes. JSON and NDJSON
+payloads serialize structured results, diagnostics, and resolution state; they do not embed the CLI
+exit code. Consumers must inspect the process exit status separately from parsing machine payloads.
 
 ### CLI applicability and usage-error boundary
 
@@ -369,20 +370,20 @@ TopMark exposes configuration state through both human-readable and machine-read
   - [`config dump`](../usage/commands/config/dump.md) (resolved config)
   - [`config defaults`](../usage/commands/config/defaults.md) (built-in default TOML document)
   - [`config init`](../usage/commands/config/init.md) (bundled example TOML resource)
-- Machine formats:
+- Machine-readable formats:
   - JSON / NDJSON snapshots described in [`machine-output.md`](machine-output.md)
 
-For [`config check`](../usage/commands/config/check.md), machine output reports effective strictness
-under the key `strict`, reflecting TOML-resolved strictness plus any CLI/API override. This
-strictness applies across staged config-loading/preflight validation: TOML-source diagnostics,
-merged-config diagnostics, and runtime-applicability diagnostics. Machine output continues to expose
-the flattened compatibility diagnostics view derived from those staged validation logs.
+For [`config check`](../usage/commands/config/check.md), machine-readable output reports effective
+strictness under the key `strict`, reflecting TOML-resolved strictness plus any CLI/API override.
+This strictness applies across staged config-loading/preflight validation: TOML-source diagnostics,
+merged-config diagnostics, and runtime-applicability diagnostics. Machine-readable output continues
+to expose the flattened compatibility diagnostics view derived from those staged validation logs.
 
 For 1.0, this flattened compatibility form is the accepted final machine contract for config/TOML
 validation diagnostics. Stage-local validation structure remains internal and is not serialized in
-machine formats; the stable emitted diagnostic entry shape remains `{level, message}`.
+machine-readable formats; the stable emitted diagnostic entry shape remains `{level, message}`.
 
-In machine formats, [`config defaults`](../usage/commands/config/defaults.md) and
+In machine-readable formats, [`config defaults`](../usage/commands/config/defaults.md) and
 [`config init`](../usage/commands/config/init.md) share the same underlying configuration snapshot,
 even though their human-facing output differs.
 
@@ -414,7 +415,8 @@ machine-facing interfaces.
   discovery/merge semantics
 - [`Discovery & Precedence`](../configuration/discovery.md) — layered config discovery, root
   semantics, and precedence
-- [`Machine output schema`](./machine-output.md) — JSON / NDJSON envelope and payload shapes
+- [`Machine-readable output schema`](./machine-output.md) — JSON / NDJSON envelope and payload
+  shapes
 - [`Config schema`](./config-schema.md) — documented TOML schema and key placement
 
 Registry design is documented in [`Registry model`](registry-model.md) because it underpins test

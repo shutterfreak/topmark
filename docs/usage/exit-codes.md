@@ -24,7 +24,7 @@ Exit codes define the stable command-line contract for:
 See also:
 
 - [CLI overview](cli.md)
-- [Global options](global-options.md)
+- [Shared options](shared-options.md)
 - [Pre-commit integration](pre-commit.md)
 - [Configuration](configuration.md)
 - [Filtering](filtering.md)
@@ -290,7 +290,7 @@ ______________________________________________________________________
 ## Further reading
 
 - [CLI overview](cli.md)
-- [Global options](global-options.md)
+- [Shared options](shared-options.md)
 - [Filtering](filtering.md)
 - [Policies](policies.md)
 - [Pre-commit integration](pre-commit.md)

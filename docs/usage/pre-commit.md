@@ -193,7 +193,7 @@ Notes:
   `args:` as needed.
 
 - TEXT-only controls such as `-v` / `--verbose` and `-q` / `--quiet` affect only human TEXT output;
-  Markdown and machine formats ignore these flags.
+  Markdown and machine-readable formats ignore these flags.
 
 ### File-type identifier behavior
 
@@ -307,5 +307,5 @@ ______________________________________________________________________
 - [Configuration discovery](../configuration/discovery.md)
 - [Filtering](filtering.md)
 - [Policies](policies.md)
-- [Global options](global-options.md)
+- [Shared options](shared-options.md)
 - [Exit codes](exit-codes.md)

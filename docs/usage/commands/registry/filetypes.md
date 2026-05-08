@@ -55,8 +55,8 @@ ______________________________________________________________________
 - [Registry model](../../../dev/registry-model.md)
 - [Plugins and extensibility](../../../dev/plugins.md)
 - [Resolution model](../../../dev/resolution.md)
-- [Machine-readable output](../../../dev/machine-output.md)
-- [Machine format conventions](../../../dev/machine-formats.md)
+- [Machine-readable output schema](../../../dev/machine-output.md)
+- [Machine-readable formats](../../../dev/machine-formats.md)
 
 For the canonical, version-accurate list (used for the docs), see:
 
@@ -77,7 +77,7 @@ topmark:python
 topmark:markdown
 ```
 
-Registry-oriented machine output exposes canonical identity fields such as:
+Registry-oriented machine-readable output exposes canonical identity fields such as:
 
 - `qualified_key`
 - `file_type_key`

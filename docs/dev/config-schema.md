@@ -29,8 +29,8 @@ from `topmark.toml` and from `[tool.topmark]` in `pyproject.toml`.
 >
 > - Human-facing TEXT verbosity (`-v`) and quiet mode (`--quiet`) are presentation-layer concerns
 >   and do not affect configuration schema validation, staged diagnostics, or machine/API outputs.
-> - Markdown and machine outputs always reflect the full flattened compatibility view, independent
->   of TEXT-only verbosity controls.
+> - Markdown and machine-readable output always reflect the full flattened compatibility view,
+>   independent of TEXT-only verbosity controls.
 
 See also:
 
@@ -284,7 +284,7 @@ This normalization is shared consistently across:
 - TOML configuration
 - CLI options
 - API overlays
-- runtime policy resolution
+- effective runtime policy resolution
 
 ## Identifier ambiguity
 

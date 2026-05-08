@@ -60,7 +60,7 @@ filtering, policy, and binding evaluation.
 
 Local identifiers are accepted only when unambiguous in the effective composed registry.
 
-{% include-markdown "../../\_snippets/file-type-identifiers.md" %}
+{% include-markdown "\_snippets/file-type-identifiers.md" %}
 
 - [`topmark config check`](config/check.md) — validate the *effective merged* configuration and
   report diagnostics.
@@ -168,4 +168,4 @@ ______________________________________________________________________
 - **Unexpected policy application**: inspect normalized identifiers using
   [`topmark config dump`](config/dump.md).
 - **Unexpected validation failures**: use [`topmark config check`](config/check.md) together with
-  `-vv` or machine output to inspect staged validation diagnostics.
+  `-vv` or machine-readable output to inspect staged validation diagnostics.

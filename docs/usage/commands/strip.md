@@ -114,7 +114,7 @@ For the full filtering contract and recipes, see [Filtering](../filtering.md).
 
 Exclude rules take precedence over include rules.
 
-{% include-markdown "../../\_snippets/file-type-identifiers.md" %}
+{% include-markdown "\_snippets/file-type-identifiers.md" %}
 
 Examples:
 
@@ -176,13 +176,13 @@ Use `--output-format json` or `--output-format ndjson` to emit output suitable f
 
 For the canonical schema, stable `kind` values, and shared conventions, see:
 
-- [Machine output schema (JSON & NDJSON)](../../dev/machine-output.md)
-- [Machine formats](../../dev/machine-formats.md)
+- [Machine-readable output schema](../../dev/machine-output.md)
+- [Machine-readable formats](../../dev/machine-formats.md)
 
 {% include-markdown "\_snippets/output-contract.md" %}
 
-Machine output emits resolved file type identities using canonical qualified keys when available.
-Configuration payloads also emit normalized file type filters and `policy_by_type` keys.
+Machine-readable output emits resolved file type identities using canonical qualified keys when
+available. Configuration payloads also emit normalized file type filters and `policy_by_type` keys.
 
 Notes:
 
@@ -251,7 +251,7 @@ Example (summary mode):
 ______________________________________________________________________
 
 Output format, TEXT verbosity, quiet mode, color output, and shared exit-code behavior are
-documented in [global options](../global-options.md) and [exit codes](../exit-codes.md).
+documented in [shared options](../shared-options.md) and [exit codes](../exit-codes.md).
 
 ### Verbosity & logging
 
@@ -268,7 +268,7 @@ Notes:
 - In TEXT output, **per-line diagnostics** are shown with `-v` and above.
 - In Markdown output, diagnostics and hints are rendered when present without requiring `-v`.
 - Primary/headline hint selection is presentation-level guidance and is not part of the stable CLI
-  contract; rely on exit codes and machine output for automation.
+  contract; rely on exit codes and machine-readable output for automation.
 - **Diffs** (`--diff`) are always human‑only and never included in JSON/NDJSON.
 
 ## Options (subset)
@@ -338,7 +338,7 @@ ______________________________________________________________________
 
 {% include-markdown "\_snippets/report-scope.md" %}
 
-- Diffs (`--diff`) are only shown in human mode; machine formats never include diffs.
+- Diffs (`--diff`) are only shown in human mode; machine-readable formats never include diffs.
 
 ### Example
 

@@ -25,7 +25,7 @@ topmark:header:end
 >   - TOML-source diagnostics
 >   - merged-config diagnostics
 >   - runtime-applicability diagnostics
-> - For 1.0, the staged form remains internal; reporting and machine/API/CLI surfaces expose only
->   the flattened compatibility diagnostics contract.
+> - For 1.0, the staged form remains internal; reporting and CLI, API, and machine-readable output
+>   expose only the flattened compatibility diagnostics contract.
 >
 > See: [Configuration → Discovery & Precedence](../configuration/discovery.md).

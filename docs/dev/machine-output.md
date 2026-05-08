@@ -10,7 +10,7 @@ topmark:header:start
 topmark:header:end
 -->
 
-# Machine output schema (JSON & NDJSON)
+# Machine-readable output schema (JSON & NDJSON)
 
 This document describes the **machine-stable** JSON and NDJSON formats emitted by TopMark.
 
@@ -30,7 +30,7 @@ Covered command groups:
   [`config dump`](../usage/commands/config/dump.md)
 - **Version reporting**: [`version`](../usage/commands/version.md)
 
-This page is the canonical reference for TopMark’s machine output shapes. Usage guides for
+This page is the canonical reference for TopMark’s machine-readable output shapes. Usage guides for
 individual commands (for example, [`check`](../usage/commands/check.md),
 [`strip`](../usage/commands/strip.md), and [`probe`](../usage/commands/probe.md)) provide
 task-oriented examples consistent with this schema.
@@ -38,7 +38,7 @@ task-oriented examples consistent with this schema.
 See also:
 
 - [CLI overview](../usage/cli.md)
-- [Global options](../usage/global-options.md)
+- [Shared options](../usage/shared-options.md)
 - [Exit codes](../usage/exit-codes.md)
 - [Configuration](../usage/configuration.md)
 - [Filtering](../usage/filtering.md)
@@ -51,7 +51,7 @@ TopMark exposes four `--output-format` values:
 - human-oriented formats (not machine-stable):
   - `text`: default human-oriented text.
   - `markdown`: human-oriented Markdown.
-- machine formats (schema described in this document):
+- machine-readable formats (schema described in this document):
   - `json`: a single JSON document per invocation.
   - `ndjson`: a newline-delimited JSON stream.
 
@@ -59,17 +59,18 @@ The schemas below only apply to **`json`** and **`ndjson`**.
 
 Notes:
 
-- Machine formats never include ANSI color codes and are **not affected** by `--color`.
-- Machine formats are independent of human-facing presentation controls.
-- TEXT-only flags such as `-v` / `--verbose` and `-q` / `--quiet` do not affect machine output.
-- Markdown output is also independent from machine formats and follows its own document-oriented
-  contract.
+- Machine-readable formats never include ANSI color codes and are **not affected** by `--color`.
+- Machine-readable formats are independent of human-facing presentation controls.
+- TEXT-only flags such as `-v` / `--verbose` and `-q` / `--quiet` do not affect machine-readable
+  output.
+- Markdown output is also independent from machine-readable formats and follows its own
+  document-oriented contract.
 
 ______________________________________________________________________
 
-## Exit codes and machine output
+## Exit codes and machine-readable output
 
-Machine output (`json`, `ndjson`) is intentionally **decoupled from CLI exit codes**:
+Machine-readable output (`json`, `ndjson`) is intentionally **decoupled from CLI exit codes**:
 
 - Exit codes are not embedded in JSON or NDJSON payloads.
 - Structured payloads represent results, diagnostics, and resolution state only.
@@ -77,12 +78,12 @@ Machine output (`json`, `ndjson`) is intentionally **decoupled from CLI exit cod
 Consumers must:
 
 - inspect the process exit code for success/failure semantics,
-- parse machine output for detailed diagnostics and results.
+- parse machine-readable output for detailed diagnostics and results.
 
 This design ensures a clean separation between:
 
 - **process status** (exit code), and
-- **structured data contract** (machine output).
+- **structured data contract** (machine-readable output).
 
 Refer to [`Exit codes`](../usage/exit-codes.md) for the full contract.
 
@@ -92,7 +93,7 @@ ______________________________________________________________________
 
 ### MetaPayload
 
-All machine outputs include a small metadata block, either:
+All machine-readable output include a small metadata block, either:
 
 - as the top-level `meta` key in JSON documents, or
 - as the top-level `meta` key in every NDJSON record.
@@ -117,7 +118,8 @@ Notes:
 - `platform` is a short runtime identifier (e.g., from `sys.platform`).
 - `detail_level` is machine-facing and distinguishes the default projection (`"brief"`) from the
   expanded projection requested via `--long` (`"long"`) when a command surface emits that field.
-  Registry machine output currently includes `detail_level`; other command families may omit it.
+  Registry machine-readable output currently includes `detail_level`; other command families may
+  omit it.
 
 `detail_level` is distinct from TEXT verbosity (`-v`) and quiet mode (`--quiet`). It reflects an
 explicit machine-facing projection such as `--long`, not presentation detail.
@@ -176,21 +178,23 @@ The machine-output naming audit for 1.0 adopts the following conventions across 
   `results`, `probes`, `config_layers`) rather than a generic container such as `items`.
 - NDJSON uses **singular record kinds** (for example `filetype`, `processor`, `binding`, `result`,
   `probe`, `summary`) and stores each payload under a container key that matches `kind`.
-- Header processor identities and file type identities in machine output always report canonical
-  qualified keys such as `topmark:pound` and `topmark:python` when a resolved identity is available.
+- Header processor identities and file type identities in machine-readable output always report
+  canonical qualified keys such as `topmark:pound` and `topmark:python` when a resolved identity is
+  available.
 - Decomposed identities use `namespace` + `local_key`.
 - Relationship references use `*_key` (for example `file_type_key`, `processor_key`).
 - `detail_level` is an **extended metadata field** rather than baseline metadata:
   - baseline metadata is `tool`, `version`, `platform`
-  - `detail_level` is emitted only by command families whose machine output exposes a brief vs long
-    projection
+  - `detail_level` is emitted only by command families whose machine-readable output exposes a brief
+    vs long projection
 
 These conventions are considered frozen for 1.0 unless a final pre-release audit identifies a
 concrete naming defect worth correcting before release.
 
 ### File type identity fields
 
-Machine output uses the same canonical identifier model as the runtime registry and resolver.
+Machine-readable output uses the same canonical identifier model as the runtime registry and
+resolver.
 
 When a file type identity is present, payloads expose:
 
@@ -198,9 +202,9 @@ When a file type identity is present, payloads expose:
 - `namespace`: producer namespace, for example `topmark`;
 - `local_key`: local identifier within the namespace, for example `python`.
 
-Public inputs may use local identifiers such as `python` when unambiguous, but machine output emits
-resolved canonical identities. Consumers should prefer `qualified_key` for durable comparisons and
-joins across payloads.
+Public inputs may use local identifiers such as `python` when unambiguous, but machine-readable
+output emits resolved canonical identities. Consumers should prefer `qualified_key` for durable
+comparisons and joins across payloads.
 
 See [Registry model](registry-model.md#qualified-vs-local-identifiers) for the full identity
 contract.
@@ -216,8 +220,8 @@ header changes, diffs, strip plans, or write plans.
 Probe output reports canonical file type identities after identifier normalization and file-type
 filtering.
 
-Probe machine output is unaffected by TEXT verbosity or quiet mode. The JSON and NDJSON formats
-expose the same resolution evidence used by the human-facing probe renderers:
+Probe machine-readable output is unaffected by TEXT verbosity or quiet mode. The JSON and NDJSON
+formats expose the same resolution evidence used by the human-facing probe renderers:
 
 - selected file type and selected processor
 - probe status and reason
@@ -411,8 +415,8 @@ Note:
 Processing commands produce either **detail** output (per-file results) or **summary** output
 (bucket counts), depending on whether the CLI is in `--summary` mode.
 
-Processing machine output is unaffected by TEXT verbosity or quiet mode; those flags only influence
-human TEXT output.
+Processing machine-readable output is unaffected by TEXT verbosity or quiet mode; those flags only
+influence human TEXT output.
 
 ### JSON schema (detail mode)
 
@@ -560,8 +564,8 @@ At a high level, per-file results include:
 > - Diffs (`--diff`) and any ANSI coloring are **human-only** and are not included in machine
 >   payloads.
 > - Human presentation controls such as `-v` / `--verbose` and `-q` / `--quiet` are ignored by
->   machine output. Consumers should use JSON/NDJSON fields rather than relying on TEXT or Markdown
->   rendering.
+>   machine-readable output. Consumers should use JSON/NDJSON fields rather than relying on TEXT or
+>   Markdown rendering.
 
 ______________________________________________________________________
 
@@ -680,10 +684,10 @@ Notes:
 - [`config defaults`](../usage/commands/config/defaults.md) emits the built-in default configuration
   snapshot.
 - [`config init`](../usage/commands/config/init.md) emits the same built-in default configuration
-  snapshot in machine formats, even though its human-facing output is the bundled example TopMark
-  TOML resource with comments.
+  snapshot in machine-readable formats, even though its human-facing output is the bundled example
+  TopMark TOML resource with comments.
 
-Machine output for these commands is unaffected by TEXT verbosity or quiet mode.
+Machine-readable output for these commands is unaffected by TEXT verbosity or quiet mode.
 
 ### JSON shape for [`config dump`](../usage/commands/config/dump.md), [`config defaults`](../usage/commands/config/defaults.md), [`config init`](../usage/commands/config/init.md)
 
@@ -818,13 +822,13 @@ diagnostics, and a `config_check` status payload.
 The `strict` field reflects the **effective validation strictness** used for the run. It is derived
 from TOML source configuration (`[config].strict`) and may be overridden by CLI or API inputs. This
 strictness is evaluated across staged config-loading/preflight validation, while
-`config_diagnostics` remains the flattened compatibility view exposed in machine output.
+`config_diagnostics` remains the flattened compatibility view exposed in machine-readable output.
 
 For 1.0, this is the explicit contract decision: staged validation remains primarily internal, and
-machine output serializes only the flattened compatibility diagnostics surface.
+machine-readable output serializes only the flattened compatibility diagnostics surface.
 
-Machine output for [`config check`](../usage/commands/config/check.md) is unaffected by TEXT
-verbosity or quiet mode.
+Machine-readable output for [`config check`](../usage/commands/config/check.md) is unaffected by
+TEXT verbosity or quiet mode.
 
 ### NDJSON shape for [`config check`](../usage/commands/config/check.md)
 
@@ -884,11 +888,11 @@ The NDJSON `version` record kind is defined in
 while JSON payload keys such as `version_info` are defined in
 \[`topmark.version.machine.schemas.VersionKey`\][topmark.version.machine.schemas.VersionKey].
 
-The version reported in machine output is derived from the installed package metadata / generated
-version module, not from a manually maintained static field in `pyproject.toml`.
+The version reported in machine-readable output is derived from the installed package metadata /
+generated version module, not from a manually maintained static field in `pyproject.toml`.
 
-Machine output for [`version`](../usage/commands/version.md) is unaffected by TEXT verbosity or
-quiet mode.
+Machine-readable output for [`version`](../usage/commands/version.md) is unaffected by TEXT
+verbosity or quiet mode.
 
 Notes:
 
@@ -904,8 +908,8 @@ ______________________________________________________________________
 
 ## Registry commands
 
-Registry machine output uses `--long` to select brief vs detailed projections. Registry commands do
-not support `--quiet`, and TEXT verbosity does not affect machine output.
+Registry machine-readable output uses `--long` to select brief vs detailed projections. Registry
+commands do not support `--quiet`, and TEXT verbosity does not affect machine-readable output.
 
 ### [`topmark registry filetypes`](../usage/commands/registry/filetypes.md)
 
@@ -1095,8 +1099,8 @@ releases.
 
 Consumers should:
 
-- Treat machine output as the authoritative contract for programmatic use; do not parse TEXT or
-  Markdown output in automation.
+- Treat machine-readable output as the authoritative contract for programmatic use; do not parse
+  TEXT or Markdown output in automation.
 - Rely on `kind` for NDJSON.
 - Treat unknown fields as optional/ignorable.
 - Prefer parsing and schema-tolerant logic over strict string matching.

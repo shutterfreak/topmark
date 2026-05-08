@@ -18,6 +18,6 @@ topmark:header:end
 > - merged-config diagnostics
 > - runtime-applicability diagnostics
 >
-> For 1.0, this staged form remains internal. Reporting and machine/API/CLI surfaces expose only the
-> flattened compatibility diagnostics contract (stable entry shape `{level, message}` where
-> applicable).
+> For 1.0, this staged form remains internal. Reporting and CLI, API, and machine-readable output
+> expose only the flattened compatibility diagnostics contract (stable entry shape
+> `{level, message}` where applicable).

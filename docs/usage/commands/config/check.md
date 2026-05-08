@@ -34,8 +34,8 @@ Output formats:
 
 - `text`: human-readable validation result (optionally verbose).
 - `markdown`: Markdown report suitable for pasting into tickets or CI logs.
-- `json` / `ndjson`: machine-readable envelopes/records aligned with TopMark’s machine format
-  conventions.
+- `json` / `ndjson`: machine-readable envelopes/records aligned with TopMark’s machine-readable
+  format conventions.
 
 ______________________________________________________________________
 
@@ -239,8 +239,8 @@ Use `--output-format json` or `--output-format ndjson` to emit output suitable f
 
 The canonical schema, stable `kind` values, and shared conventions are documented here:
 
-- [Machine output schema (JSON & NDJSON)](../../../dev/machine-output.md)
-- [Machine formats](../../../dev/machine-formats.md)
+- [Machine-readable output schema](../../../dev/machine-output.md)
+- [Machine-readable formats](../../../dev/machine-formats.md)
 
 {% include-markdown "\_snippets/output-contract.md" %}
 

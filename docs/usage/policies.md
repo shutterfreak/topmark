@@ -25,7 +25,7 @@ See also:
 - [Configuration](configuration.md)
 - [Filtering](filtering.md)
 - [CLI overview](cli.md)
-- [Global options](global-options.md)
+- [Shared options](shared-options.md)
 
 TopMark policies control how the pipeline detects file types, classifies empty files, and decides
 whether headers may be inserted or updated.
@@ -36,29 +36,23 @@ and are merged according to discovery and precedence rules. See:
 - [`Configuration overview`](../configuration/index.md)
 - [`Discovery & Precedence`](../configuration/discovery.md)
 
-Policies can be supplied from:
-
 Policy semantics are shared consistently across:
 
-- TOML configuration
-
-- CLI overrides
-
-- API overlays
-
-- runtime policy resolution
-
 - discovered config files (`topmark.toml` or `[tool.topmark]` in `pyproject.toml`)
-
+- TOML configuration overlays
 - command-specific CLI options
+- API overlays
+- effective runtime policy resolution
 
-- the Python API via public policy overlays
+Policy values shown here are part of the public configuration surface.
 
-Policy values shown here are part of the public configuration surface. Internal implementation
-helpers such as \[`PolicyOverrides`\][topmark.config.overrides.PolicyOverrides] and
-\[`ConfigOverrides`\][topmark.config.overrides.ConfigOverrides] are not part of the user-facing CLI
-or Python API contract. Public callers should use plain mapping-based inputs via `config=...`,
-`policy=...`, and `policy_by_type=...` when using `topmark.api`.
+> [!NOTE]
+>
+> Internal implementation helpers such as
+> \[`PolicyOverrides`\][topmark.config.overrides.PolicyOverrides] and
+> \[`ConfigOverrides`\][topmark.config.overrides.ConfigOverrides] are not part of the user-facing
+> CLI or Python API contract. Public callers should use plain mapping-based inputs via `config=...`,
+> `policy=...`, and `policy_by_type=...` when using `topmark.api`.
 
 In `topmark.toml`, policy is defined under `[policy]` and `[policy_by_type.<file_type>]`. In
 `pyproject.toml`, the same settings live under `[tool.topmark.policy]` and
@@ -91,11 +85,27 @@ Per-file-type policy in `policy_by_type` is resolved on top of the global `polic
 
 ______________________________________________________________________
 
+## CLI, configuration, and API value spelling
+
+Policy configuration keys use the same names across the CLI, API, and TOML configuration. Some
+policy options accept predefined multi-word values such as `add_only` or `whitespace_empty`.
+
+TopMark uses different spelling conventions depending on the interface: CLI examples prefer
+*hyphenated forms* for readability, while TOML configuration, Python API values, and
+machine-readable output use *canonical underscore forms*.
+
+{% include-markdown "\_snippets/option-spelling.md" %}
+
+Unless otherwise noted, policy values shown throughout this page use the canonical
+TOML/API/machine-readable spelling.
+
+______________________________________________________________________
+
 ## Global policy keys
 
 ### `header_mutation_mode`
 
-Controls the mutation intent for \[[`topmark check`](commands/check.md)\](commands/check.md).
+Controls the mutation intent for [`topmark check`](commands/check.md).
 
 Allowed TOML/API values:
 
@@ -210,7 +220,7 @@ not an extension of newline support.
 
 ## Per-file-type policy
 
-{% include-markdown "../\_snippets/file-type-identifiers.md" %}
+{% include-markdown "\_snippets/file-type-identifiers.md" %}
 
 Use `policy_by_type.<file_type_id>` to override policy for one file type while inheriting
 unspecified values from the global `policy` section.
@@ -319,12 +329,15 @@ ______________________________________________________________________
 
 Reporting controls what the CLI prints. Policy controls what the pipeline is allowed to do.
 
-Examples:
+Reporting examples:
 
 - `--report actionable`: show human per-file entries that would change, changed, failed, or
   otherwise need attention
 - `--report noncompliant`: include actionable files plus unsupported file types in human per-file
   output
+
+Policy example:
+
 - `--header-mutation-mode add-only`: allow [`check`](commands/check.md) to insert missing headers
   but not update existing headers
 
@@ -337,5 +350,5 @@ ______________________________________________________________________
 - [Configuration](configuration.md)
 - [Filtering](filtering.md)
 - [CLI overview](cli.md)
-- [Global options](global-options.md)
+- [Shared options](shared-options.md)
 - [Configuration discovery](../configuration/discovery.md)

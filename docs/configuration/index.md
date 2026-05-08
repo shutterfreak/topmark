@@ -85,7 +85,7 @@ Start here:
   defined and overridden at global level and per file type.
 - [Usage configuration guide](../usage/configuration.md) for the public TOML, CLI, and API
   identifier contract.
-- [CLI overview](../usage/cli.md) for command-line execution and global options.
+- [CLI overview](../usage/cli.md) for command-line execution and shared command options.
 
 See Also:
 

@@ -15,4 +15,4 @@ topmark:header:end
 > - Verbosity (`-v` / `--verbose`) applies only to TEXT output.
 > - This command does **not** support `-q` / `--quiet` because it is a pure informational,
 >   content-producing command without a meaningful status or mutation signal.
-> - Markdown and machine formats are not affected by TEXT verbosity controls.
+> - Markdown and machine-readable formats are not affected by TEXT verbosity controls.

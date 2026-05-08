@@ -688,7 +688,7 @@ Human output remaining work:
 
 CLI exit-code work is now complete for the 1.0 freeze: `docs/usage/exit-codes.md` is the canonical
 contract, implementation is centralized around pipeline/result prioritization, focused
-`pytest.mark.exit_code` coverage enforces the contract, and README, docs index, global options,
+`pytest.mark.exit_code` coverage enforces the contract, and README, docs index, shared options,
 filtering, pre-commit, command-group pages, command pages, API docs, architecture docs, and
 machine-output docs link or summarize the same behavior. The CLI command-applicability, usage-error,
 and user-facing policy/report contracts are also frozen and documented; remaining CLI work is now

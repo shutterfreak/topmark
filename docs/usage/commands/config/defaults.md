@@ -35,8 +35,8 @@ Output formats:
 
 - `text` / `markdown`: minimal, comment-free TOML. Markdown is document-oriented and ignores
   TEXT-only verbosity controls.
-- `json` / `ndjson`: a plain Config snapshot, with no diagnostics. Machine formats ignore TEXT-only
-  verbosity controls.
+- `json` / `ndjson`: a plain Config snapshot, with no diagnostics. Machine-readable formats ignore
+  TEXT-only verbosity controls.
 
 ______________________________________________________________________
 
@@ -117,8 +117,12 @@ ______________________________________________________________________
 This command is intentionally minimal and usually has no options. See `topmark config defaults -h`
 for any environment‑specific flags that may be available in your build.
 
+`topmark config defaults` supports content-rendering options such as `--output-format`,
+`--pyproject`, `--root`, color controls, and TEXT verbosity. See `topmark config defaults -h` for
+the complete command help.
+
 Note: `-v` / `--verbose` applies only to TEXT output. This pure content-producing command does not
-support `--quiet`. Markdown and machine formats ignore TEXT-only verbosity controls.
+support `--quiet`. Markdown and machine-readable formats ignore TEXT-only verbosity controls.
 
 ______________________________________________________________________
 
@@ -151,8 +155,8 @@ Use `--output-format json` or `--output-format ndjson` to emit output suitable f
 
 The canonical schema, stable `kind` values, and shared conventions are documented here:
 
-- [Machine output schema (JSON & NDJSON)](../../../dev/machine-output.md)
-- [Machine formats](../../../dev/machine-formats.md)
+- [Machine-readable output schema](../../../dev/machine-output.md)
+- [Machine-readable formats](../../../dev/machine-formats.md)
 
 {% include-markdown "\_snippets/output-contract-no-quiet.md" %}
 

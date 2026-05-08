@@ -83,7 +83,7 @@ without becoming layered \[`Config`\][topmark.config.model.Config] fields.
 This distinction is also visible when inspecting configuration via
 [`topmark config dump --show-layers`](../usage/commands/config/dump.md): source-local TOML fragments
 are preserved per layer (for example under `[[layers]].toml.*` in human output or
-`config_provenance.layers[].toml` in machine output), while the final immutable
+`config_provenance.layers[].toml` in machine-readable output), while the final immutable
 \[`Config`\][topmark.config.model.Config] represents only the flattened effective configuration used
 at runtime.
 
@@ -128,8 +128,8 @@ run: api.RunResult = api.check(
 )
 ```
 
-API overlays, TOML configuration, CLI filters, and runtime policy resolution all share the same
-file-type identifier semantics. Local identifiers such as `"python"` are also accepted when
+API overlays, TOML configuration, CLI filters, and effective runtime policy resolution all share the
+same file-type identifier semantics. Local identifiers such as `"python"` are also accepted when
 unambiguous. Internally, TopMark normalizes identifiers to canonical qualified keys such as
 `"topmark:python"`.
 

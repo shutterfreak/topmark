@@ -475,7 +475,8 @@ ______________________________________________________________________
 
 - [`Architecture`](./architecture.md) — TOML → Config → Runtime overview
 - [`Pipelines (Reference)`](./pipelines-reference.md) — generated API-backed reference entry points
-- [`Machine output schema`](./machine-output.md) — how pipeline results are exposed in JSON / NDJSON
+- [`Machine-readable output schema`](./machine-output.md) — how pipeline results are exposed in JSON
+  / NDJSON
 - [`Configuration discovery`](../configuration/discovery.md) — source-local TOML options and
   precedence
 
