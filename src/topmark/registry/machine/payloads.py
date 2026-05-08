@@ -8,7 +8,7 @@
 #
 # topmark:header:end
 
-"""Payload builders for registry-related machine output.
+"""Payload builders for registry-related machine-readable output.
 
 This module builds JSON-serializable payload *objects* (plain Python dicts/lists)
 for registry-focused CLI commands:
@@ -57,7 +57,7 @@ if TYPE_CHECKING:
 
 
 def _serialize_filetype_policy(policy: FileTypePolicyInfo) -> FileTypePolicyEntry:
-    """Serialize structured file type policy metadata for machine output.
+    """Serialize structured file type policy metadata for machine-readable output.
 
     Args:
         policy: File type policy metadata returned by the public API.

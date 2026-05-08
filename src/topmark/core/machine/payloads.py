@@ -41,7 +41,7 @@ from topmark.core.machine.schemas import MetaPayload
 
 @lru_cache(maxsize=1)
 def build_meta_payload() -> MetaPayload:
-    """Build the base metadata payload for machine output.
+    """Build the base metadata payload for machine-readable output.
 
     This payload contains **process-stable information** about the running
     TopMark instance and is reused across all machine-format serializers.

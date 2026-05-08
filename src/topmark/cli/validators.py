@@ -194,7 +194,8 @@ def validate_machine_format_forbids_flags(
             leading verb phrase such as "is not supported" or "are not supported".
 
     Raises:
-        TopmarkCliUsageError: If any of the specified flags are enabled with a machine format.
+        TopmarkCliUsageError: If any of the specified flags are enabled with a
+            machine-readable format.
     """
     if not is_machine_format(fmt):
         return
@@ -420,7 +421,7 @@ def validate_output_verbosity_policy(
 
     if fmt != OutputFormat.TEXT:
         # Verbosity and quiet are TEXT-only console-output controls. For
-        # Markdown and machine formats, clear them silently so document and
+        # Markdown and machine-readable formats, clear them silently so document and
         # structured output remain stable and renderable.
         if verbosity > 0 or quiet:
             ignored: list[str] = []
@@ -453,7 +454,7 @@ def validate_diff_policy_for_output_format(
     """Validate that unified diffs are only supported with human-readable output formats.
 
     Unified diffs are a human-facing rendering feature and are not supported for machine-readable
-    output (`json`/`ndjson`). If `--diff` is requested with a machine format, raise a
+    output (`json`/`ndjson`). If `--diff` is requested with a machine-readable format, raise a
     `TopmarkCliUsageError`.
 
     Args:
@@ -477,7 +478,7 @@ def validate_human_only_config_flags_for_machine_format(
     for_pyproject: bool,
     fmt: OutputFormat,
 ) -> None:
-    """Validate that human-only config template flags are not used with machine formats.
+    """Validate that human-only config template flags are not used with machine-readable formats.
 
     Some options only affect human-facing template rendering (e.g. injecting `root = true`
     or emitting a pyproject-scoped `[tool.topmark]` header). Machine-readable output formats
@@ -499,8 +500,8 @@ def validate_human_only_config_flags_for_machine_format(
         },
         reason="are not supported with machine-readable output formats.",
     )
-    # Raises: TopmarkCliUsageError: If a machine format is selected and any human-only template flag
-    # is set.
+    # Raises: TopmarkCliUsageError: If a machine-readable format is selected and
+    # any human-only template flag is set.
 
 
 def validate_stdin_dash_requires_piped_input(

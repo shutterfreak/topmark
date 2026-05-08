@@ -85,7 +85,7 @@ class HaltState:
         reason_code: Short machine-friendly reason code explaining
             why processing was halted (for example, ``"unsupported"`` or
             ``"unchanged-summary"``). Intended for internal use and
-            machine output.
+            machine-readable output.
         step_name: Name of the pipeline step that requested the
             halt. An empty string indicates that no explicit halt has
             been recorded.

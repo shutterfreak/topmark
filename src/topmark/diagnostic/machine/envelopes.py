@@ -8,7 +8,7 @@
 #
 # topmark:header:end
 
-"""NDJSON envelope builders for diagnostic machine output.
+"""NDJSON envelope builders for diagnostic machine-readable output.
 
 This module defines shared helpers for emitting diagnostics as **NDJSON records**
 according to TopMark's machine-output contract.

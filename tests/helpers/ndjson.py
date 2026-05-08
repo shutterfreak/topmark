@@ -19,7 +19,7 @@ They are designed for test code only and favor fail-fast assertions over
 permissive recovery or defensive error handling.
 
 The helpers are generic enough for any NDJSON-emitting command, while some of
-them are especially convenient for record-oriented machine outputs that follow
+them are especially convenient for record-oriented machine-readable output that follows
 TopMark's canonical ``kind`` + ``meta`` + payload-container pattern.
 """
 

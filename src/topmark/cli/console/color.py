@@ -40,7 +40,7 @@ class ColorMode(str, Enum):
         >>> resolve_color_mode(color_mode_override=ColorMode.AUTO, output_format=None)
         True  # on an interactive terminal
         >>> resolve_color_mode(color_mode_override=ColorMode.AUTO, output_format="json")
-        False  # machine formats are always colorless
+        False  # machine-readable formats are always colorless
     """
 
     AUTO = "auto"
@@ -57,7 +57,7 @@ def resolve_color_mode(
     """Determine whether color output should be enabled.
 
     Decision precedence:
-        1. **Machine formats**: If `output_format` is `"json"` or `"ndjson"`, return False.
+        1. **Machine-readable formats**: If `output_format` is `"json"` or `"ndjson"`, return False.
         2. **CLI override**: If `color_mode_override` is `ALWAYS` → True; if `NEVER` → False.
         3. **Environment**:
             - `FORCE_COLOR` (set and not equal to `"0"`) → True
@@ -82,7 +82,7 @@ def resolve_color_mode(
         >>> resolve_color_mode(color_mode_override=None, output_format=None, stdout_isatty=True)
         True
     """
-    # 1) Machine formats and MarkDown never use color
+    # 1) Machine-readable formats and Markdown never use color
     if output_format and output_format.lower() in {"json", "ndjson", "markdown"}:
         return False
 

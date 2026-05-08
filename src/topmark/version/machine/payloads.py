@@ -43,7 +43,7 @@ def build_version_payload(
     *,
     semver: bool,
 ) -> tuple[dict[str, object], Exception | None]:
-    """Build the version payload for machine output.
+    """Build the version payload for machine-readable output.
 
     This helper never raises on SemVer conversion failure. If SemVer conversion
     was requested and fails, it falls back to the original PEP 440 version

@@ -68,7 +68,7 @@ if TYPE_CHECKING:
     ],
 )
 def test_processing_json_includes_meta(tmp_path: Path, command: str) -> None:
-    """Ensure JSON machine output for `check` / `strip` includes meta/tool/version.
+    """Ensure JSON machine-readable output for `check` / `strip` includes meta/tool/version.
 
     This parametrized test runs `check` and `strip` in JSON mode and verifies
     that the top-level payload contains a `meta` block with `tool` and

@@ -45,6 +45,6 @@ FILETYPES: list[FileType] = [
         extensions=[".md", ".markdown"],
         filenames=[],
         patterns=[],
-        description="MarkDown source files (*.md)",
+        description="Markdown source files (*.md)",
     ),
 ]

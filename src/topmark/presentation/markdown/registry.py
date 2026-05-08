@@ -73,7 +73,7 @@ def render_filetypes_markdown(report: FileTypesHumanReport) -> str:
         lines.append("## Legend\n")
         lines.append(
             "- **Qualified Key**: Canonical file type identifier used in configuration "
-            "and machine output."
+            "and machine-readable output."
         )
         lines.append("- **Local Key / Namespace**: Canonical identity components.")
         lines.append(
@@ -159,7 +159,9 @@ def render_processors_markdown(report: ProcessorsHumanReport) -> str:
 
     if report.show_details:
         lines.append("## Legend\n")
-        lines.append("- **Qualified Key**: Canonical processor identifier used in machine output.")
+        lines.append(
+            "- **Qualified Key**: Canonical processor identifier used in machine-readable output."
+        )
         lines.append("- **Local Key / Namespace**: Canonical identity components.")
         lines.append(
             "- **Bound**: Whether the processor currently participates in "

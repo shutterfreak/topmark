@@ -103,7 +103,7 @@ def test_version_rejects_quiet_option_with_json_output() -> None:
 
 
 def test_version_verbose_does_not_change_json_output() -> None:
-    """`version -v --output-format json` should emit clean machine output."""
+    """`version -v --output-format json` should emit clean machine-readable output."""
     result: Result = run_cli(
         [
             CliCmd.VERSION,
@@ -194,7 +194,7 @@ def test_version_rejects_quiet_option_with_ndjson_output() -> None:
 
 
 def test_version_verbose_does_not_change_ndjson_output() -> None:
-    """`version -v --output-format ndjson` should emit clean machine output."""
+    """`version -v --output-format ndjson` should emit clean machine-readable output."""
     result: Result = run_cli(
         [
             CliCmd.VERSION,

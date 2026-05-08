@@ -20,7 +20,7 @@ semantic command options such as `--summary`, `--report`, and `--diff`.
 Notes:
     - TEXT pipeline output is implemented in
       [`topmark.presentation.text.pipeline`][topmark.presentation.text.pipeline].
-    - Machine output is handled via domain machine serializers.
+    - Machine-readable output is handled via domain machine serializers.
 """
 
 from __future__ import annotations

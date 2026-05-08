@@ -8,7 +8,7 @@
 #
 # topmark:header:end
 
-"""Payload builders for TOML-domain machine output.
+"""Payload builders for TOML-domain machine-readable output.
 
 This module contains pure helpers that build strongly typed payload dataclasses
 for machine-readable TOML provenance output.

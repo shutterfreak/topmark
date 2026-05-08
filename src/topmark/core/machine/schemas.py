@@ -8,13 +8,13 @@
 #
 # topmark:header:end
 
-"""Canonical schema primitives for TopMark machine output.
+"""Canonical schema primitives for TopMark machine-readable output.
 
 This module centralizes:
 - canonical *keys* used in JSON envelopes and NDJSON records (`MachineKey`)
 - canonical NDJSON *kinds* (`MachineKind`)
 - canonical diagnostic *domains* (`MachineDomain`)
-- helper types used across machine formats (`MetaPayload`, `CommandSummary`)
+- helper types used across machine-readable formats (`MetaPayload`, `CommandSummary`)
 - payload normalization (`normalize_payload`)
 
 Design goals:
@@ -52,7 +52,7 @@ class MachineKey(str, Enum):
 
     Attributes:
         KIND: Top-level record kind key used by NDJSON records.
-        META: Top-level metadata key shared by JSON and NDJSON machine output.
+        META: Top-level metadata key shared by JSON and NDJSON machine-readable output.
         DOMAIN: Stable diagnostic domain key used by diagnostic payloads.
         COMMAND: Top-level command name for command-summary style payloads.
         SUBCOMMAND: Optional subcommand name for command-summary style payloads.
@@ -138,7 +138,7 @@ class CommandSummary:
 
 
 class MetaPayload(TypedDict, total=True):
-    """Base metadata describing the TopMark runtime environment for machine output.
+    """Base metadata describing the TopMark runtime environment for machine-readable output.
 
     This payload is process-stable and shared across all machine-output commands.
 
@@ -154,7 +154,7 @@ class MetaPayload(TypedDict, total=True):
 
 
 class DetailedMetaPayload(MetaPayload, total=True):
-    """Extended metadata for machine output envelopes and records.
+    """Extended metadata for machine-readable output envelopes and records.
 
     This structure extends [`MetaPayload`] with fields that vary per command
     invocation (e.g. `--long`).

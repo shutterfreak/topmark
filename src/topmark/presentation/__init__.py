@@ -27,7 +27,7 @@ Non-responsibilities:
 - **No I/O**: this package never writes to stdout/stderr.
 - **No CLI framework dependency**: remains usable outside Click (e.g. tests,
   alternative frontends).
-- **No machine formats**: JSON/NDJSON are handled by `topmark.*.machine`.
+- **No machine-readable formats**: JSON/NDJSON are handled by `topmark.*.machine`.
 
 Architecture:
 - [`topmark.api`][topmark.api] → canonical structured metadata

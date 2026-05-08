@@ -12,7 +12,7 @@
 
 Some user-facing outcomes are discovered before a file can enter normal pipeline
 execution. This module builds `ProcessingContext` instances for those outcomes
-so presentation, machine output, summaries, and exit-code selection can treat
+so presentation, machine-readable output, summaries, and exit-code selection can treat
 them like ordinary pipeline results.
 
 These helpers are shared by CLI and public-API orchestration, but this module
@@ -56,7 +56,7 @@ def build_missing_file_contexts(
 
     Missing literal paths are detected by file-list resolution before the normal
     pipeline runs. Representing them as contexts keeps diagnostics visible in
-    human and machine output and lets `exit_code_from_pipeline_results()` derive
+    human and machine-readable output and lets `exit_code_from_pipeline_results()` derive
     `ExitCode.FILE_NOT_FOUND` from the same result collection as other
     filesystem outcomes.
 
@@ -135,7 +135,7 @@ def build_filtered_probe_contexts(
 
     The normal probe pipeline only runs for files selected by file-list
     resolution. Explicit input paths that are excluded before that point still
-    need probe-shaped results so CLI, machine output, summaries, and the public
+    need probe-shaped results so CLI, machine-readable output, summaries, and the public
     API can explain why they never reached file-type resolution.
 
     Args:

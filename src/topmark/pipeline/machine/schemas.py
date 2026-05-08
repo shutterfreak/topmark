@@ -8,7 +8,7 @@
 #
 # topmark:header:end
 
-"""Typed schema fragments for pipeline-related machine output.
+"""Typed schema fragments for pipeline-related machine-readable output.
 
 This module defines small, stable *shape types* used by TopMark's machine-readable
 outputs for pipeline processing (`check` / `strip`) and resolution probing (`probe`).

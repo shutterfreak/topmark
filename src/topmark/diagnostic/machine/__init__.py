@@ -11,7 +11,7 @@
 """Machine-output helpers for diagnostics.
 
 This package contains reusable diagnostic schemas and NDJSON shape builders used
-by multiple TopMark domains when emitting machine formats.
+by multiple TopMark domains when emitting machine-readable formats.
 
 Layers:
 

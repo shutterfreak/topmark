@@ -8,7 +8,7 @@
 #
 # topmark:header:end
 
-"""Schema dataclasses for TOML-domain machine output.
+"""Schema dataclasses for TOML-domain machine-readable output.
 
 This module defines strongly typed, JSON-friendly payload dataclasses used for
 machine-readable TOML provenance output.

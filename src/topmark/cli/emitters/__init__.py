@@ -28,7 +28,7 @@ Machine-oriented output (JSON / NDJSON):
   or streams produced elsewhere using an explicit console,
 - no data shaping, schema decisions, or serialization logic lives here.
 
-Architecture overview for machine formats:
+Architecture overview for machine-readable formats:
 - [`topmark.core.machine`][topmark.core.machine]:
     shared machine-output schemas, keys, meta payloads, and low-level normalization utilities.
 - [`topmark.config.machine`][topmark.config.machine]:

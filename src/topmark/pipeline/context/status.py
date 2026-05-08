@@ -20,7 +20,7 @@ of truth for all status evaluation.
 
 The supporting
 [`AxisStatusPayload`][topmark.pipeline.context.status.AxisStatusPayload] provides
-a stable, JSON-serializable representation used in machine output
+a stable, JSON-serializable representation used in machine-readable output
 (`--json` / NDJSON), ensuring that external tools can reliably consume pipeline
 results without depending on internal enum details.
 
@@ -196,7 +196,7 @@ class ProcessingStatus:
         """Return axis → {axis, name, label} payload for all axes.
 
         This mirrors ``AxisStatusPayload`` and is useful if you want a single,
-        centralized representation of axis status data for machine output.
+        centralized representation of axis status data for machine-readable output.
 
         Returns:
             Mapping from axis name to its status payload.

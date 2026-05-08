@@ -13,7 +13,7 @@
 This module centralizes timestamp *sources* and *string formatting* so that:
 
 - internal timestamps are consistently represented in UTC;
-- machine outputs can use ISO-8601 strings; and
+- machine-readable output can use ISO-8601 strings; and
 - unified diff headers can use GNU diff / git-style timestamps.
 
 Naming convention:

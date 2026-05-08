@@ -8,7 +8,7 @@
 #
 # topmark:header:end
 
-"""Schema objects for config-related machine output.
+"""Schema objects for config-related machine-readable output.
 
 This module defines small dataclasses used as the *typed payload layer* for
 config-related JSON/NDJSON output. Instances are designed to be trivially
@@ -160,7 +160,7 @@ class ConfigDiagnosticsPayload:
 
 @dataclass(slots=True, kw_only=True)
 class ConfigCheckSummary:
-    """Summary payload for `topmark config check` machine output.
+    """Summary payload for `topmark config check` machine-readable output.
 
     Captures the pass/fail outcome of validating the effective configuration
     under the selected strictness, plus diagnostic counts and the resolved

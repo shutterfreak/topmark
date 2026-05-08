@@ -8,12 +8,12 @@
 #
 # topmark:header:end
 
-"""Serialization helpers for config-related machine output.
+"""Serialization helpers for config-related machine-readable output.
 
 This module turns *shaped* config records/envelopes into JSON or NDJSON strings.
 
 Responsibilities:
-  - Validate that the requested format is a supported machine format.
+  - Validate that the requested format is a supported machine-readable format.
   - Delegate *envelope* construction to
     [`topmark.config.machine.envelopes`][topmark.config.machine.envelopes].
   - Delegate JSON/NDJSON string rendering to
@@ -51,13 +51,13 @@ if TYPE_CHECKING:
 def _build_required_toml_provenance_payload(
     resolved_toml: ResolvedTopmarkTomlSources | None,
 ) -> TomlProvenancePayload:
-    """Build required TOML provenance payload for machine output.
+    """Build required TOML provenance payload for machine-readable output.
 
     Args:
         resolved_toml: Resolved TOML sources required for provenance export.
 
     Returns:
-        TOML provenance payload for JSON or NDJSON machine output.
+        TOML provenance payload for JSON or NDJSON machine-readable output.
 
     Raises:
         ValueError: If `resolved_toml` is missing or provenance payload construction fails.
@@ -68,7 +68,9 @@ def _build_required_toml_provenance_payload(
     try:
         return build_toml_provenance_payload(resolved_toml)
     except ValueError as exc:
-        raise ValueError("Unable to serialize config provenance for machine output") from exc
+        raise ValueError(
+            "Unable to serialize config provenance for machine-readable output"
+        ) from exc
 
 
 def serialize_config(
@@ -95,20 +97,21 @@ def serialize_config(
     Args:
         meta: Machine-output metadata (tool/version).
         config: Immutable runtime configuration to serialize.
-        fmt: Target machine format (JSON or NDJSON).
+        fmt: Target machine-readable format (JSON or NDJSON).
         resolved_toml: Resolved TOML sources for optional provenance export.
-        show_config_layers: If `True`, include layered TOML provenance in the machine output.
+        show_config_layers: If `True`, include layered TOML provenance in the
+            machine-readable output.
 
     Returns:
         A pretty-printed JSON string, or an iterator of NDJSON lines, depending on
         `fmt` (no trailing newline).
 
     Raises:
-        ValueError: If `fmt` is not a supported machine format, or if `show_config_layers` is `True`
-            but `resolved_toml` is `None`.
+        ValueError: If `fmt` is not a supported machine-readable format, or
+            if `show_config_layers` is `True` but `resolved_toml` is `None`.
     """
     if not is_machine_format(fmt):
-        raise ValueError(f"Unsupported machine output format: {fmt!r}")
+        raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
 
     if show_config_layers and resolved_toml is None:
         raise ValueError("resolved_toml is required when show_config_layers=True")
@@ -130,7 +133,7 @@ def serialize_config(
         )
 
     # Defensive guard
-    raise ValueError(f"Unsupported machine output format: {fmt!r}")
+    raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
 
 
 def serialize_config_json(
@@ -235,16 +238,16 @@ def serialize_config_diagnostics(
     Args:
         meta: Machine-output metadata (tool/version).
         config: Immutable runtime configuration providing diagnostics.
-        fmt: Target machine format (JSON or NDJSON).
+        fmt: Target machine-readable format (JSON or NDJSON).
 
     Returns:
         Rendered JSON string or iterable of NDJSON lines (no trailing newline).
 
     Raises:
-        ValueError: if `fmt` is not a supported machine format.
+        ValueError: if `fmt` is not a supported machine-readable format.
     """
     if not is_machine_format(fmt):
-        raise ValueError(f"Unsupported machine output format: {fmt!r}")
+        raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
 
     if fmt == OutputFormat.JSON:
         return serialize_config_diagnostics_json(
@@ -259,7 +262,7 @@ def serialize_config_diagnostics(
         )
 
     # Defensive guard
-    raise ValueError(f"Unsupported machine output format: {fmt!r}")
+    raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
 
 
 def serialize_config_diagnostics_json(
@@ -335,16 +338,16 @@ def serialize_config_check(
         config: Immutable runtime configuration providing diagnostics.
         strict: If True, warnings are treated as failures.
         ok: Whether the config passed validation
-        fmt: Target machine format (JSON or NDJSON).
+        fmt: Target machine-readable format (JSON or NDJSON).
 
     Returns:
         Rendered JSON string or iterator of NDJSON lines (no trailing newline).
 
     Raises:
-        ValueError: If `fmt` is not a supported machine format.
+        ValueError: If `fmt` is not a supported machine-readable format.
     """
     if not is_machine_format(fmt):
-        raise ValueError(f"Unsupported machine output format: {fmt!r}")
+        raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
 
     if fmt == OutputFormat.JSON:
         return serialize_config_check_json(
@@ -363,7 +366,7 @@ def serialize_config_check(
         )
 
     # Defensive guard
-    raise ValueError(f"Unsupported machine output format: {fmt!r}")
+    raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
 
 
 def serialize_config_check_json(

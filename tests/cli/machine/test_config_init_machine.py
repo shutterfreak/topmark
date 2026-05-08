@@ -26,7 +26,7 @@ The tests serve as high-level contract checks to ensure that:
 
 These tests intentionally avoid checking the full serialized config content,
 focusing instead on structural stability, required top-level keys, and the fact
-that machine output is a config snapshot rather than the annotated example TOML
+that machine-readable output is a config snapshot rather than the annotated example TOML
 resource used in human-facing output.
 
 All CLI invocations are executed via Click's `CliRunner`, using the helpers in

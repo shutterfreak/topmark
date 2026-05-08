@@ -14,7 +14,7 @@ This module centralizes the `OutputFormat` enum so CLI commands, machine emitter
 and other frontends can agree on the same format vocabulary without introducing `Click`
 or console dependencies.
 
-Machine formats (JSON, NDJSON) are intended to be stable and colorless
+Machine-readable formats (JSON, NDJSON) are intended to be stable and colorless
 """
 
 from __future__ import annotations
@@ -29,11 +29,11 @@ class OutputFormat(str, Enum):
         TEXT: Human-friendly text output; may include ANSI color if enabled.
         MARKDOWN: A Markdown document.
         JSON: A single JSON document (machine-readable). See the
-            `Machine output` developer docs for the schema.
+            `Machine-readable output` developer docs for the schema.
         NDJSON: One JSON object per line (newline-delimited JSON; machine-readable).
 
     Notes:
-        - Machine formats (``JSON`` and ``NDJSON``) must not include ANSI color
+        - Machine-readable formats (``JSON`` and ``NDJSON``) must not include ANSI color
           or diffs.
         - Use with [`topmark.cli.cli_types.EnumChoiceParam`][] to parse
           ``--output-format`` from Click.
@@ -43,7 +43,7 @@ class OutputFormat(str, Enum):
     TEXT = "text"
     MARKDOWN = "markdown"
 
-    # Machine formats:
+    # Machine-readable formats:
     JSON = "json"
     NDJSON = "ndjson"
 
@@ -55,6 +55,6 @@ def is_machine_format(fmt: OutputFormat | None) -> bool:
         fmt: the output format to be checked.
 
     Returns:
-        `True` if the format provided is a machine format, else `False`.
+        `True` if the format provided is a machine-readable format, else `False`.
     """
     return fmt in {OutputFormat.JSON, OutputFormat.NDJSON}

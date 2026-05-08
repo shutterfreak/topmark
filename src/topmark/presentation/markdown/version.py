@@ -13,7 +13,7 @@
 These helpers return Markdown strings and perform no I/O.
 
 Notes:
-    Machine formats (JSON/NDJSON) are handled via the version machine serializers
+    Machine-readable formats (JSON/NDJSON) are handled via the version machine serializers
     and the generic CLI machine emitter.
 """
 

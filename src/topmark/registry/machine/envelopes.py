@@ -8,7 +8,7 @@
 #
 # topmark:header:end
 
-"""Envelope/record builders for registry machine output.
+"""Envelope/record builders for registry machine-readable output.
 
 This module is responsible for *shaping* registry payloads into TopMark’s
 canonical machine-output envelopes.

@@ -8,9 +8,9 @@
 #
 # topmark:header:end
 
-"""Envelope and record shaping utilities for machine output.
+"""Envelope and record shaping utilities for machine-readable output.
 
-This module defines *shape builders* for TopMark machine output:
+This module defines *shape builders* for TopMark machine-readable output:
 - JSON envelopes (single JSON objects) containing `"meta"` plus named payloads.
 - NDJSON record objects containing `"kind"`, `"meta"`, and a payload container.
 

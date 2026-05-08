@@ -48,11 +48,11 @@ def emit_machine(
     console: ConsoleProtocol,
     nl: bool = True,
 ) -> None:
-    """Emit the serialized machine format to the ConsoleLike.
+    """Emit the serialized machine-readable format to the ConsoleLike.
 
     Args:
         serialized: The serialized machine data to emit.
-        console: Console used to emit the already-serialized machine output.
+        console: Console used to emit the already-serialized machine-readable output.
         nl: If True (default), emit a newline at the end of each line.
     """
     if not serialized:
@@ -74,20 +74,20 @@ def emit_probe_results_machine(
     results: list[ProcessingContext],
     fmt: OutputFormat,
 ) -> None:
-    """Emit topmark probe machine output.
+    """Emit topmark probe machine-readable output.
 
     Args:
-        console: Console used to emit the already-serialized machine output.
+        console: Console used to emit the already-serialized machine-readable output.
         meta: The machine metadata payload.
         config: The Config instance.
         results: Ordered list of per-file probe results.
         fmt: Output format (`OutputFormat.JSON` or `OutputFormat.NDJSON`).
 
     Raises:
-        ValueError: if `fmt` is not a machine format.
+        ValueError: if `fmt` is not a machine-readable format.
     """
     if not is_machine_format(fmt):
-        raise ValueError(f"Unsupported machine output format: {fmt!r}")
+        raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
 
     serialized: str | Iterator[str] = serialize_probe_results(
         meta=meta,
@@ -112,7 +112,7 @@ def emit_processing_results_machine(
     """Emit already-rendered machine strings to console.
 
     Args:
-        console: Console used to emit the already-serialized machine output.
+        console: Console used to emit the already-serialized machine-readable output.
         meta: The machine metadata payload.
         config: The Config instance.
         results: Ordered list of per-file processing results.
@@ -120,10 +120,10 @@ def emit_processing_results_machine(
         summary_mode: If True, emit aggregated counts instead of per-file entries.
 
     Raises:
-        ValueError: if `fmt` is not a machine format.
+        ValueError: if `fmt` is not a machine-readable format.
     """
     if not is_machine_format(fmt):
-        raise ValueError(f"Unsupported machine output format: {fmt!r}")
+        raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
 
     serialized: str | Iterator[str] = serialize_processing_results(
         meta=meta,
@@ -149,7 +149,7 @@ def emit_config_machine(
 ) -> None:
     """Emit the effective Config snapshot in a machine-readable format.
 
-    When `show_config_layers` is enabled, machine output also includes a
+    When `show_config_layers` is enabled, machine-readable output also includes a
     `config_provenance` payload that preserves ordered config layers and the
     corresponding source-local TOML fragments.
 
@@ -165,23 +165,23 @@ def emit_config_machine(
             {"kind": "config", "meta": ..., "config": ...}
 
     Args:
-        console: Console used to emit the already-serialized machine output.
+        console: Console used to emit the already-serialized machine-readable output.
         meta: The machine metadata payload.
         config: Immutable runtime configuration to serialize.
-        fmt: Target machine format (JSON or NDJSON).
+        fmt: Target machine-readable format (JSON or NDJSON).
         resolved_toml: Resolved TOML sources used to build optional machine-readable
             config provenance.
         show_config_layers: If `True`, include layered config provenance in the
-            machine output.
+            machine-readable output.
 
     Raises:
-        ValueError: If `fmt` is not a supported machine format, or if show_config_layers is `True`
-            but resolved_toml is `None`.
+        ValueError: If `fmt` is not a supported machine-readable format, or
+            if show_config_layers is `True` but resolved_toml is `None`.
 
 
     """
     if not is_machine_format(fmt):
-        raise ValueError(f"Unsupported machine output format: {fmt!r}")
+        raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
 
     serialized: str | Iterator[str] = serialize_config(
         meta=meta,
@@ -213,16 +213,16 @@ def emit_config_diagnostics_machine(
             "config_diagnostics": <ConfigDiagnosticsPayload>}.
 
     Args:
-        console: Console used to emit the already-serialized machine output.
+        console: Console used to emit the already-serialized machine-readable output.
         meta: The machine metadata payload.
         config: Immutable runtime configuration providing diagnostics.
-        fmt: Target machine format (JSON or NDJSON).
+        fmt: Target machine-readable format (JSON or NDJSON).
 
     Raises:
-        ValueError: if `fmt` is not a supported machine format.
+        ValueError: if `fmt` is not a supported machine-readable format.
     """
     if not is_machine_format(fmt):
-        raise ValueError(f"Unsupported machine output format: {fmt!r}")
+        raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
 
     serialized: str | Iterator[str] = serialize_config_diagnostics(
         meta=meta,
@@ -257,19 +257,19 @@ def emit_config_check_machine(
       4+) `diagnostic` (domain=`config`) one per diagnostic
 
     Args:
-        console: Console used to emit the already-serialized machine output.
+        console: Console used to emit the already-serialized machine-readable output.
         meta: The machine metadata payload.
         config: Immutable runtime configuration providing diagnostics.
         strict: Enforce strict config checking (fail on warning) if True,
             fail on error otherwise.
         ok: True if config checking passed, False otherwise.
-        fmt: Target machine format (JSON or NDJSON).
+        fmt: Target machine-readable format (JSON or NDJSON).
 
     Raises:
-        ValueError: if `fmt` is not a supported machine format.
+        ValueError: if `fmt` is not a supported machine-readable format.
     """
     if not is_machine_format(fmt):
-        raise ValueError(f"Unsupported machine output format: {fmt!r}")
+        raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
 
     serialized: str | Iterator[str] = serialize_config_check(
         meta=meta,
@@ -291,12 +291,12 @@ def emit_filetypes_machine(
     fmt: OutputFormat,
     show_details: bool,
 ) -> None:
-    """Emit `topmark registry filetypes` machine output.
+    """Emit `topmark registry filetypes` machine-readable output.
 
     Args:
-        console: Console used to emit the already-serialized machine output.
+        console: Console used to emit the already-serialized machine-readable output.
         meta: The machine metadata payload.
-        fmt: Target machine format (`json` or `ndjson`).
+        fmt: Target machine-readable format (`json` or `ndjson`).
         show_details: If True, include expanded identity, matching, binding,
             and policy fields.
     """
@@ -318,12 +318,12 @@ def emit_processors_machine(
     fmt: OutputFormat,
     show_details: bool,
 ) -> None:
-    """Emit `topmark registry processors` machine output.
+    """Emit `topmark registry processors` machine-readable output.
 
     Args:
-        console: Console used to emit the already-serialized machine output.
+        console: Console used to emit the already-serialized machine-readable output.
         meta: The machine metadata payload.
-        fmt: Target machine format (`json` or `ndjson`).
+        fmt: Target machine-readable format (`json` or `ndjson`).
         show_details: If True, include expanded identity, binding, and
             delimiter fields.
     """
@@ -345,12 +345,12 @@ def emit_bindings_machine(
     fmt: OutputFormat,
     show_details: bool,
 ) -> None:
-    """Emit `topmark registry bindings` machine output.
+    """Emit `topmark registry bindings` machine-readable output.
 
     Args:
-        console: Console used to emit the already-serialized machine output.
+        console: Console used to emit the already-serialized machine-readable output.
         meta: The machine metadata payload.
-        fmt: Target machine format (`json` or `ndjson`).
+        fmt: Target machine-readable format (`json` or `ndjson`).
         show_details: If True, include expanded file type and processor
             identity metadata for each binding plus structured auxiliary lists.
     """

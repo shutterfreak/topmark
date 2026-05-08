@@ -13,7 +13,7 @@
 This module contains Click-free helpers that render diagnostics as Markdown for
 human-facing output (`OutputFormat.MARKDOWN`). Markdown output is
 document-oriented and intentionally ignores TEXT-only verbosity controls.
-These helpers are intentionally kept independent from machine formats.
+These helpers are intentionally kept independent from machine-readable formats.
 """
 
 from __future__ import annotations

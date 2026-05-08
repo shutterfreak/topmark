@@ -8,9 +8,9 @@
 #
 # topmark:header:end
 
-r"""Pure JSON/NDJSON serialization utilities for machine output.
+r"""Pure JSON/NDJSON serialization utilities for machine-readable output.
 
-This module converts *already-shaped* machine output objects (envelopes or NDJSON
+This module converts *already-shaped* machine-readable output objects (envelopes or NDJSON
 record mappings) into strings.
 
 It is intentionally:

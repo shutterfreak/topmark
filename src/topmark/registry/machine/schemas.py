@@ -85,10 +85,10 @@ class RegistryKind(str, Enum):
 
 
 class FileTypePolicyEntry(TypedDict):
-    """Structured file type policy entry for machine output.
+    """Structured file type policy entry for machine-readable output.
 
-    This mirrors the public API policy shape and keeps machine output stable and
-    self-describing.
+    This mirrors the public API policy shape and keeps machine-readable output
+    stable and self-describing.
     """
 
     supports_shebang: bool

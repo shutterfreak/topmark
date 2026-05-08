@@ -20,7 +20,7 @@ The issue model is intentionally narrow for phase 1 of the TOML schema
 refactor:
     - it captures unknown sections and keys,
     - it distinguishes invalid table shapes,
-    - it preserves section/key/path metadata for later machine output.
+    - it preserves section/key/path metadata for later machine-readable output.
 """
 
 from __future__ import annotations

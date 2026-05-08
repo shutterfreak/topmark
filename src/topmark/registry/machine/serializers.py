@@ -8,7 +8,7 @@
 #
 # topmark:header:end
 
-"""Pure serializers for registry machine output.
+"""Pure serializers for registry machine-readable output.
 
 This module converts *shaped* registry machine-output objects into serialized
 wire representations.
@@ -56,7 +56,7 @@ def serialize_filetypes(
     meta: MetaPayload,
     show_details: bool,
 ) -> str | Iterator[str]:
-    """Serialize machine output for `topmark registry filetypes`.
+    """Serialize machine-readable output for `topmark registry filetypes`.
 
     Args:
         fmt: Target output format (JSON or NDJSON).
@@ -82,7 +82,7 @@ def serialize_filetypes(
             show_details=show_details,
         )
 
-    raise ValueError(f"Unsupported machine output format: {fmt!r}")
+    raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
 
 
 def serialize_filetypes_json(
@@ -90,7 +90,7 @@ def serialize_filetypes_json(
     meta: MetaPayload,
     show_details: bool,
 ) -> str | Iterator[str]:
-    """Serialize machine output for `topmark registry filetypes`.
+    """Serialize machine-readable output for `topmark registry filetypes`.
 
     Args:
         meta: Machine metadata payload.
@@ -115,7 +115,7 @@ def serialize_filetypes_ndjson(
     meta: MetaPayload,
     show_details: bool,
 ) -> Iterator[str]:
-    """Serialize machine output for `topmark registry filetypes`.
+    """Serialize machine-readable output for `topmark registry filetypes`.
 
     Args:
         meta: Machine metadata payload.
@@ -140,7 +140,7 @@ def serialize_processors(
     meta: MetaPayload,
     show_details: bool,
 ) -> str | Iterator[str]:
-    """Serialize machine output for `topmark registry processors`.
+    """Serialize machine-readable output for `topmark registry processors`.
 
     Args:
         fmt: Target output format (JSON or NDJSON).
@@ -166,7 +166,7 @@ def serialize_processors(
             show_details=show_details,
         )
 
-    raise ValueError(f"Unsupported machine output format: {fmt!r}")
+    raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
 
 
 def serialize_processors_json(
@@ -174,7 +174,7 @@ def serialize_processors_json(
     meta: MetaPayload,
     show_details: bool,
 ) -> str:
-    """Serialize machine output for `topmark registry processors`.
+    """Serialize machine-readable output for `topmark registry processors`.
 
     Args:
         meta: Machine metadata payload.
@@ -198,7 +198,7 @@ def serialize_processors_ndjson(
     meta: MetaPayload,
     show_details: bool,
 ) -> Iterator[str]:
-    """Serialize machine output for `topmark registry processors`.
+    """Serialize machine-readable output for `topmark registry processors`.
 
     Args:
         meta: Machine metadata payload.
@@ -223,7 +223,7 @@ def serialize_bindings(
     meta: MetaPayload,
     show_details: bool,
 ) -> str | Iterator[str]:
-    """Serialize machine output for `topmark registry bindings`.
+    """Serialize machine-readable output for `topmark registry bindings`.
 
     Args:
         fmt: Target output format (JSON or NDJSON).
@@ -249,7 +249,7 @@ def serialize_bindings(
             show_details=show_details,
         )
 
-    raise ValueError(f"Unsupported machine output format: {fmt!r}")
+    raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
 
 
 def serialize_bindings_json(
@@ -257,7 +257,7 @@ def serialize_bindings_json(
     meta: MetaPayload,
     show_details: bool,
 ) -> str:
-    """Serialize machine output for `topmark registry bindings`.
+    """Serialize machine-readable output for `topmark registry bindings`.
 
     Args:
         meta: Machine metadata payload.
@@ -281,7 +281,7 @@ def serialize_bindings_ndjson(
     meta: MetaPayload,
     show_details: bool,
 ) -> Iterator[str]:
-    """Serialize machine output for `topmark registry bindings`.
+    """Serialize machine-readable output for `topmark registry bindings`.
 
     Args:
         meta: Machine metadata payload.

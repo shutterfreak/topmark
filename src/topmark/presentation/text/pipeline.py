@@ -15,7 +15,7 @@ such as `topmark check` and `topmark strip`.
 
 TEXT output is console-oriented: it may use `verbosity_level` for progressive
 disclosure, `styled` for ANSI-capable semantic styling, and compact hints that
-refer to `-v` / `-vv`. Markdown and machine output are rendered by separate
+refer to `-v` / `-vv`. Markdown and machine-readable output are rendered by separate
 presentation and machine-output layers.
 
 Notes:
@@ -23,7 +23,7 @@ Notes:
       [`topmark.cli.presentation`][topmark.cli.presentation].
     - Markdown pipeline output is implemented in
       [`topmark.presentation.markdown.pipeline`][topmark.presentation.markdown.pipeline].
-    - Machine output is handled via domain machine serializers.
+    - Machine-readable output is handled via domain machine serializers.
 """
 
 from __future__ import annotations

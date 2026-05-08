@@ -11,7 +11,7 @@
 """Typed payload schemas for machine-readable diagnostics.
 
 This module defines small, JSON-friendly dataclasses used by multiple TopMark
-domains to represent diagnostics in machine output. These classes belong to the
+domains to represent diagnostics in machine-readable output. These classes belong to the
 payload layer (schemas → payloads → shapes → serializers):
 
 - `MachineDiagnosticEntry` represents a single diagnostic (level + message).
@@ -108,7 +108,7 @@ class MachineDiagnosticEntry:
 
 @dataclass(slots=True)
 class MachineDiagnosticCounts:
-    """Aggregated per-level counts for machine output.
+    """Aggregated per-level counts for machine-readable output.
 
     Attributes:
         info: Count of info-level diagnostics.

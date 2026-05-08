@@ -10,7 +10,7 @@
 
 """Processor for files with HTML/XML-style block comments (<!-- ... -->).
 
-This processor supports files using `<!-- ... -->`-style comments, such as MarkDown.
+This processor supports files using `<!-- ... -->`-style comments, such as Markdown.
 It delegates header processing to the core pipeline dispatcher.
 """
 

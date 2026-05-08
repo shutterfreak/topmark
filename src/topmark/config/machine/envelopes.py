@@ -8,7 +8,7 @@
 #
 # topmark:header:end
 
-"""Envelope builders for config-related machine output.
+"""Envelope builders for config-related machine-readable output.
 
 Envelopes are small, JSON-friendly Python mappings that follow TopMark's machine
 output conventions:
@@ -142,7 +142,7 @@ def build_config_diagnostics_json_envelope(
 
     Args:
         config: Immutable runtime configuration providing staged validation
-            logs that are flattened for machine output.
+            logs that are flattened for machine-readable output.
         meta: Machine-output metadata (tool/version).
 
     Returns:

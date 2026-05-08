@@ -8,7 +8,7 @@
 #
 # topmark:header:end
 
-"""Stable schema enums for version-related machine output.
+"""Stable schema enums for version-related machine-readable output.
 
 This module contains the version-domain keys and NDJSON kinds used by the
 version machine-output package. Shared envelope keys remain in

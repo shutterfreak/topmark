@@ -8,10 +8,10 @@
 #
 # topmark:header:end
 
-"""Payload builders for pipeline-related machine output.
+"""Payload builders for pipeline-related machine-readable output.
 
 This module contains **pure** helpers that build the *payload fragments* used by
-pipeline machine outputs for `check`, `strip`, and `probe`.
+pipeline machine-readable output for `check`, `strip`, and `probe`.
 
 Scope:
 
@@ -168,7 +168,7 @@ def build_probe_result_payload(
 def iter_probe_results_payload_items(
     results: list[ProcessingContext],
 ) -> Iterator[dict[str, object]]:
-    """Yield per-path resolution probe payloads for machine output.
+    """Yield per-path resolution probe payloads for machine-readable output.
 
     Args:
         results: Ordered list of processing contexts. The list may contain normal
@@ -185,7 +185,7 @@ def iter_probe_results_payload_items(
 def iter_processing_results_payload_items(
     results: list[ProcessingContext],
 ) -> Iterator[dict[str, object]]:
-    """Yield per-file processing result objects for machine output (detail mode).
+    """Yield per-file processing result objects for machine-readable output (detail mode).
 
     Each yielded mapping corresponds to one processed file and is produced by
     [`ProcessingContext.to_dict()`][topmark.pipeline.context.model.ProcessingContext.to_dict].

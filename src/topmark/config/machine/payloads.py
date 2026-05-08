@@ -11,7 +11,7 @@
 """Machine-output payload builders for TopMark config commands.
 
 This module contains *pure* helpers that build strongly-typed payload objects
-(dataclasses) for config-related machine output.
+(dataclasses) for config-related machine-readable output.
 
 Responsibilities:
   - Convert `Config` / TOML-derived structures into JSON-friendly values.
@@ -98,7 +98,7 @@ def build_config_payload(config: Config) -> ConfigPayload:
 def build_config_diagnostics_payload(config: Config) -> ConfigDiagnosticsPayload:
     """Build a JSON-friendly diagnostics payload for a given Config.
 
-    Staged config-validation logs are flattened here so machine output keeps
+    Staged config-validation logs are flattened here so machine-readable output keeps
     exposing the current compatibility diagnostics view.
 
     Args:

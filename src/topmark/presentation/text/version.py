@@ -13,7 +13,7 @@
 These helpers only render the content, they do not write to the console.
 
 Notes:
-    Machine formats (JSON/NDJSON) are handled via the version machine serializers
+    Machine-readable formats (JSON/NDJSON) are handled via the version machine serializers
     and the generic CLI machine emitter.
 """
 

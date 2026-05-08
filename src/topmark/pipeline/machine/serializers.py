@@ -8,7 +8,7 @@
 #
 # topmark:header:end
 
-"""Pure JSON/NDJSON serializers for TopMark processing and probe machine output.
+"""Pure JSON/NDJSON serializers for TopMark processing and probe machine-readable output.
 
 This module is intentionally console- and Click-free: it takes already-shaped
 processing/probe envelopes or record streams and produces serialized strings
@@ -53,7 +53,7 @@ def serialize_probe_results(
     results: list[ProcessingContext],
     fmt: OutputFormat,
 ) -> str | Iterator[str]:
-    """Serialize resolution probe results in a machine format.
+    """Serialize resolution probe results in a machine-readable format.
 
     Probe results may include normal file-backed probe contexts and synthetic
     contexts for explicit inputs filtered during discovery before file-type
@@ -69,7 +69,7 @@ def serialize_probe_results(
         Serialized JSON string or iterator of NDJSON strings.
 
     Raises:
-        ValueError: If `fmt` is not a supported machine format.
+        ValueError: If `fmt` is not a supported machine-readable format.
     """
     if fmt == OutputFormat.JSON:
         envelope: dict[str, object] = build_probe_results_json_envelope(
@@ -87,7 +87,7 @@ def serialize_probe_results(
         )
         return iter_ndjson_strings(records)
 
-    raise ValueError(f"Unsupported machine output format: {fmt!r}")
+    raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
 
 
 def serialize_processing_results(
@@ -98,7 +98,7 @@ def serialize_processing_results(
     fmt: OutputFormat,
     summary_mode: bool,
 ) -> str | Iterator[str]:
-    """Serialize processing results for `check` / `strip` in a machine format.
+    """Serialize processing results for `check` / `strip` in a machine-readable format.
 
     Args:
         meta: Shared machine-output metadata payload.
@@ -114,7 +114,7 @@ def serialize_processing_results(
             whether a final newline is printed.
 
     Raises:
-        ValueError: If `fmt` is not a supported machine format.
+        ValueError: If `fmt` is not a supported machine-readable format.
     """
     if fmt == OutputFormat.JSON:
         return serialize_processing_results_json(
@@ -133,7 +133,7 @@ def serialize_processing_results(
         )
 
     # Defensive guard
-    raise ValueError(f"Unsupported machine output format: {fmt!r}")
+    raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
 
 
 def serialize_processing_results_json(
@@ -143,7 +143,7 @@ def serialize_processing_results_json(
     results: list[ProcessingContext],
     summary_mode: bool,
 ) -> str:
-    """Serialize processing results for `check` / `strip` in a machine format.
+    """Serialize processing results for `check` / `strip` in a machine-readable format.
 
     Args:
         meta: Shared machine-output metadata payload.
@@ -170,7 +170,7 @@ def serialize_processing_results_ndjson(
     results: list[ProcessingContext],
     summary_mode: bool,
 ) -> Iterator[str]:
-    """Serialize processing results for `check` / `strip` in a machine format.
+    """Serialize processing results for `check` / `strip` in a machine-readable format.
 
     Args:
         meta: Shared machine-output metadata payload.

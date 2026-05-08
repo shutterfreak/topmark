@@ -16,7 +16,7 @@ in the human-facing per-file listing.
 Notes:
     - `--summary` remains "summary only" and bypasses per-file listing.
     - Verbosity controls detail density; report scope controls inclusion.
-    - Machine output remains schema-driven and should typically use the full
+    - Machine-readable output remains schema-driven and should typically use the full
       unfiltered results list.
 """
 

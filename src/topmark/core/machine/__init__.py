@@ -10,7 +10,7 @@
 
 r"""Core machine-output infrastructure.
 
-This package implements TopMark’s canonical JSON/NDJSON machine formats.
+This package implements TopMark’s canonical JSON/NDJSON machine-readable formats.
 
 Separation of concerns (naming + placement):
 

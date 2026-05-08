@@ -19,7 +19,7 @@ Design:
     - Frozen snapshots (e.g. `Config`) store diagnostics as an immutable
       `FrozenDiagnosticLog`.
 
-Machine output:
+Machine-readable output:
     Machine-readable JSON/NDJSON representations live under
     [`topmark.diagnostic.machine`][topmark.diagnostic.machine]
     and are reused by multiple domains (config, pipeline, registry, etc.).
