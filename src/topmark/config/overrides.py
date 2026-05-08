@@ -40,6 +40,7 @@ from typing import TYPE_CHECKING
 from topmark.config.paths import extend_pattern_sources
 from topmark.config.paths import pattern_source_from_cwd
 from topmark.config.policy import MutablePolicy
+from topmark.config.resolution.synthetic import SyntheticConfigSource
 from topmark.config.types import PatternGroup
 from topmark.constants import CLI_OVERRIDE_STR
 from topmark.core.logging import get_logger
@@ -89,7 +90,7 @@ class ConfigOverrides:
     [`ConfigOverrides`][topmark.config.overrides.ConfigOverrides] directly.
 
     Attributes:
-        config_origin: provenance marker or path
+        config_origin: Real config path or synthetic config source marker used for provenance.
         config_base: real filesystem base for relative patterns and sources
         strict: Config-loading strictness override.
             This remains config-like override intent and is separate from
@@ -119,7 +120,7 @@ class ConfigOverrides:
     """
 
     # Config-related options
-    config_origin: Path | str = CLI_OVERRIDE_STR
+    config_origin: Path | SyntheticConfigSource = SyntheticConfigSource(CLI_OVERRIDE_STR)
     config_base: Path = field(default_factory=lambda: Path.cwd().resolve())
     strict: bool | None = None
 

@@ -497,11 +497,19 @@ TOPMARK_TOML_SCHEMA: Final[TomlSchema] = TomlSchema(
         ),
         TomlSection.FORMATTING: TomlSchemaSection(
             name=TomlSection.FORMATTING,
-            allowed_keys=frozenset({Toml.KEY_ALIGN_FIELDS}),
+            allowed_keys=frozenset(
+                {
+                    Toml.KEY_ALIGN_FIELDS,
+                }
+            ),
         ),
         TomlSection.WRITER: TomlSchemaSection(
             name=TomlSection.WRITER,
-            allowed_keys=frozenset({Toml.KEY_STRATEGY}),
+            allowed_keys=frozenset(
+                {
+                    Toml.KEY_STRATEGY,
+                }
+            ),
         ),
         TomlSection.POLICY: TomlSchemaSection(
             name=TomlSection.POLICY,

@@ -50,12 +50,14 @@ if TYPE_CHECKING:
     from topmark.diagnostic.machine.schemas import MachineDiagnosticCounts
     from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.toml.machine.schemas import TomlProvenancePayload
+    from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
 
 # -- JSON shapes --
 def build_config_json_envelope(
     *,
     config: Config,
+    resolved_toml: ResolvedTopmarkTomlSources,
     meta: MetaPayload,
     cfg_provenance_payload: TomlProvenancePayload | None = None,
 ) -> dict[str, object]:
@@ -72,6 +74,8 @@ def build_config_json_envelope(
 
     Args:
         config: Immutable runtime configuration to serialize.
+        resolved_toml: Resolved TOML sources used to build the optional layered
+            provenance export.
         meta: Machine-output metadata (tool/version).
         cfg_provenance_payload: Optional machine-readable layered config provenance
             payload to include before the final flattened config payload.
@@ -79,7 +83,10 @@ def build_config_json_envelope(
     Returns:
         A JSON-envelope mapping (not yet serialized).
     """
-    payload: ConfigPayload = build_config_payload(config)
+    payload: ConfigPayload = build_config_payload(
+        config,
+        resolved_toml=resolved_toml,
+    )
     if cfg_provenance_payload is None:
         return build_json_envelope(meta=meta, config=payload)
 
@@ -93,6 +100,7 @@ def build_config_json_envelope(
 def iter_config_ndjson_records(
     *,
     config: Config,
+    resolved_toml: ResolvedTopmarkTomlSources,
     meta: MetaPayload,
     cfg_provenance_payload: TomlProvenancePayload | None = None,
 ) -> Iterator[dict[str, object]]:
@@ -107,6 +115,8 @@ def iter_config_ndjson_records(
 
     Args:
         config: Immutable runtime configuration to serialize.
+        resolved_toml: Resolved TOML sources used to build the optional layered
+            provenance export.
         meta: Machine-output metadata (tool/version).
         cfg_provenance_payload: Optional machine-readable layered config provenance
             payload to emit before the final flattened config record.
@@ -122,7 +132,11 @@ def iter_config_ndjson_records(
             payload=cfg_provenance_payload,
         )
 
-    payload: ConfigPayload = build_config_payload(config)
+    payload: ConfigPayload = build_config_payload(
+        config,
+        resolved_toml=resolved_toml,
+    )
+
     yield build_ndjson_record(
         kind=ConfigKind.CONFIG,
         meta=meta,
@@ -199,6 +213,7 @@ def iter_config_diagnostics_ndjson_records(
 def build_config_check_json_envelope(
     *,
     config: Config,
+    resolved_toml: ResolvedTopmarkTomlSources,
     meta: MetaPayload,
     strict: bool,
     ok: bool,
@@ -210,6 +225,8 @@ def build_config_check_json_envelope(
 
     Args:
         config: Immutable runtime configuration.
+        resolved_toml: Resolved TOML sources used to build the optional layered
+            provenance export.
         meta: Machine-output metadata (tool/version).
         strict: Whether warnings are treated as failures.
         ok: Whether the config passed validation.
@@ -218,7 +235,10 @@ def build_config_check_json_envelope(
         A JSON-envelope mapping (not yet serialized).
     """
     cfg_diag_payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
-    cfg_payload: ConfigPayload = build_config_payload(config)
+    cfg_payload: ConfigPayload = build_config_payload(
+        config,
+        resolved_toml=resolved_toml,
+    )
 
     config_check_summary: ConfigCheckSummary = build_config_check_summary_payload(
         config=config,
@@ -239,6 +259,7 @@ def build_config_check_json_envelope(
 def iter_config_prefix_ndjson_records(
     *,
     config: Config,
+    resolved_toml: ResolvedTopmarkTomlSources,
     meta: MetaPayload,
     cfg_payload: ConfigPayload | None = None,
     cfg_diag_payload: ConfigDiagnosticsPayload | None = None,
@@ -254,6 +275,8 @@ def iter_config_prefix_ndjson_records(
 
     Args:
         config: Effective configuration instance.
+        resolved_toml: Resolved TOML sources used to build the optional layered
+            provenance export.
         meta: Shared metadata payload.
         cfg_payload: Optional precomputed `ConfigPayload`.
         cfg_diag_payload: Optional precomputed `ConfigDiagnosticsPayload`.
@@ -262,7 +285,12 @@ def iter_config_prefix_ndjson_records(
         NDJSON records for `config` and counts-only `config_diagnostics`.
     """
     payload: ConfigPayload = (
-        cfg_payload if cfg_payload is not None else build_config_payload(config)
+        cfg_payload
+        if cfg_payload is not None
+        else build_config_payload(
+            config,
+            resolved_toml=resolved_toml,
+        )
     )
     diag_payload: ConfigDiagnosticsPayload = (
         cfg_diag_payload
@@ -289,6 +317,7 @@ def iter_config_prefix_ndjson_records(
 def iter_config_check_ndjson_records(
     *,
     config: Config,
+    resolved_toml: ResolvedTopmarkTomlSources,
     meta: MetaPayload,
     strict: bool,
     ok: bool,
@@ -304,6 +333,8 @@ def iter_config_check_ndjson_records(
 
     Args:
         config: Immutable runtime configuration.
+        resolved_toml: Resolved TOML sources used to build the optional layered
+            provenance export.
         meta: Machine-output metadata (tool/version).
         strict: Whether warnings are treated as failures.
         ok: Whether the config passed validation.
@@ -323,9 +354,13 @@ def iter_config_check_ndjson_records(
         ok=ok,
     )
 
-    cfg_payload: ConfigPayload = build_config_payload(config)
+    cfg_payload: ConfigPayload = build_config_payload(
+        config,
+        resolved_toml=resolved_toml,
+    )
     yield from iter_config_prefix_ndjson_records(
         config=config,
+        resolved_toml=resolved_toml,
         cfg_payload=cfg_payload,
         meta=meta,
         cfg_diag_payload=cfg_diag_payload,

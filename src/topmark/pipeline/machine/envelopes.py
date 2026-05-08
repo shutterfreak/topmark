@@ -66,19 +66,23 @@ if TYPE_CHECKING:
     from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.machine.schemas import OutcomeSummaryRow
+    from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
 
 def build_probe_results_json_envelope(
     *,
-    config: Config,
     meta: MetaPayload,
+    config: Config,
+    resolved_toml: ResolvedTopmarkTomlSources,
     results: list[ProcessingContext],
 ) -> dict[str, object]:
     """Build the JSON envelope for resolution probe results.
 
     Args:
-        config: The effective `Config` instance used for the run.
         meta: Shared metadata payload (`tool`/`version`).
+        config: The effective `Config` instance used for the run.
+        resolved_toml: Resolved TOML sources used to build the optional layered
+            provenance export.
         results: Ordered list of probe contexts. The list may include normal
             file-backed probe contexts and synthetic contexts for explicit inputs
             filtered before file-type probing.
@@ -87,7 +91,10 @@ def build_probe_results_json_envelope(
         JSON-serializable envelope mapping (not yet serialized to JSON).
     """
     # Prepare config payloads once, including flattened compatibility diagnostics.
-    cfg_payload: ConfigPayload = build_config_payload(config)
+    cfg_payload: ConfigPayload = build_config_payload(
+        config,
+        resolved_toml=resolved_toml,
+    )
     cfg_diag_payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
     # Probe payloads include both normal file-type probe results and synthetic
     # filtered results for explicit inputs removed during discovery.
@@ -105,15 +112,17 @@ def build_probe_results_json_envelope(
 
 def iter_probe_results_ndjson_records(
     *,
-    config: Config,
     meta: MetaPayload,
+    config: Config,
+    resolved_toml: ResolvedTopmarkTomlSources,
     results: list[ProcessingContext],
 ) -> Iterator[dict[str, object]]:
     """Yield NDJSON records for resolution probe results.
 
     Args:
-        config: Effective configuration instance.
         meta: Shared metadata payload (`tool`/`version`).
+        config: Effective configuration instance.
+        resolved_toml: ResolvedTopmarkTomlSources,
         results: Ordered list of probe contexts. The list may include normal
             file-backed probe contexts and synthetic contexts for explicit inputs
             filtered before file-type probing.
@@ -123,12 +132,16 @@ def iter_probe_results_ndjson_records(
         and one `kind="probe"` record per probe context.
     """
     # Prepare config payloads once, including flattened compatibility diagnostics.
-    cfg_payload: ConfigPayload = build_config_payload(config)
+    cfg_payload: ConfigPayload = build_config_payload(
+        config,
+        resolved_toml=resolved_toml,
+    )
     cfg_diag_payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
 
     yield from iter_config_prefix_ndjson_records(
-        config=config,
         meta=meta,
+        config=config,
+        resolved_toml=resolved_toml,
         cfg_payload=cfg_payload,
         cfg_diag_payload=cfg_diag_payload,
     )
@@ -151,8 +164,9 @@ def iter_probe_results_ndjson_records(
 
 def build_processing_results_json_envelope(
     *,
-    config: Config,
     meta: MetaPayload,
+    config: Config,
+    resolved_toml: ResolvedTopmarkTomlSources,
     results: list[ProcessingContext],
     summary_mode: bool,
 ) -> dict[str, object]:
@@ -184,8 +198,9 @@ def build_processing_results_json_envelope(
     ```
 
     Args:
-        config: The effective `Config` instance used for the run.
         meta: Shared metadata payload (`tool`/`version`).
+        config: The effective `Config` instance used for the run.
+        resolved_toml: ResolvedTopmarkTomlSources,
         results: Ordered list of per-file processing contexts.
         summary_mode: If True, emit flat summary rows instead of per-file results.
 
@@ -193,7 +208,10 @@ def build_processing_results_json_envelope(
         A JSON-serializable envelope mapping (not yet serialized to a JSON string).
     """
     # Prepare config payloads once, including flattened compatibility diagnostics.
-    cfg_payload: ConfigPayload = build_config_payload(config)
+    cfg_payload: ConfigPayload = build_config_payload(
+        config,
+        resolved_toml=resolved_toml,
+    )
     cfg_diag_payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
 
     # Envelope: meta + config + config diagnostics + results
@@ -228,8 +246,9 @@ def build_processing_results_json_envelope(
 
 def iter_processing_results_ndjson_records(
     *,
-    config: Config,
     meta: MetaPayload,
+    config: Config,
+    resolved_toml: ResolvedTopmarkTomlSources,
     results: list[ProcessingContext],
     summary_mode: bool,
 ) -> Iterator[dict[str, object]]:
@@ -245,8 +264,9 @@ def iter_processing_results_ndjson_records(
     - detail mode: one `kind="result"` record per processed file
 
     Args:
-        config: Effective configuration instance.
         meta: Shared metadata payload (`tool`/`version`).
+        config: Effective configuration instance.
+        resolved_toml: ResolvedTopmarkTomlSources,
         results: Ordered list of per-file processing contexts.
         summary_mode: Whether to emit summary records instead of per-file result records.
 
@@ -255,12 +275,16 @@ def iter_processing_results_ndjson_records(
         includes `kind` and `meta` and follows the project’s NDJSON envelope contract.
     """
     # Prepare config payloads once, including flattened compatibility diagnostics.
-    cfg_payload: ConfigPayload = build_config_payload(config)
+    cfg_payload: ConfigPayload = build_config_payload(
+        config,
+        resolved_toml=resolved_toml,
+    )
     cfg_diag_payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
 
     yield from iter_config_prefix_ndjson_records(
-        config=config,
         meta=meta,
+        config=config,
+        resolved_toml=resolved_toml,
         cfg_payload=cfg_payload,
         cfg_diag_payload=cfg_diag_payload,
     )

@@ -29,6 +29,7 @@ from tests.helpers.diagnostics import assert_diagnostic_level_stats
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.policy import HeaderMutationMode
 from topmark.config.policy import MutablePolicy
+from topmark.config.resolution.synthetic import DEFAULT_CONFIG_SOURCE
 from topmark.config.types import PatternGroup
 from topmark.config.types import PatternSource
 
@@ -41,11 +42,16 @@ if TYPE_CHECKING:
 def test_merge_invariant_provenance_and_diagnostics_accumulate() -> None:
     """config_files and merged-config diagnostics should always accumulate."""
     base: MutableConfig = mutable_config_from_defaults()
-    base.config_files = ["<defaults>", "root/topmark.toml"]
+    base.config_files = [
+        DEFAULT_CONFIG_SOURCE,
+        Path("root/topmark.toml"),
+    ]
     base.validation_logs.merged_config.add_warning("base warning")
 
     override: MutableConfig = mutable_config_from_defaults()
-    override.config_files = ["child/topmark.toml"]
+    override.config_files = [
+        Path("child/topmark.toml"),
+    ]
     override.validation_logs.merged_config.add_warning("override warning")
 
     merged: MutableConfig = base.merge_with(override)
@@ -56,7 +62,11 @@ def test_merge_invariant_provenance_and_diagnostics_accumulate() -> None:
         expected_warning=2,
     )
 
-    assert merged.config_files == ["<defaults>", "root/topmark.toml", "child/topmark.toml"]
+    assert merged.config_files == [
+        DEFAULT_CONFIG_SOURCE,
+        Path("root/topmark.toml"),
+        Path("child/topmark.toml"),
+    ]
     assert [item.message for item in flattened_diagnostics.items] == [
         "base warning",
         "override warning",

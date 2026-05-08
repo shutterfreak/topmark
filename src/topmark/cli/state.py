@@ -27,6 +27,8 @@ from topmark.core.typing_guards import is_mapping
 if TYPE_CHECKING:
     import click
 
+    from topmark.runtime.writer_options import WriterOptions
+
 
 @dataclass(kw_only=True, slots=True)
 class TopmarkCliState:
@@ -35,8 +37,8 @@ class TopmarkCliState:
     This state object holds the strongly typed human-output/runtime fields that
     are shared across multiple CLI helpers during a single command invocation.
 
-    The ``extras`` mapping is a temporary compatibility bucket for a small
-    number of remaining unmigrated CLI options.
+    The ``extras`` mapping stores a small number of internal invocation-scoped
+    bridge values shared across CLI helpers.
     """
 
     verbosity: int = 0
@@ -49,145 +51,8 @@ class TopmarkCliState:
     prune_pipeline_views: bool = True
     apply_changes: bool = False
     write_mode: str | None = None
+    resolved_writer_options: WriterOptions | None = None
     policy: MutablePolicy = field(default_factory=MutablePolicy)
-
-    # Temporary compatibility bucket for the remaining unmigrated CLI options.
-    extras: dict[str, object] = field(default_factory=lambda: {})
-
-    def get(self, key: str, default: object | None = None) -> object | None:
-        """Return a typed field or compatibility extra by key.
-
-        Args:
-            key: The stored state key.
-            default: Fallback value when the key is absent.
-
-        Returns:
-            The stored value for ``key`` if present, otherwise ``default``.
-        """
-        if key == "verbosity":
-            return self.verbosity
-        if key == "quiet":
-            return self.quiet
-        if key == "output_format":
-            return self.output_format
-        if key == "color_mode":
-            return self.color_mode
-        if key == "color_enabled":
-            return self.color_enabled
-        if key == "console":
-            return self.console
-        if key == "log_level":
-            return self.log_level
-        if key == "prune_pipeline_views":
-            return self.prune_pipeline_views
-        if key == "apply_changes":
-            return self.apply_changes
-        if key == "write_mode":
-            return self.write_mode
-        if key == "policy":
-            return self.policy
-        return self.extras.get(key, default)
-
-    def __getitem__(self, key: str) -> object:
-        """Return a stored field or compatibility extra.
-
-        Args:
-            key: The stored state key.
-
-        Returns:
-            The stored value for ``key``.
-
-        Raises:
-            KeyError: If ``key`` is not present.
-        """
-        sentinel: object = object()
-        value: object | None = self.get(key, sentinel)
-        if value is sentinel:
-            raise KeyError(key)
-        return value
-
-    def __setitem__(self, key: str, value: object) -> None:
-        """Store a typed field or compatibility extra.
-
-        Args:
-            key: The stored state key.
-            value: Value to store for ``key``.
-
-        Raises:
-            TypeError: If a typed field receives an incompatible value.
-        """
-        if key == "verbosity":
-            if not isinstance(value, int):
-                raise TypeError(f"{key} must be an int")
-            self.verbosity = value
-            return
-        if key == "quiet":
-            if not isinstance(value, bool):
-                raise TypeError(f"{key} must be a bool")
-            self.quiet = value
-            return
-        if key == "output_format":
-            if not isinstance(value, OutputFormat):
-                raise TypeError(f"{key} must be an OutputFormat")
-            self.output_format = value
-            return
-        if key == "color_mode":
-            if not isinstance(value, ColorMode):
-                raise TypeError(f"{key} must be a ColorMode")
-            self.color_mode = value
-            return
-        if key == "color_enabled":
-            if not isinstance(value, bool):
-                raise TypeError(f"{key} must be a bool")
-            self.color_enabled = value
-            return
-        if key == "console":
-            if not is_console_protocol(value):
-                raise TypeError(f"{key} must be a ConsoleProtocol")
-            self.console = value  # Protocol checked at call sites.
-            return
-        if key == "log_level":
-            if value is not None and not isinstance(value, int):
-                raise TypeError(f"{key} must be an int | None")
-            self.log_level = value
-            return
-        if key == "prune_pipeline_views":
-            if not isinstance(value, bool):
-                raise TypeError(f"{key} must be a bool")
-            self.prune_pipeline_views = value
-            return
-        if key == "apply_changes":
-            if not isinstance(value, bool):
-                raise TypeError(f"{key} must be a bool")
-            self.apply_changes = value
-            return
-        if key == "write_mode":
-            if value is not None and not isinstance(value, str):
-                raise TypeError(f"{key} must be a str | None")
-            self.write_mode = value
-            return
-        if key == "policy":
-            if not isinstance(value, MutablePolicy):
-                raise TypeError(f"{key} must be a MutablePolicy")
-            self.policy = value
-            return
-        self.extras[key] = value
-
-    def setdefault(self, key: str, default: object) -> object:
-        """Return the stored value for ``key`` or store ``default``.
-
-        Args:
-            key: The stored state key.
-            default: Value to store if ``key`` is absent.
-
-        Returns:
-            The existing or newly stored value.
-        """
-        existing: object | None = self.get(key)
-        if existing is not None:
-            return existing
-        self[key] = default
-        return default
 
 
 def bootstrap_cli_state(ctx: click.Context) -> TopmarkCliState:
@@ -201,8 +66,7 @@ def bootstrap_cli_state(ctx: click.Context) -> TopmarkCliState:
         - If ``ctx.obj`` already contains ``TopmarkCliState``, return it.
         - If ``ctx.obj`` is ``None``, create a fresh default state.
         - If ``ctx.obj`` is a mapping, lift known typed fields into
-          ``TopmarkCliState`` and preserve any remaining string-keyed values in
-          ``extras``.
+          ``TopmarkCliState`` and preserve additional string-keyed values in ``extras``.
         - Otherwise, raise ``TypeError``.
 
     Args:
@@ -233,7 +97,7 @@ def bootstrap_cli_state(ctx: click.Context) -> TopmarkCliState:
             apply_changes=False,
             write_mode=None,
             policy=MutablePolicy(),
-            extras={},
+            resolved_writer_options=None,
         )
         ctx.obj = state
         return state
@@ -290,7 +154,6 @@ def bootstrap_cli_state(ctx: click.Context) -> TopmarkCliState:
         apply_changes=apply_changes_obj,
         write_mode=write_mode_obj,
         policy=MutablePolicy(),
-        extras=extras,
     )
     ctx.obj = state
     return state

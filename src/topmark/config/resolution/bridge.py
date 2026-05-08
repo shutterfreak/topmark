@@ -22,20 +22,34 @@ config/preflight validation sees the full config-loading diagnostic picture.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
+
+import tomlkit
 
 from topmark.config.resolution.layers import ConfigLayer
 from topmark.config.resolution.layers import build_config_layers_from_resolved_toml_sources
 from topmark.config.resolution.merge import merge_layers_globally
+from topmark.config.resolution.synthetic import BUILTIN_DEFAULTS_TOML_SOURCE
+from topmark.config.resolution.synthetic import BUNDLED_TEMPLATE_TOML_SOURCE
+from topmark.config.resolution.synthetic import SyntheticConfigSource
+from topmark.core.typing_guards import as_object_dict
+from topmark.diagnostic.model import DiagnosticLog
+from topmark.toml.defaults import build_default_topmark_toml_table
+from topmark.toml.defaults import load_default_topmark_template_toml_text
+from topmark.toml.loaders import load_topmark_toml_table
+from topmark.toml.resolution import ResolvedTopmarkTomlSource
+from topmark.toml.resolution import ResolvedTopmarkTomlSources
 from topmark.toml.resolution import resolve_topmark_toml_sources
+from topmark.toml.typing_guards import toml_table_from_mapping
 from topmark.toml.validation import add_toml_issues
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from pathlib import Path
 
     from topmark.config.model import MutableConfig
-    from topmark.toml.resolution import ResolvedTopmarkTomlSources
+    from topmark.toml.parse import ParsedTopmarkToml
+    from topmark.toml.types import TomlTable
 
 
 # ---- Public TOML -> config bridge helpers ----
@@ -123,3 +137,92 @@ def resolve_toml_sources_and_build_config_draft(
         no_config=no_config,
     )
     return resolved, build_config_draft_from_resolved_toml_sources(resolved)
+
+
+def _resolve_single_builtin_toml_table_and_build_config_draft(
+    *,
+    table: TomlTable,
+    source_path: Path | SyntheticConfigSource,
+    load_diagnostics: DiagnosticLog | None = None,
+) -> tuple[ResolvedTopmarkTomlSources, MutableConfig]:
+    """Resolve one bundled TOML table and build its config draft.
+
+    Args:
+        table: Parsed TopMark TOML table to load, validate, and resolve.
+        source_path: Real path or synthetic source marker used in diagnostics
+            and provenance to identify the bundled TOML source.
+        load_diagnostics: Optional diagnostics collected while loading the
+            bundled resource before TOML table parsing.
+
+    Returns:
+        Tuple containing the resolved TOML-side state and merged mutable config
+        draft built from the bundled source.
+    """
+    diagnostics: DiagnosticLog = load_diagnostics or DiagnosticLog()
+    parsed: ParsedTopmarkToml | None = load_topmark_toml_table(
+        table,
+        source_path=source_path if isinstance(source_path, Path) else None,
+        from_pyproject=False,
+    )
+
+    source = ResolvedTopmarkTomlSource(
+        path=source_path,
+        parsed=parsed,
+        kind="explicit",
+        validation_issues=parsed.validation_issues if parsed is not None else (),
+        load_diagnostics=diagnostics.freeze(),
+    )
+    resolved = ResolvedTopmarkTomlSources(
+        sources=[source],
+        writer_options=parsed.writer_options if parsed is not None else None,
+        strict=parsed.config_loading_options.strict if parsed is not None else None,
+    )
+    return resolved, build_config_draft_from_resolved_toml_sources(resolved)
+
+
+def resolve_default_template_and_build_config_draft() -> tuple[
+    ResolvedTopmarkTomlSources,
+    MutableConfig,
+]:
+    """Resolve the bundled init template and build its config draft.
+
+    This helper is intended for machine-readable `topmark config init` output.
+    Human output should continue to render the bundled template text directly
+    so comments and formatting are preserved.
+
+    Returns:
+        Tuple containing the resolved TOML-side state and mutable config draft
+        built from the bundled init template.
+    """
+    diagnostics: DiagnosticLog = DiagnosticLog()
+    text, err = load_default_topmark_template_toml_text()
+    if err is not None:
+        diagnostics.add_error(str(err))
+
+    doc: tomlkit.TOMLDocument = tomlkit.parse(text)
+    table: TomlTable = toml_table_from_mapping(as_object_dict(doc.unwrap()))
+    return _resolve_single_builtin_toml_table_and_build_config_draft(
+        table=table,
+        source_path=BUNDLED_TEMPLATE_TOML_SOURCE,
+        load_diagnostics=diagnostics,
+    )
+
+
+def resolve_default_table_and_build_config_draft() -> tuple[
+    ResolvedTopmarkTomlSources,
+    MutableConfig,
+]:
+    """Resolve the built-in default TOML table and build its config draft.
+
+    This helper is intended for machine-readable `topmark config defaults`
+    output. It uses the code-defined canonical default TOML table rather than
+    the annotated starter template used by `topmark config init`.
+
+    Returns:
+        Tuple containing the resolved TOML-side state and mutable config draft
+        built from the canonical default TOML table.
+    """
+    return _resolve_single_builtin_toml_table_and_build_config_draft(
+        table=build_default_topmark_toml_table(),
+        source_path=BUILTIN_DEFAULTS_TOML_SOURCE,
+    )

@@ -46,6 +46,7 @@ from topmark.config.policy import HeaderMutationMode
 from topmark.config.resolution.bridge import resolve_toml_sources_and_build_config_draft
 from topmark.config.resolution.layers import build_config_layers_from_resolved_toml_sources
 from topmark.config.resolution.merge import build_effective_config_for_path
+from topmark.config.resolution.synthetic import SyntheticConfigSource
 from topmark.constants import TOPMARK_VERSION
 from topmark.core.errors import InvalidPolicyError
 from topmark.core.logging import get_logger
@@ -279,7 +280,7 @@ def _build_resolved_config_for_run(
     # part of the resolved config because it directly affects which files are
     # selected for pipeline execution.
     overrides = ConfigOverrides(
-        config_origin="<API overrides>",
+        config_origin=SyntheticConfigSource("<API overrides>"),
         config_base=Path.cwd().resolve(),
         files=paths_str,
         include_file_types=list(include_file_types) if include_file_types is not None else None,
@@ -410,7 +411,7 @@ def _apply_runtime_policy_overlays(
     draft = apply_config_overrides(
         draft,
         ConfigOverrides(
-            config_origin="<API policy overrides>",
+            config_origin=SyntheticConfigSource("<API policy overrides>"),
             config_base=Path.cwd().resolve(),
             policy=policy_overrides,
             policy_by_type=policy_by_type_overrides,

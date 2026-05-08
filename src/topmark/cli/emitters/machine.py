@@ -71,6 +71,7 @@ def emit_probe_results_machine(
     console: ConsoleProtocol,
     meta: MetaPayload,
     config: Config,
+    resolved_toml: ResolvedTopmarkTomlSources,
     results: list[ProcessingContext],
     fmt: OutputFormat,
 ) -> None:
@@ -80,6 +81,7 @@ def emit_probe_results_machine(
         console: Console used to emit the already-serialized machine-readable output.
         meta: The machine metadata payload.
         config: The Config instance.
+        resolved_toml: ResolvedTopmarkTomlSources,
         results: Ordered list of per-file probe results.
         fmt: Output format (`OutputFormat.JSON` or `OutputFormat.NDJSON`).
 
@@ -92,6 +94,7 @@ def emit_probe_results_machine(
     serialized: str | Iterator[str] = serialize_probe_results(
         meta=meta,
         config=config,
+        resolved_toml=resolved_toml,
         results=results,
         fmt=fmt,
     )
@@ -105,6 +108,7 @@ def emit_processing_results_machine(
     console: ConsoleProtocol,
     meta: MetaPayload,
     config: Config,
+    resolved_toml: ResolvedTopmarkTomlSources,
     results: list[ProcessingContext],
     fmt: OutputFormat,
     summary_mode: bool,
@@ -115,6 +119,7 @@ def emit_processing_results_machine(
         console: Console used to emit the already-serialized machine-readable output.
         meta: The machine metadata payload.
         config: The Config instance.
+        resolved_toml: ResolvedTopmarkTomlSources,
         results: Ordered list of per-file processing results.
         fmt: Output format (`OutputFormat.JSON` or `OutputFormat.NDJSON`).
         summary_mode: If True, emit aggregated counts instead of per-file entries.
@@ -128,6 +133,7 @@ def emit_processing_results_machine(
     serialized: str | Iterator[str] = serialize_processing_results(
         meta=meta,
         config=config,
+        resolved_toml=resolved_toml,
         results=results,
         fmt=fmt,
         summary_mode=summary_mode,
@@ -143,8 +149,8 @@ def emit_config_machine(
     console: ConsoleProtocol,
     meta: MetaPayload,
     config: Config,
+    resolved_toml: ResolvedTopmarkTomlSources,
     fmt: OutputFormat,
-    resolved_toml: ResolvedTopmarkTomlSources | None = None,
     show_config_layers: bool = False,
 ) -> None:
     """Emit the effective Config snapshot in a machine-readable format.
@@ -168,9 +174,9 @@ def emit_config_machine(
         console: Console used to emit the already-serialized machine-readable output.
         meta: The machine metadata payload.
         config: Immutable runtime configuration to serialize.
-        fmt: Target machine-readable format (JSON or NDJSON).
         resolved_toml: Resolved TOML sources used to build optional machine-readable
             config provenance.
+        fmt: Target machine-readable format (JSON or NDJSON).
         show_config_layers: If `True`, include layered config provenance in the
             machine-readable output.
 
@@ -240,6 +246,7 @@ def emit_config_check_machine(
     console: ConsoleProtocol,
     meta: MetaPayload,
     config: Config,
+    resolved_toml: ResolvedTopmarkTomlSources,
     strict: bool,
     ok: bool,
     fmt: OutputFormat,
@@ -260,6 +267,8 @@ def emit_config_check_machine(
         console: Console used to emit the already-serialized machine-readable output.
         meta: The machine metadata payload.
         config: Immutable runtime configuration providing diagnostics.
+        resolved_toml: Resolved TOML sources used to include TOML-authored
+            writer options in the config payload.
         strict: Enforce strict config checking (fail on warning) if True,
             fail on error otherwise.
         ok: True if config checking passed, False otherwise.
@@ -274,6 +283,7 @@ def emit_config_check_machine(
     serialized: str | Iterator[str] = serialize_config_check(
         meta=meta,
         config=config,
+        resolved_toml=resolved_toml,
         strict=strict,
         ok=ok,
         fmt=fmt,

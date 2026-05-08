@@ -74,6 +74,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
     from pathlib import Path
 
+    from topmark.config.resolution.synthetic import SyntheticConfigSource
     from topmark.config.types import PatternGroup
     from topmark.config.types import PatternSource
     from topmark.config.validation import FrozenValidationLogs
@@ -146,7 +147,7 @@ class Config:
     policy_by_type: Mapping[str, Policy]  # e.g., {"topmark:python": Policy(...)}
 
     # Provenance
-    config_files: tuple[Path | str, ...]
+    config_files: tuple[Path | SyntheticConfigSource, ...]
 
     # Header configuration
     header_fields: tuple[str, ...]
@@ -323,7 +324,7 @@ class MutableConfig:
     policy_by_type: dict[str, MutablePolicy] = field(default_factory=lambda: {})
 
     # Provenance
-    config_files: list[Path | str] = field(default_factory=lambda: [])
+    config_files: list[Path | SyntheticConfigSource] = field(default_factory=lambda: [])
 
     # Header configuration
     header_fields: list[str] = field(default_factory=lambda: [])
@@ -520,7 +521,10 @@ class MutableConfig:
         # Provenance accumulates across layers. Validation diagnostics also
         # accumulate, but remain separated by stage so flattened diagnostics can
         # be derived later at reporting or output boundaries.
-        merged_config_files: list[Path | str] = [*self.config_files, *other.config_files]
+        merged_config_files: list[Path | SyntheticConfigSource] = [
+            *self.config_files,
+            *other.config_files,
+        ]
 
         merged_validation_logs: ValidationLogs = self.validation_logs.merge_with(
             other.validation_logs

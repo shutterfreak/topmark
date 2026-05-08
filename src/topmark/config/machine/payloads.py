@@ -41,27 +41,45 @@ from topmark.diagnostic.machine.schemas import MachineDiagnosticCounts
 from topmark.diagnostic.machine.schemas import MachineDiagnosticEntry
 from topmark.diagnostic.model import DiagnosticStats
 from topmark.diagnostic.model import compute_diagnostic_stats
+from topmark.runtime.writer_options import writer_options_to_toml_table
 from topmark.toml.keys import Toml
 
 if TYPE_CHECKING:
     from topmark.config.model import Config
     from topmark.diagnostic.model import FrozenDiagnosticLog
+    from topmark.toml.resolution import ResolvedTopmarkTomlSources
     from topmark.toml.types import TomlTable
 
 
-def build_config_payload(config: Config) -> ConfigPayload:
-    """Build a JSON-friendly payload capturing a Config snapshot.
+def build_config_payload(
+    config: Config,
+    *,
+    resolved_toml: ResolvedTopmarkTomlSources,
+) -> ConfigPayload:
+    """Build a JSON-friendly payload capturing an effective config snapshot.
+
+    `Config` contains the layered TopMark configuration. Resolved writer
+    options are runtime-facing but may originate from TOML, so callers can pass
+    them here to include the effective `[writer]` section in machine-readable
+    config output.
 
     Args:
         config: Immutable layered configuration instance.
+        resolved_toml: Resolved TOML sources used to build the optional layered
+            provenance export.
 
     Returns:
-        ConfigPayload: JSON-serializable representation of the layered Config,
-            without diagnostics.
+        ConfigPayload: JSON-serializable representation of the effective
+            configuration snapshot, without diagnostics.
     """
     base: TomlTable = config_to_topmark_toml_table(
         config,
         include_files=False,
+    )
+    base.update(
+        writer_options_to_toml_table(
+            resolved_toml.writer_options,
+        )
     )
 
     normalized_base: object = normalize_payload(base)
@@ -91,6 +109,10 @@ def build_config_payload(config: Config) -> ConfigPayload:
         policy_by_type=get_object_dict_value(
             normalized_dict,
             Toml.SECTION_POLICY_BY_TYPE,
+        ),
+        writer=get_object_dict_value(
+            normalized_dict,
+            Toml.SECTION_WRITER,
         ),
     )
 

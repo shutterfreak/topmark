@@ -25,6 +25,7 @@ from typing import Final
 
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.io.deserializers import mutable_config_from_layered_toml_table
+from topmark.config.resolution.synthetic import SyntheticConfigSource
 from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
@@ -61,8 +62,8 @@ class ConfigLayer:
     """Immutable config provenance layer used during layered resolution.
 
     Attributes:
-        origin: Provenance origin for the layer, usually a config file path or
-            a synthetic marker such as `DEFAULT_LAYER_ORIGIN`.
+        origin: Provenance origin for the layer, either a real config file path
+            or a typed synthetic source marker such as built-in defaults.
         scope_root: Optional scope root for applicability checks. File-backed
             layers usually use the containing config directory; synthetic
             layers such as defaults, CLI, or API layers typically use `None`.
@@ -71,7 +72,7 @@ class ConfigLayer:
         config: Parsed layered config fragment contributed by this layer only.
     """
 
-    origin: Path | str
+    origin: Path | SyntheticConfigSource
     scope_root: Path | None
     precedence: int
     kind: ConfigLayerKind
@@ -83,7 +84,7 @@ class ConfigLayer:
 
 def _make_config_layer(
     *,
-    origin: Path | str,
+    origin: Path | SyntheticConfigSource,
     kind: ConfigLayerKind,
     precedence: int,
     config: MutableConfig,
@@ -91,10 +92,14 @@ def _make_config_layer(
 ) -> ConfigLayer:
     """Return a normalized config provenance layer.
 
-    Path origins and scope roots are resolved eagerly so downstream precedence
-    and applicability logic can compare normalized filesystem locations.
+    Real filesystem origins and scope roots are resolved eagerly so downstream
+    precedence and applicability logic can compare normalized filesystem
+    locations. Synthetic origins are preserved as typed provenance markers and
+    never normalized as paths.
     """
-    normalized_origin: Path | str = origin.resolve() if isinstance(origin, Path) else origin
+    normalized_origin: Path | SyntheticConfigSource = (
+        origin.resolve() if isinstance(origin, Path) else origin
+    )
     normalized_scope_root: Path | None = scope_root
 
     if normalized_scope_root is None and isinstance(normalized_origin, Path):
@@ -114,7 +119,7 @@ def _make_config_layer(
 def _make_default_config_layer() -> ConfigLayer:
     """Return the built-in defaults as the first config provenance layer."""
     return _make_config_layer(
-        origin=DEFAULT_LAYER_ORIGIN,
+        origin=SyntheticConfigSource(DEFAULT_LAYER_ORIGIN),
         kind=ConfigLayerKind.DEFAULT,
         precedence=DEFAULT_LAYER_PRECEDENCE,
         scope_root=None,
@@ -123,7 +128,7 @@ def _make_default_config_layer() -> ConfigLayer:
 
 
 def _make_layer_from_layered_toml_table(
-    path: Path,
+    path: Path | SyntheticConfigSource,
     *,
     data: TomlTable,
     kind: ConfigLayerKind,
@@ -132,8 +137,8 @@ def _make_layer_from_layered_toml_table(
     """Build one config provenance layer from a layered TOML fragment.
 
     Args:
-        path: Source TOML file path used for provenance and path-relative
-            normalization.
+        path: Real source TOML file path or synthetic source marker used for
+            provenance and, for real paths, path-relative normalization.
         data: Layered TOML fragment extracted from one split-parsed TopMark
             TOML source and already validated at the TOML layer.
         kind: Provenance kind for the resulting config layer.
@@ -143,17 +148,29 @@ def _make_layer_from_layered_toml_table(
         Normalized config provenance layer built from the layered TOML
         fragment.
     """
-    resolved_path: Path = path.resolve()
-    config: MutableConfig = mutable_config_from_layered_toml_table(
-        data,
-        config_file=resolved_path,
-    )
+    if isinstance(path, Path):
+        resolved_path: Path = path.resolve()
+        config: MutableConfig = mutable_config_from_layered_toml_table(
+            data,
+            config_file=resolved_path,
+        )
+        return _make_config_layer(
+            origin=resolved_path,
+            kind=kind,
+            precedence=precedence,
+            scope_root=resolved_path.parent,
+            config=config,
+        )
 
+    config = mutable_config_from_layered_toml_table(
+        data,
+        config_file=path,
+    )
     return _make_config_layer(
-        origin=resolved_path,
+        origin=path,
         kind=kind,
         precedence=precedence,
-        scope_root=resolved_path.parent,
+        scope_root=None,
         config=config,
     )
 

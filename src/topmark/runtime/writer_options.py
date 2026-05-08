@@ -23,10 +23,13 @@ from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from topmark.config.types import OutputTarget
+from topmark.toml.keys import Toml
+from topmark.toml.utils import insert_if_present
 
 if TYPE_CHECKING:
     from topmark.config.types import FileWriteStrategy
     from topmark.runtime.model import RunOptions
+    from topmark.toml.types import TomlTable
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,3 +85,36 @@ def apply_resolved_writer_options(
         output_target=OutputTarget.FILE,
         file_write_strategy=writer_options.file_write_strategy,
     )
+
+
+def writer_options_to_toml_table(
+    writer_options: WriterOptions | None,
+) -> TomlTable:
+    """Convert resolved writer options into a TopMark TOML table fragment.
+
+    Args:
+        writer_options: The writer options to render as TOML.
+
+    Returns:
+        A TopMark TOML table fragment containing a `[writer]` section when
+        writer options are present, or an empty table otherwise.
+
+    Note:
+        Export-only convenience for configuration dumps, documentation, and
+        snapshots. Pairs with
+        [topmark.config.io.serializers.config_to_topmark_toml_table][].
+    """
+    if writer_options is None:
+        return {}
+
+    writer_tbl: TomlTable = {}
+    insert_if_present(
+        writer_tbl,
+        Toml.KEY_STRATEGY,
+        writer_options.file_write_strategy,
+    )
+
+    if not writer_tbl:
+        return {}
+
+    return {Toml.SECTION_WRITER: writer_tbl}

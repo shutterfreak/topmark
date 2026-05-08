@@ -52,6 +52,7 @@ from topmark.toml.loaders import load_topmark_toml_source
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
+    from topmark.config.resolution.synthetic import SyntheticConfigSource
     from topmark.core.logging import TopmarkLogger
     from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.runtime.writer_options import WriterOptions
@@ -95,7 +96,7 @@ class ResolvedTopmarkTomlSource:
             contains a synthetic error for unreadable or invalid TOML files.
     """
 
-    path: Path
+    path: Path | SyntheticConfigSource
     parsed: ParsedTopmarkToml | None
     kind: TomlSourceKind
     validation_issues: tuple[TomlValidationIssue, ...]

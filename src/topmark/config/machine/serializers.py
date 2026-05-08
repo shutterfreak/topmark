@@ -78,7 +78,7 @@ def serialize_config(
     meta: MetaPayload,
     config: Config,
     fmt: OutputFormat,
-    resolved_toml: ResolvedTopmarkTomlSources | None = None,
+    resolved_toml: ResolvedTopmarkTomlSources,
     show_config_layers: bool = False,
 ) -> str | Iterator[str]:
     """Serialize the effective Config snapshot in a machine-readable format.
@@ -107,14 +107,10 @@ def serialize_config(
         `fmt` (no trailing newline).
 
     Raises:
-        ValueError: If `fmt` is not a supported machine-readable format, or
-            if `show_config_layers` is `True` but `resolved_toml` is `None`.
+        ValueError: If `fmt` is not a supported machine-readable format.
     """
     if not is_machine_format(fmt):
         raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
-
-    if show_config_layers and resolved_toml is None:
-        raise ValueError("resolved_toml is required when show_config_layers=True")
 
     if fmt == OutputFormat.JSON:
         return serialize_config_json(
@@ -140,7 +136,7 @@ def serialize_config_json(
     *,
     meta: MetaPayload,
     config: Config,
-    resolved_toml: ResolvedTopmarkTomlSources | None = None,
+    resolved_toml: ResolvedTopmarkTomlSources,
     show_config_layers: bool = False,
 ) -> str:
     """Serialize the effective Config snapshot as a JSON envelope.
@@ -173,6 +169,7 @@ def serialize_config_json(
 
     envelope: dict[str, object] = build_config_json_envelope(
         config=config,
+        resolved_toml=resolved_toml,
         meta=meta,
         cfg_provenance_payload=cfg_provenance_payload,
     )
@@ -183,7 +180,7 @@ def serialize_config_ndjson(
     *,
     meta: MetaPayload,
     config: Config,
-    resolved_toml: ResolvedTopmarkTomlSources | None = None,
+    resolved_toml: ResolvedTopmarkTomlSources,
     show_config_layers: bool = False,
 ) -> Iterator[str]:
     """Serialize the effective Config snapshot as NDJSON.
@@ -217,6 +214,7 @@ def serialize_config_ndjson(
 
     iter_records: Iterator[dict[str, object]] = iter_config_ndjson_records(
         config=config,
+        resolved_toml=resolved_toml,
         meta=meta,
         cfg_provenance_payload=cfg_provenance_payload,
     )
@@ -318,6 +316,7 @@ def serialize_config_check(
     *,
     meta: MetaPayload,
     config: Config,
+    resolved_toml: ResolvedTopmarkTomlSources,
     strict: bool,
     ok: bool,
     fmt: OutputFormat,
@@ -336,6 +335,8 @@ def serialize_config_check(
     Args:
         meta: Machine-output metadata (tool/version).
         config: Immutable runtime configuration providing diagnostics.
+        resolved_toml: Resolved TOML sources used to include TOML-authored
+            writer options in the config payload.
         strict: If True, warnings are treated as failures.
         ok: Whether the config passed validation
         fmt: Target machine-readable format (JSON or NDJSON).
@@ -353,6 +354,7 @@ def serialize_config_check(
         return serialize_config_check_json(
             meta=meta,
             config=config,
+            resolved_toml=resolved_toml,
             strict=strict,
             ok=ok,
         )
@@ -361,6 +363,7 @@ def serialize_config_check(
         return serialize_config_check_ndjson(
             meta=meta,
             config=config,
+            resolved_toml=resolved_toml,
             strict=strict,
             ok=ok,
         )
@@ -373,6 +376,7 @@ def serialize_config_check_json(
     *,
     meta: MetaPayload,
     config: Config,
+    resolved_toml: ResolvedTopmarkTomlSources,
     strict: bool,
     ok: bool,
 ) -> str:
@@ -384,6 +388,8 @@ def serialize_config_check_json(
     Args:
         meta: Machine-output metadata (tool/version).
         config: Immutable runtime configuration providing diagnostics.
+        resolved_toml: Resolved TOML sources used to include TOML-authored
+            writer options in the config payload.
         strict: If True, warnings are treated as failures.
         ok: Whether the config passed validation
 
@@ -393,6 +399,7 @@ def serialize_config_check_json(
     envelope: dict[str, object] = build_config_check_json_envelope(
         meta=meta,
         config=config,
+        resolved_toml=resolved_toml,
         strict=strict,
         ok=ok,
     )
@@ -403,6 +410,7 @@ def serialize_config_check_ndjson(
     *,
     meta: MetaPayload,
     config: Config,
+    resolved_toml: ResolvedTopmarkTomlSources,
     strict: bool,
     ok: bool,
 ) -> Iterator[str]:
@@ -417,6 +425,8 @@ def serialize_config_check_ndjson(
     Args:
         meta: Machine-output metadata (tool/version).
         config: Immutable runtime configuration providing diagnostics.
+        resolved_toml: Resolved TOML sources used to include TOML-authored
+            writer options in the config payload.
         strict: If True, warnings are treated as failures.
         ok: Whether the config passed validation
 
@@ -426,6 +436,7 @@ def serialize_config_check_ndjson(
     iter_records: Iterator[dict[str, object]] = iter_config_check_ndjson_records(
         meta=meta,
         config=config,
+        resolved_toml=resolved_toml,
         strict=strict,
         ok=ok,
     )

@@ -399,6 +399,7 @@ version_file = "src/topmark/_version.py"
 
   [tool.topmark.formatting]
   align_fields = true
+
   [tool.topmark.header]
   fields      = ["project", "file", "file_relpath", "license", "copyright"]
   relative_to = "."

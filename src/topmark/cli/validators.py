@@ -218,6 +218,36 @@ def validate_machine_format_forbids_flags(
 # ---- Reusable non-raising policy helpers ----
 
 
+def _set_cleared_cli_state_value(
+    state: TopmarkCliState,
+    *,
+    obj_key: str,
+    cleared_value: object,
+) -> None:
+    """Set a supported cleared value on typed CLI state.
+
+    This helper intentionally supports only the state fields cleared by
+    `warn_and_clear()`. Add new branches here when another validator needs to
+    clear a typed `TopmarkCliState` field after warning the user.
+
+    Args:
+        state: Shared typed CLI state to mutate.
+        obj_key: Supported `ArgKey.*` string identifying the field to clear.
+        cleared_value: Replacement value to assign to the typed state field.
+
+    Raises:
+        KeyError: If `obj_key` is not supported by this helper.
+        TypeError: If `cleared_value` has the wrong type for the target field.
+    """
+    if obj_key == ArgKey.COLOR_ENABLED:
+        if not isinstance(cleared_value, bool):
+            raise TypeError("color_enabled must be cleared with a bool value")
+        state.color_enabled = cleared_value
+        return
+
+    raise KeyError(f"Unsupported TopmarkCliState clear key: {obj_key}")
+
+
 def warn_and_clear(
     ctx: click.Context,
     *,
@@ -225,23 +255,34 @@ def warn_and_clear(
     obj_key: str,
     cleared_value: _T,
 ) -> _T:
-    """Emit a warning and clear a value on the typed CLI state.
+    """Warn the user and clear one supported field on typed CLI state.
 
-    This helper is useful for apply_* policies that need to warn the user about ignored
-    options and then clear the corresponding values on `TopmarkCliState`.
+    This helper is for non-fatal output-policy adjustments where TopMark warns
+    that an explicitly requested option is ignored and then updates the
+    corresponding `TopmarkCliState` field. It is intentionally not a generic
+    state setter; supported fields are defined by `_set_cleared_cli_state_value()`.
 
     Args:
         ctx: Active Click context carrying the shared typed CLI state.
-        message: Warning message to emit.
-        obj_key: The typed-state key to clear (`ArgKey.*` string value).
-        cleared_value: The value to set for the cleared key.
+        message: Warning message to emit before mutating state.
+        obj_key: Supported `ArgKey.*` string identifying the field to clear.
+        cleared_value: Replacement value to assign to the typed state field.
 
     Returns:
-        The cleared value.
-    """
+        The same `cleared_value` passed by the caller, for use in normalization
+        expressions.
+
+    Raises:
+        KeyError: If `obj_key` is not supported for clearing.
+        TypeError: If `cleared_value` has the wrong type for the target field.
+    """  # noqa: DOC502 - documents propagated exceptions from _set_cleared_cli_state_value()
     state: TopmarkCliState = get_cli_state(ctx)
     state.console.warn(message)
-    state[obj_key] = cleared_value
+    _set_cleared_cli_state_value(
+        state,
+        obj_key=obj_key,
+        cleared_value=cleared_value,
+    )
     return cleared_value
 
 

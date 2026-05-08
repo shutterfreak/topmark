@@ -24,7 +24,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
-from typing import Final
 
 import click
 
@@ -64,8 +63,6 @@ if TYPE_CHECKING:
     from topmark.core.exit_codes import ExitCode
     from topmark.core.formats import OutputFormat
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
-
-_CTX_RESOLVED_WRITER_OPTIONS_KEY: Final[str] = "_topmark_resolved_writer_options"
 
 
 def init_common_state(
@@ -225,7 +222,7 @@ def build_run_options(
     writer_options: WriterOptions | None = None
     if ctx is not None:
         state: TopmarkCliState = get_cli_state(ctx)
-        candidate: object | None = state.extras.get(_CTX_RESOLVED_WRITER_OPTIONS_KEY)
+        candidate: object | None = state.resolved_writer_options
         if isinstance(candidate, WriterOptions):
             writer_options = candidate
 
@@ -403,7 +400,7 @@ def build_resolved_toml_sources_and_config_for_plan(
     )
 
     state: TopmarkCliState = bootstrap_cli_state(ctx)
-    state.extras[_CTX_RESOLVED_WRITER_OPTIONS_KEY] = resolved_toml.writer_options
+    state.resolved_writer_options = resolved_toml.writer_options
 
     policy_overrides: PolicyOverrides = build_cli_policy_overrides(state)
     overrides: ConfigOverrides = ConfigOverrides(

@@ -66,6 +66,7 @@ from topmark.toml.typing_guards import toml_table_from_mapping
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
+    from topmark.config.resolution.synthetic import SyntheticConfigSource
     from topmark.core.logging import TopmarkLogger
     from topmark.diagnostic.model import DiagnosticLog
     from topmark.toml.types import TomlTable
@@ -98,7 +99,7 @@ class ExtractedLayeredTomlTables:
 
 def mutable_config_from_layered_toml_table(
     data: TomlTable,
-    config_file: Path | None = None,
+    config_file: Path | SyntheticConfigSource | None = None,
 ) -> MutableConfig:
     """Create a draft config from a layered TopMark TOML fragment.
 
@@ -127,7 +128,8 @@ def mutable_config_from_layered_toml_table(
 
     Args:
         data: Parsed layered TopMark TOML fragment.
-        config_file: Optional path to the source TOML file.
+        config_file: Optional real filesystem config path or synthetic config
+            source marker used for provenance.
 
     Returns:
         The resulting `MutableConfig` instance.
@@ -141,7 +143,7 @@ def mutable_config_from_layered_toml_table(
     merged_diagnostics: DiagnosticLog = draft.validation_logs.merged_config
 
     # Config file's directory for relative path resolution
-    cfg_dir: Path | None = config_file.parent.resolve() if config_file else None
+    cfg_dir: Path | None = config_file.parent.resolve() if isinstance(config_file, Path) else None
 
     # ------------------- Policy pre-validation helpers -------------------
     def _check_policy_value_shapes(
@@ -544,9 +546,10 @@ def mutable_config_from_layered_toml_table(
         This preserves provenance for diagnostics and later resolution
         stages.
         """
-        # ---- config_files: normalize to absolute paths if possible ----
-        config_files: tuple[list[Path]] = ([config_file] if config_file else [],)
-        draft.config_files = [str(p) for p in config_files[0]] if config_files[0] else []
+        # Preserve typed provenance values. Real paths remain `Path` objects and
+        # synthetic bundled/default sources remain `SyntheticConfigSource` objects;
+        # output serializers are responsible for rendering them as strings.
+        draft.config_files = [config_file] if config_file is not None else []
 
     toml_tables: ExtractedLayeredTomlTables = _extract_layered_toml_tables(layered_tbl)
 

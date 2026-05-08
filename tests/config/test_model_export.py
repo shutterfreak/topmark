@@ -23,6 +23,7 @@ import pytest
 
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.io.serializers import config_to_topmark_toml_table
+from topmark.config.resolution.synthetic import DEFAULT_CONFIG_SOURCE
 from topmark.core.keys import ArgKey
 from topmark.toml.keys import Toml
 from topmark.toml.render import render_toml_table
@@ -75,7 +76,9 @@ def test_config_to_toml_dict_origin_mode_preserves_pattern_group_and_source_tabl
     files_txt_path.write_text("src/a.py\n", encoding="utf-8")
 
     draft: MutableConfig = mutable_config_from_defaults()
-    draft.config_files = ["<defaults>"]
+    draft.config_files = [
+        DEFAULT_CONFIG_SOURCE,
+    ]
     draft.include_pattern_groups = [
         PatternGroup(patterns=("src/**/*.py",), base=proj),
     ]

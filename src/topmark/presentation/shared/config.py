@@ -40,6 +40,7 @@ from topmark.config.resolution.layers import build_config_layers_from_resolved_t
 from topmark.presentation.shared.diagnostic import HumanDiagnosticCounts
 from topmark.presentation.shared.diagnostic import HumanDiagnosticLine
 from topmark.presentation.shared.diagnostic import prepare_human_diagnostics
+from topmark.runtime.writer_options import writer_options_to_toml_table
 from topmark.toml.defaults import build_default_topmark_toml_table
 from topmark.toml.defaults import load_default_topmark_template_toml_text
 from topmark.toml.defaults import render_default_topmark_toml_text
@@ -55,6 +56,7 @@ if TYPE_CHECKING:
     from topmark.config.model import Config
     from topmark.config.resolution.layers import ConfigLayer
     from topmark.diagnostic.model import FrozenDiagnosticLog
+    from topmark.runtime.writer_options import WriterOptions
     from topmark.toml.parse import ParsedTopmarkToml
     from topmark.toml.resolution import ResolvedTopmarkTomlSource
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
@@ -237,9 +239,48 @@ def _stringify_config_files(config: Config) -> list[str]:
     return [str(p) for p in config.config_files]
 
 
+# --- TOML rendering helpers ---
+
+
+def render_effective_config_toml(
+    *,
+    config: Config,
+    writer_options: WriterOptions | None,
+    include_files: bool = False,
+) -> str:
+    """Render the effective configuration plus runtime writer options as TOML.
+
+    `Config` intentionally models the layered TopMark configuration, while
+    writer options are resolved from TOML into runtime-facing state outside the
+    frozen config model. Human-facing config reports still need to show the full
+    effective TOML surface authored by users, including the `[writer]` section.
+
+    Args:
+        config: Effective frozen configuration to serialize.
+        writer_options: Resolved runtime writer options to merge into the
+            exported TOML document, or `None` when no writer options were
+            configured.
+        include_files: Whether to include file-listing fields from `config` in
+            the rendered TOML document.
+
+    Returns:
+        Rendered TOML text containing the effective config-originating entries
+        and, when present, the resolved `[writer]` section.
+    """
+    merged_toml_table: TomlTable = config_to_topmark_toml_table(
+        config,
+        include_files=include_files,
+    )
+    merged_toml_table.update(
+        writer_options_to_toml_table(writer_options),
+    )
+    return render_toml_table(merged_toml_table)
+
+
 def build_config_check_human_report(
     *,
     config: Config,
+    resolved_sources: ResolvedTopmarkTomlSources,
     ok: bool,
     strict: bool,
     verbosity_level: int,
@@ -252,6 +293,7 @@ def build_config_check_human_report(
 
     Args:
         config: Effective frozen configuration.
+        resolved_sources: Resolved sources (includes runtime options such as write options).
         ok: Whether the configuration passed validation.
         strict: Whether strict checking was enabled.
         verbosity_level: Effective verbosity (used for gating heavy/verbose sections).
@@ -264,11 +306,10 @@ def build_config_check_human_report(
     """
     merged_toml: str | None = None
     if verbosity_level > 1:
-        merged_toml = render_toml_table(
-            config_to_topmark_toml_table(
-                config,
-                include_files=False,
-            )
+        merged_toml = render_effective_config_toml(
+            config=config,
+            writer_options=resolved_sources.writer_options,
+            include_files=False,
         )
 
     # Flatten staged validation logs here so human-facing reports keep the
@@ -433,11 +474,10 @@ def build_config_dump_human_report(
     # Build the optional inspection-oriented provenance document only when the
     # caller explicitly requests layered output.
     provenance_toml: str | None = None
-    merged_toml: str = render_toml_table(
-        config_to_topmark_toml_table(
-            config,
-            include_files=False,
-        )
+    merged_toml: str = render_effective_config_toml(
+        config=config,
+        writer_options=resolved_toml.writer_options,
+        include_files=False,
     )
     if show_config_layers:
         provenance_toml = _build_config_layers_provenance_toml(resolved_toml)

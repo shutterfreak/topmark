@@ -55,6 +55,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from topmark.config.model import Config
+    from topmark.config.resolution.synthetic import SyntheticConfigSource
     from topmark.config.types import GitIgnorePathSpec
     from topmark.config.types import PatternSource
     from topmark.core.logging import TopmarkLogger
@@ -534,7 +535,7 @@ def resolve_file_list_with_diagnostics(
 
     # Keep the original config-source identifiers so we can derive config-file
     # base directories for include/exclude pattern expansion.
-    config_files: tuple[Path | str, ...] = config.config_files
+    config_files: tuple[Path | SyntheticConfigSource, ...] = config.config_files
 
     include_file_types: frozenset[str] = frozenset(config.include_file_types)
     exclude_file_types: frozenset[str] = frozenset(config.exclude_file_types)

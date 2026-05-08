@@ -107,6 +107,7 @@ class ConfigPayload:
             applied after discovery.
         policy_by_type: Per-file-type resolved policy overrides
             (plain booleans), applied after discovery.
+        writer: Runtime writer options resolved from TOML, when configured.
     """
 
     # loosely mirrors to_toml_dict structure with JSON-friendly types
@@ -117,6 +118,9 @@ class ConfigPayload:
     policy: dict[str, object]
     policy_by_type: dict[str, object]
 
+    # Runtime settings
+    writer: dict[str, object]
+
     def to_dict(self) -> dict[str, object]:
         """Return a JSON-friendly dict of the `ConfigPayload` instance."""
         return {
@@ -126,6 +130,8 @@ class ConfigPayload:
             Toml.SECTION_FILES: self.files,
             Toml.SECTION_POLICY: self.policy,
             Toml.SECTION_POLICY_BY_TYPE: self.policy_by_type,
+            # Runtime settings
+            Toml.SECTION_WRITER: self.writer,
         }
 
 

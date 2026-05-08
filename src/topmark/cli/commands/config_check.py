@@ -175,7 +175,7 @@ def config_check_command(
     )
 
     # Build a merged draft config (we do not need an InputPlan since we're not processing files)
-    resolved, draft_config = resolve_toml_sources_and_build_config_draft(
+    resolved_toml, draft_config = resolve_toml_sources_and_build_config_draft(
         strict=strict,
         no_config=no_config,
         extra_config_files=[Path(p) for p in config_files],
@@ -188,7 +188,7 @@ def config_check_command(
     # Check config validity:
     config_valid: bool = is_config_valid(
         config,
-        resolved=resolved,
+        resolved=resolved_toml,
     )
 
     logger.trace("Config after merging CLI and discovered config: %s", draft_config)
@@ -202,7 +202,8 @@ def config_check_command(
             console=console,
             meta=meta,
             config=config,
-            strict=bool(resolved.strict),
+            resolved_toml=resolved_toml,
+            strict=bool(resolved_toml.strict),
             ok=config_valid,
             fmt=fmt,
         )
@@ -211,8 +212,9 @@ def config_check_command(
     # Human formats: prepare shared data once for TEXT/MARKDOWN emitters.
     report: ConfigCheckHumanReport = build_config_check_human_report(
         config=config,
+        resolved_sources=resolved_toml,
         ok=config_valid,
-        strict=bool(resolved.strict),
+        strict=bool(resolved_toml.strict),
         verbosity_level=verbosity_level,
         styled=enable_color,
     )

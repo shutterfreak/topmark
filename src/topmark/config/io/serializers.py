@@ -34,6 +34,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from topmark.config.resolution.synthetic import SyntheticConfigSource
 from topmark.core.errors import TomlRenderError
 from topmark.core.logging import get_logger
 from topmark.toml.enums import FilesSerializationMode
@@ -51,6 +52,23 @@ if TYPE_CHECKING:
     from topmark.toml.types import TomlValue
 
 logger: TopmarkLogger = get_logger(__name__)
+
+
+def _format_config_source_path(source: Path | SyntheticConfigSource) -> str:
+    """Format real and synthetic config source paths for TOML export.
+
+    Synthetic config sources use bracketed identifiers such as
+    `<built-in topmark defaults>`. These should remain stable identifiers in
+    exported output rather than being normalized relative to the current working
+    directory.
+
+    Args:
+        source: Real filesystem path or synthetic config source identifier.
+
+    Returns:
+        String representation suitable for exported config provenance.
+    """
+    return source.label if isinstance(source, SyntheticConfigSource) else str(source)
 
 
 def config_to_topmark_toml_table(
@@ -89,6 +107,9 @@ def config_to_topmark_toml_table(
         Pattern groups and pattern-source bases are serialized based on the value of
         `files_serialization_mode`. When set to `FilesSerializationMode.ORIGIN`, provenance-rich
         structures are emitted for serialization.
+
+        Writer options are serialized in
+        [topmark.runtime.writer_options.writer_options_to_toml_table][].
     """
     # Header fields to render in headers
     fields_tbl: TomlTable = dict(config.field_values)
@@ -126,7 +147,7 @@ def config_to_topmark_toml_table(
         Toml.KEY_INCLUDE_FILE_TYPES: include_file_types_sorted,
         Toml.KEY_EXCLUDE_FILE_TYPES: exclude_file_types_sorted,
         Toml.KEY_CONFIG_FILES: as_toml_string_list(
-            str(p) if isinstance(p, Path) else str(p) for p in config.config_files
+            _format_config_source_path(p) for p in config.config_files
         ),
     }
     insert_if_present(

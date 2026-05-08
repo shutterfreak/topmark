@@ -313,7 +313,7 @@ def probe_command(
         stdin_filename=stdin_filename,
     )
 
-    resolved, draft_config = build_resolved_toml_sources_and_config_for_plan(
+    resolved_toml, draft_config = build_resolved_toml_sources_and_config_for_plan(
         ctx=ctx,
         plan=plan,
         no_config=no_config,
@@ -358,7 +358,7 @@ def probe_command(
     try:
         ensure_config_valid(
             config,
-            resolved=resolved,
+            resolved=resolved_toml,
         )
     except ConfigValidationError as exc:
         console.error(f"Processing stopped: {exc}")
@@ -455,6 +455,7 @@ def probe_command(
             console=console,
             meta=meta,
             config=config,
+            resolved_toml=resolved_toml,
             results=results,
             fmt=fmt,
         )
