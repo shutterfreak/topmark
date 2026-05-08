@@ -463,8 +463,8 @@ snapshots, and downstream automation may need adjustment.
 - Machine output no longer implies process status: consumers must inspect the CLI exit code
   separately from JSON/NDJSON payloads.
 
-Result: machine formats are much more stable and structured, but downstream consumers that relied on
-older payload naming or outcome-keyed summaries must update.
+Result: machine-readable formats are much more stable and structured, but downstream consumers that
+relied on older payload naming or outcome-keyed summaries must update.
 
 ### Documentation / docs build behavior
 
@@ -774,8 +774,8 @@ ______________________________________________________________________
 ## 1.0 readiness checklist
 
 TopMark 1.0 follows a **contract-first** release strategy: all externally observable behavior (API
-surface, configuration semantics, machine formats, CLI behavior, and release workflow expectations)
-must be stable, documented, and well-tested.
+surface, configuration semantics, machine-readable formats, CLI behavior, and release workflow
+expectations) must be stable, documented, and well-tested.
 
 The large refactors are already complete. This checklist is therefore about **freeze readiness**:
 
@@ -844,7 +844,7 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] `-q` / `--quiet` treated as TEXT-only output suppression only where the command exposes a
     useful status, inspection, or mutation signal
   - [x] Markdown output ignores TEXT-only verbosity/quiet controls
-  - [x] machine formats ignore TEXT-only presentation controls
+  - [x] machine-readable formats ignore TEXT-only presentation controls
   - [x] pure informational content-producing commands (`version`, `config defaults`, `config init`,
     and registry commands) intentionally do not support `--quiet`
   - [x] final user-facing documentation reviewed and aligned

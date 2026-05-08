@@ -44,8 +44,8 @@ TopMark uses a layered architecture:
 {% include-markdown "\_snippets/config-strictness.md" %}
 
 Internally, configuration validation is represented as staged validation logs. A flattened
-compatibility view of diagnostics is derived only at reporting, exception, and machine-output
-boundaries.
+compatibility views of diagnostics are derived only during reporting, exception handling, and
+machine-readable output emission
 
 For 1.0, this boundary is intentional: staged validation remains primarily internal, while public
 reporting and CLI, API, and machine-readable output expose only the flattened compatibility

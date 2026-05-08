@@ -15,12 +15,14 @@ topmark:header:end
 **Purpose:** Show the built-in default TopMark TOML document.
 
 The `config defaults` subcommand (part of the TopMark [`config` Command Family](../config.md))
-prints TopMark’s **built-in defaults-derived** TOML representation. It uses a cleaned, comment-free
-TOML representation derived from the built-in defaults (no project files are discovered or merged).
+prints TopMark’s canonical built-in default TOML representation. It uses a cleaned, comment-free
+TOML document generated from the built-in defaults table (no project files are discovered or
+merged).
 
 Because the output is generated from TopMark's built-in defaults, it reflects only the built-in
-default layered config fragment. Source-local TOML sections such as `[config]` and `[writer]` are
-not resolved from project files here.
+default TOML surface. Source-local TOML sections such as `[config]` and runtime-facing sections such
+as `[writer]` are included when they are part of the canonical defaults, but no project, user, or
+explicitly supplied config files are discovered or merged.
 
 See also:
 
@@ -35,8 +37,9 @@ Output formats:
 
 - `text` / `markdown`: minimal, comment-free TOML. Markdown is document-oriented and ignores
   TEXT-only verbosity controls.
-- `json` / `ndjson`: a plain Config snapshot, with no diagnostics. Machine-readable formats ignore
-  TEXT-only verbosity controls.
+- `json` / `ndjson`: a machine-readable config snapshot derived from the canonical built-in defaults
+  table, including TOML-authored runtime sections such as `[writer]` when present. No diagnostics
+  are emitted. Machine-readable formats ignore TEXT-only verbosity controls.
 
 ______________________________________________________________________
 
@@ -73,8 +76,8 @@ ______________________________________________________________________
 - **Isolated**: ignores project/user config files and CLI overrides.
 - **File‑agnostic**: does not resolve or process any PATHS. Positional paths are rejected as invalid
   CLI usage. STDIN content mode (`-`) and file-list modes (such as `--files-from -`) do not apply.
-- **Reference**: useful for understanding the built-in default layered config fragment, header
-  layout, policy behavior, and TOML/config split.
+- **Reference**: useful for understanding the canonical built-in defaults, header layout, policy
+  behavior, and TOML/config/runtime split.
 
 > **How config is resolved**
 >
@@ -166,9 +169,10 @@ configuration freeze.
 Notes:
 
 - `config defaults` is **file-agnostic** and emits a configuration snapshot derived only from the
-  built-in defaults (no discovery and no merge with project/user config).
-- The output corresponds to the built-in layered config defaults, not to a whole-source TOML
-  document after discovery/resolution.
+  canonical built-in defaults table (no discovery and no merge with project/user config).
+- The machine-readable snapshot includes TOML-authored runtime sections such as `[writer]` when they
+  are present in the canonical defaults, even though those sections are resolved outside the layered
+  `Config` model at runtime.
 - No diagnostics are emitted for this command.
 
 ### JSON schema
@@ -178,7 +182,7 @@ A single JSON document is emitted:
 ```jsonc
 {
   "meta": { /* MetaPayload */ },
-  "config": { /* ConfigPayload (defaults-derived frozen snapshot) */ }
+  "config": { /* ConfigPayload (canonical defaults snapshot) */ }
 }
 ```
 
@@ -188,7 +192,7 @@ NDJSON is a stream where each line is a JSON object. Every record includes `kind
 
 Stream:
 
-1. `kind="config"` (defaults-derived frozen config snapshot)
+1. `kind="config"` (canonical defaults snapshot)
 
 Example:
 

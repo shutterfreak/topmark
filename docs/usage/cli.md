@@ -216,7 +216,7 @@ topmark config dump
 
 #### [`config defaults`](commands/config/defaults.md)
 
-Display the built-in default configuration.
+Display the canonical built-in default TOML representation.
 
 ```bash
 topmark config defaults
@@ -224,7 +224,7 @@ topmark config defaults
 
 #### [`config init`](commands/config/init.md)
 
-Generate a starter configuration template.
+Render the bundled starter configuration template.
 
 ```bash
 topmark config init

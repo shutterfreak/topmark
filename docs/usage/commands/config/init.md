@@ -36,15 +36,16 @@ Output formats:
 
 - `text` / `markdown`: full commented template from the bundled resource. Markdown is
   document-oriented and ignores TEXT-only verbosity controls.
-- `json` / `ndjson`: minimal defaults-derived frozen config snapshot, without comments or
-  diagnostics.
+- `json` / `ndjson`: a machine-readable config snapshot produced by parsing and resolving the
+  bundled starter template, without comments or diagnostics.
 
 Notes:
 
 - Specify `--pyproject` if you want to add the configuration to your project's `pyproject.toml`.
   This nests the example TOML under a `[tool.topmark]` table.
-- When choosing `json` or `ndjson`, the output is equivalent to the built-in defaults-derived frozen
-  snapshot emitted by [`topmark config defaults`](./defaults.md).
+- When choosing `json` or `ndjson`, TopMark parses and resolves the bundled starter template before
+  emitting the machine-readable snapshot. This preserves template semantics, including TOML-authored
+  runtime sections such as `[writer]`, while omitting comments and formatting.
 
 ______________________________________________________________________
 
@@ -173,9 +174,13 @@ The canonical schema, stable `kind` values, and shared conventions are documente
 
 Notes:
 
-- In machine-readable formats, `config init` emits a built-in defaults-derived config snapshot.
-- The machine-readable output represents the built-in defaults view, not a discovered or merged
+- In machine-readable formats, `config init` emits a config snapshot produced by parsing and
+  resolving the bundled starter template.
+- The machine-readable output represents the bundled template view, not a discovered or merged
   project configuration.
+- The snapshot includes TOML-authored runtime sections such as `[writer]` when they are present in
+  the bundled template, even though those sections are resolved outside the layered `Config` model
+  at runtime.
 - Machine-readable config snapshots emit normalized canonical qualified file type identifiers after
   configuration freeze.
 - No diagnostics are emitted for this command.
@@ -187,7 +192,7 @@ A single JSON document is emitted:
 ```jsonc
 {
   "meta": { /* MetaPayload */ },
-  "config": { /* ConfigPayload (defaults-derived frozen snapshot) */ }
+  "config": { /* ConfigPayload (bundled template snapshot) */ }
 }
 ```
 
@@ -197,7 +202,7 @@ NDJSON is a stream where each line is a JSON object. Every record includes `kind
 
 Stream:
 
-1. `kind="config"` (defaults-derived frozen config snapshot)
+1. `kind="config"` (bundled template snapshot)
 
 Example:
 
