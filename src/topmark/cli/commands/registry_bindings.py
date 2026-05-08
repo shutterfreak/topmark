@@ -61,10 +61,10 @@ if TYPE_CHECKING:
         "  # Emit machine-readable binding metadata\n"
         f"  topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_BINDINGS} "
         f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}\n"
-        "\n"
+        "\b\n"
         "Notes:\n"
         "  • Bindings show which header processor handles each file type.\n"
-        "  • Machine formats emit registry metadata without human formatting.\n"
+        "  • Machine-readable formats emit registry metadata without human formatting.\n"
     ),
 )
 @common_color_options
@@ -136,7 +136,7 @@ def registry_bindings_command(
         warn_stdin_dash=True,
     )
 
-    # Machine formats
+    # Machine-readable formats
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         emit_bindings_machine(
             console=console,

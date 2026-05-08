@@ -76,7 +76,7 @@ if TYPE_CHECKING:
         "\b\n"
         "Notes:\n"
         "  • Human formats render a clean TOML view of defaults (no comments).\n"
-        "  • Machine formats emit a minimal Config snapshot without diagnostics.\n"
+        "  • Machine-readable formats emit a minimal Config snapshot without diagnostics.\n"
     ),
 )
 @common_color_options

@@ -64,7 +64,7 @@ if TYPE_CHECKING:
         f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}\n"
         "Notes:\n"
         "  • Default output uses the installed package version.\n"
-        "  • Machine formats emit structured version metadata.\n"
+        "  • Machine-readable formats emit structured version metadata.\n"
     ),
 )
 @common_color_options
@@ -128,7 +128,7 @@ def version_command(
     # `version` is file-agnostic: ignore positional PATHS
     apply_ignore_positional_paths_policy(ctx, warn_stdin_dash=True)
 
-    # Machine formats
+    # Machine-readable formats
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         serialized: str | Iterable[str] = serialize_version(
             meta=meta,

@@ -60,10 +60,10 @@ if TYPE_CHECKING:
         "  # Emit machine-readable file type metadata\n"
         f"  topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_FILETYPES} "
         f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}\n"
-        "\n"
+        "\b\n"
         "Notes:\n"
         "  • Use file type identifiers in configuration filters.\n"
-        "  • Machine formats emit registry metadata without human formatting.\n"
+        "  • Machine-readable formats emit registry metadata without human formatting.\n"
     ),
 )
 @common_color_options
@@ -136,7 +136,7 @@ def registry_filetypes_command(
         warn_stdin_dash=True,
     )
 
-    # Machine formats
+    # Machine-readable formats
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         emit_filetypes_machine(
             console=console,

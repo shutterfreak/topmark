@@ -76,7 +76,8 @@ if TYPE_CHECKING:
         "\b\n"
         "Notes:\n"
         "  • Human formats use the annotated, commented template bundled with TopMark.\n"
-        "  • Machine formats emit a minimal Config snapshot without comments or diagnostics.\n"
+        "  • Machine-readable formats emit a minimal Config snapshot "
+        "without comments or diagnostics.\n"
     ),
 )
 # Common option decorators
@@ -101,7 +102,7 @@ def config_init_command(
     """Print a starter TopMark configuration file.
 
     Human formats render the annotated starter template bundled with TopMark.
-    Machine formats emit a minimal Config snapshot without comments or diagnostics.
+    Machine-readable formats emit a minimal Config snapshot without comments or diagnostics.
 
     Notes:
         - In JSON/NDJSON modes, this command emits only a Config snapshot

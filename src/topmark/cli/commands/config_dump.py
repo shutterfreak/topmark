@@ -110,7 +110,7 @@ logger: TopmarkLogger = get_logger(__name__)
         "listed paths do not affect this command's output.\n"
         "  • Pattern sources are configuration and are included in the dump.\n"
         "  • Human output may include TOML block markers when verbosity is enabled.\n"
-        "  • Machine formats emit a Config snapshot and optional provenance records.\n"
+        "  • Machine-readable formats emit a Config snapshot and optional provenance records.\n"
     ),
 )
 @common_color_options
@@ -156,7 +156,7 @@ def config_dump_command(
     """Print the effective merged TopMark configuration.
 
     Builds the effective configuration from defaults, discovered and explicit
-    config files, and CLI overrides, then renders it for human or machine output.
+    config files, and CLI overrides, then renders it for human or machine-readable output.
 
     Notes:
         - In JSON/NDJSON modes, this command emits a Config snapshot and,

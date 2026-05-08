@@ -482,7 +482,7 @@ def check_command(
 
     # Report scope is a human per-file listing policy only.
     #
-    # - Machine output must always use the full raw result set.
+    # - Machine-readable output must always use the full raw result set.
     # - Human summary mode must also use the full raw result set so aggregated
     #   counts are not distorted by per-file report filtering.
     # - Human non-summary output uses the filtered per-file view.

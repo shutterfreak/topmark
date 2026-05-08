@@ -60,10 +60,10 @@ if TYPE_CHECKING:
         "  # Emit machine-readable processor metadata\n"
         f"  topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_PROCESSORS} "
         f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}\n"
-        "\n"
+        "\b\n"
         "Notes:\n"
         "  • Processors define how TopMark detects and renders headers for file types.\n"
-        "  • Machine formats emit registry metadata without human formatting.\n"
+        "  • Machine-readable formats emit registry metadata without human formatting.\n"
     ),
 )
 @common_color_options
@@ -136,7 +136,7 @@ def registry_processors_command(
         warn_stdin_dash=True,
     )
 
-    # Machine formats
+    # Machine-readable formats
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         emit_processors_machine(
             console=console,

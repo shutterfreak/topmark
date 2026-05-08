@@ -312,46 +312,6 @@ def _trap_underscored_option(ctx: click.Context, param: click.Option, _value: ob
     raise click.UsageError(f"Unknown option: {bad}. Did you mean {suggestion}?")
 
 
-def trap_underscored_spellings(*names: str) -> Callable[[Callable[_P, _R]], Callable[_P, _R]]:
-    """Register hidden underscored spellings that raise a helpful error.
-
-    This wraps `click.option` with common settings for underscored
-    long-option traps, so callers don't repeat the same boilerplate.
-
-    It also assigns a **unique destination name** for the hidden option so
-    Click's parameter source tracking does not overlap with the real option's
-    destination (e.g., ``exclude_from``). Without this, the trap callback can
-    incorrectly detect COMMANDLINE source when the *hyphenated* option was
-    used, leading to false positives.
-
-    Args:
-        *names: One or more underscored long option spellings to trap,
-            e.g. "--exclude_from". Multiple spellings are supported so a
-            single decorator can catch several spellings.
-
-    Returns:
-        A Click option decorator compatible with stacking.
-
-    Raises:
-        ValueError: If no names were provided.
-    """
-    if not names:
-        raise ValueError("trap_underscored_spellings requires at least one option name")
-
-    first: str = names[0]
-    # Create a unique, non-conflicting Python destination name for the hidden option
-    dest: str = f"_trap__{first.lstrip('-').replace('-', '_')}"
-    return click.option(
-        *names,
-        dest,
-        hidden=True,
-        expose_value=False,
-        is_eager=True,
-        multiple=True,
-        callback=_trap_underscored_option,
-    )
-
-
 def option_with_underscore_traps(
     *param_decls: str,
     **attrs: Unpack[_ClickOptionKwargs],
@@ -362,8 +322,8 @@ def option_with_underscore_traps(
     also registers a hidden eager option `--foo_bar` that raises a helpful error
     suggesting the hyphenated spelling.
 
-    This is Pattern B: the trap is attached alongside the real option so call sites
-    don't need to remember to register traps separately.
+    The trap is attached alongside the real option so call sites don't need to
+    remember to register traps separately.
 
     Args:
         *param_decls: Click option declarations (e.g. `"--verbose"`, `"-v"`).
@@ -407,6 +367,66 @@ def option_with_underscore_traps(
         return f
 
     return decorator
+
+
+def enum_value_help_text(
+    enum_cls: type[Enum],
+    *,
+    prefix: str = "",
+    default: Enum | str | None = None,
+    suffix: str | None = None,
+) -> str:
+    """Render CLI-facing help text for enum option values.
+
+    CLI help prefers kebab-case values for readability. TopMark's
+    configuration, Python API enum values, and machine-readable output use
+    canonical underscore values when enum members are defined with underscores.
+    This helper renders the CLI-facing value list, marks an optional default,
+    and appends a short underscore/canonical-value note only when needed.
+
+    Args:
+        enum_cls: Enum class whose members expose string values.
+        prefix: Optional text placed before the rendered value list.
+        default: Optional enum member or raw value to mark as the default.
+        suffix: Optional sentence appended after the alias/canonical-value note.
+
+    Returns:
+        Help text suitable for inclusion in a Click option description.
+    """
+    default_value: str | None
+    if isinstance(default, Enum):
+        default_value = str(default.value)
+    elif default is None:
+        default_value = None
+    else:
+        default_value = str(default)
+
+    rendered_values: list[str] = []
+    underscore_values: list[str] = []
+
+    for member in enum_cls:
+        raw_value: str = str(member.value)
+        rendered_value: str = raw_value.replace("_", "-")
+        if raw_value == default_value:
+            rendered_value = f"{rendered_value} (default)"
+        rendered_values.append(rendered_value)
+        if "_" in raw_value:
+            underscore_values.append(raw_value)
+
+    text: str = f"Accepted values: {', '.join(rendered_values)}."
+    if prefix:
+        text = f"{prefix} {text}"
+
+    if underscore_values:
+        text += (
+            f" CLI also accepts underscore forms ({', '.join(underscore_values)}); "
+            "config, API, and machine-readable output use underscore values."
+        )
+
+    if suffix:
+        text += f" {suffix}"
+
+    return text
 
 
 # ---- Option decorators ----
@@ -474,16 +494,24 @@ def common_color_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
     f = option_with_underscore_traps(
         CliOpt.COLOR_MODE,
         ArgKey.COLOR_MODE,
-        type=click.Choice([m.value for m in ColorMode]),
+        type=EnumChoiceParam(
+            ColorMode,
+            case_sensitive=False,
+            kebab_case=True,
+        ),
         default=None,
-        help=f"Color output: {ColorMode.AUTO.value} (default), "
-        f"{ColorMode.ALWAYS.value}, or {ColorMode.NEVER.value}.",
+        help=enum_value_help_text(
+            ColorMode,
+            prefix="Color output for text format.",
+            default=ColorMode.AUTO,
+        ),
     )(f)
     f = option_with_underscore_traps(
         CliOpt.NO_COLOR_MODE,
         ArgKey.NO_COLOR_MODE,
         is_flag=True,
-        help=f"Disable color output (equivalent to {CliOpt.COLOR_MODE}={ColorMode.NEVER.value}).",
+        help="Disable color output for text format "
+        f"(equivalent to {CliOpt.COLOR_MODE}={ColorMode.NEVER.value}).",
     )(f)
     return f
 
@@ -491,9 +519,9 @@ def common_color_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
 def common_output_format_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
     """Apply common output format options.
 
-    Adds the ``--output-format`` option which accepts OutputFormat values for human use (``text``,
-    ``markdown``) and machine formats (``json``, ``ndjson``). If not set, it will be resolved to
-    ``text`` (ANSI-capable).
+    Adds the ``--output-format`` option which accepts OutputFormat values for human use
+    (``text``, ``markdown``) and machine-readable formats (``json``, ``ndjson``).
+    If not set, it will be resolved to ``text`` (ANSI-capable).
 
     Args:
         f: The Click command function to decorate.
@@ -510,7 +538,11 @@ def common_output_format_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
             kebab_case=True,
         ),
         default=None,
-        help=f"Output format ({', '.join(v.value for v in OutputFormat)}).",
+        help=enum_value_help_text(
+            OutputFormat,
+            prefix="Output format.",
+            default=OutputFormat.TEXT,
+        ),
     )(f)
     return f
 
@@ -815,14 +847,18 @@ def pipeline_reporting_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
             kebab_case=True,
         ),
         default=ReportScope.ACTIONABLE,
-        show_default=True,
-        help=(
-            "Reporting scope for human per-file output: "
-            "'actionable': list would-change results and other attention-worthy states; "
-            "summarize unsupported entries separately. "
-            "'noncompliant': list actionable results plus unsupported entries. "
-            "'all': list every processed result, including unchanged entries. "
-            "Ignored for summary mode and machine-readable formats."
+        help=enum_value_help_text(
+            ReportScope,
+            prefix=(
+                "Reporting scope for human per-file output. "
+                "Ignored for summary mode and machine-readable formats."
+            ),
+            default=ReportScope.ACTIONABLE,
+            suffix=(
+                "Use 'actionable' to list would-change results and other attention-worthy states; "
+                "'noncompliant' to list actionable results plus unsupported entries; "
+                "'all' to list every processed result, including unchanged entries. "
+            ),
         ),
     )(f)
 
@@ -1015,7 +1051,8 @@ def check_policy_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
             "configured in the check pipeline."
         ),
     )(f)
-    f = click.option(
+
+    f = option_with_underscore_traps(
         CliOpt.POLICY_EMPTY_INSERT_MODE,
         ArgKey.POLICY_EMPTY_INSERT_MODE,
         type=EnumChoiceParam(
@@ -1024,10 +1061,12 @@ def check_policy_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
             kebab_case=True,
         ),
         default=None,
-        help=(
-            "Define which inputs count as empty for header insertion in the check "
-            "pipeline: bytes-empty, logical-empty, or whitespace-empty. "
-            "Overrides config policy for this run."
+        help=enum_value_help_text(
+            EmptyInsertMode,
+            prefix=(
+                "Define which inputs count as empty for header insertion in the check pipeline."
+            ),
+            suffix="Overrides config policy for this run.",
         ),
     )(f)
     f = option_with_underscore_traps(
@@ -1043,7 +1082,7 @@ def check_policy_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
             "by the effective empty insert mode in the check pipeline."
         ),
     )(f)
-    f = click.option(
+    f = option_with_underscore_traps(
         CliOpt.POLICY_HEADER_MUTATION_MODE,
         ArgKey.POLICY_HEADER_MUTATION_MODE,
         type=EnumChoiceParam(
@@ -1052,9 +1091,10 @@ def check_policy_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
             kebab_case=True,
         ),
         default=None,
-        help=(
-            "Control which files `topmark check` may mutate: all, add-only, or "
-            "update-only. Overrides config policy for this run."
+        help=enum_value_help_text(
+            HeaderMutationMode,
+            prefix="Control which files `topmark check` may mutate.",
+            suffix="Overrides config policy for this run.",
         ),
     )(f)
 
