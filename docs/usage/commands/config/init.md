@@ -227,6 +227,7 @@ ______________________________________________________________________
   config-loading diagnostics.
 - [`topmark config dump`](./dump.md) — show the effective frozen configuration, including normalized
   canonical file type identifiers.
-- [`topmark config defaults`](./defaults.md) — show TopMark’s built-in layered defaults as TOML.
+- [`topmark config defaults`](./defaults.md) — show TopMark’s canonical built-in default TOML
+  document.
 
 An overview of all CLI commands is available in [CLI overview](../../cli.md).

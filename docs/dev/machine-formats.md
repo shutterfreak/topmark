@@ -481,7 +481,7 @@ Config commands are file-agnostic and emit config-centric payloads:
   before the final flattened config snapshot
 - [`config defaults`](../usage/commands/config/defaults.md): built-in default TopMark TOML snapshot
   (no diagnostics)
-- [`config init`](../usage/commands/config/init.md): built-in default configuration snapshot in
+- [`config init`](../usage/commands/config/init.md): bundled starter template snapshot in
   machine-readable formats (no diagnostics)
 - [`config check`](../usage/commands/config/check.md): resolved config snapshot plus diagnostics and
   a config-check status payload

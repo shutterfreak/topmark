@@ -293,7 +293,7 @@ ______________________________________________________________________
 
 - [`topmark config check`](./check.md) — validate the effective frozen configuration and staged
   config-loading diagnostics.
-- [`topmark config defaults`](./defaults.md) — show the built-in default layered config fragment.
+- [`topmark config defaults`](./defaults.md) — show the canonical built-in default TOML document.
 - [`topmark config init`](./init.md) — print the bundled example TopMark TOML resource.
 
 An overview of all CLI commands is available in [CLI overview](../../cli.md).

@@ -15,7 +15,7 @@ configuration:
 
   * ``topmark config check``: validate the effective merged configuration.
   * ``topmark config dump``: print the effective merged configuration.
-  * ``topmark config defaults``: print the built-in default configuration.
+  * ``topmark config defaults``: print the canonical built-in default TOML document.
   * ``topmark config init``: print a starter configuration file.
 """
 
@@ -55,7 +55,7 @@ def config_command() -> None:
 
       * ``check``: validate the effective merged configuration.
       * ``dump``: print the effective merged configuration.
-      * ``defaults``: print the built-in default configuration reference.
+      * ``defaults``: print the canonical built-in defaults.
       * ``init``: print a starter configuration file for projects.
     """
     # No-op: behavior is provided by subcommands only.
