@@ -130,7 +130,7 @@ def build_config_diagnostics_counts_payload(config: Config) -> MachineDiagnostic
 
     Useful when emitting aggregate diagnostic statistics without duplicating
     per-diagnostic entries. Staged config-validation logs are flattened here at
-    the machine-output boundary.
+    the machine-readable output boundary.
 
     Args:
         config: The Config instance.

@@ -60,7 +60,7 @@ def serialize_probe_results(
     probing.
 
     Args:
-        meta: Shared machine-output metadata payload.
+        meta: Shared machine-readable output metadata payload.
         config: Effective configuration for the run.
         results: Ordered list of probe contexts to serialize.
         fmt: Output format (`OutputFormat.JSON` or `OutputFormat.NDJSON`).
@@ -101,7 +101,7 @@ def serialize_processing_results(
     """Serialize processing results for `check` / `strip` in a machine-readable format.
 
     Args:
-        meta: Shared machine-output metadata payload.
+        meta: Shared machine-readable output metadata payload.
         config: Effective configuration for the run.
         results: Ordered list of per-file check/strip processing contexts.
         fmt: Output format (`OutputFormat.JSON` or `OutputFormat.NDJSON`).
@@ -146,7 +146,7 @@ def serialize_processing_results_json(
     """Serialize processing results for `check` / `strip` in a machine-readable format.
 
     Args:
-        meta: Shared machine-output metadata payload.
+        meta: Shared machine-readable output metadata payload.
         config: Effective configuration for the run.
         results: Ordered list of per-file check/strip processing contexts.
         summary_mode: If True, emit aggregated outcome summaries instead of per-file entries.
@@ -173,7 +173,7 @@ def serialize_processing_results_ndjson(
     """Serialize processing results for `check` / `strip` in a machine-readable format.
 
     Args:
-        meta: Shared machine-output metadata payload.
+        meta: Shared machine-readable output metadata payload.
         config: Effective configuration for the run.
         results: Ordered list of per-file check/strip processing contexts.
         summary_mode: If True, emit aggregated outcome summaries instead of per-file entries.

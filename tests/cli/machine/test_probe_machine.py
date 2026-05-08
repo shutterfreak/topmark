@@ -9,7 +9,7 @@
 # topmark:header:end
 
 
-"""CLI machine-output tests for `topmark probe`.
+"""CLI machine-readable output tests for `topmark probe`.
 
 These tests validate JSON and NDJSON output contracts for the probe command.
 """

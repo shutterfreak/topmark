@@ -10,7 +10,7 @@
 
 """Pure serializers for registry machine-readable output.
 
-This module converts *shaped* registry machine-output objects into serialized
+This module converts *shaped* registry machine-readable output objects into serialized
 wire representations.
 
 Layers:

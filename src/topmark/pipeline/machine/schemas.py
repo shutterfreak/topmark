@@ -75,7 +75,7 @@ class PipelineKey(str, Enum):
 
 
 class PipelineKind(str, Enum):
-    """Stable NDJSON kinds emitted by the pipeline machine-output domain.
+    """Stable NDJSON kinds emitted by the pipeline machine-readable output domain.
 
     Attributes:
         PROBE: One per-path resolution probe record, including filtered explicit inputs.

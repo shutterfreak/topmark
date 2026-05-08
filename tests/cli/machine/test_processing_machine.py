@@ -119,7 +119,7 @@ def test_processing_json_detail_shape(tmp_path: Path, command: str) -> None:
     """Check JSON detail-mode shape for `check` / `strip` with `--output-format json`.
 
     Verifies that the top-level wrapper and a single per-file result entry
-    follow the documented machine-output schema (see `docs/dev/machine-output.md`).
+    follow the documented machine-readable output schema (see `docs/dev/machine-output.md`).
     This focuses on structural stability (keys and types) rather than exact
     labels or counts and applies equally to `check` and `strip`.
     """

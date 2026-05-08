@@ -11,7 +11,7 @@
 """Envelope/record builders for registry machine-readable output.
 
 This module is responsible for *shaping* registry payloads into TopMark’s
-canonical machine-output envelopes.
+canonical machine-readable output envelopes.
 
 Layers:
 - [`topmark.registry.machine.payloads`][topmark.registry.machine.payloads] builds plain

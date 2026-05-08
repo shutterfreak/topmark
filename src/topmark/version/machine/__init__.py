@@ -27,7 +27,7 @@ Layers:
   [`topmark.version.machine.serializers`][topmark.version.machine.serializers]
 
 See Also:
-- [`topmark.core.machine`][topmark.core.machine]: shared machine-output primitives
+- [`topmark.core.machine`][topmark.core.machine]: shared machine-readable output primitives
   (keys/kinds/domains, envelopes/records, normalization, JSON/NDJSON serialization helpers).
 """
 

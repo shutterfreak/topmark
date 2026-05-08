@@ -21,7 +21,8 @@ Notes:
 
 See Also:
 - [`topmark.presentation.shared.registry`][topmark.presentation.shared.registry]
-- [`topmark.core.machine`][topmark.core.machine]: canonical machine-output primitives and contracts
+- [`topmark.core.machine`][topmark.core.machine]: canonical machine-readable
+  output primitives and contracts
 """
 
 from __future__ import annotations

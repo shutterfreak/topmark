@@ -43,10 +43,10 @@ from typing import cast
 
 
 class MachineKey(str, Enum):
-    """Stable keys shared by all machine-output envelopes.
+    """Stable keys shared by all machine-readable output envelopes.
 
     These keys are intentionally limited to the shared envelope layer and other
-    cross-domain fields that multiple machine-output domains rely on. Domain-
+    cross-domain fields that multiple machine-readable output domains rely on. Domain-
     specific payload keys belong in the corresponding `*.machine.schemas`
     module.
 
@@ -70,7 +70,7 @@ class MachineKey(str, Enum):
 
 
 class MachineMetaKey(str, Enum):
-    """Stable keys for the shared machine-output metadata payload.
+    """Stable keys for the shared machine-readable output metadata payload.
 
     Attributes:
         TOOL: Executable/tool name.
@@ -84,7 +84,7 @@ class MachineMetaKey(str, Enum):
 
 
 class MachineDomain(str, Enum):
-    """Stable diagnostic domains shared across machine-output emitters.
+    """Stable diagnostic domains shared across machine-readable output emitters.
 
     These values are used as the payload value for the envelope-level
     `MachineKey.DOMAIN` key when emitting machine-readable diagnostics.
@@ -103,7 +103,7 @@ class MachineDomain(str, Enum):
 
 
 class DetailLevel(str, Enum):
-    """Enumeration of supported machine-output detail levels.
+    """Enumeration of supported machine-readable output detail levels.
 
     These values describe how much information is included in a payload and are
     intended for **machine consumers**.
@@ -126,7 +126,7 @@ class DetailLevel(str, Enum):
 
 @dataclass(slots=True, frozen=True, kw_only=True)
 class CommandSummary:
-    """Identifies the TopMark command context for a machine-output record.
+    """Identifies the TopMark command context for a machine-readable output record.
 
     Attributes:
         command: Top-level command name (e.g. `"config"`, `"check"`, `"strip"`).
@@ -140,7 +140,7 @@ class CommandSummary:
 class MetaPayload(TypedDict, total=True):
     """Base metadata describing the TopMark runtime environment for machine-readable output.
 
-    This payload is process-stable and shared across all machine-output commands.
+    This payload is process-stable and shared across all machine-readable output commands.
 
     Attributes:
         tool: Name of the tool (e.g. "topmark").

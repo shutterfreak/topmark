@@ -8,7 +8,7 @@
 #
 # topmark:header:end
 
-"""CLI machine-output tests for `topmark version`."""
+"""CLI machine-readable output tests for `topmark version`."""
 
 from __future__ import annotations
 

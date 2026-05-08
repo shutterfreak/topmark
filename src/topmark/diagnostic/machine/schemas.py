@@ -38,10 +38,10 @@ if TYPE_CHECKING:
 
 
 class DiagnosticKey(str, Enum):
-    """Stable keys used by diagnostic machine-output payloads.
+    """Stable keys used by diagnostic machine-readable output payloads.
 
     These keys belong to the shared diagnostic domain and are reused by other
-    machine-output packages when embedding lists of diagnostics or aggregate
+    machine-readable output packages when embedding lists of diagnostics or aggregate
     diagnostic counts.
 
     Attributes:

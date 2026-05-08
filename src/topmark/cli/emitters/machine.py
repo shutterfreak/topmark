@@ -11,7 +11,7 @@
 """CLI helpers for emitting machine-readable output.
 
 This module is Click/console-aware and is responsible only for writing already
-rendered machine-output strings (JSON or NDJSON) to the active ConsoleLike.
+rendered machine-readable output strings (JSON or NDJSON) to the active ConsoleLike.
 
 All shaping and serialization lives in [`topmark.core.machine`][topmark.core.machine].
 """

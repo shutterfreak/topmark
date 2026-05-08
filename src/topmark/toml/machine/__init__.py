@@ -10,7 +10,7 @@
 
 """Machine-output helpers for TOML provenance exports.
 
-This package contains the TOML-domain machine-output components used to expose
+This package contains the TOML-domain machine-readable output components used to expose
 resolved TopMark TOML provenance in a stable, machine-readable form.
 
 Responsibilities:

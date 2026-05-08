@@ -8,7 +8,7 @@
 #
 # topmark:header:end
 
-r"""Core machine-output infrastructure.
+r"""Core machine-readable output infrastructure.
 
 This package implements TopMark’s canonical JSON/NDJSON machine-readable formats.
 

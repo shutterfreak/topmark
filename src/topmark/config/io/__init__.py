@@ -41,7 +41,7 @@ Diagnostics model:
     - Config-loading diagnostics are recorded as staged validation logs on
       `MutableConfig`
     - This package does not flatten diagnostics; flattening is performed at
-      presentation and machine-output boundaries
+      presentation and machine-readable output boundaries
 """
 
 from __future__ import annotations

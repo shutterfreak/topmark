@@ -8,7 +8,7 @@
 #
 # topmark:header:end
 
-"""Registry machine-output schema types.
+"""Registry machine-readable output schema types.
 
 This module defines the *typing surface* for machine-readable output emitted by
 registry-related commands (currently `topmark registry filetypes`,
@@ -67,7 +67,7 @@ class RegistryKey(str, Enum):
 
 
 class RegistryKind(str, Enum):
-    """Stable NDJSON kinds emitted by the registry machine-output domain.
+    """Stable NDJSON kinds emitted by the registry machine-readable output domain.
 
     Attributes:
         BINDING: One effective binding record.

@@ -43,7 +43,7 @@ from enum import Enum
 class ConfigKey(str, Enum):
     """Stable config-domain keys for machine-readable payloads.
 
-    These keys belong to the config machine-output domain and should be used for
+    These keys belong to the config machine-readable output domain and should be used for
     config-specific JSON payload members and NDJSON container keys. Shared
     envelope keys remain in `topmark.core.machine.schemas`, while shared
     diagnostic keys live in `topmark.diagnostic.machine.schemas`.
@@ -71,7 +71,7 @@ class ConfigKey(str, Enum):
 
 
 class ConfigKind(str, Enum):
-    """Stable NDJSON kinds emitted by the config machine-output domain.
+    """Stable NDJSON kinds emitted by the config machine-readable output domain.
 
     Attributes:
         CONFIG: Effective config record.

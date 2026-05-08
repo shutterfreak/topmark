@@ -16,7 +16,7 @@ such as `topmark check` and `topmark strip`.
 TEXT output is console-oriented: it may use `verbosity_level` for progressive
 disclosure, `styled` for ANSI-capable semantic styling, and compact hints that
 refer to `-v` / `-vv`. Markdown and machine-readable output are rendered by separate
-presentation and machine-output layers.
+presentation and machine-readable output layers.
 
 Notes:
     - ANSI styling primitives (for example, conditional colorization) live in

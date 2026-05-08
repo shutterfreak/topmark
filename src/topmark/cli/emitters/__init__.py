@@ -30,9 +30,11 @@ Machine-oriented output (JSON / NDJSON):
 
 Architecture overview for machine-readable formats:
 - [`topmark.core.machine`][topmark.core.machine]:
-    shared machine-output schemas, keys, meta payloads, and low-level normalization utilities.
+    shared machine-readable output schemas, keys, meta payloads, and low-level
+    normalization utilities.
 - [`topmark.config.machine`][topmark.config.machine]:
-    machine payloads/shapes/serializers for configuration inspection and validation commands.
+    machine payloads/shapes/serializers for configuration inspection and
+    validation commands.
 - [`topmark.pipeline.machine`][topmark.pipeline.machine]:
     machine payloads/shapes/serializers for processing results (`check`, `strip`).
 - [`topmark.registry.machine`][topmark.registry.machine]:

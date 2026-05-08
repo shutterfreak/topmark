@@ -172,7 +172,7 @@ def registry_snapshot() -> Iterator[None]:
 
 
 def _run_registry_command(*, subcommand: str, fmt: str, show_details: bool) -> Result:
-    """Run one registry CLI command in machine-output mode."""
+    """Run one registry CLI command in machine-readable output mode."""
     args: list[str] = [
         CliCmd.REGISTRY,
         subcommand,

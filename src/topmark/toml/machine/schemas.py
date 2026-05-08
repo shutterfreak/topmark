@@ -30,7 +30,7 @@ from enum import Enum
 class TomlKey(str, Enum):
     """Stable keys for TOML provenance payload fragments.
 
-    These keys are owned by the TOML machine-output domain. They describe the
+    These keys are owned by the TOML machine-readable output domain. They describe the
     inner schema of provenance-layer fragments and the outer `config_layers`
     container emitted for TOML provenance payloads.
 

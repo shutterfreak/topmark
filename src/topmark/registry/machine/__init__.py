@@ -17,7 +17,7 @@ commands that expose TopMark’s internal registries, such as:
 - `topmark registry processors`
 - `topmark registry bindings`
 
-The design follows TopMark’s general machine-output layering:
+The design follows TopMark’s general machine-readable output layering:
 
 1) **Schema types** (`schemas.py`)
    TypedDict-based types describing the payload shapes emitted by registry commands.
@@ -47,7 +47,7 @@ Notes:
     Callers can be explicit about which layer they depend on.
 
 See Also:
-    - [`topmark.core.machine`][topmark.core.machine]: shared machine-output primitives
+    - [`topmark.core.machine`][topmark.core.machine]: shared machine-readable output primitives
     (keys/kinds/domains, envelopes/records, normalization, JSON/NDJSON serialization helpers).
 """
 

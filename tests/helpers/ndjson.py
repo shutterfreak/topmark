@@ -8,7 +8,7 @@
 #
 # topmark:header:end
 
-"""Shared helpers for NDJSON-based CLI machine-output tests.
+"""Shared helpers for NDJSON-based CLI machine-readable output tests.
 
 This module provides small, strict helpers for parsing and validating NDJSON
 output emitted by TopMark CLI commands. The helpers are intentionally narrow in
@@ -143,7 +143,7 @@ def assert_ndjson_meta(
     *,
     expected_detail_level: str | None = None,
 ) -> dict[str, object]:
-    """Assert common TopMark machine-output metadata for an NDJSON record.
+    """Assert common TopMark machine-readable output metadata for an NDJSON record.
 
     This helper validates the standard machine metadata fields currently used by
     TopMark's NDJSON-emitting command surfaces and returns the normalized

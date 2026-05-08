@@ -36,7 +36,7 @@ Design notes:
   by higher-level emitters.
 - Config-validation diagnostics are stored internally as staged validation
   logs (TOML-source, merged-config, runtime-applicability) and flattened only
-  at the machine-output boundary.
+  at the machine-readable output boundary.
 """
 
 from __future__ import annotations

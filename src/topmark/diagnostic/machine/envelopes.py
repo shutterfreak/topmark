@@ -11,7 +11,7 @@
 """NDJSON envelope builders for diagnostic machine-readable output.
 
 This module defines shared helpers for emitting diagnostics as **NDJSON records**
-according to TopMark's machine-output contract.
+according to TopMark's machine-readable output contract.
 
 Scope:
     - Build one NDJSON record per diagnostic (`kind="diagnostic"`).

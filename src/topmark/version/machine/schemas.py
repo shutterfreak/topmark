@@ -11,7 +11,7 @@
 """Stable schema enums for version-related machine-readable output.
 
 This module contains the version-domain keys and NDJSON kinds used by the
-version machine-output package. Shared envelope keys remain in
+version machine-readable output package. Shared envelope keys remain in
 `topmark.core.machine.schemas`, while shared diagnostic keys and diagnostic
 record kinds live in `topmark.diagnostic.machine.schemas`.
 """
@@ -36,7 +36,7 @@ class VersionKey(str, Enum):
 
 
 class VersionKind(str, Enum):
-    """Stable NDJSON kinds emitted by the version machine-output domain.
+    """Stable NDJSON kinds emitted by the version machine-readable output domain.
 
     Attributes:
         VERSION: One version-information record.
