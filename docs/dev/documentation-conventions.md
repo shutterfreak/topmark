@@ -125,6 +125,9 @@ Recommended top-level grouping:
 - Reference
 - Development
 
+The exact top-level grouping may evolve over time, but conceptual separation should remain stable
+once navigation patterns are established.
+
 Navigation labels should:
 
 - use title case
@@ -146,6 +149,32 @@ Avoid inconsistent variants such as:
 - `Output Formats`
 
 unless the page specifically focuses on those concepts.
+
+### Command Grouping Semantics
+
+Command-related documentation should be grouped by user-facing purpose rather than implementation
+source or generation mechanism.
+
+Use the following navigation semantics:
+
+- `Command overview` introduces CLI structure, common workflows, and command discovery.
+- `Commands` contains primary command and subcommand reference pages.
+- `Guides` contains task-oriented usage documentation.
+- `Registry reference` contains generated registry and discovery reference pages.
+- `Shared options` contains cross-cutting CLI option behavior.
+- `Exit codes` contains cross-cutting command result semantics.
+
+Cross-cutting operational topics that apply to multiple commands should generally live outside
+individual command pages.
+
+Do not place generated registry pages directly inside `Commands`.
+
+Do not place task-oriented guides inside `Commands`.
+
+Do not place command-specific behavior only in generated reference pages.
+
+Generated reference pages should complement command documentation rather than replace narrative
+command guidance.
 
 ## Command Documentation Conventions
 
