@@ -24,15 +24,6 @@ final frozen output. Validation is evaluated across staged config-loading/prefli
 which remain internal; reporting and CLI, API, and machine-readable output expose only the flattened
 compatibility diagnostics contract for 1.0.
 
-See also:
-
-- [CLI overview](../../cli.md)
-- [Configuration](../../configuration.md)
-- [Filtering](../../filtering.md)
-- [Policies](../../policies.md)
-- [Configuration discovery](../../../configuration/discovery.md)
-- [Configuration schema](../../../dev/config-schema.md)
-
 It is **file-agnostic**: it does not resolve or process any files.
 
 ______________________________________________________________________
@@ -76,7 +67,7 @@ topmark config dump --output-format markdown
 
 ______________________________________________________________________
 
-## Key properties
+## Behavior details
 
 - Shows the effective frozen configuration (defaults ⟶ discovered config ⟶ `--config` files ⟶ CLI
   flags), after per-source TOML schema validation.
@@ -147,7 +138,7 @@ or Python API contract.
 
 ______________________________________________________________________
 
-## Input modes
+## Input applicability
 
 - **List on STDIN for patterns**: `--include-from -` or `--exclude-from -` read newline-delimited
   patterns from STDIN. When using `-`, STDIN must be piped; otherwise the command fails.
@@ -162,7 +153,7 @@ state; it does not process source files.
 
 ______________________________________________________________________
 
-## Options (subset)
+## Command-specific options
 
 | Option            | Description                                                                                      |
 | ----------------- | ------------------------------------------------------------------------------------------------ |
@@ -256,50 +247,6 @@ Example:
 
 ______________________________________________________________________
 
-## Verbosity
-
-`config dump` prints configuration; it does not render program output with per-file diagnostics.
-
-- In TEXT output, `-v` adds BEGIN/END markers around the TOML output.
-- `--quiet` suppresses TEXT output while preserving the exit status.
-- Markdown output is document-oriented and ignores TEXT-only verbosity and quiet controls.
-- JSON/NDJSON output is machine-readable and ignores TEXT-only verbosity and quiet controls.
-
-______________________________________________________________________
-
-## Notes
-
-- The output reflects the effective frozen configuration TopMark would use if you ran processing
-  commands ([`check`](../check.md), [`strip`](../strip.md), or [`probe`](../probe.md)) with the same
-  configuration-related flags in the current working directory, after TOML-layer validation and
-  layered config merging.
-- For per-file configuration (e.g., overrides that may depend on path), consider a future option
-  like `--for FILE` (not currently implemented), similar to ESLint’s `--print-config`.
-
-______________________________________________________________________
-
-## Troubleshooting
-
-- **Unexpected file type filter behavior**: prefer qualified identifiers such as `topmark:python`
-  when local identifiers may be ambiguous.
-- **Unexpected policy application**: inspect normalized identifiers in the dumped frozen
-  configuration.
-- **Unexpected config layering**: use `--show-layers` to inspect layered provenance and validated
-  TOML fragments.
-
-______________________________________________________________________
-
-## Related commands
-
-- [`topmark config check`](./check.md) — validate the effective frozen configuration and staged
-  config-loading diagnostics.
-- [`topmark config defaults`](./defaults.md) — show the canonical built-in default TOML document.
-- [`topmark config init`](./init.md) — print the bundled example TopMark TOML resource.
-
-An overview of all CLI commands is available in [CLI overview](../../cli.md).
-
-______________________________________________________________________
-
 ## Exit codes
 
 `topmark config dump` is an informational/inspection command and exits with `SUCCESS (0)` when the
@@ -323,3 +270,59 @@ Notes:
 - Markdown and machine-readable formats ignore TEXT-only quiet and verbosity controls.
 
 See [`Exit codes`](../../exit-codes.md) for the complete CLI-wide exit-code contract.
+
+______________________________________________________________________
+
+## Shared output controls
+
+`config dump` prints configuration; it does not render program output with per-file diagnostics.
+
+- In TEXT output, `-v` adds BEGIN/END markers around the TOML output.
+- `--quiet` suppresses TEXT output while preserving the exit status.
+- Markdown output is document-oriented and ignores TEXT-only verbosity and quiet controls.
+- JSON/NDJSON output is machine-readable and ignores TEXT-only verbosity and quiet controls.
+
+______________________________________________________________________
+
+## Related commands
+
+- [`topmark config check`](./check.md) — validate the effective frozen configuration and staged
+  config-loading diagnostics.
+- [`topmark config defaults`](./defaults.md) — show the canonical built-in default TOML document.
+- [`topmark config init`](./init.md) — print the bundled example TopMark TOML resource.
+
+______________________________________________________________________
+
+## Related docs
+
+- [Command overview](../../cli.md)
+- [Configuration](../../configuration.md)
+- [Filtering](../../filtering.md)
+- [Policies](../../policies.md)
+- [Configuration discovery](../../../configuration/discovery.md)
+- [Configuration schema](../../../dev/config-schema.md)
+- [Machine-readable output schema](../../../dev/machine-output.md)
+- [Machine-readable formats](../../../dev/machine-formats.md)
+- [Exit codes](../../exit-codes.md)
+
+______________________________________________________________________
+
+## Notes
+
+- The output reflects the effective frozen configuration TopMark would use if you ran processing
+  commands ([`check`](../check.md), [`strip`](../strip.md), or [`probe`](../probe.md)) with the same
+  configuration-related flags in the current working directory, after TOML-layer validation and
+  layered config merging.
+- For per-file configuration (e.g., overrides that may depend on path), consider a future option
+  like `--for FILE` (not currently implemented), similar to ESLint’s `--print-config`.
+
+______________________________________________________________________
+
+## Troubleshooting
+
+- **Unexpected file type filter behavior**: prefer qualified identifiers such as `topmark:python`
+  when local identifiers may be ambiguous.
+- **Unexpected policy application**: inspect normalized identifiers in the dumped frozen
+  configuration.
+- **Unexpected config layering**: use `--show-layers` to inspect layered provenance and validated
+  TOML fragments.

@@ -12,7 +12,7 @@ topmark:header:end
 
 # TopMark `config check` Command Guide
 
-**Purpose:** Check the config for errors.
+**Purpose:** Validate the effective merged configuration and report configuration diagnostics.
 
 The `config check` subcommand (part of the TopMark [`config` Command Family](../config.md))
 validates the **effective merged configuration** and reports any configuration diagnostics.
@@ -20,22 +20,6 @@ validates the **effective merged configuration** and reports any configuration d
 Unlike [`check`](../check.md) / [`strip`](../strip.md), this command is **file-agnostic**: it does
 not resolve or process files. It is intended for CI validation and debugging configuration
 precedence issues.
-
-See also:
-
-- [CLI overview](../../cli.md)
-- [Configuration](../../configuration.md)
-- [Filtering](../../filtering.md)
-- [Policies](../../policies.md)
-- [Configuration discovery](../../../configuration/discovery.md)
-- [Configuration schema](../../../dev/config-schema.md)
-
-Output formats:
-
-- `text`: human-readable validation result (optionally verbose).
-- `markdown`: Markdown report suitable for pasting into tickets or CI logs.
-- `json` / `ndjson`: machine-readable envelopes/records aligned with TopMark’s machine-readable
-  format conventions.
 
 ______________________________________________________________________
 
@@ -83,7 +67,7 @@ topmark config check --output-format markdown
 
 ______________________________________________________________________
 
-## Key properties
+## Behavior details
 
 - **Validates merged config**: loads defaults → discovered config → `--config` files → CLI
   overrides, performs whole-source TOML schema validation per source before layered config merge and
@@ -144,7 +128,7 @@ validate the effective merged configuration for the current working directory.
 
 ______________________________________________________________________
 
-## Options (subset)
+## Command-specific options
 
 | Option                 | Description                                                      |
 | ---------------------- | ---------------------------------------------------------------- |
@@ -159,39 +143,14 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-## Exit codes
+## Output behavior
 
-`topmark config check` exits with `SUCCESS (0)` when the effective configuration is valid. It exits
-with `FAILURE (1)` when validation completes and reports failing diagnostics:
+Output formats:
 
-- errors are present, or
-- effective strict config checking is enabled and warnings are present.
-
-Common `config check` exit codes:
-
-| Scenario                                       | Exit code           |
-| ---------------------------------------------- | ------------------- |
-| Valid effective configuration                  | `SUCCESS (0)`       |
-| Validation completed with failing diagnostics  | `FAILURE (1)`       |
-| Invalid CLI usage                              | `USAGE_ERROR (64)`  |
-| Configuration cannot be loaded for the command | `CONFIG_ERROR (78)` |
-
-Notes:
-
-- `FAILURE (1)` is a validation result for this command, not an unexpected crash.
-- Warning-only diagnostics exit with `SUCCESS (0)` unless strict config checking is enabled.
-- Malformed TOML discovered by `config check` is reported as a failing validation result and exits
-  with `FAILURE (1)`.
-- CLI usage errors (for example, invalid options) exit with `USAGE_ERROR (64)`.
-
-Because `config check` is file-agnostic, invalid positional paths or file-processing input options
-are reported as CLI usage errors rather than as file-processing diagnostics.
-
-See [`Exit codes`](../../exit-codes.md) for the complete CLI-wide exit-code contract.
-
-______________________________________________________________________
-
-## Output formats
+- `text`: human-readable validation result (optionally verbose).
+- `markdown`: Markdown report suitable for pasting into tickets or CI logs.
+- `json` / `ndjson`: machine-readable envelopes/records aligned with TopMark’s machine-readable
+  format conventions.
 
 ### Default output (human)
 
@@ -314,7 +273,39 @@ Example:
 
 ______________________________________________________________________
 
-## Configuration semantics
+## Exit codes
+
+`topmark config check` exits with `SUCCESS (0)` when the effective configuration is valid. It exits
+with `FAILURE (1)` when validation completes and reports failing diagnostics:
+
+- errors are present, or
+- effective strict config checking is enabled and warnings are present.
+
+Common `config check` exit codes:
+
+| Scenario                                       | Exit code           |
+| ---------------------------------------------- | ------------------- |
+| Valid effective configuration                  | `SUCCESS (0)`       |
+| Validation completed with failing diagnostics  | `FAILURE (1)`       |
+| Invalid CLI usage                              | `USAGE_ERROR (64)`  |
+| Configuration cannot be loaded for the command | `CONFIG_ERROR (78)` |
+
+Notes:
+
+- `FAILURE (1)` is a validation result for this command, not an unexpected crash.
+- Warning-only diagnostics exit with `SUCCESS (0)` unless strict config checking is enabled.
+- Malformed TOML discovered by `config check` is reported as a failing validation result and exits
+  with `FAILURE (1)`.
+- CLI usage errors (for example, invalid options) exit with `USAGE_ERROR (64)`.
+
+Because `config check` is file-agnostic, invalid positional paths or file-processing input options
+are reported as CLI usage errors rather than as file-processing diagnostics.
+
+See [`Exit codes`](../../exit-codes.md) for the complete CLI-wide exit-code contract.
+
+______________________________________________________________________
+
+## Stable configuration semantics
 
 `config check` reflects the same stable configuration contract used by:
 
@@ -340,7 +331,19 @@ ______________________________________________________________________
 - [`topmark config defaults`](./defaults.md) — show the *built-in default TopMark TOML document*.
 - [`topmark config init`](./init.md) — print the bundled example TopMark TOML resource.
 
-An overview of all CLI commands is available in [CLI overview](../../cli.md).
+______________________________________________________________________
+
+## Related docs
+
+- [Command overview](../../cli.md)
+- [Configuration](../../configuration.md)
+- [Filtering](../../filtering.md)
+- [Policies](../../policies.md)
+- [Configuration discovery](../../../configuration/discovery.md)
+- [Configuration schema](../../../dev/config-schema.md)
+- [Machine-readable output schema](../../../dev/machine-output.md)
+- [Machine-readable formats](../../../dev/machine-formats.md)
+- [Exit codes](../../exit-codes.md)
 
 ______________________________________________________________________
 

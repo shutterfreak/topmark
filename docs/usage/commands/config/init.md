@@ -23,30 +23,6 @@ and `[files]`) and TOML-source-local sections such as `[config]`. During normal 
 validates the whole source first and then deserializes only the layered fragment into the effective
 frozen configuration.
 
-See also:
-
-- [CLI overview](../../cli.md)
-- [Configuration](../../configuration.md)
-- [Filtering](../../filtering.md)
-- [Policies](../../policies.md)
-- [Configuration discovery](../../../configuration/discovery.md)
-- [Configuration schema](../../../dev/config-schema.md)
-
-Output formats:
-
-- `text` / `markdown`: full commented template from the bundled resource. Markdown is
-  document-oriented and ignores TEXT-only verbosity controls.
-- `json` / `ndjson`: a machine-readable config snapshot produced by parsing and resolving the
-  bundled starter template, without comments or diagnostics.
-
-Notes:
-
-- Specify `--pyproject` if you want to add the configuration to your project's `pyproject.toml`.
-  This nests the example TOML under a `[tool.topmark]` table.
-- When choosing `json` or `ndjson`, TopMark parses and resolves the bundled starter template before
-  emitting the machine-readable snapshot. This preserves template semantics, including TOML-authored
-  runtime sections such as `[writer]`, while omitting comments and formatting.
-
 ______________________________________________________________________
 
 ## File type identifier semantics
@@ -83,7 +59,7 @@ topmark config init --output-format markdown
 
 ______________________________________________________________________
 
-## What it includes
+## Behavior details
 
 - `[config]` – source-local options such as `root` and strictness behavior
 - `[fields]` – default header fields (`project`, `license`, …)
@@ -109,7 +85,7 @@ file.
 
 ______________________________________________________________________
 
-## Key properties
+## When to use
 
 - **File‑agnostic**: does not inspect any files. Positional paths are rejected as invalid CLI usage.
   STDIN content mode (`-`) and file-list modes (such as `--files-from -`) do not apply.
@@ -119,17 +95,33 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-## Verbosity
+## Output behavior
 
-`config init` renders a bundled example TOML resource to stdout.
+Output formats:
+
+- `text` / `markdown`: full commented template from the bundled resource. Markdown is
+  document-oriented and ignores TEXT-only verbosity controls.
+- `json` / `ndjson`: a machine-readable config snapshot produced by parsing and resolving the
+  bundled starter template, without comments or diagnostics.
+
+Notes:
+
+- Specify `--pyproject` if you want to add the configuration to your project's `pyproject.toml`.
+  This nests the example TOML under a `[tool.topmark]` table.
+
+- When choosing `json` or `ndjson`, TopMark parses and resolves the bundled starter template before
+  emitting the machine-readable snapshot. This preserves template semantics, including TOML-authored
+  runtime sections such as `[writer]`, while omitting comments and formatting.
 
 - In TEXT output, `-v` adds BEGIN/END markers around the TOML output.
+
 - Markdown output is document-oriented and ignores TEXT-only verbosity controls.
+
 - JSON/NDJSON output is machine-readable and ignores TEXT-only verbosity controls.
 
 ______________________________________________________________________
 
-## Options (subset)
+## Command-specific options
 
 `topmark config init` supports content-rendering options such as `--output-format`, `--pyproject`,
 `--root`, color controls, and TEXT verbosity. See `topmark config init -h` for the complete command
@@ -137,27 +129,6 @@ help.
 
 Note: `-v` / `--verbose` applies only to TEXT output. This pure content-producing command does not
 support `--quiet`. Markdown and machine-readable formats ignore TEXT-only verbosity controls.
-
-## Exit codes
-
-`topmark config init` is a pure informational/content-producing command and exits with `SUCCESS (0)`
-on successful execution.
-
-Common `config init` exit codes:
-
-| Scenario                      | Exit code          |
-| ----------------------------- | ------------------ |
-| Example rendered successfully | `SUCCESS (0)`      |
-| Invalid CLI usage             | `USAGE_ERROR (64)` |
-
-Notes:
-
-- This command does not inspect project files and does not use file-processing exit codes such as
-  `WOULD_CHANGE (2)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.
-- Invalid positional paths are reported as CLI usage errors, not file-processing diagnostics.
-- `--quiet` is unsupported because the command's primary purpose is to emit content.
-
-See [`Exit codes`](../../exit-codes.md) for the complete CLI-wide exit-code contract.
 
 ______________________________________________________________________
 
@@ -212,12 +183,26 @@ Example:
 
 ______________________________________________________________________
 
-## Troubleshooting
+## Exit codes
 
-- **Unexpected identifier formatting**: machine-readable output may emit normalized canonical
-  qualified identifiers such as `topmark:python`.
-- **Need the real effective config**: use [`topmark config dump`](./dump.md).
-- **Need built-in defaults only**: use [`topmark config defaults`](./defaults.md).
+`topmark config init` is a pure informational/content-producing command and exits with `SUCCESS (0)`
+on successful execution.
+
+Common `config init` exit codes:
+
+| Scenario                      | Exit code          |
+| ----------------------------- | ------------------ |
+| Example rendered successfully | `SUCCESS (0)`      |
+| Invalid CLI usage             | `USAGE_ERROR (64)` |
+
+Notes:
+
+- This command does not inspect project files and does not use file-processing exit codes such as
+  `WOULD_CHANGE (2)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.
+- Invalid positional paths are reported as CLI usage errors, not file-processing diagnostics.
+- `--quiet` is unsupported because the command's primary purpose is to emit content.
+
+See [`Exit codes`](../../exit-codes.md) for the complete CLI-wide exit-code contract.
 
 ______________________________________________________________________
 
@@ -230,4 +215,25 @@ ______________________________________________________________________
 - [`topmark config defaults`](./defaults.md) — show TopMark’s canonical built-in default TOML
   document.
 
-An overview of all CLI commands is available in [CLI overview](../../cli.md).
+______________________________________________________________________
+
+## Related docs
+
+- [Command overview](../../cli.md)
+- [Configuration](../../configuration.md)
+- [Filtering](../../filtering.md)
+- [Policies](../../policies.md)
+- [Configuration discovery](../../../configuration/discovery.md)
+- [Configuration schema](../../../dev/config-schema.md)
+- [Machine-readable output schema](../../../dev/machine-output.md)
+- [Machine-readable formats](../../../dev/machine-formats.md)
+- [Exit codes](../../exit-codes.md)
+
+______________________________________________________________________
+
+## Troubleshooting
+
+- **Unexpected identifier formatting**: machine-readable output may emit normalized canonical
+  qualified identifiers such as `topmark:python`.
+- **Need the real effective config**: use [`topmark config dump`](./dump.md).
+- **Need built-in defaults only**: use [`topmark config defaults`](./defaults.md).

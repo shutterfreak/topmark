@@ -24,23 +24,6 @@ default TOML surface. Source-local TOML sections such as `[config]` and runtime-
 as `[writer]` are included when they are part of the canonical defaults, but no project, user, or
 explicitly supplied config files are discovered or merged.
 
-See also:
-
-- [CLI overview](../../cli.md)
-- [Configuration](../../configuration.md)
-- [Filtering](../../filtering.md)
-- [Policies](../../policies.md)
-- [Configuration discovery](../../../configuration/discovery.md)
-- [Configuration schema](../../../dev/config-schema.md)
-
-Output formats:
-
-- `text` / `markdown`: minimal, comment-free TOML. Markdown is document-oriented and ignores
-  TEXT-only verbosity controls.
-- `json` / `ndjson`: a machine-readable config snapshot derived from the canonical built-in defaults
-  table, including TOML-authored runtime sections such as `[writer]` when present. No diagnostics
-  are emitted. Machine-readable formats ignore TEXT-only verbosity controls.
-
 ______________________________________________________________________
 
 ## File type identifier semantics
@@ -71,7 +54,7 @@ topmark config defaults --output-format markdown
 
 ______________________________________________________________________
 
-## Key properties
+## Behavior details
 
 - **Isolated**: ignores project/user config files and CLI overrides.
 - **File‑agnostic**: does not resolve or process any PATHS. Positional paths are rejected as invalid
@@ -115,7 +98,7 @@ occurs for this command.
 
 ______________________________________________________________________
 
-## Options (subset)
+## Command-specific options
 
 This command is intentionally minimal and usually has no options. See `topmark config defaults -h`
 for any environment‑specific flags that may be available in your build.
@@ -129,26 +112,15 @@ support `--quiet`. Markdown and machine-readable formats ignore TEXT-only verbos
 
 ______________________________________________________________________
 
-## Exit codes
+## Output behavior
 
-`topmark config defaults` is a pure informational/content-producing command and exits with
-`SUCCESS (0)` on successful execution.
+Output formats:
 
-Common `config defaults` exit codes:
-
-| Scenario                       | Exit code          |
-| ------------------------------ | ------------------ |
-| Defaults rendered successfully | `SUCCESS (0)`      |
-| Invalid CLI usage              | `USAGE_ERROR (64)` |
-
-Notes:
-
-- This command does not inspect project files and does not use file-processing exit codes such as
-  `WOULD_CHANGE (2)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.
-- Invalid positional paths are reported as CLI usage errors, not file-processing diagnostics.
-- `--quiet` is unsupported because the command's primary purpose is to emit content.
-
-See [`Exit codes`](../../exit-codes.md) for the complete CLI-wide exit-code contract.
+- `text` / `markdown`: minimal, comment-free TOML. Markdown is document-oriented and ignores
+  TEXT-only verbosity controls.
+- `json` / `ndjson`: a machine-readable config snapshot derived from the canonical built-in defaults
+  table, including TOML-authored runtime sections such as `[writer]` when present. No diagnostics
+  are emitted. Machine-readable formats ignore TEXT-only verbosity controls.
 
 ______________________________________________________________________
 
@@ -202,13 +174,26 @@ Example:
 
 ______________________________________________________________________
 
-## Troubleshooting
+## Exit codes
 
-- **Unexpected defaults**: remember that `config defaults` ignores all project, user, and CLI
-  overlay configuration.
-- **Unexpected identifier formatting**: machine-readable output may emit normalized canonical
-  qualified identifiers such as `topmark:python`.
-- **Need the real effective config**: use [`topmark config dump`](./dump.md) instead.
+`topmark config defaults` is a pure informational/content-producing command and exits with
+`SUCCESS (0)` on successful execution.
+
+Common `config defaults` exit codes:
+
+| Scenario                       | Exit code          |
+| ------------------------------ | ------------------ |
+| Defaults rendered successfully | `SUCCESS (0)`      |
+| Invalid CLI usage              | `USAGE_ERROR (64)` |
+
+Notes:
+
+- This command does not inspect project files and does not use file-processing exit codes such as
+  `WOULD_CHANGE (2)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.
+- Invalid positional paths are reported as CLI usage errors, not file-processing diagnostics.
+- `--quiet` is unsupported because the command's primary purpose is to emit content.
+
+See [`Exit codes`](../../exit-codes.md) for the complete CLI-wide exit-code contract.
 
 ______________________________________________________________________
 
@@ -220,4 +205,26 @@ ______________________________________________________________________
   canonical file type identifiers.
 - [`topmark config init`](./init.md) — print the bundled example TopMark TOML resource.
 
-An overview of all CLI commands is available in [CLI overview](../../cli.md).
+______________________________________________________________________
+
+## Related docs
+
+- [Command overview](../../cli.md)
+- [Configuration](../../configuration.md)
+- [Filtering](../../filtering.md)
+- [Policies](../../policies.md)
+- [Configuration discovery](../../../configuration/discovery.md)
+- [Configuration schema](../../../dev/config-schema.md)
+- [Machine-readable output schema](../../../dev/machine-output.md)
+- [Machine-readable formats](../../../dev/machine-formats.md)
+- [Exit codes](../../exit-codes.md)
+
+______________________________________________________________________
+
+## Troubleshooting
+
+- **Unexpected defaults**: remember that `config defaults` ignores all project, user, and CLI
+  overlay configuration.
+- **Unexpected identifier formatting**: machine-readable output may emit normalized canonical
+  qualified identifiers such as `topmark:python`.
+- **Need the real effective config**: use [`topmark config dump`](./dump.md) instead.

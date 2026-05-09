@@ -18,19 +18,9 @@ The `version` subcommand prints the runtime-resolved TopMark package version for
 environment. For installed builds, this version is derived from Git tags via `setuptools-scm` and
 exposed through package metadata / the generated version module.
 
-An overview of all CLI commands is available in [CLI overview](../cli.md).
-
-See also:
-
-- [Shared options](../shared-options.md)
-- [Exit codes](../exit-codes.md)
-- [Machine-readable output schema](../../dev/machine-output.md)
-- [Machine-readable formats](../../dev/machine-formats.md)
-- [API stability](../../dev/api-stability.md)
-
 ______________________________________________________________________
 
-## Command applicability
+## Input applicability
 
 `version` is informational and file-agnostic. It reports the installed TopMark package version and
 performs no project-file inspection or configuration discovery.
@@ -57,7 +47,7 @@ topmark version
 
 ______________________________________________________________________
 
-## Output
+## Output behavior
 
 By default, `topmark version` prints only the resolved version string, with no additional labels or
 decoration.
@@ -112,7 +102,7 @@ Notes:
 
 ______________________________________________________________________
 
-## Options
+## Command-specific options
 
 | Option            | Description                                                                                                 |
 | ----------------- | ----------------------------------------------------------------------------------------------------------- |
@@ -121,7 +111,7 @@ ______________________________________________________________________
 
 See `topmark version -h` for the full list of options supported by this command.
 
-### Verbosity
+### Shared output controls
 
 - `-v`, `--verbose` increases TEXT output detail.
 - Markdown output ignores verbosity and always renders a complete document.
@@ -200,17 +190,6 @@ Produces one JSON object per line:
 
 ______________________________________________________________________
 
-## Troubleshooting
-
-- **Unexpected development version**: builds between release tags may include SCM-derived
-  development or local-version metadata.
-- **Unexpected SemVer rendering**: TopMark falls back to the original PEP 440 version when a clean
-  SemVer conversion is not possible.
-- **Unexpected machine-readable output formatting**: use `--output-format json` or
-  `--output-format ndjson` for stable machine-readable output.
-
-______________________________________________________________________
-
 ## Exit codes
 
 `topmark version` is a purely informational/content-producing command and exits with `SUCCESS (0)`
@@ -234,3 +213,25 @@ Notes:
 See [`Exit codes`](../exit-codes.md) for the complete CLI-wide exit-code contract.
 
 The `version` command performs no file processing, configuration discovery, or state mutation.
+
+______________________________________________________________________
+
+## Related docs
+
+- [Command overview](../cli.md)
+- [Shared options](../shared-options.md)
+- [Exit codes](../exit-codes.md)
+- [Machine-readable output schema](../../dev/machine-output.md)
+- [Machine-readable formats](../../dev/machine-formats.md)
+- [API stability](../../dev/api-stability.md)
+
+______________________________________________________________________
+
+## Troubleshooting
+
+- **Unexpected development version**: builds between release tags may include SCM-derived
+  development or local-version metadata.
+- **Unexpected SemVer rendering**: TopMark falls back to the original PEP 440 version when a clean
+  SemVer conversion is not possible.
+- **Unexpected machine-readable output formatting**: use `--output-format json` or
+  `--output-format ndjson` for stable machine-readable output.
