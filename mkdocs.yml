@@ -49,8 +49,16 @@ theme:
   features:
     # Loads pages via AJAX for a smoother, faster experience:
     - navigation.instant
+    # Shows a progress indicator if instant navigation takes longer than expected:
+    - navigation.instant.progress
+    # Renders top-level navigation entries as tabs on wide viewports:
+    - navigation.tabs
+    # Keeps navigation tabs visible while scrolling:
+    - navigation.tabs.sticky
     # Groups navigation items into sections for better hierarchy:
     - navigation.sections
+    # Shows breadcrumb-style navigation above page titles:
+    - navigation.path
     # Adds a 'copy to clipboard' button to all code blocks:
     - content.code.copy
     # Shows completion suggestions in the search bar:
@@ -92,14 +100,10 @@ markdown_extensions:
         # Mermaid.js integration: intercepts ```mermaid blocks and renders diagrams.
         - name: mermaid
           class: mermaid
-          format:
-
-            !!python/name:pymdownx.superfences.fence_code_format 
+          format: !!python/name:pymdownx.superfences.fence_code_format
         - name: flow
           class: highlight
-          format:
-
-            !!python/name:pymdownx.superfences.fence_code_format 
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.highlight:
       anchor_linenums: true
       line_spans: __span
@@ -107,10 +111,8 @@ markdown_extensions:
 
   # Material icon shortcodes like :material-folder: / :material-file:
   - pymdownx.emoji:
-      emoji_generator: !!python/name:material.extensions.emoji.to_svg 
-      emoji_index:
-
-        !!python/name:material.extensions.emoji.twemoji 
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
 plugins:
   # 1) Search engine plugin - usually listed early in the sequence.
   - search
@@ -133,7 +135,7 @@ plugins:
       default_handler: python
       handlers:
         python:
-          paths: [ "src" ]
+          paths: ["src"]
           options:
             docstring_style: google
             show_signature: true
@@ -166,38 +168,38 @@ nav:
   - Home: index.md
   - Installation: install.md
   - Usage:
-      - CLI overview: usage/cli.md
+      - Command overview: usage/cli.md
       - Configuration: usage/configuration.md
       - Shared options: usage/shared-options.md
       - Commands:
-          - check: usage/commands/check.md
-          - strip: usage/commands/strip.md
-          - probe: usage/commands/probe.md
-          - config: usage/commands/config.md
-          - config check: usage/commands/config/check.md
-          - config dump: usage/commands/config/dump.md
-          - config defaults: usage/commands/config/defaults.md
-          - config init: usage/commands/config/init.md
-          - registry: usage/commands/registry.md
-          - registry filetypes: usage/commands/registry/filetypes.md
-          - registry processors: usage/commands/registry/processors.md
-          - registry bindings: usage/commands/registry/bindings.md
-          - version: usage/commands/version.md
+          - topmark check: usage/commands/check.md
+          - topmark strip: usage/commands/strip.md
+          - topmark probe: usage/commands/probe.md
+          - topmark config: usage/commands/config.md
+          - topmark config check: usage/commands/config/check.md
+          - topmark config dump: usage/commands/config/dump.md
+          - topmark config defaults: usage/commands/config/defaults.md
+          - topmark config init: usage/commands/config/init.md
+          - topmark registry: usage/commands/registry.md
+          - topmark registry filetypes: usage/commands/registry/filetypes.md
+          - topmark registry processors: usage/commands/registry/processors.md
+          - topmark registry bindings: usage/commands/registry/bindings.md
+          - topmark version: usage/commands/version.md
       - Guides:
           - Filtering recipes: usage/filtering.md
           - Header placement: usage/header-placement.md
           - Policies: usage/policies.md
           - Pre-commit: usage/pre-commit.md
       - Registry reference:
-          - Supported file types (generated): usage/generated/filetypes.md
-          - Registered processors (generated): usage/generated/processors.md
-          - Registered bindings (generated): usage/generated/bindings.md
+          - Supported file types: usage/generated/filetypes.md
+          - Registered processors: usage/generated/processors.md
+          - Registered bindings: usage/generated/bindings.md
       - Exit codes: usage/exit-codes.md
   - Configuration:
       - Overview: configuration/index.md
-      - Discovery & Precedence: configuration/discovery.md
-      - Example TOML document (generated): configuration/generated/example-config.md
-      - Default TOML settings (generated): configuration/generated/config-defaults.md
+      - Discovery and precedence: configuration/discovery.md
+      - Example TOML document: configuration/generated/example-config.md
+      - Default TOML settings: configuration/generated/config-defaults.md
   - CI/CD:
       - CI workflow: ci/ci-workflow.md
       - Dev validation: ci/dev-validation.md
@@ -222,7 +224,8 @@ nav:
       - API Stability: dev/api-stability.md
       - Machine-readable output: dev/machine-output.md
       - Machine-readable formats: dev/machine-formats.md
-      - Documentation Pipeline & Reference Hygiene: dev/documentation-pipeline.md
+      - Documentation pipeline and reference hygiene: dev/documentation-pipeline.md
+      - Documentation conventions: dev/documentation-conventions.md
       - Roadmap: dev/roadmap.md
 
 # --- Development Server ---
