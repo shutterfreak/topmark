@@ -148,7 +148,35 @@ Avoid inconsistent variants such as:
 - `JSON Output`
 - `Output Formats`
 
-unless the page specifically focuses on those concepts.
+### Sidebar and Table-of-Contents Density
+
+Navigation and table-of-contents density should be managed primarily through page structure rather
+than global theme configuration.
+
+TopMark should avoid setting a restrictive global `toc_depth` unless the majority of pages benefit
+from the same depth. API reference pages, generated reference pages, architecture pages, and long
+configuration pages may legitimately need deeper table-of-contents navigation.
+
+Overview pages should avoid deep heading hierarchies when the sidebar already provides equivalent
+navigation.
+
+Prefer:
+
+- shallow overview pages
+- tables for command maps
+- short linked lists for related commands
+- bold lead-in labels for compact summaries
+- sidebar navigation for command-family browsing
+
+over repeating the full command hierarchy in both the sidebar and the page table of contents.
+
+Avoid creating `h3` or deeper headings solely to make repeated command summaries scannable. If a
+page already has command navigation in the sidebar, prefer a table or definition-style list for
+command summaries.
+
+Per-page table-of-contents customization should not be introduced unless repeated rendered-site
+reviews show a clear need. Theme overrides for per-page TOC behavior add documentation tooling
+complexity and should be treated as a post-1.0 consideration.
 
 ### Command Grouping Semantics
 
@@ -238,6 +266,9 @@ The `Summary` section should:
 - avoid implementation details
 
 The summary should typically consist of one to three short paragraphs.
+
+Command overview or index pages may use tables or compact linked lists instead of deep heading
+hierarchies when summarizing many commands.
 
 #### Usage
 
@@ -416,6 +447,9 @@ Examples should remain stable across platforms whenever reasonably possible.
 
 Prefer portable shell syntax and avoid examples that depend heavily on shell-specific behavior
 unless the shell dependency is directly relevant.
+
+When examples are collected on overview pages, prefer compact grouping over creating a separate
+heading for every command if the sidebar already exposes the command hierarchy.
 
 ### Related Sections
 
