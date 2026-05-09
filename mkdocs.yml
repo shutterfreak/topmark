@@ -172,25 +172,27 @@ nav:
       - Configuration: usage/configuration.md
       - Shared options: usage/shared-options.md
       - Commands:
-          - topmark check: usage/commands/check.md
-          - topmark strip: usage/commands/strip.md
-          - topmark probe: usage/commands/probe.md
-          - topmark config: usage/commands/config.md
-          - topmark config check: usage/commands/config/check.md
-          - topmark config dump: usage/commands/config/dump.md
-          - topmark config defaults: usage/commands/config/defaults.md
-          - topmark config init: usage/commands/config/init.md
-          - topmark registry: usage/commands/registry.md
-          - topmark registry filetypes: usage/commands/registry/filetypes.md
-          - topmark registry processors: usage/commands/registry/processors.md
-          - topmark registry bindings: usage/commands/registry/bindings.md
-          - topmark version: usage/commands/version.md
+          - check: usage/commands/check.md
+          - strip: usage/commands/strip.md
+          - probe: usage/commands/probe.md
+          - config:
+              - Overview: usage/commands/config.md
+              - check: usage/commands/config/check.md
+              - dump: usage/commands/config/dump.md
+              - defaults: usage/commands/config/defaults.md
+              - init: usage/commands/config/init.md
+          - registry:
+              - Overview: usage/commands/registry.md
+              - filetypes: usage/commands/registry/filetypes.md
+              - processors: usage/commands/registry/processors.md
+              - bindings: usage/commands/registry/bindings.md
+          - version: usage/commands/version.md
       - Guides:
           - Filtering recipes: usage/filtering.md
           - Header placement: usage/header-placement.md
           - Policies: usage/policies.md
           - Pre-commit: usage/pre-commit.md
-      - Registry reference:
+      - Registry:
           - Supported file types: usage/generated/filetypes.md
           - Registered processors: usage/generated/processors.md
           - Registered bindings: usage/generated/bindings.md
