@@ -14,6 +14,15 @@ topmark:header:end
 
 TopMark exposes a `config` command group to inspect and scaffold configuration:
 
+## Subcommands
+
+| Command                                         | Purpose                                                                        |
+| ----------------------------------------------- | ------------------------------------------------------------------------------ |
+| [`topmark config check`](config/check.md)       | Validate the effective merged configuration and report diagnostics.            |
+| [`topmark config dump`](config/dump.md)         | Display the effective merged configuration and layered provenance information. |
+| [`topmark config defaults`](config/defaults.md) | Show the built-in default TopMark TOML document.                               |
+| [`topmark config init`](config/init.md)         | Render the bundled starter TopMark TOML configuration template.                |
+
 Source-local options under `[config]` / `[tool.topmark.config]` (such as `root` and `strict`) are
 resolved during configuration loading. They do not participate in layered config merging, but
 influence discovery and validation behaviour.
@@ -24,15 +33,6 @@ In the current implementation, effective strictness applies across staged config
 validation.
 
 {% include-markdown "\_snippets/config-validation-contract.md" %}
-
-See also:
-
-- [CLI overview](../cli.md)
-- [Configuration](../configuration.md)
-- [Filtering](../filtering.md)
-- [Policies](../policies.md)
-- [Configuration discovery](../../configuration/discovery.md)
-- [Configuration schema](../../dev/config-schema.md)
 
 Configuration and policy values handled by these commands are part of the stable **public
 configuration surface**. Internal helper types such as
@@ -62,14 +62,6 @@ Local identifiers are accepted only when unambiguous in the effective composed r
 
 {% include-markdown "\_snippets/file-type-identifiers.md" %}
 
-- [`topmark config check`](config/check.md) — validate the *effective merged* configuration and
-  report diagnostics.
-- [`topmark config dump`](config/dump.md) — show the *effective merged* configuration. Effective
-  config snapshots emit canonical normalized identifiers after configuration freeze.
-- [`topmark config defaults`](config/defaults.md) — show the *built-in default TopMark TOML
-  document*.
-- [`topmark config init`](config/init.md) — print the bundled example TopMark TOML resource.
-
 An overview of all CLI commands is available in [CLI overview](../cli.md).
 
 ______________________________________________________________________
@@ -92,7 +84,7 @@ Config discovery applies only where explicitly documented ([`config check`](conf
 
 ______________________________________________________________________
 
-## Configuration semantics
+## Shared configuration semantics
 
 The `config` command family reflects the same stable configuration contract used by:
 
@@ -111,7 +103,9 @@ Configuration handling intentionally does not support:
 
 ______________________________________________________________________
 
-## Exit codes
+## Shared behavior
+
+### Exit codes
 
 Exit-code behavior for `config` subcommands follows a consistent pattern:
 
@@ -125,6 +119,8 @@ Exit-code behavior for `config` subcommands follows a consistent pattern:
 - Unexpected internal failures exit with `UNEXPECTED_ERROR (255)`.
 
 See [`Exit codes`](../exit-codes.md) for the complete CLI-wide exit-code contract.
+
+### Output behavior
 
 Note on output controls:
 
@@ -158,6 +154,18 @@ compatibility diagnostics contract is exposed at CLI/API/machine boundaries.
 Note that `strict` is a **source-local TOML option**, not a layered configuration field. It
 influences validation behaviour but is not part of the final merged config; however, it is visible
 in layered provenance output ([`config dump --show-layers`](config/dump.md)).
+
+______________________________________________________________________
+
+## Related docs
+
+- [Command overview](../cli.md)
+- [Configuration](../configuration.md)
+- [Filtering](../filtering.md)
+- [Policies](../policies.md)
+- [Configuration discovery](../../configuration/discovery.md)
+- [Configuration schema](../../dev/config-schema.md)
+- [Exit codes](../exit-codes.md)
 
 ______________________________________________________________________
 

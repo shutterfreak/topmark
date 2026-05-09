@@ -14,27 +14,19 @@ topmark:header:end
 
 TopMark exposes a `registry` command group to inspect the three core registry domains:
 
-- [`topmark registry filetypes`](registry/filetypes.md) — inspect **file type identities** and their
-  matching rules and policies.
-- [`topmark registry processors`](registry/processors.md) — inspect **header processor identities**
-  and their capabilities.
-- [`topmark registry bindings`](registry/bindings.md) — inspect **effective relationships** between
-  file types and processors.
+## Subcommands
+
+| Command                                                 | Purpose                                                            |
+| ------------------------------------------------------- | ------------------------------------------------------------------ |
+| [`topmark registry filetypes`](registry/filetypes.md)   | Inspect file type identities, matching rules, and policies.        |
+| [`topmark registry processors`](registry/processors.md) | Inspect registered header processor identities and capabilities.   |
+| [`topmark registry bindings`](registry/bindings.md)     | Inspect effective relationships between file types and processors. |
 
 These commands reflect the internal split between identities (file types and processors) and
 relationships (bindings), which together define how TopMark resolves file types and selects
 processors.
 
 An overview of all CLI commands is available in [CLI overview](../cli.md).
-
-See also:
-
-- [Registry model](../../dev/registry-model.md)
-- [Plugins and extensibility](../../dev/plugins.md)
-- [Resolution model](../../dev/resolution.md)
-- [Configuration](../configuration.md)
-- [Filtering](../filtering.md)
-- [Machine-readable output](../../dev/machine-output.md)
 
 ______________________________________________________________________
 
@@ -59,7 +51,7 @@ exposed by these commands.
 
 ______________________________________________________________________
 
-## File type identifier semantics
+## Identity semantics
 
 Registry commands expose canonical qualified identities.
 
@@ -89,7 +81,9 @@ surfaces for the freeze semantics.
 
 ______________________________________________________________________
 
-## Exit codes
+## Shared behavior
+
+### Exit codes
 
 All `registry` subcommands are informational introspection commands:
 
@@ -105,6 +99,20 @@ See [`Exit codes`](../exit-codes.md) for the complete CLI-wide exit-code contrac
 
 ______________________________________________________________________
 
+## Related docs
+
+- [Command overview](../cli.md)
+- [Configuration](../configuration.md)
+- [Filtering](../filtering.md)
+- [Registry model](../../dev/registry-model.md)
+- [Plugins and extensibility](../../dev/plugins.md)
+- [Resolution model](../../dev/resolution.md)
+- [Machine-readable output](../../dev/machine-output.md)
+- [Machine-readable formats](../../dev/machine-formats.md)
+- [Exit codes](../exit-codes.md)
+
+______________________________________________________________________
+
 ## Troubleshooting
 
 - **Unexpected missing file type**: ensure plugin discovery completed and that the file type is
@@ -116,7 +124,7 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-## Conceptual model
+## Registry model
 
 ```mermaid
 flowchart LR
