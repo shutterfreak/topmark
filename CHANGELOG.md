@@ -18,6 +18,230 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ______________________________________________________________________
 
+## [1.0.0b1] – 2026-05-09
+
+This first **1.0 beta release** marks the transition from alpha contract stabilization to beta
+validation for TopMark’s 1.0 release line.
+
+It completes the final documentation consistency, generated-site, CLI/help, alpha-semantics,
+warning/error wording, and machine-readable output freeze review. It also fixes the remaining
+config/runtime boundary issue where TOML-authored runtime sections such as `[writer]` could be
+accepted and applied at runtime but omitted from config output snapshots.
+
+The beta is intended for final validation of the already-frozen 1.0 contracts rather than for new
+feature exploration. Post-1.0 deferrals such as in-memory pipeline support, Rich / `rich-click`
+migration, staged diagnostic schema expansion, registry query commands, and config schema versioning
+remain deferred.
+
+### ⚠️ Breaking Changes - 1.0.0b1
+
+- **Config machine-readable payloads now include TOML-authored runtime sections such as
+  `[writer]`.**
+
+  - `topmark config dump`, `topmark config check`, `topmark config defaults`, and
+    `topmark config init` machine-readable config snapshots may now include:
+
+    ```json
+    "writer": {
+      "strategy": "atomic"
+    }
+    ```
+
+  - Consumers that assumed the `config` payload contained only layered `Config` fields must allow
+    runtime-facing TOML sections that are resolved outside the layered config model.
+
+- **Synthetic config provenance is now typed and rendered as stable labels.**
+
+  - Built-in and bundled config sources now render as labels such as:
+    - `<defaults>`
+    - `<built-in topmark defaults>`
+    - `<bundled topmark-template.toml>`
+  - These labels are no longer accidentally normalized into absolute filesystem-looking paths.
+  - Consumers of `config.files.config_files` should treat these values as provenance identifiers,
+    not guaranteed filesystem paths.
+
+- **`config init` machine-readable output now represents the bundled starter template.**
+
+  - Earlier alpha behavior used a shortcut based on built-in `Config` defaults.
+  - `json` and `ndjson` output for `topmark config init` is now produced by parsing and resolving
+    the bundled starter template, preserving template semantics while omitting comments and
+    formatting.
+
+- **CLI and documentation terminology was finalized for shared options and machine-readable
+  output.**
+
+  - Documentation and help text now consistently prefer “shared options” over the older “global
+    options” wording.
+  - User-facing prose now consistently uses “machine-readable output” / “machine-readable formats”
+    while retaining “machine-output contract/schema” where referring to formal internal contracts.
+  - Downstream tests that assert exact help text or documentation snippets may need updating.
+
+### Highlights — 1.0.0b1
+
+- Completed the final beta freeze review for CLI help, docs, generated site, alpha semantics,
+  warnings/errors, and machine-readable output wording
+- Preserved `[writer]` and other TOML-authored runtime sections in config output snapshots
+- Introduced typed synthetic config provenance for bundled, built-in, CLI/API, and other
+  non-filesystem config sources
+- Aligned `config defaults` and `config init` semantics across text, Markdown, JSON, and NDJSON
+- Clarified canonical built-in defaults vs bundled starter-template behavior
+- Removed remaining transitional CLI-state scaffolding and finalized typed CLI state behavior
+- Centralized enum-value help rendering for CLI options with canonical underscore values and
+  CLI-facing hyphen aliases
+- Added reusable documentation for CLI option spelling vs TOML/API/machine-readable value spelling
+- Renamed the former global-options documentation to shared-options documentation
+- Harmonized machine-readable output terminology across docs, source docstrings, and tests
+- Updated the roadmap to mark the `v1.0.0b1` beta freeze review complete
+
+### Added — 1.0.0b1
+
+- **Typed synthetic config provenance**
+
+  - Added a `SyntheticConfigSource` value object for non-filesystem config sources.
+  - Added stable synthetic provenance markers for:
+    - built-in defaults
+    - bundled starter template
+    - defaults layer
+    - CLI/API override layers
+  - Preserved typed provenance through config resolution and merge layers until presentation or
+    serialization boundaries.
+
+- **Default/template TOML resolution helpers**
+
+  - Added bridge helpers that resolve:
+    - the canonical built-in default TOML table
+    - the bundled starter template TOML resource
+  - These helpers feed the same TOML loading and config-draft construction path used by normal
+    config sources.
+
+- **Option spelling documentation**
+
+  - Added a reusable documentation snippet explaining:
+    - hyphenated CLI option names
+    - CLI value aliases using hyphens or underscores
+    - canonical underscore values for TOML, Python API values, and machine-readable output
+
+- **Regression coverage**
+
+  - Added tests proving that TOML writer options reach CLI runtime option assembly.
+  - Added tests proving that explicit CLI `--write-mode` overrides TOML writer options.
+  - Added tests proving the bundled starter template and built-in default TOML table resolve without
+    error diagnostics.
+  - Added tests for typed synthetic provenance preservation and config model export behavior.
+
+### Changed — 1.0.0b1
+
+- **Config output snapshots**
+
+  - `ConfigPayload` now includes a `writer` section when writer options are present in the effective
+    TOML source.
+  - Human config reports now render effective TOML by composing layered `Config` entries with
+    TOML-authored runtime sections such as `[writer]`.
+  - Machine-readable config serializers now receive the resolved TOML context so they can include
+    TOML-authored runtime sections consistently.
+
+- **`config defaults` semantics**
+
+  - Text and Markdown output continue to render the canonical, comment-free built-in default TOML
+    document.
+  - JSON and NDJSON output now derive from the canonical built-in default TOML table through the
+    TOML loading and resolution pipeline.
+  - Runtime-facing TOML sections such as `[writer]` are included when present in the canonical
+    defaults.
+
+- **`config init` semantics**
+
+  - Text and Markdown output continue to render the bundled commented starter template.
+  - JSON and NDJSON output now parse and resolve the bundled starter template instead of using a
+    built-in `Config` defaults shortcut.
+  - Machine-readable output now reflects the bundled template semantics while omitting comments and
+    formatting.
+
+- **CLI state and validators**
+
+  - Removed the remaining generic CLI-state `extras` mapping and dict-like mutation behavior.
+  - Replaced the remaining hidden writer-options handoff with typed CLI state.
+  - Updated validator state mutation to use explicit typed-state handling instead of generic key
+    assignment.
+
+- **CLI help and option wording**
+
+  - Centralized enum-value help text rendering for CLI options.
+  - Standardized CLI examples around hyphenated values while preserving canonical underscore values
+    for TOML/API/machine-readable surfaces.
+  - Added explicit wording that CLI option names use hyphens and that underscored option names are
+    rejected with suggestions.
+
+- **Documentation terminology**
+
+  - Renamed the former global-options usage page to shared-options documentation.
+  - Updated CLI overview, command pages, configuration docs, policy docs, developer docs, README,
+    source docstrings, and tests for consistent terminology.
+  - Clarified that “machine-readable output” is the preferred user-facing term, while
+    “machine-output contract/schema” remains appropriate for formal schema references.
+
+### Fixed — 1.0.0b1
+
+- **Missing `[writer]` in config output snapshots**
+
+  - Fixed `config dump` and `config check` output omitting TOML-authored runtime writer options even
+    when they were accepted, validated, and applied at runtime.
+  - Fixed `config defaults` and `config init` machine-readable output omitting writer defaults by
+    shortcutting directly to `Config` defaults.
+
+- **Synthetic source path normalization**
+
+  - Fixed built-in and bundled config provenance being rendered as filesystem-looking absolute paths
+    such as `/current/working/directory/<built-in topmark defaults>`.
+  - Synthetic config sources now remain typed through resolution and render as stable provenance
+    labels only at output boundaries.
+
+- **`config init` machine-readable semantic drift**
+
+  - Fixed mismatch where text output represented the bundled starter template but JSON/NDJSON output
+    represented only built-in config defaults.
+
+- **CLI state transitional wording and behavior**
+
+  - Removed stale transitional CLI-state wording and generic dict-style state mutation.
+  - Made the remaining validator state-clearing behavior explicit and typed.
+
+- **Documentation drift**
+
+  - Fixed stale references to built-in layered defaults where the docs now refer to canonical
+    built-in default TOML documents.
+  - Fixed stale “global options” wording where the finalized CLI model uses shared options.
+  - Fixed machine-readable terminology drift across command docs, machine-format docs, generated
+    API-facing docstrings, and tests.
+
+### Documentation — 1.0.0b1
+
+- Completed the documentation consistency and generated-site freeze review.
+- Updated CLI usage docs for `config defaults`, `config init`, shared options, option spelling,
+  policy values, and machine-readable output semantics.
+- Updated developer documentation for config/runtime separation, machine-readable output, synthetic
+  provenance, generated-site expectations, and the beta readiness gate.
+- Updated roadmap status to record the completed final beta freeze review and accepted post-1.0
+  deferrals.
+- Kept historical alpha release notes unchanged except where current documentation surfaces needed
+  beta-facing clarification.
+
+### Notes — 1.0.0b1
+
+- This is the first beta release in the 1.0 line.
+- The beta focuses on validation of frozen contracts, not broad new feature development.
+- Runtime-facing TOML sections such as `[writer]` remain outside layered `Config`; they are resolved
+  from TOML and preserved in config output snapshots.
+- `config defaults` and `config init` intentionally use different sources:
+  - `config defaults` uses the canonical built-in default TOML table.
+  - `config init` uses the bundled starter template resource.
+- Synthetic config provenance labels are user-facing provenance identifiers, not filesystem paths.
+- In-memory pipeline support, Rich / `rich-click` migration, richer staged diagnostic machine
+  schemas, registry query commands, ProperDocs evaluation, and explicit TOML schema versioning
+  remain deferred beyond the beta.
+
+______________________________________________________________________
+
 ## [1.0.0a13] – 2026-05-07
 
 This thirteenth **1.0 alpha release** finalizes TopMark’s TOML strictness naming and closes the
