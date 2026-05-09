@@ -29,6 +29,64 @@ The CLI is intentionally conservative:
 - repeated runs converge to stable results
 - command help is available via `--help` / `-h`
 
+## Common workflows
+
+### Check headers safely (dry-run)
+
+```bash
+topmark check src/
+```
+
+See:
+
+- [`topmark check`](commands/check.md)
+- [Shared options](shared-options.md)
+- [Exit codes](exit-codes.md)
+
+### Apply header updates
+
+```bash
+topmark check --apply src/
+```
+
+See:
+
+- [`topmark check`](commands/check.md)
+- [Policies](policies.md)
+
+### Remove TopMark headers
+
+```bash
+topmark strip --apply src/
+```
+
+See:
+
+- [`topmark strip`](commands/strip.md)
+- [Header placement](header-placement.md)
+
+### Inspect file type resolution
+
+```bash
+topmark probe README.md
+```
+
+See:
+
+- [`topmark probe`](commands/probe.md)
+- [Filtering](filtering.md)
+
+### Inspect effective configuration
+
+```bash
+topmark config dump --show-layers
+```
+
+See:
+
+- [`topmark config dump`](commands/config/dump.md)
+- [Configuration](configuration.md)
+
 ## Installation
 
 Install TopMark from PyPI:
@@ -97,7 +155,7 @@ topmark registry filetypes --help
 
 The short form `-h` is also supported.
 
-## Shared command options
+## Shared options
 
 Common shared options include:
 
@@ -144,6 +202,20 @@ File type filters are supported consistently across:
 
 For canonical file-type identifier semantics and configuration behavior, see
 [Configuration](configuration.md).
+
+## Command map
+
+| Goal                                        | Command                                            |
+| ------------------------------------------- | -------------------------------------------------- |
+| Check headers without modifying files       | [`topmark check`](commands/check.md)               |
+| Apply header insertions or updates          | [`topmark check --apply`](commands/check.md)       |
+| Remove existing TopMark headers             | [`topmark strip`](commands/strip.md)               |
+| Inspect resolver and processor behavior     | [`topmark probe`](commands/probe.md)               |
+| Validate effective configuration            | [`topmark config check`](commands/config/check.md) |
+| Inspect merged configuration                | [`topmark config dump`](commands/config/dump.md)   |
+| Generate starter configuration              | [`topmark config init`](commands/config/init.md)   |
+| Inspect registry state                      | [`topmark registry`](commands/registry.md)         |
+| Display version and environment information | [`topmark version`](commands/version.md)           |
 
 ## Main commands
 
@@ -286,6 +358,16 @@ topmark check --apply src/
 
 This safety model helps prevent accidental repository-wide modifications.
 
+## Related pages
+
+- [Shared options](shared-options.md)
+- [Configuration](configuration.md)
+- [Filtering](filtering.md)
+- [Policies](policies.md)
+- [Exit codes](exit-codes.md)
+- [Pre-commit integration](pre-commit.md)
+- [Configuration discovery](../configuration/discovery.md)
+
 ## Diagnostics and exit behavior
 
 The CLI reports:
@@ -299,13 +381,3 @@ The CLI reports:
 - ambiguous or malformed file type identifiers
 
 Diagnostics are designed to remain deterministic and machine-readable.
-
-## Related pages
-
-- [Configuration](configuration.md)
-- [Filtering](filtering.md)
-- [Policies](policies.md)
-- [Shared options](shared-options.md)
-- [Exit codes](exit-codes.md)
-- [Pre-commit integration](pre-commit.md)
-- [Configuration discovery](../configuration/discovery.md)

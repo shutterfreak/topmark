@@ -24,6 +24,122 @@ TopMark provides consistent semantics across:
 - resolver and probe filtering
 - pre-commit and CI integration
 
+## Common workflows
+
+### I want to check headers safely
+
+Run TopMark in dry-run mode:
+
+```bash
+topmark check src/
+```
+
+See:
+
+- [`topmark check`](usage/commands/check.md)
+- [Shared options](usage/shared-options.md)
+- [Exit codes](usage/exit-codes.md)
+
+### I want to apply header updates
+
+Apply planned header mutations explicitly:
+
+```bash
+topmark check --apply src/
+```
+
+See:
+
+- [`topmark check`](usage/commands/check.md)
+- [Policies](usage/policies.md)
+
+### I want to remove TopMark headers
+
+Preview removals:
+
+```bash
+topmark strip src/
+```
+
+Apply removals:
+
+```bash
+topmark strip --apply src/
+```
+
+See:
+
+- [`topmark strip`](usage/commands/strip.md)
+- [Header placement](usage/header-placement.md)
+
+### I want to understand file type resolution
+
+Inspect resolver and processor behavior:
+
+```bash
+topmark probe README.md
+```
+
+See:
+
+- [`topmark probe`](usage/commands/probe.md)
+- [Filtering](usage/filtering.md)
+- [Policies](usage/policies.md)
+
+### I want to inspect effective configuration
+
+Inspect merged configuration:
+
+```bash
+topmark config dump
+```
+
+Inspect layered provenance:
+
+```bash
+topmark config dump --show-layers
+```
+
+See:
+
+- [`topmark config dump`](usage/commands/config/dump.md)
+- [Configuration](usage/configuration.md)
+- [Configuration discovery](configuration/discovery.md)
+
+### I want to generate a starter TOML configuration
+
+Render the documented starter configuration:
+
+```bash
+topmark config init
+```
+
+Write it to a file:
+
+```bash
+topmark config init > topmark.toml
+```
+
+See:
+
+- [`topmark config init`](usage/commands/config/init.md)
+- [Configuration](usage/configuration.md)
+- [Configuration discovery](configuration/discovery.md)
+
+### I want to inspect the built-in defaults
+
+Show the canonical built-in default TOML configuration:
+
+```bash
+topmark config defaults
+```
+
+See:
+
+- [`topmark config defaults`](usage/commands/config/defaults.md)
+- [Default TOML settings](configuration/generated/config-defaults.md)
+- [Configuration](usage/configuration.md)
+
 ## Quickstart
 
 ```bash
@@ -109,6 +225,9 @@ topmark:header:end
 ## Commands
 
 `topmark [COMMAND] ([SUBCOMMAND]) [OPTIONS] [PATHS]...`
+
+For a structured command overview, common workflows, shared options, and command applicability
+semantics, see [Command overview](usage/cli.md).
 
 Core commands: [`check`](usage/commands/check.md), [`strip`](usage/commands/strip.md),
 [`probe`](usage/commands/probe.md), [`config`](usage/commands/config.md),
@@ -271,7 +390,7 @@ after TOML-layer validation.
 
 - **Install:** [Installation guide](install.md)
 - **Usage:**
-  - [CLI overview](usage/cli.md)
+  - [Command overview](usage/cli.md)
   - [Configuration](usage/configuration.md)
   - [Filtering](usage/filtering.md)
   - [Shared options](usage/shared-options.md)
