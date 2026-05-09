@@ -778,6 +778,31 @@ Generated documentation should:
 
 Generated pages should follow the same structural conventions as manually authored pages.
 
+### Generated API Navigation
+
+Generated API internals should prefer package-level sidebar navigation over exhaustive flat module
+lists.
+
+Top-level generated navigation may link to:
+
+- generated API landing pages
+- top-level packages
+- top-level modules
+
+Nested packages and modules should generally remain discoverable through:
+
+- generated package indexes
+- breadcrumbs
+- direct cross-references
+- search
+
+Avoid expanding every generated internal module directly into the primary sidebar. This creates a
+dense navigation surface that competes with package indexes and makes generated documentation harder
+to scan.
+
+Generated API navigation should remain complete enough for discovery without turning the sidebar
+into a full source-tree listing.
+
 ## Documentation Validation
 
 Documentation validation should prioritize:
