@@ -387,6 +387,99 @@ Avoid mixing commands and conceptual pages within the same related-links section
 Related sections should generally appear near the end of the page after operational and behavioral
 reference material.
 
+## Emoji Usage Conventions
+
+Emoji usage should be conservative and consistent.
+
+TopMark documentation is primarily technical reference documentation for a CLI tool. Emoji should
+not be used as general decoration or as a substitute for clear headings, labels, or prose.
+
+Mature CLI documentation ecosystems generally keep command references, configuration references, and
+API references visually plain. Emoji may appear occasionally in README-style introductions, feature
+callouts, or project branding, but not as a structural requirement.
+
+### Default Rule
+
+Do not use emoji in:
+
+- command reference pages
+- configuration reference pages
+- generated reference pages
+- machine-readable output documentation
+- API reference pages
+- architecture documentation
+- validation or release-policy documentation
+
+These pages should remain plain, searchable, accessible, and easy to copy from.
+
+### Allowed Uses
+
+Emoji may be used sparingly in:
+
+- README-style landing pages
+- short onboarding sections
+- high-level feature summaries
+- release announcements
+- informal contributor notes
+
+Emoji should only be used when it improves scanning or tone without reducing clarity.
+
+### Accessibility and Meaning
+
+Emoji must not be the only way information is conveyed.
+
+Prefer GitHub-style alerts or other formatter-stable structured callouts:
+
+```md
+> [!WARNING]
+> Beta behavior
+```
+
+over:
+
+```md
+⚠️ Beta behavior
+```
+
+If an emoji is used, the surrounding text must carry the full meaning without relying on the emoji.
+
+### Heading and Navigation Policy
+
+Do not use emoji in:
+
+- page titles
+- navigation labels
+- command names
+- section headings in reference documentation
+- related-link labels
+
+This keeps navigation stable, searchable, and visually consistent.
+
+### Consistency Rule
+
+If a page uses emoji, it should do so according to a local pattern.
+
+Avoid mixing emoji-heavy and emoji-free sections on the same page without a clear reason.
+
+Do not add emoji to one command page unless the same pattern is intentionally applied to all
+equivalent command pages.
+
+### Preferred Alternatives
+
+Prefer GitHub-style alerts and structured headings for semantic emphasis.
+
+Examples:
+
+- `> [!NOTE]`
+- `> [!TIP]`
+- `> [!WARNING]`
+- `> [!IMPORTANT]`
+
+MkDocs-specific admonition syntax should be avoided when it conflicts with formatter stability,
+Markdown portability, or contributor ergonomics.
+
+These are more accessible, theme-consistent, and easier to validate than ad-hoc emoji markers.
+
 ## Cross-Reference Conventions
 
 Cross-references should use stable, descriptive wording.
