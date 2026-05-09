@@ -25,16 +25,7 @@ Instead, it exposes the **resolution decision process**, including:
 - the resolution status and reason
 - all scored candidate file types
 - match signals (extension, filename, pattern, content probing)
-- explicit inputs filtered during discovery before file-type probing
-
-See also:
-
-- [CLI overview](../cli.md)
-- [Configuration](../configuration.md)
-- [Filtering](../filtering.md)
-- [Policies](../policies.md)
-- [Exit codes](../exit-codes.md)
-- [Registry model](../../dev/registry-model.md)
+- explicit inputs filtered during discovery before file-type resolution
 
 ______________________________________________________________________
 
@@ -61,7 +52,7 @@ topmark probe --output-format markdown README.md
 
 ______________________________________________________________________
 
-## Key properties
+## Behavior details
 
 - **Read-only**: does not modify files.
 - **Resolution-only**: does not perform scanning, comparison, or mutation.
@@ -96,7 +87,7 @@ path-sensitive resolution policy exactly as it would for a real file path.
 
 ______________________________________________________________________
 
-## Command applicability
+## Input applicability
 
 `probe` is read-only and diagnostic-only. It shares input discovery, filtering, configuration, and
 file-type resolution controls with [`check`](check.md) and [`strip`](strip.md), but it rejects
@@ -108,7 +99,7 @@ mutation.
 
 ______________________________________________________________________
 
-## Filtering
+## Filtering and file discovery
 
 TopMark determines which files to process using a combination of path-based filters and file-type
 filters.
@@ -150,7 +141,7 @@ Notes:
 
 ______________________________________________________________________
 
-## Output formats
+## Output behavior
 
 ### TEXT output
 
@@ -158,7 +149,7 @@ TEXT output provides a concise summary by default, with increasing detail via ve
 
 - default: one-line summary per file
 - `-v`: include selected file type and processor
-- `-vv`: include candidate list and match signals
+- `-vv`: include candidate lists, match signals, and resolution details
 
 ### Markdown output
 
@@ -166,13 +157,13 @@ Use `--output-format markdown` to render a document-oriented report.
 
 Notes:
 
-- Markdown output **ignores verbosity and quiet mode**
+- Markdown output is document-oriented and ignores TEXT-only verbosity and quiet controls
 - Always includes selected details and candidate tables
 - Suitable for documentation or review artifacts
 
-### Machine-readable output
+### Machine-readable output (JSON, NDJSON)
 
-Use `--output-format json` or `--output-format ndjson` to emit output suitable for tooling.
+Machine-readable formats are intended for automation and tooling integration.
 
 - **JSON**: a single document containing `meta`, `config`, `config_diagnostics`, and `probes`
 - **NDJSON**: one record per line; includes `kind="probe"` records for each probe result
@@ -187,7 +178,28 @@ when available.
 
 ______________________________________________________________________
 
-## Machine-readable output schema
+## Shared output controls
+
+Output format, TEXT verbosity, quiet mode, color output, and shared exit-code behavior are
+documented in [shared options](../shared-options.md) and [exit codes](../exit-codes.md).
+
+TEXT output verbosity is separate from internal logging:
+
+- `-v`, `--verbose` increases TEXT output detail for probe diagnostics.
+- `-q`, `--quiet` suppresses TEXT output while preserving the command’s exit status.
+- Markdown output is document-oriented and ignores TEXT-only verbosity and quiet controls.
+- Machine-readable output is unaffected by TEXT-only verbosity and quiet controls.
+
+Notes:
+
+- Primary/headline hint selection, where rendered in human output, is presentation-level guidance
+  and is not part of the stable CLI contract; rely on exit codes and machine-readable output for
+  automation.
+- `probe` is diagnostic-only and never renders diffs or patch previews.
+
+______________________________________________________________________
+
+## Machine-readable output
 
 ### JSON
 
@@ -243,28 +255,7 @@ Canonical file type identities in machine-readable output use normalized qualifi
 
 ______________________________________________________________________
 
-## Shared options
-
-Output format, TEXT verbosity, quiet mode, color output, and shared exit-code behavior are
-documented in [shared options](../shared-options.md) and [exit codes](../exit-codes.md).
-
-### Verbosity & logging
-
-- `-v`, `--verbose` increases TEXT output detail
-- `-q`, `--quiet` suppresses TEXT output (no effect on Markdown or machine-readable formats; does
-  not affect exit codes)
-
-Notes:
-
-- Markdown output ignores verbosity
-- Machine-readable output is unaffected by verbosity and quiet mode
-- Primary/headline hint selection, where rendered in human output, is presentation-level guidance
-  and is not part of the stable CLI contract; rely on exit codes and machine-readable output for
-  automation.
-
-______________________________________________________________________
-
-## Options (subset)
+## Command-specific options
 
 | Option                                               | Description                                                            |
 | ---------------------------------------------------- | ---------------------------------------------------------------------- |
@@ -345,7 +336,20 @@ ______________________________________________________________________
 - [`topmark config dump`](./config/dump.md) — inspect the effective frozen configuration, including
   normalized file type identifiers.
 
-An overview of all CLI commands is available in [CLI overview](../cli.md).
+______________________________________________________________________
+
+## Related docs
+
+- [Command overview](../cli.md)
+- [Configuration](../configuration.md)
+- [Filtering](../filtering.md)
+- [Policies](../policies.md)
+- [Shared options](../shared-options.md)
+- [Exit codes](../exit-codes.md)
+- [Registry model](../../dev/registry-model.md)
+- [Resolution model](../../dev/resolution.md)
+- [Machine-readable output schema](../../dev/machine-output.md)
+- [Machine-readable formats](../../dev/machine-formats.md)
 
 ______________________________________________________________________
 

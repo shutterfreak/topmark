@@ -19,14 +19,6 @@ does not modify files (dry‑run) but reports which files would need updates. In
 end with `- previewed`. When run with `--apply`, files are actually modified and summaries end with
 `- inserted`, `- replaced`, or other terminal statuses.
 
-See also:
-
-- [CLI overview](../cli.md)
-- [Configuration](../configuration.md)
-- [Filtering](../filtering.md)
-- [Policies](../policies.md)
-- [Exit codes](../exit-codes.md)
-
 ______________________________________________________________________
 
 ## Quick start
@@ -58,6 +50,8 @@ git ls-files | topmark check --files-from - --diff
 ```
 
 ______________________________________________________________________
+
+## Input applicability
 
 - Dry‑run by default; exit code **2** when changes *would* occur.
 - Preserves the file’s original **newline style** (LF/CRLF/CR).
@@ -142,7 +136,7 @@ Notes:
 
 ______________________________________________________________________
 
-## Policy options (check only)
+## Command-specific policy options
 
 The `check` command supports policy overrides that control how headers are inserted or updated.
 
@@ -203,6 +197,32 @@ These options influence rendering behavior and idempotence.
 - `--allow-content-probe / --no-allow-content-probe`
 
 Controls whether file-type detection may inspect file contents.
+
+______________________________________________________________________
+
+## Output behavior
+
+Output format, TEXT verbosity, quiet mode, color output, and shared exit-code behavior are
+documented in [shared options](../shared-options.md) and [exit codes](../exit-codes.md).
+
+### Shared output controls
+
+TEXT output verbosity is separate from internal logging:
+
+- `-v`, `--verbose` increases TEXT output detail for `check`, such as per-line diagnostics and
+  additional hints.
+- `-q`, `--quiet` suppresses TEXT output while preserving the command’s exit status.
+- Markdown output is document-oriented and renders diagnostics and hints when present without
+  requiring `-v`.
+- Machine-readable output ignores TEXT-only verbosity and quiet controls.
+
+Notes:
+
+- **Summary mode** aggregates outcomes and suppresses per-file guidance lines.
+- In TEXT output, **per-line diagnostics** are shown with `-v` and above.
+- Primary/headline hint selection is presentation-level guidance and is not part of the stable CLI
+  contract; rely on exit codes and machine-readable output for automation.
+- **Diffs** (`--diff`) are always human-only and never included in JSON/NDJSON.
 
 ______________________________________________________________________
 
@@ -288,28 +308,7 @@ Example (summary mode):
 
 ______________________________________________________________________
 
-Output format, TEXT verbosity, quiet mode, color output, and shared exit-code behavior are
-documented in [shared options](../shared-options.md) and [exit codes](../exit-codes.md).
-
-### Verbosity & logging
-
-TEXT output verbosity is separate from internal logging:
-
-- `-v`, `--verbose` increases TEXT output detail for `check`, such as per-line diagnostics and
-  additional hints.
-- `-q`, `--quiet` suppresses TEXT output while preserving the command’s exit status.
-- See the output-format note above for Markdown and machine-readable output behavior.
-
-Notes:
-
-- **Summary mode** aggregates outcomes and suppresses per-file guidance lines.
-- In TEXT output, **per-line diagnostics** are shown with `-v` and above.
-- In Markdown output, diagnostics and hints are rendered when present without requiring `-v`.
-- Primary/headline hint selection is presentation-level guidance and is not part of the stable CLI
-  contract; rely on exit codes and machine-readable output for automation.
-- **Diffs** (`--diff`) are always human‑only and never included in JSON/NDJSON.
-
-## Options (subset)
+## Command-specific options
 
 | Option                        | Description                                                            |
 | ----------------------------- | ---------------------------------------------------------------------- |
@@ -447,46 +446,15 @@ topmark check --strict src/
 
 ______________________________________________________________________
 
-## Pre‑commit integration
+## Pre-commit integration
 
-TopMark provides two hooks:
+`topmark check` is the command used by the non-destructive `topmark-check` pre-commit hook.
 
-- **`topmark-check`** – validates headers and fails if fixes are needed (runs automatically on
-  commit).
-- **`topmark-apply`** – inserts/updates headers (manual only by default; may modify files).
+The hook runs `topmark check` against files selected by pre-commit and follows the same resolver,
+filtering, policy, configuration, output, and exit-code behavior documented on this page.
 
-**Consumer configuration** (in a project using TopMark):
-
-```yaml
-# .pre-commit-config.yaml (consumer repo)
-repos:
-  - repo: https://github.com/shutterfreak/topmark
-    rev: v1.0.0  # Or latest version
-    hooks:
-      - id: topmark-check
-      - id: topmark-apply    # manual; invoke explicitly when desired
-```
-
-The `topmark-check` hook runs automatically at `pre-commit`. You can also invoke it manually:
-
-```bash
-# Validate TopMark headers for all files in the repo
-pre-commit run topmark-check --all-files
-
-# Validate specific files
-pre-commit run topmark-check -- <path/to/file1> <path/to/file2>
-```
-
-The `topmark-apply` hook is **manual** by default (to avoid unintended edits). Run it explicitly
-when you want to apply changes:
-
-```bash
-# Add or update TopMark headers for all files in the repo
-pre-commit run topmark-apply --all-files
-
-# Apply to specific files
-pre-commit run topmark-apply -- <path/to/file1> <path/to/file2>
-```
+For setup, hook configuration, manual remediation with `topmark-apply`, CI patterns, and
+troubleshooting, see [Pre-commit integration](../pre-commit.md).
 
 ______________________________________________________________________
 
@@ -500,7 +468,18 @@ ______________________________________________________________________
 - [`topmark config dump`](./config/dump.md) — inspect the effective frozen configuration, including
   normalized file type identifiers.
 
-An overview of all CLI commands is available in [CLI overview](../cli.md).
+______________________________________________________________________
+
+## Related docs
+
+- [Command overview](../cli.md)
+- [Configuration](../configuration.md)
+- [Filtering](../filtering.md)
+- [Policies](../policies.md)
+- [Shared options](../shared-options.md)
+- [Exit codes](../exit-codes.md)
+- [Machine-readable output schema](../../dev/machine-output.md)
+- [Machine-readable formats](../../dev/machine-formats.md)
 
 ______________________________________________________________________
 

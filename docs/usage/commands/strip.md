@@ -18,14 +18,6 @@ The `strip` command removes the entire TopMark header block from targeted files.
 default** (summaries end with `- previewed`) and becomes destructive only with `--apply` (summaries
 end with `- removed`).
 
-See also:
-
-- [CLI overview](../cli.md)
-- [Configuration](../configuration.md)
-- [Filtering](../filtering.md)
-- [Policies](../policies.md)
-- [Exit codes](../exit-codes.md)
-
 ______________________________________________________________________
 
 ## Quick start
@@ -57,6 +49,8 @@ git ls-files | topmark strip --files-from - --diff
 ```
 
 ______________________________________________________________________
+
+## Input applicability
 
 - Dry‑run by default; exit code **2** when removals *would* occur.
 - Preserves the file’s original **newline style** (LF/CRLF/CR).
@@ -145,9 +139,9 @@ Notes:
 
 ______________________________________________________________________
 
-## Policy options (strip)
+## Command-specific policy options
 
-The `strip` command supports only shared resolver and detection policy options.
+The `strip` command supports only shared resolver and file-type-detection policy options.
 
 See also: [TopMark Policy Guide](../policies.md).
 
@@ -162,6 +156,32 @@ Controls whether file-type detection may inspect file contents.
 
 Header insertion and update policies (such as mutation mode, empty-file behavior, or
 generated-header formatting) do not apply to `strip` and are rejected when provided.
+
+______________________________________________________________________
+
+## Output behavior
+
+Output format, TEXT verbosity, quiet mode, color output, and shared exit-code behavior are
+documented in [shared options](../shared-options.md) and [exit codes](../exit-codes.md).
+
+### Shared output controls
+
+TEXT output verbosity is separate from internal logging:
+
+- `-v`, `--verbose` increases TEXT output detail for `strip`, such as per-line diagnostics and
+  additional hints.
+- `-q`, `--quiet` suppresses TEXT output while preserving the command’s exit status.
+- Markdown output is document-oriented and renders diagnostics and hints when present without
+  requiring `-v`.
+- Machine-readable output ignores TEXT-only verbosity and quiet controls.
+
+Notes:
+
+- **Summary mode** aggregates outcomes and suppresses per-file guidance lines.
+- In TEXT output, **per-line diagnostics** are shown with `-v` and above.
+- Primary/headline hint selection is presentation-level guidance and is not part of the stable CLI
+  contract; rely on exit codes and machine-readable output for automation.
+- **Diffs** (`--diff`) are always human-only and never included in JSON/NDJSON.
 
 ______________________________________________________________________
 
@@ -250,28 +270,7 @@ Example (summary mode):
 
 ______________________________________________________________________
 
-Output format, TEXT verbosity, quiet mode, color output, and shared exit-code behavior are
-documented in [shared options](../shared-options.md) and [exit codes](../exit-codes.md).
-
-### Verbosity & logging
-
-TEXT output verbosity is separate from internal logging:
-
-- `-v`, `--verbose` increases TEXT output detail for `strip`, such as per-line diagnostics and
-  additional hints.
-- `-q`, `--quiet` suppresses TEXT output while preserving the command’s exit status.
-- See the output-format note above for Markdown and machine-readable output behavior.
-
-Notes:
-
-- **Summary mode** aggregates outcomes and suppresses per-file guidance lines.
-- In TEXT output, **per-line diagnostics** are shown with `-v` and above.
-- In Markdown output, diagnostics and hints are rendered when present without requiring `-v`.
-- Primary/headline hint selection is presentation-level guidance and is not part of the stable CLI
-  contract; rely on exit codes and machine-readable output for automation.
-- **Diffs** (`--diff`) are always human‑only and never included in JSON/NDJSON.
-
-## Options (subset)
+## Command-specific options
 
 | Option                                               | Description                                                            |
 | ---------------------------------------------------- | ---------------------------------------------------------------------- |
@@ -323,7 +322,7 @@ See [`Exit codes`](../exit-codes.md) for the complete CLI-wide exit-code contrac
 
 ______________________________________________________________________
 
-## File discovery & patterns
+## Filtering and file discovery
 
 - Positional arguments are resolved **relative to the current working directory** (CWD),
   Black‑style.
@@ -403,14 +402,17 @@ topmark strip --summary
 topmark strip --strict src/
 ```
 
+______________________________________________________________________
+
 ## Pre‑commit integration
 
-There is currently **no** `topmark-strip` pre-commit hook. Use the CLI directly when you need to
-remove headers:
+There is currently no dedicated `topmark-strip` pre-commit hook.
 
-```bash
-topmark strip --apply <paths>
-```
+Use `topmark strip --apply` directly when you intentionally want to remove TopMark headers from a
+selected set of files.
+
+For general pre-commit integration guidance, CI workflows, and repository hook configuration, see
+[Pre-commit integration](../pre-commit.md).
 
 ______________________________________________________________________
 
@@ -423,7 +425,19 @@ ______________________________________________________________________
 - [`topmark config dump`](./config/dump.md) — inspect the effective frozen configuration, including
   normalized file type identifiers.
 
-An overview of all CLI commands is available in [CLI overview](../cli.md).
+______________________________________________________________________
+
+## Related docs
+
+- [Command overview](../cli.md)
+- [Configuration](../configuration.md)
+- [Filtering](../filtering.md)
+- [Policies](../policies.md)
+- [Shared options](../shared-options.md)
+- [Exit codes](../exit-codes.md)
+- [Machine-readable output schema](../../dev/machine-output.md)
+- [Machine-readable formats](../../dev/machine-formats.md)
+- [Pre-commit integration](../pre-commit.md)
 
 ______________________________________________________________________
 
