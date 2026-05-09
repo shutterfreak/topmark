@@ -20,7 +20,7 @@ associated with each type.
 
 ______________________________________________________________________
 
-## Command applicability
+## Input applicability
 
 `registry filetypes` is informational and file-agnostic. It inspects TopMark's effective composed
 registry state, not project files or configuration discovery.
@@ -50,23 +50,7 @@ topmark registry filetypes --output-format json | jq
 
 ______________________________________________________________________
 
-### See also
-
-- [Registry model](../../../dev/registry-model.md)
-- [Plugins and extensibility](../../../dev/plugins.md)
-- [Resolution model](../../../dev/resolution.md)
-- [Machine-readable output schema](../../../dev/machine-output.md)
-- [Machine-readable formats](../../../dev/machine-formats.md)
-
-For the canonical, version-accurate list (used for the docs), see:
-
-- [Supported file types (generated)](../../generated/filetypes.md)
-
-(This page is generated via `topmark registry filetypes --long --output-format markdown`.)
-
-______________________________________________________________________
-
-## File type identity semantics
+## Identity semantics
 
 Registry file type identities use canonical qualified identifiers.
 
@@ -79,9 +63,9 @@ topmark:markdown
 
 Registry-oriented machine-readable output exposes canonical identity fields such as:
 
+- `local_key`
+- `namespace`
 - `qualified_key`
-- `file_type_key`
-- `processor_key`
 
 These fields are intended for stable comparisons, joins, tooling integration, and runtime
 introspection.
@@ -98,11 +82,12 @@ type views always operate on canonical qualified identities.
 
 {% include-markdown "\_snippets/file-type-identifiers.md" %}
 
-This page is one of the primary introspection surfaces for the freeze semantics.
+This command exposes the effective runtime file type view after registry composition and
+configuration freeze.
 
 ______________________________________________________________________
 
-## Output formats
+## Output behavior
 
 Use `--output-format` to pick the output format:
 
@@ -120,38 +105,14 @@ presentation (e.g., headings) and does not change the data fields emitted.
 
 ______________________________________________________________________
 
-### JSON structure
+## Detail levels
 
-The JSON output has the following structure:
-
-```jsonc
-{
-  "meta": { /* MetaPayload */ },
-  "filetypes": [ /* FileTypeEntry ... */ ]
-}
-```
-
-- `meta` contains machine metadata (tool, version, platform, and optionally `detail_level`).
-- `filetypes` is a list of file type entries. File type entries expose canonical qualified
-  identities.
-
-In `--long` mode, each entry is expanded with additional fields such as matching rules and header
-policy information.
-
-Machine-readable output emits canonical qualified identities suitable for stable automation and
-tooling integration.
-
-Unlike [`registry bindings`](bindings.md), this command focuses on canonical file type identities,
-not processor-dispatch relationships.
-
-## What it shows
-
-### Brief (default)
+### Brief output (default)
 
 - **Local key** — the namespace-local identifier (e.g., `python`, `markdown`, `env`)
 - **Description** — a short description
 
-### Detailed (`--long`)
+### Detailed output (`--long`)
 
 Rendered consistently across `text`, `json`, `ndjson`, and `markdown`:
 
@@ -168,12 +129,51 @@ Rendered consistently across `text`, `json`, `ndjson`, and `markdown`:
 
 ______________________________________________________________________
 
-## Numbered output & verbosity
+## Shared output controls
 
 In human-readable formats, TopMark renders a **numbered list** of file types with right-aligned
-indices (e.g., `1.`, `2.`, …) to keep long lists scannable. With `--long`, additional canonical
-identity and matching details are shown alongside each entry. TEXT verbosity (`-v`) affects
-presentation only (for TEXT output).
+indices (e.g., `1.`, `2.`, …) to keep long lists scannable. With `--long`, additional details are
+shown alongside each identifier. TEXT verbosity (`-v`) affects presentation only.
+
+______________________________________________________________________
+
+## Machine-readable output
+
+JSON output emits one document with shared metadata and a `filetypes` array:
+
+```jsonc
+{
+  "meta": { /* MetaPayload */ },
+  "filetypes": [ /* FileTypeEntry ... */ ]
+}
+```
+
+- `meta` contains shared machine metadata, including `tool`, `version`, `platform`, and
+  `detail_level`.
+- `filetypes` is a list of file type entries.
+- Brief entries include `local_key`, `namespace`, `qualified_key`, and `description`.
+- Long entries add matching, processing, and policy fields such as `bound`, `extensions`,
+  `filenames`, `patterns`, `skip_processing`, `has_content_matcher`, `has_insert_checker`, and
+  `policy`.
+
+NDJSON output emits one record per file type:
+
+```jsonc
+{
+  "kind": "filetype",
+  "meta": { /* MetaPayload */ },
+  "filetype": { /* FileTypeEntry */ }
+}
+```
+
+Each NDJSON record repeats the shared metadata and stores the file type payload under `filetype`.
+The `kind` field is always `filetype` for this command.
+
+Machine-readable output emits canonical qualified file type identities suitable for stable
+automation and tooling integration.
+
+Unlike [`topmark registry bindings`](bindings.md), this command focuses on canonical file type
+identities, not processor-dispatch relationships.
 
 ______________________________________________________________________
 
@@ -190,10 +190,10 @@ topmark registry filetypes --long
 topmark registry filetypes --long --output-format markdown
 
 # JSON for scripting
-topmark registry filetypes --long --output-format json | jq '.filetypes[] | select(.skip_processing==false)'
+topmark registry filetypes --long --output-format json | jq '.filetypes[] | select(.skip_processing == false) | .qualified_key'
 
 # NDJSON for streaming
-topmark registry filetypes --output-format ndjson | head -n 5
+topmark registry filetypes --output-format ndjson | jq -r '.filetype.qualified_key'
 ```
 
 ______________________________________________________________________
@@ -236,29 +236,55 @@ ______________________________________________________________________
 
 ## How TopMark resolves file types
 
-TopMark may have multiple `FileType` definitions that match a given path. The resolver evaluates all
-matching file types and deterministically selects the most specific match.
+Registry file types may overlap intentionally. Resolver behavior may depend on extension matching,
+content probing, insertability checks, and processing policy.
+
+TopMark may have multiple matching file type candidates for a given path. The resolver evaluates all
+matching candidates and deterministically selects the most specific effective file type.
 
 In practice, specificity follows this order:
 
-1. **Explicit filenames / tail subpaths** (e.g., `Makefile`, `.vscode/settings.json`)
+1. **Explicit filenames / path suffixes** (e.g., `Makefile`, `.vscode/settings.json`)
 1. **Regex patterns** (e.g., `Dockerfile(\..+)?`, `requirements.*\.(in|txt)$`)
 1. **Extensions** (e.g., `.py`, `.md`, `.json`)
 
 If multiple candidates remain tied, TopMark prefers the more “headerable” choice (that is, file
 types not marked `skip_processing = true`).
 
-### Tail subpath matching
+### Path-suffix matching
 
-`FileType.filenames` entries that contain a path separator (e.g., `.vscode/settings.json`) are
-matched as **path suffixes** against `path.as_posix()`. Plain names still match the basename only.
+Filename rules that contain path separators (for example, `.vscode/settings.json`) are treated as
+path-suffix matches against normalized POSIX-style paths. Plain filename rules still match only the
+basename.
 
-### JSON vs JSONC
+### Content-based disambiguation
 
-- `json` is recognized but typically has `skip_processing = true` because strict JSON has no
-  comments, and TopMark will not insert headers into it.
-- `jsonc` is an opt‑in type that uses `//` headers. It relies on a content matcher and an insert
-  checker to avoid misclassifying strict JSON.
+Some file types intentionally share the same filename patterns or extensions.
+
+In these cases, TopMark may use:
+
+- content matchers
+- insert checkers
+- headerability rules
+- `skip_processing` semantics
+
+to determine which effective file type should apply.
+
+A common example is `.json`:
+
+- strict JSON (`topmark:json`) is recognized but treated as unheaderable because JSON does not
+  support comments
+- JSON-with-comments variants may still be supported through specialized file types such as
+  `topmark:json-as-jsonc`
+- dedicated `.jsonc` files may map directly to `topmark:jsonc`
+
+This allows TopMark to distinguish between:
+
+- recognized-but-unmodifiable formats
+- comment-capable variants
+- and files that can safely accept TopMark headers
+
+without relying solely on filename extensions.
 
 ### Unsupported but recognized types
 
@@ -271,6 +297,28 @@ These are hidden by default; use `--report=noncompliant` or `--report=all` to sh
 
 ______________________________________________________________________
 
+## Related commands
+
+- [`topmark registry processors`](processors.md) — inspect canonical processor identities and
+  capabilities.
+- [`topmark registry bindings`](bindings.md) — inspect effective processor-dispatch relationships
+  between file types and processors.
+
+______________________________________________________________________
+
+## Related docs
+
+- [Command overview](../../cli.md)
+- [Registry model](../../../dev/registry-model.md)
+- [Plugins and extensibility](../../../dev/plugins.md)
+- [Resolution model](../../../dev/resolution.md)
+- [Machine-readable output schema](../../../dev/machine-output.md)
+- [Machine-readable formats](../../../dev/machine-formats.md)
+- [Supported file types](../../generated/filetypes.md)
+- [Exit codes](../../exit-codes.md)
+
+______________________________________________________________________
+
 ## Troubleshooting
 
 - **Unexpected identifier form**: registry commands intentionally emit canonical qualified
@@ -279,13 +327,3 @@ ______________________________________________________________________
   processor-dispatch relationships.
 - **Unexpected file type selection**: use [`topmark probe`](../probe.md) to inspect resolver
   candidate evaluation.
-
-______________________________________________________________________
-
-## Related commands
-
-- [`registry processors`](processors.md) — inspect canonical processor identities and capabilities.
-- [`registry bindings`](bindings.md) — inspect effective processor-dispatch relationships between
-  file types and processors.
-
-An overview of all CLI commands is available in [CLI overview](../../cli.md).

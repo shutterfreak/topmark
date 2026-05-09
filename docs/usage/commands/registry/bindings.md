@@ -23,7 +23,7 @@ resolution, and to identify:
 
 ______________________________________________________________________
 
-## Command applicability
+## Input applicability
 
 `registry bindings` is informational and file-agnostic. It inspects TopMark's effective composed
 registry state, not project files or configuration discovery.
@@ -53,23 +53,7 @@ topmark registry bindings --output-format json | jq
 
 ______________________________________________________________________
 
-### See also
-
-- [Registry model](../../../dev/registry-model.md)
-- [Plugins and extensibility](../../../dev/plugins.md)
-- [Resolution model](../../../dev/resolution.md)
-- [Machine-readable output schema](../../../dev/machine-output.md)
-- [Machine-readable formats](../../../dev/machine-formats.md)
-
-For the canonical, version-accurate list (used for the docs), see:
-
-- [Supported bindings (generated)](../../generated/bindings.md)
-
-(This page is generated via `topmark registry bindings --long --output-format markdown`.)
-
-______________________________________________________________________
-
-## Binding identity semantics
+## Binding semantics
 
 Bindings use canonical qualified identities.
 
@@ -82,9 +66,15 @@ topmark:markdown
 
 Binding-oriented machine-readable output exposes canonical identity fields such as:
 
-- `qualified_key`
 - `file_type_key`
 - `processor_key`
+
+And in long mode:
+
+- `file_type_local_key`
+- `file_type_namespace`
+- `processor_local_key`
+- `processor_namespace`
 
 These fields are intended for stable comparisons, joins, tooling integration, and runtime
 introspection.
@@ -101,12 +91,12 @@ bindings always operate on canonical qualified identities.
 
 {% include-markdown "\_snippets/file-type-identifiers.md" %}
 
-This is one of the most important pages for the identifier freeze because bindings are now
-explicitly canonical-qualified-key based.
+Bindings expose the effective runtime processor-dispatch relationships using canonical qualified
+identities.
 
 ______________________________________________________________________
 
-## Output formats
+## Output behavior
 
 Use `--output-format` to pick the output format:
 
@@ -122,9 +112,41 @@ The `--long` flag controls the detail level for all output formats.
 
 ______________________________________________________________________
 
-### JSON structure
+## Detail levels
 
-The JSON output has the following structure:
+### Brief output (default)
+
+- **File type → Processor mapping** — using canonical qualified identifiers
+
+### Detailed output (`--long`)
+
+Rendered consistently across `text`, `json`, `ndjson`, and `markdown`:
+
+- **Canonical file type qualified key**
+- **Canonical processor qualified key**
+- **File type local key / namespace**
+- **Processor local key / namespace**
+- **Descriptions** (file type and processor descriptions)
+
+Additional sections:
+
+- **Unbound file types** — recognized file types without a processor
+- **Unused processors** — processors not referenced by any binding
+
+______________________________________________________________________
+
+## Shared output controls
+
+In human-readable formats, TopMark renders a **numbered list** of bindings with right-aligned
+indices (e.g., `1.`, `2.`, …) to keep long lists scannable. With `--long`, additional details are
+shown alongside each identifier. TEXT verbosity (`-v`) affects presentation only.
+
+______________________________________________________________________
+
+## Machine-readable output
+
+JSON output emits one document with shared metadata and separate collections for bindings, unbound
+file types, and unused processors:
 
 ```jsonc
 {
@@ -135,50 +157,36 @@ The JSON output has the following structure:
 }
 ```
 
-- `meta` contains machine metadata (tool, version, platform, and optionally `detail_level`).
-- `bindings` is the list of effective file type ↔ processor relationships. Binding entries use
-  canonical qualified identity keys.
-- `unbound_filetypes` lists file types without a processor.
-- `unused_processors` lists processors not referenced by any binding.
+- `meta` contains shared machine metadata, including `tool`, `version`, `platform`, and
+  `detail_level`.
+- `bindings` contains the effective file type ↔ processor relationships.
+- Brief binding entries include `file_type_key` and `processor_key`.
+- Long binding entries add descriptive identity fields such as `file_type_local_key`,
+  `file_type_namespace`, `processor_local_key`, `processor_namespace`, and descriptions.
+- `unbound_filetypes` lists file types without an effective processor relationship.
+- `unused_processors` lists processors that are registered but not referenced by any effective
+  binding.
 
-In `--long` mode, entries in all collections are expanded with additional descriptive fields.
+NDJSON output emits one record per relationship or registry-state entry:
 
-______________________________________________________________________
+```jsonc
+{
+  "kind": "binding",
+  "meta": { /* MetaPayload */ },
+  "binding": { /* BindingEntry */ }
+}
+```
 
-Unlike [`registry filetypes`](filetypes.md) and [`registry processors`](processors.md), which show
-identities, this command focuses on **relationships**.
+Additional NDJSON record kinds include `unbound_filetype` and `unused_processor`.
+
+Each NDJSON record repeats the shared metadata and stores the payload under a kind-specific key.
+
+Unlike [`topmark registry filetypes`](filetypes.md) and
+[`topmark registry processors`](processors.md), which focus on identities, this command focuses on
+runtime relationships.
 
 Machine-readable output exposes canonical binding identities suitable for stable automation and
 tooling integration.
-
-## What it shows
-
-### Brief (default)
-
-- **File type → Processor mapping** — using canonical qualified identifiers
-
-### Detailed (`--long`)
-
-Rendered consistently across `text`, `json`, `ndjson`, and `markdown`:
-
-- **Canonical file type qualified key**
-- **Canonical processor qualified key**
-- **File type local key / namespace**
-- **Processor local key / namespace**
-- **Descriptions** (file type and processor)
-
-Additional sections:
-
-- **Unbound file types** — recognized file types without a processor
-- **Unused processors** — processors not referenced by any binding
-
-______________________________________________________________________
-
-## Numbered output & verbosity
-
-In human-readable formats, TopMark renders a **numbered list** of file types with right-aligned
-indices (e.g., `1.`, `2.`, …) to keep long lists scannable. With `--long` or higher TEXT verbosity,
-additional details are shown alongside each identifier.
 
 ______________________________________________________________________
 
@@ -195,7 +203,7 @@ topmark registry bindings --long
 topmark registry bindings --long --output-format markdown
 
 # JSON for scripting
-topmark registry bindings --long --output-format json | jq '.bindings[]'
+topmark registry bindings --long --output-format json | jq '.bindings[] | {filetype: .file_type_key, processor: .processor_key}'
 
 # Inspect unbound file types
 topmark registry bindings --output-format json | jq '.unbound_filetypes[]'
@@ -204,7 +212,7 @@ topmark registry bindings --output-format json | jq '.unbound_filetypes[]'
 topmark registry bindings --output-format json | jq '.unused_processors[]'
 
 # NDJSON for streaming
-topmark registry bindings --output-format ndjson | head -n 5
+topmark registry bindings --output-format ndjson | jq -r 'select(.kind == "binding") | .binding.file_type_key'
 ```
 
 ______________________________________________________________________
@@ -246,6 +254,28 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
+## Related commands
+
+- [`topmark registry filetypes`](filetypes.md) — inspect canonical file type identities, matching
+  rules, and policies.
+- [`topmark registry processors`](processors.md) — inspect canonical processor identities and
+  capabilities.
+
+______________________________________________________________________
+
+## Related docs
+
+- [Command overview](../../cli.md)
+- [Registry model](../../../dev/registry-model.md)
+- [Plugins and extensibility](../../../dev/plugins.md)
+- [Resolution model](../../../dev/resolution.md)
+- [Machine-readable output schema](../../../dev/machine-output.md)
+- [Machine-readable formats](../../../dev/machine-formats.md)
+- [Supported bindings](../../generated/bindings.md)
+- [Exit codes](../../exit-codes.md)
+
+______________________________________________________________________
+
 ## Troubleshooting
 
 - **Unexpected processor binding**: inspect the canonical qualified file type identity and verify
@@ -254,13 +284,3 @@ ______________________________________________________________________
   identifiers such as `topmark:python`.
 - **Missing processor relationship**: inspect [`registry processors`](processors.md) and
   [`registry filetypes`](filetypes.md) to verify the underlying identities.
-
-______________________________________________________________________
-
-## Related commands
-
-- [`registry filetypes`](filetypes.md) — inspect canonical file type identities, matching rules, and
-  policies.
-- [`registry processors`](processors.md) — inspect canonical processor identities and capabilities.
-
-An overview of all CLI commands is available in [CLI overview](../../cli.md).

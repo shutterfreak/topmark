@@ -20,7 +20,7 @@ system.
 
 ______________________________________________________________________
 
-## Command applicability
+## Input applicability
 
 `registry processors` is informational and file-agnostic. It inspects TopMark's effective composed
 registry state, not project files or configuration discovery.
@@ -52,23 +52,7 @@ topmark registry processors --output-format json | jq
 
 ______________________________________________________________________
 
-### See also
-
-- [Registry model](../../../dev/registry-model.md)
-- [Plugins and extensibility](../../../dev/plugins.md)
-- [Resolution model](../../../dev/resolution.md)
-- [Machine-readable output schema](../../../dev/machine-output.md)
-- [Machine-readable formats](../../../dev/machine-formats.md)
-
-For the canonical, version-accurate list (used for the docs), see:
-
-- [Supported header processors (generated)](../../generated/processors.md)
-
-(This page is generated via `topmark registry processors --long --output-format markdown`.)
-
-______________________________________________________________________
-
-## Processor identity semantics
+## Identity semantics
 
 Registry processor identities use canonical qualified identifiers.
 
@@ -81,23 +65,27 @@ topmark:xml
 
 Registry-oriented machine-readable output exposes canonical identity fields such as:
 
+- `local_key`
+- `namespace`
 - `qualified_key`
-- `file_type_key`
-- `processor_key`
 
 These fields are intended for stable comparisons, joins, tooling integration, and runtime
 introspection.
 
 Processor identities are registry-level runtime identities and are independent from file type
-identities and processor bindings.
+identities and binding relationships.
 
 {% include-markdown "\_snippets/file-type-identifiers.md" %}
 
-This page is one of the primary introspection surfaces for the freeze semantics.
+This command exposes the effective runtime processor view after registry composition and
+configuration freeze.
+
+Unlike [`registry bindings`](bindings.md), this command focuses on canonical processor identities,
+not processor-dispatch relationships.
 
 ______________________________________________________________________
 
-## Output formats
+## Output behavior
 
 Use `--output-format` to pick the output format:
 
@@ -115,40 +103,14 @@ presentation (e.g., headings) and does not change the data fields emitted.
 
 ______________________________________________________________________
 
-### JSON structure
+## Detail levels
 
-The JSON output has the following structure:
-
-```jsonc
-{
-  "meta": { /* MetaPayload */ },
-  "processors": [ /* ProcessorEntry ... */ ]
-}
-```
-
-- `meta` contains machine metadata (tool, version, platform, and optionally `detail_level`).
-- `processors` is a list of processor entries. Processor entries expose canonical qualified
-  identities.
-
-In `--long` mode, each entry is expanded with additional fields such as delimiter and comment
-capabilities.
-
-Machine-readable output emits canonical processor identities suitable for stable automation and
-tooling integration.
-
-______________________________________________________________________
-
-Unlike [`registry bindings`](bindings.md), this command focuses on canonical processor identities,
-not processor-dispatch relationships.
-
-## What it shows
-
-### Brief (default)
+### Brief output (default)
 
 - **Canonical qualified key** — unique processor identifier
 - **Description** — short description of the processor
 
-### Detailed (`--long`)
+### Detailed output (`--long`)
 
 Rendered consistently across `text`, `json`, `ndjson`, and `markdown`:
 
@@ -160,12 +122,47 @@ Rendered consistently across `text`, `json`, `ndjson`, and `markdown`:
 
 ______________________________________________________________________
 
-## Numbered output & verbosity
+## Shared output controls
 
 In human-readable formats, TopMark renders a **numbered list** of processors with right-aligned
-indices (e.g., `1.`, `2.`, …) to keep long lists scannable. With `--long`, additional processor
-identity and capability details are shown. TEXT verbosity (`-v`) affects presentation only (for TEXT
-output).
+indices (e.g., `1.`, `2.`, …) to keep long lists scannable. With `--long`, additional details are
+shown alongside each identifier. TEXT verbosity (`-v`) affects presentation only.
+
+______________________________________________________________________
+
+## Machine-readable output
+
+JSON output emits one document with shared metadata and a `processors` array:
+
+```jsonc
+{
+  "meta": { /* MetaPayload */ },
+  "processors": [ /* ProcessorEntry ... */ ]
+}
+```
+
+- `meta` contains shared machine metadata, including `tool`, `version`, `platform`, and
+  `detail_level`.
+- `processors` is a list of processor entries.
+- Brief entries include `local_key`, `namespace`, `qualified_key`, and `description`.
+- Long entries add binding and rendering-capability fields such as `bound`, `line_indent`,
+  `line_prefix`, `line_suffix`, `block_prefix`, and `block_suffix`.
+
+NDJSON output emits one record per processor:
+
+```jsonc
+{
+  "kind": "processor",
+  "meta": { /* MetaPayload */ },
+  "processor": { /* ProcessorEntry */ }
+}
+```
+
+Each NDJSON record repeats the shared metadata and stores the processor payload under `processor`.
+The `kind` field is always `processor` for this command.
+
+Machine-readable output emits canonical processor identities suitable for stable automation and
+tooling integration.
 
 ______________________________________________________________________
 
@@ -179,10 +176,10 @@ topmark registry processors
 topmark registry processors --long --output-format markdown
 
 # JSON for scripting
-topmark registry processors --long --output-format json | jq '.processors[] | {cls: .class}'
+topmark registry processors --long --output-format json | jq '.processors[] | {key: .qualified_key, prefix: .line_prefix}'
 
 # NDJSON for streaming
-topmark registry processors --output-format ndjson | grep processor | head -n 5
+topmark registry processors --output-format ndjson | jq -r '.processor.qualified_key'
 ```
 
 ______________________________________________________________________
@@ -225,6 +222,28 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
+## Related commands
+
+- [`topmark registry filetypes`](filetypes.md) — inspect canonical file type identities, matching
+  rules, and policies.
+- [`topmark registry bindings`](bindings.md) — inspect effective processor-dispatch relationships
+  between file types and processors.
+
+______________________________________________________________________
+
+## Related docs
+
+- [Command overview](../../cli.md)
+- [Registry model](../../../dev/registry-model.md)
+- [Plugins and extensibility](../../../dev/plugins.md)
+- [Resolution model](../../../dev/resolution.md)
+- [Machine-readable output schema](../../../dev/machine-output.md)
+- [Machine-readable formats](../../../dev/machine-formats.md)
+- [Supported header processors](../../generated/processors.md)
+- [Exit codes](../../exit-codes.md)
+
+______________________________________________________________________
+
 ## Troubleshooting
 
 - **Unexpected identifier form**: registry commands intentionally emit canonical qualified
@@ -233,14 +252,3 @@ ______________________________________________________________________
   processor-dispatch relationships.
 - **Unexpected missing processor**: ensure the processor is registered in the effective composed
   registry view.
-
-______________________________________________________________________
-
-## Related commands
-
-- [`registry filetypes`](filetypes.md) — inspect canonical file type identities, matching rules, and
-  policies.
-- [`registry bindings`](bindings.md) — inspect effective processor-dispatch relationships between
-  file types and processors.
-
-An overview of all CLI commands is available in [CLI overview](../../cli.md).
