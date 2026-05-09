@@ -107,6 +107,10 @@ Key improvements:
   pipeline presentation surfaces.
 - Aligned command help text, epilogs, and developer docstrings across CLI entry-point, command
   groups and commands.
+- Replaced lingering “global options” wording with the finalized shared-options terminology.
+- Documented the public spelling contract for CLI option names, CLI value aliases, and canonical
+  TOML/API/machine-readable values.
+- Completed a final help/epilog reflow and wording pass for command groups and subcommands.
 - Expanded focused human-output tests for version, diagnostics, config, registry, and pipeline
   commands.
 - Documented and enforced the stable CLI exit-code contract across implementation, tests, the
@@ -130,6 +134,10 @@ A strict separation between **configuration and execution intent** is now in pla
 - Removed runtime concerns from `Config`
 - Ensured CLI and API both follow:
   - TOML → Config → Runtime overlay
+- Kept TOML-authored runtime sections such as `[writer]` outside layered `Config` while preserving
+  them in config dumps, config checks, and machine-readable config snapshots.
+- Aligned `config defaults` and `config init` so machine-readable output is generated through TOML
+  parsing/resolution rather than by shortcutting directly to `Config` defaults.
 
 Result: config is now **pure, layered, and reproducible**, while runtime behavior is explicit.
 
@@ -142,6 +150,8 @@ The configuration system has been fully restructured:
   - `topmark.config` → layered merge + resolution
   - `topmark.runtime` → execution behavior
 - Implemented **layered config with provenance**
+- Introduced typed synthetic config provenance for built-in defaults, bundled templates, CLI/API
+  overrides, and other non-filesystem config sources.
 - Added **per-path effective config resolution**
 - Introduced **strict validation model** with diagnostics + strict mode
 - Introduced **staged config-loading validation logs**:
@@ -223,6 +233,12 @@ Machine formats are now:
   `probe` NDJSON records, including filtered explicit inputs.
 - Clarified that machine payloads are decoupled from process exit codes: JSON/NDJSON expose
   structured results and diagnostics, while process status remains the CLI exit code.
+- Aligned config machine-readable output so `[writer]` and other TOML-authored runtime sections are
+  included when present in the effective TOML source.
+- Clarified `config defaults` vs `config init` machine-readable semantics:
+  - `config defaults` emits a canonical built-in defaults snapshot.
+  - `config init` emits a bundled starter-template snapshot parsed through the TOML resolution
+    pipeline.
 
 Result: machine output is now **schema-driven, documented, and separated from human presentation**.
 Remaining work is limited to final schema-freeze review, not architecture.
@@ -276,6 +292,13 @@ Result: human output is now **consistent, composable, and decoupled from CLI**.
 - Added dedicated user-facing CLI and configuration overview pages.
 - Added a dedicated registry model developer page covering registry layers, bindings, overlays,
   canonical identities, plugin integration, and registry CLI inspection.
+- Completed the documentation consistency and generated-site freeze review for `v1.0.0b1`.
+- Renamed the former global-options documentation to shared-options documentation and aligned
+  command, configuration, and generated-site references.
+- Harmonized machine-readable output terminology across usage docs, developer docs, source
+  docstrings, and tests while preserving formal machine-output contract terminology where needed.
+- Documented the intentional distinction between canonical built-in defaults and the bundled starter
+  template for `config defaults` and `config init`.
 
 ### CI / release / dependency model (completed)
 
@@ -311,6 +334,8 @@ At this point:
 - Qualified-vs-local file type identifier semantics are now frozen, implemented, tested, and
   documented across CLI, TOML configuration, API overlays, resolver filtering, policy lookup,
   registry-facing APIs, diagnostics, and machine output
+- Final documentation, generated-site, CLI/help, warning/error wording, alpha-semantics, and
+  machine-readable output terminology reviews have been completed for the `v1.0.0b1` beta gate
 
 The project is now in a **pre-1.0 stabilization phase**, with broad architecture complete, in-memory
 pipeline support explicitly deferred, and only targeted contract-freeze decisions remaining.
@@ -364,6 +389,11 @@ consumers must update to the canonical identity and explicit binding model.
   - Callers needing provenance must explicitly handle `(resolved_sources, draft_config)`.
 - Source-local TOML options such as `[config].root` and `[config].strict` now live outside layered
   `Config` merging.
+- Runtime-facing TOML sections such as `[writer]` are resolved outside layered `Config` but remain
+  part of the effective TOML surface shown by config output commands and machine-readable config
+  snapshots.
+- Runtime-facing TOML options such as `[writer].strategy` remain outside layered `Config` but are
+  resolved from TOML and preserved in human and machine-readable config output.
 - TOML validation is now stricter and happens earlier:
   - unknown top-level sections/keys, malformed known sections, and malformed nested policy sections
     are reported during whole-source TOML loading
@@ -444,6 +474,9 @@ snapshots, and downstream automation may need adjustment.
   a generic summary wrapper.
 - `config dump --show-layers` now adds layered provenance output (`config_provenance`) before the
   final flattened config payload.
+- Config machine-readable payloads include TOML-authored runtime sections such as `[writer]` when
+  present in the effective TOML source, even though those values are resolved outside the layered
+  `Config` model.
 - `detail_level` is now part of the machine-readable output contract for command families that emit
   projection metadata (notably registry machine output).
 - Registry JSON machine output was flattened for 1.0 contract stability:
@@ -626,8 +659,8 @@ Remaining decisions:
 - `[config].strict` is now the frozen public config-loading strictness knob for 1.0.
 - Confirm that sanitization/runtime-applicability warnings intentionally remain inside the effective
   `[config].strict` gate for 1.0.
-- Confirm that TOML validation, config validation, runtime overlay, and layered provenance remain
-  clearly separated responsibilities.
+- TOML validation, config validation, runtime overlay, and typed layered provenance remain clearly
+  separated responsibilities.
 - Explicit configuration schema versioning is deferred beyond 1.0:
   - no `[config].version` or equivalent schema-version key is added for 1.0
   - schema versioning will be introduced only when a future non-additive schema change requires it
@@ -637,6 +670,8 @@ Recommended direction:
 - keep the current TOML → Config → Runtime split,
 - keep canonical qualified file type identifiers as the internal frozen representation,
 - keep `[config].strict` as the public config-loading strictness knob for 1.0,
+- keep runtime-facing TOML sections such as `[writer]` outside layered `Config` while preserving
+  them in config output snapshots,
 - freeze the staged validation semantics now implemented internally,
 - keep flattened diagnostics as a derived compatibility/reporting surface only at exception,
   presentation, and machine-readable output boundaries,
@@ -896,6 +931,10 @@ These are release blockers unless explicitly deferred with a documented rational
     semantics
   - [x] frozen config and runtime policy lookup use canonical qualified keys
 - [x] `config init`, `config defaults`, `config check`, and `config dump` outputs aligned and frozen
+- [x] Runtime-facing TOML sections such as `[writer]` are preserved in config output snapshots
+  without reintroducing runtime state into layered `Config`
+- [x] Synthetic config provenance is typed and preserved until presentation or serialization
+  boundaries
 - [x] Decision made and documented on the final public override model
   - [x] public API command signatures accept plain mapping-based policy/config overlays
   - [x] internal typed override helpers (`PolicyOverrides`, `ConfigOverrides`) classified as
@@ -1038,9 +1077,9 @@ release workflow checks rather than dedicated pytest tests.
     Pyright configuration
   - [x] CI uses the same formatter, linter, type-checking, docs, and packaging expectations as the
     documented local release gates
-- [ ] Final beta freeze review completed
-  - [ ] no alpha-only semantics remain exposed in CLI help, docs, or machine output
-  - [ ] warning and error wording remains consistent with the frozen command-applicability and
+- [x] Final beta freeze review completed
+  - [x] no alpha-only semantics remain exposed in CLI help, docs, or machine-readable output
+  - [x] warning and error wording remains consistent with the frozen command-applicability and
     exit-code contracts
   - [x] accepted imperfections are recorded explicitly as post-1.0 follow-up or non-blocking beta
     notes
@@ -1135,7 +1174,6 @@ ______________________________________________________________________
 
 Only when all items in the “Must finish before 1.0” section are completed or explicitly deferred
 with rationale should `1.0.0` final be cut. The 1.0 alpha series has already served as a meaningful
-part of the release-path rehearsal and final contract validation. The next milestone is now the
-`v1.0.0b1` beta readiness gate: if packaging, tooling parity, documentation, QA, release workflow,
-and final freeze validation pass against the current source snapshot, the project can move from
-alpha stabilization to beta validation without reopening deferred post-1.0 scope.
+part of the release-path rehearsal and final contract validation. The `v1.0.0b1` beta readiness gate
+is now focused on confirming the already-completed validation record against the current source
+snapshot and cutting the beta without reopening deferred post-1.0 scope.
