@@ -176,6 +176,28 @@ Do not place command-specific behavior only in generated reference pages.
 Generated reference pages should complement command documentation rather than replace narrative
 command guidance.
 
+### API and Reference Grouping
+
+API documentation should remain a distinct navigation area while the generated API reference is
+intentionally separated from user-facing CLI, configuration, and registry reference pages.
+
+A broader `Reference` navigation group may be introduced later if TopMark grows enough distinct
+reference surfaces to justify it, for example:
+
+- CLI reference
+- configuration reference
+- registry reference
+- public API reference
+
+Do not move generated API internals into user-facing reference navigation only to make the top-level
+navigation appear simpler or to reduce generated-page navigation warnings.
+
+Generated API pages should be organized according to API documentation needs. User-facing reference
+pages should be organized according to discoverability and task-oriented documentation needs.
+
+Generated API internals may remain outside the primary navigation when they are discoverable through
+API reference indexes, mkdocstrings output, or direct cross-references.
+
 ## Command Documentation Conventions
 
 Command documentation should follow a predictable structure.
