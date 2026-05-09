@@ -26,119 +26,15 @@ TopMark provides consistent semantics across:
 
 ## Common workflows
 
-### I want to check headers safely
-
-Run TopMark in dry-run mode:
-
-```bash
-topmark check src/
-```
-
-See:
-
-- [`topmark check`](usage/commands/check.md)
-- [Shared options](usage/shared-options.md)
-- [Exit codes](usage/exit-codes.md)
-
-### I want to apply header updates
-
-Apply planned header mutations explicitly:
-
-```bash
-topmark check --apply src/
-```
-
-See:
-
-- [`topmark check`](usage/commands/check.md)
-- [Policies](usage/policies.md)
-
-### I want to remove TopMark headers
-
-Preview removals:
-
-```bash
-topmark strip src/
-```
-
-Apply removals:
-
-```bash
-topmark strip --apply src/
-```
-
-See:
-
-- [`topmark strip`](usage/commands/strip.md)
-- [Header placement](usage/header-placement.md)
-
-### I want to understand file type resolution
-
-Inspect resolver and processor behavior:
-
-```bash
-topmark probe README.md
-```
-
-See:
-
-- [`topmark probe`](usage/commands/probe.md)
-- [Filtering](usage/filtering.md)
-- [Policies](usage/policies.md)
-
-### I want to inspect effective configuration
-
-Inspect merged configuration:
-
-```bash
-topmark config dump
-```
-
-Inspect layered provenance:
-
-```bash
-topmark config dump --show-layers
-```
-
-See:
-
-- [`topmark config dump`](usage/commands/config/dump.md)
-- [Configuration](usage/configuration.md)
-- [Configuration discovery](configuration/discovery.md)
-
-### I want to generate a starter TOML configuration
-
-Render the documented starter configuration:
-
-```bash
-topmark config init
-```
-
-Write it to a file:
-
-```bash
-topmark config init > topmark.toml
-```
-
-See:
-
-- [`topmark config init`](usage/commands/config/init.md)
-- [Configuration](usage/configuration.md)
-- [Configuration discovery](configuration/discovery.md)
-
-### I want to inspect the built-in defaults
-
-Show the canonical built-in default TOML configuration:
-
-```bash
-topmark config defaults
-```
-
-See:
-
-- [`topmark config defaults`](usage/commands/config/defaults.md)
-- [Default TOML settings](configuration/generated/config-defaults.md)
-- [Configuration](usage/configuration.md)
+| Goal                                  | Command                                                 | More info                                                                                                                                                                    |
+| ------------------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Check headers safely                  | `topmark check src/`                                    | [`topmark check`](usage/commands/check.md), [Shared options](usage/shared-options.md), [Exit codes](usage/exit-codes.md)                                                     |
+| Apply header updates                  | `topmark check --apply src/`                            | [`topmark check`](usage/commands/check.md), [Policies](usage/policies.md)                                                                                                    |
+| Remove TopMark headers                | `topmark strip src/`, then `topmark strip --apply src/` | [`topmark strip`](usage/commands/strip.md), [Header placement](usage/header-placement.md)                                                                                    |
+| Understand file type resolution       | `topmark probe README.md`                               | [`topmark probe`](usage/commands/probe.md), [Filtering](usage/filtering.md), [Policies](usage/policies.md)                                                                   |
+| Inspect effective configuration       | `topmark config dump --show-layers`                     | [`topmark config dump`](usage/commands/config/dump.md), [Configuration](usage/configuration.md), [Configuration discovery](configuration/discovery.md)                       |
+| Generate a starter TOML configuration | `topmark config init > topmark.toml`                    | [`topmark config init`](usage/commands/config/init.md), [Configuration](usage/configuration.md), [Configuration discovery](configuration/discovery.md)                       |
+| Inspect the built-in defaults         | `topmark config defaults`                               | [`topmark config defaults`](usage/commands/config/defaults.md), [Default TOML settings](configuration/generated/config-defaults.md), [Configuration](usage/configuration.md) |
 
 ## Quickstart
 

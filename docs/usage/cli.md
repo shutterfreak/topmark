@@ -31,61 +31,13 @@ The CLI is intentionally conservative:
 
 ## Common workflows
 
-### Check headers safely (dry-run)
-
-```bash
-topmark check src/
-```
-
-See:
-
-- [`topmark check`](commands/check.md)
-- [Shared options](shared-options.md)
-- [Exit codes](exit-codes.md)
-
-### Apply header updates
-
-```bash
-topmark check --apply src/
-```
-
-See:
-
-- [`topmark check`](commands/check.md)
-- [Policies](policies.md)
-
-### Remove TopMark headers
-
-```bash
-topmark strip --apply src/
-```
-
-See:
-
-- [`topmark strip`](commands/strip.md)
-- [Header placement](header-placement.md)
-
-### Inspect file type resolution
-
-```bash
-topmark probe README.md
-```
-
-See:
-
-- [`topmark probe`](commands/probe.md)
-- [Filtering](filtering.md)
-
-### Inspect effective configuration
-
-```bash
-topmark config dump --show-layers
-```
-
-See:
-
-- [`topmark config dump`](commands/config/dump.md)
-- [Configuration](configuration.md)
+| Goal                                 | Command                             | More info                                                                                              |
+| ------------------------------------ | ----------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Check headers safely in dry-run mode | `topmark check src/`                | [`topmark check`](commands/check.md), [Shared options](shared-options.md), [Exit codes](exit-codes.md) |
+| Apply header updates explicitly      | `topmark check --apply src/`        | [`topmark check`](commands/check.md), [Policies](policies.md)                                          |
+| Remove TopMark headers               | `topmark strip --apply src/`        | [`topmark strip`](commands/strip.md), [Header placement](header-placement.md)                          |
+| Inspect file type resolution         | `topmark probe README.md`           | [`topmark probe`](commands/probe.md), [Filtering](filtering.md)                                        |
+| Inspect effective configuration      | `topmark config dump --show-layers` | [`topmark config dump`](commands/config/dump.md), [Configuration](configuration.md)                    |
 
 ## Installation
 
@@ -225,118 +177,21 @@ See also:
 - [Policies](policies.md)
 - [Shared options](shared-options.md)
 
-### [`check`](commands/check.md)
-
-Detect missing, malformed, or outdated headers.
-
-Dry-run by default:
-
-```bash
-topmark check src/
-```
-
-Apply changes:
-
-```bash
-topmark check --apply src/
-```
-
-### [`strip`](commands/strip.md)
-
-Remove existing TopMark headers.
-
-Dry-run preview:
-
-```bash
-topmark strip src/
-```
-
-Apply removals:
-
-```bash
-topmark strip --apply src/
-```
-
-### [`probe`](commands/probe.md)
-
-Inspect file type resolution, processor binding, filtering, and probe decisions without mutating
-files.
-
-Example:
-
-```bash
-topmark probe README.md
-```
-
-### [`config` command group](commands/config.md)
-
-#### [`config check`](commands/config/check.md)
-
-Check the validity of the effective merged configuration.
-
-```bash
-topmark config check
-```
-
-#### [`config dump`](commands/config/dump.md)
-
-Display the effective merged configuration.
-
-```bash
-topmark config dump
-```
-
-#### [`config defaults`](commands/config/defaults.md)
-
-Display the canonical built-in default TOML representation.
-
-```bash
-topmark config defaults
-```
-
-#### [`config init`](commands/config/init.md)
-
-Render the bundled starter configuration template.
-
-```bash
-topmark config init
-```
-
-### [`registry` command group](commands/registry.md)
-
-Inspect registered file types, processors, and registry bindings.
-
-#### [`registry filetypes`](commands/registry/filetypes.md)
-
-Inspect file type identities and their matching rules and policies.
-
-```bash
-topmark registry filetypes
-```
-
-#### [`registry processors`](commands/registry/processors.md)
-
-Inspect header processor identities and their capabilities.
-
-```bash
-topmark registry processors
-```
-
-#### [`registry bindings`](commands/registry/bindings.md)
-
-inspect effective relationships between file types and processors.
-
-```bash
-topmark registry bindings
-```
-
-### [`version`](commands/version.md)
-
-Display version and environment information.
-
-```bash
-topmark version
-```
+| Command                                                          | Purpose                                                                                                 |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| [`topmark check`](commands/check.md)                             | Detect missing, malformed, or outdated headers. Dry-run by default; use `--apply` to write changes.     |
+| [`topmark strip`](commands/strip.md)                             | Remove existing TopMark headers. Dry-run by default; use `--apply` to write removals.                   |
+| [`topmark probe`](commands/probe.md)                             | Inspect file type resolution, processor binding, filtering, and probe decisions without mutating files. |
+| [`topmark config`](commands/config.md)                           | Inspect, validate, render, and initialize TopMark configuration.                                        |
+| [`topmark config check`](commands/config/check.md)               | Check the validity of the effective merged configuration.                                               |
+| [`topmark config dump`](commands/config/dump.md)                 | Display the effective merged configuration.                                                             |
+| [`topmark config defaults`](commands/config/defaults.md)         | Display the canonical built-in default TOML representation.                                             |
+| [`topmark config init`](commands/config/init.md)                 | Render the bundled starter configuration template.                                                      |
+| [`topmark registry`](commands/registry.md)                       | Inspect registered file types, processors, and registry bindings.                                       |
+| [`topmark registry filetypes`](commands/registry/filetypes.md)   | Inspect file type identities and their matching rules and policies.                                     |
+| [`topmark registry processors`](commands/registry/processors.md) | Inspect header processor identities and their capabilities.                                             |
+| [`topmark registry bindings`](commands/registry/bindings.md)     | Inspect effective relationships between file types and processors.                                      |
+| [`topmark version`](commands/version.md)                         | Display version and environment information.                                                            |
 
 ## Dry-run vs apply
 
