@@ -183,7 +183,8 @@ TopMark supports two STDIN modes:
 - **Content mode**: process one file’s content by passing `-` as the sole PATH together with
   `--stdin-filename NAME`
 
-{% include-markdown "\_snippets/no-stdin-option.md" %}
+See [shared input modes](usage/shared-options.md#shared-input-modes) for the full STDIN contract,
+including why TopMark does not provide a `--stdin` option flag.
 
 ## Header placement (short version)
 

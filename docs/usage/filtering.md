@@ -28,23 +28,27 @@ See also:
 TopMark determines which files to process using a combination of **path-based filters** and **file
 type filters**.
 
-{% include-markdown "\_snippets/file-type-identifiers.md" %}
+## Filtering overview
 
-For canonical file-type identifier semantics and configuration behavior, see
-[Configuration](configuration.md).
+Filtering and discovery are shared consistently across:
 
-Filtering order:
-
-This order is deterministic and is shared consistently across:
-
-- CLI execution
+- [`topmark check`](commands/check.md)
+- [`topmark strip`](commands/strip.md)
+- [`topmark probe`](commands/probe.md)
 - TOML configuration
 - API overlays
 - resolver and probe filtering
 
-1. Path filters (include/exclude patterns, `*_from`, `files_from`)
-1. File type filters (`include_file_types`, `exclude_file_types`)
-1. Eligibility (supported vs unsupported)
+TopMark applies filtering in a deterministic order:
+
+1. Path-based discovery and filtering
+1. File-type filtering
+1. Eligibility and processor resolution
+
+Exclude rules take precedence over include rules.
+
+For canonical file-type identifier semantics, see [File-type filtering](#file-type-filtering). For
+configuration behavior, see [Configuration](configuration.md).
 
 Note: For [`topmark probe`](commands/probe.md), paths excluded during step 1 or 2 may still be
 reported as `filtered` results if they were explicitly requested.
@@ -62,9 +66,27 @@ TopMark distinguishes between **explicit literal paths** and **glob patterns**:
 This distinction ensures that typos in explicit inputs are surfaced, while flexible patterns that
 match nothing do not break automation.
 
+## Path-based filtering
+
+TopMark supports the following path-based filtering controls:
+
+- `--include`, `--exclude` Include or exclude glob patterns.
+- `--include-from`, `--exclude-from` Load patterns from files (one per line).
+- `--files-from` Provide an explicit list of files to process.
+
+Path semantics:
+
+- Positional arguments are resolved **relative to the current working directory** (CWD),
+  Black-style.
+- Patterns in `--include`, `--exclude`, and files referenced by `--include-from` / `--exclude-from`
+  are also resolved **relative to CWD**.
+- Absolute patterns are not supported.
+- Exclude rules take precedence over include rules.
+- Path-based filtering occurs before file-type filtering.
+
 ## STDIN support
 
-TopMark supports two STDIN modes when supplying file lists or content:
+File-processing commands support two STDIN modes when supplying file lists or content:
 
 - **List mode**: provide newline-delimited paths or patterns via:
   - `--files-from -`
@@ -73,19 +95,13 @@ TopMark supports two STDIN modes when supplying file lists or content:
 - **Content mode**: process a single file's content from STDIN by passing `-` as the sole PATH
   together with `--stdin-filename NAME`
 
-{% include-markdown "\_snippets/no-stdin-option.md" %}
-
-These modes are mutually exclusive and should not be combined. In content mode, `--stdin-filename`
-is required so TopMark can resolve file type and header policy consistently with path-based inputs.
-
-Note that STDIN handling is independent from configuration validation. Options such as `--strict` /
-`--no-strict` still apply and control how staged config-loading/preflight validation warnings are
-treated during the run.
+See [shared input modes](shared-options.md#shared-input-modes) for the full STDIN contract,
+including why TopMark does not provide a `--stdin` option flag.
 
 ## Interaction with [`topmark probe`](commands/probe.md)
 
-The [`topmark probe`](commands/probe.md) command uses the same discovery and filtering rules
-described above.
+The [`topmark probe`](commands/probe.md) command uses the same filtering pipeline and discovery
+rules described above.
 
 This includes:
 
@@ -258,17 +274,32 @@ topmark check --report noncompliant .
 topmark strip --report noncompliant .
 ```
 
-## File-type identifier behavior
+## File-type filtering
 
-{% include-markdown "\_snippets/file-type-identifiers.md" %}
+TopMark supports file-type include/exclude filtering via:
+
+- `--include-file-types / -t`
+- `--exclude-file-types / -T`
+- `include_file_types`
+- `exclude_file_types`
+
+File-type filters are evaluated after path-based filtering.
 
 Filtering accepts:
 
 - local identifiers such as `python`
 - canonical qualified identifiers such as `topmark:python`
 
-Internally, TopMark normalizes configured identifiers to canonical qualified keys before resolver
-and policy evaluation.
+Internally, TopMark normalizes configured identifiers to canonical qualified keys before resolver,
+policy evaluation, runtime processing, diagnostics, and registry lookups.
+
+Plugins and integrations may declare file types in their own namespace, such as `acme:python`. This
+allows independent ecosystems to define custom file types and register different header processors
+without colliding with built-in TopMark identifiers.
+
+Local identifiers are accepted only when they are unambiguous. If more than one registered file type
+has the same local identifier, the local form is considered ambiguous and TopMark requires the
+qualified form.
 
 ## Exit-code interaction
 

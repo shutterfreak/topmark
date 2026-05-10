@@ -150,16 +150,31 @@ Related docs:
 File-processing commands ([`check`](commands/check.md), [`strip`](commands/strip.md), and
 [`probe`](commands/probe.md)) support the same input modes:
 
-- path mode: positional paths and/or `--files-from FILE`
-- file-list STDIN mode: `--files-from -`
-- content STDIN mode: `-` plus `--stdin-filename NAME`
+- **Path mode**: process positional paths and/or paths loaded from `--files-from FILE`.
+- **List STDIN mode**: read newline-delimited paths or patterns from STDIN using one of:
+  - `--files-from -`
+  - `--include-from -`
+  - `--exclude-from -`
+- **Content STDIN mode**: process one file's content from STDIN by passing `-` as the sole PATH and
+  providing `--stdin-filename NAME`.
 
-{% include-markdown "\_snippets/no-stdin-option.md" %}
+These modes are mutually exclusive: do **not** mix `-` (content mode) with `--files-from -`,
+`--include-from -`, or `--exclude-from -` (list mode).
+
+> [!NOTE] **STDIN input**
+>
+> TopMark does **not** provide a `--stdin` option flag. Use the POSIX-style `-` PATH sentinel
+> together with `--stdin-filename` for content mode.
+>
+> Passing `--stdin` is treated as an invalid option and results in a CLI usage error.
 
 In content STDIN mode, `--stdin-filename` is required so TopMark can resolve file type, processor,
-and path-sensitive policy. For mutation commands, `--apply` writes the transformed content to STDOUT
-and routes diagnostics to STDERR. This ensures consistent file-type resolution and header policy
-behavior between path-based and STDIN inputs.
+and path-sensitive policy exactly as it would for a real file path.
+
+For mutation commands (`check` and `strip`), `--apply` in content mode writes the transformed
+content to STDOUT and routes diagnostics to STDERR. This ensures consistent file-type resolution and
+header policy behavior between path-based and STDIN inputs without writing to an unknown filesystem
+location.
 
 ### Configuration discovery applicability
 
