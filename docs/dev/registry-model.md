@@ -26,17 +26,31 @@ separate operations.
 This page owns the detailed registry model. The broader system architecture is documented in
 [Architecture overview](architecture.md).
 
-See also:
+______________________________________________________________________
 
-- [Public API](../api/public.md)
-- [Plugins and extensibility](plugins.md)
-- [CLI overview](../usage/cli.md)
-- [Registry CLI commands](../usage/commands/registry.md)
-- [Registry file types command](../usage/commands/registry/filetypes.md)
-- [Registry processors command](../usage/commands/registry/processors.md)
-- [Registry bindings command](../usage/commands/registry/bindings.md)
-- [Configuration](../usage/configuration.md)
-- [Filtering](../usage/filtering.md)
+## Runtime model overview
+
+The runtime registry model is primarily composed of:
+
+- \[`FileType`\][topmark.filetypes.model.FileType]
+- \[`HeaderProcessor`\][topmark.processors.base.HeaderProcessor]
+- binding relationships managed through
+  \[`BindingRegistry`\][topmark.registry.bindings.BindingRegistry]
+
+These runtime objects participate in:
+
+- file type resolution
+- processor dispatch
+- policy lookup
+- pipeline execution
+- CLI introspection
+- machine-readable output rendering
+
+The usage documentation intentionally focuses on runtime behavior and stable CLI contracts rather
+than internal implementation objects.
+
+Implementation details and advanced overlay mutation behavior are documented here for maintainers,
+plugin authors, and advanced integrators.
 
 ______________________________________________________________________
 
@@ -112,6 +126,8 @@ flowchart TB
     RES --> BIND
 ```
 
+______________________________________________________________________
+
 ## Registry layers
 
 TopMark separates identity registries from relationship registries.
@@ -170,12 +186,21 @@ Bindings determine:
 
 This separation prevents implicit side effects between identity registration and binding.
 
+______________________________________________________________________
+
 ## Registry facade
 
 \[`Registry`\][topmark.registry.registry.Registry] provides the stable read-only facade over the
 composed runtime registries.
 
 The facade exposes immutable effective views.
+
+The stable public-facing runtime facade is:
+
+- \[`Registry`\][topmark.registry.registry.Registry]
+
+Most integrations should prefer the facade rather than interacting directly with the advanced
+registries.
 
 Examples:
 
@@ -193,12 +218,11 @@ for binding in Registry.bindings():
     print(binding.file_type_key, binding.processor_key)
 ```
 
-Most integrations should prefer the facade rather than interacting directly with the advanced
-registries.
+______________________________________________________________________
 
 ## Public facade vs advanced registries
 
-The stable public-facing registry entry point is:
+The stable public-facing runtime registry entry point is:
 
 - \[`Registry`\][topmark.registry.registry.Registry]
 
@@ -219,6 +243,8 @@ They are intended for:
 
 Overlay mutation helpers affect overlay state only. They do not mutate built-in or plugin-discovered
 base registry entries.
+
+______________________________________________________________________
 
 ## Qualified vs local identifiers
 
@@ -257,7 +283,7 @@ topmark:python
 
 instead.
 
-Registry-facing APIs resolve identifiers using
+Advanced registry-facing APIs resolve identifiers using
 \[`FileTypeRegistry.resolve_filetype_id(...)`\][topmark.registry.filetypes.FileTypeRegistry.resolve_filetype_id],
 which returns the matching \[`FileType`\][topmark.filetypes.model.FileType] instance from the
 effective composed registry.
@@ -271,6 +297,8 @@ flowchart LR
 
     INPUT --> RESOLVE --> FT --> RUNTIME
 ```
+
+______________________________________________________________________
 
 ## Recognized vs supported file types
 
@@ -286,6 +314,8 @@ A file may be recognized but still unbound. In that case:
 - it participates in discovery and filtering;
 - it may appear in results depending on the selected report scope;
 - no header insertion or removal is attempted.
+
+______________________________________________________________________
 
 ## Resolver integration
 
@@ -306,9 +336,12 @@ Resolver and probe APIs:
 - \[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path]
 - \[`topmark.api.probe()`\][topmark.api.probe]
 
+______________________________________________________________________
+
 ## Plugin integration
 
-File type plugins are discovered through the `topmark.filetypes` entry point group.
+File type plugins are discovered through the \[`topmark.filetypes`\][topmark.filetypes] entry point
+group.
 
 Plugin-defined file types participate in the same composed registry and identifier semantics as
 built-in file types.
@@ -325,9 +358,12 @@ processor definitions to canonical qualified file type identifiers.
 
 For a plugin-focused guide, see [Plugins and extensibility](plugins.md).
 
+______________________________________________________________________
+
 ## Runtime overlays
 
-Advanced integrations may register runtime overlays.
+Advanced integrations may register runtime overlays. Overlay mutations invalidate composed
+effective-view caches as described in [Caching and invalidation](#caching-and-invalidation).
 
 Examples include:
 
@@ -336,6 +372,14 @@ Examples include:
 - temporary runtime bindings;
 - integration-specific file types.
 
+Overlay mutations affect only overlay state layered on top of immutable base registries.
+
+Overlay operations may:
+
+- register or unregister file types;
+- register or unregister processors;
+- bind or unbind processors to file types.
+
 Overlay mutations are:
 
 - process-local;
@@ -343,7 +387,25 @@ Overlay mutations are:
 - thread-safe;
 - cache-invalidating.
 
-They do not mutate the built-in base registries.
+They do not mutate built-in or plugin-discovered base registry entries.
+
+Overlay state exists specifically to support:
+
+- isolated tests;
+- temporary runtime extensions;
+- advanced integration scenarios;
+- plugin composition without mutating built-ins.
+
+After overlay mutation, the next effective registry read recomposes the effective runtime view from:
+
+```text
+base registry + overlay additions - overlay removals
+```
+
+Most integrations should prefer the stable \[`Registry`\][topmark.registry.registry.Registry] facade
+and avoid direct overlay mutation unless runtime extension behavior is explicitly required.
+
+______________________________________________________________________
 
 ## Caching and invalidation
 
@@ -352,8 +414,8 @@ Base registries are cached because construction and plugin discovery should happ
 Composed effective views are also cached for fast repeated access.
 
 Any overlay mutation invalidates the composed-view cache. The next call to an effective view, such
-as `as_mapping()` or the `Registry` facade, recomposes the view from base registry data and overlay
-state.
+as `as_mapping()` or the \[`Registry`\][topmark.registry.registry.Registry] facade, recomposes the
+view from base registry data and overlay state.
 
 Practical consequences:
 
@@ -398,6 +460,8 @@ sequenceDiagram
     BR-->>Caller: cached mapping
 ```
 
+______________________________________________________________________
+
 ## Runtime extension example
 
 ```python
@@ -433,7 +497,9 @@ When registering processors against file types, prefer qualified file type ident
 remain supported when unambiguous, but may become ambiguous as extensions are added.
 
 For long-term or redistributable extensions, prefer publishing a plugin using the
-`topmark.filetypes` entry point group.
+\[`topmark.filetypes`\][topmark.filetypes] entry point group.
+
+______________________________________________________________________
 
 ## Registry CLI commands
 
@@ -463,6 +529,8 @@ topmark registry --help
 
 for available subcommands and output options.
 
+______________________________________________________________________
+
 ## Why not per-run registries?
 
 Registries are intentionally process-global rather than passed through every runtime layer as
@@ -478,6 +546,8 @@ Reasons include:
 Configuration controls which file types participate in a run. Registries control which file types,
 processors, and bindings exist in the effective runtime environment.
 
+______________________________________________________________________
+
 ## Non-goals
 
 The registry model is not designed to provide:
@@ -490,6 +560,8 @@ The registry model is not designed to provide:
 
 Configuration controls which file types are selected for a run. Registries control what file types,
 processors, and bindings exist in the effective runtime environment.
+
+______________________________________________________________________
 
 ## Stability model
 
@@ -514,9 +586,12 @@ rather than mutating advanced registries directly.
 
 ______________________________________________________________________
 
-## Related pages
+## Related docs
 
+- [Architecture overview](architecture.md)
 - [Public API](../api/public.md)
+- [API internals](../api/internals.md)
+- Registry API internals: \[`topmark.registry`\][topmark.registry]
 - [Plugins and extensibility](plugins.md)
 - [API stability](api-stability.md)
 - [CLI overview](../usage/cli.md)
