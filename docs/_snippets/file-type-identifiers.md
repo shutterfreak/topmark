@@ -10,7 +10,7 @@ topmark:header:start
 topmark:header:end
 -->
 
-> [! NOTE] **File type identification**
+> [!NOTE] **File type identification**
 >
 > TopMark accepts file type identifiers in either local form, such as `python`, or qualified form,
 > such as `topmark:python`.
