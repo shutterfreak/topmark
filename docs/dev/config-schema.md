@@ -68,6 +68,9 @@ This distinction matters for
 - the machine-readable layered export exposes the same source-local TOML fragments under
   `config_provenance.layers[].toml`
 
+For the canonical user-facing discovery, precedence, path-resolution, and staged validation
+contract, see [Configuration: Discovery, Precedence & Policy](../configuration/discovery.md).
+
 ## Schema validation model
 
 TopMark performs **whole-source TOML schema validation** before any layered configuration is

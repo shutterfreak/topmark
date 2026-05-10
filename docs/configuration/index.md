@@ -51,6 +51,9 @@ malformed-present sections before staged config-validation semantics are applied
 diagnostics are then evaluated together with merged-config and runtime-applicability diagnostics
 during staged config-loading/preflight validation.
 
+For the full discovery, precedence, path-resolution, and staged validation contract, see
+[Configuration: Discovery, Precedence & Policy](./discovery.md).
+
 ## Configuration flow at a glance
 
 ```mermaid

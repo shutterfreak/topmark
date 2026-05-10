@@ -84,7 +84,10 @@ config-loading/preflight validation for the run.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 
-{% include-markdown "\_snippets/config-resolution.md" %}
+TopMark resolves configuration from defaults, user config, the project chain, explicit `--config`
+files, and CLI overrides before staged validation freezes the effective runtime configuration. See
+[Configuration: Discovery, Precedence & Policy](../../configuration/discovery.md) for the full
+resolution and validation contract.
 
 ______________________________________________________________________
 

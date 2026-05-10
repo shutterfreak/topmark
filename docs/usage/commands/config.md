@@ -32,7 +32,8 @@ influence discovery and validation behaviour.
 In the current implementation, effective strictness applies across staged config-loading/preflight
 validation.
 
-{% include-markdown "\_snippets/config-validation-contract.md" %}
+For the full discovery, precedence, path-resolution, and staged validation contract, see
+[Configuration: Discovery, Precedence & Policy](../../configuration/discovery.md).
 
 Configuration and policy values handled by these commands are part of the stable **public
 configuration surface**. Internal helper types such as

@@ -239,7 +239,8 @@ normal layered `Config` field.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 
-{% include-markdown "\_snippets/config-validation-contract.md" %}
+For the full discovery, precedence, path-resolution, and staged validation contract, see
+[Configuration: Discovery, Precedence & Policy](configuration/discovery.md).
 
 At the TOML layer, malformed known sections are handled as warning-and-ignore cases, while missing
 known sections are emitted as INFO diagnostics. This lets callers distinguish absent sections from
