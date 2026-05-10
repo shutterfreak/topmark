@@ -155,6 +155,11 @@ Dependabot automatically opens pull requests when upstream actions release updat
 
 See [`docs/ci/dependabot.md`](./dependabot.md) for details on the update policy and review workflow.
 
+For published-package installation validation across supported platforms and Python versions, see
+[`published-artifact-validation.md`](./published-artifact-validation.md). The install-smoke workflow
+complements CI by validating released artifacts exactly as end users install them from TestPyPI or
+PyPI.
+
 ______________________________________________________________________
 
 ## Future Improvements

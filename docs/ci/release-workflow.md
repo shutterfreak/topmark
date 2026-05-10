@@ -154,3 +154,6 @@ Dependabot periodically opens PRs updating these hashes. Maintainers should revi
 PRs once CI passes.
 
 See [`docs/ci/dependabot.md`](./dependabot.md) for details.
+
+For published-package installation validation across platforms and Python versions, see
+[`published-artifact-validation.md`](./published-artifact-validation.md).

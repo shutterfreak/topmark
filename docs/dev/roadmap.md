@@ -323,6 +323,17 @@ Result: human output is now **consistent, composable, and decoupled from CLI**.
 - Migrated to **uv-first dependency model**
 - Replaced tox with **nox**
 - Implemented **artifact-based CI → release pipeline**
+- Added a dedicated multi-platform install-smoke GitHub Actions workflow:
+  - validates wheel and sdist installation from built artifacts on Linux, macOS, and Windows
+  - verifies isolated installation behavior using clean virtual environments
+  - performs lightweight CLI smoke checks from installed artifacts
+  - helps detect packaging, dependency, entry-point, and platform-specific installation regressions
+- Added dedicated install-smoke workflow documentation covering:
+  - workflow purpose and scope
+  - artifact-install validation strategy
+  - relationship with release and CI workflows
+  - supported platforms and Python versions
+  - expected smoke-test coverage
 - Adopted **SCM-based versioning (setuptools-scm)**
 - Corrected the runtime dependency model by promoting `typing-extensions` to core dependencies after
   isolated-environment failures revealed it was still required at runtime.
@@ -336,7 +347,8 @@ Result: human output is now **consistent, composable, and decoupled from CLI**.
   - permissions model
   - SHA-pinned actions
 
-Result: release process is now **secure, reproducible, and automated**.
+Result: release and installation validation are now secure, reproducible, automated, and validated
+across multiple platforms through dedicated artifact-install smoke testing.
 
 ### Overall status (done)
 
@@ -1074,6 +1086,13 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] CI
   - [x] artifact-based release workflow
 - [x] Artifact-based CI → release pipeline implemented and documented
+- [x] Dedicated multi-platform install-smoke workflow implemented and documented
+  - [x] validates wheel and sdist installation from built artifacts
+  - [x] validates isolated installation behavior on Linux, macOS, and Windows
+  - [x] validates CLI entry-point availability from installed artifacts
+  - [x] performs lightweight installed-artifact CLI smoke checks
+  - [x] integrated into the documented CI/release validation model
+  - [x] documented in dedicated CI workflow documentation
 - [x] Positive release-path rehearsal accepted as complete for the path to `1.0.0`
   - [x] prerelease flow (`v1.0.0aN`) validated
   - [x] clean wheel install validated
@@ -1106,6 +1125,8 @@ release workflow checks rather than dedicated pytest tests.
   - [x] `nox -s package_check` builds wheel and sdist artifacts and passes `twine check`
   - [x] wheel artifact installs into a clean environment and exposes the `topmark` console script
   - [x] sdist artifact installs into a clean environment and exposes the `topmark` console script
+  - [x] dedicated install-smoke workflow validates installation and lightweight CLI execution on
+    Linux, macOS, and Windows
 - [x] uv-managed development environment works with the documented development extras
   - [x] TestPyPI upload/install rehearsal succeeds for the prerelease path
   - [x] dependency resolution succeeds without undeclared runtime dependencies
@@ -1195,6 +1216,9 @@ as a record of recommended freeze work that has now been closed.
   release architecture or later be factored into reusable workflow/release-infra patterns
   - current artifact-based CI → release split is accepted for 1.0
   - further factoring into reusable release-infra patterns is deferred post-1.0
+- [x] Decide whether multi-platform installation validation should remain a dedicated workflow
+  - dedicated install-smoke validation workflow accepted for 1.0
+  - broader workflow factoring or reusable workflow extraction deferred post-1.0
 - [x] Decide whether workflow formatting/style expectations should stay editor-policy-only or be
   documented explicitly in contributor-facing CI guidance
   - formatter behavior is governed by checked-in tool configuration and release validation gates
@@ -1243,6 +1267,8 @@ beta feedback identifies a release blocker.
 
 #### [Post-1.0] Tooling / ecosystem
 
+- [ ] Revisit whether install-smoke validation should evolve into reusable release-consumer or
+  downstream-integration workflows
 - [ ] Revisit long-term CLI framework choice (Click vs alternative)
 - [ ] Evaluate ProperDocs as a potential successor to MkDocs for documentation generation once the
   current beta gate has closed
