@@ -222,6 +222,8 @@ not an extension of newline support.
 
 {% include-markdown "\_snippets/file-type-identifiers.md" %}
 
+See [file-type filtering](filtering.md#file-type-filtering) for the full identifier contract.
+
 Use `policy_by_type.<file_type_id>` to override policy for one file type while inheriting
 unspecified values from the global `policy` section.
 

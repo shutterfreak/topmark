@@ -199,6 +199,8 @@ Notes:
 
 {% include-markdown "\_snippets/file-type-identifiers.md" %}
 
+See [file-type filtering](filtering.md#file-type-filtering) for the full identifier contract.
+
 Pre-commit hook arguments, TOML configuration, and runtime policy evaluation all share the same
 canonical identifier semantics.
 

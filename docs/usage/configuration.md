@@ -43,6 +43,8 @@ ______________________________________________________________________
 
 {% include-markdown "\_snippets/file-type-identifiers.md" %}
 
+See [file-type filtering](filtering.md#file-type-filtering) for the full identifier contract.
+
 File type identifiers are used by:
 
 - `include_file_types`

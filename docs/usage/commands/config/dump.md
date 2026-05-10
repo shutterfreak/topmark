@@ -30,17 +30,9 @@ ______________________________________________________________________
 
 ## File type identifier semantics
 
-File type identifiers in configuration may use either:
-
-- local identifiers such as `python`
-- canonical qualified identifiers such as `topmark:python`
-
-Internally, configuration freeze normalizes identifiers to canonical qualified keys before resolver,
-filtering, policy, and binding evaluation.
-
-Local identifiers are accepted only when unambiguous in the effective composed registry.
-
 {% include-markdown "\_snippets/file-type-identifiers.md" %}
+
+See [file-type filtering](../../filtering.md#file-type-filtering) for the full identifier contract.
 
 ______________________________________________________________________
 

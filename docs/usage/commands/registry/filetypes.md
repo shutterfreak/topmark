@@ -70,17 +70,9 @@ Registry-oriented machine-readable output exposes canonical identity fields such
 These fields are intended for stable comparisons, joins, tooling integration, and runtime
 introspection.
 
-Local identifiers such as:
-
-```text
-python
-markdown
-```
-
-may still be accepted in public configuration and CLI filtering when unambiguous, but registry file
-type views always operate on canonical qualified identities.
-
 {% include-markdown "\_snippets/file-type-identifiers.md" %}
+
+See [file-type filtering](../../filtering.md#file-type-filtering) for the full identifier contract.
 
 This command exposes the effective runtime file type view after registry composition and
 configuration freeze.

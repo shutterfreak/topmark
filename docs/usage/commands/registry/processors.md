@@ -77,6 +77,8 @@ identities and binding relationships.
 
 {% include-markdown "\_snippets/file-type-identifiers.md" %}
 
+See [file-type filtering](../../filtering.md#file-type-filtering) for the full identifier contract.
+
 This command exposes the effective runtime processor view after registry composition and
 configuration freeze.
 

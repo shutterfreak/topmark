@@ -131,6 +131,8 @@ For command applicability, output, verbosity, and formatting options, see
 
 {% include-markdown "\_snippets/file-type-identifiers.md" %}
 
+See [file-type filtering](filtering.md#file-type-filtering) for the full identifier contract.
+
 Examples:
 
 ```bash

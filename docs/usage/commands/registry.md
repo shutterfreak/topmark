@@ -74,6 +74,8 @@ for deterministic identity handling.
 
 {% include-markdown "\_snippets/file-type-identifiers.md" %}
 
+See [file-type filtering](../filtering.md#file-type-filtering) for the full identifier contract.
+
 Registry commands expose the effective runtime registry view after registry composition and
 configuration freeze.
 

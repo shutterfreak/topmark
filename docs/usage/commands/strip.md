@@ -52,38 +52,34 @@ ______________________________________________________________________
 
 ## Input applicability
 
-- Dry‑run by default; exit code **2** when removals *would* occur.
-- Preserves the file’s original **newline style** (LF/CRLF/CR).
-- Preserves a leading **UTF‑8 BOM** if present.
+- Dry-run by default; exit code **2** when removals *would* occur.
+- Preserves the file's original **newline style** (LF/CRLF/CR).
+- Preserves a leading **UTF-8 BOM** if present.
 - Honors XML/HTML placement rules and preserves the XML declaration (`<?xml …?>`).
-- Respects Markdown fenced code blocks: header‑like snippets inside fences are ignored.
-- Uses the same file discovery and filtering as other commands.
+- Respects Markdown fenced code blocks: header-like snippets inside fences are ignored.
+- Idempotent: once stripped, subsequent runs are no-ops.
 
 ### STDIN modes
 
-TopMark supports **two different STDIN modes**:
+`strip` supports both list STDIN mode (`--files-from -`, `--include-from -`, or `--exclude-from -`)
+and content STDIN mode (`-` plus `--stdin-filename NAME`). These modes are mutually exclusive.
 
-- **List mode**: read newline-delimited paths or patterns from STDIN using:
-  - `--files-from -`
-  - `--include-from -`
-  - `--exclude-from -`
-- **Content mode**: process one file’s *content* from STDIN by passing `-` as the sole PATH and
-  providing `--stdin-filename NAME`.
+With `--apply` in content mode, transformed content is written to STDOUT and diagnostics are routed
+to STDERR.
 
-{% include-markdown "\_snippets/no-stdin-option.md" %}
+See [shared input modes](../shared-options.md#shared-input-modes) for the full STDIN contract,
+including why TopMark does not provide a `--stdin` option flag.
 
-These modes are mutually exclusive: do **not** mix `-` (content mode) with `--files-from -`,
-`--include-from -`, or `--exclude-from -` (list mode).
+______________________________________________________________________
 
-In content mode, `--stdin-filename` is required so TopMark can resolve file type, processor, and
-path-sensitive header policy exactly as it would for a real file path. When `--apply` is used with
-content mode, stripped content is written to STDOUT and diagnostics are routed to STDERR.
+## Configuration and validation
 
-- Idempotent: re‑running after headers are removed results in **no changes**.
-- Supports `--strict` / `--no-strict` to override the effective `strict` value for the run.
-- Performs whole-source TOML schema validation during configuration loading; TOML-source diagnostics
-  (including missing-section INFO diagnostics) are evaluated together with merged-config and
-  runtime-applicability diagnostics during staged config-loading/preflight validation for the run.
+`strip` supports `--strict` / `--no-strict` to override the effective `strict` value for the run.
+
+Before any file processing begins, TopMark performs whole-source TOML schema validation during
+configuration loading. TOML-source diagnostics (including missing-section INFO diagnostics) are
+evaluated together with merged-config and runtime-applicability diagnostics during staged
+config-loading/preflight validation for the run.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 
@@ -91,24 +87,29 @@ content mode, stripped content is written to STDOUT and diagnostics are routed t
 
 ______________________________________________________________________
 
-## Filtering
+## Filtering and file discovery
 
 TopMark determines which files to process using a combination of path-based filters and file-type
 filters.
 
-For the full filtering contract and recipes, see [Filtering](../filtering.md).
+Path arguments, include/exclude patterns, `--files-from`, and file-type filters follow the shared
+TopMark filtering pipeline. Positional paths and relative patterns are resolved from the current
+working directory; path-based filters run before file-type filters, and exclude rules take
+precedence. See [Filtering](../filtering.md#path-based-filtering) for the full path discovery
+contract.
 
 ### File type filters
 
 - `--include-file-types / -t` Restrict processing to the given file type identifiers. May be
   repeated and/or provided as a comma-separated list.
-
 - `--exclude-file-types / -T` Exclude the given file type identifiers. May be repeated and/or
   provided as a comma-separated list.
 
 Exclude rules take precedence over include rules.
 
 {% include-markdown "\_snippets/file-type-identifiers.md" %}
+
+See [file-type filtering](../filtering.md#file-type-filtering) for the full identifier contract.
 
 Examples:
 
@@ -121,21 +122,23 @@ topmark strip --exclude-file-types topmark:markdown docs/
 ### Path-based filters
 
 - `--include`, `--exclude` Include or exclude glob patterns.
-
 - `--include-from`, `--exclude-from` Load patterns from files (one per line).
-
 - `--files-from` Provide an explicit list of files to process.
 
-Notes:
+See [Filtering](../filtering.md#path-based-filtering) for CWD-resolution rules, missing vs unmatched
+input behavior, include/exclude precedence, and STDIN interactions.
 
-- Path-based filters are evaluated **before** file-type filters.
-- Exclude rules win over include rules when both match a path.
-- File-type filters are applied after path-based include/exclude filtering.
-- File-type filters are normalized to canonical qualified keys before resolver and policy
-  evaluation.
-- Explicit missing literal paths (for example `fubar.py`) are reported as `FILE_NOT_FOUND (66)`.
-- Unmatched glob patterns (for example `missing/**/*.py`) are treated as soft discovery diagnostics
-  and do not fail `strip`.
+{% include-markdown "\_snippets/report-scope.md" %}
+
+### Example
+
+```bash
+# Use include/exclude files with relative patterns
+printf "*.py\n" > inc.txt
+printf "tests/*\n# ignored\n" > exc.txt
+
+topmark strip --include-from inc.txt --exclude-from exc.txt --diff
+```
 
 ______________________________________________________________________
 
@@ -156,6 +159,18 @@ Controls whether file-type detection may inspect file contents.
 
 Header insertion and update policies (such as mutation mode, empty-file behavior, or
 generated-header formatting) do not apply to `strip` and are rejected when provided.
+
+______________________________________________________________________
+
+## Behavior details
+
+- **Removal policy**: If a valid TopMark header is detected (policy‑aware), remove the whole block.
+  A permissive fallback accepts legacy single‑line‑wrapped markers (e.g., HTML/XML `<!-- ... -->`).
+- **Newline/BOM**: preserved across removal. Reader normalizes in‑memory; updater re‑attaches BOM
+  and keeps line endings.
+- **XML/HTML**: keeps the XML declaration as the first logical line; maintains a single intentional
+  blank as needed.
+- **Markdown**: ignores code fences for detection; header‑like text inside fences is not removed.
 
 ______________________________________________________________________
 
@@ -189,10 +204,10 @@ ______________________________________________________________________
 
 Use `--output-format json` or `--output-format ndjson` to emit output suitable for tooling:
 
-- **JSON**: a single JSON document containing `meta`, `config`, `config_diagnostics`, and then
-  either `results` (detail mode) or `summary` (summary mode).
-- **NDJSON**: one JSON object per line. Every record includes `kind` and `meta`, and the payload is
-  stored under a container key that matches `kind`.
+- **JSON**: a single JSON document containing `meta`, the effective `config` snapshot,
+  `config_diagnostics`, and then either `results` (detail mode) or `summary` (summary mode).
+- **NDJSON**: one record (JSON object) per line. Every record includes `kind` and `meta`, and the
+  payload is stored under a container key that matches `kind`.
 
 For the canonical schema, stable `kind` values, and shared conventions, see:
 
@@ -322,54 +337,6 @@ See [`Exit codes`](../exit-codes.md) for the complete CLI-wide exit-code contrac
 
 ______________________________________________________________________
 
-## Filtering and file discovery
-
-- Positional arguments are resolved **relative to the current working directory** (CWD),
-  Black‑style.
-
-- Patterns in `--include`, `--exclude`, and the files passed to `--include-from` / `--exclude-from`
-  are also resolved **relative to CWD**. Absolute patterns are not supported.
-
-- Explicit missing literal paths are reported as `FILE_NOT_FOUND (66)`. Unmatched glob patterns are
-  non-fatal for `strip`.
-
-{% include-markdown "\_snippets/file-discovery-patterns.md" %}
-
-{% include-markdown "\_snippets/report-scope.md" %}
-
-- Diffs (`--diff`) are only shown in human mode; machine-readable formats never include diffs.
-
-### Example
-
-```bash
-# Use include/exclude files with relative patterns
-printf "*.py\n" > inc.txt
-printf "tests/*\n# ignored\n" > exc.txt
-
-topmark strip --include-from inc.txt --exclude-from exc.txt --diff
-```
-
-______________________________________________________________________
-
-## Behavior details
-
-- **Removal policy**: If a valid TopMark header is detected (policy‑aware), remove the whole block.
-  A permissive fallback accepts legacy single‑line‑wrapped markers (e.g., HTML/XML `<!-- ... -->`).
-- **Newline/BOM**: preserved across removal. Reader normalizes in‑memory; updater re‑attaches BOM
-  and keeps line endings.
-- **XML/HTML**: keeps the XML declaration as the first logical line; maintains a single intentional
-  blank as needed.
-- **Markdown**: ignores code fences for detection; header‑like text inside fences is not removed.
-- **Idempotency**: once stripped, subsequent runs are no‑ops.
-- **Configuration loading**: before any file processing begins, TopMark resolves TOML sources,
-  validates each whole-source TOML fragment, merges the validated layered config fragments, then
-  evaluates staged config-loading/preflight validation before freezing the effective config for the
-  run.
-- **File type identifiers**: local identifiers such as `python` are accepted when unambiguous;
-  internally, TopMark normalizes identifiers to canonical qualified keys such as `topmark:python`.
-
-______________________________________________________________________
-
 ## Typical workflows
 
 ### 1) Remove headers from a project
@@ -404,7 +371,7 @@ topmark strip --strict src/
 
 ______________________________________________________________________
 
-## Pre‑commit integration
+## Pre-commit integration
 
 There is currently no dedicated `topmark-strip` pre-commit hook.
 

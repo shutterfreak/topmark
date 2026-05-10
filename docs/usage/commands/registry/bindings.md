@@ -79,17 +79,9 @@ And in long mode:
 These fields are intended for stable comparisons, joins, tooling integration, and runtime
 introspection.
 
-Local identifiers such as:
-
-```text
-python
-markdown
-```
-
-may still be accepted in public configuration and CLI filtering when unambiguous, but registry
-bindings always operate on canonical qualified identities.
-
 {% include-markdown "\_snippets/file-type-identifiers.md" %}
+
+See [file-type filtering](../../filtering.md#file-type-filtering) for the full identifier contract.
 
 Bindings expose the effective runtime processor-dispatch relationships using canonical qualified
 identities.
