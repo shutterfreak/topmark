@@ -62,11 +62,9 @@ Local identifiers are accepted only when unambiguous in the effective composed r
 
 {% include-markdown "\_snippets/file-type-identifiers.md" %}
 
-An overview of all CLI commands is available in [CLI overview](../cli.md).
-
 ______________________________________________________________________
 
-## Command applicability
+## Input applicability
 
 The `config` command family is **file-agnostic**. These commands operate on configuration state and
 do not process source files.
@@ -138,6 +136,8 @@ original TOML fragments (after schema validation) that contributed to each layer
 
 Machine-readable config snapshots emit normalized canonical qualified file type identifiers after
 configuration freeze.
+
+### Strictness and provenance
 
 When running [`config check`](config/check.md), effective validation strictness is determined by:
 
