@@ -36,6 +36,8 @@ TopMark provides consistent semantics across:
 | Generate a starter TOML configuration | `topmark config init > topmark.toml`                    | [`topmark config init`](usage/commands/config/init.md), [Configuration](usage/configuration.md), [Configuration discovery](configuration/discovery.md)                       |
 | Inspect the built-in defaults         | `topmark config defaults`                               | [`topmark config defaults`](usage/commands/config/defaults.md), [Default TOML settings](configuration/generated/config-defaults.md), [Configuration](usage/configuration.md) |
 
+______________________________________________________________________
+
 ## Quickstart
 
 ```bash
@@ -71,6 +73,8 @@ for b in Registry.bindings():
     print(b.filetype.name, bool(b.processor))
 ```
 
+______________________________________________________________________
+
 ## What it does
 
 - Detects, inserts, and updates per‑file headers
@@ -84,6 +88,8 @@ for b in Registry.bindings():
 - Validates whole-source TOML configuration before layered config merging
 - Normalizes file type identifiers to canonical qualified keys such as `topmark:python`
 - Supports local identifiers such as `python` when unambiguous
+
+______________________________________________________________________
 
 ## Example headers
 
@@ -117,6 +123,8 @@ topmark:header:end
 -->
 ...
 ```
+
+______________________________________________________________________
 
 ## Commands
 
@@ -186,6 +194,8 @@ TopMark supports two STDIN modes:
 See [shared input modes](usage/shared-options.md#shared-input-modes) for the full STDIN contract,
 including why TopMark does not provide a `--stdin` option flag.
 
+______________________________________________________________________
+
 ## Header placement (short version)
 
 - **Pound‑style** (Python, Shell, Makefile, YAML, TOML, …): after shebang and optional encoding
@@ -198,6 +208,8 @@ including why TopMark does not provide a `--stdin` option flag.
 >
 > [`topmark probe`](usage/commands/probe.md) can be used to understand how file types are resolved
 > and why certain paths are ignored.
+
+______________________________________________________________________
 
 ## Configuration (example)
 
@@ -248,6 +260,8 @@ malformed-present sections before staged config-validation semantics are applied
 diagnostics are then evaluated together with merged-config and runtime-applicability diagnostics
 during staged config-loading/preflight validation.
 
+______________________________________________________________________
+
 ## File type identifiers
 
 TopMark accepts file type identifiers in either local form, such as `python`, or qualified form,
@@ -283,6 +297,8 @@ This shows:
 Machine-readable formats (`--output-format json|ndjson`) also expose this provenance via the
 `config_provenance` payload. The stored TOML fragments correspond to the source-local TOML view
 after TOML-layer validation.
+
+______________________________________________________________________
 
 ## Next steps
 

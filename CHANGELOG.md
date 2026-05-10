@@ -2700,7 +2700,7 @@ ______________________________________________________________________
 
 ### Added — 0.6.1
 
-- **Docstring link checker**: new `tools/check_docstring_links.py` to enforce reference-style object
+- **Docstring link checker**: new `tools/check_docs_hygiene.py` to enforce reference-style object
   links and flag raw URLs in docstrings. Includes accurate line/range reporting, code-region
   masking, and CLI flags `--stats` and `--ignore-inline-code`.
 - **Makefile targets**: `docstring-links`, `links`, `links-src`, `links-all`; centralized

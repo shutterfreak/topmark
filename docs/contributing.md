@@ -29,6 +29,8 @@ canonical contributor guide lives at the repository root.
 - **.pre-commit-config.yaml** — enabled hooks for this repo
 - **.pre-commit-hooks.yaml** — hook definitions exported to consumer repos
 
+______________________________________________________________________
+
 ## 🧠 Architecture overview
 
 TopMark uses a layered architecture:

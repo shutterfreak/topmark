@@ -13,7 +13,7 @@
 	check-lychee check-uv check-venv \
 	coverage coverage-erase \
 	docstring-links \
-	docs-build docs-clean docs-serve \
+	docs-build docs-clean docs-hygiene docs-serve \
 	format format-check format-docstrings \
 	help \
 	links links-all links-site links-src \
@@ -58,7 +58,8 @@ help:
 	@echo "  format-check    Check code/markdown/toml/Makefile formatting"
 	@echo "  format          Format code/markdown/toml/Makefile (auto-fix)"
 	@echo "  format-docstrings  Auto-format docstrings using pydocstringformatter"
-	@echo "  docstring-links Enforce docstring link style (tools/docs/check_docstring_links.py)"
+	@echo "  docstring-links Enforce docstring link style (tools/docs/check_docs_hygiene.py)"
+	@echo "  docs-hygiene    Enforce lightweight Markdown snippet/include hygiene"
 	@echo "Tests:"
 	@echo "  test            Run the test suite (nox: qa)"
 	@echo "  pytest          Run tests with current interpreter (no nox), skipping slow tests; supports PYTEST_PAR=-n auto"
@@ -113,7 +114,7 @@ coverage-erase:
 
 verify: check-venv
 	@echo "Running non-destructive checks via nox..."
-	$(NOX) $(NOX_FLAGS) -s format_check -s lint -s docstring_links -s links -s docs
+	$(NOX) $(NOX_FLAGS) -s format_check -s lint -s docstring_links -s docs_hygiene -s links -s docs
 	@echo "All quality checks passed!"
 
 release-check: check-venv
@@ -135,7 +136,7 @@ RELEASE_PYTHONS := $(shell $(NOX) -l | awk '{print $$1}' | grep '^qa_api-' | cut
 release-full: check-venv check-lychee
 	@echo "Running full release gate for versions: $(RELEASE_PYTHONS) (serial gates + parallel Python matrix)..."
 	# Serial, non-matrix gates first:
-	$(NOX) $(NOX_FLAGS) -s format_check -s lint -s docstring_links -s docs -s links_all -s package_check
+	$(NOX) $(NOX_FLAGS) -s format_check -s lint -s docstring_links -s docs_hygiene -s docs -s links_all -s package_check
 	# Parallelize the per-Python QA+snapshot+typecheck gate across versions:
 	$(MAKE) -j $(JOBS) $(addprefix release-qa-api-,$(RELEASE_PYTHONS))
 
@@ -162,6 +163,9 @@ format-docstrings: check-uv
 
 docstring-links: check-venv
 	$(NOX) $(NOX_FLAGS) -s docstring_links
+
+docs-hygiene: check-venv
+	$(NOX) $(NOX_FLAGS) -s docs_hygiene
 
 # Run pytest directly (no nox) with the current interpreter
 pytest:

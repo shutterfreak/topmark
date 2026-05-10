@@ -272,6 +272,8 @@ policy or runtime policy. XML-specific checks may still treat non-standard newli
 near XML insertion boundaries as an idempotence risk and skip mutation conservatively; that is a
 local safety guard, not extended newline support.
 
+______________________________________________________________________
+
 ## Presentation and machine-readable output boundaries
 
 TopMark separates human-facing presentation from machine-readable output.

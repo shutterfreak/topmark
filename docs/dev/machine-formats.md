@@ -161,6 +161,8 @@ Note:
 - `detail_level` is distinct from TEXT verbosity (`-v`) and quiet mode (`--quiet`).
 - It reflects an explicit machine-facing projection (`--long`), not presentation detail.
 
+______________________________________________________________________
+
 ## NDJSON envelope contract
 
 Each NDJSON line is a JSON object with a stable envelope:
@@ -180,6 +182,8 @@ Note:
   mode, these payloads expand to structured objects.
 
 Registry-oriented scalar payloads use canonical qualified keys.
+
+______________________________________________________________________
 
 ## JSON envelope conventions
 

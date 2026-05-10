@@ -29,6 +29,8 @@ The CLI is intentionally conservative:
 - repeated runs converge to stable results
 - command help is available via `--help` / `-h`
 
+______________________________________________________________________
+
 ## Common workflows
 
 | Goal                                 | Command                             | More info                                                                                              |
@@ -38,6 +40,8 @@ The CLI is intentionally conservative:
 | Remove TopMark headers               | `topmark strip --apply src/`        | [`topmark strip`](commands/strip.md), [Header placement](header-placement.md)                          |
 | Inspect file type resolution         | `topmark probe README.md`           | [`topmark probe`](commands/probe.md), [Filtering](filtering.md)                                        |
 | Inspect effective configuration      | `topmark config dump --show-layers` | [`topmark config dump`](commands/config/dump.md), [Configuration](configuration.md)                    |
+
+______________________________________________________________________
 
 ## Installation
 
@@ -52,6 +56,8 @@ Verify the installation:
 ```bash
 topmark version
 ```
+
+______________________________________________________________________
 
 ## Command structure
 
@@ -83,6 +89,8 @@ topmark check --apply src/
 topmark strip --apply src/
 ```
 
+______________________________________________________________________
+
 ## Command help
 
 Every command and command group provides built-in help output.
@@ -107,6 +115,8 @@ topmark registry filetypes --help
 
 The short form `-h` is also supported.
 
+______________________________________________________________________
+
 ## Shared options
 
 Common shared options include:
@@ -126,6 +136,8 @@ For command applicability, output, verbosity, and formatting options, see
 [Shared options](shared-options.md).
 
 {% include-markdown "\_snippets/option-spelling.md" %}
+
+______________________________________________________________________
 
 ## File type filters
 
@@ -157,6 +169,8 @@ File type filters are supported consistently across:
 For canonical file-type identifier semantics and configuration behavior, see
 [Configuration](configuration.md).
 
+______________________________________________________________________
+
 ## Command map
 
 | Goal                                        | Command                                            |
@@ -170,6 +184,8 @@ For canonical file-type identifier semantics and configuration behavior, see
 | Generate starter configuration              | [`topmark config init`](commands/config/init.md)   |
 | Inspect registry state                      | [`topmark registry`](commands/registry.md)         |
 | Display version and environment information | [`topmark version`](commands/version.md)           |
+
+______________________________________________________________________
 
 ## Main commands
 
@@ -195,6 +211,8 @@ See also:
 | [`topmark registry bindings`](commands/registry/bindings.md)     | Inspect effective relationships between file types and processors.                                      |
 | [`topmark version`](commands/version.md)                         | Display version and environment information.                                                            |
 
+______________________________________________________________________
+
 ## Dry-run vs apply
 
 TopMark defaults to dry-run behavior.
@@ -215,6 +233,8 @@ topmark check --apply src/
 
 This safety model helps prevent accidental repository-wide modifications.
 
+______________________________________________________________________
+
 ## Related pages
 
 - [Shared options](shared-options.md)
@@ -224,6 +244,8 @@ This safety model helps prevent accidental repository-wide modifications.
 - [Exit codes](exit-codes.md)
 - [Pre-commit integration](pre-commit.md)
 - [Configuration discovery](../configuration/discovery.md)
+
+______________________________________________________________________
 
 ## Diagnostics and exit behavior
 

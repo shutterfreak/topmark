@@ -289,6 +289,8 @@ This normalization is shared consistently across:
 - API overlays
 - effective runtime policy resolution
 
+______________________________________________________________________
+
 ## Identifier ambiguity
 
 Local identifiers such as:
@@ -311,6 +313,8 @@ acme:python
 
 Malformed identifiers are handled diagnostically during staged config-loading validation.
 
+______________________________________________________________________
+
 ## Policy token notes
 
 `header_mutation_mode` uses TOML/API tokens with underscores:
@@ -326,6 +330,8 @@ apply behavior, API result views, and outcome bucketing. It does not apply to
 [`strip`](../usage/commands/strip.md) or [`probe`](../usage/commands/probe.md), and safety gates
 still take precedence: malformed headers, unreadable files, unsupported files, blocked filesystem
 states, and other non-mutable conditions are not made mutable by this policy.
+
+______________________________________________________________________
 
 ## Non-goals
 

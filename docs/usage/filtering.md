@@ -53,6 +53,8 @@ configuration behavior, see [Configuration](configuration.md).
 Note: For [`topmark probe`](commands/probe.md), paths excluded during step 1 or 2 may still be
 reported as `filtered` results if they were explicitly requested.
 
+______________________________________________________________________
+
 ## Missing vs unmatched inputs
 
 TopMark distinguishes between **explicit literal paths** and **glob patterns**:
@@ -65,6 +67,8 @@ TopMark distinguishes between **explicit literal paths** and **glob patterns**:
 
 This distinction ensures that typos in explicit inputs are surfaced, while flexible patterns that
 match nothing do not break automation.
+
+______________________________________________________________________
 
 ## Path-based filtering
 
@@ -84,6 +88,8 @@ Path semantics:
 - Exclude rules take precedence over include rules.
 - Path-based filtering occurs before file-type filtering.
 
+______________________________________________________________________
+
 ## STDIN support
 
 File-processing commands support two STDIN modes when supplying file lists or content:
@@ -97,6 +103,8 @@ File-processing commands support two STDIN modes when supplying file lists or co
 
 See [shared input modes](shared-options.md#shared-input-modes) for the full STDIN contract,
 including why TopMark does not provide a `--stdin` option flag.
+
+______________________________________________________________________
 
 ## Interaction with [`topmark probe`](commands/probe.md)
 
@@ -156,7 +164,11 @@ Filtered probe results may use one of the following reasons:
 Only explicitly requested inputs (CLI paths or `--files-from`) are reported this way. Files excluded
 implicitly during recursive discovery are not enumerated.
 
-## Recipe: Process only Python and Markdown
+______________________________________________________________________
+
+## Filtering recipes
+
+### Recipe: Process only Python and Markdown
 
 CLI:
 
@@ -177,7 +189,7 @@ TOML:
 include_file_types = ["python", "markdown"]
 ```
 
-## Recipe: Exclude generated/virtualenv folders
+### Recipe: Exclude generated/virtualenv folders
 
 TOML:
 
@@ -193,7 +205,7 @@ exclude_patterns = [
 ]
 ```
 
-## Recipe: Include only `src/` and `tests/`
+### Recipe: Include only `src/` and `tests/`
 
 TOML:
 
@@ -202,7 +214,7 @@ TOML:
 include_patterns = ["src/**", "tests/**"]
 ```
 
-## Recipe: Use include/exclude pattern files (portable across repos)
+### Recipe: Use include/exclude pattern files (portable across repos)
 
 ```toml
 [files]
@@ -226,7 +238,7 @@ Example `exclude.txt`:
 **/__pycache__/**
 ```
 
-## Recipe: Exclude a specific file type after path filtering
+### Recipe: Exclude a specific file type after path filtering
 
 ```toml
 [files]
@@ -241,7 +253,7 @@ Equivalent canonical form:
 exclude_file_types = ["topmark:yaml"]
 ```
 
-## Recipe: Process only a known file list (from Git)
+### Recipe: Process only a known file list (from Git)
 
 Generate a file list:
 
@@ -261,18 +273,20 @@ You can also stream the file list via STDIN:
 git ls-files | topmark check --files-from -
 ```
 
-## Recipe: Show only actionable files (would change)
+### Recipe: Show only actionable files (would change)
 
 ```bash
 topmark check --report actionable .
 ```
 
-## Recipe: Include unsupported files in reporting
+### Recipe: Include unsupported files in reporting
 
 ```bash
 topmark check --report noncompliant .
 topmark strip --report noncompliant .
 ```
+
+______________________________________________________________________
 
 ## File-type filtering
 
@@ -301,6 +315,8 @@ Local identifiers are accepted only when they are unambiguous. If more than one 
 has the same local identifier, the local form is considered ambiguous and TopMark requires the
 qualified form.
 
+______________________________________________________________________
+
 ## Exit-code interaction
 
 Filtering decisions can influence exit codes indirectly:
@@ -316,6 +332,8 @@ When multiple conditions occur, TopMark applies an exit-code priority model (see
 
 Invalid CLI usage (for example, unsupported options or inappropriate STDIN modes) is reported as a
 usage error and takes precedence over filtering outcomes.
+
+______________________________________________________________________
 
 ## Notes on configuration strictness
 

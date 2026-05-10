@@ -218,6 +218,8 @@ Some file-type-specific checks (notably XML) may conservatively skip mutation wh
 appear near insertion boundaries due to idempotence concerns. This is a localized safety behavior,
 not an extension of newline support.
 
+______________________________________________________________________
+
 ## Per-file-type policy
 
 {% include-markdown "\_snippets/file-type-identifiers.md" %}

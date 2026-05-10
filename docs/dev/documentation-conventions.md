@@ -46,7 +46,29 @@ It does not redefine:
 - configuration schema contracts
 - API architecture
 
+______________________________________________________________________
+
 ## Documentation Structure
+
+### Section Separators
+
+Level-2 sections should be visually separated with a horizontal rule.
+
+Use:
+
+```md
+______________________________________________________________________
+
+## Section Title
+```
+
+for major page sections after the opening introduction.
+
+This convention improves source readability, keeps long Markdown files easier to scan, and gives
+TopMark documentation a consistent section rhythm across generated and hand-written pages.
+
+The first level-2 section on a page does not need a preceding separator when it directly follows the
+page introduction. Subsequent level-2 sections are validated by `make docs-hygiene`.
 
 TopMark documentation is organized into four primary layers.
 
@@ -111,6 +133,8 @@ Development documentation should focus on:
 
 Development documentation should not duplicate end-user command documentation unless necessary for
 implementation context.
+
+______________________________________________________________________
 
 ## Navigation Conventions
 
@@ -225,6 +249,8 @@ pages should be organized according to discoverability and task-oriented documen
 
 Generated API internals may remain outside the primary navigation when they are discoverable through
 API reference indexes, mkdocstrings output, or direct cross-references.
+
+______________________________________________________________________
 
 ## Command Documentation Conventions
 
@@ -501,6 +527,8 @@ Avoid mixing commands and conceptual pages within the same related-links section
 Related sections should generally appear near the end of the page after operational and behavioral
 reference material.
 
+______________________________________________________________________
+
 ## Emoji Usage Conventions
 
 Emoji usage should be conservative and consistent.
@@ -594,6 +622,8 @@ Markdown portability, or contributor ergonomics.
 
 These are more accessible, theme-consistent, and easier to validate than ad-hoc emoji markers.
 
+______________________________________________________________________
+
 ## Cross-Reference Conventions
 
 Cross-references should use stable, descriptive wording.
@@ -647,6 +677,8 @@ should use the same wording in:
 - page titles
 - inline references
 - related-doc sections
+
+______________________________________________________________________
 
 ## Snippet Conventions
 
@@ -855,21 +887,34 @@ more snippets.
 
 ### Snippet Validation
 
-Documentation tooling should validate:
+Documentation tooling validates snippet and include hygiene through:
+
+```bash
+make docs-hygiene
+```
+
+The validation fails on objective problems:
 
 - broken snippet include paths
-- orphaned snippets
 - nested snippet includes
-- malformed include paths
+- malformed docs-root-relative include paths
+- include targets that resolve outside `docs/`
 - accidental macOS `._*` resource files under `docs/`
+- level-2 Markdown sections that are not separated by a horizontal rule
 
-Validation may also warn about:
+The validation reports maintainability warnings for:
 
-- single-use snippets
+- orphaned snippets
 - snippets containing headings
 - snippets containing relative links
+- snippet include paths that do not use the formatter-stable `\_snippets/` prefix
+
+Warnings are intentionally non-fatal by default. They document possible maintainability issues
+without turning every snippet-governance preference into a release blocker.
 
 Human review remains important to ensure snippet extraction does not reduce local readability.
+
+______________________________________________________________________
 
 ## Generated Documentation Conventions
 
@@ -907,6 +952,8 @@ to scan.
 Generated API navigation should remain complete enough for discovery without turning the sidebar
 into a full source-tree listing.
 
+______________________________________________________________________
+
 ## Documentation Validation
 
 Documentation validation should prioritize:
@@ -924,6 +971,7 @@ Appropriate automated validation includes:
 - strict MkDocs builds
 - link checking
 - heading consistency checks
+- level-2 section-separator validation
 - command-page structure validation
 - snippet include validation
 - generated-page existence validation
@@ -941,6 +989,8 @@ Human review remains important for:
 
 Not all documentation quality concerns should be automated.
 
+______________________________________________________________________
+
 ## Documentation Reuse Philosophy
 
 Documentation reuse should remain understandable to contributors.
@@ -954,6 +1004,8 @@ Prefer:
 - predictable page layout
 
 over heavily fragmented documentation composition.
+
+______________________________________________________________________
 
 ## Accepted Duplication
 
@@ -971,6 +1023,8 @@ Duplication is acceptable when it improves:
 - onboarding
 - local readability
 - contributor ergonomics
+
+______________________________________________________________________
 
 ## Stability Expectations
 

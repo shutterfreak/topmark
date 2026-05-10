@@ -46,8 +46,9 @@ TopMark’s documentation build consists of **three coordinated layers**:
    - Produced at build time by `mkdocs-gen-files`
    - Includes API internals, public API reference pages, and CLI reference output
 1. **Build-time validation & hygiene**
-   - Enforced via MkDocs hooks and shared helpers
-   - Ensures symbol references are linkable, consistent, and future-proof
+   - Enforced via MkDocs hooks, custom tooling, and shared helpers
+   - Ensures symbol references, snippet includes, and generated pages remain consistent,
+     deterministic, and maintainable
 
 All tooling lives under:
 
@@ -330,6 +331,38 @@ are:
 - Intended for inclusion via plugins (e.g. include-markdown)
 - **Not** standalone pages
 - Explicitly excluded via `exclude_docs` in `mkdocs.yml`
+- Intended only for stable, reusable documentation fragments
+
+Snippet include and inventory hygiene is validated through:
+
+```bash
+make docs-hygiene
+```
+
+which runs:
+
+```bash
+python tools/docs/check_docs_hygiene.py --docs-hygiene --stats
+```
+
+The validation fails on objective problems such as:
+
+- broken include paths
+- malformed docs-root-relative include paths
+- include targets resolving outside `docs/`
+- nested snippet includes
+- accidental macOS `._*` files under `docs/`
+
+It also reports non-fatal maintainability warnings for:
+
+- orphaned snippets
+- headings inside snippets
+- relative links inside snippets
+- snippet include paths that do not use the formatter-stable `\_snippets/` prefix
+
+These checks intentionally remain lightweight and deterministic. They are intended to reinforce the
+project’s documentation conventions without turning every documentation-style preference into a hard
+release blocker.
 
 ______________________________________________________________________
 
@@ -341,7 +374,8 @@ The documentation tooling follows a few strict principles:
 
 - **Fail-late, report-all** Especially in strict mode
 
-- **Shared logic, single source of truth** No duplicated regexes or heuristics
+- **Shared logic, single source of truth** No duplicated regexes, include semantics, or hygiene
+  heuristics
 
 - **Docs are code** Docstrings and Markdown are held to the same standard
 
@@ -351,7 +385,8 @@ ______________________________________________________________________
 
 - Documentation is generated, validated, and enforced as part of the build
 - `tools/docs/` is the single authoritative location for documentation tooling
-- Reference hygiene is enforced consistently across Markdown and docstrings
+- Reference hygiene and snippet/include hygiene are enforced consistently across Markdown and
+  docstrings
 - Debug and strict modes provide both flexibility and CI-grade guarantees
 
 If you change how TopMark is structured, **update the docs pipeline accordingly** — it is a

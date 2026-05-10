@@ -410,6 +410,8 @@ Note:
 - Synthetic probe entries may still appear for explicitly requested paths that were filtered during
   discovery, but exit-code precedence is resolved at the CLI layer.
 
+______________________________________________________________________
+
 ## Processing commands ([`check`](../usage/commands/check.md), [`strip`](../usage/commands/strip.md))
 
 Processing commands produce either **detail** output (per-file results) or **summary** output
@@ -744,6 +746,8 @@ two records in order:
 {"kind": "config_provenance", "meta": { /* MetaPayload */ }, "config_provenance": { /* TomlProvenancePayload */ }}
 {"kind": "config", "meta": { /* MetaPayload */ }, "config": { /* ConfigPayload */ }}
 ```
+
+______________________________________________________________________
 
 ## TomlProvenancePayload
 

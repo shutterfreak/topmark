@@ -72,6 +72,8 @@ The main goals are:
 1. test isolation for registry overlays;
 1. a single effective registry view for resolver, pipeline, API, and CLI behavior.
 
+______________________________________________________________________
+
 ## Base registries and overlays
 
 TopMark composes effective registries from immutable base registry data plus mutable overlay state.

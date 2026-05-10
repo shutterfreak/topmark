@@ -34,6 +34,8 @@ def test_registered_processors_map_to_existing_filetypes():
     ...
 ```
 
+______________________________________________________________________
+
 ## Execution
 
 Currently, these tests are **run with all other tests** (no separate nox job).\
@@ -52,6 +54,8 @@ pytest -m dev_validation
 nox -s qa -p 3.13 -- -m dev_validation
 ```
 
+______________________________________________________________________
+
 ## What it checks
 
 - **Registry integrity**: every registered header processor maps to an existing `FileType` name.
@@ -61,12 +65,16 @@ nox -s qa -p 3.13 -- -m dev_validation
 These checks run at most once per process and are **no-ops by default**. They do not affect end
 users.
 
+______________________________________________________________________
+
 ## Why it matters
 
 - Prevents accidental miswiring (e.g., a processor registered under a typo key).
 - Ensures XML/HTML-like processors don’t regress into line-based insertion, which can cause
   double-wrapped `<!-- -->` header blocks.
 - Mirrors guardrails used by mature Python projects for safer refactors.
+
+______________________________________________________________________
 
 ## Scope and overhead
 

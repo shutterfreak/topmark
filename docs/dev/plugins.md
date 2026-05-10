@@ -345,6 +345,8 @@ These modules are useful if you are extending TopMark deeply:
 These composed registries provide effective views that combine base registrations with runtime
 overlays and removals.
 
+______________________________________________________________________
+
 ## See also
 
 - [`Registry model`](./registry-model.md) — detailed registry layers, bindings, overlays, and

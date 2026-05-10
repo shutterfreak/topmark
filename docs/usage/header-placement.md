@@ -50,6 +50,8 @@ Example (Python):
 print("hello")
 ```
 
+______________________________________________________________________
+
 ## XML‑style files (XML, HTML/XHTML, SVG, Vue/Svelte/Markdown via HTML comments)
 
 Rules:
@@ -72,12 +74,16 @@ topmark:header:end
 <html>...</html>
 ```
 
+______________________________________________________________________
+
 ## General guarantees
 
 - **Newline preservation:** The inserted header uses the same newline style as the file
   (LF/CRLF/CR).
 - **BOM preservation:** If a UTF‑8 BOM is present, it is preserved.
 - **Idempotency:** Re‑running TopMark on a file with a correct header makes **no changes**.
+
+______________________________________________________________________
 
 ## See also
 

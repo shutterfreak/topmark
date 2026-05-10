@@ -24,6 +24,7 @@ Sessions:
   - `links_all`: Combined link checks.
   - `links_site`: Lychee link checks for the built MkDocs site (includes generated pages).
   - `docstring_links`: Enforce docstring link style (custom tool).
+  - `docs_hygiene`: Enforce lightweight Markdown snippet/include hygiene (custom tool).
   - `qa`: Per-Python session that runs pytest and pyright.
   - `qa_api`: Per-Python session that runs pytest + API snapshot + pyright in one env.
   - `api_snapshot`: Public API snapshot test (per Python).
@@ -207,7 +208,8 @@ SOURCE_PATTERNS = (":(glob)src/topmark/**/*.py",)
 
 
 # Tools and scripts
-CHECK_DOCSTRING_LINKS_SCRIPT = "tools/docs/check_docstring_links.py"
+CHECK_DOCSTRING_LINKS_SCRIPT = "tools/docs/check_docs_hygiene.py"
+CHECK_DOCS_HYGIENE_SCRIPT = "tools/docs/check_docs_hygiene.py"
 
 TEST_PUBLIC_API_SNAPSHOT_SCRIPT = "tests/api/test_public_api_snapshot.py"
 
@@ -668,6 +670,19 @@ def docstring_links(session: nox.Session) -> None:
     )
 
 
+@nox.session
+def docs_hygiene(session: nox.Session) -> None:
+    """Enforce lightweight Markdown snippet/include hygiene."""
+    session.install(DEPS_DEV)
+
+    session.run(
+        "python",
+        CHECK_DOCS_HYGIENE_SCRIPT,
+        "--docs-hygiene",
+        "--stats",
+    )
+
+
 @nox.session(python=PYTHONS)
 def api_snapshot(session: nox.Session) -> None:
     """Run the public API snapshot test (per Python version)."""
@@ -707,6 +722,7 @@ def release_check(session: nox.Session) -> None:
       - Formatting checks (ruff, mdformat, taplo, mbake)
       - Lint checks (ruff, pydoclint)
       - Docstring link style checks (CHECK_DOCSTRING_LINKS_SCRIPT)
+      - Markdown snippet/include hygiene checks (CHECK_DOCS_HYGIENE_SCRIPT)
       - Docs build in strict mode (mkdocs)
       - Packaging build + metadata checks (build, twine)
       - Tests + pyright for the session Python
@@ -773,6 +789,14 @@ def release_check(session: nox.Session) -> None:
     session.run(
         "python",
         CHECK_DOCSTRING_LINKS_SCRIPT,
+        "--stats",
+    )
+
+    # Markdown snippet/include hygiene (custom tool)
+    session.run(
+        "python",
+        CHECK_DOCS_HYGIENE_SCRIPT,
+        "--docs-hygiene",
         "--stats",
     )
 
@@ -856,6 +880,12 @@ def release_full(session: nox.Session) -> None:
         "nox",
         "-s",
         "docstring_links",
+        external=True,
+    )
+    session.run(
+        "nox",
+        "-s",
+        "docs_hygiene",
         external=True,
     )
     session.run(
