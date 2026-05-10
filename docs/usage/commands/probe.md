@@ -52,41 +52,6 @@ topmark probe --output-format markdown README.md
 
 ______________________________________________________________________
 
-## Behavior details
-
-- **Read-only**: does not modify files.
-- **Resolution-only**: does not perform scanning, comparison, or mutation.
-- Uses the same **file discovery and filtering** as other commands, and reports explicit inputs that
-  are filtered before probing.
-- Uses the same resolver, filtering, normalization, and scoring logic as [`check`](check.md) and
-  [`strip`](strip.md).
-- Exposes the same resolver decisions used internally by [`check`](check.md) and
-  [`strip`](strip.md).
-- Idempotent: repeated runs produce identical output for unchanged inputs.
-
-### STDIN modes
-
-TopMark supports **two different STDIN modes**:
-
-- **List mode**: read newline-delimited paths or patterns from STDIN using:
-  - `--files-from -`
-  - `--include-from -`
-  - `--exclude-from -`
-- **Content mode**: process one file’s *content* from STDIN by passing `-` as the sole PATH and
-  providing `--stdin-filename NAME`.
-
-{% include-markdown "\_snippets/no-stdin-option.md" %}
-
-These modes are mutually exclusive: do **not** mix `-` (content mode) with `--files-from -`,
-`--include-from -`, or `--exclude-from -` (list mode).
-
-In content mode, `--stdin-filename` is required so TopMark can resolve file type, processor, and
-path-sensitive resolution policy exactly as it would for a real file path.
-
-{% include-markdown "\_snippets/config-resolution.md" %}
-
-______________________________________________________________________
-
 ## Input applicability
 
 `probe` is read-only and diagnostic-only. It shares input discovery, filtering, configuration, and
@@ -97,6 +62,29 @@ generated-header rendering.
 Use [`check`](check.md) or [`strip`](strip.md) for header comparison, patch previews, reports, or
 mutation.
 
+### STDIN modes
+
+`probe` supports both list STDIN mode (`--files-from -`, `--include-from -`, or `--exclude-from -`)
+and content STDIN mode (`-` plus `--stdin-filename NAME`). These modes are mutually exclusive.
+
+See [shared input modes](../shared-options.md#shared-input-modes) for the full STDIN contract,
+including why TopMark does not provide a `--stdin` option flag.
+
+______________________________________________________________________
+
+## Configuration and validation
+
+`probe` supports `--strict` / `--no-strict` to override the effective `strict` value for the run.
+
+Before any file processing begins, TopMark performs whole-source TOML schema validation during
+configuration loading. TOML-source diagnostics (including missing-section INFO diagnostics) are
+evaluated together with merged-config and runtime-applicability diagnostics during staged
+config-loading/preflight validation for the run.
+
+{% include-markdown "\_snippets/config-strictness.md" %}
+
+{% include-markdown "\_snippets/config-resolution.md" %}
+
 ______________________________________________________________________
 
 ## Filtering and file discovery
@@ -104,16 +92,27 @@ ______________________________________________________________________
 TopMark determines which files to process using a combination of path-based filters and file-type
 filters.
 
-For the full filtering contract and recipes, see [Filtering](../filtering.md).
+Path arguments, include/exclude patterns, `--files-from`, and file-type filters follow the shared
+TopMark filtering pipeline. Positional paths and relative patterns are resolved from the current
+working directory; path-based filters run before file-type filters, and exclude rules take
+precedence. See [Filtering](../filtering.md#path-based-filtering) for the full path discovery
+contract.
+
+Unlike processing commands, `probe` may report explicitly requested paths as filtered diagnostic
+results instead of silently omitting them.
 
 ### File type filters
 
-- `--include-file-types / -t` Restrict processing to the given file type identifiers.
-- `--exclude-file-types / -T` Exclude the given file type identifiers.
+- `--include-file-types / -t` Restrict processing to the given file type identifiers. May be
+  repeated and/or provided as a comma-separated list.
+- `--exclude-file-types / -T` Exclude the given file type identifiers. May be repeated and/or
+  provided as a comma-separated list.
 
 Exclude rules take precedence over include rules.
 
 {% include-markdown "\_snippets/file-type-identifiers.md" %}
+
+See [file-type filtering](../filtering.md#file-type-filtering) for the full identifier contract.
 
 Examples:
 
@@ -129,15 +128,32 @@ topmark probe --exclude-file-types topmark:python src/
 - `--include-from`, `--exclude-from` Load patterns from files (one per line).
 - `--files-from` Provide an explicit list of files to process.
 
-Notes:
+See [Filtering](../filtering.md#path-based-filtering) for CWD-resolution rules, missing vs unmatched
+input behavior, include/exclude precedence, and STDIN interactions.
 
-- Path-based filters are evaluated **before** file-type filters.
-- Exclude rules win over include rules when both match a path.
-- File-type filters are applied after path-based include/exclude filtering.
-- File-type filters are normalized to canonical qualified keys before resolver and probe evaluation.
-- Explicit missing literal paths (for example `fubar.py`) are reported as `FILE_NOT_FOUND (66)`.
-- Unmatched glob patterns (for example `missing/**/*.py`) are reported as filtered probe results and
-  contribute to `UNSUPPORTED_FILE_TYPE (69)`.
+### Example
+
+```bash
+# Probe only Python-like files selected through include/exclude filters
+printf "*.py\n" > inc.txt
+printf "tests/*\n# ignored\n" > exc.txt
+
+topmark probe --include-from inc.txt --exclude-from exc.txt -vv
+```
+
+______________________________________________________________________
+
+## Behavior details
+
+- **Read-only**: does not modify files.
+- **Resolution-only**: does not perform scanning, comparison, or mutation.
+- **Shared discovery**: uses the same filtering pipeline as [`check`](check.md) and
+  [`strip`](strip.md), while preserving filtered explicit inputs as diagnostic probe results.
+- **Shared resolver**: uses the same resolver, normalization, and scoring logic as
+  [`check`](check.md) and [`strip`](strip.md).
+- **Candidate visibility**: exposes selected file type, processor, candidate scores, match signals,
+  resolution status, and resolution reason.
+- **Idempotency**: repeated runs produce identical output for unchanged inputs.
 
 ______________________________________________________________________
 
@@ -176,9 +192,7 @@ For the canonical schema, see:
 Probe machine-readable output emits resolved file type identities using canonical qualified keys
 when available.
 
-______________________________________________________________________
-
-## Shared output controls
+### Shared output controls
 
 Output format, TEXT verbosity, quiet mode, color output, and shared exit-code behavior are
 documented in [shared options](../shared-options.md) and [exit codes](../exit-codes.md).
@@ -186,7 +200,7 @@ documented in [shared options](../shared-options.md) and [exit codes](../exit-co
 TEXT output verbosity is separate from internal logging:
 
 - `-v`, `--verbose` increases TEXT output detail for probe diagnostics.
-- `-q`, `--quiet` suppresses TEXT output while preserving the command’s exit status.
+- `-q`, `--quiet` suppresses TEXT output while preserving the command's exit status.
 - Markdown output is document-oriented and ignores TEXT-only verbosity and quiet controls.
 - Machine-readable output is unaffected by TEXT-only verbosity and quiet controls.
 

@@ -53,37 +53,34 @@ ______________________________________________________________________
 
 ## Input applicability
 
-- Dry‑run by default; exit code **2** when changes *would* occur.
-- Preserves the file’s original **newline style** (LF/CRLF/CR).
-- Preserves a leading **UTF‑8 BOM** if present.
-- Places headers according to file‑type policy (shebang and PEP 263 in Python; XML
+- Dry-run by default; exit code **2** when changes *would* occur.
+- Preserves the file's original **newline style** (LF/CRLF/CR).
+- Preserves a leading **UTF-8 BOM** if present.
+- Places headers according to file-type policy (shebang and PEP 263 in Python; XML
   declaration/DOCTYPE in XML/HTML; no insertion inside Markdown fenced code).
-- Uses the same file discovery and filtering as other commands.
+- Idempotent: re-running on already-correct files results in **no changes**.
 
 ### STDIN modes
 
-TopMark supports **two different STDIN modes**:
+`check` supports both list STDIN mode (`--files-from -`, `--include-from -`, or `--exclude-from -`)
+and content STDIN mode (`-` plus `--stdin-filename NAME`). These modes are mutually exclusive.
 
-- **List mode**: read newline-delimited paths or patterns from STDIN using:
-  - `--files-from -`
-  - `--include-from -`
-  - `--exclude-from -`
-- **Content mode**: process one file’s *content* from STDIN by passing `-` as the sole PATH and
-  providing `--stdin-filename NAME`.
+With `--apply` in content mode, transformed content is written to STDOUT and diagnostics are routed
+to STDERR.
 
-{% include-markdown "\_snippets/no-stdin-option.md" %}
+See [shared input modes](../shared-options.md#shared-input-modes) for the full STDIN contract,
+including why TopMark does not provide a `--stdin` option flag.
 
-These modes are mutually exclusive: do **not** mix `-` (content mode) with `--files-from -`,
-`--include-from -`, or `--exclude-from -` (list mode).
+______________________________________________________________________
 
-In content mode, `--stdin-filename` is required so TopMark can resolve file type, processor, and
-path-sensitive header policy exactly as it would for a real file path.
+## Configuration and validation
 
-- Idempotent: re‑running on already‑correct files results in **no changes**.
-- Supports `--strict` / `--no-strict` to override the effective `strict` value for the run.
-- Performs whole-source TOML schema validation during configuration loading; TOML-source diagnostics
-  (including missing-section INFO diagnostics) are evaluated together with merged-config and
-  runtime-applicability diagnostics during staged config-loading/preflight validation for the run.
+`check` supports `--strict` / `--no-strict` to override the effective `strict` value for the run.
+
+Before any file processing begins, TopMark performs whole-source TOML schema validation during
+configuration loading. TOML-source diagnostics (including missing-section INFO diagnostics) are
+evaluated together with merged-config and runtime-applicability diagnostics during staged
+config-loading/preflight validation for the run.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 
@@ -91,12 +88,16 @@ path-sensitive header policy exactly as it would for a real file path.
 
 ______________________________________________________________________
 
-## Filtering
+## Filtering and file discovery
 
 TopMark determines which files to process using a combination of path-based filters and file-type
 filters.
 
-For the full filtering contract and recipes, see [Filtering](../filtering.md).
+Path arguments, include/exclude patterns, `--files-from`, and file-type filters follow the shared
+TopMark filtering pipeline. Positional paths and relative patterns are resolved from the current
+working directory; path-based filters run before file-type filters, and exclude rules take
+precedence. See [Filtering](../filtering.md#path-based-filtering) for the full path discovery
+contract.
 
 ### File type filters
 
@@ -108,6 +109,8 @@ For the full filtering contract and recipes, see [Filtering](../filtering.md).
 Exclude rules take precedence over include rules.
 
 {% include-markdown "\_snippets/file-type-identifiers.md" %}
+
+See [file-type filtering](../filtering.md#file-type-filtering) for the full identifier contract.
 
 Examples:
 
@@ -125,6 +128,10 @@ topmark check --exclude-file-types topmark:markdown docs/
 
 Notes:
 
+- Positional arguments are resolved **relative to the current working directory** (CWD),
+  Black-style.
+- Patterns in `--include`, `--exclude`, and the files passed to `--include-from` / `--exclude-from`
+  are also resolved **relative to CWD**. Absolute patterns are not supported.
 - Path-based filters are evaluated **before** file-type filters.
 - Exclude rules win over include rules when both match a path.
 - File-type filters are applied after path-based include/exclude filtering.
@@ -133,6 +140,18 @@ Notes:
 - Explicit missing literal paths (for example `fubar.py`) are reported as `FILE_NOT_FOUND (66)`.
 - Unmatched glob patterns (for example `missing/**/*.py`) are treated as soft discovery diagnostics
   and do not fail `check`.
+
+{% include-markdown "\_snippets/report-scope.md" %}
+
+### Example
+
+```bash
+# Use include/exclude files with relative patterns
+printf "*.py\n" > inc.txt
+printf "tests/*\n# ignored\n" > exc.txt
+
+topmark check --include-from inc.txt --exclude-from exc.txt --diff
+```
 
 ______________________________________________________________________
 
@@ -200,6 +219,22 @@ Controls whether file-type detection may inspect file contents.
 
 ______________________________________________________________________
 
+## Behavior details
+
+- **Placement rules** (processor‑aware):
+  - **Pound** (e.g., Python/Shell/Ruby/Makefile): after shebang (and optional encoding line), else
+    at top; keep exactly one blank around the block as per policy.
+  - **Slash** (C/CPP/TS/etc.): at top with consistent spacing.
+  - **XML/HTML**: after XML declaration and DOCTYPE; maintain a single intentional blank; never
+    break the declaration.
+  - **Markdown**: uses HTML comments for the header; fenced code blocks are ignored for detection.
+- **Newline/BOM**: preserved across all paths (insert/replace). Reader normalizes in‑memory; updater
+  re‑attaches BOM and keeps line endings.
+- **Idempotency**: running `topmark check` again on a file that already has a correct header
+  produces no diff and exit code 0 (unless other files would change).
+
+______________________________________________________________________
+
 ## Output behavior
 
 Output format, TEXT verbosity, quiet mode, color output, and shared exit-code behavior are
@@ -222,7 +257,7 @@ Notes:
 - In TEXT output, **per-line diagnostics** are shown with `-v` and above.
 - Primary/headline hint selection is presentation-level guidance and is not part of the stable CLI
   contract; rely on exit codes and machine-readable output for automation.
-- **Diffs** (`--diff`) are always human-only and never included in JSON/NDJSON.
+- **Diffs** (`--diff`) are always **human-only** and never included in JSON/NDJSON.
 
 ______________________________________________________________________
 
@@ -235,7 +270,7 @@ Use `--output-format json` or `--output-format ndjson` to emit output suitable f
 - **NDJSON**: one record (JSON object) per line. Every record includes `kind` and `meta`, and the
   payload is stored under a container key that matches `kind`.
 
-For the canonical schema and stable `kind` values, see:
+For the canonical schema, stable `kind` values, and shared conventions, see:
 
 - [Machine-readable output schema](../../dev/machine-output.md)
 - [Machine-readable formats](../../dev/machine-formats.md)
@@ -247,7 +282,6 @@ available. Configuration payloads also emit normalized file type filters and `po
 
 Notes:
 
-- Diffs (`--diff`) are **human-only** and are not included in JSON/NDJSON.
 - Summary mode aggregates outcomes and suppresses per-file guidance lines.
 - The `config` payload in JSON / NDJSON is the resolved config snapshot after per-source TOML
   validation, layered config merge, staged config-loading/preflight validation, and CLI override
@@ -267,6 +301,9 @@ When `--summary` is **not** set, `topmark check` emits a single JSON object:
   ]
 }
 ```
+
+The per-file result payload mirrors [`strip`](strip.md) but reflects the *check* intent (e.g.
+`outcome.check.*` fields instead of `outcome.strip.*`).
 
 ### JSON schema (summary mode)
 
@@ -361,57 +398,6 @@ See [`Exit codes`](../exit-codes.md) for the complete CLI-wide exit-code contrac
 
 ______________________________________________________________________
 
-## File discovery & patterns
-
-- Positional arguments are resolved **relative to the current working directory** (CWD),
-  Black‑style.
-
-- Patterns in `--include`, `--exclude`, and the files passed to `--include-from` / `--exclude-from`
-  are also resolved **relative to CWD**. Absolute patterns are not supported.
-
-- Explicit missing literal paths are reported as `FILE_NOT_FOUND (66)`. Unmatched glob patterns are
-  non-fatal for `check`.
-
-{% include-markdown "\_snippets/file-discovery-patterns.md" %}
-
-{% include-markdown "\_snippets/report-scope.md" %}
-
-- Diffs (`--diff`) are only shown in human mode; machine-readable formats never include diffs.
-
-### Example
-
-```bash
-# Use include/exclude files with relative patterns
-printf "*.py\n" > inc.txt
-printf "tests/*\n# ignored\n" > exc.txt
-
-topmark check --include-from inc.txt --exclude-from exc.txt --diff
-```
-
-______________________________________________________________________
-
-## Behavior details
-
-- **Placement rules** (processor‑aware):
-  - **Pound** (e.g., Python/Shell/Ruby/Makefile): after shebang (and optional encoding line), else
-    at top; keep exactly one blank around the block as per policy.
-  - **Slash** (C/CPP/TS/etc.): at top with consistent spacing.
-  - **XML/HTML**: after XML declaration and DOCTYPE; maintain a single intentional blank; never
-    break the declaration.
-  - **Markdown**: uses HTML comments for the header; fenced code blocks are ignored for detection.
-- **Newline/BOM**: preserved across all paths (insert/replace). Reader normalizes in‑memory; updater
-  re‑attaches BOM and keeps line endings.
-- **Idempotency**: running `topmark check` again on a file that already has a correct header
-  produces no diff and exit code 0 (unless other files would change).
-- **Configuration loading**: before any file processing begins, TopMark resolves TOML sources,
-  validates each whole-source TOML fragment, merges the validated layered config fragments, then
-  evaluates staged config-loading/preflight validation before freezing the effective config for the
-  run.
-- **File type identifiers**: local identifiers such as `python` are accepted when unambiguous;
-  internally, TopMark normalizes identifiers to canonical qualified keys such as `topmark:python`.
-
-______________________________________________________________________
-
 ## Typical workflows
 
 ### 1) Add headers to a project
@@ -453,8 +439,8 @@ ______________________________________________________________________
 The hook runs `topmark check` against files selected by pre-commit and follows the same resolver,
 filtering, policy, configuration, output, and exit-code behavior documented on this page.
 
-For setup, hook configuration, manual remediation with `topmark-apply`, CI patterns, and
-troubleshooting, see [Pre-commit integration](../pre-commit.md).
+For general pre-commit integration guidance, CI workflows, and repository hook configuration, see
+[Pre-commit integration](../pre-commit.md).
 
 ______________________________________________________________________
 
@@ -480,6 +466,7 @@ ______________________________________________________________________
 - [Exit codes](../exit-codes.md)
 - [Machine-readable output schema](../../dev/machine-output.md)
 - [Machine-readable formats](../../dev/machine-formats.md)
+- [Pre-commit integration](../pre-commit.md)
 
 ______________________________________________________________________
 
