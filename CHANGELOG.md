@@ -18,6 +18,163 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ______________________________________________________________________
 
+## [1.0.0b2] – 2026-05-10
+
+This second **1.0 beta release** focuses on documentation UX, documentation governance, generated
+site maintainability, and release-validation tooling. It does not reopen frozen CLI, API,
+configuration, registry, probe, machine-readable output, or pipeline contracts. Instead, it
+strengthens the documentation system around those contracts by standardizing page structure,
+improving navigation, reducing snippet overuse, and adding lightweight documentation hygiene
+validation to the normal verification and release gates.
+
+### Highlights — 1.0.0b2
+
+- Established canonical documentation conventions for TopMark’s 1.0 documentation system
+- Harmonized command-page structure across pipeline, config, registry, version, and shared-option
+  documentation
+- Improved MkDocs navigation, generated API navigation, sidebar density, and overview-page
+  discoverability
+- Refined snippet governance and removed over-broad reusable snippets in favor of canonical
+  reference pages
+- Added lightweight documentation hygiene validation and integrated it into nox, Makefile, verify,
+  and release validation flows
+- Expanded registry model documentation around runtime registry composition, overlays, bindings, and
+  public/internal registry boundaries
+- Updated roadmap status to reflect post-beta documentation governance and release-readiness status
+
+### Added — 1.0.0b2
+
+- **Documentation conventions**
+  - Added `docs/dev/documentation-conventions.md` as the canonical guide for documentation
+    structure, navigation, command-page layout, snippet governance, cross-references, generated
+    docs, emoji usage, and validation expectations.
+  - Added explicit conventions for:
+    - command documentation structure
+    - related-command and related-doc sections
+    - sidebar and table-of-contents density
+    - generated API navigation
+    - snippet extraction and retirement criteria
+    - accepted duplication vs over-abstraction
+- **Documentation hygiene tooling**
+  - Added `tools/docs/check_docs_hygiene.py`.
+  - Added validation for:
+    - broken snippet include paths
+    - malformed docs-root-relative include paths
+    - include targets resolving outside `docs/`
+    - nested snippet includes
+    - accidental macOS `._*` files
+    - missing horizontal-rule separators before level-2 sections
+  - Added non-fatal maintainability warnings for:
+    - orphaned snippets
+    - headings inside snippets
+    - relative links inside snippets
+    - snippet includes missing the formatter-stable `_snippets/` prefix
+- **Tooling integration**
+  - Added a `docs_hygiene` nox session.
+  - Added `make docs-hygiene`.
+  - Integrated docs hygiene checks into `verify`, `release-check`, and `release-full`.
+
+### Changed — 1.0.0b2
+
+- **Documentation navigation and site UX**
+  - Improved MkDocs navigation discoverability.
+  - Reduced sidebar density for command and generated API documentation.
+  - Simplified generated API internals navigation so nested internals remain discoverable through
+    package indexes, breadcrumbs, links, and search instead of exhaustive sidebar entries.
+  - Refined Usage navigation labels and command grouping.
+  - Improved overview pages with compact task-oriented navigation tables.
+- **Command documentation**
+  - Harmonized structure and terminology across:
+    - `check`
+    - `strip`
+    - `probe`
+    - `version`
+    - `config` and its subcommands
+    - `registry` and its subcommands
+    - shared options
+  - Standardized placement and wording for:
+    - summary
+    - quick start
+    - input applicability
+    - configuration and validation
+    - filtering and discovery
+    - behavior details
+    - output behavior
+    - machine-readable output
+    - command-specific options
+    - exit codes
+    - related commands
+    - related docs
+    - troubleshooting
+  - Clarified distinctions between:
+    - output behavior
+    - machine-readable output
+    - machine-readable formats
+    - machine-readable contracts
+- **Snippet governance**
+  - Retired over-broad or over-abstracted snippets.
+  - Centralized canonical STDIN, filtering, and configuration-resolution explanations into stable
+    reference pages.
+  - Shortened the reusable file-type identifier snippet and linked consumers to the canonical
+    filtering guide.
+  - Removed retired snippet files such as broad config-resolution, config-validation-contract,
+    no-stdin-option, and file-discovery-pattern snippets.
+- **Registry documentation**
+  - Expanded `docs/dev/registry-model.md`.
+  - Clarified:
+    - runtime registry composition
+    - overlay semantics
+    - cache invalidation behavior
+    - registry facade responsibilities
+    - advanced/internal registry APIs
+    - relationships between file types, processors, bindings, and runtime composition
+- **Documentation pipeline**
+  - Updated `docs/dev/documentation-pipeline.md` to document docs hygiene validation.
+  - Documented fatal vs non-fatal hygiene checks.
+  - Documented snippet/include validation and section-separator validation.
+- **Dependency/tooling maintenance**
+  - Updated the TopMark pre-commit hook to `v1.0.0b1`.
+  - Updated locked dependency versions for `uv` and `build`.
+
+### Fixed — 1.0.0b2
+
+- **Documentation drift and navigation density**
+  - Fixed inconsistent command-page structure across command families.
+  - Fixed stale or duplicated cross-reference patterns in command docs.
+  - Fixed overly dense generated API navigation.
+  - Fixed inconsistent terminology around command pages, shared options, machine-readable output,
+    and generated references.
+- **Snippet and include hygiene**
+  - Fixed file-type identifier alert syntax.
+  - Removed retired snippets after moving their content into canonical reference pages.
+  - Added tooling to catch broken, nested, or unsafe snippet includes before release.
+- **Documentation validation coverage**
+  - Replaced the previous docstring-link-only validation entry point with broader documentation
+    hygiene validation.
+  - Ensured documentation structure issues are checked as part of release validation.
+
+### Documentation — 1.0.0b2
+
+- Added the documentation conventions guide.
+- Updated command, shared-option, filtering, registry, configuration, architecture, machine-readable
+  output, documentation-pipeline, and developer documentation for consistent structure and wording.
+- Updated `mkdocs.yml` navigation for improved discoverability.
+- Updated documentation overview pages and CLI overview pages for task-oriented navigation.
+- Updated roadmap status to record completed documentation governance, documentation validation, and
+  post-beta readiness work.
+
+### Notes — 1.0.0b2
+
+- This beta does not introduce new user-facing CLI/API features.
+- Frozen 1.0 contracts for CLI behavior, config semantics, probe, registry/resolution,
+  machine-readable output, and public API remain unchanged.
+- The focus is documentation maturity, validation tooling, and release-readiness hardening.
+- Documentation hygiene validation is now part of the normal verification and release flow.
+- Remaining work before `1.0.0rc1` should be limited to release validation, packaging checks, and
+  beta feedback fixes.
+
+______________________________________________________________________
+
 ## [1.0.0b1] – 2026-05-09
 
 This first **1.0 beta release** marks the transition from alpha contract stabilization to beta
