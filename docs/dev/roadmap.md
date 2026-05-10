@@ -293,12 +293,30 @@ Result: human output is now **consistent, composable, and decoupled from CLI**.
 - Added a dedicated registry model developer page covering registry layers, bindings, overlays,
   canonical identities, plugin integration, and registry CLI inspection.
 - Completed the documentation consistency and generated-site freeze review for `v1.0.0b1`.
+- Established canonical documentation conventions in `docs/dev/documentation-conventions.md`,
+  covering command-page structure, navigation, cross-references, related links, emoji use,
+  generated-doc expectations, TOC density, and snippet governance.
+- Harmonized CLI command-page structure across command and command-group documentation, including
+  consistent sections for quick starts, applicability, output behavior, machine-readable output,
+  exit codes, related commands, related docs, and troubleshooting.
+- Improved generated-site discoverability by reducing navigation and TOC density, simplifying
+  generated API internals navigation, and relying on package indexes, breadcrumbs, search, and
+  cross-references for deeper internals.
 - Renamed the former global-options documentation to shared-options documentation and aligned
   command, configuration, and generated-site references.
 - Harmonized machine-readable output terminology across usage docs, developer docs, source
   docstrings, and tests while preserving formal machine-output contract terminology where needed.
 - Documented the intentional distinction between canonical built-in defaults and the bundled starter
   template for `config defaults` and `config init`.
+- Reviewed and reduced the `docs/_snippets/` inventory to stable reusable contracts, retiring
+  over-abstracted snippets and centralizing conceptual semantics into canonical reference pages.
+- Added lightweight documentation hygiene validation through `tools/docs/check_docs_hygiene.py`,
+  exposed as `nox -s docs_hygiene` and `make docs-hygiene`.
+- Integrated documentation hygiene validation into local verification and release gates, including
+  `make verify`, `make release-check`, and `make release-full`.
+- Enforced objective documentation hygiene checks for broken snippet includes, malformed
+  docs-root-relative include paths, include targets outside `docs/`, nested snippet includes,
+  accidental macOS `._*` files, and level-2 section separators.
 
 ### CI / release / dependency model (completed)
 
@@ -314,6 +332,7 @@ Result: human output is now **consistent, composable, and decoupled from CLI**.
   development and documentation are modeled explicitly during dependency-audit checks.
 - Hardened CI with:
   - link checks
+  - documentation hygiene checks
   - permissions model
   - SHA-pinned actions
 
@@ -336,9 +355,13 @@ At this point:
   registry-facing APIs, diagnostics, and machine output
 - Final documentation, generated-site, CLI/help, warning/error wording, alpha-semantics, and
   machine-readable output terminology reviews have been completed for the `v1.0.0b1` beta gate
+- Documentation UX, command-page structure, cross-reference conventions, snippet governance, and
+  generated-site navigation are now convention-driven and validated through the documentation
+  hygiene tooling
 
-The project is now in a **pre-1.0 stabilization phase**, with broad architecture complete, in-memory
-pipeline support explicitly deferred, and only targeted contract-freeze decisions remaining.
+The project is now in a **post-beta stabilization phase**, with broad architecture complete,
+in-memory pipeline support explicitly deferred, documentation governance established, and remaining
+work focused on real-world beta feedback, ecosystem validation, and targeted hardening.
 
 ______________________________________________________________________
 
@@ -509,6 +532,14 @@ relied on older payload naming or outcome-keyed summaries must update.
   - `.taplo.toml`
 - Built-site link checking (`links-site`) is now part of the CI path that gates release-artifact
   creation on tag pushes.
+- Documentation hygiene validation is now part of local verification and release validation.
+  - broken snippet includes, malformed include paths, nested snippet includes, accidental macOS
+    `._*` files, and missing level-2 section separators can now fail docs/tooling gates
+  - snippet-related maintainability issues may be reported as non-fatal warnings
+- The documentation hygiene checker has been renamed to `tools/docs/check_docs_hygiene.py`.
+  - contributors or automation invoking the former docstring-link checker for Markdown hygiene must
+    update to the renamed script or to the stable `make docs-hygiene` / `nox -s docs_hygiene`
+    wrappers
 - User and developer documentation now treats qualified file type identifiers as the canonical
   internal representation and documents local identifiers as an unambiguous public-input
   convenience.
@@ -535,6 +566,10 @@ stricter than before.
 - `typing-extensions` is now treated as a runtime dependency rather than an implicitly available
   development-only/transitive dependency; packaging and isolated-environment installs now reflect
   the actual runtime import surface.
+- Documentation hygiene validation is exposed as a first-class local/tooling gate through
+  `make docs-hygiene` and `nox -s docs_hygiene`.
+  - `make verify`, `make release-check`, and `make release-full` now include documentation hygiene
+    validation
 - GitHub Actions behavior is more aggressively gated by changed-file buckets on pull requests, so
   some jobs may now be skipped unless relevant files changed.
 
@@ -552,6 +587,7 @@ system shape**:
 - explicit preview/apply runtime model
 - schema-driven machine output with domain-specific JSON envelopes and stable NDJSON record kinds
 - uv/nox-based tooling and artifact-based release automation
+- stricter documentation governance with convention-backed docs hygiene validation
 
 The 1.0 task is therefore not large-scale redesign anymore, but **contract freeze and final
 stabilization** on top of these already-landed changes.
@@ -560,9 +596,10 @@ ______________________________________________________________________
 
 ## Still undecided / still to do
 
-This section captures the **remaining 1.0 decisions and targeted implementation work**. The large
-structural refactors are already done; what remains is mostly about **contract freeze, scope
-choices, and deciding what is in or out for 1.0**.
+This section captures the **remaining post-beta validation and targeted hardening work**. The large
+structural refactors, contract-freeze decisions, beta validation gate, and documentation-governance
+work are complete. What remains is mostly about **real-world beta feedback, ecosystem validation,
+and explicitly deferred post-1.0 scope**.
 
 ### Registry / resolution freeze
 
@@ -581,12 +618,12 @@ Completed decisions:
   surfaces outside the `topmark.api` stability contract.
 - Registry discovery/query commands remain deferred beyond 1.0.
 
-Remaining work is limited to final release validation and ensuring generated API references continue
-reflecting the public/internal boundary.
+Remaining work is limited to real-world beta validation and ensuring generated API references
+continue reflecting the public/internal boundary as the code evolves.
 
 ### In-memory pipeline: implement or defer
 
-This is the largest remaining product/architecture decision before 1.0.
+This was the largest remaining product/architecture decision before 1.0 and is now resolved.
 
 - In-memory pipeline support is **explicitly deferred beyond 1.0**.
 
@@ -597,9 +634,9 @@ Current status:
 - architecture direction understood
 - explicitly deferred for 1.0 contract freeze
 
-What still needs deciding:
+Recorded decision:
 
-- decision recorded: defer in-memory pipeline support to post-1.0
+- defer in-memory pipeline support to post-1.0
 - future design considerations retained for post-1.0 work:
   - whether mixed file + memory inputs are allowed in one run
   - how synthetic paths/display names should be represented
@@ -618,7 +655,8 @@ Post-1.0:
 
 ### API / CLI / presentation boundary freeze
 
-The separation is much clearer now, but a few boundary questions remain:
+The separation is frozen for 1.0. Remaining work is monitoring and targeted hardening rather than
+boundary redesign:
 
 - Keep monitoring for any remaining Click-facing concerns in non-CLI modules.
 - Keep formatting, TEXT verbosity/quiet, and color decisions strictly split between:
@@ -638,10 +676,11 @@ The separation is much clearer now, but a few boundary questions remain:
 
 ### Config / validation contract freeze
 
-The architecture is now stable, and the main public configuration and identifier semantics are now
-frozen. Remaining work is limited to final release validation and any explicit post-1.0 deferrals.
+The architecture is stable, and the main public configuration, validation, provenance, and
+identifier semantics are frozen. Remaining work is limited to real-world beta validation and
+explicit post-1.0 deferrals.
 
-Remaining decisions:
+Frozen decisions:
 
 - Typed override boundary is now frozen:
   - `PolicyOverrides` and `ConfigOverrides` are internal CLI/API orchestration bridge types
@@ -682,11 +721,11 @@ Recommended direction:
 
 ### Output contract freeze
 
-Output architecture work is now complete. Machine-output implementation, human-output rendering,
-tests, and reference documentation are largely frozen; remaining work is about final review and
-schema/wording freeze, not redesigning the system.
+Output architecture work is complete. Machine-readable implementation, human-output rendering,
+tests, reference documentation, CLI/help wording, warning/error wording, and alpha-semantics reviews
+are frozen for the beta line; remaining work is limited to beta feedback and targeted hardening.
 
-Machine output remaining work:
+Machine-readable output decisions:
 
 - Keep flattened `{level, message}` config diagnostics as the accepted 1.0 machine contract. Richer
   TOML-specific structure is explicitly deferred beyond 1.0.
@@ -703,7 +742,7 @@ Machine output remaining work:
 - Keep `docs/dev/machine-formats.md` and `docs/dev/machine-output.md` aligned as the reference
   machine-format documentation.
 
-Human output remaining work:
+Human output decisions:
 
 - TEXT and Markdown output contracts reviewed across command groups.
   - TEXT remains compact/console-oriented and may use `-v` / `-vv` for progressive disclosure and
@@ -722,7 +761,7 @@ Human output remaining work:
   - keep `yachalk` as an internal CLI presentation dependency
   - keep semantic styling routed through `StyleRole`, `Theme`, `TextStyler`, and `maybe_style()`
   - defer Rich / `rich-click` migration until after 1.0 unless a concrete release blocker appears
-- Finalize hint-ordering strategy.
+- Hint-ordering strategy is frozen for 1.0.
   - Continue keeping presentation logic fully out of CLI command functions.
 
 CLI exit-code work is now complete for the 1.0 freeze: `docs/usage/exit-codes.md` is the canonical
@@ -735,23 +774,25 @@ work is now limited to any last warning/error wording cleanup discovered during 
 
 ### Tooling / CI / release follow-up
 
-The security and workflow refactor is now functionally complete. What remains is mostly follow-up
-and final 1.0 policy decisions.
+The security, workflow, release, tooling-parity, and documentation-hygiene work is functionally
+complete. What remains is mostly follow-up validation and post-1.0 ecosystem decisions.
 
-Remaining work:
+Remaining follow-up:
 
-- Decide whether the current **artifact-based CI → release split** is the stable long-term 1.0
-  release architecture, with any further factoring deferred post-1.0.
+- The current **artifact-based CI → release split** is accepted as the stable 1.0 release
+  architecture, with any further factoring deferred post-1.0.
 - Keep validating that:
   - changed-file buckets remain correct
   - tag-push artifact creation remains aligned with release expectations
   - artifact verification continues to match publish behavior
-- Decide whether the current explicit `tests` matrix setup should remain as-is or later be factored
-  around the shared setup composite action.
-- Decide whether workflow formatting/style rules should remain an editor-policy concern or be
-  documented explicitly in contributor-facing CI guidance.
+- The current explicit `tests` matrix setup remains accepted for 1.0; further factoring around the
+  shared setup composite action is deferred post-1.0.
+- Workflow formatting/style rules are governed by checked-in tool configuration and release
+  validation gates; broader editor-style guidance remains non-blocking for 1.0.
 - Keep validating that Nox, pre-commit, local `.venv`, editor integrations, CI jobs, and the
   artifact-based release workflow all consume the same formatter/tool configuration.
+- Keep documentation hygiene validation integrated in local and release gates as the documentation
+  conventions evolve.
 - Keep MkDocs 1.x as the accepted documentation generator for the `v1.0.0b1` beta gate because the
   current strict docs build, link checks, generated API pages, and release validation are green.
   Evaluate ProperDocs as a post-beta / post-1.0 tooling follow-up unless MkDocs becomes a concrete
@@ -759,14 +800,15 @@ Remaining work:
 
 ### Human-facing policy / behavior questions
 
-A few user-facing behavior questions remain open for 1.0:
+The main user-facing policy and behavior questions are frozen for 1.0. Remaining work is monitoring
+real-world beta feedback and keeping documentation aligned:
 
-- Should the default processing mode remain **“all supported file types”**?
-- Should a stricter whitelist-first mode ever become the default?
-- Decide whether public API callers should continue using stable string literals for policy tokens,
-  or whether a dedicated public enum should exist later.
-- Decide whether summary reason strings are part of the stable integration contract or only
-  presentation-facing labels.
+- The default processing mode remains **“all supported file types”** for 1.0.
+- A stricter whitelist-first default remains a possible post-1.0 design question, not a 1.0 blocker.
+- Public API callers continue using stable string literals for policy tokens in 1.0; a dedicated
+  public enum may be revisited later.
+- Summary reason strings remain presentation-facing labels rather than a separate stable integration
+  contract.
 - Keep confirming that API and CLI docs consistently use the `report` model and no longer reference
   legacy `skip_*` filters.
 - Keep CLI help examples aligned with canonical option/command constants to avoid drift between
@@ -792,31 +834,35 @@ A few user-facing behavior questions remain open for 1.0:
 
 ### Overall status (undecided / to do)
 
-The remaining work is no longer broad architectural redesign.
+The remaining work is no longer broad architectural redesign or contract freeze.
 
 What is left is mainly:
 
-- **final configuration and release validation**
-- **tooling/release follow-up**
-- one major scope decision resolved: **in-memory pipeline explicitly deferred to post-1.0**
+- **real-world beta feedback**
+- **ecosystem compatibility validation**
+- **downstream machine-readable output consumer validation**
+- **targeted hardening from concrete beta findings**
+- **explicit post-1.0 follow-up for deferred scope**
 
-That means TopMark is now in the final stage of the 1.0 effort: validating release/tooling
-assumptions, confirming any explicit post-1.0 deferrals, and avoiding new scope unless a concrete
-release blocker appears.
+That means TopMark is now in the post-beta stabilization stage of the 1.0 effort: validating the
+frozen contracts in realistic environments, preserving compatibility, and avoiding new scope unless
+a concrete release blocker appears.
 
 ______________________________________________________________________
 
 ## 1.0 readiness checklist
 
 TopMark 1.0 follows a **contract-first** release strategy: all externally observable behavior (API
-surface, configuration semantics, machine-readable formats, CLI behavior, and release workflow
-expectations) must be stable, documented, and well-tested.
+surface, configuration semantics, machine-readable formats, CLI behavior, documentation behavior,
+and release workflow expectations) must be stable, documented, and well-tested.
 
-The large refactors are already complete. This checklist is therefore about **freeze readiness**:
+The large refactors, beta gate, documentation freeze review, documentation-governance work, and
+release-validation passes are complete. This checklist now records the frozen 1.0 contract state and
+remaining post-beta validation posture:
 
-- what must be stable before `1.0.0`
-- what can still be deferred with rationale
-- what is better treated as post-1.0 follow-up
+- what is already stable for `1.0.0`
+- what has been explicitly deferred with rationale
+- what remains as post-beta validation or post-1.0 follow-up
 
 ### Must finish before 1.0
 
@@ -834,6 +880,8 @@ These are release blockers unless explicitly deferred with a documented rational
     DTOs
   - [x] typed override surfaces (`PolicyOverrides`, `ConfigOverrides`) classified as internal
     CLI/API orchestration bridge types
+- [x] Documentation governance and generated-site structure documented as part of the maintained
+  developer/tooling boundary
 
 #### [Must] Machine output contracts
 
@@ -886,6 +934,8 @@ These are release blockers unless explicitly deferred with a documented rational
 - [x] Decision made on hint-ordering / “primary hint” semantics for 1.0
   - headline hint selection is based on severity prioritization
   - exact ordering and wording are not part of the stable contract
+- [x] Documentation wording, command-page structure, cross-reference labels, and generated-site
+  navigation reviewed for consistency with the frozen human-output contract
 
 #### [Must] CLI behavior
 
@@ -920,6 +970,9 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] file-recognition / resolution probe command accepted for 1.0
   - [x] command scope is limited to read-only discovery/diagnostics and documented as distinct from
     `check` / `strip`
+- [x] CLI command documentation follows the finalized command-page structure conventions for shared
+  options, command-specific options, applicability, output behavior, machine-readable output, exit
+  codes, related commands, related docs, and troubleshooting
 
 #### [Must] Configuration & validation
 
@@ -1029,13 +1082,19 @@ These are release blockers unless explicitly deferred with a documented rational
 - [x] TestPyPI install validated with PyPI fallback for dependencies
   - [x] dependency resolution validated in isolated environments
 - [x] SCM-derived artifact version validated against the current source state
-  - [ ] remaining follow-up issues, if any, resolved or explicitly accepted
+  - [x] remaining follow-up issues, if any, resolved or explicitly accepted for the beta line
 - [x] Runtime dependency model verified against isolated environments
   - [x] `typing-extensions` promoted to core dependencies after isolated-environment failure
   - [x] `packaging` promoted to core dependencies after pre-commit/isolated-environment failure
   - [x] dependency-audit configuration added (`deptry`) to reduce risk of further implicit
     runtime/development dependency drift
   - [x] pre-commit / clean-environment / packaging verification rerun on the final dependency set
+- [x] Documentation hygiene tooling integrated into the local and release validation ecosystem
+  - [x] `tools/docs/check_docs_hygiene.py` validates snippet/include and section-structure hygiene
+  - [x] `nox -s docs_hygiene` exposes the check in nox
+  - [x] `make docs-hygiene` exposes the check through the Makefile
+  - [x] `make verify`, `make release-check`, and `make release-full` include documentation hygiene
+    validation
 
 #### [Must] Beta validation gate for `v1.0.0b1`
 
@@ -1064,8 +1123,10 @@ release workflow checks rather than dedicated pytest tests.
 - [x] Documentation validation completed
   - [x] `make docs-build`
   - [x] `make links-site`
+  - [x] `make docs-hygiene`
   - [x] generated API reference pages are current
   - [x] strict MkDocs build passes in a clean environment
+  - [x] snippet/include hygiene and level-2 section-separator conventions pass validation
 - [x] QA validation completed
   - [x] `make test` (runs `nox -s qa`)
   - [x] `make release-check`
@@ -1085,10 +1146,14 @@ release workflow checks rather than dedicated pytest tests.
     notes
     - [x] MkDocs 1.x remains accepted for `v1.0.0b1`; ProperDocs evaluation is deferred unless the
       current documentation toolchain becomes a concrete release blocker
+    - [x] Documentation UX, command-page structure, cross-reference conventions, snippet governance,
+      and generated-site navigation are accepted for the beta line and enforced through lightweight
+      documentation hygiene validation
 
 ### Strongly recommended (but not blockers)
 
-These should ideally be completed for 1.0, but may be deferred more easily if needed.
+These items have been completed for the beta line or explicitly deferred. This section is retained
+as a record of recommended freeze work that has now been closed.
 
 #### [Recommended] Registry / resolution
 
@@ -1139,9 +1204,21 @@ These should ideally be completed for 1.0, but may be deferred more easily if ne
   - the explicit matrix remains accepted for 1.0
   - further reuse of shared CI bootstrap models is deferred post-1.0
 
+#### [Recommended] Documentation governance
+
+- [x] Canonical documentation conventions established in `docs/dev/documentation-conventions.md`
+- [x] Command-page structure harmonized across generated and hand-written command documentation
+- [x] Cross-reference labels, related-command sections, and related-doc sections reviewed for
+  consistency
+- [x] Snippet governance reviewed and stabilized
+- [x] Over-abstracted snippets retired in favor of canonical reference pages
+- [x] Documentation hygiene validation added and integrated into local and release validation gates
+- [x] Generated-site navigation and TOC density reviewed and improved
+
 ### Post-1.0 follow-up (nice-to-have)
 
-These items are explicitly reasonable to defer.
+These items are explicitly reasonable to defer. They should not be reopened for 1.0 unless concrete
+beta feedback identifies a release blocker.
 
 #### [Post-1.0] Product / architecture
 
@@ -1167,13 +1244,18 @@ These items are explicitly reasonable to defer.
 - [ ] Revisit long-term CLI framework choice (Click vs alternative)
 - [ ] Evaluate ProperDocs as a potential successor to MkDocs for documentation generation once the
   current beta gate has closed
+- [ ] Consider splitting or renaming documentation hygiene tooling further if future checks make the
+  current script structure too broad
+- [ ] Consider richer documentation-structure validation only if repeated drift appears despite the
+  current lightweight hygiene checks
 - [ ] Further refactor GitHub workflow structure into reusable workflow/release-infra patterns if
   still worthwhile
 
 ______________________________________________________________________
 
 Only when all items in the “Must finish before 1.0” section are completed or explicitly deferred
-with rationale should `1.0.0` final be cut. The 1.0 alpha series has already served as a meaningful
-part of the release-path rehearsal and final contract validation. The `v1.0.0b1` beta readiness gate
-is now focused on confirming the already-completed validation record against the current source
-snapshot and cutting the beta without reopening deferred post-1.0 scope.
+with rationale should `1.0.0` final be cut. The 1.0 alpha series served as the
+contract-stabilization and release-path rehearsal phase, and `v1.0.0b1` closed the beta readiness
+gate. The remaining path to final `1.0.0` is now focused on validating the frozen contracts in
+real-world beta use, preserving compatibility, and avoiding new scope unless concrete beta feedback
+identifies a release blocker.
