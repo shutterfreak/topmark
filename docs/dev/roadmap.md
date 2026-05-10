@@ -1230,6 +1230,8 @@ beta feedback identifies a release blocker.
   view
 - [ ] Revisit registry query/filter commands if users need richer registry discovery beyond the
   current read-only registry listings and probe diagnostics
+- [ ] Explore support for multi-line TopMark header fields while preserving deterministic parsing,
+  rendering, idempotence, and backward compatibility with the existing single-line field contract
 
 #### [Post-1.0] Human output
 
