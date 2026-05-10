@@ -238,19 +238,26 @@ Command pages should use the following section order whenever applicable:
 
 ```text
 Summary
-Usage
-Quick examples
+Quick start
 Input applicability
-Shared options
-Command-specific options
+Configuration and validation
+Filtering and file discovery
+Command-specific policy options
+Behavior details
 Output behavior
 Machine-readable output
+Command-specific options
 Exit codes
+Typical workflows
+Pre-commit integration
 Related commands
 Related docs
+Troubleshooting
 ```
 
-Sections may be omitted only when genuinely not applicable.
+Sections may be omitted only when genuinely not applicable. Command families may adapt this order
+when their behavior differs from file-processing pipeline commands, but related pages should remain
+internally consistent.
 
 ### Standard Command Section Expectations
 
@@ -270,9 +277,9 @@ The summary should typically consist of one to three short paragraphs.
 Command overview or index pages may use tables or compact linked lists instead of deep heading
 hierarchies when summarizing many commands.
 
-#### Usage
+#### Quick Start
 
-The `Usage` section should:
+The `Quick Start` section should:
 
 - show canonical invocation syntax
 - prioritize readability over exhaustiveness
@@ -286,9 +293,9 @@ topmark check [OPTIONS] PATH...
 
 over excessively expanded shell examples.
 
-#### Quick Examples
+#### Typical Workflows
 
-The `Quick examples` section should:
+The `Typical Workflows` section should:
 
 - present the most common workflows first
 - remain concise and copy-pasteable
@@ -313,15 +320,37 @@ The `Input applicability` section should explain:
 
 This section exists to reduce ambiguity around operational behavior.
 
-#### Shared Options
+#### Configuration and Validation
 
-The `Shared options` section should:
+The `Configuration and validation` section should explain command-specific configuration behavior,
+strictness overrides, and links to the canonical configuration discovery and validation contract.
 
-- avoid duplicating the full global-options reference
-- summarize only behavior relevant to the command
-- link to shared option documentation where appropriate
+This section should avoid reprinting the full configuration lifecycle. Broad configuration semantics
+belong in [Configuration: Discovery, Precedence & Policy](../configuration/discovery.md).
 
-Shared option semantics should preferably be maintained through reusable snippets.
+#### Filtering and File Discovery
+
+The `Filtering and file discovery` section should summarize command-specific filtering behavior and
+link to the canonical filtering contract.
+
+This section should avoid duplicating the full path-resolution, include/exclude, STDIN, and
+file-type filtering rules from [Filtering](../usage/filtering.md).
+
+#### Command-Specific Policy Options
+
+The `Command-specific policy options` section should describe policy controls that affect command
+behavior, such as formatting, empty-file handling, stripping policy, or shared policy overlays.
+
+This section may be omitted for diagnostic or informational commands that do not expose policy
+controls.
+
+#### Behavior Details
+
+The `Behavior details` section should describe command-specific runtime behavior that is not merely
+input selection, configuration loading, or output formatting.
+
+Avoid repeating behavior already covered by input applicability, filtering, configuration, or output
+sections.
 
 #### Command-Specific Options
 
@@ -623,7 +652,9 @@ should use the same wording in:
 
 Documentation snippets exist to reduce duplication of stable contract language.
 
-Snippets should not be used merely to reduce prose repetition.
+Snippets should not be used merely to reduce prose repetition. They are appropriate only when shared
+wording represents a stable semantic contract, warning, or compatibility note that would be risky to
+maintain independently across multiple pages.
 
 ### Snippet Inventory Philosophy
 
@@ -635,43 +666,74 @@ Snippets are intended to centralize:
 - shared CLI semantics
 - repeated contract language
 - repeated operational caveats
+- short compatibility notes
 
 The snippet inventory should not evolve into a generalized content-composition system.
 
 Contributors should be able to understand page structure without navigating through excessive
 include indirection.
 
+### Current Snippet Inventory
+
+The current snippet inventory is intentionally conservative.
+
+Reusable snippets live in `docs/_snippets/`.
+
+Current Markdown snippets:
+
+| Snippet                       | Purpose                                                                                                         | Status           |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------- |
+| `api-internal-overrides.md`   | Explains the API-only internal override boundary for configuration behavior.                                    | Keep             |
+| `config-strictness.md`        | Defines shared strictness semantics and warning behavior.                                                       | Keep             |
+| `file-type-identifiers.md`    | Summarizes local vs qualified file type identifiers and links to the canonical filtering contract.              | Keep             |
+| `option-spelling.md`          | Explains CLI, TOML, and API option spelling conventions.                                                        | Keep             |
+| `output-contract.md`          | Defines shared output, quiet-mode, and machine-readable output guarantees for commands that support quiet mode. | Keep             |
+| `output-contract-no-quiet.md` | Defines shared output guarantees for informational commands that do not support quiet mode.                     | Keep             |
+| `report-scope.md`             | Defines shared report-scope behavior for sibling mutation commands.                                             | Keep but monitor |
+
+`docs/_snippets/.markdownlint.jsonc` configures Markdown linting for snippet files and is not itself
+a reusable content snippet.
+
 ### Appropriate Snippet Usage
 
 Good snippet candidates include:
 
-- shared option semantics
-- machine-readable output guarantees
-- exit-code semantics
-- configuration discovery rules
-- applicability behavior
-- shared warnings or notes
+- shared output guarantees
+- shared strictness or compatibility warnings
+- compact CLI semantics reused across several pages
+- terminology contracts that must remain consistent
+- short applicability notes shared by sibling commands
 
-Recommended reusable snippet categories include:
+A snippet is usually justified when it is:
 
-- shared global-option behavior
-- machine-readable output guarantees
-- exit-code semantics
-- configuration discovery behavior
-- path applicability behavior
-- stdin applicability behavior
-- dry-run vs apply semantics
-- output-format guarantees
-- recurring warnings or compatibility notes
+- used in three or more pages; or
+- used by two closely related sibling pages and represents an exact shared contract; or
+- short enough that reuse improves consistency without hiding important local context.
 
 ### Inappropriate Snippet Usage
 
 Avoid creating snippets for:
 
 - page summaries
-- contextual explanations
+- command-page skeletons
+- related-links sections
 - workflow-specific examples
+- command-specific behavior
+- large conceptual sections
+- machine-readable schemas
+- long reference documentation
 - prose that benefits from local adaptation
+
+Broad lifecycle semantics should generally live in canonical reference pages, not snippets.
+
+Examples:
+
+- configuration discovery and staged validation belong in
+  [Configuration: Discovery, Precedence & Policy](../configuration/discovery.md)
+- path filtering and file-type filtering belong in [Filtering](../usage/filtering.md)
+- shared STDIN behavior belongs in [Shared options](../usage/shared-options.md)
+
+Command pages should link to those canonical pages instead of including large reusable prose blocks.
 
 ### Snippet Naming
 
@@ -680,18 +742,18 @@ Snippet names should:
 - remain concise
 - describe behavior, not location
 - use kebab-case
+- avoid command-specific names unless the snippet is intentionally command-family-specific
 
-Examples:
+Good examples:
 
 ```text
-shared-options.md
-machine-readable-output.md
-config-discovery.md
-exit-code-semantics.md
+config-strictness.md
+file-type-identifiers.md
+output-contract.md
+output-contract-no-quiet.md
+option-spelling.md
+report-scope.md
 ```
-
-Snippet names should describe reusable behavior rather than the command or page where the snippet is
-currently used.
 
 Avoid vague names such as:
 
@@ -699,7 +761,11 @@ Avoid vague names such as:
 common.md
 shared.md
 notes.md
+warning.md
 ```
+
+Snippet names should describe reusable behavior rather than the page where the snippet is currently
+used.
 
 ### Snippet Granularity
 
@@ -709,63 +775,101 @@ Very small snippets increase indirection and reduce maintainability.
 
 Very large snippets reduce local readability and flexibility.
 
-### Preferred Snippet Inventory
+A good snippet should usually be readable as a standalone admonition, paragraph, or compact note. If
+a snippet needs substantial surrounding explanation to make sense, the content probably belongs
+locally or in a canonical reference page instead.
 
-The following snippet inventory categories are considered appropriate for TopMark.
+### Context Independence
 
-This inventory is intentionally conservative.
+Snippets should be context-independent.
 
-#### Shared CLI Behavior
+A snippet should not assume:
 
-Examples:
+- a specific command page
+- a specific heading level
+- a specific preceding paragraph
+- a specific relative link depth
+- a specific output format section
 
-```text
-shared-options.md
-verbosity-behavior.md
-dry-run-vs-apply.md
+Snippets may contain admonitions when the admonition itself is the reusable unit.
+
+Snippets should generally avoid section headings. If a reusable section needs its own heading, it is
+usually better represented as a canonical reference-page section with local cross-references.
+
+Snippets should avoid relative links unless the link is valid from every include location. When link
+depth varies by page, keep the link outside the snippet and add it locally near the include.
+
+Snippets must not include other snippets.
+
+### Include Path Conventions
+
+Snippet includes use `mkdocs-include-markdown-plugin` and are resolved from `docs/`.
+
+Use docs-root-relative include paths with the underscore escaped for formatter stability:
+
+```jinja
+\{\% include-markdown "\_snippets/config-strictness.md" \%\}
 ```
 
-#### Output and Contract Semantics
+Do not rewrite snippet includes to relative paths such as:
 
-Examples:
-
-```text
-machine-readable-output.md
-output-format-guarantees.md
-exit-code-semantics.md
+```jinja
+\{\% include-markdown "../../_snippets/config-strictness.md" \%\}
 ```
 
-#### Applicability Semantics
+The escaped underscore is intentional and should be preserved.
 
-Examples:
+### Snippet Maintenance Expectations
 
-```text
-path-input-applicability.md
-stdin-applicability.md
-recursive-traversal.md
-```
+Reusable snippets should be treated as semi-public documentation infrastructure.
 
-#### Configuration Semantics
+Changes to heavily reused snippets may affect:
 
-Examples:
+- command documentation consistency
+- generated-site consistency
+- wording consistency
+- validation expectations
+- screenshot or example stability
 
-```text
-config-discovery.md
-config-strictness.md
-file-type-identifiers.md
-```
+When modifying shared snippets:
 
-#### Shared Warnings and Compatibility Notes
+- review all include locations
+- verify wording still matches all consuming pages
+- avoid introducing page-specific assumptions
+- avoid expanding snippets beyond their original scope
+- prefer linking to canonical reference pages for detailed behavior
 
-Examples:
+### Snippet Discoverability
 
-```text
-compatibility-warning.md
-experimental-feature-warning.md
-```
+The snippet directory should remain navigable to contributors.
 
-The snippet inventory should remain focused on stable reusable semantics rather than general prose
-reuse.
+Avoid:
+
+- deeply nested snippet hierarchies
+- excessive fragmentation
+- cryptic snippet names
+- multiple snippets differing only slightly in wording
+
+If the snippet inventory grows, add or update a small inventory table in this document before adding
+more snippets.
+
+### Snippet Validation
+
+Documentation tooling should validate:
+
+- broken snippet include paths
+- orphaned snippets
+- nested snippet includes
+- malformed include paths
+- accidental macOS `._*` resource files under `docs/`
+
+Validation may also warn about:
+
+- single-use snippets
+- snippets containing headings
+- snippets containing relative links
+
+Human review remains important to ensure snippet extraction does not reduce local readability.
 
 ## Generated Documentation Conventions
 
@@ -836,50 +940,6 @@ Human review remains important for:
 - navigation clarity
 
 Not all documentation quality concerns should be automated.
-
-## Snippet Maintenance Expectations
-
-Reusable snippets should be treated as semi-public documentation infrastructure.
-
-Changes to heavily reused snippets may affect:
-
-- command documentation consistency
-- generated-site consistency
-- wording consistency
-- validation expectations
-- screenshot or example stability
-
-### Updating Shared Snippets
-
-When modifying shared snippets:
-
-- review all include locations
-- verify wording still matches all consuming pages
-- avoid introducing page-specific assumptions
-- avoid expanding snippets beyond their original scope
-
-### Snippet Discoverability
-
-The snippet directory should remain navigable to contributors.
-
-Avoid:
-
-- deeply nested snippet hierarchies
-- excessive fragmentation
-- cryptic snippet names
-- multiple snippets differing only slightly in wording
-
-### Snippet Validation
-
-Documentation tooling should eventually validate:
-
-- broken snippet includes
-- orphaned snippets
-- malformed include paths
-- duplicate snippet semantics
-
-However, human review remains important to ensure snippet extraction does not reduce local
-readability.
 
 ## Documentation Reuse Philosophy
 
