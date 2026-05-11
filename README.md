@@ -442,7 +442,8 @@ for file_result in probe_result.files:
 
 For API details, see:
 
-- [API reference (hosted docs)](https://topmark.readthedocs.io/en/latest/api/)
+- [Public API (hosted docs)](https://topmark.readthedocs.io/en/latest/api/public/)
+- [API reference (hosted docs)](https://topmark.readthedocs.io/en/latest/api/internals/topmark/)
 - [Registry model](docs/dev/registry-model.md)
 
 ______________________________________________________________________
